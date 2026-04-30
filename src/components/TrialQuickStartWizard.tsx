@@ -27,9 +27,9 @@ import { cn } from '@/lib/utils';
  * 4-step "Success in 5 minutes" onboarding wizard for new Free Trial users.
  *
  * Flow:
- *   1. Knowledge — upload PDF/DOC into the candidate's brain
+ *   1. Knowledge — upload PDF/DOC into the listing's brain
  *   2. Connections — One-Click connect Google/Meta/LinkedIn (+WBA)
- *   3. Audience — paste/import a small list of voters (max 100 in trial)
+ *   3. Audience — paste/import a small list of leads (max 100 in trial)
  *   4. Launch — generate first welcome message and dispatch via System WBA
  *
  * Persistent across sessions via localStorage (keyed by user.id), and verified
@@ -227,7 +227,7 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
       }
       const phone = normalizeIsraeliPhone(phoneRaw);
       if (!phone) continue;
-      out.push({ name: name || 'בוחר/ת', phone });
+      out.push({ name: name || 'ליד/ת', phone });
     }
     return out.slice(0, TRIAL_RECORD_CAP);
   };
@@ -262,7 +262,7 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
         }
         return;
       }
-      toast.success(`${slice.length} בוחרים נוספו לרשימה`);
+      toast.success(`${slice.length} לידים נוספו לרשימה`);
       setVoterCount((c) => c + slice.length);
       setRecipientsText('');
     } catch (e: any) {
@@ -279,7 +279,7 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: {
           platform: 'whatsapp',
-          topic: 'הודעת היכרות ראשונה לבוחרים פוטנציאליים בעברית, חמה ואישית, עד 280 תווים, ללא מיתוג חיצוני',
+          topic: 'הודעת היכרות ראשונה ללידים פוטנציאליים בעברית, חמה ואישית, עד 280 תווים, ללא מיתוג חיצוני',
         },
       });
       if (error) throw error;
@@ -416,7 +416,7 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
                 ) : (
                   <>
                     <p className="text-sm font-medium">גרור קובץ PDF / DOC / TXT לכאן</p>
-                    <p className="text-[11px] text-muted-foreground mt-1">או לחץ לבחירה</p>
+                    <p className="text-[11px] text-muted-foreground mt-1">או לחץ למכירה</p>
                   </>
                 )}
               </label>
@@ -493,7 +493,7 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
               <div>
                 <h3 className="text-base font-semibold">קהל יעד</h3>
                 <p className="text-xs text-muted-foreground mt-1">
-                  הדבק רשימה של בוחרים: שם וטלפון, מופרדים בפסיק. עד {TRIAL_RECORD_CAP} רשומות בניסיון. כעת יש לך {voterCount}/{TRIAL_RECORD_CAP}.
+                  הדבק רשימה של לידים: שם וטלפון, מופרדים בפסיק. עד {TRIAL_RECORD_CAP} רשומות בניסיון. כעת יש לך {voterCount}/{TRIAL_RECORD_CAP}.
                 </p>
               </div>
               <Textarea
@@ -542,7 +542,7 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
                   disabled={launching || isTrialExpired || !welcomeMsg.trim()}
                   className="bg-primary"
                 >
-                  {launching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : `שגר ל-${voterCount} בוחרים`}
+                  {launching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : `שגר ל-${voterCount} לידים`}
                 </Button>
               </div>
               {launchedCount !== null && (
@@ -556,7 +556,7 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
                     className="inline-flex items-center gap-2 rounded-lg border border-amber-500/30 bg-gradient-to-l from-amber-500/10 to-amber-500/5 px-4 py-2.5 text-sm font-semibold text-amber-600 hover:from-amber-500/15 hover:to-amber-500/10 transition-colors"
                   >
                     <Sparkles className="h-4 w-4" />
-                    שדרג ל-VIP Setup ופתח את המערכת לאלפי בוחרים
+                    שדרג ל-VIP Setup ופתח את המערכת לאלפי לידים
                   </a>
                 </div>
               )}

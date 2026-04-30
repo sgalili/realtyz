@@ -61,7 +61,7 @@ const Dashboard = () => {
 
   // 7-day registrations
   const { data: weekly } = useQuery({
-    queryKey: ['voters-7day'],
+    queryKey: ['leads-7day'],
     enabled: !isDemoMode,
     queryFn: async () => {
       const since = subDays(new Date(), 6).toISOString();
@@ -84,9 +84,9 @@ const Dashboard = () => {
     staleTime: 60_000,
   });
 
-  // Recent voters
+  // Recent leads
   const { data: recentVoters } = useQuery({
-    queryKey: ['recent-voters'],
+    queryKey: ['recent-leads'],
     enabled: !isDemoMode,
     queryFn: async () => {
       const { data } = await supabase
@@ -175,7 +175,7 @@ const Dashboard = () => {
     .slice(0, 6)
     .map((c) => ({ name: c.city, value: c.count }));
 
-  // In demo mode, mandate target follows the global selector so quotas stay in sync.
+  // In demo mode, transaction target follows the global selector so quotas stay in sync.
   // In live mode, demoSummary.mandateTarget falls back to the user's saved target.
   const totalVoters = isDemoMode ? quota.voterPool : activeSummary?.totalVoters ?? 0;
   const supporters = isDemoMode
@@ -216,8 +216,8 @@ const Dashboard = () => {
 
       {/* 4-stat grid - all values key on selectedMandates so they fade-in on change */}
       <div key={`stats-${selectedMandates}`} className="grid grid-cols-2 lg:grid-cols-4 gap-4 animate-fade-in">
-        <StatCard icon={HeartHandshake} label={`${terms.supporters} מאומתים`} value={supporters} loading={isLoading} accent="green" suffix={` ${terms.votes}`} tooltip={`מספר ה${terms.supporters} המאומתים שמזוהים במערכת כ${terms.votes} זמינים לקמפיין.`} to="/voter-crm?status=supporter" />
-        <StatCard icon={UsersRound} label="מאגר פעיל" value={totalVoters} loading={isLoading} accent="blue" suffix={` ${terms.votes}`} tooltip="המאגר הפעיל - האנשים שאנחנו מטרגטים כרגע כדי להגיע לאבן הדרך הבאה ביעד." to="/voter-crm" />
+        <StatCard icon={HeartHandshake} label={`${terms.supporters} מאומתים`} value={supporters} loading={isLoading} accent="green" suffix={` ${terms.votes}`} tooltip={`מספר ה${terms.supporters} המאומתים שמזוהים במערכת כ${terms.votes} זמינים לקמפיין.`} to="/lead-crm?status=supporter" />
+        <StatCard icon={UsersRound} label="מאגר פעיל" value={totalVoters} loading={isLoading} accent="blue" suffix={` ${terms.votes}`} tooltip="המאגר הפעיל - האנשים שאנחנו מטרגטים כרגע כדי להגיע לאבן הדרך הבאה ביעד." to="/lead-crm" />
         <StatCard icon={Target} label={terms.target} value={mandateTarget} loading={isLoading} accent="primary" suffix={` · ${progressPct}% התקדמות`} suffixClassName="text-sm font-bold text-muted-foreground sm:text-base" tooltip={`יעד ה${terms.seats} של הקמפיין וההתקדמות הנוכחית ביחס לכמות ה${terms.votes} הנדרשת.`} to="/finance" />
         <StatCard icon={Send} label="קמפיינים בביצוע" value={activeCampaignCount} loading={isLoading} accent="amber" tooltip="מספר הקמפיינים הפעילים או האחרונים שנמצאים כרגע בביצוע." to="/campaigns?tab=campaigns&status=active" />
       </div>
@@ -277,7 +277,7 @@ const Dashboard = () => {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">הרשמות 7 ימים אחרונים</CardTitle>
-            <CardDescription>מספר {terms.voters} חדשים לפי יום</CardDescription>
+            <CardDescription>מספר {terms.leads} חדשים לפי יום</CardDescription>
           </CardHeader>
           <CardContent>
             {!activeWeekly ? (
@@ -353,11 +353,11 @@ const Dashboard = () => {
         </Card>
       </div>
 
-      {/* Recent voters + active campaigns */}
+      {/* Recent leads + active campaigns */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">{terms.voters} שנרשמו לאחרונה</CardTitle>
+            <CardTitle className="text-base">{terms.leads} שנרשמו לאחרונה</CardTitle>
           </CardHeader>
           <CardContent>
             {!activeRecentVoters ? (
@@ -443,7 +443,7 @@ const Dashboard = () => {
                 </CardHeader>
                 <CardContent className="space-y-4">
                   <div>
-                    <p className="text-xs font-semibold mb-2">מה הבוחרים רוצים עכשיו</p>
+                    <p className="text-xs font-semibold mb-2">מה הלידים רוצים עכשיו</p>
                     <div className="flex flex-wrap gap-1.5">
                       {(insight.top_concerns ?? []).slice(0, 5).map((item: any, i: number) => <Badge key={i} variant="secondary">{item.label ?? item.concern ?? String(item)}</Badge>)}
                     </div>

@@ -12,7 +12,7 @@ interface DemoModeContextType {
 
 const DemoModeContext = createContext<DemoModeContextType>({ isDemoMode: false, setDemoMode: () => {}, demoCandidateId: null, setDemoCandidateId: () => {} });
 const STORAGE_KEY = 'kalpiz-demo-mode';
-const CANDIDATE_STORAGE_KEY = 'kalpiz-demo-candidate';
+const CANDIDATE_STORAGE_KEY = 'kalpiz-demo-listing';
 
 export function DemoModeProvider({ children }: { children: ReactNode }) {
   const { user, loading } = useAuth();
@@ -74,7 +74,7 @@ export function DemoModeProvider({ children }: { children: ReactNode }) {
       }
       return;
     }
-    // Re-prompt for simulation candidate every time demo mode is (re-)entered.
+    // Re-prompt for simulation listing every time demo mode is (re-)entered.
     setCandidateState(null);
     window.localStorage.removeItem(CANDIDATE_STORAGE_KEY);
     window.localStorage.removeItem(DEMO_EXIT_PENDING_KEY);

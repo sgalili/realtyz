@@ -40,9 +40,9 @@ const ContactForm = () => {
 
   if (submitted) {
     return (
-      <div className="candidate-landing-shell min-h-screen flex items-center justify-center p-4" dir="rtl">
-        <div className="candidate-top-wave" aria-hidden="true" />
-        <Card className="candidate-landing-card max-w-md w-full text-center border-primary/20">
+      <div className="listing-landing-shell min-h-screen flex items-center justify-center p-4" dir="rtl">
+        <div className="listing-top-wave" aria-hidden="true" />
+        <Card className="listing-landing-card max-w-md w-full text-center border-primary/20">
           <CardContent className="py-12 space-y-4">
             <div className="h-16 w-16 mx-auto rounded-full bg-primary/10 flex items-center justify-center">
               <CheckCircle2 className="h-8 w-8 text-primary" />
@@ -56,9 +56,9 @@ const ContactForm = () => {
   }
 
   return (
-    <div className="candidate-landing-shell min-h-screen flex items-center justify-center p-4" dir="rtl">
-      <div className="candidate-top-wave" aria-hidden="true" />
-      <Card className="candidate-landing-card max-w-md w-full animate-enter">
+    <div className="listing-landing-shell min-h-screen flex items-center justify-center p-4" dir="rtl">
+      <div className="listing-top-wave" aria-hidden="true" />
+      <Card className="listing-landing-card max-w-md w-full animate-enter">
         <CardHeader className="text-center">
           <CardTitle className="text-xl text-primary">צור קשר</CardTitle>
           <CardDescription>השאר פרטים ונחזור אליך בהקדם</CardDescription>

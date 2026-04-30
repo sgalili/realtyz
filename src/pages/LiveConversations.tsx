@@ -64,7 +64,7 @@ const TikTokIcon = ({ className = '' }: { className?: string }) => (
   </svg>
 );
 
-// Platform palette - every card gets one (deterministic by voter id) for a healthy mix.
+// Platform palette - every card gets one (deterministic by lead id) for a healthy mix.
 const PLATFORM_OPTIONS = [
   { key: 'instagram', node: <Instagram className="h-4 w-4 shrink-0 mt-0.5 text-social-instagram" /> },
   { key: 'facebook', node: <Facebook className="h-4 w-4 shrink-0 mt-0.5 text-social-facebook" /> },
@@ -82,7 +82,7 @@ const hashString = (s: string) => {
   return Math.abs(h);
 };
 
-// Detects channel/topic keyword in content; falls back to a deterministic platform per voter.
+// Detects channel/topic keyword in content; falls back to a deterministic platform per lead.
 const ContentIcon = ({ text, voterId }: { text: string; voterId?: string }) => {
   const t = (text || '').toLowerCase();
   if (t.includes('טיקטוק') || t.includes('tiktok')) return <TikTokIcon className="h-4 w-4 shrink-0 mt-0.5 text-foreground" />;
@@ -95,7 +95,7 @@ const ContentIcon = ({ text, voterId }: { text: string; voterId?: string }) => {
   if (t.includes('טלפון') || t.includes('שיחה') || t.includes('sms') || t.includes('סמס')) return <Phone className="h-4 w-4 shrink-0 mt-0.5 text-primary" />;
   if (t.includes('משבר') || t.includes('שלילי') || t.includes('כועס')) return <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-destructive" />;
   if (t.includes('ai') || t.includes('בינה') || t.includes('אוטומטי')) return <Bot className="h-4 w-4 shrink-0 mt-0.5 text-brand-blue" />;
-  // Fallback: deterministic platform per voter so every card shows an icon and the list looks like a mix.
+  // Fallback: deterministic platform per lead so every card shows an icon and the list looks like a mix.
   const idx = hashString(voterId || text || 'x') % PLATFORM_OPTIONS.length;
   return PLATFORM_OPTIONS[idx].node;
 };
@@ -110,9 +110,9 @@ const LiveConversations = () => {
   const { isDemoMode } = useDemoMode();
   const demoTicker = useDemoTicker();
 
-  // Voters who have chat_history entries
+  // Leads who have chat_history entries
   const { data: voterList } = useQuery({
-    queryKey: ['live-conv-voters'],
+    queryKey: ['live-conv-leads'],
     enabled: !isDemoMode,
     queryFn: async () => {
       const { data: chats } = await supabase
@@ -195,9 +195,9 @@ const LiveConversations = () => {
     return [...all].reverse();
   }, [isDemoMode, selectedVoterId, threadPages]);
 
-  // Full voter profile
+  // Full lead profile
   const { data: voterProfile } = useQuery({
-    queryKey: ['live-conv-voter-profile', selectedVoterId],
+    queryKey: ['live-conv-lead-profile', selectedVoterId],
     enabled: !!selectedVoterId && !isDemoMode,
     queryFn: async () => {
       const { data } = await supabase
@@ -209,7 +209,7 @@ const LiveConversations = () => {
     },
   });
 
-  // Demo: maintain a stable list, prepend a NEW unique voter every 3s
+  // Demo: maintain a stable list, prepend a NEW unique lead every 3s
   const VISIBLE_COUNT = 24;
   const [demoVoterList, setDemoVoterList] = useState<Array<{
     id: string;
@@ -243,8 +243,8 @@ const LiveConversations = () => {
     });
   }, [isDemoMode]);
 
-  // Every 3s, prepend a NEW unique voter not already in the visible list.
-  // Pause completely when a voter card is expanded.
+  // Every 3s, prepend a NEW unique lead not already in the visible list.
+  // Pause completely when a lead card is expanded.
   useEffect(() => {
     if (!isDemoMode) return;
     if (selectedVoterId) return; // freeze additions while a card is expanded
@@ -313,7 +313,7 @@ const LiveConversations = () => {
     <div className="space-y-4">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-primary">שיחות חיות</h1>
-        <p className="text-muted-foreground text-sm">צפייה בשיחות AI עם בוחרים בזמן אמת</p>
+        <p className="text-muted-foreground text-sm">צפייה בשיחות AI עם לידים בזמן אמת</p>
       </div>
 
       {isDemoMode && (
@@ -329,7 +329,7 @@ const LiveConversations = () => {
           <div className="relative">
             <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
-              placeholder="חיפוש בוחר..."
+              placeholder="חיפוש ליד..."
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="pr-9 bg-background border-primary/15 text-sm h-9"
@@ -337,7 +337,7 @@ const LiveConversations = () => {
           </div>
         </div>
 
-        {/* Voter cards (accordion) */}
+        {/* Lead cards (accordion) */}
         <ScrollArea className="h-[calc(100svh-280px)]">
           {(!filtered || filtered.length === 0) && (
             <p className="text-sm text-muted-foreground text-center py-8">אין שיחות עדיין</p>

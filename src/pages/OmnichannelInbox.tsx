@@ -51,7 +51,7 @@ const statusHebrew: Record<string, string> = {
 };
 
 const statusLed: Record<string, { dot: string; ring: string; note: string }> = {
-  supporter: { dot: 'bg-success', ring: 'ring-success/20', note: 'בוחר עם תמיכה חיובית גבוהה' },
+  supporter: { dot: 'bg-success', ring: 'ring-success/20', note: 'ליד עם תמיכה חיובית גבוהה' },
   active: { dot: 'bg-primary', ring: 'ring-primary/20', note: 'מעורב ופעיל בשיחה' },
   contacted: { dot: 'bg-warning', ring: 'ring-warning/20', note: 'נוצר קשר, ממתין להמשך טיפול' },
   lead: { dot: 'bg-warning', ring: 'ring-warning/20', note: 'ליד חדש שדורש טיפוח' },
@@ -61,7 +61,7 @@ const statusLed: Record<string, { dot: string; ring: string; note: string }> = {
 const senderBadge: Record<string, { label: string; className: string }> = {
   ai: { label: 'Kalpiz AI', className: 'bg-primary/15 text-primary border-primary/30' },
   agent: { label: 'נציג', className: 'bg-blue-500/15 text-blue-700 border-blue-300' },
-  voter: { label: 'בוחר', className: 'bg-slate-500/15 text-slate-700 border-slate-300' },
+  voter: { label: 'ליד', className: 'bg-slate-500/15 text-slate-700 border-slate-300' },
 };
 
 
@@ -98,9 +98,9 @@ const CheckMarks = ({ isOutbound }: { isOutbound: boolean }) => (
 
 const OmnichannelInbox = () => {
   const [searchParams] = useSearchParams();
-  const [selectedVoterId, setSelectedVoterId] = useState<string | null>(searchParams.get('voter'));
+  const [selectedVoterId, setSelectedVoterId] = useState<string | null>(searchParams.get('lead'));
   useEffect(() => {
-    const v = searchParams.get('voter');
+    const v = searchParams.get('lead');
     if (v) setSelectedVoterId(v);
   }, [searchParams]);
   const [search, setSearch] = useState('');
@@ -125,15 +125,15 @@ const OmnichannelInbox = () => {
   const blockDemoAction = useDemoGuard();
 
   useRealtimeSubscription('messages', [
-    ['inbox-voters'],
+    ['inbox-leads'],
     ['last-messages'],
     ['chat-messages', selectedVoterId ?? ''],
-    ['voter-recent-msgs', selectedVoterId ?? ''],
+    ['lead-recent-msgs', selectedVoterId ?? ''],
   ]);
-  useRealtimeSubscription('voters', [['inbox-voters']]);
+  useRealtimeSubscription('leads', [['inbox-leads']]);
 
   const { data: dbVoters } = useQuery({
-    queryKey: ['inbox-voters'],
+    queryKey: ['inbox-leads'],
     enabled: !isDemoMode,
     queryFn: async () => {
       const { data } = await supabase.from('leads').select('*').order('last_interaction_at', { ascending: false });
@@ -173,8 +173,8 @@ const OmnichannelInbox = () => {
     setLiveDemoVoters(demoVoters.slice(0, 12));
   }, [isDemoMode, demoCandidateId, demoVoters]);
 
-  // Every 3s in demo mode, prepend a NEW unique voter to the top of the list.
-  // Pause completely while a voter card is selected/expanded.
+  // Every 3s in demo mode, prepend a NEW unique lead to the top of the list.
+  // Pause completely while a lead card is selected/expanded.
   // Preload the avatar image BEFORE inserting so the card never flashes.
   useEffect(() => {
     if (!isDemoMode || demoVoters.length === 0) return;
@@ -248,7 +248,7 @@ const OmnichannelInbox = () => {
   }, [isDemoMode, dbLastMessages, voters, demoMessages]);
 
   const chatMessages = useMemo(() => {
-    if (isDemoMode && selectedVoterId?.startsWith('demo-voter-')) {
+    if (isDemoMode && selectedVoterId?.startsWith('demo-lead-')) {
       return demoMessages.filter(m => m.lead_id === selectedVoterId).sort(
         (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
@@ -289,7 +289,7 @@ const OmnichannelInbox = () => {
       if (attachmentInputRef.current) attachmentInputRef.current.value = '';
       queryClient.invalidateQueries({ queryKey: ['chat-messages', selectedVoterId] });
       queryClient.invalidateQueries({ queryKey: ['last-messages'] });
-      queryClient.invalidateQueries({ queryKey: ['inbox-voters'] });
+      queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
 
       // Manual message → disable autopilot
       if (aiAutopilot) {
@@ -376,12 +376,12 @@ const OmnichannelInbox = () => {
                             className="absolute left-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             aria-label={statusHebrew[voter.status] || voter.status}
                           >
-                            <span className={`h-2.5 w-2.5 rounded-full ring-4 ${statusLed[voter.status]?.dot || 'bg-muted-foreground'} ${statusLed[voter.status]?.ring || 'ring-muted'}`} />
+                            <span className={`h-2.5 w-2.5 rounded-full ring-4 ${statusLed[lead.status]?.dot || 'bg-muted-foreground'} ${statusLed[lead.status]?.ring || 'ring-muted'}`} />
                           </button>
                         </PopoverTrigger>
                         <PopoverContent side="left" align="start" className="w-48 text-right" onClick={(event) => event.stopPropagation()}>
                           <p className="text-sm font-semibold">{statusHebrew[voter.status] || voter.status}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">{statusLed[voter.status]?.note || 'סטטוס בוחר'}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{statusLed[voter.status]?.note || 'סטטוס ליד'}</p>
                         </PopoverContent>
                       </Popover>
                     )}
@@ -444,7 +444,7 @@ const OmnichannelInbox = () => {
                     <DropdownMenuItem onClick={() => setAiAutopilot((value) => !value)}>{aiAutopilot ? 'כיבוי AI אוטומטי' : 'הפעלת AI אוטומטי'}</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => toast.info('השיחה סומנה למעקב')}>סימון למעקב</DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => toast.info('פרופיל הבוחר פתוח בצד')}>הצגת פרופיל בוחר</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toast.info('פרופיל הליד פתוח בצד')}>הצגת פרופיל ליד</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -465,7 +465,7 @@ const OmnichannelInbox = () => {
                   )}
                   {chatMessages?.map((msg, idx) => {
                     const isOutbound = msg.direction === 'outbound';
-                    const senderType = msg.sender_type || (isOutbound ? 'agent' : 'voter');
+                    const senderType = msg.sender_type || (isOutbound ? 'agent' : 'lead');
                     const badge = senderBadge[senderType] || senderBadge.voter;
                     const prevMsg = idx > 0 ? chatMessages[idx - 1] : null;
                     const channelChanged = prevMsg && prevMsg.channel !== msg.channel && msg.channel;
@@ -612,7 +612,7 @@ const OmnichannelInbox = () => {
           )}
         </div>
 
-        {/* Left panel - Voter Profile Sidebar */}
+        {/* Left panel - Lead Profile Sidebar */}
         {selectedVoter && (
           <div className="hidden min-w-0 border-e bg-card xl:block">
             <VoterProfileSidebar voter={selectedVoter} />

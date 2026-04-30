@@ -46,7 +46,7 @@ const HEADER_ALIASES: Record<string, FieldKey> = {
   'שם': 'full_name',
   'שם מלא': 'full_name',
   'שם פרטי ומשפחה': 'full_name',
-  'שם הבוחר': 'full_name',
+  'שם הליד': 'full_name',
   'name': 'full_name',
   'full name': 'full_name',
   'fullname': 'full_name',
@@ -222,7 +222,7 @@ export default function MassiveImporter() {
       toast.error('חסרה עמודת טלפון - אי אפשר לייבא בלי טלפון');
       return;
     }
-    // Trial cap: pre-check current voter count + incoming rows
+    // Trial cap: pre-check current lead count + incoming rows
     if (trial.isTrial) {
       const { count: existingCount } = await supabase
         .from('leads')
@@ -230,7 +230,7 @@ export default function MassiveImporter() {
         .eq('is_demo', false);
       const existing = existingCount ?? 0;
       if (existing + parsed.rows.length > TRIAL_RECORD_CAP) {
-        toast.error('מסלול הניסיון מוגבל ל-100 רשומות. שדרג עכשיו כדי לנהל את כל מאגר הבוחרים שלך', {
+        toast.error('מסלול הניסיון מוגבל ל-100 רשומות. שדרג עכשיו כדי לנהל את כל מאגר הלידים שלך', {
           duration: 8000,
           action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/upgrade') },
         });
@@ -307,7 +307,7 @@ export default function MassiveImporter() {
         s.errors += chunk.length;
         console.error('Chunk error:', error);
         if (typeof error.message === 'string' && error.message.includes('TRIAL_RECORD_LIMIT')) {
-          toast.error('מסלול הניסיון מוגבל ל-100 רשומות. שדרג עכשיו כדי לנהל את כל מאגר הבוחרים שלך', {
+          toast.error('מסלול הניסיון מוגבל ל-100 רשומות. שדרג עכשיו כדי לנהל את כל מאגר הלידים שלך', {
             duration: 8000,
             action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/upgrade') },
           });

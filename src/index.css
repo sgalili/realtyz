@@ -452,7 +452,7 @@
 
   @media (prefers-reduced-motion: reduce) {
     .auth-water-wave,
-    .candidate-top-wave,
+    .listing-top-wave,
     .app-wave-divider::before { animation: none; }
   }
 
@@ -852,7 +852,7 @@
   }
 
   .premium-auth-modal,
-  .candidate-landing-card {
+  .listing-landing-card {
     position: relative;
     overflow: hidden;
     background: linear-gradient(180deg, hsl(210 17% 98%) 0%, hsl(210 16% 93%) 100%);
@@ -862,7 +862,7 @@
   }
 
   .premium-auth-modal::before,
-  .candidate-landing-card::before {
+  .listing-landing-card::before {
     content: '';
     position: absolute;
     inset-inline: 0;
@@ -875,7 +875,7 @@
     pointer-events: none;
   }
 
-  .candidate-landing-shell {
+  .listing-landing-shell {
     position: relative;
     overflow: hidden;
     background:
@@ -883,7 +883,7 @@
       linear-gradient(180deg, hsl(210 17% 98%) 0%, hsl(210 16% 93%) 100%);
   }
 
-  .candidate-top-wave {
+  .listing-top-wave {
     position: absolute;
     inset-inline: 0;
     top: 56px;

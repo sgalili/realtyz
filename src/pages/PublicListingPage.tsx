@@ -23,17 +23,17 @@ type CandidatePage = {
 type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 const demoPage: CandidatePage = {
-  slug: 'demo-candidate',
-  candidate_name: 'Kalpiz Candidate',
-  headline: 'קמפיין חכם שמקשיב לבוחרים ומתרגם אמון למנדטים',
-  thesis: 'שילוב של מאגר ידע, שיחות AI וניתוח שטח בזמן אמת כדי להגיע לכל בוחר עם המסר הנכון.',
-  pillars: ['שיחה אישית עם כל בוחר', 'מדידה יומית של תמיכה', 'מסרים חדים שמבוססים על ידע הקמפיין'],
+  slug: 'demo-listing',
+  candidate_name: 'Kalpiz Listing',
+  headline: 'קמפיין חכם שמקשיב ללידים ומתרגם אמון לעסקאות',
+  thesis: 'שילוב של מאגר ידע, שיחות AI וניתוח שטח בזמן אמת כדי להגיע לכל ליד עם המסר הנכון.',
+  pillars: ['שיחה אישית עם כל ליד', 'מדידה יומית של תמיכה', 'מסרים חדים שמבוססים על ידע הקמפיין'],
   mandate_goal: 2,
   supporter_count: 18420,
 };
 
 export default function PublicListingPage() {
-  const { slug = 'demo-candidate' } = useParams();
+  const { slug = 'demo-listing' } = useParams();
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
@@ -41,9 +41,9 @@ export default function PublicListingPage() {
   ]);
 
   const { data: page } = useQuery({
-    queryKey: ['public-candidate-page', slug],
+    queryKey: ['public-listing-page', slug],
     queryFn: async () => {
-      if (slug === 'demo-candidate') return demoPage;
+      if (slug === 'demo-listing') return demoPage;
       const db = supabase as any;
       const { data, error } = await db.from('listings').select('*').eq('slug', slug).eq('is_published', true).maybeSingle();
       if (error) throw error;
@@ -90,7 +90,7 @@ export default function PublicListingPage() {
     setMessages(nextMessages);
     setInput('');
     setSending(true);
-    const { data, error } = await supabase.functions.invoke('public-candidate-chat', {
+    const { data, error } = await supabase.functions.invoke('public-listing-chat', {
       body: { slug: activePage.slug, messages: nextMessages },
     });
     setSending(false);
@@ -112,7 +112,7 @@ export default function PublicListingPage() {
 
       <main className="mx-auto grid max-w-5xl gap-5 px-5 py-8 lg:grid-cols-[1.1fr_0.9fr]">
         <div className="space-y-5">
-          <Card className="candidate-landing-card">
+          <Card className="listing-landing-card">
             <CardHeader><CardTitle>ה-Brief האסטרטגי</CardTitle></CardHeader>
             <CardContent className="space-y-5 text-right">
               <p className="text-base leading-7 text-foreground">{activePage.thesis}</p>
@@ -124,8 +124,8 @@ export default function PublicListingPage() {
             </CardContent>
           </Card>
 
-          <Card className="candidate-landing-card">
-            <CardHeader><CardTitle className="flex items-center gap-2"><Target className="h-5 w-5 text-primary" /> התקדמות למנדט</CardTitle></CardHeader>
+          <Card className="listing-landing-card">
+            <CardHeader><CardTitle className="flex items-center gap-2"><Target className="h-5 w-5 text-primary" /> התקדמות לעסקה</CardTitle></CardHeader>
             <CardContent className="space-y-3">
               <Progress value={progress} className="h-5" />
               <p className="text-sm font-bold text-primary">{activePage.supporter_count.toLocaleString()} מתוך {targetVotes.toLocaleString()} קולות · {progress}%</p>
@@ -133,7 +133,7 @@ export default function PublicListingPage() {
           </Card>
         </div>
 
-        <Card className="candidate-landing-card h-fit">
+        <Card className="listing-landing-card h-fit">
           <CardHeader><CardTitle className="flex items-center gap-2"><Bot className="h-5 w-5 text-primary" /> שאלו את ה-AI של הקמפיין</CardTitle></CardHeader>
           <CardContent className="space-y-4">
             <div className="max-h-[390px] space-y-3 overflow-y-auto rounded-lg bg-background/70 p-3">

@@ -8,13 +8,13 @@ import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 const QUICK_LINKS = [
   { label: 'לוח בקרה', path: '/', icon: LayoutDashboard },
-  { label: 'ניהול בוחרים', path: '/voter-crm', icon: User },
+  { label: 'ניהול לידים', path: '/lead-crm', icon: User },
   { label: 'הפצת SMS', path: '/sms-blast', icon: Radio },
 ];
 
 interface SearchResult {
   id: string;
-  type: 'voter' | 'city' | 'page';
+  type: 'lead' | 'city' | 'page';
   title: string;
   subtitle?: string;
   path: string;
@@ -46,7 +46,7 @@ export function GlobalSearch() {
     }
     setLoading(true);
     try {
-      // Search voters by name or phone
+      // Search leads by name or phone
       const terms = q.trim().split(/\s+/).map(t => `'${t}'`).join(' & ');
       const { data: voters } = await supabase
         .from('leads')
@@ -56,10 +56,10 @@ export function GlobalSearch() {
 
       const voterResults: SearchResult[] = (voters ?? []).map(v => ({
         id: v.id,
-        type: 'voter',
+        type: 'lead',
         title: v.full_name || 'ללא שם',
         subtitle: `${formatPhoneDisplay(v.phone_number)}${v.city ? ` · ${v.city}` : ''}`,
-        path: `/voter-crm`,
+        path: `/lead-crm`,
       }));
 
       // Quick link matches
@@ -99,7 +99,7 @@ export function GlobalSearch() {
           <Input
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="חפש בוחר, עיר, או עמוד..."
+            placeholder="חפש ליד, עיר, או עמוד..."
             className="border-0 focus-visible:ring-0 h-12 text-base"
             autoFocus
           />
@@ -139,7 +139,7 @@ export function GlobalSearch() {
               onClick={() => handleSelect(result)}
               className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg hover:bg-accent/50 transition-colors text-right"
             >
-              {result.type === 'voter' ? (
+              {result.type === 'lead' ? (
                 <User className="h-4 w-4 text-primary shrink-0" />
               ) : result.type === 'city' ? (
                 <MapPin className="h-4 w-4 text-primary shrink-0" />

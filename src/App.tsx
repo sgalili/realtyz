@@ -138,8 +138,8 @@ const App = () => (
               <Route path="/" element={<ProtectedRoute allowGuestDemo><Index /></ProtectedRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute allowGuestDemo><Index /></ProtectedRoute>} />
               <Route path="/crm" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
-              <Route path="/voters" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
-              <Route path="/voter-crm" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
+              <Route path="/leads" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
+              <Route path="/lead-crm" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
               <Route path="/inbox" element={<ProtectedRoute allowGuestDemo><OmnichannelInbox /></ProtectedRoute>} />
               <Route path="/ai-content" element={<ProtectedRoute allowGuestDemo><AIContentGenerator /></ProtectedRoute>} />
               <Route path="/ads" element={<Navigate to="/campaigns?tab=campaigns" replace />} />

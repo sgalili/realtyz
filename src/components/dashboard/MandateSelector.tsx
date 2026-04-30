@@ -4,8 +4,8 @@ import { useMandate } from '@/hooks/useMandate';
 import { Tooltip, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 
 /**
- * Minimal mandate selector for the dashboard header.
- * Layout (LTR): [+]  X מנדטים  [-]
+ * Minimal transaction selector for the dashboard header.
+ * Layout (LTR): [+]  X עסקאות  [-]
  * - Plus on the left, Minus on the right (per spec)
  * - Buttons sit ~10px tighter against the centered label
  * - Tooltip is portaled with z-[100] so it floats above the navy hero
@@ -20,7 +20,7 @@ export function MandateSelector() {
           <div
             dir="ltr"
             role="group"
-            aria-label="בורר מנדטים"
+            aria-label="בורר עסקאות"
             className="group inline-flex items-center gap-2 rounded-2xl border border-primary/15 bg-card px-4 py-2.5 shadow-md transition-shadow hover:shadow-lg"
           >
             {/* Left button - Minus (decrement) */}
@@ -28,13 +28,13 @@ export function MandateSelector() {
               type="button"
               onClick={decrement}
               disabled={selectedMandates <= min}
-              aria-label="הקטן יעד מנדטים"
+              aria-label="הקטן יעד עסקאות"
               className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/20 bg-background text-primary transition-all duration-200 hover:bg-primary hover:text-primary-foreground active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
             >
               <Minus className="h-5 w-5" />
             </button>
 
-            {/* Inline label - "יעד: X מנדטים" on a single line */}
+            {/* Inline label - "יעד: X עסקאות" on a single line */}
             <div dir="rtl" className="flex items-baseline justify-center gap-2 px-3 leading-none">
               <span className="text-base font-semibold text-muted-foreground">
                 יעד:
@@ -46,7 +46,7 @@ export function MandateSelector() {
                 {selectedMandates}
               </span>
               <span className="text-base font-semibold text-muted-foreground">
-                מנדטים
+                עסקאות
               </span>
             </div>
 
@@ -55,7 +55,7 @@ export function MandateSelector() {
               type="button"
               onClick={increment}
               disabled={selectedMandates >= max}
-              aria-label="הגדל יעד מנדטים"
+              aria-label="הגדל יעד עסקאות"
               className="flex h-10 w-10 items-center justify-center rounded-full border border-primary/20 bg-background text-primary transition-all duration-200 hover:bg-primary hover:text-primary-foreground active:scale-95 disabled:cursor-not-allowed disabled:opacity-30"
             >
               <Plus className="h-5 w-5" />
@@ -72,12 +72,12 @@ export function MandateSelector() {
             className="z-[100] w-[300px] overflow-hidden rounded-lg border border-primary/20 bg-popover p-4 text-popover-foreground shadow-xl animate-in fade-in-0 zoom-in-95"
           >
             <div className="space-y-2.5 text-right">
-              <p className="text-[18px] font-bold text-primary">בורר יעד מנדטים</p>
+              <p className="text-[18px] font-bold text-primary">בורר יעד עסקאות</p>
               <p className="text-[16px] leading-relaxed text-foreground">
-                בחר את מספר המנדטים שאליהם אתה מכוון בקמפיין. המערכת תתאים אוטומטית את הקצב, התקציב והמכסות בכל המסכים.
+                בחר את מספר העסקאות שאליהם אתה מכוון בקמפיין. המערכת תתאים אוטומטית את הקצב, התקציב והמכסות בכל המסכים.
               </p>
               <div className="rounded-md bg-success px-2.5 py-2 text-[15px] font-semibold leading-relaxed text-success-foreground">
-                ✓ הכל כלול במחיר - לפי יעד המנדטים שבחרת. ללא תוספות נסתרות.
+                ✓ הכל כלול במחיר - לפי יעד העסקאות שבחרת. ללא תוספות נסתרות.
               </div>
             </div>
           </TooltipPrimitive.Content>

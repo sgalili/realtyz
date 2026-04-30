@@ -2,16 +2,16 @@ import { VOTES_PER_MANDATE } from '@/lib/mandateCalculator';
 
 /**
  * Single source of truth for plan quotas, pricing, and audience scaling.
- * All features (AI Voice, Voter pools, Budget, Charts, Seats) MUST derive from here.
+ * All features (AI Voice, Lead pools, Budget, Charts, Seats) MUST derive from here.
  *
  * Spec (Kalpiz.co.il sales model):
- *   1  Mandate : ₪4,999  (1,500 AI min, 3 seats,  50k voters)
- *   5  Mandates: ₪9,999  (5,000 AI min, 5 seats, 250k voters)
- *  10  Mandates: ₪14,999 (7,000 AI min, 10 seats, 1M voters)
- *  10+ Mandates: +₪1,000 / mandate, +500 AI min / mandate
+ *   1  Transaction : ₪4,999  (1,500 AI min, 3 seats,  50k leads)
+ *   5  Transactions: ₪9,999  (5,000 AI min, 5 seats, 250k leads)
+ *  10  Transactions: ₪14,999 (7,000 AI min, 10 seats, 1M leads)
+ *  10+ Transactions: +₪1,000 / transaction, +500 AI min / transaction
  *
  * Audience Scaling Fee (flat brackets):
- *   <=1.5M voters : ₪0
+ *   <=1.5M leads : ₪0
  *   1.5M..2.5M    : ₪750
  *   >2.5M         : ₪1,250 (flat cap)
  *
@@ -41,7 +41,7 @@ export const PRICING_ANCHORS: PricingAnchor[] = [
   { mandates: 10, price: 14_999, aiVoiceMinutes: 7_000, seats: 10, voterPool: 1_000_000 },
 ];
 
-/** Dynamic tier (mandate 11+). */
+/** Dynamic tier (transaction 11+). */
 export const DYNAMIC_PRICE_PER_MANDATE = 1_000;        // ₪
 export const DYNAMIC_AI_MINUTES_PER_MANDATE = 500;     // minutes
 const DYNAMIC_VOTERS_PER_MANDATE = 100_000;
@@ -62,11 +62,11 @@ function lerp(a: number, b: number, t: number): number {
 
 /**
  * Linear interpolation between the 1/5/10 anchors for any anchor field.
- * For mandates > 10, applies a per-mandate dynamic delta.
+ * For transactions > 10, applies a per-transaction dynamic delta.
  */
 function interpolateField(
   mandates: number,
-  field: keyof Omit<PricingAnchor, 'mandates'>,
+  field: keyof Omit<PricingAnchor, 'transactions'>,
   dynamicDelta: number,
 ): number {
   const m = Math.max(1, Math.floor(mandates));
@@ -86,17 +86,17 @@ function interpolateField(
 
 // ───────────────────────── Public API ─────────────────────────
 
-/** AI Voice quota for a mandate count (interpolated 1→5→10, dynamic above). */
+/** AI Voice quota for a transaction count (interpolated 1→5→10, dynamic above). */
 export function aiVoiceQuota(mandates: number): number {
   return interpolateField(mandates, 'aiVoiceMinutes', DYNAMIC_AI_MINUTES_PER_MANDATE);
 }
 
-/** Voter pool size (interpolated 1→5→10, dynamic above). */
+/** Lead pool size (interpolated 1→5→10, dynamic above). */
 export function voterPool(mandates: number): number {
   return interpolateField(mandates, 'voterPool', DYNAMIC_VOTERS_PER_MANDATE);
 }
 
-/** Seats included in the mandate plan. */
+/** Seats included in the transaction plan. */
 export function seatsQuota(mandates: number): number {
   return interpolateField(mandates, 'seats', DYNAMIC_SEATS_PER_MANDATE);
 }
@@ -112,7 +112,7 @@ export function audienceScalingFee(mandates: number): number {
 
 /**
  * THE single source of truth for the package monthly price.
- * Linear interpolation between 1/5/10 anchors, +₪1,000/mandate above 10,
+ * Linear interpolation between 1/5/10 anchors, +₪1,000/transaction above 10,
  * + audience scaling fee.
  */
 export function monthlyPackagePrice(mandates: number): number {
@@ -120,7 +120,7 @@ export function monthlyPackagePrice(mandates: number): number {
   return base + audienceScalingFee(mandates);
 }
 
-/** Predicted target votes for a mandate count. */
+/** Predicted target votes for a transaction count. */
 export function predictedVotes(mandates: number): number {
   return Math.max(1, Math.floor(mandates)) * VOTES_PER_MANDATE;
 }
@@ -130,7 +130,7 @@ export function demoSupporters(mandates: number, supportRatio = 0.45): number {
   return Math.round(predictedVotes(mandates) * supportRatio);
 }
 
-/** Convenience aggregator: everything derived from a single mandate value. */
+/** Convenience aggregator: everything derived from a single transaction value. */
 export interface DerivedQuota {
   mandates: number;
   aiVoiceMinutes: number;

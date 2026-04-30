@@ -13,11 +13,11 @@ import TotpSetup from '@/components/security/TotpSetup';
 const ACTION_LABELS: Record<string, string> = {
   bulk_status_update: 'עדכון סטטוס מרוכז',
   bulk_interest_update: 'עדכון תגית מרוכז',
-  voter_export: 'ייצוא בוחרים',
-  voter_import: 'ייבוא בוחרים',
+  voter_export: 'ייצוא לידים',
+  voter_import: 'ייבוא לידים',
   ai_tone_change: 'שינוי טון AI',
   campaign_settings_save: 'שמירת הגדרות קמפיין',
-  voter_add: 'הוספת בוחר',
+  voter_add: 'הוספת ליד',
   login: 'כניסה למערכת',
   logout: 'יציאה מהמערכת',
 };

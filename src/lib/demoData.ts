@@ -1,25 +1,25 @@
 // ── High-density demo mock data for Kalpiz AI ──
 
-import voter01 from '@/assets/demo-headshots/voter-01.jpg';
-import voter02 from '@/assets/demo-headshots/voter-02.jpg';
-import voter03 from '@/assets/demo-headshots/voter-03.jpg';
-import voter04 from '@/assets/demo-headshots/voter-04.jpg';
-import voter05 from '@/assets/demo-headshots/voter-05.jpg';
-import voter06 from '@/assets/demo-headshots/voter-06.jpg';
-import voter07 from '@/assets/demo-headshots/voter-07.jpg';
-import voter08 from '@/assets/demo-headshots/voter-08.jpg';
-import voter09 from '@/assets/demo-headshots/voter-09.jpg';
-import voter10 from '@/assets/demo-headshots/voter-10.jpg';
-import voter11 from '@/assets/demo-headshots/voter-11.jpg';
-import voter12 from '@/assets/demo-headshots/voter-12.jpg';
-import voter13 from '@/assets/demo-headshots/voter-13.jpg';
-import voter14 from '@/assets/demo-headshots/voter-14.jpg';
-import voter15 from '@/assets/demo-headshots/voter-15.jpg';
-import voter16 from '@/assets/demo-headshots/voter-16.jpg';
-import voter17 from '@/assets/demo-headshots/voter-17.jpg';
-import voter18 from '@/assets/demo-headshots/voter-18.jpg';
-import voter19 from '@/assets/demo-headshots/voter-19.jpg';
-import voter20 from '@/assets/demo-headshots/voter-20.jpg';
+import voter01 from '@/assets/demo-headshots/lead-01.jpg';
+import voter02 from '@/assets/demo-headshots/lead-02.jpg';
+import voter03 from '@/assets/demo-headshots/lead-03.jpg';
+import voter04 from '@/assets/demo-headshots/lead-04.jpg';
+import voter05 from '@/assets/demo-headshots/lead-05.jpg';
+import voter06 from '@/assets/demo-headshots/lead-06.jpg';
+import voter07 from '@/assets/demo-headshots/lead-07.jpg';
+import voter08 from '@/assets/demo-headshots/lead-08.jpg';
+import voter09 from '@/assets/demo-headshots/lead-09.jpg';
+import voter10 from '@/assets/demo-headshots/lead-10.jpg';
+import voter11 from '@/assets/demo-headshots/lead-11.jpg';
+import voter12 from '@/assets/demo-headshots/lead-12.jpg';
+import voter13 from '@/assets/demo-headshots/lead-13.jpg';
+import voter14 from '@/assets/demo-headshots/lead-14.jpg';
+import voter15 from '@/assets/demo-headshots/lead-15.jpg';
+import voter16 from '@/assets/demo-headshots/lead-16.jpg';
+import voter17 from '@/assets/demo-headshots/lead-17.jpg';
+import voter18 from '@/assets/demo-headshots/lead-18.jpg';
+import voter19 from '@/assets/demo-headshots/lead-19.jpg';
+import voter20 from '@/assets/demo-headshots/lead-20.jpg';
 
 const demoHeadshots = [
   voter01, voter02, voter03, voter04, voter05, voter06, voter07, voter08, voter09, voter10,
@@ -48,7 +48,7 @@ export const DEMO_SUMMARY = {
 };
 
 export const DEMO_CAMPAIGNS = [
-  { id: '1', name: 'גיוס בוחרים בתל אביב', description: 'קמפיין דיגיטלי ממוקד לתל אביב', status: 'active', total_sent: 45_200, total_clicks: 12_800, created_at: '2025-01-15' },
+  { id: '1', name: 'גיוס לידים בתל אביב', description: 'קמפיין דיגיטלי ממוקד לתל אביב', status: 'active', total_sent: 45_200, total_clicks: 12_800, created_at: '2025-01-15' },
   { id: '2', name: 'סקר מדיניות מס', description: 'סקר עמדות מיסוי ארצי', status: 'completed', total_sent: 120_000, total_clicks: 38_400, created_at: '2024-12-01' },
   { id: '3', name: 'שכנוע מתלבטים בראשון לציון', description: 'שכנוע מתלבטים בראשון', status: 'active', total_sent: 28_600, total_clicks: 9_100, created_at: '2025-02-10' },
   { id: '4', name: 'חיזוק מעורבות בירושלים', description: 'חיזוק מעורבות בירושלים', status: 'paused', total_sent: 65_000, total_clicks: 18_200, created_at: '2024-11-20' },
@@ -56,7 +56,7 @@ export const DEMO_CAMPAIGNS = [
   { id: '6', name: 'מבצע SMS בנגב', description: 'SMS מסיבי לנגב', status: 'completed', total_sent: 88_000, total_clicks: 22_000, created_at: '2024-09-15' },
   { id: '7', name: 'דחיפת מדיניות ביטחון', description: 'הפצת מדיניות ביטחון', status: 'active', total_sent: 150_000, total_clicks: 47_000, created_at: '2025-03-01' },
   { id: '8', name: 'קמפיין כלכלה תחילה', description: 'קמפיין כלכלה ראשונה', status: 'completed', total_sent: 72_000, total_clicks: 19_800, created_at: '2024-08-22' },
-  { id: '9', name: 'יוזמת מצביעים צעירים', description: 'יוזמת צעירים 18-25', status: 'active', total_sent: 55_000, total_clicks: 21_300, created_at: '2025-01-28' },
+  { id: '9', name: 'יוזמת לידים צעירים', description: 'יוזמת צעירים 18-25', status: 'active', total_sent: 55_000, total_clicks: 21_300, created_at: '2025-01-28' },
   { id: '10', name: 'פנייה לגמלאים', description: 'תקשורת עם גמלאים', status: 'completed', total_sent: 40_000, total_clicks: 8_200, created_at: '2024-07-10' },
   { id: '11', name: 'סקר משבר הדיור', description: 'סקר משבר הדיור', status: 'completed', total_sent: 95_000, total_clicks: 31_200, created_at: '2024-06-18' },
   { id: '12', name: 'ביטחון גבול הצפון', description: 'ביטחון גבול צפון', status: 'paused', total_sent: 48_000, total_clicks: 14_100, created_at: '2024-11-05' },
@@ -79,105 +79,105 @@ const demoNames = [
 ];
 
 // Deep conversations for first 5 users (5+ exchanges each, city-specific topics)
-const deepConversations: Record<number, Array<{ role: 'ai' | 'voter'; content: string; month: number }>> = {
+const deepConversations: Record<number, Array<{ role: 'ai' | 'lead'; content: string; month: number }>> = {
   0: [ // דני כהן - תל אביב - מיסוי
-    { role: 'ai', content: 'שלום דני! אני מהצוות שלנו. רציתי לדבר איתך על הנושאים שמעניינים אותך לקראת הבחירות.', month: 0 },
-    { role: 'voter', content: 'היי, תשמעי - אני מתל אביב. יוקר המחיה פה הרג אותנו. הארנונה עלתה שוב', month: 0 },
+    { role: 'ai', content: 'שלום דני! אני מהצוות שלנו. רציתי לדבר איתך על הנושאים שמעניינים אותך לקראת המכירות.', month: 0 },
+    { role: 'lead', content: 'היי, תשמעי - אני מתל אביב. יוקר המחיה פה הרג אותנו. הארנונה עלתה שוב', month: 0 },
     { role: 'ai', content: 'אני שומעת אותך דני. יוקר המחיה בתל אביב הוא אחד הנושאים המרכזיים שלנו. יש לנו תוכנית להקפאת ארנונה ל-3 שנים ותמריצי מס לעצמאים. רוצה פרטים?', month: 0 },
-    { role: 'voter', content: 'הקפאת ארנונה? זה נשמע טוב מדי. איך תממנו את זה?', month: 1 },
+    { role: 'lead', content: 'הקפאת ארנונה? זה נשמע טוב מדי. איך תממנו את זה?', month: 1 },
     { role: 'ai', content: 'שאלה מצוינת. המימון מגיע מקיצוץ בבירוקרטיה ממשלתית ומיסוי חברות טכנולוגיה רב-לאומיות שפועלות כאן בלי לשלם מס מלא. יש לנו מסמך מפורט - שולחת לך קישור.', month: 1 },
-    { role: 'voter', content: 'קראתי את המסמך. חלק מהרעיונות טובים, אבל מה עם הביטחון? אני גר ליד הים ובקיץ היו אזעקות', month: 2 },
+    { role: 'lead', content: 'קראתי את המסמך. חלק מהרעיונות טובים, אבל מה עם הביטחון? אני גר ליד הים ובקיץ היו אזעקות', month: 2 },
     { role: 'ai', content: 'דני, הביטחון הוא חלק בלתי נפרד מהתוכנית. הקמפיין שלנו, עם רקע ביטחוני מובהק, דוגלת בהגנה אקטיבית - כולל כיפת ברזל ימית למרכז. מה דעתך?', month: 2 },
-    { role: 'voter', content: 'כיפת ברזל ימית? זה קיים?', month: 3 },
+    { role: 'lead', content: 'כיפת ברזל ימית? זה קיים?', month: 3 },
     { role: 'ai', content: 'כן, זה פרויקט שנמצא בפיתוח ואנחנו דוחפים לזרז אותו. אנחנו מאמינים שתל אביב צריכה להיות מוגנת מכל הכיוונים 🛡️', month: 3 },
-    { role: 'voter', content: 'אוקיי שכנעתם אותי. אני בפנים. כל קול נגד יוקר המחיה חשוב 💪', month: 4 },
+    { role: 'lead', content: 'אוקיי שכנעתם אותי. אני בפנים. כל קול נגד יוקר המחיה חשוב 💪', month: 4 },
     { role: 'ai', content: 'תודה רבה דני! אנחנו מזמינים אותך לכנס תומכים בתל אביב בשבוע הבא. שולח לך פרטים. כל קול חשוב! 🎉', month: 5 },
   ],
   1: [ // מיכל לוי - ראשון לציון - חינוך
     { role: 'ai', content: 'שלום מיכל! כאן הצוות שלנו. ראינו שנושא החינוך חשוב לך - נשמח לשמוע מה דעתך.', month: 0 },
-    { role: 'voter', content: 'היי, כן. אני אמא לשלושה בראשון לציון. בתי הספר פה במצב קשה - כיתות צפופות, אין מספיק מורים', month: 0 },
+    { role: 'lead', content: 'היי, כן. אני אמא לשלושה בראשון לציון. בתי הספר פה במצב קשה - כיתות צפופות, אין מספיק מורים', month: 0 },
     { role: 'ai', content: 'את צודקת מיכל. התוכנית שלנו כוללת תוספת של 15,000 מורים חדשים ארצית, הקטנת כיתות ל-25 תלמידים, ותוספת שעות העשרה. רוצה לראות את התוכנית המלאה?', month: 1 },
-    { role: 'voter', content: 'כן בבקשה. ואיך לגבי מחיר הצהרונים? זה הורג אותנו כלכלית', month: 1 },
+    { role: 'lead', content: 'כן בבקשה. ואיך לגבי מחיר הצהרונים? זה הורג אותנו כלכלית', month: 1 },
     { role: 'ai', content: 'שאלה חשובה! אנחנו מציעים צהרון חינם עד גיל 9 ותמיכה כלכלית להורים עובדים. הנה קישור למסמך המלא 📄', month: 2 },
-    { role: 'voter', content: 'קראתי. הרעיונות טובים אבל שמעתי את אותן הבטחות מפוליטיקאים אחרים', month: 2 },
+    { role: 'lead', content: 'קראתי. הרעיונות טובים אבל שמעתי את אותן הבטחות מפוליטיקאים אחרים', month: 2 },
     { role: 'ai', content: 'מבינה את הספקנות מיכל. ההבדל הוא שאנחנו כבר קידמנו חוק צהרונים חינם בכנסת הקודמת. היא לא רק מדברת - היא עושה. רוצה לראות מה היא כבר השיגה?', month: 3 },
-    { role: 'voter', content: 'כן, שלחי לי. חשוב לי לראות תוצאות אמיתיות', month: 3 },
+    { role: 'lead', content: 'כן, שלחי לי. חשוב לי לראות תוצאות אמיתיות', month: 3 },
     { role: 'ai', content: 'שולחת! ובנוסף - יש לנו מפגש הורים עם הצוות בראשון לציון בשבוע הבא. מעוניינת להצטרף?', month: 4 },
-    { role: 'voter', content: 'אני מגיעה! ואני אביא עוד שלוש חברות. שכנעתם אותנו 😊', month: 5 },
-    { role: 'ai', content: 'מדהים מיכל! כל הורה שמצביע למען חינוך טוב - משנה עתיד. נשמח לראות אתכן! 🎉', month: 5 },
+    { role: 'lead', content: 'אני מגיעה! ואני אביא עוד שלוש חברות. שכנעתם אותנו 😊', month: 5 },
+    { role: 'ai', content: 'מדהים מיכל! כל הורה שליד למען חינוך טוב - משנה עתיד. נשמח לראות אתכן! 🎉', month: 5 },
   ],
   2: [ // אורי שמיר - ירושלים - ביטחון
-    { role: 'ai', content: 'שלום אורי! הצוות שלנו כאן. מה הנושא שהכי מעסיק אותך לקראת הבחירות?', month: 0 },
-    { role: 'voter', content: 'ביטחון. אני גר בירושלים ובחודשים האחרונים המצב ביטחוני קשה מאוד', month: 0 },
+    { role: 'ai', content: 'שלום אורי! הצוות שלנו כאן. מה הנושא שהכי מעסיק אותך לקראת המכירות?', month: 0 },
+    { role: 'lead', content: 'ביטחון. אני גר בירושלים ובחודשים האחרונים המצב ביטחוני קשה מאוד', month: 0 },
     { role: 'ai', content: 'אורי, הביטחון הוא הנושא מספר 1 שלנו. הקמפיין שלנו, עם רקע ביטחוני מובהק, מובילה גישה של אפס סובלנות לטרור ותגובה מיידית. רוצה לשמוע על התוכנית?', month: 1 },
-    { role: 'voter', content: 'כן. מה ההצעות הקונקרטיות? נמאס מסיסמאות', month: 1 },
+    { role: 'lead', content: 'כן. מה ההצעות הקונקרטיות? נמאס מסיסמאות', month: 1 },
     { role: 'ai', content: 'בהחלט, הנה הנקודות: 1) תגבורת של 5,000 שוטרים בירושלים 2) מצלמות חכמות עם AI בכל שכונה 3) הריסת בתים של מחבלים תוך 48 שעות. זו גישה תקיפה ומידית.', month: 2 },
-    { role: 'voter', content: 'זה נשמע רציני. אבל מה לגבי הדיפלומטיה? אי אפשר רק בכוח', month: 2 },
-    { role: 'ai', content: 'צודק. אנחנו תומכים גם בדיפלומטיה מבוססת כוח - הסכמי אברהם סגנון. שלום עם מי שרוצה שלום, ותגובה נחרצת למי שבוחר בטרור.', month: 3 },
-    { role: 'voter', content: 'אוקיי, זה מתחבר לי. אני חושב שאצביע לכם', month: 4 },
+    { role: 'lead', content: 'זה נשמע רציני. אבל מה לגבי הדיפלומטיה? אי אפשר רק בכוח', month: 2 },
+    { role: 'ai', content: 'צודק. אנחנו תומכים גם בדיפלומטיה מבוססת כוח - הסכמי אברהם סגנון. שלום עם מי שרוצה שלום, ותגובה נחרצת למי שליד בטרור.', month: 3 },
+    { role: 'lead', content: 'אוקיי, זה מתחבר לי. אני חושב שאצביע לכם', month: 4 },
     { role: 'ai', content: 'תודה אורי! ירושלים צריכה להיות עיר בטוחה לכולם. אנחנו מזמינים אותך לכנס ביטחון בעיר הבירה 🇮🇱', month: 5 },
   ],
   3: [ // נועה ברק - חיפה - סביבה
     { role: 'ai', content: 'שלום נועה! כאן הצוות שלנו. ראינו שנושא הסביבה חשוב לך. רוצה לדבר על זה?', month: 0 },
-    { role: 'voter', content: 'כן! אני מחיפה ומפרץ חיפה הוא אסון אקולוגי. ילדים פה חולים. משהו חייב להשתנות', month: 0 },
+    { role: 'lead', content: 'כן! אני מחיפה ומפרץ חיפה הוא אסון אקולוגי. ילדים פה חולים. משהו חייב להשתנות', month: 0 },
     { role: 'ai', content: 'את צודקת לגמרי נועה. אנחנו מחויבים לסגירת מפעלים מזהמים במפרץ חיפה תוך 3 שנים, ולהמרה לאנרגיה ירוקה. זה לא רק סביבה - זה בריאות של ילדים.', month: 1 },
-    { role: 'voter', content: 'איך תסגרו מפעלים? אנשים יפסידו עבודה', month: 1 },
+    { role: 'lead', content: 'איך תסגרו מפעלים? אנשים יפסידו עבודה', month: 1 },
     { role: 'ai', content: 'שאלה חשובה. התוכנית כוללת הסבת עובדים לתעשיית הטק הירוק - חיפה יכולה להפוך למרכז Hi-Tech סביבתי. יש לנו תקציב ייעודי לזה.', month: 2 },
-    { role: 'voter', content: 'Hi-Tech ירוק? זה נשמע מעניין. יש דוגמאות מהעולם?', month: 2 },
+    { role: 'lead', content: 'Hi-Tech ירוק? זה נשמע מעניין. יש דוגמאות מהעולם?', month: 2 },
     { role: 'ai', content: 'בהחלט! קופנהגן, ברלין ונקובר עברו תהליכים דומים. שולחת לך מחקר השוואתי שהכנו 📊', month: 3 },
-    { role: 'voter', content: 'קראתי - מרשים. אני בפנים! 🌿', month: 4 },
+    { role: 'lead', content: 'קראתי - מרשים. אני בפנים! 🌿', month: 4 },
     { role: 'ai', content: 'תודה נועה! כל קול למען אוויר נקי בחיפה - משנה חיים. נשמח לראות אותך בכנס סביבה שלנו! 💚', month: 5 },
   ],
   4: [ // יוסי אברהם - באר שבע - כלכלה/פריפריה
-    { role: 'ai', content: 'שלום יוסי! אני מהצוות שלנו. רוצה לשמוע מה חשוב לך בבחירות הקרובות.', month: 0 },
-    { role: 'voter', content: 'שלום. אני מבאר שבע ונמאס לי שהפריפריה מקבלת פירורים. כל הכסף הולך למרכז', month: 0 },
+    { role: 'ai', content: 'שלום יוסי! אני מהצוות שלנו. רוצה לשמוע מה חשוב לך במכירות הקרובות.', month: 0 },
+    { role: 'lead', content: 'שלום. אני מבאר שבע ונמאס לי שהפריפריה מקבלת פירורים. כל הכסף הולך למרכז', month: 0 },
     { role: 'ai', content: 'יוסי, את צודק ב-100%. אנחנו מגיעים מהפריפריה ויודעים מה זה. התוכנית שלנו כוללת: העברת משרדי ממשלה לנגב, רכבת מהירה באר שבע-תל אביב, והקמת קמפוס היי-טק בבאר שבע.', month: 1 },
-    { role: 'voter', content: 'רכבת מהירה? על זה מדברים כבר 20 שנה', month: 1 },
+    { role: 'lead', content: 'רכבת מהירה? על זה מדברים כבר 20 שנה', month: 1 },
     { role: 'ai', content: 'צודק שיש תסכול. ההבדל הוא שאנחנו כבר חתמנו על הצעת חוק עם לוח זמנים מחייב ותקציב ייעודי. זה לא הבטחה - זה תוכנית עם תאריכים.', month: 2 },
-    { role: 'voter', content: 'מעניין. ומה לגבי תעסוקה בנגב? אין מספיק מקומות עבודה טובים', month: 2 },
+    { role: 'lead', content: 'מעניין. ומה לגבי תעסוקה בנגב? אין מספיק מקומות עבודה טובים', month: 2 },
     { role: 'ai', content: 'בדיוק בשביל זה הקמפוס - שיתוף פעולה עם BGU, חברות הזנק, ומענקים לחברות שפותחות משרדים בנגב. המטרה: 10,000 משרות חדשות תוך 4 שנים.', month: 3 },
-    { role: 'voter', content: 'אם באמת תעשו את זה - אני איתכם. הנגב צריך מהפכה', month: 4 },
+    { role: 'lead', content: 'אם באמת תעשו את זה - אני איתכם. הנגב צריך מהפכה', month: 4 },
     { role: 'ai', content: 'תודה יוסי! הנגב הוא העתיד של ישראל ואנחנו לא נשכח אתכם. מוזמן לכנס שלנו בבאר שבע 🏜️🇮🇱', month: 5 },
   ],
 };
 
 // Shorter conversations for users 5-9 (2-3 exchanges)
-const shortConversations: Record<number, Array<{ role: 'ai' | 'voter'; content: string; month: number }>> = {
+const shortConversations: Record<number, Array<{ role: 'ai' | 'lead'; content: string; month: number }>> = {
   5: [ // רונית פרידמן - נתניה
     { role: 'ai', content: 'שלום רונית! כאן הצוות שלנו. מה הנושא שהכי מעסיק אותך?', month: 0 },
-    { role: 'voter', content: 'שלום, בעיקר בריאות. התורים בקופת חולים אצלנו בנתניה - חודשים!', month: 0 },
+    { role: 'lead', content: 'שלום, בעיקר בריאות. התורים בקופת חולים אצלנו בנתניה - חודשים!', month: 0 },
     { role: 'ai', content: 'מבינה לגמרי רונית. יש לנו תוכנית לפתיחת 50 מרפאות ערב ברחבי הארץ, כולל נתניה. רוצה לשמוע עוד? 🏥', month: 1 },
-    { role: 'voter', content: 'כן, שלחי לי פרטים. זה נשמע חשוב', month: 1 },
+    { role: 'lead', content: 'כן, שלחי לי פרטים. זה נשמע חשוב', month: 1 },
   ],
   6: [ // אלון גולן - פתח תקווה
-    { role: 'ai', content: 'שלום אלון! הצוות שלנו כאן. מה חשוב לך בבחירות?', month: 0 },
-    { role: 'voter', content: 'היי. התחבורה ציבורית - אני נוסע מפתח תקווה לתל אביב כל יום ומבזבז 3 שעות', month: 0 },
+    { role: 'ai', content: 'שלום אלון! הצוות שלנו כאן. מה חשוב לך במכירות?', month: 0 },
+    { role: 'lead', content: 'היי. התחבורה ציבורית - אני נוסע מפתח תקווה לתל אביב כל יום ומבזבז 3 שעות', month: 0 },
     { role: 'ai', content: 'אלון, 3 שעות ביום זה מטורף. התוכנית שלנו כוללת קו רכבל חדש פתח תקווה-תל אביב ותוספת אוטובוסים מהירים. רוצה את המסמך המלא? 🚊', month: 1 },
   ],
   7: [ // שירה מזרחי - אשדוד
     { role: 'ai', content: 'שלום שירה! כאן הצוות שלנו. מה חשוב לך?', month: 0 },
-    { role: 'voter', content: 'ביטחון באשדוד. עוד סבב והעיר שלנו בקו האש', month: 0 },
+    { role: 'lead', content: 'ביטחון באשדוד. עוד סבב והעיר שלנו בקו האש', month: 0 },
     { role: 'ai', content: 'שירה, הביטחון שלך ושל המשפחה הוא בראש סדר העדיפויות. אנחנו דוחפים למערכת הגנה משופרת לערי הדרום כולל מקלטים חדשים ומערכת התרעה משודרגת. 🛡️', month: 1 },
-    { role: 'voter', content: 'סוף סוף מישהו שמדבר על אשדוד. תודה', month: 2 },
+    { role: 'lead', content: 'סוף סוף מישהו שמדבר על אשדוד. תודה', month: 2 },
   ],
   8: [ // עמית דוד - תל אביב
     { role: 'ai', content: 'שלום עמית! הצוות שלנו. מעניין אותך לשמוע על התוכנית הכלכלית שלנו?', month: 0 },
-    { role: 'voter', content: 'אני סטודנט. אין לי כסף לשכירות בתל אביב. יש לכם פתרון?', month: 0 },
+    { role: 'lead', content: 'אני סטודנט. אין לי כסף לשכירות בתל אביב. יש לכם פתרון?', month: 0 },
     { role: 'ai', content: 'עמית, אנחנו מציעים מענק דיור לסטודנטים ותוכנית דירות להשכרה בפיקוח. שולח לך פרטים! 🏠', month: 1 },
   ],
   9: [ // הדר כץ - ירושלים
     { role: 'ai', content: 'שלום הדר! כאן הצוות שלנו. מה הנושא שמעסיק אותך?', month: 0 },
-    { role: 'voter', content: 'תרבות בירושלים. העיר מתה בלילה, אין חיי לילה, אין תרבות', month: 0 },
+    { role: 'lead', content: 'תרבות בירושלים. העיר מתה בלילה, אין חיי לילה, אין תרבות', month: 0 },
     { role: 'ai', content: 'הדר, ירושלים היא עיר עם פוטנציאל תרבותי עצום. אנחנו מציעים הקמת רובע תרבות חדש ושעות פתיחה מורחבות למוזיאונים. רוצה לשמוע עוד? 🎭', month: 1 },
   ],
   10: [
     { role: 'ai', content: 'שלום גל, בדקנו שהנושא הכלכלי חשוב לך. מה הכי מפריע לך היום?', month: 0 },
-    { role: 'voter', content: 'מס הכנסה ויוקר מחיה. צריך מישהו שמבין עצמאים.', month: 0 },
+    { role: 'lead', content: 'מס הכנסה ויוקר מחיה. צריך מישהו שמבין עצמאים.', month: 0 },
     { role: 'ai', content: 'בדיוק לשם אנחנו מכוונים: הפחתת רגולציה לעצמאים ומדרגת מס פשוטה יותר. שולחת תקציר ממוקד.', month: 1 },
   ],
   11: [
     { role: 'ai', content: 'שלום יעל, ראינו פעילות גבוהה שלך סביב נושא הביטחון האישי.', month: 0 },
-    { role: 'voter', content: 'נכון. אני רוצה תוכנית מעשית, לא סיסמאות.', month: 0 },
+    { role: 'lead', content: 'נכון. אני רוצה תוכנית מעשית, לא סיסמאות.', month: 0 },
     { role: 'ai', content: 'התוכנית שלנו כוללת תגבור שיטור, מצלמות חכמות ומוקד תגובה עירוני. אפשר לשלוח לך את המסמך?', month: 1 },
   ],
 };
@@ -203,9 +203,9 @@ const buildOmniFollowUps = (index: number, name: string, city: string, topic: st
   const tertiary = demoChannels[(index + 5) % demoChannels.length];
 
   return [
-    { role: 'voter' as const, channel: primary, content: voterConcern, month: 5 },
+    { role: 'lead' as const, channel: primary, content: voterConcern, month: 5 },
     { role: 'ai' as const, channel: secondary, content: `${firstName}, ${aiResponse}`, month: 5 },
-    { role: 'voter' as const, channel: tertiary, content: index % 4 === 0 ? 'אוקיי, זה יותר מכבד. תמשיכו רק כאן.' : `תודה. מעניין אותי גם נושא ${topic} ב${city}.`, month: 5 },
+    { role: 'lead' as const, channel: tertiary, content: index % 4 === 0 ? 'אוקיי, זה יותר מכבד. תמשיכו רק כאן.' : `תודה. מעניין אותי גם נושא ${topic} ב${city}.`, month: 5 },
     { role: 'ai' as const, channel: demoChannels[(index + 7) % demoChannels.length], content: index % 5 === 0 ? 'מעולה. עדכנתי העדפות קשר, עצרתי כפילויות בין ערוצים, והשיחה תישאר במעקב AI.' : 'קיבלתי. איחדתי את כל הערוצים לפרופיל אחד והעברתי לצוות השטח עם הקשר המלא.', month: 5 },
   ];
 };
@@ -215,7 +215,7 @@ function recentTimestamp(minutesAgo: number): string {
   return new Date(Date.now() - minutesAgo * 60_000).toISOString();
 }
 
-const recentOffsets = Array.from({ length: 50 }, (_, i) => [2, 5, 9, 14, 22, 31, 44, 58, 76, 95, 130, 175, 240, 330, 480, 720, 980, 1440][i % 18] + Math.floor(i / 18) * 11); // minutes ago per voter
+const recentOffsets = Array.from({ length: 50 }, (_, i) => [2, 5, 9, 14, 22, 31, 44, 58, 76, 95, 130, 175, 240, 330, 480, 720, 980, 1440][i % 18] + Math.floor(i / 18) * 11); // minutes ago per lead
 const demoTopics = [
   { tag: 'ביטחון', key: 'security', voter: 'הביטחון האישי והתגובה לטרור חשובים לי מאוד.', ai: 'מבינה אותך. שלחתי לך תוכנית קצרה עם צעדים מעשיים לפי העיר שלך.' },
   { tag: 'כלכלה', key: 'economy', voter: 'יוקר המחיה והעסק הקטן שלי הם הנושא המרכזי מבחינתי.', ai: 'בדיוק בזה אנחנו מתמקדים: פחות רגולציה, מס פשוט יותר ותמריצים לעצמאים.' },
@@ -240,9 +240,9 @@ function generateDemoThread(name: string, voterId: string, index: number) {
   const fallbackTopic = demoTopics[index % demoTopics.length];
   const activeConversation = conversation ?? [
     { role: 'ai' as const, content: `שלום ${name.split(' ')[0]}, ראינו שנושא ${fallbackTopic.tag} חשוב לך. אפשר לשמוע מה הכי מטריד אותך?`, month: 0 },
-    { role: 'voter' as const, content: fallbackTopic.voter, month: 0 },
+    { role: 'lead' as const, content: fallbackTopic.voter, month: 0 },
     { role: 'ai' as const, content: fallbackTopic.ai, month: 1 },
-    { role: 'voter' as const, content: index % 3 === 0 ? 'נשמע טוב, שלחו לי עוד פרטים ואשקול להצטרף.' : 'תודה, זה יותר ברור עכשיו.', month: 2 },
+    { role: 'lead' as const, content: index % 3 === 0 ? 'נשמע טוב, שלחו לי עוד פרטים ואשקול להצטרף.' : 'תודה, זה יותר ברור עכשיו.', month: 2 },
   ];
 
   const baseMinutesAgo = recentOffsets[index] ?? 60;
@@ -270,7 +270,7 @@ function generateDemoThread(name: string, voterId: string, index: number) {
 }
 
 export const DEMO_VOTERS = demoNames.map((name, i) => ({
-  id: `demo-voter-${i}`,
+  id: `demo-lead-${i}`,
   full_name: name,
   phone_number: `97250${String(1000000 + i * 111111).slice(0, 7)}`,
   city: DEMO_SUMMARY.cityClusters[i % DEMO_SUMMARY.cityClusters.length].city,
@@ -299,7 +299,7 @@ export const DEMO_VOTERS = demoNames.map((name, i) => ({
 }));
 
 export const DEMO_MESSAGES = demoNames.flatMap((name, i) =>
-  generateDemoThread(name, `demo-voter-${i}`, i)
+  generateDemoThread(name, `demo-lead-${i}`, i)
 );
 
 export const DEMO_KNOWLEDGE_DOCUMENTS = [
@@ -373,7 +373,7 @@ export const DEMO_CANDIDATES: Array<{
   {
     id: 'primary-single',
     name: 'חבר/ת כנסת בפריימריז',
-    shortLabel: 'מועמד יחיד · פריימריז',
+    shortLabel: 'נכס יחיד · פריימריז',
     mandateGoal: 1,
     electionType: 'primaries',
     scale: 'small',
@@ -383,14 +383,14 @@ export const DEMO_CANDIDATES: Array<{
   },
   {
     id: 'primary-slate',
-    name: 'קבוצת מועמדים בפריימריז',
+    name: 'קבוצת נכסים בפריימריז',
     shortLabel: 'קבוצה / רשימה · פריימריז',
     mandateGoal: 4,
     electionType: 'primaries',
     scale: 'medium',
     focus: ['תיאום מסר', 'חלוקת אזורים', 'הצבעה משולבת'],
-    crisis: 'ניהול תיאום פנימי בין מועמדי הקבוצה',
-    narrative: 'רשימה מתואמת של מועמדים בפריימריז: דאטה משותפת, חלוקת מחוזות, וקריאות הצבעה כפולות לפעילים.',
+    crisis: 'ניהול תיאום פנימי בין נכסי הקבוצה',
+    narrative: 'רשימה מתואמת של נכסים בפריימריז: דאטה משותפת, חלוקת מחוזות, וקריאות הצבעה כפולות לפעילים.',
   },
   {
     id: 'national-small',
@@ -401,7 +401,7 @@ export const DEMO_CANDIDATES: Array<{
     scale: 'small',
     focus: ['בידול חד', 'קהל ליבה', 'מעבר אחוז חסימה'],
     crisis: 'סקרים על גבול אחוז החסימה',
-    narrative: 'תנועה צעירה במרוץ ארצי: כל מנדט נמדד באלפי קולות; הדגש על שימור קהל הליבה והוכחת חיוניות.',
+    narrative: 'תנועה צעירה במרוץ ארצי: כל עסקה נמדד באלפי קולות; הדגש על שימור קהל הליבה והוכחת חיוניות.',
   },
   {
     id: 'national-mid',
@@ -411,7 +411,7 @@ export const DEMO_CANDIDATES: Array<{
     electionType: 'national',
     scale: 'medium',
     focus: ['יוקר המחיה', 'ביטחון אישי', 'אחדות'],
-    crisis: 'תחרות על מצביעים מתלבטים מול גוש שכן',
+    crisis: 'תחרות על לידים מתלבטים מול גוש שכן',
     narrative: 'מפלגה בינונית במרוץ הארצי: מאבק על מתלבטים בגוש, ניהול הדוק של שיח רשתות והקרנת יציבות.',
   },
   {
@@ -430,8 +430,8 @@ export const DEMO_CANDIDATES: Array<{
 const getCandidate = (candidateId?: DemoCandidateId | null) => DEMO_CANDIDATES.find((candidate) => candidate.id === candidateId) ?? DEMO_CANDIDATES[0];
 
 // Realistic Israeli campaign math:
-//  - National elections: ~40,000 valid votes per Knesset mandate.
-//  - Primaries: ~200 registered party voters per "delegate" / realistic-spot signal.
+//  - National sales: ~40,000 valid votes per Knesset transaction.
+//  - Primaries: ~200 registered party leads per "delegate" / realistic-spot signal.
 const VOTES_PER_NATIONAL_MANDATE = 40_000;
 const VOTES_PER_PRIMARY_DELEGATE = 200;
 
@@ -445,7 +445,7 @@ export const getDemoCandidateSummary = (candidateId?: DemoCandidateId | null) =>
   const supporterRatio = candidate.scale === 'large' ? 0.74 : candidate.scale === 'medium' ? 0.62 : 0.5;
   const supporters = Math.round(targetVotes * supporterRatio);
 
-  // Sentiment volume scales with the addressable universe, not just mandates.
+  // Sentiment volume scales with the addressable universe, not just transactions.
   const baseVolume = Math.max(800, Math.round(targetVotes / 120));
   return {
     ...DEMO_SUMMARY,
@@ -471,7 +471,7 @@ export const KALPIZ_PLANS = {
 } as const;
 export const KALPIZ_SETUP_FEE = 5000;
 
-// Pick the recommended plan for a given mandate goal (matches calculator logic).
+// Pick the recommended plan for a given asking price (matches calculator logic).
 export const pickKalpizPlan = (mandates: number) => {
   if (mandates >= KALPIZ_PLANS.victory.mandates) return KALPIZ_PLANS.victory;
   if (mandates >= KALPIZ_PLANS.power.mandates) return KALPIZ_PLANS.power;
@@ -481,7 +481,7 @@ export const pickKalpizPlan = (mandates: number) => {
 // Realistic billing snapshot for the currently-viewed demo profile.
 // Anchored to the recommended Kalpiz plan (base subscription + setup fee)
 // plus variable usage by service — so all balance/spend numbers in the app
-// reflect the public pricing list and the candidate's mandate goal.
+// reflect the public pricing list and the listing's asking price.
 export const getDemoBilling = (candidateId?: DemoCandidateId | null) => {
   const candidate = getCandidate(candidateId);
   const isPrimaries = candidate.electionType === 'primaries';
@@ -598,7 +598,7 @@ export type DemoTransaction = {
   status: 'paid' | 'pending';
 };
 
-// Build a realistic, story-driven transactions ledger for the selected demo candidate.
+// Build a realistic, story-driven transactions ledger for the selected demo listing.
 // All amounts derive from the same plan + usage numbers used by getDemoBilling, so the
 // table reconciles with the top metrics (top-ups, spend, balance).
 export const getDemoTransactions = (candidateId?: DemoCandidateId | null): DemoTransaction[] => {
@@ -702,7 +702,7 @@ export const getDemoTransactions = (candidateId?: DemoCandidateId | null): DemoT
     {
       id: 'tx-voice-human',
       date: day(7),
-      description: 'קמפיין קולי (הקלטת מועמד) · 5,000 דקות @ 0.20 ₪',
+      description: 'קמפיין קולי (הקלטת נכס) · 5,000 דקות @ 0.20 ₪',
       category: 'voice',
       amount: 1000,
       status: 'paid',
@@ -779,7 +779,7 @@ export const getDemoUpgradePath = (candidateId?: DemoCandidateId | null) => {
         sms: { current: 5_000, next: 15_000, unit: 'הודעות / חודש' },
         voice: { current: 500, next: 2_000, unit: 'דקות / חודש' },
         ai_touchpoints: { current: 50_000, next: 200_000, unit: 'אינטראקציות / חודש' },
-        reach: { current: 5_000, next: 50_000, unit: 'בוחרים פעילים' },
+        reach: { current: 5_000, next: 50_000, unit: 'לידים פעילים' },
         channels: { current: 2, next: 3, unit: 'ערוצי שידור מקבילים' },
         ai_speed: { current: 1, next: 2, unit: 'מהירות עיבוד AI (פי)' },
       },
@@ -809,7 +809,7 @@ export const getDemoUpgradePath = (candidateId?: DemoCandidateId | null) => {
       sms: { current: 15_000, next: 60_000, unit: 'הודעות / חודש' },
       voice: { current: 2_000, next: 10_000, unit: 'דקות / חודש' },
       ai_touchpoints: { current: 200_000, next: 1_000_000, unit: 'אינטראקציות / חודש' },
-      reach: { current: 50_000, next: 250_000, unit: 'בוחרים פעילים' },
+      reach: { current: 50_000, next: 250_000, unit: 'לידים פעילים' },
       channels: { current: 3, next: 99, unit: 'ערוצי שידור מקבילים' },
       ai_speed: { current: 2, next: 4, unit: 'מהירות עיבוד AI (פי)' },
     },
@@ -826,7 +826,7 @@ export const getDemoCandidateVoters = (candidateId?: DemoCandidateId | null) => 
     engagement_score: Math.min(99, (voter.engagement_score ?? 40) + scaleBoost + (index % 9)),
     interest_scores: {
       ...voter.interest_scores,
-      // Primaries voters skew toward party loyalty / activism;
+      // Primaries leads skew toward party loyalty / activism;
       // national-large skews toward governance & economy.
       security: candidate.scale === 'large' ? 88 : voter.interest_scores.security,
       economy: candidate.scale !== 'small' ? 90 : voter.interest_scores.economy,
@@ -844,7 +844,7 @@ export const getDemoCandidateMessages = (candidateId?: DemoCandidateId | null) =
   return DEMO_MESSAGES.map((message, index) => ({
     ...message,
     content: index % 5 === 0
-      ? `${message.content} הדגש של המועמד: ${candidate.focus[index % candidate.focus.length]}.`
+      ? `${message.content} הדגש של הנכס: ${listing.focus[index % listing.focus.length]}.`
       : message.content,
   }));
 };
@@ -852,24 +852,24 @@ export const getDemoCandidateMessages = (candidateId?: DemoCandidateId | null) =
 export const getDemoCandidateKnowledgeDocuments = (candidateId?: DemoCandidateId | null) => {
   const candidate = getCandidate(candidateId);
   return [
-    { id: `demo-kb-${candidate.id}-1`, title: `ספר מסרים - ${candidate.name}`, source_type: 'upload', chunk_count: 96 + candidate.mandateGoal, created_at: recentTimestamp(30) },
-    { id: `demo-kb-${candidate.id}-2`, title: `מודיעין שטח: ${candidate.focus.join(' · ')}`, source_type: 'whatsapp', chunk_count: 118 + candidate.mandateGoal * 2, created_at: recentTimestamp(75) },
-    { id: `demo-kb-${candidate.id}-3`, title: `תרחיש משבר: ${candidate.crisis}`, source_type: 'upload', chunk_count: 54 + candidate.mandateGoal, created_at: recentTimestamp(180) },
+    { id: `demo-kb-${listing.id}-1`, title: `ספר מסרים - ${listing.name}`, source_type: 'upload', chunk_count: 96 + candidate.mandateGoal, created_at: recentTimestamp(30) },
+    { id: `demo-kb-${listing.id}-2`, title: `מודיעין שטח: ${listing.focus.join(' · ')}`, source_type: 'whatsapp', chunk_count: 118 + candidate.mandateGoal * 2, created_at: recentTimestamp(75) },
+    { id: `demo-kb-${listing.id}-3`, title: `תרחיש משבר: ${listing.crisis}`, source_type: 'upload', chunk_count: 54 + candidate.mandateGoal, created_at: recentTimestamp(180) },
   ];
 };
 
 export const getDemoCandidateSurveyInsights = (candidateId?: DemoCandidateId | null) => {
   const candidate = getCandidate(candidateId);
   return [{
-    id: `demo-survey-${candidate.id}`,
-    title: 'סקר שטח - [שם המועמד]',
-    summary: `${candidate.focus.join(' ו־')} מובילים את הסנטימנט; תרחיש המשבר המרכזי: ${candidate.crisis}.`,
+    id: `demo-survey-${listing.id}`,
+    title: 'סקר שטח - [שם הנכס]',
+    summary: `${listing.focus.join(' ו־')} מובילים את הסנטימנט; תרחיש המשבר המרכזי: ${listing.crisis}.`,
     row_count: 1240 + candidate.mandateGoal * 73,
     created_at: recentTimestamp(55),
     top_concerns: candidate.focus.map((label) => ({ label })),
     weak_points: [candidate.crisis],
     swing_voters: [{ segment: candidate.electionType === 'primaries' ? 'פעילי פריימריז מתלבטים' : 'מתלבטים ארציים', count: 180 + candidate.mandateGoal * 18 }],
-    message_recommendations: [{ area: 'ארצי', script: `שלום {{שם}}, [שם המועמד] מציג/ה קו ברור סביב ${candidate.focus[0]} - נשמח לשמוע מה חשוב לך.` }],
+    message_recommendations: [{ area: 'ארצי', script: `שלום {{שם}}, [שם הנכס] מציג/ה קו ברור סביב ${listing.focus[0]} - נשמח לשמוע מה חשוב לך.` }],
     sentiment_by_area: [],
     user_id: 'demo',
     updated_at: recentTimestamp(20),
@@ -879,15 +879,15 @@ export const getDemoCandidateSurveyInsights = (candidateId?: DemoCandidateId | n
 export const getDemoCandidateCrisisAlerts = (candidateId?: DemoCandidateId | null) => {
   const candidate = getCandidate(candidateId);
   return [{
-    id: `demo-crisis-${candidate.id}`,
-    title: `התראת משבר: ${candidate.crisis}`,
-    summary: `זוהתה עלייה בשיח שלילי סביב ${candidate.crisis}. מומלץ להגיב במסר קצר, עובדתי ולא מתגונן.`,
+    id: `demo-crisis-${listing.id}`,
+    title: `התראת משבר: ${listing.crisis}`,
+    summary: `זוהתה עלייה בשיח שלילי סביב ${listing.crisis}. מומלץ להגיב במסר קצר, עובדתי ולא מתגונן.`,
     severity: 'critical',
     affected_topic: candidate.focus[0],
     affected_segment: candidate.electionType === 'primaries' ? 'פעילי פריימריז' : 'מתלבטים ארציים',
     response_options: {
-      fighter: 'תגובה חדה בשם [שם המועמד]: הטענה לא מדויקת - הנה העובדות והמספרים.',
-      statesman: `תגובה ממלכתית: מבינים את החשש, מציגים תוכנית ברורה סביב ${candidate.focus[0]}.`,
+      fighter: 'תגובה חדה בשם [שם הנכס]: הטענה לא מדויקת - הנה העובדות והמספרים.',
+      statesman: `תגובה ממלכתית: מבינים את החשש, מציגים תוכנית ברורה סביב ${listing.focus[0]}.`,
       ignorer: 'ניטור והסתרה נקודתית של בוטים, בלי להגדיל חשיפה לשיח לא אותנטי.',
     },
   }];
@@ -901,27 +901,27 @@ export const getDemoApprovalQueue = (candidateId?: DemoCandidateId | null) => {
   const focus2 = candidate.focus[1] || focus;
   return [
     {
-      id: `demo-aq-1-${candidate.id}`,
+      id: `demo-aq-1-${listing.id}`,
       title: `הודעת WhatsApp לקבוצת מתלבטים - ${focus}`,
       platform: 'whatsapp',
       content_type: 'outbound_message',
-      proposed_content: `שלום [שם],\nראינו שאתה עוקב אחרי הדיון סביב ${focus}. רצינו לשתף עמדה קצרה וברורה של ${candidate.name}: אנחנו לא מתחמקים - יש תוכנית, יש לוחות זמנים, ויש נכונות לדבר ישירות. נשמח לשמוע מה הכי חשוב לך.`,
+      proposed_content: `שלום [שם],\nראינו שאתה עוקב אחרי הדיון סביב ${focus}. רצינו לשתף עמדה קצרה וברורה של ${listing.name}: אנחנו לא מתחמקים - יש תוכנית, יש לוחות זמנים, ויש נכונות לדבר ישירות. נשמח לשמוע מה הכי חשוב לך.`,
       edited_content: null,
       status: 'pending',
       confidence_score: 88,
       low_confidence_reason: null,
       target_voter_id: null,
       target_label: 'מתלבטים - מחוז מרכז (1,240)',
-      source_citations: [{ title: `מצע ${candidate.name} - ${focus}` }, { title: 'סקר פנימי 04/26' }],
+      source_citations: [{ title: `מצע ${listing.name} - ${focus}` }, { title: 'סקר פנימי 04/26' }],
       live_post_url: null,
       created_at: minutesAgo(7),
     },
     {
-      id: `demo-aq-2-${candidate.id}`,
+      id: `demo-aq-2-${listing.id}`,
       title: `פוסט פייסבוק - תגובה לכותרת בתקשורת`,
       platform: 'facebook',
       content_type: 'social_post',
-      proposed_content: `הכותרת הבוקר על ${focus2} מטעה. הנה העובדות, בלי רעש:\n• ${candidate.name} הציע/ה תוכנית מפורטת לפני 3 חודשים.\n• היא כוללת לוחות זמנים, מקורות תקציב ופיקוח חיצוני.\n• אנחנו ממשיכים לעבוד - לא להתלונן.`,
+      proposed_content: `הכותרת הבוקר על ${focus2} מטעה. הנה העובדות, בלי רעש:\n• ${listing.name} הציע/ה תוכנית מפורטת לפני 3 חודשים.\n• היא כוללת לוחות זמנים, מקורות תקציב ופיקוח חיצוני.\n• אנחנו ממשיכים לעבוד - לא להתלונן.`,
       edited_content: null,
       status: 'pending',
       confidence_score: 64,
@@ -933,7 +933,7 @@ export const getDemoApprovalQueue = (candidateId?: DemoCandidateId | null) => {
       created_at: minutesAgo(22),
     },
     {
-      id: `demo-aq-3-${candidate.id}`,
+      id: `demo-aq-3-${listing.id}`,
       title: `סטורי אינסטגרם - סרטון 30 שניות`,
       platform: 'instagram',
       content_type: 'social_post',
@@ -949,11 +949,11 @@ export const getDemoApprovalQueue = (candidateId?: DemoCandidateId | null) => {
       created_at: minutesAgo(95),
     },
     {
-      id: `demo-aq-4-${candidate.id}`,
+      id: `demo-aq-4-${listing.id}`,
       title: `SMS תזכורת - אירוע שטח ביום ה'`,
       platform: 'sms',
       content_type: 'outbound_message',
-      proposed_content: `${candidate.name} בשטח ביום ה' ב-19:00, רחוב הרצל 14. בלי במה, בלי מתווכים - שיחה ישירה. מאשרים הגעה?`,
+      proposed_content: `${listing.name} בשטח ביום ה' ב-19:00, רחוב הרצל 14. בלי במה, בלי מתווכים - שיחה ישירה. מאשרים הגעה?`,
       edited_content: null,
       status: 'posted',
       confidence_score: 95,
@@ -965,7 +965,7 @@ export const getDemoApprovalQueue = (candidateId?: DemoCandidateId | null) => {
       created_at: minutesAgo(420),
     },
     {
-      id: `demo-aq-5-${candidate.id}`,
+      id: `demo-aq-5-${listing.id}`,
       title: `תגובה לפוסט ב-X - אזכור שלילי`,
       platform: 'x',
       content_type: 'social_post',
@@ -989,7 +989,7 @@ export const getDemoMetaAdCampaigns = (candidateId?: DemoCandidateId | null) => 
   const focus2 = candidate.focus[1] || focus;
   return [
     {
-      id: `demo-meta-1-${candidate.id}`,
+      id: `demo-meta-1-${listing.id}`,
       name: `${focus} - מתלבטים מרכז`,
       status: 'active',
       audience_type: 'swing',
@@ -1003,8 +1003,8 @@ export const getDemoMetaAdCampaigns = (candidateId?: DemoCandidateId | null) => 
       ],
     },
     {
-      id: `demo-meta-2-${candidate.id}`,
-      name: `${candidate.name} - תומכים פעילים`,
+      id: `demo-meta-2-${listing.id}`,
+      name: `${listing.name} - תומכים פעילים`,
       status: 'active',
       audience_type: 'supporters',
       daily_budget: 220,
@@ -1017,7 +1017,7 @@ export const getDemoMetaAdCampaigns = (candidateId?: DemoCandidateId | null) => 
       ],
     },
     {
-      id: `demo-meta-3-${candidate.id}`,
+      id: `demo-meta-3-${listing.id}`,
       name: `אזעקה - תגובה לכותרת ${focus2}`,
       status: 'paused',
       audience_type: 'exclude_opponents',
@@ -1039,40 +1039,40 @@ export const getDemoCampaigns = (candidateId?: DemoCandidateId | null) => {
   const focus2 = candidate.focus[1] || focus;
   return [
     {
-      id: `demo-camp-1-${candidate.id}`,
+      id: `demo-camp-1-${listing.id}`,
       name: `WhatsApp Drip - ${focus}`,
       description: `סדרת 3 הודעות ממוקדות בנושא ${focus} למתלבטים`,
       status: 'active',
       total_sent: 12_400,
       total_clicks: 3_980,
       tag_associated: focus,
-      sms_body: `שלום [שם], רצינו לשתף עמדה קצרה של ${candidate.name} בנושא ${focus}.`,
+      sms_body: `שלום [שם], רצינו לשתף עמדה קצרה של ${listing.name} בנושא ${focus}.`,
       created_at: recentTimestamp(3),
     },
     {
-      id: `demo-camp-2-${candidate.id}`,
+      id: `demo-camp-2-${listing.id}`,
       name: `SMS תזכורת אירוע - ${focus2}`,
       description: `הזמנה לאירוע שטח בנושא ${focus2}`,
       status: 'completed',
       total_sent: 8_200,
       total_clicks: 1_640,
       tag_associated: focus2,
-      sms_body: `${candidate.name} בשטח ביום ה' ב-19:00. מאשרים הגעה?`,
+      sms_body: `${listing.name} בשטח ביום ה' ב-19:00. מאשרים הגעה?`,
       created_at: recentTimestamp(14),
     },
     {
-      id: `demo-camp-3-${candidate.id}`,
+      id: `demo-camp-3-${listing.id}`,
       name: `מבצע גיוס תומכים`,
       description: 'קמפיין רב-ערוצי לגיוס תומכים פעילים',
       status: 'active',
       total_sent: 22_600,
       total_clicks: 7_120,
       tag_associated: 'תומכים',
-      sms_body: `הצטרפו אלינו - כל קול חשוב לקמפיין של ${candidate.name}.`,
+      sms_body: `הצטרפו אלינו - כל קול חשוב לקמפיין של ${listing.name}.`,
       created_at: recentTimestamp(21),
     },
     {
-      id: `demo-camp-4-${candidate.id}`,
+      id: `demo-camp-4-${listing.id}`,
       name: `סקר עמדות - ${focus}`,
       description: 'סקר קצר למיפוי עמדות',
       status: 'completed',
@@ -1088,9 +1088,9 @@ export const getDemoCampaigns = (candidateId?: DemoCandidateId | null) => {
 export const getDemoTrackingLinks = (candidateId?: DemoCandidateId | null) => {
   const candidate = getCandidate(candidateId);
   return candidate.focus.slice(0, 3).map((tag, i) => ({
-    id: `demo-link-${candidate.id}-${i}`,
-    short_code: `K${(candidate.id.charCodeAt(0) + i).toString(36).toUpperCase()}${i}X${(i + 3) * 7}`,
-    target_url: `https://${candidate.id}.kalpiz.co.il/${encodeURIComponent(tag)}`,
+    id: `demo-link-${listing.id}-${i}`,
+    short_code: `K${(listing.id.charCodeAt(0) + i).toString(36).toUpperCase()}${i}X${(i + 3) * 7}`,
+    target_url: `https://${listing.id}.kalpiz.co.il/${encodeURIComponent(tag)}`,
     tag,
     click_count: 1_200 + i * 480,
     created_at: recentTimestamp(2 + i * 5),
@@ -1128,11 +1128,11 @@ export const getDemoConversationAnalytics = (candidateId?: DemoCandidateId | nul
     ],
     aiInsights: [
       `עליה של 22% בשיח על ${focus[0] ?? 'ביטחון'} בשכונות דרום העיר - מומלץ לתגבר נוכחות דיגיטלית שם.`,
-      `הבוחרים מגיבים בחיוב למסרים של אחדות בקמפיין של ${candidate.name} (סנטימנט 74%+).`,
+      `הלידים מגיבים בחיוב למסרים של אחדות בקמפיין של ${listing.name} (סנטימנט 74%+).`,
       `זוהתה התנגדות סביב נושא ${focus[1] ?? 'המיסוי המקומי'} - מומלץ לעדכן את דף המסרים (Knowledge Base).`,
     ],
     sampleConversations: [
-      { source: 'WhatsApp', status: 'הועבר לטיפול', snippet: `רציתי לדעת מה עמדת ${candidate.name} לגבי ${focus[0] ?? 'ביטחון אישי'} בשכונה...` },
+      { source: 'WhatsApp', status: 'הועבר לטיפול', snippet: `רציתי לדעת מה עמדת ${listing.name} לגבי ${focus[0] ?? 'ביטחון אישי'} בשכונה...` },
       { source: 'SMS', status: 'הושלם ע"י AI', snippet: 'תודה על המידע, אני תומך!' },
       { source: 'Transcript', status: 'דורש בדיקה', snippet: `הארנונה עלתה שוב, מה אתם מתכוונים לעשות בנושא?` },
       { source: 'WhatsApp', status: 'הושלם ע"י AI', snippet: `חשוב לי לשמוע על תוכנית ${focus[1] ?? 'החינוך'} לפני שאחליט.` },

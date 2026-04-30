@@ -28,7 +28,7 @@ const fmt = (n: number) => new Intl.NumberFormat('he-IL').format(Math.max(0, Mat
 
 const ADVANTAGES_NATIONAL = [
   { icon: Zap, title: 'תוצאות מהירות יותר', desc: 'יותר דקות AI - יותר שיחות בו-זמנית, פחות זמן עד תוצאה.' },
-  { icon: Users, title: 'חדירה עמוקה לשטח', desc: 'מאגר בוחרים גדול יותר ויכולת מיקוד מדויקת יותר לכל אזור.' },
+  { icon: Users, title: 'חדירה עמוקה לשטח', desc: 'מאגר לידים גדול יותר ויכולת מיקוד מדויקת יותר לכל אזור.' },
   { icon: ShieldCheck, title: 'עדיפות בעיבוד AI', desc: 'התוכן והמסרים שלך יקבלו עדיפות עליונה בתורי המערכת.' },
 ];
 

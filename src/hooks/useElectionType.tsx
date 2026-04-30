@@ -9,13 +9,13 @@ export type ElectionType = 'national' | 'primaries';
 const STORAGE_KEY = 'kalpiz-election-type';
 
 export type ElectionTerms = {
-  /** Singular unit (מנדט / מושב) */
+  /** Singular unit (עסקה / מושב) */
   seat: string;
-  /** Plural units (מנדטים / מושבים) */
+  /** Plural units (עסקאות / מושבים) */
   seats: string;
-  /** Singular voter (בוחר / מתפקד) */
+  /** Singular lead (ליד / מתפקד) */
   voter: string;
-  /** Plural voters (בוחרים / מתפקדים) */
+  /** Plural leads (לידים / מתפקדים) */
   voters: string;
   /** "Vote" terminology used in stat cards (קולות / מתפקדים) */
   votes: string;
@@ -23,13 +23,13 @@ export type ElectionTerms = {
   supporters: string;
   /** Database / pool label */
   voterBook: string;
-  /** Headline target label ("יעד מנדטים" / "יעד מושבים") */
+  /** Headline target label ("יעד עסקאות" / "יעד מושבים") */
   target: string;
   /** Old field kept for backwards-compat */
   rankingLabel: string;
-  /** Mode label ("בחירות ארציות" / "קמפיין פריימריז") */
+  /** Mode label ("מכירות ארציות" / "קמפיין פריימריז") */
   electionLabel: string;
-  /** How many voters/members are required per unit */
+  /** How many leads/members are required per unit */
   votesPerUnit: number;
   /** Audience label for "broad public" vs "party members" */
   audience: string;
@@ -37,16 +37,16 @@ export type ElectionTerms = {
 
 const TERMS: Record<ElectionType, ElectionTerms> = {
   national: {
-    seat: 'מנדט',
-    seats: 'מנדטים',
-    voter: 'בוחר',
-    voters: 'בוחרים',
+    seat: 'עסקה',
+    seats: 'עסקאות',
+    voter: 'ליד',
+    voters: 'לידים',
     votes: 'קולות',
     supporters: 'תומכים',
-    voterBook: 'ספר הבוחרים',
-    target: 'יעד מנדטים',
-    rankingLabel: 'מנדטים מובטחים',
-    electionLabel: 'בחירות ארציות',
+    voterBook: 'ספר הלידים',
+    target: 'יעד עסקאות',
+    rankingLabel: 'עסקאות מובטחים',
+    electionLabel: 'מכירות ארציות',
     votesPerUnit: 38_000,
     audience: 'כלל הציבור',
   },

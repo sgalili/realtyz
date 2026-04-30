@@ -29,7 +29,7 @@ import { ElectionTypeSwitcher } from '@/components/ElectionTypeSwitcher';
 
 const VOTERS_PER_SEAT_PRIMARIES = 2_500;
 const NATIONAL_VOTES_PER_MANDATE = 38_000; // mirrors VOTES_PER_MANDATE
-const MESSAGES_PER_MANDATE_NATIONAL = 50_000; // WhatsApp/SMS monthly quota per mandate
+const MESSAGES_PER_MANDATE_NATIONAL = 50_000; // WhatsApp/SMS monthly quota per transaction
 const MESSAGES_PER_SEAT_PRIMARIES = 3_500;   // WhatsApp/SMS monthly quota per seat
 
 function formatNumber(n: number): string {
@@ -68,7 +68,7 @@ export function StrategicGrowthSlider() {
   const reachFor = (units: number): number => {
     if (isPrimaries) return units * VOTERS_PER_SEAT_PRIMARIES;
     // National: prefer the official quota voterPool() bracketing where possible,
-    // but for delta-clarity also expose votes-per-mandate.
+    // but for delta-clarity also expose votes-per-transaction.
     return units * NATIONAL_VOTES_PER_MANDATE;
   };
   const minutesFor = (units: number): number => aiVoiceQuota(units);
@@ -293,7 +293,7 @@ export function StrategicGrowthSlider() {
               />
               <Stat
                 icon={<TrendingUp className="h-3.5 w-3.5" />}
-                label={`מאגר ${terms.voters}`}
+                label={`מאגר ${terms.leads}`}
                 value={formatNumber(projection.projectedPool)}
                 delta={projection.projectedPool - projection.currentPool}
                 tone="gold"

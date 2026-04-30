@@ -100,9 +100,9 @@ const CampaignManager = () => {
   }, [isDemoMode]);
 
   const AUDIENCE_LABELS: Record<string, string> = {
-    supporters: isPrimaries ? `${terms.voters} מהמפלגה` : terms.supporters,
+    supporters: isPrimaries ? `${terms.leads} מהמפלגה` : terms.supporters,
     swing: isPrimaries ? 'מתפקדים מתלבטים' : 'מתלבטים',
-    exclude_opponents: isPrimaries ? `${terms.voters}, ללא מתנגדים` : `${terms.supporters}, ללא מתנגדים`,
+    exclude_opponents: isPrimaries ? `${terms.leads}, ללא מתנגדים` : `${terms.supporters}, ללא מתנגדים`,
   };
   const STATUS_LABELS: Record<string, string> = {
     active: 'פעיל',

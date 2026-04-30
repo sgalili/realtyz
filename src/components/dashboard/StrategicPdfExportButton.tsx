@@ -37,7 +37,7 @@ export function StrategicPdfExportButton({
 
 הדוח האסטרטגי שלך מוכן והורד כרגע למכשיר שלך.
 
-ניתחנו עבורך את מגמות הסנטימנט האחרונות וזיהינו פוטנציאל לצמיחה של כ-2.4 מנדטים באמצעות אופטימיזציה של מסרי הביטחון והכלכלה.
+ניתחנו עבורך את מגמות הסנטימנט האחרונות וזיהינו פוטנציאל לצמיחה של כ-2.4 עסקאות באמצעות אופטימיזציה של מסרי הביטחון והכלכלה.
 
 אני זמין כאן לכל שאלה על הדוח או כדי לתאם לך שיחת ייעוץ אסטרטגית עם הצוות שלנו.
 
@@ -134,7 +134,7 @@ export function StrategicPdfExportButton({
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent dir="rtl" className="auth-panel max-w-md overflow-hidden">
           <DialogHeader className="text-right">
-            <DialogTitle className="text-xl font-black text-primary">ניתוח מנדטים ואסטרטגיה</DialogTitle>
+            <DialogTitle className="text-xl font-black text-primary">ניתוח עסקאות ואסטרטגיה</DialogTitle>
             <DialogDescription>
               ה-AI מנתח את נתוני הקמפיין שלך. הדוח המלא כולל תחזית צמיחה, ניתוח סנטימנט והמלצות אופרטיביות ישלח אליך כעת.
             </DialogDescription>

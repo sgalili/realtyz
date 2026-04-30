@@ -60,7 +60,7 @@ export function SuperAdminLeadAlert({ collapsed }: { collapsed?: boolean }) {
           const email = row.user_email ?? 'משתמש לא מזוהה';
           const attempted = row.attempted_target ?? '?';
           const isPrimaries = row.election_type === 'primaries';
-          const unit = isPrimaries ? 'מושבים' : 'מנדטים';
+          const unit = isPrimaries ? 'מושבים' : 'עסקאות';
           toast.success('🎯 ליד שדרוג חדש', {
             description: `${email} מתעניין ב-${attempted} ${unit}`,
             duration: 7000,

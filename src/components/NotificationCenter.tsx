@@ -36,8 +36,8 @@ type DemoNotification = {
 const DEMO_EVENT_TEMPLATES = [
   { title: 'הגנת משבר', message: 'זוהתה מתקפת בוטים מתואמת - מערכת ההגנה הציעה תגובת נגד.', cta: 'צפה בפרטים', path: '/sentiment' },
   { title: 'שיפור סנטימנט', message: 'עלייה בסנטימנט החיובי בקרב קהל היעד ב{city}.', cta: 'צפה בפרטים', path: '/sentiment' },
-  { title: 'המרת מתלבט', message: 'בוחר מתנדנד הפך לתומך לאחר שיחת AI ב-WhatsApp.', cta: 'צפה בפרטים', path: '/voters' },
-  { title: 'אבן דרך למנדט', message: 'התקרבת ליעד המנדט ה-{mandate}! נדרשים עוד 2,300 תומכים ב{region}.', cta: 'צפה בהתקדמות', path: '/dashboard' },
+  { title: 'המרת מתלבט', message: 'ליד מתנדנד הפך לתומך לאחר שיחת AI ב-WhatsApp.', cta: 'צפה בפרטים', path: '/leads' },
+  { title: 'אבן דרך לעסקה', message: 'התקרבת ליעד העסקה ה-{transaction}! נדרשים עוד 2,300 תומכים ב{region}.', cta: 'צפה בהתקדמות', path: '/dashboard' },
   { title: 'אופטימיזציית מודעות', message: 'ה-AI ביצע אופטימיזציה לקמפיין Meta: עלות לליד ירדה ב-12%.', cta: 'צפה בפרטים', path: '/campaigns' },
   { title: 'טפטוף קמפיין', message: 'רצף WhatsApp חדש תוזמן להפצה מדורגת הערב.', cta: 'צפה בפרטים', path: '/calendar' },
 ];
@@ -49,7 +49,7 @@ const resolveToastPath = (notification: Pick<DemoNotification, 'title' | 'messag
   const text = `${notification.title} ${notification.message}`;
   if (/Meta|מודעות|Ads|קמפיין Meta/i.test(text)) return '/campaigns';
   if (/סנטימנט|משבר|בוטים|Crisis/i.test(text)) return '/sentiment';
-  if (/בוחר|CRM|תומך|WhatsApp/i.test(text)) return '/voters';
+  if (/ליד|CRM|תומך|WhatsApp/i.test(text)) return '/leads';
   if (/טפטוף|תוזמן|Calendar|Drip/i.test(text)) return '/calendar';
   return notification.path;
 };
@@ -61,8 +61,8 @@ const getDemoNotificationIcon = (notification: DemoNotification) => {
   const text = `${notification.title} ${notification.message} ${notification.path}`;
   if (/משבר|בוטים|הגנה|sentiment/i.test(text)) return ShieldAlert;
   if (/סנטימנט|עלייה|שיפור/i.test(text)) return TrendingUp;
-  if (/בוחר|תומך|WhatsApp|voters/i.test(text)) return UserCheck;
-  if (/מנדט|יעד|dashboard/i.test(text)) return Target;
+  if (/ליד|תומך|WhatsApp|voters/i.test(text)) return UserCheck;
+  if (/עסקה|יעד|dashboard/i.test(text)) return Target;
   if (/מודעות|Meta|Ads|campaigns/i.test(text)) return Megaphone;
   if (/טפטוף|תוזמן|calendar/i.test(text)) return CalendarClock;
   return Bell;
@@ -198,7 +198,7 @@ export default function NotificationCenter() {
           message: template.message
             .replace('{city}', DEMO_CITIES[Math.floor(Math.random() * DEMO_CITIES.length)])
             .replace('{region}', DEMO_REGIONS[Math.floor(Math.random() * DEMO_REGIONS.length)])
-            .replace('{mandate}', String(activeCandidate.mandateGoal)),
+            .replace('{transaction}', String(activeCandidate.mandateGoal)),
           cta: template.cta,
           path: template.path,
           createdAt: new Date().toISOString(),
@@ -238,10 +238,10 @@ export default function NotificationCenter() {
     refetchInterval: 60_000,
   });
 
-  // Fetch voter names for flagged messages
+  // Fetch lead names for flagged messages
   const voterIds = [...new Set(alerts.map(a => a.lead_id).filter(Boolean))];
   const { data: voterMap = {} } = useQuery({
-    queryKey: ['notif-voters', voterIds.join(',')],
+    queryKey: ['notif-leads', voterIds.join(',')],
     queryFn: async () => {
       if (!voterIds.length) return {};
       const { data } = await supabase
@@ -253,7 +253,7 @@ export default function NotificationCenter() {
     enabled: voterIds.length > 0,
   });
 
-  // Unread = recent messages from voters not yet viewed in inbox
+  // Unread = recent messages from leads not yet viewed in inbox
   const { data: unreadCount = 0 } = useQuery({
     queryKey: ['unread-inbox-count'],
     queryFn: async () => {
@@ -288,7 +288,7 @@ export default function NotificationCenter() {
     setViewedIds(next);
     localStorage.setItem('kalpiz_viewed_notifs', JSON.stringify([...next]));
     setOpen(false);
-    navigate(`/live-conversations?voter=${voterId}`);
+    navigate(`/live-conversations?lead=${voterId}`);
   };
 
   const markAllRead = () => {
@@ -419,7 +419,7 @@ export default function NotificationCenter() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="text-sm font-medium truncate">
-                        {voterMap[a.lead_id ?? ''] || 'בוחר'}
+                        {voterMap[a.lead_id ?? ''] || 'ליד'}
                       </span>
                       {keyword && (
                         <span className="text-[10px] bg-destructive/15 text-destructive px-1.5 py-0.5 rounded-full font-medium shrink-0">

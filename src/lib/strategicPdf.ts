@@ -111,7 +111,7 @@ export async function createStrategicPdf(data: StrategicPdfData) {
 
   const kpis = [
     { label: 'תומכים פעילים', value: data.supporters.toLocaleString('he-IL'), trend: '+8.2%', color: success },
-    { label: 'יעד מנדטים', value: String(data.mandateTarget), trend: 'יעד פעיל', color: blue },
+    { label: 'יעד עסקאות', value: String(data.mandateTarget), trend: 'יעד פעיל', color: blue },
     { label: 'התקדמות', value: `${data.progressPct}%`, trend: 'מסלול תקין', color: success },
   ];
   kpis.forEach((k, i) => {
@@ -179,7 +179,7 @@ export async function createStrategicPdf(data: StrategicPdfData) {
   roundedRect(ctx, 1090, 815, 70, 80, 14);
   ctx.fill();
   rtl('💡', 1140, 868, 32, '#ffffff', 800);
-  rtl('זוהתה מגמת עליה בשיח סביב יוקר המחיה — חיזוק מסרים חברתיים יכול להניב +2.4 מנדטים פוטנציאליים.', 1070, 862, 22, navy, 800);
+  rtl('זוהתה מגמת עליה בשיח סביב יוקר המחיה — חיזוק מסרים חברתיים יכול להניב +2.4 עסקאות פוטנציאליים.', 1070, 862, 22, navy, 800);
 
   // ===== AI STRATEGY =====
   rtl('המלצות אסטרטגיות מבוססות AI', 1160, 955, 32, navy, 900);
