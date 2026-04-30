@@ -282,6 +282,12 @@ const ApiSettings = () => {
   const [metaPageId, setMetaPageId] = useState('');
   const [metaPixelId, setMetaPixelId] = useState('');
 
+  // Homely API state
+  const [homelyApiKey, setHomelyApiKey] = useState('');
+  const [homelyHasKey, setHomelyHasKey] = useState(false);
+  const [homelyLoaded, setHomelyLoaded] = useState(false);
+  const { user: authUser } = useAuth();
+
   const edgeFnBase = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/manage-api-configs`;
   const edgeFnHeaders = {
     'Content-Type': 'application/json',
