@@ -657,62 +657,82 @@ const ApiSettings = () => {
   );
 
   const ServiceCard = ({
-    title, icon: Icon, iconColor, config, children, onDelete, onTest, onSave, saveLabel, testLabel = 'בדיקת חיבור', badgeLabel, savingId, testingId, value, isConnected,
+    title, icon: Icon, iconColor, config, children, onDelete, onTest, onSave, saveLabel,
+    testLabel = 'בדיקת חיבור', badgeLabel, savingId, testingId, value, isConnected, serviceKey,
+    hideActions,
   }: {
-    title: string; icon: React.ElementType; iconColor: string; config: ApiConfig | undefined;
-    children: React.ReactNode; onDelete?: () => void; onTest: () => void; onSave: () => void;
-    saveLabel: string; testLabel?: string; badgeLabel?: string; savingId: string; testingId: string;
-    value: string; isConnected?: boolean;
+    title: string; icon: React.ElementType; iconColor: string; config?: ApiConfig | undefined;
+    children?: React.ReactNode; onDelete?: () => void; onTest?: () => void; onSave?: () => void;
+    saveLabel?: string; testLabel?: string; badgeLabel?: string; savingId?: string; testingId?: string;
+    value: string; isConnected?: boolean; serviceKey: string; hideActions?: boolean;
   }) => {
     const connected = isConnected ?? !!config?.is_active;
+    const enabled = isServiceEnabled(serviceKey);
     return (
       <AccordionItem value={value} className="border border-border/50 rounded-lg overflow-hidden bg-card data-[state=open]:border-border/80 data-[state=open]:shadow-sm">
-        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20">
-          <div className="flex items-center justify-between w-full gap-3">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg flex items-center justify-center bg-muted/50 shrink-0">
+        <div className="flex items-stretch">
+          <AccordionTrigger className="flex-1 px-4 py-3 hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20 [&>svg]:hidden">
+            <div className="flex items-center gap-3 w-full">
+              <div className={`h-9 w-9 rounded-lg flex items-center justify-center bg-muted/50 shrink-0 transition-opacity ${!enabled ? 'opacity-50' : ''}`}>
                 <Icon className={`h-5 w-5 ${iconColor}`} />
               </div>
-              <div className="flex flex-col items-start">
-                <span className="text-sm font-bold">{title}</span>
-                {badgeLabel && <span className="text-[10px] text-muted-foreground">{badgeLabel}</span>}
+              <div className="flex flex-col items-start min-w-0">
+                <span className={`text-sm font-bold truncate ${!enabled ? 'text-muted-foreground' : ''}`}>{title}</span>
+                {badgeLabel && <span className="text-[10px] text-muted-foreground truncate">{badgeLabel}</span>}
+              </div>
+              <div className="me-auto flex items-center gap-2 ms-2">
+                {connected ? (
+                  <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700 border-emerald-300 hover:bg-emerald-500/20">
+                    <CheckCircle className="h-2.5 w-2.5 ml-1" />
+                    Connected
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-[10px] text-muted-foreground">
+                    <XCircle className="h-2.5 w-2.5 ml-1" />
+                    Disconnected
+                  </Badge>
+                )}
+                <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
               </div>
             </div>
-            <div className="flex items-center gap-2 me-2">
-              {connected ? (
-                <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700 border-emerald-300 hover:bg-emerald-500/20">
-                  <CheckCircle className="h-2.5 w-2.5 ml-1" />
-                  Connected
-                </Badge>
-              ) : (
-                <Badge variant="secondary" className="text-[10px] text-muted-foreground">
-                  <XCircle className="h-2.5 w-2.5 ml-1" />
-                  Disconnected
-                </Badge>
+          </AccordionTrigger>
+          <div
+            className="flex items-center px-3 border-s border-border/40"
+            onClick={(e) => { e.stopPropagation(); }}
+          >
+            <Switch
+              checked={enabled}
+              onCheckedChange={(v) => toggleService.mutate({ key: serviceKey, enabled: v })}
+              aria-label={`Toggle ${title}`}
+            />
+          </div>
+        </div>
+        {children && (
+          <AccordionContent className="px-4 pb-4 pt-2">
+            <div className="space-y-4">
+              {children}
+              {!hideActions && onSave && (
+                <div className="flex gap-2 items-center">
+                  <Button onClick={onSave} disabled={savingKey === savingId} className="flex-1" size="sm">
+                    <Save className="h-4 w-4 ml-2" />
+                    {savingKey === savingId ? 'שומר...' : saveLabel}
+                  </Button>
+                  {onTest && (
+                    <Button variant="outline" size="sm" onClick={onTest} disabled={testingService === testingId} className="gap-2">
+                      {testingService === testingId ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                      {testLabel}
+                    </Button>
+                  )}
+                  {config && onDelete && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0" onClick={onDelete}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
-          </div>
-        </AccordionTrigger>
-        <AccordionContent className="px-4 pb-4 pt-2">
-          <div className="space-y-4">
-            {children}
-            <div className="flex gap-2 items-center">
-              <Button onClick={onSave} disabled={savingKey === savingId} className="flex-1" size="sm">
-                <Save className="h-4 w-4 ml-2" />
-                {savingKey === savingId ? 'שומר...' : saveLabel}
-              </Button>
-              <Button variant="outline" size="sm" onClick={onTest} disabled={testingService === testingId} className="gap-2">
-                {testingService === testingId ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-                {testLabel}
-              </Button>
-              {config && onDelete && (
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0" onClick={onDelete}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              )}
-            </div>
-          </div>
-        </AccordionContent>
+          </AccordionContent>
+        )}
       </AccordionItem>
     );
   };
