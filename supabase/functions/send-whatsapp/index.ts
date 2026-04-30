@@ -261,8 +261,9 @@ async function sendViaGreenApi(
 async function sendViaWba(
   cfg: Record<string, unknown>,
   phone: string,
-  message: string,
+  message: string | null,
   file?: { base64: string; file_name: string; caption?: string; mime_type?: string },
+  template?: { id: string; language?: string; components?: unknown[] },
 ): Promise<StdResponse> {
   const phoneNumberId = String(cfg.phone_number_id ?? "");
   const accessToken = String(cfg.access_token ?? "");
@@ -277,19 +278,32 @@ async function sendViaWba(
   }
   const baseUrl = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`;
 
-  // Text message.
+  // Choose payload: template (preferred when provided) vs free-text.
+  const payload = template
+    ? {
+        messaging_product: "whatsapp",
+        to: phone,
+        type: "template",
+        template: {
+          name: template.id,
+          language: { code: template.language ?? "he" },
+          components: template.components ?? [],
+        },
+      }
+    : {
+        messaging_product: "whatsapp",
+        to: phone,
+        type: "text",
+        text: { body: message ?? "" },
+      };
+
   const textRes = await fetch(baseUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      to: phone,
-      type: "text",
-      text: { body: message },
-    }),
+    body: JSON.stringify(payload),
   });
   const textJson = await textRes.json().catch(() => ({}));
   if (!textRes.ok) {
