@@ -1003,6 +1003,7 @@ const ApiSettings = () => {
         testLabel="בדיקת טוקן"
         savingId="mapbox"
         testingId="mapbox"
+        value="mapbox"
       >
         {existingMapbox && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30">
