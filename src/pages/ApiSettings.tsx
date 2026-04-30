@@ -779,6 +779,7 @@ const ApiSettings = () => {
         saveLabel={existingGemini ? 'עדכן מפתח' : 'שמור מפתח'}
         savingId="gemini"
         testingId="gemini"
+        value="gemini"
       >
         {existingGemini && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30">
