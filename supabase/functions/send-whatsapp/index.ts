@@ -398,25 +398,19 @@ Deno.serve(async (req) => {
       );
     }
 
-    const phone = normalizePhone(parsed.data.phone_number);
-    if (!phone) {
-      return json({
-        success: false,
-        provider: "GreenAPI",
-        message_id: null,
-        error: "Invalid phone number",
-      }, 400);
-    }
-
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-    // Best-effort caller identification (used to look up tenant providers).
+    // Caller identification:
+    //  - If a Bearer JWT is supplied, resolve the user.
+    //  - If the service-role key is supplied (server-to-server), trust the caller
+    //    and use the explicit tenant_id/lead_id only.
     let userId: string | null = null;
     const authHeader = req.headers.get("Authorization") ?? "";
-    if (authHeader.startsWith("Bearer ")) {
+    const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    if (bearer && bearer !== SERVICE_ROLE_KEY) {
       try {
         const userClient = createClient(SUPABASE_URL, ANON_KEY, {
           global: { headers: { Authorization: authHeader } },
@@ -428,7 +422,40 @@ Deno.serve(async (req) => {
       }
     }
 
-    const provider = await resolveProvider(admin, userId, parsed.data.force_provider);
+    // Resolve recipient phone — either explicit, or by lead_id lookup.
+    let rawPhone = parsed.data.phone_number ?? "";
+    if (!rawPhone && parsed.data.lead_id) {
+      const { data: lead, error: leadErr } = await admin
+        .from("leads")
+        .select("phone_number")
+        .eq("id", parsed.data.lead_id)
+        .maybeSingle();
+      if (leadErr || !lead?.phone_number) {
+        return json({
+          success: false,
+          provider: "GreenAPI",
+          message_id: null,
+          error: "Lead not found or has no phone_number",
+        }, 404);
+      }
+      rawPhone = lead.phone_number;
+    }
+    const phone = normalizePhone(rawPhone);
+    if (!phone) {
+      return json({
+        success: false,
+        provider: "GreenAPI",
+        message_id: null,
+        error: "Invalid phone number",
+      }, 400);
+    }
+
+    const provider = await resolveProvider(
+      admin,
+      userId,
+      parsed.data.tenant_id ?? null,
+      parsed.data.force_provider,
+    );
     if (!provider) {
       return json({
         success: false,
@@ -438,9 +465,23 @@ Deno.serve(async (req) => {
       }, 500);
     }
 
-    const result = provider.name === "WBA"
-      ? await sendViaWba(provider.config, phone, parsed.data.message, parsed.data.file)
-      : await sendViaGreenApi(provider.config, phone, parsed.data.message, parsed.data.file);
+    const message = parsed.data.message ?? null;
+    const template = parsed.data.template_id
+      ? {
+          id: parsed.data.template_id,
+          language: parsed.data.template_language,
+          components: parsed.data.template_components,
+        }
+      : undefined;
+
+    let result: StdResponse;
+    if (provider.name === "WBA") {
+      result = await sendViaWba(provider.config, phone, message, parsed.data.file, template);
+    } else {
+      // GreenAPI doesn't support templates — fall back to text.
+      const text = message ?? `[${parsed.data.template_id}]`;
+      result = await sendViaGreenApi(provider.config, phone, text, parsed.data.file);
+    }
 
     return json(result, result.success ? 200 : 502);
   } catch (e) {
