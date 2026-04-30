@@ -9,6 +9,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogTrigger } from '@/components/ui/dialog';
 import {
   Save, Trash2, Webhook, Eye, EyeOff, Zap, Loader2,
   MessageCircle, Sparkles, Shield, ShieldCheck, Lock,
@@ -657,6 +658,46 @@ const ApiSettings = () => {
     </div>
   );
 
+  const FeatureRow = ({
+    title, description, learnMore, icon: Icon, iconColor, serviceKey,
+  }: {
+    title: string; description: string; learnMore: string;
+    icon: React.ElementType; iconColor: string; serviceKey: string;
+  }) => {
+    const enabled = isServiceEnabled(serviceKey, false);
+    return (
+      <div className="flex items-center gap-3 px-4 py-3 border border-border/50 bg-card first:rounded-t-lg last:rounded-b-lg -mt-px">
+        <Icon className={`h-5 w-5 shrink-0 ${iconColor} ${!enabled ? 'opacity-40' : ''}`} />
+        <div className="flex flex-col items-start min-w-0 flex-1">
+          <span className={`text-sm font-bold truncate ${!enabled ? 'text-muted-foreground' : ''}`}>{title}</span>
+          <Dialog>
+            <DialogTrigger asChild>
+              <button type="button" className="text-[11px] text-muted-foreground/70 hover:text-primary hover:underline transition-colors">
+                Learn more
+              </button>
+            </DialogTrigger>
+            <DialogContent dir="rtl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Icon className={`h-5 w-5 ${iconColor}`} />
+                  {title}
+                </DialogTitle>
+                <DialogDescription className="pt-2 text-sm leading-relaxed">
+                  {learnMore}
+                </DialogDescription>
+              </DialogHeader>
+            </DialogContent>
+          </Dialog>
+        </div>
+        <Switch
+          checked={enabled}
+          onCheckedChange={(v) => toggleService.mutate({ key: serviceKey, enabled: v })}
+          aria-label={`Toggle ${title}`}
+        />
+      </div>
+    );
+  };
+
   const ServiceCard = ({
     title, icon: Icon, iconColor, config, children, onDelete, onTest, onSave, saveLabel,
     testLabel = 'בדיקת חיבור', badgeLabel, savingId, testingId, value, isConnected, serviceKey,
@@ -708,6 +749,11 @@ const ApiSettings = () => {
                   </span>
                 </div>
               </div>
+              {!connected && (
+                <div className="rounded-md border border-dashed border-border/60 bg-muted/10 px-3 py-2 text-[11px] text-muted-foreground">
+                  Configure this service to enable it — fill in the fields below and click Save.
+                </div>
+              )}
               {children}
               {!hideActions && onSave && (
                 <div className="flex gap-2 items-center">
@@ -746,41 +792,47 @@ const ApiSettings = () => {
         </p>
       </div>
 
-      {/* Service Cards (Accordion) — unified list with per-service toggle */}
-      <Accordion type="multiple" className="-space-y-px">
+      {/* ── Section A: Platform Features ── */}
+      <div className="space-y-2">
+        <div>
+          <h2 className="text-sm font-bold tracking-tight">תכונות פלטפורמה</h2>
+          <p className="text-xs text-muted-foreground">Platform Features — מתגי On/Off פנימיים</p>
+        </div>
+        <div className="rounded-lg overflow-hidden">
+          <FeatureRow
+            title="AI Touchpoint (שיחות AI)"
+            description="בוט קולי שמתקשר ללידים חמים"
+            learnMore="AI Touchpoint מפעיל בוט קולי שמתקשר באופן יזום ללידים חמים, מנהל שיחה קצרה, מסווג עניין ומעדכן את ה-CRM. שימושי כדי לזהות במהירות לידים בשלים לפנייה אנושית."
+            icon={Phone}
+            iconColor="text-blue-500"
+            serviceKey="ai_voice"
+          />
+          <FeatureRow
+            title="מחולל תוכן AI"
+            description="יצירת פוסטים, סלוגנים ותגובות"
+            learnMore="מחולל התוכן יוצר טיוטות לפוסטים, סלוגנים, תגובות ומסרים אישיים בהתבסס על הטון והמיתוג שהגדרת. כל תוצר ניתן לעריכה לפני שליחה או פרסום."
+            icon={Sparkles}
+            iconColor="text-amber-500"
+            serviceKey="ai_content"
+          />
+          <FeatureRow
+            title="תיבת Omnichannel"
+            description="איחוד כל הערוצים לתיבה אחת"
+            learnMore="תיבת ה-Omnichannel מאחדת WhatsApp, SMS, Messenger, Instagram ועוד לתיבה אחת. כל הודעה נקשרת אוטומטית לכרטיס הליד הרלוונטי כולל היסטוריית שיחה מלאה."
+            icon={Inbox}
+            iconColor="text-teal-500"
+            serviceKey="omnichannel_inbox"
+          />
+        </div>
+      </div>
 
-      {/* AI Touchpoint (toggle-only) */}
-      <ServiceCard
-        title="AI Touchpoint (שיחות AI)"
-        icon={Phone}
-        iconColor="text-blue-500"
-        badgeLabel="בוט קולי שמתקשר ללידים חמים"
-        value="ai_voice"
-        serviceKey="ai_voice"
-        isConnected={isServiceEnabled('ai_voice')}
-      />
-
-      {/* AI Generator (toggle-only) */}
-      <ServiceCard
-        title="מחולל תוכן AI"
-        icon={Sparkles}
-        iconColor="text-amber-500"
-        badgeLabel="יצירת פוסטים, סלוגנים ותגובות"
-        value="ai_content"
-        serviceKey="ai_content"
-        isConnected={isServiceEnabled('ai_content')}
-      />
-
-      {/* Omnichannel Inbox (toggle-only) */}
-      <ServiceCard
-        title="תיבת Omnichannel"
-        icon={Inbox}
-        iconColor="text-teal-500"
-        badgeLabel="איחוד כל הערוצים לתיבה אחת"
-        value="omnichannel_inbox"
-        serviceKey="omnichannel_inbox"
-        isConnected={isServiceEnabled('omnichannel_inbox')}
-      />
+      {/* ── Section B: Integrations ── */}
+      <div className="space-y-2">
+        <div>
+          <h2 className="text-sm font-bold tracking-tight">אינטגרציות חיצוניות</h2>
+          <p className="text-xs text-muted-foreground">Integrations — דורשות מפתחות API והגדרות</p>
+        </div>
+        <Accordion type="multiple" className="-space-y-px">
 
       {/* Homely API */}
       <ServiceCard
@@ -1089,7 +1141,8 @@ const ApiSettings = () => {
         </div>
       </ServiceCard>
 
-      </Accordion>
+        </Accordion>
+      </div>
     </div>
   );
 };
