@@ -131,23 +131,27 @@ Deno.serve(async (req) => {
       ai_responded_at: new Date().toISOString(),
     });
 
-    // Send AI reply back via System WBA (clean, no branding).
-    if (SYSTEM_WBA_INSTANCE_ID && SYSTEM_WBA_TOKEN) {
-      const sendRes = await fetch(
-        `https://api.green-api.com/waInstance${SYSTEM_WBA_INSTANCE_ID}/sendMessage/${SYSTEM_WBA_TOKEN}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            chatId: `${senderPhone}@c.us`,
-            message: aiReply,
-          }),
+    // Send AI reply back via unified send-whatsapp gateway (clean, no branding).
+    try {
+      const sendRes = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+          apikey: SERVICE_ROLE_KEY,
         },
-      );
+        body: JSON.stringify({
+          phone_number: senderPhone,
+          message: aiReply,
+          tenant_id: userId,
+        }),
+      });
       if (!sendRes.ok) {
         const t = await sendRes.text();
-        console.warn("WBA send back failed:", sendRes.status, t.slice(0, 300));
+        console.warn("send-whatsapp reply failed:", sendRes.status, t.slice(0, 300));
       }
+    } catch (e) {
+      console.warn("send-whatsapp reply exception:", (e as Error).message);
     }
 
     return json({ ok: true, replied: true, length: aiReply.length }, 200);
