@@ -775,8 +775,8 @@ const ApiSettings = () => {
 
       <ServiceCard
         title="Gemini AI"
-        icon={Sparkles}
-        iconColor="bg-violet-500"
+        icon={Brain}
+        iconColor="text-indigo-500"
         config={existingGemini}
         onDelete={existingGemini ? () => deleteConfig.mutate(existingGemini.id) : undefined}
         onTest={handleTestGemini}
@@ -805,7 +805,7 @@ const ApiSettings = () => {
       <ServiceCard
         title="Meta Marketing API"
         icon={Megaphone}
-        iconColor="bg-primary"
+        iconColor="text-blue-600"
         config={existingMeta}
         badgeLabel="Facebook / Instagram Ads"
         onDelete={existingMeta ? () => deleteConfig.mutate(existingMeta.id) : undefined}
@@ -845,7 +845,7 @@ const ApiSettings = () => {
       <ServiceCard
         title="שער WhatsApp"
         icon={MessageCircle}
-        iconColor="bg-emerald-600"
+        iconColor="text-green-500"
         config={activeWaConfig}
         badgeLabel={waGateway === 'green_api' ? 'WBA' : 'WBA רשמי'}
         onDelete={activeWaConfig ? () => deleteConfig.mutate(activeWaConfig.id) : undefined}
@@ -921,7 +921,7 @@ const ApiSettings = () => {
       <ServiceCard
         title="כתובת Webhook n8n"
         icon={Webhook}
-        iconColor="bg-orange-500"
+        iconColor="text-slate-500"
         config={existingN8n}
         onDelete={existingN8n ? () => deleteConfig.mutate(existingN8n.id) : undefined}
         onTest={handleTestWebhook}
@@ -958,8 +958,8 @@ const ApiSettings = () => {
 
       <ServiceCard
         title="019 SMS"
-        icon={MessageCircle}
-        iconColor="bg-sky-500"
+        icon={Send}
+        iconColor="text-purple-500"
         config={existingSms}
         onDelete={existingSms ? () => deleteConfig.mutate(existingSms.id) : undefined}
         onTest={handleTestSms}
@@ -994,8 +994,8 @@ const ApiSettings = () => {
 
       <ServiceCard
         title="Mapbox (מפה)"
-        icon={Activity}
-        iconColor="bg-blue-500"
+        icon={Map}
+        iconColor="text-blue-500"
         config={existingMapbox}
         onDelete={existingMapbox ? () => deleteConfig.mutate(existingMapbox.id) : undefined}
         onTest={() => {
