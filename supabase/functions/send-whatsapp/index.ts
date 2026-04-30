@@ -28,21 +28,38 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const BodySchema = z.object({
-  phone_number: z.string().min(8).max(20),
-  message: z.string().min(1).max(4096),
-  // Optional file attachment (base64) for unified file send.
-  file: z
-    .object({
-      base64: z.string().min(50),
-      file_name: z.string().min(1).max(160),
-      caption: z.string().max(1000).optional(),
-      mime_type: z.string().optional(),
-    })
-    .optional(),
-  // Optional explicit override; otherwise auto-routed by tenant config.
-  force_provider: z.enum(["WBA", "GreenAPI"]).optional(),
-});
+const BodySchema = z
+  .object({
+    // Either lead_id (recipient resolved server-side) OR phone_number must be provided.
+    lead_id: z.string().uuid().optional(),
+    phone_number: z.string().min(8).max(20).optional(),
+    // Free-text body. Required for non-template sends.
+    message: z.string().min(1).max(4096).optional(),
+    // WBA-only template id. When provided AND provider is WBA, sends a template message
+    // using { template_id, language, components? }. Ignored by GreenAPI (falls back to text).
+    template_id: z.string().min(1).max(120).optional(),
+    template_language: z.string().min(2).max(20).optional(),
+    template_components: z.array(z.unknown()).optional(),
+    // Tenant-scoped routing override (looks up wa_providers by tenant_id).
+    tenant_id: z.string().uuid().optional(),
+    // Optional file attachment (base64) for unified file send.
+    file: z
+      .object({
+        base64: z.string().min(50),
+        file_name: z.string().min(1).max(160),
+        caption: z.string().max(1000).optional(),
+        mime_type: z.string().optional(),
+      })
+      .optional(),
+    // Optional explicit override; otherwise auto-routed by tenant config.
+    force_provider: z.enum(["WBA", "GreenAPI"]).optional(),
+  })
+  .refine((v) => !!v.lead_id || !!v.phone_number, {
+    message: "lead_id or phone_number is required",
+  })
+  .refine((v) => !!v.message || !!v.template_id, {
+    message: "message or template_id is required",
+  });
 
 type StdResponse = {
   success: boolean;
