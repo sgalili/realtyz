@@ -12,7 +12,8 @@ import {
   Save, Trash2, Webhook, Eye, EyeOff, Zap, Loader2,
   MessageCircle, Sparkles, Shield, ShieldCheck, Lock,
   CheckCircle, XCircle, Activity, Clock, User, Database,
-  KeyRound, Fingerprint, Megaphone, Home,
+  KeyRound, Fingerprint, Megaphone, Home, Building, Brain,
+  Phone, Send, Inbox, Map,
 } from 'lucide-react';
 import { supabase as supabaseClient } from '@/integrations/supabase/client';
 import { useState, useEffect, useMemo } from 'react';
@@ -623,15 +624,17 @@ const ApiSettings = () => {
   }) => {
     const connected = isConnected ?? !!config?.is_active;
     return (
-      <AccordionItem value={value} className="border border-border/50 rounded-lg overflow-hidden bg-card data-[state=open]:border-border/80">
+      <AccordionItem value={value} className="border border-border/50 rounded-lg overflow-hidden bg-card data-[state=open]:border-border/80 data-[state=open]:shadow-sm">
         <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20">
           <div className="flex items-center justify-between w-full gap-3">
             <div className="flex items-center gap-3">
-              <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${iconColor} shrink-0`}>
-                <Icon className="h-4 w-4 text-white" />
+              <div className="h-9 w-9 rounded-lg flex items-center justify-center bg-muted/50 shrink-0">
+                <Icon className={`h-5 w-5 ${iconColor}`} />
               </div>
-              <span className="text-sm font-semibold">{title}</span>
-              {badgeLabel && <Badge variant="outline" className="text-[9px]">{badgeLabel}</Badge>}
+              <div className="flex flex-col items-start">
+                <span className="text-sm font-bold">{title}</span>
+                {badgeLabel && <span className="text-[10px] text-muted-foreground">{badgeLabel}</span>}
+              </div>
             </div>
             <div className="flex items-center gap-2 me-2">
               {connected ? (
@@ -691,15 +694,17 @@ const ApiSettings = () => {
       <Accordion type="multiple" className="space-y-3">
 
       {/* Homely API */}
-      <AccordionItem value="homely" className="border border-border/50 rounded-lg overflow-hidden bg-card data-[state=open]:border-border/80">
+      <AccordionItem value="homely" className="border border-border/50 rounded-lg overflow-hidden bg-card data-[state=open]:border-border/80 data-[state=open]:shadow-sm">
         <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20">
           <div className="flex items-center justify-between w-full gap-3">
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-amber-500 shrink-0">
-                <Home className="h-4 w-4 text-white" />
+              <div className="h-9 w-9 rounded-lg flex items-center justify-center bg-muted/50 shrink-0">
+                <Building className="h-5 w-5 text-orange-500" />
               </div>
-              <span className="text-sm font-semibold">Homely API</span>
-              <Badge variant="outline" className="text-[9px]">Per-User Key</Badge>
+              <div className="flex flex-col items-start">
+                <span className="text-sm font-bold">Homely API</span>
+                <span className="text-[10px] text-muted-foreground">Per-User Key</span>
+              </div>
             </div>
             <div className="flex items-center gap-2 me-2">
               {homelyHasKey ? (
@@ -770,8 +775,8 @@ const ApiSettings = () => {
 
       <ServiceCard
         title="Gemini AI"
-        icon={Sparkles}
-        iconColor="bg-violet-500"
+        icon={Brain}
+        iconColor="text-indigo-500"
         config={existingGemini}
         onDelete={existingGemini ? () => deleteConfig.mutate(existingGemini.id) : undefined}
         onTest={handleTestGemini}
@@ -800,7 +805,7 @@ const ApiSettings = () => {
       <ServiceCard
         title="Meta Marketing API"
         icon={Megaphone}
-        iconColor="bg-primary"
+        iconColor="text-blue-600"
         config={existingMeta}
         badgeLabel="Facebook / Instagram Ads"
         onDelete={existingMeta ? () => deleteConfig.mutate(existingMeta.id) : undefined}
@@ -840,7 +845,7 @@ const ApiSettings = () => {
       <ServiceCard
         title="שער WhatsApp"
         icon={MessageCircle}
-        iconColor="bg-emerald-600"
+        iconColor="text-green-500"
         config={activeWaConfig}
         badgeLabel={waGateway === 'green_api' ? 'WBA' : 'WBA רשמי'}
         onDelete={activeWaConfig ? () => deleteConfig.mutate(activeWaConfig.id) : undefined}
@@ -916,7 +921,7 @@ const ApiSettings = () => {
       <ServiceCard
         title="כתובת Webhook n8n"
         icon={Webhook}
-        iconColor="bg-orange-500"
+        iconColor="text-slate-500"
         config={existingN8n}
         onDelete={existingN8n ? () => deleteConfig.mutate(existingN8n.id) : undefined}
         onTest={handleTestWebhook}
@@ -953,8 +958,8 @@ const ApiSettings = () => {
 
       <ServiceCard
         title="019 SMS"
-        icon={MessageCircle}
-        iconColor="bg-sky-500"
+        icon={Send}
+        iconColor="text-purple-500"
         config={existingSms}
         onDelete={existingSms ? () => deleteConfig.mutate(existingSms.id) : undefined}
         onTest={handleTestSms}
@@ -989,8 +994,8 @@ const ApiSettings = () => {
 
       <ServiceCard
         title="Mapbox (מפה)"
-        icon={Activity}
-        iconColor="bg-blue-500"
+        icon={Map}
+        iconColor="text-blue-500"
         config={existingMapbox}
         onDelete={existingMapbox ? () => deleteConfig.mutate(existingMapbox.id) : undefined}
         onTest={() => {
