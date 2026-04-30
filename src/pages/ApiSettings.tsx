@@ -792,41 +792,47 @@ const ApiSettings = () => {
         </p>
       </div>
 
-      {/* Service Cards (Accordion) — unified list with per-service toggle */}
-      <Accordion type="multiple" className="-space-y-px">
+      {/* ── Section A: Platform Features ── */}
+      <div className="space-y-2">
+        <div>
+          <h2 className="text-sm font-bold tracking-tight">תכונות פלטפורמה</h2>
+          <p className="text-xs text-muted-foreground">Platform Features — מתגי On/Off פנימיים</p>
+        </div>
+        <div className="rounded-lg overflow-hidden">
+          <FeatureRow
+            title="AI Touchpoint (שיחות AI)"
+            description="בוט קולי שמתקשר ללידים חמים"
+            learnMore="AI Touchpoint מפעיל בוט קולי שמתקשר באופן יזום ללידים חמים, מנהל שיחה קצרה, מסווג עניין ומעדכן את ה-CRM. שימושי כדי לזהות במהירות לידים בשלים לפנייה אנושית."
+            icon={Phone}
+            iconColor="text-blue-500"
+            serviceKey="ai_voice"
+          />
+          <FeatureRow
+            title="מחולל תוכן AI"
+            description="יצירת פוסטים, סלוגנים ותגובות"
+            learnMore="מחולל התוכן יוצר טיוטות לפוסטים, סלוגנים, תגובות ומסרים אישיים בהתבסס על הטון והמיתוג שהגדרת. כל תוצר ניתן לעריכה לפני שליחה או פרסום."
+            icon={Sparkles}
+            iconColor="text-amber-500"
+            serviceKey="ai_content"
+          />
+          <FeatureRow
+            title="תיבת Omnichannel"
+            description="איחוד כל הערוצים לתיבה אחת"
+            learnMore="תיבת ה-Omnichannel מאחדת WhatsApp, SMS, Messenger, Instagram ועוד לתיבה אחת. כל הודעה נקשרת אוטומטית לכרטיס הליד הרלוונטי כולל היסטוריית שיחה מלאה."
+            icon={Inbox}
+            iconColor="text-teal-500"
+            serviceKey="omnichannel_inbox"
+          />
+        </div>
+      </div>
 
-      {/* AI Touchpoint (toggle-only) */}
-      <ServiceCard
-        title="AI Touchpoint (שיחות AI)"
-        icon={Phone}
-        iconColor="text-blue-500"
-        badgeLabel="בוט קולי שמתקשר ללידים חמים"
-        value="ai_voice"
-        serviceKey="ai_voice"
-        isConnected={isServiceEnabled('ai_voice')}
-      />
-
-      {/* AI Generator (toggle-only) */}
-      <ServiceCard
-        title="מחולל תוכן AI"
-        icon={Sparkles}
-        iconColor="text-amber-500"
-        badgeLabel="יצירת פוסטים, סלוגנים ותגובות"
-        value="ai_content"
-        serviceKey="ai_content"
-        isConnected={isServiceEnabled('ai_content')}
-      />
-
-      {/* Omnichannel Inbox (toggle-only) */}
-      <ServiceCard
-        title="תיבת Omnichannel"
-        icon={Inbox}
-        iconColor="text-teal-500"
-        badgeLabel="איחוד כל הערוצים לתיבה אחת"
-        value="omnichannel_inbox"
-        serviceKey="omnichannel_inbox"
-        isConnected={isServiceEnabled('omnichannel_inbox')}
-      />
+      {/* ── Section B: Integrations ── */}
+      <div className="space-y-2">
+        <div>
+          <h2 className="text-sm font-bold tracking-tight">אינטגרציות חיצוניות</h2>
+          <p className="text-xs text-muted-foreground">Integrations — דורשות מפתחות API והגדרות</p>
+        </div>
+        <Accordion type="multiple" className="-space-y-px">
 
       {/* Homely API */}
       <ServiceCard
