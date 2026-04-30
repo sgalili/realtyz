@@ -1028,6 +1028,7 @@ export type Database = {
           created_at: string
           description: string
           election_type: string
+          embedding: string | null
           features: Json
           headline: string
           id: string
@@ -1047,6 +1048,7 @@ export type Database = {
           created_at?: string
           description: string
           election_type?: string
+          embedding?: string | null
           features?: Json
           headline: string
           id?: string
@@ -1066,6 +1068,7 @@ export type Database = {
           created_at?: string
           description?: string
           election_type?: string
+          embedding?: string | null
           features?: Json
           headline?: string
           id?: string
@@ -2003,6 +2006,10 @@ export type Database = {
       is_admin_or_above: { Args: { _uid: string }; Returns: boolean }
       is_on_trial_plan: { Args: { _user_id: string }; Returns: boolean }
       is_trial_active: { Args: { _user_id: string }; Returns: boolean }
+      listing_embedding_text: {
+        Args: { l: Database["public"]["Tables"]["listings"]["Row"] }
+        Returns: string
+      }
       match_knowledge_chunks: {
         Args: {
           match_count?: number
@@ -2015,6 +2022,22 @@ export type Database = {
           document_title: string
           id: string
           similarity: number
+        }[]
+      }
+      match_listings_to_lead: {
+        Args: {
+          p_lead_id: string
+          p_match_count?: number
+          p_query_embedding: string
+        }
+        Returns: {
+          asking_price: number
+          description: string
+          features: Json
+          id: string
+          property_title: string
+          similarity: number
+          slug: string
         }[]
       }
       queue_autopilot_messages: {
