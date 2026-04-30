@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import {
   Save, Trash2, Webhook, Eye, EyeOff, Zap, Loader2,
   MessageCircle, Sparkles, Shield, ShieldCheck, Lock,
@@ -613,54 +614,63 @@ const ApiSettings = () => {
   );
 
   const ServiceCard = ({
-    title, icon: Icon, iconColor, config, children, onDelete, onTest, onSave, saveLabel, testLabel = 'בדיקת חיבור', badgeLabel, savingId, testingId,
+    title, icon: Icon, iconColor, config, children, onDelete, onTest, onSave, saveLabel, testLabel = 'בדיקת חיבור', badgeLabel, savingId, testingId, value, isConnected,
   }: {
     title: string; icon: React.ElementType; iconColor: string; config: ApiConfig | undefined;
     children: React.ReactNode; onDelete?: () => void; onTest: () => void; onSave: () => void;
     saveLabel: string; testLabel?: string; badgeLabel?: string; savingId: string; testingId: string;
-  }) => (
-    <Card className="border-border/50 hover:border-border/80 transition-colors">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${iconColor}`}>
-              <Icon className="h-4 w-4 text-white" />
+    value: string; isConnected?: boolean;
+  }) => {
+    const connected = isConnected ?? !!config?.is_active;
+    return (
+      <AccordionItem value={value} className="border border-border/50 rounded-lg overflow-hidden bg-card data-[state=open]:border-border/80">
+        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20">
+          <div className="flex items-center justify-between w-full gap-3">
+            <div className="flex items-center gap-3">
+              <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${iconColor} shrink-0`}>
+                <Icon className="h-4 w-4 text-white" />
+              </div>
+              <span className="text-sm font-semibold">{title}</span>
+              {badgeLabel && <Badge variant="outline" className="text-[9px]">{badgeLabel}</Badge>}
             </div>
-            {title}
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            {config?.is_active ? (
-              <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700 border-emerald-300">
-                <Lock className="h-2.5 w-2.5 ml-1" />
-                מוצפן ופעיל
-              </Badge>
-            ) : (
-              <Badge variant="secondary" className="text-[10px]">לא מוגדר</Badge>
-            )}
-            {badgeLabel && <Badge variant="outline" className="text-[9px]">{badgeLabel}</Badge>}
-            {config && onDelete && (
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={onDelete}>
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            )}
+            <div className="flex items-center gap-2 me-2">
+              {connected ? (
+                <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700 border-emerald-300 hover:bg-emerald-500/20">
+                  <CheckCircle className="h-2.5 w-2.5 ml-1" />
+                  Connected
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="text-[10px] text-muted-foreground">
+                  <XCircle className="h-2.5 w-2.5 ml-1" />
+                  Disconnected
+                </Badge>
+              )}
+            </div>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {children}
-        <div className="flex gap-2">
-          <Button onClick={onSave} disabled={savingKey === savingId} className="flex-1" size="sm">
-            <Save className="h-4 w-4 ml-2" />
-            {savingKey === savingId ? 'שומר...' : saveLabel}
-          </Button>
-          <Button variant="outline" size="sm" onClick={onTest} disabled={testingService === testingId} className="gap-2">
-            {testingService === testingId ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-            {testLabel}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
+        </AccordionTrigger>
+        <AccordionContent className="px-4 pb-4 pt-2">
+          <div className="space-y-4">
+            {children}
+            <div className="flex gap-2 items-center">
+              <Button onClick={onSave} disabled={savingKey === savingId} className="flex-1" size="sm">
+                <Save className="h-4 w-4 ml-2" />
+                {savingKey === savingId ? 'שומר...' : saveLabel}
+              </Button>
+              <Button variant="outline" size="sm" onClick={onTest} disabled={testingService === testingId} className="gap-2">
+                {testingService === testingId ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                {testLabel}
+              </Button>
+              {config && onDelete && (
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0" onClick={onDelete}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    );
+  };
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -677,80 +687,86 @@ const ApiSettings = () => {
 
       {isSuperAdmin && (
         <>
-      {/* Service Cards */}
+      {/* Service Cards (Accordion) */}
+      <Accordion type="multiple" className="space-y-3">
 
       {/* Homely API */}
-      <Card className="border-border/50 hover:border-border/80 transition-colors">
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-amber-500">
+      <AccordionItem value="homely" className="border border-border/50 rounded-lg overflow-hidden bg-card data-[state=open]:border-border/80">
+        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20">
+          <div className="flex items-center justify-between w-full gap-3">
+            <div className="flex items-center gap-3">
+              <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-amber-500 shrink-0">
                 <Home className="h-4 w-4 text-white" />
               </div>
-              Homely API
-            </CardTitle>
-            <div className="flex items-center gap-2">
-              {homelyHasKey ? (
-                <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700 border-emerald-300">
-                  <Lock className="h-2.5 w-2.5 ml-1" />
-                  מוצפן ופעיל
-                </Badge>
-              ) : (
-                <Badge variant="secondary" className="text-[10px]">לא מוגדר</Badge>
-              )}
+              <span className="text-sm font-semibold">Homely API</span>
               <Badge variant="outline" className="text-[9px]">Per-User Key</Badge>
             </div>
-          </div>
-          <CardDescription className="text-xs mt-2">
-            מפתח אישי לחיבור לשירותי Homely. נשמר מוצפן עם RLS — רק את/ה יכול/ה לגשת אליו.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          {homelyHasKey && (
-            <div className="p-3 rounded-lg bg-muted/50 border border-border/30">
-              <KeyDisplay label="Homely API Key" value={homelyApiKey} id="homely_current" />
+            <div className="flex items-center gap-2 me-2">
+              {homelyHasKey ? (
+                <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700 border-emerald-300 hover:bg-emerald-500/20">
+                  <CheckCircle className="h-2.5 w-2.5 ml-1" />
+                  Connected
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="text-[10px] text-muted-foreground">
+                  <XCircle className="h-2.5 w-2.5 ml-1" />
+                  Disconnected
+                </Badge>
+              )}
             </div>
-          )}
-          <div className="space-y-2">
-            <Label className="text-xs">{homelyHasKey ? 'עדכון מפתח Homely' : 'מפתח Homely חדש'}</Label>
-            <div className="relative">
-              <Input
-                placeholder="הדבק את מפתח Homely API כאן..."
-                type={showKeys.homely ? 'text' : 'password'}
-                value={homelyApiKey}
-                onChange={(e) => setHomelyApiKey(e.target.value)}
-                dir="ltr"
-                className="pl-9"
-                autoComplete="off"
-              />
+          </div>
+        </AccordionTrigger>
+        <AccordionContent className="px-4 pb-4 pt-2">
+          <div className="space-y-4">
+            <p className="text-xs text-muted-foreground">
+              מפתח אישי לחיבור לשירותי Homely. נשמר מוצפן עם RLS — רק את/ה יכול/ה לגשת אליו.
+            </p>
+            {homelyHasKey && (
+              <div className="p-3 rounded-lg bg-muted/50 border border-border/30">
+                <KeyDisplay label="Homely API Key" value={homelyApiKey} id="homely_current" />
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label className="text-xs">{homelyHasKey ? 'עדכון מפתח Homely' : 'מפתח Homely חדש'}</Label>
+              <div className="relative">
+                <Input
+                  placeholder="הדבק את מפתח Homely API כאן..."
+                  type={showKeys.homely ? 'text' : 'password'}
+                  value={homelyApiKey}
+                  onChange={(e) => setHomelyApiKey(e.target.value)}
+                  dir="ltr"
+                  className="pl-9"
+                  autoComplete="off"
+                />
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="absolute left-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                  onClick={() => setShowKeys((p) => ({ ...p, homely: !p.homely }))}
+                >
+                  {showKeys.homely ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                </Button>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <Button onClick={handleSaveHomely} disabled={savingKey === 'homely' || !homelyLoaded} className="flex-1" size="sm">
+                <Save className="h-4 w-4 ml-2" />
+                {savingKey === 'homely' ? 'שומר...' : (homelyHasKey ? 'עדכן מפתח' : 'שמור מפתח')}
+              </Button>
               <Button
-                variant="ghost"
-                size="icon"
-                className="absolute left-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                onClick={() => setShowKeys((p) => ({ ...p, homely: !p.homely }))}
+                variant="outline"
+                size="sm"
+                onClick={handleTestHomely}
+                disabled={testingService === 'homely'}
+                className="gap-2"
               >
-                {showKeys.homely ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                {testingService === 'homely' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                בדיקת חיבור
               </Button>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button onClick={handleSaveHomely} disabled={savingKey === 'homely' || !homelyLoaded} className="flex-1" size="sm">
-              <Save className="h-4 w-4 ml-2" />
-              {savingKey === 'homely' ? 'שומר...' : (homelyHasKey ? 'עדכן מפתח' : 'שמור מפתח')}
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={handleTestHomely}
-              disabled={testingService === 'homely'}
-              className="gap-2"
-            >
-              {testingService === 'homely' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-              בדיקת חיבור
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+        </AccordionContent>
+      </AccordionItem>
 
       <ServiceCard
         title="Gemini AI"
@@ -763,6 +779,7 @@ const ApiSettings = () => {
         saveLabel={existingGemini ? 'עדכן מפתח' : 'שמור מפתח'}
         savingId="gemini"
         testingId="gemini"
+        value="gemini"
       >
         {existingGemini && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30">
@@ -793,6 +810,7 @@ const ApiSettings = () => {
         testLabel="בדיקה בהמשך"
         savingId="meta"
         testingId="meta"
+        value="meta"
       >
         {existingMeta && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30">
@@ -831,6 +849,7 @@ const ApiSettings = () => {
         saveLabel={activeWaConfig ? 'עדכן הגדרה' : 'שמור הגדרה'}
         savingId="whatsapp"
         testingId="whatsapp"
+        value="whatsapp"
       >
         {activeWaConfig && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30 space-y-1">
@@ -905,6 +924,7 @@ const ApiSettings = () => {
         saveLabel={existingN8n ? 'עדכן הגדרה' : 'שמור הגדרה'}
         savingId="n8n"
         testingId="n8n"
+        value="n8n"
       >
         {existingN8n && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30 space-y-1">
@@ -942,6 +962,7 @@ const ApiSettings = () => {
         saveLabel={existingSms ? 'עדכן הגדרה' : 'שמור הגדרה'}
         savingId="sms"
         testingId="sms"
+        value="sms"
       >
         {existingSms && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30 space-y-1">
@@ -982,6 +1003,7 @@ const ApiSettings = () => {
         testLabel="בדיקת טוקן"
         savingId="mapbox"
         testingId="mapbox"
+        value="mapbox"
       >
         {existingMapbox && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30">
@@ -1000,19 +1022,7 @@ const ApiSettings = () => {
         </div>
       </ServiceCard>
 
-      {/* Military-Grade Access Log */}
-      <Card className="border-emerald-500/20 bg-gradient-to-br from-background to-emerald-500/[0.02]">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Fingerprint className="h-4 w-4 text-emerald-500" />
-            גישות אחרונות למאגר - Military Grade Audit
-          </CardTitle>
-          <CardDescription className="text-xs font-mono text-emerald-600/60">Last 5 verified database access events</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DbAccessLog />
-        </CardContent>
-      </Card>
+      </Accordion>
         </>
       )}
     </div>
