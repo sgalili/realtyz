@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Switch } from '@/components/ui/switch';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import {
   Save, Trash2, Webhook, Eye, EyeOff, Zap, Loader2,
@@ -22,8 +23,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { format } from 'date-fns';
-import { ServiceTogglesPanel } from '@/components/ServiceTogglesPanel';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
+import { ChevronDown } from 'lucide-react';
 
 interface ApiConfig {
   id: string;
@@ -289,6 +290,47 @@ const ApiSettings = () => {
   const [homelyHasKey, setHomelyHasKey] = useState(false);
   const [homelyLoaded, setHomelyLoaded] = useState(false);
   const { user: authUser } = useAuth();
+
+  // Per-service On/Off toggles (service_toggles table)
+  const { data: serviceToggles = [] } = useQuery({
+    queryKey: ['service-toggles', authUser?.id],
+    enabled: !!authUser?.id,
+    queryFn: async () => {
+      const { data } = await supabaseClient
+        .from('service_toggles')
+        .select('*')
+        .eq('user_id', authUser!.id);
+      return data ?? [];
+    },
+  });
+
+  const toggleService = useMutation({
+    mutationFn: async ({ key, enabled }: { key: string; enabled: boolean }) => {
+      if (!authUser) throw new Error('not-auth');
+      const existing = serviceToggles.find((t) => t.service_key === key);
+      if (existing) {
+        const { error } = await supabaseClient
+          .from('service_toggles')
+          .update({ enabled, updated_at: new Date().toISOString() })
+          .eq('id', existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabaseClient
+          .from('service_toggles')
+          .insert({ user_id: authUser.id, service_key: key, enabled });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-toggles'] });
+    },
+    onError: () => toast.error('עדכון השירות נכשל'),
+  });
+
+  const isServiceEnabled = (key: string) => {
+    const t = serviceToggles.find((x) => x.service_key === key);
+    return t ? t.enabled : true; // default on
+  };
 
   const edgeFnBase = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/manage-api-configs`;
   const edgeFnHeaders = {
@@ -615,62 +657,82 @@ const ApiSettings = () => {
   );
 
   const ServiceCard = ({
-    title, icon: Icon, iconColor, config, children, onDelete, onTest, onSave, saveLabel, testLabel = 'בדיקת חיבור', badgeLabel, savingId, testingId, value, isConnected,
+    title, icon: Icon, iconColor, config, children, onDelete, onTest, onSave, saveLabel,
+    testLabel = 'בדיקת חיבור', badgeLabel, savingId, testingId, value, isConnected, serviceKey,
+    hideActions,
   }: {
-    title: string; icon: React.ElementType; iconColor: string; config: ApiConfig | undefined;
-    children: React.ReactNode; onDelete?: () => void; onTest: () => void; onSave: () => void;
-    saveLabel: string; testLabel?: string; badgeLabel?: string; savingId: string; testingId: string;
-    value: string; isConnected?: boolean;
+    title: string; icon: React.ElementType; iconColor: string; config?: ApiConfig | undefined;
+    children?: React.ReactNode; onDelete?: () => void; onTest?: () => void; onSave?: () => void;
+    saveLabel?: string; testLabel?: string; badgeLabel?: string; savingId?: string; testingId?: string;
+    value: string; isConnected?: boolean; serviceKey: string; hideActions?: boolean;
   }) => {
     const connected = isConnected ?? !!config?.is_active;
+    const enabled = isServiceEnabled(serviceKey);
     return (
       <AccordionItem value={value} className="border border-border/50 rounded-lg overflow-hidden bg-card data-[state=open]:border-border/80 data-[state=open]:shadow-sm">
-        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20">
-          <div className="flex items-center justify-between w-full gap-3">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg flex items-center justify-center bg-muted/50 shrink-0">
+        <div className="flex items-stretch">
+          <AccordionTrigger className="flex-1 px-4 py-3 hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20 [&>svg]:hidden">
+            <div className="flex items-center gap-3 w-full">
+              <div className={`h-9 w-9 rounded-lg flex items-center justify-center bg-muted/50 shrink-0 transition-opacity ${!enabled ? 'opacity-50' : ''}`}>
                 <Icon className={`h-5 w-5 ${iconColor}`} />
               </div>
-              <div className="flex flex-col items-start">
-                <span className="text-sm font-bold">{title}</span>
-                {badgeLabel && <span className="text-[10px] text-muted-foreground">{badgeLabel}</span>}
+              <div className="flex flex-col items-start min-w-0">
+                <span className={`text-sm font-bold truncate ${!enabled ? 'text-muted-foreground' : ''}`}>{title}</span>
+                {badgeLabel && <span className="text-[10px] text-muted-foreground truncate">{badgeLabel}</span>}
+              </div>
+              <div className="me-auto flex items-center gap-2 ms-2">
+                {connected ? (
+                  <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700 border-emerald-300 hover:bg-emerald-500/20">
+                    <CheckCircle className="h-2.5 w-2.5 ml-1" />
+                    Connected
+                  </Badge>
+                ) : (
+                  <Badge variant="secondary" className="text-[10px] text-muted-foreground">
+                    <XCircle className="h-2.5 w-2.5 ml-1" />
+                    Disconnected
+                  </Badge>
+                )}
+                <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
               </div>
             </div>
-            <div className="flex items-center gap-2 me-2">
-              {connected ? (
-                <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700 border-emerald-300 hover:bg-emerald-500/20">
-                  <CheckCircle className="h-2.5 w-2.5 ml-1" />
-                  Connected
-                </Badge>
-              ) : (
-                <Badge variant="secondary" className="text-[10px] text-muted-foreground">
-                  <XCircle className="h-2.5 w-2.5 ml-1" />
-                  Disconnected
-                </Badge>
+          </AccordionTrigger>
+          <div
+            className="flex items-center px-3 border-s border-border/40"
+            onClick={(e) => { e.stopPropagation(); }}
+          >
+            <Switch
+              checked={enabled}
+              onCheckedChange={(v) => toggleService.mutate({ key: serviceKey, enabled: v })}
+              aria-label={`Toggle ${title}`}
+            />
+          </div>
+        </div>
+        {children && (
+          <AccordionContent className="px-4 pb-4 pt-2">
+            <div className="space-y-4">
+              {children}
+              {!hideActions && onSave && (
+                <div className="flex gap-2 items-center">
+                  <Button onClick={onSave} disabled={savingKey === savingId} className="flex-1" size="sm">
+                    <Save className="h-4 w-4 ml-2" />
+                    {savingKey === savingId ? 'שומר...' : saveLabel}
+                  </Button>
+                  {onTest && (
+                    <Button variant="outline" size="sm" onClick={onTest} disabled={testingService === testingId} className="gap-2">
+                      {testingService === testingId ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                      {testLabel}
+                    </Button>
+                  )}
+                  {config && onDelete && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0" onClick={onDelete}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
               )}
             </div>
-          </div>
-        </AccordionTrigger>
-        <AccordionContent className="px-4 pb-4 pt-2">
-          <div className="space-y-4">
-            {children}
-            <div className="flex gap-2 items-center">
-              <Button onClick={onSave} disabled={savingKey === savingId} className="flex-1" size="sm">
-                <Save className="h-4 w-4 ml-2" />
-                {savingKey === savingId ? 'שומר...' : saveLabel}
-              </Button>
-              <Button variant="outline" size="sm" onClick={onTest} disabled={testingService === testingId} className="gap-2">
-                {testingService === testingId ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-                {testLabel}
-              </Button>
-              {config && onDelete && (
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0" onClick={onDelete}>
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
-              )}
-            </div>
-          </div>
-        </AccordionContent>
+          </AccordionContent>
+        )}
       </AccordionItem>
     );
   };
@@ -686,92 +748,88 @@ const ApiSettings = () => {
         </p>
       </div>
 
-      <ServiceTogglesPanel />
-
-      {isSuperAdmin && (
-        <>
-      {/* Service Cards (Accordion) */}
+      {/* Service Cards (Accordion) — unified list with per-service toggle */}
       <Accordion type="multiple" className="space-y-3">
 
+      {/* AI Touchpoint (toggle-only) */}
+      <ServiceCard
+        title="AI Touchpoint (שיחות AI)"
+        icon={Phone}
+        iconColor="text-blue-500"
+        badgeLabel="בוט קולי שמתקשר ללידים חמים"
+        value="ai_voice"
+        serviceKey="ai_voice"
+        isConnected={isServiceEnabled('ai_voice')}
+      />
+
+      {/* AI Generator (toggle-only) */}
+      <ServiceCard
+        title="מחולל תוכן AI"
+        icon={Sparkles}
+        iconColor="text-amber-500"
+        badgeLabel="יצירת פוסטים, סלוגנים ותגובות"
+        value="ai_content"
+        serviceKey="ai_content"
+        isConnected={isServiceEnabled('ai_content')}
+      />
+
+      {/* Omnichannel Inbox (toggle-only) */}
+      <ServiceCard
+        title="תיבת Omnichannel"
+        icon={Inbox}
+        iconColor="text-teal-500"
+        badgeLabel="איחוד כל הערוצים לתיבה אחת"
+        value="omnichannel_inbox"
+        serviceKey="omnichannel_inbox"
+        isConnected={isServiceEnabled('omnichannel_inbox')}
+      />
+
       {/* Homely API */}
-      <AccordionItem value="homely" className="border border-border/50 rounded-lg overflow-hidden bg-card data-[state=open]:border-border/80 data-[state=open]:shadow-sm">
-        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20">
-          <div className="flex items-center justify-between w-full gap-3">
-            <div className="flex items-center gap-3">
-              <div className="h-9 w-9 rounded-lg flex items-center justify-center bg-muted/50 shrink-0">
-                <Building className="h-5 w-5 text-orange-500" />
-              </div>
-              <div className="flex flex-col items-start">
-                <span className="text-sm font-bold">Homely API</span>
-                <span className="text-[10px] text-muted-foreground">Per-User Key</span>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 me-2">
-              {homelyHasKey ? (
-                <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700 border-emerald-300 hover:bg-emerald-500/20">
-                  <CheckCircle className="h-2.5 w-2.5 ml-1" />
-                  Connected
-                </Badge>
-              ) : (
-                <Badge variant="secondary" className="text-[10px] text-muted-foreground">
-                  <XCircle className="h-2.5 w-2.5 ml-1" />
-                  Disconnected
-                </Badge>
-              )}
-            </div>
+      <ServiceCard
+        title="Homely API"
+        icon={Building}
+        iconColor="text-orange-500"
+        badgeLabel="Per-User Key"
+        value="homely"
+        serviceKey="homely"
+        isConnected={homelyHasKey}
+        onSave={handleSaveHomely}
+        onTest={handleTestHomely}
+        saveLabel={homelyHasKey ? 'עדכן מפתח' : 'שמור מפתח'}
+        savingId="homely"
+        testingId="homely"
+      >
+        <p className="text-xs text-muted-foreground">
+          מפתח אישי לחיבור לשירותי Homely. נשמר מוצפן עם RLS — רק את/ה יכול/ה לגשת אליו.
+        </p>
+        {homelyHasKey && (
+          <div className="p-3 rounded-lg bg-muted/50 border border-border/30">
+            <KeyDisplay label="Homely API Key" value={homelyApiKey} id="homely_current" />
           </div>
-        </AccordionTrigger>
-        <AccordionContent className="px-4 pb-4 pt-2">
-          <div className="space-y-4">
-            <p className="text-xs text-muted-foreground">
-              מפתח אישי לחיבור לשירותי Homely. נשמר מוצפן עם RLS — רק את/ה יכול/ה לגשת אליו.
-            </p>
-            {homelyHasKey && (
-              <div className="p-3 rounded-lg bg-muted/50 border border-border/30">
-                <KeyDisplay label="Homely API Key" value={homelyApiKey} id="homely_current" />
-              </div>
-            )}
-            <div className="space-y-2">
-              <Label className="text-xs">{homelyHasKey ? 'עדכון מפתח Homely' : 'מפתח Homely חדש'}</Label>
-              <div className="relative">
-                <Input
-                  placeholder="הדבק את מפתח Homely API כאן..."
-                  type={showKeys.homely ? 'text' : 'password'}
-                  value={homelyApiKey}
-                  onChange={(e) => setHomelyApiKey(e.target.value)}
-                  dir="ltr"
-                  className="pl-9"
-                  autoComplete="off"
-                />
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute left-1 top-1/2 -translate-y-1/2 h-7 w-7"
-                  onClick={() => setShowKeys((p) => ({ ...p, homely: !p.homely }))}
-                >
-                  {showKeys.homely ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                </Button>
-              </div>
-            </div>
-            <div className="flex gap-2">
-              <Button onClick={handleSaveHomely} disabled={savingKey === 'homely' || !homelyLoaded} className="flex-1" size="sm">
-                <Save className="h-4 w-4 ml-2" />
-                {savingKey === 'homely' ? 'שומר...' : (homelyHasKey ? 'עדכן מפתח' : 'שמור מפתח')}
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleTestHomely}
-                disabled={testingService === 'homely'}
-                className="gap-2"
-              >
-                {testingService === 'homely' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-                בדיקת חיבור
-              </Button>
-            </div>
+        )}
+        <div className="space-y-2">
+          <Label className="text-xs">{homelyHasKey ? 'עדכון מפתח Homely' : 'מפתח Homely חדש'}</Label>
+          <div className="relative">
+            <Input
+              placeholder="הדבק את מפתח Homely API כאן..."
+              type={showKeys.homely ? 'text' : 'password'}
+              value={homelyApiKey}
+              onChange={(e) => setHomelyApiKey(e.target.value)}
+              dir="ltr"
+              className="pl-9"
+              autoComplete="off"
+            />
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute left-1 top-1/2 -translate-y-1/2 h-7 w-7"
+              onClick={() => setShowKeys((p) => ({ ...p, homely: !p.homely }))}
+            >
+              {showKeys.homely ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+            </Button>
           </div>
-        </AccordionContent>
-      </AccordionItem>
+        </div>
+      </ServiceCard>
 
       <ServiceCard
         title="Gemini AI"
@@ -785,6 +843,7 @@ const ApiSettings = () => {
         savingId="gemini"
         testingId="gemini"
         value="gemini"
+        serviceKey="gemini"
       >
         {existingGemini && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30">
@@ -816,6 +875,7 @@ const ApiSettings = () => {
         savingId="meta"
         testingId="meta"
         value="meta"
+        serviceKey="meta_ads"
       >
         {existingMeta && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30">
@@ -855,6 +915,7 @@ const ApiSettings = () => {
         savingId="whatsapp"
         testingId="whatsapp"
         value="whatsapp"
+        serviceKey="whatsapp"
       >
         {activeWaConfig && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30 space-y-1">
@@ -930,6 +991,7 @@ const ApiSettings = () => {
         savingId="n8n"
         testingId="n8n"
         value="n8n"
+        serviceKey="n8n"
       >
         {existingN8n && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30 space-y-1">
@@ -968,6 +1030,7 @@ const ApiSettings = () => {
         savingId="sms"
         testingId="sms"
         value="sms"
+        serviceKey="sms"
       >
         {existingSms && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30 space-y-1">
@@ -1009,6 +1072,7 @@ const ApiSettings = () => {
         savingId="mapbox"
         testingId="mapbox"
         value="mapbox"
+        serviceKey="mapbox"
       >
         {existingMapbox && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30">
@@ -1028,8 +1092,6 @@ const ApiSettings = () => {
       </ServiceCard>
 
       </Accordion>
-        </>
-      )}
     </div>
   );
 };
