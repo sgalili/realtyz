@@ -11,8 +11,9 @@ import {
   Save, Trash2, Webhook, Eye, EyeOff, Zap, Loader2,
   MessageCircle, Sparkles, Shield, ShieldCheck, Lock,
   CheckCircle, XCircle, Activity, Clock, User, Database,
-  KeyRound, Fingerprint, Megaphone,
+  KeyRound, Fingerprint, Megaphone, Home,
 } from 'lucide-react';
+import { supabase as supabaseClient } from '@/integrations/supabase/client';
 import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabaseClient';
