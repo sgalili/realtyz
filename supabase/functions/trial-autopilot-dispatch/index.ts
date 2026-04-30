@@ -211,38 +211,41 @@ async function trySendOne(
     .eq("id", row.id);
 
   try {
-    // GreenAPI / WBA bridge call.
-    const url =
-      `https://api.green-api.com/waInstance${SYSTEM_WBA_INSTANCE_ID}/sendMessage/${SYSTEM_WBA_TOKEN}`;
-    const res = await fetch(url, {
+    // Route through unified send-whatsapp gateway (WBA → GreenAPI fallback).
+    const res = await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+        apikey: SERVICE_ROLE_KEY,
+      },
       body: JSON.stringify({
-        chatId: `${row.recipient_phone}@c.us`,
+        phone_number: row.recipient_phone,
         message: row.message_body, // intentionally NO branding
+        tenant_id: userId,
       }),
     });
     const j = await res.json().catch(() => ({}));
-    if (!res.ok) {
+    if (!res.ok || !j?.success) {
       await admin.from("trial_autopilot_messages")
         .update({
           status: "failed",
-          failure_reason: `provider_${res.status}: ${JSON.stringify(j)}`.slice(
+          failure_reason: `gateway_${res.status}: ${JSON.stringify(j)}`.slice(
             0,
             500,
           ),
         })
         .eq("id", row.id);
-      return { ok: false, error: `provider_${res.status}` };
+      return { ok: false, error: `gateway_${res.status}` };
     }
     await admin.from("trial_autopilot_messages")
       .update({
         status: "sent",
         sent_at: new Date().toISOString(),
-        provider_message_id: j?.idMessage ?? null,
+        provider_message_id: j?.message_id ?? null,
       })
       .eq("id", row.id);
-    return { ok: true, provider_id: j?.idMessage };
+    return { ok: true, provider_id: j?.message_id ?? undefined };
   } catch (e) {
     await admin.from("trial_autopilot_messages")
       .update({
