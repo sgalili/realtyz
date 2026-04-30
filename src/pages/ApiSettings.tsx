@@ -677,54 +677,6 @@ const ApiSettings = () => {
 
       {isSuperAdmin && (
         <>
-          <SecureConnectionBanner isVerified={connectionVerified} isLoading={connectionChecking} />
-
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            <EncryptionStatusCard />
-            <AuditLogCard />
-          </div>
-
-          <Separator />
-
-      {/* Connections Overview */}
-      <Card className="border-border/50">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <KeyRound className="h-4 w-4 text-primary" />
-            סקירת חיבורים מוצפנים
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-            {[
-              { name: 'WhatsApp', config: activeWaConfig, type: waGateway === 'green_api' ? 'Green API' : 'WBA' },
-              { name: 'n8n Webhook', config: existingN8n, type: 'Webhook' },
-              { name: 'Gemini AI', config: existingGemini, type: 'API Key' },
-              { name: '019 SMS', config: existingSms, type: 'Credentials' },
-              { name: 'Mapbox', config: existingMapbox, type: 'Access Token' },
-              { name: 'Meta Ads', config: existingMeta, type: 'Marketing API' },
-            ].map(({ name, config, type }) => (
-              <div key={name} className="p-3 rounded-lg border border-border/50 space-y-1">
-                <div className="flex items-center justify-between">
-                  <span className="text-sm font-medium">{name}</span>
-                  {config?.is_active ? (
-                    <Lock className="h-3.5 w-3.5 text-emerald-500" />
-                  ) : (
-                    <XCircle className="h-3.5 w-3.5 text-muted-foreground/40" />
-                  )}
-                </div>
-                <p className="text-[10px] text-muted-foreground">{type}</p>
-                {config && (
-                  <p className="text-[10px] text-muted-foreground">
-                    עודכן: {config.updated_at ? new Date(config.updated_at).toLocaleDateString('he-IL') : '-'}
-                  </p>
-                )}
-              </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
-
       {/* Service Cards */}
 
       {/* Homely API */}
