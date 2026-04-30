@@ -152,7 +152,7 @@ const CircularScore = ({ score }: { score: number }) => {
 
 const PAGE_SIZE = 50;
 
-const VoterCRM = () => {
+const LeadCRM = () => {
   const { user } = useAuth();
   const { isDemoMode, demoCandidateId } = useDemoMode();
   const blockDemoAction = useDemoGuard();
@@ -1470,4 +1470,4 @@ const VoterCRM = () => {
   );
 };
 
-export default VoterCRM;
+export default LeadCRM;

@@ -32,7 +32,7 @@ const demoPage: CandidatePage = {
   supporter_count: 18420,
 };
 
-export default function PublicCandidatePage() {
+export default function PublicListingPage() {
   const { slug = 'demo-candidate' } = useParams();
   const [input, setInput] = useState('');
   const [sending, setSending] = useState(false);
