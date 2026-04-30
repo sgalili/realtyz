@@ -117,8 +117,8 @@ const LiveConversations = () => {
     queryFn: async () => {
       const { data: chats } = await supabase
         .from('chat_history')
-        .select('voter_id, content, created_at')
-        .not('voter_id', 'is', null)
+        .select('lead_id, content, created_at')
+        .not('lead_id', 'is', null)
         .order('created_at', { ascending: false })
         .limit(500);
 
@@ -126,14 +126,14 @@ const LiveConversations = () => {
 
       const latest = new Map<string, { content: string; created_at: string }>();
       for (const c of chats) {
-        if (c.voter_id && !latest.has(c.voter_id)) {
-          latest.set(c.voter_id, { content: c.content ?? '', created_at: c.created_at ?? '' });
+        if (c.lead_id && !latest.has(c.lead_id)) {
+          latest.set(c.lead_id, { content: c.content ?? '', created_at: c.created_at ?? '' });
         }
       }
 
       const voterIds = [...latest.keys()];
       const { data: voters } = await supabase
-        .from('voters')
+        .from('leads')
         .select('id, full_name, city, profile_picture_url')
         .in('id', voterIds);
 
@@ -171,7 +171,7 @@ const LiveConversations = () => {
       const { data, count } = await supabase
         .from('chat_history')
         .select('*', { count: 'exact' })
-        .eq('voter_id', selectedVoterId!)
+        .eq('lead_id', selectedVoterId!)
         .order('created_at', { ascending: false })
         .range(pageParam * CHAT_PAGE_SIZE, (pageParam + 1) * CHAT_PAGE_SIZE - 1);
       return { rows: data ?? [], total: count ?? 0, page: pageParam };
@@ -188,7 +188,7 @@ const LiveConversations = () => {
   // freeze the thread snapshot (don't append new live messages) to prevent jumps.
   const thread = useMemo(() => {
     if (isDemoMode && selectedVoterId) {
-      const base = DEMO_MESSAGES.filter((msg) => msg.voter_id === selectedVoterId).slice(-18);
+      const base = DEMO_MESSAGES.filter((msg) => msg.lead_id === selectedVoterId).slice(-18);
       return base;
     }
     const all = threadPages?.pages.flatMap(p => p.rows) ?? [];
@@ -201,7 +201,7 @@ const LiveConversations = () => {
     enabled: !!selectedVoterId && !isDemoMode,
     queryFn: async () => {
       const { data } = await supabase
-        .from('voters')
+        .from('leads')
         .select('*')
         .eq('id', selectedVoterId!)
         .single();
@@ -229,7 +229,7 @@ const LiveConversations = () => {
     setDemoVoterList((prev) => {
       if (prev.length > 0) return prev;
       return DEMO_VOTERS.slice(0, VISIBLE_COUNT).map((voter, index) => {
-        const msgs = DEMO_MESSAGES.filter((msg) => msg.voter_id === voter.id);
+        const msgs = DEMO_MESSAGES.filter((msg) => msg.lead_id === voter.id);
         const last = msgs[msgs.length - 1];
         return {
           id: voter.id,
@@ -291,7 +291,7 @@ const LiveConversations = () => {
     setSending(true);
     try {
       await sendToN8n('message_sent', {
-        voter_id: selectedVoterId,
+        lead_id: selectedVoterId,
         phone_number: voterProfile.phone_number,
         full_name: voterProfile.full_name,
         message: manualMsg.trim(),

@@ -34,11 +34,11 @@ serve(async (req) => {
       .eq("id", link.id);
 
     // 3. If the link has a tag, try to update the voter's interest_tag
-    // We use the referrer or a voter_id query param if provided
+    // We use the referrer or a lead_id query param if provided
     const voterId = url.searchParams.get("v");
     if (voterId && link.tag) {
       await supabase
-        .from("voters")
+        .from("leads")
         .update({ interest_tag: link.tag, last_interaction_at: new Date().toISOString() })
         .eq("id", voterId);
     }

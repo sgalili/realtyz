@@ -153,7 +153,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     return {
       'ניהול בוחרים': demoVoters.length,
       'תיבת הודעות': demoMessages.length,
-      'שיחות חיות': new Set(demoMessages.slice(0, 18).map((message) => message.voter_id)).size,
+      'שיחות חיות': new Set(demoMessages.slice(0, 18).map((message) => message.lead_id)).size,
       'מאגר הידע': demoKnowledge.length,
       'מרכז הקמפיינים': 7 + DEMO_CAMPAIGNS.filter((campaign) => campaign.status === 'active' || campaign.status === 'scheduled').length,
       'יומן פעילות': 36,
@@ -172,22 +172,22 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
       const since7d = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
       const [voters, messages, liveMessages, knowledge, approvals, activity, scheduled, campaigns, sentiment, conversations] = await Promise.all([
-        supabase.from('voters').select('id', { count: 'exact', head: true }).gte('created_at', since24h),
+        supabase.from('leads').select('id', { count: 'exact', head: true }).gte('created_at', since24h),
         supabase.from('messages').select('id', { count: 'exact', head: true }).gte('created_at', since24h),
-        supabase.from('messages').select('voter_id').gte('created_at', since1h),
+        supabase.from('messages').select('lead_id').gte('created_at', since1h),
         supabase.from('knowledge_documents').select('id', { count: 'exact', head: true }).gte('created_at', since7d),
         supabase.from('approval_queue').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('interaction_activity_log').select('id', { count: 'exact', head: true }).gte('created_at', since24h),
         supabase.from('scheduled_items').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
         supabase.from('campaigns').select('id', { count: 'exact', head: true }),
-        supabase.from('voters').select('id', { count: 'exact', head: true }).eq('sentiment', 'negative'),
+        supabase.from('leads').select('id', { count: 'exact', head: true }).eq('sentiment', 'negative'),
         supabase.from('chat_history').select('id', { count: 'exact', head: true }).gte('created_at', since24h),
       ]);
 
       return {
         'ניהול בוחרים': voters.count ?? 0,
         'תיבת הודעות': messages.count ?? 0,
-        'שיחות חיות': new Set((liveMessages.data ?? []).map((message) => message.voter_id).filter(Boolean)).size,
+        'שיחות חיות': new Set((liveMessages.data ?? []).map((message) => message.lead_id).filter(Boolean)).size,
         'מאגר הידע': knowledge.count ?? 0,
         'מרכז הקמפיינים': (approvals.count ?? 0) + (scheduled.count ?? 0) + (campaigns.count ?? 0),
         'יומן פעילות': activity.count ?? 0,

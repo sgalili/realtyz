@@ -45,7 +45,7 @@ export default function PublicCandidatePage() {
     queryFn: async () => {
       if (slug === 'demo-candidate') return demoPage;
       const db = supabase as any;
-      const { data, error } = await db.from('candidate_pages').select('*').eq('slug', slug).eq('is_published', true).maybeSingle();
+      const { data, error } = await db.from('listings').select('*').eq('slug', slug).eq('is_published', true).maybeSingle();
       if (error) throw error;
       return (data ?? demoPage) as CandidatePage;
     },

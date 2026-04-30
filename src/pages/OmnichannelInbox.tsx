@@ -136,7 +136,7 @@ const OmnichannelInbox = () => {
     queryKey: ['inbox-voters'],
     enabled: !isDemoMode,
     queryFn: async () => {
-      const { data } = await supabase.from('voters').select('*').order('last_interaction_at', { ascending: false });
+      const { data } = await supabase.from('leads').select('*').order('last_interaction_at', { ascending: false });
       return data ?? [];
     },
   });
@@ -148,7 +148,7 @@ const OmnichannelInbox = () => {
       const { data } = await supabase.from('messages').select('*').order('created_at', { ascending: false });
       const map = new Map<string, typeof data[0]>();
       data?.forEach((msg) => {
-        if (msg.voter_id && !map.has(msg.voter_id)) map.set(msg.voter_id, msg);
+        if (msg.lead_id && !map.has(msg.lead_id)) map.set(msg.lead_id, msg);
       });
       return map;
     },
@@ -158,7 +158,7 @@ const OmnichannelInbox = () => {
     queryKey: ['chat-messages', selectedVoterId],
     enabled: !!selectedVoterId && !isDemoMode,
     queryFn: async () => {
-      const { data } = await supabase.from('messages').select('*').eq('voter_id', selectedVoterId!).order('created_at', { ascending: true });
+      const { data } = await supabase.from('messages').select('*').eq('lead_id', selectedVoterId!).order('created_at', { ascending: true });
       return data ?? [];
     },
   });
@@ -236,7 +236,7 @@ const OmnichannelInbox = () => {
     if (isDemoMode) {
       const merged = new Map(base);
       voters.slice(0, 50).forEach(v => {
-        const msgs = demoMessages.filter(m => m.voter_id === v.id);
+        const msgs = demoMessages.filter(m => m.lead_id === v.id);
         if (msgs.length > 0) {
           const last = { ...msgs[msgs.length - 1], created_at: v.last_interaction_at };
           merged.set(v.id, last as any);
@@ -249,7 +249,7 @@ const OmnichannelInbox = () => {
 
   const chatMessages = useMemo(() => {
     if (isDemoMode && selectedVoterId?.startsWith('demo-voter-')) {
-      return demoMessages.filter(m => m.voter_id === selectedVoterId).sort(
+      return demoMessages.filter(m => m.lead_id === selectedVoterId).sort(
         (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
       );
     }
@@ -265,7 +265,7 @@ const OmnichannelInbox = () => {
       const attachmentText = file ? `\n\n📎 ${file.name} (${Math.round(file.size / 1024)}KB)` : '';
       const { data, error } = await supabase.functions.invoke('send-message', {
         body: {
-          voter_id: selectedVoterId,
+          lead_id: selectedVoterId,
           content: `${safeContent}${attachmentText}`.trim(),
           channel: sendChannel,
           phone_number: selectedVoter?.phone_number,

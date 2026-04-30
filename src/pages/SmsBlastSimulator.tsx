@@ -544,7 +544,7 @@ export default function SmsBlastSimulator() {
       // must come from a user action (upload or picker confirm).
       try {
         const { count } = await (supabase as any)
-          .from('voters')
+          .from('leads')
           .select('id', { count: 'exact', head: true })
           .eq('is_demo', false);
         if (cancelled) return;
@@ -562,7 +562,7 @@ export default function SmsBlastSimulator() {
         }
 
         const { data: rows } = await (supabase as any)
-          .from('voters')
+          .from('leads')
           .select('city, interest_tag, status, loyalty_tier')
           .eq('is_demo', false)
           .limit(5000);
@@ -601,7 +601,7 @@ export default function SmsBlastSimulator() {
           if (!cancelled) setFilterCount(simulated);
           return;
         }
-        let q: any = (supabase as any).from('voters').select('id', { count: 'exact', head: true }).eq('is_demo', false);
+        let q: any = (supabase as any).from('leads').select('id', { count: 'exact', head: true }).eq('is_demo', false);
         if (filterCity !== 'all') q = q.eq('city', filterCity);
         if (filterTag !== 'all') q = q.eq('interest_tag', filterTag);
         if (filterStatus !== 'all') q = q.eq('status', filterStatus);
@@ -896,7 +896,7 @@ export default function SmsBlastSimulator() {
 
       // 3) Pull real recipients from voters table
       const { data: voterRows, error: voterErr } = await supabase
-        .from('voters')
+        .from('leads')
         .select('id, full_name, phone_number, city, email')
         .eq('is_demo', false)
         .order('created_at', { ascending: false })
@@ -950,7 +950,7 @@ export default function SmsBlastSimulator() {
             user_id: user.id,
             campaign_name: blastName,
             channel,
-            voter_id: v.id,
+            lead_id: v.id,
             recipient_phone: v.phone_number ?? null,
             recipient_email: (v as any).email ?? null,
             recipient_name: v.full_name ?? null,

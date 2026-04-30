@@ -16,7 +16,7 @@ const SystemHealthIndicator = () => {
     queryKey: ['health-db'],
     queryFn: async () => {
       try {
-        const { error } = await supabase.from('voters').select('id', { count: 'exact', head: true });
+        const { error } = await supabase.from('leads').select('id', { count: 'exact', head: true });
         return !error;
       } catch {
         return false;

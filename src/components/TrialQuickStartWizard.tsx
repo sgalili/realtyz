@@ -135,7 +135,7 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
           .select('*', { count: 'exact', head: true })
           .eq('user_id', user.id),
         supabase.from('social_connections').select('platform, is_connected, encrypted_session, credentials'),
-        supabase.from('voters').select('*', { count: 'exact', head: true }),
+        supabase.from('leads').select('*', { count: 'exact', head: true }),
       ]);
       if (cancel) return;
       setKbDoneCount(kbCount ?? 0);
@@ -253,7 +253,7 @@ export function TrialQuickStartWizard({ open, onClose }: Props) {
         interest_tag: 'trial-import',
         is_demo: false,
       }));
-      const { error } = await (supabase as any).from('voters').insert(rows);
+      const { error } = await (supabase as any).from('leads').insert(rows);
       if (error) {
         if (String(error.message || '').includes('TRIAL_RECORD_LIMIT')) {
           toast.error('מסלול הניסיון מוגבל ל-100 רשומות');

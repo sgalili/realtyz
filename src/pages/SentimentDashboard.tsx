@@ -84,7 +84,7 @@ const SentimentDashboard = () => {
   const { data: sentimentDist } = useQuery({
     queryKey: ['sentiment-distribution'],
     queryFn: async () => {
-      const { data } = await supabase.from('voters').select('sentiment');
+      const { data } = await supabase.from('leads').select('sentiment');
       const map: Record<string, number> = { positive: 0, neutral: 0, negative: 0 };
       data?.forEach((v) => {
         const s = v.sentiment || 'neutral';
@@ -104,7 +104,7 @@ const SentimentDashboard = () => {
   const { data: sentimentRadar } = useQuery({
     queryKey: ['sentiment-radar'],
     queryFn: async () => {
-      const { data } = await supabase.from('voters').select('sentiment, interest_score_json');
+      const { data } = await supabase.from('leads').select('sentiment, interest_score_json');
       const buckets: Record<string, Record<string, number[]>> = {
         positive: {}, neutral: {}, negative: {},
       };
@@ -135,7 +135,7 @@ const SentimentDashboard = () => {
   const { data: cityPulse } = useQuery({
     queryKey: ['city-pulse'],
     queryFn: async () => {
-      const { data } = await supabase.from('voters').select('city, sentiment');
+      const { data } = await supabase.from('leads').select('city, sentiment');
       const map = new Map<string, { positive: number; neutral: number; negative: number; total: number }>();
       data?.forEach((v) => {
         const city = v.city || 'לא ידוע';
@@ -171,7 +171,7 @@ const SentimentDashboard = () => {
         .not('content', 'is', null);
 
       // Also get interest tags for extra signal
-      const { data: voters } = await supabase.from('voters').select('interest_tag');
+      const { data: voters } = await supabase.from('leads').select('interest_tag');
 
       const stopWords = new Set([
         'את', 'של', 'על', 'עם', 'לא', 'זה', 'יש', 'אני', 'הוא', 'היא',

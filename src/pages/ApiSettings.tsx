@@ -150,7 +150,7 @@ const AuditLogCard = () => {
       // Get last 10 voter interactions as a proxy for "access"
       const { data } = await supabase
         .from('messages')
-        .select('id, created_at, sender_type, voter_id')
+        .select('id, created_at, sender_type, lead_id')
         .order('created_at', { ascending: false })
         .limit(10);
       return data ?? [];
@@ -184,7 +184,7 @@ const AuditLogCard = () => {
           timestamp: m.created_at,
           user_email: m.sender_type === 'system' ? 'system@kalpiz.ai' : email,
           action: m.sender_type === 'system' ? 'שליחת הודעה אוטומטית' : 'גישה למאגר בוחרים',
-          target: `voter:${(m.voter_id || '').slice(0, 8)}...`,
+          target: `voter:${(m.lead_id || '').slice(0, 8)}...`,
         });
       }
     });
@@ -293,7 +293,7 @@ const ApiSettings = () => {
       setConnectionChecking(true);
       try {
         // Test DB connectivity
-        const { error } = await supabase.from('voters').select('id', { count: 'exact', head: true });
+        const { error } = await supabase.from('leads').select('id', { count: 'exact', head: true });
         // Test edge function connectivity
         const res = await fetch(edgeFnBase, { headers: edgeFnHeaders });
         setConnectionVerified(!error && res.ok);
@@ -936,8 +936,8 @@ const DbAccessLog = () => {
     queryFn: async () => {
       // Combine recent voter reads + message activity as access events
       const [{ data: voterReads }, { data: msgActivity }] = await Promise.all([
-        supabase.from('voters').select('id, full_name, created_at').order('created_at', { ascending: false }).limit(3),
-        supabase.from('messages').select('id, created_at, sender_type, voter_id').order('created_at', { ascending: false }).limit(3),
+        supabase.from('leads').select('id, full_name, created_at').order('created_at', { ascending: false }).limit(3),
+        supabase.from('messages').select('id, created_at, sender_type, lead_id').order('created_at', { ascending: false }).limit(3),
       ]);
 
       type LogEntry = { id: string; timestamp: string; actor: string; action: string; resource: string; verified: boolean };
@@ -961,7 +961,7 @@ const DbAccessLog = () => {
           timestamp: m.created_at || new Date().toISOString(),
           actor: m.sender_type === 'system' ? 'system@kalpiz.ai' : email,
           action: 'WRITE',
-          resource: `messages/${(m.voter_id || '').slice(0, 8)}`,
+          resource: `messages/${(m.lead_id || '').slice(0, 8)}`,
           verified: true,
         });
       });

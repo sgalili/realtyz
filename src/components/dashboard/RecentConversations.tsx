@@ -10,7 +10,7 @@ import VoterAvatar from '@/components/VoterAvatar';
 
 interface ChatRow {
   id: string;
-  voter_id: string | null;
+  lead_id: string | null;
   role: string | null;
   content: string | null;
   created_at: string | null;
@@ -31,16 +31,16 @@ const RecentConversations = () => {
     queryFn: async () => {
       const { data } = await supabase
         .from('chat_history')
-        .select('id, voter_id, role, content, created_at')
+        .select('id, lead_id, role, content, created_at')
         .order('created_at', { ascending: false })
         .limit(20);
 
       if (!data || data.length === 0) return [];
 
       // Get unique voter IDs
-      const voterIds = [...new Set(data.map((c) => c.voter_id).filter(Boolean))] as string[];
+      const voterIds = [...new Set(data.map((c) => c.lead_id).filter(Boolean))] as string[];
       const { data: voters } = await supabase
-        .from('voters')
+        .from('leads')
         .select('id, full_name, profile_picture_url')
         .in('id', voterIds);
 
@@ -49,16 +49,16 @@ const RecentConversations = () => {
       // Group by voter, keep latest message per voter
       const byVoter = new Map<string, { voter: VoterInfo; lastMsg: ChatRow; count: number }>();
       for (const msg of data) {
-        if (!msg.voter_id) continue;
-        if (!byVoter.has(msg.voter_id)) {
-          const v = voterMap.get(msg.voter_id);
-          byVoter.set(msg.voter_id, {
-            voter: v ?? { id: msg.voter_id, full_name: null, profile_picture_url: null },
+        if (!msg.lead_id) continue;
+        if (!byVoter.has(msg.lead_id)) {
+          const v = voterMap.get(msg.lead_id);
+          byVoter.set(msg.lead_id, {
+            voter: v ?? { id: msg.lead_id, full_name: null, profile_picture_url: null },
             lastMsg: msg,
             count: 1,
           });
         } else {
-          byVoter.get(msg.voter_id)!.count++;
+          byVoter.get(msg.lead_id)!.count++;
         }
       }
 
@@ -74,7 +74,7 @@ const RecentConversations = () => {
       const { data } = await supabase
         .from('chat_history')
         .select('*')
-        .eq('voter_id', selectedVoter!.id)
+        .eq('lead_id', selectedVoter!.id)
         .order('created_at', { ascending: true })
         .limit(100);
       return data ?? [];

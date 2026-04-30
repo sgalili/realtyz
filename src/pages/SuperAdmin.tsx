@@ -109,7 +109,7 @@ const SuperAdmin = () => {
     refetchInterval: 15_000,
     queryFn: async () => {
       const [v, m, c, s] = await Promise.all([
-        supabase.from('voters').select('id', { count: 'exact', head: true }),
+        supabase.from('leads').select('id', { count: 'exact', head: true }),
         supabase.from('messages').select('id', { count: 'exact', head: true }),
         supabase.from('campaigns').select('id', { count: 'exact', head: true }),
         supabase.from('social_connections').select('id', { count: 'exact', head: true }).eq('is_connected', true),

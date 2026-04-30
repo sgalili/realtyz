@@ -35,12 +35,12 @@ serve(async (req) => {
       { data: settingsData },
       { data: recentGrowth },
     ] = await Promise.all([
-      sb.from("voters").select("*", { count: "exact", head: true }),
-      sb.from("voters").select("*", { count: "exact", head: true }).in("status", ["supporter", "active", "voted"]),
-      sb.from("voters").select("city, sentiment"),
-      sb.from("voters").select("sentiment"),
+      sb.from("leads").select("*", { count: "exact", head: true }),
+      sb.from("leads").select("*", { count: "exact", head: true }).in("status", ["supporter", "active", "voted"]),
+      sb.from("leads").select("city, sentiment"),
+      sb.from("leads").select("sentiment"),
       sb.from("campaign_settings").select("key, value"),
-      sb.from("voters").select("created_at, city").gte("created_at", new Date(Date.now() - 7 * 86400000).toISOString()),
+      sb.from("leads").select("created_at, city").gte("created_at", new Date(Date.now() - 7 * 86400000).toISOString()),
     ]);
 
     const settings = Object.fromEntries((settingsData ?? []).map((r: any) => [r.key, r.value]));

@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
     const admin = createClient(supabaseUrl, serviceKey);
 
     const { data: page, error: pageError } = await admin
-      .from("candidate_pages")
+      .from("listings")
       .select("user_id, candidate_name, headline, thesis, pillars")
       .eq("slug", parsed.data.slug)
       .eq("is_published", true)

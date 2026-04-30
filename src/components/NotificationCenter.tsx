@@ -224,7 +224,7 @@ export default function NotificationCenter() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('chat_history')
-        .select('id, content, created_at, voter_id, role')
+        .select('id, content, created_at, lead_id, role')
         .eq('role', 'user')
         .order('created_at', { ascending: false })
         .limit(200);
@@ -239,13 +239,13 @@ export default function NotificationCenter() {
   });
 
   // Fetch voter names for flagged messages
-  const voterIds = [...new Set(alerts.map(a => a.voter_id).filter(Boolean))];
+  const voterIds = [...new Set(alerts.map(a => a.lead_id).filter(Boolean))];
   const { data: voterMap = {} } = useQuery({
     queryKey: ['notif-voters', voterIds.join(',')],
     queryFn: async () => {
       if (!voterIds.length) return {};
       const { data } = await supabase
-        .from('voters')
+        .from('leads')
         .select('id, full_name')
         .in('id', voterIds as string[]);
       return Object.fromEntries((data ?? []).map(v => [v.id, v.full_name]));
@@ -412,14 +412,14 @@ export default function NotificationCenter() {
               return (
                 <button
                   key={a.id}
-                  onClick={() => handleClick(a.voter_id, a.id)}
+                  onClick={() => handleClick(a.lead_id, a.id)}
                   className={`w-full text-right px-4 py-3 border-b border-border/30 hover:bg-muted/50 transition-colors flex gap-3 items-start ${isUnread ? 'bg-primary/5' : ''}`}
                 >
                   <AlertTriangle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="text-sm font-medium truncate">
-                        {voterMap[a.voter_id ?? ''] || 'בוחר'}
+                        {voterMap[a.lead_id ?? ''] || 'בוחר'}
                       </span>
                       {keyword && (
                         <span className="text-[10px] bg-destructive/15 text-destructive px-1.5 py-0.5 rounded-full font-medium shrink-0">
