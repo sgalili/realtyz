@@ -27,7 +27,7 @@ const AdminLeads = () => {
     queryKey: ['admin-leads'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('leads')
+        .from('contact_submissions')
         .select('*')
         .order('created_at', { ascending: false });
       if (error) throw error;
@@ -48,7 +48,7 @@ const AdminLeads = () => {
       if (!result.ok && !result.skipped) throw new Error('Failed to send');
 
       // Mark as sent
-      await supabase.from('leads').update({ wa_sent: true, status: 'contacted' }).eq('id', lead.id);
+      await supabase.from('contact_submissions').update({ wa_sent: true, status: 'contacted' }).eq('id', lead.id);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin-leads'] });
