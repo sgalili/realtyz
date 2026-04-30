@@ -636,19 +636,6 @@ const ApiSettings = () => {
                 {badgeLabel && <span className="text-[10px] text-muted-foreground">{badgeLabel}</span>}
               </div>
             </div>
-            <div className="flex items-center gap-2 me-2">
-              {connected ? (
-                <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700 border-emerald-300 hover:bg-emerald-500/20">
-                  <CheckCircle className="h-2.5 w-2.5 ml-1" />
-                  Connected
-                </Badge>
-              ) : (
-                <Badge variant="secondary" className="text-[10px] text-muted-foreground">
-                  <XCircle className="h-2.5 w-2.5 ml-1" />
-                  Disconnected
-                </Badge>
-              )}
-            </div>
           </div>
         </AccordionTrigger>
         <AccordionContent className="px-4 pb-4 pt-2">
@@ -705,19 +692,6 @@ const ApiSettings = () => {
                 <span className="text-sm font-bold">Homely API</span>
                 <span className="text-[10px] text-muted-foreground">Per-User Key</span>
               </div>
-            </div>
-            <div className="flex items-center gap-2 me-2">
-              {homelyHasKey ? (
-                <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700 border-emerald-300 hover:bg-emerald-500/20">
-                  <CheckCircle className="h-2.5 w-2.5 ml-1" />
-                  Connected
-                </Badge>
-              ) : (
-                <Badge variant="secondary" className="text-[10px] text-muted-foreground">
-                  <XCircle className="h-2.5 w-2.5 ml-1" />
-                  Disconnected
-                </Badge>
-              )}
             </div>
           </div>
         </AccordionTrigger>
