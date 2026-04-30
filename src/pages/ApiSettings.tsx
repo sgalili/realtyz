@@ -849,6 +849,7 @@ const ApiSettings = () => {
         saveLabel={activeWaConfig ? 'עדכן הגדרה' : 'שמור הגדרה'}
         savingId="whatsapp"
         testingId="whatsapp"
+        value="whatsapp"
       >
         {activeWaConfig && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30 space-y-1">
