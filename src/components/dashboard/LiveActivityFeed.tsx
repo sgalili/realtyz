@@ -47,11 +47,11 @@ export const buildLiveEvent = (index: number) => {
 
   const channel = getChannelIcon(index);
   const templates = [
-    { icon: PhoneCall, text: `שיחת AI הסתיימה עם ${name} · ${city}`, color: 'text-success', path: `/live-conversations?lead=${lead.id}` },
+    { icon: PhoneCall, text: `שיחת AI הסתיימה עם ${name} · ${city}`, color: 'text-success', path: `/live-conversations?lead=${voter.id}` },
     { icon: PhoneCall, text: `הושלמו ${(4500 + ((index * 73) % 600)).toLocaleString('he-IL')} שיחות קוליות מבוססות AI · ${city}`, color: 'text-success', path: `/campaigns?tab=broadcast` },
     { icon: UserPlus, text: `תומך חדש נכנס למשפך ${city}`, color: 'text-success', path: `/lead-crm?city=${encodeURIComponent(city)}&status=supporter` },
-    { icon: Bot, text: `AI סיווג את ${name} לפי עניין: ${lead.interest_tag || 'ביטחון'}`, color: 'text-primary', path: `/lead-crm?lead=${lead.id}` },
-    { icon: MessageSquare, text: `שיחה חדשה נפתחה עם ${name}`, color: 'text-primary', path: `/live-conversations?lead=${lead.id}` },
+    { icon: Bot, text: `AI סיווג את ${name} לפי עניין: ${voter.interest_tag || 'ביטחון'}`, color: 'text-primary', path: `/lead-crm?lead=${voter.id}` },
+    { icon: MessageSquare, text: `שיחה חדשה נפתחה עם ${name}`, color: 'text-primary', path: `/live-conversations?lead=${voter.id}` },
     { icon: Send, text: `${sent.toLocaleString()} הודעות נשלחו בקמפיין ${campaign.name}`, color: 'text-primary', path: `/campaigns?campaign=${campaign.id}` },
     { icon: PhoneCall, text: `קמפיין AI קולי שיגר ${(1200 + ((index * 41) % 800)).toLocaleString('he-IL')} דקות בערוץ הדרום`, color: 'text-primary', path: `/campaigns?tab=broadcast` },
     { icon: MapPin, text: `עלייה חיה במעורבות באזור ${city}`, color: 'text-primary', path: `/sentiment?city=${encodeURIComponent(city)}` },

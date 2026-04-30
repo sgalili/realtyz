@@ -293,7 +293,7 @@ export function StrategicGrowthSlider() {
               />
               <Stat
                 icon={<TrendingUp className="h-3.5 w-3.5" />}
-                label={`מאגר ${terms.leads}`}
+                label={`מאגר ${terms.voters}`}
                 value={formatNumber(projection.projectedPool)}
                 delta={projection.projectedPool - projection.currentPool}
                 tone="gold"

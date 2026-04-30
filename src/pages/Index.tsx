@@ -277,7 +277,7 @@ const Dashboard = () => {
         <Card>
           <CardHeader>
             <CardTitle className="text-base">הרשמות 7 ימים אחרונים</CardTitle>
-            <CardDescription>מספר {terms.leads} חדשים לפי יום</CardDescription>
+            <CardDescription>מספר {terms.voters} חדשים לפי יום</CardDescription>
           </CardHeader>
           <CardContent>
             {!activeWeekly ? (
@@ -357,7 +357,7 @@ const Dashboard = () => {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card>
           <CardHeader>
-            <CardTitle className="text-base">{terms.leads} שנרשמו לאחרונה</CardTitle>
+            <CardTitle className="text-base">{terms.voters} שנרשמו לאחרונה</CardTitle>
           </CardHeader>
           <CardContent>
             {!activeRecentVoters ? (

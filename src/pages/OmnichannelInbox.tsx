@@ -376,7 +376,7 @@ const OmnichannelInbox = () => {
                             className="absolute left-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                             aria-label={statusHebrew[voter.status] || voter.status}
                           >
-                            <span className={`h-2.5 w-2.5 rounded-full ring-4 ${statusLed[lead.status]?.dot || 'bg-muted-foreground'} ${statusLed[lead.status]?.ring || 'ring-muted'}`} />
+                            <span className={`h-2.5 w-2.5 rounded-full ring-4 ${statusLed[voter.status]?.dot || 'bg-muted-foreground'} ${statusLed[voter.status]?.ring || 'ring-muted'}`} />
                           </button>
                         </PopoverTrigger>
                         <PopoverContent side="left" align="start" className="w-48 text-right" onClick={(event) => event.stopPropagation()}>

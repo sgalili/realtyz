@@ -473,7 +473,7 @@ function CalculatorBody() {
           status: 'active',
         }, { onConflict: 'user_id' });
       if (error) throw error;
-      toast.success(`החבילה עודכנה · ₪${formatILS(monthlyTotal)}/חודש · ${transactions} ${unitPlural}`);
+      toast.success(`החבילה עודכנה · ₪${formatILS(monthlyTotal)}/חודש · ${mandates} ${unitPlural}`);
     } catch (e) {
       toast.error('שגיאה בעדכון החבילה');
       console.error(e);
@@ -608,7 +608,7 @@ function CalculatorBody() {
                 <div className="mt-3 text-center text-[12.5px] font-medium text-muted-foreground">
                   {mandates === 1
                     ? `${unitSingular} = ${formatILS(VOTES_PER_MANDATE)}~ ${voterPlural} בקלפי`
-                    : `${transactions} ${unitPlural} = ${formatILS(transactions * VOTES_PER_MANDATE)}~ ${voterPlural} בקלפי`}
+                    : `${mandates} ${unitPlural} = ${formatILS(mandates * VOTES_PER_MANDATE)}~ ${voterPlural} בקלפי`}
                 </div>
               </div>
 
@@ -941,7 +941,7 @@ function CalculatorBody() {
                     </div>
                     <FormulaRow
                       icon={<Sparkles className="h-3.5 w-3.5 text-primary" />}
-                      label={`חבילת ${transactions} ${transactions === 1 ? unitSingular : unitPlural} ≈ ${formatILS(requiredVotes)} ${voterPlural}`}
+                      label={`חבילת ${mandates} ${mandates === 1 ? unitSingular : unitPlural} ≈ ${formatILS(requiredVotes)} ${voterPlural}`}
                       value={cardPackagePrice}
                     />
                     <FormulaRow

@@ -844,7 +844,7 @@ export const getDemoCandidateMessages = (candidateId?: DemoCandidateId | null) =
   return DEMO_MESSAGES.map((message, index) => ({
     ...message,
     content: index % 5 === 0
-      ? `${message.content} הדגש של הנכס: ${listing.focus[index % listing.focus.length]}.`
+      ? `${message.content} הדגש של הנכס: ${candidate.focus[index % candidate.focus.length]}.`
       : message.content,
   }));
 };
@@ -852,24 +852,24 @@ export const getDemoCandidateMessages = (candidateId?: DemoCandidateId | null) =
 export const getDemoCandidateKnowledgeDocuments = (candidateId?: DemoCandidateId | null) => {
   const candidate = getCandidate(candidateId);
   return [
-    { id: `demo-kb-${listing.id}-1`, title: `ספר מסרים - ${listing.name}`, source_type: 'upload', chunk_count: 96 + candidate.mandateGoal, created_at: recentTimestamp(30) },
-    { id: `demo-kb-${listing.id}-2`, title: `מודיעין שטח: ${listing.focus.join(' · ')}`, source_type: 'whatsapp', chunk_count: 118 + candidate.mandateGoal * 2, created_at: recentTimestamp(75) },
-    { id: `demo-kb-${listing.id}-3`, title: `תרחיש משבר: ${listing.crisis}`, source_type: 'upload', chunk_count: 54 + candidate.mandateGoal, created_at: recentTimestamp(180) },
+    { id: `demo-kb-${candidate.id}-1`, title: `ספר מסרים - ${candidate.name}`, source_type: 'upload', chunk_count: 96 + candidate.mandateGoal, created_at: recentTimestamp(30) },
+    { id: `demo-kb-${candidate.id}-2`, title: `מודיעין שטח: ${candidate.focus.join(' · ')}`, source_type: 'whatsapp', chunk_count: 118 + candidate.mandateGoal * 2, created_at: recentTimestamp(75) },
+    { id: `demo-kb-${candidate.id}-3`, title: `תרחיש משבר: ${candidate.crisis}`, source_type: 'upload', chunk_count: 54 + candidate.mandateGoal, created_at: recentTimestamp(180) },
   ];
 };
 
 export const getDemoCandidateSurveyInsights = (candidateId?: DemoCandidateId | null) => {
   const candidate = getCandidate(candidateId);
   return [{
-    id: `demo-survey-${listing.id}`,
+    id: `demo-survey-${candidate.id}`,
     title: 'סקר שטח - [שם הנכס]',
-    summary: `${listing.focus.join(' ו־')} מובילים את הסנטימנט; תרחיש המשבר המרכזי: ${listing.crisis}.`,
+    summary: `${candidate.focus.join(' ו־')} מובילים את הסנטימנט; תרחיש המשבר המרכזי: ${candidate.crisis}.`,
     row_count: 1240 + candidate.mandateGoal * 73,
     created_at: recentTimestamp(55),
     top_concerns: candidate.focus.map((label) => ({ label })),
     weak_points: [candidate.crisis],
     swing_voters: [{ segment: candidate.electionType === 'primaries' ? 'פעילי פריימריז מתלבטים' : 'מתלבטים ארציים', count: 180 + candidate.mandateGoal * 18 }],
-    message_recommendations: [{ area: 'ארצי', script: `שלום {{שם}}, [שם הנכס] מציג/ה קו ברור סביב ${listing.focus[0]} - נשמח לשמוע מה חשוב לך.` }],
+    message_recommendations: [{ area: 'ארצי', script: `שלום {{שם}}, [שם הנכס] מציג/ה קו ברור סביב ${candidate.focus[0]} - נשמח לשמוע מה חשוב לך.` }],
     sentiment_by_area: [],
     user_id: 'demo',
     updated_at: recentTimestamp(20),
@@ -879,15 +879,15 @@ export const getDemoCandidateSurveyInsights = (candidateId?: DemoCandidateId | n
 export const getDemoCandidateCrisisAlerts = (candidateId?: DemoCandidateId | null) => {
   const candidate = getCandidate(candidateId);
   return [{
-    id: `demo-crisis-${listing.id}`,
-    title: `התראת משבר: ${listing.crisis}`,
-    summary: `זוהתה עלייה בשיח שלילי סביב ${listing.crisis}. מומלץ להגיב במסר קצר, עובדתי ולא מתגונן.`,
+    id: `demo-crisis-${candidate.id}`,
+    title: `התראת משבר: ${candidate.crisis}`,
+    summary: `זוהתה עלייה בשיח שלילי סביב ${candidate.crisis}. מומלץ להגיב במסר קצר, עובדתי ולא מתגונן.`,
     severity: 'critical',
     affected_topic: candidate.focus[0],
     affected_segment: candidate.electionType === 'primaries' ? 'פעילי פריימריז' : 'מתלבטים ארציים',
     response_options: {
       fighter: 'תגובה חדה בשם [שם הנכס]: הטענה לא מדויקת - הנה העובדות והמספרים.',
-      statesman: `תגובה ממלכתית: מבינים את החשש, מציגים תוכנית ברורה סביב ${listing.focus[0]}.`,
+      statesman: `תגובה ממלכתית: מבינים את החשש, מציגים תוכנית ברורה סביב ${candidate.focus[0]}.`,
       ignorer: 'ניטור והסתרה נקודתית של בוטים, בלי להגדיל חשיפה לשיח לא אותנטי.',
     },
   }];
@@ -901,27 +901,27 @@ export const getDemoApprovalQueue = (candidateId?: DemoCandidateId | null) => {
   const focus2 = candidate.focus[1] || focus;
   return [
     {
-      id: `demo-aq-1-${listing.id}`,
+      id: `demo-aq-1-${candidate.id}`,
       title: `הודעת WhatsApp לקבוצת מתלבטים - ${focus}`,
       platform: 'whatsapp',
       content_type: 'outbound_message',
-      proposed_content: `שלום [שם],\nראינו שאתה עוקב אחרי הדיון סביב ${focus}. רצינו לשתף עמדה קצרה וברורה של ${listing.name}: אנחנו לא מתחמקים - יש תוכנית, יש לוחות זמנים, ויש נכונות לדבר ישירות. נשמח לשמוע מה הכי חשוב לך.`,
+      proposed_content: `שלום [שם],\nראינו שאתה עוקב אחרי הדיון סביב ${focus}. רצינו לשתף עמדה קצרה וברורה של ${candidate.name}: אנחנו לא מתחמקים - יש תוכנית, יש לוחות זמנים, ויש נכונות לדבר ישירות. נשמח לשמוע מה הכי חשוב לך.`,
       edited_content: null,
       status: 'pending',
       confidence_score: 88,
       low_confidence_reason: null,
       target_voter_id: null,
       target_label: 'מתלבטים - מחוז מרכז (1,240)',
-      source_citations: [{ title: `מצע ${listing.name} - ${focus}` }, { title: 'סקר פנימי 04/26' }],
+      source_citations: [{ title: `מצע ${candidate.name} - ${focus}` }, { title: 'סקר פנימי 04/26' }],
       live_post_url: null,
       created_at: minutesAgo(7),
     },
     {
-      id: `demo-aq-2-${listing.id}`,
+      id: `demo-aq-2-${candidate.id}`,
       title: `פוסט פייסבוק - תגובה לכותרת בתקשורת`,
       platform: 'facebook',
       content_type: 'social_post',
-      proposed_content: `הכותרת הבוקר על ${focus2} מטעה. הנה העובדות, בלי רעש:\n• ${listing.name} הציע/ה תוכנית מפורטת לפני 3 חודשים.\n• היא כוללת לוחות זמנים, מקורות תקציב ופיקוח חיצוני.\n• אנחנו ממשיכים לעבוד - לא להתלונן.`,
+      proposed_content: `הכותרת הבוקר על ${focus2} מטעה. הנה העובדות, בלי רעש:\n• ${candidate.name} הציע/ה תוכנית מפורטת לפני 3 חודשים.\n• היא כוללת לוחות זמנים, מקורות תקציב ופיקוח חיצוני.\n• אנחנו ממשיכים לעבוד - לא להתלונן.`,
       edited_content: null,
       status: 'pending',
       confidence_score: 64,
@@ -933,7 +933,7 @@ export const getDemoApprovalQueue = (candidateId?: DemoCandidateId | null) => {
       created_at: minutesAgo(22),
     },
     {
-      id: `demo-aq-3-${listing.id}`,
+      id: `demo-aq-3-${candidate.id}`,
       title: `סטורי אינסטגרם - סרטון 30 שניות`,
       platform: 'instagram',
       content_type: 'social_post',
@@ -949,11 +949,11 @@ export const getDemoApprovalQueue = (candidateId?: DemoCandidateId | null) => {
       created_at: minutesAgo(95),
     },
     {
-      id: `demo-aq-4-${listing.id}`,
+      id: `demo-aq-4-${candidate.id}`,
       title: `SMS תזכורת - אירוע שטח ביום ה'`,
       platform: 'sms',
       content_type: 'outbound_message',
-      proposed_content: `${listing.name} בשטח ביום ה' ב-19:00, רחוב הרצל 14. בלי במה, בלי מתווכים - שיחה ישירה. מאשרים הגעה?`,
+      proposed_content: `${candidate.name} בשטח ביום ה' ב-19:00, רחוב הרצל 14. בלי במה, בלי מתווכים - שיחה ישירה. מאשרים הגעה?`,
       edited_content: null,
       status: 'posted',
       confidence_score: 95,
@@ -965,7 +965,7 @@ export const getDemoApprovalQueue = (candidateId?: DemoCandidateId | null) => {
       created_at: minutesAgo(420),
     },
     {
-      id: `demo-aq-5-${listing.id}`,
+      id: `demo-aq-5-${candidate.id}`,
       title: `תגובה לפוסט ב-X - אזכור שלילי`,
       platform: 'x',
       content_type: 'social_post',
@@ -989,7 +989,7 @@ export const getDemoMetaAdCampaigns = (candidateId?: DemoCandidateId | null) => 
   const focus2 = candidate.focus[1] || focus;
   return [
     {
-      id: `demo-meta-1-${listing.id}`,
+      id: `demo-meta-1-${candidate.id}`,
       name: `${focus} - מתלבטים מרכז`,
       status: 'active',
       audience_type: 'swing',
@@ -1003,8 +1003,8 @@ export const getDemoMetaAdCampaigns = (candidateId?: DemoCandidateId | null) => 
       ],
     },
     {
-      id: `demo-meta-2-${listing.id}`,
-      name: `${listing.name} - תומכים פעילים`,
+      id: `demo-meta-2-${candidate.id}`,
+      name: `${candidate.name} - תומכים פעילים`,
       status: 'active',
       audience_type: 'supporters',
       daily_budget: 220,
@@ -1017,7 +1017,7 @@ export const getDemoMetaAdCampaigns = (candidateId?: DemoCandidateId | null) => 
       ],
     },
     {
-      id: `demo-meta-3-${listing.id}`,
+      id: `demo-meta-3-${candidate.id}`,
       name: `אזעקה - תגובה לכותרת ${focus2}`,
       status: 'paused',
       audience_type: 'exclude_opponents',
@@ -1039,40 +1039,40 @@ export const getDemoCampaigns = (candidateId?: DemoCandidateId | null) => {
   const focus2 = candidate.focus[1] || focus;
   return [
     {
-      id: `demo-camp-1-${listing.id}`,
+      id: `demo-camp-1-${candidate.id}`,
       name: `WhatsApp Drip - ${focus}`,
       description: `סדרת 3 הודעות ממוקדות בנושא ${focus} למתלבטים`,
       status: 'active',
       total_sent: 12_400,
       total_clicks: 3_980,
       tag_associated: focus,
-      sms_body: `שלום [שם], רצינו לשתף עמדה קצרה של ${listing.name} בנושא ${focus}.`,
+      sms_body: `שלום [שם], רצינו לשתף עמדה קצרה של ${candidate.name} בנושא ${focus}.`,
       created_at: recentTimestamp(3),
     },
     {
-      id: `demo-camp-2-${listing.id}`,
+      id: `demo-camp-2-${candidate.id}`,
       name: `SMS תזכורת אירוע - ${focus2}`,
       description: `הזמנה לאירוע שטח בנושא ${focus2}`,
       status: 'completed',
       total_sent: 8_200,
       total_clicks: 1_640,
       tag_associated: focus2,
-      sms_body: `${listing.name} בשטח ביום ה' ב-19:00. מאשרים הגעה?`,
+      sms_body: `${candidate.name} בשטח ביום ה' ב-19:00. מאשרים הגעה?`,
       created_at: recentTimestamp(14),
     },
     {
-      id: `demo-camp-3-${listing.id}`,
+      id: `demo-camp-3-${candidate.id}`,
       name: `מבצע גיוס תומכים`,
       description: 'קמפיין רב-ערוצי לגיוס תומכים פעילים',
       status: 'active',
       total_sent: 22_600,
       total_clicks: 7_120,
       tag_associated: 'תומכים',
-      sms_body: `הצטרפו אלינו - כל קול חשוב לקמפיין של ${listing.name}.`,
+      sms_body: `הצטרפו אלינו - כל קול חשוב לקמפיין של ${candidate.name}.`,
       created_at: recentTimestamp(21),
     },
     {
-      id: `demo-camp-4-${listing.id}`,
+      id: `demo-camp-4-${candidate.id}`,
       name: `סקר עמדות - ${focus}`,
       description: 'סקר קצר למיפוי עמדות',
       status: 'completed',
@@ -1088,9 +1088,9 @@ export const getDemoCampaigns = (candidateId?: DemoCandidateId | null) => {
 export const getDemoTrackingLinks = (candidateId?: DemoCandidateId | null) => {
   const candidate = getCandidate(candidateId);
   return candidate.focus.slice(0, 3).map((tag, i) => ({
-    id: `demo-link-${listing.id}-${i}`,
-    short_code: `K${(listing.id.charCodeAt(0) + i).toString(36).toUpperCase()}${i}X${(i + 3) * 7}`,
-    target_url: `https://${listing.id}.kalpiz.co.il/${encodeURIComponent(tag)}`,
+    id: `demo-link-${candidate.id}-${i}`,
+    short_code: `K${(candidate.id.charCodeAt(0) + i).toString(36).toUpperCase()}${i}X${(i + 3) * 7}`,
+    target_url: `https://${candidate.id}.kalpiz.co.il/${encodeURIComponent(tag)}`,
     tag,
     click_count: 1_200 + i * 480,
     created_at: recentTimestamp(2 + i * 5),
@@ -1128,11 +1128,11 @@ export const getDemoConversationAnalytics = (candidateId?: DemoCandidateId | nul
     ],
     aiInsights: [
       `עליה של 22% בשיח על ${focus[0] ?? 'ביטחון'} בשכונות דרום העיר - מומלץ לתגבר נוכחות דיגיטלית שם.`,
-      `הלידים מגיבים בחיוב למסרים של אחדות בקמפיין של ${listing.name} (סנטימנט 74%+).`,
+      `הלידים מגיבים בחיוב למסרים של אחדות בקמפיין של ${candidate.name} (סנטימנט 74%+).`,
       `זוהתה התנגדות סביב נושא ${focus[1] ?? 'המיסוי המקומי'} - מומלץ לעדכן את דף המסרים (Knowledge Base).`,
     ],
     sampleConversations: [
-      { source: 'WhatsApp', status: 'הועבר לטיפול', snippet: `רציתי לדעת מה עמדת ${listing.name} לגבי ${focus[0] ?? 'ביטחון אישי'} בשכונה...` },
+      { source: 'WhatsApp', status: 'הועבר לטיפול', snippet: `רציתי לדעת מה עמדת ${candidate.name} לגבי ${focus[0] ?? 'ביטחון אישי'} בשכונה...` },
       { source: 'SMS', status: 'הושלם ע"י AI', snippet: 'תודה על המידע, אני תומך!' },
       { source: 'Transcript', status: 'דורש בדיקה', snippet: `הארנונה עלתה שוב, מה אתם מתכוונים לעשות בנושא?` },
       { source: 'WhatsApp', status: 'הושלם ע"י AI', snippet: `חשוב לי לשמוע על תוכנית ${focus[1] ?? 'החינוך'} לפני שאחליט.` },

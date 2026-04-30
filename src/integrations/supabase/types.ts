@@ -1173,6 +1173,42 @@ export type Database = {
         }
         Relationships: []
       }
+      onboarding_progress: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          is_complete: boolean
+          metadata: Json
+          status: string
+          step: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          is_complete?: boolean
+          metadata?: Json
+          status?: string
+          step?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          is_complete?: boolean
+          metadata?: Json
+          status?: string
+          step?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       onboarding_state: {
         Row: {
           candidate_or_party: string | null
