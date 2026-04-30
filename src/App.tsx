@@ -42,7 +42,7 @@ const SocialConnect = lazy(() => import("./pages/SocialConnect"));
 const OAuthCallback = lazy(() => import("./pages/OAuthCallback"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const Upgrade = lazy(() => import("./pages/Upgrade"));
-const HomelyApiSettings = lazy(() => import("./pages/HomelyApiSettings"));
+
 
 let syncToastId: string | number | undefined;
 
