@@ -1800,6 +1800,39 @@ export type Database = {
           },
         ]
       }
+      wa_providers: {
+        Row: {
+          config: Json
+          created_at: string
+          id: string
+          is_active: boolean
+          is_official: boolean
+          provider_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_official?: boolean
+          provider_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_official?: boolean
+          provider_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       whatsapp_login_otps: {
         Row: {
           attempts: number
