@@ -314,12 +314,12 @@ export function OnboardingWizard({ open, onClose }: OnboardingWizardProps) {
         {step === 1 && (
           <div className="space-y-4">
             <div className="rounded-lg border border-primary/30 bg-background p-5 text-center shadow-sm">
-              <Label className="text-lg font-black text-foreground">כמה מנדטים אתם רוצים להשיג?</Label>
+              <Label className="text-lg font-black text-foreground">כמה עסקאות אתם רוצים להשיג?</Label>
               <div className="mt-3">
-                <SliderBlock label="" value={mandateTarget} onChange={setMandateTarget} min={1} max={15} suffix=" מנדטים" />
+                <SliderBlock label="" value={mandateTarget} onChange={setMandateTarget} min={1} max={15} suffix=" עסקאות" />
               </div>
               <p className="text-sm text-muted-foreground mt-3">
-                <strong>{mandateTarget} מנדטים</strong> = {mandatePlan.targetVotes.toLocaleString()} קולות בפועל לפי {VOTES_PER_MANDATE.toLocaleString()} קולות למנדט.
+                <strong>{mandateTarget} עסקאות</strong> = {mandatePlan.targetVotes.toLocaleString()} קולות בפועל לפי {VOTES_PER_MANDATE.toLocaleString()} קולות לעסקה.
               </p>
             </div>
           </div>
@@ -331,11 +331,11 @@ export function OnboardingWizard({ open, onClose }: OnboardingWizardProps) {
               <Target className="h-4 w-4 text-primary" /> מי מוביל את הקמפיין?
             </div>
             <div>
-              <Label>שם המועמד / המפלגה</Label>
+              <Label>שם הנכס / המפלגה</Label>
               <Input
                 value={candidate}
                 onChange={(e) => setCandidate(e.target.value)}
-                placeholder="הזן שם מועמד או מפלגה"
+                placeholder="הזן שם נכס או מפלגה"
               />
             </div>
           </div>
@@ -344,16 +344,16 @@ export function OnboardingWizard({ open, onClose }: OnboardingWizardProps) {
         {step === 3 && (
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-foreground font-semibold">
-              <Target className="h-4 w-4 text-primary" /> באיזה סוג בחירות מדובר?
+              <Target className="h-4 w-4 text-primary" /> באיזה סוג מכירות מדובר?
             </div>
             <div>
-              <Label>סוג בחירות</Label>
+              <Label>סוג מכירות</Label>
               <RadioGroup value={electionType} onValueChange={setElectionType} className="mt-2">
                 {[
-                  { v: 'general', l: 'בחירות כלליות (כנסת)' },
+                  { v: 'general', l: 'מכירות כלליות (כנסת)' },
                   { v: 'primaries', l: 'פריימריז' },
-                  { v: 'municipal', l: 'בחירות מוניציפליות' },
-                  { v: 'internal', l: 'בחירות פנים-מפלגתיות' },
+                  { v: 'municipal', l: 'מכירות מוניציפליות' },
+                  { v: 'internal', l: 'מכירות פנים-מפלגתיות' },
                 ].map((o) => (
                   <div key={o.v} className="flex items-center gap-2">
                     <RadioGroupItem value={o.v} id={`et-${o.v}`} />
@@ -392,12 +392,12 @@ export function OnboardingWizard({ open, onClose }: OnboardingWizardProps) {
         {step === 5 && (
           <div className="space-y-5">
             <div className="flex items-center gap-2 text-foreground font-semibold">
-              <Target className="h-4 w-4 text-primary" /> מתי הבחירות?
+              <Target className="h-4 w-4 text-primary" /> מתי המכירות?
             </div>
             <p className="text-xs text-muted-foreground -mt-2">
-              יום הבחירות הרשמי: {ELECTION_DATE_HE} · נשארו ~{maxMonthsToElection} חודשים
+              יום המכירות הרשמי: {ELECTION_DATE_HE} · נשארו ~{maxMonthsToElection} חודשים
             </p>
-            <SliderBlock label="חודשים עד הבחירות" value={monthsToElection} onChange={setMonthsToElection} min={1} max={maxMonthsToElection} suffix=" חודשים" />
+            <SliderBlock label="חודשים עד המכירות" value={monthsToElection} onChange={setMonthsToElection} min={1} max={maxMonthsToElection} suffix=" חודשים" />
           </div>
         )}
 
@@ -447,7 +447,7 @@ export function OnboardingWizard({ open, onClose }: OnboardingWizardProps) {
               </div>
             </div>
             <div className="bg-primary/5 border border-primary/20 rounded-lg p-3 text-sm">
-              <p><span className="font-bold text-primary">תובנה:</span> שינוי אחוזי ההמרה מגדיל או מקטין את גודל הרשימות הנדרש כדי להגיע ליעד ה<strong>מנדטים</strong>.</p>
+              <p><span className="font-bold text-primary">תובנה:</span> שינוי אחוזי ההמרה מגדיל או מקטין את גודל הרשימות הנדרש כדי להגיע ליעד ה<strong>עסקאות</strong>.</p>
             </div>
           </div>
         )}
@@ -456,7 +456,7 @@ export function OnboardingWizard({ open, onClose }: OnboardingWizardProps) {
         {step === 8 && (
           <div className="space-y-4">
             <div className="flex items-center gap-2 text-foreground font-semibold">
-              <MessageSquare className="h-4 w-4 text-primary" /> הודעת פתיחה לבוחרים
+              <MessageSquare className="h-4 w-4 text-primary" /> הודעת פתיחה ללידים
             </div>
             {draftingMessage ? (
               <div className="flex items-center gap-3 py-8 justify-center text-muted-foreground">
@@ -469,7 +469,7 @@ export function OnboardingWizard({ open, onClose }: OnboardingWizardProps) {
                   value={initialMessage}
                   onChange={(e) => setInitialMessage(e.target.value)}
                   rows={8}
-                  placeholder="ההודעה הראשונה שתישלח לכל בוחר חדש..."
+                  placeholder="ההודעה הראשונה שתישלח לכל ליד חדש..."
                   className="text-sm leading-relaxed"
                   dir="rtl"
                 />

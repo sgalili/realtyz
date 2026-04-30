@@ -25,7 +25,7 @@ interface VoterInfo {
 const RecentConversations = () => {
   const [selectedVoter, setSelectedVoter] = useState<VoterInfo | null>(null);
 
-  // Recent chat messages with voter info
+  // Recent chat messages with lead info
   const { data: recentChats } = useQuery({
     queryKey: ['recent-chats'],
     queryFn: async () => {
@@ -37,7 +37,7 @@ const RecentConversations = () => {
 
       if (!data || data.length === 0) return [];
 
-      // Get unique voter IDs
+      // Get unique lead IDs
       const voterIds = [...new Set(data.map((c) => c.lead_id).filter(Boolean))] as string[];
       const { data: voters } = await supabase
         .from('leads')
@@ -46,7 +46,7 @@ const RecentConversations = () => {
 
       const voterMap = new Map((voters ?? []).map((v) => [v.id, v]));
 
-      // Group by voter, keep latest message per voter
+      // Group by lead, keep latest message per lead
       const byVoter = new Map<string, { voter: VoterInfo; lastMsg: ChatRow; count: number }>();
       for (const msg of data) {
         if (!msg.lead_id) continue;
@@ -66,9 +66,9 @@ const RecentConversations = () => {
     },
   });
 
-  // Timeline for selected voter
+  // Timeline for selected lead
   const { data: timeline } = useQuery({
-    queryKey: ['voter-timeline', selectedVoter?.id],
+    queryKey: ['lead-timeline', selectedVoter?.id],
     enabled: !!selectedVoter,
     queryFn: async () => {
       const { data } = await supabase
@@ -103,7 +103,7 @@ const RecentConversations = () => {
               >
                 <VoterAvatar fullName={voter.full_name} profilePictureUrl={voter.profile_picture_url} className="h-8 w-8" textClassName="text-xs" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">{voter.full_name || 'בוחר לא ידוע'}</p>
+                  <p className="text-sm font-medium truncate">{voter.full_name || 'ליד לא ידוע'}</p>
                   <p className="text-xs text-muted-foreground truncate">{lastMsg.content}</p>
                 </div>
                 <div className="text-left shrink-0">
@@ -128,7 +128,7 @@ const RecentConversations = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <VoterAvatar fullName={selectedVoter?.full_name ?? null} profilePictureUrl={selectedVoter?.profile_picture_url ?? null} className="h-8 w-8" textClassName="text-xs" />
-              ציר זמן - {selectedVoter?.full_name || 'בוחר'}
+              ציר זמן - {selectedVoter?.full_name || 'ליד'}
             </DialogTitle>
           </DialogHeader>
           <ScrollArea className="max-h-[60vh]">

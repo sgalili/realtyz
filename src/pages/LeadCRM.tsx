@@ -152,7 +152,7 @@ const CircularScore = ({ score }: { score: number }) => {
 
 const PAGE_SIZE = 50;
 
-const VoterCRM = () => {
+const LeadCRM = () => {
   const { user } = useAuth();
   const { isDemoMode, demoCandidateId } = useDemoMode();
   const blockDemoAction = useDemoGuard();
@@ -200,7 +200,7 @@ const VoterCRM = () => {
     return () => clearTimeout(searchTimerRef.current);
   }, [search]);
 
-  useRealtimeSubscription('messages', [['voter-messages', selectedVoterId ?? '']]);
+  useRealtimeSubscription('messages', [['lead-messages', selectedVoterId ?? '']]);
 
   // Server-side paginated + filtered query
   const {
@@ -210,7 +210,7 @@ const VoterCRM = () => {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['voters-infinite', debouncedSearch, interestFilter, cityFilter, statusFilter],
+    queryKey: ['leads-infinite', debouncedSearch, interestFilter, cityFilter, statusFilter],
     enabled: !isDemoMode,
     queryFn: async ({ pageParam = 0 }) => {
       let query = supabase.from('leads').select('*', { count: 'exact' });
@@ -245,16 +245,16 @@ const VoterCRM = () => {
   const dbVoters = useMemo(() => voterPages?.pages.flatMap(p => p.rows) ?? [], [voterPages]);
   const demoVoters = useMemo(() => getDemoCandidateVoters(demoCandidateId), [demoCandidateId]);
   const demoMessages = useMemo(() => getDemoCandidateMessages(demoCandidateId), [demoCandidateId]);
-  const voters = useMemo(() => {
+  const leads = useMemo(() => {
     if (!isDemoMode) return dbVoters;
     const demoIds = new Set(demoVoters.map((v) => v.id));
     return [...demoVoters, ...dbVoters.filter((v) => !demoIds.has(v.id))] as typeof dbVoters;
   }, [isDemoMode, dbVoters, demoVoters]);
-  const totalCount = isDemoMode ? Math.max(1_000_000, voters.length) : (voterPages?.pages[0]?.total ?? 0);
+  const totalCount = isDemoMode ? Math.max(1_000_000, leads.length) : (voterPages?.pages[0]?.total ?? 0);
 
   // Lightweight query for filter options (distinct values)
   const { data: filterOptions } = useQuery({
-    queryKey: ['voter-filter-options'],
+    queryKey: ['lead-filter-options'],
     enabled: !isDemoMode,
     queryFn: async () => {
       const { data } = await supabase.from('leads').select('city, interest_tag, status');
@@ -266,9 +266,9 @@ const VoterCRM = () => {
     staleTime: 10 * 60 * 1000,
   });
 
-  // Unfiltered total - reflects ALL real voters in the user's account
+  // Unfiltered total - reflects ALL real leads in the user's account
   const { data: realTotalCount = 0 } = useQuery({
-    queryKey: ['voters-total'],
+    queryKey: ['leads-total'],
     enabled: !isDemoMode,
     queryFn: async () => {
       const { count } = await supabase
@@ -290,7 +290,7 @@ const VoterCRM = () => {
     : filterOptions?.statuses ?? [];
 
   const { data: voterMessages } = useQuery({
-    queryKey: ['voter-messages', selectedVoterId],
+    queryKey: ['lead-messages', selectedVoterId],
     enabled: !!selectedVoterId && !isDemoMode,
     queryFn: async () => {
       const { data } = await supabase.from('messages').select('*').eq('lead_id', selectedVoterId!).order('created_at', { ascending: true });
@@ -300,7 +300,7 @@ const VoterCRM = () => {
   });
 
   const { data: voterChatHistory } = useQuery({
-    queryKey: ['voter-chat-history', selectedVoterId],
+    queryKey: ['lead-chat-history', selectedVoterId],
     enabled: !!selectedVoterId && !isDemoMode,
     queryFn: async () => {
       const { data } = await supabase.from('chat_history').select('*').eq('lead_id', selectedVoterId!).order('created_at', { ascending: true });
@@ -318,17 +318,17 @@ const VoterCRM = () => {
     staleTime: 5 * 60 * 1000,
   });
 
-  const selectedVoter = voters?.find((v) => v.id === selectedVoterId);
-  const activeVoterMessages = isDemoMode && selectedVoterId?.startsWith('demo-voter-')
+  const selectedVoter = leads?.find((v) => v.id === selectedVoterId);
+  const activeVoterMessages = isDemoMode && selectedVoterId?.startsWith('demo-lead-')
     ? demoMessages.filter((m) => m.lead_id === selectedVoterId)
     : voterMessages;
-  const activeVoterChatHistory = isDemoMode && selectedVoterId?.startsWith('demo-voter-')
+  const activeVoterChatHistory = isDemoMode && selectedVoterId?.startsWith('demo-lead-')
     ? demoMessages.filter((m) => m.lead_id === selectedVoterId)
     : voterChatHistory;
   const filtered = useMemo(() => {
-    if (!voters) return voters;
-    if (profileFilter === 'all') return voters;
-    return voters.filter((v) => {
+    if (!leads) return leads;
+    if (profileFilter === 'all') return leads;
+    return leads.filter((v) => {
       // Compute profile badge inline (mirror getPoliticalProfile logic)
       const eng = v.engagement_score ?? 0;
       const sentKey = eng >= 60 ? 'positive' : eng >= 30 ? 'neutral' : 'negative';
@@ -347,7 +347,7 @@ const VoterCRM = () => {
       else badge = 'תומך פוטנציאלי';
       return badge === profileFilter;
     });
-  }, [voters, profileFilter]);
+  }, [leads, profileFilter]);
 
   const getScoreColor = (score: number | null) => {
     if (!score || score < 30) return 'bg-red-500/10 text-red-600';
@@ -427,7 +427,7 @@ const VoterCRM = () => {
 
   const handleExportExcel = (mode: 'selected' | 'filtered') => {
     const source = mode === 'selected'
-      ? voters?.filter(v => selectedIds.has(v.id))
+      ? leads?.filter(v => selectedIds.has(v.id))
       : filtered;
     const rows = source?.map(v => ({
       'שם מלא': v.full_name, 'טלפון': formatPhoneDisplay(v.phone_number), 'עיר': v.city,
@@ -438,16 +438,16 @@ const VoterCRM = () => {
     if (!rows?.length) { toast.error('אין נתונים לייצוא'); return; }
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'בוחרים');
-    XLSX.writeFile(wb, `בוחרים_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
-    toast.success(`${rows.length} בוחרים יוצאו בהצלחה`);
+    XLSX.utils.book_append_sheet(wb, ws, 'לידים');
+    XLSX.writeFile(wb, `לידים_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    toast.success(`${rows.length} לידים יוצאו בהצלחה`);
   };
 
   const handleAiBlastPreview = () => {
-    const selected = voters?.filter(v => selectedIds.has(v.id)) ?? [];
+    const selected = leads?.filter(v => selectedIds.has(v.id)) ?? [];
     const previews = selected.slice(0, 10).map(v => {
       const interest = v.interest_tag || 'כללי';
-      const name = v.full_name || 'בוחר';
+      const name = v.full_name || 'ליד';
       const score = v.engagement_score ?? 0;
       let tone = 'ידידותי';
       if (score >= 60) tone = 'חם ומחזק';
@@ -471,10 +471,10 @@ const VoterCRM = () => {
         new_status: newStatus,
       });
       if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ['voters-infinite'] });
-      queryClient.invalidateQueries({ queryKey: ['voter-filter-options'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] });
       setSelectedIds(new Set());
-      toast.success(`${count ?? ids.length} בוחרים עודכנו ל-${hebrewLabel(statusHebrew, newStatus)}`);
+      toast.success(`${count ?? ids.length} לידים עודכנו ל-${hebrewLabel(statusHebrew, newStatus)}`);
     } catch (err: any) {
       toast.error('שגיאה בעדכון סטטוס: ' + (err?.message || ''));
     }
@@ -490,20 +490,20 @@ const VoterCRM = () => {
         new_interest_tag: tag,
       });
       if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ['voters-infinite'] });
-      queryClient.invalidateQueries({ queryKey: ['voter-filter-options'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] });
       setSelectedIds(new Set());
-      toast.success(`${count ?? ids.length} בוחרים עודכנו לתגית "${tag}"`);
+      toast.success(`${count ?? ids.length} לידים עודכנו לתגית "${tag}"`);
     } catch (err: any) {
       toast.error('שגיאה בעדכון תגית: ' + (err?.message || ''));
     }
   };
 
   const handleBatchDelete = async () => {
-    if (blockDemoAction('delete-voters')) return;
+    if (blockDemoAction('delete-leads')) return;
     const ids = Array.from(selectedIds);
     if (!ids.length) return;
-    if (!confirm(`האם למחוק ${ids.length} בוחרים? פעולה זו בלתי הפיכה.`)) return;
+    if (!confirm(`האם למחוק ${ids.length} לידים? פעולה זו בלתי הפיכה.`)) return;
     const { error, count } = await supabase
       .from('leads')
       .delete({ count: 'exact' })
@@ -514,25 +514,25 @@ const VoterCRM = () => {
       return;
     }
     await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['voters-infinite'] }),
-      queryClient.invalidateQueries({ queryKey: ['voter-filter-options'] }),
-      queryClient.invalidateQueries({ queryKey: ['voters-total'] }),
+      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }),
+      queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] }),
+      queryClient.invalidateQueries({ queryKey: ['leads-total'] }),
     ]);
     setSelectedIds(new Set());
-    toast.success(`${count} בוחרים נמחקו בהצלחה`);
+    toast.success(`${count} לידים נמחקו בהצלחה`);
   };
 
   const handleAddToCampaign = async (campaignId: string) => {
     if (blockDemoAction('add-to-campaign')) return;
     const ids = Array.from(selectedIds);
     await sendToN8n('add_to_campaign', { campaign_id: campaignId, lead_ids: ids });
-    toast.success(`${ids.length} בוחרים נוספו לקמפיין`);
+    toast.success(`${ids.length} לידים נוספו לקמפיין`);
     setAddToCampaignOpen(false);
     setSelectedIds(new Set());
   };
 
   const handleAddVoter = async () => {
-    if (blockDemoAction('add-voter')) return;
+    if (blockDemoAction('add-lead')) return;
     if (!newVoter.full_name.trim() || !newVoter.phone_number.trim()) {
       toast.error('שם מלא וטלפון הם שדות חובה');
       return;
@@ -554,30 +554,30 @@ const VoterCRM = () => {
       if (newVoter.telegram_username.trim()) insertData.telegram_username = newVoter.telegram_username.trim();
       const { error } = await supabase.from('leads').insert(insertData as any);
       if (error) throw error;
-      queryClient.invalidateQueries({ queryKey: ['voters-infinite'] });
-      queryClient.invalidateQueries({ queryKey: ['voter-filter-options'] });
-      queryClient.invalidateQueries({ queryKey: ['voters-total'] });
-      toast.success('בוחר נוסף בהצלחה');
+      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-total'] });
+      toast.success('ליד נוסף בהצלחה');
       setAddVoterOpen(false);
       setNewVoter({ full_name: '', phone_number: '', city: '', identity_number: '', instagram_handle: '', telegram_username: '' });
     } catch (err: any) {
       const msg = String(err?.message || '');
       if (msg.includes('TRIAL_RECORD_LIMIT')) {
-        toast.error('מסלול הניסיון מוגבל ל-100 רשומות. שדרג עכשיו כדי לנהל את כל מאגר הבוחרים שלך', {
+        toast.error('מסלול הניסיון מוגבל ל-100 רשומות. שדרג עכשיו כדי לנהל את כל מאגר הלידים שלך', {
           duration: 8000,
           action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/upgrade') },
         });
       } else {
-        toast.error('שגיאה בהוספת בוחר: ' + (err?.message || 'שגיאה'));
+        toast.error('שגיאה בהוספת ליד: ' + (err?.message || 'שגיאה'));
       }
     } finally {
       setAddingVoter(false);
     }
   };
 
-  const getRadarData = (voter: any) => {
+  const getRadarData = (lead: any) => {
     const defaults = { security: 0, economy: 0, judicial: 0, social: 0, governance: 0 };
-    const scores = (voter as any).interest_score_json || defaults;
+    const scores = (lead as any).interest_score_json || defaults;
     return Object.entries({ ...defaults, ...scores }).map(([key, value]) => ({
       subject: radarAxisLabels[key] || key,
       value: typeof value === 'number' ? value : 0,
@@ -634,7 +634,7 @@ const VoterCRM = () => {
           return;
         }
 
-        const existingPhones = new Set(voters?.map((v) => v.phone_number) ?? []);
+        const existingPhones = new Set(leads?.map((v) => v.phone_number) ?? []);
         const seenPhones = new Set<string>();
         const validRows: ImportRow[] = [];
         let duplicates = 0;
@@ -676,7 +676,7 @@ const VoterCRM = () => {
   };
 
   const handleImportConfirm = async () => {
-    if (blockDemoAction('import-voters')) return;
+    if (blockDemoAction('import-leads')) return;
     const rows: ImportRow[] = (window as any).__importRows;
     if (!rows || rows.length === 0) {
       toast.error('אין שורות תקינות לייבוא');
@@ -705,9 +705,9 @@ const VoterCRM = () => {
       }
       // Only after Supabase confirmed: refresh and toast success
       await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['voters-infinite'] }),
-        queryClient.invalidateQueries({ queryKey: ['voter-filter-options'] }),
-        queryClient.invalidateQueries({ queryKey: ['voters-total'] }),
+        queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }),
+        queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] }),
+        queryClient.invalidateQueries({ queryKey: ['leads-total'] }),
       ]);
 
       toast.success(`ייבוא הושלם: ${totalInserted.toLocaleString('he-IL')} רשומות נשמרו במאגר`);
@@ -732,7 +732,7 @@ const VoterCRM = () => {
       {/* Header */}
       <div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-primary">ניהול בוחרים</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-primary">ניהול לידים</h1>
           <p className="text-muted-foreground text-sm">
             סה״כ אנשי קשר במערכת: <span className="font-semibold text-foreground">{(isDemoMode ? totalCount : realTotalCount).toLocaleString('he-IL')}</span>
           </p>
@@ -741,10 +741,10 @@ const VoterCRM = () => {
       <div className="flex w-full gap-2 sm:w-auto sm:justify-end">
         <input type="file" ref={fileInputRef} accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileSelect} />
         <Button onClick={() => setAddVoterOpen(true)} variant="outline" size="sm" className="flex-1 gap-2 sm:flex-none">
-          <User className="h-4 w-4" /> הוספת בוחר
+          <User className="h-4 w-4" /> הוספת ליד
         </Button>
         <Button onClick={() => fileInputRef.current?.click()} variant="outline" size="sm" className="flex-1 gap-2 sm:flex-none">
-          <Upload className="h-4 w-4" /> ייבוא בוחרים
+          <Upload className="h-4 w-4" /> ייבוא לידים
         </Button>
       </div>
 
@@ -768,7 +768,7 @@ const VoterCRM = () => {
             </div>
             {(() => {
               const hasFilter = !!search.trim() || interestFilter !== 'all' || cityFilter !== 'all' || statusFilter !== 'all' || profileFilter !== 'all';
-              const accountTotal = isDemoMode ? voters.length : realTotalCount;
+              const accountTotal = isDemoMode ? leads.length : realTotalCount;
               const filteredTotal = isDemoMode ? filtered?.length ?? 0 : totalCount;
               return (
                 <p className="text-xs text-muted-foreground tabular-nums">
@@ -890,7 +890,7 @@ const VoterCRM = () => {
                     <TableRow><TableCell colSpan={5} className="py-12">
                       <div className="flex flex-col items-center gap-3">
                         <div className="kalpiz-loader h-10 w-10" />
-                        <p className="text-sm text-muted-foreground">טוען בוחרים...</p>
+                        <p className="text-sm text-muted-foreground">טוען לידים...</p>
                       </div>
                     </TableCell></TableRow>
                   )}
@@ -908,12 +908,12 @@ const VoterCRM = () => {
                               <p className="text-base font-semibold text-foreground mb-1">אין רשומות במאגר</p>
                               <p className="text-sm text-muted-foreground mb-3">העלה רשימה כדי להתחיל</p>
                               <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-2">
-                                <Upload className="h-4 w-4" /> ייבוא בוחרים
+                                <Upload className="h-4 w-4" /> ייבוא לידים
                               </Button>
                             </>
                           ) : (
                             <>
-                              <p className="text-base font-semibold text-foreground mb-1">לא נמצאו בוחרים</p>
+                              <p className="text-base font-semibold text-foreground mb-1">לא נמצאו לידים</p>
                               <p className="text-sm text-muted-foreground mb-3">נסה לשנות את הפילטרים או את מילות החיפוש</p>
                               {hasFilter && (
                                 <Button variant="outline" size="sm" onClick={() => { setInterestFilter('all'); setCityFilter('all'); setStatusFilter('all'); setProfileFilter('all'); setSearch(''); }}>
@@ -926,20 +926,20 @@ const VoterCRM = () => {
                       </TableCell></TableRow>
                     );
                   })()}
-                  {filtered?.map((voter) => {
-                    const profile = getPoliticalProfile(voter.status, voter.engagement_score);
-                    const eng = voter.engagement_score ?? 0;
+                  {filtered?.map((lead) => {
+                    const profile = getPoliticalProfile(lead.status, lead.engagement_score);
+                    const eng = lead.engagement_score ?? 0;
                     return (
-                      <TableRow key={voter.id} className="cursor-pointer hover:bg-accent/40 transition-colors text-sm [&>td]:!px-0">
-                        <TableCell className="font-medium whitespace-nowrap" onClick={() => setSelectedVoterId(voter.id)}>
+                      <TableRow key={lead.id} className="cursor-pointer hover:bg-accent/40 transition-colors text-sm [&>td]:!px-0">
+                        <TableCell className="font-medium whitespace-nowrap" onClick={() => setSelectedVoterId(lead.id)}>
                           <div className="flex min-w-0 items-center gap-1.5 whitespace-nowrap">
-                            <VoterAvatar fullName={voter.full_name} profilePictureUrl={(voter as any).profile_picture_url} className="h-7 w-7" textClassName="text-[10px]" />
-                            <span className="min-w-0 truncate whitespace-nowrap">{voter.full_name || '-'}</span>
+                            <VoterAvatar fullName={lead.full_name} profilePictureUrl={(lead as any).profile_picture_url} className="h-7 w-7" textClassName="text-[10px]" />
+                            <span className="min-w-0 truncate whitespace-nowrap">{lead.full_name || '-'}</span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-xs font-mono text-right" dir="ltr" onClick={() => setSelectedVoterId(voter.id)}>{formatPhoneDisplay(voter.phone_number)}</TableCell>
-                        <TableCell className="text-xs" onClick={() => setSelectedVoterId(voter.id)}>{voter.city || '-'}</TableCell>
-                        <TableCell className="text-center !px-0" onClick={() => setSelectedVoterId(voter.id)}>
+                        <TableCell className="text-muted-foreground text-xs font-mono text-right" dir="ltr" onClick={() => setSelectedVoterId(lead.id)}>{formatPhoneDisplay(lead.phone_number)}</TableCell>
+                        <TableCell className="text-xs" onClick={() => setSelectedVoterId(lead.id)}>{lead.city || '-'}</TableCell>
+                        <TableCell className="text-center !px-0" onClick={() => setSelectedVoterId(lead.id)}>
                           <TooltipProvider delayDuration={150}>
                             <Tooltip>
                               <TooltipTrigger asChild>
@@ -971,7 +971,7 @@ const VoterCRM = () => {
                           </TooltipProvider>
                         </TableCell>
                         <TableCell className="w-10 text-center" onClick={(e) => e.stopPropagation()}>
-                          <Checkbox checked={selectedIds.has(voter.id)} onCheckedChange={() => toggleOne(voter.id)} />
+                          <Checkbox checked={selectedIds.has(lead.id)} onCheckedChange={() => toggleOne(lead.id)} />
                         </TableCell>
                       </TableRow>
                     );
@@ -984,7 +984,7 @@ const VoterCRM = () => {
           </div>
           {/* Record count */}
           <div className="px-4 py-2 text-xs text-muted-foreground border-t flex items-center justify-between">
-              <span>מוצגים {voters.length} מתוך {totalCount.toLocaleString()} בוחרים</span>
+              <span>מוצגים {leads.length} מתוך {totalCount.toLocaleString()} לידים</span>
               {hasNextPage && (
                 <Button variant="ghost" size="sm" className="text-xs h-6" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
                   טען עוד
@@ -999,7 +999,7 @@ const VoterCRM = () => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>הוסף לקמפיין</DialogTitle>
-            <DialogDescription>בחר קמפיין להוספת {selectedIds.size} בוחרים</DialogDescription>
+            <DialogDescription>בחר קמפיין להוספת {selectedIds.size} לידים</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {campaigns?.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">אין קמפיינים פעילים</p>}
@@ -1022,7 +1022,7 @@ const VoterCRM = () => {
               תצוגה מקדימה - הודעת AI מותאמת אישית
             </DialogTitle>
             <DialogDescription>
-              {selectedIds.size} בוחרים נבחרו · מוצגות עד 10 דוגמאות
+              {selectedIds.size} לידים נבחרו · מוצגות עד 10 דוגמאות
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto space-y-3 py-2">
@@ -1040,7 +1040,7 @@ const VoterCRM = () => {
               </div>
             ))}
             {aiPreviews.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-8">בחר בוחרים כדי לצפות בתצוגה מקדימה</p>
+              <p className="text-sm text-muted-foreground text-center py-8">בחר לידים כדי לצפות בתצוגה מקדימה</p>
             )}
           </div>
           <DialogFooter className="gap-2">
@@ -1052,7 +1052,7 @@ const VoterCRM = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Full Voter Profile Sheet */}
+      {/* Full Lead Profile Sheet */}
       <Sheet open={!!selectedVoterId} onOpenChange={(open) => !open && setSelectedVoterId(null)}>
         <SheetContent className="w-full sm:max-w-xl overflow-y-auto" side="right">
           {selectedVoter && (() => {
@@ -1068,7 +1068,7 @@ const VoterCRM = () => {
 
             // Creation event
             if (selectedVoter.created_at) {
-              events.push({ id: 'created', date: selectedVoter.created_at, type: 'created', label: 'נוסף למערכת', detail: selectedVoter.full_name || 'בוחר חדש' });
+              events.push({ id: 'created', date: selectedVoter.created_at, type: 'created', label: 'נוסף למערכת', detail: selectedVoter.full_name || 'ליד חדש' });
             }
 
             // Messages from messages table
@@ -1088,7 +1088,7 @@ const VoterCRM = () => {
                 id: `chat-${ch.id}`,
                 date: ch.created_at || '',
                 type: ch.role === 'assistant' ? 'chat_ai' : 'chat_user',
-                label: ch.role === 'assistant' ? 'תגובת AI' : 'תגובת בוחר',
+                label: ch.role === 'assistant' ? 'תגובת AI' : 'תגובת ליד',
                 detail: ch.content?.slice(0, 80) || '',
               });
             });
@@ -1124,7 +1124,7 @@ const VoterCRM = () => {
                   <SheetTitle className="flex items-center gap-3">
                     <VoterAvatar fullName={selectedVoter.full_name} profilePictureUrl={(selectedVoter as any).profile_picture_url} className="h-16 w-16 shadow-lg" textClassName="text-xl" />
                     <div className="flex-1">
-                      <p className="text-lg font-bold">{selectedVoter.full_name || 'בוחר לא ידוע'}</p>
+                      <p className="text-lg font-bold">{selectedVoter.full_name || 'ליד לא ידוע'}</p>
                       <p className="text-sm text-muted-foreground font-normal" dir="ltr">{formatPhoneDisplay(selectedVoter.phone_number)}</p>
                       {selectedVoter.identity_number && (
                         <p className="text-xs text-muted-foreground flex items-center justify-center gap-1 text-center">
@@ -1309,7 +1309,7 @@ const VoterCRM = () => {
         <DialogContent className="sm:max-w-xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileSpreadsheet className="h-5 w-5 text-primary" /> ייבוא בוחרים
+              <FileSpreadsheet className="h-5 w-5 text-primary" /> ייבוא לידים
             </DialogTitle>
             <DialogDescription>סקירת בריאות הנתונים לפני ייבוא</DialogDescription>
           </DialogHeader>
@@ -1418,19 +1418,19 @@ const VoterCRM = () => {
               )}
               <span className="relative flex items-center gap-2">
                 <Upload className="h-4 w-4" />
-                {importing ? `${importProgress}%` : `ייבא ${importStats?.valid ?? 0} בוחרים`}
+                {importing ? `${importProgress}%` : `ייבא ${importStats?.valid ?? 0} לידים`}
               </span>
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Add Voter Dialog */}
+      {/* Add Lead Dialog */}
       <Dialog open={addVoterOpen} onOpenChange={setAddVoterOpen}>
         <DialogContent className="sm:max-w-md" dir="rtl">
           <DialogHeader>
-            <DialogTitle>הוספת בוחר חדש</DialogTitle>
-            <DialogDescription>הזן את פרטי הבוחר להוספה ידנית למערכת</DialogDescription>
+            <DialogTitle>הוספת ליד חדש</DialogTitle>
+            <DialogDescription>הזן את פרטי הליד להוספה ידנית למערכת</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
             <div>
@@ -1461,7 +1461,7 @@ const VoterCRM = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddVoterOpen(false)}>ביטול</Button>
             <Button onClick={handleAddVoter} disabled={addingVoter}>
-              {addingVoter ? 'מוסיף...' : 'הוסף בוחר'}
+              {addingVoter ? 'מוסיף...' : 'הוסף ליד'}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -1470,4 +1470,4 @@ const VoterCRM = () => {
   );
 };
 
-export default VoterCRM;
+export default LeadCRM;

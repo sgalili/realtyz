@@ -80,7 +80,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'תפעול',
     items: [
       { title: 'לוח בקרה', url: '/', icon: LayoutDashboard, iconColor: 'text-primary', aliases: ['/dashboard'] },
-      { title: 'ניהול בוחרים', url: '/voter-crm', icon: Users, iconColor: 'text-social-facebook', aliases: ['/crm'] },
+      { title: 'ניהול לידים', url: '/lead-crm', icon: Users, iconColor: 'text-social-facebook', aliases: ['/crm'] },
       { title: 'תיבת הודעות', url: '/inbox', icon: MessageSquare, iconColor: 'text-social-messenger' },
     ],
   },
@@ -122,7 +122,7 @@ const NAV_GROUPS: NavGroup[] = [
 ];
 
 const BADGE_TITLES = [
-  'ניהול בוחרים',
+  'ניהול לידים',
   'תיבת הודעות',
   'שיחות חיות',
   'מאגר הידע',
@@ -151,7 +151,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     const demoMessages = getDemoCandidateMessages(demoCandidateId);
     const demoKnowledge = getDemoCandidateKnowledgeDocuments(demoCandidateId);
     return {
-      'ניהול בוחרים': demoVoters.length,
+      'ניהול לידים': demoVoters.length,
       'תיבת הודעות': demoMessages.length,
       'שיחות חיות': new Set(demoMessages.slice(0, 18).map((message) => message.lead_id)).size,
       'מאגר הידע': demoKnowledge.length,
@@ -185,7 +185,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
       ]);
 
       return {
-        'ניהול בוחרים': voters.count ?? 0,
+        'ניהול לידים': voters.count ?? 0,
         'תיבת הודעות': messages.count ?? 0,
         'שיחות חיות': new Set((liveMessages.data ?? []).map((message) => message.lead_id).filter(Boolean)).size,
         'מאגר הידע': knowledge.count ?? 0,

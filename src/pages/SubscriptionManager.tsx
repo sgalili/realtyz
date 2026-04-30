@@ -73,9 +73,9 @@ type TierId = 'breakthrough' | 'power' | 'victory';
 
 const TIER_NAMES_BY_ELECTION: Record<Election, Record<TierId, string>> = {
   national: {
-    breakthrough: '1-2 מנדטים',
-    power: '3-9 מנדטים',
-    victory: '10+ מנדטים',
+    breakthrough: '1-2 עסקאות',
+    power: '3-9 עסקאות',
+    victory: '10+ עסקאות',
   },
   primaries: {
     breakthrough: '1-2 מושבים',
@@ -289,10 +289,10 @@ function CalculatorBody() {
   const coldPct = Math.round(COLD_CONVERSION * 100);
 
   // Localized unit nouns (sync with global terms)
-  const unitSingular = terms.seat;          // מנדט / מושב
-  const unitPlural = terms.seats;           // מנדטים / מושבים
+  const unitSingular = terms.seat;          // עסקה / מושב
+  const unitPlural = terms.seats;           // עסקאות / מושבים
   const voterPlural = terms.votes;          // קולות / מתפקדים
-  const memberPlural = terms.voters;        // בוחרים / מתפקדים
+  const memberPlural = terms.voters;        // לידים / מתפקדים
 
   const mandates = selectedMandates;
   const handleMandates = (n: number) => setSelectedMandates(n);
@@ -473,7 +473,7 @@ function CalculatorBody() {
           status: 'active',
         }, { onConflict: 'user_id' });
       if (error) throw error;
-      toast.success(`החבילה עודכנה · ₪${formatILS(monthlyTotal)}/חודש · ${mandates} ${unitPlural}`);
+      toast.success(`החבילה עודכנה · ₪${formatILS(monthlyTotal)}/חודש · ${transactions} ${unitPlural}`);
     } catch (e) {
       toast.error('שגיאה בעדכון החבילה');
       console.error(e);
@@ -517,7 +517,7 @@ function CalculatorBody() {
                   : 'text-primary-foreground/80 hover:text-primary-foreground',
               )}
             >
-              בחירות כלליות
+              מכירות כלליות
             </button>
             <button
               type="button"
@@ -608,7 +608,7 @@ function CalculatorBody() {
                 <div className="mt-3 text-center text-[12.5px] font-medium text-muted-foreground">
                   {mandates === 1
                     ? `${unitSingular} = ${formatILS(VOTES_PER_MANDATE)}~ ${voterPlural} בקלפי`
-                    : `${mandates} ${unitPlural} = ${formatILS(mandates * VOTES_PER_MANDATE)}~ ${voterPlural} בקלפי`}
+                    : `${transactions} ${unitPlural} = ${formatILS(transactions * VOTES_PER_MANDATE)}~ ${voterPlural} בקלפי`}
                 </div>
               </div>
 
@@ -737,7 +737,7 @@ function CalculatorBody() {
                   dir="ltr"
                 />
                 <div className="mt-1 text-[10.5px] text-muted-foreground">
-                  עד הבחירות נשארו ~{monthsUntilElection} חודשים
+                  עד המכירות נשארו ~{monthsUntilElection} חודשים
                 </div>
               </div>
             </motion.section>
@@ -816,12 +816,12 @@ function CalculatorBody() {
                   <div className="mt-3 space-y-4 rounded-lg border border-border bg-secondary/40 p-4">
                     <ResourceSlider
                       icon={<Users className="h-4 w-4 text-primary" />}
-                      title="נקודות מגע עם הבוחר"
-                      info={<>כלל הזהב: {TOUCHPOINTS_PER_VOTER_TOTAL} מגעים לבוחר להמרה מלאה. הורדה תפחית עלות וגם סבירות ניצחון.</>}
+                      title="נקודות מגע עם הליד"
+                      info={<>כלל הזהב: {TOUCHPOINTS_PER_VOTER_TOTAL} מגעים לליד להמרה מלאה. הורדה תפחית עלות וגם סבירות ניצחון.</>}
                       min={5} max={30} step={1}
                       value={touchpointsPerVoter}
                       onChange={setTouchpointsPerVoter}
-                      valueLabel={`${touchpointsPerVoter} מגעים / בוחר · סה״כ ${formatCompact(totalCampaignTouchpoints)}`}
+                      valueLabel={`${touchpointsPerVoter} מגעים / ליד · סה״כ ${formatCompact(totalCampaignTouchpoints)}`}
                       cost={monthlyTouchpointCost}
                       onReset={touchpointsPerVoter !== TOUCHPOINTS_PER_VOTER_TOTAL ? () => setTouchpointsPerVoter(TOUCHPOINTS_PER_VOTER_TOTAL) : undefined}
                     />
@@ -941,7 +941,7 @@ function CalculatorBody() {
                     </div>
                     <FormulaRow
                       icon={<Sparkles className="h-3.5 w-3.5 text-primary" />}
-                      label={`חבילת ${mandates} ${mandates === 1 ? unitSingular : unitPlural} ≈ ${formatILS(requiredVotes)} ${voterPlural}`}
+                      label={`חבילת ${transactions} ${transactions === 1 ? unitSingular : unitPlural} ≈ ${formatILS(requiredVotes)} ${voterPlural}`}
                       value={cardPackagePrice}
                     />
                     <FormulaRow

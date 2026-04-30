@@ -64,10 +64,10 @@ const FEATURE_HEATMAP = [
 const ARCHETYPE_DATA = [
   { name: 'יו״ר מפלגה ארצית', value: 44 },
   { name: 'חבר כנסת בפריימריז', value: 31 },
-  { name: 'מועמד לראשות עיר', value: 25 },
+  { name: 'נכס לראשות עיר', value: 25 },
 ];
 
-const DEMO_STORAGE_KEYS = ['kalpiz-demo-mode', 'kalpiz-demo-candidate', 'kalpiz-demo-session-id', 'kalpiz_demo_notifications', 'kalpiz_viewed_notifs', 'kalpiz_demo_notif_muted', 'kalpiz_dismissed_budgets', 'kalpiz-authenticated-session'];
+const DEMO_STORAGE_KEYS = ['kalpiz-demo-mode', 'kalpiz-demo-listing', 'kalpiz-demo-session-id', 'kalpiz_demo_notifications', 'kalpiz_viewed_notifs', 'kalpiz_demo_notif_muted', 'kalpiz_dismissed_budgets', 'kalpiz-authenticated-session'];
 
 const clearDemoBrowserState = () => {
   DEMO_STORAGE_KEYS.forEach((key) => {
@@ -363,7 +363,7 @@ const SuperAdmin = () => {
       <div className="grid gap-4 md:grid-cols-4">
         <PremiumStat icon={RadioTower} label="Live Demo Users" value={liveDemoUsers} hint="/dashboard?demo=true" />
         <PremiumStat icon={Flame} label="עמוד מוביל" value="Sentiment" hint="46% מצפיות הדמו" />
-        <PremiumStat icon={Crown} label="ארכיטיפ מוביל" value={topArchetype} hint="בחירות דמו בפועל" />
+        <PremiumStat icon={Crown} label="ארכיטיפ מוביל" value={topArchetype} hint="מכירות דמו בפועל" />
         <PremiumStat icon={Gauge} label="לידים שנלכדו" value={capturedLeads?.length ?? 0} hint="Send Report traps" />
       </div>
 
@@ -482,7 +482,7 @@ const SuperAdmin = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="system" className="mt-4 space-y-4"><div className="grid gap-4 md:grid-cols-4"><StatCard label="סה״כ בוחרים" value={stats?.voters ?? 0} /><StatCard label="הודעות" value={stats?.messages ?? 0} /><StatCard label="קמפיינים" value={stats?.campaigns ?? 0} /><StatCard label="חיבורים פעילים" value={stats?.connections ?? 0} /></div><Card><CardHeader><CardTitle>System Status</CardTitle><CardDescription>בדיקת בריאות ל-WhatsApp ולמנועי AI בזמן פגישה.</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-2"><HealthToggle label="WhatsApp Gateway" status={health.whatsapp} onChange={(v) => checkHealth('whatsapp', v)} /><HealthToggle label="AI Engines" status={health.ai} onChange={(v) => checkHealth('ai', v)} /></CardContent></Card></TabsContent>
+        <TabsContent value="system" className="mt-4 space-y-4"><div className="grid gap-4 md:grid-cols-4"><StatCard label="סה״כ לידים" value={stats?.voters ?? 0} /><StatCard label="הודעות" value={stats?.messages ?? 0} /><StatCard label="קמפיינים" value={stats?.campaigns ?? 0} /><StatCard label="חיבורים פעילים" value={stats?.connections ?? 0} /></div><Card><CardHeader><CardTitle>System Status</CardTitle><CardDescription>בדיקת בריאות ל-WhatsApp ולמנועי AI בזמן פגישה.</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-2"><HealthToggle label="WhatsApp Gateway" status={health.whatsapp} onChange={(v) => checkHealth('whatsapp', v)} /><HealthToggle label="AI Engines" status={health.ai} onChange={(v) => checkHealth('ai', v)} /></CardContent></Card></TabsContent>
       </Tabs>
     </div>
   );

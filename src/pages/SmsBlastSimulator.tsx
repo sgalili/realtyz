@@ -522,7 +522,7 @@ export default function SmsBlastSimulator() {
     }
   }, []);
 
-  // Load total voter count + filter options once.
+  // Load total lead count + filter options once.
   // Real mode: NEVER seed totalRecipients — the user must explicitly upload a
   // list or pick contacts from the system. Demo data is only injected when
   // demo mode is on.
@@ -532,14 +532,14 @@ export default function SmsBlastSimulator() {
       if (isDemoMode) {
         setMaxAvailableVoters(1_000_000);
         setTotalRecipients(DEMO_TOTAL_VOTERS);
-        setRecipientSource(`כל הבוחרים במערכת (${DEMO_TOTAL_VOTERS.toLocaleString('he-IL')})`);
+        setRecipientSource(`כל הלידים במערכת (${DEMO_TOTAL_VOTERS.toLocaleString('he-IL')})`);
         setFilterCount(DEMO_TOTAL_VOTERS);
         setCityOptions(DEMO_CITIES);
         setTagOptions(DEMO_TAGS);
         setLoyaltyOptions(DEMO_LOYALTY);
         return;
       }
-      // Real mode — only learn how many real voters exist (for the picker
+      // Real mode — only learn how many real leads exist (for the picker
       // ceiling). Do NOT auto-fill totalRecipients or recipientSource; those
       // must come from a user action (upload or picker confirm).
       try {
@@ -574,7 +574,7 @@ export default function SmsBlastSimulator() {
         setTagOptions(uniq('interest_tag'));
         setLoyaltyOptions(uniq('loyalty_tier'));
       } catch (err) {
-        console.error('Failed to load voter stats', err);
+        console.error('Failed to load lead stats', err);
         // On error in real mode keep menus empty — don't expose demo data.
         setCityOptions([]);
         setTagOptions([]);
@@ -621,7 +621,7 @@ export default function SmsBlastSimulator() {
     setRecipientSource('picker');
     setListFileName(null);
     setVoterPickerOpen(false);
-    toast.success(`נבחרו ${clamped.toLocaleString('he-IL')} בוחרים מהמערכת`);
+    toast.success(`נבחרו ${clamped.toLocaleString('he-IL')} לידים מהמערכת`);
   }, [filterCount]);
 
   // Voice pricing — differential by source:
@@ -841,7 +841,7 @@ export default function SmsBlastSimulator() {
       return;
     }
 
-    // === REAL MODE: provider gate + balance + voter fetch + per-recipient logging ===
+    // === REAL MODE: provider gate + balance + lead fetch + per-recipient logging ===
     setPhase('sending');
     setSent(0);
     setProgress(0);
@@ -894,7 +894,7 @@ export default function SmsBlastSimulator() {
       const insufficientBalance = balance > 0 && estimatedCredits > balance * 1000; // 1 NIS = ~1000 credits indicative
       // If balance row doesn't exist yet, treat as zero and warn but don't block on first send.
 
-      // 3) Pull real recipients from voters table
+      // 3) Pull real recipients from leads table
       const { data: voterRows, error: voterErr } = await supabase
         .from('leads')
         .select('id, full_name, phone_number, city, email')
@@ -1345,7 +1345,7 @@ export default function SmsBlastSimulator() {
                         onClick={() => setVoterPickerOpen(true)}
                       >
                         <Users className="ml-1 h-3.5 w-3.5" />
-                        בחירה מהמערכת
+                        מכירה מהמערכת
                       </Button>
                       <Button
                         type="button"
@@ -1769,7 +1769,7 @@ export default function SmsBlastSimulator() {
                         <label className="flex items-center gap-2 rounded-md border border-border/60 bg-background px-2.5 py-1.5 cursor-pointer">
                           <Shield className={`h-3.5 w-3.5 ${humanOversight ? 'text-emerald-600 dark:text-emerald-400' : 'text-muted-foreground'}`} />
                           <span className="text-[11.5px] font-medium text-foreground leading-tight">
-                            העבר לטיפול אנושי אם הבוחר כועס
+                            העבר לטיפול אנושי אם הליד כועס
                           </span>
                           <Switch
                             checked={humanOversight}
@@ -1931,8 +1931,8 @@ export default function SmsBlastSimulator() {
       <Dialog open={voterPickerOpen} onOpenChange={setVoterPickerOpen}>
         <DialogContent className="max-w-lg" dir="rtl">
           <DialogHeader>
-            <DialogTitle>בחירת בוחרים מהמערכת</DialogTitle>
-            <DialogDescription>סננו לפי עיר, תגית עניין, סטטוס ונאמנות. ברירת המחדל היא כלל הבוחרים.</DialogDescription>
+            <DialogTitle>בחירת לידים מהמערכת</DialogTitle>
+            <DialogDescription>סננו לפי עיר, תגית עניין, סטטוס ונאמנות. ברירת המחדל היא כלל הלידים.</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
@@ -1980,12 +1980,12 @@ export default function SmsBlastSimulator() {
           </div>
           <div className="rounded-md bg-primary/5 p-3 text-center text-sm">
             {filterLoading ? 'מחשב...' : (
-              <>נמצאו <span className="font-bold text-primary">{filterCount.toLocaleString('he-IL')}</span> בוחרים תואמים</>
+              <>נמצאו <span className="font-bold text-primary">{filterCount.toLocaleString('he-IL')}</span> לידים תואמים</>
             )}
           </div>
           <DialogFooter>
             
-            <Button onClick={applyVoterFilters} disabled={filterCount < 1 || filterLoading}>בחירה ({filterCount.toLocaleString('he-IL')})</Button>
+            <Button onClick={applyVoterFilters} disabled={filterCount < 1 || filterLoading}>מכירה ({filterCount.toLocaleString('he-IL')})</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

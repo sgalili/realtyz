@@ -21,7 +21,7 @@ const AUTH_HEADER_HEADLINES: { key: string; node: JSX.Element }[] = [
   { key: 'h2', node: <>בלי צורך בספקים חיצוניים: <strong>ווטסאפ, SMS ואימייל</strong> - הכל בפנים</> },
   { key: 'h3', node: <><strong>ניהול שטח, CRM ואסטרטגיה</strong> במקום אחד - בלי פשרות</> },
   { key: 'h4', node: <><strong>עליונות טכנולוגית</strong> שמשאירה את המתחרים מאחור</> },
-  { key: 'h5', node: <>מערכת ה-AI היחידה בישראל ש<strong>מנהלת את הבוחר מקצה לקצה</strong></> },
+  { key: 'h5', node: <>מערכת ה-AI היחידה בישראל ש<strong>מנהלת את הליד מקצה לקצה</strong></> },
 ];
 
 const AUTH_HEADER_ROTATION_MS = 6000;

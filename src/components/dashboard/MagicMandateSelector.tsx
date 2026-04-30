@@ -9,14 +9,14 @@ import { useDemoMode } from '@/hooks/useDemoMode';
 import { DEMO_CANDIDATES, type DemoCandidateId } from '@/lib/demoData';
 
 /**
- * Magic Mandate Selector
+ * Magic Transaction Selector
  *
- * Premium replacement for the legacy "demo candidate picker".
- * - Single slider drives mandate target (1..120)
- * - Live, animated breakdown of voters + AI minutes
+ * Premium replacement for the legacy "demo listing picker".
+ * - Single slider drives transaction target (1..120)
+ * - Live, animated breakdown of leads + AI minutes
  * - "Analyzing Goals" boom state before resolving
- * - On apply: persists mandate target to global state and selects the
- *   closest matching demo candidate archetype.
+ * - On apply: persists transaction target to global state and selects the
+ *   closest matching demo listing archetype.
  */
 
 const MIN = 1;
@@ -24,7 +24,7 @@ const MAX = 120;
 
 // Magic constants tuned for "feels right" demo math
 const VOTERS_PER_MANDATE = 40_000; // approx Knesset threshold scaling
-const AI_MINUTES_PER_MANDATE = 1_200; // monthly call minutes per mandate
+const AI_MINUTES_PER_MANDATE = 1_200; // monthly call minutes per transaction
 
 const formatNumber = (n: number) => n.toLocaleString('he-IL');
 
@@ -36,7 +36,7 @@ const ARCHETYPES: DemoCandidateId[] = [
   'national-large',
 ];
 
-/** Pick the demo candidate whose mandateGoal is closest to the chosen value. */
+/** Pick the demo listing whose mandateGoal is closest to the chosen value. */
 const pickCandidateForMandates = (mandates: number): DemoCandidateId => {
   const candidates = DEMO_CANDIDATES.filter((c) => ARCHETYPES.includes(c.id));
   let best = candidates[0];
@@ -100,7 +100,7 @@ export function MagicMandateSelector({ open, onComplete }: MagicMandateSelectorP
       >
         <DialogHeader className="text-center sm:text-center">
           <DialogTitle className="text-2xl font-bold tracking-tight text-primary">
-            מה יעד המנדטים שלך?
+            מה יעד העסקאות שלך?
           </DialogTitle>
           <DialogDescription className="text-sm text-muted-foreground">
             בחר יעד, וה-AI שלנו יחשב מיד את משאבי הניצחון הנדרשים
@@ -145,7 +145,7 @@ export function MagicMandateSelector({ open, onComplete }: MagicMandateSelectorP
                   </motion.span>
                 </AnimatePresence>
                 <span className="text-sm font-medium text-muted-foreground">
-                  {value === 1 ? 'מנדט' : 'מנדטים'}
+                  {value === 1 ? 'עסקה' : 'עסקאות'}
                 </span>
               </div>
 
@@ -163,7 +163,7 @@ export function MagicMandateSelector({ open, onComplete }: MagicMandateSelectorP
                     <SliderPrimitive.Range className="absolute h-full bg-primary" />
                   </SliderPrimitive.Track>
                   <SliderPrimitive.Thumb
-                    aria-label="יעד מנדטים"
+                    aria-label="יעד עסקאות"
                     className="block h-6 w-6 rounded-full border-2 border-primary bg-background shadow-lg ring-offset-background transition-transform focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 hover:scale-110 disabled:pointer-events-none disabled:opacity-50"
                   />
                 </SliderPrimitive.Root>
@@ -181,8 +181,8 @@ export function MagicMandateSelector({ open, onComplete }: MagicMandateSelectorP
                 <div className="grid grid-cols-2 gap-3">
                   <BreakdownItem
                     label="קהל יעד לניצחון"
-                    value={`${formatNumber(breakdown.voters)}`}
-                    suffix="בוחרים מזוהים"
+                    value={`${formatNumber(breakdown.leads)}`}
+                    suffix="לידים מזוהים"
                     valueKey={breakdown.voters}
                   />
                   <BreakdownItem

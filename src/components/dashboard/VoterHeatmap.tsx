@@ -143,10 +143,10 @@ export default function VoterHeatmap({ mapboxToken, cityClusters, isLoading }: P
             })
             .filter(Boolean);
 
-          map.addSource('voters', { type: 'geojson', data: { type: 'FeatureCollection', features } });
+          map.addSource('leads', { type: 'geojson', data: { type: 'FeatureCollection', features } });
 
           map.addLayer({
-            id: 'voters-heat', type: 'heatmap', source: 'voters',
+            id: 'leads-heat', type: 'heatmap', source: 'leads',
             paint: {
               'heatmap-weight': ['get', 'normalizedCount'], 'heatmap-intensity': 1.5,
               'heatmap-radius': ['interpolate', ['linear'], ['zoom'], 5, 30, 10, 50],
@@ -156,7 +156,7 @@ export default function VoterHeatmap({ mapboxToken, cityClusters, isLoading }: P
           });
 
           map.addLayer({
-            id: 'voters-circles', type: 'circle', source: 'voters', minzoom: 8,
+            id: 'leads-circles', type: 'circle', source: 'leads', minzoom: 8,
             paint: {
               'circle-radius': ['interpolate', ['linear'], ['get', 'count'], 1, 8, 100, 30, 1000, 50],
               'circle-color': ['interpolate', ['linear'], ['get', 'sentimentScore'], -1, 'hsl(0,70%,55%)', 0, 'hsl(220,60%,55%)', 1, 'hsl(140,70%,45%)'],
@@ -166,39 +166,39 @@ export default function VoterHeatmap({ mapboxToken, cityClusters, isLoading }: P
 
           // Pulse
           map.addLayer({
-            id: 'voters-pulse', type: 'circle', source: 'voters',
+            id: 'leads-pulse', type: 'circle', source: 'leads',
             paint: { 'circle-radius': 12, 'circle-color': 'hsl(48,96%,53%)', 'circle-opacity': 0, 'circle-stroke-width': 2, 'circle-stroke-color': 'hsl(48,96%,53%)', 'circle-stroke-opacity': 0 },
           });
 
           let pulsePhase = 0;
           const animatePulse = () => {
-            if (cancelled || !map.getLayer('voters-pulse')) return;
+            if (cancelled || !map.getLayer('leads-pulse')) return;
             pulsePhase = (pulsePhase + 1) % 120;
             const t = pulsePhase / 120;
             const scale = 1 + t * 1.2;
-            map.setPaintProperty('voters-pulse', 'circle-stroke-opacity', Math.max(0, 0.6 * (1 - t)));
-            map.setPaintProperty('voters-pulse', 'circle-radius', ['interpolate', ['linear'], ['get', 'count'], 1, 12 * scale, 100, 35 * scale, 1000, 55 * scale]);
+            map.setPaintProperty('leads-pulse', 'circle-stroke-opacity', Math.max(0, 0.6 * (1 - t)));
+            map.setPaintProperty('leads-pulse', 'circle-radius', ['interpolate', ['linear'], ['get', 'count'], 1, 12 * scale, 100, 35 * scale, 1000, 55 * scale]);
             animFrameRef.current = requestAnimationFrame(animatePulse);
           };
           animFrameRef.current = requestAnimationFrame(animatePulse);
 
           // Labels
           map.addLayer({
-            id: 'voters-labels', type: 'symbol', source: 'voters', minzoom: 8,
+            id: 'leads-labels', type: 'symbol', source: 'leads', minzoom: 8,
             layout: { 'text-field': ['concat', ['get', 'city'], '\n', ['to-string', ['get', 'count']]], 'text-size': 11, 'text-anchor': 'center', 'text-allow-overlap': false },
             paint: { 'text-color': '#fff', 'text-halo-color': 'rgba(0,0,0,0.7)', 'text-halo-width': 1 },
           });
 
           // Popup
           const popup = new mapboxgl.Popup({ closeButton: false, closeOnClick: false });
-          map.on('mouseenter', 'voters-circles', (e: any) => {
+          map.on('mouseenter', 'leads-circles', (e: any) => {
             map.getCanvas().style.cursor = 'pointer';
             const p = e.features[0].properties;
             popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
-              `<div style="direction:rtl;font-family:sans-serif;padding:4px"><strong>${p.city}</strong><br/>בוחרים: ${p.count}<br/>חיובי: ${p.positive} | ניטרלי: ${p.neutral} | שלילי: ${p.negative}</div>`
+              `<div style="direction:rtl;font-family:sans-serif;padding:4px"><strong>${p.city}</strong><br/>לידים: ${p.count}<br/>חיובי: ${p.positive} | ניטרלי: ${p.neutral} | שלילי: ${p.negative}</div>`
             ).addTo(map);
           });
-          map.on('mouseleave', 'voters-circles', () => { map.getCanvas().style.cursor = ''; popup.remove(); });
+          map.on('mouseleave', 'leads-circles', () => { map.getCanvas().style.cursor = ''; popup.remove(); });
         });
 
         mapRef.current = map;

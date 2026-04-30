@@ -184,7 +184,7 @@ export default function KnowledgeBase() {
   );
 
   const demoDocuments = [
-    { id: 'demo-1', title: 'מצע רשמי - בחירות 2026.pdf', type: 'PDF', chunks: 142 },
+    { id: 'demo-1', title: 'מצע רשמי - מכירות 2026.pdf', type: 'PDF', chunks: 142 },
     { id: 'demo-2', title: 'נאום פתיחת קמפיין - חזון העיר.docx', type: 'DOCX', chunks: 38 },
     { id: 'demo-3', title: 'דף מסרים: כלכלה ודיור', type: 'PDF', chunks: 24 },
     { id: 'demo-4', title: 'תגובות רשמיות לאירועי ביטחון', type: 'DOCX', chunks: 31 },
@@ -193,7 +193,7 @@ export default function KnowledgeBase() {
   const qaPairs = [
     {
       q: 'מה עמדתנו על פתיחת עסקים בשבת?',
-      a: 'המועמד דוגל בסטטוס קוו תוך כבוד הדדי וחיזוק המרחב הקהילתי, עם מתן מענה לצרכים מקומיים ללא פגיעה באופי השכונות.',
+      a: 'הנכס דוגל בסטטוס קוו תוך כבוד הדדי וחיזוק המרחב הקהילתי, עם מתן מענה לצרכים מקומיים ללא פגיעה באופי השכונות.',
     },
     {
       q: 'איך נתמודד עם יוקר הדיור בעיר?',
@@ -266,7 +266,7 @@ export default function KnowledgeBase() {
           <CardTitle className="text-base flex items-center gap-2">
             <Brain className="h-4 w-4 text-primary" /> בדיקת ה-AI: זוגות אימון לדוגמה
           </CardTitle>
-          <CardDescription>כך ה-AI עונה על שאלות מצביעים בהתבסס על המסמכים שהוזנו</CardDescription>
+          <CardDescription>כך ה-AI עונה על שאלות לידים בהתבסס על המסמכים שהוזנו</CardDescription>
         </CardHeader>
         <CardContent className="space-y-3">
           {qaPairs.map((pair, idx) => (
@@ -295,7 +295,7 @@ export default function KnowledgeBase() {
               <CardTitle className="text-base flex items-center gap-2">
                 <Upload className="h-4 w-4 text-primary" /> העלאת מסמכים
               </CardTitle>
-              <CardDescription>PDF, TXT, Markdown, תמונות, וידאו והודעות קוליות - גרור ושחרר או לחץ לבחירה</CardDescription>
+              <CardDescription>PDF, TXT, Markdown, תמונות, וידאו והודעות קוליות - גרור ושחרר או לחץ למכירה</CardDescription>
             </CardHeader>
             <CardContent>
               <div
@@ -314,7 +314,7 @@ export default function KnowledgeBase() {
                 ) : (
                   <>
                     <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                    <p className="text-sm font-medium">גרור קבצים לכאן או לחץ לבחירה</p>
+                    <p className="text-sm font-medium">גרור קבצים לכאן או לחץ למכירה</p>
                     <div className="mt-2 flex items-center justify-center gap-3 text-xs text-muted-foreground">
                       <span className="inline-flex items-center gap-1"><FileText className="h-3 w-3" /> מסמכים</span>
                       <span className="inline-flex items-center gap-1"><Image className="h-3 w-3" /> תמונות</span>

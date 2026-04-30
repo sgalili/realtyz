@@ -89,7 +89,7 @@ function formatILS(n: number) {
 }
 
 function pickPlan(mandateGoal: number) {
-  // Smallest plan whose mandates capacity meets/exceeds the goal.
+  // Smallest plan whose transactions capacity meets/exceeds the goal.
   return (
     PLANS.find((p) => p.mandates >= mandateGoal) ?? PLANS[PLANS.length - 1]
   );
@@ -274,7 +274,7 @@ export default function Finance() {
           <CardContent>
             <div className="text-xl font-bold text-primary">{plan.name}</div>
             <p className="text-xs text-muted-foreground mt-1">
-              {formatILS(plan.monthly)} / חודש · עד {plan.mandates} {terms.seats}
+              {formatILS(plan.monthly)} / חודש · עד {plan.transactions} {terms.seats}
             </p>
             <Badge className="mt-2 bg-primary text-primary-foreground">פעיל</Badge>
           </CardContent>

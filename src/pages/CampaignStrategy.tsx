@@ -100,7 +100,7 @@ export default function CampaignStrategy() {
             <CardTitle className="text-base flex items-center gap-2">
               טון ה-AI
             </CardTitle>
-            <CardDescription>בחר את סגנון התקשורת של ה-AI עם הבוחרים</CardDescription>
+            <CardDescription>בחר את סגנון התקשורת של ה-AI עם הלידים</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Select value={tone} onValueChange={setTone}>
@@ -143,34 +143,34 @@ export default function CampaignStrategy() {
         </Card>
       </div>
 
-      {/* Mandate Target */}
+      {/* Transaction Target */}
       <Card>
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
-            יעד מנדטים
+            יעד עסקאות
           </CardTitle>
-          <CardDescription>מספר המנדטים שהקמפיין שואף להשיג - ממנו מחושבים יעד הקולות וההתקדמות בלוח הבקרה</CardDescription>
+          <CardDescription>מספר העסקאות שהקמפיין שואף להשיג - ממנו מחושבים יעד הקולות וההתקדמות בלוח הבקרה</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-2">
               <div className="mx-auto flex w-fit items-center overflow-hidden rounded-md border border-input bg-background">
-                <Button type="button" variant="ghost" size="icon" className="h-12 w-14 rounded-none text-lg" onClick={() => stepMandateTarget(-1)} aria-label="הפחת מנדט">
+                <Button type="button" variant="ghost" size="icon" className="h-12 w-14 rounded-none text-lg" onClick={() => stepMandateTarget(-1)} aria-label="הפחת עסקה">
                   <Minus className="h-5 w-5" />
                 </Button>
                 <input
-                  id="mandate-target"
+                  id="transaction-target"
                   value={mandateTarget}
                   onChange={e => updateMandateTarget(e.target.value)}
                   inputMode="numeric"
                   maxLength={2}
                   className="h-12 w-20 border-x border-input bg-transparent text-center text-2xl font-bold outline-none"
                 />
-                <Button type="button" variant="ghost" size="icon" className="h-12 w-14 rounded-none text-lg" onClick={() => stepMandateTarget(1)} aria-label="הוסף מנדט">
+                <Button type="button" variant="ghost" size="icon" className="h-12 w-14 rounded-none text-lg" onClick={() => stepMandateTarget(1)} aria-label="הוסף עסקה">
                   <Plus className="h-5 w-5" />
                 </Button>
               </div>
             <p className="text-base text-muted-foreground text-center">
-              {Number(mandateTarget || 0).toLocaleString()} מנדטים = {(Number(mandateTarget || 0) * VOTES_PER_MANDATE).toLocaleString()} קולות יעד
+              {Number(mandateTarget || 0).toLocaleString()} עסקאות = {(Number(mandateTarget || 0) * VOTES_PER_MANDATE).toLocaleString()} קולות יעד
             </p>
           </div>
         </CardContent>

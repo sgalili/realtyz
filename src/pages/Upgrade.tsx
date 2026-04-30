@@ -17,7 +17,7 @@ import { Badge } from '@/components/ui/badge';
 
 /**
  * High-conversion Upgrade page. "Governmental / Professional" aesthetic
- * with Navy + Gold accents. Designed mobile-first for candidates making
+ * with Navy + Gold accents. Designed mobile-first for listings making
  * fast decisions on the go.
  */
 export default function Upgrade() {
@@ -40,12 +40,12 @@ export default function Upgrade() {
     {
       icon: InfinityIcon,
       title: 'Unlimited Scale',
-      desc: 'פתיחת המערכת לאלפי בוחרים ללא הגבלת הודעות',
+      desc: 'פתיחת המערכת לאלפי לידים ללא הגבלת הודעות',
     },
     {
       icon: MapIcon,
       title: 'Strategic Blueprint',
-      desc: 'בניית מסע בוחר מותאם אישית למפת הבחירות שלך',
+      desc: 'בניית מסע ליד מותאם אישית למפת המכירות שלך',
     },
   ];
 
@@ -197,7 +197,7 @@ export default function Upgrade() {
             <Users className="h-7 w-7 text-[hsl(43_84%_65%)]" />
           </div>
           <p className="mx-auto mt-5 max-w-2xl text-lg font-medium leading-relaxed text-white/90 sm:text-xl">
-            הצטרף למאות מועמדים שכבר מנהלים את המטה שלהם ב-
+            הצטרף למאות נכסים שכבר מנהלים את המטה שלהם ב-
             <span className="text-[hsl(43_84%_65%)]">Autopilot</span>
           </p>
           <div className="mt-6 flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs text-white/50">

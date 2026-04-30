@@ -19,39 +19,39 @@ const getChannelIcon = (index: number) => CHANNEL_ICONS[(index * 5 + 2) % CHANNE
 
 const GHOST_EVENTS = [
   { icon: PhoneCall, text: 'AI Voice call completed in Haifa', color: 'text-success', path: '/live-conversations' },
-  { icon: Send, text: 'WhatsApp campaign reached 5,000 voters', color: 'text-primary', path: '/campaigns' },
-  { icon: UserPlus, text: 'New supporter identified in Tel Aviv', color: 'text-success', path: '/voter-crm?city=Tel%20Aviv' },
+  { icon: Send, text: 'WhatsApp campaign reached 5,000 leads', color: 'text-primary', path: '/campaigns' },
+  { icon: UserPlus, text: 'New supporter identified in Tel Aviv', color: 'text-success', path: '/lead-crm?city=Tel%20Aviv' },
   { icon: PhoneCall, text: 'שיחת AI Voice הסתיימה עם דני כהן', color: 'text-success', path: '/live-conversations' },
-  { icon: UserPlus, text: 'ליד חדש מטיקטוק נכנס למשפך תל אביב', color: 'text-primary', path: '/voter-crm?city=%D7%AA%D7%9C%20%D7%90%D7%91%D7%99%D7%91' },
+  { icon: UserPlus, text: 'ליד חדש מטיקטוק נכנס למשפך תל אביב', color: 'text-primary', path: '/lead-crm?city=%D7%AA%D7%9C%20%D7%90%D7%91%D7%99%D7%91' },
   { icon: TrendingUp, text: 'קמפיין WhatsApp הגיע ל-90% קריאה', color: 'text-primary', path: '/campaigns' },
-  { icon: UserPlus, text: 'תומכת חדשה מתל אביב', color: 'text-success', path: '/voter-crm?city=%D7%AA%D7%9C%20%D7%90%D7%91%D7%99%D7%91' },
+  { icon: UserPlus, text: 'תומכת חדשה מתל אביב', color: 'text-success', path: '/lead-crm?city=%D7%AA%D7%9C%20%D7%90%D7%91%D7%99%D7%91' },
   { icon: MapPin, text: 'פעילות גבוהה באזור השרון', color: 'text-primary', path: '/sentiment?region=%D7%94%D7%A9%D7%A8%D7%95%D7%9F' },
-  { icon: Bot, text: 'AI שכנע בוחר מראשון לציון', color: 'text-primary', path: '/live-conversations' },
+  { icon: Bot, text: 'AI שכנע ליד מראשון לציון', color: 'text-primary', path: '/live-conversations' },
   { icon: MessageSquare, text: 'שיחה חדשה נפתחה מנתניה', color: 'text-primary', path: '/live-conversations' },
   { icon: Send, text: '150 הודעות WhatsApp נשלחו', color: 'text-success', path: '/campaigns' },
-  { icon: UserPlus, text: 'תומך חדש מבאר שבע', color: 'text-success', path: '/voter-crm?city=%D7%91%D7%90%D7%A8%20%D7%A9%D7%91%D7%A2' },
+  { icon: UserPlus, text: 'תומך חדש מבאר שבע', color: 'text-success', path: '/lead-crm?city=%D7%91%D7%90%D7%A8%20%D7%A9%D7%91%D7%A2' },
   { icon: Bot, text: 'AI ענה על שאלה בנושא ביטחון', color: 'text-primary', path: '/live-conversations' },
   { icon: MapPin, text: 'אזור חיפה - 12 פניות חדשות', color: 'text-primary', path: '/sentiment?city=%D7%97%D7%99%D7%A4%D7%94' },
   { icon: MessageSquare, text: 'פידבק חיובי מפתח תקווה', color: 'text-primary', path: '/live-conversations' },
   { icon: Send, text: '500 SMS לקמפיין חינוך', color: 'text-primary', path: '/campaigns' },
-  { icon: UserPlus, text: 'תומך חדש מאשדוד', color: 'text-success', path: '/voter-crm?city=%D7%90%D7%A9%D7%93%D7%95%D7%93' },
-  { icon: Bot, text: 'AI - סיכום שיחה עם בוחר מהצפון', color: 'text-primary', path: '/live-conversations' },
+  { icon: UserPlus, text: 'תומך חדש מאשדוד', color: 'text-success', path: '/lead-crm?city=%D7%90%D7%A9%D7%93%D7%95%D7%93' },
+  { icon: Bot, text: 'AI - סיכום שיחה עם ליד מהצפון', color: 'text-primary', path: '/live-conversations' },
 ];
 
 export const buildLiveEvent = (index: number) => {
   const voter = DEMO_VOTERS[index % DEMO_VOTERS.length];
   const campaign = DEMO_CAMPAIGNS[index % DEMO_CAMPAIGNS.length];
   const city = voter.city || 'תל אביב';
-  const name = voter.full_name || 'בוחר חדש';
+  const name = voter.full_name || 'ליד חדש';
   const sent = 120 + ((index * 37) % 680);
 
   const channel = getChannelIcon(index);
   const templates = [
-    { icon: PhoneCall, text: `שיחת AI הסתיימה עם ${name} · ${city}`, color: 'text-success', path: `/live-conversations?voter=${voter.id}` },
+    { icon: PhoneCall, text: `שיחת AI הסתיימה עם ${name} · ${city}`, color: 'text-success', path: `/live-conversations?lead=${lead.id}` },
     { icon: PhoneCall, text: `הושלמו ${(4500 + ((index * 73) % 600)).toLocaleString('he-IL')} שיחות קוליות מבוססות AI · ${city}`, color: 'text-success', path: `/campaigns?tab=broadcast` },
-    { icon: UserPlus, text: `תומך חדש נכנס למשפך ${city}`, color: 'text-success', path: `/voter-crm?city=${encodeURIComponent(city)}&status=supporter` },
-    { icon: Bot, text: `AI סיווג את ${name} לפי עניין: ${voter.interest_tag || 'ביטחון'}`, color: 'text-primary', path: `/voter-crm?voter=${voter.id}` },
-    { icon: MessageSquare, text: `שיחה חדשה נפתחה עם ${name}`, color: 'text-primary', path: `/live-conversations?voter=${voter.id}` },
+    { icon: UserPlus, text: `תומך חדש נכנס למשפך ${city}`, color: 'text-success', path: `/lead-crm?city=${encodeURIComponent(city)}&status=supporter` },
+    { icon: Bot, text: `AI סיווג את ${name} לפי עניין: ${lead.interest_tag || 'ביטחון'}`, color: 'text-primary', path: `/lead-crm?lead=${lead.id}` },
+    { icon: MessageSquare, text: `שיחה חדשה נפתחה עם ${name}`, color: 'text-primary', path: `/live-conversations?lead=${lead.id}` },
     { icon: Send, text: `${sent.toLocaleString()} הודעות נשלחו בקמפיין ${campaign.name}`, color: 'text-primary', path: `/campaigns?campaign=${campaign.id}` },
     { icon: PhoneCall, text: `קמפיין AI קולי שיגר ${(1200 + ((index * 41) % 800)).toLocaleString('he-IL')} דקות בערוץ הדרום`, color: 'text-primary', path: `/campaigns?tab=broadcast` },
     { icon: MapPin, text: `עלייה חיה במעורבות באזור ${city}`, color: 'text-primary', path: `/sentiment?city=${encodeURIComponent(city)}` },

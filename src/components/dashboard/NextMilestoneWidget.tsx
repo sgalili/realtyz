@@ -28,7 +28,7 @@ export function NextMilestoneWidget() {
   });
 
   const { data: voterCount, isLoading: countLoading } = useQuery({
-    queryKey: ['voter-count-supporters'],
+    queryKey: ['lead-count-supporters'],
     enabled: !isDemoMode,
     queryFn: async () => {
       const { count } = await supabase
@@ -51,8 +51,8 @@ export function NextMilestoneWidget() {
 
   const demoSummary = getDemoCandidateSummary(demoCandidateId);
 
-  // Real-mode empty state — no subscription target and no voters yet.
-  // Show a real, neutral CTA instead of computing fake "next mandate" math.
+  // Real-mode empty state — no subscription target and no leads yet.
+  // Show a real, neutral CTA instead of computing fake "next transaction" math.
   if (!isDemoMode && !subscription?.mandate_target && (voterCount ?? 0) === 0) {
     return (
       <Card className="border-dashed border-border/70 bg-muted/20">
@@ -64,7 +64,7 @@ export function NextMilestoneWidget() {
         <CardContent className="text-center space-y-2 py-4">
           <p className="text-sm text-foreground">עדיין אין נתוני קמפיין במערכת שלך.</p>
           <p className="text-xs text-muted-foreground">
-            הגדר יעד מנדטים בעמוד המנוי וייבא את רשימת הבוחרים שלך כדי לראות את אבן הדרך הבאה.
+            הגדר יעד עסקאות בעמוד המנוי וייבא את רשימת הלידים שלך כדי לראות את אבן הדרך הבאה.
           </p>
         </CardContent>
       </Card>
@@ -103,14 +103,14 @@ export function NextMilestoneWidget() {
           <div className="text-center py-2">
             <p className="text-3xl font-black text-primary">{Math.floor(currentMandates)}</p>
             <p className="text-sm text-muted-foreground mt-1">
-              מנדטים מובטחים · עברת את היעד של {mandateTarget}
+              עסקאות מובטחים · עברת את היעד של {mandateTarget}
             </p>
           </div>
         ) : (
           <>
             <div className="flex items-baseline justify-between">
               <div>
-                <p className="text-xs text-muted-foreground">להשגת <strong>מנדט</strong> #{cappedNext}</p>
+                <p className="text-xs text-muted-foreground">להשגת <strong>עסקה</strong> #{cappedNext}</p>
                 <div className="flex flex-wrap items-baseline gap-2">
                   <p className="text-3xl font-black tabular-nums text-primary">
                     {contactsToConvert.toLocaleString()}
@@ -126,7 +126,7 @@ export function NextMilestoneWidget() {
             <Progress value={pct} className="h-2" />
             <div className="flex items-center justify-between text-[11px] text-muted-foreground">
               <span>{votersNeeded.toLocaleString()} קולות חסרים</span>
-              <span>יעד: {mandateTarget} <strong>מנדטים</strong></span>
+              <span>יעד: {mandateTarget} <strong>עסקאות</strong></span>
             </div>
           </>
         )}

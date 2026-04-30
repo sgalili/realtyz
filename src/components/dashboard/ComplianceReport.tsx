@@ -33,7 +33,7 @@ export function ComplianceReport({ data }: { data?: ReportData }) {
       lines.push('=== סיכום כללי ===');
       lines.push(`סה"כ רשומות בבסיס הנתונים,${data.totalVoters}`);
       lines.push(`תומכים מאושרים,${data.supporters}`);
-      lines.push(`יעד מנדטים,${data.mandateTarget}`);
+      lines.push(`יעד עסקאות,${data.mandateTarget}`);
       lines.push(`יעד קולות,${data.targetVotes}`);
       lines.push(`אחוז התקדמות,${Math.round((data.supporters / data.targetVotes) * 100)}%`);
       lines.push('');
@@ -44,7 +44,7 @@ export function ComplianceReport({ data }: { data?: ReportData }) {
       lines.push(`שלילי,${data.sentimentBreakdown.negative},${Math.round(data.sentimentBreakdown.negative / total * 100)}%`);
       lines.push('');
       lines.push('=== התפלגות גיאוגרפית ===');
-      lines.push('עיר,בוחרים,חיובי,ניטרלי,שלילי');
+      lines.push('עיר,לידים,חיובי,ניטרלי,שלילי');
       data.cityClusters
         .sort((a, b) => b.count - a.count)
         .forEach(c => {

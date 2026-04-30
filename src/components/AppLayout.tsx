@@ -35,33 +35,33 @@ import { useTrialStatus } from '@/hooks/useTrialStatus';
 
 const DEMO_ARCHETYPES: DemoCandidateId[] = ['primary-single', 'primary-slate', 'national-small', 'national-mid', 'national-large'];
 const TUTORIAL_STEPS = [
-  { path: '/dashboard', title: 'לוח הבקרה', text: 'כאן רואים את תמונת הניצחון: תומכים מאומתים, יעד מנדטים וקמפיינים שמתקדמים בזמן אמת.' },
+  { path: '/dashboard', title: 'לוח הבקרה', text: 'כאן רואים את תמונת הניצחון: תומכים מאומתים, יעד עסקאות וקמפיינים שמתקדמים בזמן אמת.' },
   { path: '/sentiment', title: 'ניתוח סנטימנט', text: 'כאן מזהים איפה המסר מנצח, איפה יש התנגדות, ומה דורש תגובה חדה ומהירה.' },
   { path: '/calendar', title: 'יומן תוכן', text: 'כאן מתזמנים מהלכים, מטפטפים מסרים ושומרים על קצב קמפיין מנצח.' },
 ];
 
 const QUICK_LINKS = [
   { label: 'לוח בקרה', path: '/', icon: LayoutDashboard },
-  { label: 'ניהול בוחרים', path: '/voter-crm', icon: User },
+  { label: 'ניהול לידים', path: '/lead-crm', icon: User },
   { label: 'הפצת SMS', path: '/sms-blast', icon: Radio },
 ];
 
 const SEARCH_PLACEHOLDERS = [
-  'חפש בוחר לפי שם...',
+  'חפש ליד לפי שם...',
   'חפש טלפון: 052-1234567...',
   'חפש עיר: חיפה...',
   'חפש מתלבטים בתל אביב...',
   'חפש תומכים בירושלים...',
   'חפש לפי תגית עניין...',
-  'חפש בוחרים עם סנטימנט חיובי...',
+  'חפש לידים עם סנטימנט חיובי...',
   'חפש אנשי קשר שנוצר איתם קשר...',
-  'חפש בוחרים פעילים השבוע...',
+  'חפש לידים פעילים השבוע...',
   'חפש קהל יעד לקמפיין...',
 ];
 
 interface SearchResult {
   id: string;
-  type: 'voter' | 'page';
+  type: 'lead' | 'page';
   title: string;
   subtitle?: string;
   path: string;
@@ -145,10 +145,10 @@ function SearchExpandable() {
         .limit(6);
 
       const voterResults: SearchResult[] = (voters ?? []).map(v => ({
-        id: v.id, type: 'voter',
+        id: v.id, type: 'lead',
         title: v.full_name || 'ללא שם',
         subtitle: `${formatPhoneDisplay(v.phone_number)}${v.city ? ` · ${v.city}` : ''}`,
-        path: '/voter-crm',
+        path: '/lead-crm',
       }));
 
       const pageResults: SearchResult[] = QUICK_LINKS
@@ -206,7 +206,7 @@ function SearchExpandable() {
               {results.map(r => (
                 <button key={r.id} onClick={() => handleSelect(r)}
                   className="w-full flex items-center gap-2 px-3 py-2 hover:bg-accent/50 transition-colors text-right text-sm">
-                  {r.type === 'voter' ? <User className="h-3.5 w-3.5 text-primary shrink-0" /> : <LayoutDashboard className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
+                  {r.type === 'lead' ? <User className="h-3.5 w-3.5 text-primary shrink-0" /> : <LayoutDashboard className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium truncate">{r.title}</p>
                     {r.subtitle && <p className="text-[11px] text-muted-foreground truncate">{r.subtitle}</p>}
@@ -277,11 +277,11 @@ function HeaderCrisisAlert() {
     {
       text: 'תגובה אגרסיבית ללא פרטים או הקשר',
       explanation: 'משתמש פרסם תגובה תוקפנית ללא הקשר עובדתי. מומלץ לפנות בשיחה אישית לפני שהשיח מתלהט.',
-      href: '/inbox?voter=demo-voter-1',
+      href: '/inbox?lead=demo-lead-1',
       actions: [
-        { label: 'פתח בשיחה', href: '/inbox?voter=demo-voter-1', variant: 'outline' },
-        { label: 'שלח תגובה ממלכתית', href: '/inbox?voter=demo-voter-1&template=statesman', variant: 'default' },
-        { label: 'התעלם וסמן', href: '/inbox?voter=demo-voter-1&action=ignore', variant: 'secondary' },
+        { label: 'פתח בשיחה', href: '/inbox?lead=demo-lead-1', variant: 'outline' },
+        { label: 'שלח תגובה ממלכתית', href: '/inbox?lead=demo-lead-1&template=statesman', variant: 'default' },
+        { label: 'התעלם וסמן', href: '/inbox?lead=demo-lead-1&action=ignore', variant: 'secondary' },
       ],
     },
   ];
@@ -519,7 +519,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       staleTime: 60_000,
     });
     queryClient.prefetchInfiniteQuery({
-      queryKey: ['voters-infinite', '', 'all', 'all', 'all'],
+      queryKey: ['leads-infinite', '', 'all', 'all', 'all'],
       queryFn: async () => {
         const { supabase } = await import('@/integrations/supabase/client');
         const { data, count } = await supabase.from('leads').select('*', { count: 'exact' })
@@ -532,8 +532,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
   }, [queryClient, isDemoMode]);
 
   useEffect(() => {
-    // Skip the mandate-selector popup on entering demo. Auto-pick a sensible
-    // default candidate so demo data loads immediately.
+    // Skip the transaction-selector popup on entering demo. Auto-pick a sensible
+    // default listing so demo data loads immediately.
     if (isDemoMode && !demoCandidateId) {
       setDemoCandidateId('national-mid');
     }

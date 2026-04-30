@@ -145,9 +145,9 @@ const AuditLogCard = () => {
   });
 
   const { data: voterAccess } = useQuery({
-    queryKey: ['audit-voter-access'],
+    queryKey: ['audit-lead-access'],
     queryFn: async () => {
-      // Get last 10 voter interactions as a proxy for "access"
+      // Get last 10 lead interactions as a proxy for "access"
       const { data } = await supabase
         .from('messages')
         .select('id, created_at, sender_type, lead_id')
@@ -176,15 +176,15 @@ const AuditLogCard = () => {
       }
     });
 
-    // Voter data access (from messages)
+    // Lead data access (from messages)
     voterAccess?.forEach((m) => {
       if (m.created_at) {
         entries.push({
           id: `msg-${m.id}`,
           timestamp: m.created_at,
           user_email: m.sender_type === 'system' ? 'system@kalpiz.ai' : email,
-          action: m.sender_type === 'system' ? 'שליחת הודעה אוטומטית' : 'גישה למאגר בוחרים',
-          target: `voter:${(m.lead_id || '').slice(0, 8)}...`,
+          action: m.sender_type === 'system' ? 'שליחת הודעה אוטומטית' : 'גישה למאגר לידים',
+          target: `lead:${(m.lead_id || '').slice(0, 8)}...`,
         });
       }
     });
@@ -199,7 +199,7 @@ const AuditLogCard = () => {
           <Activity className="h-4 w-4 text-primary" />
           יומן פעילות (Audit Log)
         </CardTitle>
-        <CardDescription className="text-xs">מי ניגש למאגר הבוחרים, מתי, ואיזו פעולה בוצעה</CardDescription>
+        <CardDescription className="text-xs">מי ניגש למאגר הלידים, מתי, ואיזו פעולה בוצעה</CardDescription>
       </CardHeader>
       <CardContent>
         {auditEntries.length === 0 ? (
@@ -934,7 +934,7 @@ const DbAccessLog = () => {
   const { data: accessLogs } = useQuery({
     queryKey: ['db-access-log'],
     queryFn: async () => {
-      // Combine recent voter reads + message activity as access events
+      // Combine recent lead reads + message activity as access events
       const [{ data: voterReads }, { data: msgActivity }] = await Promise.all([
         supabase.from('leads').select('id, full_name, created_at').order('created_at', { ascending: false }).limit(3),
         supabase.from('messages').select('id, created_at, sender_type, lead_id').order('created_at', { ascending: false }).limit(3),
@@ -950,7 +950,7 @@ const DbAccessLog = () => {
           timestamp: v.created_at || new Date().toISOString(),
           actor: email,
           action: 'READ',
-          resource: `voters/${(v.full_name || v.id).slice(0, 20)}`,
+          resource: `leads/${(v.full_name || v.id).slice(0, 20)}`,
           verified: true,
         });
       });

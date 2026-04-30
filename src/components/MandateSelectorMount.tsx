@@ -36,7 +36,7 @@ export function MandateSelectorMount() {
         const hasH1 = !!heroEl.querySelector(':scope > h1, :scope > div > h1');
         if (!hasH1) continue;
         const el = document.createElement('div');
-        el.className = 'kalpiz-mandate-mount flex justify-center pt-4 pb-2';
+        el.className = 'kalpiz-transaction-mount flex justify-center pt-4 pb-2';
         heroEl.insertAdjacentElement('afterend', el);
         createdHost = el;
         setHost(el);

@@ -52,7 +52,7 @@ export default function ActivityLog() {
     refetchInterval: 20_000,
   });
 
-  // Live demo ticker: every 4s prepend a fresh AI<->voter exchange to simulate live activity.
+  // Live demo ticker: every 4s prepend a fresh AI<->lead exchange to simulate live activity.
   const [liveDemoEntries, setLiveDemoEntries] = useState<ActivityRow[]>([]);
   useEffect(() => {
     if (!isDemoMode) {
@@ -86,8 +86,8 @@ export default function ActivityLog() {
         thread_key: voter?.id || `live-thread-${Math.floor(Math.random() * 8)}`,
         platform,
         action_type: isAi ? 'reply' : 'comment',
-        actor_type: isAi ? 'ai_agent' : 'voter',
-        actor_label: isAi ? 'ai' : 'voter',
+        actor_type: isAi ? 'ai_agent' : 'lead',
+        actor_label: isAi ? 'ai' : 'lead',
         content: isAi
           ? aiReplies[Math.floor(Math.random() * aiReplies.length)]
           : voterMsgs[Math.floor(Math.random() * voterMsgs.length)],
@@ -109,7 +109,7 @@ export default function ActivityLog() {
         thread_key: msg.lead_id || 'demo',
         platform: msg.platform || msg.channel,
         action_type: msg.direction === 'outbound' ? 'reply' : 'comment',
-        actor_type: msg.sender_type === 'ai' ? 'ai_agent' : 'voter',
+        actor_type: msg.sender_type === 'ai' ? 'ai_agent' : 'lead',
         actor_label: msg.sender_type,
         content: msg.content || '',
         confidence_score: msg.sender_type === 'ai' ? 82 + (index % 16) : null,
@@ -124,7 +124,7 @@ export default function ActivityLog() {
       thread_key: msg.lead_id || 'general',
       platform: msg.platform || msg.channel,
       action_type: msg.direction === 'outbound' ? 'reply' : 'comment',
-      actor_type: msg.sender_type === 'supervisor' || msg.sender_type === 'agent' ? 'supervisor' : msg.sender_type === 'ai' ? 'ai_agent' : 'voter',
+      actor_type: msg.sender_type === 'supervisor' || msg.sender_type === 'agent' ? 'supervisor' : msg.sender_type === 'ai' ? 'ai_agent' : 'lead',
       actor_label: msg.sender_type,
       content: msg.content || '',
       confidence_score: null,
@@ -171,7 +171,7 @@ export default function ActivityLog() {
                       <div className="mb-2 flex flex-wrap items-center gap-2">
                         <Badge variant={isAi ? 'secondary' : isSupervisor ? 'default' : 'outline'} className="gap-1">
                           {isAi ? <Bot className="h-3 w-3" /> : <UserRound className="h-3 w-3" />}
-                          {isAi ? 'AI Agent' : isSupervisor ? 'Supervisor' : 'בוחר'}
+                          {isAi ? 'AI Agent' : isSupervisor ? 'Supervisor' : 'ליד'}
                         </Badge>
                         <Badge variant="outline">{entry.platform || 'כללי'}</Badge>
                         <span className="text-xs text-muted-foreground">{format(new Date(entry.created_at), 'dd/MM HH:mm')}</span>

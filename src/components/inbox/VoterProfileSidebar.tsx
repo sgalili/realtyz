@@ -87,7 +87,7 @@ const VoterProfileSidebar = ({ voter }: Props) => {
   const loyalty = loyaltyConfig[voter.loyalty_tier || voter.status || 'lead'] || loyaltyConfig.lead;
 
   const { data: recentMessages } = useQuery({
-    queryKey: ['voter-recent-msgs', voter.id],
+    queryKey: ['lead-recent-msgs', voter.id],
     queryFn: async () => {
       const { data } = await supabase
         .from('messages')

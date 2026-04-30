@@ -28,7 +28,7 @@ export function StrategyBriefCard({
   const ref = useRef<HTMLDivElement>(null);
 
   const handleDownload = () => {
-    const text = `📋 ה-Brief האסטרטגי של ${candidate}
+    const text = `📋 ה-Brief האסטרטגי של ${listing}
 ═══════════════════════════════
 
 🎯 ${brief.headline}
@@ -36,10 +36,10 @@ export function StrategyBriefCard({
 תזה: ${brief.thesis}
 
 📊 נתונים:
-• יעד מנדטים: ${stats.mandate_target}
-• בוחרים נדרשים: ${stats.targetVoters.toLocaleString()}
+• יעד עסקאות: ${stats.mandate_target}
+• לידים נדרשים: ${stats.targetVoters.toLocaleString()}
 • פער: ${stats.gap.toLocaleString()}
-• זמן לבחירות: ${stats.months_to_election} חודשים
+• זמן למכירות: ${stats.months_to_election} חודשים
 
 🏛 עמודי תווך:
 ${brief.pillars.map((p, i) => `${i + 1}. ${p}`).join('\n')}
@@ -60,7 +60,7 @@ ${brief.signature_message}
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Strategy-Brief-${candidate.replace(/\s+/g, '-')}.txt`;
+    a.download = `Strategy-Brief-${listing.replace(/\s+/g, '-')}.txt`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success('הורדנו את ה-Brief בהצלחה');
@@ -69,7 +69,7 @@ ${brief.signature_message}
   const handleShare = async () => {
     const summary = `${brief.headline}\n\n${brief.thesis}\n\nנוצר ב-Kalpiz AI`;
     if (navigator.share) {
-      try { await navigator.share({ title: `Brief אסטרטגי - ${candidate}`, text: summary }); } catch {}
+      try { await navigator.share({ title: `Brief אסטרטגי - ${listing}`, text: summary }); } catch {}
     } else {
       await navigator.clipboard.writeText(summary);
       toast.success('הועתק ללוח');
@@ -90,8 +90,8 @@ ${brief.signature_message}
 
         {/* Stats strip */}
         <div className="grid grid-cols-3 border-b text-center">
-          <Stat label="יעד מנדטים" value={stats.mandate_target.toString()} />
-          <Stat label="בוחרים נדרשים" value={stats.targetVoters.toLocaleString()} divider />
+          <Stat label="יעד עסקאות" value={stats.mandate_target.toString()} />
+          <Stat label="לידים נדרשים" value={stats.targetVoters.toLocaleString()} divider />
           <Stat label="פער ליעד" value={stats.gap.toLocaleString()} />
         </div>
 
@@ -103,7 +103,7 @@ ${brief.signature_message}
 
           <div className="pt-3 border-t">
             <div className={`flex items-center gap-1.5 text-xs font-bold mb-2 text-blue-600`}>
-              <MessageSquare className="h-3.5 w-3.5" /> הודעת חתימה לבוחרים חמים
+              <MessageSquare className="h-3.5 w-3.5" /> הודעת חתימה ללידים חמים
             </div>
             <p className="text-sm leading-relaxed bg-muted/40 rounded-lg p-3 italic">
               "{brief.signature_message}"

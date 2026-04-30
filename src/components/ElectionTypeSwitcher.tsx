@@ -33,7 +33,7 @@ export function ElectionTypeSwitcher({ className, size = 'sm' }: Props) {
             : 'text-muted-foreground hover:text-foreground',
         )}
       >
-        בחירות ארציות
+        מכירות ארציות
       </button>
       <button
         type="button"

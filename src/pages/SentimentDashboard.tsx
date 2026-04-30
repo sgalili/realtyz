@@ -62,7 +62,7 @@ const RADAR_LABELS: Record<string, string> = {
 
 const SentimentDashboard = () => {
   const { isDemoMode } = useDemoMode();
-  useRealtimeSubscription('voters', [
+  useRealtimeSubscription('leads', [
     ['sentiment-distribution'],
     ['city-pulse'],
     ['sentiment-radar'],
@@ -193,7 +193,7 @@ const SentimentDashboard = () => {
       });
 
       // Boost interest tags
-      voters?.forEach((v) => {
+      leads?.forEach((v) => {
         const tag = v.interest_tag;
         if (tag) wordMap.set(tag, (wordMap.get(tag) || 0) + 3);
       });
@@ -238,7 +238,7 @@ const SentimentDashboard = () => {
       <div>
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-primary">ניתוח סנטימנט</h1>
-          <p className="text-muted-foreground text-sm">דופק הבוחרים בזמן אמת, סנטימנט, נושאים חמים ומפת ערים</p>
+          <p className="text-muted-foreground text-sm">דופק הלידים בזמן אמת, סנטימנט, נושאים חמים ומפת ערים</p>
         </div>
       </div>
 
@@ -379,7 +379,7 @@ const SentimentDashboard = () => {
                   >
                     <p className="font-medium truncate">{c.city}</p>
                     <div className="flex items-center justify-between mt-1">
-                      <span className="text-muted-foreground">{c.total} בוחרים</span>
+                      <span className="text-muted-foreground">{c.total} לידים</span>
                       <span className="font-bold" style={{ color: scoreColor }}>{c.positivePercent}%</span>
                     </div>
                   </button>

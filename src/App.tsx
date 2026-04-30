@@ -17,7 +17,7 @@ import ResetPassword from "./pages/ResetPassword";
 
 // Lazy load pages for better performance
 const Index = lazy(() => import("./pages/Index"));
-const VoterCRM = lazy(() => import("./pages/VoterCRM"));
+const LeadCRM = lazy(() => import("./pages/LeadCRM"));
 const OmnichannelInbox = lazy(() => import("./pages/OmnichannelInbox"));
 const AIContentGenerator = lazy(() => import("./pages/AIContentGenerator"));
 const CampaignCenter = lazy(() => import("./pages/CampaignCenter"));
@@ -36,7 +36,7 @@ const MassiveImporter = lazy(() => import("./pages/MassiveImporter"));
 const SuperAdmin = lazy(() => import("./pages/SuperAdmin"));
 const Finance = lazy(() => import("./pages/Finance"));
 const KnowledgeBase = lazy(() => import("./pages/KnowledgeBase"));
-const PublicCandidatePage = lazy(() => import("./pages/PublicCandidatePage"));
+const PublicListingPage = lazy(() => import("./pages/PublicListingPage"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const SocialConnect = lazy(() => import("./pages/SocialConnect"));
 const OAuthCallback = lazy(() => import("./pages/OAuthCallback"));
@@ -133,13 +133,13 @@ const App = () => (
               <Route path="/auth" element={<AuthRoute />} />
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/oauth/callback" element={<Suspense fallback={<PageLoader />}><OAuthCallback /></Suspense>} />
-              <Route path="/p/:slug" element={<Suspense fallback={<PageLoader />}><PublicCandidatePage /></Suspense>} />
+              <Route path="/p/:slug" element={<Suspense fallback={<PageLoader />}><PublicListingPage /></Suspense>} />
               <Route path="/unsubscribe" element={<Suspense fallback={<PageLoader />}><Unsubscribe /></Suspense>} />
               <Route path="/" element={<ProtectedRoute allowGuestDemo><Index /></ProtectedRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute allowGuestDemo><Index /></ProtectedRoute>} />
-              <Route path="/crm" element={<ProtectedRoute allowGuestDemo><VoterCRM /></ProtectedRoute>} />
-              <Route path="/voters" element={<ProtectedRoute allowGuestDemo><VoterCRM /></ProtectedRoute>} />
-              <Route path="/voter-crm" element={<ProtectedRoute allowGuestDemo><VoterCRM /></ProtectedRoute>} />
+              <Route path="/crm" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
+              <Route path="/leads" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
+              <Route path="/lead-crm" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
               <Route path="/inbox" element={<ProtectedRoute allowGuestDemo><OmnichannelInbox /></ProtectedRoute>} />
               <Route path="/ai-content" element={<ProtectedRoute allowGuestDemo><AIContentGenerator /></ProtectedRoute>} />
               <Route path="/ads" element={<Navigate to="/campaigns?tab=campaigns" replace />} />

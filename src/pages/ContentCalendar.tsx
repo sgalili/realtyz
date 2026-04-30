@@ -84,7 +84,7 @@ const buildDemoItems = (): ScheduledItem[] => {
   });
   return [
     // History (past)
-    base({ title: 'סיכום שבוע - הישגי הקמפיין', content: 'פוסט סיכום שבועי עם דגש על מנדטים שנוספו וחיבור לבסיס התומכים.', item_type: 'social_post', channel: 'facebook', status: 'posted', scheduled_for: at(-5, 10), sent_count: 1, total_recipients: 1 }),
+    base({ title: 'סיכום שבוע - הישגי הקמפיין', content: 'פוסט סיכום שבועי עם דגש על עסקאות שנוספו וחיבור לבסיס התומכים.', item_type: 'social_post', channel: 'facebook', status: 'posted', scheduled_for: at(-5, 10), sent_count: 1, total_recipients: 1 }),
     base({ title: 'תזכורת התנדבות בשטח', content: 'SMS לפעילי שטח עם פרטי המפגש השבועי במטה.', item_type: 'sms_campaign', channel: 'sms', status: 'posted', scheduled_for: at(-4, 17), drip_enabled: true, daily_limit: 120, sent_count: 480, total_recipients: 480 }),
     base({ title: 'עדות מהשטח - חיפה', content: 'סטורי אינסטגרם עם תושב חיפה שמסביר למה הצטרף לקמפיין.', item_type: 'social_post', channel: 'instagram', status: 'posted', scheduled_for: at(-3, 19), sent_count: 1, total_recipients: 1 }),
     base({ title: 'קמפיין WhatsApp לתומכים חמים', content: 'הודעת WhatsApp אישית לרשימת התומכים החמים, עם בקשה להפצה למשפחה.', item_type: 'whatsapp_blast', channel: 'whatsapp', status: 'posted', scheduled_for: at(-2, 11), drip_enabled: true, daily_limit: 200, sent_count: 1240, total_recipients: 1240 }),
@@ -93,7 +93,7 @@ const buildDemoItems = (): ScheduledItem[] => {
     // Today
     base({ title: 'בוקר טוב לפעילים', content: 'התראת Push יומית לפעילים עם משימת היום.', item_type: 'push', channel: 'push', status: 'in_progress', scheduled_for: at(0, 8), sent_count: 320, total_recipients: 540 }),
     base({ title: 'פוסט מרכזי - חזון לקהילה', content: 'פוסט פייסבוק שמציג את החזון לחמש שנים הקרובות.', item_type: 'social_post', channel: 'facebook', status: 'approved', scheduled_for: at(0, 12) }),
-    base({ title: 'סטורי אינסטגרם - מאחורי הקלעים', content: 'סדרת סטוריז עם המועמד במהלך פגישת תושבים.', item_type: 'social_post', channel: 'instagram', status: 'needs_reverification', scheduled_for: at(0, 18, 30) }),
+    base({ title: 'סטורי אינסטגרם - מאחורי הקלעים', content: 'סדרת סטוריז עם הנכס במהלך פגישת תושבים.', item_type: 'social_post', channel: 'instagram', status: 'needs_reverification', scheduled_for: at(0, 18, 30) }),
 
     // Tomorrow
     base({ title: 'הזמנה לכנס תושבים', content: 'הודעת WhatsApp עם לינק להרשמה לכנס.', item_type: 'whatsapp_blast', channel: 'whatsapp', status: 'approved', scheduled_for: at(1, 10), drip_enabled: true, daily_limit: 250, total_recipients: 1800 }),
@@ -111,7 +111,7 @@ const buildDemoItems = (): ScheduledItem[] => {
     base({ title: 'התראת Push - סקר קהל', content: 'סקר קצר עם 3 שאלות על נושאי הקמפיין.', item_type: 'push', channel: 'push', status: 'approved', scheduled_for: at(4, 19) }),
 
     // Day +5
-    base({ title: 'פוסט סיכום שבוע', content: 'פוסט פייסבוק שמסכם את אירועי השבוע ומחבר אותם ליעד המנדטים.', item_type: 'social_post', channel: 'facebook', status: 'pending', scheduled_for: at(5, 16) }),
+    base({ title: 'פוסט סיכום שבוע', content: 'פוסט פייסבוק שמסכם את אירועי השבוע ומחבר אותם ליעד העסקאות.', item_type: 'social_post', channel: 'facebook', status: 'pending', scheduled_for: at(5, 16) }),
 
     // Day +6
     base({ title: 'קמפיין SMS - יום ההצבעה', content: 'תזכורת ביום ההצבעה לכל הרשימה.', item_type: 'sms_campaign', channel: 'sms', status: 'pending', scheduled_for: at(6, 8), drip_enabled: true, daily_limit: 500, total_recipients: 5000 }),
@@ -230,17 +230,17 @@ export default function ContentCalendar() {
       const mandateGoal = settings?.mandate_target || '2';
       const templates = [
         ['מסר פתיחת שבוע', 'פוסט סושיאל שמחבר את יעד הקמפיין לנושא המרכזי השבוע'],
-        ['עדות מהשטח', 'פוסט קצר שמדגיש צורך אמיתי של בוחרים ומענה קונקרטי'],
+        ['עדות מהשטח', 'פוסט קצר שמדגיש צורך אמיתי של לידים ומענה קונקרטי'],
         ['הנעה לשיחה', 'SMS ממוקד שמזמין תומכים לענות ולהצטרף למעגל הפעילים'],
         ['הבהרת עמדה', 'פוסט רגוע וברור שמסביר את עמדת הקמפיין ללא הסלמה'],
         ['תזכורת לפעילים', 'התראת Push עם משימה אחת פשוטה ליום הפעילות'],
         ['שאלת מעורבות', 'פוסט שמבקש תגובות מהציבור ומזהה נושאים חמים'],
-        ['סיכום שבוע', 'פוסט שמסכם הישגים ומחבר אותם ליעד המנדטים'],
+        ['סיכום שבוע', 'פוסט שמסכם הישגים ומחבר אותם ליעד העסקאות'],
       ];
       const rows = templates.map(([title, idea], index) => ({
         user_id: user!.id,
         title: `המלצת AI: ${title}`,
-        content: `${idea}. מיקוד: ${focus}. יעד מנדטים: ${mandateGoal}. נדרש אישור אנושי לפני פרסום.`,
+        content: `${idea}. מיקוד: ${focus}. יעד עסקאות: ${mandateGoal}. נדרש אישור אנושי לפני פרסום.`,
         item_type: index === 2 ? 'sms_campaign' : index === 4 ? 'push' : 'social_post',
         channel: index === 2 ? 'sms' : index === 4 ? 'push' : index % 2 ? 'instagram' : 'facebook',
         status: 'pending',
