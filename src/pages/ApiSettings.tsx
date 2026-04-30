@@ -291,6 +291,47 @@ const ApiSettings = () => {
   const [homelyLoaded, setHomelyLoaded] = useState(false);
   const { user: authUser } = useAuth();
 
+  // Per-service On/Off toggles (service_toggles table)
+  const { data: serviceToggles = [] } = useQuery({
+    queryKey: ['service-toggles', authUser?.id],
+    enabled: !!authUser?.id,
+    queryFn: async () => {
+      const { data } = await supabaseClient
+        .from('service_toggles')
+        .select('*')
+        .eq('user_id', authUser!.id);
+      return data ?? [];
+    },
+  });
+
+  const toggleService = useMutation({
+    mutationFn: async ({ key, enabled }: { key: string; enabled: boolean }) => {
+      if (!authUser) throw new Error('not-auth');
+      const existing = serviceToggles.find((t) => t.service_key === key);
+      if (existing) {
+        const { error } = await supabaseClient
+          .from('service_toggles')
+          .update({ enabled, updated_at: new Date().toISOString() })
+          .eq('id', existing.id);
+        if (error) throw error;
+      } else {
+        const { error } = await supabaseClient
+          .from('service_toggles')
+          .insert({ user_id: authUser.id, service_key: key, enabled });
+        if (error) throw error;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['service-toggles'] });
+    },
+    onError: () => toast.error('עדכון השירות נכשל'),
+  });
+
+  const isServiceEnabled = (key: string) => {
+    const t = serviceToggles.find((x) => x.service_key === key);
+    return t ? t.enabled : true; // default on
+  };
+
   const edgeFnBase = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/manage-api-configs`;
   const edgeFnHeaders = {
     'Content-Type': 'application/json',
