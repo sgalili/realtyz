@@ -1022,19 +1022,7 @@ const ApiSettings = () => {
         </div>
       </ServiceCard>
 
-      {/* Military-Grade Access Log */}
-      <Card className="border-emerald-500/20 bg-gradient-to-br from-background to-emerald-500/[0.02]">
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Fingerprint className="h-4 w-4 text-emerald-500" />
-            גישות אחרונות למאגר - Military Grade Audit
-          </CardTitle>
-          <CardDescription className="text-xs font-mono text-emerald-600/60">Last 5 verified database access events</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <DbAccessLog />
-        </CardContent>
-      </Card>
+      </Accordion>
         </>
       )}
     </div>
