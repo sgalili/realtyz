@@ -820,6 +820,7 @@ Deno.serve(async (req) => {
             waSession.apiToken,
             intl,
             message,
+            { supabaseUrl, serviceRoleKey: serviceKey, userId },
           );
       } else if (channel === "email") {
         const emailAddr = (row as any).recipient_email as string | null;
