@@ -1,0 +1,418 @@
+/**
+ * send-whatsapp
+ * ─────────────
+ * Unified WhatsApp gateway. Routes per-tenant to either:
+ *   - WBA (Official WhatsApp Business API) — if the tenant has an active
+ *     `wa_providers` row with provider_name='WBA' and is_official=true.
+ *   - GreenAPI (unofficial) — otherwise. Reads credentials from
+ *     `wa_providers` (provider_name='GreenAPI') OR falls back to legacy
+ *     `api_configs` ("Green API") / `social_connections` rows so existing
+ *     Kalpiz tenants keep working without re-configuration.
+ *
+ * Standardized response shape (UI never needs to know which provider ran):
+ * {
+ *   success: boolean,
+ *   provider: 'WBA' | 'GreenAPI',
+ *   message_id: string | null,
+ *   error?: string,
+ *   details?: unknown
+ * }
+ */
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { z } from "https://esm.sh/zod@3.25.76";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+};
+
+const BodySchema = z.object({
+  phone_number: z.string().min(8).max(20),
+  message: z.string().min(1).max(4096),
+  // Optional file attachment (base64) for unified file send.
+  file: z
+    .object({
+      base64: z.string().min(50),
+      file_name: z.string().min(1).max(160),
+      caption: z.string().max(1000).optional(),
+      mime_type: z.string().optional(),
+    })
+    .optional(),
+  // Optional explicit override; otherwise auto-routed by tenant config.
+  force_provider: z.enum(["WBA", "GreenAPI"]).optional(),
+});
+
+type StdResponse = {
+  success: boolean;
+  provider: "WBA" | "GreenAPI";
+  message_id: string | null;
+  error?: string;
+  details?: unknown;
+};
+
+const json = (body: StdResponse | { error: string }, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+function normalizePhone(value: string): string | null {
+  const digits = value.replace(/\D/g, "");
+  if (/^05\d{8}$/.test(digits)) return `972${digits.slice(1)}`;
+  if (/^9725\d{8}$/.test(digits)) return digits;
+  if (/^\d{10,15}$/.test(digits)) return digits; // generic international
+  return null;
+}
+
+interface ResolvedProvider {
+  name: "WBA" | "GreenAPI";
+  is_official: boolean;
+  config: Record<string, unknown>;
+}
+
+async function resolveProvider(
+  admin: ReturnType<typeof createClient>,
+  userId: string | null,
+  force?: "WBA" | "GreenAPI",
+): Promise<ResolvedProvider | null> {
+  // 1. Per-tenant rows in wa_providers (preferred).
+  if (userId) {
+    const { data: rows } = await admin
+      .from("wa_providers")
+      .select("provider_name, config, is_official, is_active")
+      .eq("user_id", userId)
+      .eq("is_active", true);
+
+    const list = (rows ?? []) as Array<{
+      provider_name: "WBA" | "GreenAPI";
+      config: Record<string, unknown>;
+      is_official: boolean;
+    }>;
+
+    if (force) {
+      const match = list.find((r) => r.provider_name === force);
+      if (match) {
+        return {
+          name: match.provider_name,
+          is_official: match.is_official,
+          config: match.config ?? {},
+        };
+      }
+    } else {
+      // Routing rule: official WBA wins if connected.
+      const wba = list.find(
+        (r) => r.provider_name === "WBA" && r.is_official === true,
+      );
+      if (wba) {
+        return { name: "WBA", is_official: true, config: wba.config ?? {} };
+      }
+      const green = list.find((r) => r.provider_name === "GreenAPI");
+      if (green) {
+        return {
+          name: "GreenAPI",
+          is_official: false,
+          config: green.config ?? {},
+        };
+      }
+    }
+  }
+
+  // 2. Legacy fallback — preserve existing Kalpiz GreenAPI behavior.
+  if (!force || force === "GreenAPI") {
+    const { data: legacy } = await admin
+      .from("api_configs")
+      .select("api_key")
+      .eq("service_name", "Green API")
+      .eq("is_active", true)
+      .maybeSingle();
+    if (legacy?.api_key) {
+      const [instance_id, ...tokenParts] = String(legacy.api_key).split(":");
+      const token = tokenParts.join(":");
+      if (instance_id && token) {
+        return {
+          name: "GreenAPI",
+          is_official: false,
+          config: { instance_id, token },
+        };
+      }
+    }
+
+    const { data: socialRow } = await admin
+      .from("social_connections")
+      .select("credentials")
+      .eq("platform", "whatsapp_green")
+      .eq("is_connected", true)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const creds = (socialRow?.credentials ?? {}) as {
+      instance_id?: string;
+      token?: string;
+      api_token?: string;
+    };
+    const instance_id = String(creds.instance_id ?? "");
+    const token = String(creds.token ?? creds.api_token ?? "");
+    if (instance_id && token) {
+      return { name: "GreenAPI", is_official: false, config: { instance_id, token } };
+    }
+  }
+
+  return null;
+}
+
+async function sendViaGreenApi(
+  cfg: Record<string, unknown>,
+  phone: string,
+  message: string,
+  file?: { base64: string; file_name: string; caption?: string },
+): Promise<StdResponse> {
+  const instanceId = String(cfg.instance_id ?? "");
+  const token = String(cfg.token ?? "");
+  if (!instanceId || !token) {
+    return {
+      success: false,
+      provider: "GreenAPI",
+      message_id: null,
+      error: "GreenAPI not configured",
+    };
+  }
+  const chatId = `${phone}@c.us`;
+
+  // Text first.
+  const textRes = await fetch(
+    `https://api.green-api.com/waInstance${instanceId}/sendMessage/${token}`,
+    {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ chatId, message }),
+    },
+  );
+  const textJson = await textRes.json().catch(() => ({}));
+  if (!textRes.ok || !textJson?.idMessage) {
+    return {
+      success: false,
+      provider: "GreenAPI",
+      message_id: null,
+      error: `GreenAPI send failed (${textRes.status})`,
+      details: textJson,
+    };
+  }
+
+  let fileMessageId: string | null = null;
+  if (file) {
+    const bytes = Uint8Array.from(atob(file.base64), (c) => c.charCodeAt(0));
+    const form = new FormData();
+    form.append("chatId", chatId);
+    if (file.caption) form.append("caption", file.caption);
+    form.append(
+      "file",
+      new Blob([bytes], { type: "application/octet-stream" }),
+      file.file_name,
+    );
+    const fr = await fetch(
+      `https://api.green-api.com/waInstance${instanceId}/sendFileByUpload/${token}`,
+      { method: "POST", body: form },
+    );
+    const fj = await fr.json().catch(() => ({}));
+    if (!fr.ok) {
+      return {
+        success: false,
+        provider: "GreenAPI",
+        message_id: textJson.idMessage,
+        error: `GreenAPI file send failed (${fr.status})`,
+        details: fj,
+      };
+    }
+    fileMessageId = fj?.idMessage ?? null;
+  }
+
+  return {
+    success: true,
+    provider: "GreenAPI",
+    message_id: fileMessageId ?? textJson.idMessage,
+  };
+}
+
+async function sendViaWba(
+  cfg: Record<string, unknown>,
+  phone: string,
+  message: string,
+  file?: { base64: string; file_name: string; caption?: string; mime_type?: string },
+): Promise<StdResponse> {
+  const phoneNumberId = String(cfg.phone_number_id ?? "");
+  const accessToken = String(cfg.access_token ?? "");
+  const apiVersion = String(cfg.api_version ?? "v20.0");
+  if (!phoneNumberId || !accessToken) {
+    return {
+      success: false,
+      provider: "WBA",
+      message_id: null,
+      error: "WBA not configured",
+    };
+  }
+  const baseUrl = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`;
+
+  // Text message.
+  const textRes = await fetch(baseUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to: phone,
+      type: "text",
+      text: { body: message },
+    }),
+  });
+  const textJson = await textRes.json().catch(() => ({}));
+  if (!textRes.ok) {
+    return {
+      success: false,
+      provider: "WBA",
+      message_id: null,
+      error: `WBA send failed (${textRes.status})`,
+      details: textJson,
+    };
+  }
+  const textMsgId = textJson?.messages?.[0]?.id ?? null;
+
+  if (!file) {
+    return { success: true, provider: "WBA", message_id: textMsgId };
+  }
+
+  // Upload media → send document. (Two-step per WBA spec.)
+  const bytes = Uint8Array.from(atob(file.base64), (c) => c.charCodeAt(0));
+  const mime = file.mime_type ?? "application/octet-stream";
+  const uploadForm = new FormData();
+  uploadForm.append("messaging_product", "whatsapp");
+  uploadForm.append("type", mime);
+  uploadForm.append("file", new Blob([bytes], { type: mime }), file.file_name);
+
+  const upRes = await fetch(
+    `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/media`,
+    {
+      method: "POST",
+      headers: { Authorization: `Bearer ${accessToken}` },
+      body: uploadForm,
+    },
+  );
+  const upJson = await upRes.json().catch(() => ({}));
+  if (!upRes.ok || !upJson?.id) {
+    return {
+      success: false,
+      provider: "WBA",
+      message_id: textMsgId,
+      error: `WBA media upload failed (${upRes.status})`,
+      details: upJson,
+    };
+  }
+
+  const docRes = await fetch(baseUrl, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify({
+      messaging_product: "whatsapp",
+      to: phone,
+      type: "document",
+      document: {
+        id: upJson.id,
+        filename: file.file_name,
+        caption: file.caption ?? undefined,
+      },
+    }),
+  });
+  const docJson = await docRes.json().catch(() => ({}));
+  if (!docRes.ok) {
+    return {
+      success: false,
+      provider: "WBA",
+      message_id: textMsgId,
+      error: `WBA document send failed (${docRes.status})`,
+      details: docJson,
+    };
+  }
+
+  return {
+    success: true,
+    provider: "WBA",
+    message_id: docJson?.messages?.[0]?.id ?? textMsgId,
+  };
+}
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") {
+    return json({ error: "Method not allowed" }, 405);
+  }
+
+  try {
+    const parsed = BodySchema.safeParse(await req.json());
+    if (!parsed.success) {
+      return new Response(
+        JSON.stringify({ error: parsed.error.flatten().fieldErrors }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
+
+    const phone = normalizePhone(parsed.data.phone_number);
+    if (!phone) {
+      return json({
+        success: false,
+        provider: "GreenAPI",
+        message_id: null,
+        error: "Invalid phone number",
+      }, 400);
+    }
+
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
+    const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+
+    // Best-effort caller identification (used to look up tenant providers).
+    let userId: string | null = null;
+    const authHeader = req.headers.get("Authorization") ?? "";
+    if (authHeader.startsWith("Bearer ")) {
+      try {
+        const userClient = createClient(SUPABASE_URL, ANON_KEY, {
+          global: { headers: { Authorization: authHeader } },
+        });
+        const { data } = await userClient.auth.getUser();
+        userId = data.user?.id ?? null;
+      } catch {
+        userId = null;
+      }
+    }
+
+    const provider = await resolveProvider(admin, userId, parsed.data.force_provider);
+    if (!provider) {
+      return json({
+        success: false,
+        provider: "GreenAPI",
+        message_id: null,
+        error: "No active WhatsApp provider configured",
+      }, 500);
+    }
+
+    const result = provider.name === "WBA"
+      ? await sendViaWba(provider.config, phone, parsed.data.message, parsed.data.file)
+      : await sendViaGreenApi(provider.config, phone, parsed.data.message, parsed.data.file);
+
+    return json(result, result.success ? 200 : 502);
+  } catch (e) {
+    console.error("send-whatsapp error", e);
+    return json({
+      success: false,
+      provider: "GreenAPI",
+      message_id: null,
+      error: e instanceof Error ? e.message : "Internal error",
+    }, 500);
+  }
+});

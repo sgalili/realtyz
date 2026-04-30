@@ -308,7 +308,7 @@ export type Database = {
           source_account: string | null
           status: string
           user_id: string
-          lead_id: string | null
+          voter_id: string | null
         }
         Insert: {
           campaign_name: string
@@ -327,7 +327,7 @@ export type Database = {
           source_account?: string | null
           status?: string
           user_id: string
-          lead_id?: string | null
+          voter_id?: string | null
         }
         Update: {
           campaign_name?: string
@@ -346,7 +346,7 @@ export type Database = {
           source_account?: string | null
           status?: string
           user_id?: string
-          lead_id?: string | null
+          voter_id?: string | null
         }
         Relationships: []
       }
@@ -1625,7 +1625,7 @@ export type Database = {
           sent_at: string | null
           status: string
           user_id: string
-          lead_id: string | null
+          voter_id: string | null
         }
         Insert: {
           created_at?: string
@@ -1639,7 +1639,7 @@ export type Database = {
           sent_at?: string | null
           status?: string
           user_id: string
-          lead_id?: string | null
+          voter_id?: string | null
         }
         Update: {
           created_at?: string
@@ -1653,7 +1653,7 @@ export type Database = {
           sent_at?: string | null
           status?: string
           user_id?: string
-          lead_id?: string | null
+          voter_id?: string | null
         }
         Relationships: []
       }
@@ -1666,7 +1666,7 @@ export type Database = {
           message_body: string
           sender_phone: string
           user_id: string
-          lead_id: string | null
+          voter_id: string | null
         }
         Insert: {
           ai_responded_at?: string | null
@@ -1676,7 +1676,7 @@ export type Database = {
           message_body: string
           sender_phone: string
           user_id: string
-          lead_id?: string | null
+          voter_id?: string | null
         }
         Update: {
           ai_responded_at?: string | null
@@ -1686,7 +1686,7 @@ export type Database = {
           message_body?: string
           sender_phone?: string
           user_id?: string
-          lead_id?: string | null
+          voter_id?: string | null
         }
         Relationships: []
       }
@@ -1799,6 +1799,39 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      wa_providers: {
+        Row: {
+          config: Json
+          created_at: string
+          id: string
+          is_active: boolean
+          is_official: boolean
+          provider_name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_official?: boolean
+          provider_name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          config?: Json
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_official?: boolean
+          provider_name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       whatsapp_login_otps: {
         Row: {
