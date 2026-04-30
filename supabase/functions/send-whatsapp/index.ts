@@ -28,21 +28,38 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
-const BodySchema = z.object({
-  phone_number: z.string().min(8).max(20),
-  message: z.string().min(1).max(4096),
-  // Optional file attachment (base64) for unified file send.
-  file: z
-    .object({
-      base64: z.string().min(50),
-      file_name: z.string().min(1).max(160),
-      caption: z.string().max(1000).optional(),
-      mime_type: z.string().optional(),
-    })
-    .optional(),
-  // Optional explicit override; otherwise auto-routed by tenant config.
-  force_provider: z.enum(["WBA", "GreenAPI"]).optional(),
-});
+const BodySchema = z
+  .object({
+    // Either lead_id (recipient resolved server-side) OR phone_number must be provided.
+    lead_id: z.string().uuid().optional(),
+    phone_number: z.string().min(8).max(20).optional(),
+    // Free-text body. Required for non-template sends.
+    message: z.string().min(1).max(4096).optional(),
+    // WBA-only template id. When provided AND provider is WBA, sends a template message
+    // using { template_id, language, components? }. Ignored by GreenAPI (falls back to text).
+    template_id: z.string().min(1).max(120).optional(),
+    template_language: z.string().min(2).max(20).optional(),
+    template_components: z.array(z.unknown()).optional(),
+    // Tenant-scoped routing override (looks up wa_providers by tenant_id).
+    tenant_id: z.string().uuid().optional(),
+    // Optional file attachment (base64) for unified file send.
+    file: z
+      .object({
+        base64: z.string().min(50),
+        file_name: z.string().min(1).max(160),
+        caption: z.string().max(1000).optional(),
+        mime_type: z.string().optional(),
+      })
+      .optional(),
+    // Optional explicit override; otherwise auto-routed by tenant config.
+    force_provider: z.enum(["WBA", "GreenAPI"]).optional(),
+  })
+  .refine((v) => !!v.lead_id || !!v.phone_number, {
+    message: "lead_id or phone_number is required",
+  })
+  .refine((v) => !!v.message || !!v.template_id, {
+    message: "message or template_id is required",
+  });
 
 type StdResponse = {
   success: boolean;
@@ -75,48 +92,54 @@ interface ResolvedProvider {
 async function resolveProvider(
   admin: ReturnType<typeof createClient>,
   userId: string | null,
+  tenantId: string | null,
   force?: "WBA" | "GreenAPI",
 ): Promise<ResolvedProvider | null> {
-  // 1. Per-tenant rows in wa_providers (preferred).
-  if (userId) {
+  // 1a. Tenant-scoped rows in wa_providers (highest priority when tenant_id is supplied).
+  const tryRows = async (
+    column: "tenant_id" | "user_id",
+    value: string,
+  ) => {
     const { data: rows } = await admin
       .from("wa_providers")
       .select("provider_name, config, is_official, is_active")
-      .eq("user_id", userId)
+      .eq(column, value)
       .eq("is_active", true);
-
-    const list = (rows ?? []) as Array<{
+    return (rows ?? []) as Array<{
       provider_name: "WBA" | "GreenAPI";
       config: Record<string, unknown>;
       is_official: boolean;
     }>;
+  };
 
+  const pick = (
+    list: Array<{
+      provider_name: "WBA" | "GreenAPI";
+      config: Record<string, unknown>;
+      is_official: boolean;
+    }>,
+  ): ResolvedProvider | null => {
     if (force) {
-      const match = list.find((r) => r.provider_name === force);
-      if (match) {
-        return {
-          name: match.provider_name,
-          is_official: match.is_official,
-          config: match.config ?? {},
-        };
-      }
-    } else {
-      // Routing rule: official WBA wins if connected.
-      const wba = list.find(
-        (r) => r.provider_name === "WBA" && r.is_official === true,
-      );
-      if (wba) {
-        return { name: "WBA", is_official: true, config: wba.config ?? {} };
-      }
-      const green = list.find((r) => r.provider_name === "GreenAPI");
-      if (green) {
-        return {
-          name: "GreenAPI",
-          is_official: false,
-          config: green.config ?? {},
-        };
-      }
+      const m = list.find((r) => r.provider_name === force);
+      return m
+        ? { name: m.provider_name, is_official: m.is_official, config: m.config ?? {} }
+        : null;
     }
+    // Routing rule: official WBA wins if connected.
+    const wba = list.find((r) => r.provider_name === "WBA" && r.is_official === true);
+    if (wba) return { name: "WBA", is_official: true, config: wba.config ?? {} };
+    const green = list.find((r) => r.provider_name === "GreenAPI");
+    if (green) return { name: "GreenAPI", is_official: false, config: green.config ?? {} };
+    return null;
+  };
+
+  if (tenantId) {
+    const hit = pick(await tryRows("tenant_id", tenantId));
+    if (hit) return hit;
+  }
+  if (userId) {
+    const hit = pick(await tryRows("user_id", userId));
+    if (hit) return hit;
   }
 
   // 2. Legacy fallback — preserve existing Kalpiz GreenAPI behavior.
@@ -238,8 +261,9 @@ async function sendViaGreenApi(
 async function sendViaWba(
   cfg: Record<string, unknown>,
   phone: string,
-  message: string,
+  message: string | null,
   file?: { base64: string; file_name: string; caption?: string; mime_type?: string },
+  template?: { id: string; language?: string; components?: unknown[] },
 ): Promise<StdResponse> {
   const phoneNumberId = String(cfg.phone_number_id ?? "");
   const accessToken = String(cfg.access_token ?? "");
@@ -254,19 +278,32 @@ async function sendViaWba(
   }
   const baseUrl = `https://graph.facebook.com/${apiVersion}/${phoneNumberId}/messages`;
 
-  // Text message.
+  // Choose payload: template (preferred when provided) vs free-text.
+  const payload = template
+    ? {
+        messaging_product: "whatsapp",
+        to: phone,
+        type: "template",
+        template: {
+          name: template.id,
+          language: { code: template.language ?? "he" },
+          components: template.components ?? [],
+        },
+      }
+    : {
+        messaging_product: "whatsapp",
+        to: phone,
+        type: "text",
+        text: { body: message ?? "" },
+      };
+
   const textRes = await fetch(baseUrl, {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${accessToken}`,
     },
-    body: JSON.stringify({
-      messaging_product: "whatsapp",
-      to: phone,
-      type: "text",
-      text: { body: message },
-    }),
+    body: JSON.stringify(payload),
   });
   const textJson = await textRes.json().catch(() => ({}));
   if (!textRes.ok) {
@@ -361,25 +398,19 @@ Deno.serve(async (req) => {
       );
     }
 
-    const phone = normalizePhone(parsed.data.phone_number);
-    if (!phone) {
-      return json({
-        success: false,
-        provider: "GreenAPI",
-        message_id: null,
-        error: "Invalid phone number",
-      }, 400);
-    }
-
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
     const admin = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-    // Best-effort caller identification (used to look up tenant providers).
+    // Caller identification:
+    //  - If a Bearer JWT is supplied, resolve the user.
+    //  - If the service-role key is supplied (server-to-server), trust the caller
+    //    and use the explicit tenant_id/lead_id only.
     let userId: string | null = null;
     const authHeader = req.headers.get("Authorization") ?? "";
-    if (authHeader.startsWith("Bearer ")) {
+    const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7) : "";
+    if (bearer && bearer !== SERVICE_ROLE_KEY) {
       try {
         const userClient = createClient(SUPABASE_URL, ANON_KEY, {
           global: { headers: { Authorization: authHeader } },
@@ -391,7 +422,40 @@ Deno.serve(async (req) => {
       }
     }
 
-    const provider = await resolveProvider(admin, userId, parsed.data.force_provider);
+    // Resolve recipient phone — either explicit, or by lead_id lookup.
+    let rawPhone = parsed.data.phone_number ?? "";
+    if (!rawPhone && parsed.data.lead_id) {
+      const { data: lead, error: leadErr } = await admin
+        .from("leads")
+        .select("phone_number")
+        .eq("id", parsed.data.lead_id)
+        .maybeSingle();
+      if (leadErr || !lead?.phone_number) {
+        return json({
+          success: false,
+          provider: "GreenAPI",
+          message_id: null,
+          error: "Lead not found or has no phone_number",
+        }, 404);
+      }
+      rawPhone = lead.phone_number;
+    }
+    const phone = normalizePhone(rawPhone);
+    if (!phone) {
+      return json({
+        success: false,
+        provider: "GreenAPI",
+        message_id: null,
+        error: "Invalid phone number",
+      }, 400);
+    }
+
+    const provider = await resolveProvider(
+      admin,
+      userId,
+      parsed.data.tenant_id ?? null,
+      parsed.data.force_provider,
+    );
     if (!provider) {
       return json({
         success: false,
@@ -401,9 +465,23 @@ Deno.serve(async (req) => {
       }, 500);
     }
 
-    const result = provider.name === "WBA"
-      ? await sendViaWba(provider.config, phone, parsed.data.message, parsed.data.file)
-      : await sendViaGreenApi(provider.config, phone, parsed.data.message, parsed.data.file);
+    const message = parsed.data.message ?? null;
+    const template = parsed.data.template_id
+      ? {
+          id: parsed.data.template_id,
+          language: parsed.data.template_language,
+          components: parsed.data.template_components,
+        }
+      : undefined;
+
+    let result: StdResponse;
+    if (provider.name === "WBA") {
+      result = await sendViaWba(provider.config, phone, message, parsed.data.file, template);
+    } else {
+      // GreenAPI doesn't support templates — fall back to text.
+      const text = message ?? `[${parsed.data.template_id}]`;
+      result = await sendViaGreenApi(provider.config, phone, text, parsed.data.file);
+    }
 
     return json(result, result.success ? 200 : 502);
   } catch (e) {

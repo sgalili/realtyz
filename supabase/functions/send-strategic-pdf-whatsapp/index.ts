@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+// createClient no longer needed — all WhatsApp sends route through send-whatsapp.
 import { z } from "https://esm.sh/zod@3.25.76";
 import { corsHeaders } from "../_shared/cors.ts";
 
@@ -32,33 +32,32 @@ Deno.serve(async (req) => {
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const admin = createClient(supabaseUrl, serviceRoleKey);
-    const { data: config } = await admin.from("api_configs").select("api_key").eq("service_name", "Green API").eq("is_active", true).maybeSingle();
-    const [instanceId, ...tokenParts] = String(config?.api_key ?? "").split(":");
-    const token = tokenParts.join(":");
-    if (!instanceId || !token) return json({ error: "Green API לא מוגדר" }, 500);
 
-    const chatId = `${phone}@c.us`;
-    const messageResponse = await fetch(`https://api.green-api.com/waInstance${instanceId}/sendMessage/${token}`, {
+    // Route via unified send-whatsapp gateway (text + PDF attachment in one call).
+    const res = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ chatId, message: parsed.data.message }),
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: req.headers.get("Authorization") ?? `Bearer ${serviceRoleKey}`,
+        apikey: serviceRoleKey,
+      },
+      body: JSON.stringify({
+        phone_number: phone,
+        message: parsed.data.message,
+        file: {
+          base64: parsed.data.pdf_base64,
+          file_name: parsed.data.file_name,
+          caption: "דוח אסטרטגי Realtyz AI",
+          mime_type: "application/pdf",
+        },
+      }),
     });
-    if (!messageResponse.ok) return json({ error: "שליחת הודעת WhatsApp נכשלה", details: await messageResponse.text() }, 502);
+    const body = await res.json().catch(() => ({}));
+    if (!res.ok || !body?.success) {
+      return json({ error: "שליחת WhatsApp נכשלה", details: body }, 502);
+    }
 
-    const pdfBytes = Uint8Array.from(atob(parsed.data.pdf_base64), (char) => char.charCodeAt(0));
-    const form = new FormData();
-    form.append("chatId", chatId);
-    form.append("caption", "דוח אסטרטגי Kalpiz AI");
-    form.append("file", new Blob([pdfBytes], { type: "application/pdf" }), parsed.data.file_name);
-
-    const fileResponse = await fetch(`https://api.green-api.com/waInstance${instanceId}/sendFileByUpload/${token}`, {
-      method: "POST",
-      body: form,
-    });
-    if (!fileResponse.ok) return json({ error: "שליחת קובץ PDF נכשלה", details: await fileResponse.text() }, 502);
-
-    return json({ success: true });
+    return json({ success: true, message_id: body.message_id ?? null });
   } catch (error) {
     console.error("send strategic pdf whatsapp error", error);
     return json({ error: error instanceof Error ? error.message : "שגיאת שרת" }, 500);

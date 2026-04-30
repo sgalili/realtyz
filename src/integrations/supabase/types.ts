@@ -1808,8 +1808,9 @@ export type Database = {
           is_active: boolean
           is_official: boolean
           provider_name: string
+          tenant_id: string | null
           updated_at: string
-          user_id: string
+          user_id: string | null
         }
         Insert: {
           config?: Json
@@ -1818,8 +1819,9 @@ export type Database = {
           is_active?: boolean
           is_official?: boolean
           provider_name: string
+          tenant_id?: string | null
           updated_at?: string
-          user_id: string
+          user_id?: string | null
         }
         Update: {
           config?: Json
@@ -1828,8 +1830,9 @@ export type Database = {
           is_active?: boolean
           is_official?: boolean
           provider_name?: string
+          tenant_id?: string | null
           updated_at?: string
-          user_id?: string
+          user_id?: string | null
         }
         Relationships: []
       }
