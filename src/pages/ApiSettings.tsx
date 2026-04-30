@@ -749,6 +749,11 @@ const ApiSettings = () => {
                   </span>
                 </div>
               </div>
+              {!connected && (
+                <div className="rounded-md border border-dashed border-border/60 bg-muted/10 px-3 py-2 text-[11px] text-muted-foreground">
+                  Configure this service to enable it — fill in the fields below and click Save.
+                </div>
+              )}
               {children}
               {!hideActions && onSave && (
                 <div className="flex gap-2 items-center">
