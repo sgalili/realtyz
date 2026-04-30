@@ -92,8 +92,58 @@ interface ResolvedProvider {
 async function resolveProvider(
   admin: ReturnType<typeof createClient>,
   userId: string | null,
+  tenantId: string | null,
   force?: "WBA" | "GreenAPI",
 ): Promise<ResolvedProvider | null> {
+  // 1a. Tenant-scoped rows in wa_providers (highest priority when tenant_id is supplied).
+  const tryRows = async (
+    column: "tenant_id" | "user_id",
+    value: string,
+  ) => {
+    const { data: rows } = await admin
+      .from("wa_providers")
+      .select("provider_name, config, is_official, is_active")
+      .eq(column, value)
+      .eq("is_active", true);
+    return (rows ?? []) as Array<{
+      provider_name: "WBA" | "GreenAPI";
+      config: Record<string, unknown>;
+      is_official: boolean;
+    }>;
+  };
+
+  const pick = (
+    list: Array<{
+      provider_name: "WBA" | "GreenAPI";
+      config: Record<string, unknown>;
+      is_official: boolean;
+    }>,
+  ): ResolvedProvider | null => {
+    if (force) {
+      const m = list.find((r) => r.provider_name === force);
+      return m
+        ? { name: m.provider_name, is_official: m.is_official, config: m.config ?? {} }
+        : null;
+    }
+    // Routing rule: official WBA wins if connected.
+    const wba = list.find((r) => r.provider_name === "WBA" && r.is_official === true);
+    if (wba) return { name: "WBA", is_official: true, config: wba.config ?? {} };
+    const green = list.find((r) => r.provider_name === "GreenAPI");
+    if (green) return { name: "GreenAPI", is_official: false, config: green.config ?? {} };
+    return null;
+  };
+
+  if (tenantId) {
+    const hit = pick(await tryRows("tenant_id", tenantId));
+    if (hit) return hit;
+  }
+  if (userId) {
+    const hit = pick(await tryRows("user_id", userId));
+    if (hit) return hit;
+  }
+  // Suppress TS unused-var warning for the now-removed inline block.
+  void undefined;
+  // (legacy fallback below)
   // 1. Per-tenant rows in wa_providers (preferred).
   if (userId) {
     const { data: rows } = await admin
