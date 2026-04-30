@@ -15,6 +15,7 @@ import { HeroWaveMount } from '@/components/HeroWaveMount';
 import NotificationCenter from '@/components/NotificationCenter';
 import AiAgentDrawer from '@/components/AiAgentDrawer';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
+import { RealtyzOnboardingWizard } from '@/components/RealtyzOnboardingWizard';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -689,6 +690,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             }}
           />}
           <StartTrialCta variant="fab" />
+          {user && <RealtyzOnboardingWizard />}
         </div>
       </div>
     </SidebarProvider>
