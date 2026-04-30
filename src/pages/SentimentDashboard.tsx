@@ -193,7 +193,7 @@ const SentimentDashboard = () => {
       });
 
       // Boost interest tags
-      leads?.forEach((v) => {
+      voters?.forEach((v) => {
         const tag = v.interest_tag;
         if (tag) wordMap.set(tag, (wordMap.get(tag) || 0) + 3);
       });
