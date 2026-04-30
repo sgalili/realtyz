@@ -466,8 +466,8 @@ const VoterCRM = () => {
     const ids = Array.from(selectedIds);
     if (!ids.length) return;
     try {
-      const { data: count, error } = await supabase.rpc('bulk_update_voters', {
-        voter_ids: ids,
+      const { data: count, error } = await supabase.rpc('bulk_update_leads', {
+        lead_ids: ids,
         new_status: newStatus,
       });
       if (error) throw error;
@@ -485,8 +485,8 @@ const VoterCRM = () => {
     const ids = Array.from(selectedIds);
     if (!ids.length) return;
     try {
-      const { data: count, error } = await supabase.rpc('bulk_update_voters', {
-        voter_ids: ids,
+      const { data: count, error } = await supabase.rpc('bulk_update_leads', {
+        lead_ids: ids,
         new_interest_tag: tag,
       });
       if (error) throw error;
@@ -525,7 +525,7 @@ const VoterCRM = () => {
   const handleAddToCampaign = async (campaignId: string) => {
     if (blockDemoAction('add-to-campaign')) return;
     const ids = Array.from(selectedIds);
-    await sendToN8n('add_to_campaign', { campaign_id: campaignId, voter_ids: ids });
+    await sendToN8n('add_to_campaign', { campaign_id: campaignId, lead_ids: ids });
     toast.success(`${ids.length} בוחרים נוספו לקמפיין`);
     setAddToCampaignOpen(false);
     setSelectedIds(new Set());
