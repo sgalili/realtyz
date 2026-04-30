@@ -624,15 +624,17 @@ const ApiSettings = () => {
   }) => {
     const connected = isConnected ?? !!config?.is_active;
     return (
-      <AccordionItem value={value} className="border border-border/50 rounded-lg overflow-hidden bg-card data-[state=open]:border-border/80">
+      <AccordionItem value={value} className="border border-border/50 rounded-lg overflow-hidden bg-card data-[state=open]:border-border/80 data-[state=open]:shadow-sm">
         <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20">
           <div className="flex items-center justify-between w-full gap-3">
             <div className="flex items-center gap-3">
-              <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${iconColor} shrink-0`}>
-                <Icon className="h-4 w-4 text-white" />
+              <div className="h-9 w-9 rounded-lg flex items-center justify-center bg-muted/50 shrink-0">
+                <Icon className={`h-5 w-5 ${iconColor}`} />
               </div>
-              <span className="text-sm font-semibold">{title}</span>
-              {badgeLabel && <Badge variant="outline" className="text-[9px]">{badgeLabel}</Badge>}
+              <div className="flex flex-col items-start">
+                <span className="text-sm font-bold">{title}</span>
+                {badgeLabel && <span className="text-[10px] text-muted-foreground">{badgeLabel}</span>}
+              </div>
             </div>
             <div className="flex items-center gap-2 me-2">
               {connected ? (
