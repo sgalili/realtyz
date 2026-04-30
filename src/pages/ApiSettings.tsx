@@ -747,7 +747,7 @@ const ApiSettings = () => {
       </div>
 
       {/* Service Cards (Accordion) — unified list with per-service toggle */}
-      <Accordion type="multiple" className="space-y-3">
+      <Accordion type="multiple" className="-space-y-px">
 
       {/* AI Touchpoint (toggle-only) */}
       <ServiceCard
