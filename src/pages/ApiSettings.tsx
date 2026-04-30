@@ -924,6 +924,7 @@ const ApiSettings = () => {
         saveLabel={existingN8n ? 'עדכן הגדרה' : 'שמור הגדרה'}
         savingId="n8n"
         testingId="n8n"
+        value="n8n"
       >
         {existingN8n && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30 space-y-1">
