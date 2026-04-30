@@ -455,6 +455,64 @@ const ApiSettings = () => {
     });
   };
 
+  // ─── Homely API ───
+  useEffect(() => {
+    if (!authUser) return;
+    (async () => {
+      const { data } = await supabaseClient
+        .from('user_api_keys')
+        .select('homely_api_key')
+        .eq('user_id', authUser.id)
+        .maybeSingle();
+      if (data?.homely_api_key) {
+        setHomelyApiKey(data.homely_api_key);
+        setHomelyHasKey(true);
+      }
+      setHomelyLoaded(true);
+    })();
+  }, [authUser]);
+
+  const handleSaveHomely = async () => {
+    if (!authUser) return;
+    if (!homelyApiKey.trim()) { toast.error('יש להזין מפתח Homely API'); return; }
+    if (blockDemoAction('save-homely-key')) return;
+    setSavingKey('homely');
+    const { error } = await supabaseClient
+      .from('user_api_keys')
+      .upsert(
+        { user_id: authUser.id, homely_api_key: homelyApiKey.trim(), updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' },
+      );
+    setSavingKey(null);
+    if (error) { toast.error('שמירה נכשלה: ' + error.message); return; }
+    setHomelyHasKey(true);
+    toast.success('✅ מפתח Homely API נשמר בהצלחה');
+  };
+
+  const handleTestHomely = async () => {
+    if (!homelyHasKey && !homelyApiKey.trim()) {
+      toast.error('יש לשמור מפתח לפני בדיקה');
+      return;
+    }
+    setTestingService('homely');
+    try {
+      const { data, error } = await supabaseClient.functions.invoke('call-homely-api', {
+        body: { path: '/health', method: 'GET' },
+      });
+      if (error) {
+        toast.error(`❌ חיבור Homely נכשל: ${error.message}`);
+      } else if (data?.error) {
+        toast.error(`❌ חיבור Homely נכשל: ${data.error}`);
+      } else {
+        toast.success('✅ חיבור Homely API תקין!');
+      }
+    } catch (err) {
+      toast.error(`❌ לא ניתן להתחבר ל-Homely: ${(err as Error).message}`);
+    } finally {
+      setTestingService(null);
+    }
+  };
+
   // ─── Test handlers ───
   const handleTestWebhook = async () => {
     const url = n8nWebhookUrl || existingN8n?.webhook_url;
