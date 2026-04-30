@@ -1,0 +1,1241 @@
+@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&family=Heebo:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ============================================================
+   KALPIZ - kalpiz.co.il visual system: navy, blue, white, gold.
+   ============================================================ */
+@layer base {
+  :root {
+    /* Surfaces */
+    --background: 210 19% 95%;
+    --foreground: 221 52% 11%;
+
+    --card: 210 27% 98%;
+    --card-foreground: 221 52% 11%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 221 52% 11%;
+
+    /* PRIMARY - Kalpiz navy */
+    --primary: 222 77% 14%;
+    --primary-foreground: 0 0% 100%;
+    --primary-glow: 216 88% 48%;
+
+    --secondary: 210 18% 92%;
+    --secondary-foreground: 221 100% 18%;
+
+    --muted: 210 25% 96%;
+    --muted-foreground: 218 11% 46%;
+
+    --accent: 216 88% 48%;
+    --accent-foreground: 0 0% 100%;
+
+    --destructive: 0 72% 51%;
+    --destructive-foreground: 0 0% 100%;
+
+    --border: 214 20% 82%;
+    --input: 214 20% 82%;
+    --ring: 216 88% 48%;
+
+    --radius: 0.625rem;
+
+    /* SIDEBAR - Kalpiz deep navy */
+    --sidebar-background: 229 79% 5%;
+    --sidebar-foreground: 0 0% 100%;
+    --sidebar-primary: 216 88% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 222 100% 27%;
+    --sidebar-accent-foreground: 0 0% 100%;
+    --sidebar-border: 222 58% 22%;
+    --sidebar-ring: 46 65% 52%;
+
+    --success: 152 60% 42%;
+    --success-foreground: 0 0% 100%;
+    --warning: 38 92% 50%;
+    --warning-foreground: 0 0% 100%;
+
+    --brand-navy: 222 77% 14%;
+    --brand-blue: 216 88% 48%;
+    --brand-deep: 229 79% 5%;
+    --brand-gold: 216 88% 48%;
+    --brand-silver: 210 18% 92%;
+    --brand-hero: var(--brand-navy);
+    --header-bg: 223 77% 28%;
+    --google-blue: 217 89% 61%;
+    --google-red: 5 81% 56%;
+    --google-yellow: 45 97% 50%;
+    --google-green: 136 53% 43%;
+
+    --auth-navy: var(--brand-navy);
+    --auth-navy-deep: var(--brand-deep);
+    --auth-blue: var(--brand-blue);
+    --auth-gold: var(--brand-gold);
+    --auth-gold-foreground: 222 52% 11%;
+    --auth-panel: 221 46% 13%;
+    --auth-panel-foreground: 0 0% 100%;
+    --gradient-auth-diagonal: linear-gradient(180deg, hsl(var(--auth-navy-deep)) 0%, hsl(var(--auth-navy)) 52%, hsl(var(--auth-blue)) 100%);
+
+    --whatsapp-header: 173 63% 29%;
+    --whatsapp-header-foreground: 0 0% 100%;
+    --whatsapp-chat: 43 24% 90%;
+    --whatsapp-footer: 42 14% 92%;
+    --whatsapp-bubble-out: 94 50% 82%;
+    --whatsapp-bubble-in: 0 0% 100%;
+    --whatsapp-accent: 142 70% 42%;
+
+    --social-whatsapp: 142 70% 49%;
+    --social-sms: 152 60% 42%;
+    --social-instagram: 329 86% 58%;
+    --social-telegram: 199 85% 55%;
+    --social-messenger: 209 100% 50%;
+    --social-tiktok: 0 0% 5%;
+    --social-signal: 220 86% 58%;
+    --social-x: 0 0% 5%;
+    --social-facebook: 214 89% 52%;
+    --social-email: 5 81% 56%;
+    --social-foreground: 0 0% 100%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    direction: rtl;
+    touch-action: pan-x pan-y pinch-zoom;
+    overscroll-behavior: none;
+  }
+  body {
+    @apply bg-background text-foreground;
+    touch-action: pan-x pan-y pinch-zoom;
+    overscroll-behavior: none;
+    background:
+      radial-gradient(900px 360px at 20% -10%, hsl(var(--brand-blue) / 0.08), transparent 62%),
+      linear-gradient(180deg, hsl(210 24% 98%) 0%, hsl(var(--brand-silver)) 48%, hsl(214 20% 88%) 100%);
+    background-attachment: fixed;
+    font-family: 'Assistant', 'Heebo', 'Inter', system-ui, sans-serif;
+    font-weight: 400;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  h1, h2, h3, h4, h5, h6 {
+    font-family: 'Assistant', 'Heebo', 'Inter', system-ui, sans-serif;
+    font-weight: 700;
+    letter-spacing: -0.015em;
+  }
+}
+
+@layer components {
+  /* Compatibility shims so legacy classes don't break old pages
+     until the sweep replaces them. They render as flat clean cards. */
+  .glass-card {
+    @apply bg-card text-card-foreground rounded-xl border border-border/60 shadow-sm;
+  }
+  .glass-card-active {
+    @apply bg-card text-card-foreground rounded-xl border border-primary/30 shadow-md;
+  }
+  .btn-gold {
+    @apply bg-primary text-primary-foreground rounded-md font-semibold;
+  }
+  .gold-shimmer {
+    @apply text-primary;
+  }
+  .heading-display {
+    font-family: 'Assistant', 'Heebo', sans-serif;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    line-height: 1.1;
+  }
+
+  /* The dark-hero typography rule must NOT apply when a page opts out of
+     the hero wave (e.g. SubscriptionManager uses its own light layout). */
+  .kalpiz-main-surface h1:first-of-type:not([data-no-hero-wave] *) {
+    @apply text-2xl font-bold tracking-tight text-primary-foreground;
+  }
+
+  .kalpiz-main-surface h1:first-of-type:not([data-no-hero-wave] *) + p {
+    @apply mt-0 text-sm text-primary-foreground/80;
+  }
+
+  /* Hard reset for opted-out pages: any h1 inside [data-no-hero-wave] uses the
+     foreground token regardless of the global rule above. */
+  [data-no-hero-wave] h1,
+  .kalpiz-subscription-title {
+    color: hsl(var(--foreground)) !important;
+  }
+  [data-no-hero-wave] h1 + p,
+  .kalpiz-subscription-subtitle {
+    color: hsl(var(--muted-foreground)) !important;
+  }
+  .divider-wave {
+    height: 34px;
+    width: 100%;
+    color: hsl(var(--brand-gold));
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1200 34' preserveAspectRatio='none'><path d='M0 18 C180 3 360 33 540 18 S900 3 1200 18' fill='none' stroke='%23d4af37' stroke-opacity='.58' stroke-width='2'/><path d='M0 23 C180 8 360 38 540 23 S900 8 1200 23' fill='none' stroke='%23002a8a' stroke-opacity='.20' stroke-width='1.25'/></svg>");
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+  }
+
+  .section-wave-edge {
+    position: relative;
+  }
+
+  .section-wave-edge::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    bottom: -1px;
+    height: 36px;
+    background: hsl(var(--background));
+    clip-path: ellipse(62% 58% at 50% 100%);
+  }
+
+  /* Map / pulse */
+  @keyframes city-pulse {
+    0% { transform: scale(1); opacity: 0.8; }
+    50% { transform: scale(1.8); opacity: 0; }
+    100% { transform: scale(1); opacity: 0; }
+  }
+  .city-pulse { animation: city-pulse 2s ease-out infinite; }
+
+  @keyframes kalpiz-notification-ring {
+    0% { box-shadow: 0 0 0 0 hsl(var(--primary-glow) / 0.46); transform: translateZ(0) scale(1); }
+    55% { box-shadow: 0 0 0 12px hsl(var(--primary-glow) / 0); transform: translateZ(0) scale(1.06); }
+    100% { box-shadow: 0 0 0 0 hsl(var(--primary-glow) / 0); transform: translateZ(0) scale(1); }
+  }
+
+  .kalpiz-notification-pulse {
+    animation: kalpiz-notification-ring 1.2s ease-out 2;
+    will-change: transform, box-shadow;
+  }
+
+  .kalpiz-notification-drawer {
+    color: hsl(var(--foreground));
+    border: 1px solid hsl(var(--primary) / 0.22);
+    background: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--card)) 52%, hsl(var(--background)) 100%);
+    box-shadow: 0 24px 70px -34px hsl(var(--brand-deep) / 0.5);
+    animation: kalpiz-drawer-enter 180ms cubic-bezier(.2,.8,.2,1);
+    transform: translateZ(0);
+    will-change: transform, opacity;
+  }
+
+  .kalpiz-notification-wave {
+    height: 18px;
+    background-color: hsl(var(--secondary));
+    background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 18' preserveAspectRatio='none'><path d='M0 11 C48 5 84 15 132 10 S228 5 320 10' fill='none' stroke='%2300145c' stroke-opacity='.95' stroke-width='3' stroke-linecap='round'/></svg>");
+    background-repeat: no-repeat;
+    background-size: 100% 100%;
+  }
+
+  .kalpiz-notification-item {
+    border-color: hsl(var(--primary) / 0.12);
+    background: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--card)) 100%);
+  }
+
+  @keyframes kalpiz-drawer-enter {
+    from { opacity: 0; transform: translate3d(-8px, -4px, 0) scale(0.98); }
+    to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
+  }
+
+  /* Loader */
+  .kalpiz-loader {
+    @apply relative inline-flex items-center justify-center;
+  }
+  .kalpiz-loader::before {
+    content: '';
+    @apply absolute rounded-full;
+    width: 40px;
+    height: 40px;
+    border: 3px solid transparent;
+    border-top-color: hsl(var(--primary));
+    border-right-color: hsl(var(--primary));
+    animation: spin 0.8s linear infinite;
+  }
+  .kalpiz-loader::after {
+    content: 'K';
+    color: hsl(var(--primary));
+    @apply font-black text-sm;
+  }
+
+  @keyframes success-glow {
+    0% { box-shadow: 0 0 0 0 hsl(152 60% 42% / 0.4); }
+    70% { box-shadow: 0 0 0 16px hsl(152 60% 42% / 0); }
+    100% { box-shadow: 0 0 0 0 hsl(152 60% 42% / 0); }
+  }
+  .success-glow { animation: success-glow 1s ease-out; }
+
+  .empty-state { @apply flex flex-col items-center justify-center py-16 text-center; }
+  .empty-state-icon { @apply h-16 w-16 text-muted-foreground/30 mb-4; }
+
+  .kalpiz-logo {
+    font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    font-size: 1.5rem;
+    font-weight: 900 !important;
+    letter-spacing: -0.025em;
+    line-height: 2rem;
+    color: hsl(var(--primary-foreground));
+  }
+
+  .auth-gradient-shell {
+    background: linear-gradient(0deg, hsl(222 100% 18%) 0%, hsl(222 100% 18%) 15%, hsl(222 100% 27%) 50%, hsl(222 47% 7%) 100%);
+    color: hsl(var(--auth-panel-foreground));
+  }
+
+  .auth-gradient-shell::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    opacity: 0.03;
+    background-image: linear-gradient(hsl(0 0% 100%) 1px, transparent 1px), linear-gradient(90deg, hsl(0 0% 100%) 1px, transparent 1px);
+    background-size: 60px 60px;
+  }
+
+  .auth-water-wave {
+    position: absolute;
+    inset-inline: -8%;
+    height: 77px;
+    opacity: 1;
+    pointer-events: none;
+    background: hsl(var(--background));
+    clip-path: polygon(0 42%, 8% 38%, 16% 34%, 24% 37%, 32% 44%, 40% 48%, 48% 45%, 56% 38%, 64% 34%, 72% 36%, 80% 43%, 88% 47%, 96% 44%, 100% 40%, 100% 100%, 0 100%);
+    animation: auth-water-flow 10s linear infinite; will-change: transform, clip-path; backface-visibility: hidden;
+    transform: translateZ(0);
+    will-change: clip-path;
+  }
+
+  .auth-water-wave-top {
+    top: -1px;
+    transform: rotate(180deg);
+    background: hsl(var(--background));
+  }
+
+  .auth-water-wave-bottom {
+    bottom: -1px;
+    background: hsl(var(--background));
+  }
+
+  .auth-hero-content {
+    max-width: 56rem;
+    min-height: calc(100vh - 4rem);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.25rem;
+    transform: translateY(-50px);
+  }
+
+  .auth-header-ticker {
+    position: relative;
+    display: flex;
+    width: 100%;
+    height: 20px;
+    align-items: center;
+    justify-content: center;
+    overflow: visible;
+    pointer-events: none;
+  }
+
+  .auth-header-ticker-line {
+    font-family: 'Assistant', 'Heebo', 'Inter', system-ui, sans-serif;
+    font-size: calc(clamp(0.75rem, 1.25vw, 0.95rem) + 2px);
+    font-weight: 400;
+    line-height: 1.15;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    color: hsl(var(--brand-navy));
+  }
+
+  .auth-header-ticker-line strong {
+    font-weight: 800;
+    color: hsl(var(--gold));
+  }
+
+  .auth-text-logo {
+    font-size: 3rem;
+    line-height: 4rem;
+    margin-bottom: 2.25rem;
+    transform: translateY(15px);
+  }
+
+  .auth-election-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    margin-bottom: 2.5rem;
+    padding: 0.45rem;
+    border-radius: 1.25rem;
+    border: 1px solid hsl(var(--primary-foreground) / 0.16);
+    background: hsl(var(--primary-foreground) / 0.055);
+    backdrop-filter: blur(8px);
+  }
+
+  .auth-election-pill span {
+    border-radius: 0.95rem;
+    padding: 0.7rem 1.35rem;
+    font-size: 0.9rem;
+    font-weight: 900 !important;
+  }
+
+  .auth-election-muted { color: hsl(var(--primary-foreground) / 0.48); }
+
+  .auth-election-active {
+    color: hsl(46 65% 56%);
+    border: 1px solid hsl(46 65% 56% / 0.25);
+    background: hsl(46 65% 56% / 0.14);
+  }
+
+  .auth-hero-title {
+    color: hsl(var(--primary-foreground));
+    font-family: 'Assistant', 'Heebo', sans-serif;
+    font-size: clamp(3rem, 8.5vw, 6.9rem);
+    font-weight: 900;
+    line-height: 1.05;
+    letter-spacing: 0;
+    text-align: center;
+    text-wrap: balance;
+    margin-bottom: 1.75rem;
+    text-shadow: 0 22px 80px hsl(var(--brand-deep) / 0.34);
+  }
+
+  .auth-hero-green { color: hsl(136 72% 58%); }
+  .auth-hero-gold { color: hsl(46 78% 58%); }
+
+  .auth-official-logo {
+    filter: drop-shadow(0 0 14px hsl(var(--primary-foreground) / 0.16));
+  }
+
+  .auth-official-slogan {
+    color: transparent;
+    background: linear-gradient(135deg, hsl(var(--sidebar-ring)) 0%, hsl(46 78% 72%) 48%, hsl(var(--sidebar-ring)) 100%);
+    background-clip: text;
+    -webkit-background-clip: text;
+    font-family: 'Assistant', 'Heebo', sans-serif;
+    font-size: clamp(1.3rem, 2.3vw, 1.7rem);
+    font-weight: 500;
+    letter-spacing: 0;
+    line-height: 1.75;
+    max-width: 48rem;
+    margin-inline: auto;
+    transform: translateY(-15px);
+  }
+
+  .auth-login-card {
+    width: min(100%, 30rem);
+  }
+
+  .auth-login-title {
+    color: hsl(var(--primary-foreground));
+    font-size: 1.35rem;
+    font-weight: 400;
+    line-height: 1.2;
+    margin-bottom: -0.35rem;
+    text-align: center;
+  }
+
+  @keyframes auth-water-flow {
+    0%   { clip-path: polygon(0 42%, 8% 38%, 16% 34%, 24% 37%, 32% 44%, 40% 48%, 48% 45%, 56% 38%, 64% 34%, 72% 36%, 80% 43%, 88% 47%, 96% 44%, 100% 40%, 100% 100%, 0 100%); }
+    25%  { clip-path: polygon(0 44%, 8% 40%, 16% 35%, 24% 35%, 32% 40%, 40% 46%, 48% 47%, 56% 41%, 64% 35%, 72% 35%, 80% 39%, 88% 44%, 96% 46%, 100% 43%, 100% 100%, 0 100%); }
+    50%  { clip-path: polygon(0 47%, 8% 43%, 16% 37%, 24% 34%, 32% 37%, 40% 44%, 48% 49%, 56% 45%, 64% 38%, 72% 34%, 80% 36%, 88% 41%, 96% 47%, 100% 45%, 100% 100%, 0 100%); }
+    75%  { clip-path: polygon(0 44%, 8% 40%, 16% 36%, 24% 35%, 32% 40%, 40% 46%, 48% 47%, 56% 42%, 64% 36%, 72% 35%, 80% 39%, 88% 44%, 96% 46%, 100% 43%, 100% 100%, 0 100%); }
+    100% { clip-path: polygon(0 42%, 8% 38%, 16% 34%, 24% 37%, 32% 44%, 40% 48%, 48% 45%, 56% 38%, 64% 34%, 72% 36%, 80% 43%, 88% 47%, 96% 44%, 100% 40%, 100% 100%, 0 100%); }
+  }
+
+  @media (max-width: 640px) {
+    .auth-water-wave { height: 50px; inset-inline: -18%; animation-duration: 12s; }
+    .section-wave-edge::after { height: 24px; clip-path: ellipse(78% 58% at 50% 100%); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .auth-water-wave,
+    .candidate-top-wave,
+    .app-wave-divider::before { animation: none; }
+  }
+
+  .auth-panel {
+    position: relative;
+    overflow: hidden;
+    background: hsl(var(--card));
+    color: hsl(var(--foreground));
+    border-color: hsl(var(--primary) / 0.16);
+    box-shadow: inset 0 1px 0 hsl(var(--primary-foreground) / 0.72), 0 24px 80px -32px hsl(var(--auth-navy-deep) / 0.45);
+  }
+
+  .auth-quick-card::after {
+    content: none;
+  }
+
+  .auth-quick-card.kalpiz-wave-top::before {
+    content: none;
+  }
+
+  .auth-provider-button {
+    width: 100%;
+    min-height: 64px;
+    justify-content: center;
+    background: linear-gradient(180deg, hsl(210 27% 99%) 0%, hsl(var(--brand-silver)) 100%);
+    color: hsl(var(--primary)) !important;
+    border: 0;
+    font-size: 1.5rem;
+    font-weight: 800;
+    transform: translateZ(0);
+    transition: transform 160ms cubic-bezier(.2,.8,.2,1), box-shadow 160ms cubic-bezier(.2,.8,.2,1), background-color 160ms cubic-bezier(.2,.8,.2,1), color 160ms cubic-bezier(.2,.8,.2,1);
+    will-change: transform;
+  }
+
+  .auth-provider-button svg {
+    width: 1.875rem;
+    height: 1.875rem;
+  }
+
+  .auth-provider-button:hover {
+    transform: translate3d(0, -1px, 0);
+    box-shadow: 0 14px 30px -22px hsl(var(--brand-deep) / 0.7);
+  }
+
+  .auth-provider-button:hover,
+  .auth-provider-button:focus-visible,
+  .auth-provider-button:active,
+  .auth-provider-button:disabled {
+    color: hsl(var(--primary)) !important;
+    opacity: 1;
+  }
+
+  .auth-provider-button:not(.auth-provider-google):not(.auth-provider-whatsapp) svg,
+  .auth-provider-button:not(.auth-provider-google):not(.auth-provider-whatsapp) svg * {
+    color: hsl(var(--primary)) !important;
+    stroke: hsl(var(--primary)) !important;
+  }
+
+  .auth-provider-google {
+    background: linear-gradient(180deg, hsl(210 27% 99%) 0%, hsl(var(--brand-silver)) 100%);
+    color: hsl(var(--primary));
+    border: 0;
+  }
+
+  .auth-provider-google:hover {
+    background: linear-gradient(180deg, hsl(210 27% 100%) 0%, hsl(210 19% 90%) 100%);
+    color: hsl(var(--primary));
+  }
+
+  .auth-google-mark {
+    width: 1.25rem;
+    height: 1.25rem;
+    flex: 0 0 auto;
+  }
+
+  .auth-google-blue { fill: hsl(var(--google-blue)); }
+  .auth-google-red { fill: hsl(var(--google-red)); }
+  .auth-google-yellow { fill: hsl(var(--google-yellow)); }
+  .auth-google-green { fill: hsl(var(--google-green)); }
+
+  .auth-provider-whatsapp {
+    background: linear-gradient(180deg, hsl(210 27% 99%) 0%, hsl(var(--brand-silver)) 100%);
+    color: hsl(var(--primary));
+  }
+
+  .auth-whatsapp-mark {
+    width: 1.35rem;
+    height: 1.35rem;
+    flex: 0 0 auto;
+  }
+
+  .auth-whatsapp-circle {
+    fill: hsl(var(--social-whatsapp));
+  }
+
+  .auth-whatsapp-glyph {
+    fill: hsl(var(--social-foreground));
+  }
+
+  .auth-provider-sms {
+    background: linear-gradient(180deg, hsl(210 27% 99%) 0%, hsl(var(--brand-silver)) 100%);
+    color: hsl(var(--primary));
+  }
+
+  .auth-sms-mark {
+    color: hsl(var(--primary-glow));
+    stroke-width: 2.4;
+  }
+
+  .auth-provider-email {
+    background: linear-gradient(180deg, hsl(210 27% 99%) 0%, hsl(var(--brand-silver)) 100%);
+    color: hsl(var(--destructive)) !important;
+    border-color: hsl(var(--destructive) / 0.72);
+  }
+
+  .auth-provider-email svg,
+  .auth-provider-email svg * {
+    color: hsl(var(--destructive)) !important;
+    stroke: hsl(var(--destructive)) !important;
+  }
+
+  .auth-provider-compact {
+    min-height: 56px;
+    font-size: 1.3125rem;
+  }
+
+  .auth-method-field {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    min-height: 56px;
+    border-radius: 0.625rem;
+    border: 1px solid hsl(var(--border));
+    background: hsl(var(--muted-foreground) / 0.18);
+    padding-inline: 0.875rem;
+  }
+
+  .auth-method-field-whatsapp {
+    border-color: hsl(var(--social-whatsapp) / 0.72);
+    box-shadow: 0 0 0 3px hsl(var(--social-whatsapp) / 0.12);
+  }
+
+  .auth-method-field-sms {
+    border-color: hsl(var(--primary-glow) / 0.72);
+    color: hsl(var(--primary-glow));
+    box-shadow: 0 0 0 3px hsl(var(--primary-glow) / 0.1);
+  }
+
+  .auth-method-field-sms svg,
+  .auth-method-field-sms svg * {
+    color: hsl(var(--primary-glow));
+    stroke: hsl(var(--primary-glow));
+  }
+
+  .auth-method-field-email {
+    border-color: hsl(var(--destructive) / 0.72);
+    color: hsl(var(--destructive));
+    box-shadow: 0 0 0 3px hsl(var(--destructive) / 0.1);
+  }
+
+  .auth-method-field-email svg,
+  .auth-method-field-email svg * {
+    color: hsl(var(--destructive));
+    stroke: hsl(var(--destructive));
+  }
+
+  .auth-method-input {
+    height: 52px;
+    border: 0;
+    background: hsl(var(--muted-foreground) / 0.18);
+    color: hsl(220 9% 22%);
+    box-shadow: none;
+    font-size: 1.2rem;
+    font-weight: 700;
+  }
+
+  .auth-method-input::placeholder {
+    color: hsl(220 9% 36%);
+  }
+
+  .auth-method-input:focus-visible {
+    box-shadow: none;
+    ring-width: 0;
+  }
+
+  .auth-method-label {
+    display: block;
+    text-align: center;
+    font-size: 21px;
+  }
+
+  .auth-submit-fade {
+    max-height: 0;
+    opacity: 0;
+    overflow: hidden;
+    pointer-events: none;
+    transform: translateY(-6px);
+    transition: opacity 180ms ease, transform 180ms ease, max-height 180ms ease, margin-top 180ms ease;
+  }
+
+  .auth-submit-visible {
+    max-height: 52px;
+    opacity: 1;
+    pointer-events: auto;
+    transform: translateY(0);
+  }
+
+  .auth-submit-button {
+    height: 40px;
+    min-height: 0;
+    background: linear-gradient(180deg, hsl(210 18% 95%) 0%, hsl(142 52% 74%) 100%);
+    color: hsl(0 0% 0%) !important;
+    border: 1px solid hsl(var(--social-whatsapp)) !important;
+    font-size: 54px;
+    font-weight: 900;
+    line-height: 1;
+  }
+
+  .auth-submit-button:hover {
+    background: linear-gradient(180deg, hsl(210 18% 97%) 0%, hsl(142 56% 68%) 100%);
+    color: hsl(0 0% 0%) !important;
+  }
+
+  .auth-submit-button.auth-submit-sms {
+    background: linear-gradient(180deg, hsl(210 18% 95%) 0%, hsl(var(--primary-glow) / 0.58) 100%);
+    border: 1px solid hsl(var(--primary-glow)) !important;
+  }
+
+  .auth-submit-button.auth-submit-sms:hover {
+    background: linear-gradient(180deg, hsl(210 18% 97%) 0%, hsl(var(--primary-glow) / 0.68) 100%);
+  }
+
+  .auth-submit-button.auth-submit-email {
+    background: linear-gradient(180deg, hsl(210 18% 95%) 0%, hsl(var(--destructive) / 0.42) 100%);
+    border: 1px solid hsl(var(--destructive)) !important;
+  }
+
+  .auth-submit-button.auth-submit-email:hover {
+    background: linear-gradient(180deg, hsl(210 18% 97%) 0%, hsl(var(--destructive) / 0.52) 100%);
+  }
+
+  .auth-method-tabs {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.5rem;
+  }
+
+  .auth-method-tab {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.3rem;
+    min-height: 46px;
+    padding-inline: 0.4rem;
+    border: 1px solid hsl(var(--border));
+    background: linear-gradient(180deg, hsl(210 27% 99%) 0%, hsl(var(--brand-silver)) 100%);
+    color: hsl(var(--primary)) !important;
+    font-size: 0.92rem;
+    font-weight: 800;
+    white-space: normal;
+    line-height: 1.15;
+  }
+
+  .auth-method-tab svg {
+    width: 1rem;
+    height: 1rem;
+    flex: 0 0 auto;
+  }
+
+  .auth-method-tab[aria-pressed="true"] {
+    border-color: hsl(var(--border));
+    background: linear-gradient(180deg, hsl(210 27% 100%) 0%, hsl(210 19% 88%) 100%);
+  }
+
+  @keyframes heartbeat {
+    0%, 100% { transform: scale(1); }
+    14% { transform: scale(1.18); }
+    28% { transform: scale(1); }
+    42% { transform: scale(1.14); }
+    70% { transform: scale(1); }
+  }
+
+  .auth-page-footer {
+    position: absolute;
+    inset-inline: 0;
+    bottom: 5px;
+    z-index: 10;
+  }
+
+  .auth-footer-credit {
+    margin: 0;
+    padding-block: 0.45rem 0;
+    text-align: center;
+    font-size: 0.78rem;
+    font-weight: 400;
+    color: hsl(var(--primary-foreground) / 0.78);
+    background: transparent;
+  }
+
+  .auth-heart {
+    display: inline-block;
+    vertical-align: middle;
+    color: hsl(var(--destructive));
+    animation: heartbeat 1.2s ease-in-out infinite;
+  }
+
+  .auth-footer-wave-band {
+    position: relative;
+    width: 100%;
+    height: 11px;
+    background: transparent;
+    overflow: hidden;
+  }
+
+  .auth-footer-white-wave {
+    pointer-events: none;
+    position: absolute;
+    inset-inline: 0;
+    bottom: -1px;
+    height: 11px;
+    background: hsl(var(--background));
+    clip-path: polygon(0 42%, 8% 38%, 16% 34%, 24% 37%, 32% 44%, 40% 48%, 48% 45%, 56% 38%, 64% 34%, 72% 36%, 80% 43%, 88% 47%, 96% 44%, 100% 40%, 100% 100%, 0 100%);
+    animation: kalpiz-wave-morph 8s linear infinite; will-change: transform, clip-path; backface-visibility: hidden;
+  }
+
+  .auth-footer-legal {
+    position: relative;
+    min-height: 18px;
+    padding-top: 5px;
+    background: hsl(var(--background));
+  }
+
+  .auth-footer-copyright {
+    pointer-events: none;
+    position: absolute;
+    bottom: 0.2rem;
+    left: 1rem;
+    z-index: 10;
+    font-size: 0.68rem;
+    font-weight: 400;
+    color: hsl(var(--foreground) / 0.62);
+  }
+
+  .auth-footer-links {
+    position: absolute;
+    right: 1rem;
+    bottom: 0.2rem;
+    z-index: 10;
+    display: flex;
+    align-items: center;
+    gap: 1.75rem;
+  }
+
+  .auth-footer-links a {
+    font-size: 0.68rem;
+    font-weight: 400;
+    color: hsl(var(--foreground) / 0.64);
+    transition: color 160ms ease;
+  }
+
+  .auth-footer-links a:hover {
+    color: hsl(var(--foreground) / 0.86);
+  }
+
+  .auth-gold-button {
+    background: hsl(var(--primary));
+    color: hsl(var(--primary-foreground));
+    border-color: hsl(var(--primary));
+  }
+
+  .auth-gold-button:hover {
+    background: hsl(var(--primary-glow));
+    color: hsl(var(--primary-foreground));
+  }
+
+  .auth-submit-button {
+    color: hsl(var(--primary-foreground));
+    border-color: transparent;
+  }
+
+  .auth-submit-whatsapp,
+  .auth-submit-whatsapp:hover {
+    background: linear-gradient(180deg, hsl(var(--brand-silver)) 0%, hsl(var(--social-whatsapp)) 100%);
+    color: hsl(var(--social-foreground));
+  }
+
+  .auth-submit-sms,
+  .auth-submit-sms:hover {
+    background: linear-gradient(180deg, hsl(var(--brand-silver)) 0%, hsl(var(--primary-glow)) 100%);
+    color: hsl(var(--primary-foreground));
+  }
+
+  .auth-submit-email,
+  .auth-submit-email:hover {
+    background: linear-gradient(180deg, hsl(var(--brand-silver)) 0%, hsl(var(--destructive)) 100%);
+    color: hsl(var(--destructive-foreground));
+  }
+
+  .premium-auth-modal,
+  .candidate-landing-card {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(180deg, hsl(210 17% 98%) 0%, hsl(210 16% 93%) 100%);
+    color: hsl(var(--foreground));
+    border-color: hsl(var(--primary) / 0.16);
+    box-shadow: inset 18px 0 34px hsl(var(--primary) / 0.06), 0 28px 90px -42px hsl(var(--brand-deep) / 0.55);
+  }
+
+  .premium-auth-modal::before,
+  .candidate-landing-card::before {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: -1px;
+    height: 22px;
+    background: hsl(var(--brand-navy));
+    opacity: 0.1;
+    clip-path: polygon(0 100%, 100% 100%, 100% 52%, 96% 56%, 88% 61%, 80% 58%, 72% 51%, 64% 46%, 56% 50%, 48% 58%, 40% 63%, 32% 60%, 24% 53%, 16% 48%, 8% 52%, 0 58%);
+    animation: kalpiz-wave-morph 14s linear infinite; will-change: transform, clip-path; backface-visibility: hidden;
+    pointer-events: none;
+  }
+
+  .candidate-landing-shell {
+    position: relative;
+    overflow: hidden;
+    background:
+      linear-gradient(180deg, hsl(var(--primary)) 0 86px, transparent 86px),
+      linear-gradient(180deg, hsl(210 17% 98%) 0%, hsl(210 16% 93%) 100%);
+  }
+
+  .candidate-top-wave {
+    position: absolute;
+    inset-inline: 0;
+    top: 56px;
+    height: 72px;
+    background: hsl(210 17% 98%);
+    clip-path: polygon(0 58%, 8% 54%, 16% 50%, 24% 47%, 32% 48%, 40% 53%, 48% 56%, 56% 52%, 64% 46%, 72% 43%, 80% 46%, 88% 51%, 96% 49%, 100% 47%, 100% 100%, 0 100%);
+    animation: kalpiz-wave-morph 14s linear infinite; will-change: transform, clip-path; backface-visibility: hidden;
+    filter: drop-shadow(0 -8px 16px hsl(var(--primary) / 0.18));
+  }
+
+  .app-wave-divider {
+    position: relative;
+    height: 34px;
+    flex: 0 0 auto;
+    overflow: hidden;
+  }
+
+  .app-wave-divider::before {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    bottom: -1px;
+    height: 34px;
+    background: hsl(var(--background));
+    transform-origin: 50% 100%;
+    will-change: clip-path, transform;
+    animation: kalpiz-wave-morph 14s linear infinite; will-change: transform, clip-path; backface-visibility: hidden;
+    clip-path: polygon(0 42%, 8% 48%, 16% 52%, 24% 47%, 32% 40%, 40% 37%, 48% 42%, 56% 50%, 64% 54%, 72% 49%, 80% 42%, 88% 39%, 96% 44%, 100% 48%, 100% 100%, 0 100%);
+  }
+
+  .kalpiz-wave-top {
+    position: relative;
+    overflow: hidden;
+  }
+
+  .kalpiz-wave-top::before {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    top: -1px;
+    height: 18px;
+    background: hsl(var(--brand-navy));
+    opacity: 0.08;
+    clip-path: polygon(0 0, 100% 0, 100% 48%, 96% 44%, 88% 39%, 80% 42%, 72% 49%, 64% 54%, 56% 50%, 48% 42%, 40% 37%, 32% 40%, 24% 47%, 16% 52%, 8% 48%, 0 42%);
+    animation: kalpiz-wave-morph 14s linear infinite; will-change: transform, clip-path; backface-visibility: hidden;
+    pointer-events: none;
+  }
+
+  .kalpiz-app-shell {
+    background: hsl(210 8% 91%);
+  }
+
+  .kalpiz-main-surface {
+    position: relative;
+    background: hsl(210 8% 91%);
+    /* Prevent iOS/macOS rubber-band overscroll bounce so the sticky hero stays anchored. */
+    overscroll-behavior: none;
+    -webkit-overflow-scrolling: auto;
+  }
+
+  /* When the SubscriptionManager is mounted, force the surrounding shell to
+     match its light off-white background so there is no dark stripe / edge. */
+  .kalpiz-main-surface:has([data-page="subscription"]) {
+    background: hsl(210 40% 98%); /* slate-50 */
+  }
+
+  .kalpiz-title-menu-button {
+    position: fixed;
+    top: calc(4rem + 0.75rem);
+    right: 1rem;
+    z-index: 50;
+    width: 1.75rem;
+    height: 1.75rem;
+  }
+
+  .kalpiz-title-demo-cluster {
+    position: fixed;
+    top: calc(4rem + 0.75rem + 12px);
+    left: 10px;
+    z-index: 50;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0;
+    margin-top: -10px;
+    /* Vertically center the demo switch with the burger (1.75rem tall). */
+    min-height: 1.75rem;
+    justify-content: center;
+  }
+
+  .kalpiz-title-demo-cluster > *:nth-child(2) {
+    margin-top: 1px;
+  }
+
+  .geo-lines-diagonal {
+    background-image: repeating-linear-gradient(45deg, transparent 0 40px, hsl(0 0% 100% / 0.08) 40px 41px);
+  }
+
+  .kalpiz-premium-sidebar [data-sidebar="sidebar"] {
+    background: linear-gradient(180deg, hsl(var(--brand-silver)) 0%, hsl(var(--card)) 46%, hsl(var(--background)) 100%);
+    color: hsl(var(--primary));
+    box-shadow: inset 18px 0 34px hsl(var(--brand-blue) / 0.08), inset 0 1px 0 hsl(var(--primary-foreground) / 0.72);
+  }
+
+  .kalpiz-sidebar-brand {
+    position: relative;
+    background: linear-gradient(180deg, hsl(var(--brand-navy)) 0%, hsl(var(--brand-deep)) 100%);
+    color: hsl(var(--primary-foreground));
+    overflow: hidden;
+    min-height: 74px;
+  }
+
+  .kalpiz-sidebar-logo-letter {
+    font-family: 'Heebo', 'Assistant', sans-serif;
+    font-size: 1.75rem;
+    line-height: 1;
+    font-weight: 900;
+    letter-spacing: 0;
+  }
+
+  .kalpiz-sidebar-menu {
+    background: linear-gradient(180deg, hsl(var(--brand-silver)) 0%, hsl(var(--card)) 46%, hsl(var(--background)) 100%);
+    color: hsl(var(--primary));
+    box-shadow: inset 18px 0 34px hsl(var(--brand-blue) / 0.08), inset 0 1px 0 hsl(var(--primary-foreground) / 0.72);
+  }
+
+  .kalpiz-tutorial-nav-glow {
+    background: hsl(var(--primary) / 0.08);
+    box-shadow: inset -3px 0 0 hsl(var(--primary-glow)), 0 0 0 1px hsl(var(--primary) / 0.14), 0 14px 30px -18px hsl(var(--primary) / 0.7);
+    animation: kalpiz-tutorial-glow 1.45s ease-in-out infinite;
+  }
+
+  @keyframes kalpiz-tutorial-glow {
+    0%, 100% { filter: drop-shadow(0 0 0 hsl(var(--primary-glow) / 0)); }
+    50% { filter: drop-shadow(0 0 10px hsl(var(--primary-glow) / 0.36)); }
+  }
+
+  .kalpiz-sidebar-wave {
+    position: absolute;
+    inset-inline: 0;
+    bottom: -1px;
+    height: 44px;
+    width: 100%;
+    fill: hsl(var(--brand-deep));
+    filter: drop-shadow(0 -8px 16px hsl(var(--brand-blue) / 0.18));
+  }
+
+  .geo-lines-diamond {
+    background-image:
+      repeating-linear-gradient(60deg, transparent 0 35px, hsl(var(--brand-blue) / 0.075) 35px 36px),
+      repeating-linear-gradient(-60deg, transparent 0 35px, hsl(var(--brand-blue) / 0.06) 35px 36px);
+  }
+
+  .kalpiz-wave-section {
+    position: relative;
+    overflow: hidden;
+    background: linear-gradient(160deg, hsl(var(--brand-deep)) 0%, hsl(var(--brand-navy)) 60%, hsl(var(--brand-blue)) 100%);
+    color: hsl(var(--primary-foreground));
+  }
+
+  .kalpiz-wave-section::after {
+    content: '';
+    position: absolute;
+    inset-inline: 0;
+    bottom: -1px;
+    height: 72px;
+    background: hsl(var(--background));
+    clip-path: polygon(0 58%, 8% 54%, 16% 50%, 24% 47%, 32% 48%, 40% 53%, 48% 56%, 56% 52%, 64% 46%, 72% 43%, 80% 46%, 88% 51%, 96% 49%, 100% 47%, 100% 100%, 0 100%);
+    animation: kalpiz-wave-morph 14s linear infinite; will-change: transform, clip-path; backface-visibility: hidden;
+  }
+
+  /* Dark navy hero block — applied to the first child of main's wrapper that
+     contains an h1. Pages that bring their OWN layout (SubscriptionManager,
+     etc.) opt out via [data-no-hero-wave] on the root. */
+  main > div > div:first-child:has(> h1):not([data-no-hero-wave] *):not([data-no-hero-wave]),
+  main > div > div:first-child:has(> div > h1):not([data-no-hero-wave] *):not([data-no-hero-wave]) {
+    position: sticky;
+    top: 0;
+    z-index: 40;
+    min-height: 0;
+    /* Pull hero flush to the top/sides of <main> by canceling the page wrapper's p-6 padding.
+       No bottom margin so scrolled content slides directly underneath the wave. */
+    margin: -1.5rem -1.5rem 0;
+    /* Title sits at burger center; wave anchors at bottom. */
+    padding: 6px 1.5rem 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+    border-radius: 0;
+    background: linear-gradient(160deg, hsl(var(--brand-deep)) 0%, hsl(var(--brand-navy)) 60%, hsl(var(--brand-blue)) 100%);
+    color: hsl(var(--primary-foreground));
+    box-shadow: none;
+  }
+
+  /* Reinstate spacing between hero and following content without breaking the sticky/scroll-under effect. */
+  main > div > div:first-child:has(> h1):not([data-no-hero-wave] *):not([data-no-hero-wave]) + *,
+  main > div > div:first-child:has(> div > h1):not([data-no-hero-wave] *):not([data-no-hero-wave]) + * {
+    margin-top: calc(1rem + 15px);
+  }
+
+
+  /* Hero wave is rendered as a real <KalpizWave> SVG via HeroWaveMount.
+     Suppress the legacy CSS pseudo-element so we don't double-render. */
+  main > div > div:first-child:has(> h1)::after,
+  main > div > div:first-child:has(> div > h1)::after {
+    content: none;
+  }
+
+
+
+  main > div > div:first-child:has(> h1) > h1,
+  main > div > div:first-child:has(> div > h1) > div > h1 {
+    position: relative;
+    z-index: 1;
+    width: 100%;
+    text-align: center;
+    color: hsl(var(--primary-foreground)) !important;
+    /* Vertically center title with the top-bar burger (~2.5rem tall). */
+    min-height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin: 0;
+  }
+
+  main > div > div:first-child:has(> h1) > h1 + p,
+  main > div > div:first-child:has(> h1) > h1 ~ p,
+  main > div > div:first-child:has(> div > h1) > div > h1 + p,
+  main > div > div:first-child:has(> div > h1) > div > h1 ~ p {
+    display: none;
+  }
+
+  /* Organic morphing wave - inspired by kalpiz.co.il hero divider.
+     Uses irregular crest heights at non-uniform x positions so the silhouette
+     reshapes randomly instead of looping a sine pattern. */
+  @keyframes kalpiz-wave-morph {
+    0% {
+      clip-path: polygon(
+        0% 60%, 6% 48%, 13% 38%, 21% 32%, 29% 36%, 37% 50%, 44% 64%,
+        51% 70%, 58% 62%, 66% 46%, 74% 34%, 82% 30%, 90% 38%, 96% 52%, 100% 60%,
+        100% 100%, 0% 100%
+      );
+    }
+    20% {
+      clip-path: polygon(
+        0% 44%, 7% 56%, 14% 66%, 22% 64%, 30% 50%, 38% 34%, 45% 28%,
+        52% 32%, 60% 46%, 68% 60%, 76% 66%, 84% 58%, 91% 42%, 97% 32%, 100% 38%,
+        100% 100%, 0% 100%
+      );
+    }
+    40% {
+      clip-path: polygon(
+        0% 52%, 8% 36%, 15% 28%, 23% 34%, 31% 50%, 39% 64%, 46% 68%,
+        53% 60%, 61% 44%, 69% 30%, 77% 28%, 85% 38%, 92% 54%, 98% 66%, 100% 62%,
+        100% 100%, 0% 100%
+      );
+    }
+    60% {
+      clip-path: polygon(
+        0% 38%, 6% 50%, 14% 62%, 22% 68%, 30% 60%, 38% 44%, 45% 30%,
+        52% 28%, 60% 38%, 68% 54%, 76% 66%, 84% 64%, 91% 50%, 97% 36%, 100% 30%,
+        100% 100%, 0% 100%
+      );
+    }
+    80% {
+      clip-path: polygon(
+        0% 56%, 7% 42%, 14% 32%, 22% 30%, 30% 40%, 38% 56%, 45% 66%,
+        52% 64%, 60% 52%, 68% 38%, 76% 32%, 84% 38%, 92% 50%, 98% 60%, 100% 56%,
+        100% 100%, 0% 100%
+      );
+    }
+    100% {
+      clip-path: polygon(
+        0% 60%, 6% 48%, 13% 38%, 21% 32%, 29% 36%, 37% 50%, 44% 64%,
+        51% 70%, 58% 62%, 66% 46%, 74% 34%, 82% 30%, 90% 38%, 96% 52%, 100% 60%,
+        100% 100%, 0% 100%
+      );
+    }
+  }
+
+  /* Hero divider wave - traveling phase, primary layer */
+  /* Traveling SVG-mask wave: shifts horizontally for smooth, perfectly round wave motion */
+  /* Traveling wave: flows from right to left across the screen */
+  @keyframes kalpiz-hero-wave {
+    0%   { -webkit-mask-position: 200% 0; mask-position: 200% 0; }
+    100% { -webkit-mask-position: 0% 0;   mask-position: 0% 0; }
+  }
+
+  .whatsapp-chat-bg {
+    background-color: hsl(var(--whatsapp-chat));
+    background-image:
+      radial-gradient(hsl(var(--foreground) / 0.055) 1px, transparent 1px),
+      linear-gradient(135deg, hsl(var(--foreground) / 0.025) 25%, transparent 25%, transparent 75%, hsl(var(--foreground) / 0.025) 75%);
+    background-size: 18px 18px, 42px 42px;
+  }
+
+  @keyframes sync-pulse {
+    0%, 100% { opacity: 0.5; }
+    50% { opacity: 1; }
+  }
+  .sync-indicator { animation: sync-pulse 1.5s ease-in-out infinite; }
+
+  /* Strategic Growth Slider — "Upsell Zone": glowing gold→blue gradient track. */
+  .kalpiz-slider-upsell [data-orientation] > span:first-child {
+    background: linear-gradient(90deg, hsl(var(--brand-gold)) 0%, hsl(var(--primary-glow)) 100%);
+    box-shadow: 0 0 16px hsl(var(--brand-gold) / 0.55), 0 0 4px hsl(var(--primary-glow) / 0.6);
+    height: 4px;
+    border-radius: 9999px;
+  }
+  .kalpiz-slider-upsell [role="slider"] {
+    background: hsl(var(--brand-gold));
+    box-shadow: 0 0 0 4px hsl(var(--brand-gold) / 0.18), 0 0 14px hsl(var(--brand-gold) / 0.6);
+    transition: box-shadow 200ms ease, transform 200ms ease;
+  }
+  .kalpiz-slider-upsell:hover [role="slider"] {
+    transform: scale(1.08);
+  }
+  @keyframes kalpiz-upsell-pulse {
+    0%, 100% { box-shadow: 0 0 12px hsl(var(--brand-gold) / 0.45), 0 0 4px hsl(var(--primary-glow) / 0.5); }
+    50%      { box-shadow: 0 0 22px hsl(var(--brand-gold) / 0.75), 0 0 8px hsl(var(--primary-glow) / 0.7); }
+  }
+  .kalpiz-slider-upsell [data-orientation] {
+    animation: kalpiz-upsell-pulse 2.4s ease-in-out infinite;
+    border-radius: 9999px;
+  }
+}
+
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar { width: 6px; }
+  .scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: hsl(var(--muted-foreground) / 0.3);
+    border-radius: 3px;
+  }
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: hsl(var(--primary) / 0.5);
+  }
+
+  /* Legacy gold utility shims → primary */
+  .text-gold { color: hsl(var(--brand-gold)); }
+  .text-gold-deep { color: hsl(var(--brand-gold)); }
+  .bg-gold { background-color: hsl(var(--brand-gold)); }
+  .border-gold { border-color: hsl(var(--brand-gold)); }
+
+  .animate-slide-in-right { animation: slide-in-right 0.25s ease-out; }
+  @keyframes slide-in-right {
+    from { opacity: 0; transform: translateX(8px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  [class*="text-emerald"], [class*="text-green"], [class*="text-red"], [class*="text-amber"], [class*="text-yellow"], [class*="text-orange"], [class*="text-pink"], [class*="text-purple"], [class*="text-violet"], [class*="text-sky"] { color: hsl(var(--brand-gold)) !important; }
+  [class*="bg-emerald"], [class*="bg-green"], [class*="bg-red"], [class*="bg-amber"], [class*="bg-yellow"], [class*="bg-orange"], [class*="bg-pink"], [class*="bg-purple"], [class*="bg-violet"], [class*="bg-sky"] { background-color: hsl(var(--brand-gold) / 0.14) !important; }
+  [class*="border-emerald"], [class*="border-green"], [class*="border-red"], [class*="border-amber"], [class*="border-yellow"], [class*="border-orange"], [class*="border-pink"], [class*="border-purple"], [class*="border-violet"], [class*="border-sky"] { border-color: hsl(var(--brand-gold) / 0.42) !important; }
+}

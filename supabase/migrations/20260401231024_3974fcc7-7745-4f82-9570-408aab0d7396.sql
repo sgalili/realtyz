@@ -1,0 +1,1 @@
+ALTER TABLE public.voters ADD COLUMN IF NOT EXISTS interest_score_json jsonb DEFAULT '{"security": 0, "economy": 0, "judicial": 0, "social": 0, "governance": 0}'::jsonb;

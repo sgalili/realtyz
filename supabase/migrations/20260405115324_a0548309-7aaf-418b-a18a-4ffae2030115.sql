@@ -1,0 +1,1 @@
+ALTER TABLE public.voters ADD COLUMN IF NOT EXISTS profile_picture_url text;

@@ -1,0 +1,1473 @@
+import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabaseClient';
+import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from '@/components/ui/sheet';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Separator } from '@/components/ui/separator';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Progress } from '@/components/ui/progress';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
+import {
+  Search, CheckCircle2, XCircle, User, MapPin, Tag, Clock,
+  ArrowUpRight, ArrowDownLeft, Upload, FileSpreadsheet, AlertTriangle,
+  Users, Download, Megaphone, Trash2, X, Sparkles, Eye, SlidersHorizontal,
+  Heart, MessageCircle, UserPlus, Bot, Map, Smile, Meh, Frown
+} from 'lucide-react';
+import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
+import { format } from 'date-fns';
+import { toast } from 'sonner';
+import * as XLSX from 'xlsx';
+import { sendToN8n } from '@/lib/n8nService';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
+import VoterAvatar from '@/components/VoterAvatar';
+import { useAuth } from '@/hooks/useAuth';
+import { useDemoMode } from '@/hooks/useDemoMode';
+import { useDemoGuard } from '@/hooks/useDemoGuard';
+import { getDemoCandidateMessages, getDemoCandidateVoters } from '@/lib/demoData';
+import {
+  RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
+  ResponsiveContainer
+} from 'recharts';
+
+// Strict Israeli mobile cleaner. Returns 9725XXXXXXXX (12 digits) for storage, or null if invalid.
+// Rules per spec:
+//  1) Strip every non-digit (spaces, dots, hyphens, parens, plus, etc.)
+//  2) Leading "972" → replace with "0"   (handles +972 and 972)
+//  3) Leading "5" without 0 → prepend "0"
+//  4) Final local form must be exactly 10 digits and start with 05
+function normalizeIsraeliPhone(raw: string | null | undefined): string | null {
+  if (raw === null || raw === undefined) return null;
+  let digits = String(raw).replace(/\D/g, '');
+  if (!digits) return null;
+  if (digits.startsWith('972')) digits = '0' + digits.slice(3);
+  else if (digits.startsWith('5') && digits.length === 9) digits = '0' + digits;
+  if (!/^05\d{8}$/.test(digits)) return null;
+  // Store in international form for consistency with existing rows
+  return '972' + digits.slice(1);
+}
+
+
+const interestHebrew: Record<string, string> = {
+  Security: 'ביטחון', Economy: 'כלכלה', 'Legal/Judicial': 'משפט',
+  Legal: 'משפט', Campaign: 'קמפיין', 'Smart Link': 'קישור חכם', Engagement: 'מעורבות',
+};
+const statusHebrew: Record<string, string> = {
+  lead: 'ליד', supporter: 'תומך', active: 'פעיל',
+  inactive: 'לא פעיל', contacted: 'נוצר קשר', voted: 'הצביע',
+};
+const loyaltyConfig: Record<string, { label: string; color: string }> = {
+  supporter: { label: 'תומך', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-300' },
+  active: { label: 'פעיל', color: 'bg-blue-500/15 text-blue-700 border-blue-300' },
+  lead: { label: 'מתלבט', color: 'bg-amber-500/15 text-amber-700 border-amber-300' },
+  inactive: { label: 'מתנגד', color: 'bg-red-500/15 text-red-700 border-red-300' },
+  contacted: { label: 'נוצר קשר', color: 'bg-slate-500/15 text-slate-700 border-slate-300' },
+  voted: { label: 'הצביע', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-300' },
+};
+const hebrewLabel = (map: Record<string, string>, val: string | null | undefined) =>
+  val ? map[val] || val : null;
+
+const radarAxisLabels: Record<string, string> = {
+  security: 'ביטחון', economy: 'כלכלה', judicial: 'משפט', social: 'חברה', governance: 'ממשל',
+};
+
+const demoInterestOptions = ['ביטחון', 'כלכלה', 'חינוך', 'בריאות', 'תחבורה', 'סביבה', 'דיור', 'תרבות'];
+
+interface ImportRow {
+  full_name: string;
+  phone_number: string;
+  city?: string;
+  interest_tag?: string;
+  identity_number?: string;
+  email?: string;
+}
+
+// Bilingual header mapping (Hebrew + English). Keys are normalized (lowercased, trimmed, quotes stripped)
+const HEADER_ALIASES: Record<string, string[]> = {
+  first_name: ['first name', 'firstname', 'private name', 'given name', 'שם פרטי', 'שם_פרטי'],
+  last_name: ['last name', 'lastname', 'family name', 'surname', 'שם משפחה', 'שם_משפחה'],
+  full_name: ['full name', 'fullname', 'name', 'שם', 'שם מלא', 'full_name'],
+  phone: ['phone', 'mobile', 'phone number', 'cell', 'cellphone', 'mobile number', 'טלפון', 'סלולרי', 'נייד', 'מס טלפון', 'מס טלפון 1', 'מספר טלפון', 'phone_number'],
+  email: ['email', 'e-mail', 'mail', 'אימייל', 'דוא"ל', 'דואל', 'דואר אלקטרוני'],
+  city: ['city', 'town', 'locality', 'עיר', 'יישוב', 'ישוב'],
+  identity_number: ['id', 'id number', 'identity number', 'national id', 'ת.ז', 'תז', 'מספר זהות', 'תעודת זהות', 'identity_number'],
+  interest_tag: ['interest', 'tag', 'topic', 'נושא', 'נושא עניין', 'תג', 'interest_tag'],
+};
+
+function normalizeHeader(h: string): string {
+  return String(h ?? '')
+    .replace(/["'`]/g, '')
+    .replace(/[._-]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .toLowerCase();
+}
+
+function buildHeaderMap(headers: string[]): Record<string, string> {
+  // Returns: { canonicalField: actualHeaderInFile }
+  const map: Record<string, string> = {};
+  const normalized = headers.map((h) => ({ raw: h, norm: normalizeHeader(h) }));
+  for (const [field, aliases] of Object.entries(HEADER_ALIASES)) {
+    const aliasSet = new Set(aliases.map(normalizeHeader));
+    const hit = normalized.find((h) => aliasSet.has(h.norm));
+    if (hit) map[field] = hit.raw;
+  }
+  return map;
+}
+
+function getInitials(name: string | null): string {
+  if (!name) return '?';
+  const parts = name.trim().split(/\s+/);
+  if (parts.length >= 2) return (parts[0][0] + parts[1][0]).toUpperCase();
+  return parts[0].substring(0, 2).toUpperCase();
+}
+
+const CircularScore = ({ score }: { score: number }) => {
+  const radius = 40;
+  const circumference = 2 * Math.PI * radius;
+  const offset = circumference - (score / 100) * circumference;
+  const color = score >= 60 ? 'hsl(var(--success))' : score >= 30 ? 'hsl(var(--warning))' : 'hsl(var(--destructive))';
+  return (
+    <div className="relative w-28 h-28 mx-auto">
+      <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r={radius} fill="none" stroke="hsl(var(--muted))" strokeWidth="8" />
+        <circle cx="50" cy="50" r={radius} fill="none" stroke={color} strokeWidth="8"
+          strokeDasharray={circumference} strokeDashoffset={offset}
+          strokeLinecap="round" className="transition-all duration-700" />
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center">
+        <span className="text-2xl font-bold" style={{ color }}>{score}</span>
+        <span className="text-[10px] text-muted-foreground">מתוך 100</span>
+      </div>
+    </div>
+  );
+};
+
+const PAGE_SIZE = 50;
+
+const VoterCRM = () => {
+  const { user } = useAuth();
+  const { isDemoMode, demoCandidateId } = useDemoMode();
+  const blockDemoAction = useDemoGuard();
+  const [revealedIds, setRevealedIds] = useState<Set<string>>(new Set());
+
+  // Check admin role
+  const { data: isAdmin } = useQuery({
+    queryKey: ['is-admin', user?.id],
+    enabled: !!user,
+    queryFn: async () => {
+      const { data } = await supabase.rpc('has_role', { _user_id: user!.id, _role: 'admin' });
+      return !!data;
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+  const [search, setSearch] = useState('');
+  const [interestFilter, setInterestFilter] = useState<string>('all');
+  const [cityFilter, setCityFilter] = useState<string>('all');
+  const [statusFilter, setStatusFilter] = useState<string>('all');
+  const [profileFilter, setProfileFilter] = useState<string>('all');
+  const [selectedVoterId, setSelectedVoterId] = useState<string | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [importPreview, setImportPreview] = useState<ImportRow[]>([]);
+  const [importStats, setImportStats] = useState<{ total: number; valid: number; duplicates: number; invalid: number; healthPct: number; detectedFields: string[]; missingPhone: boolean } | null>(null);
+  const [importing, setImporting] = useState(false);
+  const [importProgress, setImportProgress] = useState(0);
+  const [addToCampaignOpen, setAddToCampaignOpen] = useState(false);
+  const [aiBlastOpen, setAiBlastOpen] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [aiPreviews, setAiPreviews] = useState<Array<{ name: string; message: string }>>([]);
+  const [addVoterOpen, setAddVoterOpen] = useState(false);
+  const [newVoter, setNewVoter] = useState({ full_name: '', phone_number: '', city: '', identity_number: '', instagram_handle: '', telegram_username: '' });
+  const [addingVoter, setAddingVoter] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
+
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const searchTimerRef = useRef<ReturnType<typeof setTimeout>>();
+  const tableContainerRef = useRef<HTMLDivElement>(null);
+
+  // Debounce search input
+  useEffect(() => {
+    searchTimerRef.current = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(searchTimerRef.current);
+  }, [search]);
+
+  useRealtimeSubscription('messages', [['voter-messages', selectedVoterId ?? '']]);
+
+  // Server-side paginated + filtered query
+  const {
+    data: voterPages,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ['voters-infinite', debouncedSearch, interestFilter, cityFilter, statusFilter],
+    enabled: !isDemoMode,
+    queryFn: async ({ pageParam = 0 }) => {
+      let query = supabase.from('voters').select('*', { count: 'exact' });
+
+      // Full-text search via tsvector
+      if (debouncedSearch.trim()) {
+        const terms = debouncedSearch.trim().split(/\s+/).map(t => `'${t}'`).join(' & ');
+        query = query.textSearch('fts', terms, { type: 'plain', config: 'simple' });
+      }
+      if (interestFilter !== 'all') query = query.eq('interest_tag', interestFilter);
+      if (cityFilter !== 'all') query = query.eq('city', cityFilter);
+      if (statusFilter !== 'all') query = query.eq('status', statusFilter);
+
+      const from = pageParam * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+      const { data, count, error } = await query
+        .order('created_at', { ascending: false })
+        .range(from, to);
+      if (error) throw error;
+      return { rows: data ?? [], total: count ?? 0, page: pageParam };
+    },
+    initialPageParam: 0,
+    getNextPageParam: (lastPage) => {
+      const nextPage = lastPage.page + 1;
+      return nextPage * PAGE_SIZE < lastPage.total ? nextPage : undefined;
+    },
+    staleTime: 5 * 60 * 1000,
+    gcTime: 10 * 60 * 1000,
+    refetchInterval: 30_000,    // 30s polling for non-critical updates
+  });
+
+  const dbVoters = useMemo(() => voterPages?.pages.flatMap(p => p.rows) ?? [], [voterPages]);
+  const demoVoters = useMemo(() => getDemoCandidateVoters(demoCandidateId), [demoCandidateId]);
+  const demoMessages = useMemo(() => getDemoCandidateMessages(demoCandidateId), [demoCandidateId]);
+  const voters = useMemo(() => {
+    if (!isDemoMode) return dbVoters;
+    const demoIds = new Set(demoVoters.map((v) => v.id));
+    return [...demoVoters, ...dbVoters.filter((v) => !demoIds.has(v.id))] as typeof dbVoters;
+  }, [isDemoMode, dbVoters, demoVoters]);
+  const totalCount = isDemoMode ? Math.max(1_000_000, voters.length) : (voterPages?.pages[0]?.total ?? 0);
+
+  // Lightweight query for filter options (distinct values)
+  const { data: filterOptions } = useQuery({
+    queryKey: ['voter-filter-options'],
+    enabled: !isDemoMode,
+    queryFn: async () => {
+      const { data } = await supabase.from('voters').select('city, interest_tag, status');
+      const cities = [...new Set((data ?? []).map(v => v.city).filter(Boolean))];
+      const interests = [...new Set((data ?? []).map(v => v.interest_tag).filter(Boolean))];
+      const statuses = [...new Set((data ?? []).map(v => v.status).filter(Boolean))];
+      return { cities, interests, statuses };
+    },
+    staleTime: 10 * 60 * 1000,
+  });
+
+  // Unfiltered total - reflects ALL real voters in the user's account
+  const { data: realTotalCount = 0 } = useQuery({
+    queryKey: ['voters-total'],
+    enabled: !isDemoMode,
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('voters')
+        .select('id', { count: 'exact', head: true });
+      return count ?? 0;
+    },
+    staleTime: 60 * 1000,
+    refetchInterval: 60_000,
+  });
+  const uniqueCities = isDemoMode
+    ? [...new Set([...demoVoters.map((v) => v.city).filter(Boolean), ...(filterOptions?.cities ?? [])])]
+    : filterOptions?.cities ?? [];
+  const uniqueInterests = isDemoMode
+    ? [...new Set([...demoInterestOptions, ...(filterOptions?.interests ?? [])])]
+    : filterOptions?.interests ?? [];
+  const uniqueStatuses = isDemoMode
+    ? [...new Set([...demoVoters.map((v) => v.status).filter(Boolean), ...(filterOptions?.statuses ?? [])])]
+    : filterOptions?.statuses ?? [];
+
+  const { data: voterMessages } = useQuery({
+    queryKey: ['voter-messages', selectedVoterId],
+    enabled: !!selectedVoterId && !isDemoMode,
+    queryFn: async () => {
+      const { data } = await supabase.from('messages').select('*').eq('voter_id', selectedVoterId!).order('created_at', { ascending: true });
+      return data ?? [];
+    },
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const { data: voterChatHistory } = useQuery({
+    queryKey: ['voter-chat-history', selectedVoterId],
+    enabled: !!selectedVoterId && !isDemoMode,
+    queryFn: async () => {
+      const { data } = await supabase.from('chat_history').select('*').eq('voter_id', selectedVoterId!).order('created_at', { ascending: true });
+      return data ?? [];
+    },
+    staleTime: 2 * 60 * 1000,
+  });
+
+  const { data: campaigns } = useQuery({
+    queryKey: ['campaigns'],
+    queryFn: async () => {
+      const { data } = await supabase.from('campaigns').select('*');
+      return data ?? [];
+    },
+    staleTime: 5 * 60 * 1000,
+  });
+
+  const selectedVoter = voters?.find((v) => v.id === selectedVoterId);
+  const activeVoterMessages = isDemoMode && selectedVoterId?.startsWith('demo-voter-')
+    ? demoMessages.filter((m) => m.voter_id === selectedVoterId)
+    : voterMessages;
+  const activeVoterChatHistory = isDemoMode && selectedVoterId?.startsWith('demo-voter-')
+    ? demoMessages.filter((m) => m.voter_id === selectedVoterId)
+    : voterChatHistory;
+  const filtered = useMemo(() => {
+    if (!voters) return voters;
+    if (profileFilter === 'all') return voters;
+    return voters.filter((v) => {
+      // Compute profile badge inline (mirror getPoliticalProfile logic)
+      const eng = v.engagement_score ?? 0;
+      const sentKey = eng >= 60 ? 'positive' : eng >= 30 ? 'neutral' : 'negative';
+      const status = v.status;
+      const loyaltyTier =
+        status === 'supporter' || status === 'voted' ? 'high'
+        : status === 'active' ? 'med'
+        : status === 'inactive' ? 'rival'
+        : 'low';
+      let badge = '';
+      if (sentKey === 'negative' && loyaltyTier === 'rival') badge = 'מתנגד';
+      else if (sentKey === 'negative' && eng >= 60) badge = 'מתנגד פעיל';
+      else if (sentKey === 'negative') badge = 'מתנגד';
+      else if (sentKey === 'neutral') badge = 'מתלבט';
+      else if (sentKey === 'positive' && loyaltyTier === 'high') badge = 'תומך ליבה';
+      else badge = 'תומך פוטנציאלי';
+      return badge === profileFilter;
+    });
+  }, [voters, profileFilter]);
+
+  const getScoreColor = (score: number | null) => {
+    if (!score || score < 30) return 'bg-red-500/10 text-red-600';
+    if (score < 60) return 'bg-amber-500/10 text-amber-600';
+    return 'bg-emerald-500/10 text-emerald-600';
+  };
+
+  const getLoyalty = (status: string | null) => loyaltyConfig[status || 'lead'] || loyaltyConfig.lead;
+
+  const getSentimentForVoter = (score: number | null) => {
+    const s = score ?? 0;
+    if (s >= 60) return { key: 'positive' as const, emoji: '😊', label: 'חיובי', color: 'text-emerald-600', cssColor: 'hsl(var(--success))' };
+    if (s >= 30) return { key: 'neutral' as const, emoji: '😐', label: 'ניטרלי', color: 'text-orange-500', cssColor: 'hsl(25 95% 53%)' };
+    return { key: 'negative' as const, emoji: '😟', label: 'שלילי', color: 'text-red-600', cssColor: 'hsl(var(--destructive))' };
+  };
+
+  // Combine sentiment + loyalty + engagement into a single political profile bottom-line
+  const getPoliticalProfile = (status: string | null, engagement: number | null) => {
+    const sent = getSentimentForVoter(engagement);
+    const loyaltyTier: 'high' | 'med' | 'low' | 'rival' =
+      status === 'supporter' || status === 'voted' ? 'high'
+      : status === 'active' ? 'med'
+      : status === 'inactive' ? 'rival'
+      : 'low';
+    const eng = engagement ?? 0;
+
+    // Hard Opposition: Negative + rival loyalty
+    if (sent.key === 'negative' && loyaltyTier === 'rival') {
+      return { ...sent, badge: 'מתנגד', badgeClass: 'bg-red-600 text-white border-red-700' };
+    }
+    // At Risk: Negative + High Engagement
+    if (sent.key === 'negative' && eng >= 60) {
+      return { ...sent, badge: 'מתנגד פעיל', badgeClass: 'bg-orange-500 text-white border-orange-600' };
+    }
+    if (sent.key === 'negative') {
+      return { ...sent, badge: 'מתנגד', badgeClass: 'bg-red-500/90 text-white border-red-600' };
+    }
+    // Undecided/Neutral
+    if (sent.key === 'neutral') {
+      return { ...sent, badge: 'מתלבט', badgeClass: 'bg-slate-400 text-white border-slate-500' };
+    }
+    // Positive + High Loyalty -> Strong Support (Navy)
+    if (sent.key === 'positive' && loyaltyTier === 'high') {
+      return { ...sent, badge: 'תומך ליבה', badgeClass: 'bg-[hsl(220_60%_25%)] text-white border-[hsl(220_60%_20%)]' };
+    }
+    // Positive + Med/Low -> Leaning
+    return { ...sent, badge: 'תומך פוטנציאלי', badgeClass: 'bg-blue-500 text-white border-blue-600' };
+  };
+
+  const getSentimentFromMessages = (messages: typeof voterMessages) => {
+    if (!messages || messages.length === 0) return { key: 'neutral' as const, emoji: '😐', label: 'ניטרלי', color: 'text-amber-500' };
+    const recent = messages.slice(-5);
+    const positiveWords = ['תודה', 'מעולה', 'אהבתי', 'תומך', 'בעד'];
+    const negativeWords = ['נגד', 'גרוע', 'מאכזב', 'בושה'];
+    let score = 0;
+    recent.forEach(m => {
+      const c = m.content?.toLowerCase() || '';
+      positiveWords.forEach(w => { if (c.includes(w)) score++; });
+      negativeWords.forEach(w => { if (c.includes(w)) score--; });
+    });
+    if (score > 0) return { key: 'positive' as const, emoji: '😊', label: 'חיובי', color: 'text-emerald-500' };
+    if (score < 0) return { key: 'negative' as const, emoji: '😠', label: 'שלילי', color: 'text-red-500' };
+    return { key: 'neutral' as const, emoji: '😐', label: 'ניטרלי', color: 'text-amber-500' };
+  };
+
+  // Batch selection
+  const allFilteredSelected = filtered && filtered.length > 0 && filtered.every(v => selectedIds.has(v.id));
+  const toggleAll = () => {
+    if (allFilteredSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(filtered?.map(v => v.id) ?? []));
+  };
+  const toggleOne = (id: string) => {
+    const next = new Set(selectedIds);
+    next.has(id) ? next.delete(id) : next.add(id);
+    setSelectedIds(next);
+  };
+
+  const handleExportExcel = (mode: 'selected' | 'filtered') => {
+    const source = mode === 'selected'
+      ? voters?.filter(v => selectedIds.has(v.id))
+      : filtered;
+    const rows = source?.map(v => ({
+      'שם מלא': v.full_name, 'טלפון': formatPhoneDisplay(v.phone_number), 'עיר': v.city,
+      'נושא עניין': v.interest_tag, 'דרגת נאמנות': getLoyalty(v.status).label,
+      'פרופיל פוליטי': getPoliticalProfile(v.status, v.engagement_score).badge,
+      'הצביע': v.is_voted ? 'כן' : 'לא', 'ציון מעורבות': v.engagement_score,
+    }));
+    if (!rows?.length) { toast.error('אין נתונים לייצוא'); return; }
+    const ws = XLSX.utils.json_to_sheet(rows);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'בוחרים');
+    XLSX.writeFile(wb, `בוחרים_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    toast.success(`${rows.length} בוחרים יוצאו בהצלחה`);
+  };
+
+  const handleAiBlastPreview = () => {
+    const selected = voters?.filter(v => selectedIds.has(v.id)) ?? [];
+    const previews = selected.slice(0, 10).map(v => {
+      const interest = v.interest_tag || 'כללי';
+      const name = v.full_name || 'בוחר';
+      const score = v.engagement_score ?? 0;
+      let tone = 'ידידותי';
+      if (score >= 60) tone = 'חם ומחזק';
+      else if (score < 30) tone = 'מניע לפעולה';
+      return {
+        name,
+        message: `שלום ${name}! 👋\nראיתי שאתה מתעניין ב${interest}. רציתי לעדכן אותך שיש לנו חדשות חשובות בנושא.\n\nנשמח אם תצטרף אלינו - ביחד נשפיע! 🇮🇱\n\n[סגנון: ${tone}]`,
+      };
+    });
+    setAiPreviews(previews);
+    setAiBlastOpen(true);
+  };
+
+  const handleBatchStatus = async (newStatus: string) => {
+    if (blockDemoAction('bulk-status')) return;
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    try {
+      const { data: count, error } = await supabase.rpc('bulk_update_voters', {
+        voter_ids: ids,
+        new_status: newStatus,
+      });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['voters-infinite'] });
+      queryClient.invalidateQueries({ queryKey: ['voter-filter-options'] });
+      setSelectedIds(new Set());
+      toast.success(`${count ?? ids.length} בוחרים עודכנו ל-${hebrewLabel(statusHebrew, newStatus)}`);
+    } catch (err: any) {
+      toast.error('שגיאה בעדכון סטטוס: ' + (err?.message || ''));
+    }
+  };
+
+  const handleBulkInterestTag = async (tag: string) => {
+    if (blockDemoAction('bulk-interest-tag')) return;
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    try {
+      const { data: count, error } = await supabase.rpc('bulk_update_voters', {
+        voter_ids: ids,
+        new_interest_tag: tag,
+      });
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['voters-infinite'] });
+      queryClient.invalidateQueries({ queryKey: ['voter-filter-options'] });
+      setSelectedIds(new Set());
+      toast.success(`${count ?? ids.length} בוחרים עודכנו לתגית "${tag}"`);
+    } catch (err: any) {
+      toast.error('שגיאה בעדכון תגית: ' + (err?.message || ''));
+    }
+  };
+
+  const handleBatchDelete = async () => {
+    if (blockDemoAction('delete-voters')) return;
+    const ids = Array.from(selectedIds);
+    if (!ids.length) return;
+    if (!confirm(`האם למחוק ${ids.length} בוחרים? פעולה זו בלתי הפיכה.`)) return;
+    const { error, count } = await supabase
+      .from('voters')
+      .delete({ count: 'exact' })
+      .in('id', ids);
+    if (error) { toast.error('שגיאה במחיקה: ' + error.message); return; }
+    if ((count ?? 0) === 0) {
+      toast.error('המחיקה נחסמה - אין הרשאה למחוק את הרשומות שנבחרו');
+      return;
+    }
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['voters-infinite'] }),
+      queryClient.invalidateQueries({ queryKey: ['voter-filter-options'] }),
+      queryClient.invalidateQueries({ queryKey: ['voters-total'] }),
+    ]);
+    setSelectedIds(new Set());
+    toast.success(`${count} בוחרים נמחקו בהצלחה`);
+  };
+
+  const handleAddToCampaign = async (campaignId: string) => {
+    if (blockDemoAction('add-to-campaign')) return;
+    const ids = Array.from(selectedIds);
+    await sendToN8n('add_to_campaign', { campaign_id: campaignId, voter_ids: ids });
+    toast.success(`${ids.length} בוחרים נוספו לקמפיין`);
+    setAddToCampaignOpen(false);
+    setSelectedIds(new Set());
+  };
+
+  const handleAddVoter = async () => {
+    if (blockDemoAction('add-voter')) return;
+    if (!newVoter.full_name.trim() || !newVoter.phone_number.trim()) {
+      toast.error('שם מלא וטלפון הם שדות חובה');
+      return;
+    }
+    const phone = normalizeIsraeliPhone(newVoter.phone_number);
+    if (!phone) {
+      toast.error('מספר טלפון לא תקין');
+      return;
+    }
+    setAddingVoter(true);
+    try {
+      const insertData: Record<string, any> = {
+        full_name: newVoter.full_name.trim(),
+        phone_number: phone,
+        city: newVoter.city.trim() || null,
+        identity_number: newVoter.identity_number.trim() || null,
+      };
+      if (newVoter.instagram_handle.trim()) insertData.instagram_handle = newVoter.instagram_handle.trim();
+      if (newVoter.telegram_username.trim()) insertData.telegram_username = newVoter.telegram_username.trim();
+      const { error } = await supabase.from('voters').insert(insertData as any);
+      if (error) throw error;
+      queryClient.invalidateQueries({ queryKey: ['voters-infinite'] });
+      queryClient.invalidateQueries({ queryKey: ['voter-filter-options'] });
+      queryClient.invalidateQueries({ queryKey: ['voters-total'] });
+      toast.success('בוחר נוסף בהצלחה');
+      setAddVoterOpen(false);
+      setNewVoter({ full_name: '', phone_number: '', city: '', identity_number: '', instagram_handle: '', telegram_username: '' });
+    } catch (err: any) {
+      const msg = String(err?.message || '');
+      if (msg.includes('TRIAL_RECORD_LIMIT')) {
+        toast.error('מסלול הניסיון מוגבל ל-100 רשומות. שדרג עכשיו כדי לנהל את כל מאגר הבוחרים שלך', {
+          duration: 8000,
+          action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/upgrade') },
+        });
+      } else {
+        toast.error('שגיאה בהוספת בוחר: ' + (err?.message || 'שגיאה'));
+      }
+    } finally {
+      setAddingVoter(false);
+    }
+  };
+
+  const getRadarData = (voter: any) => {
+    const defaults = { security: 0, economy: 0, judicial: 0, social: 0, governance: 0 };
+    const scores = (voter as any).interest_score_json || defaults;
+    return Object.entries({ ...defaults, ...scores }).map(([key, value]) => ({
+      subject: radarAxisLabels[key] || key,
+      value: typeof value === 'number' ? value : 0,
+      fullMark: 100,
+    }));
+  };
+
+  // Import logic - bilingual header mapping (Hebrew + English), CSV + XLSX support
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    const isCsv = /\.csv$/i.test(file.name);
+    reader.onload = (evt) => {
+      try {
+        let workbook: XLSX.WorkBook;
+        if (isCsv) {
+          // UTF-8 + BOM stripping for Hebrew CSVs
+          let text = evt.target?.result as string;
+          if (text && text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+          workbook = XLSX.read(text, { type: 'string', raw: false });
+        } else {
+          const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+          workbook = XLSX.read(data, { type: 'array' });
+        }
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows: Record<string, any>[] = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+        if (rows.length === 0) { toast.error('הקובץ ריק'); return; }
+
+        // Build canonical->actualHeader map from the first row's keys
+        const headers = Object.keys(rows[0] ?? {});
+        const headerMap = buildHeaderMap(headers);
+
+        const get = (row: Record<string, any>, field: string): string => {
+          const key = headerMap[field];
+          return key ? String(row[key] ?? '').trim() : '';
+        };
+
+        // Detected fields summary (in Hebrew)
+        const fieldLabels: Record<string, string> = {
+          first_name: 'שם פרטי', last_name: 'שם משפחה', full_name: 'שם',
+          phone: 'טלפון', email: 'אימייל', city: 'עיר',
+          identity_number: 'ת.ז', interest_tag: 'נושא',
+        };
+        const detectedFields = Object.keys(headerMap).map((k) => fieldLabels[k] ?? k);
+        const hasPhoneColumn = !!headerMap.phone;
+
+        if (!hasPhoneColumn) {
+          toast.error('עמודת טלפון חסרה - לא ניתן לייבא ללא מספר טלפון', { duration: 6000 });
+          setImportStats({ total: rows.length, valid: 0, duplicates: 0, invalid: rows.length, healthPct: 0, detectedFields, missingPhone: true });
+          setImportPreview([]);
+          setImportDialogOpen(true);
+          (window as any).__importRows = [];
+          return;
+        }
+
+        const existingPhones = new Set(voters?.map((v) => v.phone_number) ?? []);
+        const seenPhones = new Set<string>();
+        const validRows: ImportRow[] = [];
+        let duplicates = 0;
+        let invalid = 0;
+
+        for (const row of rows) {
+          const firstName = get(row, 'first_name');
+          const lastName = get(row, 'last_name');
+          const fullNameDirect = get(row, 'full_name');
+          const name = fullNameDirect || [firstName, lastName].filter(Boolean).join(' ').trim();
+
+          const rawPhone = get(row, 'phone');
+          const city = get(row, 'city') || undefined;
+          const identityNumber = get(row, 'identity_number') || undefined;
+          const interest = get(row, 'interest_tag') || undefined;
+          const email = get(row, 'email') || undefined;
+
+          if (!name) { invalid++; continue; }
+          const phone = normalizeIsraeliPhone(rawPhone);
+          if (!phone) { invalid++; continue; }
+          if (seenPhones.has(phone) || existingPhones.has(phone)) { duplicates++; continue; }
+          seenPhones.add(phone);
+          validRows.push({ full_name: name, phone_number: phone, city, interest_tag: interest, identity_number: identityNumber, email });
+        }
+
+        const healthPct = rows.length > 0 ? Math.round((validRows.length / rows.length) * 100) : 0;
+        setImportPreview(validRows.slice(0, 50));
+        setImportStats({ total: rows.length, valid: validRows.length, duplicates, invalid, healthPct, detectedFields, missingPhone: false });
+        setImportDialogOpen(true);
+        (window as any).__importRows = validRows;
+      } catch (err: any) {
+        console.error('Import parse error:', err);
+        toast.error('שגיאה בקריאת הקובץ: ' + (err?.message || 'פורמט לא נתמך'));
+      }
+    };
+    if (isCsv) reader.readAsText(file, 'UTF-8');
+    else reader.readAsArrayBuffer(file);
+    e.target.value = '';
+  };
+
+  const handleImportConfirm = async () => {
+    if (blockDemoAction('import-voters')) return;
+    const rows: ImportRow[] = (window as any).__importRows;
+    if (!rows || rows.length === 0) {
+      toast.error('אין שורות תקינות לייבוא');
+      return;
+    }
+    setImporting(true);
+    setImportProgress(0);
+    let totalInserted = 0;
+    try {
+      const batchSize = 500;
+      const totalRows = rows.length;
+      for (let i = 0; i < rows.length; i += batchSize) {
+        const batch = rows.slice(i, i + batchSize).map((r) => ({
+          full_name: r.full_name, phone_number: r.phone_number,
+          city: r.city || null, interest_tag: r.interest_tag || null,
+          identity_number: r.identity_number || null,
+          status: 'uploaded',
+        }));
+        const { data, error } = await supabase
+          .from('voters')
+          .upsert(batch, { onConflict: 'phone_number' })
+          .select('id');
+        if (error) throw error;
+        totalInserted += data?.length ?? 0;
+        setImportProgress(Math.round(((i + batch.length) / totalRows) * 100));
+      }
+      // Only after Supabase confirmed: refresh and toast success
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['voters-infinite'] }),
+        queryClient.invalidateQueries({ queryKey: ['voter-filter-options'] }),
+        queryClient.invalidateQueries({ queryKey: ['voters-total'] }),
+      ]);
+
+      toast.success(`ייבוא הושלם: ${totalInserted.toLocaleString('he-IL')} רשומות נשמרו במאגר`);
+
+      const n8nResult = await sendToN8n('contacts_synced', { imported_count: totalInserted, phone_numbers: rows.map((r) => r.phone_number) });
+      if (n8nResult.ok) toast.success('רשימות התפוצה עודכנו');
+      else if (!n8nResult.skipped) toast.warning('הייבוא הצליח אך סנכרון n8n נכשל');
+
+      setImportDialogOpen(false);
+      setImportPreview([]);
+      setImportStats(null);
+      delete (window as any).__importRows;
+    } catch (err: any) {
+      toast.error('שגיאה בייבוא: ' + (err?.message || 'שגיאה לא ידועה'));
+    } finally { setImporting(false); }
+  };
+
+  const messageSentiment = getSentimentFromMessages(activeVoterMessages);
+
+  return (
+    <div className="space-y-4 relative pb-20 pt-5">
+      {/* Header */}
+      <div>
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight text-primary">ניהול בוחרים</h1>
+          <p className="text-muted-foreground text-sm">
+            סה״כ אנשי קשר במערכת: <span className="font-semibold text-foreground">{(isDemoMode ? totalCount : realTotalCount).toLocaleString('he-IL')}</span>
+          </p>
+        </div>
+      </div>
+      <div className="flex w-full gap-2 sm:w-auto sm:justify-end">
+        <input type="file" ref={fileInputRef} accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileSelect} />
+        <Button onClick={() => setAddVoterOpen(true)} variant="outline" size="sm" className="flex-1 gap-2 sm:flex-none">
+          <User className="h-4 w-4" /> הוספת בוחר
+        </Button>
+        <Button onClick={() => fileInputRef.current?.click()} variant="outline" size="sm" className="flex-1 gap-2 sm:flex-none">
+          <Upload className="h-4 w-4" /> ייבוא בוחרים
+        </Button>
+      </div>
+
+      {/* Data Table */}
+      <Card className="border-border/50 shadow-sm">
+        <CardHeader className="pb-3">
+          <div className="flex flex-col gap-3">
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+              <div className="relative w-full sm:w-72">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="חיפוש חופשי..." className="pr-9 pl-9 h-9" value={search} onChange={(e) => setSearch(e.target.value)} />
+                <button
+                  type="button"
+                  onClick={() => setFiltersOpen((open) => !open)}
+                  className="absolute left-2 top-1/2 -translate-y-1/2 inline-flex h-6 w-6 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                  aria-label="סינון וייצוא"
+                >
+                  <SlidersHorizontal className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            {(() => {
+              const hasFilter = !!search.trim() || interestFilter !== 'all' || cityFilter !== 'all' || statusFilter !== 'all' || profileFilter !== 'all';
+              const accountTotal = isDemoMode ? voters.length : realTotalCount;
+              const filteredTotal = isDemoMode ? filtered?.length ?? 0 : totalCount;
+              return (
+                <p className="text-xs text-muted-foreground tabular-nums">
+                  {accountTotal === 0
+                    ? 'אין רשומות במאגר. העלה רשימה כדי להתחיל'
+                    : hasFilter
+                      ? `מציג ${filteredTotal.toLocaleString('he-IL')} מתוך ${accountTotal.toLocaleString('he-IL')}`
+                      : `סה״כ: ${accountTotal.toLocaleString('he-IL')} רשומות`}
+                </p>
+              );
+            })()}
+          </div>
+          {filtersOpen && <div className="flex flex-wrap gap-2 pt-2 animate-fade-in">
+            <Select value={interestFilter} onValueChange={setInterestFilter}>
+              <SelectTrigger className="w-[160px] h-8 text-xs"><Tag className="h-3 w-3 ml-1" /><SelectValue placeholder="סנן לפי נושא" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">כל הנושאים</SelectItem>
+                {uniqueInterests.map((t) => <SelectItem key={t} value={t!}>{t}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={cityFilter} onValueChange={setCityFilter}>
+              <SelectTrigger className="w-[160px] h-8 text-xs"><MapPin className="h-3 w-3 ml-1" /><SelectValue placeholder="סנן לפי עיר" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">כל הערים</SelectItem>
+                {uniqueCities.map((c) => <SelectItem key={c} value={c!}>{c}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={statusFilter} onValueChange={setStatusFilter}>
+              <SelectTrigger className="w-[140px] h-8 text-xs"><SelectValue placeholder="סנן לפי סטטוס" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">כל הסטטוסים</SelectItem>
+                {uniqueStatuses.map((s) => <SelectItem key={s} value={s!}>{hebrewLabel(statusHebrew, s) || s}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Select value={profileFilter} onValueChange={setProfileFilter}>
+              <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="פרופיל פוליטי" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">כל הפרופילים</SelectItem>
+                <SelectItem value="תומך ליבה">תומך ליבה</SelectItem>
+                <SelectItem value="תומך פוטנציאלי">תומך פוטנציאלי</SelectItem>
+                <SelectItem value="מתלבט">מתלבט</SelectItem>
+                <SelectItem value="מתנגד פעיל">מתנגד פעיל</SelectItem>
+                <SelectItem value="מתנגד">מתנגד</SelectItem>
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" className="gap-1.5 h-8 shrink-0" onClick={() => handleExportExcel('filtered')}>
+              <FileSpreadsheet className="h-3.5 w-3.5" /> ייצוא
+            </Button>
+          </div>}
+        </CardHeader>
+        {selectedIds.size > 0 && (
+          <div className="border-t border-border/60 bg-muted/30 px-4 py-2 flex flex-wrap items-center gap-3 animate-in fade-in slide-in-from-top-2 duration-200">
+            <Badge variant="secondary" className="gap-1 text-sm">
+              <Users className="h-3.5 w-3.5" /> {selectedIds.size} נבחרו
+            </Badge>
+            <Separator orientation="vertical" className="h-6" />
+            <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={() => setAddToCampaignOpen(true)}>
+              <Megaphone className="h-3.5 w-3.5" /> הוסף לקמפיין
+            </Button>
+            <Select onValueChange={handleBatchStatus}>
+              <SelectTrigger className="w-[130px] h-8 text-xs">
+                <SelectValue placeholder="שנה סטטוס" />
+              </SelectTrigger>
+              <SelectContent>
+                {Object.entries(statusHebrew).map(([k, v]) => (
+                  <SelectItem key={k} value={k}>{v}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Select onValueChange={handleBulkInterestTag}>
+              <SelectTrigger className="w-[130px] h-8 text-xs">
+                <SelectValue placeholder="שנה תגית" />
+              </SelectTrigger>
+              <SelectContent>
+                {uniqueInterests.map(t => (
+                  <SelectItem key={t} value={t!}>{t}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={handleAiBlastPreview}>
+              <Sparkles className="h-3.5 w-3.5" /> שלח הודעת AI
+            </Button>
+            <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={() => handleExportExcel('selected')}>
+              <Download className="h-3.5 w-3.5" /> ייצוא נבחרים
+            </Button>
+            <Button variant="destructive" size="sm" className="gap-1.5 h-8" onClick={handleBatchDelete}>
+              <Trash2 className="h-3.5 w-3.5" /> מחק
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8 ms-auto" onClick={() => setSelectedIds(new Set())}>
+              <X className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+        <CardContent className="p-0">
+          <div
+            ref={tableContainerRef}
+            className="max-h-[65vh] overflow-auto"
+            onScroll={(e) => {
+              const el = e.currentTarget;
+              if (el.scrollHeight - el.scrollTop - el.clientHeight < 200 && hasNextPage && !isFetchingNextPage) {
+                fetchNextPage();
+              }
+            }}
+          >
+            <Table className="w-full [&_th]:whitespace-nowrap [&_td]:whitespace-nowrap [&_th]:!px-[5px] [&_td]:!px-[5px]">
+              <TableHeader>
+                <TableRow className="hover:bg-transparent bg-muted/30">
+                  <TableHead className="w-auto font-semibold text-xs">שם</TableHead>
+                  <TableHead className="w-auto font-semibold text-xs text-right">טלפון</TableHead>
+                  <TableHead className="w-auto font-semibold text-xs">עיר</TableHead>
+                  <TableHead className="w-auto text-center font-semibold text-xs">פרופיל פוליטי</TableHead>
+                  <TableHead className="w-10 text-center">
+                    <Checkbox checked={allFilteredSelected} onCheckedChange={toggleAll} />
+                  </TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                  {isLoading && (
+                    <TableRow><TableCell colSpan={5} className="py-12">
+                      <div className="flex flex-col items-center gap-3">
+                        <div className="kalpiz-loader h-10 w-10" />
+                        <p className="text-sm text-muted-foreground">טוען בוחרים...</p>
+                      </div>
+                    </TableCell></TableRow>
+                  )}
+                  {filtered?.length === 0 && !isLoading && (() => {
+                    const hasFilter = !!search || interestFilter !== 'all' || cityFilter !== 'all' || statusFilter !== 'all' || profileFilter !== 'all';
+                    const accountIsEmpty = !isDemoMode && realTotalCount === 0;
+                    return (
+                      <TableRow><TableCell colSpan={5} className="py-0">
+                        <div className="empty-state animate-fade-in">
+                          <div className="h-16 w-16 rounded-full bg-muted/40 flex items-center justify-center mb-3">
+                            {accountIsEmpty ? <Upload className="h-7 w-7 text-muted-foreground/30" /> : <Search className="h-7 w-7 text-muted-foreground/30" />}
+                          </div>
+                          {accountIsEmpty ? (
+                            <>
+                              <p className="text-base font-semibold text-foreground mb-1">אין רשומות במאגר</p>
+                              <p className="text-sm text-muted-foreground mb-3">העלה רשימה כדי להתחיל</p>
+                              <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-2">
+                                <Upload className="h-4 w-4" /> ייבוא בוחרים
+                              </Button>
+                            </>
+                          ) : (
+                            <>
+                              <p className="text-base font-semibold text-foreground mb-1">לא נמצאו בוחרים</p>
+                              <p className="text-sm text-muted-foreground mb-3">נסה לשנות את הפילטרים או את מילות החיפוש</p>
+                              {hasFilter && (
+                                <Button variant="outline" size="sm" onClick={() => { setInterestFilter('all'); setCityFilter('all'); setStatusFilter('all'); setProfileFilter('all'); setSearch(''); }}>
+                                  נקה פילטרים
+                                </Button>
+                              )}
+                            </>
+                          )}
+                        </div>
+                      </TableCell></TableRow>
+                    );
+                  })()}
+                  {filtered?.map((voter) => {
+                    const profile = getPoliticalProfile(voter.status, voter.engagement_score);
+                    const eng = voter.engagement_score ?? 0;
+                    return (
+                      <TableRow key={voter.id} className="cursor-pointer hover:bg-accent/40 transition-colors text-sm [&>td]:!px-0">
+                        <TableCell className="font-medium whitespace-nowrap" onClick={() => setSelectedVoterId(voter.id)}>
+                          <div className="flex min-w-0 items-center gap-1.5 whitespace-nowrap">
+                            <VoterAvatar fullName={voter.full_name} profilePictureUrl={(voter as any).profile_picture_url} className="h-7 w-7" textClassName="text-[10px]" />
+                            <span className="min-w-0 truncate whitespace-nowrap">{voter.full_name || '-'}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-muted-foreground text-xs font-mono text-right" dir="ltr" onClick={() => setSelectedVoterId(voter.id)}>{formatPhoneDisplay(voter.phone_number)}</TableCell>
+                        <TableCell className="text-xs" onClick={() => setSelectedVoterId(voter.id)}>{voter.city || '-'}</TableCell>
+                        <TableCell className="text-center !px-0" onClick={() => setSelectedVoterId(voter.id)}>
+                          <TooltipProvider delayDuration={150}>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <div className="inline-flex flex-col items-center gap-1 w-full">
+                                  <div className="flex items-center gap-1.5">
+                                    {profile.key === 'positive' && <Smile className="h-[23px] w-[23px] shrink-0" style={{ color: profile.cssColor }} />}
+                                    {profile.key === 'neutral' && <Meh className="h-[23px] w-[23px] shrink-0" style={{ color: profile.cssColor }} />}
+                                    {profile.key === 'negative' && <Frown className="h-[23px] w-[23px] shrink-0" style={{ color: profile.cssColor }} />}
+                                    <Badge className={`text-[11px] font-bold border ${profile.badgeClass}`}>
+                                      {profile.badge}
+                                    </Badge>
+                                  </div>
+                                  <div className="flex flex-row-reverse items-center gap-1 w-full px-1">
+                                    <span className="text-[9px] text-muted-foreground tabular-nums">{eng}</span>
+                                    <div className="h-1 flex-1 rounded-full bg-slate-300 overflow-hidden">
+                                      <div
+                                        className="h-full rounded-full bg-slate-600"
+                                        style={{ width: `${Math.min(100, Math.max(0, eng))}%` }}
+                                      />
+                                    </div>
+                                    <span className="text-[9px] text-muted-foreground tabular-nums">0</span>
+                                  </div>
+                                </div>
+                              </TooltipTrigger>
+                              <TooltipContent side="top" className="text-right">
+                                {profile.badge} · סנטימנט {profile.label} · מעורבות {eng}
+                              </TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
+                        </TableCell>
+                        <TableCell className="w-10 text-center" onClick={(e) => e.stopPropagation()}>
+                          <Checkbox checked={selectedIds.has(voter.id)} onCheckedChange={() => toggleOne(voter.id)} />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                  {isFetchingNextPage && (
+                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-4">טוען עוד...</TableCell></TableRow>
+                  )}
+              </TableBody>
+            </Table>
+          </div>
+          {/* Record count */}
+          <div className="px-4 py-2 text-xs text-muted-foreground border-t flex items-center justify-between">
+              <span>מוצגים {voters.length} מתוך {totalCount.toLocaleString()} בוחרים</span>
+              {hasNextPage && (
+                <Button variant="ghost" size="sm" className="text-xs h-6" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
+                  טען עוד
+                </Button>
+              )}
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Add to Campaign Dialog */}
+      <Dialog open={addToCampaignOpen} onOpenChange={setAddToCampaignOpen}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>הוסף לקמפיין</DialogTitle>
+            <DialogDescription>בחר קמפיין להוספת {selectedIds.size} בוחרים</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 max-h-60 overflow-y-auto">
+            {campaigns?.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">אין קמפיינים פעילים</p>}
+            {campaigns?.map((c) => (
+              <Button key={c.id} variant="outline" className="w-full justify-start gap-2" onClick={() => handleAddToCampaign(c.id)}>
+                <Megaphone className="h-4 w-4 text-primary" />
+                {c.name}
+              </Button>
+            ))}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* AI Blast Preview Modal */}
+      <Dialog open={aiBlastOpen} onOpenChange={setAiBlastOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[80vh] overflow-hidden flex flex-col" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Sparkles className="h-5 w-5 text-primary" />
+              תצוגה מקדימה - הודעת AI מותאמת אישית
+            </DialogTitle>
+            <DialogDescription>
+              {selectedIds.size} בוחרים נבחרו · מוצגות עד 10 דוגמאות
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto space-y-3 py-2">
+            {aiPreviews.map((p, i) => (
+              <div key={i} className="rounded-xl border border-border/50 p-4 bg-muted/30">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="h-7 w-7 rounded-full bg-primary/15 flex items-center justify-center">
+                    <User className="h-3.5 w-3.5 text-primary" />
+                  </div>
+                  <span className="text-sm font-semibold">{p.name}</span>
+                </div>
+                <div className="bg-background rounded-lg px-4 py-3 text-sm leading-relaxed border border-border/30 whitespace-pre-wrap">
+                  {p.message}
+                </div>
+              </div>
+            ))}
+            {aiPreviews.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-8">בחר בוחרים כדי לצפות בתצוגה מקדימה</p>
+            )}
+          </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={() => setAiBlastOpen(false)}>סגור</Button>
+            <Button disabled className="gap-2 opacity-60">
+              <Eye className="h-4 w-4" /> שליחה בקרוב...
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Full Voter Profile Sheet */}
+      <Sheet open={!!selectedVoterId} onOpenChange={(open) => !open && setSelectedVoterId(null)}>
+        <SheetContent className="w-full sm:max-w-xl overflow-y-auto" side="right">
+          {selectedVoter && (() => {
+            // Health Score: based on user replies in chat_history
+            const userReplies = activeVoterChatHistory?.filter(m => m.role === 'user').length ?? 0;
+            const totalMessages = activeVoterChatHistory?.length ?? 0;
+            const healthScore = totalMessages > 0 ? Math.min(100, Math.round((userReplies / Math.max(totalMessages, 1)) * 100 * 1.5)) : 0;
+            const healthColor = healthScore >= 60 ? 'text-emerald-500' : healthScore >= 30 ? 'text-amber-500' : 'text-destructive';
+
+            // Build unified timeline events
+            type TimelineEvent = { id: string; date: string; type: 'created' | 'message_in' | 'message_out' | 'chat_user' | 'chat_ai' | 'status'; label: string; detail: string; };
+            const events: TimelineEvent[] = [];
+
+            // Creation event
+            if (selectedVoter.created_at) {
+              events.push({ id: 'created', date: selectedVoter.created_at, type: 'created', label: 'נוסף למערכת', detail: selectedVoter.full_name || 'בוחר חדש' });
+            }
+
+            // Messages from messages table
+            activeVoterMessages?.forEach(msg => {
+              events.push({
+                id: `msg-${msg.id}`,
+                date: msg.created_at || '',
+                type: msg.direction === 'outbound' ? 'message_out' : 'message_in',
+                label: msg.direction === 'outbound' ? 'הודעה יוצאת' : 'הודעה נכנסת',
+                detail: msg.content?.slice(0, 80) || 'אין תוכן',
+              });
+            });
+
+            // Chat history
+            activeVoterChatHistory?.forEach(ch => {
+              events.push({
+                id: `chat-${ch.id}`,
+                date: ch.created_at || '',
+                type: ch.role === 'assistant' ? 'chat_ai' : 'chat_user',
+                label: ch.role === 'assistant' ? 'תגובת AI' : 'תגובת בוחר',
+                detail: ch.content?.slice(0, 80) || '',
+              });
+            });
+
+            events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
+
+            const getEventIcon = (type: TimelineEvent['type']) => {
+              switch (type) {
+                case 'created': return <UserPlus className="h-3.5 w-3.5" />;
+                case 'message_out': return <ArrowUpRight className="h-3.5 w-3.5" />;
+                case 'message_in': return <ArrowDownLeft className="h-3.5 w-3.5" />;
+                case 'chat_ai': return <Bot className="h-3.5 w-3.5" />;
+                case 'chat_user': return <MessageCircle className="h-3.5 w-3.5" />;
+                case 'status': return <Tag className="h-3.5 w-3.5" />;
+                default: return <Clock className="h-3.5 w-3.5" />;
+              }
+            };
+            const getEventColor = (type: TimelineEvent['type']) => {
+              switch (type) {
+                case 'created': return 'bg-primary/15 text-primary';
+                case 'message_out': return 'bg-primary/10 text-primary';
+                case 'message_in': return 'bg-accent text-accent-foreground';
+                case 'chat_ai': return 'bg-primary/10 text-primary';
+                case 'chat_user': return 'bg-accent text-accent-foreground';
+                case 'status': return 'bg-muted text-muted-foreground';
+                default: return 'bg-muted text-muted-foreground';
+              }
+            };
+
+            return (
+              <>
+                <SheetHeader>
+                  <SheetTitle className="flex items-center gap-3">
+                    <VoterAvatar fullName={selectedVoter.full_name} profilePictureUrl={(selectedVoter as any).profile_picture_url} className="h-16 w-16 shadow-lg" textClassName="text-xl" />
+                    <div className="flex-1">
+                      <p className="text-lg font-bold">{selectedVoter.full_name || 'בוחר לא ידוע'}</p>
+                      <p className="text-sm text-muted-foreground font-normal" dir="ltr">{formatPhoneDisplay(selectedVoter.phone_number)}</p>
+                      {selectedVoter.identity_number && (
+                        <p className="text-xs text-muted-foreground flex items-center justify-center gap-1 text-center">
+                          ת.ז.{' '}
+                          {revealedIds.has(selectedVoter.id)
+                            ? selectedVoter.identity_number
+                            : selectedVoter.identity_number.replace(/^(.{2})(.*)(.{2})$/, (_, a, b, c) => a + '•'.repeat(b.length) + c)
+                          }
+                          {isAdmin && (
+                            <button
+                              onClick={() => setRevealedIds(prev => {
+                                const next = new Set(prev);
+                                if (next.has(selectedVoter.id)) next.delete(selectedVoter.id);
+                                else next.add(selectedVoter.id);
+                                return next;
+                              })}
+                              className="mr-1 text-muted-foreground hover:text-foreground transition-colors"
+                              title={revealedIds.has(selectedVoter.id) ? 'הסתר' : 'חשוף'}
+                            >
+                              <Eye className="h-3 w-3" />
+                            </button>
+                          )}
+                        </p>
+                      )}
+                    </div>
+                    <Badge className={`border text-xs ${getLoyalty(selectedVoter.status).color}`} variant="outline">
+                      {getLoyalty(selectedVoter.status).label}
+                    </Badge>
+                  </SheetTitle>
+                </SheetHeader>
+
+                <div className="mt-6 space-y-6">
+                  {/* Quick Info Grid */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="p-3 rounded-lg bg-muted/40 space-y-1">
+                      <p className="text-[10px] text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" />עיר</p>
+                      <p className="text-sm font-medium">{selectedVoter.city || '-'}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/40 space-y-1">
+                      <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Tag className="h-3 w-3" />תחומי עניין</p>
+                      <p className="text-sm font-medium">{hebrewLabel(interestHebrew, selectedVoter.interest_tag) || '-'}</p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/40 space-y-1">
+                      <p className="text-[10px] text-muted-foreground">AI טייס אוטומטי</p>
+                      <p className={`text-sm font-medium ${selectedVoter.ai_autopilot ? 'text-emerald-500' : 'text-muted-foreground'}`}>
+                        {selectedVoter.ai_autopilot ? 'פעיל' : 'כבוי'}
+                      </p>
+                    </div>
+                    <div className="p-3 rounded-lg bg-muted/40 space-y-1">
+                      <p className="text-[10px] text-muted-foreground">סנטימנט</p>
+                      <p className={`text-sm font-medium flex items-center gap-2 ${messageSentiment.color}`}>
+                        {messageSentiment.key === 'positive' && <Smile className="h-7 w-7" />}
+                        {messageSentiment.key === 'neutral' && <Meh className="h-7 w-7" />}
+                        {messageSentiment.key === 'negative' && <Frown className="h-7 w-7" />}
+                        {messageSentiment.label}
+                      </p>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Health Score + Engagement side by side */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="text-center space-y-2">
+                      <h3 className="text-sm font-semibold flex items-center justify-center gap-1.5">
+                        <Heart className="h-3.5 w-3.5 text-destructive" /> ציון מעורבות
+                      </h3>
+                      <div className="relative w-20 h-20 mx-auto">
+                        <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
+                          <circle cx="50" cy="50" r="38" fill="none" stroke="hsl(var(--muted))" strokeWidth="7" />
+                          <circle cx="50" cy="50" r="38" fill="none" stroke="currentColor"
+                            className={healthColor} strokeWidth="7"
+                            strokeDasharray={2 * Math.PI * 38}
+                            strokeDashoffset={2 * Math.PI * 38 - (healthScore / 100) * 2 * Math.PI * 38}
+                            strokeLinecap="round" style={{ transition: 'all 0.7s' }} />
+                        </svg>
+                        <div className="absolute inset-0 flex flex-col items-center justify-center">
+                          <span className={`text-xl font-bold ${healthColor}`}>{healthScore}</span>
+                        </div>
+                      </div>
+                      <p className="text-[10px] text-muted-foreground">{userReplies} תגובות מתוך {totalMessages} הודעות</p>
+                    </div>
+
+                    <div className="text-center space-y-2">
+                      <h3 className="text-sm font-semibold">ציון פעילות</h3>
+                      <CircularScore score={selectedVoter.engagement_score ?? 0} />
+                      <p className="text-[10px] text-muted-foreground">
+                        {selectedVoter.last_interaction_at ? format(new Date(selectedVoter.last_interaction_at), 'dd/MM/yyyy') : 'אף פעם'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* City Map Card */}
+                  {selectedVoter.city && (
+                    <>
+                      <div>
+                        <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                          <Map className="h-4 w-4" /> מיקום גיאוגרפי
+                        </h3>
+                        <div className="rounded-xl overflow-hidden border border-border/50 bg-muted/20">
+                          <img
+                            src={`https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(selectedVoter.city + ', Israel')}&zoom=12&size=400x180&scale=2&maptype=roadmap&style=feature:all|saturation:-80&markers=color:0x1E3A8A|${encodeURIComponent(selectedVoter.city + ', Israel')}&key=`}
+                            alt={`מפת ${selectedVoter.city}`}
+                            className="w-full h-[140px] object-cover bg-muted"
+                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+                          />
+                          <div className="px-3 py-2 flex items-center gap-2">
+                            <MapPin className="h-3.5 w-3.5 text-primary" />
+                            <span className="text-sm font-medium">{selectedVoter.city}</span>
+                            <span className="text-xs text-muted-foreground mr-auto">ישראל</span>
+                          </div>
+                        </div>
+                      </div>
+                      <Separator />
+                    </>
+                  )}
+
+                  {/* Interest Radar */}
+                  <div>
+                    <h3 className="text-sm font-semibold mb-2 text-center">מכ״ם אינטרסים</h3>
+                    <div className="h-48">
+                      <ResponsiveContainer width="100%" height="100%">
+                        <RadarChart data={getRadarData(selectedVoter)} cx="50%" cy="50%" outerRadius="70%">
+                          <PolarGrid stroke="hsl(var(--border))" />
+                          <PolarAngleAxis dataKey="subject" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
+                          <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
+                          <Radar name="עניין" dataKey="value" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} strokeWidth={2} />
+                        </RadarChart>
+                      </ResponsiveContainer>
+                    </div>
+                  </div>
+
+                  <Separator />
+
+                  {/* Full History Timeline */}
+                  <div>
+                    <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
+                      <Clock className="h-4 w-4" /> ציר זמן מלא
+                      <Badge variant="outline" className="text-[10px] mr-auto">{events.length} אירועים</Badge>
+                    </h3>
+                    {events.length === 0 && (
+                      <p className="text-sm text-muted-foreground py-4 text-center">אין אירועים מתועדים</p>
+                    )}
+                    <div className="space-y-0">
+                      {events.slice(0, 30).map((evt, idx) => (
+                        <div key={evt.id} className="flex gap-3">
+                          <div className="flex flex-col items-center">
+                            <div className={`h-7 w-7 rounded-full flex items-center justify-center shrink-0 ${getEventColor(evt.type)}`}>
+                              {getEventIcon(evt.type)}
+                            </div>
+                            {idx < Math.min(events.length, 30) - 1 && <div className="w-px flex-1 bg-border mt-1" />}
+                          </div>
+                          <div className="pb-4 flex-1 min-w-0">
+                            <div className="flex items-center gap-2 mb-0.5">
+                              <span className="text-xs font-medium">{evt.label}</span>
+                              <span className="text-[10px] text-muted-foreground mr-auto">
+                                {evt.date ? format(new Date(evt.date), 'dd/MM HH:mm') : ''}
+                              </span>
+                            </div>
+                            <p className="text-sm text-muted-foreground truncate">{evt.detail}</p>
+                          </div>
+                        </div>
+                      ))}
+                      {events.length > 30 && (
+                        <p className="text-xs text-muted-foreground text-center py-2">
+                          + {events.length - 30} אירועים נוספים
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </>
+            );
+          })()}
+        </SheetContent>
+      </Sheet>
+
+      {/* Import Dialog */}
+      <Dialog open={importDialogOpen} onOpenChange={setImportDialogOpen}>
+        <DialogContent className="sm:max-w-xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileSpreadsheet className="h-5 w-5 text-primary" /> ייבוא בוחרים
+            </DialogTitle>
+            <DialogDescription>סקירת בריאות הנתונים לפני ייבוא</DialogDescription>
+          </DialogHeader>
+
+          {importStats && (
+            <div className="space-y-4">
+              {importStats.missingPhone ? (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/30 text-destructive text-sm">
+                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <div>
+                    <p className="font-semibold">עמודת טלפון חסרה</p>
+                    <p className="text-xs mt-1">לא ניתן לייבא רשומות ללא עמודת טלפון. ודא שהקובץ כולל עמודה בשם: טלפון / סלולרי / Phone / Mobile.</p>
+                  </div>
+                </div>
+              ) : (
+                <div className="p-3 rounded-lg bg-success/5 border border-success/20 text-xs">
+                  <p>
+                    מזוהות <span className="font-bold text-success">{importStats.valid.toLocaleString('he-IL')}</span> רשומות עם השדות:{' '}
+                    <span className="font-medium text-foreground">{importStats.detectedFields.join(', ')}</span>
+                  </p>
+                </div>
+              )}
+
+              <div className="p-4 rounded-lg bg-muted/30 text-center space-y-2">
+                <p className="text-sm font-medium">בריאות נתונים</p>
+                <div className="flex items-center gap-3">
+                  <Progress value={importStats.healthPct} className="flex-1 h-3" />
+                  <span className={`text-lg font-bold ${importStats.healthPct >= 70 ? 'text-success' : importStats.healthPct >= 40 ? 'text-primary' : 'text-destructive'}`}>
+                    {importStats.healthPct}%
+                  </span>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-4 gap-2">
+                <div className="text-center p-2 rounded-lg bg-muted/50">
+                  <p className="text-lg font-bold">{importStats.total}</p>
+                  <p className="text-[10px] text-muted-foreground">סה״כ שורות</p>
+                </div>
+                <div className="text-center p-2 rounded-lg bg-success/10 text-success">
+                  <p className="text-lg font-bold">{importStats.valid}</p>
+                  <p className="text-[10px]">חדשים</p>
+                </div>
+                <div className="text-center p-2 rounded-lg bg-primary/10 text-primary">
+                  <p className="text-lg font-bold">{importStats.duplicates}</p>
+                  <p className="text-[10px]">עדכון (כפילויות)</p>
+                </div>
+                <div className="text-center p-2 rounded-lg bg-destructive/10 text-destructive">
+                  <p className="text-lg font-bold">{importStats.invalid}</p>
+                  <p className="text-[10px]">לא תקינות</p>
+                </div>
+              </div>
+
+              {importStats.invalid > 0 && (
+                <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/10 border border-primary/20 text-primary text-xs">
+                  <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
+                  <p>שורות לא תקינות נפסלו: חסר שם או מספר טלפון ישראלי לא תקין.</p>
+                </div>
+              )}
+
+              {importPreview.length > 0 && (
+                <Collapsible>
+                  <CollapsibleTrigger asChild>
+                    <Button variant="ghost" size="sm" className="gap-2 text-xs w-full justify-start">
+                      <Eye className="h-3.5 w-3.5" />
+                      תצוגה מקדימה ({importPreview.length} שורות)
+                    </Button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    <div className="overflow-x-auto rounded border border-border/50 mt-2">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="text-xs">שם מלא</TableHead>
+                            <TableHead className="text-xs">טלפון</TableHead>
+                            <TableHead className="text-xs">עיר</TableHead>
+                            <TableHead className="text-xs">נושא</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {importPreview.map((row, i) => (
+                            <TableRow key={i}>
+                              <TableCell className="text-xs">{row.full_name}</TableCell>
+                              <TableCell className="text-xs font-mono" dir="ltr">{formatPhoneDisplay(row.phone_number)}</TableCell>
+                              <TableCell className="text-xs">{row.city || '-'}</TableCell>
+                              <TableCell className="text-xs">{row.interest_tag || '-'}</TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                      {importStats.valid > 50 && <p className="text-xs text-muted-foreground text-center py-2">מוצגות 50 מתוך {importStats.valid} שורות</p>}
+                    </div>
+                  </CollapsibleContent>
+                </Collapsible>
+              )}
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setImportDialogOpen(false)}>ביטול</Button>
+            <Button onClick={handleImportConfirm} disabled={importing || !importStats?.valid} className="gap-2 relative overflow-hidden">
+              {importing && (
+                <span
+                  className="absolute inset-0 bg-primary/20 transition-all duration-300 ease-out"
+                  style={{ width: `${importProgress}%` }}
+                />
+              )}
+              <span className="relative flex items-center gap-2">
+                <Upload className="h-4 w-4" />
+                {importing ? `${importProgress}%` : `ייבא ${importStats?.valid ?? 0} בוחרים`}
+              </span>
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Voter Dialog */}
+      <Dialog open={addVoterOpen} onOpenChange={setAddVoterOpen}>
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          <DialogHeader>
+            <DialogTitle>הוספת בוחר חדש</DialogTitle>
+            <DialogDescription>הזן את פרטי הבוחר להוספה ידנית למערכת</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div>
+              <label className="text-sm font-medium">שם מלא *</label>
+              <Input value={newVoter.full_name} onChange={e => setNewVoter(p => ({ ...p, full_name: e.target.value }))} placeholder="ישראל ישראלי" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">טלפון *</label>
+              <Input value={newVoter.phone_number} onChange={e => setNewVoter(p => ({ ...p, phone_number: e.target.value }))} placeholder="050-1234567" dir="ltr" className="text-right" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">עיר</label>
+              <Input value={newVoter.city} onChange={e => setNewVoter(p => ({ ...p, city: e.target.value }))} placeholder="תל אביב" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">מספר זהות</label>
+              <Input value={newVoter.identity_number} onChange={e => setNewVoter(p => ({ ...p, identity_number: e.target.value }))} placeholder="000000000" dir="ltr" className="text-right" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">ידית אינסטגרם</label>
+              <Input value={newVoter.instagram_handle} onChange={e => setNewVoter(p => ({ ...p, instagram_handle: e.target.value }))} placeholder="@username" dir="ltr" className="text-right" />
+            </div>
+            <div>
+              <label className="text-sm font-medium">יוזר טלגרם</label>
+              <Input value={newVoter.telegram_username} onChange={e => setNewVoter(p => ({ ...p, telegram_username: e.target.value }))} placeholder="@username" dir="ltr" className="text-right" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddVoterOpen(false)}>ביטול</Button>
+            <Button onClick={handleAddVoter} disabled={addingVoter}>
+              {addingVoter ? 'מוסיף...' : 'הוסף בוחר'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  );
+};
+
+export default VoterCRM;

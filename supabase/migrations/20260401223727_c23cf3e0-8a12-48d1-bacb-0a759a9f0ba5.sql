@@ -1,0 +1,1 @@
+ALTER TABLE public.voters ADD CONSTRAINT voters_phone_number_unique UNIQUE (phone_number);

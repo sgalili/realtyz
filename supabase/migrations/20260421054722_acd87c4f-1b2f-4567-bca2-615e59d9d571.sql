@@ -1,0 +1,1 @@
+DROP POLICY IF EXISTS "authenticated_insert_ai_content_logs" ON public.ai_content_logs;

@@ -1,0 +1,1 @@
+ALTER TABLE public.campaign_logs ADD COLUMN IF NOT EXISTS recipient_email text;

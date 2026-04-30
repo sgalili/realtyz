@@ -1,0 +1,626 @@
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { supabase } from '@/lib/supabaseClient';
+import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
+import { useState, useRef, useEffect, useMemo, cloneElement, type ReactElement } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Search, Send, Bot, MessageSquare, MessageCircle, Phone, AlertTriangle, Instagram, AtSign, MoreVertical, Paperclip, Mic, Facebook, Clock } from 'lucide-react';
+import { format, formatDistanceToNow } from 'date-fns';
+import { he } from 'date-fns/locale';
+import { toast } from 'sonner';
+import { z } from 'zod';
+import { useAuth } from '@/hooks/useAuth';
+import VoterProfileSidebar from '@/components/inbox/VoterProfileSidebar';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
+import VoterAvatar from '@/components/VoterAvatar';
+import { useDemoMode } from '@/hooks/useDemoMode';
+import { getDemoCandidateMessages, getDemoCandidateVoters } from '@/lib/demoData';
+import { useDemoTicker } from '@/hooks/useDemoTicker';
+import { useDemoGuard } from '@/hooks/useDemoGuard';
+import { Label } from '@/components/ui/label';
+import { DeliverySettings } from '@/components/DeliverySettings';
+import { motion, AnimatePresence } from 'framer-motion';
+import { BrandIcon } from '@/components/BrandIcon';
+
+const ACCEPTED_ATTACHMENT_TYPES = [
+  'image/jpeg', 'image/png', 'image/webp', 'image/gif',
+  'application/pdf', 'text/plain', 'text/csv',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+] as const;
+
+const attachmentSchema = z.instanceof(File)
+  .refine((file) => file.size <= 10 * 1024 * 1024, 'ניתן לצרף קובץ עד 10MB')
+  .refine((file) => ACCEPTED_ATTACHMENT_TYPES.includes(file.type as typeof ACCEPTED_ATTACHMENT_TYPES[number]), 'סוג הקובץ לא נתמך');
+
+const attachmentAccept = ACCEPTED_ATTACHMENT_TYPES.join(',');
+
+const statusHebrew: Record<string, string> = {
+  lead: 'ליד חדש',
+  supporter: 'תומך',
+  active: 'פעיל',
+  inactive: 'לא פעיל',
+  contacted: 'נוצר קשר',
+};
+
+const statusLed: Record<string, { dot: string; ring: string; note: string }> = {
+  supporter: { dot: 'bg-success', ring: 'ring-success/20', note: 'בוחר עם תמיכה חיובית גבוהה' },
+  active: { dot: 'bg-primary', ring: 'ring-primary/20', note: 'מעורב ופעיל בשיחה' },
+  contacted: { dot: 'bg-warning', ring: 'ring-warning/20', note: 'נוצר קשר, ממתין להמשך טיפול' },
+  lead: { dot: 'bg-warning', ring: 'ring-warning/20', note: 'ליד חדש שדורש טיפוח' },
+  inactive: { dot: 'bg-muted-foreground', ring: 'ring-muted', note: 'פעילות נמוכה או ללא תגובה לאחרונה' },
+};
+
+const senderBadge: Record<string, { label: string; className: string }> = {
+  ai: { label: 'Kalpiz AI', className: 'bg-primary/15 text-primary border-primary/30' },
+  agent: { label: 'נציג', className: 'bg-blue-500/15 text-blue-700 border-blue-300' },
+  voter: { label: 'בוחר', className: 'bg-slate-500/15 text-slate-700 border-slate-300' },
+};
+
+
+const channelConfig: Record<string, { brand?: string; icon?: ReactElement; label: string; bgClass: string; textClass: string }> = {
+  whatsapp: { brand: 'whatsapp', label: 'WhatsApp', bgClass: 'bg-social-whatsapp', textClass: 'text-social-whatsapp' },
+  sms: { icon: <Phone />, label: 'SMS', bgClass: 'bg-social-sms', textClass: 'text-social-sms' },
+  instagram: { brand: 'instagram', label: 'Instagram', bgClass: 'bg-social-instagram', textClass: 'text-social-instagram' },
+  telegram: { brand: 'telegram', label: 'Telegram', bgClass: 'bg-social-telegram', textClass: 'text-social-telegram' },
+  messenger: { brand: 'messenger', label: 'Messenger', bgClass: 'bg-social-messenger', textClass: 'text-social-messenger' },
+  tiktok: { brand: 'tiktok', label: 'TikTok', bgClass: 'bg-social-tiktok', textClass: 'text-social-tiktok' },
+  signal: { brand: 'signal', label: 'Signal', bgClass: 'bg-social-signal', textClass: 'text-social-signal' },
+  x: { brand: 'x', label: 'X', bgClass: 'bg-social-x', textClass: 'text-social-x' },
+  facebook: { brand: 'facebook', label: 'Facebook', bgClass: 'bg-social-facebook', textClass: 'text-social-facebook' },
+};
+
+const getThreadChannels = (messages: Array<{ channel?: string | null }>) =>
+  [...new Set(messages.map((msg) => msg.channel).filter(Boolean) as string[])];
+
+const ChannelIcon = ({ channel, size = 'sm' }: { channel: string | null; size?: 'sm' | 'md' | 'lg' }) => {
+  const cfg = channelConfig[channel || 'whatsapp'] || channelConfig.whatsapp;
+  const boxClass = size === 'lg' ? 'h-9 w-9' : size === 'md' ? 'h-7 w-7' : 'h-5 w-5';
+  const iconClass = size === 'lg' ? 'h-5 w-5' : size === 'md' ? 'h-4 w-4' : 'h-3 w-3';
+  return (
+    <span title={cfg.label} className={`${boxClass} inline-flex shrink-0 items-center justify-center rounded-md ${cfg.bgClass} text-social-foreground shadow-sm`}>
+      {cfg.brand ? <BrandIcon name={cfg.brand} className={iconClass} /> : (typeof cfg.icon!.type === 'string' ? cfg.icon : cloneElement(cfg.icon!, { className: iconClass }))}
+    </span>
+  );
+};
+
+
+const CheckMarks = ({ isOutbound }: { isOutbound: boolean }) => (
+  <span className={isOutbound ? 'text-primary' : 'text-muted-foreground'} aria-hidden="true">✓✓</span>
+);
+
+const OmnichannelInbox = () => {
+  const [searchParams] = useSearchParams();
+  const [selectedVoterId, setSelectedVoterId] = useState<string | null>(searchParams.get('voter'));
+  useEffect(() => {
+    const v = searchParams.get('voter');
+    if (v) setSelectedVoterId(v);
+  }, [searchParams]);
+  const [search, setSearch] = useState('');
+  const [aiAutopilot, setAiAutopilot] = useState(true);
+  const [newMessage, setNewMessage] = useState('');
+  const [attachment, setAttachment] = useState<File | null>(null);
+  const [sendChannel, setSendChannel] = useState<string>('whatsapp');
+  const [dripEnabled, setDripEnabled] = useState(false);
+  const [dailyLimit, setDailyLimit] = useState(50);
+  const [sendWindowStart, setSendWindowStart] = useState('08:00');
+  const [sendWindowEnd, setSendWindowEnd] = useState('20:00');
+  const [delayMin, setDelayMin] = useState(7);
+  const [delayMax, setDelayMax] = useState(23);
+  const [manualTakeoverWarning, setManualTakeoverWarning] = useState(false);
+  const chatEndRef = useRef<HTMLDivElement>(null);
+  const attachmentInputRef = useRef<HTMLInputElement>(null);
+  const queryClient = useQueryClient();
+  const { user } = useAuth();
+
+  const { isDemoMode, demoCandidateId } = useDemoMode();
+  const demoTicker = useDemoTicker();
+  const blockDemoAction = useDemoGuard();
+
+  useRealtimeSubscription('messages', [
+    ['inbox-voters'],
+    ['last-messages'],
+    ['chat-messages', selectedVoterId ?? ''],
+    ['voter-recent-msgs', selectedVoterId ?? ''],
+  ]);
+  useRealtimeSubscription('voters', [['inbox-voters']]);
+
+  const { data: dbVoters } = useQuery({
+    queryKey: ['inbox-voters'],
+    enabled: !isDemoMode,
+    queryFn: async () => {
+      const { data } = await supabase.from('voters').select('*').order('last_interaction_at', { ascending: false });
+      return data ?? [];
+    },
+  });
+
+  const { data: dbLastMessages } = useQuery({
+    queryKey: ['last-messages'],
+    enabled: !isDemoMode,
+    queryFn: async () => {
+      const { data } = await supabase.from('messages').select('*').order('created_at', { ascending: false });
+      const map = new Map<string, typeof data[0]>();
+      data?.forEach((msg) => {
+        if (msg.voter_id && !map.has(msg.voter_id)) map.set(msg.voter_id, msg);
+      });
+      return map;
+    },
+  });
+
+  const { data: dbChatMessages } = useQuery({
+    queryKey: ['chat-messages', selectedVoterId],
+    enabled: !!selectedVoterId && !isDemoMode,
+    queryFn: async () => {
+      const { data } = await supabase.from('messages').select('*').eq('voter_id', selectedVoterId!).order('created_at', { ascending: true });
+      return data ?? [];
+    },
+  });
+
+  // Demo mode data interception
+  const demoVoters = useMemo(() => getDemoCandidateVoters(demoCandidateId), [demoCandidateId]);
+  const demoMessages = useMemo(() => getDemoCandidateMessages(demoCandidateId), [demoCandidateId]);
+  const [liveDemoVoters, setLiveDemoVoters] = useState<Array<(typeof demoVoters)[number]>>([]);
+
+  useEffect(() => {
+    if (!isDemoMode || demoVoters.length === 0) return;
+    setLiveDemoVoters(demoVoters.slice(0, 12));
+  }, [isDemoMode, demoCandidateId, demoVoters]);
+
+  // Every 3s in demo mode, prepend a NEW unique voter to the top of the list.
+  // Pause completely while a voter card is selected/expanded.
+  // Preload the avatar image BEFORE inserting so the card never flashes.
+  useEffect(() => {
+    if (!isDemoMode || demoVoters.length === 0) return;
+    if (selectedVoterId) return; // freeze additions while a card is expanded
+    let cancelled = false;
+    const interval = setInterval(() => {
+      setLiveDemoVoters((current) => {
+        const visibleIds = new Set(current.map((v) => v.id));
+        const candidates = demoVoters.filter((v) => !visibleIds.has(v.id));
+        if (candidates.length === 0) return current;
+        const next = candidates[Math.floor(Math.random() * candidates.length)];
+        const newVoter = { ...next, last_interaction_at: new Date().toISOString() };
+
+        const url = (newVoter as any).profile_picture_url;
+        if (url) {
+          const img = new Image();
+          img.src = url;
+          if (img.complete && img.naturalWidth > 0) {
+            // already cached - insert now
+            return [newVoter, ...current].slice(0, 50);
+          }
+          // not cached: preload, then insert on next tick
+          img.onload = () => {
+            if (cancelled) return;
+            setLiveDemoVoters((cur) => {
+              if (cur.find((v) => v.id === newVoter.id)) return cur;
+              return [newVoter, ...cur].slice(0, 50);
+            });
+          };
+          img.onerror = () => {
+            if (cancelled) return;
+            setLiveDemoVoters((cur) => {
+              if (cur.find((v) => v.id === newVoter.id)) return cur;
+              return [newVoter, ...cur].slice(0, 50);
+            });
+          };
+          return current; // wait for preload
+        }
+        return [newVoter, ...current].slice(0, 50);
+      });
+    }, 3000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
+  }, [isDemoMode, selectedVoterId, demoVoters]);
+
+  const voters = useMemo(() => {
+    if (isDemoMode) {
+      const real = dbVoters ?? [];
+      const demoIds = new Set(demoVoters.map((v) => v.id));
+      return [...liveDemoVoters, ...real.filter(v => !demoIds.has(v.id))];
+    }
+    return dbVoters ?? [];
+  }, [isDemoMode, dbVoters, demoVoters, liveDemoVoters]);
+
+  const lastMessages = useMemo(() => {
+    const base = dbLastMessages ?? new Map();
+    if (isDemoMode) {
+      const merged = new Map(base);
+      voters.slice(0, 50).forEach(v => {
+        const msgs = demoMessages.filter(m => m.voter_id === v.id);
+        if (msgs.length > 0) {
+          const last = { ...msgs[msgs.length - 1], created_at: v.last_interaction_at };
+          merged.set(v.id, last as any);
+        }
+      });
+      return merged;
+    }
+    return base;
+  }, [isDemoMode, dbLastMessages, voters, demoMessages]);
+
+  const chatMessages = useMemo(() => {
+    if (isDemoMode && selectedVoterId?.startsWith('demo-voter-')) {
+      return demoMessages.filter(m => m.voter_id === selectedVoterId).sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
+      );
+    }
+    return dbChatMessages ?? [];
+  }, [isDemoMode, selectedVoterId, dbChatMessages, demoMessages]);
+
+  const selectedVoter = voters?.find((v) => v.id === selectedVoterId);
+
+  const sendMessage = useMutation({
+    mutationFn: async ({ content, file }: { content: string; file: File | null }) => {
+      if (blockDemoAction('send-message')) throw new Error('demo-blocked');
+      const safeContent = content.trim().slice(0, 2000);
+      const attachmentText = file ? `\n\n📎 ${file.name} (${Math.round(file.size / 1024)}KB)` : '';
+      const { data, error } = await supabase.functions.invoke('send-message', {
+        body: {
+          voter_id: selectedVoterId,
+          content: `${safeContent}${attachmentText}`.trim(),
+          channel: sendChannel,
+          phone_number: selectedVoter?.phone_number,
+          attachment: file ? { name: file.name, type: file.type, size: file.size } : null,
+          drip: {
+            enabled: dripEnabled,
+            daily_limit: dailyLimit,
+            send_window_start: sendWindowStart,
+            send_window_end: sendWindowEnd,
+            stagger_min_minutes: delayMin,
+            stagger_max_minutes: delayMax,
+          },
+        },
+      });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: async (data) => {
+      setNewMessage('');
+      setAttachment(null);
+      if (attachmentInputRef.current) attachmentInputRef.current.value = '';
+      queryClient.invalidateQueries({ queryKey: ['chat-messages', selectedVoterId] });
+      queryClient.invalidateQueries({ queryKey: ['last-messages'] });
+      queryClient.invalidateQueries({ queryKey: ['inbox-voters'] });
+
+      // Manual message → disable autopilot
+      if (aiAutopilot) {
+        setAiAutopilot(false);
+        setManualTakeoverWarning(true);
+        setTimeout(() => setManualTakeoverWarning(false), 5000);
+      }
+
+      toast.success('ההודעה הועברה לתור אישור', {
+        description: 'שום דבר לא נשלח עד שמפקח אנושי מאשר ומפעיל ידנית',
+      });
+    },
+    onError: (error: Error) => { if (error.message !== 'demo-blocked') toast.error('שליחת ההודעה נכשלה'); },
+  });
+
+  useEffect(() => {
+    chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [chatMessages]);
+
+  const filteredVoters = voters?.filter((v) =>
+    (v.full_name?.toLowerCase() || '').includes(search.toLowerCase()) ||
+    (v.phone_number || '').includes(search)
+  );
+
+  const handleSend = () => {
+    const content = newMessage.trim();
+    if (!content && !attachment) return;
+    sendMessage.mutate({ content: content || 'קובץ מצורף', file: attachment });
+  };
+
+  const handleAttachmentSelect = (file: File | undefined) => {
+    if (!file) return;
+    const parsed = attachmentSchema.safeParse(file);
+    if (!parsed.success) {
+      toast.error(parsed.error.issues[0]?.message || 'קובץ לא תקין');
+      return;
+    }
+    setAttachment(file);
+  };
+
+  return (
+    <div dir="rtl" className="space-y-4">
+      <div>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">תיבת הודעות</h1>
+        <p className="text-muted-foreground text-sm">ניהול שיחות בכל הערוצים במקום אחד</p>
+      </div>
+
+      <div className="grid h-[calc(100svh-178px)] min-h-[560px] w-full grid-cols-1 overflow-hidden rounded-xl border border-border/50 bg-card shadow-soft lg:h-[calc(100vh-238px)] lg:grid-cols-[20rem_minmax(0,1fr)] xl:grid-cols-[20rem_minmax(0,1fr)_18rem]">
+        {/* Right panel - Contact List */}
+        <div className={`${selectedVoterId ? 'hidden lg:flex' : 'flex'} min-w-0 flex-col border-l bg-card`}>
+          <div className="p-3 border-b">
+            <div className="relative">
+              <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="חיפוש שיחות..."
+                className="pr-9 h-9 bg-muted/50 border-0"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+              />
+            </div>
+          </div>
+          <ScrollArea className="flex-1">
+            <AnimatePresence initial={false}>
+              {filteredVoters?.map((voter) => {
+                const lastMsg = lastMessages?.get(voter.id);
+                const isActive = voter.id === selectedVoterId;
+                return (
+                  <motion.div
+                    key={voter.id}
+                    layout
+                    initial={{ opacity: 0, y: -24, scale: 0.98 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -12, scale: 0.98 }}
+                    transition={{ type: 'spring', stiffness: 420, damping: 36, mass: 0.7 }}
+                    dir="ltr"
+                    onClick={() => setSelectedVoterId(isActive ? null : voter.id)}
+                    className={`relative flex min-w-0 flex-row-reverse items-start gap-3 overflow-hidden px-3 py-3 ps-8 cursor-pointer border-b border-border/30 transition-colors ${isActive ? 'bg-accent' : 'hover:bg-muted/50'}`}
+                  >
+                    {voter.status && (
+                      <Popover>
+                        <PopoverTrigger asChild onClick={(event) => event.stopPropagation()}>
+                          <button
+                            type="button"
+                            className="absolute left-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                            aria-label={statusHebrew[voter.status] || voter.status}
+                          >
+                            <span className={`h-2.5 w-2.5 rounded-full ring-4 ${statusLed[voter.status]?.dot || 'bg-muted-foreground'} ${statusLed[voter.status]?.ring || 'ring-muted'}`} />
+                          </button>
+                        </PopoverTrigger>
+                        <PopoverContent side="left" align="start" className="w-48 text-right" onClick={(event) => event.stopPropagation()}>
+                          <p className="text-sm font-semibold">{statusHebrew[voter.status] || voter.status}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{statusLed[voter.status]?.note || 'סטטוס בוחר'}</p>
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                    <VoterAvatar fullName={voter.full_name} profilePictureUrl={(voter as any).profile_picture_url} className="h-10 w-10 shrink-0" textClassName="text-sm" />
+                    <div className="flex-1 min-w-0 text-right">
+                      <div className="flex min-w-0 flex-row-reverse items-center justify-between gap-2">
+                        <p className="text-sm font-medium truncate min-w-0">{voter.full_name || formatPhoneDisplay(voter.phone_number)}</p>
+                        <span className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap">
+                          {voter.last_interaction_at ? formatDistanceToNow(new Date(voter.last_interaction_at), { addSuffix: true, locale: he }) : ''}
+                        </span>
+                      </div>
+                      <div className="flex flex-row-reverse items-start gap-1 mt-0.5">
+                        {lastMsg?.channel && <span className="shrink-0 mt-0.5"><ChannelIcon channel={lastMsg.channel} /></span>}
+                        <p className="text-xs text-muted-foreground flex-1 min-w-0 break-words leading-snug line-clamp-2">
+                          {lastMsg?.content || 'אין הודעות'}
+                        </p>
+                      </div>
+                    </div>
+                  </motion.div>
+                );
+              })}
+            </AnimatePresence>
+            {filteredVoters?.length === 0 && (
+              <p className="text-sm text-muted-foreground text-center py-8">אין שיחות</p>
+            )}
+          </ScrollArea>
+        </div>
+
+        {/* Center panel - Chat Window */}
+        <div className={`${selectedVoterId ? 'flex' : 'hidden lg:flex'} min-w-0 flex-col overflow-hidden bg-whatsapp-chat lg:flex`}>
+          {!selectedVoterId ? (
+            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+              <div className="text-center">
+                <MessageSquare className="h-12 w-12 mx-auto mb-3 opacity-20" />
+                <p className="text-sm">בחר שיחה לצפייה בהודעות</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {/* Chat Header */}
+              <div className="h-14 border-b border-whatsapp-header/20 bg-whatsapp-header text-whatsapp-header-foreground flex items-center justify-between px-3 sm:px-4 shrink-0">
+                <div className="flex min-w-0 items-center gap-3">
+                  <Button variant="ghost" size="icon" className="h-9 w-9 text-whatsapp-header-foreground hover:bg-whatsapp-header-foreground/10 lg:hidden" onClick={() => setSelectedVoterId(null)}>
+                    <span className="text-xl leading-none scale-x-[-1]">›</span>
+                  </Button>
+                  <VoterAvatar fullName={selectedVoter?.full_name} profilePictureUrl={(selectedVoter as any)?.profile_picture_url} className="h-9 w-9" textClassName="text-xs" />
+                  <div>
+                    <p className="truncate text-sm font-semibold">{selectedVoter?.full_name || formatPhoneDisplay(selectedVoter?.phone_number || '')}</p>
+                    <p className="text-[10px] text-whatsapp-header-foreground/75">{selectedVoter?.city || 'WhatsApp Business'}</p>
+                  </div>
+                </div>
+                <DropdownMenu>
+                  <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-9 w-9 text-whatsapp-header-foreground hover:bg-whatsapp-header-foreground/10">
+                      <MoreVertical className="h-4 w-4" />
+                    </Button>
+                  </DropdownMenuTrigger>
+                  <DropdownMenuContent align="start" className="w-48 text-right">
+                    <DropdownMenuItem onClick={() => setManualTakeoverWarning(true)}>העברה לנציג</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setAiAutopilot((value) => !value)}>{aiAutopilot ? 'כיבוי AI אוטומטי' : 'הפעלת AI אוטומטי'}</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toast.info('השיחה סומנה למעקב')}>סימון למעקב</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => toast.info('פרופיל הבוחר פתוח בצד')}>הצגת פרופיל בוחר</DropdownMenuItem>
+                  </DropdownMenuContent>
+                </DropdownMenu>
+              </div>
+
+              {/* Manual takeover warning */}
+              {manualTakeoverWarning && (
+                <div className="flex items-center gap-2 px-4 py-2 bg-primary/10 border-b border-primary/20 text-primary">
+                  <AlertTriangle className="h-4 w-4 shrink-0" />
+                  <span className="text-xs font-medium">הבוט הופסק לצורך שיחה ידנית</span>
+                </div>
+              )}
+
+              {/* Messages */}
+              <ScrollArea className="flex-1 p-2 sm:p-4 whatsapp-chat-bg">
+                <div className="mx-auto w-full max-w-3xl space-y-2 overflow-hidden">
+                  {chatMessages?.length === 0 && (
+                    <p className="rounded-lg bg-whatsapp-bubble-in/80 px-3 py-2 text-center text-sm text-muted-foreground shadow-sm">אין הודעות עדיין</p>
+                  )}
+                  {chatMessages?.map((msg, idx) => {
+                    const isOutbound = msg.direction === 'outbound';
+                    const senderType = msg.sender_type || (isOutbound ? 'agent' : 'voter');
+                    const badge = senderBadge[senderType] || senderBadge.voter;
+                    const prevMsg = idx > 0 ? chatMessages[idx - 1] : null;
+                    const channelChanged = prevMsg && prevMsg.channel !== msg.channel && msg.channel;
+                    const channelLabel = channelConfig[msg.channel || '']?.label || msg.channel;
+
+                    return (
+                      <div key={msg.id}>
+                        {channelChanged && (
+                          <div className="flex items-center gap-2 my-3">
+                            <div className="flex-1 h-px bg-border" />
+                            <span className="text-[10px] text-muted-foreground whitespace-nowrap">- השיחה עברה ל{channelLabel} -</span>
+                            <div className="flex-1 h-px bg-border" />
+                          </div>
+                        )}
+                        <div className={`flex min-w-0 items-end gap-2 ${isOutbound ? 'justify-start' : 'justify-end flex-row-reverse'}`}>
+                          {!isOutbound && (
+                            <VoterAvatar
+                              fullName={selectedVoter?.full_name}
+                              profilePictureUrl={(selectedVoter as any)?.profile_picture_url}
+                              className="h-7 w-7 shrink-0"
+                              textClassName="text-[10px]"
+                            />
+                          )}
+                          <div className={`relative min-w-0 max-w-[78%] rounded-lg px-3 py-2 shadow-sm sm:max-w-[72%] ${isOutbound ? 'bg-whatsapp-bubble-out text-foreground rounded-es-sm' : 'bg-whatsapp-bubble-in text-foreground rounded-ee-sm'}`}>
+                            <div className="mb-1 flex items-center justify-end gap-1.5">
+                              <Badge variant="outline" className={`px-1 py-0 text-[9px] border ${badge.className}`}>
+                                {badge.label}
+                              </Badge>
+                              <ChannelIcon channel={msg.channel} />
+                            </div>
+                            <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{msg.content}</p>
+                            <p className="mt-1 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
+                              <span>{msg.created_at ? format(new Date(msg.created_at), 'HH:mm') : ''}</span>
+                              <CheckMarks isOutbound={isOutbound} />
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                  <div ref={chatEndRef} />
+                </div>
+              </ScrollArea>
+
+              {/* Input Area */}
+              <div className="border-t border-border/50 bg-whatsapp-footer p-2 sm:p-3">
+                {aiAutopilot && !manualTakeoverWarning ? (
+                  <div className="flex items-center gap-2 rounded-full bg-whatsapp-bubble-in px-3 py-2 text-whatsapp-header shadow-sm">
+                    <Switch checked={aiAutopilot} className="border-whatsapp-header/20 bg-muted data-[state=checked]:bg-whatsapp-header [&>span]:bg-whatsapp-header-foreground" onCheckedChange={(v) => {
+                      setAiAutopilot(v);
+                      if (v) setManualTakeoverWarning(false);
+                    }} />
+                    <button
+                      type="button"
+                      onClick={() => setAiAutopilot(false)}
+                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-whatsapp-header text-whatsapp-header-foreground transition-colors hover:bg-whatsapp-header/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                      aria-label="כיבוי טייס אוטומטי"
+                    >
+                      <Bot className="h-4 w-4" />
+                    </button>
+                    <span className="text-xs font-medium">טייס אוטומטי פעיל - ה-AI עונה באופן אוטומטי</span>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2">
+                    <Switch checked={aiAutopilot} className="border-whatsapp-header/20 bg-muted data-[state=checked]:bg-whatsapp-header [&>span]:bg-whatsapp-header-foreground" onCheckedChange={(v) => {
+                      setAiAutopilot(v);
+                      if (v) setManualTakeoverWarning(false);
+                    }} />
+                    <Select value={sendChannel} onValueChange={setSendChannel}>
+                      <SelectTrigger className="hidden h-10 w-32 rounded-full border-0 bg-whatsapp-bubble-in text-xs shadow-sm sm:flex">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {Object.entries(channelConfig).map(([key, cfg]) => {
+                          const disabled =
+                            (key === 'instagram' && !selectedVoter?.instagram_handle) ||
+                            (key === 'telegram' && !selectedVoter?.telegram_username);
+                          return (
+                            <SelectItem key={key} value={key} disabled={disabled}>
+                              <div className={`flex items-center gap-1.5 ${disabled ? 'opacity-40' : ''}`}>
+                                <ChannelIcon channel={key} />
+                                <span>{cfg.label}</span>
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                    {(sendChannel === 'whatsapp' || sendChannel === 'sms') && (
+                      <Popover>
+                        <PopoverTrigger asChild>
+                          <Button type="button" variant={dripEnabled ? 'default' : 'ghost'} size="icon" className="h-10 w-10 shrink-0 rounded-full" title="Drip Feed">
+                            <Clock className="h-4 w-4" />
+                          </Button>
+                        </PopoverTrigger>
+                        <PopoverContent className="w-72 text-right" align="start">
+                          <DeliverySettings enabled={dripEnabled} onEnabledChange={setDripEnabled} dailyLimit={dailyLimit} onDailyLimitChange={setDailyLimit} windowStart={sendWindowStart} onWindowStartChange={setSendWindowStart} windowEnd={sendWindowEnd} onWindowEndChange={setSendWindowEnd} delayMin={delayMin} onDelayMinChange={setDelayMin} delayMax={delayMax} onDelayMaxChange={setDelayMax} compact />
+                        </PopoverContent>
+                      </Popover>
+                    )}
+                    <div className="flex min-w-0 flex-1 items-center gap-1 rounded-full bg-whatsapp-bubble-in px-2 shadow-sm">
+                      <input
+                        ref={attachmentInputRef}
+                        type="file"
+                        accept={attachmentAccept}
+                        className="hidden"
+                        onChange={(e) => handleAttachmentSelect(e.target.files?.[0])}
+                      />
+                      <button
+                        type="button"
+                        onClick={() => attachmentInputRef.current?.click()}
+                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+                        title="צירוף קובץ"
+                      >
+                        <Paperclip className="h-4 w-4" />
+                      </button>
+                      <Input
+                        placeholder={attachment ? `מצורף: ${attachment.name}` : 'הקלד הודעה...'}
+                        value={newMessage}
+                        onChange={(e) => setNewMessage(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleSend()}
+                        className="h-11 flex-1 border-0 bg-transparent px-2 shadow-none focus-visible:ring-0"
+                      />
+                      {attachment && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setAttachment(null);
+                            if (attachmentInputRef.current) attachmentInputRef.current.value = '';
+                          }}
+                          className="shrink-0 px-2 text-xs font-medium text-muted-foreground hover:text-foreground"
+                        >
+                          הסר
+                        </button>
+                      )}
+                    </div>
+                    <Button onClick={handleSend} disabled={(!newMessage.trim() && !attachment) || sendMessage.isPending} size="icon" title="שלח" className="h-11 w-11 shrink-0 rounded-full bg-whatsapp-header text-whatsapp-header-foreground hover:bg-whatsapp-header/90">
+                      {newMessage.trim() || attachment ? <Send className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                    </Button>
+                  </div>
+                )}
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Left panel - Voter Profile Sidebar */}
+        {selectedVoter && (
+          <div className="hidden min-w-0 border-e bg-card xl:block">
+            <VoterProfileSidebar voter={selectedVoter} />
+          </div>
+        )}
+      </div>
+    </div>
+  );
+};
+
+export default OmnichannelInbox;
