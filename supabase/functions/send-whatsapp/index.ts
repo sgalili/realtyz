@@ -141,50 +141,6 @@ async function resolveProvider(
     const hit = pick(await tryRows("user_id", userId));
     if (hit) return hit;
   }
-  // Suppress TS unused-var warning for the now-removed inline block.
-  void undefined;
-  // (legacy fallback below)
-  // 1. Per-tenant rows in wa_providers (preferred).
-  if (userId) {
-    const { data: rows } = await admin
-      .from("wa_providers")
-      .select("provider_name, config, is_official, is_active")
-      .eq("user_id", userId)
-      .eq("is_active", true);
-
-    const list = (rows ?? []) as Array<{
-      provider_name: "WBA" | "GreenAPI";
-      config: Record<string, unknown>;
-      is_official: boolean;
-    }>;
-
-    if (force) {
-      const match = list.find((r) => r.provider_name === force);
-      if (match) {
-        return {
-          name: match.provider_name,
-          is_official: match.is_official,
-          config: match.config ?? {},
-        };
-      }
-    } else {
-      // Routing rule: official WBA wins if connected.
-      const wba = list.find(
-        (r) => r.provider_name === "WBA" && r.is_official === true,
-      );
-      if (wba) {
-        return { name: "WBA", is_official: true, config: wba.config ?? {} };
-      }
-      const green = list.find((r) => r.provider_name === "GreenAPI");
-      if (green) {
-        return {
-          name: "GreenAPI",
-          is_official: false,
-          config: green.config ?? {},
-        };
-      }
-    }
-  }
 
   // 2. Legacy fallback — preserve existing Kalpiz GreenAPI behavior.
   if (!force || force === "GreenAPI") {
