@@ -11,8 +11,9 @@ import {
   Save, Trash2, Webhook, Eye, EyeOff, Zap, Loader2,
   MessageCircle, Sparkles, Shield, ShieldCheck, Lock,
   CheckCircle, XCircle, Activity, Clock, User, Database,
-  KeyRound, Fingerprint, Megaphone,
+  KeyRound, Fingerprint, Megaphone, Home,
 } from 'lucide-react';
+import { supabase as supabaseClient } from '@/integrations/supabase/client';
 import { useState, useEffect, useMemo } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabaseClient';
@@ -281,6 +282,12 @@ const ApiSettings = () => {
   const [metaPageId, setMetaPageId] = useState('');
   const [metaPixelId, setMetaPixelId] = useState('');
 
+  // Homely API state
+  const [homelyApiKey, setHomelyApiKey] = useState('');
+  const [homelyHasKey, setHomelyHasKey] = useState(false);
+  const [homelyLoaded, setHomelyLoaded] = useState(false);
+  const { user: authUser } = useAuth();
+
   const edgeFnBase = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/manage-api-configs`;
   const edgeFnHeaders = {
     'Content-Type': 'application/json',
@@ -446,6 +453,64 @@ const ApiSettings = () => {
       serviceName: 'Meta Marketing API',
       apiKey: JSON.stringify({ access_token: metaAccessToken, ad_account_id: metaAdAccountId, page_id: metaPageId, pixel_id: metaPixelId }),
     });
+  };
+
+  // ─── Homely API ───
+  useEffect(() => {
+    if (!authUser) return;
+    (async () => {
+      const { data } = await supabaseClient
+        .from('user_api_keys')
+        .select('homely_api_key')
+        .eq('user_id', authUser.id)
+        .maybeSingle();
+      if (data?.homely_api_key) {
+        setHomelyApiKey(data.homely_api_key);
+        setHomelyHasKey(true);
+      }
+      setHomelyLoaded(true);
+    })();
+  }, [authUser]);
+
+  const handleSaveHomely = async () => {
+    if (!authUser) return;
+    if (!homelyApiKey.trim()) { toast.error('יש להזין מפתח Homely API'); return; }
+    if (blockDemoAction('save-homely-key')) return;
+    setSavingKey('homely');
+    const { error } = await supabaseClient
+      .from('user_api_keys')
+      .upsert(
+        { user_id: authUser.id, homely_api_key: homelyApiKey.trim(), updated_at: new Date().toISOString() },
+        { onConflict: 'user_id' },
+      );
+    setSavingKey(null);
+    if (error) { toast.error('שמירה נכשלה: ' + error.message); return; }
+    setHomelyHasKey(true);
+    toast.success('✅ מפתח Homely API נשמר בהצלחה');
+  };
+
+  const handleTestHomely = async () => {
+    if (!homelyHasKey && !homelyApiKey.trim()) {
+      toast.error('יש לשמור מפתח לפני בדיקה');
+      return;
+    }
+    setTestingService('homely');
+    try {
+      const { data, error } = await supabaseClient.functions.invoke('call-homely-api', {
+        body: { path: '/health', method: 'GET' },
+      });
+      if (error) {
+        toast.error(`❌ חיבור Homely נכשל: ${error.message}`);
+      } else if (data?.error) {
+        toast.error(`❌ חיבור Homely נכשל: ${data.error}`);
+      } else {
+        toast.success('✅ חיבור Homely API תקין!');
+      }
+    } catch (err) {
+      toast.error(`❌ לא ניתן להתחבר ל-Homely: ${(err as Error).message}`);
+    } finally {
+      setTestingService(null);
+    }
   };
 
   // ─── Test handlers ───
@@ -661,6 +726,80 @@ const ApiSettings = () => {
       </Card>
 
       {/* Service Cards */}
+
+      {/* Homely API */}
+      <Card className="border-border/50 hover:border-border/80 transition-colors">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-amber-500">
+                <Home className="h-4 w-4 text-white" />
+              </div>
+              Homely API
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              {homelyHasKey ? (
+                <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700 border-emerald-300">
+                  <Lock className="h-2.5 w-2.5 ml-1" />
+                  מוצפן ופעיל
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="text-[10px]">לא מוגדר</Badge>
+              )}
+              <Badge variant="outline" className="text-[9px]">Per-User Key</Badge>
+            </div>
+          </div>
+          <CardDescription className="text-xs mt-2">
+            מפתח אישי לחיבור לשירותי Homely. נשמר מוצפן עם RLS — רק את/ה יכול/ה לגשת אליו.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {homelyHasKey && (
+            <div className="p-3 rounded-lg bg-muted/50 border border-border/30">
+              <KeyDisplay label="Homely API Key" value={homelyApiKey} id="homely_current" />
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label className="text-xs">{homelyHasKey ? 'עדכון מפתח Homely' : 'מפתח Homely חדש'}</Label>
+            <div className="relative">
+              <Input
+                placeholder="הדבק את מפתח Homely API כאן..."
+                type={showKeys.homely ? 'text' : 'password'}
+                value={homelyApiKey}
+                onChange={(e) => setHomelyApiKey(e.target.value)}
+                dir="ltr"
+                className="pl-9"
+                autoComplete="off"
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute left-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                onClick={() => setShowKeys((p) => ({ ...p, homely: !p.homely }))}
+              >
+                {showKeys.homely ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              </Button>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={handleSaveHomely} disabled={savingKey === 'homely' || !homelyLoaded} className="flex-1" size="sm">
+              <Save className="h-4 w-4 ml-2" />
+              {savingKey === 'homely' ? 'שומר...' : (homelyHasKey ? 'עדכן מפתח' : 'שמור מפתח')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTestHomely}
+              disabled={testingService === 'homely'}
+              className="gap-2"
+            >
+              {testingService === 'homely' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+              בדיקת חיבור
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <ServiceCard
         title="Gemini AI"
         icon={Sparkles}
