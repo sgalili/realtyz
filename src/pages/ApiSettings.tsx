@@ -679,17 +679,6 @@ const ApiSettings = () => {
                 {badgeLabel && <span className="text-[10px] text-muted-foreground truncate">{badgeLabel}</span>}
               </div>
               <div className="me-auto flex items-center gap-2 ms-2">
-                {connected ? (
-                  <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700 border-emerald-300 hover:bg-emerald-500/20">
-                    <CheckCircle className="h-2.5 w-2.5 ml-1" />
-                    Connected
-                  </Badge>
-                ) : (
-                  <Badge variant="secondary" className="text-[10px] text-muted-foreground">
-                    <XCircle className="h-2.5 w-2.5 ml-1" />
-                    Disconnected
-                  </Badge>
-                )}
                 <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
               </div>
             </div>
