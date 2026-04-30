@@ -105,31 +105,42 @@ async function sendSms019(
 }
 
 async function sendWhatsAppGreen(
-  instanceId: string,
-  token: string,
+  _instanceId: string,
+  _token: string,
   intlPhone: string,
   body: string,
+  routerCtx?: { supabaseUrl: string; serviceRoleKey: string; userId: string | null },
 ): Promise<SendResult> {
+  // Route via the unified send-whatsapp gateway (WBA → GreenAPI fallback).
+  // We keep the legacy parameter signature for back-compat at call sites.
+  if (!routerCtx) {
+    return { ok: false, failure_reason: "router context missing" };
+  }
   try {
-    const url = `https://api.green-api.com/waInstance${instanceId}/sendMessage/${token}`;
-    const res = await fetch(url, {
+    const res = await fetch(`${routerCtx.supabaseUrl}/functions/v1/send-whatsapp`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${routerCtx.serviceRoleKey}`,
+        apikey: routerCtx.serviceRoleKey,
+      },
       body: JSON.stringify({
-        chatId: `${intlPhone}@c.us`,
+        phone_number: intlPhone,
         message: body,
+        // tenant_id falls back to the campaign owner so wa_providers can be looked up server-side.
+        tenant_id: routerCtx.userId ?? undefined,
       }),
     });
     const json = await res.json().catch(() => ({} as any));
-    if (res.ok && json?.idMessage) {
-      return { ok: true, provider_message_id: json.idMessage };
+    if (res.ok && json?.success) {
+      return { ok: true, provider_message_id: json.message_id ?? null };
     }
     return {
       ok: false,
-      failure_reason: json?.error ?? `Green API HTTP ${res.status}`,
+      failure_reason: json?.error ?? `send-whatsapp HTTP ${res.status}`,
     };
   } catch (e: any) {
-    return { ok: false, failure_reason: `Green API network: ${e?.message ?? e}` };
+    return { ok: false, failure_reason: `send-whatsapp network: ${e?.message ?? e}` };
   }
 }
 
