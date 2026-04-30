@@ -327,10 +327,11 @@ const ApiSettings = () => {
     onError: () => toast.error('עדכון השירות נכשל'),
   });
 
-  const isServiceEnabled = (key: string) => {
+  const isServiceEnabled = (key: string, fallback: boolean = false) => {
     const t = serviceToggles.find((x) => x.service_key === key);
-    return t ? t.enabled : true; // default on
+    return t ? t.enabled : fallback; // default OFF unless a fallback is provided
   };
+
 
   const edgeFnBase = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/manage-api-configs`;
   const edgeFnHeaders = {
