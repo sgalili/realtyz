@@ -658,6 +658,46 @@ const ApiSettings = () => {
     </div>
   );
 
+  const FeatureRow = ({
+    title, description, learnMore, icon: Icon, iconColor, serviceKey,
+  }: {
+    title: string; description: string; learnMore: string;
+    icon: React.ElementType; iconColor: string; serviceKey: string;
+  }) => {
+    const enabled = isServiceEnabled(serviceKey, false);
+    return (
+      <div className="flex items-center gap-3 px-4 py-3 border border-border/50 bg-card first:rounded-t-lg last:rounded-b-lg -mt-px">
+        <Icon className={`h-5 w-5 shrink-0 ${iconColor} ${!enabled ? 'opacity-40' : ''}`} />
+        <div className="flex flex-col items-start min-w-0 flex-1">
+          <span className={`text-sm font-bold truncate ${!enabled ? 'text-muted-foreground' : ''}`}>{title}</span>
+          <Dialog>
+            <DialogTrigger asChild>
+              <button type="button" className="text-[11px] text-muted-foreground/70 hover:text-primary hover:underline transition-colors">
+                Learn more
+              </button>
+            </DialogTrigger>
+            <DialogContent dir="rtl">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2">
+                  <Icon className={`h-5 w-5 ${iconColor}`} />
+                  {title}
+                </DialogTitle>
+                <DialogDescription className="pt-2 text-sm leading-relaxed">
+                  {learnMore}
+                </DialogDescription>
+              </DialogHeader>
+            </DialogContent>
+          </Dialog>
+        </div>
+        <Switch
+          checked={enabled}
+          onCheckedChange={(v) => toggleService.mutate({ key: serviceKey, enabled: v })}
+          aria-label={`Toggle ${title}`}
+        />
+      </div>
+    );
+  };
+
   const ServiceCard = ({
     title, icon: Icon, iconColor, config, children, onDelete, onTest, onSave, saveLabel,
     testLabel = 'בדיקת חיבור', badgeLabel, savingId, testingId, value, isConnected, serviceKey,
