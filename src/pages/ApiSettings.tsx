@@ -962,6 +962,7 @@ const ApiSettings = () => {
         saveLabel={existingSms ? 'עדכן הגדרה' : 'שמור הגדרה'}
         savingId="sms"
         testingId="sms"
+        value="sms"
       >
         {existingSms && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30 space-y-1">
