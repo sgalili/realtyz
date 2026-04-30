@@ -117,13 +117,13 @@ Deno.serve(async (req) => {
     // Pick recipients.
     let voters: Array<{ id: string; full_name: string; phone_number: string }>;
     if (body.voter_ids?.length) {
-      const { data, error } = await admin.from("voters")
+      const { data, error } = await admin.from("leads")
         .select("id, full_name, phone_number")
         .in("id", body.voter_ids);
       if (error) throw error;
       voters = data ?? [];
     } else {
-      const { data, error } = await admin.from("voters")
+      const { data, error } = await admin.from("leads")
         .select("id, full_name, phone_number")
         .eq("is_demo", false)
         .limit(remaining);
@@ -142,7 +142,7 @@ Deno.serve(async (req) => {
       const scheduledFor = new Date(Date.now() + i * gap);
       return {
         user_id: userId,
-        voter_id: v.id,
+        lead_id: v.id,
         recipient_phone: v.phone_number,
         recipient_name: v.full_name,
         message_body: personalize(messageBody, v.full_name),

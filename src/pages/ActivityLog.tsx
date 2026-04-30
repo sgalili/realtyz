@@ -106,7 +106,7 @@ export default function ActivityLog() {
     if (isDemoMode) {
       const baseDemo = getDemoCandidateMessages(demoCandidateId).slice(0, 36).map((msg, index) => ({
         id: `demo-activity-${msg.id}`,
-        thread_key: msg.voter_id || 'demo',
+        thread_key: msg.lead_id || 'demo',
         platform: msg.platform || msg.channel,
         action_type: msg.direction === 'outbound' ? 'reply' : 'comment',
         actor_type: msg.sender_type === 'ai' ? 'ai_agent' : 'voter',
@@ -121,7 +121,7 @@ export default function ActivityLog() {
     }
     const messageRows: ActivityRow[] = messages.map((msg: any) => ({
       id: `msg-${msg.id}`,
-      thread_key: msg.voter_id || 'general',
+      thread_key: msg.lead_id || 'general',
       platform: msg.platform || msg.channel,
       action_type: msg.direction === 'outbound' ? 'reply' : 'comment',
       actor_type: msg.sender_type === 'supervisor' || msg.sender_type === 'agent' ? 'supervisor' : msg.sender_type === 'ai' ? 'ai_agent' : 'voter',

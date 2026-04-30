@@ -61,7 +61,7 @@ Deno.serve(async (req) => {
     // Find the most recent trial user who messaged this sender.
     const { data: lastOut } = await admin
       .from("trial_autopilot_messages")
-      .select("user_id, voter_id")
+      .select("user_id, lead_id")
       .eq("recipient_phone", senderPhone)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -124,7 +124,7 @@ Deno.serve(async (req) => {
     // Log inbound (does NOT count against quota).
     await admin.from("trial_inbound_replies").insert({
       user_id: userId,
-      voter_id: lastOut.voter_id,
+      lead_id: lastOut.lead_id,
       sender_phone: senderPhone,
       message_body: text.slice(0, 4000),
       ai_response: aiReply,

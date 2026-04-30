@@ -66,7 +66,7 @@ const Dashboard = () => {
     queryFn: async () => {
       const since = subDays(new Date(), 6).toISOString();
       const { data } = await supabase
-        .from('voters')
+        .from('leads')
         .select('created_at')
         .gte('created_at', since);
       const buckets: Record<string, number> = {};
@@ -90,7 +90,7 @@ const Dashboard = () => {
     enabled: !isDemoMode,
     queryFn: async () => {
       const { data } = await supabase
-        .from('voters')
+        .from('leads')
         .select('id, full_name, phone_number, city, created_at')
         .order('created_at', { ascending: false })
         .limit(6);

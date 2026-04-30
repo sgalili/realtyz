@@ -255,7 +255,7 @@ function generateDemoThread(name: string, voterId: string, index: number) {
 
   return expanded.map((m, i) => ({
     id: `demo-${voterId}-${i}`,
-    voter_id: voterId,
+    lead_id: voterId,
     content: m.content,
     role: m.role === 'ai' ? 'assistant' : 'user',
     sender_type: m.role,

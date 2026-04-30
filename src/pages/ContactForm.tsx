@@ -21,7 +21,7 @@ const ContactForm = () => {
     }
     setSubmitting(true);
     try {
-      const { error } = await supabase.from('leads').insert({
+      const { error } = await supabase.from('contact_submissions').insert({
         full_name: form.full_name.trim(),
         phone_number: form.phone_number.trim(),
         email: form.email.trim() || null,

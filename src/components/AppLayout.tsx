@@ -139,7 +139,7 @@ function SearchExpandable() {
     try {
       const terms = q.trim().split(/\s+/).map(t => `'${t}'`).join(' & ');
       const { data: voters } = await supabase
-        .from('voters')
+        .from('leads')
         .select('id, full_name, phone_number, city')
         .textSearch('fts', terms, { type: 'plain', config: 'simple' })
         .limit(6);
@@ -522,7 +522,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       queryKey: ['voters-infinite', '', 'all', 'all', 'all'],
       queryFn: async () => {
         const { supabase } = await import('@/integrations/supabase/client');
-        const { data, count } = await supabase.from('voters').select('*', { count: 'exact' })
+        const { data, count } = await supabase.from('leads').select('*', { count: 'exact' })
           .order('created_at', { ascending: false }).range(0, 49);
         return { rows: data ?? [], total: count ?? 0, page: 0 };
       },

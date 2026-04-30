@@ -15,9 +15,9 @@ You have access to a PostgreSQL database with these tables:
 
 TABLE voters: id (uuid PK), phone_number (text), full_name (text), city (text), interest_tag (text), engagement_score (int 0-100), status (text: lead/supporter/active/inactive/contacted/voted), is_voted (bool), last_interaction_at (timestamptz), created_at (timestamptz), loyalty_tier (text), sentiment (text: positive/neutral/negative), identity_number (text), ai_autopilot (bool)
 
-TABLE chat_history: id (uuid PK), voter_id (uuid FK->voters), role (text: user/assistant), content (text), sentiment (text), created_at (timestamptz)
+TABLE chat_history: id (uuid PK), lead_id (uuid FK->voters), role (text: user/assistant), content (text), sentiment (text), created_at (timestamptz)
 
-TABLE messages: id (uuid PK), voter_id (uuid FK->voters), channel (text), content (text), sender_type (text), direction (text: inbound/outbound), platform (text), created_at (timestamptz), metadata (jsonb)
+TABLE messages: id (uuid PK), lead_id (uuid FK->voters), channel (text), content (text), sender_type (text), direction (text: inbound/outbound), platform (text), created_at (timestamptz), metadata (jsonb)
 
 TABLE campaigns: id (uuid PK), name (text), description (text), sms_body (text), tag_associated (text), total_clicks (int), total_sent (int), created_at (timestamptz)
 

@@ -213,7 +213,7 @@ const VoterCRM = () => {
     queryKey: ['voters-infinite', debouncedSearch, interestFilter, cityFilter, statusFilter],
     enabled: !isDemoMode,
     queryFn: async ({ pageParam = 0 }) => {
-      let query = supabase.from('voters').select('*', { count: 'exact' });
+      let query = supabase.from('leads').select('*', { count: 'exact' });
 
       // Full-text search via tsvector
       if (debouncedSearch.trim()) {
@@ -257,7 +257,7 @@ const VoterCRM = () => {
     queryKey: ['voter-filter-options'],
     enabled: !isDemoMode,
     queryFn: async () => {
-      const { data } = await supabase.from('voters').select('city, interest_tag, status');
+      const { data } = await supabase.from('leads').select('city, interest_tag, status');
       const cities = [...new Set((data ?? []).map(v => v.city).filter(Boolean))];
       const interests = [...new Set((data ?? []).map(v => v.interest_tag).filter(Boolean))];
       const statuses = [...new Set((data ?? []).map(v => v.status).filter(Boolean))];
@@ -272,7 +272,7 @@ const VoterCRM = () => {
     enabled: !isDemoMode,
     queryFn: async () => {
       const { count } = await supabase
-        .from('voters')
+        .from('leads')
         .select('id', { count: 'exact', head: true });
       return count ?? 0;
     },
@@ -293,7 +293,7 @@ const VoterCRM = () => {
     queryKey: ['voter-messages', selectedVoterId],
     enabled: !!selectedVoterId && !isDemoMode,
     queryFn: async () => {
-      const { data } = await supabase.from('messages').select('*').eq('voter_id', selectedVoterId!).order('created_at', { ascending: true });
+      const { data } = await supabase.from('messages').select('*').eq('lead_id', selectedVoterId!).order('created_at', { ascending: true });
       return data ?? [];
     },
     staleTime: 2 * 60 * 1000,
@@ -303,7 +303,7 @@ const VoterCRM = () => {
     queryKey: ['voter-chat-history', selectedVoterId],
     enabled: !!selectedVoterId && !isDemoMode,
     queryFn: async () => {
-      const { data } = await supabase.from('chat_history').select('*').eq('voter_id', selectedVoterId!).order('created_at', { ascending: true });
+      const { data } = await supabase.from('chat_history').select('*').eq('lead_id', selectedVoterId!).order('created_at', { ascending: true });
       return data ?? [];
     },
     staleTime: 2 * 60 * 1000,
@@ -320,10 +320,10 @@ const VoterCRM = () => {
 
   const selectedVoter = voters?.find((v) => v.id === selectedVoterId);
   const activeVoterMessages = isDemoMode && selectedVoterId?.startsWith('demo-voter-')
-    ? demoMessages.filter((m) => m.voter_id === selectedVoterId)
+    ? demoMessages.filter((m) => m.lead_id === selectedVoterId)
     : voterMessages;
   const activeVoterChatHistory = isDemoMode && selectedVoterId?.startsWith('demo-voter-')
-    ? demoMessages.filter((m) => m.voter_id === selectedVoterId)
+    ? demoMessages.filter((m) => m.lead_id === selectedVoterId)
     : voterChatHistory;
   const filtered = useMemo(() => {
     if (!voters) return voters;
@@ -466,8 +466,8 @@ const VoterCRM = () => {
     const ids = Array.from(selectedIds);
     if (!ids.length) return;
     try {
-      const { data: count, error } = await supabase.rpc('bulk_update_voters', {
-        voter_ids: ids,
+      const { data: count, error } = await supabase.rpc('bulk_update_leads', {
+        lead_ids: ids,
         new_status: newStatus,
       });
       if (error) throw error;
@@ -485,8 +485,8 @@ const VoterCRM = () => {
     const ids = Array.from(selectedIds);
     if (!ids.length) return;
     try {
-      const { data: count, error } = await supabase.rpc('bulk_update_voters', {
-        voter_ids: ids,
+      const { data: count, error } = await supabase.rpc('bulk_update_leads', {
+        lead_ids: ids,
         new_interest_tag: tag,
       });
       if (error) throw error;
@@ -505,7 +505,7 @@ const VoterCRM = () => {
     if (!ids.length) return;
     if (!confirm(`האם למחוק ${ids.length} בוחרים? פעולה זו בלתי הפיכה.`)) return;
     const { error, count } = await supabase
-      .from('voters')
+      .from('leads')
       .delete({ count: 'exact' })
       .in('id', ids);
     if (error) { toast.error('שגיאה במחיקה: ' + error.message); return; }
@@ -525,7 +525,7 @@ const VoterCRM = () => {
   const handleAddToCampaign = async (campaignId: string) => {
     if (blockDemoAction('add-to-campaign')) return;
     const ids = Array.from(selectedIds);
-    await sendToN8n('add_to_campaign', { campaign_id: campaignId, voter_ids: ids });
+    await sendToN8n('add_to_campaign', { campaign_id: campaignId, lead_ids: ids });
     toast.success(`${ids.length} בוחרים נוספו לקמפיין`);
     setAddToCampaignOpen(false);
     setSelectedIds(new Set());
@@ -552,7 +552,7 @@ const VoterCRM = () => {
       };
       if (newVoter.instagram_handle.trim()) insertData.instagram_handle = newVoter.instagram_handle.trim();
       if (newVoter.telegram_username.trim()) insertData.telegram_username = newVoter.telegram_username.trim();
-      const { error } = await supabase.from('voters').insert(insertData as any);
+      const { error } = await supabase.from('leads').insert(insertData as any);
       if (error) throw error;
       queryClient.invalidateQueries({ queryKey: ['voters-infinite'] });
       queryClient.invalidateQueries({ queryKey: ['voter-filter-options'] });
@@ -696,7 +696,7 @@ const VoterCRM = () => {
           status: 'uploaded',
         }));
         const { data, error } = await supabase
-          .from('voters')
+          .from('leads')
           .upsert(batch, { onConflict: 'phone_number' })
           .select('id');
         if (error) throw error;

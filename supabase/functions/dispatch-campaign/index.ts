@@ -694,7 +694,7 @@ Deno.serve(async (req) => {
     // Fetch queued rows for this user + campaign
     const { data: queued, error: queErr } = await admin
       .from("campaign_logs")
-      .select("id, channel, voter_id, recipient_phone, recipient_email, recipient_name, message_body")
+      .select("id, channel, lead_id, recipient_phone, recipient_email, recipient_name, message_body")
       .eq("user_id", userId)
       .eq("campaign_name", campaignName)
       .eq("status", "queued")
@@ -716,11 +716,11 @@ Deno.serve(async (req) => {
     }
 
     // Fetch voter context (city, booth) in one batch so we can personalize.
-    const voterIds = Array.from(new Set(rows.map((r: any) => r.voter_id).filter(Boolean)));
+    const voterIds = Array.from(new Set(rows.map((r: any) => r.lead_id).filter(Boolean)));
     const voterCtx = new Map<string, { city: string | null; booth: string | null; full_name: string | null }>();
     if (voterIds.length > 0) {
       const { data: voters } = await admin
-        .from("voters")
+        .from("leads")
         .select("id, full_name, city")
         .in("id", voterIds);
       for (const v of voters ?? []) {
@@ -770,7 +770,7 @@ Deno.serve(async (req) => {
 
     for (const row of rows) {
       const channel = String(row.channel);
-      const ctx = voterCtx.get(row.voter_id) ?? {
+      const ctx = voterCtx.get(row.lead_id) ?? {
         full_name: row.recipient_name ?? null,
         city: null,
         booth: null,
@@ -902,9 +902,9 @@ Deno.serve(async (req) => {
 
       // Touchpoint sync: write to messages so it appears instantly in the
       // Voter Profile timeline. Skip if no voter is linked or send failed.
-      if (result.ok && row.voter_id) {
+      if (result.ok && row.lead_id) {
         const { error: msgErr } = await admin.from("messages").insert({
-          voter_id: row.voter_id,
+          lead_id: row.lead_id,
           direction: "outbound",
           sender_type: "campaign",
           channel,

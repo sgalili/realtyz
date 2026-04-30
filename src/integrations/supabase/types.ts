@@ -308,7 +308,7 @@ export type Database = {
           source_account: string | null
           status: string
           user_id: string
-          voter_id: string | null
+          lead_id: string | null
         }
         Insert: {
           campaign_name: string
@@ -327,7 +327,7 @@ export type Database = {
           source_account?: string | null
           status?: string
           user_id: string
-          voter_id?: string | null
+          lead_id?: string | null
         }
         Update: {
           campaign_name?: string
@@ -346,7 +346,7 @@ export type Database = {
           source_account?: string | null
           status?: string
           user_id?: string
-          voter_id?: string | null
+          lead_id?: string | null
         }
         Relationships: []
       }
@@ -410,91 +410,82 @@ export type Database = {
         }
         Relationships: []
       }
-      candidate_pages: {
-        Row: {
-          candidate_name: string
-          created_at: string
-          election_type: string
-          headline: string
-          id: string
-          is_published: boolean
-          mandate_goal: number
-          pillars: Json
-          slug: string
-          supporter_count: number
-          thesis: string
-          updated_at: string
-          user_id: string
-        }
-        Insert: {
-          candidate_name: string
-          created_at?: string
-          election_type?: string
-          headline: string
-          id?: string
-          is_published?: boolean
-          mandate_goal?: number
-          pillars?: Json
-          slug: string
-          supporter_count?: number
-          thesis: string
-          updated_at?: string
-          user_id: string
-        }
-        Update: {
-          candidate_name?: string
-          created_at?: string
-          election_type?: string
-          headline?: string
-          id?: string
-          is_published?: boolean
-          mandate_goal?: number
-          pillars?: Json
-          slug?: string
-          supporter_count?: number
-          thesis?: string
-          updated_at?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       chat_history: {
         Row: {
           content: string | null
           created_at: string | null
           id: string
           is_demo: boolean
+          lead_id: string | null
           role: string | null
           sentiment: string | null
-          voter_id: string | null
         }
         Insert: {
           content?: string | null
           created_at?: string | null
           id?: string
           is_demo?: boolean
+          lead_id?: string | null
           role?: string | null
           sentiment?: string | null
-          voter_id?: string | null
         }
         Update: {
           content?: string | null
           created_at?: string | null
           id?: string
           is_demo?: boolean
+          lead_id?: string | null
           role?: string | null
           sentiment?: string | null
-          voter_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "chat_history_voter_id_fkey"
-            columns: ["voter_id"]
+            foreignKeyName: "chat_history_lead_id_fkey"
+            columns: ["lead_id"]
             isOneToOne: false
-            referencedRelation: "voters"
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
+      }
+      contact_submissions: {
+        Row: {
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          message: string | null
+          phone_number: string
+          status: string | null
+          tag: string | null
+          updated_at: string
+          wa_sent: boolean | null
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+          message?: string | null
+          phone_number: string
+          status?: string | null
+          tag?: string | null
+          updated_at?: string
+          wa_sent?: boolean | null
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          message?: string | null
+          phone_number?: string
+          status?: string | null
+          tag?: string | null
+          updated_at?: string
+          wa_sent?: boolean | null
+        }
+        Relationships: []
       }
       crisis_alerts: {
         Row: {
@@ -873,40 +864,145 @@ export type Database = {
       }
       leads: {
         Row: {
-          created_at: string
+          ai_autopilot: boolean | null
+          city: string | null
+          created_at: string | null
           email: string | null
-          full_name: string
+          engagement_score: number | null
+          fts: unknown
+          full_name: string | null
           id: string
-          message: string | null
+          identity_number: string | null
+          instagram_handle: string | null
+          interest_score_json: Json | null
+          interest_scores: Json | null
+          interest_tag: string | null
+          is_demo: boolean
+          is_voted: boolean | null
+          last_interaction_at: string | null
+          lead_stage: string
+          loyalty_tier: string | null
+          messenger_id: string | null
           phone_number: string
+          preferences: Json
+          profile_picture_url: string | null
+          sentiment: string | null
           status: string | null
-          tag: string | null
-          updated_at: string
-          wa_sent: boolean | null
+          telegram_username: string | null
         }
         Insert: {
-          created_at?: string
+          ai_autopilot?: boolean | null
+          city?: string | null
+          created_at?: string | null
           email?: string | null
-          full_name: string
+          engagement_score?: number | null
+          fts?: unknown
+          full_name?: string | null
           id?: string
-          message?: string | null
+          identity_number?: string | null
+          instagram_handle?: string | null
+          interest_score_json?: Json | null
+          interest_scores?: Json | null
+          interest_tag?: string | null
+          is_demo?: boolean
+          is_voted?: boolean | null
+          last_interaction_at?: string | null
+          lead_stage?: string
+          loyalty_tier?: string | null
+          messenger_id?: string | null
           phone_number: string
+          preferences?: Json
+          profile_picture_url?: string | null
+          sentiment?: string | null
           status?: string | null
-          tag?: string | null
-          updated_at?: string
-          wa_sent?: boolean | null
+          telegram_username?: string | null
         }
         Update: {
-          created_at?: string
+          ai_autopilot?: boolean | null
+          city?: string | null
+          created_at?: string | null
           email?: string | null
-          full_name?: string
+          engagement_score?: number | null
+          fts?: unknown
+          full_name?: string | null
           id?: string
-          message?: string | null
+          identity_number?: string | null
+          instagram_handle?: string | null
+          interest_score_json?: Json | null
+          interest_scores?: Json | null
+          interest_tag?: string | null
+          is_demo?: boolean
+          is_voted?: boolean | null
+          last_interaction_at?: string | null
+          lead_stage?: string
+          loyalty_tier?: string | null
+          messenger_id?: string | null
           phone_number?: string
+          preferences?: Json
+          profile_picture_url?: string | null
+          sentiment?: string | null
           status?: string | null
-          tag?: string | null
+          telegram_username?: string | null
+        }
+        Relationships: []
+      }
+      listings: {
+        Row: {
+          asking_price: number
+          candidate_name: string
+          created_at: string
+          description: string
+          election_type: string
+          features: Json
+          headline: string
+          id: string
+          is_published: boolean
+          mandate_goal: number
+          pillars: Json
+          property_title: string
+          slug: string
+          supporter_count: number
+          thesis: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          asking_price?: number
+          candidate_name: string
+          created_at?: string
+          description: string
+          election_type?: string
+          features?: Json
+          headline: string
+          id?: string
+          is_published?: boolean
+          mandate_goal?: number
+          pillars?: Json
+          property_title: string
+          slug: string
+          supporter_count?: number
+          thesis: string
           updated_at?: string
-          wa_sent?: boolean | null
+          user_id: string
+        }
+        Update: {
+          asking_price?: number
+          candidate_name?: string
+          created_at?: string
+          description?: string
+          election_type?: string
+          features?: Json
+          headline?: string
+          id?: string
+          is_published?: boolean
+          mandate_goal?: number
+          pillars?: Json
+          property_title?: string
+          slug?: string
+          supporter_count?: number
+          thesis?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -917,10 +1013,10 @@ export type Database = {
           created_at: string | null
           direction: string | null
           id: string
+          lead_id: string | null
           metadata: Json | null
           platform: string | null
           sender_type: string | null
-          voter_id: string | null
         }
         Insert: {
           channel?: string | null
@@ -928,10 +1024,10 @@ export type Database = {
           created_at?: string | null
           direction?: string | null
           id?: string
+          lead_id?: string | null
           metadata?: Json | null
           platform?: string | null
           sender_type?: string | null
-          voter_id?: string | null
         }
         Update: {
           channel?: string | null
@@ -939,17 +1035,17 @@ export type Database = {
           created_at?: string | null
           direction?: string | null
           id?: string
+          lead_id?: string | null
           metadata?: Json | null
           platform?: string | null
           sender_type?: string | null
-          voter_id?: string | null
         }
         Relationships: [
           {
-            foreignKeyName: "messages_voter_id_fkey"
-            columns: ["voter_id"]
+            foreignKeyName: "messages_lead_id_fkey"
+            columns: ["lead_id"]
             isOneToOne: false
-            referencedRelation: "voters"
+            referencedRelation: "leads"
             referencedColumns: ["id"]
           },
         ]
@@ -1529,7 +1625,7 @@ export type Database = {
           sent_at: string | null
           status: string
           user_id: string
-          voter_id: string | null
+          lead_id: string | null
         }
         Insert: {
           created_at?: string
@@ -1543,7 +1639,7 @@ export type Database = {
           sent_at?: string | null
           status?: string
           user_id: string
-          voter_id?: string | null
+          lead_id?: string | null
         }
         Update: {
           created_at?: string
@@ -1557,7 +1653,7 @@ export type Database = {
           sent_at?: string | null
           status?: string
           user_id?: string
-          voter_id?: string | null
+          lead_id?: string | null
         }
         Relationships: []
       }
@@ -1570,7 +1666,7 @@ export type Database = {
           message_body: string
           sender_phone: string
           user_id: string
-          voter_id: string | null
+          lead_id: string | null
         }
         Insert: {
           ai_responded_at?: string | null
@@ -1580,7 +1676,7 @@ export type Database = {
           message_body: string
           sender_phone: string
           user_id: string
-          voter_id?: string | null
+          lead_id?: string | null
         }
         Update: {
           ai_responded_at?: string | null
@@ -1590,7 +1686,7 @@ export type Database = {
           message_body?: string
           sender_phone?: string
           user_id?: string
-          voter_id?: string | null
+          lead_id?: string | null
         }
         Relationships: []
       }
@@ -1704,84 +1800,6 @@ export type Database = {
           },
         ]
       }
-      voters: {
-        Row: {
-          ai_autopilot: boolean | null
-          city: string | null
-          created_at: string | null
-          email: string | null
-          engagement_score: number | null
-          fts: unknown
-          full_name: string | null
-          id: string
-          identity_number: string | null
-          instagram_handle: string | null
-          interest_score_json: Json | null
-          interest_scores: Json | null
-          interest_tag: string | null
-          is_demo: boolean
-          is_voted: boolean | null
-          last_interaction_at: string | null
-          loyalty_tier: string | null
-          messenger_id: string | null
-          phone_number: string
-          profile_picture_url: string | null
-          sentiment: string | null
-          status: string | null
-          telegram_username: string | null
-        }
-        Insert: {
-          ai_autopilot?: boolean | null
-          city?: string | null
-          created_at?: string | null
-          email?: string | null
-          engagement_score?: number | null
-          fts?: unknown
-          full_name?: string | null
-          id?: string
-          identity_number?: string | null
-          instagram_handle?: string | null
-          interest_score_json?: Json | null
-          interest_scores?: Json | null
-          interest_tag?: string | null
-          is_demo?: boolean
-          is_voted?: boolean | null
-          last_interaction_at?: string | null
-          loyalty_tier?: string | null
-          messenger_id?: string | null
-          phone_number: string
-          profile_picture_url?: string | null
-          sentiment?: string | null
-          status?: string | null
-          telegram_username?: string | null
-        }
-        Update: {
-          ai_autopilot?: boolean | null
-          city?: string | null
-          created_at?: string | null
-          email?: string | null
-          engagement_score?: number | null
-          fts?: unknown
-          full_name?: string | null
-          id?: string
-          identity_number?: string | null
-          instagram_handle?: string | null
-          interest_score_json?: Json | null
-          interest_scores?: Json | null
-          interest_tag?: string | null
-          is_demo?: boolean
-          is_voted?: boolean | null
-          last_interaction_at?: string | null
-          loyalty_tier?: string | null
-          messenger_id?: string | null
-          phone_number?: string
-          profile_picture_url?: string | null
-          sentiment?: string | null
-          status?: string | null
-          telegram_username?: string | null
-        }
-        Relationships: []
-      }
       whatsapp_login_otps: {
         Row: {
           attempts: number
@@ -1817,11 +1835,11 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      bulk_update_voters: {
+      bulk_update_leads: {
         Args: {
+          lead_ids: string[]
           new_interest_tag?: string
           new_status?: string
-          voter_ids: string[]
         }
         Returns: number
       }

@@ -49,7 +49,7 @@ export function GlobalSearch() {
       // Search voters by name or phone
       const terms = q.trim().split(/\s+/).map(t => `'${t}'`).join(' & ');
       const { data: voters } = await supabase
-        .from('voters')
+        .from('leads')
         .select('id, full_name, phone_number, city')
         .textSearch('fts', terms, { type: 'plain', config: 'simple' })
         .limit(8);

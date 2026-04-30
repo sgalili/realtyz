@@ -32,7 +32,7 @@ export function NextMilestoneWidget() {
     enabled: !isDemoMode,
     queryFn: async () => {
       const { count } = await supabase
-        .from('voters')
+        .from('leads')
         .select('id', { count: 'exact', head: true })
         .in('status', ['supporter', 'active', 'voted']);
       return count ?? 0;

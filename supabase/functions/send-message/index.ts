@@ -7,7 +7,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
 
 const WebhookPayload = z.object({
-  voter_id: z.string().uuid(),
+  lead_id: z.string().uuid(),
   content: z.string().min(1).max(5000),
   channel: z.string().default("whatsapp"),
   phone_number: z.string().optional(),
@@ -36,7 +36,7 @@ serve(async (req) => {
       );
     }
 
-    const { voter_id, content, channel, phone_number, attachment, drip } = parsed.data;
+    const { lead_id, content, channel, phone_number, attachment, drip } = parsed.data;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -54,9 +54,9 @@ serve(async (req) => {
     }
 
     const { data: voter } = await supabase
-      .from("voters")
+      .from("leads")
       .select("phone_number, full_name")
-      .eq("id", voter_id)
+      .eq("id", lead_id)
       .single();
 
     const { data: approval, error: dbError } = await supabase
@@ -65,7 +65,7 @@ serve(async (req) => {
         user_id: userData.user.id,
         content_type: "outbound_message",
         platform: channel,
-        target_voter_id: voter_id,
+        target_voter_id: lead_id,
         target_label: voter?.full_name || phone_number || voter?.phone_number || null,
         title: `הודעה ממתינה לאישור - ${voter?.full_name || channel}`,
         proposed_content: content,

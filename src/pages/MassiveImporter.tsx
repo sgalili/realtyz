@@ -225,7 +225,7 @@ export default function MassiveImporter() {
     // Trial cap: pre-check current voter count + incoming rows
     if (trial.isTrial) {
       const { count: existingCount } = await supabase
-        .from('voters')
+        .from('leads')
         .select('id', { count: 'exact', head: true })
         .eq('is_demo', false);
       const existing = existingCount ?? 0;
@@ -302,7 +302,7 @@ export default function MassiveImporter() {
       if (abortRef.current) break;
       const chunk = validRows.slice(c * CHUNK_SIZE, (c + 1) * CHUNK_SIZE);
       if (chunk.length === 0) break;
-      const { error } = await supabase.from('voters').upsert(chunk, { onConflict: 'phone_number' });
+      const { error } = await supabase.from('leads').upsert(chunk, { onConflict: 'phone_number' });
       if (error) {
         s.errors += chunk.length;
         console.error('Chunk error:', error);

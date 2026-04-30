@@ -92,7 +92,7 @@ export default function ApprovalQueue() {
       const content = item.edited_content || item.proposed_content;
       if (item.content_type === 'outbound_message' && item.target_voter_id) {
         const { error: messageError } = await supabase.from('messages').insert({
-          voter_id: item.target_voter_id,
+          lead_id: item.target_voter_id,
           content,
           direction: 'outbound',
           sender_type: 'supervisor',

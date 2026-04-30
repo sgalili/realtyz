@@ -92,7 +92,7 @@ const VoterProfileSidebar = ({ voter }: Props) => {
       const { data } = await supabase
         .from('messages')
         .select('*')
-        .eq('voter_id', voter.id)
+        .eq('lead_id', voter.id)
         .order('created_at', { ascending: false })
         .limit(5);
       return data ?? [];
