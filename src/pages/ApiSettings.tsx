@@ -843,6 +843,7 @@ const ApiSettings = () => {
         savingId="gemini"
         testingId="gemini"
         value="gemini"
+        serviceKey="gemini"
       >
         {existingGemini && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30">
@@ -874,6 +875,7 @@ const ApiSettings = () => {
         savingId="meta"
         testingId="meta"
         value="meta"
+        serviceKey="meta_ads"
       >
         {existingMeta && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30">
@@ -913,6 +915,7 @@ const ApiSettings = () => {
         savingId="whatsapp"
         testingId="whatsapp"
         value="whatsapp"
+        serviceKey="whatsapp"
       >
         {activeWaConfig && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30 space-y-1">
@@ -988,6 +991,7 @@ const ApiSettings = () => {
         savingId="n8n"
         testingId="n8n"
         value="n8n"
+        serviceKey="n8n"
       >
         {existingN8n && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30 space-y-1">
@@ -1026,6 +1030,7 @@ const ApiSettings = () => {
         savingId="sms"
         testingId="sms"
         value="sms"
+        serviceKey="sms"
       >
         {existingSms && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30 space-y-1">
@@ -1067,6 +1072,7 @@ const ApiSettings = () => {
         savingId="mapbox"
         testingId="mapbox"
         value="mapbox"
+        serviceKey="mapbox"
       >
         {existingMapbox && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30">
