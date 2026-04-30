@@ -152,7 +152,7 @@ const App = () => (
               <Route path="/sentiment" element={<ProtectedRoute allowGuestDemo><SentimentDashboard /></ProtectedRoute>} />
               <Route path="/subscription" element={<ProtectedRoute allowGuestDemo><SubscriptionManager /></ProtectedRoute>} />
               <Route path="/api-settings" element={<ProtectedRoute allowGuestDemo><ApiSettings /></ProtectedRoute>} />
-              <Route path="/homely-api" element={<ProtectedRoute><HomelyApiSettings /></ProtectedRoute>} />
+              <Route path="/homely-api" element={<Navigate to="/api-settings" replace />} />
               <Route path="/social-connect" element={<ProtectedRoute allowGuestDemo><SocialConnect /></ProtectedRoute>} />
               <Route path="/leads" element={<ProtectedRoute allowGuestDemo><AdminLeads /></ProtectedRoute>} />
               <Route path="/live-conversations" element={<ProtectedRoute allowGuestDemo><LiveConversations /></ProtectedRoute>} />
