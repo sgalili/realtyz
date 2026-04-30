@@ -694,15 +694,17 @@ const ApiSettings = () => {
       <Accordion type="multiple" className="space-y-3">
 
       {/* Homely API */}
-      <AccordionItem value="homely" className="border border-border/50 rounded-lg overflow-hidden bg-card data-[state=open]:border-border/80">
+      <AccordionItem value="homely" className="border border-border/50 rounded-lg overflow-hidden bg-card data-[state=open]:border-border/80 data-[state=open]:shadow-sm">
         <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20">
           <div className="flex items-center justify-between w-full gap-3">
             <div className="flex items-center gap-3">
-              <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-amber-500 shrink-0">
-                <Home className="h-4 w-4 text-white" />
+              <div className="h-9 w-9 rounded-lg flex items-center justify-center bg-muted/50 shrink-0">
+                <Building className="h-5 w-5 text-orange-500" />
               </div>
-              <span className="text-sm font-semibold">Homely API</span>
-              <Badge variant="outline" className="text-[9px]">Per-User Key</Badge>
+              <div className="flex flex-col items-start">
+                <span className="text-sm font-bold">Homely API</span>
+                <span className="text-[10px] text-muted-foreground">Per-User Key</span>
+              </div>
             </div>
             <div className="flex items-center gap-2 me-2">
               {homelyHasKey ? (
