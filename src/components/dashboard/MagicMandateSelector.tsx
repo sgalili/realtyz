@@ -181,7 +181,7 @@ export function MagicMandateSelector({ open, onComplete }: MagicMandateSelectorP
                 <div className="grid grid-cols-2 gap-3">
                   <BreakdownItem
                     label="קהל יעד לניצחון"
-                    value={`${formatNumber(breakdown.leads)}`}
+                    value={`${formatNumber(breakdown.voters)}`}
                     suffix="לידים מזוהים"
                     valueKey={breakdown.voters}
                   />

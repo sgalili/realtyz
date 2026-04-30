@@ -28,7 +28,7 @@ export function StrategyBriefCard({
   const ref = useRef<HTMLDivElement>(null);
 
   const handleDownload = () => {
-    const text = `📋 ה-Brief האסטרטגי של ${listing}
+    const text = `📋 ה-Brief האסטרטגי של ${candidate}
 ═══════════════════════════════
 
 🎯 ${brief.headline}
@@ -60,7 +60,7 @@ ${brief.signature_message}
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `Strategy-Brief-${listing.replace(/\s+/g, '-')}.txt`;
+    a.download = `Strategy-Brief-${candidate.replace(/\s+/g, '-')}.txt`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success('הורדנו את ה-Brief בהצלחה');
@@ -69,7 +69,7 @@ ${brief.signature_message}
   const handleShare = async () => {
     const summary = `${brief.headline}\n\n${brief.thesis}\n\nנוצר ב-Kalpiz AI`;
     if (navigator.share) {
-      try { await navigator.share({ title: `Brief אסטרטגי - ${listing}`, text: summary }); } catch {}
+      try { await navigator.share({ title: `Brief אסטרטגי - ${candidate}`, text: summary }); } catch {}
     } else {
       await navigator.clipboard.writeText(summary);
       toast.success('הועתק ללוח');
