@@ -614,54 +614,63 @@ const ApiSettings = () => {
   );
 
   const ServiceCard = ({
-    title, icon: Icon, iconColor, config, children, onDelete, onTest, onSave, saveLabel, testLabel = 'בדיקת חיבור', badgeLabel, savingId, testingId,
+    title, icon: Icon, iconColor, config, children, onDelete, onTest, onSave, saveLabel, testLabel = 'בדיקת חיבור', badgeLabel, savingId, testingId, value, isConnected,
   }: {
     title: string; icon: React.ElementType; iconColor: string; config: ApiConfig | undefined;
     children: React.ReactNode; onDelete?: () => void; onTest: () => void; onSave: () => void;
     saveLabel: string; testLabel?: string; badgeLabel?: string; savingId: string; testingId: string;
-  }) => (
-    <Card className="border-border/50 hover:border-border/80 transition-colors">
-      <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${iconColor}`}>
-              <Icon className="h-4 w-4 text-white" />
+    value: string; isConnected?: boolean;
+  }) => {
+    const connected = isConnected ?? !!config?.is_active;
+    return (
+      <AccordionItem value={value} className="border border-border/50 rounded-lg overflow-hidden bg-card data-[state=open]:border-border/80">
+        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20">
+          <div className="flex items-center justify-between w-full gap-3">
+            <div className="flex items-center gap-3">
+              <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${iconColor} shrink-0`}>
+                <Icon className="h-4 w-4 text-white" />
+              </div>
+              <span className="text-sm font-semibold">{title}</span>
+              {badgeLabel && <Badge variant="outline" className="text-[9px]">{badgeLabel}</Badge>}
             </div>
-            {title}
-          </CardTitle>
-          <div className="flex items-center gap-2">
-            {config?.is_active ? (
-              <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700 border-emerald-300">
-                <Lock className="h-2.5 w-2.5 ml-1" />
-                מוצפן ופעיל
-              </Badge>
-            ) : (
-              <Badge variant="secondary" className="text-[10px]">לא מוגדר</Badge>
-            )}
-            {badgeLabel && <Badge variant="outline" className="text-[9px]">{badgeLabel}</Badge>}
-            {config && onDelete && (
-              <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={onDelete}>
-                <Trash2 className="h-3.5 w-3.5" />
-              </Button>
-            )}
+            <div className="flex items-center gap-2 me-2">
+              {connected ? (
+                <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700 border-emerald-300 hover:bg-emerald-500/20">
+                  <CheckCircle className="h-2.5 w-2.5 ml-1" />
+                  Connected
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="text-[10px] text-muted-foreground">
+                  <XCircle className="h-2.5 w-2.5 ml-1" />
+                  Disconnected
+                </Badge>
+              )}
+            </div>
           </div>
-        </div>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        {children}
-        <div className="flex gap-2">
-          <Button onClick={onSave} disabled={savingKey === savingId} className="flex-1" size="sm">
-            <Save className="h-4 w-4 ml-2" />
-            {savingKey === savingId ? 'שומר...' : saveLabel}
-          </Button>
-          <Button variant="outline" size="sm" onClick={onTest} disabled={testingService === testingId} className="gap-2">
-            {testingService === testingId ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-            {testLabel}
-          </Button>
-        </div>
-      </CardContent>
-    </Card>
-  );
+        </AccordionTrigger>
+        <AccordionContent className="px-4 pb-4 pt-2">
+          <div className="space-y-4">
+            {children}
+            <div className="flex gap-2 items-center">
+              <Button onClick={onSave} disabled={savingKey === savingId} className="flex-1" size="sm">
+                <Save className="h-4 w-4 ml-2" />
+                {savingKey === savingId ? 'שומר...' : saveLabel}
+              </Button>
+              <Button variant="outline" size="sm" onClick={onTest} disabled={testingService === testingId} className="gap-2">
+                {testingService === testingId ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                {testLabel}
+              </Button>
+              {config && onDelete && (
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0" onClick={onDelete}>
+                  <Trash2 className="h-3.5 w-3.5" />
+                </Button>
+              )}
+            </div>
+          </div>
+        </AccordionContent>
+      </AccordionItem>
+    );
+  };
 
   return (
     <div className="space-y-6" dir="rtl">
