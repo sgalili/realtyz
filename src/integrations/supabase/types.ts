@@ -233,6 +233,81 @@ export type Database = {
         }
         Relationships: []
       }
+      autopilot_queue: {
+        Row: {
+          attempts: number
+          campaign_id: string | null
+          created_at: string
+          id: string
+          last_error: string | null
+          lead_id: string
+          locked_at: string | null
+          locked_by: string | null
+          max_attempts: number
+          message_content: string
+          message_id: string | null
+          scheduled_at: string
+          sent_at: string | null
+          status: string
+          template_id: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          attempts?: number
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          lead_id: string
+          locked_at?: string | null
+          locked_by?: string | null
+          max_attempts?: number
+          message_content: string
+          message_id?: string | null
+          scheduled_at?: string
+          sent_at?: string | null
+          status?: string
+          template_id?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          attempts?: number
+          campaign_id?: string | null
+          created_at?: string
+          id?: string
+          last_error?: string | null
+          lead_id?: string
+          locked_at?: string | null
+          locked_by?: string | null
+          max_attempts?: number
+          message_content?: string
+          message_id?: string | null
+          scheduled_at?: string
+          sent_at?: string | null
+          status?: string
+          template_id?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "autopilot_queue_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "autopilot_queue_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "messages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       balance_adjustments: {
         Row: {
           amount: number
@@ -1879,6 +1954,34 @@ export type Database = {
         }
         Returns: number
       }
+      claim_autopilot_jobs: {
+        Args: { p_limit?: number; p_worker?: string }
+        Returns: {
+          attempts: number
+          campaign_id: string | null
+          created_at: string
+          id: string
+          last_error: string | null
+          lead_id: string
+          locked_at: string | null
+          locked_by: string | null
+          max_attempts: number
+          message_content: string
+          message_id: string | null
+          scheduled_at: string
+          sent_at: string | null
+          status: string
+          template_id: string | null
+          updated_at: string
+          user_id: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "autopilot_queue"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       cleanup_expired_whatsapp_login_otps: { Args: never; Returns: undefined }
       execute_readonly_query: { Args: { query_text: string }; Returns: Json }
       get_user_balance: {
@@ -1914,6 +2017,22 @@ export type Database = {
           similarity: number
         }[]
       }
+      queue_autopilot_messages: {
+        Args: {
+          p_campaign_id?: string
+          p_lead_ids: string[]
+          p_max_delay_sec?: number
+          p_message: string
+          p_min_delay_sec?: number
+          p_template_id?: string
+        }
+        Returns: {
+          first_scheduled_at: string
+          last_scheduled_at: string
+          queued_count: number
+        }[]
+      }
+      requeue_stuck_autopilot_jobs: { Args: never; Returns: number }
       trial_outbound_used: { Args: { _user_id: string }; Returns: number }
     }
     Enums: {
