@@ -1086,8 +1086,6 @@ const ApiSettings = () => {
       </ServiceCard>
 
       </Accordion>
-        </>
-      )}
     </div>
   );
 };
