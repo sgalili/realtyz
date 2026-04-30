@@ -668,7 +668,7 @@ const ApiSettings = () => {
     value: string; isConnected?: boolean; serviceKey: string; hideActions?: boolean;
   }) => {
     const connected = isConnected ?? !!config?.is_active;
-    const enabled = isServiceEnabled(serviceKey);
+    const enabled = isServiceEnabled(serviceKey, connected);
     return (
       <AccordionItem value={value} className="border border-border/50 bg-card overflow-hidden first:rounded-t-lg last:rounded-b-lg data-[state=open]:border-border/80 data-[state=open]:shadow-sm data-[state=open]:relative data-[state=open]:z-10">
         <div className="flex items-stretch">
@@ -677,7 +677,6 @@ const ApiSettings = () => {
               <Icon className={`h-5 w-5 shrink-0 ${iconColor} ${!enabled ? 'opacity-40' : ''}`} />
               <div className="flex flex-col items-start min-w-0">
                 <span className={`text-sm font-bold truncate ${!enabled ? 'text-muted-foreground' : ''}`}>{title}</span>
-                {badgeLabel && <span className="text-[10px] text-muted-foreground truncate">{badgeLabel}</span>}
               </div>
               <div className="me-auto flex items-center gap-2 ms-2">
                 <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
@@ -698,6 +697,17 @@ const ApiSettings = () => {
         {children && (
           <AccordionContent className="px-4 pb-4 pt-2">
             <div className="space-y-4">
+              <div className="flex items-center justify-between rounded-md border border-border/40 bg-muted/20 px-3 py-2">
+                <span className="text-xs font-medium text-muted-foreground">Status</span>
+                <div className="flex items-center gap-2">
+                  <span
+                    className={`h-2 w-2 rounded-full ${connected ? 'bg-emerald-500 shadow-[0_0_6px_hsl(var(--success))]' : 'bg-red-500'}`}
+                  />
+                  <span className={`text-xs font-medium ${connected ? 'text-emerald-600' : 'text-red-600'}`}>
+                    {connected ? 'Ready' : 'Not Configured'}
+                  </span>
+                </div>
+              </div>
               {children}
               {!hideActions && onSave && (
                 <div className="flex gap-2 items-center">
