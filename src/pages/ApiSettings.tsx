@@ -726,6 +726,80 @@ const ApiSettings = () => {
       </Card>
 
       {/* Service Cards */}
+
+      {/* Homely API */}
+      <Card className="border-border/50 hover:border-border/80 transition-colors">
+        <CardHeader className="pb-3">
+          <div className="flex items-center justify-between">
+            <CardTitle className="text-base flex items-center gap-2">
+              <div className="h-8 w-8 rounded-lg flex items-center justify-center bg-amber-500">
+                <Home className="h-4 w-4 text-white" />
+              </div>
+              Homely API
+            </CardTitle>
+            <div className="flex items-center gap-2">
+              {homelyHasKey ? (
+                <Badge className="text-[10px] bg-emerald-500/15 text-emerald-700 border-emerald-300">
+                  <Lock className="h-2.5 w-2.5 ml-1" />
+                  מוצפן ופעיל
+                </Badge>
+              ) : (
+                <Badge variant="secondary" className="text-[10px]">לא מוגדר</Badge>
+              )}
+              <Badge variant="outline" className="text-[9px]">Per-User Key</Badge>
+            </div>
+          </div>
+          <CardDescription className="text-xs mt-2">
+            מפתח אישי לחיבור לשירותי Homely. נשמר מוצפן עם RLS — רק את/ה יכול/ה לגשת אליו.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          {homelyHasKey && (
+            <div className="p-3 rounded-lg bg-muted/50 border border-border/30">
+              <KeyDisplay label="Homely API Key" value={homelyApiKey} id="homely_current" />
+            </div>
+          )}
+          <div className="space-y-2">
+            <Label className="text-xs">{homelyHasKey ? 'עדכון מפתח Homely' : 'מפתח Homely חדש'}</Label>
+            <div className="relative">
+              <Input
+                placeholder="הדבק את מפתח Homely API כאן..."
+                type={showKeys.homely ? 'text' : 'password'}
+                value={homelyApiKey}
+                onChange={(e) => setHomelyApiKey(e.target.value)}
+                dir="ltr"
+                className="pl-9"
+                autoComplete="off"
+              />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="absolute left-1 top-1/2 -translate-y-1/2 h-7 w-7"
+                onClick={() => setShowKeys((p) => ({ ...p, homely: !p.homely }))}
+              >
+                {showKeys.homely ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+              </Button>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={handleSaveHomely} disabled={savingKey === 'homely' || !homelyLoaded} className="flex-1" size="sm">
+              <Save className="h-4 w-4 ml-2" />
+              {savingKey === 'homely' ? 'שומר...' : (homelyHasKey ? 'עדכן מפתח' : 'שמור מפתח')}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleTestHomely}
+              disabled={testingService === 'homely'}
+              className="gap-2"
+            >
+              {testingService === 'homely' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+              בדיקת חיבור
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <ServiceCard
         title="Gemini AI"
         icon={Sparkles}
