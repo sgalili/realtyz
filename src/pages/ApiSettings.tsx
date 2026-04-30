@@ -669,13 +669,11 @@ const ApiSettings = () => {
     const connected = isConnected ?? !!config?.is_active;
     const enabled = isServiceEnabled(serviceKey);
     return (
-      <AccordionItem value={value} className="border border-border/50 rounded-lg overflow-hidden bg-card data-[state=open]:border-border/80 data-[state=open]:shadow-sm">
+      <AccordionItem value={value} className="border border-border/50 bg-card overflow-hidden first:rounded-t-lg last:rounded-b-lg data-[state=open]:border-border/80 data-[state=open]:shadow-sm data-[state=open]:relative data-[state=open]:z-10">
         <div className="flex items-stretch">
           <AccordionTrigger className="flex-1 px-4 py-3 hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20 [&>svg]:hidden">
             <div className="flex items-center gap-3 w-full">
-              <div className={`h-9 w-9 rounded-lg flex items-center justify-center bg-muted/50 shrink-0 transition-opacity ${!enabled ? 'opacity-50' : ''}`}>
-                <Icon className={`h-5 w-5 ${iconColor}`} />
-              </div>
+              <Icon className={`h-5 w-5 shrink-0 ${iconColor} ${!enabled ? 'opacity-40' : ''}`} />
               <div className="flex flex-col items-start min-w-0">
                 <span className={`text-sm font-bold truncate ${!enabled ? 'text-muted-foreground' : ''}`}>{title}</span>
                 {badgeLabel && <span className="text-[10px] text-muted-foreground truncate">{badgeLabel}</span>}
@@ -749,7 +747,7 @@ const ApiSettings = () => {
       </div>
 
       {/* Service Cards (Accordion) — unified list with per-service toggle */}
-      <Accordion type="multiple" className="space-y-3">
+      <Accordion type="multiple" className="-space-y-px">
 
       {/* AI Touchpoint (toggle-only) */}
       <ServiceCard
