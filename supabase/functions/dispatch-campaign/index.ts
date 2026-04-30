@@ -651,6 +651,7 @@ Deno.serve(async (req) => {
             waSession.apiToken,
             intl,
             personalized,
+            { supabaseUrl, serviceRoleKey: serviceKey, userId },
           );
       } else if (channel === "email") {
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient))
