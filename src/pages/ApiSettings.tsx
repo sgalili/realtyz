@@ -23,7 +23,8 @@ import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { format } from 'date-fns';
-import { ServiceTogglesPanel } from '@/components/ServiceTogglesPanel';
+import { useDemoGuard } from '@/hooks/useDemoGuard';
+import { ChevronDown, Phone, Send, Inbox as InboxIcon } from 'lucide-react';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 
 interface ApiConfig {
