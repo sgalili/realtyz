@@ -810,6 +810,7 @@ const ApiSettings = () => {
         testLabel="בדיקה בהמשך"
         savingId="meta"
         testingId="meta"
+        value="meta"
       >
         {existingMeta && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30">
