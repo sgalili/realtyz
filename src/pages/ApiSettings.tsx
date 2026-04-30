@@ -24,8 +24,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { format } from 'date-fns';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
-import { ChevronDown, Phone, Send, Inbox as InboxIcon } from 'lucide-react';
-import { useDemoGuard } from '@/hooks/useDemoGuard';
+import { ChevronDown } from 'lucide-react';
 
 interface ApiConfig {
   id: string;
