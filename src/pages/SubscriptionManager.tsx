@@ -725,7 +725,7 @@ function CalculatorBody() {
                 <div className="mb-2 flex items-center justify-between">
                   <span className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
                     <CalendarClock className="h-4 w-4 text-primary" />
-                    משך הקמפיין
+                    משך השירות
                   </span>
                   <span className="text-[12.5px] font-bold tabular-nums text-primary">{months} חודשים</span>
                 </div>
@@ -1057,7 +1057,7 @@ function CalculatorBody() {
               icon={<Users className="h-5 w-5" />}
               title="רישיונות סוכן"
               value={`${includedSeats} רישיונות`}
-              note="גישה מלאה לכל סוכן במשרד — CRM, Deal Room וחתימות"
+              note="גישה מלאה לכל סוכן במשרד — CRM, עסקאות וחתימות"
             />
             <ResourceFeatureCard
               icon={<MessageSquare className="h-5 w-5" />}

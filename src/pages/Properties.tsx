@@ -109,7 +109,7 @@ export default function Properties() {
             נכסים
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            קטלוג הנכסים מ-Homely. סננו לפי תקציב, אזור, סוג נכס וחדרים — ושלחו ישירות למועמדים.
+            קטלוג הנכסים מ-Homely. סננו לפי תקציב, אזור, סוג נכס וחדרים — ושלחו ישירות למתעניינים.
           </p>
         </div>
         <Badge variant="secondary" className="text-sm">
@@ -301,7 +301,7 @@ function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare
           </div>
           <Button size="sm" onClick={onShare} className="gap-1.5">
             <Send className="h-4 w-4" />
-            שתף עם מועמד
+            שתף עם מתעניין
           </Button>
         </div>
       </div>

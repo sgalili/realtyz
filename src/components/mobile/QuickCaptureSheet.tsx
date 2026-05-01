@@ -51,7 +51,7 @@ export function QuickCaptureSheet({ open, onOpenChange }: QuickCaptureSheetProps
         source_metadata: { tag: 'Agent Note', captured_via: 'quick-capture-mobile' },
       });
       if (error) throw error;
-      toast.success('ההערה נשמרה ב-Strategy Bank');
+      toast.success('ההערה נשמרה במאגר הידע');
       qc.invalidateQueries({ queryKey: ['kb-documents', user.id] });
       reset();
       onOpenChange(false);
@@ -75,7 +75,7 @@ export function QuickCaptureSheet({ open, onOpenChange }: QuickCaptureSheetProps
             לכידה מהירה
           </SheetTitle>
           <SheetDescription className="text-xs">
-            הוסף/י הערה מהשטח. תישמר ב-Strategy Bank תחת התגית "Agent Note".
+            הוסף/י הערה מהשטח. תישמר במאגר הידע תחת התגית "Agent Note".
           </SheetDescription>
         </SheetHeader>
 
@@ -117,7 +117,7 @@ export function QuickCaptureSheet({ open, onOpenChange }: QuickCaptureSheetProps
             onClick={handleSave}
             disabled={saving}
           >
-            {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : 'שמור ב-Strategy Bank'}
+            {saving ? <Loader2 className="h-5 w-5 animate-spin" /> : 'שמור במאגר הידע'}
           </Button>
         </SheetFooter>
       </SheetContent>
