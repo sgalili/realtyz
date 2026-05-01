@@ -765,6 +765,60 @@ export type Database = {
           },
         ]
       }
+      escalation_alerts: {
+        Row: {
+          acknowledged_at: string | null
+          channel: string
+          created_at: string
+          id: string
+          lead_id: string | null
+          metadata: Json
+          notification_result: Json
+          notified_agent: boolean
+          prospect_message: string
+          resolved_at: string | null
+          severity: string
+          status: string
+          trigger_category: string
+          trigger_keywords: string[]
+          user_id: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          channel?: string
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          metadata?: Json
+          notification_result?: Json
+          notified_agent?: boolean
+          prospect_message: string
+          resolved_at?: string | null
+          severity?: string
+          status?: string
+          trigger_category: string
+          trigger_keywords?: string[]
+          user_id: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          channel?: string
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          metadata?: Json
+          notification_result?: Json
+          notified_agent?: boolean
+          prospect_message?: string
+          resolved_at?: string | null
+          severity?: string
+          status?: string
+          trigger_category?: string
+          trigger_keywords?: string[]
+          user_id?: string
+        }
+        Relationships: []
+      }
       interaction_activity_log: {
         Row: {
           action_type: string
