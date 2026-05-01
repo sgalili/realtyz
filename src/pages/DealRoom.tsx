@@ -48,6 +48,7 @@ import { CallHistoryList } from '@/components/dealroom/CallHistoryList';
 import { PriorityScoreBadge } from '@/components/dealroom/PriorityScoreBadge';
 import { DealRoomComments } from '@/components/dealroom/DealRoomComments';
 import { ClosingRoomDialog } from '@/components/dealroom/ClosingRoomDialog';
+import { AiMessageFeedback } from '@/components/AiMessageFeedback';
 import { useUserRole } from '@/hooks/useUserRole';
 import {
   Select,
@@ -728,6 +729,14 @@ export default function DealRoom() {
                 <p className="text-[11px] text-muted-foreground leading-snug">
                   שום דבר לא נשלח למועמד עד שתלחץ <span className="font-medium text-foreground">אשר ושלח</span>.
                 </p>
+                {smartReply.trim() && (
+                  <AiMessageFeedback
+                    aiMessage={smartReply}
+                    surface="deal_room"
+                    leadId={activeProspect?.id ?? null}
+                    suggestionId={activeSuggestionId ?? null}
+                  />
+                )}
               </div>
             )}
 
