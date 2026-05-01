@@ -29,7 +29,7 @@ function hslTripletToHex(hsl: string | null | undefined): string {
 
 export default function WhiteLabelSettings() {
   const { user } = useAuth();
-  const { roles, loading: rolesLoading } = useUserRole();
+  const { roles, isLoading: rolesLoading } = useUserRole();
   const { settings, refresh } = useWhiteLabel();
   const { toast } = useToast();
   const navigate = useNavigate();
