@@ -201,9 +201,9 @@ Deno.serve(async (req) => {
     const code = body.code;
     const redirectUri = body.redirect_uri;
 
-    if (platform !== 'gmail' && platform !== 'youtube' && platform !== 'google_drive') {
+    if (platform !== 'gmail' && platform !== 'youtube' && platform !== 'google_drive' && platform !== 'google_calendar') {
       return new Response(
-        JSON.stringify({ error: 'platform must be "gmail", "youtube", or "google_drive"' }),
+        JSON.stringify({ error: 'platform must be "gmail", "youtube", "google_drive", or "google_calendar"' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
