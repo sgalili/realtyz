@@ -33,6 +33,14 @@ const NATIONAL_VOTES_PER_MANDATE = 38_000; // mirrors VOTES_PER_MANDATE
 const MESSAGES_PER_MANDATE_NATIONAL = 50_000; // WhatsApp/SMS monthly quota per transaction
 const MESSAGES_PER_SEAT_PRIMARIES = 3_500;   // WhatsApp/SMS monthly quota per seat
 
+// Real-estate conversion benchmark: how many active prospects in the pipeline
+// are typically required to close one deal. Used for the "Pipeline Health"
+// indicator on the dashboard target card.
+const ACTIVE_PROSPECTS_PER_DEAL = 70;
+// Lead stages that are considered closed/lost — excluded from the active
+// pipeline count.
+const CLOSED_STAGES = ['closed', 'won', 'lost', 'converted'];
+
 function formatNumber(n: number): string {
   return new Intl.NumberFormat('he-IL').format(Math.max(0, Math.round(n)));
 }
