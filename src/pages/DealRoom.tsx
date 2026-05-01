@@ -358,6 +358,12 @@ export default function DealRoom() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <ListingOutreachDialog
+        open={outreachOpen}
+        onOpenChange={setOutreachOpen}
+        defaultProspectId={outreachProspectId}
+      />
     </div>
   );
 }
