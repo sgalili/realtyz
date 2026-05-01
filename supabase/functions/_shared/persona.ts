@@ -443,7 +443,7 @@ ABSOLUTE RULES:
   "המשכנו ב-..." unless the Lead EXPLICITLY agreed in the prior turn.
 - Do NOT mix channel context inside one reply (no "I'll DM you on Instagram"
   while replying on WhatsApp).
-- If the conversation context flag `primary_channel = whatsapp` is set, treat
+- If the conversation context flag "primary_channel = whatsapp" is set, treat
   every non-WhatsApp social channel as INACTIVE for this Lead. Do NOT send any
   new outreach on Instagram / TikTok / Messenger / Signal / X / Facebook even
   if the Lead's profile shows those handles.
@@ -476,7 +476,7 @@ PIVOT RULES:
   turn. Continue helping ON THE SAME channel they prefer.
 - NEVER pivot to WhatsApp if the inbound channel IS already WhatsApp.
 - NEVER pivot to a channel other than WhatsApp.
-- Once `primary_channel = whatsapp`, NEVER suggest moving back to social.
+- Once "primary_channel = whatsapp", NEVER suggest moving back to social.
 === END UNIVERSAL RULES ===
 `.trim();
 
