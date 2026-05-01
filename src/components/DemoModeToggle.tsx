@@ -38,24 +38,23 @@ export function DemoModeToggle({ className, variant = 'pill' }: DemoModeTogglePr
 
   if (variant === 'hero') {
     return (
-      <button
-        type="button"
-        role="switch"
-        aria-checked={isDemoMode}
-        aria-label={titleText}
+      <span
+        className={cn('inline-flex items-center', className)}
+        dir="ltr"
         title={titleText}
-        onClick={() => setNext(!isDemoMode)}
-        className={cn(
-          'inline-flex h-9 select-none items-center justify-center rounded-full px-4 text-xs font-bold tracking-[0.18em] uppercase shadow-sm transition-colors duration-200',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary-foreground/60 focus-visible:ring-offset-2 focus-visible:ring-offset-primary',
-          isDemoMode
-            ? 'bg-success text-success-foreground hover:bg-success/90'
-            : 'bg-muted-foreground/30 text-primary-foreground hover:bg-muted-foreground/40',
-          className,
-        )}
+        aria-label={titleText}
       >
-        Demo
-      </button>
+        <Switch
+          checked={isDemoMode}
+          onCheckedChange={setNext}
+          aria-label="הפעל/כבה מצב דמו"
+          className={cn(
+            'h-6 w-11 [--switch-thumb-size:1.125rem] [--switch-thumb-translate:1.375rem]',
+            'data-[state=checked]:bg-success data-[state=unchecked]:bg-primary-foreground/25',
+            'border border-primary-foreground/30 shadow-sm',
+          )}
+        />
+      </span>
     );
   }
 
