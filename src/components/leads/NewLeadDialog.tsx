@@ -128,7 +128,6 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
         preferences,
         lead_stage: 'new',
         interest_tag: dealType === 'sale' ? 'דירה למכירה' : 'דירה להשכרה',
-        notes: notes.trim() || null,
       } as any);
       if (error) throw error;
       toast.success('הליד נוצר בהצלחה', {
