@@ -194,9 +194,21 @@ export default function DealRoom() {
             Pipeline view of every Prospect — drag intent into action.
           </p>
         </div>
-        <Badge variant="secondary" className="text-sm">
-          {leads?.length ?? 0} Prospects
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="text-sm">
+            {leads?.length ?? 0} Prospects
+          </Badge>
+          <Button
+            onClick={() => {
+              setOutreachProspectId(null);
+              setOutreachOpen(true);
+            }}
+            className="gap-1.5"
+          >
+            <Megaphone className="h-4 w-4" />
+            New Listing Outreach
+          </Button>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
