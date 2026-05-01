@@ -694,6 +694,8 @@ const ApiSettings = () => {
           onCheckedChange={(v) => toggleService.mutate({ key: serviceKey, enabled: v })}
           aria-label={`Toggle ${title}`}
         />
+        {/* Chevron spacer to keep vertical alignment with Section B accordion rows */}
+        <span className="w-4 shrink-0" aria-hidden="true" />
       </div>
     );
   };
