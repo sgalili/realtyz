@@ -47,6 +47,7 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 const Upgrade = lazy(() => import("./pages/Upgrade"));
 const DealRoom = lazy(() => import("./pages/DealRoom"));
 const PerformanceInsights = lazy(() => import("./pages/PerformanceInsights"));
+const BusinessPerformance = lazy(() => import("./pages/BusinessPerformance"));
 const AutomationStudioPage = lazy(() => import("./pages/AutomationStudioPage"));
 const Team = lazy(() => import("./pages/Team"));
 const SignDocument = lazy(() => import("./pages/SignDocument"));
