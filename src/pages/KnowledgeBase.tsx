@@ -177,12 +177,6 @@ export default function KnowledgeBase() {
           הזן מסמכים והודעות WhatsApp למוח של סוכן ה-AI. כל ידע מומר לווקטורים סמנטיים לחיפוש מדויק.
         </p>
       </div>
-      <div className="flex flex-wrap items-center justify-center gap-2">
-        <Button onClick={() => fileInputRef.current?.click()}>
-          <Plus className="h-4 w-4" /> הוסף מקור ידע חדש
-        </Button>
-      </div>
-
       {isDemoMode && (
         <>
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
