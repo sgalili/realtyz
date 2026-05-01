@@ -844,6 +844,58 @@ const ApiSettings = () => {
       {/* ── Usage Meter ── */}
       <UsageMeterPanel />
 
+      {/* ── Data Privacy ── */}
+      <Card dir="rtl">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <ShieldCheck className="h-5 w-5 text-primary" aria-hidden="true" />
+            פרטיות נתונים
+          </CardTitle>
+          <CardDescription>
+            מסכת PII אוטומטית ומחיקת היסטוריה לעמידה בדרישות GDPR ופרטיות בישראל.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-2">
+            <div className="flex items-start gap-2">
+              <Badge variant="outline" className="shrink-0">PII Mask</Badge>
+              <span className="text-muted-foreground">
+                ת.ז., כרטיסי אשראי, IBAN, אימיילים וטלפונים מוסתרים אוטומטית בכל
+                כתיבה לבנק האסטרטגיה (<code className="text-xs">knowledge_documents</code>),
+                להערות חדר העסקאות (<code className="text-xs">deal_room_comments</code>),
+                ולפני כל קריאה ל-AI.
+              </span>
+            </div>
+            <div className="flex items-start gap-2">
+              <Badge variant="outline" className="shrink-0">Audit</Badge>
+              <span className="text-muted-foreground">
+                כל ייצוא או מחיקה של מועמד נרשמים ביומן הביקורת הבלתי-ניתן-לעריכה.
+              </span>
+            </div>
+            <div className="flex items-start gap-2">
+              <Badge variant="outline" className="shrink-0">GDPR Delete</Badge>
+              <span className="text-muted-foreground">
+                "מחיקה לצמיתות" מוחקת את הליד וכל ההיסטוריה הקשורה (הודעות, צ'אטים,
+                שיחות, פגישות, התראות) ללא אפשרות שחזור.
+              </span>
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button asChild variant="default" size="sm">
+              <a href="/privacy">
+                <ShieldCheck className="h-4 w-4 ms-1.5" aria-hidden="true" />
+                פתח מרכז פרטיות ומחיקת מועמד
+              </a>
+            </Button>
+            <Button asChild variant="outline" size="sm">
+              <a href="/privacy">
+                ייצוא נתוני מועמד (GDPR)
+              </a>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* ── Section A: Platform Features ── */}
       <div className="space-y-2">
         <div>
