@@ -1,6 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { z } from "https://esm.sh/zod@3.25.76";
+import {
+  COMPLIANCE_PROMPT,
+  factCheckDraft,
+  renderListingFacts,
+  type ListingFact,
+} from "../_shared/guardrails.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -122,11 +128,26 @@ serve(async (req) => {
       sms: "Max 320 chars Hebrew. Single message, one CTA, no emojis.",
     };
 
+    // Compliance: inject the verified listing facts and forbidden-topic block.
+    const factListing: ListingFact[] = [
+      {
+        id: String(listing_id),
+        property_title: listing.title,
+        asking_price: listing.price == null ? null : Number(listing.price),
+      },
+    ];
+    const compliance = COMPLIANCE_PROMPT.replace(
+      "{{LISTING_FACTS}}",
+      renderListingFacts(factListing),
+    );
+
     const systemPrompt = `You are an elite Israeli real-estate Agent's writing assistant for Realtyz AI.
 Write a personalized outreach in Hebrew that introduces a specific listing to a specific Prospect.
 Match the Prospect's interests and city. Never invent facts not present in the listing data.
 Channel format: ${channel.toUpperCase()} — ${channelGuide[channel]}
-Output JSON ONLY via the provided tool — no extra text.`;
+Output JSON ONLY via the provided tool — no extra text.
+
+${compliance}`;
 
     const prospectBlock = JSON.stringify(
       {
