@@ -55,6 +55,7 @@ const Properties = lazy(() => import("./pages/Properties"));
 const PropertyDetail = lazy(() => import("./pages/PropertyDetail"));
 const WhiteLabelSettings = lazy(() => import("./pages/WhiteLabelSettings"));
 const SystemHealth = lazy(() => import("./pages/SystemHealth"));
+const SharedDeals = lazy(() => import("./pages/SharedDeals"));
 
 
 let syncToastId: string | number | undefined;
