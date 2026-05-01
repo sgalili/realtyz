@@ -814,6 +814,9 @@ const LeadCRM = () => {
             <Button variant="outline" size="sm" className="gap-1.5 h-8 shrink-0" onClick={() => handleExportExcel('filtered')}>
               <FileSpreadsheet className="h-3.5 w-3.5" /> ייצוא
             </Button>
+            <Button size="sm" className="gap-1.5 h-8 shrink-0" onClick={() => setNewLeadOpen(true)}>
+              <UserPlus className="h-3.5 w-3.5" /> ליד חדש
+            </Button>
           </div>}
         </CardHeader>
         {selectedIds.size > 0 && (
