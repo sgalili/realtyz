@@ -910,6 +910,33 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_room_comments: {
+        Row: {
+          author_email: string | null
+          author_id: string
+          body: string
+          created_at: string
+          id: string
+          lead_id: string
+        }
+        Insert: {
+          author_email?: string | null
+          author_id: string
+          body: string
+          created_at?: string
+          id?: string
+          lead_id: string
+        }
+        Update: {
+          author_email?: string | null
+          author_id?: string
+          body?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+        }
+        Relationships: []
+      }
       demo_captured_leads: {
         Row: {
           archetype: string | null
@@ -2234,6 +2261,39 @@ export type Database = {
         }
         Relationships: []
       }
+      team_invitations: {
+        Row: {
+          accepted_at: string | null
+          accepted_by: string | null
+          created_at: string
+          email: string
+          id: string
+          invited_by: string
+          role: Database["public"]["Enums"]["app_role"]
+          status: string
+        }
+        Insert: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email: string
+          id?: string
+          invited_by: string
+          role: Database["public"]["Enums"]["app_role"]
+          status?: string
+        }
+        Update: {
+          accepted_at?: string | null
+          accepted_by?: string | null
+          created_at?: string
+          email?: string
+          id?: string
+          invited_by?: string
+          role?: Database["public"]["Enums"]["app_role"]
+          status?: string
+        }
+        Relationships: []
+      }
       test_logs: {
         Row: {
           blast_name: string
@@ -2638,6 +2698,8 @@ export type Database = {
         }
         Returns: number
       }
+      can_close_deal: { Args: { _user_id: string }; Returns: boolean }
+      can_manage_data: { Args: { _user_id: string }; Returns: boolean }
       claim_autopilot_jobs: {
         Args: { p_limit?: number; p_worker?: string }
         Returns: {
@@ -2698,6 +2760,7 @@ export type Database = {
       }
       is_admin_or_above: { Args: { _uid: string }; Returns: boolean }
       is_on_trial_plan: { Args: { _user_id: string }; Returns: boolean }
+      is_team_member: { Args: { _user_id: string }; Returns: boolean }
       is_trial_active: { Args: { _user_id: string }; Returns: boolean }
       listing_embedding_text: {
         Args: { l: Database["public"]["Tables"]["listings"]["Row"] }
@@ -2752,7 +2815,14 @@ export type Database = {
       trial_outbound_used: { Args: { _user_id: string }; Returns: number }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user" | "super_admin"
+      app_role:
+        | "admin"
+        | "moderator"
+        | "user"
+        | "super_admin"
+        | "agent"
+        | "assistant"
+        | "junior_agent"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2880,7 +2950,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "user", "super_admin"],
+      app_role: [
+        "admin",
+        "moderator",
+        "user",
+        "super_admin",
+        "agent",
+        "assistant",
+        "junior_agent",
+      ],
     },
   },
 } as const

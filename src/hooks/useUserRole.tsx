@@ -3,7 +3,14 @@ import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
-export type AppRole = 'admin' | 'moderator' | 'user' | 'super_admin';
+export type AppRole =
+  | 'admin'
+  | 'moderator'
+  | 'user'
+  | 'super_admin'
+  | 'agent'
+  | 'assistant'
+  | 'junior_agent';
 
 // Hardcoded super-admin override - bypasses any state delays.
 const SUPER_ADMIN_EMAILS = ['sgalili@gmail.com'];
@@ -40,5 +47,32 @@ export function useUserRole() {
   const isAdmin = roles.includes('admin') || isSuperAdmin;
   const isModerator = roles.includes('moderator') || isAdmin;
 
-  return { roles, isAdmin, isSuperAdmin, isModerator, loading: isLoading };
+  // --- Team collaboration roles ---
+  const isAgent = roles.includes('agent') || isAdmin;
+  const isAssistant = roles.includes('assistant');
+  const isJuniorAgent = roles.includes('junior_agent');
+  const isTeamMember = isAgent || isAssistant || isJuniorAgent || isAdmin;
+
+  // --- Permissions ---
+  // Only Agents (and Admin/Super Admin) can close deals or approve contract changes.
+  const canCloseDeals = isAgent;
+  // Assistants and Junior Agents handle data ingestion + tasks.
+  const canManageData = isTeamMember;
+  // Only the workspace owner / admin can invite teammates.
+  const canInviteTeam = isAdmin;
+
+  return {
+    roles,
+    isAdmin,
+    isSuperAdmin,
+    isModerator,
+    isAgent,
+    isAssistant,
+    isJuniorAgent,
+    isTeamMember,
+    canCloseDeals,
+    canManageData,
+    canInviteTeam,
+    loading: isLoading,
+  };
 }

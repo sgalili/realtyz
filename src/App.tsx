@@ -46,6 +46,7 @@ const Upgrade = lazy(() => import("./pages/Upgrade"));
 const DealRoom = lazy(() => import("./pages/DealRoom"));
 const PerformanceInsights = lazy(() => import("./pages/PerformanceInsights"));
 const AutomationStudioPage = lazy(() => import("./pages/AutomationStudioPage"));
+const Team = lazy(() => import("./pages/Team"));
 
 
 let syncToastId: string | number | undefined;
@@ -172,6 +173,7 @@ const App = () => (
               <Route path="/super-admin" element={<SuperAdminRoute><SuperAdmin /></SuperAdminRoute>} />
               <Route path="/finance" element={<ProtectedRoute allowGuestDemo><Finance /></ProtectedRoute>} />
               <Route path="/knowledge" element={<ProtectedRoute allowGuestDemo><KnowledgeBase /></ProtectedRoute>} />
+              <Route path="/team" element={<ProtectedRoute><Team /></ProtectedRoute>} />
               <Route path="/upgrade" element={<ProtectedRoute allowGuestDemo><Upgrade /></ProtectedRoute>} />
               <Route path="/pricing" element={<Navigate to="/upgrade" replace />} />
               <Route path="/contact" element={<Suspense fallback={<PageLoader />}><ContactForm /></Suspense>} />
