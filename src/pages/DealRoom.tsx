@@ -426,7 +426,7 @@ export default function DealRoom() {
                     className="gap-1.5 border-primary/30 bg-primary/5 text-primary font-normal"
                   >
                     <ShieldCheck className="h-3 w-3" />
-                    AI Draft — awaiting approval
+                    {activeSuggestionId ? 'AI Generated Suggestion — awaiting approval' : 'AI Draft — awaiting approval'}
                   </Badge>
                   {draftMode === 'editing' && (
                     <span className="text-[11px] text-muted-foreground">Editing</span>
