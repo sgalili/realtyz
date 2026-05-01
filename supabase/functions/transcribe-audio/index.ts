@@ -2,6 +2,7 @@
 // Accepts { audio_data_url: string, mime_type?: string, language?: string }
 // Returns { text: string }
 import { z } from "https://esm.sh/zod@3.25.76";
+import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
