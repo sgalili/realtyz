@@ -51,6 +51,7 @@ import { DealRoomComments } from '@/components/dealroom/DealRoomComments';
 import { OutcomePicker, OutcomeBadge } from '@/components/dealroom/OutcomePicker';
 import { ClosingRoomDialog } from '@/components/dealroom/ClosingRoomDialog';
 import { AiMessageFeedback } from '@/components/AiMessageFeedback';
+import { ReferralButton } from '@/components/referrals/ReferralButton';
 import { useUserRole } from '@/hooks/useUserRole';
 import {
   Select,
@@ -643,6 +644,14 @@ export default function DealRoom() {
                           <Megaphone className="h-4 w-4 text-warning" />
                           פנייה
                         </Button>
+                        <ReferralButton
+                          subject={{
+                            kind: 'lead',
+                            id: p.id,
+                            label: `${p.full_name ?? 'מתעניין'}${p.city ? ' · ' + p.city : ''}`,
+                          }}
+                          className="h-11 sm:h-9 text-xs"
+                        />
                       </div>
                       <div className="mt-2 flex items-center gap-2">
                         <span className="text-[11px] text-muted-foreground shrink-0">תוצאה</span>

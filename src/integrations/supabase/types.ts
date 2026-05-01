@@ -546,6 +546,92 @@ export type Database = {
           },
         ]
       }
+      broker_referrals: {
+        Row: {
+          channel: string
+          closed_at: string | null
+          commission_split_pct: number | null
+          created_at: string
+          delivery_meta: Json
+          delivery_status: string
+          direction: string
+          id: string
+          lead_id: string | null
+          listing_id: string | null
+          message_body: string | null
+          notes: string | null
+          partner_broker_id: string | null
+          partner_email: string | null
+          partner_name: string
+          partner_phone: string | null
+          recipient_user_id: string | null
+          responded_at: string | null
+          sender_user_id: string
+          status: string
+          subject_kind: string
+          subject_label: string
+          updated_at: string
+        }
+        Insert: {
+          channel?: string
+          closed_at?: string | null
+          commission_split_pct?: number | null
+          created_at?: string
+          delivery_meta?: Json
+          delivery_status?: string
+          direction: string
+          id?: string
+          lead_id?: string | null
+          listing_id?: string | null
+          message_body?: string | null
+          notes?: string | null
+          partner_broker_id?: string | null
+          partner_email?: string | null
+          partner_name: string
+          partner_phone?: string | null
+          recipient_user_id?: string | null
+          responded_at?: string | null
+          sender_user_id: string
+          status?: string
+          subject_kind: string
+          subject_label: string
+          updated_at?: string
+        }
+        Update: {
+          channel?: string
+          closed_at?: string | null
+          commission_split_pct?: number | null
+          created_at?: string
+          delivery_meta?: Json
+          delivery_status?: string
+          direction?: string
+          id?: string
+          lead_id?: string | null
+          listing_id?: string | null
+          message_body?: string | null
+          notes?: string | null
+          partner_broker_id?: string | null
+          partner_email?: string | null
+          partner_name?: string
+          partner_phone?: string | null
+          recipient_user_id?: string | null
+          responded_at?: string | null
+          sender_user_id?: string
+          status?: string
+          subject_kind?: string
+          subject_label?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "broker_referrals_partner_broker_id_fkey"
+            columns: ["partner_broker_id"]
+            isOneToOne: false
+            referencedRelation: "partner_brokers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       budget_limits: {
         Row: {
           created_at: string
@@ -2111,6 +2197,45 @@ export type Database = {
           trigger_type?: string
           updated_at?: string
           used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      partner_brokers: {
+        Row: {
+          agency: string | null
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          phone: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agency?: string | null
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agency?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          phone?: string | null
+          updated_at?: string
           user_id?: string
         }
         Relationships: []

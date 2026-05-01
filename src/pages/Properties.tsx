@@ -28,6 +28,7 @@ import {
   type ListingType,
 } from '@/lib/homelyMockProperties';
 import { ShareWithLeadDialog } from '@/components/properties/ShareWithLeadDialog';
+import { ReferralButton } from '@/components/referrals/ReferralButton';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
 import { isInServiceArea } from '@/lib/serviceAreas';
@@ -351,15 +352,24 @@ function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare
           ) : null}
         </div>
 
-        <div className="flex items-center justify-between mt-auto pt-2 border-t">
+        <div className="flex items-center justify-between mt-auto pt-2 border-t gap-2 flex-wrap">
           <div className="text-lg font-bold text-success inline-flex items-center gap-1">
             <Building2 className="h-4 w-4 opacity-60" />
             {formatPrice(property.price)}{isRent ? <span className="text-xs font-normal text-muted-foreground">/חודש</span> : null}
           </div>
-          <Button size="sm" onClick={onShare} className="gap-1.5">
-            <Send className="h-4 w-4" />
-            שתף עם מתעניין
-          </Button>
+          <div className="flex items-center gap-1.5">
+            <ReferralButton
+              subject={{
+                kind: 'listing',
+                id: property.id,
+                label: `${property.title}${property.city ? ' · ' + property.city : ''} · ${formatPrice(property.price)}`,
+              }}
+            />
+            <Button size="sm" onClick={onShare} className="gap-1.5">
+              <Send className="h-4 w-4" />
+              שתף
+            </Button>
+          </div>
         </div>
       </div>
     </Card>
