@@ -366,6 +366,9 @@ const Dashboard = () => {
         </Card>
       </div>
 
+      {/* AI-detected pending listings */}
+      <PendingListingsCard />
+
       {/* Market Alerts */}
       <Card>
         <CardHeader>
