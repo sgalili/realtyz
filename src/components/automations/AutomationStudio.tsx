@@ -177,14 +177,15 @@ export function AutomationStudio() {
   });
 
   function applyTemplate(t: typeof TEMPLATES[number]) {
+    const base = emptyDraft();
     setDraft({
+      ...base,
       name: t.name,
       description: t.description,
       trigger_type: t.trigger_type,
       action_type: t.action_type,
-      is_enabled: true,
       template_key: t.key,
-      action_config: { ...emptyDraft().action_config, ...t.action_config },
+      action_config: { ...base.action_config, ...(t.action_config as any) },
     });
     setOpen(true);
   }
