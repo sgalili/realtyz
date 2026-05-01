@@ -39,6 +39,7 @@ function formatPrice(n: number) {
 }
 
 export default function Properties() {
+  const [listingType, setListingType] = useState<ListingType>('sale');
   const [city, setCity] = useState<string>('כל הערים');
   const [propertyType, setPropertyType] = useState<PropertyType | 'all'>('all');
   const [rooms, setRooms] = useState<string>('any');
