@@ -28,6 +28,7 @@ import { Label } from '@/components/ui/label';
 import { DeliverySettings } from '@/components/DeliverySettings';
 import { motion, AnimatePresence } from 'framer-motion';
 import { BrandIcon } from '@/components/BrandIcon';
+import UndoLastAiMessage from '@/components/inbox/UndoLastAiMessage';
 
 const ACCEPTED_ATTACHMENT_TYPES = [
   'image/jpeg', 'image/png', 'image/webp', 'image/gif',
@@ -257,6 +258,26 @@ const OmnichannelInbox = () => {
   }, [isDemoMode, selectedVoterId, dbChatMessages, demoMessages]);
 
   const selectedVoter = voters?.find((v) => v.id === selectedVoterId);
+
+  // The latest outbound AI/agent message in the current thread is the only one
+  // eligible for "Undo & Regenerate". This keeps the affordance focused on the
+  // most recent automated reply that Udi might want to retract.
+  const lastAiMessageId = useMemo(() => {
+    if (!chatMessages?.length) return null;
+    const FIVE_MIN = 5 * 60 * 1000;
+    for (let i = chatMessages.length - 1; i >= 0; i--) {
+      const m: any = chatMessages[i];
+      const isOutbound = m.direction === 'outbound';
+      const isAi = m.sender_type === 'ai' || m.sender_type === 'ai_agent' || m.ai_assisted === true;
+      const fresh = m.created_at && Date.now() - new Date(m.created_at).getTime() < FIVE_MIN;
+      // Only allow undo on demo/non-demo real DB rows (uuid id), not synthetic demo entries.
+      const realRow = typeof m.id === 'string' && /^[0-9a-f-]{36}$/i.test(m.id);
+      if (isOutbound && isAi && fresh && realRow) return m.id as string;
+      if (isOutbound && !isAi) return null; // a human reply already followed
+      if (!isOutbound) return null;          // lead replied — too late to undo
+    }
+    return null;
+  }, [chatMessages]);
 
   const sendMessage = useMutation({
     mutationFn: async ({ content, file }: { content: string; file: File | null }) => {
@@ -490,6 +511,20 @@ const OmnichannelInbox = () => {
                             />
                           )}
                           <div className={`relative min-w-0 max-w-[78%] rounded-lg px-3 py-2 shadow-sm sm:max-w-[72%] ${isOutbound ? 'bg-whatsapp-bubble-out text-foreground rounded-es-sm' : 'bg-whatsapp-bubble-in text-foreground rounded-ee-sm'}`}>
+                            {msg.id === lastAiMessageId && selectedVoterId && (
+                              <UndoLastAiMessage
+                                messageId={msg.id as string}
+                                leadId={selectedVoterId}
+                                leadName={selectedVoter?.full_name ?? null}
+                                leadCity={(selectedVoter as any)?.city ?? null}
+                                leadStage={(selectedVoter as any)?.lead_stage ?? null}
+                                onRegenerated={(draft) => setNewMessage(draft)}
+                                onDeleted={() => {
+                                  queryClient.invalidateQueries({ queryKey: ['chat-messages', selectedVoterId] });
+                                  queryClient.invalidateQueries({ queryKey: ['last-messages'] });
+                                }}
+                              />
+                            )}
                             <div className="mb-1 flex items-center justify-end gap-1.5">
                               <Badge variant="outline" className={`px-1 py-0 text-[9px] border ${badge.className}`}>
                                 {badge.label}

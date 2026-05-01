@@ -24,7 +24,7 @@ type ApprovalItem = {
   status: string;
   confidence_score: number;
   low_confidence_reason: string | null;
-  target_voter_id: string | null;
+  target_lead_id?: string | null;
   target_label: string | null;
   source_citations: Array<{ title?: string; url?: string }> | null;
   live_post_url: string | null;
@@ -90,9 +90,9 @@ export default function ApprovalQueue() {
   const publishItem = useMutation({
     mutationFn: async (item: ApprovalItem) => {
       const content = item.edited_content || item.proposed_content;
-      if (item.content_type === 'outbound_message' && item.target_voter_id) {
+      if (item.content_type === 'outbound_message' && item.target_lead_id) {
         const { error: messageError } = await supabase.from('messages').insert({
-          lead_id: item.target_voter_id,
+          lead_id: item.target_lead_id,
           content,
           direction: 'outbound',
           sender_type: 'supervisor',
@@ -103,7 +103,7 @@ export default function ApprovalQueue() {
       }
       const { error: logError } = await (supabase as any).from('interaction_activity_log').insert({
         user_id: user!.id,
-        thread_key: item.target_voter_id || `${item.platform}-${item.id}`,
+        thread_key: item.target_lead_id || `${item.platform}-${item.id}`,
         platform: item.platform,
         action_type: item.content_type,
         actor_type: 'supervisor',

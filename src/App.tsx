@@ -171,6 +171,7 @@ const App = () => (
               <Route path="/campaign-strategy" element={<Navigate to="/campaigns?tab=strategy" replace />} />
               <Route path="/approval-queue" element={<Navigate to="/campaigns?tab=approvals" replace />} />
               <Route path="/activity-log" element={<ProtectedRoute allowGuestDemo><ActivityLog /></ProtectedRoute>} />
+              <Route path="/logs" element={<Navigate to="/activity-log" replace />} />
               <Route path="/calendar" element={<Navigate to="/campaigns?tab=calendar" replace />} />
               <Route path="/sentiment" element={<ProtectedRoute allowGuestDemo><SentimentDashboard /></ProtectedRoute>} />
               <Route path="/subscription" element={<ProtectedRoute allowGuestDemo><SubscriptionManager /></ProtectedRoute>} />
