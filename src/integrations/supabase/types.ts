@@ -2752,7 +2752,14 @@ export type Database = {
       trial_outbound_used: { Args: { _user_id: string }; Returns: number }
     }
     Enums: {
-      app_role: "admin" | "moderator" | "user" | "super_admin"
+      app_role:
+        | "admin"
+        | "moderator"
+        | "user"
+        | "super_admin"
+        | "agent"
+        | "assistant"
+        | "junior_agent"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2880,7 +2887,15 @@ export type CompositeTypes<
 export const Constants = {
   public: {
     Enums: {
-      app_role: ["admin", "moderator", "user", "super_admin"],
+      app_role: [
+        "admin",
+        "moderator",
+        "user",
+        "super_admin",
+        "agent",
+        "assistant",
+        "junior_agent",
+      ],
     },
   },
 } as const
