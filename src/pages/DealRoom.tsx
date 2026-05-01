@@ -25,6 +25,9 @@ import {
   MessageSquare,
   Database,
   PenLine,
+  Pencil,
+  Check,
+  ShieldCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -110,6 +113,9 @@ export default function DealRoom() {
   const [smartReply, setSmartReply] = useState<string>('');
   const [generating, setGenerating] = useState(false);
   const [genPhase, setGenPhase] = useState<'idle' | 'searching' | 'drafting'>('idle');
+  // Human-in-the-loop draft lifecycle: review (read-only AI draft) → editing → sending → sent
+  const [draftMode, setDraftMode] = useState<'review' | 'editing'>('review');
+  const [sending, setSending] = useState(false);
 
   const { data: leads, isLoading } = useQuery({
     queryKey: ['deal-room-prospects'],
@@ -141,6 +147,7 @@ export default function DealRoom() {
   async function openSmartReply(prospect: Lead) {
     setActiveProspect(prospect);
     setSmartReply('');
+    setDraftMode('review');
     setGenerating(true);
     setGenPhase('searching');
     // Flip the status to "drafting" shortly after kick-off so the Agent sees both phases
@@ -169,23 +176,37 @@ export default function DealRoom() {
     }
   }
 
-  async function sendReply() {
-    if (!activeProspect || !smartReply.trim()) return;
+  // Human-in-the-loop: only fires WhatsApp after the Agent explicitly approves the draft.
+  async function approveAndSend() {
+    if (!activeProspect || !smartReply.trim() || sending) return;
+    setSending(true);
     try {
-      const { error } = await supabase.from('messages').insert({
-        lead_id: activeProspect.id,
-        direction: 'outbound',
-        sender_type: 'agent',
-        content: smartReply.trim(),
-        channel: 'whatsapp',
-        platform: 'whatsapp',
+      // Route through the unified send-whatsapp gateway (WBA → GreenAPI fallback).
+      // The gateway resolves the recipient phone from lead_id and inserts the
+      // outbound row into `messages` on success — that becomes the Deal Room history entry.
+      const { data, error } = await supabase.functions.invoke('send-whatsapp', {
+        body: {
+          lead_id: activeProspect.id,
+          body: smartReply.trim(),
+        },
       });
       if (error) throw error;
-      toast.success('Reply sent to Prospect');
+      const ok = (data as any)?.ok ?? (data as any)?.success ?? true;
+      if (!ok) {
+        const reason = (data as any)?.error || 'WhatsApp gateway rejected the message';
+        throw new Error(reason);
+      }
+      toast.success('Reply approved & sent', {
+        description: `WhatsApp delivered to ${activeProspect.full_name || 'Prospect'}`,
+      });
       setActiveProspect(null);
+      // Refresh both the Kanban (last_interaction_at) and any open chat history.
       queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
+      queryClient.invalidateQueries({ queryKey: ['messages', activeProspect.id] });
     } catch (err: any) {
       toast.error('Failed to send reply', { description: err?.message });
+    } finally {
+      setSending(false);
     }
   }
 
@@ -327,7 +348,7 @@ export default function DealRoom() {
             </SheetDescription>
           </SheetHeader>
 
-          <div className="flex-1 mt-4 space-y-3">
+          <div className="flex-1 mt-4 space-y-3 overflow-y-auto">
             {generating ? (
               <div className="space-y-3">
                 <div
@@ -353,33 +374,95 @@ export default function DealRoom() {
                 <Skeleton className="h-4 w-10/12" />
               </div>
             ) : (
-              <textarea
-                value={smartReply}
-                onChange={(e) => setSmartReply(e.target.value)}
-                rows={10}
-                className="w-full rounded-md border bg-background p-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-                placeholder="Your Smart Reply will appear here..."
-              />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Badge
+                    variant="outline"
+                    className="gap-1.5 border-primary/30 bg-primary/5 text-primary font-normal"
+                  >
+                    <ShieldCheck className="h-3 w-3" />
+                    AI Draft — awaiting approval
+                  </Badge>
+                  {draftMode === 'editing' && (
+                    <span className="text-[11px] text-muted-foreground">Editing</span>
+                  )}
+                </div>
+                {draftMode === 'review' ? (
+                  <div
+                    className="w-full rounded-md border-2 border-dashed border-primary/30 bg-primary/[0.03] p-3 text-sm leading-relaxed whitespace-pre-wrap min-h-[14rem]"
+                    aria-label="AI-generated draft reply, read-only until edited"
+                  >
+                    {smartReply || (
+                      <span className="text-muted-foreground italic">
+                        Your Smart Reply will appear here…
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <textarea
+                    value={smartReply}
+                    onChange={(e) => setSmartReply(e.target.value)}
+                    rows={10}
+                    autoFocus
+                    className="w-full rounded-md border-2 border-primary/40 bg-background p-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                    placeholder="Edit your reply…"
+                  />
+                )}
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  Nothing is sent to the Prospect until you click <span className="font-medium text-foreground">Approve &amp; Send</span>.
+                </p>
+              </div>
             )}
           </div>
 
-          <div className="flex items-center gap-2 pt-4 border-t">
+          <div className="flex flex-col gap-2 pt-4 border-t">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                disabled={generating || sending || !smartReply.trim()}
+                onClick={() => setDraftMode((m) => (m === 'editing' ? 'review' : 'editing'))}
+              >
+                {draftMode === 'editing' ? (
+                  <>
+                    <Check className="h-4 w-4 mr-1.5" />
+                    Done editing
+                  </>
+                ) : (
+                  <>
+                    <Pencil className="h-4 w-4 mr-1.5" />
+                    Edit
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                disabled={generating || sending}
+                onClick={() => activeProspect && openSmartReply(activeProspect)}
+              >
+                <Sparkles className="h-4 w-4 mr-1.5" />
+                Regenerate
+              </Button>
+            </div>
             <Button
-              variant="outline"
-              className="flex-1"
-              disabled={generating}
-              onClick={() => activeProspect && openSmartReply(activeProspect)}
+              className="w-full"
+              disabled={!smartReply.trim() || generating || sending}
+              onClick={approveAndSend}
             >
-              <Sparkles className="h-4 w-4 mr-1.5" />
-              Regenerate
-            </Button>
-            <Button
-              className="flex-1"
-              disabled={!smartReply.trim() || generating}
-              onClick={sendReply}
-            >
-              <Send className="h-4 w-4 mr-1.5" />
-              Send
+              {sending ? (
+                <>
+                  <Send className="h-4 w-4 mr-1.5 animate-pulse" />
+                  Sending via WhatsApp…
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-1.5" />
+                  Approve &amp; Send
+                </>
+              )}
             </Button>
           </div>
         </SheetContent>
