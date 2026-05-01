@@ -668,7 +668,21 @@ export default function DealRoom() {
                           value={p.interaction_outcome ?? null}
                         />
                       </div>
-                      {['negotiation', 'awaiting_signature', 'closed'].includes(bucketFor(p.lead_stage)) && (
+                      {/* Commission tracker — admin/broker monetization signal */}
+                      <div className="mt-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 text-xs gap-1 px-2 text-muted-foreground hover:text-primary"
+                          onClick={() => setCommissionLead(p)}
+                        >
+                          <Wallet className="h-3.5 w-3.5" />
+                          {p.commission_amount != null && p.commission_amount > 0
+                            ? `עמלה: ₪${Number(p.commission_amount).toLocaleString('he-IL')}`
+                            : 'הוסף עמלה צפויה'}
+                        </Button>
+                      </div>
+                      {settings.enable_client_portal && ['negotiation', 'awaiting_signature', 'closed'].includes(bucketFor(p.lead_stage)) && (
                         <div className="mt-2">
                           <ClientPortalShareButton
                             leadId={p.id}
