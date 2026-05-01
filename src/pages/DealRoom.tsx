@@ -53,6 +53,9 @@ import { ClosingRoomDialog } from '@/components/dealroom/ClosingRoomDialog';
 import { AiMessageFeedback } from '@/components/AiMessageFeedback';
 import { ReferralButton } from '@/components/referrals/ReferralButton';
 import ClientPortalShareButton from '@/components/dealroom/ClientPortalShareButton';
+import { CommissionEditor } from '@/components/dealroom/CommissionEditor';
+import { usePlatformSettings } from '@/hooks/usePlatformSettings';
+import { Wallet } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
 import {
   Select,
@@ -90,6 +93,8 @@ type Lead = {
   deal_type?: DealType | null;
   preferences?: Record<string, unknown> | null;
   interaction_outcome?: import('@/components/dealroom/OutcomePicker').InteractionOutcome | null;
+  commission_amount?: number | null;
+  expected_close_date?: string | null;
 };
 
 type SortMode = 'recent' | 'priority';
@@ -172,6 +177,8 @@ export default function DealRoom() {
   // When the Smart Reply was pre-filled by the matchmaker we keep the snippet
   // so the agent sees the property card pinned to the chat preview.
   const [pinnedProperty, setPinnedProperty] = useState<PropertyResult | null>(null);
+  const [commissionLead, setCommissionLead] = useState<Lead | null>(null);
+  const { settings } = usePlatformSettings();
   const [sortMode, setSortMode] = useState<SortMode>('recent');
   // Hard pipeline separation — only one of {sale, rent} is visible at a time.
   // Persists in the URL so deep links + refresh keep the agent on the right view.
@@ -241,7 +248,7 @@ export default function DealRoom() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')
-        .select('id, full_name, phone_number, lead_stage, last_interaction_at, profile_picture_url, city, interest_tag, priority_score, priority_score_components, previous_priority_score, assigned_to, deal_type, preferences, interaction_outcome')
+        .select('id, full_name, phone_number, lead_stage, last_interaction_at, profile_picture_url, city, interest_tag, priority_score, priority_score_components, previous_priority_score, assigned_to, deal_type, preferences, interaction_outcome, commission_amount, expected_close_date')
         .eq('is_demo', false)
         .order('last_interaction_at', { ascending: false, nullsFirst: false })
         .limit(500);
@@ -645,14 +652,16 @@ export default function DealRoom() {
                           <Megaphone className="h-4 w-4 text-warning" />
                           פנייה
                         </Button>
-                        <ReferralButton
-                          subject={{
-                            kind: 'lead',
-                            id: p.id,
-                            label: `${p.full_name ?? 'מתעניין'}${p.city ? ' · ' + p.city : ''}`,
-                          }}
-                          className="h-11 sm:h-9 text-xs"
-                        />
+                        {settings.enable_broker_referrals && (
+                          <ReferralButton
+                            subject={{
+                              kind: 'lead',
+                              id: p.id,
+                              label: `${p.full_name ?? 'מתעניין'}${p.city ? ' · ' + p.city : ''}`,
+                            }}
+                            className="h-11 sm:h-9 text-xs"
+                          />
+                        )}
                       </div>
                       <div className="mt-2 flex items-center gap-2">
                         <span className="text-[11px] text-muted-foreground shrink-0">תוצאה</span>
@@ -661,7 +670,21 @@ export default function DealRoom() {
                           value={p.interaction_outcome ?? null}
                         />
                       </div>
-                      {['negotiation', 'awaiting_signature', 'closed'].includes(bucketFor(p.lead_stage)) && (
+                      {/* Commission tracker — admin/broker monetization signal */}
+                      <div className="mt-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="h-8 text-xs gap-1 px-2 text-muted-foreground hover:text-primary"
+                          onClick={() => setCommissionLead(p)}
+                        >
+                          <Wallet className="h-3.5 w-3.5" />
+                          {p.commission_amount != null && p.commission_amount > 0
+                            ? `עמלה: ₪${Number(p.commission_amount).toLocaleString('he-IL')}`
+                            : 'הוסף עמלה צפויה'}
+                        </Button>
+                      </div>
+                      {settings.enable_client_portal && ['negotiation', 'awaiting_signature', 'closed'].includes(bucketFor(p.lead_stage)) && (
                         <div className="mt-2">
                           <ClientPortalShareButton
                             leadId={p.id}
@@ -703,6 +726,20 @@ export default function DealRoom() {
         })}
       </div>
       </ErrorBoundary>
+
+      {commissionLead && (
+        <CommissionEditor
+          open={!!commissionLead}
+          onOpenChange={(o) => { if (!o) setCommissionLead(null); }}
+          lead={{
+            id: commissionLead.id,
+            full_name: commissionLead.full_name,
+            commission_amount: commissionLead.commission_amount ?? null,
+            expected_close_date: commissionLead.expected_close_date ?? null,
+          }}
+          onSaved={() => setCommissionLead(null)}
+        />
+      )}
 
       <Sheet
         open={!!activeLead}

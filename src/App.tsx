@@ -58,6 +58,7 @@ const WhiteLabelSettings = lazy(() => import("./pages/WhiteLabelSettings"));
 const SystemHealth = lazy(() => import("./pages/SystemHealth"));
 const SharedDeals = lazy(() => import("./pages/SharedDeals"));
 const ClientPortal = lazy(() => import("./pages/ClientPortal"));
+const PlatformSettings = lazy(() => import("./pages/PlatformSettings"));
 
 
 let syncToastId: string | number | undefined;
@@ -180,6 +181,7 @@ const App = () => (
               <Route path="/settings/branding" element={<ProtectedRoute><WhiteLabelSettings /></ProtectedRoute>} />
               <Route path="/settings/white-label" element={<Navigate to="/settings/branding" replace />} />
               <Route path="/settings/system-health" element={<ProtectedRoute><SystemHealth /></ProtectedRoute>} />
+              <Route path="/settings/platform" element={<ProtectedRoute><PlatformSettings /></ProtectedRoute>} />
               <Route path="/homely-api" element={<Navigate to="/api-settings" replace />} />
               <Route path="/social-connect" element={<ProtectedRoute allowGuestDemo><SocialConnect /></ProtectedRoute>} />
               <Route path="/leads" element={<ProtectedRoute allowGuestDemo><AdminLeads /></ProtectedRoute>} />
