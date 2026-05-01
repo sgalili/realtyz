@@ -19,7 +19,7 @@ serve(async (req) => {
     const projectedCold = Math.round((cold_list_count ?? 0) * 0.1);
     const gap = Math.max(0, targetVoters - projectedHot - projectedCold);
 
-    const systemPrompt = `אתה אסטרטג קמפיין בכיר. צור Brief אסטרטגי קצר ומעשי בעברית למועמד.
+    const systemPrompt = `אתה אסטרטג קמפיין בכיר. צור Brief אסטרטגי קצר ומעשי בעברית למתעניין.
 החזר JSON בלבד:
 {
   "headline": "כותרת ראשית מעוררת השראה (עד 12 מילים)",
@@ -31,7 +31,7 @@ serve(async (req) => {
 }
 טון: ${tone}. אל תוסיף markdown או backticks - רק JSON.`;
 
-    const userPrompt = `מועמד/מפלגה: ${candidate}
+    const userPrompt = `מתעניין/חברה: ${candidate}
 סוג בחירות: ${election_type}
 יעד מנדטים: ${mandate_target} (~${targetVoters.toLocaleString()} בוחרים נדרשים)
 חודשים עד הבחירות: ${months_to_election}
