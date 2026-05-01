@@ -190,6 +190,7 @@ const App = () => (
               <Route path="/knowledge" element={<ProtectedRoute allowGuestDemo><KnowledgeBase /></ProtectedRoute>} />
               <Route path="/strategy-bank" element={<ProtectedRoute allowGuestDemo><KnowledgeBase /></ProtectedRoute>} />
               <Route path="/team" element={<ProtectedRoute><Team /></ProtectedRoute>} />
+              <Route path="/shared-deals" element={<ProtectedRoute><SharedDeals /></ProtectedRoute>} />
               <Route path="/sign/:token" element={<Suspense fallback={<PageLoader />}><SignDocument /></Suspense>} />
               <Route path="/upgrade" element={<ProtectedRoute allowGuestDemo><Upgrade /></ProtectedRoute>} />
               <Route path="/pricing" element={<Navigate to="/upgrade" replace />} />
