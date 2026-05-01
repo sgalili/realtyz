@@ -327,6 +327,10 @@ export default function KnowledgeBase() {
               </div>
             </CardContent>
           </Card>
+
+          <div className="mt-4">
+            <WhatsAppConversationImporter />
+          </div>
         </TabsContent>
         <TabsContent value="surveys" className="mt-4 space-y-4">
           <Card>
