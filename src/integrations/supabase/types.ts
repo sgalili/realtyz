@@ -61,6 +61,8 @@ export type Database = {
           professional_bio: string | null
           selling_philosophy: string | null
           signature: string | null
+          style_calibration: Json | null
+          style_calibration_updated_at: string | null
           tone: string
           tone_custom: string | null
           updated_at: string
@@ -73,6 +75,8 @@ export type Database = {
           professional_bio?: string | null
           selling_philosophy?: string | null
           signature?: string | null
+          style_calibration?: Json | null
+          style_calibration_updated_at?: string | null
           tone?: string
           tone_custom?: string | null
           updated_at?: string
@@ -85,6 +89,8 @@ export type Database = {
           professional_bio?: string | null
           selling_philosophy?: string | null
           signature?: string | null
+          style_calibration?: Json | null
+          style_calibration_updated_at?: string | null
           tone?: string
           tone_custom?: string | null
           updated_at?: string
