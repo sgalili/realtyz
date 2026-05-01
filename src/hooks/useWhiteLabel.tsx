@@ -8,7 +8,7 @@ export interface WhiteLabelSettings {
   logo_url: string | null;
   primary_color: string | null; // HSL triplet "H S% L%"
   primary_foreground_color: string | null;
-  hide_realtyz_branding: boolean;
+  hide_kalpiz_branding: boolean;
 }
 
 interface WhiteLabelContextValue {
