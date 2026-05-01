@@ -103,6 +103,12 @@ export const OAUTH_SCOPES: Record<string, string[]> = {
     'https://www.googleapis.com/auth/userinfo.profile',
     'openid',
   ],
+  google_calendar: [
+    'https://www.googleapis.com/auth/calendar',
+    'https://www.googleapis.com/auth/calendar.events',
+    'https://www.googleapis.com/auth/userinfo.email',
+    'openid',
+  ],
 };
 
 
@@ -113,7 +119,8 @@ export const OAUTH_SCOPES: Record<string, string[]> = {
 export const OAUTH_AUTHORIZE_URLS: Record<string, string> = {
   gmail:        'https://accounts.google.com/o/oauth2/v2/auth',
   youtube:      'https://accounts.google.com/o/oauth2/v2/auth',
-  google_drive: 'https://accounts.google.com/o/oauth2/v2/auth',
+  google_drive:    'https://accounts.google.com/o/oauth2/v2/auth',
+  google_calendar: 'https://accounts.google.com/o/oauth2/v2/auth',
   facebook:     'https://www.facebook.com/v19.0/dialog/oauth',
   instagram:    'https://api.instagram.com/oauth/authorize',
   x:            'https://twitter.com/i/oauth2/authorize',
