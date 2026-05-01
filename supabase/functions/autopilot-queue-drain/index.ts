@@ -40,10 +40,35 @@ Deno.serve(async (req) => {
     });
   }
 
-  let sent = 0, failed = 0, retried = 0;
+  let sent = 0, failed = 0, retried = 0, paused = 0;
+
+  // Cache per-tenant pause state to avoid one RPC call per job.
+  const pauseCache = new Map<string, boolean>();
+  async function isPaused(userId: string): Promise<boolean> {
+    if (!userId) return false;
+    if (pauseCache.has(userId)) return pauseCache.get(userId)!;
+    const { data } = await sb.rpc("is_ai_paused", { _user_id: userId });
+    const v = Boolean(data);
+    pauseCache.set(userId, v);
+    return v;
+  }
 
   for (const job of list) {
     try {
+      // Hard kill switch — if the broker paused AI, defer the job (don't fail it).
+      if (await isPaused(job.user_id)) {
+        const nextAt = new Date(Date.now() + 5 * 60_000).toISOString();
+        await sb.from("autopilot_queue").update({
+          status: "pending",
+          scheduled_at: nextAt,
+          locked_at: null,
+          locked_by: null,
+          last_error: "ai_paused_by_owner",
+        }).eq("id", job.id);
+        paused++;
+        continue;
+      }
+
       // Get lead phone
       const { data: lead, error: leadErr } = await sb
         .from("leads")
@@ -120,7 +145,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  return new Response(JSON.stringify({ processed: list.length, sent, failed, retried }), {
+  return new Response(JSON.stringify({ processed: list.length, sent, failed, retried, paused }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
