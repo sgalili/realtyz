@@ -369,7 +369,15 @@ export default function DealRoom() {
         })}
       </div>
 
-      <Sheet open={!!activeProspect} onOpenChange={(o) => !o && setActiveProspect(null)}>
+      <Sheet
+        open={!!activeProspect}
+        onOpenChange={(o) => {
+          if (!o) {
+            setActiveProspect(null);
+            setActiveSuggestionId(null);
+          }
+        }}
+      >
         <SheetContent side="right" className="w-full sm:max-w-md flex flex-col" dir="ltr">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
