@@ -8,18 +8,17 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import {
   Upload, FileText, Trash2, Phone, Plus, CheckCircle2, Loader2, FileCheck,
-  Image, Video, Mic, BarChart3, MessageSquareText, Sparkles, Brain, RefreshCw, BookOpen,
+  Image, Video, Mic, Sparkles, Brain, RefreshCw, BookOpen,
 } from 'lucide-react';
 import { SectionDivider } from '@/components/SectionDivider';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
-import { getDemoCandidateKnowledgeDocuments, getDemoCandidateSurveyInsights } from '@/lib/demoData';
-import * as XLSX from 'xlsx';
+import { getDemoCandidateKnowledgeDocuments } from '@/lib/demoData';
 import { WhatsAppConversationImporter } from '@/components/strategybank/WhatsAppConversationImporter';
 import { UniversalKnowledgeInput } from '@/components/strategybank/UniversalKnowledgeInput';
 
@@ -31,7 +30,7 @@ export default function KnowledgeBase() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [dragging, setDragging] = useState(false);
   const [ingesting, setIngesting] = useState(false);
-  const [surveyFile, setSurveyFile] = useState<File | null>(null);
+  
   const [waPhone, setWaPhone] = useState('');
   const [waLabel, setWaLabel] = useState('');
 
@@ -65,19 +64,6 @@ export default function KnowledgeBase() {
   });
   const activeDocs = isDemoMode ? getDemoCandidateKnowledgeDocuments(demoCandidateId) : docs;
 
-  const { data: surveyInsights = [] } = useQuery({
-    queryKey: ['survey-insights', user?.id],
-    enabled: !!user?.id,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('survey_insights')
-        .select('*')
-        .eq('user_id', user!.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-      return data ?? [];
-    },
-  });
 
   /* ── WA Whitelist ── */
   const { data: whitelist = [] } = useQuery({
@@ -136,26 +122,6 @@ export default function KnowledgeBase() {
     },
   });
 
-  const analyzeSurvey = useMutation({
-    mutationFn: async () => {
-      if (blockDemoAction('analyze-survey')) throw new Error('demo-blocked');
-      if (!surveyFile) throw new Error('יש לבחור קובץ סקר');
-      const workbook = XLSX.read(await surveyFile.arrayBuffer(), { type: 'array' });
-      const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet, { defval: '' });
-      if (rows.length === 0) throw new Error('לא נמצאו שורות בקובץ');
-      const { error } = await supabase.functions.invoke('survey-analyze', {
-        body: { title: surveyFile.name.replace(/\.[^.]+$/, ''), source_filename: surveyFile.name, rows },
-      });
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      setSurveyFile(null);
-      qc.invalidateQueries({ queryKey: ['survey-insights'] });
-      toast.success('ניתוח הסקר הושלם ונוסף לדשבורד');
-    },
-    onError: (e: Error) => { if (e.message !== 'demo-blocked') toast.error(e.message); },
-  });
 
   const handleFiles = useCallback(
     async (files: FileList | File[]) => {
@@ -290,49 +256,10 @@ export default function KnowledgeBase() {
         </>
       )}
 
-      <Tabs defaultValue="knowledge" className="w-full">
-        <TabsList>
-          <TabsTrigger value="knowledge"><Upload className="h-4 w-4 ml-2" /> מסמכי ידע</TabsTrigger>
-          <TabsTrigger value="surveys"><BarChart3 className="h-4 w-4 ml-2" /> מודיעין סקרים</TabsTrigger>
-        </TabsList>
-        <TabsContent value="knowledge" className="mt-4 space-y-4">
-          <UniversalKnowledgeInput />
-          <WhatsAppConversationImporter />
-        </TabsContent>
-        <TabsContent value="surveys" className="mt-4 space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2"><BarChart3 className="h-4 w-4 text-primary" /> העלאת סקר Excel/CSV</CardTitle>
-              <CardDescription>ה-AI מזהה סנטימנט לפי עיר/אזור, נקודות חולשה, מתלבטים והמלצות מסר ל-WhatsApp/SMS.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <Input type="file" accept=".csv,.xlsx,.xls,text/csv,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" onChange={(e) => setSurveyFile(e.target.files?.[0] ?? null)} />
-              <Button onClick={() => analyzeSurvey.mutate()} disabled={!surveyFile || analyzeSurvey.isPending}>
-                {analyzeSurvey.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageSquareText className="h-4 w-4" />}
-                נתח סקר והוסף לתובנות
-              </Button>
-            </CardContent>
-          </Card>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {(isDemoMode ? getDemoCandidateSurveyInsights(demoCandidateId) : surveyInsights).map((insight) => (
-              <Card key={insight.id}>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm">{insight.title}</CardTitle>
-                  <CardDescription>{insight.row_count} שורות · {format(new Date(insight.created_at), 'dd/MM HH:mm')}</CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  <p className="text-sm text-muted-foreground">{insight.summary}</p>
-                  <div className="flex flex-wrap gap-1">
-                    {Array.isArray(insight.top_concerns) && insight.top_concerns.slice(0, 4).map((item: any, index: number) => (
-                      <Badge key={index} variant="secondary">{item.label ?? item.concern ?? String(item)}</Badge>
-                    ))}
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        </TabsContent>
-      </Tabs>
+      <div className="w-full space-y-4">
+        <UniversalKnowledgeInput />
+        <WhatsAppConversationImporter />
+      </div>
 
       {/* ─── WhatsApp Whitelist ─── */}
       <Card>
