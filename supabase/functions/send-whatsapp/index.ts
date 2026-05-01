@@ -20,6 +20,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
+import { appendDisclosure } from "../_shared/compliance.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -53,6 +54,11 @@ const BodySchema = z
       .optional(),
     // Optional explicit override; otherwise auto-routed by tenant config.
     force_provider: z.enum(["WBA", "GreenAPI"]).optional(),
+    // Compliance: when true, the message was AI-drafted. We append a subtle
+    // "תוכן בסיוע AI" footer to the outbound text and log it on the message
+    // row + audit_logs so the agent can prove disclosure.
+    ai_assisted: z.boolean().optional(),
+    disclosure_language: z.enum(["he", "en"]).optional(),
   })
   .refine((v) => !!v.lead_id || !!v.phone_number, {
     message: "lead_id or phone_number is required",
@@ -465,7 +471,21 @@ Deno.serve(async (req) => {
       }, 500);
     }
 
-    const message = parsed.data.message ?? null;
+    // Compliance: append the "AI-assisted content" disclosure footer when
+    // requested by the caller. We do this AFTER body validation but BEFORE
+    // dispatching, so the prospect sees the same text we audit.
+    let outboundMessage = parsed.data.message ?? null;
+    let disclosureAppended = false;
+    if (outboundMessage && parsed.data.ai_assisted) {
+      const r = appendDisclosure(
+        outboundMessage,
+        true,
+        parsed.data.disclosure_language ?? "he",
+      );
+      outboundMessage = r.text;
+      disclosureAppended = r.appended;
+    }
+
     const template = parsed.data.template_id
       ? {
           id: parsed.data.template_id,
@@ -476,11 +496,45 @@ Deno.serve(async (req) => {
 
     let result: StdResponse;
     if (provider.name === "WBA") {
-      result = await sendViaWba(provider.config, phone, message, parsed.data.file, template);
+      result = await sendViaWba(provider.config, phone, outboundMessage, parsed.data.file, template);
     } else {
       // GreenAPI doesn't support templates — fall back to text.
-      const text = message ?? `[${parsed.data.template_id}]`;
+      const text = outboundMessage ?? `[${parsed.data.template_id}]`;
       result = await sendViaGreenApi(provider.config, phone, text, parsed.data.file);
+    }
+
+    // Compliance audit + message-row logging. Best-effort; never blocks the send.
+    try {
+      if (parsed.data.lead_id && outboundMessage) {
+        await admin.from("messages").insert({
+          lead_id: parsed.data.lead_id,
+          channel: "whatsapp",
+          platform: "whatsapp",
+          content: outboundMessage,
+          direction: "outbound",
+          sender_type: parsed.data.ai_assisted ? "ai" : "agent",
+          ai_assisted: !!parsed.data.ai_assisted,
+          disclosure_appended: disclosureAppended,
+          metadata: { provider: provider.name, message_id: result.message_id },
+        });
+      }
+      if (userId) {
+        await admin.from("audit_logs").insert({
+          actor_id: userId,
+          action: parsed.data.ai_assisted ? "ai_message_sent" : "message_sent",
+          target_table: parsed.data.lead_id ? "leads" : null,
+          target_id: parsed.data.lead_id ?? null,
+          details: {
+            provider: provider.name,
+            success: result.success,
+            disclosure_appended: disclosureAppended,
+            has_attachment: !!parsed.data.file,
+            phone_last4: phone.slice(-4),
+          },
+        });
+      }
+    } catch (logErr) {
+      console.warn("send-whatsapp audit/log failed:", logErr);
     }
 
     return json(result, result.success ? 200 : 502);

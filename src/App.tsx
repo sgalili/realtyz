@@ -31,6 +31,7 @@ const LiveConversations = lazy(() => import("./pages/LiveConversations"));
 const LiveActivity = lazy(() => import("./pages/LiveActivity"));
 const ConversationAnalytics = lazy(() => import("./pages/ConversationAnalytics"));
 const SecurityDashboard = lazy(() => import("./pages/SecurityDashboard"));
+const PrivacyDashboard = lazy(() => import("./pages/PrivacyDashboard"));
 const MassiveImporter = lazy(() => import("./pages/MassiveImporter"));
 
 const SuperAdmin = lazy(() => import("./pages/SuperAdmin"));
@@ -165,6 +166,7 @@ const App = () => (
               <Route path="/live-activity" element={<ProtectedRoute allowGuestDemo><LiveActivity /></ProtectedRoute>} />
               <Route path="/conversation-analytics" element={<ProtectedRoute allowGuestDemo><ConversationAnalytics /></ProtectedRoute>} />
               <Route path="/security" element={<ProtectedRoute allowGuestDemo><SecurityDashboard /></ProtectedRoute>} />
+              <Route path="/privacy" element={<ProtectedRoute><PrivacyDashboard /></ProtectedRoute>} />
               <Route path="/massive-import" element={<ProtectedRoute allowGuestDemo><MassiveImporter /></ProtectedRoute>} />
               <Route path="/sms-blast" element={<Navigate to="/campaigns?tab=broadcast" replace />} />
               <Route path="/super-admin" element={<SuperAdminRoute><SuperAdmin /></SuperAdminRoute>} />

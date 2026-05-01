@@ -122,6 +122,7 @@ const NAV_GROUPS: NavGroup[] = [
       { title: 'ממשק ניהול על', url: '/super-admin', icon: Shield, iconColor: 'text-warning', requires: 'super_admin' },
       { title: 'הגדרות API ותשתיות', url: '/api-settings', icon: Cpu, iconColor: 'text-primary', requires: 'super_admin' },
       { title: 'אבטחה', url: '/security', icon: Shield, iconColor: 'text-destructive', requires: 'admin' },
+      { title: 'פרטיות וציות', url: '/privacy', icon: ShieldCheck, iconColor: 'text-primary' },
       { title: 'פניות נכנסות', url: '/leads', icon: Inbox, iconColor: 'text-social-telegram', requires: 'admin' },
     ],
   },
