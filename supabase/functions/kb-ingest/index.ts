@@ -43,21 +43,8 @@ function chunkText(text: string, maxChars = 1200, overlap = 150): string[] {
   return chunks.filter((c) => c.length > 0);
 }
 
-async function embed(text: string, apiKey: string): Promise<number[]> {
-  const res = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
-    method: "POST",
-    headers: { Authorization: `Bearer ${apiKey}`, "Content-Type": "application/json" },
-    body: JSON.stringify({ model: "google/text-embedding-004", input: text }),
-  });
-  if (!res.ok) {
-    const t = await res.text();
-    throw new Error(`embed failed ${res.status}: ${t}`);
-  }
-  const j = await res.json();
-  const v = j?.data?.[0]?.embedding;
-  if (!Array.isArray(v)) throw new Error("no embedding in response");
-  return v;
-}
+// Embeddings disabled: Lovable AI Gateway no longer exposes an embedding model.
+// Chunks are stored without vectors and retrieved via keyword search in kb-query.
 
 async function analyzeMedia(title: string, dataUrl: string, mimeType: string | undefined, sourceType: string, apiKey: string): Promise<string> {
   const prompt = `Analyze this ${sourceType} file for a political campaign knowledge base.
@@ -152,12 +139,11 @@ Deno.serve(async (req) => {
       .single();
     if (docErr) throw docErr;
 
-    // 2) chunk + embed
+    // 2) chunk (no embeddings — gateway dropped support; keyword search used downstream)
     const chunks = chunkText(finalText);
-    const rows: Array<{ document_id: string; user_id: string; chunk_index: number; content: string; embedding: number[] }> = [];
+    const rows: Array<{ document_id: string; user_id: string; chunk_index: number; content: string }> = [];
     for (let i = 0; i < chunks.length; i++) {
-      const embedding = await embed(chunks[i], LOVABLE_API_KEY);
-      rows.push({ document_id: doc.id, user_id: userId, chunk_index: i, content: chunks[i], embedding });
+      rows.push({ document_id: doc.id, user_id: userId, chunk_index: i, content: chunks[i] });
     }
 
     if (rows.length > 0) {

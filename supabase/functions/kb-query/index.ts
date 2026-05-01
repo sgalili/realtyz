@@ -1,4 +1,6 @@
-// Knowledge Base query: embed question and return top-K matching chunks with citations.
+// Knowledge Base query: keyword-based retrieval over knowledge_chunks.
+// Embeddings are disabled because the Lovable AI Gateway no longer exposes an
+// embedding model. We tokenize the query and rank chunks by token overlap.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
 
@@ -13,15 +15,21 @@ const Body = z.object({
   target_user_id: z.string().uuid().optional(),
 });
 
+function tokenize(s: string): string[] {
+  return s
+    .toLowerCase()
+    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+    .split(/\s+/)
+    .filter((t) => t.length >= 2);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
-    if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 
     const parsed = Body.safeParse(await req.json());
     if (!parsed.success) {
@@ -48,28 +56,36 @@ Deno.serve(async (req) => {
       });
     }
 
-    const embRes = await fetch("https://ai.gateway.lovable.dev/v1/embeddings", {
-      method: "POST",
-      headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model: "google/text-embedding-004", input: query }),
-    });
-    if (!embRes.ok) {
-      const t = await embRes.text();
-      throw new Error(`embed failed ${embRes.status}: ${t}`);
-    }
-    const embJson = await embRes.json();
-    const embedding = embJson?.data?.[0]?.embedding;
-    if (!Array.isArray(embedding)) throw new Error("no embedding returned");
-
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
-    const { data, error } = await admin.rpc("match_knowledge_chunks", {
-      query_embedding: embedding,
-      match_user_id: userId,
-      match_count,
-    });
+
+    // Pull active chunks for this user; rank by simple token overlap.
+    const { data: chunks, error } = await admin
+      .from("knowledge_chunks")
+      .select("id, document_id, content, knowledge_documents!inner(title, is_active)")
+      .eq("user_id", userId)
+      .eq("knowledge_documents.is_active", true)
+      .limit(500);
     if (error) throw error;
 
-    return new Response(JSON.stringify({ success: true, matches: data ?? [] }), {
+    const qTokens = Array.from(new Set(tokenize(query)));
+    const scored = (chunks ?? []).map((c: any) => {
+      const text = (c.content as string).toLowerCase();
+      let score = 0;
+      for (const t of qTokens) {
+        if (text.includes(t)) score += 1;
+      }
+      return {
+        id: c.id,
+        document_id: c.document_id,
+        document_title: c.knowledge_documents?.title ?? "",
+        content: c.content,
+        similarity: qTokens.length ? score / qTokens.length : 0,
+      };
+    });
+    scored.sort((a, b) => b.similarity - a.similarity);
+    const matches = scored.filter((s) => s.similarity > 0).slice(0, match_count);
+
+    return new Response(JSON.stringify({ success: true, matches }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (e) {
