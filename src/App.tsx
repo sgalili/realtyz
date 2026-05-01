@@ -135,6 +135,7 @@ const App = () => (
         <Sonner />
         <BrowserRouter>
           <AuthProvider>
+            <WhiteLabelProvider>
             <DemoModeProvider>
             <ElectionTypeProvider>
             <MandateProvider>
