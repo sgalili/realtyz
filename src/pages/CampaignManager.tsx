@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Megaphone, Link2, Copy, CheckCircle2, Sparkles, TrendingUp, AlertTriangle, RefreshCw } from 'lucide-react';
+import { Megaphone, Link2, Copy, CheckCircle2, Sparkles, TrendingUp } from 'lucide-react';
 import { useState } from 'react';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
