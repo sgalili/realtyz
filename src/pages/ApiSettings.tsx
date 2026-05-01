@@ -26,6 +26,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { format } from 'date-fns';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { ChevronDown } from 'lucide-react';
+import NotificationPreferencesPanel from '@/components/NotificationPreferencesPanel';
 
 interface ApiConfig {
   id: string;
