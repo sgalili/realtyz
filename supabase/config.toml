@@ -2,3 +2,9 @@ project_id = "jlkfdwbkoxixrcrtxqjx"
 
 [functions.whatsapp-webhook]
 verify_jwt = false
+
+[functions.book-meeting]
+verify_jwt = false
+
+[functions.meeting-reminder-cron]
+verify_jwt = false
