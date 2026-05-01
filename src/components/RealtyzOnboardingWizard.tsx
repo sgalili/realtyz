@@ -1,43 +1,59 @@
 import { useEffect, useMemo, useState } from "react";
-import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "react-router-dom";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Textarea } from "@/components/ui/textarea";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Building2, Link2, Sparkles, Check, ArrowLeft, Upload } from "lucide-react";
+import { Check, MessageCircle, Upload, Target, ArrowLeft } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 const TOTAL_STEPS = 3;
 
-type Progress = {
-  id?: string;
-  user_id: string;
-  step: number;
-  is_complete: boolean;
-  status: "in_progress" | "finished" | "skipped";
+type StepDef = {
+  key: "whatsapp" | "strategy" | "goal";
+  title: string;
+  description: string;
+  icon: typeof MessageCircle;
 };
 
+const STEPS: StepDef[] = [
+  {
+    key: "whatsapp",
+    title: "חיבור WhatsApp",
+    description: "חבר את חשבון ה־WhatsApp שלך כדי להתחיל לתקשר עם לידים באופן אוטומטי.",
+    icon: MessageCircle,
+  },
+  {
+    key: "strategy",
+    title: "העלאת נתוני אסטרטגיה",
+    description: "העלה קובץ אסטרטגיה (CSV/XLSX) כדי שה־AI יכיר את שוק היעד והנכסים שלך.",
+    icon: Upload,
+  },
+  {
+    key: "goal",
+    title: "הגדרת יעד עסקאות סגורות",
+    description: "כמה עסקאות סגורות תרצה להשיג החודש? היעד יוצג בלוח הבקרה.",
+    icon: Target,
+  },
+];
+
 export function RealtyzOnboardingWizard() {
-  const qc = useQueryClient();
   const navigate = useNavigate();
   const [open, setOpen] = useState(false);
   const [userId, setUserId] = useState<string | null>(null);
   const [step, setStep] = useState(1);
+  const [completedSteps, setCompletedSteps] = useState<Record<string, boolean>>({});
+  const [goal, setGoal] = useState<string>("5");
+  const [saving, setSaving] = useState(false);
 
-  // Step 1 state
-  const [propertyTitle, setPropertyTitle] = useState("");
-  const [description, setDescription] = useState("");
-  const [askingPrice, setAskingPrice] = useState("");
-
-  // Step 3 state
-  const [outreachDraft, setOutreachDraft] = useState("");
-  const [generating, setGenerating] = useState(false);
-
-  // Resolve session + decide whether to show
+  // Decide whether to show
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -45,225 +61,246 @@ export function RealtyzOnboardingWizard() {
       if (!user || cancelled) return;
       setUserId(user.id);
 
-      const [{ data: profile }, { data: progress }] = await Promise.all([
-        supabase.from("profiles").select("plan_status").eq("id", user.id).maybeSingle(),
-        supabase.from("onboarding_progress").select("*").eq("user_id", user.id).maybeSingle(),
-      ]);
+      const { data: progress } = await supabase
+        .from("onboarding_progress")
+        .select("*")
+        .eq("user_id", user.id)
+        .maybeSingle();
 
-      const isTrial = profile?.plan_status === "trial";
       const finished = progress?.status === "finished" || progress?.is_complete;
-      if (isTrial && !finished) {
-        setStep(progress?.step ?? 1);
-        setOpen(true);
-      }
+      if (finished) return;
+
+      const meta = (progress?.metadata as any) || {};
+      setCompletedSteps(meta.completed_steps || {});
+      if (meta.closed_deal_goal) setGoal(String(meta.closed_deal_goal));
+      setStep(progress?.step ?? 1);
+      setOpen(true);
     })();
     return () => { cancelled = true; };
   }, []);
 
-  // Lead count to display 100-cap progress
-  const { data: leadStats } = useQuery({
-    queryKey: ["onboarding-lead-count", userId],
-    queryFn: async () => {
-      const { count } = await supabase
-        .from("leads")
-        .select("*", { count: "exact", head: true })
-        .eq("is_demo", false);
-      return { count: count ?? 0 };
-    },
-    enabled: open,
-  });
-
-  const saveProgress = useMutation({
-    mutationFn: async (patch: Partial<Progress> & { step: number }) => {
-      if (!userId) throw new Error("no user");
-      const { error } = await supabase.from("onboarding_progress").upsert(
-        { user_id: userId, ...patch },
-        { onConflict: "user_id" }
-      );
-      if (error) throw error;
-    },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["onboarding-progress"] }),
-  });
-
-  const nextStep = async () => {
-    const newStep = Math.min(step + 1, TOTAL_STEPS);
-    setStep(newStep);
-    await saveProgress.mutateAsync({ step: newStep, is_complete: false, status: "in_progress" });
-  };
-
-  const finish = async () => {
-    await saveProgress.mutateAsync({
-      step: TOTAL_STEPS,
-      is_complete: true,
-      status: "finished",
-    });
-    toast.success("ברוכים הבאים ל־Realtyz AI!");
-    setOpen(false);
-    navigate("/lead-crm");
-  };
-
-  const skip = async () => {
-    await saveProgress.mutateAsync({ step, is_complete: true, status: "skipped" });
-    setOpen(false);
-  };
-
-  // ---- Step 1: create first listing ----
-  const createListing = useMutation({
-    mutationFn: async () => {
-      if (!userId) throw new Error("no user");
-      if (!propertyTitle.trim()) throw new Error("נדרש שם נכס");
-      const slug = propertyTitle.trim().toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9\u0590-\u05FF-]/g, "").slice(0, 60) || `listing-${Date.now()}`;
-      const { error } = await supabase.from("listings").insert({
+  const persist = async (
+    nextStep: number,
+    nextCompleted: Record<string, boolean>,
+    extraMeta: Record<string, any> = {},
+    finished = false,
+  ) => {
+    if (!userId) return;
+    const { error } = await supabase.from("onboarding_progress").upsert(
+      {
         user_id: userId,
-        slug: `${slug}-${Date.now().toString(36)}`,
-        candidate_name: propertyTitle, // legacy NOT NULL column
-        headline: propertyTitle,
-        thesis: description || propertyTitle,
-        property_title: propertyTitle,
-        description: description || "",
-        asking_price: Number(askingPrice) || 0,
-        features: [],
-        is_published: true,
-      });
-      if (error) throw error;
-    },
-    onSuccess: async () => {
-      toast.success("הנכס הראשון נוצר");
-      await nextStep();
-    },
-    onError: (e: any) => toast.error(e?.message || "שגיאה ביצירת נכס"),
-  });
+        step: nextStep,
+        is_complete: finished,
+        status: finished ? "finished" : "in_progress",
+        completed_at: finished ? new Date().toISOString() : null,
+        metadata: { completed_steps: nextCompleted, ...extraMeta },
+      },
+      { onConflict: "user_id" },
+    );
+    if (error) throw error;
+  };
 
-  // ---- Step 3: generate AI outreach ----
-  const generateOutreach = async () => {
-    setGenerating(true);
+  const markCompleteAndNext = async (key: StepDef["key"]) => {
+    setSaving(true);
     try {
-      const { data, error } = await supabase.functions.invoke("generate-content", {
-        body: {
-          topic: `הודעת פתיחה לליד פוטנציאלי על הנכס: ${propertyTitle || "הנכס שלך"}`,
-          platform: "whatsapp",
-          tone: "ידידותי ומקצועי",
-        },
-      });
-      if (error) throw error;
-      const text = (data as any)?.content || (data as any)?.generated_text || "";
-      setOutreachDraft(text || `שלום, רציתי לעדכן אותך על נכס חדש שזמין: ${propertyTitle}. נשמח לתאם סיור.`);
+      const nextCompleted = { ...completedSteps, [key]: true };
+      const nextStep = Math.min(step + 1, TOTAL_STEPS);
+      setCompletedSteps(nextCompleted);
+      setStep(nextStep);
+      await persist(nextStep, nextCompleted, { closed_deal_goal: Number(goal) || 0 });
     } catch (e: any) {
-      // Fallback template if function unavailable
-      setOutreachDraft(`שלום, רציתי לעדכן אותך על נכס חדש שזמין: ${propertyTitle || "[שם הנכס]"}. נשמח לתאם סיור.`);
-      toast.message("נוצרה טיוטה בסיסית", { description: "ניתן לערוך לפני שליחה" });
+      toast.error(e?.message || "שגיאה בשמירה");
     } finally {
-      setGenerating(false);
+      setSaving(false);
     }
   };
 
-  const progressPct = useMemo(() => Math.round((step / TOTAL_STEPS) * 100), [step]);
-  const leadCount = leadStats?.count ?? 0;
-  const leadCapPct = Math.min(100, Math.round((leadCount / 100) * 100));
+  const skip = async () => {
+    if (!userId) { setOpen(false); return; }
+    try {
+      await supabase.from("onboarding_progress").upsert(
+        {
+          user_id: userId,
+          step,
+          is_complete: true,
+          status: "skipped",
+          metadata: { completed_steps: completedSteps, closed_deal_goal: Number(goal) || 0 },
+        },
+        { onConflict: "user_id" },
+      );
+    } catch {}
+    setOpen(false);
+  };
 
-  if (!open) return null;
+  const finish = async () => {
+    setSaving(true);
+    try {
+      const nextCompleted = { ...completedSteps, goal: true };
+      await persist(TOTAL_STEPS, nextCompleted, { closed_deal_goal: Number(goal) || 0 }, true);
+      toast.success("ברוכים הבאים ל־Realtyz AI!");
+      setOpen(false);
+    } catch (e: any) {
+      toast.error(e?.message || "שגיאה בסיום");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const current = STEPS[step - 1];
+  const completedCount = useMemo(
+    () => STEPS.filter((s) => completedSteps[s.key]).length,
+    [completedSteps],
+  );
+
+  if (!open || !current) return null;
+
+  const handlePrimary = async () => {
+    if (current.key === "whatsapp") {
+      // Mark complete first so progress persists, then route to settings
+      await markCompleteAndNext("whatsapp");
+    } else if (current.key === "strategy") {
+      await markCompleteAndNext("strategy");
+    } else {
+      await finish();
+    }
+  };
+
+  const goToWhatsApp = () => {
+    setOpen(false);
+    navigate("/api-settings?tab=whatsapp");
+  };
+
+  const goToImporter = () => {
+    setOpen(false);
+    navigate("/massive-importer");
+  };
 
   return (
     <Dialog open={open} onOpenChange={(v) => !v && skip()}>
       <DialogContent className="max-w-xl" dir="rtl">
         <DialogHeader>
-          <div className="flex items-center justify-between gap-3">
-            <DialogTitle className="text-xl">ברוכים הבאים ל־Realtyz AI</DialogTitle>
-            <Badge variant="secondary">שלב {step} מתוך {TOTAL_STEPS}</Badge>
-          </div>
+          <DialogTitle className="text-xl">ברוכים הבאים ל־Realtyz AI</DialogTitle>
           <DialogDescription>
-            ננחה אותך בשלושה שלבים קצרים להתחלה מהירה.
+            שלושה שלבים קצרים כדי להתחיל בעבודה.
           </DialogDescription>
-          <Progress value={progressPct} className="mt-3" />
         </DialogHeader>
 
-        {step === 1 && (
-          <div className="space-y-4 pt-2">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <Building2 className="h-4 w-4 text-primary" />
-              הקמת תיק נכסים
-            </div>
-            <p className="text-sm text-muted-foreground">
-              צור את הנכס הראשון שלך, או דלג ופתח את היבואן להעלאת קובץ CSV.
-            </p>
-            <div className="space-y-2">
-              <Input placeholder="שם הנכס (למשל: דירת 4 חדרים, רמת גן)"
-                value={propertyTitle} onChange={(e) => setPropertyTitle(e.target.value)} />
-              <Textarea placeholder="תיאור קצר" rows={3}
-                value={description} onChange={(e) => setDescription(e.target.value)} />
-              <Input type="number" placeholder="מחיר מבוקש (₪)"
-                value={askingPrice} onChange={(e) => setAskingPrice(e.target.value)} />
-            </div>
-            <div className="flex flex-wrap gap-2 justify-between pt-2">
-              <Button variant="ghost" onClick={() => { setOpen(false); navigate("/massive-importer"); }}>
-                <Upload className="ml-1 h-4 w-4" /> יבוא CSV במקום
-              </Button>
-              <div className="flex gap-2">
-                <Button variant="outline" onClick={nextStep}>דלג</Button>
-                <Button onClick={() => createListing.mutate()} disabled={createListing.isPending || !propertyTitle.trim()}>
-                  {createListing.isPending ? "שומר…" : "צור והמשך"}
-                </Button>
-              </div>
-            </div>
-          </div>
-        )}
+        {/* Checkmark progress indicator */}
+        <ol className="flex items-center justify-between gap-2 pt-2" aria-label="התקדמות">
+          {STEPS.map((s, idx) => {
+            const isDone = !!completedSteps[s.key];
+            const isCurrent = idx + 1 === step;
+            return (
+              <li key={s.key} className="flex flex-1 items-center gap-2">
+                <div
+                  className={cn(
+                    "flex h-9 w-9 shrink-0 items-center justify-center rounded-full border-2 transition-colors",
+                    isDone
+                      ? "border-primary bg-primary text-primary-foreground"
+                      : isCurrent
+                      ? "border-primary text-primary"
+                      : "border-muted-foreground/30 text-muted-foreground",
+                  )}
+                  aria-current={isCurrent ? "step" : undefined}
+                  aria-label={`שלב ${idx + 1}: ${s.title}${isDone ? " — הושלם" : ""}`}
+                >
+                  {isDone ? (
+                    <Check className="h-5 w-5" aria-hidden="true" />
+                  ) : (
+                    <span className="text-sm font-semibold">{idx + 1}</span>
+                  )}
+                </div>
+                <div className="flex flex-col text-right">
+                  <span
+                    className={cn(
+                      "text-xs font-medium",
+                      isDone || isCurrent ? "text-foreground" : "text-muted-foreground",
+                    )}
+                  >
+                    {s.title}
+                  </span>
+                </div>
+                {idx < STEPS.length - 1 && (
+                  <div
+                    className={cn(
+                      "mx-1 h-px flex-1",
+                      isDone ? "bg-primary" : "bg-border",
+                    )}
+                    aria-hidden="true"
+                  />
+                )}
+              </li>
+            );
+          })}
+        </ol>
+        <p className="text-xs text-muted-foreground text-right">
+          הושלמו {completedCount} מתוך {TOTAL_STEPS}
+        </p>
 
-        {step === 2 && (
-          <div className="space-y-4 pt-2">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <Link2 className="h-4 w-4 text-primary" /> חיבור ערוצים
-            </div>
-            <p className="text-sm text-muted-foreground">
-              חבר את חשבונות ה־Google ו־WhatsApp כדי לאפשר תקשורת אוטומטית עם לידים.
-            </p>
-            <div className="grid gap-3">
-              <Button variant="outline" className="justify-between"
-                onClick={() => { setOpen(false); navigate("/api-settings?tab=google"); }}>
-                <span>חיבור Google</span><ArrowLeft className="h-4 w-4" />
-              </Button>
-              <Button variant="outline" className="justify-between"
-                onClick={() => { setOpen(false); navigate("/api-settings?tab=whatsapp"); }}>
-                <span>חיבור WhatsApp</span><ArrowLeft className="h-4 w-4" />
-              </Button>
-            </div>
-            <div className="rounded-md border bg-muted/40 p-3 text-xs">
-              <div className="flex items-center justify-between mb-1">
-                <span>שימוש מסלול ניסיון</span>
-                <span className="font-mono">{leadCount}/100 לידים</span>
-              </div>
-              <Progress value={leadCapPct} />
-              <p className="mt-2 text-muted-foreground">
-                מסלול הניסיון מוגבל ל־100 לידים. שדרוג מסיר את המגבלה.
+        {/* Step body */}
+        <div className="space-y-4 pt-2">
+          <div className="flex items-center gap-2 text-sm font-semibold">
+            <current.icon className="h-4 w-4 text-primary" aria-hidden="true" />
+            {current.title}
+          </div>
+          <p className="text-sm text-muted-foreground">{current.description}</p>
+
+          {current.key === "whatsapp" && (
+            <Button variant="outline" className="w-full justify-between" onClick={goToWhatsApp}>
+              <span>פתח הגדרות WhatsApp</span>
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          )}
+
+          {current.key === "strategy" && (
+            <Button variant="outline" className="w-full justify-between" onClick={goToImporter}>
+              <span>פתח יבואן נתוני אסטרטגיה</span>
+              <ArrowLeft className="h-4 w-4" aria-hidden="true" />
+            </Button>
+          )}
+
+          {current.key === "goal" && (
+            <div className="space-y-2">
+              <label htmlFor="closed-deal-goal" className="text-sm font-medium">
+                יעד עסקאות סגורות החודש
+              </label>
+              <Input
+                id="closed-deal-goal"
+                type="number"
+                min={1}
+                value={goal}
+                onChange={(e) => setGoal(e.target.value)}
+                placeholder="לדוגמה: 5"
+              />
+              <p className="text-xs text-muted-foreground">
+                ניתן לעדכן את היעד מאוחר יותר במסך לוח הבקרה.
               </p>
             </div>
-            <div className="flex justify-between pt-2">
-              <Button variant="outline" onClick={() => setStep(1)}>חזור</Button>
-              <Button onClick={nextStep}>המשך</Button>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
 
-        {step === 3 && (
-          <div className="space-y-4 pt-2">
-            <div className="flex items-center gap-2 text-sm font-semibold">
-              <Sparkles className="h-4 w-4 text-primary" /> שיגור הודעת AI ראשונה
-            </div>
-            <p className="text-sm text-muted-foreground">
-              הפק טיוטה ראשונה של הודעת פנייה ללידים. תוכל לערוך אותה לפני שליחה.
-            </p>
-            <Button variant="secondary" onClick={generateOutreach} disabled={generating}>
-              {generating ? "מייצר…" : "צור טיוטה עם AI"}
-            </Button>
-            <Textarea rows={6} value={outreachDraft} onChange={(e) => setOutreachDraft(e.target.value)}
-              placeholder="הטיוטה תופיע כאן…" />
-            <div className="flex justify-between pt-2">
-              <Button variant="outline" onClick={() => setStep(2)}>חזור</Button>
-              <Button onClick={finish}>
-                <Check className="ml-1 h-4 w-4" /> סיום והתחל
+        <div className="flex flex-wrap items-center justify-between gap-2 pt-4">
+          <Button variant="ghost" onClick={skip} disabled={saving}>
+            דלג על ההדרכה
+          </Button>
+          <div className="flex gap-2">
+            {step > 1 && (
+              <Button variant="outline" onClick={() => setStep(step - 1)} disabled={saving}>
+                חזור
               </Button>
-            </div>
+            )}
+            <Button onClick={handlePrimary} disabled={saving || (current.key === "goal" && !goal)}>
+              {current.key === "goal" ? (
+                <>
+                  <Check className="ml-1 h-4 w-4" aria-hidden="true" />
+                  סיום
+                </>
+              ) : (
+                "סמן כהושלם והמשך"
+              )}
+            </Button>
           </div>
-        )}
+        </div>
       </DialogContent>
     </Dialog>
   );
