@@ -286,7 +286,9 @@ serve(async (req) => {
     }
 
     if (parsed.type === "text") {
-      return new Response(JSON.stringify({ ...parsed, sources: kbSources }), {
+      // Fact-check the AI's draft against verified listings.
+      const fact_violations = factCheckDraft(String(parsed.content || ""), listingFacts);
+      return new Response(JSON.stringify({ ...parsed, sources: kbSources, escalation, fact_violations }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
