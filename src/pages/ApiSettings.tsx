@@ -619,7 +619,7 @@ const ApiSettings = () => {
       const res = await fetch(proxyUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}` },
-        body: JSON.stringify({ webhook_url: url, auth_token: token && token !== 'none' ? token : undefined, payload: { type: 'ping', source: 'Kalpiz AI', timestamp: new Date().toISOString() } }),
+        body: JSON.stringify({ webhook_url: url, auth_token: token && token !== 'none' ? token : undefined, payload: { type: 'ping', source: 'Realtyz AI', timestamp: new Date().toISOString() } }),
       });
       const data = await res.json();
       if (data.success) toast.success('✅ חיבור n8n תקין - ה-Webhook פעיל!');

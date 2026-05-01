@@ -54,7 +54,7 @@ ${brief.risks.map((r, i) => `${i + 1}. ${r}`).join('\n')}
 ${brief.signature_message}
 
 ---
-נוצר ב-Kalpiz AI · ${new Date().toLocaleDateString('he-IL')}
+נוצר ב-Realtyz AI · ${new Date().toLocaleDateString('he-IL')}
 `;
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
@@ -67,7 +67,7 @@ ${brief.signature_message}
   };
 
   const handleShare = async () => {
-    const summary = `${brief.headline}\n\n${brief.thesis}\n\nנוצר ב-Kalpiz AI`;
+    const summary = `${brief.headline}\n\n${brief.thesis}\n\nנוצר ב-Realtyz AI`;
     if (navigator.share) {
       try { await navigator.share({ title: `Brief אסטרטגי - ${candidate}`, text: summary }); } catch {}
     } else {
@@ -112,7 +112,7 @@ ${brief.signature_message}
         </div>
 
         <div className="px-5 py-2.5 border-t bg-muted/20 text-[10px] text-muted-foreground text-center">
-          נוצר ב-Kalpiz AI · {new Date().toLocaleDateString('he-IL')}
+          נוצר ב-Realtyz AI · {new Date().toLocaleDateString('he-IL')}
         </div>
       </Card>
 

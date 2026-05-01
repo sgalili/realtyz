@@ -24,7 +24,7 @@ type ChatMessage = { role: 'user' | 'assistant'; content: string };
 
 const demoPage: CandidatePage = {
   slug: 'demo-listing',
-  candidate_name: 'Kalpiz Listing',
+  candidate_name: 'Realtyz Listing',
   headline: 'קמפיין חכם שמקשיב ללידים ומתרגם אמון לעסקאות',
   thesis: 'שילוב של מאגר ידע, שיחות AI וניתוח שטח בזמן אמת כדי להגיע לכל ליד עם המסר הנכון.',
   pillars: ['שיחה אישית עם כל ליד', 'מדידה יומית של תמיכה', 'מסרים חדים שמבוססים על ידע הקמפיין'],
@@ -58,7 +58,7 @@ export default function PublicListingPage() {
   const shareUrl = useMemo(() => `${window.location.origin}/p/${activePage.slug}`, [activePage.slug]);
 
   useEffect(() => {
-    document.title = `${activePage.candidate_name} | Kalpiz`;
+    document.title = `${activePage.candidate_name} | Realtyz AI`;
     const description = activePage.headline.slice(0, 155);
     const setMeta = (property: string, content: string) => {
       let tag = document.querySelector(`meta[property="${property}"], meta[name="${property}"]`) as HTMLMetaElement | null;
@@ -70,7 +70,7 @@ export default function PublicListingPage() {
       tag.content = content;
     };
     setMeta('description', description);
-    setMeta('og:title', `${activePage.candidate_name} | Kalpiz`);
+    setMeta('og:title', `${activePage.candidate_name} | Realtyz AI`);
     setMeta('og:description', description);
     setMeta('og:url', shareUrl);
     setMeta('og:type', 'website');

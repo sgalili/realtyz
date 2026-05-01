@@ -36,6 +36,7 @@ import { StartTrialCta } from '@/components/StartTrialCta';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { BrandMark } from '@/components/branding/BrandMark';
 import { SystemStatus } from '@/components/SystemStatus';
+import { DemoModeToggle } from '@/components/DemoModeToggle';
 
 const DEMO_ARCHETYPES: DemoCandidateId[] = ['primary-single', 'primary-slate', 'national-small', 'national-mid', 'national-large'];
 const TUTORIAL_STEPS = [
@@ -593,7 +594,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="kalpiz-app-shell h-screen overflow-hidden flex w-full bg-background">
         <AppSidebar tutorialHighlightPath={activeTutorialStep?.path} />
         <div className="flex-1 flex h-screen min-w-0 flex-col overflow-hidden">
-          <header className="h-16 text-primary-foreground backdrop-blur-md flex items-center px-4 gap-0 shrink-0 sticky top-0 z-30" style={{ backgroundColor: 'hsl(var(--header-bg))' }}>
+          <header className="h-16 text-primary-foreground backdrop-blur-md flex items-center px-4 gap-2 shrink-0 sticky top-0 z-30" style={{ backgroundColor: 'hsl(var(--header-bg))' }}>
             <HeaderCrisisAlert />
             <NotificationCenter />
             <SearchExpandable />
@@ -605,6 +606,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             >
               <Bot className="h-4 w-4" />
             </Button>
+            <DemoModeToggle />
             <TrialBadge />
             <div className="flex-1" />
             <div className="ms-auto flex items-center gap-0">

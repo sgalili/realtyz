@@ -62,12 +62,12 @@ export interface ConnectedAccount {
  */
 const DEMO_LABELS: Record<string, string> = {
   whatsapp_green:  'WBA · 054-***-1841',
-  whatsapp_wba:    'WBA רשמי · Kalpiz Business',
+  whatsapp_wba:    'WBA רשמי · Realtyz Business',
   whatsapp:        'WhatsApp · 054-***-1841',
   telegram:        '@kalpiz_bot',
   instagram:       '@kalpiz.official',
-  facebook:        'Kalpiz Page · 12.4K',
-  x:               '@KalpizAI',
+  facebook:        'Realtyz Page · 12.4K',
+  x:               '@RealtyzAI',
   tiktok:          '@kalpiz.live',
   signal:          'Signal · 054-***-1841',
 };

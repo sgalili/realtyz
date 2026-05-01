@@ -766,7 +766,7 @@ export default function SmsBlastSimulator() {
           channel,
           recipient,
           message: messageBody,
-          subject: blastName || 'Kalpiz - בדיקה',
+          subject: blastName || 'Realtyz AI - בדיקה',
           preview_name: user?.user_metadata?.full_name ?? user?.email ?? '',
         },
       });

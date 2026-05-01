@@ -10,9 +10,9 @@ interface BrandMarkProps {
 
 /**
  * Renders the agency logo + name when white-label branding is configured,
- * otherwise falls back to the Kalpiz wordmark unless the user explicitly hid it.
+ * otherwise falls back to the Realtyz AI wordmark unless the user explicitly hid it.
  */
-export function BrandMark({ className = '', to = '/', fallbackLabel = 'Kalpiz' }: BrandMarkProps) {
+export function BrandMark({ className = '', to = '/', fallbackLabel = 'Realtyz AI' }: BrandMarkProps) {
   const { settings } = useWhiteLabel();
   const hasLogo = !!settings?.logo_url;
   const hasName = !!settings?.agency_name;

@@ -286,7 +286,7 @@ export async function createStrategicPdf(data: StrategicPdfData) {
   ctx.fillStyle = navy;
   ctx.fillRect(0, 1660, 1240, 94);
   ltr('CONFIDENTIAL · STRATEGIC BRIEF', 80, 1718, 18, silver, 800);
-  rtl('הופק ע״י Kalpiz AI · מערכת לניהול קמפיינים חכמים', 1160, 1718, 20, '#ffffff', 800);
+  rtl('הופק ע״י Realtyz AI · מערכת לניהול נדל"ן', 1160, 1718, 20, '#ffffff', 800);
 
   const pdf = new jsPDF({ orientation: 'portrait', unit: 'pt', format: 'a4' });
   pdf.addImage(canvas.toDataURL('image/jpeg', 0.95), 'JPEG', 0, 0, 595.28, 841.89);

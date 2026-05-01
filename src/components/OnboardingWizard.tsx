@@ -278,7 +278,7 @@ export function OnboardingWizard({ open, onClose }: OnboardingWizardProps) {
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['onboarding-state'] });
-      toast.success('ברוך הבא ל-Kalpiz! הקמפיין שלך מוכן.');
+      toast.success('ברוך הבא ל-Realtyz AI! החשבון שלך מוכן.');
       onClose();
     },
     onError: (e: any) => {

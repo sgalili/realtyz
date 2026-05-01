@@ -24,7 +24,7 @@ export default function Unsubscribe() {
   const [confirmed, setConfirmed] = useState(false);
 
   useEffect(() => {
-    document.title = 'הסרה מרשימת התפוצה - Kalpiz';
+    document.title = 'הסרה מרשימת התפוצה - Realtyz AI';
   }, []);
 
   return (
@@ -46,7 +46,7 @@ export default function Unsubscribe() {
 
         {confirmed ? (
           <p className="text-center text-muted-foreground">
-            לא תקבל/י הודעות נוספות מ-Kalpiz. אנו מצטערים לראותך עוזב/ת.
+            לא תקבל/י הודעות נוספות מ-Realtyz AI. אנו מצטערים לראותך עוזב/ת.
           </p>
         ) : (
           <>
@@ -72,7 +72,7 @@ export default function Unsubscribe() {
         )}
 
         <p className="mt-6 text-center text-xs text-muted-foreground">
-          Kalpiz · מערכת ניהול קמפיין דיגיטלי
+          Realtyz AI · מערכת לניהול נדל"ן
         </p>
       </div>
     </div>

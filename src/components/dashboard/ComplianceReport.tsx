@@ -27,7 +27,7 @@ export function ComplianceReport({ data }: { data?: ReportData }) {
 
       // Build CSV compliance report
       const lines: string[] = [];
-      lines.push('דוח תאימות מערכת - Kalpiz AI');
+      lines.push('דוח תאימות מערכת - Realtyz AI');
       lines.push(`תאריך: ${dateStr} ${timeStr}`);
       lines.push('');
       lines.push('=== סיכום כללי ===');
