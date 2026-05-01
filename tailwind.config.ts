@@ -116,7 +116,13 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       boxShadow: {
-        soft: "0 1px 2px 0 rgba(0, 0, 0, 0.04), 0 2px 8px -2px rgba(0, 0, 0, 0.06)",
+        soft: "0 1px 2px 0 rgba(17, 24, 39, 0.04), 0 4px 14px -4px rgba(17, 24, 39, 0.08)",
+        elegant: "0 10px 40px -12px hsl(222 39% 14% / 0.18), 0 2px 8px -2px hsl(222 39% 14% / 0.06)",
+        gold: "0 8px 24px -10px hsl(38 52% 58% / 0.45)",
+      },
+      spacing: {
+        "section": "5rem",
+        "section-sm": "3rem",
       },
       keyframes: {
         "accordion-down": {
