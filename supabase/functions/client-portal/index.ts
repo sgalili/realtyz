@@ -138,18 +138,13 @@ Deno.serve(async (req) => {
       referrer,
     });
 
+    const currentCount = await getCount(admin, link.id);
     await admin
       .from("client_portal_links")
       .update({
         last_viewed_at: new Date().toISOString(),
-        view_count: undefined as any, // increment via rpc-less workaround below
+        view_count: currentCount + 1,
       })
-      .eq("id", link.id);
-    // increment view_count safely
-    await admin.rpc as any; // noop placeholder; actual increment via direct sql:
-    await admin
-      .from("client_portal_links")
-      .update({ view_count: (await getCount(admin, link.id)) + 1 })
       .eq("id", link.id);
 
     // 6) Activity log on the lead — so the agent sees the visit in the timeline
