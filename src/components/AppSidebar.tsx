@@ -25,6 +25,7 @@ import {
   Handshake,
   Gauge,
   Bot,
+  Home,
 } from 'lucide-react';
 import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
 import { useMemo, useState } from 'react';
