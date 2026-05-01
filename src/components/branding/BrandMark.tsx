@@ -16,7 +16,7 @@ export function BrandMark({ className = '', to = '/', fallbackLabel = 'Realtyz A
   const { settings } = useWhiteLabel();
   const hasLogo = !!settings?.logo_url;
   const hasName = !!settings?.agency_name;
-  const hideRealtyz = !!settings?.hide_kalpiz_branding;
+  const hideRealtyz = !!settings?.hide_realtyz_branding;
 
   const labelToShow = hasName ? settings!.agency_name! : (hideRealtyz ? '' : fallbackLabel);
 

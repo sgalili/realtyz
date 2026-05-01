@@ -17,14 +17,14 @@ export function HeroWaveMount() {
     const containers: HTMLDivElement[] = [];
 
     const mountInto = (el: HTMLElement) => {
-      if (el.dataset.kalpizWaveMounted === '1') return;
+      if (el.dataset.realtyzWaveMounted === '1') return;
       // Allow pages to opt out (e.g. SubscriptionManager has its own layout)
       if (el.closest('[data-no-hero-wave]')) return;
       // Must contain an h1 (direct or one level deep) to be a hero block
       const hasH1 = !!el.querySelector(':scope > h1, :scope > div > h1');
       if (!hasH1) return;
 
-      el.dataset.kalpizWaveMounted = '1';
+      el.dataset.realtyzWaveMounted = '1';
 
       const host = document.createElement('div');
       host.style.position = 'absolute';
@@ -78,7 +78,7 @@ export function HeroWaveMount() {
       containers.forEach((c) => {
         const parent = c.parentElement;
         if (parent) {
-          delete parent.dataset.kalpizWaveMounted;
+          delete parent.dataset.realtyzWaveMounted;
           if (parent.contains(c)) parent.removeChild(c);
         }
       });

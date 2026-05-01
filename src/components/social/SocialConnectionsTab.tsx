@@ -65,7 +65,7 @@ const getOAuthRedirectUri = (): string => {
   if (typeof window === 'undefined') return PROD_OAUTH_CALLBACK;
   const host = window.location.hostname;
   // Force production URI on the live custom domain + lovable.app published host.
-  if (host === 'ai.realtyz.co.il' || host === 'kalpizai.lovable.app') {
+  if (host === 'ai.realtyz.co.il' || host === 'realtyzai.lovable.app') {
     return PROD_OAUTH_CALLBACK;
   }
   // Preview / local: use current origin so devs can register their own URI.

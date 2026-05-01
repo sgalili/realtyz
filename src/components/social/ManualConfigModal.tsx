@@ -20,7 +20,7 @@ import { SHARED_OAUTH_PLATFORM_MAP, ONE_CLICK_SUPPORTED_PLATFORMS } from '@/lib/
  */
 const KNOWN_ORIGINS = [
   'https://ai.realtyz.co.il',
-  'https://kalpizai.lovable.app',
+  'https://realtyzai.lovable.app',
 ];
 
 const REDIRECT_PATH = '/oauth/callback';
@@ -672,7 +672,7 @@ export function ManualConfigModal({ open, platform, displayName, isConnected, on
 
       const host = window.location.hostname;
       const redirectUri =
-        host === 'ai.realtyz.co.il' || host === 'kalpizai.lovable.app'
+        host === 'ai.realtyz.co.il' || host === 'realtyzai.lovable.app'
           ? 'https://ai.realtyz.co.il/oauth/callback'
           : `${window.location.origin}/oauth/callback`;
 

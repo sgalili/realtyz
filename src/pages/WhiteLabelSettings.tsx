@@ -49,7 +49,7 @@ export default function WhiteLabelSettings() {
       setAgencyName(settings.agency_name ?? '');
       setColorHex(hslTripletToHex(settings.primary_color));
       setLogoUrl(settings.logo_url);
-      setHideRealtyz(settings.hide_kalpiz_branding ?? false);
+      setHideRealtyz(settings.hide_realtyz_branding ?? false);
     }
   }, [settings]);
 
@@ -93,7 +93,7 @@ export default function WhiteLabelSettings() {
         logo_url: logoUrl,
         primary_color: triplet,
         primary_foreground_color: fg,
-        hide_kalpiz_branding: hideRealtyz,
+        hide_realtyz_branding: hideRealtyz,
       };
       const { error } = await supabase
         .from('white_label_settings')

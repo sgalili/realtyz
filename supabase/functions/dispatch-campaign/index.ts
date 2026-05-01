@@ -328,7 +328,7 @@ async function sendEmailResend(
 // Auto-appended to EVERY outbound email so recipients always have a one-click
 // removal path. Lowers spam-rate complaints and protects sender reputation.
 function buildUnsubscribeLink(recipientEmail: string, campaignName: string): string {
-  const base = Deno.env.get("PUBLIC_SITE_URL") ?? "https://kalpizai.lovable.app";
+  const base = Deno.env.get("PUBLIC_SITE_URL") ?? "https://realtyzai.lovable.app";
   const params = new URLSearchParams({ email: recipientEmail, c: campaignName });
   return `${base}/unsubscribe?${params.toString()}`;
 }

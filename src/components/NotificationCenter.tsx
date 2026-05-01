@@ -77,19 +77,19 @@ export default function NotificationCenter() {
   const [bellPulse, setBellPulse] = useState(false);
   const [demoNotifications, setDemoNotifications] = useState<DemoNotification[]>(() => {
     try {
-      const stored = localStorage.getItem('kalpiz_demo_notifications');
+      const stored = localStorage.getItem('realtyz_demo_notifications');
       return stored ? JSON.parse(stored) : [];
     } catch { return []; }
   });
   const [viewedIds, setViewedIds] = useState<Set<string>>(() => {
     try {
-      const stored = localStorage.getItem('kalpiz_viewed_notifs');
+      const stored = localStorage.getItem('realtyz_viewed_notifs');
       return new Set(stored ? JSON.parse(stored) : []);
     } catch { return new Set(); }
   });
   const [dismissedBudgets, setDismissedBudgets] = useState<Set<string>>(() => {
     try {
-      const stored = localStorage.getItem('kalpiz_dismissed_budgets');
+      const stored = localStorage.getItem('realtyz_dismissed_budgets');
       return new Set(stored ? JSON.parse(stored) : []);
     } catch { return new Set(); }
   });
@@ -205,7 +205,7 @@ export default function NotificationCenter() {
         };
         setDemoNotifications((current) => {
           const next = [notification, ...current].slice(0, 20);
-          localStorage.setItem('kalpiz_demo_notifications', JSON.stringify(next));
+          localStorage.setItem('realtyz_demo_notifications', JSON.stringify(next));
           return next;
         });
         setBellPulse(true);
@@ -278,7 +278,7 @@ export default function NotificationCenter() {
     const next = new Set(dismissedBudgets);
     next.add(key);
     setDismissedBudgets(next);
-    localStorage.setItem('kalpiz_dismissed_budgets', JSON.stringify([...next]));
+    localStorage.setItem('realtyz_dismissed_budgets', JSON.stringify([...next]));
   };
 
   const handleClick = (voterId: string | null, id: string) => {
@@ -286,7 +286,7 @@ export default function NotificationCenter() {
     const next = new Set(viewedIds);
     next.add(id);
     setViewedIds(next);
-    localStorage.setItem('kalpiz_viewed_notifs', JSON.stringify([...next]));
+    localStorage.setItem('realtyz_viewed_notifs', JSON.stringify([...next]));
     setOpen(false);
     navigate(`/live-conversations?lead=${voterId}`);
   };
@@ -294,14 +294,14 @@ export default function NotificationCenter() {
   const markAllRead = () => {
     const next = new Set([...viewedIds, ...alerts.map(a => a.id), ...demoNotifications.map(n => n.id)]);
     setViewedIds(next);
-    localStorage.setItem('kalpiz_viewed_notifs', JSON.stringify([...next]));
+    localStorage.setItem('realtyz_viewed_notifs', JSON.stringify([...next]));
   };
 
   const openDemoNotification = (notification: DemoNotification) => {
     const next = new Set(viewedIds);
     next.add(notification.id);
     setViewedIds(next);
-    localStorage.setItem('kalpiz_viewed_notifs', JSON.stringify([...next]));
+    localStorage.setItem('realtyz_viewed_notifs', JSON.stringify([...next]));
     setOpen(false);
     navigate(notification.path);
   };

@@ -284,12 +284,12 @@ export const DEMO_VOTERS = demoNames.map((name, i) => ({
   last_interaction_at: recentTimestamp(recentOffsets[i] ?? 60),
   profile_picture_url: demoHeadshots[i % demoHeadshots.length],
   identity_number: String(100000000 + i * 3791).slice(0, 9),
-  instagram_handle: `kalpiz_${i}`,
-  telegram_username: `kalpiz_voter_${i}`,
+  instagram_handle: `realtyz_${i}`,
+  telegram_username: `realtyz_voter_${i}`,
   messenger_id: `msgr-${i}`,
   tiktok_handle: `realtyz.tok.${i}`,
   signal_number: `+${`97250${String(1000000 + i * 111111).slice(0, 7)}`}`,
-  x_handle: `kalpiz_x_${i}`,
+  x_handle: `realtyz_x_${i}`,
   facebook_id: `fb-${i}`,
   interest_tag: demoTopics[i % demoTopics.length].tag,
   interest_scores: buildInterestScores(i),
@@ -464,18 +464,18 @@ export const getDemoCandidateSummary = (candidateId?: DemoCandidateId | null) =>
 // Realtyz global pricing (matches https://realtyz.co.il/pricing).
 // Single source of truth for plan base + setup fee — keeps in-app numbers
 // consistent with the public pricing list across demo + real modes.
-export const KALPIZ_PLANS = {
+export const REALTYZ_PLANS = {
   breakthrough: { slug: 'breakthrough', name: 'מסלול פריצה', monthly: 2999, mandates: 1 },
   power:        { slug: 'power',        name: 'מסלול עוצמה', monthly: 7999, mandates: 3 },
   victory:      { slug: 'victory',      name: 'מסלול ניצחון', monthly: 14999, mandates: 10 },
 } as const;
-export const KALPIZ_SETUP_FEE = 5000;
+export const REALTYZ_SETUP_FEE = 5000;
 
 // Pick the recommended plan for a given asking price (matches calculator logic).
 export const pickRealtyzPlan = (mandates: number) => {
-  if (mandates >= KALPIZ_PLANS.victory.mandates) return KALPIZ_PLANS.victory;
-  if (mandates >= KALPIZ_PLANS.power.mandates) return KALPIZ_PLANS.power;
-  return KALPIZ_PLANS.breakthrough;
+  if (mandates >= REALTYZ_PLANS.victory.mandates) return REALTYZ_PLANS.victory;
+  if (mandates >= REALTYZ_PLANS.power.mandates) return REALTYZ_PLANS.power;
+  return REALTYZ_PLANS.breakthrough;
 };
 
 // Realistic billing snapshot for the currently-viewed demo profile.
@@ -492,7 +492,7 @@ export const getDemoBilling = (candidateId?: DemoCandidateId | null) => {
   // Recommended plan from public pricing list (₪2,999 / ₪7,999 / ₪14,999).
   const plan = pickRealtyzPlan(candidate.mandateGoal);
   const planMonthly = plan.monthly;
-  const setupFee = KALPIZ_SETUP_FEE;
+  const setupFee = REALTYZ_SETUP_FEE;
 
   // Unit costs (₪, ex-VAT) — must match SubscriptionManager UNIT_COSTS / public pricing.
   const COST = { sms: 0.11, whatsapp: 0.18, ai_voice: 0.42, ai_touchpoint: 0.012, meta_ad: 0.4 };
@@ -757,14 +757,14 @@ export const getDemoUpgradePath = (candidateId?: DemoCandidateId | null) => {
 
   if (slug === 'breakthrough') {
     return {
-      currentName: KALPIZ_PLANS.breakthrough.name,
+      currentName: REALTYZ_PLANS.breakthrough.name,
       currentSlug: 'breakthrough' as const,
-      currentMonthly: KALPIZ_PLANS.breakthrough.monthly,
-      currentMandates: KALPIZ_PLANS.breakthrough.mandates,
+      currentMonthly: REALTYZ_PLANS.breakthrough.monthly,
+      currentMandates: REALTYZ_PLANS.breakthrough.mandates,
       nextSlug: 'power' as const,
-      nextName: KALPIZ_PLANS.power.name,
-      nextMonthly: KALPIZ_PLANS.power.monthly,
-      nextMandates: KALPIZ_PLANS.power.mandates,
+      nextName: REALTYZ_PLANS.power.name,
+      nextMonthly: REALTYZ_PLANS.power.monthly,
+      nextMandates: REALTYZ_PLANS.power.mandates,
       tagline: 'הגבר את עוצמת הקמפיין: יותר קרדיטים, יותר טווח, יותר מהירות',
       advantages: [
         { label: 'תמיכת WhatsApp בעדיפות גבוהה', icon: 'phone' as const },
@@ -788,14 +788,14 @@ export const getDemoUpgradePath = (candidateId?: DemoCandidateId | null) => {
 
   // power -> victory
   return {
-    currentName: KALPIZ_PLANS.power.name,
+    currentName: REALTYZ_PLANS.power.name,
     currentSlug: 'power' as const,
-    currentMonthly: KALPIZ_PLANS.power.monthly,
-    currentMandates: KALPIZ_PLANS.power.mandates,
+    currentMonthly: REALTYZ_PLANS.power.monthly,
+    currentMandates: REALTYZ_PLANS.power.mandates,
     nextSlug: 'victory' as const,
-    nextName: KALPIZ_PLANS.victory.name,
-    nextMonthly: KALPIZ_PLANS.victory.monthly,
-    nextMandates: KALPIZ_PLANS.victory.mandates,
+    nextName: REALTYZ_PLANS.victory.name,
+    nextMonthly: REALTYZ_PLANS.victory.monthly,
+    nextMandates: REALTYZ_PLANS.victory.mandates,
     tagline: 'תדלק את המנוע לקמפיין ארצי: כוח אש מקסימלי בכל הערוצים',
     advantages: [
       { label: 'מנהל הצלחת לקוח ייעודי 24/7', icon: 'crown' as const },
