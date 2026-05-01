@@ -7,56 +7,58 @@ const corsHeaders = {
 };
 
 const SCHEMA_CONTEXT = `
-You are the "Kalpiz Intelligence Officer" - the AI brain behind a political campaign management platform called Kalpiz AI.
-You speak Hebrew and English. You are sharp, professional, and data-driven.
-You are also a Master Campaign Strategist - you don't just return data, you provide actionable campaign advice.
+You are the "Realtyz AI Co-Pilot" — the AI brain behind a real-estate CRM for Agents working with Prospects in the Deal Room.
+You speak Hebrew and English. You are sharp, professional, warm, and consultative.
 
-You have access to a PostgreSQL database with these tables:
+You have read access (SELECT only) to a PostgreSQL database with these tables:
 
-TABLE voters: id (uuid PK), phone_number (text), full_name (text), city (text), interest_tag (text), engagement_score (int 0-100), status (text: lead/supporter/active/inactive/contacted/voted), is_voted (bool), last_interaction_at (timestamptz), created_at (timestamptz), loyalty_tier (text), sentiment (text: positive/neutral/negative), identity_number (text), ai_autopilot (bool)
+TABLE leads (Prospects): id (uuid PK), phone_number (text), full_name (text), city (text), interest_tag (text), engagement_score (int 0-100), status (text), is_voted (bool), last_interaction_at (timestamptz), created_at (timestamptz), loyalty_tier (text), sentiment (text: positive/neutral/negative), identity_number (text), ai_autopilot (bool), lead_stage (text), preferences (jsonb)
 
-TABLE chat_history: id (uuid PK), lead_id (uuid FK->voters), role (text: user/assistant), content (text), sentiment (text), created_at (timestamptz)
+TABLE chat_history: id (uuid PK), lead_id (uuid FK->leads), role (text: user/assistant), content (text), sentiment (text), created_at (timestamptz)
 
-TABLE messages: id (uuid PK), lead_id (uuid FK->voters), channel (text), content (text), sender_type (text), direction (text: inbound/outbound), platform (text), created_at (timestamptz), metadata (jsonb)
+TABLE messages: id (uuid PK), lead_id (uuid FK->leads), channel (text), content (text), sender_type (text), direction (text: inbound/outbound), platform (text), created_at (timestamptz), metadata (jsonb)
 
-TABLE campaigns: id (uuid PK), name (text), description (text), sms_body (text), tag_associated (text), total_clicks (int), total_sent (int), created_at (timestamptz)
+TABLE listings: id (uuid PK), property_title (text), description (text), asking_price (numeric), features (jsonb), slug (text), is_published (bool), user_id (uuid), created_at (timestamptz)
 
-TABLE leads: id (uuid PK), full_name (text), phone_number (text), email (text), message (text), tag (text), status (text), wa_sent (bool), created_at (timestamptz)
+TABLE campaigns (Listing Outreach): id (uuid PK), name (text), description (text), sms_body (text), tag_associated (text), total_clicks (int), total_sent (int), created_at (timestamptz)
 
-TABLE tracking_links: id (uuid PK), target_url (text), short_code (text), tag (text), campaign_id (uuid FK->campaigns), click_count (int), created_at (timestamptz)
-
-TABLE campaign_settings: id (uuid PK), key (text UNIQUE), value (text), updated_at (timestamptz)
+TABLE contact_submissions: id (uuid PK), full_name (text), phone_number (text), email (text), message (text), tag (text), status (text), wa_sent (bool), created_at (timestamptz)
 
 CRITICAL QUERY RULES:
 - ONLY generate SELECT queries. Never INSERT, UPDATE, DELETE, DROP, ALTER, or any DDL/DML.
 - ALWAYS add "LIMIT 50" to every query. Never return more than 50 rows.
 - For aggregations (COUNT, SUM, AVG), GROUP BY results should also have LIMIT 50.
 - Use indexed columns for WHERE clauses when possible: phone_number, city, status, engagement_score, created_at, fts.
-- For large scans, prefer COUNT(*) or aggregations over SELECT *.
-- Never SELECT * from voters without a WHERE clause - always filter or limit.
+- Never SELECT * from leads without a WHERE clause - always filter or limit.
 - Return valid PostgreSQL SQL.
 
-STRATEGIC ADVICE:
-When the user asks for analysis or strategy, don't just return data - interpret it.
-Give actionable recommendations in Hebrew. Think like a campaign manager advising a candidate.
+DEAL-ROOM REPLY MODE — STRATEGY BANK GROUNDING:
+The Strategy Bank below contains the Agent's own past WhatsApp conversations and reference documents.
+When the Agent asks how to respond to a Prospect, draft suggested replies, or asks "what should I say":
+- TREAT the WhatsApp excerpts as the Agent's authentic voice and proven playbook.
+- MIRROR the Agent's tone, sentence length, greeting/closing patterns, emoji usage, and phrasing.
+- REUSE recurring power-phrases the Agent has used successfully when they fit the new context.
+- NEVER invent property facts (price, address, dates) that aren't in the Strategy Bank, the Prospect record, or the listings table.
+- Prefer chunks tagged "Past Conversation / WhatsApp" for STYLE; prefer document chunks for FACTS.
+- If style examples are absent, fall back to a friendly, professional Hebrew real-estate tone.
 
 CAMPAIGN CONTEXT (loaded from settings):
 {{CAMPAIGN_CONTEXT}}
 
-KNOWLEDGE BASE CONTEXT (top matches from the campaign's own documents):
+STRATEGY BANK CONTEXT (top matches from the Agent's own uploads — past WhatsApp turns + reference docs):
 {{KB_CONTEXT}}
 
-KNOWLEDGE-BASE CITATION RULES:
-- When the answer relies on the knowledge base above, cite the source inline in Hebrew like: "לפי המסמך הרשמי של הקמפיין «{title}»".
-- Do NOT invent sources. Only cite titles that appear in the KB context block.
-- If the KB context is empty or irrelevant, answer from your general reasoning without citing.
+STRATEGY-BANK CITATION RULES:
+- When the answer leans on the Strategy Bank above, cite inline in Hebrew like: "בהתאם לסגנון מהשיחה «{title}»".
+- Do NOT invent sources. Only cite titles that appear in the Strategy Bank context block.
+- If the Strategy Bank context is empty or irrelevant, answer from general reasoning without citing.
 
 RESPONSE FORMAT (JSON):
 If you can answer with SQL:
 {"type":"sql","query":"SELECT ...","explanation":"הסבר קצר בעברית עם המלצה אסטרטגית"}
 
-If you need to respond with text only (advice, strategy, interpretation):
-{"type":"text","content":"תשובה בעברית עם המלצות"}
+If you need to respond with text only (advice, suggested reply, strategy, interpretation):
+{"type":"text","content":"תשובה בעברית בסגנון של הסוכן"}
 
 IMPORTANT: Return ONLY the JSON object, no markdown, no code fences.
 `;
@@ -95,9 +97,11 @@ serve(async (req) => {
       settings.mandate_target ? `Mandate Target: ${settings.mandate_target} mandates` : null,
     ].filter(Boolean).join("\n") || "No campaign settings configured yet.";
 
-    // RAG: pull top-5 KB chunks for the *requesting* user (auth header forwarded)
-    let kbContext = "(no knowledge base documents matched)";
-    let kbSources: Array<{ id: string; title: string; similarity: number }> = [];
+    // RAG: pull KB chunks for the *requesting* user (auth header forwarded).
+    // We fetch a wider window then split into "Past Conversation (WhatsApp)" vs "Reference Documents",
+    // so the model can mirror the Agent's voice from past WhatsApp turns while citing factual docs.
+    let kbContext = "(no Strategy Bank entries matched)";
+    let kbSources: Array<{ id: string; title: string; similarity: number; source?: string }> = [];
     try {
       const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user")?.content;
       const authHeader = req.headers.get("Authorization") ?? "";
@@ -105,25 +109,54 @@ serve(async (req) => {
         const kbRes = await fetch(`${supabaseUrl}/functions/v1/kb-query`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: authHeader },
-          body: JSON.stringify({ query: lastUserMsg, match_count: 5 }),
+          body: JSON.stringify({ query: lastUserMsg, match_count: 10 }),
         });
         if (kbRes.ok) {
           const kbJson = await kbRes.json();
-          const matches = kbJson?.matches ?? [];
+          const matches: any[] = kbJson?.matches ?? [];
           if (matches.length > 0) {
-            kbContext = matches
-              .map((m: any, i: number) => `[${i + 1}] title: "${m.document_title}" (similarity ${(m.similarity ?? 0).toFixed(2)})\n${m.content}`)
-              .join("\n\n---\n\n");
-            // Dedupe sources by document_id, keep highest similarity
-            const seen = new Map<string, { id: string; title: string; similarity: number }>();
-            matches.forEach((m: any) => {
+            // Hydrate source metadata so we can label WhatsApp chunks distinctly.
+            const docIds = Array.from(new Set(matches.map((m) => m.document_id).filter(Boolean)));
+            const { data: docs } = await supabase
+              .from("knowledge_documents")
+              .select("id, source_type, source_metadata")
+              .in("id", docIds.length ? docIds : ["00000000-0000-0000-0000-000000000000"]);
+            const docMap = new Map<string, { source_type?: string; source_metadata?: any }>();
+            (docs ?? []).forEach((d: any) => docMap.set(d.id, d));
+
+            const enriched = matches.map((m) => {
+              const d = docMap.get(m.document_id) ?? {};
+              const isWhatsApp =
+                d.source_type === "whatsapp" ||
+                d.source_metadata?.source === "WhatsApp" ||
+                d.source_metadata?.category === "Past Conversation";
+              return { ...m, isWhatsApp, sourceLabel: isWhatsApp ? "Past Conversation / WhatsApp" : "Reference Document" };
+            });
+
+            // Prefer up to 4 WhatsApp chunks for STYLE, then up to 4 doc chunks for FACTS.
+            const wa = enriched.filter((m) => m.isWhatsApp).slice(0, 4);
+            const docsChunks = enriched.filter((m) => !m.isWhatsApp).slice(0, 4);
+            const ordered = [...wa, ...docsChunks];
+
+            const fmt = (m: any, i: number) =>
+              `[${i + 1}] (${m.sourceLabel}) title: "${m.document_title}" (similarity ${(m.similarity ?? 0).toFixed(2)})\n${m.content}`;
+            const waBlock = wa.length
+              ? `── PAST WHATSAPP CONVERSATIONS (use for STYLE / VOICE) ──\n${wa.map((m, i) => fmt(m, i)).join("\n\n---\n\n")}`
+              : "";
+            const docsBlock = docsChunks.length
+              ? `── REFERENCE DOCUMENTS (use for FACTS) ──\n${docsChunks.map((m, i) => fmt(m, i + wa.length)).join("\n\n---\n\n")}`
+              : "";
+            kbContext = [waBlock, docsBlock].filter(Boolean).join("\n\n");
+
+            const seen = new Map<string, { id: string; title: string; similarity: number; source?: string }>();
+            ordered.forEach((m) => {
               const id = m.document_id ?? m.id;
               const sim = m.similarity ?? 0;
               if (!seen.has(id) || (seen.get(id)!.similarity < sim)) {
-                seen.set(id, { id, title: m.document_title, similarity: sim });
+                seen.set(id, { id, title: m.document_title, similarity: sim, source: m.sourceLabel });
               }
             });
-            kbSources = Array.from(seen.values()).slice(0, 5);
+            kbSources = Array.from(seen.values()).slice(0, 6);
           }
         }
       }
