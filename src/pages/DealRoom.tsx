@@ -574,6 +574,16 @@ export default function DealRoom() {
                 <Sparkles className="h-4 w-4 mr-1.5" />
                 Regenerate
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                disabled={generating || sending || !activeProspect}
+                onClick={() => activeProspect && setMatchmakerProspect(activeProspect)}
+              >
+                <Home className="h-4 w-4 mr-1.5 text-success" />
+                Find Property
+              </Button>
             </div>
             <Button
               className="w-full"
