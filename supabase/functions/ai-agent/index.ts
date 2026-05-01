@@ -216,10 +216,33 @@ serve(async (req) => {
     );
     const personaBlock = renderPersonaPrompt(persona);
 
+    // Hard pipeline separation — fetch the Lead's deal_type and inject a
+    // forbid-list so the AI cannot offer mortgages to renters or rentals to buyers.
+    let dealType: DealType | null = null;
+    let resolvedLeadName: string | null = prospect_name ?? null;
+    if (lead_id) {
+      try {
+        const { data: leadRow } = await supabase
+          .from("leads")
+          .select("deal_type, full_name, preferences")
+          .eq("id", lead_id)
+          .maybeSingle();
+        const dt =
+          (leadRow?.deal_type as string | undefined) ||
+          (leadRow?.preferences as any)?.listing_type;
+        if (dt === "sale" || dt === "rent") dealType = dt;
+        if (!resolvedLeadName) resolvedLeadName = (leadRow?.full_name as string | undefined) ?? null;
+      } catch (e) {
+        console.warn("deal_type lookup failed:", e);
+      }
+    }
+    const dealTypeBlock = renderDealTypeBlock(dealType, resolvedLeadName);
+
     const systemPrompt = SCHEMA_CONTEXT
       .replace("{{CAMPAIGN_CONTEXT}}", campaignContext)
       .replace("{{KB_CONTEXT}}", kbContext)
       + (personaBlock ? "\n\n" + personaBlock : "")
+      + "\n\n" + dealTypeBlock
       + "\n\n" + compliance;
 
     // Escalation Trigger: classify the most recent prospect/user message.
