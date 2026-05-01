@@ -625,7 +625,7 @@ function CalculatorBody() {
                 >
                   <span className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
                     <SlidersHorizontal className="h-4 w-4 text-primary" />
-                    קהלי יעד · רשימות {memberPlural}
+                    פילוח קהל (Prospecting) · רשימות פרוספקטים
                   </span>
                   <span className="flex items-center gap-2">
                     <span className="text-[11px] tabular-nums text-muted-foreground">{formatILS(listSize)}</span>
@@ -650,7 +650,7 @@ function CalculatorBody() {
                     >
                       <div className="mt-3 space-y-4 rounded-lg border border-border bg-secondary/40 p-4">
                         <div className="text-[12px] text-muted-foreground">
-                          כמה אנשי קשר יש לכם בקובץ ה{memberPlural} / ברשימות?
+                          כמה פרוספקטים יש לכם במאגר / ברשימות הפעילות?
                         </div>
 
                         {/* Warm */}
@@ -684,7 +684,7 @@ function CalculatorBody() {
                               <span className="inline-block h-2 w-2 rounded-full bg-sky-500" />
                               {isPrimaries ? 'פוטנציאל מתפקדים' : 'רשימה קרה'}
                               <InfoTip title={isPrimaries ? 'פוטנציאל מתפקדים' : 'רשימה קרה'}>
-                                {memberPlural} פוטנציאליים שעדיין לא מכירים אתכם. שיעור המרה נמוך ({coldPct}%) אך הקהל גדול בהרבה.
+                                פרוספקטים פוטנציאליים שעדיין לא מכירים אתכם. שיעור המרה נמוך ({coldPct}%) אך הקהל גדול בהרבה.
                               </InfoTip>
                             </div>
                             <span className="text-[12.5px] font-bold tabular-nums text-foreground">{formatILS(coldSize)}</span>
@@ -707,14 +707,14 @@ function CalculatorBody() {
 
                 {inputsTouched && listShortfall && (
                   <WarnBlock>
-                    התמהיל מניב <span className="font-black">{formatILS(projectedVotes)}</span> {voterPlural} מזוקקים, מתוך{' '}
-                    <span className="font-black">{formatILS(requiredVotes)}</span> הנדרשים ליעד של {mandates} {unitPlural}.
+                    התמהיל מניב <span className="font-black">{formatILS(projectedVotes)}</span> פרוספקטים מוסמכים, מתוך{' '}
+                    <span className="font-black">{formatILS(requiredVotes)}</span> פרוספקטים נדרשים ליעד של {mandates} עסקאות סגורות.
                     <button
                       type="button"
                       onClick={() => handleMandatesChange(Math.max(1, optimizedMandates))}
                       className="mt-1.5 block text-[12px] font-black underline decoration-destructive/60 underline-offset-2 hover:text-destructive"
                     >
-                      התאם יעד ל-{optimizedMandates} {unitPlural} ←
+                      התאם יעד ל-{optimizedMandates} עסקאות ←
                     </button>
                   </WarnBlock>
                 )}
@@ -819,25 +819,25 @@ function CalculatorBody() {
                   <div className="mt-3 space-y-4 rounded-lg border border-border bg-secondary/40 p-4">
                     <ResourceSlider
                       icon={<Users className="h-4 w-4 text-primary" />}
-                      title="נקודות מגע עם הליד"
-                      info={<>כלל הזהב: {TOUCHPOINTS_PER_VOTER_TOTAL} מגעים לליד להמרה מלאה. הורדה תפחית עלות וגם סבירות ניצחון.</>}
+                      title="חשיפה לשוק (Market Exposure)"
+                      info={<>כלל הזהב המקצועי: {TOUCHPOINTS_PER_VOTER_TOTAL} נקודות חשיפה לכל פרוספקט עד להבשלת עסקה. הפחתה תקטין הוצאה אך גם את סיכויי הסגירה.</>}
                       min={5} max={30} step={1}
                       value={touchpointsPerVoter}
                       onChange={setTouchpointsPerVoter}
-                      valueLabel={`${touchpointsPerVoter} מגעים / ליד · סה״כ ${formatCompact(totalCampaignTouchpoints)}`}
+                      valueLabel={`${touchpointsPerVoter} חשיפות / פרוספקט · סה״כ ${formatCompact(totalCampaignTouchpoints)}`}
                       cost={monthlyTouchpointCost}
                       onReset={touchpointsPerVoter !== TOUCHPOINTS_PER_VOTER_TOTAL ? () => setTouchpointsPerVoter(TOUCHPOINTS_PER_VOTER_TOTAL) : undefined}
                     />
 
                     <ResourceSlider
                       icon={<MessageSquare className="h-4 w-4 text-primary" />}
-                      title="הודעות SMS"
-                      rateNote={`₪${SMS_RATE.toFixed(2)} / הודעה`}
-                      info={<>{formatILS(includedSms)} הודעות כלולות בחבילה. מעבר לכך, חיוב של ₪{SMS_RATE.toFixed(2)} להודעה.</>}
+                      title="עדכונים לאימות (SMS)"
+                      rateNote={`₪${SMS_RATE.toFixed(2)} / עדכון`}
+                      info={<>{formatILS(includedSms)} עדכוני אימות (SMS) כלולים בחבילה — לאישורי פגישה, קודי OTP ועדכוני סטטוס לפרוספקטים. מעבר לכך, חיוב של ₪{SMS_RATE.toFixed(2)} להודעה.</>}
                       min={0} max={Math.max(suggestedSms * 3, 1_000_000)} step={5_000}
                       value={effectiveSms}
                       onChange={(v) => { setSmsVolume(v); setSmsTouched(true); }}
-                      valueLabel={`${formatILS(effectiveSms)} הודעות / חודש`}
+                      valueLabel={`${formatILS(effectiveSms)} עדכונים / חודש`}
                       cost={monthlySmsCost}
                       onReset={smsTouched && effectiveSms !== suggestedSms ? () => setSmsTouched(false) : undefined}
                       below={smsTouched && effectiveSms < suggestedSms ? `מתחת למומלץ (${formatILS(suggestedSms)})` : undefined}
@@ -845,13 +845,13 @@ function CalculatorBody() {
 
                     <ResourceSlider
                       icon={<Mail className="h-4 w-4 text-primary" />}
-                      title="דיוור באימייל"
-                      rateNote={`₪${EMAIL_RATE.toFixed(2)} / דיוור`}
-                      info={<>{formatILS(includedEmails)} דיוורים כלולים בחבילה. מעבר לכך, ₪{EMAIL_RATE.toFixed(2)} להודעה.</>}
+                      title="שיווק נכסים (Listing Email)"
+                      rateNote={`₪${EMAIL_RATE.toFixed(2)} / שליחה`}
+                      info={<>{formatILS(includedEmails)} מיילים מעוצבים לקידום נכסים כלולים בחבילה — כולל גלריות, סיורים וירטואליים והזמנות פתוחות. מעבר לכך, ₪{EMAIL_RATE.toFixed(2)} לשליחה.</>}
                       min={0} max={Math.max(suggestedEmails * 3, 2_000_000)} step={10_000}
                       value={effectiveEmails}
                       onChange={(v) => { setEmailVolume(v); setEmailTouched(true); }}
-                      valueLabel={`${formatCompact(effectiveEmails)} הודעות / חודש`}
+                      valueLabel={`${formatCompact(effectiveEmails)} שליחות / חודש`}
                       cost={monthlyEmailCost}
                       onReset={emailTouched && effectiveEmails !== suggestedEmails ? () => setEmailTouched(false) : undefined}
                       enabled={emailEnabled}
@@ -860,9 +860,9 @@ function CalculatorBody() {
 
                     <ResourceSlider
                       icon={<AudioLines className="h-4 w-4 text-primary" />}
-                      title="שיחות AI קוליות"
+                      title="שיחות סינון לידים (AI)"
                       rateNote={`₪${VOICE_RATE.toFixed(2)} / דקה`}
-                      info={<>שיחות אישיות בזמן אמת. כלי העוצמה החזק ביותר להמרת {voterPlural}. תמחור: דקות בפועל × ₪{VOICE_RATE.toFixed(2)}.</>}
+                      info={<>סוכן AI קולי שמסנן לידים נכנסים, מאמת תקציב, צרכי דיור ולוחות זמנים — ומעביר אליך רק פרוספקטים חמים ומוכנים לפגישה. תמחור: דקות בפועל × ₪{VOICE_RATE.toFixed(2)}.</>}
                       min={0} max={Math.max(suggestedVoiceMinutes * 3, 50_000)} step={500}
                       value={effectiveVoiceMinutes}
                       onChange={(v) => { setVoiceVolume(v); setVoiceTouched(true); }}
@@ -899,13 +899,13 @@ function CalculatorBody() {
 
                     <ResourceSlider
                       icon={<Users className="h-4 w-4 text-primary" />}
-                      title="משתמשי מערכת"
-                      rateNote={extraSeats > 0 ? `₪${EXTRA_SEAT_RATE} / משתמש נוסף` : undefined}
-                      info={<>{includedSeats} משתמשים כלולים. ניתן להוסיף בעלות של ₪{EXTRA_SEAT_RATE}/חודש לכל משתמש.</>}
+                      title="רישיונות סוכן"
+                      rateNote={extraSeats > 0 ? `₪${EXTRA_SEAT_RATE} / רישיון נוסף` : undefined}
+                      info={<>{includedSeats} רישיונות סוכן כלולים — לכל סוכן במשרד גישה מלאה ל-CRM, ל-Deal Room ולחתימות הדיגיטליות. ניתן להוסיף רישיונות בעלות של ₪{EXTRA_SEAT_RATE}/חודש לכל סוכן.</>}
                       min={0} max={50} step={1}
                       value={extraSeats}
                       onChange={setExtraSeats}
-                      valueLabel={`${totalSeats} משתמשים סה״כ`}
+                      valueLabel={`${totalSeats} רישיונות סוכן סה״כ`}
                       cost={monthlySeatsCost}
                       onReset={extraSeats > 0 ? () => setExtraSeats(0) : undefined}
                     />
@@ -966,7 +966,7 @@ function CalculatorBody() {
                     {voiceEnabled && (
                       <FormulaRow
                         icon={<AudioLines className="h-3.5 w-3.5 text-violet-500" />}
-                        label={`${formatCompact(effectiveVoiceMinutes)} דקות שיחות AI קוליות`}
+                        label={`${formatCompact(effectiveVoiceMinutes)} דקות שיחות סינון לידים (AI)`}
                         value={monthlyVoiceCost}
                       />
                     )}
@@ -980,24 +980,24 @@ function CalculatorBody() {
                     <FormulaRow
                       icon={<Users className="h-3.5 w-3.5 text-amber-500" />}
                       label={monthlyTouchpointCost > 0
-                        ? `רוויית נקודות מגע מעבר ל-${formatCompact(includedTouchpoints)}`
-                        : `${formatCompact(includedTouchpoints)} נקודות מגע ברשתות`}
+                        ? `חשיפה לשוק נוספת מעבר ל-${formatCompact(includedTouchpoints)}`
+                        : `${formatCompact(includedTouchpoints)} חשיפות לשוק ברשתות`}
                       value={monthlyTouchpointCost}
                     />
                     {audienceScalingFee > 0 && (
                       <FormulaRow
                         icon={<AlertTriangle className="h-3.5 w-3.5 text-orange-500" />}
                         label={dbTier2Active
-                          ? `דמי אחסון מאגר ארצי, מעל ${formatCompact(DB_TIER_2_THRESHOLD)} ${memberPlural}`
-                          : `דמי אחסון מאגר ארצי, מעל ${formatCompact(DB_TIER_1_THRESHOLD)} ${memberPlural}`}
+                          ? `דמי אחסון מאגר פרוספקטים, מעל ${formatCompact(DB_TIER_2_THRESHOLD)} פרוספקטים`
+                          : `דמי אחסון מאגר פרוספקטים, מעל ${formatCompact(DB_TIER_1_THRESHOLD)} פרוספקטים`}
                         value={audienceScalingFee}
                       />
                     )}
                     <FormulaRow
                       icon={<Users className="h-3.5 w-3.5 text-muted-foreground" />}
                       label={monthlySeatsCost > 0
-                        ? `${extraSeats} משתמשים נוספים × ₪${EXTRA_SEAT_RATE} (מעל ${includedSeats} כלולים)`
-                        : `משתמשים כלולים: ${includedSeats}`}
+                        ? `${extraSeats} רישיונות סוכן נוספים × ₪${EXTRA_SEAT_RATE} (מעל ${includedSeats} כלולים)`
+                        : `רישיונות סוכן כלולים: ${includedSeats}`}
                       value={monthlySeatsCost}
                     />
                     <div className="mt-2 flex items-center justify-between border-t border-border pt-2 text-[14px] font-black">
@@ -1055,39 +1055,39 @@ function CalculatorBody() {
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <ResourceFeatureCard
               icon={<Users className="h-5 w-5" />}
-              title="משתמשי מערכת"
-              value={`${includedSeats} משתמשים`}
-              note="גישה מלאה לכל מסכי המטה"
+              title="רישיונות סוכן"
+              value={`${includedSeats} רישיונות`}
+              note="גישה מלאה לכל סוכן במשרד — CRM, Deal Room וחתימות"
             />
             <ResourceFeatureCard
               icon={<MessageSquare className="h-5 w-5" />}
-              title="הודעות SMS"
+              title="עדכונים לאימות (SMS)"
               value={`${formatCompact(includedSms)}/חודש`}
               note={`עלות מעבר: ₪${SMS_RATE.toFixed(2)} להודעה`}
             />
             <ResourceFeatureCard
               icon={<Mail className="h-5 w-5" />}
-              title="דיוור באימייל"
+              title="שיווק נכסים (Listing Email)"
               value={`${formatCompact(includedEmails)}/חודש`}
-              note={`עלות מעבר: ₪${EMAIL_RATE.toFixed(2)} לדיוור`}
+              note={`עלות מעבר: ₪${EMAIL_RATE.toFixed(2)} לשליחה`}
             />
             <ResourceFeatureCard
               icon={<AudioLines className="h-5 w-5" />}
-              title="שיחות AI קוליות"
+              title="שיחות סינון לידים (AI)"
               value={`${formatCompact(includedVoiceMinutes)} דקות`}
               note={`עלות מעבר: ₪${VOICE_RATE.toFixed(2)} לדקה`}
             />
             <ResourceFeatureCard
               icon={<FaWhatsapp className="h-5 w-5" />}
-              title="ווטסאפ"
+              title="ווטסאפ עסקי"
               value={`${formatCompact(WHATSAPP_FREE_TIER_PER_MONTH)} שיחות חינם`}
               note="חיוב נוסף ישירות למטא"
             />
             <ResourceFeatureCard
               icon={<Target className="h-5 w-5" />}
-              title="נקודות מגע"
+              title="חשיפה לשוק (Market Exposure)"
               value={`${formatCompact(includedTouchpoints)} ברשתות`}
-              note="זמינות בכל הערוצים החברתיים"
+              note="קידום נכסים בכל הערוצים החברתיים"
             />
           </div>
         </section>
