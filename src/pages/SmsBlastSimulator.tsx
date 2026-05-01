@@ -532,7 +532,7 @@ export default function SmsBlastSimulator() {
       if (isDemoMode) {
         setMaxAvailableVoters(1_000_000);
         setTotalRecipients(DEMO_TOTAL_VOTERS);
-        setRecipientSource(`כל הלידים במערכת (${DEMO_TOTAL_VOTERS.toLocaleString('he-IL')})`);
+        setRecipientSource(`כל המתעניינים במערכת (${DEMO_TOTAL_VOTERS.toLocaleString('he-IL')})`);
         setFilterCount(DEMO_TOTAL_VOTERS);
         setCityOptions(DEMO_CITIES);
         setTagOptions(DEMO_TAGS);
@@ -621,7 +621,7 @@ export default function SmsBlastSimulator() {
     setRecipientSource('picker');
     setListFileName(null);
     setVoterPickerOpen(false);
-    toast.success(`נבחרו ${clamped.toLocaleString('he-IL')} לידים מהמערכת`);
+    toast.success(`נבחרו ${clamped.toLocaleString('he-IL')} מתעניינים מהמערכת`);
   }, [filterCount]);
 
   // Voice pricing — differential by source:
@@ -1931,8 +1931,8 @@ export default function SmsBlastSimulator() {
       <Dialog open={voterPickerOpen} onOpenChange={setVoterPickerOpen}>
         <DialogContent className="max-w-lg" dir="rtl">
           <DialogHeader>
-            <DialogTitle>בחירת לידים מהמערכת</DialogTitle>
-            <DialogDescription>סננו לפי עיר, תגית עניין, סטטוס ונאמנות. ברירת המחדל היא כלל הלידים.</DialogDescription>
+            <DialogTitle>בחירת מתעניינים מהמערכת</DialogTitle>
+            <DialogDescription>סננו לפי עיר, תגית עניין, סטטוס ונאמנות. ברירת המחדל היא כלל המתעניינים.</DialogDescription>
           </DialogHeader>
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
@@ -1980,7 +1980,7 @@ export default function SmsBlastSimulator() {
           </div>
           <div className="rounded-md bg-primary/5 p-3 text-center text-sm">
             {filterLoading ? 'מחשב...' : (
-              <>נמצאו <span className="font-bold text-primary">{filterCount.toLocaleString('he-IL')}</span> לידים תואמים</>
+              <>נמצאו <span className="font-bold text-primary">{filterCount.toLocaleString('he-IL')}</span> מתעניינים תואמים</>
             )}
           </div>
           <DialogFooter>

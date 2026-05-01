@@ -46,7 +46,7 @@ const PLATFORMS: PlatformDef[] = [
   { platform: 'instagram',    display_name: 'Instagram Business',       description: 'תזמון פוסטים, ריילז וסטוריז שנוצרו ב-AI ישירות מעמוד הקמפיין.' },
   { platform: 'tiktok',       display_name: 'TikTok for Business',      description: 'העלאה ותזמון של סרטונים קצרים, ניטור תגובות ומעקב טרנדים.' },
   { platform: 'telegram',     display_name: 'Telegram',                 description: 'זיווג מכשיר מהיר באמצעות QR' },
-  { platform: 'linkedin',     display_name: 'LinkedIn Profile',         description: 'פרסום עדכוני AI ואינטראקציה עם לידים' },
+  { platform: 'linkedin',     display_name: 'LinkedIn Profile',         description: 'פרסום עדכוני AI ואינטראקציה עם מתעניינים' },
   // The rest
   { platform: 'youtube',      display_name: 'YouTube',                  description: 'OAuth2 רשמי · ניהול תגובות וערוץ' },
   { platform: 'x',            display_name: 'X (Twitter)',              description: 'OAuth2 רשמי · ציוצים ותגובות' },

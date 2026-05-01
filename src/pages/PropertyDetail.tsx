@@ -13,7 +13,7 @@ import {
   LISTING_TYPE_LABELS_HE,
   type HomelyProperty,
 } from '@/lib/homelyMockProperties';
-import { ShareWithProspectDialog } from '@/components/properties/ShareWithProspectDialog';
+import { ShareWithLeadDialog } from '@/components/properties/ShareWithLeadDialog';
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
@@ -201,7 +201,7 @@ export default function PropertyDetail() {
         </aside>
       </div>
 
-      <ShareWithProspectDialog
+      <ShareWithLeadDialog
         property={property}
         open={shareOpen}
         onOpenChange={setShareOpen}

@@ -195,7 +195,7 @@ export default function VoterHeatmap({ mapboxToken, cityClusters, isLoading }: P
             map.getCanvas().style.cursor = 'pointer';
             const p = e.features[0].properties;
             popup.setLngLat(e.features[0].geometry.coordinates).setHTML(
-              `<div style="direction:rtl;font-family:sans-serif;padding:4px"><strong>${p.city}</strong><br/>לידים: ${p.count}<br/>חיובי: ${p.positive} | ניטרלי: ${p.neutral} | שלילי: ${p.negative}</div>`
+              `<div style="direction:rtl;font-family:sans-serif;padding:4px"><strong>${p.city}</strong><br/>מתעניינים: ${p.count}<br/>חיובי: ${p.positive} | ניטרלי: ${p.neutral} | שלילי: ${p.negative}</div>`
             ).addTo(map);
           });
           map.on('mouseleave', 'leads-circles', () => { map.getCanvas().style.cursor = ''; popup.remove(); });

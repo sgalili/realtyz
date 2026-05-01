@@ -270,7 +270,7 @@ export default function KnowledgeBase() {
               <CardTitle className="text-base flex items-center gap-2">
                 <Brain className="h-4 w-4 text-primary" /> בדיקת ה-AI: זוגות אימון לדוגמה
               </CardTitle>
-              <CardDescription>כך ה-AI עונה על שאלות לידים בהתבסס על המסמכים שהוזנו</CardDescription>
+              <CardDescription>כך ה-AI עונה על שאלות מתעניינים בהתבסס על המסמכים שהוזנו</CardDescription>
             </CardHeader>
             <CardContent className="space-y-3">
               {qaPairs.map((pair, idx) => (

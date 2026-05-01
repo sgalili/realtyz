@@ -32,7 +32,7 @@ type Automation = {
 };
 
 const TRIGGERS = [
-  { value: 'prospect_added', label: 'לקוח חדש נוסף' },
+  { value: 'lead_added', label: 'לקוח חדש נוסף' },
   { value: 'meeting_booked', label: 'נקבעה פגישה / נפתח משא ומתן' },
   { value: 'followup_after_hours', label: 'מעקב לאחר 48 שעות שתיקה' },
   { value: 'birthday_anniversary', label: 'יום הולדת / יום נישואין של לקוח' },
@@ -49,8 +49,8 @@ const TEMPLATES = [
   {
     key: 'welcome',
     name: 'ברכת לקוח חדש',
-    description: 'ברכו ליד טרי בהיכרות חמה.',
-    trigger_type: 'prospect_added',
+    description: 'ברכו מתעניין טרי בהיכרות חמה.',
+    trigger_type: 'lead_added',
     action_type: 'composite',
     action_config: {
       message_template:
@@ -107,7 +107,7 @@ function emptyDraft(): Draft {
   return {
     name: '',
     description: '',
-    trigger_type: 'prospect_added',
+    trigger_type: 'lead_added',
     action_type: 'send_whatsapp',
     is_enabled: true,
     template_key: null,
@@ -235,7 +235,7 @@ export function AutomationStudio() {
                   <Input
                     value={draft.name}
                     onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                    placeholder="לדוגמה: ברכת לידים חדשים"
+                    placeholder="לדוגמה: ברכת מתעניינים חדשים"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">

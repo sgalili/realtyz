@@ -16,7 +16,7 @@ const corsHeaders = {
 };
 
 const BodySchema = z.object({
-  prospect_id: z.string().uuid(),
+  lead_id: z.string().uuid(),
   listing_id: z.string().min(1),
   listing_source: z.enum(["internal", "homely"]).default("internal"),
   channel: z.enum(["whatsapp", "email", "sms"]).default("whatsapp"),
@@ -34,7 +34,7 @@ serve(async (req) => {
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
-    const { prospect_id, listing_id, listing_source, channel, agent_note } = parsed.data;
+    const { lead_id, listing_id, listing_source, channel, agent_note } = parsed.data;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -51,14 +51,14 @@ serve(async (req) => {
       });
     }
 
-    // Fetch prospect
-    const { data: prospect, error: pErr } = await supabase
+    // Fetch lead
+    const { data: lead, error: pErr } = await supabase
       .from("leads")
       .select("id, full_name, phone_number, city, interest_tag, preferences, lead_stage")
-      .eq("id", prospect_id)
+      .eq("id", lead_id)
       .maybeSingle();
-    if (pErr || !prospect) {
-      return new Response(JSON.stringify({ error: "Prospect not found" }), {
+    if (pErr || !lead) {
+      return new Response(JSON.stringify({ error: "Lead not found" }), {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -146,27 +146,27 @@ serve(async (req) => {
     const personaBlock = renderPersonaPrompt(persona);
 
     const systemPrompt = `You are an elite Israeli real-estate Agent's writing assistant for Realtyz AI.
-Write a personalized outreach in Hebrew that introduces a specific listing to a specific Prospect.
-Match the Prospect's interests and city. Never invent facts not present in the listing data.
+Write a personalized outreach in Hebrew that introduces a specific listing to a specific Lead.
+Match the Lead's interests and city. Never invent facts not present in the listing data.
 Channel format: ${channel.toUpperCase()} — ${channelGuide[channel]}
 Output JSON ONLY via the provided tool — no extra text.
 
 ${personaBlock ? personaBlock + "\n\n" : ""}${compliance}`;
 
-    const prospectBlock = JSON.stringify(
+    const leadBlock = JSON.stringify(
       {
-        full_name: prospect.full_name,
-        city: prospect.city,
-        interest_tag: prospect.interest_tag,
-        preferences: prospect.preferences,
-        stage: prospect.lead_stage,
+        full_name: lead.full_name,
+        city: lead.city,
+        interest_tag: lead.interest_tag,
+        preferences: lead.preferences,
+        stage: lead.lead_stage,
       },
       null,
       2,
     );
     const listingBlock = JSON.stringify(listing, null, 2);
 
-    const userPrompt = `PROSPECT:\n${prospectBlock}\n\nLISTING:\n${listingBlock}\n\nAGENT NOTE: ${agent_note || "(none)"}\n\nDraft the outreach now.`;
+    const userPrompt = `PROSPECT:\n${leadBlock}\n\nLISTING:\n${listingBlock}\n\nAGENT NOTE: ${agent_note || "(none)"}\n\nDraft the outreach now.`;
 
     const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -200,7 +200,7 @@ ${personaBlock ? personaBlock + "\n\n" : ""}${compliance}`;
                   highlights: {
                     type: "array",
                     items: { type: "string" },
-                    description: "1–3 short bullets mapping listing features to prospect needs.",
+                    description: "1–3 short bullets mapping listing features to lead needs.",
                   },
                   call_to_action: { type: "string" },
                 },
@@ -266,10 +266,10 @@ ${personaBlock ? personaBlock + "\n\n" : ""}${compliance}`;
         channel,
         draft,
         listing,
-        prospect: {
-          id: prospect.id,
-          full_name: prospect.full_name,
-          phone_number: prospect.phone_number,
+        lead: {
+          id: lead.id,
+          full_name: lead.full_name,
+          phone_number: lead.phone_number,
         },
         fact_violations,
       }),

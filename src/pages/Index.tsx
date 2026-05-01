@@ -147,7 +147,7 @@ const Dashboard = () => {
           .limit(8),
         (supabase as any)
           .from('meetings')
-          .select('id, title, prospect_name, starts_at, created_at')
+          .select('id, title, lead_name, starts_at, created_at')
           .eq('user_id', user!.id)
           .order('created_at', { ascending: false })
           .limit(8),
@@ -180,7 +180,7 @@ const Dashboard = () => {
           id: `show-${r.id}`,
           type: 'showing',
           title: 'נקבע סיור בנכס',
-          detail: `${r.prospect_name ?? 'מתעניין'} · ${r.title}`,
+          detail: `${r.lead_name ?? 'מתעניין'} · ${r.title}`,
           at: r.created_at,
         });
       });
@@ -197,7 +197,7 @@ const Dashboard = () => {
         items.push({
           id: `rep-${r.id}`,
           type: 'reply',
-          title: 'ליד הגיב',
+          title: 'מתעניין הגיב',
           detail: (r.content ?? '').slice(0, 60) || 'הודעה חדשה',
           at: r.created_at,
         });
@@ -219,7 +219,7 @@ const Dashboard = () => {
     queryFn: async () => {
       const { data } = await (supabase as any)
         .from('escalation_alerts')
-        .select('id, severity, prospect_message, channel, created_at, status')
+        .select('id, severity, lead_message, channel, created_at, status')
         .eq('user_id', user!.id)
         .eq('status', 'open')
         .order('created_at', { ascending: false })
@@ -255,10 +255,10 @@ const Dashboard = () => {
         />
         <KpiCard
           icon={Flame}
-          label="לידים חמים"
+          label="מתעניינים חמים"
           value={hotLeads ?? 0}
           loading={loadingHot}
-          tooltip="לידים שיצרו אינטראקציה ב-24 השעות האחרונות."
+          tooltip="מתעניינים שיצרו אינטראקציה ב-24 השעות האחרונות."
           accent="warning"
           to="/lead-crm"
         />
@@ -290,7 +290,7 @@ const Dashboard = () => {
               <Home className="h-4 w-4 text-primary" />
               פעילות נדל״ן בזמן אמת
             </CardTitle>
-            <CardDescription>פניות, סיורים, חוזים ותגובות לידים</CardDescription>
+            <CardDescription>פניות, סיורים, חוזים ותגובות מתעניינים</CardDescription>
           </CardHeader>
           <CardContent>
             {!activityFeed ? (
@@ -314,7 +314,7 @@ const Dashboard = () => {
             <div className="flex items-center justify-between gap-3">
               <CardTitle className="text-base flex items-center gap-2">
                 <MapPin className="h-4 w-4 text-primary" />
-                לידים לפי שכונה
+                מתעניינים לפי שכונה
               </CardTitle>
               <CardDescription className="text-xs">6 שכונות מובילות</CardDescription>
             </div>
@@ -390,7 +390,7 @@ const Dashboard = () => {
                 >
                   <AlertCircle className="h-4 w-4 text-warning shrink-0 mt-0.5" />
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{alert.prospect_message}</p>
+                    <p className="text-sm font-medium truncate">{alert.lead_message}</p>
                     <p className="text-[11px] text-muted-foreground">
                       {alert.channel} ·{' '}
                       {format(new Date(alert.created_at), 'dd/MM HH:mm', { locale: he })}

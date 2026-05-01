@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
       await admin.from("call_records").insert(callRow);
     }
 
-    // Append a transcript-summary message to the prospect's history so the
+    // Append a transcript-summary message to the lead's history so the
     // Deal Room timeline shows the call.
     if (leadId) {
       await admin.from("messages").insert({
@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           event_type: "critical_question",
           lead_id: leadId,
-          prospect_name: callerPhone || "Caller",
+          lead_name: callerPhone || "Caller",
           detail: `📞 AI escalated call — ${callbackReason}`,
           override_user_id: userId,
         }),

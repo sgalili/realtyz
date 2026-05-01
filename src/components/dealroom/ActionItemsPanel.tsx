@@ -1,6 +1,6 @@
 // Action Items — Outreach Engine UI
 // Lists AI-suggested follow-up cards for the current Agent. Each card shows:
-//   - Prospect, trigger reason, draft preview, tier, "AI Generated Suggestion" tag
+//   - Lead, trigger reason, draft preview, tier, "AI Generated Suggestion" tag
 //   - One-click "Use Draft" → opens the Smart Reply sheet pre-filled with the suggested message
 //   - "Dismiss" to remove
 // Header includes a "Scan Now" button (invokes outreach-suggest edge fn) and an
@@ -64,7 +64,7 @@ const TRIGGER_META: Record<string, { label: string; icon: typeof Clock; tone: st
 };
 
 // Common loyalty tiers — the Agent can flip auto-draft per tier.
-const KNOWN_TIERS = ["ליד חם", "נאמן", "מתלבט", "ליד קר"];
+const KNOWN_TIERS = ["מתעניין חם", "נאמן", "מתלבט", "מתעניין קר"];
 
 type Props = {
   onUseDraft: (suggestion: Suggestion) => void;

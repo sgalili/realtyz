@@ -1,7 +1,7 @@
 // Returns a short-lived WebRTC conversation token for the caller's UI to connect
 // to the agent's ElevenLabs Conversational AI agent.
 //
-// Public endpoint (verify_jwt = false) so prospects without an account can call.
+// Public endpoint (verify_jwt = false) so leads without an account can call.
 // To prevent abuse, callers must pass a valid voice_agents.user_id (the agent
 // being called); we resolve the elevenlabs_agent_id from the DB.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";

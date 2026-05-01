@@ -1,7 +1,7 @@
 /**
  * sign-closing-doc
  * ----------------
- * Public endpoint (no auth) used by the prospect-facing /sign/:token page.
+ * Public endpoint (no auth) used by the lead-facing /sign/:token page.
  *
  * GET  ?token=...               → returns document metadata + a short-lived
  *                                  signed URL to view the original PDF, and
@@ -14,7 +14,7 @@
  *                                  signed_at, and updates the lead stage.
  *
  * Identity is bound to the secret token; we never expose lead_id to the
- * prospect's client.
+ * lead's client.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { PDFDocument } from "https://esm.sh/pdf-lib@1.17.1";
@@ -118,7 +118,7 @@ Deno.serve(async (req) => {
 
       page.drawText("Signature Certificate", { x: 56, y: 740, size: 18 });
       page.drawText(`Document: ${doc.title}`, { x: 56, y: 712, size: 11 });
-      page.drawText(`Signer: ${signer_name || "Prospect"}`, { x: 56, y: 696, size: 11 });
+      page.drawText(`Signer: ${signer_name || "Lead"}`, { x: 56, y: 696, size: 11 });
       page.drawText(`Signed at: ${new Date().toISOString()}`, { x: 56, y: 680, size: 11 });
       page.drawText(`Token: ${tk.slice(0, 12)}…${tk.slice(-6)}`, { x: 56, y: 664, size: 9 });
 
@@ -190,7 +190,7 @@ Deno.serve(async (req) => {
             event_type: "document_signed",
             lead_id: doc.lead_id,
             override_user_id: doc.user_id,
-            detail: `${signer_name || "Prospect"} signed ${doc.title}`,
+            detail: `${signer_name || "Lead"} signed ${doc.title}`,
           }),
         });
       } catch (_) { /* notification failures are non-fatal */ }

@@ -1,9 +1,9 @@
-// Predictive Prospect Score
+// Predictive Lead Score
 //
 // Computes a 0-100 priority score for a single lead based on:
 //   1. Interaction frequency  (last 14 days)        — up to 30 pts
 //   2. Sentiment              (recent inbound msgs) — up to 25 pts
-//   3. Response speed         (avg minutes prospect → reply) — up to 25 pts
+//   3. Response speed         (avg minutes lead → reply) — up to 25 pts
 //   4. Property interest      (mentions of listings / price / "house" / "apartment") — up to 20 pts
 //
 // On a significant upward spike (>= +20 and crosses 70) we fire a "Hot Lead"
@@ -71,7 +71,7 @@ function isInbound(m: Message): boolean {
   const d = (m.direction || "").toLowerCase();
   const s = (m.sender_type || "").toLowerCase();
   if (d === "inbound" || d === "in" || d === "received") return true;
-  if (s === "prospect" || s === "lead" || s === "user" || s === "voter") return true;
+  if (s === "lead" || s === "lead" || s === "user" || s === "voter") return true;
   return false;
 }
 
@@ -95,7 +95,7 @@ function computeScore(messages: Message[]): { score: number; components: ScoreCo
   // Map -5..+5 → 0..25, centered at 12
   const sentiment = clamp(Math.round(12 + sentRaw * 2.6), 0, 25);
 
-  // 3. Response speed — up to 25 pts. Avg time prospect takes to reply to outbound.
+  // 3. Response speed — up to 25 pts. Avg time lead takes to reply to outbound.
   const sorted = [...recent].sort(
     (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime()
   );
@@ -183,7 +183,7 @@ async function scoreOneLead(admin: any, leadId: string): Promise<{
         body: JSON.stringify({
           event_type: "new_high_priority",
           lead_id: leadId,
-          prospect_name: lead.full_name,
+          lead_name: lead.full_name,
           detail: `Priority score jumped from ${previous} to ${score}. Strong engagement detected.`,
         }),
       });
@@ -240,7 +240,7 @@ Deno.serve(async (req) => {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err: any) {
-    console.error("compute-prospect-score error", err);
+    console.error("compute-lead-score error", err);
     return new Response(JSON.stringify({ error: err?.message || "server error" }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

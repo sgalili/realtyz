@@ -12,7 +12,7 @@ const ANON = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 type SlotInfo = {
   ok: boolean;
   status: string;
-  prospect_name: string | null;
+  lead_name: string | null;
   proposed_slots: { start: string; end: string }[];
   duration_minutes: number;
   agent_name: string;
@@ -37,7 +37,7 @@ export default function PublicBookingPage() {
         const json = await res.json();
         if (!res.ok) throw new Error(json.error || 'Invalid link');
         setInfo(json);
-        setName(json.prospect_name || '');
+        setName(json.lead_name || '');
       } catch (e: any) {
         setError(e.message);
       } finally {
@@ -53,7 +53,7 @@ export default function PublicBookingPage() {
       const res = await fetch(FN_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', apikey: ANON },
-        body: JSON.stringify({ token, slot_start: chosen, prospect_name: name, prospect_email: email }),
+        body: JSON.stringify({ token, slot_start: chosen, lead_name: name, lead_email: email }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'Booking failed');

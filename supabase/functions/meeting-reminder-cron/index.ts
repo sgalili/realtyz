@@ -2,10 +2,10 @@
 //
 // Invoked by pg_cron every 5 minutes. Looks for meetings starting in 50–70 min
 // that haven't received a 1h reminder yet, then dispatches WhatsApp messages
-// to BOTH the agent and the prospect via the existing send-whatsapp gateway.
+// to BOTH the agent and the lead via the existing send-whatsapp gateway.
 //
 // The Google Calendar event itself also has 60-minute popup + email reminders
-// (configured in createCalendarEvent), so the prospect/agent get both.
+// (configured in createCalendarEvent), so the lead/agent get both.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
@@ -56,7 +56,7 @@ Deno.serve(async (req) => {
 
     const { data: meetings, error } = await admin
       .from('meetings')
-      .select('id, user_id, lead_id, title, starts_at, ends_at, timezone, conference_link, prospect_name, prospect_phone')
+      .select('id, user_id, lead_id, title, starts_at, ends_at, timezone, conference_link, lead_name, lead_phone')
       .eq('status', 'scheduled')
       .is('reminder_1h_sent_at', null)
       .gte('starts_at', lower)
@@ -77,9 +77,9 @@ Deno.serve(async (req) => {
       const link = m.conference_link ? `\nLink: ${m.conference_link}` : '';
 
       const promises: Promise<boolean>[] = [];
-      if (m.prospect_phone) {
+      if (m.lead_phone) {
         promises.push(sendWA({
-          phone_number: m.prospect_phone as string,
+          phone_number: m.lead_phone as string,
           message: `Reminder: meeting in 1 hour at ${startStr}.${link}`,
           user_id: m.user_id as string,
           lead_id: m.lead_id as string | null,
@@ -88,7 +88,7 @@ Deno.serve(async (req) => {
       if (agentPhone) {
         promises.push(sendWA({
           phone_number: agentPhone,
-          message: `Reminder: ${m.title} with ${m.prospect_name ?? 'prospect'} starts at ${startStr}.${link}`,
+          message: `Reminder: ${m.title} with ${m.lead_name ?? 'lead'} starts at ${startStr}.${link}`,
           user_id: m.user_id as string,
           lead_id: m.lead_id as string | null,
         }));

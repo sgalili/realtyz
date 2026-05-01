@@ -51,9 +51,9 @@ function tierFor(score: number): {
 }
 
 /**
- * Predictive Prospect Score badge — shows a 0-100 score with a tier label.
+ * Predictive Lead Score badge — shows a 0-100 score with a tier label.
  * Hover reveals the per-signal breakdown (frequency, sentiment, response speed,
- * property interest) so the agent can understand WHY this prospect is priority.
+ * property interest) so the agent can understand WHY this lead is priority.
  */
 export function PriorityScoreBadge({
   score,

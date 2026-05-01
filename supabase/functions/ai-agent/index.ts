@@ -16,12 +16,12 @@ const corsHeaders = {
 };
 
 const SCHEMA_CONTEXT = `
-You are the Agent's Virtual Twin, drafting messages AS the human Agent (e.g. "Udi") to Prospects in the real-estate Deal Room. You are NEVER "Realtyz AI", a chatbot, or a generic assistant, your identity, voice and signature are ALWAYS the human Agent's. The PERSONA OVERRIDE block below is the source of truth for your identity.
+You are the Agent's Virtual Twin, drafting messages AS the human Agent (e.g. "Udi") to Leads in the real-estate Deal Room. You are NEVER "Realtyz AI", a chatbot, or a generic assistant, your identity, voice and signature are ALWAYS the human Agent's. The PERSONA OVERRIDE block below is the source of truth for your identity.
 You speak Hebrew and English. You are sharp, professional, warm, and consultative, strictly on real-estate topics.
 
 You have read access (SELECT only) to a PostgreSQL database with these tables:
 
-TABLE leads (Prospects): id (uuid PK), phone_number (text), full_name (text), city (text), interest_tag (text), engagement_score (int 0-100), status (text), is_voted (bool), last_interaction_at (timestamptz), created_at (timestamptz), loyalty_tier (text), sentiment (text: positive/neutral/negative), identity_number (text), ai_autopilot (bool), lead_stage (text), preferences (jsonb), deal_type (text: 'sale' | 'rent', STRICT pipeline separator)
+TABLE leads (Leads): id (uuid PK), phone_number (text), full_name (text), city (text), interest_tag (text), engagement_score (int 0-100), status (text), is_voted (bool), last_interaction_at (timestamptz), created_at (timestamptz), loyalty_tier (text), sentiment (text: positive/neutral/negative), identity_number (text), ai_autopilot (bool), lead_stage (text), preferences (jsonb), deal_type (text: 'sale' | 'rent', STRICT pipeline separator)
 
 TABLE chat_history: id (uuid PK), lead_id (uuid FK->leads), role (text: user/assistant), content (text), sentiment (text), created_at (timestamptz)
 
@@ -63,7 +63,7 @@ Behaviour:
   the Agent's own voice that you'll check and get back, e.g.:
     "תן לי לבדוק את זה ולחזור אליך עם תשובה מדויקת."
 - NEVER invent property facts (price, address, dates, sold-prices, school zones, fees) that
-  aren't in the KB, the Prospect record, or the listings table.
+  aren't in the KB, the Lead record, or the listings table.
 - Prefer chunks tagged "Past Conversation / WhatsApp" for STYLE & objection moves; prefer
   document chunks for FACTS (bio, expertise, neighbourhood notes).
 - If the KB context block is empty / irrelevant: still stay in character as the Agent, keep the
@@ -99,7 +99,7 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { messages, lead_id, prospect_name } = body ?? {};
+    const { messages, lead_id, lead_name } = body ?? {};
     if (!messages || !Array.isArray(messages)) {
       return new Response(JSON.stringify({ error: "messages array required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -231,7 +231,7 @@ serve(async (req) => {
     // Hard pipeline separation, fetch the Lead's deal_type and inject a
     // forbid-list so the AI cannot offer mortgages to renters or rentals to buyers.
     let dealType: DealType | null = null;
-    let resolvedLeadName: string | null = prospect_name ?? null;
+    let resolvedLeadName: string | null = lead_name ?? null;
     if (lead_id) {
       try {
         const { data: leadRow } = await supabase
@@ -257,7 +257,7 @@ serve(async (req) => {
       + "\n\n" + dealTypeBlock
       + "\n\n" + compliance;
 
-    // Escalation Trigger: classify the most recent prospect/user message.
+    // Escalation Trigger: classify the most recent lead/user message.
     // When a high-risk topic is detected, fire-and-forget the alert function
     // so the human Agent gets a WhatsApp ping while we still draft a safe reply.
     const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user")?.content;
@@ -273,7 +273,7 @@ serve(async (req) => {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: authHeader },
             body: JSON.stringify({
-              prospect_message: String(lastUserMsg).slice(0, 4000),
+              lead_message: String(lastUserMsg).slice(0, 4000),
               category: hit.category,
               matched_keywords: hit.matched,
               severity: hit.severity,

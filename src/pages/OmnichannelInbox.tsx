@@ -43,7 +43,7 @@ const attachmentSchema = z.instanceof(File)
 const attachmentAccept = ACCEPTED_ATTACHMENT_TYPES.join(',');
 
 const statusHebrew: Record<string, string> = {
-  lead: 'ליד חדש',
+  lead: 'מתעניין חדש',
   supporter: 'תומך',
   active: 'פעיל',
   inactive: 'לא פעיל',
@@ -51,17 +51,17 @@ const statusHebrew: Record<string, string> = {
 };
 
 const statusLed: Record<string, { dot: string; ring: string; note: string }> = {
-  supporter: { dot: 'bg-success', ring: 'ring-success/20', note: 'ליד עם תמיכה חיובית גבוהה' },
+  supporter: { dot: 'bg-success', ring: 'ring-success/20', note: 'מתעניין עם תמיכה חיובית גבוהה' },
   active: { dot: 'bg-primary', ring: 'ring-primary/20', note: 'מעורב ופעיל בשיחה' },
   contacted: { dot: 'bg-warning', ring: 'ring-warning/20', note: 'נוצר קשר, ממתין להמשך טיפול' },
-  lead: { dot: 'bg-warning', ring: 'ring-warning/20', note: 'ליד חדש שדורש טיפוח' },
+  lead: { dot: 'bg-warning', ring: 'ring-warning/20', note: 'מתעניין חדש שדורש טיפוח' },
   inactive: { dot: 'bg-muted-foreground', ring: 'ring-muted', note: 'פעילות נמוכה או ללא תגובה לאחרונה' },
 };
 
 const senderBadge: Record<string, { label: string; className: string }> = {
   ai: { label: 'Realtyz AI', className: 'bg-primary/15 text-primary border-primary/30' },
   agent: { label: 'נציג', className: 'bg-blue-500/15 text-blue-700 border-blue-300' },
-  voter: { label: 'ליד', className: 'bg-slate-500/15 text-slate-700 border-slate-300' },
+  voter: { label: 'מתעניין', className: 'bg-slate-500/15 text-slate-700 border-slate-300' },
 };
 
 
@@ -381,7 +381,7 @@ const OmnichannelInbox = () => {
                         </PopoverTrigger>
                         <PopoverContent side="left" align="start" className="w-48 text-right" onClick={(event) => event.stopPropagation()}>
                           <p className="text-sm font-semibold">{statusHebrew[voter.status] || voter.status}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">{statusLed[voter.status]?.note || 'סטטוס ליד'}</p>
+                          <p className="mt-1 text-xs text-muted-foreground">{statusLed[voter.status]?.note || 'סטטוס מתעניין'}</p>
                         </PopoverContent>
                       </Popover>
                     )}
@@ -444,7 +444,7 @@ const OmnichannelInbox = () => {
                     <DropdownMenuItem onClick={() => setAiAutopilot((value) => !value)}>{aiAutopilot ? 'כיבוי AI אוטומטי' : 'הפעלת AI אוטומטי'}</DropdownMenuItem>
                     <DropdownMenuItem onClick={() => toast.info('השיחה סומנה למעקב')}>סימון למעקב</DropdownMenuItem>
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => toast.info('פרופיל הליד פתוח בצד')}>הצגת פרופיל ליד</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => toast.info('פרופיל הליד פתוח בצד')}>הצגת פרופיל מתעניין</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>

@@ -21,7 +21,7 @@ import { Megaphone, Sparkles, Send, Home, Globe, MessageSquare, Mail, Smartphone
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 
-type Prospect = {
+type Lead = {
   id: string;
   full_name: string | null;
   phone_number: string;
@@ -54,16 +54,16 @@ type Channel = 'whatsapp' | 'email' | 'sms';
 interface ListingOutreachDialogProps {
   open: boolean;
   onOpenChange: (o: boolean) => void;
-  defaultProspectId?: string | null;
+  defaultLeadId?: string | null;
 }
 
 export function ListingOutreachDialog({
   open,
   onOpenChange,
-  defaultProspectId,
+  defaultLeadId,
 }: ListingOutreachDialogProps) {
   const [source, setSource] = useState<'internal' | 'homely'>('internal');
-  const [prospectId, setProspectId] = useState<string>('');
+  const [leadId, setLeadId] = useState<string>('');
   const [listingId, setListingId] = useState<string>('');
   const [channel, setChannel] = useState<Channel>('whatsapp');
   const [agentNote, setAgentNote] = useState('');
@@ -72,8 +72,8 @@ export function ListingOutreachDialog({
   const [draft, setDraft] = useState<Draft | null>(null);
 
   useEffect(() => {
-    if (defaultProspectId) setProspectId(defaultProspectId);
-  }, [defaultProspectId]);
+    if (defaultLeadId) setLeadId(defaultLeadId);
+  }, [defaultLeadId]);
 
   // Reset on close
   useEffect(() => {
@@ -84,8 +84,8 @@ export function ListingOutreachDialog({
     }
   }, [open]);
 
-  const { data: prospects, isLoading: loadingProspects } = useQuery({
-    queryKey: ['outreach-prospects'],
+  const { data: leads, isLoading: loadingLeads } = useQuery({
+    queryKey: ['outreach-leads'],
     enabled: open,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -95,7 +95,7 @@ export function ListingOutreachDialog({
         .order('last_interaction_at', { ascending: false, nullsFirst: false })
         .limit(200);
       if (error) throw error;
-      return (data || []) as Prospect[];
+      return (data || []) as Lead[];
     },
   });
 
@@ -134,13 +134,13 @@ export function ListingOutreachDialog({
     },
   });
 
-  const selectedProspect = useMemo(
-    () => prospects?.find((p) => p.id === prospectId),
-    [prospects, prospectId],
+  const selectedLead = useMemo(
+    () => leads?.find((p) => p.id === leadId),
+    [leads, leadId],
   );
 
   async function handleGenerate() {
-    if (!prospectId || !listingId) {
+    if (!leadId || !listingId) {
       toast.error('יש לבחור לקוח ונכס תחילה');
       return;
     }
@@ -149,7 +149,7 @@ export function ListingOutreachDialog({
     try {
       const { data, error } = await supabase.functions.invoke('generate-outreach-message', {
         body: {
-          prospect_id: prospectId,
+          lead_id: leadId,
           listing_id: listingId,
           listing_source: source,
           channel,
@@ -170,7 +170,7 @@ export function ListingOutreachDialog({
   }
 
   async function handleApproveSend() {
-    if (!draft || !selectedProspect) return;
+    if (!draft || !selectedLead) return;
     setSending(true);
     try {
       const fullText =
@@ -179,10 +179,10 @@ export function ListingOutreachDialog({
           : draft.message;
       const { error } = await supabase.functions.invoke('send-message', {
         body: {
-          lead_id: selectedProspect.id,
+          lead_id: selectedLead.id,
           content: fullText,
           channel,
-          phone_number: selectedProspect.phone_number,
+          phone_number: selectedLead.phone_number,
         },
       });
       if (error) throw error;
@@ -217,15 +217,15 @@ export function ListingOutreachDialog({
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Prospect picker */}
+          {/* Lead picker */}
           <div className="space-y-2">
             <Label>לקוח</Label>
-            <Select value={prospectId} onValueChange={setProspectId}>
+            <Select value={leadId} onValueChange={setLeadId}>
               <SelectTrigger>
-                <SelectValue placeholder={loadingProspects ? 'טוען…' : 'בחרו לקוח'} />
+                <SelectValue placeholder={loadingLeads ? 'טוען…' : 'בחרו לקוח'} />
               </SelectTrigger>
               <SelectContent>
-                {prospects?.map((p) => (
+                {leads?.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
                     {p.full_name || 'ללא שם'} {p.city ? `· ${p.city}` : ''}
                   </SelectItem>
@@ -357,7 +357,7 @@ export function ListingOutreachDialog({
 
         <Button
           onClick={handleGenerate}
-          disabled={!prospectId || !listingId || generating}
+          disabled={!leadId || !listingId || generating}
           className="w-full"
         >
           <Sparkles className="h-4 w-4 ml-2" />

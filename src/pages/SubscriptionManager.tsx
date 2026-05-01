@@ -292,7 +292,7 @@ function CalculatorBody() {
   const unitSingular = terms.seat;          // עסקה / מושב
   const unitPlural = terms.seats;           // עסקאות / מושבים
   const voterPlural = terms.votes;          // קולות / מתפקדים
-  const memberPlural = terms.voters;        // לידים / מתפקדים
+  const memberPlural = terms.voters;        // מתעניינים / מתפקדים
 
   const mandates = selectedMandates;
   const handleMandates = (n: number) => setSelectedMandates(n);
@@ -610,8 +610,8 @@ function CalculatorBody() {
                 </div>
                 <div className="mt-1 text-center text-[11px] text-muted-foreground/80">
                   {mandates === 1
-                    ? `יעד: עסקה סגורה אחת ≈ ${formatILS(60)} פרוספקטים מוסמכים בפייפליין`
-                    : `יעד: ${mandates} עסקאות סגורות ≈ ${formatILS(mandates * 60)} פרוספקטים מוסמכים בפייפליין`}
+                    ? `יעד: עסקה סגורה אחת ≈ ${formatILS(60)} פרוספקטים מוסמכים בניהול מתעניינים`
+                    : `יעד: ${mandates} עסקאות סגורות ≈ ${formatILS(mandates * 60)} פרוספקטים מוסמכים בניהול מתעניינים`}
                 </div>
               </div>
 
@@ -625,7 +625,7 @@ function CalculatorBody() {
                 >
                   <span className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
                     <SlidersHorizontal className="h-4 w-4 text-primary" />
-                    פילוח קהל (Prospecting) · רשימות פרוספקטים
+                    פילוח קהל (Leading) · רשימות פרוספקטים
                   </span>
                   <span className="flex items-center gap-2">
                     <span className="text-[11px] tabular-nums text-muted-foreground">{formatILS(listSize)}</span>
@@ -860,9 +860,9 @@ function CalculatorBody() {
 
                     <ResourceSlider
                       icon={<AudioLines className="h-4 w-4 text-primary" />}
-                      title="שיחות סינון לידים (AI)"
+                      title="שיחות סינון מתעניינים (AI)"
                       rateNote={`₪${VOICE_RATE.toFixed(2)} / דקה`}
-                      info={<>סוכן AI קולי שמסנן לידים נכנסים, מאמת תקציב, צרכי דיור ולוחות זמנים — ומעביר אליך רק פרוספקטים חמים ומוכנים לפגישה. תמחור: דקות בפועל × ₪{VOICE_RATE.toFixed(2)}.</>}
+                      info={<>סוכן AI קולי שמסנן מתעניינים נכנסים, מאמת תקציב, צרכי דיור ולוחות זמנים — ומעביר אליך רק פרוספקטים חמים ומוכנים לפגישה. תמחור: דקות בפועל × ₪{VOICE_RATE.toFixed(2)}.</>}
                       min={0} max={Math.max(suggestedVoiceMinutes * 3, 50_000)} step={500}
                       value={effectiveVoiceMinutes}
                       onChange={(v) => { setVoiceVolume(v); setVoiceTouched(true); }}
@@ -966,7 +966,7 @@ function CalculatorBody() {
                     {voiceEnabled && (
                       <FormulaRow
                         icon={<AudioLines className="h-3.5 w-3.5 text-violet-500" />}
-                        label={`${formatCompact(effectiveVoiceMinutes)} דקות שיחות סינון לידים (AI)`}
+                        label={`${formatCompact(effectiveVoiceMinutes)} דקות שיחות סינון מתעניינים (AI)`}
                         value={monthlyVoiceCost}
                       />
                     )}
@@ -1073,7 +1073,7 @@ function CalculatorBody() {
             />
             <ResourceFeatureCard
               icon={<AudioLines className="h-5 w-5" />}
-              title="שיחות סינון לידים (AI)"
+              title="שיחות סינון מתעניינים (AI)"
               value={`${formatCompact(includedVoiceMinutes)} דקות`}
               note={`עלות מעבר: ₪${VOICE_RATE.toFixed(2)} לדקה`}
             />

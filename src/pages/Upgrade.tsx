@@ -40,12 +40,12 @@ export default function Upgrade() {
     {
       icon: InfinityIcon,
       title: 'Unlimited Scale',
-      desc: 'פתיחת המערכת לאלפי לידים ללא הגבלת הודעות',
+      desc: 'פתיחת המערכת לאלפי מתעניינים ללא הגבלת הודעות',
     },
     {
       icon: MapIcon,
       title: 'Strategic Blueprint',
-      desc: 'בניית מסע ליד מותאם אישית למפת המכירות שלך',
+      desc: 'בניית מסע מתעניין מותאם אישית למפת המכירות שלך',
     },
   ];
 

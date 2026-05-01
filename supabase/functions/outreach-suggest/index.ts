@@ -1,4 +1,4 @@
-// Outreach Engine — scans Prospects for follow-up triggers and generates draft messages.
+// Outreach Engine — scans Leads for follow-up triggers and generates draft messages.
 //
 // Triggers implemented:
 //   - post_viewing_24h: lead in 'negotiation' stage with last_interaction_at ~24h+ ago and no outbound since
@@ -72,7 +72,7 @@ async function draftWithAI(lead: Lead, trigger: string, ctx: Record<string, any>
   if (!LOVABLE_API_KEY) return null;
   const fallback = TEMPLATES[trigger]?.(lead, ctx) || "";
   const sysPrompt = `אתה סוכן נדל"ן ישראלי כותב הודעת WhatsApp קצרה, חמה ומקצועית בעברית (עד 3 משפטים, ללא אימוג׳ים מוגזמים).`;
-  const userPrompt = `Prospect: ${lead.full_name || "Unknown"} (${lead.city || "—"}). Stage: ${lead.lead_stage}. Tier: ${lead.loyalty_tier || "—"}. Interest: ${lead.interest_tag || "—"}.
+  const userPrompt = `Lead: ${lead.full_name || "Unknown"} (${lead.city || "—"}). Stage: ${lead.lead_stage}. Tier: ${lead.loyalty_tier || "—"}. Interest: ${lead.interest_tag || "—"}.
 Trigger: ${trigger}. Context: ${JSON.stringify(ctx)}.
 Write a single short follow-up message in Hebrew. Do not invent prices or addresses not in the context.`;
 

@@ -64,8 +64,8 @@ const AdminLeads = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-primary">פניות נכנסות (Prospects)</h1>
-        <p className="text-muted-foreground text-sm">ניהול לידים מטופס יצירת הקשר</p>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">פניות נכנסות (Leads)</h1>
+        <p className="text-muted-foreground text-sm">ניהול מתעניינים מטופס יצירת הקשר</p>
       </div>
 
       {/* KPIs */}
@@ -76,7 +76,7 @@ const AdminLeads = () => {
               <User className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-xs text-muted-foreground">סה״כ לידים</p>
+              <p className="text-xs text-muted-foreground">סה״כ מתעניינים</p>
               <p className="text-2xl font-bold">{leads?.length ?? 0}</p>
             </div>
           </CardContent>

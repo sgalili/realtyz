@@ -132,7 +132,7 @@ Deno.serve(async (req) => {
       ai_responded_at: new Date().toISOString(),
     });
 
-    // Compliance: classify the prospect's inbound text and fire an Escalation
+    // Compliance: classify the lead's inbound text and fire an Escalation
     // Alert (WhatsApp ping to the human Agent) if it looks high-risk.
     try {
       const hit = classifyEscalation(text);
@@ -147,7 +147,7 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             override_user_id: userId,
             lead_id: lastOut.lead_id,
-            prospect_message: text.slice(0, 4000),
+            lead_message: text.slice(0, 4000),
             category: hit.category,
             matched_keywords: hit.matched,
             severity: hit.severity,

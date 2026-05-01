@@ -1,8 +1,8 @@
 // Smart Notification dispatcher
 //
 // Sends a WhatsApp notification to the agent for one of three critical events:
-//   - new_high_priority   (a new "Hot Lead" prospect was added)
-//   - meeting_booked      (a prospect confirmed a meeting / moved to Negotiation)
+//   - new_high_priority   (a new "Hot Lead" lead was added)
+//   - meeting_booked      (a lead confirmed a meeting / moved to Negotiation)
 //   - critical_question   (a high-risk question requiring human handling)
 //
 // Each notification:
@@ -31,7 +31,7 @@ type EventType = "new_high_priority" | "meeting_booked" | "critical_question";
 type Payload = {
   event_type: EventType;
   lead_id?: string | null;
-  prospect_name?: string | null;
+  lead_name?: string | null;
   detail?: string | null;          // freeform context (e.g., the question text, meeting time)
   override_user_id?: string;       // for server-to-server calls
 };
@@ -117,12 +117,12 @@ Deno.serve(async (req) => {
       ? `${APP_URL}/deal-room?leadId=${body.lead_id}`
       : `${APP_URL}/deal-room`;
 
-    const prospect = body.prospect_name || "Prospect";
+    const lead = body.lead_name || "Lead";
     const detail = body.detail ? `\n${body.detail.slice(0, 400)}` : "";
     const title = TITLE_BY_EVENT[body.event_type];
     const text =
       `${title}\n` +
-      `Prospect: ${prospect}${detail}\n\n` +
+      `Lead: ${lead}${detail}\n\n` +
       `Open the Deal Room: ${deepLink}`;
 
     // Persist notification row first

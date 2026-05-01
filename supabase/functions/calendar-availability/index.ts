@@ -2,7 +2,7 @@
 //
 // Authenticated agent endpoint: returns 3 free slots from the agent's Google
 // Calendar plus a fresh booking_token + public booking link to share with the
-// prospect. The chat AI or the Deal Room "Propose Times" button calls this.
+// lead. The chat AI or the Deal Room "Propose Times" button calls this.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import {
@@ -79,9 +79,9 @@ Deno.serve(async (req) => {
         token,
         user_id: userId,
         lead_id: leadId,
-        prospect_name: lead?.full_name ?? null,
-        prospect_phone: lead?.phone_number ?? null,
-        prospect_email: lead?.email ?? null,
+        lead_name: lead?.full_name ?? null,
+        lead_phone: lead?.phone_number ?? null,
+        lead_email: lead?.email ?? null,
         proposed_slots: slotsRes.slots,
         duration_minutes: duration,
       })

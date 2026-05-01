@@ -1,12 +1,12 @@
 // Smart Matchmaker — AI draft for sharing a property
 //
 // Drafts a professional WhatsApp message that introduces a specific property
-// to a prospect, weaving in a personal note based on their recent chat history.
+// to a lead, weaving in a personal note based on their recent chat history.
 // Uses Lovable AI Gateway (Gemini 2.5 Flash by default).
 //
 // Request body:
 //   {
-//     prospect_id: uuid,
+//     lead_id: uuid,
 //     property: PropertyResult   // produced by homely-search
 //   }
 //
@@ -38,8 +38,8 @@ function formatPrice(price: number | null, currency = "₪") {
   return `${currency}${Number(price).toLocaleString("he-IL")}`;
 }
 
-function localFallbackDraft(prospect: any, property: any) {
-  const name = prospect?.full_name?.split(" ")?.[0] || "שלום";
+function localFallbackDraft(lead: any, property: any) {
+  const name = lead?.full_name?.split(" ")?.[0] || "שלום";
   const title = property?.title || "נכס חדש";
   const price = formatPrice(property?.price, property?.currency || "₪");
   const desc = (property?.description || "").slice(0, 200);
@@ -70,24 +70,24 @@ Deno.serve(async (req) => {
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) return json({ error: "Unauthorized" }, 401);
 
-    const { prospect_id, property } = await req.json().catch(() => ({} as any));
-    if (!prospect_id || !property) {
-      return json({ error: "prospect_id and property are required" }, 400);
+    const { lead_id, property } = await req.json().catch(() => ({} as any));
+    if (!lead_id || !property) {
+      return json({ error: "lead_id and property are required" }, 400);
     }
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
-    // Load the prospect + recent history for personalization
-    const { data: prospect } = await admin
+    // Load the lead + recent history for personalization
+    const { data: lead } = await admin
       .from("leads")
       .select("id, full_name, city, interest_tag, preferences, lead_stage, loyalty_tier")
-      .eq("id", prospect_id)
+      .eq("id", lead_id)
       .maybeSingle();
 
     const { data: recentMsgs } = await admin
       .from("messages")
       .select("content, direction, created_at")
-      .eq("lead_id", prospect_id)
+      .eq("lead_id", lead_id)
       .order("created_at", { ascending: false })
       .limit(8);
 
@@ -98,7 +98,7 @@ Deno.serve(async (req) => {
 
     // If the AI gateway isn't configured, return a polished fallback
     if (!LOVABLE_API_KEY) {
-      return json({ draft: localFallbackDraft(prospect, property) });
+      return json({ draft: localFallbackDraft(lead, property) });
     }
 
     const persona = await loadAgentPersona(
@@ -111,10 +111,10 @@ Deno.serve(async (req) => {
     const systemPrompt = [
       "You are a senior Israeli real-estate agent writing a WhatsApp message in Hebrew.",
       "Tone: warm, professional, concise (max ~6 short lines).",
-      "Goal: introduce ONE property to the prospect and propose a viewing.",
+      "Goal: introduce ONE property to the lead and propose a viewing.",
       "Hard rules:",
       "- Always include the property title, price, city (if known), and rooms (if known).",
-      "- Weave in ONE personal touch derived from the prospect's recent chat history if relevant.",
+      "- Weave in ONE personal touch derived from the lead's recent chat history if relevant.",
       "- Do NOT invent facts (price, address, features). Use only what is provided.",
       "- Do NOT promise legal/financial outcomes or guarantee a closing date.",
       "- End with a single soft call-to-action (suggest a viewing).",
@@ -123,12 +123,12 @@ Deno.serve(async (req) => {
     ].join("\n");
 
     const userPrompt = [
-      `Prospect:`,
-      `  Name: ${prospect?.full_name || "—"}`,
-      `  City: ${prospect?.city || "—"}`,
-      `  Interest tag: ${prospect?.interest_tag || "—"}`,
-      `  Stage: ${prospect?.lead_stage || "—"}`,
-      `  Preferences (JSON): ${JSON.stringify(prospect?.preferences || {})}`,
+      `Lead:`,
+      `  Name: ${lead?.full_name || "—"}`,
+      `  City: ${lead?.city || "—"}`,
+      `  Interest tag: ${lead?.interest_tag || "—"}`,
+      `  Stage: ${lead?.lead_stage || "—"}`,
+      `  Preferences (JSON): ${JSON.stringify(lead?.preferences || {})}`,
       ``,
       `Property to share:`,
       `  Title: ${property.title}`,
@@ -171,13 +171,13 @@ Deno.serve(async (req) => {
     }
     if (!aiRes.ok) {
       console.warn("[draft-property-share] AI gateway error", aiRes.status);
-      return json({ draft: localFallbackDraft(prospect, property) });
+      return json({ draft: localFallbackDraft(lead, property) });
     }
 
     const payload = await aiRes.json();
     const draft: string =
       payload?.choices?.[0]?.message?.content?.trim() ||
-      localFallbackDraft(prospect, property);
+      localFallbackDraft(lead, property);
 
     return json({ draft });
   } catch (e) {

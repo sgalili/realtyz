@@ -22,11 +22,11 @@ const GHOST_EVENTS = [
   { icon: Send, text: 'WhatsApp campaign reached 5,000 leads', color: 'text-primary', path: '/campaigns' },
   { icon: UserPlus, text: 'New supporter identified in Tel Aviv', color: 'text-success', path: '/lead-crm?city=Tel%20Aviv' },
   { icon: PhoneCall, text: 'שיחת AI Voice הסתיימה עם דני כהן', color: 'text-success', path: '/live-conversations' },
-  { icon: UserPlus, text: 'ליד חדש מטיקטוק נכנס למשפך תל אביב', color: 'text-primary', path: '/lead-crm?city=%D7%AA%D7%9C%20%D7%90%D7%91%D7%99%D7%91' },
+  { icon: UserPlus, text: 'מתעניין חדש מטיקטוק נכנס למשפך תל אביב', color: 'text-primary', path: '/lead-crm?city=%D7%AA%D7%9C%20%D7%90%D7%91%D7%99%D7%91' },
   { icon: TrendingUp, text: 'קמפיין WhatsApp הגיע ל-90% קריאה', color: 'text-primary', path: '/campaigns' },
   { icon: UserPlus, text: 'תומכת חדשה מתל אביב', color: 'text-success', path: '/lead-crm?city=%D7%AA%D7%9C%20%D7%90%D7%91%D7%99%D7%91' },
   { icon: MapPin, text: 'פעילות גבוהה באזור השרון', color: 'text-primary', path: '/sentiment?region=%D7%94%D7%A9%D7%A8%D7%95%D7%9F' },
-  { icon: Bot, text: 'AI שכנע ליד מראשון לציון', color: 'text-primary', path: '/live-conversations' },
+  { icon: Bot, text: 'AI שכנע מתעניין מראשון לציון', color: 'text-primary', path: '/live-conversations' },
   { icon: MessageSquare, text: 'שיחה חדשה נפתחה מנתניה', color: 'text-primary', path: '/live-conversations' },
   { icon: Send, text: '150 הודעות WhatsApp נשלחו', color: 'text-success', path: '/campaigns' },
   { icon: UserPlus, text: 'תומך חדש מבאר שבע', color: 'text-success', path: '/lead-crm?city=%D7%91%D7%90%D7%A8%20%D7%A9%D7%91%D7%A2' },
@@ -35,14 +35,14 @@ const GHOST_EVENTS = [
   { icon: MessageSquare, text: 'פידבק חיובי מפתח תקווה', color: 'text-primary', path: '/live-conversations' },
   { icon: Send, text: '500 SMS לקמפיין חינוך', color: 'text-primary', path: '/campaigns' },
   { icon: UserPlus, text: 'תומך חדש מאשדוד', color: 'text-success', path: '/lead-crm?city=%D7%90%D7%A9%D7%93%D7%95%D7%93' },
-  { icon: Bot, text: 'AI - סיכום שיחה עם ליד מהצפון', color: 'text-primary', path: '/live-conversations' },
+  { icon: Bot, text: 'AI - סיכום שיחה עם מתעניין מהצפון', color: 'text-primary', path: '/live-conversations' },
 ];
 
 export const buildLiveEvent = (index: number) => {
   const voter = DEMO_VOTERS[index % DEMO_VOTERS.length];
   const campaign = DEMO_CAMPAIGNS[index % DEMO_CAMPAIGNS.length];
   const city = voter.city || 'תל אביב';
-  const name = voter.full_name || 'ליד חדש';
+  const name = voter.full_name || 'מתעניין חדש';
   const sent = 120 + ((index * 37) % 680);
 
   const channel = getChannelIcon(index);

@@ -1,7 +1,7 @@
 // Escalation Alert dispatcher
 //
 // Inputs:
-//   { lead_id?, prospect_message, category, matched_keywords[], severity, channel? }
+//   { lead_id?, lead_message, category, matched_keywords[], severity, channel? }
 //
 // Behaviour:
 //   1. Validates the caller (JWT) and resolves their profile + phone number.
@@ -28,7 +28,7 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 type Payload = {
   lead_id?: string | null;
-  prospect_message: string;
+  lead_message: string;
   category: string;
   matched_keywords?: string[];
   severity?: "high" | "medium";
@@ -51,8 +51,8 @@ Deno.serve(async (req) => {
   try {
     const auth = req.headers.get("Authorization") || "";
     const body = (await req.json().catch(() => ({}))) as Payload;
-    if (!body?.prospect_message || !body?.category) {
-      return json({ error: "prospect_message and category are required" }, 400);
+    if (!body?.lead_message || !body?.category) {
+      return json({ error: "lead_message and category are required" }, 400);
     }
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
         trigger_category: body.category,
         trigger_keywords: body.matched_keywords || [],
         severity: body.severity || "high",
-        prospect_message: body.prospect_message.slice(0, 4000),
+        lead_message: body.lead_message.slice(0, 4000),
         channel: body.channel || "whatsapp",
       })
       .select()
@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
         `🚨 Realtyz Escalation Alert (${body.severity || "high"})\n` +
         `Category: ${body.category}\n` +
         `Keywords: ${(body.matched_keywords || []).join(", ") || "—"}${leadHint}\n` +
-        `\nProspect said:\n"${body.prospect_message.slice(0, 600)}"\n\n` +
+        `\nLead said:\n"${body.lead_message.slice(0, 600)}"\n\n` +
         `Open the Deal Room to take over this conversation.`;
 
       try {
@@ -167,8 +167,8 @@ Deno.serve(async (req) => {
         body: JSON.stringify({
           event_type: "critical_question",
           lead_id: body.lead_id || null,
-          prospect_name: null,
-          detail: `[${body.category}] ${body.prospect_message.slice(0, 240)}`,
+          lead_name: null,
+          detail: `[${body.category}] ${body.lead_message.slice(0, 240)}`,
           override_user_id: userId,
         }),
       });

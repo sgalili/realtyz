@@ -103,7 +103,7 @@ const RecentConversations = () => {
               >
                 <VoterAvatar fullName={voter.full_name} profilePictureUrl={voter.profile_picture_url} className="h-8 w-8" textClassName="text-xs" />
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium truncate">{voter.full_name || 'ליד לא ידוע'}</p>
+                  <p className="text-sm font-medium truncate">{voter.full_name || 'מתעניין לא ידוע'}</p>
                   <p className="text-xs text-muted-foreground truncate">{lastMsg.content}</p>
                 </div>
                 <div className="text-left shrink-0">
@@ -128,7 +128,7 @@ const RecentConversations = () => {
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <VoterAvatar fullName={selectedVoter?.full_name ?? null} profilePictureUrl={selectedVoter?.profile_picture_url ?? null} className="h-8 w-8" textClassName="text-xs" />
-              ציר זמן - {selectedVoter?.full_name || 'ליד'}
+              ציר זמן - {selectedVoter?.full_name || 'מתעניין'}
             </DialogTitle>
           </DialogHeader>
           <ScrollArea className="max-h-[60vh]">

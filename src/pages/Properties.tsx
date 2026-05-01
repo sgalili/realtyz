@@ -27,7 +27,7 @@ import {
   type PropertyType,
   type ListingType,
 } from '@/lib/homelyMockProperties';
-import { ShareWithProspectDialog } from '@/components/properties/ShareWithProspectDialog';
+import { ShareWithLeadDialog } from '@/components/properties/ShareWithLeadDialog';
 import ErrorBoundary from '@/components/ErrorBoundary';
 
 const PRICE_MIN = 0;
@@ -265,7 +265,7 @@ export default function Properties() {
         )}
       </ErrorBoundary>
 
-      <ShareWithProspectDialog
+      <ShareWithLeadDialog
         property={shareTarget}
         open={!!shareTarget}
         onOpenChange={(open) => { if (!open) setShareTarget(null); }}

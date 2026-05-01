@@ -1,9 +1,9 @@
 // Performance Insights — KPI dashboard for the Realtyz Deal Room
 //
 // Metrics computed live from the database (no placeholders):
-//   • Total Prospects Engaged  — distinct leads with ≥1 outbound or inbound message in window
-//   • Conversion Rate          — % of engaged prospects whose lead_stage reached negotiation/closed
-//   • AI Response Time         — median minutes between an inbound prospect message and the next
+//   • Total Leads Engaged  — distinct leads with ≥1 outbound or inbound message in window
+//   • Conversion Rate          — % of engaged leads whose lead_stage reached negotiation/closed
+//   • AI Response Time         — median minutes between an inbound lead message and the next
 //                                outbound (sender_type = 'ai' or 'agent') reply
 //   • Deal Room Velocity       — average days between lead.created_at and last_interaction_at for
 //                                leads currently in `closed` stage
@@ -129,7 +129,7 @@ export default function PerformanceInsights() {
     const msgs = messages || [];
     const leadList = leads || [];
 
-    // 1) Total Prospects Engaged in window (distinct lead ids with any message)
+    // 1) Total Leads Engaged in window (distinct lead ids with any message)
     const engagedIds = new Set<string>();
     msgs.forEach((m: any) => m.lead_id && engagedIds.add(m.lead_id));
     const totalEngaged = engagedIds.size;
@@ -206,20 +206,20 @@ export default function PerformanceInsights() {
       messages: v,
     }));
 
-    // Cumulative new prospects per day in window
-    const newProspectByDay = new Map<string, number>();
-    dayMap.forEach((_, k) => newProspectByDay.set(k, 0));
+    // Cumulative new leads per day in window
+    const newLeadByDay = new Map<string, number>();
+    dayMap.forEach((_, k) => newLeadByDay.set(k, 0));
     leadList.forEach((l: any) => {
       if (!l.created_at) return;
       if (new Date(l.created_at) < sinceDate) return;
       const k = dayKey(l.created_at);
-      if (newProspectByDay.has(k))
-        newProspectByDay.set(k, (newProspectByDay.get(k) || 0) + 1);
+      if (newLeadByDay.has(k))
+        newLeadByDay.set(k, (newLeadByDay.get(k) || 0) + 1);
     });
     let cum = 0;
-    const trendSeries = Array.from(newProspectByDay.entries()).map(([k, v]) => {
+    const trendSeries = Array.from(newLeadByDay.entries()).map(([k, v]) => {
       cum += v;
-      return { day: shortDay(k), prospects: cum };
+      return { day: shortDay(k), leads: cum };
     });
 
     // Leaderboard — outbound messages attributed by metadata.agent_id, fallback to all-team aggregate
@@ -390,7 +390,7 @@ export default function PerformanceInsights() {
           <CardHeader>
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <TrendingUp className="h-4 w-4 text-success" />
-              New Prospects (cumulative)
+              New Leads (cumulative)
             </CardTitle>
           </CardHeader>
           <CardContent className="h-64">
@@ -412,7 +412,7 @@ export default function PerformanceInsights() {
                   />
                   <Line
                     type="monotone"
-                    dataKey="prospects"
+                    dataKey="leads"
                     stroke="hsl(var(--success))"
                     strokeWidth={2}
                     dot={false}

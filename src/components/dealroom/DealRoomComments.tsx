@@ -96,7 +96,7 @@ export function DealRoomComments({ leadId }: { leadId: string }) {
         <Lock className="h-3.5 w-3.5 text-muted-foreground" />
         <span className="text-xs font-medium">Internal Team Notes</span>
         <span className="text-[10px] text-muted-foreground ml-auto">
-          Visible to your team only · never sent to the prospect
+          Visible to your team only · never sent to the lead
         </span>
       </div>
 

@@ -37,7 +37,7 @@ export function StrategyBriefCard({
 
 📊 נתונים:
 • יעד עסקאות: ${stats.mandate_target}
-• לידים נדרשים: ${stats.targetVoters.toLocaleString()}
+• מתעניינים נדרשים: ${stats.targetVoters.toLocaleString()}
 • פער: ${stats.gap.toLocaleString()}
 • זמן למכירות: ${stats.months_to_election} חודשים
 
@@ -91,7 +91,7 @@ ${brief.signature_message}
         {/* Stats strip */}
         <div className="grid grid-cols-3 border-b text-center">
           <Stat label="יעד עסקאות" value={stats.mandate_target.toString()} />
-          <Stat label="לידים נדרשים" value={stats.targetVoters.toLocaleString()} divider />
+          <Stat label="מתעניינים נדרשים" value={stats.targetVoters.toLocaleString()} divider />
           <Stat label="פער ליעד" value={stats.gap.toLocaleString()} />
         </div>
 
@@ -103,7 +103,7 @@ ${brief.signature_message}
 
           <div className="pt-3 border-t">
             <div className={`flex items-center gap-1.5 text-xs font-bold mb-2 text-blue-600`}>
-              <MessageSquare className="h-3.5 w-3.5" /> הודעת חתימה ללידים חמים
+              <MessageSquare className="h-3.5 w-3.5" /> הודעת חתימה למתעניינים חמים
             </div>
             <p className="text-sm leading-relaxed bg-muted/40 rounded-lg p-3 italic">
               "{brief.signature_message}"

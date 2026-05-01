@@ -59,7 +59,7 @@ export function useUserRole() {
     isManagingBroker || isLeadAgent || isAgent || isAssistant || isJuniorAgent || isAdmin;
 
   // True only when junior_agent is the user's *highest* role.
-  // Used for Junior-Agent UI restrictions (own-prospects-only view).
+  // Used for Junior-Agent UI restrictions (own-leads-only view).
   const isJuniorOnly =
     isJuniorAgent && !isAssistant && !isAgent && !isLeadAgent && !isManagingBroker && !isAdmin;
 
@@ -68,16 +68,16 @@ export function useUserRole() {
   const canCloseDeals = isAgent;
   // Closing Room (contracts): same set as can-close (Assistant + Junior blocked).
   const canUseClosingRoom = isAgent;
-  // Delete prospects: Managing Broker, Lead Agent, Agent, Admin, Super Admin.
-  const canDeleteProspects = isAgent;
+  // Delete leads: Managing Broker, Lead Agent, Agent, Admin, Super Admin.
+  const canDeleteLeads = isAgent;
   // Strategy Bank + Deal Room data ingestion: any team member.
   const canManageData = isTeamMember;
   // Billing & subscription: Managing Broker / Admin only.
   const canAccessBilling = isManagingBroker;
   // Invite teammates / change roles: Managing Broker / Admin only.
   const canInviteTeam = isManagingBroker;
-  // Delegate prospects (Assign To): Managing Broker or Lead Agent.
-  const canAssignProspects = isLeadAgent;
+  // Delegate leads (Assign To): Managing Broker or Lead Agent.
+  const canAssignLeads = isLeadAgent;
 
   return {
     roles,
@@ -93,11 +93,11 @@ export function useUserRole() {
     isTeamMember,
     canCloseDeals,
     canUseClosingRoom,
-    canDeleteProspects,
+    canDeleteLeads,
     canManageData,
     canAccessBilling,
     canInviteTeam,
-    canAssignProspects,
+    canAssignLeads,
     loading: isLoading,
   };
 }

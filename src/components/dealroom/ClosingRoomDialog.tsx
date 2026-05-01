@@ -61,11 +61,11 @@ const STATUS_BADGE: Record<ClosingDoc['status'], { label: string; tone: string; 
 };
 
 export function ClosingRoomDialog({
-  prospect,
+  lead,
   open,
   onOpenChange,
 }: {
-  prospect: Lead | null;
+  lead: Lead | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
 }) {
@@ -101,13 +101,13 @@ export function ClosingRoomDialog({
   });
 
   const { data: docs = [] } = useQuery({
-    queryKey: ['closing-docs', prospect?.id],
-    enabled: !!prospect && open,
+    queryKey: ['closing-docs', lead?.id],
+    enabled: !!lead && open,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('closing_documents')
         .select('id, title, template_key, status, sign_token, sent_at, signed_at, reminder_sent_at, created_at')
-        .eq('lead_id', prospect!.id)
+        .eq('lead_id', lead!.id)
         .order('created_at', { ascending: false });
       if (error) throw error;
       return (data || []) as ClosingDoc[];
@@ -126,12 +126,12 @@ export function ClosingRoomDialog({
   }, [selectedListing, price]);
 
   async function generateAndSend() {
-    if (!prospect || busy) return;
+    if (!lead || busy) return;
     setBusy(true);
     try {
       const { data: gen, error: genErr } = await supabase.functions.invoke('generate-closing-doc', {
         body: {
-          lead_id: prospect.id,
+          lead_id: lead.id,
           template_key: template,
           listing_id: listingId || undefined,
           terms: terms.trim() || undefined,
@@ -151,10 +151,10 @@ export function ClosingRoomDialog({
       if (sendErr) throw sendErr;
 
       toast.success('המסמך נשלח לחתימה', {
-        description: `${prospect.full_name || 'הלקוח'} יקבל קישור ב-WhatsApp לעיון וחתימה.`,
+        description: `${lead.full_name || 'הלקוח'} יקבל קישור ב-WhatsApp לעיון וחתימה.`,
       });
-      queryClient.invalidateQueries({ queryKey: ['closing-docs', prospect.id] });
-      queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
+      queryClient.invalidateQueries({ queryKey: ['closing-docs', lead.id] });
+      queryClient.invalidateQueries({ queryKey: ['deal-room-leads'] });
     } catch (e: any) {
       toast.error('שליחת המסמך נכשלה', { description: e?.message });
     } finally {
@@ -177,7 +177,7 @@ export function ClosingRoomDialog({
             חדר סגירה דיגיטלי
           </DialogTitle>
           <DialogDescription>
-            הפיקו מסמך מוכן עבור {prospect?.full_name || 'הלקוח'} ושלחו אותו לחתימה מאובטחת ב-WhatsApp.
+            הפיקו מסמך מוכן עבור {lead?.full_name || 'הלקוח'} ושלחו אותו לחתימה מאובטחת ב-WhatsApp.
           </DialogDescription>
         </DialogHeader>
 
@@ -278,7 +278,7 @@ export function ClosingRoomDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
             ביטול
           </Button>
-          <Button onClick={generateAndSend} disabled={busy || !prospect}>
+          <Button onClick={generateAndSend} disabled={busy || !lead}>
             <Send className="h-4 w-4 ml-1.5" />
             {busy ? 'מפיק ושולח…' : 'הפקה ושליחה'}
           </Button>

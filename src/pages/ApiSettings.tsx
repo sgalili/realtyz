@@ -192,7 +192,7 @@ const AuditLogCard = () => {
           id: `msg-${m.id}`,
           timestamp: m.created_at,
           user_email: m.sender_type === 'system' ? 'system@realtyz.ai' : email,
-          action: m.sender_type === 'system' ? 'שליחת הודעה אוטומטית' : 'גישה למאגר לידים',
+          action: m.sender_type === 'system' ? 'שליחת הודעה אוטומטית' : 'גישה למאגר מתעניינים',
           target: `lead:${(m.lead_id || '').slice(0, 8)}...`,
         });
       }
@@ -208,7 +208,7 @@ const AuditLogCard = () => {
           <Activity className="h-4 w-4 text-primary" />
           יומן פעילות (Audit Log)
         </CardTitle>
-        <CardDescription className="text-xs">מי ניגש למאגר הלידים, מתי, ואיזו פעולה בוצעה</CardDescription>
+        <CardDescription className="text-xs">מי ניגש למאגר המתעניינים, מתי, ואיזו פעולה בוצעה</CardDescription>
       </CardHeader>
       <CardContent>
         {auditEntries.length === 0 ? (
@@ -869,7 +869,7 @@ const ApiSettings = () => {
             <div className="flex items-start gap-2">
               <Badge variant="outline" className="shrink-0">ביקורת</Badge>
               <span className="text-muted-foreground">
-                כל ייצוא או מחיקה של ליד נרשמים ביומן הביקורת הבלתי-ניתן-לעריכה.
+                כל ייצוא או מחיקה של מתעניין נרשמים ביומן הביקורת הבלתי-ניתן-לעריכה.
               </span>
             </div>
             <div className="flex items-start gap-2">
@@ -884,12 +884,12 @@ const ApiSettings = () => {
             <Button asChild variant="default" size="sm">
               <a href="/privacy">
                 <ShieldCheck className="h-4 w-4 ms-1.5" aria-hidden="true" />
-                פתח מרכז פרטיות ומחיקת ליד
+                פתח מרכז פרטיות ומחיקת מתעניין
               </a>
             </Button>
             <Button asChild variant="outline" size="sm">
               <a href="/privacy">
-                ייצוא נתוני ליד (GDPR)
+                ייצוא נתוני מתעניין (GDPR)
               </a>
             </Button>
           </div>
@@ -905,8 +905,8 @@ const ApiSettings = () => {
         <div className="rounded-lg overflow-hidden">
           <FeatureRow
             title="AI Touchpoint (שיחות AI)"
-            description="בוט קולי שמתקשר ללידים חמים"
-            learnMore="AI Touchpoint מפעיל בוט קולי שמתקשר באופן יזום ללידים חמים, מנהל שיחה קצרה, מסווג עניין ומעדכן את ה-CRM. שימושי כדי לזהות במהירות לידים בשלים לפנייה אנושית."
+            description="בוט קולי שמתקשר למתעניינים חמים"
+            learnMore="AI Touchpoint מפעיל בוט קולי שמתקשר באופן יזום למתעניינים חמים, מנהל שיחה קצרה, מסווג עניין ומעדכן את ה-CRM. שימושי כדי לזהות במהירות מתעניינים בשלים לפנייה אנושית."
             icon={Phone}
             iconColor="text-blue-500"
             serviceKey="ai_voice"

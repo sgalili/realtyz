@@ -13,9 +13,9 @@ export type ElectionTerms = {
   seat: string;
   /** Plural units (עסקאות / מושבים) */
   seats: string;
-  /** Singular lead (ליד / מתפקד) */
+  /** Singular lead (מתעניין / מתפקד) */
   voter: string;
-  /** Plural leads (לידים / מתפקדים) */
+  /** Plural leads (מתעניינים / מתפקדים) */
   voters: string;
   /** "Vote" terminology used in stat cards (קולות / מתפקדים) */
   votes: string;
@@ -39,11 +39,11 @@ const TERMS: Record<ElectionType, ElectionTerms> = {
   national: {
     seat: 'עסקה',
     seats: 'עסקאות',
-    voter: 'ליד',
-    voters: 'לידים',
+    voter: 'מתעניין',
+    voters: 'מתעניינים',
     votes: 'קולות',
     supporters: 'תומכים',
-    voterBook: 'ספר הלידים',
+    voterBook: 'ספר המתעניינים',
     target: 'יעד עסקאות',
     rankingLabel: 'עסקאות מובטחים',
     electionLabel: 'מכירות ארציות',
