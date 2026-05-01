@@ -176,12 +176,19 @@ export default function Finance() {
   const { isDemoMode, demoCandidateId } = useDemoMode();
   const { type: electionType, terms } = useElectionType();
 
+  // Demo Mode hard-gate: never read DEMO_CANDIDATES when demo is OFF.
+  // This was the source of the /finance demo-data leak — sample data was being
+  // used as a fallback regardless of mode. In live mode we fall back to a neutral
+  // baseline (3 deals/year) until real billing data is wired up.
   const candidate = useMemo(
-    () => DEMO_CANDIDATES.find((c) => c.id === demoCandidateId) ?? DEMO_CANDIDATES[0],
-    [demoCandidateId],
+    () =>
+      isDemoMode
+        ? DEMO_CANDIDATES.find((c) => c.id === demoCandidateId) ?? DEMO_CANDIDATES[0]
+        : null,
+    [isDemoMode, demoCandidateId],
   );
 
-  const mandateGoal = isDemoMode ? candidate.mandateGoal : 3;
+  const mandateGoal = isDemoMode && candidate ? candidate.mandateGoal : 3;
   const plan = useMemo(() => pickPlan(mandateGoal), [mandateGoal]);
 
   // Primaries are smaller-scale -> lower overage intensity than national.
