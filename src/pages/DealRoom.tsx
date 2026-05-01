@@ -392,29 +392,26 @@ export default function DealRoom() {
   }
 
   return (
-    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6" dir="ltr">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6" dir="rtl">
       <header className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight flex items-center gap-2 sm:gap-3">
-            <span className="inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <MessageSquare className="h-5 w-5" />
-            </span>
-            Deal Room
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
+            חדר עסקאות
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Pipeline view of every Prospect — drag intent into action.
+            תצוגת פייפליין של כל המועמדים — גרור כוונה לפעולה.
           </p>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
           <Badge variant="secondary" className="text-sm">
-            {leads?.length ?? 0} Prospects
+            {leads?.length ?? 0} מועמדים
           </Badge>
           <Button
             variant={sortMode === 'priority' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setSortMode((m) => (m === 'priority' ? 'recent' : 'priority'))}
             className="gap-1.5 h-11"
-            title="Sort by Predictive Prospect Score"
+            title="מיון לפי ציון מועמד חזוי"
           >
             {sortMode === 'priority' ? (
               <Flame className="h-4 w-4" />
@@ -422,10 +419,10 @@ export default function DealRoom() {
               <ArrowDownUp className="h-4 w-4" />
             )}
             <span className="hidden sm:inline">
-              {sortMode === 'priority' ? 'Sorted by Priority' : 'Sort by Priority'}
+              {sortMode === 'priority' ? 'ממויין לפי עדיפות' : 'מיין לפי עדיפות'}
             </span>
             <span className="sm:hidden">
-              {sortMode === 'priority' ? 'Priority' : 'Sort'}
+              {sortMode === 'priority' ? 'עדיפות' : 'מיין'}
             </span>
           </Button>
           <Button
@@ -434,10 +431,10 @@ export default function DealRoom() {
             onClick={recomputeAllScores}
             disabled={recomputing}
             className="gap-1.5 h-11"
-            title="Recompute all prospect scores"
+            title="חשב מחדש את כל ציוני המועמדים"
           >
             <RefreshCw className={cn('h-4 w-4', recomputing && 'animate-spin')} />
-            <span className="hidden md:inline">Recompute scores</span>
+            <span className="hidden md:inline">חשב מחדש ציונים</span>
           </Button>
           <Button
             onClick={() => {
@@ -447,8 +444,8 @@ export default function DealRoom() {
             className="gap-1.5 h-11 flex-1 sm:flex-none"
           >
             <Megaphone className="h-4 w-4" />
-            <span className="hidden sm:inline">New Listing Outreach</span>
-            <span className="sm:hidden">New Outreach</span>
+            <span className="hidden sm:inline">פנייה אקטיבית חדשה</span>
+            <span className="sm:hidden">פנייה חדשה</span>
           </Button>
         </div>
       </header>
