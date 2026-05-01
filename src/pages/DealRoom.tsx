@@ -603,6 +603,11 @@ export default function DealRoom() {
                               {p.city}
                             </div>
                           )}
+                          {p.interaction_outcome && (
+                            <div className="mt-1.5">
+                              <OutcomeBadge value={p.interaction_outcome} className="text-[10px] py-0" />
+                            </div>
+                          )}
                         </div>
                       </div>
 
