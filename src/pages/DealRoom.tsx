@@ -201,10 +201,10 @@ export default function DealRoom() {
       .update({ assigned_to: userId })
       .eq('id', leadId);
     if (error) {
-      toast.error('Could not delegate prospect', { description: error.message });
+      toast.error('לא ניתן להקצות את המועמד', { description: error.message });
       return;
     }
-    toast.success(userId ? 'Prospect delegated' : 'Assignment cleared');
+    toast.success(userId ? 'המועמד הוקצה' : 'ההקצאה בוטלה');
     queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
   }
   const [recomputing, setRecomputing] = useState(false);
