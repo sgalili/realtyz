@@ -285,11 +285,12 @@ export default function Team() {
 
       <Card className="p-5 bg-muted/30">
         <h2 className="font-medium mb-2 text-sm">Permission matrix</h2>
-        <div className="text-xs text-muted-foreground space-y-1">
-          <p>• <strong>Agent</strong> — close deals, approve contract changes, manage data &amp; tasks.</p>
-          <p>• <strong>Assistant</strong> — manage tasks &amp; data ingestion. Cannot close deals.</p>
-          <p>• <strong>Junior Agent</strong> — manage tasks &amp; data ingestion. Cannot close deals.</p>
-          <p>• All team members can read &amp; post internal Deal Room comments.</p>
+        <div className="text-xs text-muted-foreground space-y-1.5">
+          <p>• <strong>Managing Broker</strong> — full access to settings, billing, team management, and contracts.</p>
+          <p>• <strong>Lead Agent</strong> — Deal Room, Strategy Bank, Listing Outreach, and the Closing Room. No billing or team management.</p>
+          <p>• <strong>Assistant</strong> — Strategy Bank data entry and Deal Room task management. Cannot delete prospects or open the Closing Room.</p>
+          <p>• <strong>Junior Agent</strong> — restricted to their own assigned prospects in the Deal Room only.</p>
+          <p>• All team members can read &amp; post internal Deal Room comments. Every stage change and re-assignment is captured in the audit log.</p>
         </div>
       </Card>
     </div>
