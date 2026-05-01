@@ -136,17 +136,17 @@ function bucketFor(stage: string | null): LeadStage {
 }
 
 function timeAgo(iso: string | null): string {
-  if (!iso) return 'No interaction yet';
+  if (!iso) return 'אין אינטראקציה עדיין';
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return 'הרגע';
+  if (mins < 60) return `לפני ${mins} ד׳`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24) return `לפני ${hrs} ש׳`;
   const days = Math.floor(hrs / 24);
-  if (days < 30) return `${days}d ago`;
+  if (days < 30) return `לפני ${days} ימים`;
   const months = Math.floor(days / 30);
-  return `${months}mo ago`;
+  return `לפני ${months} חודשים`;
 }
 
 export default function DealRoom() {
