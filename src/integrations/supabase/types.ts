@@ -1197,6 +1197,45 @@ export type Database = {
         }
         Relationships: []
       }
+      feedback_logs: {
+        Row: {
+          ai_message: string
+          created_at: string
+          id: string
+          lead_id: string | null
+          metadata: Json
+          rating: string
+          suggested_correction: string | null
+          suggestion_id: string | null
+          surface: string
+          user_id: string
+        }
+        Insert: {
+          ai_message: string
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          metadata?: Json
+          rating: string
+          suggested_correction?: string | null
+          suggestion_id?: string | null
+          surface?: string
+          user_id: string
+        }
+        Update: {
+          ai_message?: string
+          created_at?: string
+          id?: string
+          lead_id?: string | null
+          metadata?: Json
+          rating?: string
+          suggested_correction?: string | null
+          suggestion_id?: string | null
+          surface?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       interaction_activity_log: {
         Row: {
           action_type: string
