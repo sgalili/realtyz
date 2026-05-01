@@ -2,7 +2,7 @@ import { lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RealtyzLoader } from '@/components/RealtyzLoader';
-import { Crosshair, Megaphone, Calendar, ShieldCheck, Radio, ClipboardList, Send } from 'lucide-react';
+import { Crosshair, Megaphone, Calendar, ShieldCheck, Radio, ClipboardList, Send, Users } from 'lucide-react';
 import { useElectionType } from '@/hooks/useElectionType';
 
 const CampaignStrategy = lazy(() => import('./CampaignStrategy'));
@@ -11,9 +11,11 @@ const ContentCalendar = lazy(() => import('./ContentCalendar'));
 const ApprovalQueue = lazy(() => import('./ApprovalQueue'));
 const SmsBlastSimulator = lazy(() => import('./SmsBlastSimulator'));
 const DeliveryReports = lazy(() => import('./DeliveryReports'));
+const CommunityBroadcastPanel = lazy(() => import('@/components/CommunityBroadcastPanel'));
 
 type TabValue = 'strategy' | 'campaigns' | 'calendar' | 'approvals' | 'broadcast';
-type BroadcastSubTab = 'send' | 'reports';
+type BroadcastSubTab = 'community' | 'send' | 'reports';
+
 
 
 const PageFallback = () => (
@@ -32,8 +34,10 @@ const CampaignCenter = () => {
     { value: 'approvals' as const, label: 'אישורים',      icon: ShieldCheck,   description: 'תוכן AI שממתין לאישור אנושי' },
     { value: 'broadcast' as const, label: 'הפצת הודעות',  icon: Radio,         description: `WhatsApp, SMS ואימייל ל${terms.audience} - כולל דו"חות מסירה` },
   ];
-  const initialSub = (searchParams.get('sub') as BroadcastSubTab) ?? 'send';
-  const activeSub: BroadcastSubTab = initialSub === 'reports' ? 'reports' : 'send';
+  const initialSub = (searchParams.get('sub') as BroadcastSubTab) ?? 'community';
+  const activeSub: BroadcastSubTab = (['community', 'send', 'reports'] as BroadcastSubTab[]).includes(initialSub)
+    ? initialSub
+    : 'community';
   const initial = (searchParams.get('tab') as TabValue) ?? 'strategy';
   const active: TabValue = TABS.some((t) => t.value === initial) ? initial : 'strategy';
   const activeMeta = TABS.find((t) => t.value === active)!;
@@ -92,7 +96,11 @@ const CampaignCenter = () => {
         </TabsContent>
         <TabsContent value="broadcast" className="mt-6">
           <Tabs value={activeSub} onValueChange={handleSubChange} className="w-full" dir="rtl">
-            <TabsList className="grid w-full max-w-md grid-cols-2 h-auto gap-1 bg-muted/50 p-1">
+            <TabsList className="grid w-full max-w-2xl grid-cols-3 h-auto gap-1 bg-muted/50 p-1">
+              <TabsTrigger value="community" className="flex items-center justify-center gap-2 py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Users className="h-4 w-4 shrink-0" />
+                <span>עדכון לקהילה</span>
+              </TabsTrigger>
               <TabsTrigger value="send" className="flex items-center justify-center gap-2 py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Send className="h-4 w-4 shrink-0" />
                 <span>שיגור הודעות</span>
@@ -102,6 +110,9 @@ const CampaignCenter = () => {
                 <span>דו"חות מסירה</span>
               </TabsTrigger>
             </TabsList>
+            <TabsContent value="community" className="mt-6">
+              <Suspense fallback={<PageFallback />}><CommunityBroadcastPanel /></Suspense>
+            </TabsContent>
             <TabsContent value="send" className="mt-6">
               <Suspense fallback={<PageFallback />}><SmsBlastSimulator /></Suspense>
             </TabsContent>
