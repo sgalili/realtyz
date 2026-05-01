@@ -297,7 +297,9 @@ Deno.serve(async (req) => {
         ? await fetchGmailIdentity(tokens.access_token)
         : platform === 'youtube'
           ? await fetchYouTubeIdentity(tokens.access_token)
-          : await fetchDriveIdentity(tokens.access_token);
+          : platform === 'google_calendar'
+            ? await fetchCalendarIdentity(tokens.access_token)
+            : await fetchDriveIdentity(tokens.access_token);
 
     if ('error' in identity) {
       await admin
