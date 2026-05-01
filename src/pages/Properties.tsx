@@ -95,6 +95,8 @@ export default function Properties() {
 
   const filtered = useMemo(() => {
     return merged.filter((p) => {
+      const pType: ListingType = (p.listing_type ?? 'sale') as ListingType;
+      if (pType !== listingType) return false;
       if (city !== 'כל הערים' && p.city !== city) return false;
       if (propertyType !== 'all' && p.property_type !== propertyType) return false;
       if (rooms !== 'any' && p.rooms < Number(rooms)) return false;
@@ -102,24 +104,44 @@ export default function Properties() {
       if (areaMin && p.size_sqm < Number(areaMin)) return false;
       return true;
     });
-  }, [merged, city, propertyType, rooms, priceRange, areaMin]);
+  }, [merged, listingType, city, propertyType, rooms, priceRange, areaMin]);
 
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6" dir="rtl">
-      {/* Hero header — matches Finance / Deal Room styling */}
+      {/* Hero header */}
       <header className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
             נכסים
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            קטלוג הנכסים מ-Homely. סננו לפי תקציב, אזור, סוג נכס וחדרים — ושלחו ישירות למתעניינים.
+            קטלוג הנכסים. סננו לפי תקציב, אזור, סוג נכס וחדרים — ושלחו ישירות למתעניינים.
           </p>
         </div>
         <Badge variant="secondary" className="text-sm">
           {filtered.length} נכסים
         </Badge>
       </header>
+
+      {/* Listing type toggle: למכירה / להשכרה */}
+      <div className="flex justify-center">
+        <div className="inline-flex items-center rounded-xl border border-primary/20 bg-card/40 p-1 backdrop-blur-md" dir="rtl">
+          {(['sale', 'rent'] as ListingType[]).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setListingType(t)}
+              className={`px-5 py-2 text-sm font-bold rounded-lg transition-colors ${
+                listingType === t
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {LISTING_TYPE_LABELS_HE[t]}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Filter bar */}
       <Card className="p-4 sm:p-5">
