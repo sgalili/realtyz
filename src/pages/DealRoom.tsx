@@ -208,6 +208,28 @@ export default function DealRoom() {
     queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
   }
   const [recomputing, setRecomputing] = useState(false);
+  const [importing, setImporting] = useState(false);
+
+  async function importHomelyProspects() {
+    if (importing) return;
+    setImporting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('homely-prospects', {
+        body: {},
+      });
+      if (error) throw error;
+      const n = (data as any)?.imported ?? 0;
+      const src = (data as any)?.source === 'homely' ? 'Homely' : 'מאגר דמו';
+      toast.success(`Imported ${n} new prospects`, {
+        description: `מקור: ${src}`,
+      });
+      queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
+    } catch (err: any) {
+      toast.error('ייבוא המועמדים נכשל', { description: err?.message });
+    } finally {
+      setImporting(false);
+    }
+  }
 
   const { data: leads, isLoading } = useQuery({
     queryKey: ['deal-room-prospects'],
@@ -435,6 +457,17 @@ export default function DealRoom() {
           >
             <RefreshCw className={cn('h-4 w-4', recomputing && 'animate-spin')} />
             <span className="hidden md:inline">חשב מחדש ציונים</span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={importHomelyProspects}
+            disabled={importing}
+            className="gap-1.5 h-11"
+            title="ייבוא מועמדים חדשים מ-Homely"
+          >
+            <UserPlus className={cn('h-4 w-4', importing && 'animate-pulse')} />
+            <span className="hidden md:inline">{importing ? 'מייבא...' : 'ייבוא מועמדים'}</span>
           </Button>
           <Button
             onClick={() => {

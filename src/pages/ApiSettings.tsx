@@ -293,6 +293,14 @@ const ApiSettings = () => {
   const [homelyApiKey, setHomelyApiKey] = useState('');
   const [homelyHasKey, setHomelyHasKey] = useState(false);
   const [homelyLoaded, setHomelyLoaded] = useState(false);
+  // Diagnostic snapshot from the last "Test Connection" run.
+  const [homelyDiag, setHomelyDiag] = useState<null | {
+    ok: boolean;
+    request: { url: string; method: string; headers: Record<string, string> };
+    response: { status: number | null; statusText: string; body: unknown };
+    error?: string;
+    timestamp: string;
+  }>(null);
   const { user: authUser } = useAuth();
 
   // Per-service On/Off toggles (service_toggles table)
@@ -544,19 +552,56 @@ const ApiSettings = () => {
       return;
     }
     setTestingService('homely');
+    setHomelyDiag(null);
+
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+    const proxyUrl = `https://${projectId}.supabase.co/functions/v1/call-homely-api`;
+    const upstreamPath = '/health';
+    const upstreamUrl = `https://api.homely.com${upstreamPath}`;
+    const requestSnapshot = {
+      url: upstreamUrl,
+      method: 'GET' as const,
+      headers: {
+        Authorization: 'Bearer ••••••••',
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+    };
+
+    console.log('[homely-test] proxy', proxyUrl);
+    console.log('[homely-test] upstream', requestSnapshot);
+
     try {
       const { data, error } = await supabaseClient.functions.invoke('call-homely-api', {
-        body: { path: '/health', method: 'GET' },
+        body: { path: upstreamPath, method: 'GET' },
       });
-      if (error) {
-        toast.error(`❌ חיבור Homely נכשל: ${error.message}`);
-      } else if (data?.error) {
-        toast.error(`❌ חיבור Homely נכשל: ${data.error}`);
-      } else {
-        toast.success('✅ חיבור Homely API תקין!');
-      }
+
+      const ok = !error && !(data as any)?.error;
+      setHomelyDiag({
+        ok,
+        request: requestSnapshot,
+        response: {
+          status: (data as any)?.status ?? null,
+          statusText: ok ? 'OK' : ((error?.message as string) || (data as any)?.error || 'Failed'),
+          body: data ?? null,
+        },
+        error: error?.message ?? (data as any)?.error,
+        timestamp: new Date().toISOString(),
+      });
+
+      if (error) toast.error(`❌ חיבור Homely נכשל: ${error.message}`);
+      else if ((data as any)?.error) toast.error(`❌ חיבור Homely נכשל: ${(data as any).error}`);
+      else toast.success('✅ חיבור Homely API תקין!');
     } catch (err) {
-      toast.error(`❌ לא ניתן להתחבר ל-Homely: ${(err as Error).message}`);
+      const message = (err as Error).message;
+      setHomelyDiag({
+        ok: false,
+        request: requestSnapshot,
+        response: { status: null, statusText: 'Network error', body: null },
+        error: message,
+        timestamp: new Date().toISOString(),
+      });
+      toast.error(`❌ לא ניתן להתחבר ל-Homely: ${message}`);
     } finally {
       setTestingService(null);
     }
@@ -909,6 +954,50 @@ const ApiSettings = () => {
             </Button>
           </div>
         </div>
+        {homelyDiag && (
+          <div className={`mt-3 rounded-lg border p-3 text-xs space-y-2 ${
+            homelyDiag.ok
+              ? 'border-emerald-500/30 bg-emerald-500/5'
+              : 'border-red-500/30 bg-red-500/5'
+          }`}>
+            <div className="flex items-center justify-between">
+              <span className="font-semibold">
+                {homelyDiag.ok ? '✅ Connection OK' : '❌ Connection failed'}
+              </span>
+              <span className="text-muted-foreground text-[10px]">
+                {new Date(homelyDiag.timestamp).toLocaleTimeString('he-IL')}
+              </span>
+            </div>
+            <div dir="ltr" className="space-y-1.5 font-mono">
+              <div>
+                <span className="text-muted-foreground">Method:</span> {homelyDiag.request.method}
+              </div>
+              <div className="break-all">
+                <span className="text-muted-foreground">URL:</span> {homelyDiag.request.url}
+              </div>
+              <div>
+                <span className="text-muted-foreground">Headers:</span>
+                <pre className="mt-0.5 p-2 rounded bg-background/60 overflow-auto text-[10px]">
+{JSON.stringify(homelyDiag.request.headers, null, 2)}
+                </pre>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Response:</span>{' '}
+                <span className={homelyDiag.ok ? 'text-emerald-600' : 'text-red-600'}>
+                  {homelyDiag.response.status ?? '—'} {homelyDiag.response.statusText}
+                </span>
+                <pre className="mt-0.5 p-2 rounded bg-background/60 overflow-auto text-[10px] max-h-40">
+{JSON.stringify(homelyDiag.response.body, null, 2)}
+                </pre>
+              </div>
+              {homelyDiag.error && (
+                <div className="text-red-600">
+                  <span className="text-muted-foreground">Error:</span> {homelyDiag.error}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </ServiceCard>
 
       <ServiceCard
