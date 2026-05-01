@@ -1266,6 +1266,84 @@ export type Database = {
         }
         Relationships: []
       }
+      outreach_auto_policies: {
+        Row: {
+          auto_draft: boolean
+          created_at: string
+          id: string
+          tier: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_draft?: boolean
+          created_at?: string
+          id?: string
+          tier: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_draft?: boolean
+          created_at?: string
+          id?: string
+          tier?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      outreach_suggestions: {
+        Row: {
+          ai_generated: boolean
+          created_at: string
+          dismissed_at: string | null
+          draft_message: string
+          id: string
+          lead_id: string
+          metadata: Json
+          status: string
+          tier: string | null
+          trigger_reason: string
+          trigger_type: string
+          updated_at: string
+          used_at: string | null
+          user_id: string
+        }
+        Insert: {
+          ai_generated?: boolean
+          created_at?: string
+          dismissed_at?: string | null
+          draft_message: string
+          id?: string
+          lead_id: string
+          metadata?: Json
+          status?: string
+          tier?: string | null
+          trigger_reason: string
+          trigger_type: string
+          updated_at?: string
+          used_at?: string | null
+          user_id: string
+        }
+        Update: {
+          ai_generated?: boolean
+          created_at?: string
+          dismissed_at?: string | null
+          draft_message?: string
+          id?: string
+          lead_id?: string
+          metadata?: Json
+          status?: string
+          tier?: string | null
+          trigger_reason?: string
+          trigger_type?: string
+          updated_at?: string
+          used_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       platform_oauth_apps: {
         Row: {
           client_id: string | null
