@@ -39,13 +39,13 @@ export default function SystemHealth() {
   const { data: settings } = useQuery({
     queryKey: ['system-health-settings'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('system_health_settings' as any)
+      const { data, error } = await (supabase as any)
+        .from('system_health_settings')
         .select('*')
         .eq('id', 1)
         .maybeSingle();
       if (error) throw error;
-      return data as Settings | null;
+      return (data ?? null) as Settings | null;
     },
   });
 
@@ -62,8 +62,8 @@ export default function SystemHealth() {
   const { data: logs } = useQuery({
     queryKey: ['integration-error-logs'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('integration_error_logs' as any)
+      const { data, error } = await (supabase as any)
+        .from('integration_error_logs')
         .select('id, integration, function_name, error_message, created_at')
         .order('created_at', { ascending: false })
         .limit(50);
@@ -87,8 +87,8 @@ export default function SystemHealth() {
   const save = useMutation({
     mutationFn: async () => {
       const normalizedPhone = phone.replace(/\D/g, '');
-      const { error } = await supabase
-        .from('system_health_settings' as any)
+      const { error } = await (supabase as any)
+        .from('system_health_settings')
         .update({
           alert_email: email.trim() || null,
           alert_whatsapp_phone: normalizedPhone || null,
