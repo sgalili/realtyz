@@ -47,6 +47,7 @@ import { AutomationActivityFeed } from '@/components/dealroom/AutomationActivity
 import { CallHistoryList } from '@/components/dealroom/CallHistoryList';
 import { PriorityScoreBadge } from '@/components/dealroom/PriorityScoreBadge';
 import { DealRoomComments } from '@/components/dealroom/DealRoomComments';
+import { ClosingRoomDialog } from '@/components/dealroom/ClosingRoomDialog';
 
 type LeadStage = 'new_prospect' | 'listing_outreach' | 'negotiation' | 'awaiting_signature' | 'closed';
 
