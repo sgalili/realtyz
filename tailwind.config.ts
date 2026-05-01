@@ -12,9 +12,11 @@ export default {
     },
     extend: {
       fontFamily: {
-        sans: ["Assistant", "Heebo", "Inter", "system-ui", "sans-serif"],
-        heading: ["Assistant", "Heebo", "Inter", "system-ui", "sans-serif"],
-        display: ["Assistant", "Heebo", "Inter", "system-ui", "sans-serif"],
+        sans: ["Plus Jakarta Sans", "Assistant", "Heebo", "Inter", "system-ui", "sans-serif"],
+        heading: ["Playfair Display", "Assistant", "Heebo", "Inter", "system-ui", "serif"],
+        display: ["Playfair Display", "Assistant", "Heebo", "Inter", "system-ui", "serif"],
+        hebrew: ["Assistant", "Heebo", "Plus Jakarta Sans", "system-ui", "sans-serif"],
+        serif: ["Playfair Display", "Georgia", "serif"],
       },
       colors: {
         border: "hsl(var(--border))",
@@ -96,14 +98,16 @@ export default {
           blue: "hsl(var(--brand-blue))",
           deep: "hsl(var(--brand-deep))",
           gold: "hsl(var(--brand-gold))",
+          "gold-soft": "hsl(var(--brand-gold-soft))",
           silver: "hsl(var(--brand-silver))",
+          cream: "hsl(var(--brand-cream))",
         },
         /* Backwards-compat alias so leftover `text-gold`/`bg-gold` JSX
-           still compiles and renders as primary instead of crashing. */
+           still compiles and renders against the warm gold accent. */
         gold: {
-          DEFAULT: "hsl(var(--primary))",
-          deep: "hsl(var(--primary))",
-          soft: "hsl(var(--accent))",
+          DEFAULT: "hsl(var(--brand-gold))",
+          deep: "hsl(var(--brand-navy))",
+          soft: "hsl(var(--brand-gold-soft))",
         },
       },
       borderRadius: {
@@ -112,7 +116,13 @@ export default {
         sm: "calc(var(--radius) - 4px)",
       },
       boxShadow: {
-        soft: "0 1px 2px 0 rgba(0, 0, 0, 0.04), 0 2px 8px -2px rgba(0, 0, 0, 0.06)",
+        soft: "0 1px 2px 0 rgba(17, 24, 39, 0.04), 0 4px 14px -4px rgba(17, 24, 39, 0.08)",
+        elegant: "0 10px 40px -12px hsl(222 39% 14% / 0.18), 0 2px 8px -2px hsl(222 39% 14% / 0.06)",
+        gold: "0 8px 24px -10px hsl(38 52% 58% / 0.45)",
+      },
+      spacing: {
+        "section": "5rem",
+        "section-sm": "3rem",
       },
       keyframes: {
         "accordion-down": {

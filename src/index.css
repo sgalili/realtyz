@@ -1,69 +1,74 @@
-@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&family=Heebo:wght@300;400;500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700;800&family=Heebo:wght@300;400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Playfair+Display:wght@500;600;700;800;900&family=Inter:wght@400;500;600;700;800&display=swap');
 
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
 /* ============================================================
-   KALPIZ - kalpiz.co.il visual system: navy, blue, white, gold.
+   REALTYZ — Premium Real Estate visual system.
+   Palette: Deep Charcoal-Navy primary, Soft Warm Gold accent,
+   crisp white surfaces, refined neutrals, generous spacing.
    ============================================================ */
 @layer base {
   :root {
-    /* Surfaces */
-    --background: 210 19% 95%;
-    --foreground: 221 52% 11%;
+    /* Surfaces — crisp white with a whisper of warmth */
+    --background: 0 0% 100%;
+    --foreground: 222 32% 11%;
 
-    --card: 210 27% 98%;
-    --card-foreground: 221 52% 11%;
+    --card: 0 0% 100%;
+    --card-foreground: 222 32% 11%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 221 52% 11%;
+    --popover-foreground: 222 32% 11%;
 
-    /* PRIMARY - Kalpiz navy */
-    --primary: 222 77% 14%;
-    --primary-foreground: 0 0% 100%;
-    --primary-glow: 216 88% 48%;
+    /* PRIMARY — Deep Charcoal Navy */
+    --primary: 222 39% 14%;
+    --primary-foreground: 40 38% 96%;
+    --primary-glow: 222 32% 24%;
 
-    --secondary: 210 18% 92%;
-    --secondary-foreground: 221 100% 18%;
+    --secondary: 36 22% 96%;
+    --secondary-foreground: 222 39% 14%;
 
-    --muted: 210 25% 96%;
-    --muted-foreground: 218 11% 46%;
+    --muted: 30 14% 96%;
+    --muted-foreground: 222 12% 42%;
 
-    --accent: 216 88% 48%;
-    --accent-foreground: 0 0% 100%;
+    /* ACCENT — Soft Warm Gold */
+    --accent: 38 52% 58%;
+    --accent-foreground: 222 39% 14%;
 
-    --destructive: 0 72% 51%;
+    --destructive: 0 62% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 214 20% 82%;
-    --input: 214 20% 82%;
-    --ring: 216 88% 48%;
+    --border: 30 14% 90%;
+    --input: 30 14% 90%;
+    --ring: 38 52% 58%;
 
-    --radius: 0.625rem;
+    --radius: 0.75rem;
 
-    /* SIDEBAR - Kalpiz deep navy */
-    --sidebar-background: 229 79% 5%;
-    --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 216 88% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 222 100% 27%;
-    --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 222 58% 22%;
-    --sidebar-ring: 46 65% 52%;
+    /* SIDEBAR — Deep Charcoal with gold accent */
+    --sidebar-background: 222 42% 9%;
+    --sidebar-foreground: 40 28% 92%;
+    --sidebar-primary: 38 52% 58%;
+    --sidebar-primary-foreground: 222 42% 9%;
+    --sidebar-accent: 222 32% 18%;
+    --sidebar-accent-foreground: 40 38% 96%;
+    --sidebar-border: 222 28% 20%;
+    --sidebar-ring: 38 52% 58%;
 
-    --success: 152 60% 42%;
+    --success: 152 48% 38%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 100%;
+    --warning: 38 80% 52%;
+    --warning-foreground: 222 39% 14%;
 
-    --brand-navy: 222 77% 14%;
-    --brand-blue: 216 88% 48%;
-    --brand-deep: 229 79% 5%;
-    --brand-gold: 216 88% 48%;
-    --brand-silver: 210 18% 92%;
+    --brand-navy: 222 39% 14%;
+    --brand-blue: 222 32% 24%;
+    --brand-deep: 222 42% 9%;
+    --brand-gold: 38 52% 58%;
+    --brand-gold-soft: 38 60% 72%;
+    --brand-silver: 36 14% 94%;
+    --brand-cream: 36 30% 97%;
     --brand-hero: var(--brand-navy);
-    --header-bg: 223 77% 28%;
+    --header-bg: 222 39% 14%;
     --google-blue: 217 89% 61%;
     --google-red: 5 81% 56%;
     --google-yellow: 45 97% 50%;
@@ -114,18 +119,30 @@
     touch-action: pan-x pan-y pinch-zoom;
     overscroll-behavior: none;
     background:
-      radial-gradient(900px 360px at 20% -10%, hsl(var(--brand-blue) / 0.08), transparent 62%),
-      linear-gradient(180deg, hsl(210 24% 98%) 0%, hsl(var(--brand-silver)) 48%, hsl(214 20% 88%) 100%);
+      radial-gradient(1100px 420px at 12% -10%, hsl(var(--brand-gold) / 0.06), transparent 65%),
+      radial-gradient(900px 360px at 100% 0%, hsl(var(--brand-navy) / 0.04), transparent 60%),
+      linear-gradient(180deg, hsl(var(--brand-cream)) 0%, hsl(0 0% 100%) 40%, hsl(var(--brand-cream)) 100%);
     background-attachment: fixed;
-    font-family: 'Assistant', 'Heebo', 'Inter', system-ui, sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Assistant', 'Heebo', 'Inter', system-ui, sans-serif;
     font-weight: 400;
+    letter-spacing: -0.005em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Assistant', 'Heebo', 'Inter', system-ui, sans-serif;
+    font-family: 'Playfair Display', 'Assistant', 'Heebo', 'Inter', system-ui, serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+  /* Hebrew script keeps its dedicated humanist sans for legibility */
+  :lang(he) h1, :lang(he) h2, :lang(he) h3, :lang(he) h4, :lang(he) h5, :lang(he) h6,
+  [dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6 {
+    font-family: 'Assistant', 'Heebo', 'Plus Jakarta Sans', system-ui, sans-serif;
     font-weight: 700;
-    letter-spacing: -0.015em;
+  }
+  :lang(he), [dir="rtl"] body, [dir="rtl"] {
+    font-family: 'Assistant', 'Heebo', 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
   }
 }
 
