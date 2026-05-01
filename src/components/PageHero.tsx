@@ -77,7 +77,7 @@ export function PageHero() {
         </SidebarTrigger>
 
         {/* Center: dynamic page title */}
-        <h1 className="min-w-0 flex-1 truncate text-center text-xl font-bold tracking-tight text-primary-foreground sm:text-2xl">
+        <h1 className="min-w-0 flex-1 truncate text-center text-xl font-bold tracking-tight text-white sm:text-2xl">
           {title}
         </h1>
 
