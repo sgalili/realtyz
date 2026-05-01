@@ -120,7 +120,7 @@ export default function NotificationPreferencesPanel() {
             <div>
               <CardTitle className="text-base">העדפות התראות</CardTitle>
               <CardDescription className="text-xs">
-                Notification Preferences — בחר אילו אירועים קריטיים יישלחו אליך ב-WhatsApp עם קישור ישיר ל-Deal Room
+                Notification Preferences — בחר אילו אירועים קריטיים יישלחו אליך ב-WhatsApp עם קישור ישיר לעסקאות
               </CardDescription>
             </div>
           </div>
@@ -234,7 +234,7 @@ export default function NotificationPreferencesPanel() {
                             className="inline-flex items-center gap-1 text-primary hover:underline mt-1"
                           >
                             <ExternalLink className="h-3 w-3" />
-                            פתח Deal Room
+                            פתח עסקאות
                           </Link>
                         )}
                       </div>

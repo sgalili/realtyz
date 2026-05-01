@@ -33,9 +33,9 @@ export function MobileBottomNav() {
         style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
       >
         <div className="mx-auto flex max-w-xl items-center justify-between gap-1 px-3 py-1.5">
-          <Link to="/deal-room" className={itemClass(isActive('/deal-room'))} aria-label="Deal Room">
+          <Link to="/deal-room" className={itemClass(isActive('/deal-room'))} aria-label="עסקאות">
             <Briefcase className="h-6 w-6" />
-            <span>Deal Room</span>
+            <span>עסקאות</span>
           </Link>
 
           <button
@@ -47,9 +47,9 @@ export function MobileBottomNav() {
             <Plus className="h-7 w-7" />
           </button>
 
-          <Link to="/knowledge" className={itemClass(isActive('/knowledge'))} aria-label="Strategy Bank">
+          <Link to="/knowledge" className={itemClass(isActive('/knowledge'))} aria-label="מאגר הידע">
             <BookOpen className="h-6 w-6" />
-            <span>Strategy Bank</span>
+            <span>מאגר הידע</span>
           </Link>
         </div>
       </nav>

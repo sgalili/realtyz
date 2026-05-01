@@ -869,7 +869,7 @@ const ApiSettings = () => {
             <div className="flex items-start gap-2">
               <Badge variant="outline" className="shrink-0">ביקורת</Badge>
               <span className="text-muted-foreground">
-                כל ייצוא או מחיקה של מועמד נרשמים ביומן הביקורת הבלתי-ניתן-לעריכה.
+                כל ייצוא או מחיקה של ליד נרשמים ביומן הביקורת הבלתי-ניתן-לעריכה.
               </span>
             </div>
             <div className="flex items-start gap-2">
@@ -884,12 +884,12 @@ const ApiSettings = () => {
             <Button asChild variant="default" size="sm">
               <a href="/privacy">
                 <ShieldCheck className="h-4 w-4 ms-1.5" aria-hidden="true" />
-                פתח מרכז פרטיות ומחיקת מועמד
+                פתח מרכז פרטיות ומחיקת ליד
               </a>
             </Button>
             <Button asChild variant="outline" size="sm">
               <a href="/privacy">
-                ייצוא נתוני מועמד (GDPR)
+                ייצוא נתוני ליד (GDPR)
               </a>
             </Button>
           </div>
@@ -943,7 +943,7 @@ const ApiSettings = () => {
       <div className="space-y-2">
         <div>
           <h2 className="text-sm font-bold tracking-tight">AI Voice Agent · עוזר טלפוני</h2>
-          <p className="text-xs text-muted-foreground">עונה לשיחות כשאת/ה לא זמין/ה, מתמלל הכל ל-Deal Room ושולח התראת חזרה אליך.</p>
+          <p className="text-xs text-muted-foreground">עונה לשיחות כשאת/ה לא זמין/ה, מתמלל הכל לעסקאות ושולח התראת חזרה אליך.</p>
         </div>
         <VoiceAgentPanel />
       </div>
@@ -952,7 +952,7 @@ const ApiSettings = () => {
       <div className="space-y-2">
         <div>
           <h2 className="text-sm font-bold tracking-tight">העדפות התראות חכמות</h2>
-          <p className="text-xs text-muted-foreground">Smart Notifications — אירועים קריטיים נשלחים אליך ב-WhatsApp עם קישור ישיר ל-Deal Room</p>
+          <p className="text-xs text-muted-foreground">Smart Notifications — אירועים קריטיים נשלחים אליך ב-WhatsApp עם קישור ישיר לעסקאות</p>
         </div>
         <NotificationPreferencesPanel />
       </div>

@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
@@ -21,8 +22,10 @@ import {
   MOCK_HOMELY_PROPERTIES,
   PROPERTY_TYPE_LABELS_HE,
   CITY_OPTIONS,
+  LISTING_TYPE_LABELS_HE,
   type HomelyProperty,
   type PropertyType,
+  type ListingType,
 } from '@/lib/homelyMockProperties';
 import { ShareWithProspectDialog } from '@/components/properties/ShareWithProspectDialog';
 import ErrorBoundary from '@/components/ErrorBoundary';
@@ -36,6 +39,7 @@ function formatPrice(n: number) {
 }
 
 export default function Properties() {
+  const [listingType, setListingType] = useState<ListingType>('sale');
   const [city, setCity] = useState<string>('כל הערים');
   const [propertyType, setPropertyType] = useState<PropertyType | 'all'>('all');
   const [rooms, setRooms] = useState<string>('any');
@@ -91,6 +95,8 @@ export default function Properties() {
 
   const filtered = useMemo(() => {
     return merged.filter((p) => {
+      const pType: ListingType = (p.listing_type ?? 'sale') as ListingType;
+      if (pType !== listingType) return false;
       if (city !== 'כל הערים' && p.city !== city) return false;
       if (propertyType !== 'all' && p.property_type !== propertyType) return false;
       if (rooms !== 'any' && p.rooms < Number(rooms)) return false;
@@ -98,24 +104,44 @@ export default function Properties() {
       if (areaMin && p.size_sqm < Number(areaMin)) return false;
       return true;
     });
-  }, [merged, city, propertyType, rooms, priceRange, areaMin]);
+  }, [merged, listingType, city, propertyType, rooms, priceRange, areaMin]);
 
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6" dir="rtl">
-      {/* Hero header — matches Finance / Deal Room styling */}
+      {/* Hero header */}
       <header className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
             נכסים
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            קטלוג הנכסים מ-Homely. סננו לפי תקציב, אזור, סוג נכס וחדרים — ושלחו ישירות למועמדים.
+            קטלוג הנכסים. סננו לפי תקציב, אזור, סוג נכס וחדרים — ושלחו ישירות למתעניינים.
           </p>
         </div>
         <Badge variant="secondary" className="text-sm">
           {filtered.length} נכסים
         </Badge>
       </header>
+
+      {/* Listing type toggle: למכירה / להשכרה */}
+      <div className="flex justify-center">
+        <div className="inline-flex items-center rounded-xl border border-primary/20 bg-card/40 p-1 backdrop-blur-md" dir="rtl">
+          {(['sale', 'rent'] as ListingType[]).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setListingType(t)}
+              className={`px-5 py-2 text-sm font-bold rounded-lg transition-colors ${
+                listingType === t
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {LISTING_TYPE_LABELS_HE[t]}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Filter bar */}
       <Card className="p-4 sm:p-5">
@@ -250,31 +276,39 @@ export default function Properties() {
 
 function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare: () => void }) {
   const photo = property.photos[0];
+  const isRent = property.listing_type === 'rent';
   return (
-    <Card className="overflow-hidden flex flex-col group">
-      <div className="aspect-[16/10] bg-muted relative overflow-hidden">
-        {photo ? (
-          <img
-            src={photo}
-            alt={property.title}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
-          />
-        ) : (
-          <div className="h-full w-full flex items-center justify-center text-muted-foreground text-sm">
-            אין תמונה
-          </div>
-        )}
-        <Badge className="absolute top-3 right-3 bg-background/90 text-foreground border">
-          {PROPERTY_TYPE_LABELS_HE[property.property_type]}
-        </Badge>
-      </div>
+    <Card className="overflow-hidden flex flex-col group hover:shadow-lg transition-shadow">
+      <Link to={`/properties/${property.id}`} className="block">
+        <div className="aspect-[16/10] bg-muted relative overflow-hidden">
+          {photo ? (
+            <img
+              src={photo}
+              alt={property.title}
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              loading="lazy"
+            />
+          ) : (
+            <div className="h-full w-full flex items-center justify-center text-muted-foreground text-sm">
+              אין תמונה
+            </div>
+          )}
+          <Badge className="absolute top-3 right-3 bg-background/90 text-foreground border">
+            {PROPERTY_TYPE_LABELS_HE[property.property_type]}
+          </Badge>
+          {property.listing_type && (
+            <Badge className={`absolute top-3 left-3 border ${isRent ? 'bg-amber-500 text-white' : 'bg-primary text-primary-foreground'}`}>
+              {LISTING_TYPE_LABELS_HE[property.listing_type]}
+            </Badge>
+          )}
+        </div>
+      </Link>
 
       <div className="p-4 flex flex-col gap-3 flex-1">
-        <div>
-          <h3 className="font-semibold text-base leading-tight line-clamp-2">{property.title}</h3>
+        <Link to={`/properties/${property.id}`} className="block">
+          <h3 className="font-semibold text-base leading-tight line-clamp-2 hover:text-primary transition-colors">{property.title}</h3>
           <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{property.description}</p>
-        </div>
+        </Link>
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
           {property.city && (
@@ -297,11 +331,11 @@ function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare
         <div className="flex items-center justify-between mt-auto pt-2 border-t">
           <div className="text-lg font-bold text-success inline-flex items-center gap-1">
             <Building2 className="h-4 w-4 opacity-60" />
-            {formatPrice(property.price)}
+            {formatPrice(property.price)}{isRent ? <span className="text-xs font-normal text-muted-foreground">/חודש</span> : null}
           </div>
           <Button size="sm" onClick={onShare} className="gap-1.5">
             <Send className="h-4 w-4" />
-            שתף עם מועמד
+            שתף עם מתעניין
           </Button>
         </div>
       </div>

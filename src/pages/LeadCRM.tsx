@@ -60,16 +60,27 @@ const interestHebrew: Record<string, string> = {
   Legal: 'משפט', Campaign: 'קמפיין', 'Smart Link': 'קישור חכם', Engagement: 'מעורבות',
 };
 const statusHebrew: Record<string, string> = {
-  lead: 'ליד', supporter: 'תומך', active: 'פעיל',
-  inactive: 'לא פעיל', contacted: 'נוצר קשר', voted: 'הצביע',
+  // Real-estate CRM lead statuses
+  cold: 'ליד קר',
+  qualified: 'ליד מוסמך',
+  negotiation: 'במשא ומתן',
+  closed: 'נסגר',
+  // Legacy fallbacks
+  lead: 'ליד קר', supporter: 'נסגר', active: 'ליד מוסמך',
+  inactive: 'לא רלוונטי', contacted: 'נוצר קשר', voted: 'נסגר',
 };
 const loyaltyConfig: Record<string, { label: string; color: string }> = {
-  supporter: { label: 'תומך', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-300' },
-  active: { label: 'פעיל', color: 'bg-blue-500/15 text-blue-700 border-blue-300' },
-  lead: { label: 'מתלבט', color: 'bg-amber-500/15 text-amber-700 border-amber-300' },
-  inactive: { label: 'מתנגד', color: 'bg-red-500/15 text-red-700 border-red-300' },
+  cold: { label: 'ליד קר', color: 'bg-slate-500/15 text-slate-700 border-slate-300' },
+  qualified: { label: 'ליד מוסמך', color: 'bg-blue-500/15 text-blue-700 border-blue-300' },
+  negotiation: { label: 'במשא ומתן', color: 'bg-amber-500/15 text-amber-700 border-amber-300' },
+  closed: { label: 'נסגר', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-300' },
+  // Legacy
+  supporter: { label: 'נסגר', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-300' },
+  active: { label: 'ליד מוסמך', color: 'bg-blue-500/15 text-blue-700 border-blue-300' },
+  lead: { label: 'ליד קר', color: 'bg-slate-500/15 text-slate-700 border-slate-300' },
+  inactive: { label: 'לא רלוונטי', color: 'bg-red-500/15 text-red-700 border-red-300' },
   contacted: { label: 'נוצר קשר', color: 'bg-slate-500/15 text-slate-700 border-slate-300' },
-  voted: { label: 'הצביע', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-300' },
+  voted: { label: 'נסגר', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-300' },
 };
 const hebrewLabel = (map: Record<string, string>, val: string | null | undefined) =>
   val ? map[val] || val : null;
@@ -329,22 +340,18 @@ const LeadCRM = () => {
     if (!leads) return leads;
     if (profileFilter === 'all') return leads;
     return leads.filter((v) => {
-      // Compute profile badge inline (mirror getPoliticalProfile logic)
-      const eng = v.engagement_score ?? 0;
-      const sentKey = eng >= 60 ? 'positive' : eng >= 30 ? 'neutral' : 'negative';
+      // Mirror getPoliticalProfile (real-estate lead stage)
       const status = v.status;
-      const loyaltyTier =
-        status === 'supporter' || status === 'voted' ? 'high'
-        : status === 'active' ? 'med'
-        : status === 'inactive' ? 'rival'
-        : 'low';
-      let badge = '';
-      if (sentKey === 'negative' && loyaltyTier === 'rival') badge = 'מתנגד';
-      else if (sentKey === 'negative' && eng >= 60) badge = 'מתנגד פעיל';
-      else if (sentKey === 'negative') badge = 'מתנגד';
-      else if (sentKey === 'neutral') badge = 'מתלבט';
-      else if (sentKey === 'positive' && loyaltyTier === 'high') badge = 'תומך ליבה';
-      else badge = 'תומך פוטנציאלי';
+      const tier =
+        status === 'closed' || status === 'supporter' || status === 'voted' ? 'closed'
+        : status === 'negotiation' ? 'negotiation'
+        : status === 'qualified' || status === 'active' ? 'qualified'
+        : 'cold';
+      const badge =
+        tier === 'closed' ? 'נסגר'
+        : tier === 'negotiation' ? 'במשא ומתן'
+        : tier === 'qualified' ? 'ליד מוסמך'
+        : 'ליד קר';
       return badge === profileFilter;
     });
   }, [leads, profileFilter]);
@@ -364,37 +371,26 @@ const LeadCRM = () => {
     return { key: 'negative' as const, emoji: '😟', label: 'שלילי', color: 'text-red-600', cssColor: 'hsl(var(--destructive))' };
   };
 
-  // Combine sentiment + loyalty + engagement into a single political profile bottom-line
+  // Combine sentiment + status + engagement into a real-estate lead profile bottom-line
   const getPoliticalProfile = (status: string | null, engagement: number | null) => {
     const sent = getSentimentForVoter(engagement);
-    const loyaltyTier: 'high' | 'med' | 'low' | 'rival' =
-      status === 'supporter' || status === 'voted' ? 'high'
-      : status === 'active' ? 'med'
-      : status === 'inactive' ? 'rival'
-      : 'low';
+    const tier: 'closed' | 'negotiation' | 'qualified' | 'cold' =
+      status === 'closed' || status === 'supporter' || status === 'voted' ? 'closed'
+      : status === 'negotiation' ? 'negotiation'
+      : status === 'qualified' || status === 'active' ? 'qualified'
+      : 'cold';
     const eng = engagement ?? 0;
 
-    // Hard Opposition: Negative + rival loyalty
-    if (sent.key === 'negative' && loyaltyTier === 'rival') {
-      return { ...sent, badge: 'מתנגד', badgeClass: 'bg-red-600 text-white border-red-700' };
+    if (tier === 'closed') {
+      return { ...sent, badge: 'נסגר', badgeClass: 'bg-emerald-600 text-white border-emerald-700' };
     }
-    // At Risk: Negative + High Engagement
-    if (sent.key === 'negative' && eng >= 60) {
-      return { ...sent, badge: 'מתנגד פעיל', badgeClass: 'bg-orange-500 text-white border-orange-600' };
+    if (tier === 'negotiation') {
+      return { ...sent, badge: 'במשא ומתן', badgeClass: 'bg-amber-500 text-white border-amber-600' };
     }
-    if (sent.key === 'negative') {
-      return { ...sent, badge: 'מתנגד', badgeClass: 'bg-red-500/90 text-white border-red-600' };
+    if (tier === 'qualified' || (sent.key === 'positive' && eng >= 60)) {
+      return { ...sent, badge: 'ליד מוסמך', badgeClass: 'bg-blue-500 text-white border-blue-600' };
     }
-    // Undecided/Neutral
-    if (sent.key === 'neutral') {
-      return { ...sent, badge: 'מתלבט', badgeClass: 'bg-slate-400 text-white border-slate-500' };
-    }
-    // Positive + High Loyalty -> Strong Support (Navy)
-    if (sent.key === 'positive' && loyaltyTier === 'high') {
-      return { ...sent, badge: 'תומך ליבה', badgeClass: 'bg-[hsl(220_60%_25%)] text-white border-[hsl(220_60%_20%)]' };
-    }
-    // Positive + Med/Low -> Leaning
-    return { ...sent, badge: 'תומך פוטנציאלי', badgeClass: 'bg-blue-500 text-white border-blue-600' };
+    return { ...sent, badge: 'ליד קר', badgeClass: 'bg-slate-500 text-white border-slate-600' };
   };
 
   const getSentimentFromMessages = (messages: typeof voterMessages) => {
@@ -432,7 +428,7 @@ const LeadCRM = () => {
     const rows = source?.map(v => ({
       'שם מלא': v.full_name, 'טלפון': formatPhoneDisplay(v.phone_number), 'עיר': v.city,
       'נושא עניין': v.interest_tag, 'דרגת נאמנות': getLoyalty(v.status).label,
-      'פרופיל פוליטי': getPoliticalProfile(v.status, v.engagement_score).badge,
+      'שלב ליד': getPoliticalProfile(v.status, v.engagement_score).badge,
       'הצביע': v.is_voted ? 'כן' : 'לא', 'ציון מעורבות': v.engagement_score,
     }));
     if (!rows?.length) { toast.error('אין נתונים לייצוא'); return; }
@@ -804,14 +800,13 @@ const LeadCRM = () => {
               </SelectContent>
             </Select>
             <Select value={profileFilter} onValueChange={setProfileFilter}>
-              <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="פרופיל פוליטי" /></SelectTrigger>
+              <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="שלב ליד" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">כל הפרופילים</SelectItem>
-                <SelectItem value="תומך ליבה">תומך ליבה</SelectItem>
-                <SelectItem value="תומך פוטנציאלי">תומך פוטנציאלי</SelectItem>
-                <SelectItem value="מתלבט">מתלבט</SelectItem>
-                <SelectItem value="מתנגד פעיל">מתנגד פעיל</SelectItem>
-                <SelectItem value="מתנגד">מתנגד</SelectItem>
+                <SelectItem value="all">כל השלבים</SelectItem>
+                <SelectItem value="ליד קר">ליד קר</SelectItem>
+                <SelectItem value="ליד מוסמך">ליד מוסמך</SelectItem>
+                <SelectItem value="במשא ומתן">במשא ומתן</SelectItem>
+                <SelectItem value="נסגר">נסגר</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline" size="sm" className="gap-1.5 h-8 shrink-0" onClick={() => handleExportExcel('filtered')}>
