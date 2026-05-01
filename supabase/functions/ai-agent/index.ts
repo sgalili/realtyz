@@ -100,7 +100,9 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
-    // Load campaign settings for context
+    // Load Agent settings (real-estate). The legacy `campaign_settings` table is
+    // kept for backward compat but only the AI tone is used; political fields
+    // (mandate_target, current_focus) are intentionally ignored.
     const { data: settingsRows } = await supabase
       .from("campaign_settings")
       .select("key, value");
@@ -108,11 +110,9 @@ serve(async (req) => {
       (settingsRows ?? []).map((r: any) => [r.key, r.value])
     );
 
-    const campaignContext = [
-      settings.ai_tone ? `AI Tone: ${settings.ai_tone}` : null,
-      settings.current_focus ? `Current Focus: ${settings.current_focus}` : null,
-      settings.mandate_target ? `Mandate Target: ${settings.mandate_target} mandates` : null,
-    ].filter(Boolean).join("\n") || "No campaign settings configured yet.";
+    const campaignContext = settings.ai_tone
+      ? `AI Tone: ${settings.ai_tone}`
+      : "Default tone: warm, professional Israeli real-estate Agent.";
 
     // RAG: pull KB chunks for the *requesting* user (auth header forwarded).
     // We fetch a wider window then split into "Past Conversation (WhatsApp)" vs "Reference Documents",
