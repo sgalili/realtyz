@@ -167,15 +167,17 @@ const shortConversations: Record<number, Array<{ role: 'ai' | 'lead'; content: s
 
 const months = ['2024-10', '2024-11', '2024-12', '2025-01', '2025-02', '2025-03'];
 const demoChannels = ['whatsapp', 'instagram', 'messenger', 'tiktok', 'signal', 'x', 'facebook', 'sms'] as const;
+// Real-estate omni follow-ups. Indexed by lead position; even = sale pipeline,
+// odd = rent pipeline. Pipelines never cross.
 const demoInteractionScenarios = [
-  ['ראיתי את הסרטון בטיקטוק. יש לכם מספרים אמיתיים או שזה עוד סלוגן?', 'שאלה לגיטימית. מצרפת מקור, תקציב ולוח זמנים - בלי הבטחות ריקות. סימנתי גם שנציג שטח יחזור אליך.'],
-  ['אני כועס. הבטיחו לנו ביטחון כבר שנים וכלום לא השתנה.', 'מבינה את הכעס ולא מבטלת אותו. אני מסכמת לך רק צעדים ביצועיים: תגבור כוחות, מוקד עירוני ולוחות זמנים - ואם תרצה נעביר לנציג אנושי.'],
-  ['הסטורי באינסטגרם היה טוב, אבל מה עם העיר שלי?', 'בדקתי לפי העיר שלך והעברתי אותך למסלול מקומי. שולחת עכשיו תוכנית אזורית קצרה ולא מסר כללי.'],
-  ['תפסיקו לשלוח לי הודעות. זה מציק.', 'קיבלתי. עצרתי הודעות שיווקיות וסימנתי העדפת קשר נמוכה. אם תרצה בעתיד, אפשר להמשיך רק בערוץ שתבחר.'],
-  ['אני מתלבט. מצד אחד מסכים איתכם, מצד שני לא סומך על פוליטיקאים.', 'זה הוגן. במקום לשכנע בסיסמאות, אני שולחת שלוש התחייבויות מדידות ומעקב ביצוע פתוח לציבור.'],
-  ['שלחתי שאלה בפייסבוק ואף אחד לא ענה לי.', 'צודק, זה לא היה צריך לקרות. איחדתי את הפנייה כאן, סימנתי SLA דחוף, וה-AI עונה עכשיו עם תקציר ברור.'],
-  ['ב-X כתבו שהתוכנית שלכם לא ממומנת. נכון?', 'בדקתי את הטענה. יש סעיף תקציבי מפורט - מצרפת קישור ומסמנת לצוות הדיגיטל להגיב גם בפומבי.'],
-  ['אפשר פרטים על הסעה לקלפי לאמא שלי?', 'כן. סימנתי בקשת הסעה, שמרתי את הערוץ המועדף, ונציג לוגיסטיקה יחזור עם שעה מדויקת.'],
+  ['ראיתי את המודעה לדירת 3 חדרים. עוד פנויה?', 'כן, פנויה. שולח לך עכשיו תמונות נוספות ותוכנית הדירה. רוצה לסייר השבוע?'],
+  ['המחיר שכתוב בלוח עדכני?', 'מעודכן להיום. יש מקום קטן למשא ומתן בתום הסיור — תלוי בלוחות זמנים שלך.'],
+  ['חיפשתי דירה להשכרה — מה הזמינות מ-1 לחודש?', 'יש לי שתי דירות שמתפנות בדיוק בתאריך הזה. אסכם לך אותן ב-WhatsApp.'],
+  ['אני צריך לקנות תוך 3 חודשים. ריאלי?', 'בהחלט ריאלי. בוא נסגור פגישת אפיון של 20 דק׳ ואחזור עם 3 נכסים מדויקים.'],
+  ['יש חניה ומחסן בנכס?', 'יש חניה תת-קרקעית פרטית ומחסן 6 מ״ר. אצרף את שטר הרישום בטאבו.'],
+  ['רציתי לדעת על משכנתא — אתה עוזר עם זה?', 'יש לי יועצת משכנתאות שאני עובד איתה — אקשר אתכם בלי עלות מצידך.'],
+  ['ראיתי בלוח דירה דומה ב-200K פחות, איך אתה מסביר?', 'שאלה לגיטימית. ההבדל הוא קומה, מצב תחזוקה ושיפוץ. אשלח השוואה מסודרת של 3 נכסים.'],
+  ['אפשר לתאם סיור לסוף השבוע?', 'כן — שישי 10:00 או שבת 18:00. מה עדיף לך? אאשר לבעלים מיד.'],
 ];
 
 const buildOmniFollowUps = (index: number, name: string, city: string, topic: string) => {
@@ -184,12 +186,14 @@ const buildOmniFollowUps = (index: number, name: string, city: string, topic: st
   const primary = demoChannels[index % demoChannels.length];
   const secondary = demoChannels[(index + 3) % demoChannels.length];
   const tertiary = demoChannels[(index + 5) % demoChannels.length];
+  const isSale = index % 2 === 0;
+  const pipelineLabel = isSale ? 'נכסים למכירה' : 'דירות להשכרה';
 
   return [
     { role: 'lead' as const, channel: primary, content: voterConcern, month: 5 },
     { role: 'ai' as const, channel: secondary, content: `${firstName}, ${aiResponse}`, month: 5 },
-    { role: 'lead' as const, channel: tertiary, content: index % 4 === 0 ? 'אוקיי, זה יותר מכבד. תמשיכו רק כאן.' : `תודה. מעניין אותי גם נושא ${topic} ב${city}.`, month: 5 },
-    { role: 'ai' as const, channel: demoChannels[(index + 7) % demoChannels.length], content: index % 5 === 0 ? 'מעולה. עדכנתי העדפות קשר, עצרתי כפילויות בין ערוצים, והשיחה תישאר במעקב AI.' : 'קיבלתי. איחדתי את כל הערוצים לפרופיל אחד והעברתי לצוות השטח עם הקשר המלא.', month: 5 },
+    { role: 'lead' as const, channel: tertiary, content: index % 4 === 0 ? 'אוקיי, תמשיך לעדכן רק ב-WhatsApp בבקשה.' : `תודה. מעניין אותי גם ${pipelineLabel} ב${city}.`, month: 5 },
+    { role: 'ai' as const, channel: demoChannels[(index + 7) % demoChannels.length], content: index % 5 === 0 ? 'מצוין. עדכנתי העדפת ערוץ, אעדכן אותך אישית כשייכנסו נכסים מתאימים.' : `קיבלתי. שמור על ${pipelineLabel} בלבד — אשלח רק נכסים שתואמים לפיילין שלך.`, month: 5 },
   ];
 };
 
@@ -199,13 +203,23 @@ function recentTimestamp(minutesAgo: number): string {
 }
 
 const recentOffsets = Array.from({ length: 50 }, (_, i) => [2, 5, 9, 14, 22, 31, 44, 58, 76, 95, 130, 175, 240, 330, 480, 720, 980, 1440][i % 18] + Math.floor(i / 18) * 11); // minutes ago per lead
+
+// Real-estate topics. `key` doubles as the dominant interest dimension.
+// Even index → 'sale' pipeline, odd → 'rent'. Hard separation.
 const demoTopics = [
-  { tag: 'ביטחון', key: 'security', voter: 'הביטחון האישי והתגובה לטרור חשובים לי מאוד.', ai: 'מבינה אותך. שלחתי לך תוכנית קצרה עם צעדים מעשיים לפי העיר שלך.' },
-  { tag: 'כלכלה', key: 'economy', voter: 'יוקר המחיה והעסק הקטן שלי הם הנושא המרכזי מבחינתי.', ai: 'בדיוק בזה אנחנו מתמקדים: פחות רגולציה, מס פשוט יותר ותמריצים לעצמאים.' },
-  { tag: 'משפט', key: 'judicial', voter: 'חשוב לי להבין איך תשמרו על איזון בין הרשויות.', ai: 'שולחת לך מסמך עמדה ברור על רפורמה אחראית, שקופה ומדורגת.' },
-  { tag: 'חברה', key: 'social', voter: 'אני רוצה לראות יותר שירותים קהילתיים ועזרה למשפחות.', ai: 'מסכימה. סימנתי אותך לקמפיין משפחות וקהילה באזור שלך.' },
-  { tag: 'ממשל', key: 'governance', voter: 'נמאס מבירוקרטיה. צריך ממשלה שעובדת מהר.', ai: 'זו בדיוק ההתחייבות: שירותים דיגיטליים, מדדי ביצוע ושקיפות לציבור.' },
+  { tag: 'דירה למכירה', key: 'sale_apt',     listing_type: 'sale' as const, voter: 'מחפש לקנות 3 חדרים, עד 2.5 מיליון.', ai: 'מעולה. אאסוף 3 נכסים שמתאימים בדיוק ואשלח עוד היום.' },
+  { tag: 'דירה להשכרה', key: 'rent_apt',     listing_type: 'rent' as const, voter: 'מחפש דירה להשכרה, מ-1 לחודש.', ai: 'יש לי כמה אפשרויות מדויקות לתאריך. שולח עכשיו.' },
+  { tag: 'נכס מניב',    key: 'investment',   listing_type: 'sale' as const, voter: 'מחפש השקעה בתשואה 4%+ לשנה.', ai: 'אצרף 3 נכסים מניבים עם גיליון תשואה נטו מלא.' },
+  { tag: 'שכירות סטודנטים', key: 'rent_student', listing_type: 'rent' as const, voter: 'דירת שותפים ליד האוניברסיטה.', ai: 'יש לי שתיים פנויות מאוקטובר. אקבע סיור.' },
+  { tag: 'בית פרטי',    key: 'house_sale',   listing_type: 'sale' as const, voter: 'בית פרטי עם גינה למשפחה.', ai: 'מצוין. אאתר נכסים עם גינה לפי תקציב ויישוב.' },
 ];
+
+const buildInterestScores = (index: number) => {
+  const main = demoTopics[index % demoTopics.length].key;
+  const scores = { sale_apt: 28 + ((index * 7) % 45), rent_apt: 24 + ((index * 11) % 48), investment: 18 + ((index * 13) % 42), rent_student: 20 + ((index * 17) % 44), house_sale: 22 + ((index * 19) % 46) } as Record<string, number>;
+  scores[main] = 72 + ((index * 5) % 24);
+  return scores;
+};
 
 const buildInterestScores = (index: number) => {
   const main = demoTopics[index % demoTopics.length].key;
