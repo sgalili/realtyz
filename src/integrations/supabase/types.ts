@@ -3158,6 +3158,7 @@ export type Database = {
         }
       }
       cleanup_expired_whatsapp_login_otps: { Args: never; Returns: undefined }
+      clear_lead_personal_data: { Args: { _lead_id: string }; Returns: Json }
       dispatch_automation_run: { Args: { _run_id: string }; Returns: undefined }
       dispatch_smart_notification: {
         Args: {
@@ -3271,7 +3272,9 @@ export type Database = {
         }[]
       }
       requeue_stuck_autopilot_jobs: { Args: never; Returns: number }
+      seed_demo_data: { Args: never; Returns: Json }
       trial_outbound_used: { Args: { _user_id: string }; Returns: number }
+      wipe_demo_data: { Args: never; Returns: Json }
     }
     Enums: {
       app_role:

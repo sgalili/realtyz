@@ -29,6 +29,7 @@ import { ChevronDown } from 'lucide-react';
 import NotificationPreferencesPanel from '@/components/NotificationPreferencesPanel';
 import { AgentPersonaPanel } from '@/components/AgentPersonaPanel';
 import { PersonaCalibrationPanel } from '@/components/PersonaCalibrationPanel';
+import { ProductionPrepPanel } from '@/components/ProductionPrepPanel';
 import { VoiceAgentPanel } from '@/components/calendar/VoiceAgentPanel';
 import { UsageMeterPanel } from '@/components/UsageMeterPanel';
 import { ServiceAreasPanel } from '@/components/settings/ServiceAreasPanel';
@@ -939,6 +940,15 @@ const ApiSettings = () => {
           <p className="text-xs text-muted-foreground">הגדר/י טון, ביו ופילוסופיית מכירה — ה-AI ינסח כמוך בכל הודעה.</p>
         </div>
         <AgentPersonaPanel />
+      </div>
+
+      {/* ── Section A.0: Production Prep ── */}
+      <div className="space-y-2">
+        <div>
+          <h2 className="text-sm font-bold tracking-tight">הכנה לפרודקשן · Production Readiness</h2>
+          <p className="text-xs text-muted-foreground">דומיין מותאם, סביבת דמו, ייצוא נתונים ומחיקת פרטים אישיים — הכל במקום אחד.</p>
+        </div>
+        <ProductionPrepPanel />
       </div>
 
       {/* ── Section A.4-fine-tune: AI Fine-Tuning ── */}
