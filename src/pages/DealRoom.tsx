@@ -131,6 +131,11 @@ export default function DealRoom() {
   // Compliance signals returned by the ai-agent edge function for the current draft.
   const [factViolations, setFactViolations] = useState<Array<{ kind: string; value: string; reason: string }>>([]);
   const [escalation, setEscalation] = useState<{ category: string; severity: string; matched: string[] } | null>(null);
+  // Smart Matchmaker — opens the Find Property overlay for a chosen prospect
+  const [matchmakerProspect, setMatchmakerProspect] = useState<Lead | null>(null);
+  // When the Smart Reply was pre-filled by the matchmaker we keep the snippet
+  // so the agent sees the property card pinned to the chat preview.
+  const [pinnedProperty, setPinnedProperty] = useState<PropertyResult | null>(null);
 
   const { data: leads, isLoading } = useQuery({
     queryKey: ['deal-room-prospects'],
