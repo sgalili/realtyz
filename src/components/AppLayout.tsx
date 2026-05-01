@@ -11,7 +11,7 @@ import { MandateSelector } from '@/components/dashboard/MandateSelector';
 import { MagicMandateSelector } from '@/components/dashboard/MagicMandateSelector';
 import { MandateSelectorMount } from '@/components/MandateSelectorMount';
 import { RotatingHeadline } from '@/components/RotatingHeadline';
-import { HeroWaveMount } from '@/components/HeroWaveMount';
+
 import NotificationCenter from '@/components/NotificationCenter';
 import AiAgentDrawer from '@/components/AiAgentDrawer';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
@@ -37,7 +37,7 @@ import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { BrandMark } from '@/components/branding/BrandMark';
 
 import { DemoModeToggle } from '@/components/DemoModeToggle';
-import { PageToolbar } from '@/components/PageToolbar';
+import { PageHero } from '@/components/PageHero';
 
 const DEMO_ARCHETYPES: DemoCandidateId[] = ['primary-single', 'primary-slate', 'national-small', 'national-mid', 'national-large'];
 const TUTORIAL_STEPS = [
