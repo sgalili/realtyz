@@ -71,10 +71,12 @@ export function PageHero() {
         className="relative z-10 flex items-center justify-between gap-3 px-4 sm:px-6"
         style={{ height: '65px', marginTop: '-15px' }}
       >
-        {/* Visual right (RTL flex start): Burger / nav toggle */}
+        {/* Visual right (RTL flex start): Burger / nav toggle —
+            nudged 15px toward the visual-right edge via negative margin. */}
         <SidebarTrigger
           className="h-10 w-10 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground [&_svg]:!h-6 [&_svg]:!w-6"
           aria-label="פתח תפריט"
+          style={{ marginRight: '-15px' }}
         >
           <Menu className="h-6 w-6" />
         </SidebarTrigger>
@@ -84,8 +86,9 @@ export function PageHero() {
           {title}
         </h1>
 
-        {/* Visual left (RTL flex end): Demo switch */}
-        <div className="flex items-center justify-end">
+        {/* Visual left (RTL flex end): Demo switch —
+            nudged 5px toward the visual-left edge via negative margin. */}
+        <div className="flex items-center justify-end" style={{ marginLeft: '-5px' }}>
           <DemoModeToggle variant="hero" />
         </div>
       </div>
