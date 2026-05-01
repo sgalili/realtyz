@@ -178,6 +178,7 @@ const App = () => (
               <Route path="/super-admin" element={<SuperAdminRoute><SuperAdmin /></SuperAdminRoute>} />
               <Route path="/finance" element={<ProtectedRoute allowGuestDemo><Finance /></ProtectedRoute>} />
               <Route path="/knowledge" element={<ProtectedRoute allowGuestDemo><KnowledgeBase /></ProtectedRoute>} />
+              <Route path="/strategy-bank" element={<ProtectedRoute allowGuestDemo><KnowledgeBase /></ProtectedRoute>} />
               <Route path="/team" element={<ProtectedRoute><Team /></ProtectedRoute>} />
               <Route path="/sign/:token" element={<Suspense fallback={<PageLoader />}><SignDocument /></Suspense>} />
               <Route path="/upgrade" element={<ProtectedRoute allowGuestDemo><Upgrade /></ProtectedRoute>} />
