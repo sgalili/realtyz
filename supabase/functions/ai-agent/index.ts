@@ -1,5 +1,12 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import {
+  COMPLIANCE_PROMPT,
+  classifyEscalation,
+  factCheckDraft,
+  renderListingFacts,
+  type ListingFact,
+} from "../_shared/guardrails.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
