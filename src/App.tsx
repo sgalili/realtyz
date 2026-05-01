@@ -7,7 +7,7 @@ import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
 import { WhiteLabelProvider } from "@/hooks/useWhiteLabel";
 import { AppLayout } from "@/components/AppLayout";
-import { DemoModeProvider, useDemoMode } from "@/hooks/useDemoMode";
+import { DemoModeProvider } from "@/hooks/useDemoMode";
 import { ElectionTypeProvider } from "@/hooks/useElectionType";
 import { MandateProvider } from "@/hooks/useMandate";
 import { toast } from "sonner";
@@ -95,28 +95,26 @@ function PageLoader() {
   );
 }
 
-function ProtectedRoute({ children, allowGuestDemo = false }: { children: React.ReactNode; allowGuestDemo?: boolean }) {
+function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDemo?: boolean }) {
   const { user, loading } = useAuth();
-  const { isDemoMode } = useDemoMode();
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
       <KalpizLoader size="lg" label="מאמת זהות..." />
     </div>
   );
-  if (!user && (!isDemoMode || !allowGuestDemo)) return <Navigate to="/auth" replace />;
+  if (!user) return <Navigate to="/auth" replace />;
   return <AppLayout><Suspense fallback={<PageLoader />}>{children}</Suspense></AppLayout>;
 }
 
 function SuperAdminRoute({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
-  const { isDemoMode } = useDemoMode();
   const { isSuperAdmin, loading: roleLoading } = useUserRole();
   if (loading || roleLoading) return (
     <div className="min-h-screen flex items-center justify-center">
       <KalpizLoader size="lg" label="מאמת הרשאות..." />
     </div>
   );
-  if (isDemoMode || !user || !isSuperAdmin) return <Navigate to="/" replace />;
+  if (!user || !isSuperAdmin) return <Navigate to="/" replace />;
   return <AppLayout><Suspense fallback={<PageLoader />}>{children}</Suspense></AppLayout>;
 }
 
