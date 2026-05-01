@@ -631,9 +631,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <HeroWaveMount />
             <MandateSelectorMount />
             <DemoSidebarPeek />
-            <footer className="mt-8 flex justify-center pb-4 print:hidden">
-              <SystemStatus />
-            </footer>
           </main>
           <AiAgentDrawer />
           <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>
