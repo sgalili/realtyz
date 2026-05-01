@@ -30,6 +30,9 @@ import {
   Check,
   ShieldCheck,
   Home,
+  Flame,
+  ArrowDownUp,
+  RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -41,8 +44,16 @@ import {
   type PropertyResult,
 } from '@/components/dealroom/PropertyMatchmakerDialog';
 import { AutomationActivityFeed } from '@/components/dealroom/AutomationActivityFeed';
+import { PriorityScoreBadge } from '@/components/dealroom/PriorityScoreBadge';
 
 type LeadStage = 'new_prospect' | 'listing_outreach' | 'negotiation' | 'closed';
+
+type ScoreComponents = {
+  frequency?: number;
+  sentiment?: number;
+  response_speed?: number;
+  property_interest?: number;
+};
 
 type Lead = {
   id: string;
@@ -53,7 +64,12 @@ type Lead = {
   profile_picture_url?: string | null;
   city?: string | null;
   interest_tag?: string | null;
+  priority_score?: number | null;
+  priority_score_components?: ScoreComponents | null;
+  previous_priority_score?: number | null;
 };
+
+type SortMode = 'recent' | 'priority';
 
 const STAGE_COLUMNS: Array<{
   key: LeadStage;
@@ -137,13 +153,15 @@ export default function DealRoom() {
   // When the Smart Reply was pre-filled by the matchmaker we keep the snippet
   // so the agent sees the property card pinned to the chat preview.
   const [pinnedProperty, setPinnedProperty] = useState<PropertyResult | null>(null);
+  const [sortMode, setSortMode] = useState<SortMode>('recent');
+  const [recomputing, setRecomputing] = useState(false);
 
   const { data: leads, isLoading } = useQuery({
     queryKey: ['deal-room-prospects'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')
-        .select('id, full_name, phone_number, lead_stage, last_interaction_at, profile_picture_url, city, interest_tag')
+        .select('id, full_name, phone_number, lead_stage, last_interaction_at, profile_picture_url, city, interest_tag, priority_score, priority_score_components, previous_priority_score')
         .eq('is_demo', false)
         .order('last_interaction_at', { ascending: false, nullsFirst: false })
         .limit(500);
@@ -162,8 +180,31 @@ export default function DealRoom() {
     (leads || []).forEach((l) => {
       map[bucketFor(l.lead_stage)].push(l);
     });
+    if (sortMode === 'priority') {
+      (Object.keys(map) as LeadStage[]).forEach((k) => {
+        map[k].sort((a, b) => (b.priority_score ?? 0) - (a.priority_score ?? 0));
+      });
+    }
     return map;
-  }, [leads]);
+  }, [leads, sortMode]);
+
+  async function recomputeAllScores() {
+    if (recomputing) return;
+    setRecomputing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('compute-prospect-score', {
+        body: { recompute_all: true },
+      });
+      if (error) throw error;
+      const n = (data as any)?.processed ?? 0;
+      toast.success(`Recomputed ${n} prospect scores`);
+      queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
+    } catch (err: any) {
+      toast.error('Could not recompute scores', { description: err?.message });
+    } finally {
+      setRecomputing(false);
+    }
+  }
 
   // Smart Notification deep link: ?leadId=<uuid> opens that prospect's Smart Reply sheet.
   useEffect(() => {
