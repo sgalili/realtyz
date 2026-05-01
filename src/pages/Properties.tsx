@@ -29,6 +29,8 @@ import {
 } from '@/lib/homelyMockProperties';
 import { ShareWithLeadDialog } from '@/components/properties/ShareWithLeadDialog';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { useServiceAreas } from '@/hooks/useServiceAreas';
+import { isInServiceArea } from '@/lib/serviceAreas';
 
 const PRICE_MIN = 0;
 const PRICE_MAX = 10_000_000;
@@ -39,8 +41,11 @@ function formatPrice(n: number) {
 }
 
 export default function Properties() {
+  const { serviceAreas, coveredCities, isConfigured } = useServiceAreas();
   const [listingType, setListingType] = useState<ListingType>('sale');
-  const [city, setCity] = useState<string>('כל הערים');
+  // When agent has a hyper-local zone, default the city dropdown to "all my zones"
+  // (we use empty string as a sentinel) and hide the legacy "כל הערים" option.
+  const [city, setCity] = useState<string>(isConfigured ? '__my_zones__' : 'כל הערים');
   const [propertyType, setPropertyType] = useState<PropertyType | 'all'>('all');
   const [rooms, setRooms] = useState<string>('any');
   const [priceRange, setPriceRange] = useState<[number, number]>([PRICE_MIN, PRICE_MAX]);
