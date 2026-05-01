@@ -237,7 +237,7 @@ export default function DealRoom() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')
-        .select('id, full_name, phone_number, lead_stage, last_interaction_at, profile_picture_url, city, interest_tag, priority_score, priority_score_components, previous_priority_score, assigned_to')
+        .select('id, full_name, phone_number, lead_stage, last_interaction_at, profile_picture_url, city, interest_tag, priority_score, priority_score_components, previous_priority_score, assigned_to, deal_type, preferences')
         .eq('is_demo', false)
         .order('last_interaction_at', { ascending: false, nullsFirst: false })
         .limit(500);
@@ -245,6 +245,30 @@ export default function DealRoom() {
       return (data || []) as Lead[];
     },
   });
+
+  // Resolve a lead's pipeline. Prefer the new top-level deal_type column;
+  // fall back to legacy preferences.listing_type for older rows.
+  function resolveDealType(l: Lead): DealType {
+    const dt = (l.deal_type as DealType | null | undefined)
+      ?? (l.preferences as any)?.listing_type;
+    return dt === 'rent' ? 'rent' : 'sale';
+  }
+
+  const visibleLeads = useMemo(
+    () => (leads || []).filter((l) => resolveDealType(l) === activeDealType),
+    [leads, activeDealType],
+  );
+
+  const saleCount = useMemo(
+    () => (leads || []).filter((l) => resolveDealType(l) === 'sale').length,
+    [leads],
+  );
+  const rentCount = useMemo(
+    () => (leads || []).filter((l) => resolveDealType(l) === 'rent').length,
+    [leads],
+  );
+
+  const stageColumns = useMemo(() => columnsFor(activeDealType), [activeDealType]);
 
   const grouped = useMemo(() => {
     const map: Record<LeadStage, Lead[]> = {
@@ -254,7 +278,7 @@ export default function DealRoom() {
       awaiting_signature: [],
       closed: [],
     };
-    (leads || []).forEach((l) => {
+    visibleLeads.forEach((l) => {
       map[bucketFor(l.lead_stage)].push(l);
     });
     if (sortMode === 'priority') {
@@ -263,7 +287,7 @@ export default function DealRoom() {
       });
     }
     return map;
-  }, [leads, sortMode]);
+  }, [visibleLeads, sortMode]);
 
   async function recomputeAllScores() {
     if (recomputing) return;
