@@ -694,6 +694,8 @@ const ApiSettings = () => {
           onCheckedChange={(v) => toggleService.mutate({ key: serviceKey, enabled: v })}
           aria-label={`Toggle ${title}`}
         />
+        {/* Chevron spacer to keep vertical alignment with Section B accordion rows */}
+        <span className="w-4 shrink-0" aria-hidden="true" />
       </div>
     );
   };
@@ -712,29 +714,27 @@ const ApiSettings = () => {
     const enabled = isServiceEnabled(serviceKey, connected);
     return (
       <AccordionItem value={value} className="border border-border/50 bg-card overflow-hidden first:rounded-t-lg last:rounded-b-lg data-[state=open]:border-border/80 data-[state=open]:shadow-sm data-[state=open]:relative data-[state=open]:z-10">
-        <div className="flex items-stretch">
-          <AccordionTrigger className="flex-1 px-4 py-3 hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20 [&>svg]:hidden">
-            <div className="flex items-center gap-3 w-full">
-              <Icon className={`h-5 w-5 shrink-0 ${iconColor} ${!enabled ? 'opacity-40' : ''}`} />
-              <div className="flex flex-col items-start min-w-0">
-                <span className={`text-sm font-bold truncate ${!enabled ? 'text-muted-foreground' : ''}`}>{title}</span>
-              </div>
-              <div className="me-auto flex items-center gap-2 ms-2">
-                <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
-              </div>
+        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20 [&>svg]:hidden">
+          <div className="flex items-center gap-3 w-full">
+            <Icon className={`h-5 w-5 shrink-0 ${iconColor} ${!enabled ? 'opacity-40' : ''}`} />
+            <div className="flex flex-col items-start min-w-0 flex-1">
+              <span className={`text-sm font-bold truncate ${!enabled ? 'text-muted-foreground' : ''}`}>{title}</span>
             </div>
-          </AccordionTrigger>
-          <div
-            className="flex items-center px-3 border-s border-border/40"
-            onClick={(e) => { e.stopPropagation(); }}
-          >
-            <Switch
-              checked={enabled}
-              onCheckedChange={(v) => toggleService.mutate({ key: serviceKey, enabled: v })}
-              aria-label={`Toggle ${title}`}
-            />
+            <div
+              role="presentation"
+              onClick={(e) => { e.stopPropagation(); }}
+              onPointerDown={(e) => { e.stopPropagation(); }}
+              className="flex items-center"
+            >
+              <Switch
+                checked={enabled}
+                onCheckedChange={(v) => toggleService.mutate({ key: serviceKey, enabled: v })}
+                aria-label={`Toggle ${title}`}
+              />
+            </div>
+            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
           </div>
-        </div>
+        </AccordionTrigger>
         {children && (
           <AccordionContent className="px-4 pb-4 pt-2">
             <div className="space-y-4">
