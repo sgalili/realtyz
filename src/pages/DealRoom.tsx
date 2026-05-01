@@ -78,6 +78,7 @@ type Lead = {
   priority_score?: number | null;
   priority_score_components?: ScoreComponents | null;
   previous_priority_score?: number | null;
+  assigned_to?: string | null;
 };
 
 type SortMode = 'recent' | 'priority';
