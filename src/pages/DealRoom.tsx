@@ -95,6 +95,7 @@ type Lead = {
   interaction_outcome?: import('@/components/dealroom/OutcomePicker').InteractionOutcome | null;
   commission_amount?: number | null;
   expected_close_date?: string | null;
+};
 
 type SortMode = 'recent' | 'priority';
 
