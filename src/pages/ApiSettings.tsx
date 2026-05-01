@@ -28,6 +28,7 @@ import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { ChevronDown } from 'lucide-react';
 import NotificationPreferencesPanel from '@/components/NotificationPreferencesPanel';
 import { AgentPersonaPanel } from '@/components/AgentPersonaPanel';
+import { PersonaCalibrationPanel } from '@/components/PersonaCalibrationPanel';
 import { VoiceAgentPanel } from '@/components/calendar/VoiceAgentPanel';
 import { UsageMeterPanel } from '@/components/UsageMeterPanel';
 import { ServiceAreasPanel } from '@/components/settings/ServiceAreasPanel';
@@ -938,6 +939,15 @@ const ApiSettings = () => {
           <p className="text-xs text-muted-foreground">הגדר/י טון, ביו ופילוסופיית מכירה — ה-AI ינסח כמוך בכל הודעה.</p>
         </div>
         <AgentPersonaPanel />
+      </div>
+
+      {/* ── Section A.4-fine-tune: AI Fine-Tuning ── */}
+      <div className="space-y-2">
+        <div>
+          <h2 className="text-sm font-bold tracking-tight">AI Fine-Tuning · כיול סגנון מהשיחות שלך</h2>
+          <p className="text-xs text-muted-foreground">העלה ייצואי WhatsApp / מיילים, ה-AI ילמד את הקול שלך, ותוכל לבדוק זאת לפני שהוא יוצא לאוויר.</p>
+        </div>
+        <PersonaCalibrationPanel />
       </div>
 
       {/* ── Section A.4a: Area of Expertise (Hyper-local) ── */}

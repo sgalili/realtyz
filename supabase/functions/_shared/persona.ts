@@ -12,6 +12,36 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 export type PersonaTone = "professional" | "friendly" | "urgent" | "conservative" | "custom";
 
+export interface StyleCalibration {
+  /** One-paragraph human-readable summary of the agent's voice. */
+  summary?: string | null;
+  /** "very_short" | "short" | "medium" | "long" */
+  sentence_length?: string | null;
+  /** "none" | "rare" | "moderate" | "frequent" */
+  emoji_usage?: string | null;
+  /** "he" | "en" | "mixed_he_en" | "ar" | other ISO + mix labels */
+  language_mix?: string | null;
+  /** Common openings the agent actually uses (verbatim). */
+  common_openings?: string[];
+  /** Common closings/sign-offs the agent uses (verbatim). */
+  common_closings?: string[];
+  /** Signature phrases / slang / domain idioms (verbatim). */
+  signature_phrases?: string[];
+  /** Punctuation habits (e.g., "uses periods, no exclamation marks"). */
+  punctuation_habits?: string | null;
+  /** Formality (1=very casual, 5=very formal). */
+  formality?: number | null;
+  /** Directness (1=very indirect, 5=very direct). */
+  directness?: number | null;
+  /** Warmth (1=cold/transactional, 5=warm). */
+  warmth?: number | null;
+  /** Free-form do/don't list extracted from the logs. */
+  do_say?: string[];
+  dont_say?: string[];
+  /** Source labels (filenames) the calibration was learned from. */
+  sources?: string[];
+}
+
 export interface AgentPersona {
   tone: PersonaTone;
   tone_custom: string | null;
@@ -23,6 +53,8 @@ export interface AgentPersona {
   agent_name: string | null;
   /** Hyper-local zones (cities/neighborhoods) the agent specializes in. */
   service_areas: string[];
+  /** AI-extracted Tone & Style profile from uploaded chat/email logs. */
+  style_calibration?: StyleCalibration | null;
 }
 
 const TONE_DESCRIPTIONS: Record<PersonaTone, string> = {
@@ -56,7 +88,7 @@ export async function loadAgentPersona(
     const [{ data: personaRow }, { data: profileRow }] = await Promise.all([
       client
         .from("agent_personas")
-        .select("tone, tone_custom, professional_bio, selling_philosophy, signature, language")
+        .select("tone, tone_custom, professional_bio, selling_philosophy, signature, language, style_calibration")
         .maybeSingle(),
       client
         .from("profiles")
@@ -80,10 +112,60 @@ export async function loadAgentPersona(
       language: (personaRow?.language as string) ?? "he",
       agent_name,
       service_areas,
+      style_calibration: (personaRow as any)?.style_calibration ?? null,
     };
   } catch {
     return null;
   }
+}
+
+/**
+ * Render the AI Fine-Tuning "Tone & Style Calibration" block.
+ * This is the high-priority voice mirror learned from the agent's own
+ * uploaded WhatsApp / email logs. Injected with very high authority so
+ * the AI mirrors the agent's actual writing style, not a generic tone.
+ */
+export function renderStyleCalibrationBlock(cal: StyleCalibration | null | undefined): string {
+  if (!cal || typeof cal !== "object") return "";
+  const lines: string[] = [];
+  lines.push("=== TONE & STYLE CALIBRATION (FINE-TUNED FROM AGENT'S OWN CHAT LOGS, HIGHEST VOICE PRIORITY) ===");
+  lines.push("This profile was learned by analysing the Agent's REAL past conversations");
+  lines.push("(WhatsApp / email exports). MIRROR it. It overrides any generic tone label.");
+  lines.push("");
+  if (cal.summary) lines.push(`Voice summary: ${cal.summary}`);
+  if (cal.sentence_length) lines.push(`Sentence length preference: ${cal.sentence_length}`);
+  if (cal.emoji_usage) lines.push(`Emoji usage: ${cal.emoji_usage} (do NOT exceed this).`);
+  if (cal.language_mix) lines.push(`Language mix: ${cal.language_mix}`);
+  if (typeof cal.formality === "number") lines.push(`Formality (1=very casual, 5=very formal): ${cal.formality}`);
+  if (typeof cal.directness === "number") lines.push(`Directness (1=indirect, 5=direct): ${cal.directness}`);
+  if (typeof cal.warmth === "number") lines.push(`Warmth (1=transactional, 5=warm): ${cal.warmth}`);
+  if (cal.punctuation_habits) lines.push(`Punctuation habits: ${cal.punctuation_habits}`);
+  if (cal.common_openings?.length) {
+    lines.push(`Common openings (reuse verbatim when natural): ${cal.common_openings.slice(0, 8).map((s) => `"${s}"`).join(", ")}`);
+  }
+  if (cal.common_closings?.length) {
+    lines.push(`Common closings (reuse verbatim when natural): ${cal.common_closings.slice(0, 8).map((s) => `"${s}"`).join(", ")}`);
+  }
+  if (cal.signature_phrases?.length) {
+    lines.push(`Signature phrases / slang (reuse verbatim when fitting): ${cal.signature_phrases.slice(0, 12).map((s) => `"${s}"`).join(", ")}`);
+  }
+  if (cal.do_say?.length) {
+    lines.push("DO say (mirror these patterns):");
+    for (const d of cal.do_say.slice(0, 8)) lines.push(`  - ${d}`);
+  }
+  if (cal.dont_say?.length) {
+    lines.push("DO NOT say (the Agent never writes like this):");
+    for (const d of cal.dont_say.slice(0, 8)) lines.push(`  - ${d}`);
+  }
+  lines.push("");
+  lines.push("HARD RULES:");
+  lines.push("- Mirror the sentence length, warmth, directness, and formality above.");
+  lines.push("- Reuse the agent's signature phrases verbatim when they naturally fit the context.");
+  lines.push("- Do NOT exceed the emoji frequency observed.");
+  lines.push("- These calibration rules OVERRIDE the generic Tone label in settings.");
+  lines.push("- Punctuation 'no dashes' rule still applies (overrides any dash habit found in logs).");
+  lines.push("=== END TONE & STYLE CALIBRATION ===");
+  return lines.join("\n");
 }
 
 export type DealType = 'sale' | 'rent';
@@ -314,8 +396,12 @@ local facts. Do NOT default to nation-wide framing.
 === END HYPER-LOCAL EXPERT ZONE ===
 `.trim();
 
+  const calibrationBlock = renderStyleCalibrationBlock(persona.style_calibration ?? null);
+
   return `
 ${hyperLocalBlock}
+
+${calibrationBlock}
 
 === AGENT VIRTUAL TWIN, PERSONA OVERRIDE (HIGHEST PRIORITY) ===
 You ARE ${agentName ?? "the Agent"}, a professional real-estate agent. You are
