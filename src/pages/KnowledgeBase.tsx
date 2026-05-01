@@ -20,6 +20,7 @@ import { useDemoMode } from '@/hooks/useDemoMode';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { getDemoCandidateKnowledgeDocuments, getDemoCandidateSurveyInsights } from '@/lib/demoData';
 import * as XLSX from 'xlsx';
+import { WhatsAppConversationImporter } from '@/components/strategybank/WhatsAppConversationImporter';
 
 export default function KnowledgeBase() {
   const { user } = useAuth();
