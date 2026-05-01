@@ -732,19 +732,12 @@ const ApiSettings = () => {
               onCheckedChange={(v) => toggleService.mutate({ key: serviceKey, enabled: v })}
               aria-label={`Toggle ${title}`}
             />
-            <ChevronDown
-              className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 cursor-pointer"
-              data-chevron
-              onClick={(e) => {
-                e.stopPropagation();
-                const trigger = (e.currentTarget.closest('[class*="flex items-stretch"]') as HTMLElement | null)
-                  ?.querySelector('button[data-state]') as HTMLButtonElement | null;
-                trigger?.click();
-              }}
-              style={{
-                transform: 'var(--chevron-rotate, none)',
-              }}
-            />
+            <AccordionTrigger
+              aria-label={`Expand ${title}`}
+              className="p-0 hover:bg-transparent hover:no-underline [&>svg]:hidden"
+            >
+              <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 group-data-[state=open]/item:rotate-180 [[data-state=open]_&]:rotate-180" />
+            </AccordionTrigger>
           </div>
         </div>
         {children && (
