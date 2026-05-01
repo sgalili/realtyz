@@ -361,7 +361,7 @@ const SuperAdmin = () => {
 
 
       <div className="grid gap-4 md:grid-cols-4">
-        <PremiumStat icon={RadioTower} label="Live Demo Users" value={liveDemoUsers} hint="/dashboard?demo=true" />
+        <PremiumStat icon={RadioTower} label="Live Demo Agents" value={liveDemoUsers} hint="/dashboard?demo=true" />
         <PremiumStat icon={Flame} label="עמוד מוביל" value="Sentiment" hint="46% מצפיות הדמו" />
         <PremiumStat icon={Crown} label="ארכיטיפ מוביל" value={topArchetype} hint="מכירות דמו בפועל" />
         <PremiumStat icon={Gauge} label="לידים שנלכדו" value={capturedLeads?.length ?? 0} hint="Send Report traps" />

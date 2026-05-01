@@ -839,7 +839,7 @@ const ApiSettings = () => {
         title="Homely API"
         icon={Building}
         iconColor="text-orange-500"
-        badgeLabel="Per-User Key"
+        badgeLabel="Per-Agent Key"
         value="homely"
         serviceKey="homely"
         isConnected={homelyHasKey}
