@@ -13,7 +13,7 @@ import {
   SheetTitle,
   SheetDescription,
 } from '@/components/ui/sheet';
-import { VoterAvatar } from '@/components/VoterAvatar';
+import VoterAvatar from '@/components/VoterAvatar';
 import {
   Sparkles,
   Send,
