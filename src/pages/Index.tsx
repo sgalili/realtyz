@@ -16,6 +16,7 @@ import { format, formatDistanceToNow, startOfMonth, subHours } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
 import { PendingListingsCard } from '@/components/PendingListingsCard';
+import { ListingVisibilityManagerCard } from '@/components/listings/ListingVisibilityManagerCard';
 
 /* ────────────────────────────────────────────────────────────────────
    Realtyz — Real-Estate Dashboard
@@ -368,6 +369,7 @@ const Dashboard = () => {
 
       {/* AI-detected pending listings */}
       <PendingListingsCard />
+      <ListingVisibilityManagerCard />
 
       {/* Market Alerts */}
       <Card>
