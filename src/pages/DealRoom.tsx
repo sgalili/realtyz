@@ -296,20 +296,20 @@ export default function DealRoom() {
   }
 
   return (
-    <div className="p-6 space-y-6" dir="ltr">
-      <header className="flex items-start justify-between gap-4 flex-wrap">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight flex items-center gap-3">
-            <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6" dir="ltr">
+      <header className="flex items-start justify-between gap-3 flex-wrap">
+        <div className="min-w-0">
+          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight flex items-center gap-2 sm:gap-3">
+            <span className="inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <MessageSquare className="h-5 w-5" />
             </span>
             Deal Room
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
             Pipeline view of every Prospect — drag intent into action.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 w-full sm:w-auto">
           <Badge variant="secondary" className="text-sm">
             {leads?.length ?? 0} Prospects
           </Badge>
@@ -318,10 +318,11 @@ export default function DealRoom() {
               setOutreachProspectId(null);
               setOutreachOpen(true);
             }}
-            className="gap-1.5"
+            className="gap-1.5 h-11 flex-1 sm:flex-none"
           >
             <Megaphone className="h-4 w-4" />
-            New Listing Outreach
+            <span className="hidden sm:inline">New Listing Outreach</span>
+            <span className="sm:hidden">New Outreach</span>
           </Button>
         </div>
       </header>
@@ -391,31 +392,32 @@ export default function DealRoom() {
                         <Button
                           size="sm"
                           variant="outline"
-                          className="gap-1 h-8 text-xs"
+                          className="gap-1 h-11 sm:h-9 text-xs"
                           onClick={() => openSmartReply(p)}
                         >
-                          <Sparkles className="h-3.5 w-3.5 text-primary" />
+                          <Sparkles className="h-4 w-4 text-primary" />
                           Reply
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
-                          className="gap-1 h-8 text-xs"
+                          className="gap-1 h-11 sm:h-9 text-xs"
                           onClick={() => setMatchmakerProspect(p)}
                         >
-                          <Home className="h-3.5 w-3.5 text-success" />
-                          Find Property
+                          <Home className="h-4 w-4 text-success" />
+                          <span className="hidden xs:inline sm:inline">Find Property</span>
+                          <span className="xs:hidden sm:hidden">Find</span>
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
-                          className="gap-1 h-8 text-xs"
+                          className="gap-1 h-11 sm:h-9 text-xs"
                           onClick={() => {
                             setOutreachProspectId(p.id);
                             setOutreachOpen(true);
                           }}
                         >
-                          <Megaphone className="h-3.5 w-3.5 text-warning" />
+                          <Megaphone className="h-4 w-4 text-warning" />
                           Outreach
                         </Button>
                       </div>
@@ -438,7 +440,7 @@ export default function DealRoom() {
           }
         }}
       >
-        <SheetContent side="right" className="w-full sm:max-w-md flex flex-col" dir="ltr">
+        <SheetContent side="right" className="w-full sm:max-w-md flex flex-col p-4 sm:p-6 pb-[max(env(safe-area-inset-bottom),1rem)]" dir="ltr">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
@@ -544,18 +546,17 @@ export default function DealRoom() {
           </div>
 
           <div className="flex flex-col gap-2 pt-4 border-t">
-            <div className="flex items-center gap-2">
+            <div className="grid grid-cols-3 gap-2">
               <Button
                 variant="outline"
-                size="sm"
-                className="flex-1"
+                className="h-12 text-sm"
                 disabled={generating || sending || !smartReply.trim()}
                 onClick={() => setDraftMode((m) => (m === 'editing' ? 'review' : 'editing'))}
               >
                 {draftMode === 'editing' ? (
                   <>
                     <Check className="h-4 w-4 mr-1.5" />
-                    Done editing
+                    Done
                   </>
                 ) : (
                   <>
@@ -566,38 +567,36 @@ export default function DealRoom() {
               </Button>
               <Button
                 variant="outline"
-                size="sm"
-                className="flex-1"
+                className="h-12 text-sm"
                 disabled={generating || sending}
                 onClick={() => activeProspect && openSmartReply(activeProspect)}
               >
                 <Sparkles className="h-4 w-4 mr-1.5" />
-                Regenerate
+                Regen
               </Button>
               <Button
                 variant="outline"
-                size="sm"
-                className="flex-1"
+                className="h-12 text-sm"
                 disabled={generating || sending || !activeProspect}
                 onClick={() => activeProspect && setMatchmakerProspect(activeProspect)}
               >
                 <Home className="h-4 w-4 mr-1.5 text-success" />
-                Find Property
+                Find
               </Button>
             </div>
             <Button
-              className="w-full"
+              className="w-full h-14 text-base"
               disabled={!smartReply.trim() || generating || sending}
               onClick={approveAndSend}
             >
               {sending ? (
                 <>
-                  <Send className="h-4 w-4 mr-1.5 animate-pulse" />
+                  <Send className="h-5 w-5 mr-1.5 animate-pulse" />
                   Sending via WhatsApp…
                 </>
               ) : (
                 <>
-                  <Send className="h-4 w-4 mr-1.5" />
+                  <Send className="h-5 w-5 mr-1.5" />
                   Approve &amp; Send
                 </>
               )}
