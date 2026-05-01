@@ -12,6 +12,36 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
 export type PersonaTone = "professional" | "friendly" | "urgent" | "conservative" | "custom";
 
+export interface StyleCalibration {
+  /** One-paragraph human-readable summary of the agent's voice. */
+  summary?: string | null;
+  /** "very_short" | "short" | "medium" | "long" */
+  sentence_length?: string | null;
+  /** "none" | "rare" | "moderate" | "frequent" */
+  emoji_usage?: string | null;
+  /** "he" | "en" | "mixed_he_en" | "ar" | other ISO + mix labels */
+  language_mix?: string | null;
+  /** Common openings the agent actually uses (verbatim). */
+  common_openings?: string[];
+  /** Common closings/sign-offs the agent uses (verbatim). */
+  common_closings?: string[];
+  /** Signature phrases / slang / domain idioms (verbatim). */
+  signature_phrases?: string[];
+  /** Punctuation habits (e.g., "uses periods, no exclamation marks"). */
+  punctuation_habits?: string | null;
+  /** Formality (1=very casual, 5=very formal). */
+  formality?: number | null;
+  /** Directness (1=very indirect, 5=very direct). */
+  directness?: number | null;
+  /** Warmth (1=cold/transactional, 5=warm). */
+  warmth?: number | null;
+  /** Free-form do/don't list extracted from the logs. */
+  do_say?: string[];
+  dont_say?: string[];
+  /** Source labels (filenames) the calibration was learned from. */
+  sources?: string[];
+}
+
 export interface AgentPersona {
   tone: PersonaTone;
   tone_custom: string | null;
@@ -23,6 +53,8 @@ export interface AgentPersona {
   agent_name: string | null;
   /** Hyper-local zones (cities/neighborhoods) the agent specializes in. */
   service_areas: string[];
+  /** AI-extracted Tone & Style profile from uploaded chat/email logs. */
+  style_calibration?: StyleCalibration | null;
 }
 
 const TONE_DESCRIPTIONS: Record<PersonaTone, string> = {
