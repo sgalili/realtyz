@@ -471,7 +471,21 @@ Deno.serve(async (req) => {
       }, 500);
     }
 
-    const message = parsed.data.message ?? null;
+    // Compliance: append the "AI-assisted content" disclosure footer when
+    // requested by the caller. We do this AFTER body validation but BEFORE
+    // dispatching, so the prospect sees the same text we audit.
+    let outboundMessage = parsed.data.message ?? null;
+    let disclosureAppended = false;
+    if (outboundMessage && parsed.data.ai_assisted) {
+      const r = appendDisclosure(
+        outboundMessage,
+        true,
+        parsed.data.disclosure_language ?? "he",
+      );
+      outboundMessage = r.text;
+      disclosureAppended = r.appended;
+    }
+
     const template = parsed.data.template_id
       ? {
           id: parsed.data.template_id,
@@ -482,11 +496,45 @@ Deno.serve(async (req) => {
 
     let result: StdResponse;
     if (provider.name === "WBA") {
-      result = await sendViaWba(provider.config, phone, message, parsed.data.file, template);
+      result = await sendViaWba(provider.config, phone, outboundMessage, parsed.data.file, template);
     } else {
       // GreenAPI doesn't support templates — fall back to text.
-      const text = message ?? `[${parsed.data.template_id}]`;
+      const text = outboundMessage ?? `[${parsed.data.template_id}]`;
       result = await sendViaGreenApi(provider.config, phone, text, parsed.data.file);
+    }
+
+    // Compliance audit + message-row logging. Best-effort; never blocks the send.
+    try {
+      if (parsed.data.lead_id && outboundMessage) {
+        await admin.from("messages").insert({
+          lead_id: parsed.data.lead_id,
+          channel: "whatsapp",
+          platform: "whatsapp",
+          content: outboundMessage,
+          direction: "outbound",
+          sender_type: parsed.data.ai_assisted ? "ai" : "agent",
+          ai_assisted: !!parsed.data.ai_assisted,
+          disclosure_appended: disclosureAppended,
+          metadata: { provider: provider.name, message_id: result.message_id },
+        });
+      }
+      if (userId) {
+        await admin.from("audit_logs").insert({
+          actor_id: userId,
+          action: parsed.data.ai_assisted ? "ai_message_sent" : "message_sent",
+          target_table: parsed.data.lead_id ? "leads" : null,
+          target_id: parsed.data.lead_id ?? null,
+          details: {
+            provider: provider.name,
+            success: result.success,
+            disclosure_appended: disclosureAppended,
+            has_attachment: !!parsed.data.file,
+            phone_last4: phone.slice(-4),
+          },
+        });
+      }
+    } catch (logErr) {
+      console.warn("send-whatsapp audit/log failed:", logErr);
     }
 
     return json(result, result.success ? 200 : 502);
