@@ -86,12 +86,13 @@ export function PageHero() {
         </div>
       </div>
 
-      {/* Decorative wave at the bottom edge */}
+      {/* Decorative wave at the bottom edge — fill matches the page surface
+          (#f1f5f9) so the wave melts seamlessly into the content below. */}
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6">
         <RealtyzWave
           position="bottom"
           variant="wave-soft"
-          fill="hsl(var(--background))"
+          fill="#f1f5f9"
           seed={7}
         />
       </div>
