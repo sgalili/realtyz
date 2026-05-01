@@ -26,6 +26,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { ListingOutreachDialog } from '@/components/dealroom/ListingOutreachDialog';
 
 type LeadStage = 'new_prospect' | 'listing_outreach' | 'negotiation' | 'closed';
 
@@ -102,6 +103,8 @@ function timeAgo(iso: string | null): string {
 export default function DealRoom() {
   const queryClient = useQueryClient();
   const [activeProspect, setActiveProspect] = useState<Lead | null>(null);
+  const [outreachProspectId, setOutreachProspectId] = useState<string | null>(null);
+  const [outreachOpen, setOutreachOpen] = useState(false);
   const [smartReply, setSmartReply] = useState<string>('');
   const [generating, setGenerating] = useState(false);
 
@@ -191,9 +194,21 @@ export default function DealRoom() {
             Pipeline view of every Prospect — drag intent into action.
           </p>
         </div>
-        <Badge variant="secondary" className="text-sm">
-          {leads?.length ?? 0} Prospects
-        </Badge>
+        <div className="flex items-center gap-2">
+          <Badge variant="secondary" className="text-sm">
+            {leads?.length ?? 0} Prospects
+          </Badge>
+          <Button
+            onClick={() => {
+              setOutreachProspectId(null);
+              setOutreachOpen(true);
+            }}
+            className="gap-1.5"
+          >
+            <Megaphone className="h-4 w-4" />
+            New Listing Outreach
+          </Button>
+        </div>
       </header>
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
@@ -255,15 +270,29 @@ export default function DealRoom() {
                         </div>
                       </div>
 
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full mt-3 gap-1.5 h-8"
-                        onClick={() => openSmartReply(p)}
-                      >
-                        <Sparkles className="h-3.5 w-3.5 text-primary" />
-                        Smart Reply
-                      </Button>
+                      <div className="grid grid-cols-2 gap-1.5 mt-3">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 h-8 text-xs"
+                          onClick={() => openSmartReply(p)}
+                        >
+                          <Sparkles className="h-3.5 w-3.5 text-primary" />
+                          Reply
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 h-8 text-xs"
+                          onClick={() => {
+                            setOutreachProspectId(p.id);
+                            setOutreachOpen(true);
+                          }}
+                        >
+                          <Megaphone className="h-3.5 w-3.5 text-warning" />
+                          Outreach
+                        </Button>
+                      </div>
                     </Card>
                   ))}
                 </div>
@@ -329,6 +358,12 @@ export default function DealRoom() {
           </div>
         </SheetContent>
       </Sheet>
+
+      <ListingOutreachDialog
+        open={outreachOpen}
+        onOpenChange={setOutreachOpen}
+        defaultProspectId={outreachProspectId}
+      />
     </div>
   );
 }
