@@ -127,7 +127,9 @@ export default function Properties() {
             נכסים
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            קטלוג הנכסים. סננו לפי תקציב, אזור, סוג נכס וחדרים — ושלחו ישירות למתעניינים.
+            {isConfigured
+              ? `קטלוג הנכסים באזורי ההתמחות שלך (${coveredCities.join(', ')}). סננו לפי תקציב, סוג ופרטים.`
+              : 'קטלוג הנכסים. סננו לפי תקציב, אזור, סוג נכס וחדרים, ושלחו ישירות למתעניינים.'}
           </p>
         </div>
         <Badge variant="secondary" className="text-sm">
@@ -184,9 +186,18 @@ export default function Properties() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {CITY_OPTIONS.map((c) => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
-                ))}
+                {isConfigured ? (
+                  <>
+                    <SelectItem value="__my_zones__">כל אזורי ההתמחות שלי</SelectItem>
+                    {coveredCities.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </>
+                ) : (
+                  CITY_OPTIONS.map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
