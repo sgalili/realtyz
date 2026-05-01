@@ -293,6 +293,14 @@ const ApiSettings = () => {
   const [homelyApiKey, setHomelyApiKey] = useState('');
   const [homelyHasKey, setHomelyHasKey] = useState(false);
   const [homelyLoaded, setHomelyLoaded] = useState(false);
+  // Diagnostic snapshot from the last "Test Connection" run.
+  const [homelyDiag, setHomelyDiag] = useState<null | {
+    ok: boolean;
+    request: { url: string; method: string; headers: Record<string, string> };
+    response: { status: number | null; statusText: string; body: unknown };
+    error?: string;
+    timestamp: string;
+  }>(null);
   const { user: authUser } = useAuth();
 
   // Per-service On/Off toggles (service_toggles table)
