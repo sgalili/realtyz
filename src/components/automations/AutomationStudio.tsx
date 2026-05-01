@@ -86,19 +86,36 @@ const TEMPLATES = [
   },
 ];
 
-function emptyDraft() {
+type Draft = {
+  name: string;
+  description: string;
+  trigger_type: string;
+  action_type: string;
+  is_enabled: boolean;
+  template_key: string | null;
+  action_config: {
+    message_template: string;
+    note_title: string;
+    note_body: string;
+    notify_event_type: 'new_high_priority' | 'meeting_booked' | 'critical_question';
+    notify_detail: string;
+    delay_hours?: number;
+  };
+};
+
+function emptyDraft(): Draft {
   return {
     name: '',
     description: '',
     trigger_type: 'prospect_added',
     action_type: 'send_whatsapp',
     is_enabled: true,
-    template_key: null as string | null,
+    template_key: null,
     action_config: {
       message_template: '',
       note_title: '',
       note_body: '',
-      notify_event_type: 'new_high_priority' as 'new_high_priority' | 'meeting_booked' | 'critical_question',
+      notify_event_type: 'new_high_priority',
       notify_detail: '',
     },
   };
