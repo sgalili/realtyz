@@ -96,7 +96,11 @@ const CampaignCenter = () => {
         </TabsContent>
         <TabsContent value="broadcast" className="mt-6">
           <Tabs value={activeSub} onValueChange={handleSubChange} className="w-full" dir="rtl">
-            <TabsList className="grid w-full max-w-md grid-cols-2 h-auto gap-1 bg-muted/50 p-1">
+            <TabsList className="grid w-full max-w-2xl grid-cols-3 h-auto gap-1 bg-muted/50 p-1">
+              <TabsTrigger value="community" className="flex items-center justify-center gap-2 py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                <Users className="h-4 w-4 shrink-0" />
+                <span>עדכון לקהילה</span>
+              </TabsTrigger>
               <TabsTrigger value="send" className="flex items-center justify-center gap-2 py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
                 <Send className="h-4 w-4 shrink-0" />
                 <span>שיגור הודעות</span>
