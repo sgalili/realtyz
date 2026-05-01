@@ -153,6 +153,29 @@ Deno.serve(async (req) => {
       .update({ notified_agent: notified, notification_result: notificationResult })
       .eq("id", alertRow.id);
 
+    // Also fire the Smart Notification system so the agent's preferences (e.g.
+    // quiet hours, channel) are respected and the alert lands in the
+    // notifications history with a Deal Room deep link.
+    try {
+      await fetch(`${SUPABASE_URL}/functions/v1/notify-agent`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${SERVICE_KEY}`,
+          apikey: SERVICE_KEY,
+        },
+        body: JSON.stringify({
+          event_type: "critical_question",
+          lead_id: body.lead_id || null,
+          prospect_name: null,
+          detail: `[${body.category}] ${body.prospect_message.slice(0, 240)}`,
+          override_user_id: userId,
+        }),
+      });
+    } catch (e) {
+      console.warn("[escalation-alert] notify-agent dispatch failed", (e as Error).message);
+    }
+
     return json({ ok: true, alert_id: alertRow.id, notified, notificationResult });
   } catch (e) {
     console.error("[escalation-alert] fatal", e);

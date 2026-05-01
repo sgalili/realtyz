@@ -1,4 +1,5 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
@@ -108,6 +109,7 @@ function timeAgo(iso: string | null): string {
 
 export default function DealRoom() {
   const queryClient = useQueryClient();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [activeProspect, setActiveProspect] = useState<Lead | null>(null);
   const [outreachProspectId, setOutreachProspectId] = useState<string | null>(null);
   const [outreachOpen, setOutreachOpen] = useState(false);
@@ -150,6 +152,21 @@ export default function DealRoom() {
     });
     return map;
   }, [leads]);
+
+  // Smart Notification deep link: ?leadId=<uuid> opens that prospect's Smart Reply sheet.
+  useEffect(() => {
+    const leadId = searchParams.get('leadId');
+    if (!leadId || !leads || activeProspect) return;
+    const target = leads.find((l) => l.id === leadId);
+    if (target) {
+      void openSmartReply(target);
+      // Clean the URL so refresh doesn't keep reopening.
+      const next = new URLSearchParams(searchParams);
+      next.delete('leadId');
+      setSearchParams(next, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leads, searchParams]);
 
   async function openSmartReply(prospect: Lead) {
     setActiveSuggestionId(null);

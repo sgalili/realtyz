@@ -26,6 +26,7 @@ import { useUserRole } from '@/hooks/useUserRole';
 import { format } from 'date-fns';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { ChevronDown } from 'lucide-react';
+import NotificationPreferencesPanel from '@/components/NotificationPreferencesPanel';
 
 interface ApiConfig {
   id: string;
@@ -824,6 +825,15 @@ const ApiSettings = () => {
             serviceKey="omnichannel_inbox"
           />
         </div>
+      </div>
+
+      {/* ── Section A.5: Notification Preferences ── */}
+      <div className="space-y-2">
+        <div>
+          <h2 className="text-sm font-bold tracking-tight">העדפות התראות חכמות</h2>
+          <p className="text-xs text-muted-foreground">Smart Notifications — אירועים קריטיים נשלחים אליך ב-WhatsApp עם קישור ישיר ל-Deal Room</p>
+        </div>
+        <NotificationPreferencesPanel />
       </div>
 
       {/* ── Section B: Integrations ── */}
