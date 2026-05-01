@@ -23,6 +23,8 @@ import {
   Handshake,
   CheckCircle2,
   MessageSquare,
+  Database,
+  PenLine,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -107,6 +109,7 @@ export default function DealRoom() {
   const [outreachOpen, setOutreachOpen] = useState(false);
   const [smartReply, setSmartReply] = useState<string>('');
   const [generating, setGenerating] = useState(false);
+  const [genPhase, setGenPhase] = useState<'idle' | 'searching' | 'drafting'>('idle');
 
   const { data: leads, isLoading } = useQuery({
     queryKey: ['deal-room-prospects'],
@@ -139,6 +142,10 @@ export default function DealRoom() {
     setActiveProspect(prospect);
     setSmartReply('');
     setGenerating(true);
+    setGenPhase('searching');
+    // Flip the status to "drafting" shortly after kick-off so the Agent sees both phases
+    // even on fast responses. The edge function performs the vector search first, then drafts.
+    const phaseTimer = window.setTimeout(() => setGenPhase('drafting'), 900);
     try {
       const { data, error } = await supabase.functions.invoke('ai-agent', {
         body: {
@@ -156,7 +163,9 @@ export default function DealRoom() {
       setSmartReply('');
       toast.error('Could not generate Smart Reply', { description: err?.message });
     } finally {
+      window.clearTimeout(phaseTimer);
       setGenerating(false);
+      setGenPhase('idle');
     }
   }
 
@@ -320,7 +329,24 @@ export default function DealRoom() {
 
           <div className="flex-1 mt-4 space-y-3">
             {generating ? (
-              <div className="space-y-2">
+              <div className="space-y-3">
+                <div
+                  className="flex items-center gap-2.5 rounded-md border bg-muted/40 px-3 py-2.5 text-sm text-muted-foreground"
+                  role="status"
+                  aria-live="polite"
+                >
+                  {genPhase === 'searching' ? (
+                    <>
+                      <Database className="h-4 w-4 text-primary animate-pulse" />
+                      <span>Searching Strategy Bank…</span>
+                    </>
+                  ) : (
+                    <>
+                      <PenLine className="h-4 w-4 text-primary animate-pulse" />
+                      <span>Drafting reply in your voice…</span>
+                    </>
+                  )}
+                </div>
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-11/12" />
                 <Skeleton className="h-4 w-9/12" />
