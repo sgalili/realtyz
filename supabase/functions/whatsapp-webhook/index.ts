@@ -343,8 +343,18 @@ Deno.serve(async (req) => {
       title = (msg.text.split(/\n|\. /)[0] || msg.text).slice(0, 120);
       sourceType = "text";
     } else if (msg.kind === "audio") {
+      // Guard: MIME allow-list.
+      if (!isSupportedMime(msg.mimeType, "audio")) {
+        await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, HEBREW_FILE_ERROR_REPLY);
+        return jsonResponse({ ok: false, ignored: "unsupported_audio_mime", mime: msg.mimeType }, 200);
+      }
       // Download → store private copy → transcribe → ingest text only.
       const { bytes, contentType } = await fetchBinary(msg.downloadUrl);
+      // Guard: size cap (20MB).
+      if (bytes.byteLength > MAX_FILE_BYTES) {
+        await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, HEBREW_FILE_ERROR_REPLY);
+        return jsonResponse({ ok: false, ignored: "audio_too_large", bytes: bytes.byteLength }, 200);
+      }
       const ext = (msg.fileName?.match(/\.(\w+)$/i)?.[1] ?? "ogg").toLowerCase();
       const objectPath = `${userId}/whatsapp/${Date.now()}-${crypto.randomUUID()}.${ext}`;
       const upload = await admin.storage
@@ -363,7 +373,17 @@ Deno.serve(async (req) => {
       if (msg.caption) sourceMetadata.caption = msg.caption;
     } else {
       // media (image / video / document) — store privately, extract text via kb-ingest.
+      // Guard: MIME allow-list per media kind.
+      if (!isSupportedMime(msg.mimeType, msg.mediaKind)) {
+        await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, HEBREW_FILE_ERROR_REPLY);
+        return jsonResponse({ ok: false, ignored: "unsupported_media_mime", mime: msg.mimeType, kind: msg.mediaKind }, 200);
+      }
       const { bytes, contentType } = await fetchBinary(msg.downloadUrl);
+      // Guard: size cap (20MB).
+      if (bytes.byteLength > MAX_FILE_BYTES) {
+        await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, HEBREW_FILE_ERROR_REPLY);
+        return jsonResponse({ ok: false, ignored: "media_too_large", bytes: bytes.byteLength }, 200);
+      }
       const safeName = (msg.fileName ?? "attachment").replace(/[^\w.\-]+/g, "_");
       const objectPath = `${userId}/whatsapp/${Date.now()}-${crypto.randomUUID()}-${safeName}`;
       const upload = await admin.storage
