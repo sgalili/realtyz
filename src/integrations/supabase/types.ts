@@ -2367,6 +2367,9 @@ export type Database = {
       }
       platform_settings: {
         Row: {
+          ai_paused: boolean
+          ai_paused_at: string | null
+          ai_paused_reason: string | null
           created_at: string
           enable_ai_autopilot: boolean
           enable_auto_followups: boolean
@@ -2382,6 +2385,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          ai_paused?: boolean
+          ai_paused_at?: string | null
+          ai_paused_reason?: string | null
           created_at?: string
           enable_ai_autopilot?: boolean
           enable_auto_followups?: boolean
@@ -2397,6 +2403,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          ai_paused?: boolean
+          ai_paused_at?: string | null
+          ai_paused_reason?: string | null
           created_at?: string
           enable_ai_autopilot?: boolean
           enable_auto_followups?: boolean
@@ -3362,6 +3371,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin_or_above: { Args: { _uid: string }; Returns: boolean }
+      is_ai_paused: { Args: { _user_id: string }; Returns: boolean }
       is_broker_or_admin: { Args: { _user_id: string }; Returns: boolean }
       is_junior_agent: { Args: { _user_id: string }; Returns: boolean }
       is_on_trial_plan: { Args: { _user_id: string }; Returns: boolean }
