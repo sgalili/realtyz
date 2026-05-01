@@ -26,6 +26,13 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { ListingOutreachDialog } from '@/components/dealroom/ListingOutreachDialog';
+  Handshake,
+  CheckCircle2,
+  MessageSquare,
+} from 'lucide-react';
+import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 type LeadStage = 'new_prospect' | 'listing_outreach' | 'negotiation' | 'closed';
 
