@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
 import { MessageSquareText, Upload, Loader2, Brain, Sparkles } from "lucide-react";
@@ -14,11 +13,11 @@ import { parseWhatsAppChat } from "@/lib/parseWhatsAppChat";
 type Phase = "idle" | "parsing" | "embedding" | "learning" | "done";
 
 const phaseLabel: Record<Phase, string> = {
-  idle: "Drop a WhatsApp .txt export to begin",
-  parsing: "Parsing conversation…",
-  embedding: "Embedding turns into vector memory…",
-  learning: "Teaching agent memory…",
-  done: "Done",
+  idle: "גררו קובץ ייצוא WhatsApp בפורמט .txt כדי להתחיל",
+  parsing: "מנתח את השיחה…",
+  embedding: "מטמיע את התורים בזיכרון וקטורי…",
+  learning: "מלמד את זיכרון הסוכן…",
+  done: "הסתיים",
 };
 
 export function WhatsAppConversationImporter() {
@@ -34,12 +33,12 @@ export function WhatsAppConversationImporter() {
   const handleFile = useCallback(
     async (file: File) => {
       if (!user?.id) {
-        toast.error("Please sign in to import conversations");
+        toast.error("יש להתחבר כדי לייבא שיחות");
         return;
       }
       if (blockDemoAction("import-whatsapp-conversation")) return;
       if (!/\.txt$/i.test(file.name)) {
-        toast.error("Please upload a WhatsApp .txt export");
+        toast.error("יש להעלות קובץ ייצוא WhatsApp בפורמט .txt");
         return;
       }
 
@@ -52,7 +51,7 @@ export function WhatsAppConversationImporter() {
         if (parsed.chunks.length === 0) {
           setPhase("idle");
           setProgress(0);
-          toast.error("No valid messages found in this file");
+          toast.error("לא נמצאו הודעות תקפות בקובץ");
           return;
         }
 
@@ -85,20 +84,19 @@ export function WhatsAppConversationImporter() {
 
         setPhase("learning");
         setProgress(98);
-        // Brief pause for visual reassurance while indexes settle.
         await new Promise((r) => setTimeout(r, 500));
 
         setPhase("done");
         setProgress(100);
         qc.invalidateQueries({ queryKey: ["kb-documents"] });
-        toast.success(`Agent memory updated with ${parsed.turns.length} conversation turns.`);
+        toast.success(`זיכרון הסוכן עודכן עם ${parsed.turns.length} תורי שיחה.`);
         setTimeout(() => {
           setPhase("idle");
           setProgress(0);
         }, 2000);
       } catch (err) {
-        const msg = err instanceof Error ? err.message : "Unknown error";
-        toast.error(`Import failed: ${msg}`);
+        const msg = err instanceof Error ? err.message : "שגיאה לא ידועה";
+        toast.error(`הייבוא נכשל: ${msg}`);
         setPhase("idle");
         setProgress(0);
       }
@@ -109,23 +107,20 @@ export function WhatsAppConversationImporter() {
   const busy = phase !== "idle" && phase !== "done";
 
   return (
-    <Card>
+    <Card dir="rtl">
       <CardHeader className="pb-3">
         <CardTitle className="text-base flex items-center gap-2">
           <MessageSquareText className="h-4 w-4 text-primary" />
-          WhatsApp Conversation Importer
+          ייבוא שיחות WhatsApp
         </CardTitle>
         <CardDescription>
-          Upload a WhatsApp chat export (.txt). The Strategy Bank parses Agent ↔ Prospect turns,
-          embeds them for semantic search, and uses them to coach future replies.
+          העלו ייצוא צ'אט WhatsApp (.txt). מאגר האסטרטגיות מנתח תורי סוכן ↔ לקוח,
+          מטמיע אותם לחיפוש סמנטי ומשתמש בהם כדי לאמן תשובות עתידיות.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div
-          onDragOver={(e) => {
-            e.preventDefault();
-            if (!busy) setDragging(true);
-          }}
+          onDragOver={(e) => { e.preventDefault(); if (!busy) setDragging(true); }}
           onDragLeave={() => setDragging(false)}
           onDrop={(e) => {
             e.preventDefault();
@@ -163,30 +158,30 @@ export function WhatsAppConversationImporter() {
           ) : phase === "done" ? (
             <div className="flex flex-col items-center gap-2">
               <Sparkles className="h-8 w-8 text-primary" />
-              <p className="text-sm font-medium">Agent memory updated.</p>
+              <p className="text-sm font-medium">זיכרון הסוכן עודכן.</p>
             </div>
           ) : (
             <>
               <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-              <p className="text-sm font-medium">Drop your WhatsApp .txt export here</p>
+              <p className="text-sm font-medium">גררו לכאן את קובץ ייצוא ה-WhatsApp (.txt)</p>
               <p className="text-xs text-muted-foreground mt-1">
-                Export a chat from WhatsApp → More → Export chat → Without media
+                ייצאו צ'אט מ-WhatsApp ← עוד ← ייצוא צ'אט ← ללא מדיה
               </p>
               <div className="mt-3 flex items-center justify-center gap-2 text-xs">
                 <Badge variant="outline" className="gap-1">
-                  <Brain className="h-3 w-3" /> Tagged: Past Conversation
+                  <Brain className="h-3 w-3" /> תיוג: שיחה היסטורית
                 </Badge>
-                <Badge variant="outline">Source: WhatsApp</Badge>
+                <Badge variant="outline">מקור: WhatsApp</Badge>
               </div>
             </>
           )}
         </div>
 
         <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <label className="font-medium">Agent name (optional override):</label>
+          <label className="font-medium">שם סוכן (עקיפה אופציונלית):</label>
           <input
             type="text"
-            placeholder="Auto-detect from most active sender"
+            placeholder="זיהוי אוטומטי מהשולח הפעיל ביותר"
             value={agentNameOverride ?? ""}
             onChange={(e) => setAgentNameOverride(e.target.value || null)}
             className="flex-1 h-8 px-2 rounded-md border border-input bg-background text-sm"

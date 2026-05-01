@@ -127,13 +127,13 @@ export function PropertyMatchmakerDialog({
       setResults(res as PropertyResult[]);
       setSource(((data as any)?.source as 'homely' | 'listings') || null);
       if (res.length === 0) {
-        toast.info('No properties matched these filters', {
-          description: 'Try widening price range or removing the city filter.',
+        toast.info('לא נמצאו נכסים שתואמים לפילטרים', {
+          description: 'נסו להרחיב את טווח המחירים או להסיר את העיר.',
         });
       }
     } catch (e: any) {
       console.error('homely-search failed', e);
-      toast.error('Property search failed', { description: e?.message });
+      toast.error('חיפוש הנכסים נכשל', { description: e?.message });
     } finally {
       setLoading(false);
     }
@@ -148,17 +148,17 @@ export function PropertyMatchmakerDialog({
       });
       if (error) throw error;
       const draft = (data as any)?.draft as string;
-      if (!draft) throw new Error('AI returned an empty draft');
+      if (!draft) throw new Error('ה-AI החזיר טיוטה ריקה');
       onShareDraft({ draft, property: selected });
       onOpenChange(false);
     } catch (e: any) {
-      const msg = e?.message || 'Failed to draft message';
+      const msg = e?.message || 'יצירת הטיוטה נכשלה';
       if (/402/.test(msg)) {
-        toast.error('AI credits exhausted', { description: 'Add funds in Workspace → Usage.' });
+        toast.error('קרדיטי AI נגמרו', { description: 'הוסיפו אשראי בסביבת העבודה ← שימוש.' });
       } else if (/429/.test(msg)) {
-        toast.error('AI rate limit hit', { description: 'Please retry in a moment.' });
+        toast.error('הגעתם למגבלת קצב של ה-AI', { description: 'נסו שוב עוד רגע.' });
       } else {
-        toast.error('Could not draft share message', { description: msg });
+        toast.error('יצירת הודעת השיתוף נכשלה', { description: msg });
       }
     } finally {
       setDrafting(false);
@@ -166,20 +166,20 @@ export function PropertyMatchmakerDialog({
   }
 
   const headerSubtitle = useMemo(() => {
-    if (!prospect) return 'Select a prospect first';
-    return `For ${prospect.full_name || 'this Prospect'}${prospect.city ? ` · ${prospect.city}` : ''}`;
+    if (!prospect) return 'בחרו לקוח תחילה';
+    return `עבור ${prospect.full_name || 'הלקוח'}${prospect.city ? ` · ${prospect.city}` : ''}`;
   }, [prospect]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-4xl p-0 overflow-hidden" dir="ltr">
+      <DialogContent className="max-w-4xl p-0 overflow-hidden" dir="rtl">
         <DialogHeader className="px-6 pt-5 pb-3 border-b">
           <DialogTitle className="flex items-center gap-2">
             <Home className="h-5 w-5 text-primary" />
-            Smart Matchmaker
+            התאמת נכסים חכמה
             {source && (
               <Badge variant="outline" className="ml-2 text-[10px] uppercase tracking-wide">
-                {source === 'homely' ? 'Homely' : 'Local listings'}
+                {source === 'homely' ? 'Homely' : 'נכסים מקומיים'}
               </Badge>
             )}
           </DialogTitle>
@@ -190,85 +190,50 @@ export function PropertyMatchmakerDialog({
         {!selected && (
           <>
             <div className="grid grid-cols-2 sm:grid-cols-5 gap-3 px-6 py-4 border-b bg-muted/30">
-              <FilterField label="Min Price (₪)">
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  value={filters.min_price}
+              <FilterField label="מחיר מינ' (₪)">
+                <Input type="number" inputMode="numeric" value={filters.min_price}
                   onChange={(e) => setFilters((p) => ({ ...p, min_price: e.target.value }))}
-                  placeholder="1,500,000"
-                />
+                  placeholder="1,500,000" />
               </FilterField>
-              <FilterField label="Max Price (₪)">
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  value={filters.max_price}
+              <FilterField label="מחיר מקס' (₪)">
+                <Input type="number" inputMode="numeric" value={filters.max_price}
                   onChange={(e) => setFilters((p) => ({ ...p, max_price: e.target.value }))}
-                  placeholder="3,000,000"
-                />
+                  placeholder="3,000,000" />
               </FilterField>
-              <FilterField label="City / Area">
-                <Input
-                  value={filters.city}
+              <FilterField label="עיר / אזור">
+                <Input value={filters.city}
                   onChange={(e) => setFilters((p) => ({ ...p, city: e.target.value }))}
-                  placeholder="Tel Aviv"
-                />
+                  placeholder="תל אביב" />
               </FilterField>
-              <FilterField label="Min Rooms">
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  value={filters.rooms}
+              <FilterField label="חדרים מינ'">
+                <Input type="number" inputMode="numeric" value={filters.rooms}
                   onChange={(e) => setFilters((p) => ({ ...p, rooms: e.target.value }))}
-                  placeholder="3"
-                />
+                  placeholder="3" />
               </FilterField>
-              <FilterField label="Keywords">
-                <Input
-                  value={filters.keywords}
+              <FilterField label="מילות מפתח">
+                <Input value={filters.keywords}
                   onChange={(e) => setFilters((p) => ({ ...p, keywords: e.target.value }))}
-                  placeholder="garden, balcony…"
-                />
+                  placeholder="גינה, מרפסת…" />
               </FilterField>
               <div className="col-span-2 sm:col-span-5 flex justify-end">
-                <Button
-                  onClick={() => runSearch(filters)}
-                  disabled={loading}
-                  size="sm"
-                  className="gap-1.5"
-                >
-                  {loading ? (
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                  ) : (
-                    <Search className="h-4 w-4" />
-                  )}
-                  Search
+                <Button onClick={() => runSearch(filters)} disabled={loading} size="sm" className="gap-1.5">
+                  {loading ? (<Loader2 className="h-4 w-4 animate-spin" />) : (<Search className="h-4 w-4" />)}
+                  חיפוש
                 </Button>
               </div>
             </div>
 
             <ScrollArea className="max-h-[55vh]">
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 p-6">
-                {loading &&
-                  Array.from({ length: 6 }).map((_, i) => (
-                    <Skeleton key={i} className="h-48 w-full rounded-lg" />
-                  ))}
-
+                {loading && Array.from({ length: 6 }).map((_, i) => (<Skeleton key={i} className="h-48 w-full rounded-lg" />))}
                 {!loading && results.length === 0 && (
                   <div className="col-span-full text-center text-sm text-muted-foreground py-12">
-                    No properties yet — adjust the filters above and search.
+                    אין נכסים עדיין — עדכנו את הפילטרים מעל וחפשו.
                   </div>
                 )}
-
-                {!loading &&
-                  results.map((r) => (
-                    <PropertyCard
-                      key={`${r.source}-${r.id}`}
-                      property={r}
-                      onSelect={() => setSelected(r)}
-                    />
-                  ))}
+                {!loading && results.map((r) => (
+                  <PropertyCard key={`${r.source}-${r.id}`} property={r} onSelect={() => setSelected(r)} />
+                ))}
               </div>
             </ScrollArea>
           </>
@@ -277,37 +242,22 @@ export function PropertyMatchmakerDialog({
         {/* ── Step 2: Snippet preview + Share ── */}
         {selected && (
           <div className="p-6 space-y-4">
-            <Button
-              variant="ghost"
-              size="sm"
-              className="gap-1.5 -ml-2"
-              onClick={() => setSelected(null)}
-            >
+            <Button variant="ghost" size="sm" className="gap-1.5 -mr-2" onClick={() => setSelected(null)}>
               <ArrowLeft className="h-4 w-4" />
-              Back to results
+              חזרה לתוצאות
             </Button>
 
             <PropertySnippet property={selected} />
 
             <div className="flex items-center justify-end gap-2 pt-2 border-t">
               <Button variant="outline" size="sm" onClick={() => setSelected(null)}>
-                Choose another
+                בחירת נכס אחר
               </Button>
-              <Button
-                onClick={shareWithProspect}
-                disabled={drafting || !prospect}
-                className="gap-1.5"
-              >
+              <Button onClick={shareWithProspect} disabled={drafting || !prospect} className="gap-1.5">
                 {drafting ? (
-                  <>
-                    <Sparkles className="h-4 w-4 animate-pulse" />
-                    Drafting personal note…
-                  </>
+                  <><Sparkles className="h-4 w-4 animate-pulse" />מנסח הודעה אישית…</>
                 ) : (
-                  <>
-                    <Send className="h-4 w-4" />
-                    Share with Prospect
-                  </>
+                  <><Send className="h-4 w-4" />שיתוף עם הלקוח</>
                 )}
               </Button>
             </div>

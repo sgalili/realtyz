@@ -722,7 +722,7 @@ const ApiSettings = () => {
           <Dialog>
             <DialogTrigger asChild>
               <button type="button" className="text-[11px] text-muted-foreground/70 hover:text-primary hover:underline transition-colors">
-                Learn more
+                למידע נוסף
               </button>
             </DialogTrigger>
             <DialogContent dir="rtl">
@@ -788,19 +788,19 @@ const ApiSettings = () => {
           <AccordionContent className="px-4 pb-4 pt-2">
             <div className="space-y-4">
               <div className="flex items-center justify-between rounded-md border border-border/40 bg-muted/20 px-3 py-2">
-                <span className="text-xs font-medium text-muted-foreground">Status</span>
+                <span className="text-xs font-medium text-muted-foreground">סטטוס</span>
                 <div className="flex items-center gap-2">
                   <span
                     className={`h-2 w-2 rounded-full ${connected ? 'bg-emerald-500 shadow-[0_0_6px_hsl(var(--success))]' : 'bg-red-500'}`}
                   />
                   <span className={`text-xs font-medium ${connected ? 'text-emerald-600' : 'text-red-600'}`}>
-                    {connected ? 'Ready' : 'Not Configured'}
+                    {connected ? 'מוכן' : 'לא מוגדר'}
                   </span>
                 </div>
               </div>
               {!connected && (
                 <div className="rounded-md border border-dashed border-border/60 bg-muted/10 px-3 py-2 text-[11px] text-muted-foreground">
-                  Configure this service to enable it — fill in the fields below and click Save.
+                  הגדירו את השירות כדי להפעיל אותו — מלאו את השדות מטה ולחצו "שמירה".
                 </div>
               )}
               {children}
@@ -858,7 +858,7 @@ const ApiSettings = () => {
         <CardContent className="space-y-3">
           <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-2">
             <div className="flex items-start gap-2">
-              <Badge variant="outline" className="shrink-0">PII Mask</Badge>
+              <Badge variant="outline" className="shrink-0">מסכת PII</Badge>
               <span className="text-muted-foreground">
                 ת.ז., כרטיסי אשראי, IBAN, אימיילים וטלפונים מוסתרים אוטומטית בכל
                 כתיבה לבנק האסטרטגיה (<code className="text-xs">knowledge_documents</code>),
@@ -867,13 +867,13 @@ const ApiSettings = () => {
               </span>
             </div>
             <div className="flex items-start gap-2">
-              <Badge variant="outline" className="shrink-0">Audit</Badge>
+              <Badge variant="outline" className="shrink-0">ביקורת</Badge>
               <span className="text-muted-foreground">
                 כל ייצוא או מחיקה של מועמד נרשמים ביומן הביקורת הבלתי-ניתן-לעריכה.
               </span>
             </div>
             <div className="flex items-start gap-2">
-              <Badge variant="outline" className="shrink-0">GDPR Delete</Badge>
+              <Badge variant="outline" className="shrink-0">מחיקת GDPR</Badge>
               <span className="text-muted-foreground">
                 "מחיקה לצמיתות" מוחקת את הליד וכל ההיסטוריה הקשורה (הודעות, צ'אטים,
                 שיחות, פגישות, התראות) ללא אפשרות שחזור.
@@ -1026,7 +1026,7 @@ const ApiSettings = () => {
             </div>
             <div dir="ltr" className="space-y-1.5 font-mono">
               <div>
-                <span className="text-muted-foreground">Method:</span> {homelyDiag.request.method}
+                <span className="text-muted-foreground">שיטה:</span> {homelyDiag.request.method}
               </div>
               <div className="break-all">
                 <span className="text-muted-foreground">URL:</span> {homelyDiag.request.url}
