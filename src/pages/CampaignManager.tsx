@@ -64,19 +64,6 @@ const CampaignManager = () => {
     },
   });
 
-  const { data: surveyInsights } = useQuery({
-    queryKey: ['ads-survey-feedback', user?.id],
-    enabled: !!user?.id,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('survey_insights')
-        .select('id, title, sentiment_by_area, weak_points, top_concerns, swing_voters, message_recommendations, created_at')
-        .eq('user_id', user!.id)
-        .order('created_at', { ascending: false })
-        .limit(5);
-      return data ?? [];
-    },
-  });
 
   const displayCampaigns = useMemo(
     () => (isDemoMode ? [...getDemoCampaigns(demoCandidateId), ...(campaigns ?? [])] : (campaigns ?? [])),
@@ -147,31 +134,6 @@ const CampaignManager = () => {
     });
   }, [isDemoMode, displayCampaigns, demoTick]);
 
-  const pivotAlerts = (surveyInsights ?? []).flatMap((insight: any) => {
-    const weakPoint = Array.isArray(insight.weak_points) ? insight.weak_points[0] : insight.weak_points;
-    const recommendation = Array.isArray(insight.message_recommendations) ? insight.message_recommendations[0] : null;
-    const weakAreas = Array.isArray(insight.sentiment_by_area)
-      ? insight.sentiment_by_area.filter((area: any) => {
-        const sentiment = String(area.sentiment ?? area.label ?? area.status ?? '').toLowerCase();
-        const score = Number(area.score ?? area.sentiment_score ?? area.negative_rate ?? 0);
-        return sentiment.includes('negative') || sentiment.includes('שלילי') || score < 0 || score >= 55;
-      })
-      : [];
-
-    return (weakAreas.length ? weakAreas : [{ area: 'קהל מתלבטים', concern: weakPoint }]).slice(0, 2).map((area: any) => ({
-      id: `${insight.id}-${area.city ?? area.district ?? area.area ?? area.segment ?? 'general'}`,
-      source: insight.title,
-      segment: area.city ?? area.district ?? area.area ?? area.segment ?? 'קהל מתלבטים',
-      topic: area.topic ?? area.concern ?? area.issue ?? weakPoint ?? 'מסר שלא עובד מספיק טוב',
-      pivot: recommendation?.script ?? recommendation?.message ?? `המלצת שינוי כיוון: להחליף את הקריאייטיב ממסר כללי להבטחה מקומית ומעשית עבור ${area.city ?? area.district ?? area.area ?? 'הסגמנט'}.`,
-    }));
-  }).slice(0, 4);
-
-  const demoPivotAlerts = isDemoMode ? [
-    { id: 'demo-pivot-1', source: 'סקר פנימי 04/26', segment: 'מתלבטים - חיפה', topic: 'יוקר המחיה', pivot: 'המלצת שינוי כיוון: להחליף מסר כללי בהבטחה מקומית - הקפאת ארנונה למשפחות צעירות בחיפה.' },
-    { id: 'demo-pivot-2', source: 'סקר פנימי 04/26', segment: 'גילאי 25-34 - מרכז', topic: 'דיור', pivot: 'המלצת שינוי כיוון: לעבור ממסר אידאולוגי להצעה קונקרטית - תוכנית משכנתא מסובסדת לזוגות צעירים.' },
-  ] : [];
-  const allPivotAlerts = [...demoPivotAlerts, ...pivotAlerts];
 
   const generateLink = useMutation({
     mutationFn: async () => {
@@ -200,12 +162,10 @@ const CampaignManager = () => {
       if (blockDemoAction('create-meta-ad-campaign')) throw new Error('demo-blocked');
       if (!user?.id) throw new Error('יש להתחבר כדי ליצור קמפיין');
       if (!metaName.trim()) throw new Error('יש להזין שם קמפיין');
-      const activePivot = pivotAlerts[0];
       const variants = [1, 2, 3].map((n) => ({
         title: `וריאציה ${n}`,
-        primary_text: `${activePivot ? `Pivot לפי סקר: ${activePivot.pivot}` : metaBrief || 'מסר קמפיין ממוקד'} - פנייה קצרה, ברורה ומבוססת נתונים לקהל ${AUDIENCE_LABELS[metaAudience] ?? 'מותאם'}.`,
+        primary_text: `${metaBrief || 'מסר קמפיין ממוקד'}. פנייה קצרה, ברורה ומבוססת נתונים לקהל ${AUDIENCE_LABELS[metaAudience] ?? 'מותאם'}.`,
         headline: n === 1 ? 'מקשיבים. פועלים. מנצחים.' : n === 2 ? 'הקול שלך הופך להשפעה' : 'תוכנית מעשית לשינוי אמיתי',
-        survey_flag: activePivot ? { segment: activePivot.segment, topic: activePivot.topic, source: activePivot.source } : null,
       }));
       const { error } = await supabase.from('meta_ad_campaigns').insert({
         user_id: user.id,
@@ -273,27 +233,6 @@ const CampaignManager = () => {
               <Button className="md:col-span-2" onClick={() => createMetaDraft.mutate()} disabled={createMetaDraft.isPending}>
                 <Sparkles className="h-4 w-4" /> {createMetaDraft.isPending ? 'יוצר...' : 'צור 3 מודעות AI כטיוטה'}
               </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="border-primary/15">
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2"><AlertTriangle className="h-4 w-4 text-warning" /> לולאת משוב מסקרים למודעות</CardTitle>
-              <CardDescription>סגמנטים שמגיבים חלש בסקרים מסומנים אוטומטית כדי להציע שינוי כיוון בקריאייטיב</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {allPivotAlerts.length === 0 ? (
-                <p className="text-sm text-muted-foreground rounded-md border border-border/50 bg-muted/30 p-3">אין כרגע דגלים חריגים מהסקרים האחרונים.</p>
-              ) : allPivotAlerts.map((alert) => (
-                <div key={alert.id} className="rounded-md border border-primary/20 bg-background/70 p-3 space-y-2">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <Badge className="bg-primary text-primary-foreground">דורש שינוי כיוון</Badge>
-                    <span className="text-xs text-muted-foreground">{alert.source}</span>
-                  </div>
-                  <p className="text-sm font-semibold">{alert.segment}: תגובה חלשה סביב {alert.topic}</p>
-                  <p className="text-sm text-muted-foreground flex gap-2"><RefreshCw className="mt-0.5 h-4 w-4 shrink-0 text-primary" /> {alert.pivot}</p>
-                </div>
-              ))}
             </CardContent>
           </Card>
 
