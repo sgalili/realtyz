@@ -21,6 +21,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
 import { appendDisclosure } from "../_shared/compliance.ts";
+import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -540,6 +541,11 @@ Deno.serve(async (req) => {
     return json(result, result.success ? 200 : 502);
   } catch (e) {
     console.error("send-whatsapp error", e);
+    await logIntegrationError({
+      integration: "whatsapp",
+      functionName: "send-whatsapp",
+      errorMessage: e instanceof Error ? e.message : "Internal error",
+    });
     return json({
       success: false,
       provider: "GreenAPI",
