@@ -596,14 +596,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <AppSidebar tutorialHighlightPath={activeTutorialStep?.path} />
         <div className="flex-1 flex h-screen min-w-0 flex-col overflow-hidden">
           <header className="h-16 text-primary-foreground backdrop-blur-md flex items-center px-4 gap-2 shrink-0 sticky top-0 z-30" style={{ backgroundColor: 'hsl(var(--header-bg))' }} dir="rtl">
-            {/* Far left (visual): Realtyz AI brand */}
-            <div className="flex items-center" style={{ marginInlineStart: 'auto', order: 2 }}>
-              {/* spacer to push utilities to RTL-right */}
-            </div>
-
-            {/* In RTL the visual right is the start of the flex row.
-                Place utilities first so they sit on the visual right,
-                then a flex-1 spacer, then the brand on the visual left. */}
+            {/* RTL flex order: utilities sit on the visual right (flex start),
+                a spacer pushes the brand to the visual left (flex end). */}
             <div className="flex items-center gap-1.5">
               <HeaderCrisisAlert />
               <NotificationCenter />
