@@ -251,10 +251,10 @@ export default function DealRoom() {
       });
       if (error) throw error;
       const n = (data as any)?.processed ?? 0;
-      toast.success(`Recomputed ${n} prospect scores`);
+      toast.success(`חושבו מחדש ${n} ציוני מועמד`);
       queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
     } catch (err: any) {
-      toast.error('Could not recompute scores', { description: err?.message });
+      toast.error('לא ניתן לחשב מחדש את הציונים', { description: err?.message });
     } finally {
       setRecomputing(false);
     }
