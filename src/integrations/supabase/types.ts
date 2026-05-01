@@ -19,7 +19,6 @@ export type Database = {
           attempted_target: number | null
           created_at: string
           current_target: number | null
-          election_type: string | null
           id: string
           lead_type: string
           metadata: Json
@@ -32,7 +31,6 @@ export type Database = {
           attempted_target?: number | null
           created_at?: string
           current_target?: number | null
-          election_type?: string | null
           id?: string
           lead_type?: string
           metadata?: Json
@@ -45,7 +43,6 @@ export type Database = {
           attempted_target?: number | null
           created_at?: string
           current_target?: number | null
-          election_type?: string | null
           id?: string
           lead_type?: string
           metadata?: Json
@@ -173,7 +170,7 @@ export type Database = {
           source_citations: Json
           status: string
           target_label: string | null
-          target_voter_id: string | null
+          target_lead_id: string | null
           title: string
           updated_at: string
           user_id: string
@@ -201,7 +198,7 @@ export type Database = {
           source_citations?: Json
           status?: string
           target_label?: string | null
-          target_voter_id?: string | null
+          target_lead_id?: string | null
           title: string
           updated_at?: string
           user_id: string
@@ -229,7 +226,7 @@ export type Database = {
           source_citations?: Json
           status?: string
           target_label?: string | null
-          target_voter_id?: string | null
+          target_lead_id?: string | null
           title?: string
           updated_at?: string
           user_id?: string
@@ -655,6 +652,7 @@ export type Database = {
           created_at: string
           failure_reason: string | null
           id: string
+          lead_id: string | null
           message_body: string | null
           provider_message_id: string | null
           provider_response: Json
@@ -665,7 +663,6 @@ export type Database = {
           source_account: string | null
           status: string
           user_id: string
-          voter_id: string | null
         }
         Insert: {
           campaign_name: string
@@ -674,6 +671,7 @@ export type Database = {
           created_at?: string
           failure_reason?: string | null
           id?: string
+          lead_id?: string | null
           message_body?: string | null
           provider_message_id?: string | null
           provider_response?: Json
@@ -684,7 +682,6 @@ export type Database = {
           source_account?: string | null
           status?: string
           user_id: string
-          voter_id?: string | null
         }
         Update: {
           campaign_name?: string
@@ -693,6 +690,7 @@ export type Database = {
           created_at?: string
           failure_reason?: string | null
           id?: string
+          lead_id?: string | null
           message_body?: string | null
           provider_message_id?: string | null
           provider_response?: Json
@@ -703,7 +701,6 @@ export type Database = {
           source_account?: string | null
           status?: string
           user_id?: string
-          voter_id?: string | null
         }
         Relationships: []
       }
@@ -1609,67 +1606,46 @@ export type Database = {
       listings: {
         Row: {
           asking_price: number
-          candidate_name: string
           city: string | null
           created_at: string
           description: string
-          election_type: string
           embedding: string | null
           features: Json
-          headline: string
           id: string
           is_published: boolean
-          mandate_goal: number
           neighborhood: string | null
-          pillars: Json
           property_title: string
           slug: string
-          supporter_count: number
-          thesis: string
           updated_at: string
           user_id: string
         }
         Insert: {
           asking_price?: number
-          candidate_name: string
           city?: string | null
           created_at?: string
           description: string
-          election_type?: string
           embedding?: string | null
           features?: Json
-          headline: string
           id?: string
           is_published?: boolean
-          mandate_goal?: number
           neighborhood?: string | null
-          pillars?: Json
           property_title: string
           slug: string
-          supporter_count?: number
-          thesis: string
           updated_at?: string
           user_id: string
         }
         Update: {
           asking_price?: number
-          candidate_name?: string
           city?: string | null
           created_at?: string
           description?: string
-          election_type?: string
           embedding?: string | null
           features?: Json
-          headline?: string
           id?: string
           is_published?: boolean
-          mandate_goal?: number
           neighborhood?: string | null
-          pillars?: Json
           property_title?: string
           slug?: string
-          supporter_count?: number
-          thesis?: string
           updated_at?: string
           user_id?: string
         }
@@ -1955,54 +1931,42 @@ export type Database = {
       }
       onboarding_state: {
         Row: {
-          candidate_or_party: string | null
           cold_conversion_rate: number
           cold_list_count: number | null
           completed_at: string | null
           created_at: string
-          election_type: string | null
           hot_conversion_rate: number
           hot_list_count: number | null
           id: string
           initial_message: string | null
-          mandate_target: number | null
-          months_to_election: number | null
           step: number
           tone: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
-          candidate_or_party?: string | null
           cold_conversion_rate?: number
           cold_list_count?: number | null
           completed_at?: string | null
           created_at?: string
-          election_type?: string | null
           hot_conversion_rate?: number
           hot_list_count?: number | null
           id?: string
           initial_message?: string | null
-          mandate_target?: number | null
-          months_to_election?: number | null
           step?: number
           tone?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
-          candidate_or_party?: string | null
           cold_conversion_rate?: number
           cold_list_count?: number | null
           completed_at?: string | null
           created_at?: string
-          election_type?: string | null
           hot_conversion_rate?: number
           hot_list_count?: number | null
           id?: string
           initial_message?: string | null
-          mandate_target?: number | null
-          months_to_election?: number | null
           step?: number
           tone?: string | null
           updated_at?: string
@@ -2432,54 +2396,6 @@ export type Database = {
         }
         Relationships: []
       }
-      survey_insights: {
-        Row: {
-          created_at: string
-          id: string
-          message_recommendations: Json
-          row_count: number
-          sentiment_by_area: Json
-          source_filename: string | null
-          summary: string
-          swing_voters: Json
-          title: string
-          top_concerns: Json
-          updated_at: string
-          user_id: string
-          weak_points: Json
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          message_recommendations?: Json
-          row_count?: number
-          sentiment_by_area?: Json
-          source_filename?: string | null
-          summary: string
-          swing_voters?: Json
-          title: string
-          top_concerns?: Json
-          updated_at?: string
-          user_id: string
-          weak_points?: Json
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          message_recommendations?: Json
-          row_count?: number
-          sentiment_by_area?: Json
-          source_filename?: string | null
-          summary?: string
-          swing_voters?: Json
-          title?: string
-          top_concerns?: Json
-          updated_at?: string
-          user_id?: string
-          weak_points?: Json
-        }
-        Relationships: []
-      }
       system_health_settings: {
         Row: {
           alert_cooldown_minutes: number
@@ -2613,6 +2529,7 @@ export type Database = {
           created_at: string
           failure_reason: string | null
           id: string
+          lead_id: string | null
           message_body: string
           provider_message_id: string | null
           recipient_name: string | null
@@ -2621,12 +2538,12 @@ export type Database = {
           sent_at: string | null
           status: string
           user_id: string
-          voter_id: string | null
         }
         Insert: {
           created_at?: string
           failure_reason?: string | null
           id?: string
+          lead_id?: string | null
           message_body: string
           provider_message_id?: string | null
           recipient_name?: string | null
@@ -2635,12 +2552,12 @@ export type Database = {
           sent_at?: string | null
           status?: string
           user_id: string
-          voter_id?: string | null
         }
         Update: {
           created_at?: string
           failure_reason?: string | null
           id?: string
+          lead_id?: string | null
           message_body?: string
           provider_message_id?: string | null
           recipient_name?: string | null
@@ -2649,7 +2566,6 @@ export type Database = {
           sent_at?: string | null
           status?: string
           user_id?: string
-          voter_id?: string | null
         }
         Relationships: []
       }
@@ -2659,30 +2575,30 @@ export type Database = {
           ai_response: string | null
           created_at: string
           id: string
+          lead_id: string | null
           message_body: string
           sender_phone: string
           user_id: string
-          voter_id: string | null
         }
         Insert: {
           ai_responded_at?: string | null
           ai_response?: string | null
           created_at?: string
           id?: string
+          lead_id?: string | null
           message_body: string
           sender_phone: string
           user_id: string
-          voter_id?: string | null
         }
         Update: {
           ai_responded_at?: string | null
           ai_response?: string | null
           created_at?: string
           id?: string
+          lead_id?: string | null
           message_body?: string
           sender_phone?: string
           user_id?: string
-          voter_id?: string | null
         }
         Relationships: []
       }
