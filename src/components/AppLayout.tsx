@@ -596,8 +596,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <AppSidebar tutorialHighlightPath={activeTutorialStep?.path} />
         <div className="flex-1 flex h-screen min-w-0 flex-col overflow-hidden">
           <header className="h-16 text-primary-foreground backdrop-blur-md flex items-center px-4 gap-2 shrink-0 sticky top-0 z-30" style={{ backgroundColor: 'hsl(var(--header-bg))' }} dir="rtl">
-            {/* RTL flex order: utilities sit on the visual right (flex start),
-                a spacer pushes the brand to the visual left (flex end). */}
+            {/* In RTL the visual right is the start of the flex row.
+                Brand on visual far-left, system icons on visual far-right. */}
+            <div className="flex items-center">
+              <BrandMark to="/" />
+            </div>
+
+            <div className="flex-1" />
+
             <div className="flex items-center gap-1.5">
               <HeaderCrisisAlert />
               <NotificationCenter />
@@ -613,17 +619,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
               </Button>
               <TrialBadge />
             </div>
-
-            <div className="flex-1" />
-
-            <div className="flex items-center">
-              <BrandMark to="/" />
-            </div>
           </header>
-          <PageToolbar />
+          <PageHero />
           <main className="realtyz-main-surface flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6 pt-0">
             {children}
-            <HeroWaveMount />
             <MandateSelectorMount />
             <DemoSidebarPeek />
           </main>
