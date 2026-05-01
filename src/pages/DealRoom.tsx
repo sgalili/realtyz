@@ -40,6 +40,7 @@ import {
   PropertySnippet,
   type PropertyResult,
 } from '@/components/dealroom/PropertyMatchmakerDialog';
+import { AutomationActivityFeed } from '@/components/dealroom/AutomationActivityFeed';
 
 type LeadStage = 'new_prospect' | 'listing_outreach' | 'negotiation' | 'closed';
 
