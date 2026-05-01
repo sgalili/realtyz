@@ -70,7 +70,7 @@ type NavItem = {
   iconColor: string;
   aliases?: string[];
   /** required role to see the item; undefined = visible to all authenticated */
-  requires?: 'admin' | 'super_admin';
+  requires?: 'admin' | 'super_admin' | 'managing_broker';
 };
 
 type NavGroup = {
