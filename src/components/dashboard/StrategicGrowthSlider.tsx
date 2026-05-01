@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Minus, Plus, TrendingUp, Users, Mic, MessageSquare } from 'lucide-react';
+import { Minus, Plus, TrendingUp, Users, Mic, MessageSquare, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useMandate } from '@/hooks/useMandate';
 import { useDemoMode } from '@/hooks/useDemoMode';
@@ -32,6 +33,14 @@ const NATIONAL_VOTES_PER_MANDATE = 38_000; // mirrors VOTES_PER_MANDATE
 const MESSAGES_PER_MANDATE_NATIONAL = 50_000; // WhatsApp/SMS monthly quota per transaction
 const MESSAGES_PER_SEAT_PRIMARIES = 3_500;   // WhatsApp/SMS monthly quota per seat
 
+// Real-estate conversion benchmark: how many active prospects in the pipeline
+// are typically required to close one deal. Used for the "Pipeline Health"
+// indicator on the dashboard target card.
+const ACTIVE_PROSPECTS_PER_DEAL = 70;
+// Lead stages that are considered closed/lost — excluded from the active
+// pipeline count.
+const CLOSED_STAGES = ['closed', 'won', 'lost', 'converted'];
+
 function formatNumber(n: number): string {
   return new Intl.NumberFormat('he-IL').format(Math.max(0, Math.round(n)));
 }
@@ -59,6 +68,24 @@ export function StrategicGrowthSlider() {
         .maybeSingle();
       return Math.max(min, data?.mandate_target ?? selectedMandates);
     },
+  });
+
+
+  // Live count of "active prospects" — leads currently in the pipeline (not
+  // closed/won/lost). In demo mode we skip the query and synthesise a number
+  // from the selected target so the gauge feels alive.
+  const { data: activeProspectsLive = 0 } = useQuery({
+    queryKey: ['active-prospects-count', user?.id],
+    enabled: !!user?.id && !isDemoMode,
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('leads')
+        .select('id', { count: 'exact', head: true })
+        .not('lead_stage', 'in', `(${CLOSED_STAGES.join(',')})`);
+      return count ?? 0;
+    },
+    staleTime: 60_000,
+    refetchInterval: 60_000,
   });
 
   const currentPlan = planTarget ?? selectedMandates;
@@ -252,12 +279,50 @@ export function StrategicGrowthSlider() {
               </button>
             </div>
 
-            <p
-              key={`req-${projected}`}
-              className="animate-fade-in text-[13px] font-semibold tabular-nums text-primary/70"
-            >
-              דרושים ~<span className="font-bold text-primary">{formatNumber(reachFor(projected))}</span> {audienceLabel}
-            </p>
+            {(() => {
+              // Pipeline Health: how many active prospects are needed for the
+              // chosen target, vs how many are actually in the pipeline now.
+              const prospectsNeeded = Math.max(1, projected * ACTIVE_PROSPECTS_PER_DEAL);
+              const activeProspects = isDemoMode
+                ? Math.round(prospectsNeeded * 0.42) // lively demo fill
+                : activeProspectsLive;
+              const pct = Math.min(100, Math.round((activeProspects / prospectsNeeded) * 100));
+              const encouragement =
+                pct >= 100
+                  ? 'הפייפליין שלך מוכן ליעד 🎯'
+                  : pct >= 66
+                    ? 'כמעט שם — המשך לטפח פרוספקטים'
+                    : pct >= 33
+                      ? 'בדרך הנכונה — הוסף עוד פרוספקטים איכותיים'
+                      : 'בוא נמלא את הפייפליין יחד';
+              return (
+                <div
+                  key={`pipeline-${projected}`}
+                  className="mt-1 flex w-full max-w-[420px] animate-fade-in flex-col items-center gap-1.5"
+                >
+                  <div className="flex items-center gap-1.5 text-[12px] font-medium text-primary/75">
+                    <Activity className="h-3 w-3" />
+                    <span>בריאות הפייפליין</span>
+                    <span className="text-primary/40">·</span>
+                    <span className="tabular-nums">
+                      עסקה ≈ <span className="font-bold text-primary">{ACTIVE_PROSPECTS_PER_DEAL}</span> פרוספקטים פעילים
+                    </span>
+                  </div>
+                  <Progress
+                    value={pct}
+                    className="h-1.5 w-full transition-all duration-500"
+                    aria-label="התקדמות פייפליין"
+                  />
+                  <p className="text-[11px] tabular-nums text-muted-foreground">
+                    <span className="font-semibold text-primary">{formatNumber(activeProspects)}</span>
+                    {' / '}
+                    <span>{formatNumber(prospectsNeeded)}</span> פרוספקטים בפייפליין
+                    <span className="text-primary/40"> · </span>
+                    <span className="text-primary/80">{encouragement}</span>
+                  </p>
+                </div>
+              );
+            })()}
           </div>
         </div>
         {/* === /SELECTOR PANEL === */}
