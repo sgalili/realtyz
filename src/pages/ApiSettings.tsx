@@ -30,6 +30,7 @@ import NotificationPreferencesPanel from '@/components/NotificationPreferencesPa
 import { AgentPersonaPanel } from '@/components/AgentPersonaPanel';
 import { VoiceAgentPanel } from '@/components/calendar/VoiceAgentPanel';
 import { UsageMeterPanel } from '@/components/UsageMeterPanel';
+import { ServiceAreasPanel } from '@/components/settings/ServiceAreasPanel';
 
 interface ApiConfig {
   id: string;
@@ -937,6 +938,15 @@ const ApiSettings = () => {
           <p className="text-xs text-muted-foreground">הגדר/י טון, ביו ופילוסופיית מכירה — ה-AI ינסח כמוך בכל הודעה.</p>
         </div>
         <AgentPersonaPanel />
+      </div>
+
+      {/* ── Section A.4a: Area of Expertise (Hyper-local) ── */}
+      <div className="space-y-2">
+        <div>
+          <h2 className="text-sm font-bold tracking-tight">אזור התמחות · Hyper-Local Expert</h2>
+          <p className="text-xs text-muted-foreground">הגדר/י ערים ושכונות שאת/ה מתמחה בהן — ה-AI, הדשבורד והעסקאות יותאמו לאזור שלך.</p>
+        </div>
+        <ServiceAreasPanel />
       </div>
 
       {/* ── Section A.4b: AI Voice Agent ── */}
