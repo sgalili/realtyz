@@ -9,6 +9,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { DemoCandidateId } from '@/lib/demoData';
+import { toast as sonnerToast } from 'sonner';
 
 const STORAGE_KEY = 'realtyz-demo-mode';
 const CANDIDATE_KEY = 'realtyz-demo-candidate';
