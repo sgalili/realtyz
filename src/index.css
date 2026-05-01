@@ -1075,12 +1075,16 @@
     animation: realtyz-wave-morph 14s linear infinite; will-change: transform, clip-path; backface-visibility: hidden;
   }
 
-  /* Legacy per-page hero stripe (the navy <main> > div > div:first-child block
-     that wrapped the page title) is REPLACED by the global <PageHero>.
-     Hide it so the page title isn't duplicated below the wave. Pages that
-     bring their own layout opt out via [data-no-hero-wave]. */
-  main > div > div:first-child:has(> h1):not([data-no-hero-wave] *):not([data-no-hero-wave]),
-  main > div > div:first-child:has(> div > h1):not([data-no-hero-wave] *):not([data-no-hero-wave]) {
+  /* Legacy per-page hero stripe (the navy block that wrapped the page title
+     and tagline) is REPLACED by the global <PageHero>. Hide any first-child
+     wrapper inside <main> that contains an <h1>, so per-page titles +
+     slogans aren't duplicated under the global hero. Pages that bring their
+     own layout opt out via [data-no-hero-wave]. */
+  main > div > :first-child:is(div, header, section):has(h1):not([data-no-hero-wave] *):not([data-no-hero-wave]) {
+    display: none !important;
+  }
+  /* Also handle pages where <main> contains the wrapper directly. */
+  main > :first-child:is(div, header, section):has(> h1, > div > h1):not([data-no-hero-wave] *):not([data-no-hero-wave]) {
     display: none !important;
   }
 
