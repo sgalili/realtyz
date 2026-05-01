@@ -1275,6 +1275,60 @@ export type Database = {
         }
         Relationships: []
       }
+      integration_alert_state: {
+        Row: {
+          integration: string
+          is_alerting: boolean
+          last_alerted_at: string | null
+          last_recovered_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          integration: string
+          is_alerting?: boolean
+          last_alerted_at?: string | null
+          last_recovered_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          integration?: string
+          is_alerting?: boolean
+          last_alerted_at?: string | null
+          last_recovered_at?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      integration_error_logs: {
+        Row: {
+          context: Json | null
+          created_at: string
+          error_code: string | null
+          error_message: string | null
+          function_name: string | null
+          id: string
+          integration: string
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          function_name?: string | null
+          id?: string
+          integration: string
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          error_code?: string | null
+          error_message?: string | null
+          function_name?: string | null
+          id?: string
+          integration?: string
+        }
+        Relationships: []
+      }
       interaction_activity_log: {
         Row: {
           action_type: string
@@ -2411,6 +2465,30 @@ export type Database = {
         }
         Relationships: []
       }
+      system_health_settings: {
+        Row: {
+          alert_cooldown_minutes: number
+          alert_email: string | null
+          alert_whatsapp_phone: string | null
+          id: number
+          monitored_integrations: string[]
+        }
+        Insert: {
+          alert_cooldown_minutes?: number
+          alert_email?: string | null
+          alert_whatsapp_phone?: string | null
+          id?: number
+          monitored_integrations?: string[]
+        }
+        Update: {
+          alert_cooldown_minutes?: number
+          alert_email?: string | null
+          alert_whatsapp_phone?: string | null
+          id?: number
+          monitored_integrations?: string[]
+        }
+        Relationships: []
+      }
       team_invitations: {
         Row: {
           accepted_at: string | null
@@ -2974,6 +3052,15 @@ export type Database = {
       }
       execute_readonly_query: { Args: { query_text: string }; Returns: Json }
       gdpr_delete_lead: { Args: { _lead_id: string }; Returns: Json }
+      get_system_status: {
+        Args: never
+        Returns: {
+          integration: string
+          last_failure_at: string
+          recent_failures: number
+          status: string
+        }[]
+      }
       get_user_balance: {
         Args: { _user_id: string }
         Returns: {
