@@ -1075,12 +1075,15 @@
     animation: realtyz-wave-morph 14s linear infinite; will-change: transform, clip-path; backface-visibility: hidden;
   }
 
-  /* Legacy per-page hero stripe (the navy <main> > div > div:first-child block
-     that wrapped the page title) is REPLACED by the global <PageHero>.
-     Hide it so the page title isn't duplicated below the wave. Pages that
-     bring their own layout opt out via [data-no-hero-wave]. */
-  main > div > div:first-child:has(> h1):not([data-no-hero-wave] *):not([data-no-hero-wave]),
-  main > div > div:first-child:has(> div > h1):not([data-no-hero-wave] *):not([data-no-hero-wave]) {
+  /* Legacy per-page page titles + slogans are REPLACED by the global
+     <PageHero>. Surgically hide the first <h1> inside the main content area
+     and its immediately-following descriptor <p> (the slogan), without
+     hiding sibling action buttons that may live in the same header row.
+     Pages that bring their own layout opt out via [data-no-hero-wave]. */
+  main h1:not([data-no-hero-wave] *):not([data-no-hero-wave] h1) {
+    display: none !important;
+  }
+  main h1:not([data-no-hero-wave] *) + p {
     display: none !important;
   }
 
