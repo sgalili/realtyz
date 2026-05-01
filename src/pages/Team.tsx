@@ -25,18 +25,24 @@ import {
 import { UserPlus, Shield, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
-type TeamRole = Extract<AppRole, 'agent' | 'assistant' | 'junior_agent'>;
+type TeamRole = Extract<AppRole, 'managing_broker' | 'lead_agent' | 'assistant' | 'junior_agent'>;
 
 const ROLE_LABEL: Record<TeamRole, string> = {
-  agent: 'Agent',
+  managing_broker: 'Managing Broker',
+  lead_agent: 'Lead Agent',
   assistant: 'Assistant',
   junior_agent: 'Junior Agent',
 };
 
 const ROLE_DESCRIPTION: Record<TeamRole, string> = {
-  agent: 'Full authority — can approve contracts and close deals.',
-  assistant: 'Supports the agent — can manage tasks and data ingestion. Cannot close deals.',
-  junior_agent: 'Learning role — can manage tasks and data ingestion. Cannot close deals.',
+  managing_broker:
+    'Full authority — settings, billing, team management, and contracts. The owner of the agency.',
+  lead_agent:
+    'Owns deals end-to-end — Deal Room, Strategy Bank, Listing Outreach, and the Closing Room. No billing or team-billing access.',
+  assistant:
+    'Supports the agents — Strategy Bank data entry and Deal Room task management. Cannot delete prospects or open the Closing Room.',
+  junior_agent:
+    'Learning role — restricted to their own assigned prospects in the Deal Room.',
 };
 
 type Invitation = {
