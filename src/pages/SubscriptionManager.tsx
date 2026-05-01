@@ -499,10 +499,10 @@ function CalculatorBody() {
           className="relative z-10 mx-auto w-full max-w-[1400px] px-4 pb-14 pt-10 text-center sm:px-6 sm:pb-16 sm:pt-12"
         >
           <h1 className="text-3xl font-black leading-tight text-primary-foreground sm:text-4xl">
-            ניהול מנוע הצמיחה של המטה
+            חבילת Premium Agent — ניהול עסקי הסוכנות
           </h1>
           <p className="mt-2 text-sm text-primary-foreground/80 sm:text-base">
-            החבילה שלך מותאמת אישית לפי יעד ה{unitPlural}
+            החבילה שלך מותאמת אישית לפי יעד עסקאות סגורות בשנה
           </p>
 
           {/* Election toggle */}
@@ -1038,7 +1038,7 @@ function CalculatorBody() {
             </button>
 
             <p className="mt-3 text-center text-[11px] text-muted-foreground">
-              השינויים מסונכרנים אוטומטית עם בורר ה{unitPlural} בכל מסכי המערכת
+              השינויים מסונכרנים אוטומטית עם בורר יעד העסקאות בכל מסכי המערכת
             </p>
           </motion.section>
         </div>
@@ -1093,8 +1093,8 @@ function CalculatorBody() {
         </section>
 
         <p className="mx-auto mt-8 max-w-3xl text-center text-[11px] leading-relaxed text-muted-foreground">
-          החישוב מבוסס על תמהיל רשימות: {warmPct}% המרה לקהל חם ו-{coldPct}% לקהל קר בעבודה אינטנסיבית של Kalpiz AI.
-          המספרים המוצגים הם הערכה בלבד. אין באמור משום הבטחה לתוצאה אלקטורלית. המחיר אינו כולל מע״מ ועלויות מדיה ישירות ל-Meta.
+          החישוב מבוסס על תמהיל רשימות פרוספקטים: {warmPct}% המרה לפרוספקטים חמים ו-{coldPct}% לפרוספקטים קרים בעבודה אינטנסיבית עם Realtyz AI.
+          המספרים המוצגים הם הערכה מקצועית בלבד ואינם מהווים התחייבות לתוצאת מכירות. המחיר אינו כולל מע״מ ועלויות מדיה ישירות ל-Meta.
         </p>
       </div>
 
