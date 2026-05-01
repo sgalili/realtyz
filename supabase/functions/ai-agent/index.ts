@@ -179,9 +179,63 @@ serve(async (req) => {
       console.warn("kb-query failed, continuing without KB:", e);
     }
 
+    // Compliance Guardrails: load the user's verified listings (Homely-synced via the
+    // `listings` table) and inject them into the system prompt so the AI can only
+    // reference real prices/titles. We forward the auth header so RLS scopes results.
+    let listingFacts: ListingFact[] = [];
+    try {
+      const authHeader = req.headers.get("Authorization") ?? "";
+      if (authHeader.startsWith("Bearer ")) {
+        const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+          global: { headers: { Authorization: authHeader } },
+        });
+        const { data: lst } = await userClient
+          .from("listings")
+          .select("id, property_title, asking_price, slug")
+          .eq("is_published", true)
+          .limit(50);
+        listingFacts = (lst || []) as ListingFact[];
+      }
+    } catch (e) {
+      console.warn("listing fact-load failed:", e);
+    }
+
+    const compliance = COMPLIANCE_PROMPT.replace(
+      "{{LISTING_FACTS}}",
+      renderListingFacts(listingFacts),
+    );
+
     const systemPrompt = SCHEMA_CONTEXT
       .replace("{{CAMPAIGN_CONTEXT}}", campaignContext)
-      .replace("{{KB_CONTEXT}}", kbContext);
+      .replace("{{KB_CONTEXT}}", kbContext) + "\n\n" + compliance;
+
+    // Escalation Trigger: classify the most recent prospect/user message.
+    // When a high-risk topic is detected, fire-and-forget the alert function
+    // so the human Agent gets a WhatsApp ping while we still draft a safe reply.
+    const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user")?.content;
+    let escalation: any = null;
+    if (lastUserMsg) {
+      const hit = classifyEscalation(String(lastUserMsg));
+      if (hit) {
+        escalation = hit;
+        const authHeader = req.headers.get("Authorization") ?? "";
+        if (authHeader.startsWith("Bearer ")) {
+          // Fire & forget — we don't await so it doesn't block the reply.
+          fetch(`${supabaseUrl}/functions/v1/escalation-alert`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: authHeader },
+            body: JSON.stringify({
+              prospect_message: String(lastUserMsg).slice(0, 4000),
+              category: hit.category,
+              matched_keywords: hit.matched,
+              severity: hit.severity,
+              channel: "deal_room",
+            }),
+          }).catch((e) => console.warn("escalation-alert dispatch failed:", e));
+        }
+      }
+    }
+
 
     // Step 1: Ask AI to generate SQL or text response
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
