@@ -131,6 +131,7 @@ export const OAUTH_AUTHORIZE_URLS: Record<string, string> = {
 export const SHARED_OAUTH_PLATFORM_MAP: Partial<Record<string, 'google' | 'linkedin' | 'meta'>> = {
   gmail: 'google',
   google_drive: 'google',
+  google_calendar: 'google',
   youtube: 'google',
   linkedin: 'linkedin',
   facebook: 'meta',
