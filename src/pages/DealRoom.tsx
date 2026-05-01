@@ -32,6 +32,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ListingOutreachDialog } from '@/components/dealroom/ListingOutreachDialog';
+import { ActionItemsPanel } from '@/components/dealroom/ActionItemsPanel';
 
 type LeadStage = 'new_prospect' | 'listing_outreach' | 'negotiation' | 'closed';
 
@@ -116,6 +117,9 @@ export default function DealRoom() {
   // Human-in-the-loop draft lifecycle: review (read-only AI draft) → editing → sending → sent
   const [draftMode, setDraftMode] = useState<'review' | 'editing'>('review');
   const [sending, setSending] = useState(false);
+  // When the Smart Reply sheet was opened from an Action Item, we keep the suggestion id
+  // so we can flip it to `used` after Approve & Send and badge the sheet appropriately.
+  const [activeSuggestionId, setActiveSuggestionId] = useState<string | null>(null);
 
   const { data: leads, isLoading } = useQuery({
     queryKey: ['deal-room-prospects'],
