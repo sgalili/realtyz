@@ -481,6 +481,68 @@ export type Database = {
         }
         Relationships: []
       }
+      booking_tokens: {
+        Row: {
+          created_at: string
+          duration_minutes: number
+          expires_at: string
+          id: string
+          lead_id: string | null
+          meeting_id: string | null
+          proposed_slots: Json
+          prospect_email: string | null
+          prospect_name: string | null
+          prospect_phone: string | null
+          selected_slot: string | null
+          status: string
+          token: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          duration_minutes?: number
+          expires_at?: string
+          id?: string
+          lead_id?: string | null
+          meeting_id?: string | null
+          proposed_slots?: Json
+          prospect_email?: string | null
+          prospect_name?: string | null
+          prospect_phone?: string | null
+          selected_slot?: string | null
+          status?: string
+          token: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          duration_minutes?: number
+          expires_at?: string
+          id?: string
+          lead_id?: string | null
+          meeting_id?: string | null
+          proposed_slots?: Json
+          prospect_email?: string | null
+          prospect_name?: string | null
+          prospect_phone?: string | null
+          selected_slot?: string | null
+          status?: string
+          token?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "booking_tokens_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "meetings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       budget_limits: {
         Row: {
           created_at: string
@@ -1279,6 +1341,72 @@ export type Database = {
           slug?: string
           supporter_count?: number
           thesis?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      meetings: {
+        Row: {
+          conference_link: string | null
+          created_at: string
+          description: string | null
+          ends_at: string
+          google_calendar_event_id: string | null
+          id: string
+          lead_id: string | null
+          location: string | null
+          metadata: Json
+          prospect_email: string | null
+          prospect_name: string | null
+          prospect_phone: string | null
+          reminder_1h_sent_at: string | null
+          starts_at: string
+          status: string
+          timezone: string
+          title: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          conference_link?: string | null
+          created_at?: string
+          description?: string | null
+          ends_at: string
+          google_calendar_event_id?: string | null
+          id?: string
+          lead_id?: string | null
+          location?: string | null
+          metadata?: Json
+          prospect_email?: string | null
+          prospect_name?: string | null
+          prospect_phone?: string | null
+          reminder_1h_sent_at?: string | null
+          starts_at: string
+          status?: string
+          timezone?: string
+          title: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          conference_link?: string | null
+          created_at?: string
+          description?: string | null
+          ends_at?: string
+          google_calendar_event_id?: string | null
+          id?: string
+          lead_id?: string | null
+          location?: string | null
+          metadata?: Json
+          prospect_email?: string | null
+          prospect_name?: string | null
+          prospect_phone?: string | null
+          reminder_1h_sent_at?: string | null
+          starts_at?: string
+          status?: string
+          timezone?: string
+          title?: string
           updated_at?: string
           user_id?: string
         }
