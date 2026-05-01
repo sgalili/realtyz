@@ -221,13 +221,6 @@ const buildInterestScores = (index: number) => {
   return scores;
 };
 
-const buildInterestScores = (index: number) => {
-  const main = demoTopics[index % demoTopics.length].key;
-  const scores = { security: 28 + ((index * 7) % 45), economy: 24 + ((index * 11) % 48), judicial: 18 + ((index * 13) % 42), social: 20 + ((index * 17) % 44), governance: 22 + ((index * 19) % 46) } as Record<string, number>;
-  scores[main] = 72 + ((index * 5) % 24);
-  return scores;
-};
-
 function generateDemoThread(name: string, voterId: string, index: number) {
   const conversation = index < 5
     ? deepConversations[index]
