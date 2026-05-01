@@ -24,7 +24,7 @@ type ApprovalItem = {
   status: string;
   confidence_score: number;
   low_confidence_reason: string | null;
-  target_lead_id: string | null;
+  target_lead_id?: string | null;
   target_label: string | null;
   source_citations: Array<{ title?: string; url?: string }> | null;
   live_post_url: string | null;
