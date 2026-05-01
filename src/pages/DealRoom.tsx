@@ -184,6 +184,7 @@ export default function DealRoom() {
       new_prospect: [],
       listing_outreach: [],
       negotiation: [],
+      awaiting_signature: [],
       closed: [],
     };
     (leads || []).forEach((l) => {
