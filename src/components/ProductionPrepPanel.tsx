@@ -158,7 +158,7 @@ export function ProductionPrepPanel() {
         <CardHeader className="pb-3">
           <CardTitle className="text-base flex items-center gap-2">
             <Sparkles className="h-4 w-4 text-primary" />
-            סביבת הדגמה (Udi-Bot Demo Data)
+            סביבת הדגמה · Realtyz Demo Mode
           </CardTitle>
           <CardDescription className="text-xs">
             טען נתוני דמו לסיורי מכירה / הדגמה, או נקה אותם כדי להתחיל בסביבה ריקה לפרודקשן.
@@ -167,7 +167,7 @@ export function ProductionPrepPanel() {
         <CardContent className="flex flex-wrap gap-2">
           <Button onClick={seed} disabled={seedBusy} size="sm">
             {seedBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin ml-1.5" /> : <Database className="h-3.5 w-3.5 ml-1.5" />}
-            טען נתוני דמו
+            Load Realtyz Demo Mode
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
