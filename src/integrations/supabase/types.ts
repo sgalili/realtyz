@@ -1222,6 +1222,10 @@ export type Database = {
           messenger_id: string | null
           phone_number: string
           preferences: Json
+          previous_priority_score: number
+          priority_score: number
+          priority_score_components: Json
+          priority_score_updated_at: string | null
           profile_picture_url: string | null
           sentiment: string | null
           status: string | null
@@ -1249,6 +1253,10 @@ export type Database = {
           messenger_id?: string | null
           phone_number: string
           preferences?: Json
+          previous_priority_score?: number
+          priority_score?: number
+          priority_score_components?: Json
+          priority_score_updated_at?: string | null
           profile_picture_url?: string | null
           sentiment?: string | null
           status?: string | null
@@ -1276,6 +1284,10 @@ export type Database = {
           messenger_id?: string | null
           phone_number?: string
           preferences?: Json
+          previous_priority_score?: number
+          priority_score?: number
+          priority_score_components?: Json
+          priority_score_updated_at?: string | null
           profile_picture_url?: string | null
           sentiment?: string | null
           status?: string | null
