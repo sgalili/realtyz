@@ -1372,6 +1372,7 @@ export type Database = {
       leads: {
         Row: {
           ai_autopilot: boolean | null
+          assigned_to: string | null
           city: string | null
           created_at: string | null
           email: string | null
@@ -1403,6 +1404,7 @@ export type Database = {
         }
         Insert: {
           ai_autopilot?: boolean | null
+          assigned_to?: string | null
           city?: string | null
           created_at?: string | null
           email?: string | null
@@ -1434,6 +1436,7 @@ export type Database = {
         }
         Update: {
           ai_autopilot?: boolean | null
+          assigned_to?: string | null
           city?: string | null
           created_at?: string | null
           email?: string | null
@@ -2768,7 +2771,9 @@ export type Database = {
         Returns: number
       }
       can_close_deal: { Args: { _user_id: string }; Returns: boolean }
+      can_delete_prospects: { Args: { _user_id: string }; Returns: boolean }
       can_manage_data: { Args: { _user_id: string }; Returns: boolean }
+      can_use_closing_room: { Args: { _user_id: string }; Returns: boolean }
       claim_autopilot_jobs: {
         Args: { p_limit?: number; p_worker?: string }
         Returns: {
@@ -2828,6 +2833,8 @@ export type Database = {
         Returns: boolean
       }
       is_admin_or_above: { Args: { _uid: string }; Returns: boolean }
+      is_broker_or_admin: { Args: { _user_id: string }; Returns: boolean }
+      is_junior_agent: { Args: { _user_id: string }; Returns: boolean }
       is_on_trial_plan: { Args: { _user_id: string }; Returns: boolean }
       is_team_member: { Args: { _user_id: string }; Returns: boolean }
       is_trial_active: { Args: { _user_id: string }; Returns: boolean }
