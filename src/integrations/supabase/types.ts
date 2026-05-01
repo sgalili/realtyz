@@ -2548,6 +2548,39 @@ export type Database = {
         }
         Relationships: []
       }
+      usage_logs: {
+        Row: {
+          cost: number
+          created_at: string
+          id: string
+          is_demo: boolean
+          metadata: Json
+          quantity: number
+          service_type: string
+          user_id: string
+        }
+        Insert: {
+          cost?: number
+          created_at?: string
+          id?: string
+          is_demo?: boolean
+          metadata?: Json
+          quantity?: number
+          service_type: string
+          user_id: string
+        }
+        Update: {
+          cost?: number
+          created_at?: string
+          id?: string
+          is_demo?: boolean
+          metadata?: Json
+          quantity?: number
+          service_type?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       user_api_keys: {
         Row: {
           created_at: string
@@ -2759,7 +2792,18 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      usage_monthly_summary: {
+        Row: {
+          event_count: number | null
+          is_demo: boolean | null
+          month: string | null
+          service_type: string | null
+          total_cost: number | null
+          total_quantity: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       bulk_update_leads: {
