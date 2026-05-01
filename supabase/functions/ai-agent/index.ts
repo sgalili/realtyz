@@ -7,7 +7,7 @@ import {
   renderListingFacts,
   type ListingFact,
 } from "../_shared/guardrails.ts";
-import { loadAgentPersona, renderPersonaPrompt, renderDealTypeBlock, type DealType } from "../_shared/persona.ts";
+import { loadAgentPersona, renderPersonaPrompt, renderDealTypeBlock, renderStageHatBlock, type DealType } from "../_shared/persona.ts";
 import { maskMessages } from "../_shared/pii.ts";
 
 const corsHeaders = {
@@ -232,11 +232,12 @@ serve(async (req) => {
     // forbid-list so the AI cannot offer mortgages to renters or rentals to buyers.
     let dealType: DealType | null = null;
     let resolvedLeadName: string | null = lead_name ?? null;
+    let leadStage: string | null = null;
     if (lead_id) {
       try {
         const { data: leadRow } = await supabase
           .from("leads")
-          .select("deal_type, full_name, preferences")
+          .select("deal_type, full_name, preferences, lead_stage, status")
           .eq("id", lead_id)
           .maybeSingle();
         const dt =
@@ -244,17 +245,23 @@ serve(async (req) => {
           (leadRow?.preferences as any)?.listing_type;
         if (dt === "sale" || dt === "rent") dealType = dt;
         if (!resolvedLeadName) resolvedLeadName = (leadRow?.full_name as string | undefined) ?? null;
+        leadStage =
+          (leadRow?.lead_stage as string | undefined) ??
+          (leadRow?.status as string | undefined) ??
+          null;
       } catch (e) {
         console.warn("deal_type lookup failed:", e);
       }
     }
     const dealTypeBlock = renderDealTypeBlock(dealType, resolvedLeadName);
+    const stageHatBlock = renderStageHatBlock(leadStage, resolvedLeadName);
 
     const systemPrompt = SCHEMA_CONTEXT
       .replace("{{CAMPAIGN_CONTEXT}}", campaignContext)
       .replace("{{KB_CONTEXT}}", kbContext)
       + (personaBlock ? "\n\n" + personaBlock : "")
       + "\n\n" + dealTypeBlock
+      + "\n\n" + stageHatBlock
       + "\n\n" + compliance;
 
     // Escalation Trigger: classify the most recent lead/user message.
