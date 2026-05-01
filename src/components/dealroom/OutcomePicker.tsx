@@ -74,7 +74,7 @@ export function OutcomePicker({ leadId, value, size = 'sm', onChanged }: Outcome
     }
     toast.success(v ? 'התוצאה נשמרה' : 'התוצאה נוקתה');
     onChanged?.(v);
-    qc.invalidateQueries({ queryKey: ['dealroom-leads'] });
+    qc.invalidateQueries({ queryKey: ['deal-room-leads'] });
     qc.invalidateQueries({ queryKey: ['template-performance'] });
   };
 
