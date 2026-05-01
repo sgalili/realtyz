@@ -370,7 +370,7 @@ const SuperAdmin = () => {
       <Tabs defaultValue="intelligence" className="w-full">
         <TabsList className="flex h-auto flex-wrap justify-start">
           <TabsTrigger value="intelligence"><BrainCircuit className="ml-2 h-4 w-4" /> Intelligence Center</TabsTrigger>
-          <TabsTrigger value="leads"><MessageCircle className="ml-2 h-4 w-4" /> Captured Leads</TabsTrigger>
+          <TabsTrigger value="leads"><MessageCircle className="ml-2 h-4 w-4" /> Captured Prospects</TabsTrigger>
           <TabsTrigger value="users"><Users className="ml-2 h-4 w-4" /> משתמשים</TabsTrigger>
           <TabsTrigger value="finance"><Wallet className="ml-2 h-4 w-4" /> פיננסי</TabsTrigger>
           <TabsTrigger value="activity"><Activity className="ml-2 h-4 w-4" /> פעילות</TabsTrigger>
