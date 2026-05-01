@@ -484,6 +484,7 @@ const SuperAdmin = () => {
           </Card>
         </TabsContent>
 
+        <TabsContent value="errors" className="mt-4"><ErrorLogPanel /></TabsContent>
         <TabsContent value="system" className="mt-4 space-y-4"><div className="grid gap-4 md:grid-cols-4"><StatCard label="סה״כ לידים" value={stats?.voters ?? 0} /><StatCard label="הודעות" value={stats?.messages ?? 0} /><StatCard label="קמפיינים" value={stats?.campaigns ?? 0} /><StatCard label="חיבורים פעילים" value={stats?.connections ?? 0} /></div><Card><CardHeader><CardTitle>System Status</CardTitle><CardDescription>בדיקת בריאות ל-WhatsApp ולמנועי AI בזמן פגישה.</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-2"><HealthToggle label="WhatsApp Gateway" status={health.whatsapp} onChange={(v) => checkHealth('whatsapp', v)} /><HealthToggle label="AI Engines" status={health.ai} onChange={(v) => checkHealth('ai', v)} /></CardContent></Card></TabsContent>
       </Tabs>
     </div>
