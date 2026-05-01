@@ -1,4 +1,4 @@
-// ── High-density demo mock data for Kalpiz AI ──
+// ── High-density demo mock data for Realtyz AI ──
 
 import voter01 from '@/assets/demo-headshots/voter-01.jpg';
 import voter02 from '@/assets/demo-headshots/voter-02.jpg';
@@ -287,7 +287,7 @@ export const DEMO_VOTERS = demoNames.map((name, i) => ({
   instagram_handle: `kalpiz_${i}`,
   telegram_username: `kalpiz_voter_${i}`,
   messenger_id: `msgr-${i}`,
-  tiktok_handle: `kalpiz.tok.${i}`,
+  tiktok_handle: `realtyz.tok.${i}`,
   signal_number: `+${`97250${String(1000000 + i * 111111).slice(0, 7)}`}`,
   x_handle: `kalpiz_x_${i}`,
   facebook_id: `fb-${i}`,
@@ -461,7 +461,7 @@ export const getDemoCandidateSummary = (candidateId?: DemoCandidateId | null) =>
   };
 };
 
-// Kalpiz global pricing (matches https://kalpiz.co.il/pricing).
+// Realtyz global pricing (matches https://realtyz.co.il/pricing).
 // Single source of truth for plan base + setup fee — keeps in-app numbers
 // consistent with the public pricing list across demo + real modes.
 export const KALPIZ_PLANS = {
@@ -472,14 +472,14 @@ export const KALPIZ_PLANS = {
 export const KALPIZ_SETUP_FEE = 5000;
 
 // Pick the recommended plan for a given asking price (matches calculator logic).
-export const pickKalpizPlan = (mandates: number) => {
+export const pickRealtyzPlan = (mandates: number) => {
   if (mandates >= KALPIZ_PLANS.victory.mandates) return KALPIZ_PLANS.victory;
   if (mandates >= KALPIZ_PLANS.power.mandates) return KALPIZ_PLANS.power;
   return KALPIZ_PLANS.breakthrough;
 };
 
 // Realistic billing snapshot for the currently-viewed demo profile.
-// Anchored to the recommended Kalpiz plan (base subscription + setup fee)
+// Anchored to the recommended Realtyz plan (base subscription + setup fee)
 // plus variable usage by service — so all balance/spend numbers in the app
 // reflect the public pricing list and the listing's asking price.
 export const getDemoBilling = (candidateId?: DemoCandidateId | null) => {
@@ -490,7 +490,7 @@ export const getDemoBilling = (candidateId?: DemoCandidateId | null) => {
     : candidate.mandateGoal * VOTES_PER_NATIONAL_MANDATE;
 
   // Recommended plan from public pricing list (₪2,999 / ₪7,999 / ₪14,999).
-  const plan = pickKalpizPlan(candidate.mandateGoal);
+  const plan = pickRealtyzPlan(candidate.mandateGoal);
   const planMonthly = plan.monthly;
   const setupFee = KALPIZ_SETUP_FEE;
 
@@ -1090,7 +1090,7 @@ export const getDemoTrackingLinks = (candidateId?: DemoCandidateId | null) => {
   return candidate.focus.slice(0, 3).map((tag, i) => ({
     id: `demo-link-${candidate.id}-${i}`,
     short_code: `K${(candidate.id.charCodeAt(0) + i).toString(36).toUpperCase()}${i}X${(i + 3) * 7}`,
-    target_url: `https://${candidate.id}.kalpiz.co.il/${encodeURIComponent(tag)}`,
+    target_url: `https://${candidate.id}.realtyz.co.il/${encodeURIComponent(tag)}`,
     tag,
     click_count: 1_200 + i * 480,
     created_at: recentTimestamp(2 + i * 5),

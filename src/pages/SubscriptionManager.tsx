@@ -1,6 +1,6 @@
 /* ============================================================================
  * SubscriptionManager — high-fidelity ROI calculator
- * Clean, light-theme overhaul matching Kalpiz dashboard identity:
+ * Clean, light-theme overhaul matching Realtyz dashboard identity:
  *  - Off-white surface, navy headers, blue primary accents
  *  - White cards with subtle borders + soft shadows
  *  - 2-col grid for ROI results, horizontal slider, semantic tokens only
@@ -63,7 +63,7 @@ import { useMandate } from '@/hooks/useMandate';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useElectionType as useGlobalElectionType } from '@/hooks/useElectionType';
-import { KalpizWave } from '@/components/KalpizWave';
+import { RealtyzWave } from '@/components/RealtyzWave';
 import { monthsUntilElection as calcMonthsUntilElection } from '@/lib/electionDate';
 
 /* ── Pricing model ─────────────────────────────────────────────────────── */
@@ -535,7 +535,7 @@ function CalculatorBody() {
         </motion.div>
 
         {/* Bottom hero wave - mirrors dashboard HeroWaveMount */}
-        <KalpizWave
+        <RealtyzWave
           position="bottom"
           variant="wave-soft"
           fill="hsl(210 40% 98%)"
@@ -593,7 +593,7 @@ function CalculatorBody() {
                       handleMandatesChange(Math.min(mandatesMax, Math.max(mandatesMin, raw)));
                     }}
                     aria-label={`יעד ${unitPlural}`}
-                    className="kalpiz-num-input w-[3ch] min-w-[2ch] rounded-md bg-transparent text-center text-[42px] font-black tabular-nums text-foreground outline-none focus:ring-2 focus:ring-primary/40 sm:text-[52px]"
+                    className="realtyz-num-input w-[3ch] min-w-[2ch] rounded-md bg-transparent text-center text-[42px] font-black tabular-nums text-foreground outline-none focus:ring-2 focus:ring-primary/40 sm:text-[52px]"
                   />
                   <button
                     type="button"
@@ -672,7 +672,7 @@ function CalculatorBody() {
                             step={warmStep}
                             value={warmSize}
                             onChange={(e) => { setWarmSize(Number(e.target.value)); setAudienceTouched(true); setInputsTouched(true); setSmsTouched(false); }}
-                            className="kalpiz-range kalpiz-range--sm"
+                            className="realtyz-range realtyz-range--sm"
                             dir="ltr"
                           />
                         </div>
@@ -696,7 +696,7 @@ function CalculatorBody() {
                             step={coldStep}
                             value={coldSize}
                             onChange={(e) => { setColdSize(Number(e.target.value)); setAudienceTouched(true); setInputsTouched(true); setSmsTouched(false); }}
-                            className="kalpiz-range kalpiz-range--sm"
+                            className="realtyz-range realtyz-range--sm"
                             dir="ltr"
                           />
                         </div>
@@ -736,7 +736,7 @@ function CalculatorBody() {
                   step={1}
                   value={months}
                   onChange={(e) => setMonths(Number(e.target.value))}
-                  className="kalpiz-range kalpiz-range--sm"
+                  className="realtyz-range realtyz-range--sm"
                   dir="ltr"
                 />
                 <div className="mt-1 text-[10.5px] text-muted-foreground">
@@ -1100,23 +1100,23 @@ function CalculatorBody() {
 
       {/* Inline styles for native range slider + number input (light theme) */}
       <style>{`
-        .kalpiz-num-input::-webkit-outer-spin-button,
-        .kalpiz-num-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
-        .kalpiz-num-input { -moz-appearance: textfield; appearance: textfield; }
+        .realtyz-num-input::-webkit-outer-spin-button,
+        .realtyz-num-input::-webkit-inner-spin-button { -webkit-appearance: none; margin: 0; }
+        .realtyz-num-input { -moz-appearance: textfield; appearance: textfield; }
 
-        .kalpiz-range {
+        .realtyz-range {
           -webkit-appearance: none; appearance: none;
           width: 100%; height: 6px; border-radius: 9999px;
           background: hsl(var(--secondary)); outline: none;
         }
-        .kalpiz-range--sm { height: 5px; }
-        .kalpiz-range::-webkit-slider-thumb {
+        .realtyz-range--sm { height: 5px; }
+        .realtyz-range::-webkit-slider-thumb {
           -webkit-appearance: none; appearance: none;
           width: 18px; height: 18px; border-radius: 9999px;
           background: hsl(var(--primary)); border: 2px solid #ffffff; cursor: pointer;
           box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18);
         }
-        .kalpiz-range::-moz-range-thumb {
+        .realtyz-range::-moz-range-thumb {
           width: 18px; height: 18px; border-radius: 9999px;
           background: hsl(var(--primary)); border: 2px solid #ffffff; cursor: pointer;
           box-shadow: 0 2px 6px rgba(15, 23, 42, 0.18);
@@ -1192,7 +1192,7 @@ function ResourceSlider({
             step={step}
             value={value}
             onChange={(e) => onChange(Number(e.target.value))}
-            className="kalpiz-range kalpiz-range--sm"
+            className="realtyz-range realtyz-range--sm"
             dir="ltr"
           />
           <div className="flex items-center justify-between text-[11.5px]">

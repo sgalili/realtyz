@@ -61,9 +61,9 @@ async function dryRun(clientId: string, clientSecret: string): Promise<DryRunRes
         client_id: clientId.trim(),
         client_secret: clientSecret.trim(),
         // Bogus code + redirect — we only want Google to validate the client.
-        code: 'kalpiz-dryrun-' + crypto.randomUUID(),
+        code: 'realtyz-dryrun-' + crypto.randomUUID(),
         grant_type: 'authorization_code',
-        redirect_uri: 'https://ai.kalpiz.co.il/oauth/callback',
+        redirect_uri: 'https://ai.realtyz.co.il/oauth/callback',
       }),
     });
   } catch (e) {

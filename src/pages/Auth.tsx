@@ -12,7 +12,7 @@ import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
 import { ArrowRight, Mail, MessageSquareText } from 'lucide-react';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { cn } from '@/lib/utils';
-import { KalpizWave } from '@/components/KalpizWave';
+import { RealtyzWave } from '@/components/RealtyzWave';
 
 type AuthMethod = 'google' | 'whatsapp' | 'sms' | 'email';
 
@@ -48,7 +48,7 @@ const Auth = () => {
 
   // Force demo OFF whenever the user lands on /auth
   useEffect(() => {
-    window.localStorage.setItem('kalpiz-demo-mode', 'false');
+    window.localStorage.setItem('realtyz-demo-mode', 'false');
     setDemoMode(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -56,12 +56,12 @@ const Auth = () => {
   const handleAuthDemoToggle = (checked: boolean) => {
     if (checked) {
       // Turning ON → enable demo and go to dashboard
-      window.localStorage.setItem('kalpiz-demo-mode', 'true');
+      window.localStorage.setItem('realtyz-demo-mode', 'true');
       setDemoMode(true);
       window.location.assign('/');
     } else {
       // Already off - ensure off and stay on /auth
-      window.localStorage.setItem('kalpiz-demo-mode', 'false');
+      window.localStorage.setItem('realtyz-demo-mode', 'false');
       setDemoMode(false);
     }
   };
@@ -223,8 +223,8 @@ const Auth = () => {
         </label>
       </div>
       {/* Top hero wave - cloned exactly from dashboard HeroWaveMount: wave-soft, 24px, background fill, random seed */}
-      <KalpizWave position="top" variant="wave-soft" fill="hsl(var(--background))" seed={heroWaveSeed} height={24} offset={28} />
-      <KalpizWave position="bottom" variant="wave-soft" fill="hsl(var(--background))" seed={7} height={24} />
+      <RealtyzWave position="top" variant="wave-soft" fill="hsl(var(--background))" seed={heroWaveSeed} height={24} offset={28} />
+      <RealtyzWave position="bottom" variant="wave-soft" fill="hsl(var(--background))" seed={7} height={24} />
       {codeSent && !isGoogleFlow && (
         <button type="button" aria-label="חזרה להתחברות" className="absolute right-4 top-16 z-20 border-0 bg-transparent p-0 text-primary-foreground" onClick={() => { setCodeSent(false); setOtp(''); setOtpAttempts(0); setResendSeconds(0); }}>
           <ArrowRight className="h-10 w-10" />
@@ -233,7 +233,7 @@ const Auth = () => {
 
       <div className="auth-hero-content relative z-10 mx-auto w-full" dir="rtl">
         <div className="mb-8 translate-y-5 text-center">
-          <div className="kalpiz-logo auth-text-logo" aria-label="Realtyz">Realtyz</div>
+          <div className="realtyz-logo auth-text-logo" aria-label="Realtyz">Realtyz</div>
           <p className="auth-official-slogan">הפלטפורמה שהופכת דאטה קרה למכונת המרה</p>
         </div>
 

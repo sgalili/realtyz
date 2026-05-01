@@ -10,7 +10,7 @@
  *   account never trips WhatsApp anti-spam.
  * - Inbound replies are handled by `trial-inbound-webhook` and do NOT
  *   consume the outbound quota.
- * - Messages are sent **without** any "Sent via Kalpiz" branding.
+ * - Messages are sent **without** any "Sent via Realtyz" branding.
  *
  * The actual provider POST happens in this same function for messages whose
  * `scheduled_for <= now()`. A pg_cron job (or simple delayed self-invocation)

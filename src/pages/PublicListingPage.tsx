@@ -99,9 +99,9 @@ export default function PublicListingPage() {
 
   return (
     <div className="min-h-screen bg-secondary" dir="rtl">
-      <section className="kalpiz-wave-section px-5 pb-24 pt-10 text-right">
+      <section className="realtyz-wave-section px-5 pb-24 pt-10 text-right">
         <div className="mx-auto flex max-w-5xl flex-col gap-5">
-          <div className="text-sm font-black text-primary-foreground/80">Kalpiz</div>
+          <div className="text-sm font-black text-primary-foreground/80">Realtyz</div>
           <h1 className="max-w-3xl text-4xl font-black leading-tight text-primary-foreground md:text-6xl">{activePage.candidate_name}</h1>
           <p className="max-w-3xl text-xl font-bold text-primary-foreground/95">{activePage.headline}</p>
           <Button onClick={handleShare} className="w-fit bg-primary-foreground text-primary hover:bg-primary-foreground/90">

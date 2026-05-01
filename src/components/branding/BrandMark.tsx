@@ -16,15 +16,15 @@ export function BrandMark({ className = '', to = '/', fallbackLabel = 'Realtyz A
   const { settings } = useWhiteLabel();
   const hasLogo = !!settings?.logo_url;
   const hasName = !!settings?.agency_name;
-  const hideKalpiz = !!settings?.hide_kalpiz_branding;
+  const hideRealtyz = !!settings?.hide_kalpiz_branding;
 
-  const labelToShow = hasName ? settings!.agency_name! : (hideKalpiz ? '' : fallbackLabel);
+  const labelToShow = hasName ? settings!.agency_name! : (hideRealtyz ? '' : fallbackLabel);
 
   return (
     <Link
       to={to}
       aria-label={`${labelToShow || 'Home'} - דף הבית`}
-      className={`kalpiz-logo inline-flex items-center gap-2 ${className}`}
+      className={`realtyz-logo inline-flex items-center gap-2 ${className}`}
     >
       {hasLogo && (
         <img

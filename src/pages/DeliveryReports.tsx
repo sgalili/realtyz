@@ -10,7 +10,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { KalpizLoader } from '@/components/KalpizLoader';
+import { RealtyzLoader } from '@/components/RealtyzLoader';
 import { MessageSquare, Mail, Smartphone, Info, RefreshCw, CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -269,7 +269,7 @@ const DeliveryReports = () => {
       {/* Table */}
       <Card className="overflow-hidden">
         {isLoading ? (
-          <div className="py-16 flex justify-center"><KalpizLoader size="md" label="טוען נתונים..." /></div>
+          <div className="py-16 flex justify-center"><RealtyzLoader size="md" label="טוען נתונים..." /></div>
         ) : filtered.length === 0 ? (
           <div className="py-16 text-center text-muted-foreground text-sm">
             לא נמצאו רשומות. הפעל קמפיין כדי לראות נתוני מסירה כאן.

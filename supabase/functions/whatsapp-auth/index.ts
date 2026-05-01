@@ -18,7 +18,7 @@ const normalizeIsraeliPhone = (value: string) => {
 };
 
 const hashCode = async (phone: string, code: string) => {
-  const secret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "kalpiz-auth";
+  const secret = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "realtyz-auth";
   const data = new TextEncoder().encode(`${phone}:${code}:${secret}`);
   const digest = await crypto.subtle.digest("SHA-256", data);
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           chatId: `${phone}@c.us`,
-          message: `קוד האימות שלך ל-Kalpiz: ${code}`,
+          message: `קוד האימות שלך ל-Realtyz: ${code}`,
         }),
       });
 
@@ -148,7 +148,7 @@ Deno.serve(async (req) => {
 
       // Fallback: legacy synthetic email account (created on-demand for first-time WA-only logins).
       if (!targetEmail) {
-        const syntheticEmail = `${phone}@whatsapp.kalpiz.local`;
+        const syntheticEmail = `${phone}@whatsapp.realtyz.local`;
         const { error: createError } = await admin.auth.admin.createUser({
           email: syntheticEmail,
           phone: `+${phone}`,

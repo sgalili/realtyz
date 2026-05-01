@@ -889,7 +889,7 @@ const LeadCRM = () => {
                   {isLoading && (
                     <TableRow><TableCell colSpan={5} className="py-12">
                       <div className="flex flex-col items-center gap-3">
-                        <div className="kalpiz-loader h-10 w-10" />
+                        <div className="realtyz-loader h-10 w-10" />
                         <p className="text-sm text-muted-foreground">טוען לידים...</p>
                       </div>
                     </TableCell></TableRow>

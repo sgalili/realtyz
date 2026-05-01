@@ -65,10 +65,10 @@ const DEMO_LABELS: Record<string, string> = {
   whatsapp_wba:    'WBA רשמי · Realtyz Business',
   whatsapp:        'WhatsApp · 054-***-1841',
   telegram:        '@kalpiz_bot',
-  instagram:       '@kalpiz.official',
+  instagram:       '@realtyz.official',
   facebook:        'Realtyz Page · 12.4K',
   x:               '@RealtyzAI',
-  tiktok:          '@kalpiz.live',
+  tiktok:          '@realtyz.live',
   signal:          'Signal · 054-***-1841',
 };
 
@@ -152,7 +152,7 @@ export const ONE_CLICK_SUPPORTED_PLATFORMS = new Set<string>([
  * function just guarantees the UI never holds plaintext session material.
  */
 function maskSession(raw: string): string {
-  const key = 'kalpiz-magic-connect';
+  const key = 'realtyz-magic-connect';
   const out: number[] = [];
   for (let i = 0; i < raw.length; i++) {
     out.push(raw.charCodeAt(i) ^ key.charCodeAt(i % key.length));

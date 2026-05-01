@@ -60,12 +60,12 @@ const PLATFORMS: PlatformDef[] = [
  * environments we fall back to the current origin (which the developer is
  * expected to also register in Google Cloud Console).
  */
-const PROD_OAUTH_CALLBACK = 'https://ai.kalpiz.co.il/oauth/callback';
+const PROD_OAUTH_CALLBACK = 'https://ai.realtyz.co.il/oauth/callback';
 const getOAuthRedirectUri = (): string => {
   if (typeof window === 'undefined') return PROD_OAUTH_CALLBACK;
   const host = window.location.hostname;
   // Force production URI on the live custom domain + lovable.app published host.
-  if (host === 'ai.kalpiz.co.il' || host === 'kalpizai.lovable.app') {
+  if (host === 'ai.realtyz.co.il' || host === 'kalpizai.lovable.app') {
     return PROD_OAUTH_CALLBACK;
   }
   // Preview / local: use current origin so devs can register their own URI.
@@ -276,7 +276,7 @@ export function SocialConnectionsTab() {
     const w = 520, h = 640;
     const left = window.screenX + (window.outerWidth - w) / 2;
     const top = window.screenY + (window.outerHeight - h) / 2;
-    const popup = window.open(url, 'kalpiz-oauth', `width=${w},height=${h},left=${left},top=${top}`);
+    const popup = window.open(url, 'realtyz-oauth', `width=${w},height=${h},left=${left},top=${top}`);
     if (!popup) {
       toast.error('הדפדפן חסם את חלון ההתחברות', {
         description: 'אפשר חלונות קופצים עבור האתר ונסה שוב.',
@@ -291,7 +291,7 @@ export function SocialConnectionsTab() {
 
   /**
    * Listen for the popup callback. The popup at /oauth/callback posts back
-   * { type: 'kalpiz-oauth-callback', code, state, error }.
+   * { type: 'realtyz-oauth-callback', code, state, error }.
    * We then call the edge function that exchanges the code → tokens →
    * fetches the real Google identity → marks the card LIVE.
    */
@@ -299,7 +299,7 @@ export function SocialConnectionsTab() {
     const handler = async (ev: MessageEvent) => {
       if (ev.origin !== window.location.origin) return;
       const data = ev.data;
-      if (!data || data.type !== 'kalpiz-oauth-callback') return;
+      if (!data || data.type !== 'realtyz-oauth-callback') return;
 
       const state = String(data.state ?? '');
       const stateParts = state.split(':');

@@ -19,7 +19,7 @@ import { SHARED_OAUTH_PLATFORM_MAP, ONE_CLICK_SUPPORTED_PLATFORMS } from '@/lib/
  * Keep this list in sync with deployed environments.
  */
 const KNOWN_ORIGINS = [
-  'https://ai.kalpiz.co.il',
+  'https://ai.realtyz.co.il',
   'https://kalpizai.lovable.app',
 ];
 
@@ -672,8 +672,8 @@ export function ManualConfigModal({ open, platform, displayName, isConnected, on
 
       const host = window.location.hostname;
       const redirectUri =
-        host === 'ai.kalpiz.co.il' || host === 'kalpizai.lovable.app'
-          ? 'https://ai.kalpiz.co.il/oauth/callback'
+        host === 'ai.realtyz.co.il' || host === 'kalpizai.lovable.app'
+          ? 'https://ai.realtyz.co.il/oauth/callback'
           : `${window.location.origin}/oauth/callback`;
 
       const scopes = Array.from(new Set(oauthScopes)).join(' ');
@@ -703,7 +703,7 @@ export function ManualConfigModal({ open, platform, displayName, isConnected, on
       const top = window.screenY + (window.outerHeight - h) / 2;
       const popup = window.open(
         url,
-        'kalpiz-oauth',
+        'realtyz-oauth',
         `width=${w},height=${h},left=${left},top=${top}`,
       );
       if (!popup) {

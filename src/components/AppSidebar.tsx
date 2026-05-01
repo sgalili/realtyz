@@ -234,16 +234,16 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const confirmSignOut = async () => {
     // Block demo mode from auto-re-enabling once user is signed out.
     window.localStorage.setItem(DEMO_EXIT_PENDING_KEY, 'true');
-    window.localStorage.setItem('kalpiz-demo-mode', 'false');
-    window.localStorage.setItem('kalpiz-authenticated-session', 'false');
+    window.localStorage.setItem('realtyz-demo-mode', 'false');
+    window.localStorage.setItem('realtyz-authenticated-session', 'false');
     await signOut();
     window.location.replace('/auth');
   };
 
   return (
     <>
-    <Sidebar collapsible="offcanvas" className="kalpiz-premium-sidebar border-l border-r-0 border-sidebar-border" side="right">
-      <SidebarContent className="kalpiz-sidebar-menu pt-2">
+    <Sidebar collapsible="offcanvas" className="realtyz-premium-sidebar border-l border-r-0 border-sidebar-border" side="right">
+      <SidebarContent className="realtyz-sidebar-menu pt-2">
         {isDemoMode && (
           <SidebarGroup>
             <SidebarGroupContent className="px-3 pb-2">
@@ -279,7 +279,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                             to={item.url}
                             end={item.url === '/'}
                             onClick={handleNavClick}
-                            className={`group flex items-center gap-3 px-3 py-2 rounded-md text-primary hover:text-primary hover:bg-primary/10 hover:shadow-[0_10px_24px_-14px_hsl(var(--primary)/0.35)] transition-all ${tutorialActive ? 'kalpiz-tutorial-nav-glow' : ''}`}
+                            className={`group flex items-center gap-3 px-3 py-2 rounded-md text-primary hover:text-primary hover:bg-primary/10 hover:shadow-[0_10px_24px_-14px_hsl(var(--primary)/0.35)] transition-all ${tutorialActive ? 'realtyz-tutorial-nav-glow' : ''}`}
                             activeClassName="!bg-primary !text-primary-foreground font-semibold !shadow-[inset_-3px_0_0_hsl(var(--primary-glow)),0_12px_28px_-18px_hsl(var(--primary)/0.55)]"
                           >
                             <item.icon

@@ -35,7 +35,7 @@ function renderOAuthBridge() {
     if (window.opener && !window.opener.closed) {
       window.opener.postMessage(
         {
-          type: "kalpiz-oauth-callback",
+          type: "realtyz-oauth-callback",
           code,
           state,
           error,

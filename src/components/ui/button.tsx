@@ -56,8 +56,8 @@ const Button = React.forwardRef<HTMLButtonElement, ButtonProps>(
       const isWriteAction = /save|send|delete|invite|שמור|שמירה|שמור|שלח|שליחה|מחק|מחיקה|הזמן|הזמנה/.test(action);
       const isSubmitAction = props.type === "submit";
       const isGuestDemo = typeof window !== "undefined"
-        && window.localStorage.getItem("kalpiz-demo-mode") === "true"
-        && window.localStorage.getItem("kalpiz-authenticated-session") !== "true";
+        && window.localStorage.getItem("realtyz-demo-mode") === "true"
+        && window.localStorage.getItem("realtyz-authenticated-session") !== "true";
 
       if (!isSubmitAction && isWriteAction && isGuestDemo) {
         event.preventDefault();

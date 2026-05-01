@@ -13,8 +13,8 @@ import { toast } from 'sonner';
  */
 export function TestTrialModeCard() {
   const { user } = useAuth();
-  const storageKey = user ? `kalpiz-force-trial-wizard-${user.id}` : '';
-  const dismissedKey = user ? `kalpiz-onboarding-dismissed-${user.id}` : '';
+  const storageKey = user ? `realtyz-force-trial-wizard-${user.id}` : '';
+  const dismissedKey = user ? `realtyz-onboarding-dismissed-${user.id}` : '';
   const [forced, setForced] = useState(false);
 
   useEffect(() => {

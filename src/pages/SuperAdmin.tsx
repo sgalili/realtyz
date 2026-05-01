@@ -68,7 +68,7 @@ const ARCHETYPE_DATA = [
   { name: 'נכס לראשות עיר', value: 25 },
 ];
 
-const DEMO_STORAGE_KEYS = ['kalpiz-demo-mode', 'kalpiz-demo-listing', 'kalpiz-demo-session-id', 'kalpiz_demo_notifications', 'kalpiz_viewed_notifs', 'kalpiz_demo_notif_muted', 'kalpiz_dismissed_budgets', 'kalpiz-authenticated-session'];
+const DEMO_STORAGE_KEYS = ['realtyz-demo-mode', 'realtyz-demo-listing', 'realtyz-demo-session-id', 'kalpiz_demo_notifications', 'kalpiz_viewed_notifs', 'kalpiz_demo_notif_muted', 'kalpiz_dismissed_budgets', 'realtyz-authenticated-session'];
 
 const clearDemoBrowserState = () => {
   DEMO_STORAGE_KEYS.forEach((key) => {
@@ -255,7 +255,7 @@ const SuperAdmin = () => {
       if (sessionsResult.error) throw sessionsResult.error;
 
       clearDemoBrowserState();
-      window.localStorage.setItem('kalpiz-demo-mode', 'true');
+      window.localStorage.setItem('realtyz-demo-mode', 'true');
     },
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ['admin-demo-sessions'] });

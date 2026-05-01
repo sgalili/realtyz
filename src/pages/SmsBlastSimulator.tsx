@@ -1632,7 +1632,7 @@ export default function SmsBlastSimulator() {
                           <div className="rounded-md border border-border bg-background p-3 text-sm leading-relaxed text-foreground" dir="rtl">
                             {personalize(getChannelText('email'))}
                             <div className="mt-3 border-t border-border pt-2 text-center text-[11px] text-muted-foreground">
-                              קיבלת הודעה זו כחלק ממאגר התומכים של Kalpiz. <span className="underline">לחצ/י כאן להסרה</span>.
+                              קיבלת הודעה זו כחלק ממאגר התומכים של Realtyz. <span className="underline">לחצ/י כאן להסרה</span>.
                             </div>
                           </div>
 
@@ -1700,7 +1700,7 @@ export default function SmsBlastSimulator() {
                                       <label className="mt-1 flex cursor-pointer items-center gap-2">
                                         <Switch checked={preferResend} onCheckedChange={setPreferResend} />
                                         <span className="text-xs font-medium">
-                                          שלח דרך Resend (updates@kalpiz.co.il)
+                                          שלח דרך Resend (updates@realtyz.co.il)
                                         </span>
                                       </label>
                                     ) : (

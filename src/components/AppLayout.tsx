@@ -204,7 +204,7 @@ function SearchExpandable() {
           )}
           {(query.trim() || results.length > 0) && (
             <div className="absolute top-full right-0 mt-1 w-72 bg-card border border-border/60 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto scrollbar-thin">
-              {loading && <div className="flex justify-center py-4"><div className="kalpiz-loader h-6 w-6" /></div>}
+              {loading && <div className="flex justify-center py-4"><div className="realtyz-loader h-6 w-6" /></div>}
               {!loading && query.trim() && results.length === 0 && (
                 <p className="text-xs text-muted-foreground text-center py-4">לא נמצאו תוצאות</p>
               )}
@@ -385,7 +385,7 @@ function HeaderCrisisOption({ icon: Icon, title, text }: { icon: typeof Flame; t
   );
 }
 
-const DEMO_PEEK_KEY = 'kalpiz-demo-sidebar-peeked';
+const DEMO_PEEK_KEY = 'realtyz-demo-sidebar-peeked';
 
 function DemoSidebarPeek() {
   // Auto-open behavior intentionally disabled per product decision:
@@ -434,13 +434,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
     if (!user) return;
 
     // Admin override — force the trial wizard for QA/testing.
-    if (localStorage.getItem(`kalpiz-force-trial-wizard-${user.id}`) === '1') {
+    if (localStorage.getItem(`realtyz-force-trial-wizard-${user.id}`) === '1') {
       setTrialWizardOpen(true);
       return;
     }
 
     if (onboarding !== undefined && !onboarding?.completed_at) {
-      const dismissed = localStorage.getItem(`kalpiz-onboarding-dismissed-${user.id}`);
+      const dismissed = localStorage.getItem(`realtyz-onboarding-dismissed-${user.id}`);
       if (dismissed) return;
       // Trial users get the new 4-step Quick-Start; everyone else gets the legacy strategy wizard.
       if (isTrial) setTrialWizardOpen(true);
@@ -550,7 +550,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     if (!isDemoMode) return;
-    const key = 'kalpiz-demo-session-id';
+    const key = 'realtyz-demo-session-id';
     let sessionId = window.localStorage.getItem(key);
     if (!sessionId || sessionId.length < 16) {
       sessionId = `demo-${crypto.randomUUID()}`;
@@ -591,7 +591,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
   return (
     <SidebarProvider>
-      <div className="kalpiz-app-shell h-screen overflow-hidden flex w-full bg-background">
+      <div className="realtyz-app-shell h-screen overflow-hidden flex w-full bg-background">
         <AppSidebar tutorialHighlightPath={activeTutorialStep?.path} />
         <div className="flex-1 flex h-screen min-w-0 flex-col overflow-hidden">
           <header className="h-16 text-primary-foreground backdrop-blur-md flex items-center px-4 gap-2 shrink-0 sticky top-0 z-30" style={{ backgroundColor: 'hsl(var(--header-bg))' }}>
@@ -613,8 +613,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <BrandMark to="/" />
             </div>
           </header>
-          <main className="kalpiz-main-surface flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6 pt-0">
-            <SidebarTrigger className="kalpiz-title-menu-button text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground [&_svg]:!h-7 [&_svg]:!w-7" aria-label="פתח תפריט">
+          <main className="realtyz-main-surface flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6 pt-0">
+            <SidebarTrigger className="realtyz-title-menu-button text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground [&_svg]:!h-7 [&_svg]:!w-7" aria-label="פתח תפריט">
               <Menu className="h-7 w-7" />
             </SidebarTrigger>
             {children}
@@ -684,14 +684,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
             open={wizardOpen}
             onClose={() => {
               setWizardOpen(false);
-              if (user) localStorage.setItem(`kalpiz-onboarding-dismissed-${user.id}`, '1');
+              if (user) localStorage.setItem(`realtyz-onboarding-dismissed-${user.id}`, '1');
             }}
           />}
           {user && <TrialQuickStartWizard
             open={trialWizardOpen}
             onClose={() => {
               setTrialWizardOpen(false);
-              if (user) localStorage.setItem(`kalpiz-onboarding-dismissed-${user.id}`, '1');
+              if (user) localStorage.setItem(`realtyz-onboarding-dismissed-${user.id}`, '1');
             }}
           />}
           <StartTrialCta variant="fab" />

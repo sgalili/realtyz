@@ -1,5 +1,5 @@
 import { cn } from '@/lib/utils';
-import { KalpizWave } from '@/components/KalpizWave';
+import { RealtyzWave } from '@/components/RealtyzWave';
 
 interface Props {
   className?: string;
@@ -24,7 +24,7 @@ const TONE_FILL: Record<NonNullable<Props['tone']>, string> = {
 
 /**
  * Branded JS-driven wave divider used to separate sections.
- * Uses dual-sine procedural animation matching kalpiz.co.il.
+ * Uses dual-sine procedural animation matching realtyz.co.il.
  */
 export function SectionDivider({
   className,
@@ -41,7 +41,7 @@ export function SectionDivider({
       className={cn('relative w-full select-none', className)}
       style={{ height: 32 }}
     >
-      <KalpizWave
+      <RealtyzWave
         position={position}
         reverse={reverse}
         variant={variant}

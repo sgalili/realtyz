@@ -109,7 +109,7 @@ export function GlobalSearch() {
         <div className="max-h-80 overflow-y-auto p-2 scrollbar-thin">
           {loading && (
             <div className="flex items-center justify-center py-8">
-              <div className="kalpiz-loader h-10 w-10" />
+              <div className="realtyz-loader h-10 w-10" />
             </div>
           )}
           {!loading && results.length === 0 && query.trim() && (

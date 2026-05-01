@@ -77,7 +77,7 @@ const PLATFORMS: PlatformConfig[] = [
 ];
 
 const REDIRECT_URIS = [
-  'https://ai.kalpiz.co.il/oauth/callback',
+  'https://ai.realtyz.co.il/oauth/callback',
   'https://kalpizai.lovable.app/oauth/callback',
 ];
 

@@ -33,7 +33,7 @@ export function VictoryGauge({ value, label, size = 220 }: VictoryGaugeProps) {
   const circumference = Math.PI * radius;
   const offset = circumference - (animated / 100) * circumference;
 
-  // Use HSL semantic tokens (Kalpiz palette) instead of raw hex.
+  // Use HSL semantic tokens (Realtyz palette) instead of raw hex.
   const tier =
     safeValue >= 90
       ? { color: 'hsl(var(--success))', glow: 'hsl(var(--success) / 0.45)', text: 'נעילת ניצחון' }

@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { useLocation } from 'react-router-dom';
-import { KalpizWave } from '@/components/KalpizWave';
+import { RealtyzWave } from '@/components/RealtyzWave';
 
 /**
  * Finds the navy hero block (CSS-styled `main > div > div:first-child` that
- * wraps an h1) and mounts a JS-driven KalpizWave SVG at its bottom edge.
+ * wraps an h1) and mounts a JS-driven RealtyzWave SVG at its bottom edge.
  * Uses a MutationObserver because pages render asynchronously after route
  * changes (data fetches, suspense, etc.).
  */
@@ -37,7 +37,7 @@ export function HeroWaveMount() {
 
       const root = createRoot(host);
       root.render(
-        <KalpizWave
+        <RealtyzWave
           position="bottom"
           variant="wave-soft"
           fill="hsl(210 8% 91%)"

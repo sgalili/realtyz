@@ -171,22 +171,22 @@
 
   /* The dark-hero typography rule must NOT apply when a page opts out of
      the hero wave (e.g. SubscriptionManager uses its own light layout). */
-  .kalpiz-main-surface h1:first-of-type:not([data-no-hero-wave] *) {
+  .realtyz-main-surface h1:first-of-type:not([data-no-hero-wave] *) {
     @apply text-2xl font-bold tracking-tight text-primary-foreground;
   }
 
-  .kalpiz-main-surface h1:first-of-type:not([data-no-hero-wave] *) + p {
+  .realtyz-main-surface h1:first-of-type:not([data-no-hero-wave] *) + p {
     @apply mt-0 text-sm text-primary-foreground/80;
   }
 
   /* Hard reset for opted-out pages: any h1 inside [data-no-hero-wave] uses the
      foreground token regardless of the global rule above. */
   [data-no-hero-wave] h1,
-  .kalpiz-subscription-title {
+  .realtyz-subscription-title {
     color: hsl(var(--foreground)) !important;
   }
   [data-no-hero-wave] h1 + p,
-  .kalpiz-subscription-subtitle {
+  .realtyz-subscription-subtitle {
     color: hsl(var(--muted-foreground)) !important;
   }
   .divider-wave {
@@ -220,28 +220,28 @@
   }
   .city-pulse { animation: city-pulse 2s ease-out infinite; }
 
-  @keyframes kalpiz-notification-ring {
+  @keyframes realtyz-notification-ring {
     0% { box-shadow: 0 0 0 0 hsl(var(--primary-glow) / 0.46); transform: translateZ(0) scale(1); }
     55% { box-shadow: 0 0 0 12px hsl(var(--primary-glow) / 0); transform: translateZ(0) scale(1.06); }
     100% { box-shadow: 0 0 0 0 hsl(var(--primary-glow) / 0); transform: translateZ(0) scale(1); }
   }
 
-  .kalpiz-notification-pulse {
-    animation: kalpiz-notification-ring 1.2s ease-out 2;
+  .realtyz-notification-pulse {
+    animation: realtyz-notification-ring 1.2s ease-out 2;
     will-change: transform, box-shadow;
   }
 
-  .kalpiz-notification-drawer {
+  .realtyz-notification-drawer {
     color: hsl(var(--foreground));
     border: 1px solid hsl(var(--primary) / 0.22);
     background: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--card)) 52%, hsl(var(--background)) 100%);
     box-shadow: 0 24px 70px -34px hsl(var(--brand-deep) / 0.5);
-    animation: kalpiz-drawer-enter 180ms cubic-bezier(.2,.8,.2,1);
+    animation: realtyz-drawer-enter 180ms cubic-bezier(.2,.8,.2,1);
     transform: translateZ(0);
     will-change: transform, opacity;
   }
 
-  .kalpiz-notification-wave {
+  .realtyz-notification-wave {
     height: 18px;
     background-color: hsl(var(--secondary));
     background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 320 18' preserveAspectRatio='none'><path d='M0 11 C48 5 84 15 132 10 S228 5 320 10' fill='none' stroke='%2300145c' stroke-opacity='.95' stroke-width='3' stroke-linecap='round'/></svg>");
@@ -249,21 +249,21 @@
     background-size: 100% 100%;
   }
 
-  .kalpiz-notification-item {
+  .realtyz-notification-item {
     border-color: hsl(var(--primary) / 0.12);
     background: linear-gradient(135deg, hsl(var(--secondary)) 0%, hsl(var(--card)) 100%);
   }
 
-  @keyframes kalpiz-drawer-enter {
+  @keyframes realtyz-drawer-enter {
     from { opacity: 0; transform: translate3d(-8px, -4px, 0) scale(0.98); }
     to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); }
   }
 
   /* Loader */
-  .kalpiz-loader {
+  .realtyz-loader {
     @apply relative inline-flex items-center justify-center;
   }
-  .kalpiz-loader::before {
+  .realtyz-loader::before {
     content: '';
     @apply absolute rounded-full;
     width: 40px;
@@ -273,7 +273,7 @@
     border-right-color: hsl(var(--primary));
     animation: spin 0.8s linear infinite;
   }
-  .kalpiz-loader::after {
+  .realtyz-loader::after {
     content: 'K';
     color: hsl(var(--primary));
     @apply font-black text-sm;
@@ -289,7 +289,7 @@
   .empty-state { @apply flex flex-col items-center justify-center py-16 text-center; }
   .empty-state-icon { @apply h-16 w-16 text-muted-foreground/30 mb-4; }
 
-  .kalpiz-logo {
+  .realtyz-logo {
     font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
     font-size: 1.5rem;
     font-weight: 900 !important;
@@ -487,7 +487,7 @@
     content: none;
   }
 
-  .auth-quick-card.kalpiz-wave-top::before {
+  .auth-quick-card.realtyz-wave-top::before {
     content: none;
   }
 
@@ -793,7 +793,7 @@
     height: 11px;
     background: hsl(var(--background));
     clip-path: polygon(0 42%, 8% 38%, 16% 34%, 24% 37%, 32% 44%, 40% 48%, 48% 45%, 56% 38%, 64% 34%, 72% 36%, 80% 43%, 88% 47%, 96% 44%, 100% 40%, 100% 100%, 0 100%);
-    animation: kalpiz-wave-morph 8s linear infinite; will-change: transform, clip-path; backface-visibility: hidden;
+    animation: realtyz-wave-morph 8s linear infinite; will-change: transform, clip-path; backface-visibility: hidden;
   }
 
   .auth-footer-legal {
@@ -889,7 +889,7 @@
     background: hsl(var(--brand-navy));
     opacity: 0.1;
     clip-path: polygon(0 100%, 100% 100%, 100% 52%, 96% 56%, 88% 61%, 80% 58%, 72% 51%, 64% 46%, 56% 50%, 48% 58%, 40% 63%, 32% 60%, 24% 53%, 16% 48%, 8% 52%, 0 58%);
-    animation: kalpiz-wave-morph 14s linear infinite; will-change: transform, clip-path; backface-visibility: hidden;
+    animation: realtyz-wave-morph 14s linear infinite; will-change: transform, clip-path; backface-visibility: hidden;
     pointer-events: none;
   }
 
@@ -908,7 +908,7 @@
     height: 72px;
     background: hsl(210 17% 98%);
     clip-path: polygon(0 58%, 8% 54%, 16% 50%, 24% 47%, 32% 48%, 40% 53%, 48% 56%, 56% 52%, 64% 46%, 72% 43%, 80% 46%, 88% 51%, 96% 49%, 100% 47%, 100% 100%, 0 100%);
-    animation: kalpiz-wave-morph 14s linear infinite; will-change: transform, clip-path; backface-visibility: hidden;
+    animation: realtyz-wave-morph 14s linear infinite; will-change: transform, clip-path; backface-visibility: hidden;
     filter: drop-shadow(0 -8px 16px hsl(var(--primary) / 0.18));
   }
 
@@ -928,16 +928,16 @@
     background: hsl(var(--background));
     transform-origin: 50% 100%;
     will-change: clip-path, transform;
-    animation: kalpiz-wave-morph 14s linear infinite; will-change: transform, clip-path; backface-visibility: hidden;
+    animation: realtyz-wave-morph 14s linear infinite; will-change: transform, clip-path; backface-visibility: hidden;
     clip-path: polygon(0 42%, 8% 48%, 16% 52%, 24% 47%, 32% 40%, 40% 37%, 48% 42%, 56% 50%, 64% 54%, 72% 49%, 80% 42%, 88% 39%, 96% 44%, 100% 48%, 100% 100%, 0 100%);
   }
 
-  .kalpiz-wave-top {
+  .realtyz-wave-top {
     position: relative;
     overflow: hidden;
   }
 
-  .kalpiz-wave-top::before {
+  .realtyz-wave-top::before {
     content: '';
     position: absolute;
     inset-inline: 0;
@@ -946,15 +946,15 @@
     background: hsl(var(--brand-navy));
     opacity: 0.08;
     clip-path: polygon(0 0, 100% 0, 100% 48%, 96% 44%, 88% 39%, 80% 42%, 72% 49%, 64% 54%, 56% 50%, 48% 42%, 40% 37%, 32% 40%, 24% 47%, 16% 52%, 8% 48%, 0 42%);
-    animation: kalpiz-wave-morph 14s linear infinite; will-change: transform, clip-path; backface-visibility: hidden;
+    animation: realtyz-wave-morph 14s linear infinite; will-change: transform, clip-path; backface-visibility: hidden;
     pointer-events: none;
   }
 
-  .kalpiz-app-shell {
+  .realtyz-app-shell {
     background: hsl(210 8% 91%);
   }
 
-  .kalpiz-main-surface {
+  .realtyz-main-surface {
     position: relative;
     background: hsl(210 8% 91%);
     /* Prevent iOS/macOS rubber-band overscroll bounce so the sticky hero stays anchored. */
@@ -964,11 +964,11 @@
 
   /* When the SubscriptionManager is mounted, force the surrounding shell to
      match its light off-white background so there is no dark stripe / edge. */
-  .kalpiz-main-surface:has([data-page="subscription"]) {
+  .realtyz-main-surface:has([data-page="subscription"]) {
     background: hsl(210 40% 98%); /* slate-50 */
   }
 
-  .kalpiz-title-menu-button {
+  .realtyz-title-menu-button {
     position: fixed;
     top: calc(4rem + 0.75rem);
     right: 1rem;
@@ -977,7 +977,7 @@
     height: 1.75rem;
   }
 
-  .kalpiz-title-demo-cluster {
+  .realtyz-title-demo-cluster {
     position: fixed;
     top: calc(4rem + 0.75rem + 12px);
     left: 10px;
@@ -992,7 +992,7 @@
     justify-content: center;
   }
 
-  .kalpiz-title-demo-cluster > *:nth-child(2) {
+  .realtyz-title-demo-cluster > *:nth-child(2) {
     margin-top: 1px;
   }
 
@@ -1000,13 +1000,13 @@
     background-image: repeating-linear-gradient(45deg, transparent 0 40px, hsl(0 0% 100% / 0.08) 40px 41px);
   }
 
-  .kalpiz-premium-sidebar [data-sidebar="sidebar"] {
+  .realtyz-premium-sidebar [data-sidebar="sidebar"] {
     background: linear-gradient(180deg, hsl(var(--brand-silver)) 0%, hsl(var(--card)) 46%, hsl(var(--background)) 100%);
     color: hsl(var(--primary));
     box-shadow: inset 18px 0 34px hsl(var(--brand-blue) / 0.08), inset 0 1px 0 hsl(var(--primary-foreground) / 0.72);
   }
 
-  .kalpiz-sidebar-brand {
+  .realtyz-sidebar-brand {
     position: relative;
     background: linear-gradient(180deg, hsl(var(--brand-navy)) 0%, hsl(var(--brand-deep)) 100%);
     color: hsl(var(--primary-foreground));
@@ -1014,7 +1014,7 @@
     min-height: 74px;
   }
 
-  .kalpiz-sidebar-logo-letter {
+  .realtyz-sidebar-logo-letter {
     font-family: 'Heebo', 'Assistant', sans-serif;
     font-size: 1.75rem;
     line-height: 1;
@@ -1022,24 +1022,24 @@
     letter-spacing: 0;
   }
 
-  .kalpiz-sidebar-menu {
+  .realtyz-sidebar-menu {
     background: linear-gradient(180deg, hsl(var(--brand-silver)) 0%, hsl(var(--card)) 46%, hsl(var(--background)) 100%);
     color: hsl(var(--primary));
     box-shadow: inset 18px 0 34px hsl(var(--brand-blue) / 0.08), inset 0 1px 0 hsl(var(--primary-foreground) / 0.72);
   }
 
-  .kalpiz-tutorial-nav-glow {
+  .realtyz-tutorial-nav-glow {
     background: hsl(var(--primary) / 0.08);
     box-shadow: inset -3px 0 0 hsl(var(--primary-glow)), 0 0 0 1px hsl(var(--primary) / 0.14), 0 14px 30px -18px hsl(var(--primary) / 0.7);
-    animation: kalpiz-tutorial-glow 1.45s ease-in-out infinite;
+    animation: realtyz-tutorial-glow 1.45s ease-in-out infinite;
   }
 
-  @keyframes kalpiz-tutorial-glow {
+  @keyframes realtyz-tutorial-glow {
     0%, 100% { filter: drop-shadow(0 0 0 hsl(var(--primary-glow) / 0)); }
     50% { filter: drop-shadow(0 0 10px hsl(var(--primary-glow) / 0.36)); }
   }
 
-  .kalpiz-sidebar-wave {
+  .realtyz-sidebar-wave {
     position: absolute;
     inset-inline: 0;
     bottom: -1px;
@@ -1055,14 +1055,14 @@
       repeating-linear-gradient(-60deg, transparent 0 35px, hsl(var(--brand-blue) / 0.06) 35px 36px);
   }
 
-  .kalpiz-wave-section {
+  .realtyz-wave-section {
     position: relative;
     overflow: hidden;
     background: linear-gradient(160deg, hsl(var(--brand-deep)) 0%, hsl(var(--brand-navy)) 60%, hsl(var(--brand-blue)) 100%);
     color: hsl(var(--primary-foreground));
   }
 
-  .kalpiz-wave-section::after {
+  .realtyz-wave-section::after {
     content: '';
     position: absolute;
     inset-inline: 0;
@@ -1070,7 +1070,7 @@
     height: 72px;
     background: hsl(var(--background));
     clip-path: polygon(0 58%, 8% 54%, 16% 50%, 24% 47%, 32% 48%, 40% 53%, 48% 56%, 56% 52%, 64% 46%, 72% 43%, 80% 46%, 88% 51%, 96% 49%, 100% 47%, 100% 100%, 0 100%);
-    animation: kalpiz-wave-morph 14s linear infinite; will-change: transform, clip-path; backface-visibility: hidden;
+    animation: realtyz-wave-morph 14s linear infinite; will-change: transform, clip-path; backface-visibility: hidden;
   }
 
   /* Dark navy hero block — applied to the first child of main's wrapper that
@@ -1104,7 +1104,7 @@
   }
 
 
-  /* Hero wave is rendered as a real <KalpizWave> SVG via HeroWaveMount.
+  /* Hero wave is rendered as a real <RealtyzWave> SVG via HeroWaveMount.
      Suppress the legacy CSS pseudo-element so we don't double-render. */
   main > div > div:first-child:has(> h1)::after,
   main > div > div:first-child:has(> div > h1)::after {
@@ -1135,10 +1135,10 @@
     display: none;
   }
 
-  /* Organic morphing wave - inspired by kalpiz.co.il hero divider.
+  /* Organic morphing wave - inspired by realtyz.co.il hero divider.
      Uses irregular crest heights at non-uniform x positions so the silhouette
      reshapes randomly instead of looping a sine pattern. */
-  @keyframes kalpiz-wave-morph {
+  @keyframes realtyz-wave-morph {
     0% {
       clip-path: polygon(
         0% 60%, 6% 48%, 13% 38%, 21% 32%, 29% 36%, 37% 50%, 44% 64%,
@@ -1186,7 +1186,7 @@
   /* Hero divider wave - traveling phase, primary layer */
   /* Traveling SVG-mask wave: shifts horizontally for smooth, perfectly round wave motion */
   /* Traveling wave: flows from right to left across the screen */
-  @keyframes kalpiz-hero-wave {
+  @keyframes realtyz-hero-wave {
     0%   { -webkit-mask-position: 200% 0; mask-position: 200% 0; }
     100% { -webkit-mask-position: 0% 0;   mask-position: 0% 0; }
   }
@@ -1206,26 +1206,26 @@
   .sync-indicator { animation: sync-pulse 1.5s ease-in-out infinite; }
 
   /* Strategic Growth Slider — "Upsell Zone": glowing gold→blue gradient track. */
-  .kalpiz-slider-upsell [data-orientation] > span:first-child {
+  .realtyz-slider-upsell [data-orientation] > span:first-child {
     background: linear-gradient(90deg, hsl(var(--brand-gold)) 0%, hsl(var(--primary-glow)) 100%);
     box-shadow: 0 0 16px hsl(var(--brand-gold) / 0.55), 0 0 4px hsl(var(--primary-glow) / 0.6);
     height: 4px;
     border-radius: 9999px;
   }
-  .kalpiz-slider-upsell [role="slider"] {
+  .realtyz-slider-upsell [role="slider"] {
     background: hsl(var(--brand-gold));
     box-shadow: 0 0 0 4px hsl(var(--brand-gold) / 0.18), 0 0 14px hsl(var(--brand-gold) / 0.6);
     transition: box-shadow 200ms ease, transform 200ms ease;
   }
-  .kalpiz-slider-upsell:hover [role="slider"] {
+  .realtyz-slider-upsell:hover [role="slider"] {
     transform: scale(1.08);
   }
-  @keyframes kalpiz-upsell-pulse {
+  @keyframes realtyz-upsell-pulse {
     0%, 100% { box-shadow: 0 0 12px hsl(var(--brand-gold) / 0.45), 0 0 4px hsl(var(--primary-glow) / 0.5); }
     50%      { box-shadow: 0 0 22px hsl(var(--brand-gold) / 0.75), 0 0 8px hsl(var(--primary-glow) / 0.7); }
   }
-  .kalpiz-slider-upsell [data-orientation] {
-    animation: kalpiz-upsell-pulse 2.4s ease-in-out infinite;
+  .realtyz-slider-upsell [data-orientation] {
+    animation: realtyz-upsell-pulse 2.4s ease-in-out infinite;
     border-radius: 9999px;
   }
 }

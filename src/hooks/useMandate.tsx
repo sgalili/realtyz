@@ -2,9 +2,9 @@ import { createContext, ReactNode, useCallback, useContext, useEffect, useMemo, 
 import { deriveQuota, DerivedQuota } from '@/lib/quotaCalculator';
 import { useDemoMode } from '@/hooks/useDemoMode';
 
-const STORAGE_KEY_REAL = 'kalpiz-selected-transactions-real';
-const STORAGE_KEY_DEMO = 'kalpiz-selected-transactions-demo';
-const LEGACY_STORAGE_KEY = 'kalpiz-selected-transactions';
+const STORAGE_KEY_REAL = 'realtyz-selected-transactions-real';
+const STORAGE_KEY_DEMO = 'realtyz-selected-transactions-demo';
+const LEGACY_STORAGE_KEY = 'realtyz-selected-transactions';
 const DEFAULT_MANDATES_REAL = 3; // Current plan default for real accounts
 const DEFAULT_MANDATES_DEMO = 3;
 const MIN_MANDATES = 1;

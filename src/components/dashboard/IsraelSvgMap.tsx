@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { DEMO_DISTRICTS } from '@/lib/demoData';
 import { Compass, Ruler } from 'lucide-react';
 
-// Choropleth tiers mapped to Kalpiz HSL semantic tokens.
+// Choropleth tiers mapped to Realtyz HSL semantic tokens.
 const choroplethColors = {
   green: { fill: 'hsl(var(--success))', border: 'hsl(var(--success))', glow: 'hsl(var(--success) / 0.4)' },
   yellow: { fill: 'hsl(var(--brand-blue))', border: 'hsl(var(--brand-blue))', glow: 'hsl(var(--brand-blue) / 0.4)' },

@@ -26,7 +26,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       (_event, session) => {
         setSession(session);
         setUser(session?.user ?? null);
-        window.localStorage.setItem('kalpiz-authenticated-session', session?.user ? 'true' : 'false');
+        window.localStorage.setItem('realtyz-authenticated-session', session?.user ? 'true' : 'false');
         setLoading(false);
       }
     );
@@ -34,7 +34,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       setUser(session?.user ?? null);
-      window.localStorage.setItem('kalpiz-authenticated-session', session?.user ? 'true' : 'false');
+      window.localStorage.setItem('realtyz-authenticated-session', session?.user ? 'true' : 'false');
       setLoading(false);
     });
 

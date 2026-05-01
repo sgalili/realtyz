@@ -30,7 +30,7 @@ export function GoogleCalendarConnectCard() {
     const handler = async (ev: MessageEvent) => {
       if (ev.origin !== window.location.origin) return;
       const m = ev.data;
-      if (!m || m.type !== 'kalpiz-oauth-callback') return;
+      if (!m || m.type !== 'realtyz-oauth-callback') return;
       if (!String(m.state || '').startsWith(`${PLATFORM}:`)) return;
       if (m.error) { toast.error('Connect cancelled', { description: m.errorDescription || m.error }); return; }
       const tId = toast.loading('Linking Google Calendar...');

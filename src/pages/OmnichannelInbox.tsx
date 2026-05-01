@@ -59,7 +59,7 @@ const statusLed: Record<string, { dot: string; ring: string; note: string }> = {
 };
 
 const senderBadge: Record<string, { label: string; className: string }> = {
-  ai: { label: 'Kalpiz AI', className: 'bg-primary/15 text-primary border-primary/30' },
+  ai: { label: 'Realtyz AI', className: 'bg-primary/15 text-primary border-primary/30' },
   agent: { label: 'נציג', className: 'bg-blue-500/15 text-blue-700 border-blue-300' },
   voter: { label: 'ליד', className: 'bg-slate-500/15 text-slate-700 border-slate-300' },
 };

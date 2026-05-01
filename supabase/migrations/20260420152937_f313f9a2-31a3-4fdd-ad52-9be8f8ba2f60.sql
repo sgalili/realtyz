@@ -7,7 +7,7 @@
 CREATE EXTENSION IF NOT EXISTS vector;
 
 -- ============================================================
--- 1. PRICING PLANS (seeded with 3 Kalpiz tiers)
+-- 1. PRICING PLANS (seeded with 3 Realtyz tiers)
 -- ============================================================
 CREATE TABLE IF NOT EXISTS public.pricing_plans (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
