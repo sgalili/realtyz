@@ -253,7 +253,7 @@ export default function AiAgentDrawer() {
             <Bot className="h-5 w-5 text-primary" />
           </div>
           <div className="flex-1">
-            <h3 className="text-sm font-bold">קצין המודיעין של Kalpiz</h3>
+            <h3 className="text-sm font-bold">קצין המודיעין של Realtyz</h3>
           </div>
         </div>
 
@@ -262,7 +262,7 @@ export default function AiAgentDrawer() {
           {messages.length === 0 && (
             <div className="text-center py-8 space-y-3">
               <Bot className="h-10 w-10 mx-auto text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">שלום! אני קצין המודיעין של Kalpiz.</p>
+              <p className="text-sm text-muted-foreground">שלום! אני קצין המודיעין של Realtyz.</p>
               <p className="text-xs text-muted-foreground">שאל אותי כל שאלה - אני אנתח את הנתונים ואתן המלצות אסטרטגיות.</p>
             </div>
           )}

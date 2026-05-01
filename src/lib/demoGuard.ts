@@ -1,6 +1,6 @@
-export const DEMO_UPGRADE_EVENT = 'kalpiz-demo-upgrade-requested';
-export const DEMO_AUTH_REQUIRED_EVENT = 'kalpiz-demo-auth-required';
-export const DEMO_EXIT_PENDING_KEY = 'kalpiz-demo-exit-pending';
+export const DEMO_UPGRADE_EVENT = 'realtyz-demo-upgrade-requested';
+export const DEMO_AUTH_REQUIRED_EVENT = 'realtyz-demo-auth-required';
+export const DEMO_EXIT_PENDING_KEY = 'realtyz-demo-exit-pending';
 
 export function requestDemoUpgrade(reason?: string) {
   window.dispatchEvent(new CustomEvent(DEMO_UPGRADE_EVENT, { detail: { reason } }));

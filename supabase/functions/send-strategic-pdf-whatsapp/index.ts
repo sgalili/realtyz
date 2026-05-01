@@ -5,7 +5,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 const BodySchema = z.object({
   phone_number: z.string().min(8).max(20),
   message: z.string().min(1).max(3000),
-  file_name: z.string().min(1).max(120).default("kalpiz-strategic-report.pdf"),
+  file_name: z.string().min(1).max(120).default("realtyz-strategic-report.pdf"),
   pdf_base64: z.string().min(100),
 });
 

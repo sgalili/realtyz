@@ -4,7 +4,7 @@ import { VOTES_PER_MANDATE } from '@/lib/mandateCalculator';
  * Single source of truth for plan quotas, pricing, and audience scaling.
  * All features (AI Voice, Lead pools, Budget, Charts, Seats) MUST derive from here.
  *
- * Spec (Kalpiz.co.il sales model):
+ * Spec (Realtyz.co.il sales model):
  *   1  Transaction : ₪4,999  (1,500 AI min, 3 seats,  50k leads)
  *   5  Transactions: ₪9,999  (5,000 AI min, 5 seats, 250k leads)
  *  10  Transactions: ₪14,999 (7,000 AI min, 10 seats, 1M leads)

@@ -1,18 +1,18 @@
 import { useEffect, useRef } from 'react';
 
 /**
- * KalpizWave - JS-driven dual-sine animated wave divider.
+ * RealtyzWave - JS-driven dual-sine animated wave divider.
  *
  * Renders an SVG <path> whose `d` attribute is recalculated every frame
  * (requestAnimationFrame) as the sum of two sine waves with seeded
  * frequency/phase. This produces the continuous, non-repeating water-like
- * motion seen on kalpiz.co.il (impossible with pure CSS keyframes).
+ * motion seen on realtyz.co.il (impossible with pure CSS keyframes).
  *
  * Usage:
- *   <KalpizWave variant="bottom" fill="hsl(var(--background))" seed={1} />
+ *   <RealtyzWave variant="bottom" fill="hsl(var(--background))" seed={1} />
  */
 
-export type KalpizWaveVariant = 'wave' | 'wave-deep' | 'wave-soft' | 'wave-jagged';
+export type RealtyzWaveVariant = 'wave' | 'wave-deep' | 'wave-soft' | 'wave-jagged';
 
 interface Props {
   /** Position of the wave relative to its container */
@@ -20,7 +20,7 @@ interface Props {
   /** Mirror horizontally */
   reverse?: boolean;
   /** Visual style preset (controls amplitude + height) */
-  variant?: KalpizWaveVariant;
+  variant?: RealtyzWaveVariant;
   /** Fill (CSS color) or 'gradient' to use built-in silver gradient */
   fill?: string;
   /** Override height in px */
@@ -35,7 +35,7 @@ interface Props {
   offset?: number;
 }
 
-const VARIANT_CONFIG: Record<KalpizWaveVariant, { height: number; amp: number }> = {
+const VARIANT_CONFIG: Record<RealtyzWaveVariant, { height: number; amp: number }> = {
   'wave': { height: 32, amp: 0.45 },
   'wave-deep': { height: 44, amp: 0.63 },
   'wave-soft': { height: 26, amp: 0.31 },
@@ -51,7 +51,7 @@ function rand(seed: number, salt: number) {
   return x - Math.floor(x);
 }
 
-export function KalpizWave({
+export function RealtyzWave({
   position = 'bottom',
   reverse = false,
   variant = 'wave',
@@ -116,7 +116,7 @@ export function KalpizWave({
   }, [seed, amp]);
 
   const isGradient = fill === 'gradient';
-  const gradientId = `kalpiz-wave-grad-${seed}-${position}`;
+  const gradientId = `realtyz-wave-grad-${seed}-${position}`;
 
   return (
     <div

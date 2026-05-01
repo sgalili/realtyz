@@ -213,13 +213,13 @@ export function StrategicGrowthSlider() {
         )}
         <div
           dir="rtl"
-          className="kalpiz-growth-slider w-full max-w-3xl rounded-2xl border border-primary/10 bg-background px-5 pb-4 pt-3 shadow-md transition-shadow hover:shadow-lg"
+          className="realtyz-growth-slider w-full max-w-3xl rounded-2xl border border-primary/10 bg-background px-5 pb-4 pt-3 shadow-md transition-shadow hover:shadow-lg"
           role="group"
           aria-label="בורר יעד אסטרטגי"
         >
         {/* === SELECTOR PANEL (silver, fixed size — never collapses) === */}
         <div
-          className="kalpiz-growth-selector relative overflow-hidden rounded-xl border border-primary/15 px-5 py-4 shadow-sm"
+          className="realtyz-growth-selector relative overflow-hidden rounded-xl border border-primary/15 px-5 py-4 shadow-sm"
           style={{
             background:
               'linear-gradient(180deg, hsl(210 27% 99%) 0%, hsl(var(--brand-silver)) 55%, hsl(214 20% 86%) 100%)',
@@ -228,7 +228,7 @@ export function StrategicGrowthSlider() {
           {/* Stepper */}
           <div className="flex flex-col items-center justify-center gap-1.5">
             <div
-              className={`flex items-center gap-[5px] ${isUpgrade ? 'kalpiz-slider-upsell' : ''}`}
+              className={`flex items-center gap-[5px] ${isUpgrade ? 'realtyz-slider-upsell' : ''}`}
               data-upsell={isUpgrade ? 'true' : 'false'}
             >
               <button

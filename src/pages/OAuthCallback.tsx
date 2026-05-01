@@ -17,7 +17,7 @@ export default function OAuthCallback() {
     const errorDescription = params.get('error_description');
 
     const payload = {
-      type: 'kalpiz-oauth-callback' as const,
+      type: 'realtyz-oauth-callback' as const,
       code,
       state,
       error,

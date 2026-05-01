@@ -6,7 +6,7 @@ import { DEMO_CANDIDATES } from '@/lib/demoData';
 
 export type ElectionType = 'national' | 'primaries';
 
-const STORAGE_KEY = 'kalpiz-election-type';
+const STORAGE_KEY = 'realtyz-election-type';
 
 export type ElectionTerms = {
   /** Singular unit (עסקה / מושב) */

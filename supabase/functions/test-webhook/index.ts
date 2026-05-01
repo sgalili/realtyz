@@ -25,7 +25,7 @@ Deno.serve(async (req) => {
     const res = await fetch(webhook_url, {
       method: "POST",
       headers,
-      body: JSON.stringify(payload || { type: "ping", source: "Kalpiz AI", timestamp: new Date().toISOString() }),
+      body: JSON.stringify(payload || { type: "ping", source: "Realtyz AI", timestamp: new Date().toISOString() }),
     });
 
     const text = await res.text();

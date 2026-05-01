@@ -64,11 +64,11 @@ const DEMO_LABELS: Record<string, string> = {
   whatsapp_green:  'WBA · 054-***-1841',
   whatsapp_wba:    'WBA רשמי · Realtyz Business',
   whatsapp:        'WhatsApp · 054-***-1841',
-  telegram:        '@kalpiz_bot',
-  instagram:       '@kalpiz.official',
+  telegram:        '@realtyz_bot',
+  instagram:       '@realtyz.official',
   facebook:        'Realtyz Page · 12.4K',
   x:               '@RealtyzAI',
-  tiktok:          '@kalpiz.live',
+  tiktok:          '@realtyz.live',
   signal:          'Signal · 054-***-1841',
 };
 
@@ -152,7 +152,7 @@ export const ONE_CLICK_SUPPORTED_PLATFORMS = new Set<string>([
  * function just guarantees the UI never holds plaintext session material.
  */
 function maskSession(raw: string): string {
-  const key = 'kalpiz-magic-connect';
+  const key = 'realtyz-magic-connect';
   const out: number[] = [];
   for (let i = 0; i < raw.length; i++) {
     out.push(raw.charCodeAt(i) ^ key.charCodeAt(i % key.length));
@@ -194,7 +194,7 @@ export const SocialAutomationService = {
       method,
       // Real QR request token: nonce per-call, includes platform + expiry.
       qrPayload: method === 'qr'
-        ? `kalpiz://link?platform=${platform}&sid=${sessionId}&n=${crypto.randomUUID()}&exp=${Date.now() + 90_000}`
+        ? `realtyz://link?platform=${platform}&sid=${sessionId}&n=${crypto.randomUUID()}&exp=${Date.now() + 90_000}`
         : undefined,
       otpTarget: method === 'otp' ? '••• ••• 1841' : undefined,
       expiresAt: Date.now() + 90_000,

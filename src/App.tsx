@@ -12,7 +12,7 @@ import { ElectionTypeProvider } from "@/hooks/useElectionType";
 import { MandateProvider } from "@/hooks/useMandate";
 import { toast } from "sonner";
 import { lazy, Suspense } from "react";
-import { KalpizLoader } from "@/components/KalpizLoader";
+import { RealtyzLoader } from "@/components/RealtyzLoader";
 import Auth from "./pages/Auth";
 import ResetPassword from "./pages/ResetPassword";
 
@@ -90,7 +90,7 @@ queryClient.getQueryCache().subscribe((event) => {
 function PageLoader() {
   return (
     <div className="min-h-[60vh] flex items-center justify-center">
-      <KalpizLoader size="lg" label="טוען..." />
+      <RealtyzLoader size="lg" label="טוען..." />
     </div>
   );
 }
@@ -99,7 +99,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode; allowGuestDem
   const { user, loading } = useAuth();
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
-      <KalpizLoader size="lg" label="מאמת זהות..." />
+      <RealtyzLoader size="lg" label="מאמת זהות..." />
     </div>
   );
   if (!user) return <Navigate to="/auth" replace />;
@@ -111,7 +111,7 @@ function SuperAdminRoute({ children }: { children: React.ReactNode }) {
   const { isSuperAdmin, loading: roleLoading } = useUserRole();
   if (loading || roleLoading) return (
     <div className="min-h-screen flex items-center justify-center">
-      <KalpizLoader size="lg" label="מאמת הרשאות..." />
+      <RealtyzLoader size="lg" label="מאמת הרשאות..." />
     </div>
   );
   if (!user || !isSuperAdmin) return <Navigate to="/" replace />;
@@ -122,7 +122,7 @@ function AuthRoute() {
   const { user, loading } = useAuth();
   if (loading) return (
     <div className="min-h-screen flex items-center justify-center">
-      <KalpizLoader size="lg" />
+      <RealtyzLoader size="lg" />
     </div>
   );
   if (user) return <Navigate to="/" replace />;

@@ -89,8 +89,8 @@ export function StrategicPdfExportButton({
           'להצמיד לכל נושא חם תשובת AI מאושרת מראש כדי לצמצם זמן תגובה למשברים.',
         ],
       };
-      const sessionId = window.localStorage.getItem('kalpiz-demo-session-id') ?? crypto.randomUUID();
-      window.localStorage.setItem('kalpiz-demo-session-id', sessionId);
+      const sessionId = window.localStorage.getItem('realtyz-demo-session-id') ?? crypto.randomUUID();
+      window.localStorage.setItem('realtyz-demo-session-id', sessionId);
       const { error } = await (supabase as any).from('demo_captured_leads').insert({
         phone_number: normalizedWhatsapp,
         session_id: sessionId,
@@ -103,7 +103,7 @@ export function StrategicPdfExportButton({
 
       const pdfBlob = await getStrategicPdfBlob(pdfData);
       const pdfBase64 = await blobToBase64(pdfBlob);
-      const fileName = `kalpiz-strategic-report-${new Date().toISOString().slice(0, 10)}.pdf`;
+      const fileName = `realtyz-strategic-report-${new Date().toISOString().slice(0, 10)}.pdf`;
       const { error: sendError } = await supabase.functions.invoke('send-strategic-pdf-whatsapp', {
         body: { phone_number: normalizedWhatsapp, message: messageToSend, file_name: fileName, pdf_base64: pdfBase64 },
       });

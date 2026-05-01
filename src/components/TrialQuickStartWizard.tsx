@@ -62,7 +62,7 @@ const ONE_CLICK_PLATFORMS = [
   { key: 'linkedin', label: 'LinkedIn' },
 ] as const;
 
-const STORAGE_KEY = (uid: string) => `kalpiz-trial-wizard-${uid}`;
+const STORAGE_KEY = (uid: string) => `realtyz-trial-wizard-${uid}`;
 
 /** Israeli phone normalizer → 9725XXXXXXXX (digits only). */
 function normalizeIsraeliPhone(raw: string): string | null {

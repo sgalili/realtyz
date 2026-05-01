@@ -40,7 +40,7 @@ export default function WhiteLabelSettings() {
   const [agencyName, setAgencyName] = useState('');
   const [colorHex, setColorHex] = useState('#1a2547');
   const [logoUrl, setLogoUrl] = useState<string | null>(null);
-  const [hideKalpiz, setHideKalpiz] = useState(false);
+  const [hideRealtyz, setHideRealtyz] = useState(false);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
 
@@ -49,7 +49,7 @@ export default function WhiteLabelSettings() {
       setAgencyName(settings.agency_name ?? '');
       setColorHex(hslTripletToHex(settings.primary_color));
       setLogoUrl(settings.logo_url);
-      setHideKalpiz(settings.hide_kalpiz_branding ?? false);
+      setHideRealtyz(settings.hide_kalpiz_branding ?? false);
     }
   }, [settings]);
 
@@ -93,7 +93,7 @@ export default function WhiteLabelSettings() {
         logo_url: logoUrl,
         primary_color: triplet,
         primary_foreground_color: fg,
-        hide_kalpiz_branding: hideKalpiz,
+        hide_kalpiz_branding: hideRealtyz,
       };
       const { error } = await supabase
         .from('white_label_settings')
@@ -113,7 +113,7 @@ export default function WhiteLabelSettings() {
     setSaving(true);
     try {
       await supabase.from('white_label_settings').delete().eq('user_id', user.id);
-      setAgencyName(''); setColorHex('#1a2547'); setLogoUrl(null); setHideKalpiz(false);
+      setAgencyName(''); setColorHex('#1a2547'); setLogoUrl(null); setHideRealtyz(false);
       await refresh();
       toast({ title: 'המיתוג אופס', description: 'המערכת חזרה לעיצוב ברירת המחדל.' });
     } finally {
@@ -246,18 +246,18 @@ export default function WhiteLabelSettings() {
 
       <Card>
         <CardHeader>
-          <CardTitle className="text-lg">מיתוג Kalpiz</CardTitle>
+          <CardTitle className="text-lg">מיתוג Realtyz</CardTitle>
           <CardDescription>בחר אם להציג את שם הפלטפורמה בכותרות הצוות.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="flex items-center justify-between gap-3 rounded-md border border-border p-3">
             <div>
-              <div className="font-semibold text-sm">הסתר את כיתוב "Kalpiz"</div>
+              <div className="font-semibold text-sm">הסתר את כיתוב "Realtyz"</div>
               <div className="text-xs text-muted-foreground">
                 כאשר מופעל, ה-header יציג רק את שם / לוגו הסוכנות.
               </div>
             </div>
-            <Switch checked={hideKalpiz} onCheckedChange={setHideKalpiz} />
+            <Switch checked={hideRealtyz} onCheckedChange={setHideRealtyz} />
           </div>
         </CardContent>
       </Card>

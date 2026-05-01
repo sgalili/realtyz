@@ -7,7 +7,7 @@
  *   - GreenAPI (unofficial) — otherwise. Reads credentials from
  *     `wa_providers` (provider_name='GreenAPI') OR falls back to legacy
  *     `api_configs` ("Green API") / `social_connections` rows so existing
- *     Kalpiz tenants keep working without re-configuration.
+ *     Realtyz tenants keep working without re-configuration.
  *
  * Standardized response shape (UI never needs to know which provider ran):
  * {
@@ -149,7 +149,7 @@ async function resolveProvider(
     if (hit) return hit;
   }
 
-  // 2. Legacy fallback — preserve existing Kalpiz GreenAPI behavior.
+  // 2. Legacy fallback — preserve existing Realtyz GreenAPI behavior.
   if (!force || force === "GreenAPI") {
     const { data: legacy } = await admin
       .from("api_configs")

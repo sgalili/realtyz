@@ -7,7 +7,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useUserRole } from '@/hooks/useUserRole';
 
 const QUERY_KEY = ['admin-leads', 'new-count'];
-const SEEN_TS_STORAGE_KEY = 'kalpiz-admin-leads-last-seen';
+const SEEN_TS_STORAGE_KEY = 'realtyz-admin-leads-last-seen';
 
 interface AdminLeadRow {
   id: string;

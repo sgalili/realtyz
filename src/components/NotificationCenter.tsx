@@ -77,19 +77,19 @@ export default function NotificationCenter() {
   const [bellPulse, setBellPulse] = useState(false);
   const [demoNotifications, setDemoNotifications] = useState<DemoNotification[]>(() => {
     try {
-      const stored = localStorage.getItem('kalpiz_demo_notifications');
+      const stored = localStorage.getItem('realtyz_demo_notifications');
       return stored ? JSON.parse(stored) : [];
     } catch { return []; }
   });
   const [viewedIds, setViewedIds] = useState<Set<string>>(() => {
     try {
-      const stored = localStorage.getItem('kalpiz_viewed_notifs');
+      const stored = localStorage.getItem('realtyz_viewed_notifs');
       return new Set(stored ? JSON.parse(stored) : []);
     } catch { return new Set(); }
   });
   const [dismissedBudgets, setDismissedBudgets] = useState<Set<string>>(() => {
     try {
-      const stored = localStorage.getItem('kalpiz_dismissed_budgets');
+      const stored = localStorage.getItem('realtyz_dismissed_budgets');
       return new Set(stored ? JSON.parse(stored) : []);
     } catch { return new Set(); }
   });
@@ -205,7 +205,7 @@ export default function NotificationCenter() {
         };
         setDemoNotifications((current) => {
           const next = [notification, ...current].slice(0, 20);
-          localStorage.setItem('kalpiz_demo_notifications', JSON.stringify(next));
+          localStorage.setItem('realtyz_demo_notifications', JSON.stringify(next));
           return next;
         });
         setBellPulse(true);
@@ -278,7 +278,7 @@ export default function NotificationCenter() {
     const next = new Set(dismissedBudgets);
     next.add(key);
     setDismissedBudgets(next);
-    localStorage.setItem('kalpiz_dismissed_budgets', JSON.stringify([...next]));
+    localStorage.setItem('realtyz_dismissed_budgets', JSON.stringify([...next]));
   };
 
   const handleClick = (voterId: string | null, id: string) => {
@@ -286,7 +286,7 @@ export default function NotificationCenter() {
     const next = new Set(viewedIds);
     next.add(id);
     setViewedIds(next);
-    localStorage.setItem('kalpiz_viewed_notifs', JSON.stringify([...next]));
+    localStorage.setItem('realtyz_viewed_notifs', JSON.stringify([...next]));
     setOpen(false);
     navigate(`/live-conversations?lead=${voterId}`);
   };
@@ -294,14 +294,14 @@ export default function NotificationCenter() {
   const markAllRead = () => {
     const next = new Set([...viewedIds, ...alerts.map(a => a.id), ...demoNotifications.map(n => n.id)]);
     setViewedIds(next);
-    localStorage.setItem('kalpiz_viewed_notifs', JSON.stringify([...next]));
+    localStorage.setItem('realtyz_viewed_notifs', JSON.stringify([...next]));
   };
 
   const openDemoNotification = (notification: DemoNotification) => {
     const next = new Set(viewedIds);
     next.add(notification.id);
     setViewedIds(next);
-    localStorage.setItem('kalpiz_viewed_notifs', JSON.stringify([...next]));
+    localStorage.setItem('realtyz_viewed_notifs', JSON.stringify([...next]));
     setOpen(false);
     navigate(notification.path);
   };
@@ -312,7 +312,7 @@ export default function NotificationCenter() {
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="מרכז התראות" className={`relative h-9 w-9 p-0 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground ${bellPulse ? 'kalpiz-notification-pulse' : ''}`}>
+        <Button variant="ghost" size="icon" aria-label="מרכז התראות" className={`relative h-9 w-9 p-0 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground ${bellPulse ? 'realtyz-notification-pulse' : ''}`}>
           <Bell className="h-4 w-4" />
           {badgeCount > 0 && (
             <span className="absolute right-0 top-0 h-4 min-w-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
@@ -321,7 +321,7 @@ export default function NotificationCenter() {
           )}
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="kalpiz-notification-drawer w-80 p-0 overflow-hidden" align="end" dir="rtl">
+      <PopoverContent className="realtyz-notification-drawer w-80 p-0 overflow-hidden" align="end" dir="rtl">
         <div className="flex items-center justify-between px-4 py-3 border-b border-primary/15">
           <h4 className="text-sm font-semibold text-primary">מרכז התראות</h4>
           <div className="flex items-center gap-1">
@@ -338,7 +338,7 @@ export default function NotificationCenter() {
             const isUnread = !viewedIds.has(notification.id);
             const NotificationIcon = getDemoNotificationIcon(notification);
             return (
-              <div key={notification.id} className={`kalpiz-notification-item px-4 py-3 border-b ${isUnread ? 'ring-1 ring-primary/20' : ''}`}>
+              <div key={notification.id} className={`realtyz-notification-item px-4 py-3 border-b ${isUnread ? 'ring-1 ring-primary/20' : ''}`}>
                 <div className="flex gap-3 items-start">
                   <NotificationIcon className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
                   <div className="flex-1 min-w-0">

@@ -1,7 +1,7 @@
 import { lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { KalpizLoader } from '@/components/KalpizLoader';
+import { RealtyzLoader } from '@/components/RealtyzLoader';
 import { Crosshair, Megaphone, Calendar, ShieldCheck, Radio, ClipboardList, Send } from 'lucide-react';
 import { useElectionType } from '@/hooks/useElectionType';
 
@@ -18,7 +18,7 @@ type BroadcastSubTab = 'send' | 'reports';
 
 const PageFallback = () => (
   <div className="min-h-[40vh] flex items-center justify-center">
-    <KalpizLoader size="md" label="טוען..." />
+    <RealtyzLoader size="md" label="טוען..." />
   </div>
 );
 

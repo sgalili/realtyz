@@ -77,7 +77,7 @@ async function sendSms019(
     <username>${escapeXml(user)}</username>
     <password>${escapeXml(password)}</password>
   </user>
-  <source>${escapeXml(source || "Kalpiz")}</source>
+  <source>${escapeXml(source || "Realtyz")}</source>
   <destinations>
     <phone>${escapeXml(phone)}</phone>
   </destinations>
@@ -328,7 +328,7 @@ async function sendEmailResend(
 // Auto-appended to EVERY outbound email so recipients always have a one-click
 // removal path. Lowers spam-rate complaints and protects sender reputation.
 function buildUnsubscribeLink(recipientEmail: string, campaignName: string): string {
-  const base = Deno.env.get("PUBLIC_SITE_URL") ?? "https://kalpizai.lovable.app";
+  const base = Deno.env.get("PUBLIC_SITE_URL") ?? "https://realtyzai.lovable.app";
   const params = new URLSearchParams({ email: recipientEmail, c: campaignName });
   return `${base}/unsubscribe?${params.toString()}`;
 }
@@ -338,7 +338,7 @@ function appendUnsubscribeFooter(htmlBody: string, recipientEmail: string, campa
   const footer = `
     <hr style="margin-top:24px;border:none;border-top:1px solid #e2e8f0" />
     <div dir="rtl" style="margin-top:12px;font-family:Assistant,Arial,sans-serif;font-size:12px;color:#64748b;text-align:center">
-      קיבלת הודעה זו כחלק ממאגר התומכים של Kalpiz. אם אינך מעוניין/ת לקבל הודעות נוספות,
+      קיבלת הודעה זו כחלק ממאגר התומכים של Realtyz. אם אינך מעוניין/ת לקבל הודעות נוספות,
       <a href="${link}" style="color:#0369a1;text-decoration:underline">לחצ/י כאן להסרה</a>.
     </div>`;
   return htmlBody + footer;
@@ -539,7 +539,7 @@ Deno.serve(async (req) => {
     }
     const sms019Raw = providers.get("019 SMS");
     const greenRaw = providers.get("Green API");
-    const fromAddress = "Kalpiz <updates@kalpiz.co.il>"; // legacy display only
+    const fromAddress = "Realtyz <updates@realtyz.co.il>"; // legacy display only
 
     const sms019Creds = sms019Raw ? sms019Raw.split(":") : null;
     const greenSharedRaw = greenRaw ? greenRaw.split(":") : null;
@@ -558,7 +558,7 @@ Deno.serve(async (req) => {
     const resendApiKey = Deno.env.get("RESEND_API_KEY") ?? "";
     const resendReady = resendApiKey.length > 0;
     const resendFromAddress =
-      Deno.env.get("RESEND_FROM_ADDRESS") ?? "Kalpiz <updates@kalpiz.co.il>";
+      Deno.env.get("RESEND_FROM_ADDRESS") ?? "Realtyz <updates@realtyz.co.il>";
 
     // Load the user's connected Green API (with shared admin row as fallback)
     const { session: waSession, reason: waReason } =
@@ -612,8 +612,8 @@ Deno.serve(async (req) => {
     if (mode === "test") {
       const channel = String(body.channel ?? "sms");
       const recipient = String(body.recipient ?? "");
-      const message = String(body.message ?? "Kalpiz test send");
-      const subject = String(body.subject ?? "Kalpiz - בדיקת שיגור");
+      const message = String(body.message ?? "Realtyz test send");
+      const subject = String(body.subject ?? "Realtyz - בדיקת שיגור");
       // Personalize using sender's own profile if voter data not provided
       const ctx = {
         full_name: body?.preview_name ?? userData.user.user_metadata?.full_name ?? "",
@@ -634,7 +634,7 @@ Deno.serve(async (req) => {
             sms019Creds.slice(1).join(":"),
             local,
             personalized,
-            "Kalpiz",
+            "Realtyz",
           );
       } else if (channel === "whatsapp") {
         const intl = toIntlIL(recipient);
@@ -803,7 +803,7 @@ Deno.serve(async (req) => {
             sms019Creds.slice(1).join(":"),
             local,
             message,
-            "Kalpiz",
+            "Realtyz",
           );
       } else if (channel === "whatsapp") {
         const intl = toIntlIL(row.recipient_phone);

@@ -47,7 +47,7 @@ interface VerifiedIdentity {
   verified_at: string;
 }
 
-const TARGET_DOMAIN = 'kalpiz.co.il';
+const TARGET_DOMAIN = 'realtyz.co.il';
 
 /**
  * Exchange a refresh_token for a fresh access_token (Google).

@@ -170,7 +170,7 @@ const AuditLogCard = () => {
 
   const auditEntries = useMemo(() => {
     const entries: AuditEntry[] = [];
-    const email = user?.email || 'admin@kalpiz.ai';
+    const email = user?.email || 'admin@realtyz.ai';
 
     // Config changes
     configs?.forEach((c) => {
@@ -191,7 +191,7 @@ const AuditLogCard = () => {
         entries.push({
           id: `msg-${m.id}`,
           timestamp: m.created_at,
-          user_email: m.sender_type === 'system' ? 'system@kalpiz.ai' : email,
+          user_email: m.sender_type === 'system' ? 'system@realtyz.ai' : email,
           action: m.sender_type === 'system' ? 'שליחת הודעה אוטומטית' : 'גישה למאגר לידים',
           target: `lead:${(m.lead_id || '').slice(0, 8)}...`,
         });
@@ -1336,7 +1336,7 @@ const DbAccessLog = () => {
 
       type LogEntry = { id: string; timestamp: string; actor: string; action: string; resource: string; verified: boolean };
       const entries: LogEntry[] = [];
-      const email = user?.email || 'admin@kalpiz.ai';
+      const email = user?.email || 'admin@realtyz.ai';
 
       voterReads?.forEach((v) => {
         entries.push({
@@ -1353,7 +1353,7 @@ const DbAccessLog = () => {
         entries.push({
           id: `ma-${m.id}`,
           timestamp: m.created_at || new Date().toISOString(),
-          actor: m.sender_type === 'system' ? 'system@kalpiz.ai' : email,
+          actor: m.sender_type === 'system' ? 'system@realtyz.ai' : email,
           action: 'WRITE',
           resource: `messages/${(m.lead_id || '').slice(0, 8)}`,
           verified: true,

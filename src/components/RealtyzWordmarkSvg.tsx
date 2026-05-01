@@ -1,11 +1,11 @@
 import { cn } from '@/lib/utils';
 
-type KalpizWordmarkSvgProps = {
+type RealtyzWordmarkSvgProps = {
   className?: string;
   title?: string;
 };
 
-export function KalpizWordmarkSvg({ className, title = 'Realtyz AI' }: KalpizWordmarkSvgProps) {
+export function RealtyzWordmarkSvg({ className, title = 'Realtyz AI' }: RealtyzWordmarkSvgProps) {
   return (
     <svg
       className={cn('h-9 w-auto text-primary-foreground', className)}

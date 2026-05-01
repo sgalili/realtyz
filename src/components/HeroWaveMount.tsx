@@ -1,11 +1,11 @@
 import { useEffect } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { useLocation } from 'react-router-dom';
-import { KalpizWave } from '@/components/KalpizWave';
+import { RealtyzWave } from '@/components/RealtyzWave';
 
 /**
  * Finds the navy hero block (CSS-styled `main > div > div:first-child` that
- * wraps an h1) and mounts a JS-driven KalpizWave SVG at its bottom edge.
+ * wraps an h1) and mounts a JS-driven RealtyzWave SVG at its bottom edge.
  * Uses a MutationObserver because pages render asynchronously after route
  * changes (data fetches, suspense, etc.).
  */
@@ -17,14 +17,14 @@ export function HeroWaveMount() {
     const containers: HTMLDivElement[] = [];
 
     const mountInto = (el: HTMLElement) => {
-      if (el.dataset.kalpizWaveMounted === '1') return;
+      if (el.dataset.realtyzWaveMounted === '1') return;
       // Allow pages to opt out (e.g. SubscriptionManager has its own layout)
       if (el.closest('[data-no-hero-wave]')) return;
       // Must contain an h1 (direct or one level deep) to be a hero block
       const hasH1 = !!el.querySelector(':scope > h1, :scope > div > h1');
       if (!hasH1) return;
 
-      el.dataset.kalpizWaveMounted = '1';
+      el.dataset.realtyzWaveMounted = '1';
 
       const host = document.createElement('div');
       host.style.position = 'absolute';
@@ -37,7 +37,7 @@ export function HeroWaveMount() {
 
       const root = createRoot(host);
       root.render(
-        <KalpizWave
+        <RealtyzWave
           position="bottom"
           variant="wave-soft"
           fill="hsl(210 8% 91%)"
@@ -78,7 +78,7 @@ export function HeroWaveMount() {
       containers.forEach((c) => {
         const parent = c.parentElement;
         if (parent) {
-          delete parent.dataset.kalpizWaveMounted;
+          delete parent.dataset.realtyzWaveMounted;
           if (parent.contains(c)) parent.removeChild(c);
         }
       });
