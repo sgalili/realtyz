@@ -217,74 +217,78 @@ export default function KnowledgeBase() {
         </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        <Card className="lg:col-span-2">
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <BookOpen className="h-4 w-4 text-primary" /> מקורות ידע פעילים
-            </CardTitle>
-            <CardDescription>הספרייה שמזינה את מוח ה-AI של הקמפיין</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {demoDocuments.map((doc) => (
-              <div key={doc.id} className="flex items-center gap-3 p-3 rounded-md border bg-muted/30">
-                <FileText className="h-4 w-4 text-primary shrink-0" />
-                <div className="flex-1 min-w-0">
-                  <div className="text-sm font-medium truncate">{doc.title}</div>
-                  <div className="text-xs text-muted-foreground">{doc.type} · {doc.chunks} מקטעים סמנטיים</div>
+      {isDemoMode && (
+        <>
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+            <Card className="lg:col-span-2">
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <BookOpen className="h-4 w-4 text-primary" /> מקורות ידע פעילים
+                </CardTitle>
+                <CardDescription>הספרייה שמזינה את מוח ה-AI של הקמפיין</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-2">
+                {demoDocuments.map((doc) => (
+                  <div key={doc.id} className="flex items-center gap-3 p-3 rounded-md border bg-muted/30">
+                    <FileText className="h-4 w-4 text-primary shrink-0" />
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-medium truncate">{doc.title}</div>
+                      <div className="text-xs text-muted-foreground">{doc.type} · {doc.chunks} מקטעים סמנטיים</div>
+                    </div>
+                    <Badge variant="secondary" className="gap-1 text-xs">
+                      <CheckCircle2 className="h-3 w-3 text-emerald-600" /> נותח
+                    </Badge>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-base flex items-center gap-2">
+                  <Sparkles className="h-4 w-4 text-primary" /> ערכי ליבה מזוהים
+                </CardTitle>
+                <CardDescription>חולצו אוטומטית מהמסמכים שהוזנו</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {coreValues.map((v) => (
+                    <Badge key={v} variant="outline" className="px-3 py-1 text-sm border-primary/40 text-primary">
+                      {v}
+                    </Badge>
+                  ))}
                 </div>
-                <Badge variant="secondary" className="gap-1 text-xs">
-                  <CheckCircle2 className="h-3 w-3 text-emerald-600" /> נותח
-                </Badge>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
+                <div className="mt-4 pt-4 border-t text-xs text-muted-foreground leading-relaxed">
+                  ה-AI מצליב את הערכים הללו עם כל הודעה יוצאת כדי לשמר עקביות מסר.
+                </div>
+              </CardContent>
+            </Card>
+          </div>
 
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-primary" /> ערכי ליבה מזוהים
-            </CardTitle>
-            <CardDescription>חולצו אוטומטית מהמסמכים שהוזנו</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-2">
-              {coreValues.map((v) => (
-                <Badge key={v} variant="outline" className="px-3 py-1 text-sm border-primary/40 text-primary">
-                  {v}
-                </Badge>
+          <Card>
+            <CardHeader className="pb-3">
+              <CardTitle className="text-base flex items-center gap-2">
+                <Brain className="h-4 w-4 text-primary" /> בדיקת ה-AI: זוגות אימון לדוגמה
+              </CardTitle>
+              <CardDescription>כך ה-AI עונה על שאלות לידים בהתבסס על המסמכים שהוזנו</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {qaPairs.map((pair, idx) => (
+                <div key={idx} className="rounded-md border bg-muted/20 p-4 space-y-2">
+                  <div className="flex items-start gap-2">
+                    <Badge variant="secondary" className="shrink-0">שאלה</Badge>
+                    <p className="text-sm font-medium">{pair.q}</p>
+                  </div>
+                  <div className="flex items-start gap-2">
+                    <Badge className="shrink-0 bg-primary text-primary-foreground">תשובת AI</Badge>
+                    <p className="text-sm text-muted-foreground leading-relaxed">{pair.a}</p>
+                  </div>
+                </div>
               ))}
-            </div>
-            <div className="mt-4 pt-4 border-t text-xs text-muted-foreground leading-relaxed">
-              ה-AI מצליב את הערכים הללו עם כל הודעה יוצאת כדי לשמר עקביות מסר.
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Brain className="h-4 w-4 text-primary" /> בדיקת ה-AI: זוגות אימון לדוגמה
-          </CardTitle>
-          <CardDescription>כך ה-AI עונה על שאלות לידים בהתבסס על המסמכים שהוזנו</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          {qaPairs.map((pair, idx) => (
-            <div key={idx} className="rounded-md border bg-muted/20 p-4 space-y-2">
-              <div className="flex items-start gap-2">
-                <Badge variant="secondary" className="shrink-0">שאלה</Badge>
-                <p className="text-sm font-medium">{pair.q}</p>
-              </div>
-              <div className="flex items-start gap-2">
-                <Badge className="shrink-0 bg-primary text-primary-foreground">תשובת AI</Badge>
-                <p className="text-sm text-muted-foreground leading-relaxed">{pair.a}</p>
-              </div>
-            </div>
-          ))}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       <Tabs defaultValue="knowledge" className="w-full">
         <TabsList>
@@ -437,7 +441,7 @@ export default function KnowledgeBase() {
               {activeDocs.length === 0 && (
                 <TableRow>
                   <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                    אין מסמכים. התחל בהעלאה או שלח הודעה עם <code>/kb</code> ב-WhatsApp.
+                    לא נמצאו מסמכים במאגר. העלה מסמך ראשון כדי להתחיל.
                   </TableCell>
                 </TableRow>
               )}
