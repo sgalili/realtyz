@@ -28,21 +28,21 @@ import { toast } from 'sonner';
 type TeamRole = Extract<AppRole, 'managing_broker' | 'lead_agent' | 'assistant' | 'junior_agent'>;
 
 const ROLE_LABEL: Record<TeamRole, string> = {
-  managing_broker: 'Managing Broker',
-  lead_agent: 'Lead Agent',
-  assistant: 'Assistant',
-  junior_agent: 'Junior Agent',
+  managing_broker: 'מתווך אחראי',
+  lead_agent: 'סוכן בכיר',
+  assistant: 'אסיסטנט',
+  junior_agent: 'סוכן זוטר',
 };
 
 const ROLE_DESCRIPTION: Record<TeamRole, string> = {
   managing_broker:
-    'Full authority — settings, billing, team management, and contracts. The owner of the agency.',
+    'הרשאה מלאה — הגדרות, חיובים, ניהול צוות וחוזים. בעל הסוכנות.',
   lead_agent:
-    'Owns deals end-to-end — Deal Room, Strategy Bank, Listing Outreach, and the Closing Room. No billing or team-billing access.',
+    'מנהל עסקאות מקצה לקצה — חדר עסקאות, מאגר אסטרטגיות, פנייה לנכסים וחדר סגירה. ללא גישה לחיובים או ניהול צוות.',
   assistant:
-    'Supports the agents — Strategy Bank data entry and Deal Room task management. Cannot delete prospects or open the Closing Room.',
+    'תומך בסוכנים — הזנת נתונים במאגר האסטרטגיות וניהול משימות בחדר העסקאות. אינו יכול למחוק לקוחות פוטנציאליים או לפתוח את חדר הסגירה.',
   junior_agent:
-    'Learning role — restricted to their own assigned prospects in the Deal Room.',
+    'תפקיד למידה — מוגבל ללקוחות הפוטנציאליים שהוקצו לו בחדר העסקאות בלבד.',
 };
 
 type Invitation = {
@@ -97,7 +97,7 @@ export default function Team() {
     const trimmed = email.trim().toLowerCase();
     if (!trimmed || !user) return;
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(trimmed)) {
-      toast.error('Please enter a valid email');
+      toast.error('יש להזין כתובת אימייל תקינה');
       return;
     }
     setInviting(true);
@@ -112,13 +112,13 @@ export default function Team() {
         { onConflict: 'email,role' }
       );
       if (error) throw error;
-      toast.success('Invitation created', {
-        description: `${trimmed} will get ${ROLE_LABEL[role]} access on first sign-in.`,
+      toast.success('הזמנה נוצרה', {
+        description: `${trimmed} יקבל הרשאת ${ROLE_LABEL[role]} בכניסה הראשונה.`,
       });
       setEmail('');
       queryClient.invalidateQueries({ queryKey: ['team-invitations'] });
     } catch (e: any) {
-      toast.error('Could not invite', { description: e?.message });
+      toast.error('שליחת ההזמנה נכשלה', { description: e?.message });
     } finally {
       setInviting(false);
     }
@@ -127,28 +127,28 @@ export default function Team() {
   async function revoke(id: string) {
     const { error } = await supabase.from('team_invitations').delete().eq('id', id);
     if (error) {
-      toast.error('Could not revoke', { description: error.message });
+      toast.error('ביטול ההזמנה נכשל', { description: error.message });
       return;
     }
     queryClient.invalidateQueries({ queryKey: ['team-invitations'] });
   }
 
   async function removeMember(userId: string, roleName: AppRole) {
-    if (!confirm(`Remove ${ROLE_LABEL[roleName as TeamRole] || roleName} access for this user?`)) return;
+    if (!confirm(`להסיר את הרשאת ${ROLE_LABEL[roleName as TeamRole] || roleName} ממשתמש זה?`)) return;
     const { error } = await supabase
       .from('user_roles')
       .delete()
       .eq('user_id', userId)
       .eq('role', roleName);
     if (error) {
-      toast.error('Could not remove', { description: error.message });
+      toast.error('הסרה נכשלה', { description: error.message });
       return;
     }
     queryClient.invalidateQueries({ queryKey: ['team-members'] });
   }
 
   if (loading) {
-    return <div className="p-6 text-sm text-muted-foreground">Loading…</div>;
+    return <div className="p-6 text-sm text-muted-foreground">טוען…</div>;
   }
 
   if (!canInviteTeam) {
@@ -156,9 +156,9 @@ export default function Team() {
       <div className="max-w-2xl mx-auto p-6">
         <Card className="p-8 text-center">
           <Shield className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-          <h2 className="text-lg font-semibold">Admin access required</h2>
+          <h2 className="text-lg font-semibold">נדרשת הרשאת מנהל</h2>
           <p className="text-sm text-muted-foreground mt-1">
-            Only the workspace owner can invite and manage team members.
+            רק בעל הסוכנות יכול להזמין ולנהל חברי צוות.
           </p>
         </Card>
       </div>
@@ -166,21 +166,21 @@ export default function Team() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto p-6 space-y-6" dir="ltr">
+    <div className="max-w-4xl mx-auto p-6 space-y-6" dir="rtl">
       <header>
         <h1 className="text-2xl font-semibold flex items-center gap-2">
           <Users className="h-6 w-6 text-primary" />
-          Team Collaboration
+          ניהול צוות
         </h1>
         <p className="text-sm text-muted-foreground mt-1">
-          Invite teammates and choose what they can do. Only Agents can close deals or approve contracts.
+          הזמינו חברי צוות וקבעו את ההרשאות שלהם. רק סוכנים בכירים יכולים לסגור עסקאות או לאשר חוזים.
         </p>
       </header>
 
       <Card className="p-5 space-y-4">
         <div className="flex items-center gap-2">
           <UserPlus className="h-4 w-4 text-primary" />
-          <h2 className="font-medium">Invite a teammate</h2>
+          <h2 className="font-medium">הזמנת חבר צוות</h2>
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-[1fr_200px_auto] gap-2">
           <Input
@@ -189,36 +189,37 @@ export default function Team() {
             value={email}
             onChange={(e) => setEmail(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && sendInvite()}
+            dir="ltr"
           />
           <Select value={role} onValueChange={(v) => setRole(v as TeamRole)}>
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="managing_broker">Managing Broker</SelectItem>
-              <SelectItem value="lead_agent">Lead Agent</SelectItem>
-              <SelectItem value="assistant">Assistant</SelectItem>
-              <SelectItem value="junior_agent">Junior Agent</SelectItem>
+              <SelectItem value="managing_broker">מתווך אחראי</SelectItem>
+              <SelectItem value="lead_agent">סוכן בכיר</SelectItem>
+              <SelectItem value="assistant">אסיסטנט</SelectItem>
+              <SelectItem value="junior_agent">סוכן זוטר</SelectItem>
             </SelectContent>
           </Select>
           <Button onClick={sendInvite} disabled={inviting || !email.trim()}>
-            {inviting ? 'Inviting…' : 'Invite'}
+            {inviting ? 'שולח…' : 'הזמנה'}
           </Button>
         </div>
         <p className="text-xs text-muted-foreground">{ROLE_DESCRIPTION[role]}</p>
       </Card>
 
       <Card className="p-5">
-        <h2 className="font-medium mb-3">Pending invitations</h2>
+        <h2 className="font-medium mb-3">הזמנות ממתינות</h2>
         {invitations.filter((i) => i.status === 'pending').length === 0 ? (
-          <p className="text-sm text-muted-foreground">No pending invitations.</p>
+          <p className="text-sm text-muted-foreground">אין הזמנות ממתינות.</p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Email</TableHead>
-                <TableHead>Role</TableHead>
-                <TableHead>Sent</TableHead>
+                <TableHead>אימייל</TableHead>
+                <TableHead>תפקיד</TableHead>
+                <TableHead>נשלח</TableHead>
                 <TableHead className="w-12" />
               </TableRow>
             </TableHeader>
@@ -227,15 +228,15 @@ export default function Team() {
                 .filter((i) => i.status === 'pending')
                 .map((inv) => (
                   <TableRow key={inv.id}>
-                    <TableCell className="font-medium">{inv.email}</TableCell>
+                    <TableCell className="font-medium" dir="ltr">{inv.email}</TableCell>
                     <TableCell>
                       <Badge variant="secondary">{ROLE_LABEL[inv.role] || inv.role}</Badge>
                     </TableCell>
                     <TableCell className="text-muted-foreground text-xs">
-                      {new Date(inv.created_at).toLocaleDateString()}
+                      {new Date(inv.created_at).toLocaleDateString('he-IL')}
                     </TableCell>
                     <TableCell>
-                      <Button size="icon" variant="ghost" onClick={() => revoke(inv.id)} aria-label="Revoke">
+                      <Button size="icon" variant="ghost" onClick={() => revoke(inv.id)} aria-label="ביטול הזמנה">
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </TableCell>
@@ -247,22 +248,22 @@ export default function Team() {
       </Card>
 
       <Card className="p-5">
-        <h2 className="font-medium mb-3">Active team members</h2>
+        <h2 className="font-medium mb-3">חברי צוות פעילים</h2>
         {members.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No team members yet.</p>
+          <p className="text-sm text-muted-foreground">אין חברי צוות עדיין.</p>
         ) : (
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>User ID</TableHead>
-                <TableHead>Role</TableHead>
+                <TableHead>מזהה משתמש</TableHead>
+                <TableHead>תפקיד</TableHead>
                 <TableHead className="w-12" />
               </TableRow>
             </TableHeader>
             <TableBody>
               {members.map((m) => (
                 <TableRow key={`${m.user_id}-${m.role}`}>
-                  <TableCell className="font-mono text-xs">{m.user_id.slice(0, 8)}…</TableCell>
+                  <TableCell className="font-mono text-xs" dir="ltr">{m.user_id.slice(0, 8)}…</TableCell>
                   <TableCell>
                     <Badge>{ROLE_LABEL[m.role as TeamRole] || m.role}</Badge>
                   </TableCell>
@@ -271,7 +272,7 @@ export default function Team() {
                       size="icon"
                       variant="ghost"
                       onClick={() => removeMember(m.user_id, m.role)}
-                      aria-label="Remove"
+                      aria-label="הסרה"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -284,13 +285,13 @@ export default function Team() {
       </Card>
 
       <Card className="p-5 bg-muted/30">
-        <h2 className="font-medium mb-2 text-sm">Permission matrix</h2>
+        <h2 className="font-medium mb-2 text-sm">מטריצת הרשאות</h2>
         <div className="text-xs text-muted-foreground space-y-1.5">
-          <p>• <strong>Managing Broker</strong> — full access to settings, billing, team management, and contracts.</p>
-          <p>• <strong>Lead Agent</strong> — Deal Room, Strategy Bank, Listing Outreach, and the Closing Room. No billing or team management.</p>
-          <p>• <strong>Assistant</strong> — Strategy Bank data entry and Deal Room task management. Cannot delete prospects or open the Closing Room.</p>
-          <p>• <strong>Junior Agent</strong> — restricted to their own assigned prospects in the Deal Room only.</p>
-          <p>• All team members can read &amp; post internal Deal Room comments. Every stage change and re-assignment is captured in the audit log.</p>
+          <p>• <strong>מתווך אחראי</strong> — גישה מלאה להגדרות, חיובים, ניהול צוות וחוזים.</p>
+          <p>• <strong>סוכן בכיר</strong> — חדר עסקאות, מאגר אסטרטגיות, פנייה לנכסים וחדר סגירה. ללא גישה לחיובים או ניהול צוות.</p>
+          <p>• <strong>אסיסטנט</strong> — הזנת נתונים במאגר האסטרטגיות וניהול משימות בחדר העסקאות. אינו יכול למחוק לקוחות פוטנציאליים או לפתוח את חדר הסגירה.</p>
+          <p>• <strong>סוכן זוטר</strong> — מוגבל ללקוחות הפוטנציאליים שהוקצו לו בחדר העסקאות בלבד.</p>
+          <p>• כל חברי הצוות יכולים לקרוא ולהוסיף הערות פנימיות בחדר העסקאות. כל שינוי שלב והקצאה נרשמים ביומן הביקורת.</p>
         </div>
       </Card>
     </div>

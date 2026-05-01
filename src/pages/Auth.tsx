@@ -217,7 +217,7 @@ const Auth = () => {
                 'left-[calc(50%+6px)] -translate-x-1/2 text-foreground',
               )}
             >
-              Demo
+              דמו
             </span>
           </Switch>
         </label>
@@ -233,7 +233,7 @@ const Auth = () => {
 
       <div className="auth-hero-content relative z-10 mx-auto w-full" dir="rtl">
         <div className="mb-8 translate-y-5 text-center">
-          <div className="kalpiz-logo auth-text-logo" aria-label="Kalpiz">Kalpiz</div>
+          <div className="kalpiz-logo auth-text-logo" aria-label="Realtyz">Realtyz</div>
           <p className="auth-official-slogan">הפלטפורמה שהופכת דאטה קרה למכונת המרה</p>
         </div>
 
@@ -338,13 +338,13 @@ const Auth = () => {
 
       <footer className="auth-page-footer" dir="rtl">
         <p className="auth-footer-credit">
-          נבנה ב- <span className="auth-heart" aria-label="love">❤️</span> עבור אלו שמובילים את הפוליטיקה הישראלית
+          נבנה ב- <span className="auth-heart" aria-label="אהבה">❤️</span> עבור סוכני הנדל"ן המובילים בישראל
         </p>
         <div className="auth-footer-wave-band">
           <div className="auth-footer-white-wave" aria-hidden="true" />
         </div>
         <div className="auth-footer-legal">
-          <span dir="ltr" className="auth-footer-copyright">© 2026 Kalpiz. All rights reserved</span>
+          <span dir="ltr" className="auth-footer-copyright">© 2026 Realtyz. All rights reserved</span>
           <div className="auth-footer-links">
             <a href="/privacy">מדיניות פרטיות</a>
             <a href="/terms">תנאי שימוש</a>

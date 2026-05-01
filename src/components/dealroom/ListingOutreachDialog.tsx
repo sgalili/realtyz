@@ -127,7 +127,7 @@ export function ListingOutreachDialog({
       const items = Array.isArray(raw) ? raw : raw?.listings || raw?.results || [];
       return items.map((l: any) => ({
         id: String(l.id ?? l._id ?? l.uuid),
-        title: l.title || l.address || `Listing ${l.id}`,
+        title: l.title || l.address || `נכס ${l.id}`,
         city: l.city,
         price: l.price ?? l.asking_price,
       })) as HomelyListing[];
@@ -141,7 +141,7 @@ export function ListingOutreachDialog({
 
   async function handleGenerate() {
     if (!prospectId || !listingId) {
-      toast.error('Select a Prospect and a Listing first');
+      toast.error('יש לבחור לקוח ונכס תחילה');
       return;
     }
     setGenerating(true);
@@ -158,12 +158,12 @@ export function ListingOutreachDialog({
       });
       if (error) throw error;
       const d = (data as any)?.draft as Draft | undefined;
-      if (!d?.message) throw new Error('Empty draft returned');
+      if (!d?.message) throw new Error('הוחזרה טיוטה ריקה');
       setDraft(d);
-      toast.success('Outreach drafted — review before sending');
+      toast.success('טיוטת פנייה נוצרה — עברו עליה לפני שליחה');
     } catch (err: any) {
       console.error(err);
-      toast.error('Failed to generate outreach', { description: err?.message });
+      toast.error('יצירת הטיוטה נכשלה', { description: err?.message });
     } finally {
       setGenerating(false);
     }
@@ -186,12 +186,12 @@ export function ListingOutreachDialog({
         },
       });
       if (error) throw error;
-      toast.success('Sent to approval queue', {
-        description: 'Outreach is awaiting final approval before dispatch.',
+      toast.success('נשלח לתור האישור', {
+        description: 'הפנייה ממתינה לאישור סופי לפני שליחה.',
       });
       onOpenChange(false);
     } catch (err: any) {
-      toast.error('Failed to queue outreach', { description: err?.message });
+      toast.error('שליחת הפנייה נכשלה', { description: err?.message });
     } finally {
       setSending(false);
     }
@@ -205,29 +205,29 @@ export function ListingOutreachDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" dir="ltr">
+      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto" dir="rtl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Megaphone className="h-5 w-5 text-primary" />
-            Listing Outreach
+            פנייה לנכס
           </DialogTitle>
           <DialogDescription>
-            Pair a Prospect with a Listing. Lovable AI drafts a personalized message — you approve before it sends.
+            התאימו לקוח לנכס. ה-AI יכין הודעה מותאמת אישית — אתם מאשרים לפני שליחה.
           </DialogDescription>
         </DialogHeader>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {/* Prospect picker */}
           <div className="space-y-2">
-            <Label>Prospect</Label>
+            <Label>לקוח</Label>
             <Select value={prospectId} onValueChange={setProspectId}>
               <SelectTrigger>
-                <SelectValue placeholder={loadingProspects ? 'Loading…' : 'Choose a Prospect'} />
+                <SelectValue placeholder={loadingProspects ? 'טוען…' : 'בחרו לקוח'} />
               </SelectTrigger>
               <SelectContent>
                 {prospects?.map((p) => (
                   <SelectItem key={p.id} value={p.id}>
-                    {p.full_name || 'Unnamed'} {p.city ? `· ${p.city}` : ''}
+                    {p.full_name || 'ללא שם'} {p.city ? `· ${p.city}` : ''}
                   </SelectItem>
                 ))}
               </SelectContent>
@@ -236,14 +236,14 @@ export function ListingOutreachDialog({
 
           {/* Channel */}
           <div className="space-y-2">
-            <Label>Channel</Label>
+            <Label>ערוץ</Label>
             <Select value={channel} onValueChange={(v) => setChannel(v as Channel)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="whatsapp">WhatsApp</SelectItem>
-                <SelectItem value="email">Email</SelectItem>
+                <SelectItem value="email">אימייל</SelectItem>
                 <SelectItem value="sms">SMS</SelectItem>
               </SelectContent>
             </Select>
@@ -254,7 +254,7 @@ export function ListingOutreachDialog({
         <Tabs value={source} onValueChange={(v) => { setSource(v as any); setListingId(''); }}>
           <TabsList className="grid grid-cols-2 w-full">
             <TabsTrigger value="internal" className="gap-1.5">
-              <Home className="h-4 w-4" /> My Listings
+              <Home className="h-4 w-4" /> הנכסים שלי
             </TabsTrigger>
             <TabsTrigger value="homely" className="gap-1.5">
               <Globe className="h-4 w-4" /> Homely
@@ -269,7 +269,7 @@ export function ListingOutreachDialog({
                 ))}
               </div>
             ) : (internalListings?.length ?? 0) === 0 ? (
-              <p className="text-sm text-muted-foreground py-6 text-center">No published listings yet.</p>
+              <p className="text-sm text-muted-foreground py-6 text-center">אין נכסים מפורסמים עדיין.</p>
             ) : (
               <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                 {internalListings!.map((l) => (
@@ -309,10 +309,10 @@ export function ListingOutreachDialog({
               </div>
             ) : homelyError ? (
               <p className="text-sm text-destructive py-6 text-center">
-                Could not reach Homely — check your API key in Settings.
+                לא ניתן להגיע ל-Homely — בדקו את מפתח ה-API בהגדרות.
               </p>
             ) : (homelyListings?.length ?? 0) === 0 ? (
-              <p className="text-sm text-muted-foreground py-6 text-center">No Homely listings returned.</p>
+              <p className="text-sm text-muted-foreground py-6 text-center">לא הוחזרו נכסי Homely.</p>
             ) : (
               <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
                 {homelyListings!.map((l) => (
@@ -345,12 +345,12 @@ export function ListingOutreachDialog({
         </Tabs>
 
         <div className="space-y-2">
-          <Label htmlFor="agent-note">Agent note (optional)</Label>
+          <Label htmlFor="agent-note">הערת סוכן (אופציונלי)</Label>
           <Input
             id="agent-note"
             value={agentNote}
             onChange={(e) => setAgentNote(e.target.value)}
-            placeholder="e.g. Mention the recent price drop, emphasize the school district"
+            placeholder="לדוגמה: ציינו את הפחתת המחיר האחרונה, הדגישו את אזור הרישום לבי״ס"
             maxLength={500}
           />
         </div>
@@ -360,8 +360,8 @@ export function ListingOutreachDialog({
           disabled={!prospectId || !listingId || generating}
           className="w-full"
         >
-          <Sparkles className="h-4 w-4 mr-2" />
-          {generating ? 'Drafting with Lovable AI…' : 'Generate Outreach'}
+          <Sparkles className="h-4 w-4 ml-2" />
+          {generating ? 'מנסח עם AI…' : 'הפקת פנייה'}
         </Button>
 
         {/* Preview */}
@@ -372,7 +372,7 @@ export function ListingOutreachDialog({
                 const Icon = channelIcon;
                 return <Icon className="h-4 w-4 text-primary" />;
               })()}
-              <h3 className="font-medium text-sm">Preview — {channel.toUpperCase()}</h3>
+              <h3 className="font-medium text-sm">תצוגה מקדימה — {channel === 'whatsapp' ? 'WhatsApp' : channel === 'email' ? 'אימייל' : 'SMS'}</h3>
             </div>
 
             {generating ? (
@@ -386,7 +386,7 @@ export function ListingOutreachDialog({
               <div className="space-y-3">
                 {channel === 'email' && (
                   <div>
-                    <Label className="text-xs">Subject</Label>
+                    <Label className="text-xs">נושא</Label>
                     <Input
                       value={draft.subject}
                       onChange={(e) => setDraft({ ...draft, subject: e.target.value })}
@@ -394,7 +394,7 @@ export function ListingOutreachDialog({
                   </div>
                 )}
                 <div>
-                  <Label className="text-xs">Message</Label>
+                  <Label className="text-xs">הודעה</Label>
                   <Textarea
                     value={draft.message}
                     onChange={(e) => setDraft({ ...draft, message: e.target.value })}
@@ -405,7 +405,7 @@ export function ListingOutreachDialog({
                 </div>
                 {draft.highlights?.length > 0 && (
                   <div>
-                    <Label className="text-xs">Highlights</Label>
+                    <Label className="text-xs">נקודות מפתח</Label>
                     <ul className="text-xs text-muted-foreground space-y-1 mt-1" dir="rtl">
                       {draft.highlights.map((h, i) => (
                         <li key={i} className="flex gap-1.5">
@@ -419,12 +419,12 @@ export function ListingOutreachDialog({
 
                 <div className="flex gap-2 pt-2">
                   <Button variant="outline" className="flex-1" onClick={handleGenerate} disabled={generating}>
-                    <Sparkles className="h-4 w-4 mr-1.5" />
-                    Regenerate
+                    <Sparkles className="h-4 w-4 ml-1.5" />
+                    הפקה מחדש
                   </Button>
                   <Button className="flex-1" onClick={handleApproveSend} disabled={sending}>
-                    <Send className="h-4 w-4 mr-1.5" />
-                    {sending ? 'Sending…' : 'Approve & Send'}
+                    <Send className="h-4 w-4 ml-1.5" />
+                    {sending ? 'שולח…' : 'אישור ושליחה'}
                   </Button>
                 </div>
               </div>

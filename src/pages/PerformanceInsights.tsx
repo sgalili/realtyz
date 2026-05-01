@@ -284,23 +284,23 @@ export default function PerformanceInsights() {
   const totalOutbound = stats.totalOutbound || 1;
 
   return (
-    <div className="p-6 space-y-6" dir="ltr">
+    <div className="p-6 space-y-6" dir="rtl">
       <header className="flex items-start justify-between gap-4 flex-wrap">
         <div>
           <h1 className="text-3xl font-semibold tracking-tight flex items-center gap-3">
             <span className="inline-flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
               <BarChart3 className="h-5 w-5" />
             </span>
-            Performance Insights
+            תובנות ביצועים
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Live KPIs for prospects, conversions, AI efficiency, and team velocity.
+            מדדי KPI חיים ללקוחות, המרות, יעילות AI וקצב הצוות.
           </p>
         </div>
         <Tabs value={range} onValueChange={(v) => setRange(v as RangeKey)}>
           <TabsList>
-            <TabsTrigger value="week">This Week</TabsTrigger>
-            <TabsTrigger value="month">This Month</TabsTrigger>
+            <TabsTrigger value="week">השבוע</TabsTrigger>
+            <TabsTrigger value="month">החודש</TabsTrigger>
           </TabsList>
         </Tabs>
       </header>
@@ -309,42 +309,42 @@ export default function PerformanceInsights() {
       <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
         <KpiTile
           icon={Users}
-          label="Prospects Engaged"
+          label="לקוחות בקשר"
           value={isLoading ? null : String(stats.totalEngaged)}
-          hint={range === 'week' ? 'last 7 days' : 'last 30 days'}
+          hint={range === 'week' ? '7 הימים האחרונים' : '30 הימים האחרונים'}
           tone="text-primary"
         />
         <KpiTile
           icon={TrendingUp}
-          label="Conversion Rate"
+          label="שיעור המרה"
           value={isLoading ? null : `${stats.conversionRate.toFixed(1)}%`}
-          hint="Prospect → Negotiation+"
+          hint="לקוח ← מו״מ ומעלה"
           tone="text-success"
         />
         <KpiTile
           icon={Timer}
-          label="AI Response Time"
+          label="זמן תגובת AI"
           value={
             isLoading
               ? null
               : stats.medianResponseMin > 0
-              ? `${stats.medianResponseMin.toFixed(1)}m`
+              ? `${stats.medianResponseMin.toFixed(1)} דק׳`
               : '—'
           }
-          hint="median inbound → reply"
+          hint="חציון נכנס ← מענה"
           tone="text-warning"
         />
         <KpiTile
           icon={Gauge}
-          label="Deal Room Velocity"
+          label="מהירות חדר עסקאות"
           value={
             isLoading
               ? null
               : stats.avgVelocityDays > 0
-              ? `${stats.avgVelocityDays.toFixed(1)}d`
+              ? `${stats.avgVelocityDays.toFixed(1)} ימים`
               : '—'
           }
-          hint="avg new → closed"
+          hint="ממוצע חדש ← סגור"
           tone="text-social-facebook"
         />
       </div>
@@ -355,7 +355,7 @@ export default function PerformanceInsights() {
           <CardHeader>
             <CardTitle className="text-sm font-medium flex items-center gap-2">
               <BarChart3 className="h-4 w-4 text-primary" />
-              Engagement by Day
+              מעורבות יומית
             </CardTitle>
           </CardHeader>
           <CardContent className="h-64">

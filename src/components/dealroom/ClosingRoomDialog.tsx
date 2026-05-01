@@ -52,12 +52,12 @@ type Listing = {
 };
 
 const STATUS_BADGE: Record<ClosingDoc['status'], { label: string; tone: string; icon: typeof Clock }> = {
-  draft: { label: 'Draft', tone: 'bg-muted text-muted-foreground', icon: FileText },
-  sent: { label: 'Awaiting signature', tone: 'bg-warning/15 text-warning-foreground border border-warning/30', icon: Clock },
-  viewed: { label: 'Viewed', tone: 'bg-primary/10 text-primary', icon: Clock },
-  signed: { label: 'Signed', tone: 'bg-success/15 text-success border border-success/30', icon: CheckCircle2 },
-  expired: { label: 'Expired', tone: 'bg-destructive/10 text-destructive', icon: Clock },
-  cancelled: { label: 'Cancelled', tone: 'bg-muted text-muted-foreground', icon: Clock },
+  draft: { label: 'טיוטה', tone: 'bg-muted text-muted-foreground', icon: FileText },
+  sent: { label: 'ממתין לחתימה', tone: 'bg-warning/15 text-warning-foreground border border-warning/30', icon: Clock },
+  viewed: { label: 'נצפה', tone: 'bg-primary/10 text-primary', icon: Clock },
+  signed: { label: 'נחתם', tone: 'bg-success/15 text-success border border-success/30', icon: CheckCircle2 },
+  expired: { label: 'פג תוקף', tone: 'bg-destructive/10 text-destructive', icon: Clock },
+  cancelled: { label: 'בוטל', tone: 'bg-muted text-muted-foreground', icon: Clock },
 };
 
 export function ClosingRoomDialog({
@@ -140,7 +140,7 @@ export function ClosingRoomDialog({
       });
       if (genErr) throw genErr;
       const documentId = (gen as any)?.document_id;
-      if (!documentId) throw new Error('No document_id returned');
+      if (!documentId) throw new Error('לא הוחזר מזהה מסמך');
 
       const { data: sendRes, error: sendErr } = await supabase.functions.invoke('send-closing-doc', {
         body: {
@@ -150,13 +150,13 @@ export function ClosingRoomDialog({
       });
       if (sendErr) throw sendErr;
 
-      toast.success('Document sent for signature', {
-        description: `${prospect.full_name || 'Prospect'} will get the WhatsApp link to review and sign.`,
+      toast.success('המסמך נשלח לחתימה', {
+        description: `${prospect.full_name || 'הלקוח'} יקבל קישור ב-WhatsApp לעיון וחתימה.`,
       });
       queryClient.invalidateQueries({ queryKey: ['closing-docs', prospect.id] });
       queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
     } catch (e: any) {
-      toast.error('Could not send document', { description: e?.message });
+      toast.error('שליחת המסמך נכשלה', { description: e?.message });
     } finally {
       setBusy(false);
     }
@@ -165,44 +165,44 @@ export function ClosingRoomDialog({
   function copyLink(token: string) {
     const url = `${window.location.origin}/sign/${token}`;
     navigator.clipboard.writeText(url);
-    toast.success('Sign link copied');
+    toast.success('קישור החתימה הועתק');
   }
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-lg" dir="ltr">
+      <DialogContent className="max-w-lg" dir="rtl">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileSignature className="h-5 w-5 text-primary" />
-            Digital Closing Room
+            חדר סגירה דיגיטלי
           </DialogTitle>
           <DialogDescription>
-            Generate a pre-filled document for {prospect?.full_name || 'this prospect'} and send it for secure signature via WhatsApp.
+            הפיקו מסמך מוכן עבור {prospect?.full_name || 'הלקוח'} ושלחו אותו לחתימה מאובטחת ב-WhatsApp.
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
           <div>
-            <Label className="text-xs">Template</Label>
+            <Label className="text-xs">תבנית</Label>
             <Select value={template} onValueChange={(v) => setTemplate(v as TemplateKey)}>
               <SelectTrigger>
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="offer_letter">Offer Letter</SelectItem>
-                <SelectItem value="lease_agreement">Lease Agreement</SelectItem>
+                <SelectItem value="offer_letter">הצעת רכישה</SelectItem>
+                <SelectItem value="lease_agreement">חוזה שכירות</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div>
-            <Label className="text-xs">Linked listing (optional)</Label>
+            <Label className="text-xs">נכס מקושר (אופציונלי)</Label>
             <Select value={listingId || 'none'} onValueChange={(v) => setListingId(v === 'none' ? '' : v)}>
               <SelectTrigger>
-                <SelectValue placeholder="None" />
+                <SelectValue placeholder="ללא" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">— None —</SelectItem>
+                <SelectItem value="none">— ללא —</SelectItem>
                 {listings.map((l) => (
                   <SelectItem key={l.id} value={l.id}>
                     {l.property_title}
@@ -214,22 +214,22 @@ export function ClosingRoomDialog({
 
           <div>
             <Label className="text-xs">
-              {template === 'offer_letter' ? 'Offer price (USD)' : 'Reference price (USD)'}
+              {template === 'offer_letter' ? 'מחיר הצעה (₪)' : 'מחיר ייחוס (₪)'}
             </Label>
             <Input
               type="number"
               inputMode="decimal"
-              placeholder="e.g. 850000"
+              placeholder="לדוגמה: 850000"
               value={price}
               onChange={(e) => setPrice(e.target.value)}
             />
           </div>
 
           <div>
-            <Label className="text-xs">Custom terms (optional)</Label>
+            <Label className="text-xs">סעיפים מותאמים (אופציונלי)</Label>
             <Textarea
               rows={3}
-              placeholder="Leave blank to use the standard clause for this template."
+              placeholder="השאירו ריק כדי להשתמש בסעיף הסטנדרטי של התבנית."
               value={terms}
               onChange={(e) => setTerms(e.target.value)}
               maxLength={4000}
@@ -239,7 +239,7 @@ export function ClosingRoomDialog({
           {docs.length > 0 && (
             <div className="border rounded-lg">
               <div className="px-3 py-2 text-xs font-medium border-b bg-muted/40">
-                Document history
+                היסטוריית מסמכים
               </div>
               <div className="divide-y max-h-44 overflow-y-auto">
                 {docs.map((d) => {
@@ -252,10 +252,10 @@ export function ClosingRoomDialog({
                         <p className="truncate font-medium">{d.title}</p>
                         <p className="text-[10px] text-muted-foreground">
                           {d.signed_at
-                            ? `Signed ${new Date(d.signed_at).toLocaleString()}`
+                            ? `נחתם ב-${new Date(d.signed_at).toLocaleString('he-IL')}`
                             : d.sent_at
-                              ? `Sent ${new Date(d.sent_at).toLocaleString()}${d.reminder_sent_at ? ' · reminder sent' : ''}`
-                              : `Created ${new Date(d.created_at).toLocaleString()}`}
+                              ? `נשלח ב-${new Date(d.sent_at).toLocaleString('he-IL')}${d.reminder_sent_at ? ' · נשלחה תזכורת' : ''}`
+                              : `נוצר ב-${new Date(d.created_at).toLocaleString('he-IL')}`}
                         </p>
                       </div>
                       <Badge className={`${meta.tone} text-[10px] px-2 py-0`} variant="outline">
@@ -263,7 +263,7 @@ export function ClosingRoomDialog({
                       </Badge>
                       {d.status !== 'signed' && d.status !== 'expired' && (
                         <Button size="sm" variant="ghost" onClick={() => copyLink(d.sign_token)}>
-                          Copy link
+                          העתק קישור
                         </Button>
                       )}
                     </div>
@@ -276,11 +276,11 @@ export function ClosingRoomDialog({
 
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={busy}>
-            Cancel
+            ביטול
           </Button>
           <Button onClick={generateAndSend} disabled={busy || !prospect}>
-            <Send className="h-4 w-4 mr-1.5" />
-            {busy ? 'Generating & sending…' : 'Generate & send'}
+            <Send className="h-4 w-4 ml-1.5" />
+            {busy ? 'מפיק ושולח…' : 'הפקה ושליחה'}
           </Button>
         </DialogFooter>
       </DialogContent>

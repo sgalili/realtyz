@@ -23,10 +23,10 @@ interface VoiceAgentRow {
 }
 
 const VOICES = [
-  { id: 'EXAVITQu4vr4xnSDxMaL', label: 'Sarah (warm, female)' },
-  { id: 'XrExE9yKIg1WjnnlVkGX', label: 'Matilda (calm, female)' },
-  { id: 'JBFqnCBsd6RMkjVDRZzb', label: 'George (mature, male)' },
-  { id: 'TX3LPaxmHKxFdv7VOQHJ', label: 'Liam (confident, male)' },
+  { id: 'EXAVITQu4vr4xnSDxMaL', label: 'Sarah (חמה, נקבה)' },
+  { id: 'XrExE9yKIg1WjnnlVkGX', label: 'Matilda (רגועה, נקבה)' },
+  { id: 'JBFqnCBsd6RMkjVDRZzb', label: 'George (בוגר, זכר)' },
+  { id: 'TX3LPaxmHKxFdv7VOQHJ', label: 'Liam (בטוח, זכר)' },
 ];
 
 export function VoiceAgentPanel() {
@@ -62,7 +62,7 @@ export function VoiceAgentPanel() {
       .select()
       .single();
     setSaving(false);
-    if (error) { toast({ title: 'Save failed', description: error.message, variant: 'destructive' }); return; }
+    if (error) { toast({ title: 'שמירה נכשלה', description: error.message, variant: 'destructive' }); return; }
     setRow(data as VoiceAgentRow);
   };
 
@@ -72,18 +72,18 @@ export function VoiceAgentPanel() {
     setSyncing(false);
     if (error || (data as { error?: string })?.error) {
       toast({
-        title: 'Sync failed',
+        title: 'הסנכרון נכשל',
         description: error?.message || (data as { error?: string })?.error,
         variant: 'destructive',
       });
       return;
     }
-    toast({ title: 'AI Voice Agent synced', description: 'Your Virtual Twin persona is now live on calls.' });
+    toast({ title: 'סוכן הקול AI סונכרן', description: 'אישיות התאום הווירטואלי שלך פעילה כעת בשיחות.' });
     load();
   };
 
   if (loading) return (
-    <Card><CardContent className="p-6 flex items-center justify-center text-muted-foreground"><Loader2 className="h-4 w-4 mr-2 animate-spin" />Loading…</CardContent></Card>
+    <Card><CardContent className="p-6 flex items-center justify-center text-muted-foreground"><Loader2 className="h-4 w-4 ml-2 animate-spin" />טוען…</CardContent></Card>
   );
   if (!row) return null;
 
@@ -96,40 +96,40 @@ export function VoiceAgentPanel() {
           <div>
             <CardTitle className="flex items-center gap-2">
               <Phone className="h-5 w-5 text-primary" />
-              AI Voice Agent
+              סוכן קול AI
             </CardTitle>
             <CardDescription>
-              Answers your phone when you're away, captures the prospect's details, transcribes the call, and updates the Deal Room.
+              עונה לטלפון כשאינך זמין/ה, מתעד את פרטי הלקוח, מתמלל את השיחה ומעדכן את חדר העסקאות.
             </CardDescription>
           </div>
-          {synced && <Badge variant="secondary" className="gap-1"><CheckCircle2 className="h-3 w-3" />Synced</Badge>}
+          {synced && <Badge variant="secondary" className="gap-1"><CheckCircle2 className="h-3 w-3" />מסונכרן</Badge>}
         </div>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="flex items-start justify-between gap-4 p-3 rounded-md border bg-muted/30">
           <div className="space-y-1">
-            <Label htmlFor="availability" className="text-base">Availability</Label>
+            <Label htmlFor="availability" className="text-base">זמינות</Label>
             <p className="text-xs text-muted-foreground">
               {row.availability === 'available'
-                ? 'You take calls first. The AI only answers if you miss a call.'
-                : 'AI answers all incoming calls immediately.'}
+                ? 'אתה עונה לשיחות ראשון. ה-AI עונה רק אם פספסת.'
+                : 'ה-AI עונה לכל השיחות הנכנסות מיד.'}
             </p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-xs text-muted-foreground">Away</span>
+            <span className="text-xs text-muted-foreground">לא זמין</span>
             <Switch
               id="availability"
               checked={row.availability === 'available'}
               onCheckedChange={(v) => update({ availability: v ? 'available' : 'away' })}
               disabled={saving}
             />
-            <span className="text-xs text-muted-foreground">Available</span>
+            <span className="text-xs text-muted-foreground">זמין</span>
           </div>
         </div>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <div className="space-y-2">
-            <Label>Voice</Label>
+            <Label>קול</Label>
             <select
               className="w-full h-10 rounded-md border bg-background px-3 text-sm"
               value={row.elevenlabs_voice_id || VOICES[0].id}
@@ -139,7 +139,7 @@ export function VoiceAgentPanel() {
             </select>
           </div>
           <div className="space-y-2">
-            <Label>Language</Label>
+            <Label>שפה</Label>
             <select
               className="w-full h-10 rounded-md border bg-background px-3 text-sm"
               value={row.language}
@@ -152,23 +152,23 @@ export function VoiceAgentPanel() {
         </div>
 
         <div className="space-y-2">
-          <Label>Phone number (optional)</Label>
+          <Label>מספר טלפון (אופציונלי)</Label>
           <Input
-            placeholder="e.g. +972-50-123-4567"
+            placeholder="לדוגמה: +972-50-123-4567"
             value={row.elevenlabs_phone_number || ''}
             onChange={(e) => setRow({ ...row, elevenlabs_phone_number: e.target.value })}
             onBlur={(e) => update({ elevenlabs_phone_number: e.target.value })}
           />
           <p className="text-xs text-muted-foreground">
-            Buy a number inside ElevenLabs Conversational AI and paste it here for inbound call routing.
+            רכשו מספר ב-ElevenLabs Conversational AI והדביקו אותו כאן לניתוב שיחות נכנסות.
           </p>
         </div>
 
         <div className="space-y-2">
-          <Label>Greeting</Label>
+          <Label>ברכת פתיחה</Label>
           <Textarea
             rows={3}
-            placeholder="Leave blank to use the default greeting."
+            placeholder="השאירו ריק כדי להשתמש בברכת ברירת המחדל."
             value={row.greeting || ''}
             onChange={(e) => setRow({ ...row, greeting: e.target.value })}
             onBlur={(e) => update({ greeting: e.target.value })}
@@ -178,12 +178,12 @@ export function VoiceAgentPanel() {
         <div className="flex items-center justify-between gap-4 pt-2 border-t">
           <p className="text-xs text-muted-foreground">
             {row.last_synced_at
-              ? `Last synced ${new Date(row.last_synced_at).toLocaleString()}`
-              : 'Sync to push your Virtual Twin persona, voice, and greeting to ElevenLabs.'}
+              ? `סונכרן לאחרונה ${new Date(row.last_synced_at).toLocaleString('he-IL')}`
+              : 'סנכרנו כדי להעביר את אישיות התאום הווירטואלי, הקול והברכה ל-ElevenLabs.'}
           </p>
           <Button onClick={sync} disabled={syncing}>
-            {syncing ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Syncing…</>
-                     : <><RefreshCw className="h-4 w-4 mr-2" />{synced ? 'Re-sync persona' : 'Activate Voice Agent'}</>}
+            {syncing ? <><Loader2 className="h-4 w-4 ml-2 animate-spin" />מסנכרן…</>
+                     : <><RefreshCw className="h-4 w-4 ml-2" />{synced ? 'סנכרון מחדש' : 'הפעלת סוכן הקול'}</>}
           </Button>
         </div>
       </CardContent>

@@ -362,16 +362,16 @@ const SuperAdmin = () => {
 
 
       <div className="grid gap-4 md:grid-cols-4">
-        <PremiumStat icon={RadioTower} label="Live Demo Agents" value={liveDemoUsers} hint="/dashboard?demo=true" />
-        <PremiumStat icon={Flame} label="עמוד מוביל" value="Sentiment" hint="46% מצפיות הדמו" />
+        <PremiumStat icon={RadioTower} label="סוכני דמו פעילים" value={liveDemoUsers} hint="/dashboard?demo=true" />
+        <PremiumStat icon={Flame} label="עמוד מוביל" value="סנטימנט" hint="46% מצפיות הדמו" />
         <PremiumStat icon={Crown} label="ארכיטיפ מוביל" value={topArchetype} hint="מכירות דמו בפועל" />
-        <PremiumStat icon={Gauge} label="לידים שנלכדו" value={capturedLeads?.length ?? 0} hint="Send Report traps" />
+        <PremiumStat icon={Gauge} label="לידים שנלכדו" value={capturedLeads?.length ?? 0} hint="מלכודות שליחת דוחות" />
       </div>
 
       <Tabs defaultValue="intelligence" className="w-full">
         <TabsList className="flex h-auto flex-wrap justify-start">
-          <TabsTrigger value="intelligence"><BrainCircuit className="ml-2 h-4 w-4" /> Intelligence Center</TabsTrigger>
-          <TabsTrigger value="leads"><MessageCircle className="ml-2 h-4 w-4" /> Captured Prospects</TabsTrigger>
+          <TabsTrigger value="intelligence"><BrainCircuit className="ml-2 h-4 w-4" /> מרכז מודיעין</TabsTrigger>
+          <TabsTrigger value="leads"><MessageCircle className="ml-2 h-4 w-4" /> לידים שנלכדו</TabsTrigger>
           <TabsTrigger value="users"><Users className="ml-2 h-4 w-4" /> משתמשים</TabsTrigger>
           <TabsTrigger value="finance"><Wallet className="ml-2 h-4 w-4" /> פיננסי</TabsTrigger>
           <TabsTrigger value="activity"><Activity className="ml-2 h-4 w-4" /> פעילות</TabsTrigger>
@@ -387,7 +387,7 @@ const SuperAdmin = () => {
         </TabsList>
 
         <TabsContent value="intelligence" className="mt-4 grid gap-4 lg:grid-cols-[1.2fr_0.8fr]">
-          <Card><CardHeader><CardTitle>Feature Popularity Heatmap</CardTitle><CardDescription>העמודים שהכי משכנעים משתמשי דמו להמשיך במסע.</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>עמוד</TableHead><TableHead>ביקורים</TableHead><TableHead>חום</TableHead><TableHead>כוונת משתמש</TableHead></TableRow></TableHeader><TableBody>{FEATURE_HEATMAP.map((row) => <TableRow key={row.page}><TableCell className="font-bold text-primary">{row.page}</TableCell><TableCell className="tabular-nums">{row.visits}</TableCell><TableCell><div className="h-2 w-full overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${row.share}%` }} /></div></TableCell><TableCell className="text-muted-foreground">{row.intent}</TableCell></TableRow>)}</TableBody></Table></CardContent></Card>
+          <Card><CardHeader><CardTitle>מפת חום של פיצ'רים פופולריים</CardTitle><CardDescription>העמודים שהכי משכנעים משתמשי דמו להמשיך במסע.</CardDescription></CardHeader><CardContent><Table><TableHeader><TableRow><TableHead>עמוד</TableHead><TableHead>ביקורים</TableHead><TableHead>חום</TableHead><TableHead>כוונת משתמש</TableHead></TableRow></TableHeader><TableBody>{FEATURE_HEATMAP.map((row) => <TableRow key={row.page}><TableCell className="font-bold text-primary">{row.page}</TableCell><TableCell className="tabular-nums">{row.visits}</TableCell><TableCell><div className="h-2 w-full overflow-hidden rounded-full bg-muted"><div className="h-full rounded-full bg-primary" style={{ width: `${row.share}%` }} /></div></TableCell><TableCell className="text-muted-foreground">{row.intent}</TableCell></TableRow>)}</TableBody></Table></CardContent></Card>
           <Card><CardHeader><CardTitle>Listing Outreach Archetype Breakdown</CardTitle><CardDescription>איזה תרחיש מכירה נבחר הכי הרבה בדמו.</CardDescription></CardHeader><CardContent className="h-72"><ResponsiveContainer width="100%" height="100%"><PieChart><Pie data={archetypeBreakdown.length ? archetypeBreakdown : ARCHETYPE_DATA} dataKey="value" nameKey="name" innerRadius={62} outerRadius={94} paddingAngle={4}>{(archetypeBreakdown.length ? archetypeBreakdown : ARCHETYPE_DATA).map((entry, index) => <Cell key={entry.name} fill={PREMIUM_COLORS[index % PREMIUM_COLORS.length]} />)}</Pie><Tooltip /></PieChart></ResponsiveContainer></CardContent></Card>
           <Card className="lg:col-span-2"><CardHeader><CardTitle>Demo Flow Velocity</CardTitle><CardDescription>מדד 60fps קליל המבוסס על נתוני דמו מצטברים.</CardDescription></CardHeader><CardContent className="h-72"><ResponsiveContainer width="100%" height="100%"><BarChart data={FEATURE_HEATMAP}><XAxis dataKey="page" /><YAxis /><Tooltip /><Bar dataKey="visits" radius={[8, 8, 0, 0]} fill="hsl(var(--primary))" /></BarChart></ResponsiveContainer></CardContent></Card>
         </TabsContent>

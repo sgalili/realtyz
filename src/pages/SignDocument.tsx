@@ -44,11 +44,11 @@ export default function SignDocument() {
           headers: { apikey: ANON_KEY, Authorization: `Bearer ${ANON_KEY}` },
         });
         const json = await res.json();
-        if (!res.ok) throw new Error(json?.error || 'Could not load document');
+        if (!res.ok) throw new Error(json?.error || 'לא ניתן לטעון את המסמך');
         setDoc(json);
         setSignerName(json.signer_name || '');
       } catch (e: any) {
-        setError(e?.message || 'Could not load document');
+        setError(e?.message || 'לא ניתן לטעון את המסמך');
       } finally {
         setLoading(false);
       }
@@ -108,11 +108,11 @@ export default function SignDocument() {
   async function submit() {
     if (!doc || !canvasRef.current) return;
     if (!hasInkRef.current) {
-      toast.error('Please draw your signature');
+      toast.error('יש לצייר את החתימה');
       return;
     }
     if (!signerName.trim()) {
-      toast.error('Please type your full name');
+      toast.error('יש להקליד את השם המלא');
       return;
     }
     setSubmitting(true);
@@ -132,10 +132,10 @@ export default function SignDocument() {
         }),
       });
       const json = await res.json();
-      if (!res.ok) throw new Error(json?.error || 'Signing failed');
+      if (!res.ok) throw new Error(json?.error || 'החתימה נכשלה');
       setSuccess(true);
     } catch (e: any) {
-      toast.error('Could not sign', { description: e?.message });
+      toast.error('החתימה נכשלה', { description: e?.message });
     } finally {
       setSubmitting(false);
     }
@@ -153,8 +153,8 @@ export default function SignDocument() {
     return (
       <main className="min-h-screen grid place-items-center p-6 bg-background">
         <Card className="p-8 max-w-md text-center">
-          <h1 className="text-lg font-semibold">Document unavailable</h1>
-          <p className="text-sm text-muted-foreground mt-2">{error || 'This link is invalid or has expired.'}</p>
+          <h1 className="text-lg font-semibold">המסמך אינו זמין</h1>
+          <p className="text-sm text-muted-foreground mt-2">{error || 'הקישור אינו תקף או שפג תוקפו.'}</p>
         </Card>
       </main>
     );
@@ -165,9 +165,9 @@ export default function SignDocument() {
       <main className="min-h-screen grid place-items-center p-6 bg-background">
         <Card className="p-8 max-w-md text-center space-y-3">
           <CheckCircle2 className="h-12 w-12 text-success mx-auto" />
-          <h1 className="text-xl font-semibold">All signed!</h1>
+          <h1 className="text-xl font-semibold">הכל נחתם!</h1>
           <p className="text-sm text-muted-foreground">
-            Thanks {doc.signer_name || signerName}. Your signature on <strong>{doc.title}</strong> has been recorded. Your agent has been notified.
+            תודה {doc.signer_name || signerName}. החתימה שלך על <strong>{doc.title}</strong> נרשמה. הסוכן/ת קיבל/ה הודעה.
           </p>
         </Card>
       </main>
@@ -175,16 +175,16 @@ export default function SignDocument() {
   }
 
   return (
-    <main className="min-h-screen bg-muted/30" dir="ltr">
+    <main className="min-h-screen bg-muted/30" dir="rtl">
       <header className="bg-card border-b">
         <div className="max-w-3xl mx-auto px-4 py-4 flex items-center gap-3">
           <FileSignature className="h-6 w-6 text-primary" />
           <div className="flex-1 min-w-0">
             <h1 className="font-semibold truncate">{doc.title}</h1>
-            <p className="text-xs text-muted-foreground">Secure signing — Realtyz Digital Closing Room</p>
+            <p className="text-xs text-muted-foreground">חתימה מאובטחת — חדר סגירה דיגיטלי של Realtyz</p>
           </div>
           <span className="hidden sm:flex items-center gap-1 text-xs text-muted-foreground">
-            <ShieldCheck className="h-4 w-4" /> Encrypted link
+            <ShieldCheck className="h-4 w-4" /> קישור מוצפן
           </span>
         </div>
       </header>
@@ -195,12 +195,12 @@ export default function SignDocument() {
             {doc.pdf_url ? (
               <iframe
                 src={doc.pdf_url}
-                title="Document preview"
+                title="תצוגה מקדימה של המסמך"
                 className="w-full h-full"
               />
             ) : (
               <div className="h-full grid place-items-center text-sm text-muted-foreground">
-                Preview unavailable
+                תצוגה מקדימה לא זמינה
               </div>
             )}
           </div>
@@ -208,24 +208,24 @@ export default function SignDocument() {
 
         <Card className="p-4 space-y-3">
           <div>
-            <label className="text-sm font-medium">Full legal name</label>
+            <label className="text-sm font-medium">שם מלא לפי תעודת זהות</label>
             <Input
               value={signerName}
               onChange={(e) => setSignerName(e.target.value)}
-              placeholder="As it appears on your ID"
+              placeholder="כפי שמופיע בתעודת הזהות"
               className="mt-1"
             />
           </div>
 
           <div>
             <div className="flex items-center justify-between mb-1">
-              <label className="text-sm font-medium">Draw your signature</label>
+              <label className="text-sm font-medium">ציירו את החתימה</label>
               <button
                 type="button"
                 onClick={clearCanvas}
                 className="text-xs text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
               >
-                <Eraser className="h-3 w-3" /> Clear
+                <Eraser className="h-3 w-3" /> ניקוי
               </button>
             </div>
             <div className="border rounded-lg bg-background overflow-hidden">
@@ -242,15 +242,15 @@ export default function SignDocument() {
               />
             </div>
             <p className="text-[11px] text-muted-foreground mt-1">
-              By signing, you agree this electronic signature is the legal equivalent of your handwritten signature on this document.
+              בחתימה זו אני מאשר/ת שהחתימה האלקטרונית שווה מבחינה משפטית לחתימה ידנית על מסמך זה.
             </p>
           </div>
 
           <Button className="w-full h-12 text-base" onClick={submit} disabled={submitting}>
             {submitting ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Signing…</>
+              <><Loader2 className="h-4 w-4 ml-2 animate-spin" />חותם…</>
             ) : (
-              <><FileSignature className="h-4 w-4 mr-2" />Sign & submit</>
+              <><FileSignature className="h-4 w-4 ml-2" />חתימה ושליחה</>
             )}
           </Button>
         </Card>
