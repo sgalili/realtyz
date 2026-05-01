@@ -94,7 +94,7 @@ const STAGE_COLUMNS: Array<{
 }> = [
   {
     key: 'new_prospect',
-    title: 'מועמד חדש',
+    title: 'מתעניין חדש',
     icon: UserPlus,
     accent: 'text-primary',
     legacyKeys: ['new', 'lead', 'new_prospect'],
@@ -203,10 +203,10 @@ export default function DealRoom() {
       .update({ assigned_to: userId })
       .eq('id', leadId);
     if (error) {
-      toast.error('לא ניתן להקצות את המועמד', { description: error.message });
+      toast.error('לא ניתן להקצות את המתעניין', { description: error.message });
       return;
     }
-    toast.success(userId ? 'המועמד הוקצה' : 'ההקצאה בוטלה');
+    toast.success(userId ? 'המתעניין הוקצה' : 'ההקצאה בוטלה');
     queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
   }
   const [recomputing, setRecomputing] = useState(false);
@@ -227,7 +227,7 @@ export default function DealRoom() {
       });
       queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
     } catch (err: any) {
-      toast.error('ייבוא המועמדים נכשל', { description: err?.message });
+      toast.error('ייבוא המתעניינים נכשל', { description: err?.message });
     } finally {
       setImporting(false);
     }
@@ -275,7 +275,7 @@ export default function DealRoom() {
       });
       if (error) throw error;
       const n = (data as any)?.processed ?? 0;
-      toast.success(`חושבו מחדש ${n} ציוני מועמד`);
+      toast.success(`חושבו מחדש ${n} ציוני מתעניין`);
       queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
     } catch (err: any) {
       toast.error('לא ניתן לחשב מחדש את הציונים', { description: err?.message });
@@ -343,7 +343,7 @@ export default function DealRoom() {
     lead?: any;
   }) {
     if (!suggestion.lead) {
-      toast.error('המועמד אינו זמין עבור הצעה זו');
+      toast.error('המתעניין אינו זמין עבור הצעה זו');
       return;
     }
     setActiveSuggestionId(suggestion.id);
@@ -391,7 +391,7 @@ export default function DealRoom() {
         throw new Error(reason);
       }
       toast.success('התשובה אושרה ונשלחה', {
-        description: `WhatsApp נמסר ל-${activeProspect.full_name || 'המועמד'}`,
+        description: `WhatsApp נמסר ל-${activeProspect.full_name || 'המתעניין'}`,
       });
       // If this draft came from an Action Item, mark the suggestion as used so it
       // disappears from the queue and we don't suggest the same thing again.
@@ -420,22 +420,22 @@ export default function DealRoom() {
       <header className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
-            חדר עסקאות
+            עסקאות
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            תצוגת פייפליין של כל המועמדים — גרור כוונה לפעולה.
+            תצוגת פייפליין של כל המתעניינים — גרור כוונה לפעולה.
           </p>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
           <Badge variant="secondary" className="text-sm">
-            {leads?.length ?? 0} מועמדים
+            {leads?.length ?? 0} מתעניינים
           </Badge>
           <Button
             variant={sortMode === 'priority' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setSortMode((m) => (m === 'priority' ? 'recent' : 'priority'))}
             className="gap-1.5 h-11"
-            title="מיון לפי ציון מועמד חזוי"
+            title="מיון לפי ציון מתעניין חזוי"
           >
             {sortMode === 'priority' ? (
               <Flame className="h-4 w-4" />
@@ -455,7 +455,7 @@ export default function DealRoom() {
             onClick={recomputeAllScores}
             disabled={recomputing}
             className="gap-1.5 h-11"
-            title="חשב מחדש את כל ציוני המועמדים"
+            title="חשב מחדש את כל ציוני המתעניינים"
           >
             <RefreshCw className={cn('h-4 w-4', recomputing && 'animate-spin')} />
             <span className="hidden md:inline">חשב מחדש ציונים</span>
@@ -466,10 +466,10 @@ export default function DealRoom() {
             onClick={importHomelyProspects}
             disabled={importing}
             className="gap-1.5 h-11"
-            title="ייבוא מועמדים חדשים מ-Homely"
+            title="ייבוא מתעניינים חדשים מ-Homely"
           >
             <UserPlus className={cn('h-4 w-4', importing && 'animate-pulse')} />
-            <span className="hidden md:inline">{importing ? 'מייבא...' : 'ייבוא מועמדים'}</span>
+            <span className="hidden md:inline">{importing ? 'מייבא...' : 'ייבוא מתעניינים'}</span>
           </Button>
           <Button
             onClick={() => {
@@ -516,7 +516,7 @@ export default function DealRoom() {
 
                   {!isLoading && items.length === 0 && (
                     <div className="text-center text-xs text-muted-foreground py-8">
-                      אין מועמדים בשלב זה
+                      אין מתעניינים בשלב זה
                     </div>
                   )}
 
@@ -534,7 +534,7 @@ export default function DealRoom() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-2">
                             <div className="font-medium text-sm truncate min-w-0 flex-1">
-                              {p.full_name || 'מועמד ללא שם'}
+                              {p.full_name || 'מתעניין ללא שם'}
                             </div>
                             <PriorityScoreBadge
                               score={p.priority_score ?? 0}
@@ -640,7 +640,7 @@ export default function DealRoom() {
             <SheetDescription>
               תשובה מוצעת עבור{' '}
               <span className="font-medium text-foreground">
-                {activeProspect?.full_name || 'מועמד זה'}
+                {activeProspect?.full_name || 'מתעניין זה'}
               </span>
               , נכתבה בקול האותנטי שלך מתוך מאגר האסטרטגיה.
             </SheetDescription>
@@ -730,7 +730,7 @@ export default function DealRoom() {
                   />
                 )}
                 <p className="text-[11px] text-muted-foreground leading-snug">
-                  שום דבר לא נשלח למועמד עד שתלחץ <span className="font-medium text-foreground">אשר ושלח</span>.
+                  שום דבר לא נשלח למתעניין עד שתלחץ <span className="font-medium text-foreground">אשר ושלח</span>.
                 </p>
                 {smartReply.trim() && (
                   <AiMessageFeedback
