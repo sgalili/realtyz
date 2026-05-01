@@ -555,6 +555,29 @@ export default function DealRoom() {
                           Outreach
                         </Button>
                       </div>
+                      {canAssignProspects && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="text-[11px] text-muted-foreground shrink-0">Assign to</span>
+                          <Select
+                            value={p.assigned_to ?? '__unassigned__'}
+                            onValueChange={(v) =>
+                              assignProspect(p.id, v === '__unassigned__' ? null : v)
+                            }
+                          >
+                            <SelectTrigger className="h-7 text-[11px]">
+                              <SelectValue placeholder="Unassigned" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__unassigned__">Unassigned</SelectItem>
+                              {teamMembers.map((m) => (
+                                <SelectItem key={m.user_id} value={m.user_id}>
+                                  {m.user_id.slice(0, 8)}… · {m.role.replace('_', ' ')}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                     </Card>
                   ))}
                 </div>
