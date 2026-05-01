@@ -552,19 +552,56 @@ const ApiSettings = () => {
       return;
     }
     setTestingService('homely');
+    setHomelyDiag(null);
+
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+    const proxyUrl = `https://${projectId}.supabase.co/functions/v1/call-homely-api`;
+    const upstreamPath = '/health';
+    const upstreamUrl = `https://api.homely.com${upstreamPath}`;
+    const requestSnapshot = {
+      url: upstreamUrl,
+      method: 'GET' as const,
+      headers: {
+        Authorization: 'Bearer ••••••••',
+        'Content-Type': 'application/json',
+        Accept: 'application/json',
+      },
+    };
+
+    console.log('[homely-test] proxy', proxyUrl);
+    console.log('[homely-test] upstream', requestSnapshot);
+
     try {
       const { data, error } = await supabaseClient.functions.invoke('call-homely-api', {
-        body: { path: '/health', method: 'GET' },
+        body: { path: upstreamPath, method: 'GET' },
       });
-      if (error) {
-        toast.error(`❌ חיבור Homely נכשל: ${error.message}`);
-      } else if (data?.error) {
-        toast.error(`❌ חיבור Homely נכשל: ${data.error}`);
-      } else {
-        toast.success('✅ חיבור Homely API תקין!');
-      }
+
+      const ok = !error && !(data as any)?.error;
+      setHomelyDiag({
+        ok,
+        request: requestSnapshot,
+        response: {
+          status: (data as any)?.status ?? null,
+          statusText: ok ? 'OK' : ((error?.message as string) || (data as any)?.error || 'Failed'),
+          body: data ?? null,
+        },
+        error: error?.message ?? (data as any)?.error,
+        timestamp: new Date().toISOString(),
+      });
+
+      if (error) toast.error(`❌ חיבור Homely נכשל: ${error.message}`);
+      else if ((data as any)?.error) toast.error(`❌ חיבור Homely נכשל: ${(data as any).error}`);
+      else toast.success('✅ חיבור Homely API תקין!');
     } catch (err) {
-      toast.error(`❌ לא ניתן להתחבר ל-Homely: ${(err as Error).message}`);
+      const message = (err as Error).message;
+      setHomelyDiag({
+        ok: false,
+        request: requestSnapshot,
+        response: { status: null, statusText: 'Network error', body: null },
+        error: message,
+        timestamp: new Date().toISOString(),
+      });
+      toast.error(`❌ לא ניתן להתחבר ל-Homely: ${message}`);
     } finally {
       setTestingService(null);
     }
