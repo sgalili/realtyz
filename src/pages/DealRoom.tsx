@@ -319,7 +319,7 @@ export default function DealRoom() {
     lead?: any;
   }) {
     if (!suggestion.lead) {
-      toast.error('Prospect not available for this suggestion');
+      toast.error('המועמד אינו זמין עבור הצעה זו');
       return;
     }
     setActiveSuggestionId(suggestion.id);
