@@ -165,7 +165,7 @@ export default function Properties() {
             <div className="flex items-center justify-between">
               <Label className="text-xs font-semibold">טווח מחירים</Label>
               <span className="text-xs text-muted-foreground">
-                {formatPrice(priceRange[0])} – {formatPrice(priceRange[1])}
+                {formatPrice(priceRange[0])} , {formatPrice(priceRange[1])}
               </span>
             </div>
             <Slider
@@ -253,7 +253,7 @@ export default function Properties() {
               size="sm"
               className="h-10 w-full"
               onClick={() => {
-                setCity('כל הערים');
+                setCity(isConfigured ? '__my_zones__' : 'כל הערים');
                 setPropertyType('all');
                 setRooms('any');
                 setPriceRange([PRICE_MIN, PRICE_MAX]);
