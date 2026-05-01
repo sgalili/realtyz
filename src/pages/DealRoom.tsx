@@ -270,15 +270,29 @@ export default function DealRoom() {
                         </div>
                       </div>
 
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        className="w-full mt-3 gap-1.5 h-8"
-                        onClick={() => openSmartReply(p)}
-                      >
-                        <Sparkles className="h-3.5 w-3.5 text-primary" />
-                        Smart Reply
-                      </Button>
+                      <div className="grid grid-cols-2 gap-1.5 mt-3">
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 h-8 text-xs"
+                          onClick={() => openSmartReply(p)}
+                        >
+                          <Sparkles className="h-3.5 w-3.5 text-primary" />
+                          Reply
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 h-8 text-xs"
+                          onClick={() => {
+                            setOutreachProspectId(p.id);
+                            setOutreachOpen(true);
+                          }}
+                        >
+                          <Megaphone className="h-3.5 w-3.5 text-warning" />
+                          Outreach
+                        </Button>
+                      </div>
                     </Card>
                   ))}
                 </div>
