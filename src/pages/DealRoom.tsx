@@ -459,6 +459,17 @@ export default function DealRoom() {
             <span className="hidden md:inline">חשב מחדש ציונים</span>
           </Button>
           <Button
+            variant="outline"
+            size="sm"
+            onClick={importHomelyProspects}
+            disabled={importing}
+            className="gap-1.5 h-11"
+            title="ייבוא מועמדים חדשים מ-Homely"
+          >
+            <UserPlus className={cn('h-4 w-4', importing && 'animate-pulse')} />
+            <span className="hidden md:inline">{importing ? 'מייבא...' : 'ייבוא מועמדים'}</span>
+          </Button>
+          <Button
             onClick={() => {
               setOutreachProspectId(null);
               setOutreachOpen(true);
