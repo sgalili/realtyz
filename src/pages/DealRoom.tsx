@@ -120,6 +120,9 @@ export default function DealRoom() {
   // When the Smart Reply sheet was opened from an Action Item, we keep the suggestion id
   // so we can flip it to `used` after Approve & Send and badge the sheet appropriately.
   const [activeSuggestionId, setActiveSuggestionId] = useState<string | null>(null);
+  // Compliance signals returned by the ai-agent edge function for the current draft.
+  const [factViolations, setFactViolations] = useState<Array<{ kind: string; value: string; reason: string }>>([]);
+  const [escalation, setEscalation] = useState<{ category: string; severity: string; matched: string[] } | null>(null);
 
   const { data: leads, isLoading } = useQuery({
     queryKey: ['deal-room-prospects'],
@@ -170,6 +173,8 @@ export default function DealRoom() {
       if (error) throw error;
       const reply = (data as any)?.reply || (data as any)?.message || (data as any)?.content || '';
       setSmartReply(reply || 'No suggestion available right now. Try again in a moment.');
+      setFactViolations(((data as any)?.fact_violations as any[]) || []);
+      setEscalation(((data as any)?.escalation as any) || null);
     } catch (err: any) {
       console.error('Smart reply error', err);
       setSmartReply('');
