@@ -40,6 +40,7 @@ import {
   PropertySnippet,
   type PropertyResult,
 } from '@/components/dealroom/PropertyMatchmakerDialog';
+import { AutomationActivityFeed } from '@/components/dealroom/AutomationActivityFeed';
 
 type LeadStage = 'new_prospect' | 'listing_outreach' | 'negotiation' | 'closed';
 
@@ -542,6 +543,10 @@ export default function DealRoom() {
                   Nothing is sent to the Prospect until you click <span className="font-medium text-foreground">Approve &amp; Send</span>.
                 </p>
               </div>
+            )}
+
+            {activeProspect && (
+              <AutomationActivityFeed leadId={activeProspect.id} limit={10} />
             )}
           </div>
 

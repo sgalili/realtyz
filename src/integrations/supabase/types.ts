@@ -272,6 +272,113 @@ export type Database = {
         }
         Relationships: []
       }
+      automation_runs: {
+        Row: {
+          action_type: string
+          automation_id: string | null
+          created_at: string
+          error: string | null
+          executed_at: string | null
+          id: string
+          lead_id: string | null
+          payload: Json
+          scheduled_for: string
+          status: string
+          summary: string | null
+          trigger_type: string
+          user_id: string
+        }
+        Insert: {
+          action_type: string
+          automation_id?: string | null
+          created_at?: string
+          error?: string | null
+          executed_at?: string | null
+          id?: string
+          lead_id?: string | null
+          payload?: Json
+          scheduled_for?: string
+          status?: string
+          summary?: string | null
+          trigger_type: string
+          user_id: string
+        }
+        Update: {
+          action_type?: string
+          automation_id?: string | null
+          created_at?: string
+          error?: string | null
+          executed_at?: string | null
+          id?: string
+          lead_id?: string | null
+          payload?: Json
+          scheduled_for?: string
+          status?: string
+          summary?: string | null
+          trigger_type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_runs_automation_id_fkey"
+            columns: ["automation_id"]
+            isOneToOne: false
+            referencedRelation: "automations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automations: {
+        Row: {
+          action_config: Json
+          action_type: string
+          created_at: string
+          description: string | null
+          id: string
+          is_enabled: boolean
+          last_run_at: string | null
+          name: string
+          run_count: number
+          template_key: string | null
+          trigger_config: Json
+          trigger_type: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          action_config?: Json
+          action_type: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_enabled?: boolean
+          last_run_at?: string | null
+          name: string
+          run_count?: number
+          template_key?: string | null
+          trigger_config?: Json
+          trigger_type: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          action_config?: Json
+          action_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_enabled?: boolean
+          last_run_at?: string | null
+          name?: string
+          run_count?: number
+          template_key?: string | null
+          trigger_config?: Json
+          trigger_type?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       autopilot_queue: {
         Row: {
           attempts: number
@@ -2298,6 +2405,7 @@ export type Database = {
         }
       }
       cleanup_expired_whatsapp_login_otps: { Args: never; Returns: undefined }
+      dispatch_automation_run: { Args: { _run_id: string }; Returns: undefined }
       dispatch_smart_notification: {
         Args: {
           _detail: string
