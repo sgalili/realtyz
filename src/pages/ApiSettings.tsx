@@ -29,6 +29,7 @@ import { ChevronDown } from 'lucide-react';
 import NotificationPreferencesPanel from '@/components/NotificationPreferencesPanel';
 import { AgentPersonaPanel } from '@/components/AgentPersonaPanel';
 import { VoiceAgentPanel } from '@/components/calendar/VoiceAgentPanel';
+import { UsageMeterPanel } from '@/components/UsageMeterPanel';
 
 interface ApiConfig {
   id: string;
@@ -839,6 +840,9 @@ const ApiSettings = () => {
             : 'הפעלה וכיבוי של שירותים פעילים בחשבון'}
         </p>
       </div>
+
+      {/* ── Usage Meter ── */}
+      <UsageMeterPanel />
 
       {/* ── Section A: Platform Features ── */}
       <div className="space-y-2">
