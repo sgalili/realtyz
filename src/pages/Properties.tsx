@@ -102,14 +102,21 @@ export default function Properties() {
     return merged.filter((p) => {
       const pType: ListingType = (p.listing_type ?? 'sale') as ListingType;
       if (pType !== listingType) return false;
-      if (city !== 'כל הערים' && p.city !== city) return false;
+      // Hyper-local: when agent has service_areas, ALWAYS restrict to them
+      // (regardless of the city dropdown). The dropdown then narrows further.
+      if (isConfigured && !isInServiceArea(p.city ?? null, null, serviceAreas)) return false;
+      if (city === '__my_zones__') {
+        // already filtered by service_areas above, no extra city filter
+      } else if (city !== 'כל הערים' && p.city !== city) {
+        return false;
+      }
       if (propertyType !== 'all' && p.property_type !== propertyType) return false;
       if (rooms !== 'any' && p.rooms < Number(rooms)) return false;
       if (p.price < priceRange[0] || p.price > priceRange[1]) return false;
       if (areaMin && p.size_sqm < Number(areaMin)) return false;
       return true;
     });
-  }, [merged, listingType, city, propertyType, rooms, priceRange, areaMin]);
+  }, [merged, listingType, city, propertyType, rooms, priceRange, areaMin, isConfigured, serviceAreas]);
 
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6" dir="rtl">
