@@ -348,7 +348,7 @@ export default function DealRoom() {
             </SheetDescription>
           </SheetHeader>
 
-          <div className="flex-1 mt-4 space-y-3">
+          <div className="flex-1 mt-4 space-y-3 overflow-y-auto">
             {generating ? (
               <div className="space-y-3">
                 <div
@@ -374,33 +374,95 @@ export default function DealRoom() {
                 <Skeleton className="h-4 w-10/12" />
               </div>
             ) : (
-              <textarea
-                value={smartReply}
-                onChange={(e) => setSmartReply(e.target.value)}
-                rows={10}
-                className="w-full rounded-md border bg-background p-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-                placeholder="Your Smart Reply will appear here..."
-              />
+              <div className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <Badge
+                    variant="outline"
+                    className="gap-1.5 border-primary/30 bg-primary/5 text-primary font-normal"
+                  >
+                    <ShieldCheck className="h-3 w-3" />
+                    AI Draft — awaiting approval
+                  </Badge>
+                  {draftMode === 'editing' && (
+                    <span className="text-[11px] text-muted-foreground">Editing</span>
+                  )}
+                </div>
+                {draftMode === 'review' ? (
+                  <div
+                    className="w-full rounded-md border-2 border-dashed border-primary/30 bg-primary/[0.03] p-3 text-sm leading-relaxed whitespace-pre-wrap min-h-[14rem]"
+                    aria-label="AI-generated draft reply, read-only until edited"
+                  >
+                    {smartReply || (
+                      <span className="text-muted-foreground italic">
+                        Your Smart Reply will appear here…
+                      </span>
+                    )}
+                  </div>
+                ) : (
+                  <textarea
+                    value={smartReply}
+                    onChange={(e) => setSmartReply(e.target.value)}
+                    rows={10}
+                    autoFocus
+                    className="w-full rounded-md border-2 border-primary/40 bg-background p-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring resize-none"
+                    placeholder="Edit your reply…"
+                  />
+                )}
+                <p className="text-[11px] text-muted-foreground leading-snug">
+                  Nothing is sent to the Prospect until you click <span className="font-medium text-foreground">Approve &amp; Send</span>.
+                </p>
+              </div>
             )}
           </div>
 
-          <div className="flex items-center gap-2 pt-4 border-t">
+          <div className="flex flex-col gap-2 pt-4 border-t">
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                disabled={generating || sending || !smartReply.trim()}
+                onClick={() => setDraftMode((m) => (m === 'editing' ? 'review' : 'editing'))}
+              >
+                {draftMode === 'editing' ? (
+                  <>
+                    <Check className="h-4 w-4 mr-1.5" />
+                    Done editing
+                  </>
+                ) : (
+                  <>
+                    <Pencil className="h-4 w-4 mr-1.5" />
+                    Edit
+                  </>
+                )}
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                disabled={generating || sending}
+                onClick={() => activeProspect && openSmartReply(activeProspect)}
+              >
+                <Sparkles className="h-4 w-4 mr-1.5" />
+                Regenerate
+              </Button>
+            </div>
             <Button
-              variant="outline"
-              className="flex-1"
-              disabled={generating}
-              onClick={() => activeProspect && openSmartReply(activeProspect)}
+              className="w-full"
+              disabled={!smartReply.trim() || generating || sending}
+              onClick={approveAndSend}
             >
-              <Sparkles className="h-4 w-4 mr-1.5" />
-              Regenerate
-            </Button>
-            <Button
-              className="flex-1"
-              disabled={!smartReply.trim() || generating}
-              onClick={sendReply}
-            >
-              <Send className="h-4 w-4 mr-1.5" />
-              Send
+              {sending ? (
+                <>
+                  <Send className="h-4 w-4 mr-1.5 animate-pulse" />
+                  Sending via WhatsApp…
+                </>
+              ) : (
+                <>
+                  <Send className="h-4 w-4 mr-1.5" />
+                  Approve &amp; Send
+                </>
+              )}
             </Button>
           </div>
         </SheetContent>
