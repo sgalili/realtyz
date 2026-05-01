@@ -280,6 +280,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({
         type: "text",
         content: rawContent,
+        escalation,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -335,6 +336,7 @@ serve(async (req) => {
         query,
         explanation: parsed.explanation || "",
         sources: kbSources,
+        escalation,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -343,6 +345,7 @@ serve(async (req) => {
     return new Response(JSON.stringify({
       type: "text",
       content: rawContent,
+      escalation,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
