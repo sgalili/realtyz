@@ -97,9 +97,11 @@ serve(async (req) => {
       settings.mandate_target ? `Mandate Target: ${settings.mandate_target} mandates` : null,
     ].filter(Boolean).join("\n") || "No campaign settings configured yet.";
 
-    // RAG: pull top-5 KB chunks for the *requesting* user (auth header forwarded)
-    let kbContext = "(no knowledge base documents matched)";
-    let kbSources: Array<{ id: string; title: string; similarity: number }> = [];
+    // RAG: pull KB chunks for the *requesting* user (auth header forwarded).
+    // We fetch a wider window then split into "Past Conversation (WhatsApp)" vs "Reference Documents",
+    // so the model can mirror the Agent's voice from past WhatsApp turns while citing factual docs.
+    let kbContext = "(no Strategy Bank entries matched)";
+    let kbSources: Array<{ id: string; title: string; similarity: number; source?: string }> = [];
     try {
       const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user")?.content;
       const authHeader = req.headers.get("Authorization") ?? "";
@@ -107,25 +109,54 @@ serve(async (req) => {
         const kbRes = await fetch(`${supabaseUrl}/functions/v1/kb-query`, {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: authHeader },
-          body: JSON.stringify({ query: lastUserMsg, match_count: 5 }),
+          body: JSON.stringify({ query: lastUserMsg, match_count: 10 }),
         });
         if (kbRes.ok) {
           const kbJson = await kbRes.json();
-          const matches = kbJson?.matches ?? [];
+          const matches: any[] = kbJson?.matches ?? [];
           if (matches.length > 0) {
-            kbContext = matches
-              .map((m: any, i: number) => `[${i + 1}] title: "${m.document_title}" (similarity ${(m.similarity ?? 0).toFixed(2)})\n${m.content}`)
-              .join("\n\n---\n\n");
-            // Dedupe sources by document_id, keep highest similarity
-            const seen = new Map<string, { id: string; title: string; similarity: number }>();
-            matches.forEach((m: any) => {
+            // Hydrate source metadata so we can label WhatsApp chunks distinctly.
+            const docIds = Array.from(new Set(matches.map((m) => m.document_id).filter(Boolean)));
+            const { data: docs } = await supabase
+              .from("knowledge_documents")
+              .select("id, source_type, source_metadata")
+              .in("id", docIds.length ? docIds : ["00000000-0000-0000-0000-000000000000"]);
+            const docMap = new Map<string, { source_type?: string; source_metadata?: any }>();
+            (docs ?? []).forEach((d: any) => docMap.set(d.id, d));
+
+            const enriched = matches.map((m) => {
+              const d = docMap.get(m.document_id) ?? {};
+              const isWhatsApp =
+                d.source_type === "whatsapp" ||
+                d.source_metadata?.source === "WhatsApp" ||
+                d.source_metadata?.category === "Past Conversation";
+              return { ...m, isWhatsApp, sourceLabel: isWhatsApp ? "Past Conversation / WhatsApp" : "Reference Document" };
+            });
+
+            // Prefer up to 4 WhatsApp chunks for STYLE, then up to 4 doc chunks for FACTS.
+            const wa = enriched.filter((m) => m.isWhatsApp).slice(0, 4);
+            const docsChunks = enriched.filter((m) => !m.isWhatsApp).slice(0, 4);
+            const ordered = [...wa, ...docsChunks];
+
+            const fmt = (m: any, i: number) =>
+              `[${i + 1}] (${m.sourceLabel}) title: "${m.document_title}" (similarity ${(m.similarity ?? 0).toFixed(2)})\n${m.content}`;
+            const waBlock = wa.length
+              ? `── PAST WHATSAPP CONVERSATIONS (use for STYLE / VOICE) ──\n${wa.map((m, i) => fmt(m, i)).join("\n\n---\n\n")}`
+              : "";
+            const docsBlock = docsChunks.length
+              ? `── REFERENCE DOCUMENTS (use for FACTS) ──\n${docsChunks.map((m, i) => fmt(m, i + wa.length)).join("\n\n---\n\n")}`
+              : "";
+            kbContext = [waBlock, docsBlock].filter(Boolean).join("\n\n");
+
+            const seen = new Map<string, { id: string; title: string; similarity: number; source?: string }>();
+            ordered.forEach((m) => {
               const id = m.document_id ?? m.id;
               const sim = m.similarity ?? 0;
               if (!seen.has(id) || (seen.get(id)!.similarity < sim)) {
-                seen.set(id, { id, title: m.document_title, similarity: sim });
+                seen.set(id, { id, title: m.document_title, similarity: sim, source: m.sourceLabel });
               }
             });
-            kbSources = Array.from(seen.values()).slice(0, 5);
+            kbSources = Array.from(seen.values()).slice(0, 6);
           }
         }
       }
