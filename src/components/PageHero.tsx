@@ -62,8 +62,9 @@ export function PageHero() {
     <div
       dir="rtl"
       data-no-hero-wave
+      data-page-hero
       className="relative w-full shrink-0 overflow-hidden text-primary-foreground print:hidden"
-      style={{ backgroundColor: '#0082CA' }}
+      style={{ backgroundColor: '#0096E6' }}
     >
       {/* Center-aligned 3-zone toolbar */}
       <div className="relative z-10 flex h-20 items-center justify-between gap-3 px-4 sm:px-6">
