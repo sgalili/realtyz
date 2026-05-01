@@ -64,7 +64,7 @@ export default function Team() {
   const { canInviteTeam, loading } = useUserRole();
   const queryClient = useQueryClient();
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<TeamRole>('assistant');
+  const [role, setRole] = useState<TeamRole>('lead_agent');
   const [inviting, setInviting] = useState(false);
 
   const { data: invitations = [] } = useQuery({
@@ -195,7 +195,8 @@ export default function Team() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="agent">Agent</SelectItem>
+              <SelectItem value="managing_broker">Managing Broker</SelectItem>
+              <SelectItem value="lead_agent">Lead Agent</SelectItem>
               <SelectItem value="assistant">Assistant</SelectItem>
               <SelectItem value="junior_agent">Junior Agent</SelectItem>
             </SelectContent>
