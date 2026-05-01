@@ -76,10 +76,8 @@ export function PageToolbar() {
           {title}
         </h1>
 
-        {/* Left (visual): demo switch (super-admin only, renders null otherwise) */}
-        <div className="flex items-center justify-end">
-          <DemoModeToggle variant="compact" />
-        </div>
+        {/* Left (visual): reserved spacer to balance the burger on the right */}
+        <div className="h-9 w-9" aria-hidden="true" />
       </div>
     </div>
   );
