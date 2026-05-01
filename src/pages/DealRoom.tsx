@@ -44,6 +44,7 @@ import {
   type PropertyResult,
 } from '@/components/dealroom/PropertyMatchmakerDialog';
 import { AutomationActivityFeed } from '@/components/dealroom/AutomationActivityFeed';
+import { CallHistoryList } from '@/components/dealroom/CallHistoryList';
 import { PriorityScoreBadge } from '@/components/dealroom/PriorityScoreBadge';
 
 type LeadStage = 'new_prospect' | 'listing_outreach' | 'negotiation' | 'closed';
