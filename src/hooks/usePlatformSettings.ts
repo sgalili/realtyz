@@ -11,6 +11,9 @@ export interface PlatformSettings {
   enable_voice_calls: boolean;
   enable_featured_listings: boolean;
   enable_pending_extraction: boolean;
+  ai_paused: boolean;
+  ai_paused_reason: string | null;
+  ai_paused_at: string | null;
 }
 
 const DEFAULTS: PlatformSettings = {
@@ -22,6 +25,9 @@ const DEFAULTS: PlatformSettings = {
   enable_voice_calls: false,
   enable_featured_listings: true,
   enable_pending_extraction: true,
+  ai_paused: false,
+  ai_paused_reason: null,
+  ai_paused_at: null,
 };
 
 export function usePlatformSettings() {
