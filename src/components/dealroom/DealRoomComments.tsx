@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Lock, Send, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
+import { maskPii, summarizeHits } from '@/lib/piiMask';
 
 type Comment = {
   id: string;
@@ -54,10 +55,11 @@ export function DealRoomComments({ leadId }: { leadId: string }) {
   });
 
   async function postComment() {
-    const body = draft.trim();
-    if (!body || !user || posting) return;
+    const raw = draft.trim();
+    if (!raw || !user || posting) return;
     setPosting(true);
     try {
+      const { text: body, hasPii, hits } = maskPii(raw);
       const { error } = await supabase.from('deal_room_comments').insert({
         lead_id: leadId,
         author_id: user.id,
@@ -66,6 +68,11 @@ export function DealRoomComments({ leadId }: { leadId: string }) {
       });
       if (error) throw error;
       setDraft('');
+      if (hasPii) {
+        toast.info('מידע אישי מוסך לפני השמירה', {
+          description: `הוסתר: ${summarizeHits(hits)}`,
+        });
+      }
       queryClient.invalidateQueries({ queryKey: ['deal-room-comments', leadId] });
     } catch (e: any) {
       toast.error('Could not post comment', { description: e?.message });
