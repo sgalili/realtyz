@@ -31,6 +31,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserPlus, Home, KeyRound } from 'lucide-react';
+import { useServiceAreas } from '@/hooks/useServiceAreas';
 
 type DealType = 'sale' | 'rent';
 
