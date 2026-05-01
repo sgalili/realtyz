@@ -167,12 +167,25 @@ const shortConversations: Record<number, Array<{ role: 'ai' | 'lead'; content: s
 
 const months = ['2024-10', '2024-11', '2024-12', '2025-01', '2025-02', '2025-03'];
 const demoChannels = ['whatsapp', 'instagram', 'messenger', 'tiktok', 'signal', 'x', 'facebook', 'sms'] as const;
+type DemoChannel = typeof demoChannels[number];
+
+// Polite WhatsApp pivot script (Hebrew). Used on the AI's 1st reply when the
+// inbound channel is NOT WhatsApp. Keeps the answer on the SAME channel and
+// invites the Prospect to continue on WhatsApp.
+const buildPivotLine = (channel: DemoChannel): string => {
+  if (channel === 'whatsapp') return '';
+  return `אני מנהל את הנכסים ישירות ב-WhatsApp כדי שאוכל לשלוח מפרט מלא, פין על המפה ותמונות באיכות גבוהה. נמשיך שם? אשלח לך לינק.`;
+};
+
 // Real-estate omni follow-ups. Indexed by lead position; even = sale pipeline,
 // odd = rent pipeline. Pipelines never cross.
+// CHANNEL INTEGRITY: a thread stays on its INBOUND channel. If that channel is
+// not WhatsApp, the AI politely pivots; once the Prospect agrees, the thread
+// continues on WhatsApp only.
 const demoInteractionScenarios = [
   ['ראיתי את המודעה לדירת 3 חדרים. עוד פנויה?', 'כן, פנויה. שולח לך עכשיו תמונות נוספות ותוכנית הדירה. רוצה לסייר השבוע?'],
   ['המחיר שכתוב בלוח עדכני?', 'מעודכן להיום. יש מקום קטן למשא ומתן בתום הסיור — תלוי בלוחות זמנים שלך.'],
-  ['חיפשתי דירה להשכרה — מה הזמינות מ-1 לחודש?', 'יש לי שתי דירות שמתפנות בדיוק בתאריך הזה. אסכם לך אותן ב-WhatsApp.'],
+  ['חיפשתי דירה להשכרה — מה הזמינות מ-1 לחודש?', 'יש לי שתי דירות שמתפנות בדיוק בתאריך הזה. אסכם לך אותן עכשיו.'],
   ['אני צריך לקנות תוך 3 חודשים. ריאלי?', 'בהחלט ריאלי. בוא נסגור פגישת אפיון של 20 דק׳ ואחזור עם 3 נכסים מדויקים.'],
   ['יש חניה ומחסן בנכס?', 'יש חניה תת-קרקעית פרטית ומחסן 6 מ״ר. אצרף את שטר הרישום בטאבו.'],
   ['רציתי לדעת על משכנתא — אתה עוזר עם זה?', 'יש לי יועצת משכנתאות שאני עובד איתה — אקשר אתכם בלי עלות מצידך.'],
@@ -180,21 +193,38 @@ const demoInteractionScenarios = [
   ['אפשר לתאם סיור לסוף השבוע?', 'כן — שישי 10:00 או שבת 18:00. מה עדיף לך? אאשר לבעלים מיד.'],
 ];
 
-const buildOmniFollowUps = (index: number, name: string, city: string, topic: string) => {
+const buildOmniFollowUps = (index: number, name: string, _city: string, _topic: string, threadChannel: DemoChannel) => {
   const [voterConcern, aiResponse] = demoInteractionScenarios[index % demoInteractionScenarios.length];
   const firstName = name.split(' ')[0];
-  const primary = demoChannels[index % demoChannels.length];
-  const secondary = demoChannels[(index + 3) % demoChannels.length];
-  const tertiary = demoChannels[(index + 5) % demoChannels.length];
-  const isSale = index % 2 === 0;
-  const pipelineLabel = isSale ? 'נכסים למכירה' : 'דירות להשכרה';
+  const pivot = buildPivotLine(threadChannel);
+  const isPivoted = threadChannel !== 'whatsapp';
 
-  return [
-    { role: 'lead' as const, channel: primary, content: voterConcern, month: 5 },
-    { role: 'ai' as const, channel: secondary, content: `${firstName}, ${aiResponse}`, month: 5 },
-    { role: 'lead' as const, channel: tertiary, content: index % 4 === 0 ? 'אוקיי, תמשיך לעדכן רק ב-WhatsApp בבקשה.' : `תודה. מעניין אותי גם ${pipelineLabel} ב${city}.`, month: 5 },
-    { role: 'ai' as const, channel: demoChannels[(index + 7) % demoChannels.length], content: index % 5 === 0 ? 'מצוין. עדכנתי העדפת ערוץ, אעדכן אותך אישית כשייכנסו נכסים מתאימים.' : `קיבלתי. שמור על ${pipelineLabel} בלבד — אשלח רק נכסים שתואמים לפיילין שלך.`, month: 5 },
+  const turns: Array<{ role: 'lead' | 'ai'; channel: DemoChannel; content: string; month: number }> = [
+    // Inbound stays on the original channel
+    { role: 'lead', channel: threadChannel, content: voterConcern, month: 5 },
+    // AI replies on the SAME channel; if not WhatsApp, appends the pivot script
+    {
+      role: 'ai',
+      channel: threadChannel,
+      content: pivot ? `${firstName}, ${aiResponse}\n\n${pivot}` : `${firstName}, ${aiResponse}`,
+      month: 5,
+    },
   ];
+
+  if (isPivoted) {
+    // Prospect agrees to move
+    turns.push({ role: 'lead', channel: threadChannel, content: 'בטח, שלח לינק.', month: 5 });
+    turns.push({ role: 'ai', channel: threadChannel, content: 'מעולה, ממשיך איתך ב-WhatsApp 🙏', month: 5 });
+    // Conversation continues on WhatsApp ONLY
+    turns.push({ role: 'ai', channel: 'whatsapp', content: `שלום ${firstName}, אודי כאן. שולח את כל הפרטים והתמונות בהודעות הבאות.`, month: 5 });
+    turns.push({ role: 'lead', channel: 'whatsapp', content: 'מעולה, מחכה.', month: 5 });
+  } else {
+    // Already on WhatsApp — natural follow-up, never switch channel
+    turns.push({ role: 'lead', channel: 'whatsapp', content: 'מעולה, אשמח לפרטים נוספים ולתאם סיור.', month: 5 });
+    turns.push({ role: 'ai', channel: 'whatsapp', content: 'שולח עכשיו 3 אפשרויות מתאימות + חלונות זמן לסיור.', month: 5 });
+  }
+
+  return turns;
 };
 
 // Generate realistic recent timestamps for demo
@@ -237,9 +267,15 @@ function generateDemoThread(name: string, voterId: string, index: number) {
 
   const baseMinutesAgo = recentOffsets[index] ?? 60;
 
+  // CHANNEL INTEGRITY: pin ONE channel for the deep/short conversation,
+  // and let buildOmniFollowUps run an inbound thread on its own channel
+  // (with a WhatsApp pivot when applicable). No mid-conversation channel hopping.
+  const deepChannel: DemoChannel = 'whatsapp';
+  const inboundChannel: DemoChannel = demoChannels[index % demoChannels.length];
+
   const expanded = [
-    ...activeConversation.map((m, i) => ({ ...m, channel: demoChannels[(index + i) % demoChannels.length] })),
-    ...buildOmniFollowUps(index, name, city, fallbackTopic.tag),
+    ...activeConversation.map((m) => ({ ...m, channel: deepChannel })),
+    ...buildOmniFollowUps(index, name, city, fallbackTopic.tag, inboundChannel),
   ];
   const totalMessages = expanded.length;
 
