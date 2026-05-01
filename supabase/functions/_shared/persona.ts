@@ -431,39 +431,157 @@ Domain scope:
 
 === CHANNEL INTEGRITY (HARD RULE) ===
 Every inbound message arrives on a specific channel (whatsapp, instagram, tiktok,
-messenger, signal, x, facebook, sms, telegram, email). The channel is provided in
-the message metadata as 'channel' / 'platform'.
+messenger, signal, x, facebook, sms, telegram, email). The channel is provided
+in the message metadata as 'channel' / 'platform' AND in the per-conversation
+"=== CONVERSATION CHANNEL CONTEXT ===" block injected before each turn.
 
+ABSOLUTE RULES:
 - ALWAYS reply on the SAME channel the Lead last wrote on. If they wrote on
   TikTok, reply on TikTok. If on X, reply on X. If on Signal, reply on Signal.
-- NEVER narrate a channel switch that didn't happen. Do NOT write phrases like
-  "the conversation moved to TikTok", "let's continue on Instagram",
+- NEVER narrate a channel switch that didn't actually happen. Do NOT write
+  phrases like "the conversation moved to TikTok", "let's continue on Instagram",
   "המשכנו ב-..." unless the Lead EXPLICITLY agreed in the prior turn.
 - Do NOT mix channel context inside one reply (no "I'll DM you on Instagram"
-  while replying on WhatsApp, etc.).
+  while replying on WhatsApp).
+- If the conversation context flag `primary_channel = whatsapp` is set, treat
+  every non-WhatsApp social channel as INACTIVE for this Lead. Do NOT send any
+  new outreach on Instagram / TikTok / Messenger / Signal / X / Facebook even
+  if the Lead's profile shows those handles.
 
 === WHATSAPP PIVOT STRATEGY ===
-WhatsApp is the Agent's primary management channel. For any inbound message that
-arrives on a NON-WhatsApp social channel (instagram, tiktok, messenger, signal,
-x, facebook, sms, telegram), the AI must politely pivot the conversation to
-WhatsApp within the first 2, 3 turns.
+WhatsApp is the Agent's primary management channel. For any inbound message
+that arrives on a NON-WhatsApp social channel (instagram, tiktok, messenger,
+signal, x, facebook, sms, telegram), the AI must politely pivot the
+conversation to WhatsApp within the first 2-3 turns.
 
-Pivot rules:
+EXACT PIVOT SCRIPT (use verbatim, only swap [Name] and [Link]):
+  English:
+    "Hi [Name], I manage my property specs and tour scheduling directly via
+     WhatsApp to keep everything organized. Can we continue this conversation
+     there? [Link]"
+  Hebrew (preferred for Hebrew-speaking Leads):
+    "היי [Name], אני מנהל את מפרטי הנכסים ותיאומי הסיורים ישירות ב-WhatsApp
+     כדי שהכל יהיה מסודר במקום אחד. נמשיך את השיחה שם? [Link]"
+
+PIVOT RULES:
 - Turn 1 (or 2): answer the Lead's actual question briefly ON THE SAME channel,
-  THEN add a short pivot CTA. Example template (Hebrew, adapt to the Agent's voice):
-    "היי {שם}, תודה שכתבת. אני מנהל את הנכסים ישירות ב-WhatsApp כדי שאוכל לשלוח
-     מפרט מלא, פינים על המפה ותמונות באיכות גבוהה. נמשיך שם? {link}"
-  English equivalent:
-    "Hi {Name}, thanks for reaching out. I manage my listings directly via WhatsApp
-     so I can send you full specs, location pins and HD photos. Can we continue
-     there? {link}"
-- If the Lead AGREES to move (e.g. "כן", "בטח", "שלח לינק", sends a phone
-  number, taps the link), the AI's NEXT reply on the social platform should be a
-  short polite close ("מעולה, ממשיך איתך ב-WhatsApp 🙏") and ALL further
-  conversation must continue on WhatsApp only. Do NOT keep two channels active.
+  THEN append the EXACT pivot script above. Do NOT paraphrase the script.
+- If the Lead AGREES to move (e.g. "כן" / "בטח" / "yes" / "sure" / "ok" /
+  sends a phone number / taps the link), the AI's NEXT reply on the social
+  platform MUST be a short polite close ("מעולה, ממשיך איתך ב-WhatsApp 🙏" or
+  "Great, continuing with you on WhatsApp 🙏") and ALL further conversation
+  MUST continue on WhatsApp ONLY. Do NOT keep two channels active. The system
+  will mark the social channel as INACTIVE for this Lead.
 - If the Lead REFUSES or ignores the pivot, do NOT push again after the 3rd
   turn. Continue helping ON THE SAME channel they prefer.
 - NEVER pivot to WhatsApp if the inbound channel IS already WhatsApp.
 - NEVER pivot to a channel other than WhatsApp.
+- Once `primary_channel = whatsapp`, NEVER suggest moving back to social.
 === END UNIVERSAL RULES ===
 `.trim();
+
+// ---------------------------------------------------------------------------
+// Per-conversation channel context block.
+//
+// The ai-agent edge function reads the inbound channel from the latest message
+// AND any pivot state stored in `leads.preferences.channel_state`, then injects
+// this block so the LLM has zero ambiguity about where to reply.
+// ---------------------------------------------------------------------------
+export interface ChannelContext {
+  /** The channel the Lead's last inbound message arrived on. */
+  inboundChannel: string | null;
+  /** The Lead's display name (used in the verbatim pivot script). */
+  leadName: string | null;
+  /** WhatsApp deep-link / wa.me URL for this Agent. May be null. */
+  whatsappLink: string | null;
+  /**
+   * Persistent pivot state from leads.preferences.channel_state.
+   * Once primary_channel === 'whatsapp', social channels are INACTIVE.
+   */
+  primaryChannel?: string | null;
+  /** Channels marked Inactive after a successful WhatsApp pivot. */
+  inactiveChannels?: string[];
+  /** Number of pivot CTAs already sent on the current social thread. */
+  pivotAttempts?: number;
+}
+
+const SOCIAL_PIVOT_CHANNELS = new Set([
+  "instagram", "tiktok", "messenger", "signal", "x", "twitter",
+  "facebook", "sms", "telegram",
+]);
+
+export function renderChannelBlock(ctx: ChannelContext): string {
+  const inbound = (ctx.inboundChannel ?? "").toLowerCase().trim() || "whatsapp";
+  const name = ctx.leadName?.trim() || "[Name]";
+  const link = ctx.whatsappLink?.trim() || "[Link]";
+  const primary = (ctx.primaryChannel ?? "").toLowerCase().trim() || null;
+  const inactive = (ctx.inactiveChannels ?? []).map((c) => c.toLowerCase());
+  const attempts = Math.max(0, ctx.pivotAttempts ?? 0);
+
+  const isWhatsApp = inbound === "whatsapp";
+  const isSocial = SOCIAL_PIVOT_CHANNELS.has(inbound);
+  const movedToWhatsApp = primary === "whatsapp";
+
+  const lines: string[] = [];
+  lines.push("=== CONVERSATION CHANNEL CONTEXT ===");
+  lines.push(`Inbound channel for this turn: ${inbound}`);
+  lines.push(`Lead display name: ${name}`);
+  lines.push(`Primary channel (persisted): ${primary ?? "not set"}`);
+  if (inactive.length) {
+    lines.push(`Channels marked INACTIVE for this Lead: ${inactive.join(", ")}`);
+  }
+  lines.push(`WhatsApp pivot CTAs already sent on this social thread: ${attempts}`);
+  lines.push("");
+
+  if (isWhatsApp) {
+    lines.push("ACTION: Reply on WhatsApp. Do NOT send the WhatsApp Pivot script.");
+    lines.push("Do NOT mention any other channel.");
+  } else if (movedToWhatsApp) {
+    lines.push(`ACTION: This Lead already moved to WhatsApp. The channel "${inbound}" is INACTIVE.`);
+    lines.push("Do NOT engage on this social channel anymore. If you must reply,");
+    lines.push("answer in one short sentence and remind them you continue on WhatsApp only.");
+  } else if (isSocial) {
+    if (attempts >= 2) {
+      lines.push(`ACTION: Pivot already attempted ${attempts} times on ${inbound}.`);
+      lines.push(`Do NOT send the pivot script again. Continue helping on ${inbound} only.`);
+    } else {
+      lines.push(`ACTION: Reply on ${inbound}. First answer the Lead's question`);
+      lines.push("briefly (1-2 sentences). THEN append this EXACT pivot script verbatim:");
+      lines.push("");
+      lines.push(`  "Hi ${name}, I manage my property specs and tour scheduling directly`);
+      lines.push(`   via WhatsApp to keep everything organized. Can we continue this`);
+      lines.push(`   conversation there? ${link}"`);
+      lines.push("");
+      lines.push("(Hebrew variant if the Lead writes Hebrew):");
+      lines.push(`  "היי ${name}, אני מנהל את מפרטי הנכסים ותיאומי הסיורים ישירות`);
+      lines.push(`   ב-WhatsApp כדי שהכל יהיה מסודר במקום אחד. נמשיך את השיחה שם? ${link}"`);
+      lines.push("");
+      lines.push("Do NOT paraphrase. Use the script verbatim, only substituting [Name] and [Link].");
+    }
+  } else {
+    lines.push(`ACTION: Reply on ${inbound}. Stay on this channel.`);
+  }
+  lines.push("=== END CONVERSATION CHANNEL CONTEXT ===");
+  return lines.join("\n");
+}
+
+/**
+ * Heuristic: does the Lead's most recent inbound message look like agreement
+ * to move to WhatsApp? Used by the ai-agent function to flip preferences.channel_state.
+ */
+export function detectWhatsAppPivotAgreement(text: string | null | undefined): boolean {
+  if (!text) return false;
+  const t = String(text).toLowerCase().trim();
+  if (!t) return false;
+  // Hebrew/English short affirmations
+  const positives = [
+    /^כן\b/, /^בטח\b/, /^אוקי\b/, /^אוקיי\b/, /^סבבה\b/, /^בסדר\b/, /^יאללה\b/,
+    /^yes\b/, /^sure\b/, /^ok\b/, /^okay\b/, /^great\b/, /^perfect\b/, /^sounds good\b/,
+    /\bwhats\s*app\b/, /\bוואטסאפ\b/, /\bוואצאפ\b/,
+  ];
+  if (positives.some((re) => re.test(t))) return true;
+  // E.164-ish phone number share
+  if (/(\+?972|\b05)\d[\d\-\s]{6,}/.test(t)) return true;
+  return false;
+}
+
