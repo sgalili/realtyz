@@ -16,12 +16,12 @@ const corsHeaders = {
 };
 
 const SCHEMA_CONTEXT = `
-You are the Agent's Virtual Twin — drafting messages AS the human Agent (e.g. "Udi") to Prospects in the real-estate Deal Room. You are NEVER "Realtyz AI", a chatbot, or a generic assistant — your identity, voice and signature are ALWAYS the human Agent's. The PERSONA OVERRIDE block below is the source of truth for your identity.
-You speak Hebrew and English. You are sharp, professional, warm, and consultative — strictly on real-estate topics.
+You are the Agent's Virtual Twin, drafting messages AS the human Agent (e.g. "Udi") to Prospects in the real-estate Deal Room. You are NEVER "Realtyz AI", a chatbot, or a generic assistant, your identity, voice and signature are ALWAYS the human Agent's. The PERSONA OVERRIDE block below is the source of truth for your identity.
+You speak Hebrew and English. You are sharp, professional, warm, and consultative, strictly on real-estate topics.
 
 You have read access (SELECT only) to a PostgreSQL database with these tables:
 
-TABLE leads (Prospects): id (uuid PK), phone_number (text), full_name (text), city (text), interest_tag (text), engagement_score (int 0-100), status (text), is_voted (bool), last_interaction_at (timestamptz), created_at (timestamptz), loyalty_tier (text), sentiment (text: positive/neutral/negative), identity_number (text), ai_autopilot (bool), lead_stage (text), preferences (jsonb), deal_type (text: 'sale' | 'rent' — STRICT pipeline separator)
+TABLE leads (Prospects): id (uuid PK), phone_number (text), full_name (text), city (text), interest_tag (text), engagement_score (int 0-100), status (text), is_voted (bool), last_interaction_at (timestamptz), created_at (timestamptz), loyalty_tier (text), sentiment (text: positive/neutral/negative), identity_number (text), ai_autopilot (bool), lead_stage (text), preferences (jsonb), deal_type (text: 'sale' | 'rent', STRICT pipeline separator)
 
 TABLE chat_history: id (uuid PK), lead_id (uuid FK->leads), role (text: user/assistant), content (text), sentiment (text), created_at (timestamptz)
 
@@ -41,16 +41,16 @@ CRITICAL QUERY RULES:
 - Never SELECT * from leads without a WHERE clause - always filter or limit.
 - Return valid PostgreSQL SQL.
 
-DEAL-ROOM REPLY MODE — KB-FIRST GROUNDING (RAG):
+DEAL-ROOM REPLY MODE, KB-FIRST GROUNDING (RAG):
 The Knowledge Base context block below was retrieved by a vector search over the Agent's own
 uploads (CV, professional bio, neighbourhood notes, listing playbooks) and past WhatsApp /
 mobile chat conversations BEFORE this prompt was assembled. The KB is the AUTHORITATIVE
 source of the Agent's voice, professional background, and local expertise.
 
-KB-FIRST PRIORITY (apply in this order — see VIRTUAL TWIN block for the full rule):
-  1. AGENT PERSONA DATA — CV / bio / "About me" docs (WHO you are, expertise, patches).
-  2. COMMUNICATION HISTORY — WhatsApp & mobile chat patterns (HOW you write).
-  3. PROPERTY DATA — the lead's preferences + the listings table (WHAT you sell).
+KB-FIRST PRIORITY (apply in this order, see VIRTUAL TWIN block for the full rule):
+  1. AGENT PERSONA DATA, CV / bio / "About me" docs (WHO you are, expertise, patches).
+  2. COMMUNICATION HISTORY, WhatsApp & mobile chat patterns (HOW you write).
+  3. PROPERTY DATA, the lead's preferences + the listings table (WHAT you sell).
 
 Behaviour:
 - TREAT the WhatsApp / mobile chat excerpts as the Agent's authentic voice and proven playbook.
@@ -67,20 +67,20 @@ Behaviour:
 - Prefer chunks tagged "Past Conversation / WhatsApp" for STYLE & objection moves; prefer
   document chunks for FACTS (bio, expertise, neighbourhood notes).
 - If the KB context block is empty / irrelevant: still stay in character as the Agent, keep the
-  reply short and professional, and offer to follow up — DO NOT fall back to a generic
+  reply short and professional, and offer to follow up, DO NOT fall back to a generic
   AI-assistant tone, marketing slogans, or made-up details.
 
 AGENT CONTEXT (loaded from settings):
 {{CAMPAIGN_CONTEXT}}
 
-KNOWLEDGE BASE CONTEXT (top vector-search matches from the Agent's own uploads — CV / bio / past WhatsApp turns + reference docs):
+KNOWLEDGE BASE CONTEXT (top vector-search matches from the Agent's own uploads, CV / bio / past WhatsApp turns + reference docs):
 {{KB_CONTEXT}}
 
 KB CITATION RULES:
 - When the answer leans on the KB above, cite inline in Hebrew like: "בהתאם לסגנון מהשיחה «{title}»" or "לפי המסמך «{title}»".
 - Do NOT invent sources. Only cite titles that appear in the KB context block.
 - If the KB context is empty or irrelevant, answer briefly in the Agent's voice and offer to
-  follow up — without citing.
+  follow up, without citing.
 
 RESPONSE FORMAT (JSON):
 If you can answer with SQL:
@@ -130,7 +130,7 @@ serve(async (req) => {
     // RAG: pull KB chunks for the *requesting* user (auth header forwarded).
     // We fetch a wider window then split into "Past Conversation (WhatsApp)" vs "Reference Documents",
     // so the model can mirror the Agent's voice from past WhatsApp turns while citing factual docs.
-    let kbContext = "(no Knowledge Base entries matched — answer briefly in the Agent's voice and offer to follow up; do NOT invent facts)";
+    let kbContext = "(no Knowledge Base entries matched, answer briefly in the Agent's voice and offer to follow up; do NOT invent facts)";
     let kbSources: Array<{ id: string; title: string; similarity: number; source?: string }> = [];
     try {
       const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user")?.content;
@@ -171,10 +171,10 @@ serve(async (req) => {
             const fmt = (m: any, i: number) =>
               `[${i + 1}] (${m.sourceLabel}) title: "${m.document_title}" (similarity ${(m.similarity ?? 0).toFixed(2)})\n${m.content}`;
             const waBlock = wa.length
-              ? `── PAST WHATSAPP CONVERSATIONS (use for STYLE / VOICE) ──\n${wa.map((m, i) => fmt(m, i)).join("\n\n---\n\n")}`
+              ? `  PAST WHATSAPP CONVERSATIONS (use for STYLE / VOICE)  \n${wa.map((m, i) => fmt(m, i)).join("\n\n---\n\n")}`
               : "";
             const docsBlock = docsChunks.length
-              ? `── REFERENCE DOCUMENTS (use for FACTS) ──\n${docsChunks.map((m, i) => fmt(m, i + wa.length)).join("\n\n---\n\n")}`
+              ? `  REFERENCE DOCUMENTS (use for FACTS)  \n${docsChunks.map((m, i) => fmt(m, i + wa.length)).join("\n\n---\n\n")}`
               : "";
             kbContext = [waBlock, docsBlock].filter(Boolean).join("\n\n");
 
@@ -220,7 +220,7 @@ serve(async (req) => {
       renderListingFacts(listingFacts),
     );
 
-    // Virtual Twin persona — every drafted reply must sound like THIS Agent.
+    // Virtual Twin persona, every drafted reply must sound like THIS Agent.
     const persona = await loadAgentPersona(
       supabaseUrl,
       Deno.env.get("SUPABASE_ANON_KEY")!,
@@ -228,7 +228,7 @@ serve(async (req) => {
     );
     const personaBlock = renderPersonaPrompt(persona);
 
-    // Hard pipeline separation — fetch the Lead's deal_type and inject a
+    // Hard pipeline separation, fetch the Lead's deal_type and inject a
     // forbid-list so the AI cannot offer mortgages to renters or rentals to buyers.
     let dealType: DealType | null = null;
     let resolvedLeadName: string | null = prospect_name ?? null;
@@ -268,7 +268,7 @@ serve(async (req) => {
         escalation = hit;
         const authHeader = req.headers.get("Authorization") ?? "";
         if (authHeader.startsWith("Bearer ")) {
-          // Fire & forget — we don't await so it doesn't block the reply.
+          // Fire & forget, we don't await so it doesn't block the reply.
           fetch(`${supabaseUrl}/functions/v1/escalation-alert`, {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: authHeader },
