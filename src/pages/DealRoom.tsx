@@ -276,6 +276,8 @@ export default function DealRoom() {
         </div>
       </header>
 
+      <ActionItemsPanel onUseDraft={openFromSuggestion} />
+
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {STAGE_COLUMNS.map((col) => {
           const Icon = col.icon;
