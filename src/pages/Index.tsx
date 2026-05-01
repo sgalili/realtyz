@@ -17,6 +17,8 @@ import { he } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
 import { PendingListingsCard } from '@/components/PendingListingsCard';
 import { ListingVisibilityManagerCard } from '@/components/listings/ListingVisibilityManagerCard';
+import { GlobalSearchTrigger } from '@/components/GlobalSearch';
+import { KillSwitchCard } from '@/components/safety/KillSwitchCard';
 
 /* ────────────────────────────────────────────────────────────────────
    Realtyz — Real-Estate Dashboard
@@ -243,6 +245,12 @@ const Dashboard = () => {
         <p className="text-sm text-muted-foreground mt-1">
           תמונת מצב חיה של הפעילות הנדל״נית שלך
         </p>
+      </div>
+
+      {/* Global search + emergency kill switch */}
+      <div className="space-y-3">
+        <GlobalSearchTrigger />
+        <KillSwitchCard />
       </div>
 
       {/* 4 KPI widgets */}
