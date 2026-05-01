@@ -564,13 +564,13 @@ function CalculatorBody() {
             >
               <header className="mb-4 flex items-center gap-2">
                 <Calculator className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-bold text-foreground">היעד שלנו לקמפיין</h2>
+                <h2 className="text-lg font-bold text-foreground">יעד עסקאות סגורות</h2>
               </header>
 
-              {/* Goal stepper */}
+              {/* Closed Deal Goal stepper */}
               <div className="rounded-xl border border-border bg-secondary/40 p-5">
                 <div className="mb-3 text-xs font-semibold uppercase tracking-wider text-muted-foreground">
-                  מה היעד שלנו לקמפיין?
+                  כמה עסקאות סגורות אנחנו מכוונים אליהן?
                 </div>
                 <div className="flex items-center justify-center gap-4">
                   <button
