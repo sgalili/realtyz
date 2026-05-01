@@ -48,6 +48,7 @@ const Upgrade = lazy(() => import("./pages/Upgrade"));
 const DealRoom = lazy(() => import("./pages/DealRoom"));
 const PerformanceInsights = lazy(() => import("./pages/PerformanceInsights"));
 const BusinessPerformance = lazy(() => import("./pages/BusinessPerformance"));
+const Broadcast = lazy(() => import("./pages/Broadcast"));
 const AutomationStudioPage = lazy(() => import("./pages/AutomationStudioPage"));
 const Team = lazy(() => import("./pages/Team"));
 const SignDocument = lazy(() => import("./pages/SignDocument"));
@@ -164,6 +165,7 @@ const App = () => (
               <Route path="/ai-content" element={<ProtectedRoute allowGuestDemo><AIContentGenerator /></ProtectedRoute>} />
               <Route path="/ads" element={<Navigate to="/campaigns?tab=campaigns" replace />} />
               <Route path="/campaigns" element={<ProtectedRoute allowGuestDemo><CampaignCenter /></ProtectedRoute>} />
+              <Route path="/broadcast" element={<ProtectedRoute><Broadcast /></ProtectedRoute>} />
               <Route path="/campaign-strategy" element={<Navigate to="/campaigns?tab=strategy" replace />} />
               <Route path="/approval-queue" element={<Navigate to="/campaigns?tab=approvals" replace />} />
               <Route path="/activity-log" element={<ProtectedRoute allowGuestDemo><ActivityLog /></ProtectedRoute>} />
