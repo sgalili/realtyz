@@ -495,6 +495,14 @@ export default function DealRoom() {
                     </ul>
                   </div>
                 )}
+                {pinnedProperty && (
+                  <div className="space-y-1">
+                    <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                      <Home className="h-3 w-3" /> Property Snippet
+                    </div>
+                    <PropertySnippet property={pinnedProperty} />
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <Badge
                     variant="outline"
