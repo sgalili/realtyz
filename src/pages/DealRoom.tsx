@@ -510,9 +510,35 @@ export default function DealRoom() {
 
       <ActionItemsPanel onUseDraft={openFromSuggestion} />
 
+      {/* Hard pipeline separation: Sale (מכירה) vs Rent (השכרה) — only one
+          pipeline is visible at a time. The selected pipeline is mirrored in
+          the URL so deep links + reloads keep the agent on the same view. */}
+      <Tabs
+        value={activeDealType}
+        onValueChange={(v) => {
+          const next = (v === 'rent' ? 'rent' : 'sale') as DealType;
+          setActiveDealType(next);
+          const params = new URLSearchParams(searchParams);
+          params.set('pipeline', next);
+          setSearchParams(params, { replace: true });
+        }}
+        dir="rtl"
+      >
+        <TabsList className="grid w-full max-w-sm grid-cols-2">
+          <TabsTrigger value="sale" className="gap-2">
+            מכירה
+            <Badge variant="secondary" className="text-[10px] font-normal">{saleCount}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="rent" className="gap-2">
+            השכרה
+            <Badge variant="secondary" className="text-[10px] font-normal">{rentCount}</Badge>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       <ErrorBoundary source="DealRoom.Grid">
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        {STAGE_COLUMNS.map((col) => {
+        {stageColumns.map((col) => {
           const Icon = col.icon;
           const items = grouped[col.key];
           return (
