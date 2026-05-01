@@ -173,6 +173,40 @@ export default function DealRoom() {
   // so the agent sees the property card pinned to the chat preview.
   const [pinnedProperty, setPinnedProperty] = useState<PropertyResult | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('recent');
+  const { canAssignProspects, isJuniorOnly } = useUserRole();
+
+  // Team members available for delegation (Assign To dropdown).
+  const { data: teamMembers = [] } = useQuery({
+    queryKey: ['deal-room-team-members'],
+    enabled: canAssignProspects,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('role', ['managing_broker', 'lead_agent', 'agent', 'assistant', 'junior_agent']);
+      // Deduplicate by user_id (a user can hold several roles).
+      const seen = new Set<string>();
+      return (data || []).filter((r) => {
+        if (seen.has(r.user_id)) return false;
+        seen.add(r.user_id);
+        return true;
+      }) as Array<{ user_id: string; role: string }>;
+    },
+    staleTime: 60_000,
+  });
+
+  async function assignProspect(leadId: string, userId: string | null) {
+    const { error } = await supabase
+      .from('leads')
+      .update({ assigned_to: userId })
+      .eq('id', leadId);
+    if (error) {
+      toast.error('Could not delegate prospect', { description: error.message });
+      return;
+    }
+    toast.success(userId ? 'Prospect delegated' : 'Assignment cleared');
+    queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
+  }
   const [recomputing, setRecomputing] = useState(false);
 
   const { data: leads, isLoading } = useQuery({
