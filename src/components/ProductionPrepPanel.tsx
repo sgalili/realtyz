@@ -167,7 +167,7 @@ export function ProductionPrepPanel() {
         <CardContent className="flex flex-wrap gap-2">
           <Button onClick={seed} disabled={seedBusy} size="sm">
             {seedBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin ml-1.5" /> : <Database className="h-3.5 w-3.5 ml-1.5" />}
-            טען נתוני דמו
+            Load Realtyz Demo Mode
           </Button>
           <AlertDialog>
             <AlertDialogTrigger asChild>
