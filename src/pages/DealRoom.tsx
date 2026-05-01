@@ -639,6 +639,13 @@ export default function DealRoom() {
                           פנייה
                         </Button>
                       </div>
+                      <div className="mt-2 flex items-center gap-2">
+                        <span className="text-[11px] text-muted-foreground shrink-0">תוצאה</span>
+                        <OutcomePicker
+                          leadId={p.id}
+                          value={p.interaction_outcome ?? null}
+                        />
+                      </div>
                       {canAssignLeads && (
                         <div className="mt-2 flex items-center gap-2">
                           <span className="text-[11px] text-muted-foreground shrink-0">הקצה ל</span>
