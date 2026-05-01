@@ -44,6 +44,7 @@ import {
   type PropertyResult,
 } from '@/components/dealroom/PropertyMatchmakerDialog';
 import { AutomationActivityFeed } from '@/components/dealroom/AutomationActivityFeed';
+import { CallHistoryList } from '@/components/dealroom/CallHistoryList';
 import { PriorityScoreBadge } from '@/components/dealroom/PriorityScoreBadge';
 
 type LeadStage = 'new_prospect' | 'listing_outreach' | 'negotiation' | 'closed';
@@ -622,6 +623,10 @@ export default function DealRoom() {
                   Nothing is sent to the Prospect until you click <span className="font-medium text-foreground">Approve &amp; Send</span>.
                 </p>
               </div>
+            )}
+
+            {activeProspect && (
+              <CallHistoryList leadId={activeProspect.id} limit={5} />
             )}
 
             {activeProspect && (

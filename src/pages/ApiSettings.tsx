@@ -28,6 +28,7 @@ import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { ChevronDown } from 'lucide-react';
 import NotificationPreferencesPanel from '@/components/NotificationPreferencesPanel';
 import { AgentPersonaPanel } from '@/components/AgentPersonaPanel';
+import { VoiceAgentPanel } from '@/components/calendar/VoiceAgentPanel';
 
 interface ApiConfig {
   id: string;
@@ -835,6 +836,15 @@ const ApiSettings = () => {
           <p className="text-xs text-muted-foreground">הגדר/י טון, ביו ופילוסופיית מכירה — ה-AI ינסח כמוך בכל הודעה.</p>
         </div>
         <AgentPersonaPanel />
+      </div>
+
+      {/* ── Section A.4b: AI Voice Agent ── */}
+      <div className="space-y-2">
+        <div>
+          <h2 className="text-sm font-bold tracking-tight">AI Voice Agent · עוזר טלפוני</h2>
+          <p className="text-xs text-muted-foreground">עונה לשיחות כשאת/ה לא זמין/ה, מתמלל הכל ל-Deal Room ושולח התראת חזרה אליך.</p>
+        </div>
+        <VoiceAgentPanel />
       </div>
 
       {/* ── Section A.5: Notification Preferences ── */}
