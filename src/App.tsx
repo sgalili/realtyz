@@ -23,6 +23,7 @@ const AIContentGenerator = lazy(() => import("./pages/AIContentGenerator"));
 const CampaignCenter = lazy(() => import("./pages/CampaignCenter"));
 const ActivityLog = lazy(() => import("./pages/ActivityLog"));
 const ApiSettings = lazy(() => import("./pages/ApiSettings"));
+const ConnectionSettings = lazy(() => import("./pages/ConnectionSettings"));
 const SentimentDashboard = lazy(() => import("./pages/SentimentDashboard"));
 const SubscriptionManager = lazy(() => import("./pages/SubscriptionManager"));
 const ContactForm = lazy(() => import("./pages/ContactForm"));
