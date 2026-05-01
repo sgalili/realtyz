@@ -276,31 +276,39 @@ export default function Properties() {
 
 function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare: () => void }) {
   const photo = property.photos[0];
+  const isRent = property.listing_type === 'rent';
   return (
-    <Card className="overflow-hidden flex flex-col group">
-      <div className="aspect-[16/10] bg-muted relative overflow-hidden">
-        {photo ? (
-          <img
-            src={photo}
-            alt={property.title}
-            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
-            loading="lazy"
-          />
-        ) : (
-          <div className="h-full w-full flex items-center justify-center text-muted-foreground text-sm">
-            אין תמונה
-          </div>
-        )}
-        <Badge className="absolute top-3 right-3 bg-background/90 text-foreground border">
-          {PROPERTY_TYPE_LABELS_HE[property.property_type]}
-        </Badge>
-      </div>
+    <Card className="overflow-hidden flex flex-col group hover:shadow-lg transition-shadow">
+      <Link to={`/properties/${property.id}`} className="block">
+        <div className="aspect-[16/10] bg-muted relative overflow-hidden">
+          {photo ? (
+            <img
+              src={photo}
+              alt={property.title}
+              className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+              loading="lazy"
+            />
+          ) : (
+            <div className="h-full w-full flex items-center justify-center text-muted-foreground text-sm">
+              אין תמונה
+            </div>
+          )}
+          <Badge className="absolute top-3 right-3 bg-background/90 text-foreground border">
+            {PROPERTY_TYPE_LABELS_HE[property.property_type]}
+          </Badge>
+          {property.listing_type && (
+            <Badge className={`absolute top-3 left-3 border ${isRent ? 'bg-amber-500 text-white' : 'bg-primary text-primary-foreground'}`}>
+              {LISTING_TYPE_LABELS_HE[property.listing_type]}
+            </Badge>
+          )}
+        </div>
+      </Link>
 
       <div className="p-4 flex flex-col gap-3 flex-1">
-        <div>
-          <h3 className="font-semibold text-base leading-tight line-clamp-2">{property.title}</h3>
+        <Link to={`/properties/${property.id}`} className="block">
+          <h3 className="font-semibold text-base leading-tight line-clamp-2 hover:text-primary transition-colors">{property.title}</h3>
           <p className="text-xs text-muted-foreground line-clamp-2 mt-1">{property.description}</p>
-        </div>
+        </Link>
 
         <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-muted-foreground">
           {property.city && (
@@ -323,7 +331,7 @@ function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare
         <div className="flex items-center justify-between mt-auto pt-2 border-t">
           <div className="text-lg font-bold text-success inline-flex items-center gap-1">
             <Building2 className="h-4 w-4 opacity-60" />
-            {formatPrice(property.price)}
+            {formatPrice(property.price)}{isRent ? <span className="text-xs font-normal text-muted-foreground">/חודש</span> : null}
           </div>
           <Button size="sm" onClick={onShare} className="gap-1.5">
             <Send className="h-4 w-4" />
