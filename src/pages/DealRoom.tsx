@@ -498,7 +498,7 @@ export default function DealRoom() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-2">
                             <div className="font-medium text-sm truncate min-w-0 flex-1">
-                              {p.full_name || 'Unnamed Prospect'}
+                              {p.full_name || 'מועמד ללא שם'}
                             </div>
                             <PriorityScoreBadge
                               score={p.priority_score ?? 0}
