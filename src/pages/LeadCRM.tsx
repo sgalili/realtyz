@@ -375,37 +375,26 @@ const LeadCRM = () => {
     return { key: 'negative' as const, emoji: '😟', label: 'שלילי', color: 'text-red-600', cssColor: 'hsl(var(--destructive))' };
   };
 
-  // Combine sentiment + loyalty + engagement into a single political profile bottom-line
+  // Combine sentiment + status + engagement into a real-estate lead profile bottom-line
   const getPoliticalProfile = (status: string | null, engagement: number | null) => {
     const sent = getSentimentForVoter(engagement);
-    const loyaltyTier: 'high' | 'med' | 'low' | 'rival' =
-      status === 'supporter' || status === 'voted' ? 'high'
-      : status === 'active' ? 'med'
-      : status === 'inactive' ? 'rival'
-      : 'low';
+    const tier: 'closed' | 'negotiation' | 'qualified' | 'cold' =
+      status === 'closed' || status === 'supporter' || status === 'voted' ? 'closed'
+      : status === 'negotiation' ? 'negotiation'
+      : status === 'qualified' || status === 'active' ? 'qualified'
+      : 'cold';
     const eng = engagement ?? 0;
 
-    // Hard Opposition: Negative + rival loyalty
-    if (sent.key === 'negative' && loyaltyTier === 'rival') {
-      return { ...sent, badge: 'מתנגד', badgeClass: 'bg-red-600 text-white border-red-700' };
+    if (tier === 'closed') {
+      return { ...sent, badge: 'נסגר', badgeClass: 'bg-emerald-600 text-white border-emerald-700' };
     }
-    // At Risk: Negative + High Engagement
-    if (sent.key === 'negative' && eng >= 60) {
-      return { ...sent, badge: 'מתנגד פעיל', badgeClass: 'bg-orange-500 text-white border-orange-600' };
+    if (tier === 'negotiation') {
+      return { ...sent, badge: 'במשא ומתן', badgeClass: 'bg-amber-500 text-white border-amber-600' };
     }
-    if (sent.key === 'negative') {
-      return { ...sent, badge: 'מתנגד', badgeClass: 'bg-red-500/90 text-white border-red-600' };
+    if (tier === 'qualified' || (sent.key === 'positive' && eng >= 60)) {
+      return { ...sent, badge: 'ליד מוסמך', badgeClass: 'bg-blue-500 text-white border-blue-600' };
     }
-    // Undecided/Neutral
-    if (sent.key === 'neutral') {
-      return { ...sent, badge: 'מתלבט', badgeClass: 'bg-slate-400 text-white border-slate-500' };
-    }
-    // Positive + High Loyalty -> Strong Support (Navy)
-    if (sent.key === 'positive' && loyaltyTier === 'high') {
-      return { ...sent, badge: 'תומך ליבה', badgeClass: 'bg-[hsl(220_60%_25%)] text-white border-[hsl(220_60%_20%)]' };
-    }
-    // Positive + Med/Low -> Leaning
-    return { ...sent, badge: 'תומך פוטנציאלי', badgeClass: 'bg-blue-500 text-white border-blue-600' };
+    return { ...sent, badge: 'ליד קר', badgeClass: 'bg-slate-500 text-white border-slate-600' };
   };
 
   const getSentimentFromMessages = (messages: typeof voterMessages) => {
@@ -443,7 +432,7 @@ const LeadCRM = () => {
     const rows = source?.map(v => ({
       'שם מלא': v.full_name, 'טלפון': formatPhoneDisplay(v.phone_number), 'עיר': v.city,
       'נושא עניין': v.interest_tag, 'דרגת נאמנות': getLoyalty(v.status).label,
-      'פרופיל פוליטי': getPoliticalProfile(v.status, v.engagement_score).badge,
+      'שלב ליד': getPoliticalProfile(v.status, v.engagement_score).badge,
       'הצביע': v.is_voted ? 'כן' : 'לא', 'ציון מעורבות': v.engagement_score,
     }));
     if (!rows?.length) { toast.error('אין נתונים לייצוא'); return; }
