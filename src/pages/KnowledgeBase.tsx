@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 import {
   Upload, FileText, Trash2, Phone, Plus, CheckCircle2, Loader2, FileCheck,
   Image, Video, Mic, Sparkles, Brain, RefreshCw, BookOpen,
