@@ -527,7 +527,7 @@ Deno.serve(async (req) => {
         SUPABASE_URL,
         SERVICE_KEY,
         senderPhone,
-        `⚠️ לא הצלחנו לשמור את ההודעה ל-Strategy Bank.\nשגיאה: ${message.slice(0, 200)}`,
+        HEBREW_FILE_ERROR_REPLY,
       );
     } catch (_) {
       // best-effort
