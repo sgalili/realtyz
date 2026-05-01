@@ -901,7 +901,7 @@ function CalculatorBody() {
                       icon={<Users className="h-4 w-4 text-primary" />}
                       title="רישיונות סוכן"
                       rateNote={extraSeats > 0 ? `₪${EXTRA_SEAT_RATE} / רישיון נוסף` : undefined}
-                      info={<>{includedSeats} רישיונות סוכן כלולים — לכל סוכן במשרד גישה מלאה ל-CRM, ל-Deal Room ולחתימות הדיגיטליות. ניתן להוסיף רישיונות בעלות של ₪{EXTRA_SEAT_RATE}/חודש לכל סוכן.</>}
+                      info={<>{includedSeats} רישיונות סוכן כלולים — לכל סוכן במשרד גישה מלאה ל-CRM, לעסקאות ולחתימות הדיגיטליות. ניתן להוסיף רישיונות בעלות של ₪{EXTRA_SEAT_RATE}/חודש לכל סוכן.</>}
                       min={0} max={50} step={1}
                       value={extraSeats}
                       onChange={setExtraSeats}
