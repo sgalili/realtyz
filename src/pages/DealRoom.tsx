@@ -329,7 +329,24 @@ export default function DealRoom() {
 
           <div className="flex-1 mt-4 space-y-3">
             {generating ? (
-              <div className="space-y-2">
+              <div className="space-y-3">
+                <div
+                  className="flex items-center gap-2.5 rounded-md border bg-muted/40 px-3 py-2.5 text-sm text-muted-foreground"
+                  role="status"
+                  aria-live="polite"
+                >
+                  {genPhase === 'searching' ? (
+                    <>
+                      <Database className="h-4 w-4 text-primary animate-pulse" />
+                      <span>Searching Strategy Bank…</span>
+                    </>
+                  ) : (
+                    <>
+                      <PenLine className="h-4 w-4 text-primary animate-pulse" />
+                      <span>Drafting reply in your voice…</span>
+                    </>
+                  )}
+                </div>
                 <Skeleton className="h-4 w-full" />
                 <Skeleton className="h-4 w-11/12" />
                 <Skeleton className="h-4 w-9/12" />
