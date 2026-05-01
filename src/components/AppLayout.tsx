@@ -1,9 +1,9 @@
 import { ReactNode, useCallback, useEffect, useRef, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
-import { SidebarProvider, SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
+import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
-import { Search, Bot, User, LayoutDashboard, Radio, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, CornerDownLeft, Menu } from 'lucide-react';
+import { Search, Bot, User, LayoutDashboard, Radio, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, CornerDownLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 
@@ -37,6 +37,7 @@ import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { BrandMark } from '@/components/branding/BrandMark';
 
 import { DemoModeToggle } from '@/components/DemoModeToggle';
+import { PageToolbar } from '@/components/PageToolbar';
 
 const DEMO_ARCHETYPES: DemoCandidateId[] = ['primary-single', 'primary-slate', 'national-small', 'national-mid', 'national-large'];
 const TUTORIAL_STEPS = [
@@ -595,20 +596,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <AppSidebar tutorialHighlightPath={activeTutorialStep?.path} />
         <div className="flex-1 flex h-screen min-w-0 flex-col overflow-hidden">
           <header className="h-16 text-primary-foreground backdrop-blur-md flex items-center px-4 gap-2 shrink-0 sticky top-0 z-30" style={{ backgroundColor: 'hsl(var(--header-bg))' }} dir="rtl">
-            {/* Right: burger menu (RTL — visually right side) */}
-            <SidebarTrigger
-              className="text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground h-9 w-9 [&_svg]:!h-6 [&_svg]:!w-6"
-              aria-label="פתח תפריט"
-            >
-              <Menu className="h-6 w-6" />
-            </SidebarTrigger>
-
-            {/* Center: Realtyz AI brand, vertically aligned */}
-            <div className="flex-1 flex items-center justify-center">
-              <BrandMark to="/" />
-            </div>
-
-            {/* Left: utilities + Demo switch (opposite the burger) */}
+            {/* RTL flex order: utilities sit on the visual right (flex start),
+                a spacer pushes the brand to the visual left (flex end). */}
             <div className="flex items-center gap-1.5">
               <HeaderCrisisAlert />
               <NotificationCenter />
@@ -623,9 +612,15 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 <Bot className="h-4 w-4" />
               </Button>
               <TrialBadge />
-              <DemoModeToggle />
+            </div>
+
+            <div className="flex-1" />
+
+            <div className="flex items-center">
+              <BrandMark to="/" />
             </div>
           </header>
+          <PageToolbar />
           <main className="realtyz-main-surface flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6 pt-0">
             {children}
             <HeroWaveMount />
