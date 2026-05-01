@@ -7,6 +7,7 @@ import {
   renderListingFacts,
   type ListingFact,
 } from "../_shared/guardrails.ts";
+import { loadAgentPersona, renderPersonaPrompt } from "../_shared/persona.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -141,13 +142,16 @@ serve(async (req) => {
       renderListingFacts(factListing),
     );
 
+    const persona = await loadAgentPersona(supabaseUrl, anonKey, authHeader);
+    const personaBlock = renderPersonaPrompt(persona);
+
     const systemPrompt = `You are an elite Israeli real-estate Agent's writing assistant for Realtyz AI.
 Write a personalized outreach in Hebrew that introduces a specific listing to a specific Prospect.
 Match the Prospect's interests and city. Never invent facts not present in the listing data.
 Channel format: ${channel.toUpperCase()} — ${channelGuide[channel]}
 Output JSON ONLY via the provided tool — no extra text.
 
-${compliance}`;
+${personaBlock ? personaBlock + "\n\n" : ""}${compliance}`;
 
     const prospectBlock = JSON.stringify(
       {

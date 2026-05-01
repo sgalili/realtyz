@@ -7,6 +7,7 @@ import {
   renderListingFacts,
   type ListingFact,
 } from "../_shared/guardrails.ts";
+import { loadAgentPersona, renderPersonaPrompt } from "../_shared/persona.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -205,9 +206,19 @@ serve(async (req) => {
       renderListingFacts(listingFacts),
     );
 
+    // Virtual Twin persona — every drafted reply must sound like THIS Agent.
+    const persona = await loadAgentPersona(
+      supabaseUrl,
+      Deno.env.get("SUPABASE_ANON_KEY")!,
+      req.headers.get("Authorization") ?? "",
+    );
+    const personaBlock = renderPersonaPrompt(persona);
+
     const systemPrompt = SCHEMA_CONTEXT
       .replace("{{CAMPAIGN_CONTEXT}}", campaignContext)
-      .replace("{{KB_CONTEXT}}", kbContext) + "\n\n" + compliance;
+      .replace("{{KB_CONTEXT}}", kbContext)
+      + (personaBlock ? "\n\n" + personaBlock : "")
+      + "\n\n" + compliance;
 
     // Escalation Trigger: classify the most recent prospect/user message.
     // When a high-risk topic is detected, fire-and-forget the alert function

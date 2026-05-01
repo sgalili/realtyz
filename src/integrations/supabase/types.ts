@@ -56,6 +56,45 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_personas: {
+        Row: {
+          created_at: string
+          id: string
+          language: string
+          professional_bio: string | null
+          selling_philosophy: string | null
+          signature: string | null
+          tone: string
+          tone_custom: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          language?: string
+          professional_bio?: string | null
+          selling_philosophy?: string | null
+          signature?: string | null
+          tone?: string
+          tone_custom?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          language?: string
+          professional_bio?: string | null
+          selling_philosophy?: string | null
+          signature?: string | null
+          tone?: string
+          tone_custom?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       ai_content_logs: {
         Row: {
           created_at: string | null

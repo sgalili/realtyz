@@ -13,6 +13,7 @@
 // Returns: { draft: string }
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { loadAgentPersona, renderPersonaPrompt } from "../_shared/persona.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -100,6 +101,13 @@ Deno.serve(async (req) => {
       return json({ draft: localFallbackDraft(prospect, property) });
     }
 
+    const persona = await loadAgentPersona(
+      SUPABASE_URL,
+      ANON_KEY,
+      req.headers.get("Authorization") ?? "",
+    );
+    const personaBlock = renderPersonaPrompt(persona);
+
     const systemPrompt = [
       "You are a senior Israeli real-estate agent writing a WhatsApp message in Hebrew.",
       "Tone: warm, professional, concise (max ~6 short lines).",
@@ -111,6 +119,7 @@ Deno.serve(async (req) => {
       "- Do NOT promise legal/financial outcomes or guarantee a closing date.",
       "- End with a single soft call-to-action (suggest a viewing).",
       "- Output Hebrew text only — no markdown, no preamble, no explanations.",
+      personaBlock ? "\n" + personaBlock : "",
     ].join("\n");
 
     const userPrompt = [
