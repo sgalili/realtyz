@@ -97,6 +97,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: 'תקשורת',
     items: [
       { title: 'מרכז הקמפיינים', url: '/campaigns', icon: Megaphone, iconColor: 'text-destructive', aliases: ['/campaign-strategy', '/approval-queue', '/calendar', '/sms-blast', '/ads'] },
+      { title: 'שידור לקהילה', url: '/broadcast', icon: Radio, iconColor: 'text-primary' },
       { title: 'שיחות חיות', url: '/live-conversations', icon: MessagesSquare, iconColor: 'text-social-whatsapp' },
       { title: 'מאגר הידע', url: '/knowledge', icon: Brain, iconColor: 'text-social-instagram' },
       { title: 'מחולל תוכן AI', url: '/ai-content', icon: Sparkles, iconColor: 'text-warning' },
