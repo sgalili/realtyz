@@ -32,6 +32,29 @@ const corsHeaders = {
 };
 
 const STORAGE_BUCKET = "knowledge-files";
+
+// Hard limits to keep transcription/extraction reliable & costs sane.
+// WhatsApp itself caps documents at ~100MB; we cap inbound media at 20MB.
+const MAX_FILE_BYTES = 20 * 1024 * 1024; // 20 MB
+const SUPPORTED_AUDIO_MIME = /^audio\/(ogg|mpeg|mp4|aac|wav|webm|x-m4a|amr|3gpp)/i;
+const SUPPORTED_DOC_MIME =
+  /^(application\/pdf|application\/msword|application\/vnd\.openxmlformats-officedocument\.|application\/vnd\.ms-|text\/(plain|csv|markdown))/i;
+const SUPPORTED_IMAGE_MIME = /^image\/(jpeg|png|webp|gif|heic|heif)/i;
+const SUPPORTED_VIDEO_MIME = /^video\/(mp4|quicktime|webm|3gpp)/i;
+
+// Exact Hebrew reply requested for any unreadable / oversized / failed file.
+const HEBREW_FILE_ERROR_REPLY =
+  "מצטער, לא הצלחתי לקרוא את הקובץ. אנא נסה שוב.";
+
+function isSupportedMime(mime: string | undefined, kind: "audio" | "image" | "video" | "document"): boolean {
+  const m = String(mime ?? "").toLowerCase();
+  if (!m) return kind === "document"; // some senders omit MIME on docs — let kb-ingest try.
+  if (kind === "audio") return SUPPORTED_AUDIO_MIME.test(m);
+  if (kind === "image") return SUPPORTED_IMAGE_MIME.test(m);
+  if (kind === "video") return SUPPORTED_VIDEO_MIME.test(m);
+  return SUPPORTED_DOC_MIME.test(m);
+}
+
 const ALLOWED_TAGS = [
   "Agent Note",
   "Prospect Meeting",
@@ -320,8 +343,18 @@ Deno.serve(async (req) => {
       title = (msg.text.split(/\n|\. /)[0] || msg.text).slice(0, 120);
       sourceType = "text";
     } else if (msg.kind === "audio") {
+      // Guard: MIME allow-list.
+      if (!isSupportedMime(msg.mimeType, "audio")) {
+        await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, HEBREW_FILE_ERROR_REPLY);
+        return jsonResponse({ ok: false, ignored: "unsupported_audio_mime", mime: msg.mimeType }, 200);
+      }
       // Download → store private copy → transcribe → ingest text only.
       const { bytes, contentType } = await fetchBinary(msg.downloadUrl);
+      // Guard: size cap (20MB).
+      if (bytes.byteLength > MAX_FILE_BYTES) {
+        await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, HEBREW_FILE_ERROR_REPLY);
+        return jsonResponse({ ok: false, ignored: "audio_too_large", bytes: bytes.byteLength }, 200);
+      }
       const ext = (msg.fileName?.match(/\.(\w+)$/i)?.[1] ?? "ogg").toLowerCase();
       const objectPath = `${userId}/whatsapp/${Date.now()}-${crypto.randomUUID()}.${ext}`;
       const upload = await admin.storage
@@ -340,7 +373,17 @@ Deno.serve(async (req) => {
       if (msg.caption) sourceMetadata.caption = msg.caption;
     } else {
       // media (image / video / document) — store privately, extract text via kb-ingest.
+      // Guard: MIME allow-list per media kind.
+      if (!isSupportedMime(msg.mimeType, msg.mediaKind)) {
+        await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, HEBREW_FILE_ERROR_REPLY);
+        return jsonResponse({ ok: false, ignored: "unsupported_media_mime", mime: msg.mimeType, kind: msg.mediaKind }, 200);
+      }
       const { bytes, contentType } = await fetchBinary(msg.downloadUrl);
+      // Guard: size cap (20MB).
+      if (bytes.byteLength > MAX_FILE_BYTES) {
+        await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, HEBREW_FILE_ERROR_REPLY);
+        return jsonResponse({ ok: false, ignored: "media_too_large", bytes: bytes.byteLength }, 200);
+      }
       const safeName = (msg.fileName ?? "attachment").replace(/[^\w.\-]+/g, "_");
       const objectPath = `${userId}/whatsapp/${Date.now()}-${crypto.randomUUID()}-${safeName}`;
       const upload = await admin.storage
@@ -484,7 +527,7 @@ Deno.serve(async (req) => {
         SUPABASE_URL,
         SERVICE_KEY,
         senderPhone,
-        `⚠️ לא הצלחנו לשמור את ההודעה ל-Strategy Bank.\nשגיאה: ${message.slice(0, 200)}`,
+        HEBREW_FILE_ERROR_REPLY,
       );
     } catch (_) {
       // best-effort
