@@ -3,7 +3,7 @@
  * on every page. RTL layout:
  *   - Right (visual): Burger / nav toggle
  *   - Center: Dynamic page title derived from current route
- *   - Left  (visual): Demo switch (icon-only color toggle, super-admin only)
+ *   - Left  (visual): reserved spacer (kept for symmetry / future actions)
  *
  * Stays full-width with a subtle surface background to separate it from
  * the page content. On small screens it stays single-row but compresses
@@ -12,7 +12,6 @@
 import { useLocation } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
-import { DemoModeToggle } from '@/components/DemoModeToggle';
 
 const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/(dashboard)?$/, title: 'לוח בקרה' },
