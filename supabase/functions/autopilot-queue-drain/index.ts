@@ -120,7 +120,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  return new Response(JSON.stringify({ processed: list.length, sent, failed, retried }), {
+  return new Response(JSON.stringify({ processed: list.length, sent, failed, retried, paused }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
