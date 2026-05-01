@@ -573,6 +573,80 @@ export type Database = {
         }
         Relationships: []
       }
+      call_records: {
+        Row: {
+          callback_reason: string | null
+          caller_phone: string | null
+          created_at: string
+          direction: string
+          duration_seconds: number | null
+          elevenlabs_conversation_id: string | null
+          ended_at: string | null
+          handled_by: string
+          id: string
+          lead_id: string | null
+          metadata: Json | null
+          needs_callback: boolean | null
+          recording_url: string | null
+          started_at: string
+          status: string
+          summary: string | null
+          transcript: Json | null
+          transcript_text: string | null
+          user_id: string
+        }
+        Insert: {
+          callback_reason?: string | null
+          caller_phone?: string | null
+          created_at?: string
+          direction?: string
+          duration_seconds?: number | null
+          elevenlabs_conversation_id?: string | null
+          ended_at?: string | null
+          handled_by?: string
+          id?: string
+          lead_id?: string | null
+          metadata?: Json | null
+          needs_callback?: boolean | null
+          recording_url?: string | null
+          started_at?: string
+          status?: string
+          summary?: string | null
+          transcript?: Json | null
+          transcript_text?: string | null
+          user_id: string
+        }
+        Update: {
+          callback_reason?: string | null
+          caller_phone?: string | null
+          created_at?: string
+          direction?: string
+          duration_seconds?: number | null
+          elevenlabs_conversation_id?: string | null
+          ended_at?: string | null
+          handled_by?: string
+          id?: string
+          lead_id?: string | null
+          metadata?: Json | null
+          needs_callback?: boolean | null
+          recording_url?: string | null
+          started_at?: string
+          status?: string
+          summary?: string | null
+          transcript?: Json | null
+          transcript_text?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "call_records_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       campaign_logs: {
         Row: {
           campaign_name: string
@@ -2436,6 +2510,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      voice_agents: {
+        Row: {
+          availability: string
+          created_at: string
+          elevenlabs_agent_id: string | null
+          elevenlabs_phone_number: string | null
+          elevenlabs_voice_id: string | null
+          greeting: string | null
+          id: string
+          language: string
+          last_synced_at: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          availability?: string
+          created_at?: string
+          elevenlabs_agent_id?: string | null
+          elevenlabs_phone_number?: string | null
+          elevenlabs_voice_id?: string | null
+          greeting?: string | null
+          id?: string
+          language?: string
+          last_synced_at?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          availability?: string
+          created_at?: string
+          elevenlabs_agent_id?: string | null
+          elevenlabs_phone_number?: string | null
+          elevenlabs_voice_id?: string | null
+          greeting?: string | null
+          id?: string
+          language?: string
+          last_synced_at?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       wa_providers: {
         Row: {
