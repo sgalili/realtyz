@@ -23,6 +23,7 @@ import {
   Share2,
   Cpu,
   Handshake,
+  Gauge,
 } from 'lucide-react';
 import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
 import { useMemo, useState } from 'react';
