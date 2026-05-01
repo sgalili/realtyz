@@ -1,16 +1,7 @@
-import { useAuth } from '@/hooks/useAuth';
-import { useDemoMode } from '@/hooks/useDemoMode';
-import { requestDemoUpgrade } from '@/lib/demoGuard';
-
+/**
+ * Demo Mode has been removed. The guard is now a permanent no-op so every
+ * action proceeds against real production data.
+ */
 export function useDemoGuard() {
-  const { user } = useAuth();
-  const { isDemoMode } = useDemoMode();
-
-  return (reason?: string) => {
-    if (isDemoMode && !user) {
-      requestDemoUpgrade(reason);
-      return true;
-    }
-    return false;
-  };
+  return (_reason?: string) => false;
 }
