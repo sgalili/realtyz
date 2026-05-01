@@ -284,6 +284,7 @@ export default function DealRoom() {
       }
       setActiveSuggestionId(null);
       setActiveProspect(null);
+      setPinnedProperty(null);
       // Refresh both the Kanban (last_interaction_at) and any open chat history.
       queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
       queryClient.invalidateQueries({ queryKey: ['messages', activeProspect.id] });
