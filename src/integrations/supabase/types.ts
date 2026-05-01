@@ -1805,12 +1805,16 @@ export type Database = {
           extracted_from_lead_id: string | null
           extracted_from_message_id: string | null
           extraction_metadata: Json
+          featured_until: string | null
           features: Json
           floor: number | null
           id: string
+          is_featured: boolean
+          is_promoted: boolean
           is_published: boolean
           neighborhood: string | null
           parking: boolean | null
+          promoted_until: string | null
           property_title: string
           rooms: number | null
           slug: string
@@ -1831,12 +1835,16 @@ export type Database = {
           extracted_from_lead_id?: string | null
           extracted_from_message_id?: string | null
           extraction_metadata?: Json
+          featured_until?: string | null
           features?: Json
           floor?: number | null
           id?: string
+          is_featured?: boolean
+          is_promoted?: boolean
           is_published?: boolean
           neighborhood?: string | null
           parking?: boolean | null
+          promoted_until?: string | null
           property_title: string
           rooms?: number | null
           slug: string
@@ -1857,12 +1865,16 @@ export type Database = {
           extracted_from_lead_id?: string | null
           extracted_from_message_id?: string | null
           extraction_metadata?: Json
+          featured_until?: string | null
           features?: Json
           floor?: number | null
           id?: string
+          is_featured?: boolean
+          is_promoted?: boolean
           is_published?: boolean
           neighborhood?: string | null
           parking?: boolean | null
+          promoted_until?: string | null
           property_title?: string
           rooms?: number | null
           slug?: string
@@ -2350,6 +2362,54 @@ export type Database = {
           platform?: string
           updated_at?: string
           updated_by?: string | null
+        }
+        Relationships: []
+      }
+      platform_settings: {
+        Row: {
+          created_at: string
+          enable_ai_autopilot: boolean
+          enable_auto_followups: boolean
+          enable_broker_referrals: boolean
+          enable_client_portal: boolean
+          enable_community_broadcasts: boolean
+          enable_featured_listings: boolean
+          enable_pending_extraction: boolean
+          enable_voice_calls: boolean
+          extra: Json
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          enable_ai_autopilot?: boolean
+          enable_auto_followups?: boolean
+          enable_broker_referrals?: boolean
+          enable_client_portal?: boolean
+          enable_community_broadcasts?: boolean
+          enable_featured_listings?: boolean
+          enable_pending_extraction?: boolean
+          enable_voice_calls?: boolean
+          extra?: Json
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          enable_ai_autopilot?: boolean
+          enable_auto_followups?: boolean
+          enable_broker_referrals?: boolean
+          enable_client_portal?: boolean
+          enable_community_broadcasts?: boolean
+          enable_featured_listings?: boolean
+          enable_pending_extraction?: boolean
+          enable_voice_calls?: boolean
+          extra?: Json
+          id?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
