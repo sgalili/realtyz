@@ -8,6 +8,7 @@ import {
   type ListingFact,
 } from "../_shared/guardrails.ts";
 import { loadAgentPersona, renderPersonaPrompt } from "../_shared/persona.ts";
+import { maskMessages } from "../_shared/pii.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -259,7 +260,10 @@ serve(async (req) => {
         model: "google/gemini-3-flash-preview",
         messages: [
           { role: "system", content: systemPrompt },
-          ...messages,
+          // PII MASKING (Compliance Layer): scrub IDs / cards / IBANs /
+          // emails / phones from the chat history before it leaves our
+          // backend. The originals stay in Supabase for the human Agent.
+          ...maskMessages(messages as Array<{ role: string; content: string }>).messages,
         ],
       }),
     });
