@@ -727,6 +727,20 @@ export default function DealRoom() {
       </div>
       </ErrorBoundary>
 
+      {commissionLead && (
+        <CommissionEditor
+          open={!!commissionLead}
+          onOpenChange={(o) => { if (!o) setCommissionLead(null); }}
+          lead={{
+            id: commissionLead.id,
+            full_name: commissionLead.full_name,
+            commission_amount: commissionLead.commission_amount ?? null,
+            expected_close_date: commissionLead.expected_close_date ?? null,
+          }}
+          onSaved={() => setCommissionLead(null)}
+        />
+      )}
+
       <Sheet
         open={!!activeLead}
         onOpenChange={(o) => {
