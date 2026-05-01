@@ -64,7 +64,7 @@ const AdminLeads = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-primary">פניות נכנסות (Leads)</h1>
+        <h1 className="text-2xl font-bold tracking-tight text-primary">פניות נכנסות (Prospects)</h1>
         <p className="text-muted-foreground text-sm">ניהול לידים מטופס יצירת הקשר</p>
       </div>
 
