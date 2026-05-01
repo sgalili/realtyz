@@ -13,6 +13,7 @@
  * webhook. Auth is enforced via a shared secret header.
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
+import { classifyEscalation } from "../_shared/guardrails.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -130,6 +131,34 @@ Deno.serve(async (req) => {
       ai_response: aiReply,
       ai_responded_at: new Date().toISOString(),
     });
+
+    // Compliance: classify the prospect's inbound text and fire an Escalation
+    // Alert (WhatsApp ping to the human Agent) if it looks high-risk.
+    try {
+      const hit = classifyEscalation(text);
+      if (hit) {
+        await fetch(`${SUPABASE_URL}/functions/v1/escalation-alert`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+            apikey: SERVICE_ROLE_KEY,
+          },
+          body: JSON.stringify({
+            override_user_id: userId,
+            lead_id: lastOut.lead_id,
+            prospect_message: text.slice(0, 4000),
+            category: hit.category,
+            matched_keywords: hit.matched,
+            severity: hit.severity,
+            channel: "whatsapp_inbound",
+          }),
+        });
+      }
+    } catch (e) {
+      console.warn("escalation classify/dispatch failed:", (e as Error).message);
+    }
+
 
     // Send AI reply back via unified send-whatsapp gateway (clean, no branding).
     try {
