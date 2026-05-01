@@ -2868,6 +2868,42 @@ export type Database = {
         }
         Relationships: []
       }
+      white_label_settings: {
+        Row: {
+          agency_name: string | null
+          created_at: string
+          hide_kalpiz_branding: boolean
+          id: string
+          logo_url: string | null
+          primary_color: string | null
+          primary_foreground_color: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          agency_name?: string | null
+          created_at?: string
+          hide_kalpiz_branding?: boolean
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          primary_foreground_color?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          agency_name?: string | null
+          created_at?: string
+          hide_kalpiz_branding?: boolean
+          id?: string
+          logo_url?: string | null
+          primary_color?: string | null
+          primary_foreground_color?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       usage_monthly_summary: {
