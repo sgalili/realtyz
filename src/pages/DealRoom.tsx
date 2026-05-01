@@ -48,7 +48,7 @@ import { CallHistoryList } from '@/components/dealroom/CallHistoryList';
 import { PriorityScoreBadge } from '@/components/dealroom/PriorityScoreBadge';
 import { DealRoomComments } from '@/components/dealroom/DealRoomComments';
 
-type LeadStage = 'new_prospect' | 'listing_outreach' | 'negotiation' | 'closed';
+type LeadStage = 'new_prospect' | 'listing_outreach' | 'negotiation' | 'awaiting_signature' | 'closed';
 
 type ScoreComponents = {
   frequency?: number;
@@ -100,6 +100,13 @@ const STAGE_COLUMNS: Array<{
     icon: Handshake,
     accent: 'text-warning',
     legacyKeys: ['negotiation', 'qualified', 'meeting'],
+  },
+  {
+    key: 'awaiting_signature',
+    title: 'Awaiting Signature',
+    icon: PenLine,
+    accent: 'text-primary',
+    legacyKeys: ['awaiting_signature', 'signature_pending'],
   },
   {
     key: 'closed',
