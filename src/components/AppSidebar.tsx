@@ -22,6 +22,7 @@ import {
   Wallet,
   Share2,
   Cpu,
+  Handshake,
 } from 'lucide-react';
 import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
 import { useMemo, useState } from 'react';
@@ -82,6 +83,7 @@ const NAV_GROUPS: NavGroup[] = [
       { title: 'לוח בקרה', url: '/', icon: LayoutDashboard, iconColor: 'text-primary', aliases: ['/dashboard'] },
       { title: 'ניהול לידים', url: '/lead-crm', icon: Users, iconColor: 'text-social-facebook', aliases: ['/crm'] },
       { title: 'תיבת הודעות', url: '/inbox', icon: MessageSquare, iconColor: 'text-social-messenger' },
+      { title: 'Deal Room', url: '/deal-room', icon: Handshake, iconColor: 'text-warning' },
     ],
   },
   {
