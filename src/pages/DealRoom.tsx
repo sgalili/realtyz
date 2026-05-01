@@ -425,6 +425,21 @@ export default function DealRoom() {
               </div>
             ) : (
               <div className="space-y-2">
+                {escalation && (
+                  <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                    🚨 Escalation Alert ({escalation.severity}) — category: <strong>{escalation.category}</strong>
+                    {escalation.matched?.length ? <> · keywords: {escalation.matched.join(', ')}</> : null}
+                    <div className="mt-0.5 text-[11px] opacity-80">A WhatsApp ping was sent to your phone. Take over manually before sending.</div>
+                  </div>
+                )}
+                {factViolations.length > 0 && (
+                  <div className="rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-xs">
+                    ⚠️ Fact-check failed — verify against Homely listings:
+                    <ul className="list-disc ms-4 mt-1 space-y-0.5">
+                      {factViolations.map((v, i) => (<li key={i}><strong>{v.kind}:</strong> {v.value} — {v.reason}</li>))}
+                    </ul>
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <Badge
                     variant="outline"
