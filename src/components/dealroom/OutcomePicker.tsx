@@ -12,6 +12,7 @@ import { Badge } from '@/components/ui/badge';
 import { Trophy, XCircle, Calendar, UserCheck, Ghost, Tag } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { LossReasonDialog } from '@/components/dealroom/LossReasonDialog';
 
 export type InteractionOutcome =
   | 'Qualified'
@@ -55,6 +56,8 @@ export function OutcomeBadge({ value, className }: { value: InteractionOutcome; 
 export function OutcomePicker({ leadId, value, size = 'sm', onChanged }: OutcomePickerProps) {
   const qc = useQueryClient();
   const [saving, setSaving] = useState(false);
+  const [reasonOpen, setReasonOpen] = useState(false);
+  const [pendingFailure, setPendingFailure] = useState<InteractionOutcome | null>(null);
 
   const handleChange = async (next: string) => {
     const v = next === '__none__' ? null : (next as InteractionOutcome);
@@ -76,33 +79,49 @@ export function OutcomePicker({ leadId, value, size = 'sm', onChanged }: Outcome
     onChanged?.(v);
     qc.invalidateQueries({ queryKey: ['deal-room-leads'] });
     qc.invalidateQueries({ queryKey: ['template-performance'] });
+    qc.invalidateQueries({ queryKey: ['outcome-intelligence'] });
+    qc.invalidateQueries({ queryKey: ['leads'] });
+
+    // Auto-open reason dialog when outcome is a failure
+    if (v === 'Closed Lost' || v === 'Ghosted') {
+      setPendingFailure(v);
+      setReasonOpen(true);
+    }
   };
 
   const triggerH = size === 'sm' ? 'h-7 text-[11px]' : 'h-9 text-xs';
 
   return (
-    <Select
-      value={value ?? '__none__'}
-      onValueChange={handleChange}
-      disabled={saving}
-    >
-      <SelectTrigger className={cn(triggerH)}>
-        <SelectValue placeholder="תייג תוצאת אינטראקציה" />
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="__none__">— ללא תוצאה —</SelectItem>
-        {OUTCOME_OPTIONS.map((o) => {
-          const Icon = o.icon;
-          return (
-            <SelectItem key={o.value} value={o.value}>
-              <span className="inline-flex items-center gap-2">
-                <Icon className="h-3.5 w-3.5" />
-                {o.labelHe}
-              </span>
-            </SelectItem>
-          );
-        })}
-      </SelectContent>
-    </Select>
+    <>
+      <Select
+        value={value ?? '__none__'}
+        onValueChange={handleChange}
+        disabled={saving}
+      >
+        <SelectTrigger className={cn(triggerH)}>
+          <SelectValue placeholder="תייג תוצאת אינטראקציה" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="__none__">— ללא תוצאה —</SelectItem>
+          {OUTCOME_OPTIONS.map((o) => {
+            const Icon = o.icon;
+            return (
+              <SelectItem key={o.value} value={o.value}>
+                <span className="inline-flex items-center gap-2">
+                  <Icon className="h-3.5 w-3.5" />
+                  {o.labelHe}
+                </span>
+              </SelectItem>
+            );
+          })}
+        </SelectContent>
+      </Select>
+      <LossReasonDialog
+        leadId={leadId}
+        outcome={pendingFailure}
+        open={reasonOpen}
+        onOpenChange={setReasonOpen}
+      />
+    </>
   );
 }
