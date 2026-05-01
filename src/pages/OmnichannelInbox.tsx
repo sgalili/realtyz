@@ -259,6 +259,26 @@ const OmnichannelInbox = () => {
 
   const selectedVoter = voters?.find((v) => v.id === selectedVoterId);
 
+  // The latest outbound AI/agent message in the current thread is the only one
+  // eligible for "Undo & Regenerate". This keeps the affordance focused on the
+  // most recent automated reply that Udi might want to retract.
+  const lastAiMessageId = useMemo(() => {
+    if (!chatMessages?.length) return null;
+    const FIVE_MIN = 5 * 60 * 1000;
+    for (let i = chatMessages.length - 1; i >= 0; i--) {
+      const m: any = chatMessages[i];
+      const isOutbound = m.direction === 'outbound';
+      const isAi = m.sender_type === 'ai' || m.sender_type === 'ai_agent' || m.ai_assisted === true;
+      const fresh = m.created_at && Date.now() - new Date(m.created_at).getTime() < FIVE_MIN;
+      // Only allow undo on demo/non-demo real DB rows (uuid id), not synthetic demo entries.
+      const realRow = typeof m.id === 'string' && /^[0-9a-f-]{36}$/i.test(m.id);
+      if (isOutbound && isAi && fresh && realRow) return m.id as string;
+      if (isOutbound && !isAi) return null; // a human reply already followed
+      if (!isOutbound) return null;          // lead replied — too late to undo
+    }
+    return null;
+  }, [chatMessages]);
+
   const sendMessage = useMutation({
     mutationFn: async ({ content, file }: { content: string; file: File | null }) => {
       if (blockDemoAction('send-message')) throw new Error('demo-blocked');
