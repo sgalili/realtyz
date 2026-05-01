@@ -1509,10 +1509,13 @@ export type Database = {
           ai_autopilot: boolean | null
           assigned_to: string | null
           city: string | null
+          commission_amount: number | null
+          commission_currency: string | null
           created_at: string | null
           deal_type: string
           email: string | null
           engagement_score: number | null
+          expected_close_date: string | null
           fts: unknown
           full_name: string | null
           id: string
@@ -1546,10 +1549,13 @@ export type Database = {
           ai_autopilot?: boolean | null
           assigned_to?: string | null
           city?: string | null
+          commission_amount?: number | null
+          commission_currency?: string | null
           created_at?: string | null
           deal_type?: string
           email?: string | null
           engagement_score?: number | null
+          expected_close_date?: string | null
           fts?: unknown
           full_name?: string | null
           id?: string
@@ -1583,10 +1589,13 @@ export type Database = {
           ai_autopilot?: boolean | null
           assigned_to?: string | null
           city?: string | null
+          commission_amount?: number | null
+          commission_currency?: string | null
           created_at?: string | null
           deal_type?: string
           email?: string | null
           engagement_score?: number | null
+          expected_close_date?: string | null
           fts?: unknown
           full_name?: string | null
           id?: string
@@ -3037,6 +3046,10 @@ export type Database = {
       }
       execute_readonly_query: { Args: { query_text: string }; Returns: Json }
       gdpr_delete_lead: { Args: { _lead_id: string }; Returns: Json }
+      get_business_performance: {
+        Args: { days_window?: number; user_uuid: string }
+        Returns: Json
+      }
       get_system_status: {
         Args: never
         Returns: {
