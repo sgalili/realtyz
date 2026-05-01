@@ -27,6 +27,7 @@ import { format } from 'date-fns';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { ChevronDown } from 'lucide-react';
 import NotificationPreferencesPanel from '@/components/NotificationPreferencesPanel';
+import { AgentPersonaPanel } from '@/components/AgentPersonaPanel';
 
 interface ApiConfig {
   id: string;
@@ -825,6 +826,15 @@ const ApiSettings = () => {
             serviceKey="omnichannel_inbox"
           />
         </div>
+      </div>
+
+      {/* ── Section A.4: Virtual Twin Persona ── */}
+      <div className="space-y-2">
+        <div>
+          <h2 className="text-sm font-bold tracking-tight">Virtual Twin · התאומה הדיגיטלית</h2>
+          <p className="text-xs text-muted-foreground">הגדר/י טון, ביו ופילוסופיית מכירה — ה-AI ינסח כמוך בכל הודעה.</p>
+        </div>
+        <AgentPersonaPanel />
       </div>
 
       {/* ── Section A.5: Notification Preferences ── */}
