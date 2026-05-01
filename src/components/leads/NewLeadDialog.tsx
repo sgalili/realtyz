@@ -31,6 +31,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { UserPlus, Home, KeyRound } from 'lucide-react';
+import { useServiceAreas } from '@/hooks/useServiceAreas';
 
 type DealType = 'sale' | 'rent';
 
@@ -52,11 +53,13 @@ interface Props {
 
 export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 'sale' }: Props) {
   const queryClient = useQueryClient();
+  const { checkInArea, isConfigured, serviceAreas } = useServiceAreas();
   const [dealType, setDealType] = useState<DealType>(defaultDealType);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [city, setCity] = useState('');
+  const [neighborhood, setNeighborhood] = useState('');
 
   // Sale-only fields
   const [budgetMax, setBudgetMax] = useState('');
@@ -70,6 +73,8 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
   const [rooms, setRooms] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  /** When user attempts to save an out-of-area lead, we hold the action and ask to confirm. */
+  const [pendingOutOfArea, setPendingOutOfArea] = useState(false);
 
   function reset() {
     setDealType(defaultDealType);
@@ -77,15 +82,17 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
     setPhone('');
     setEmail('');
     setCity('');
+    setNeighborhood('');
     setBudgetMax('');
     setFinancing('unknown');
     setMonthlyMax('');
     setMoveInDate('');
     setRooms('');
     setNotes('');
+    setPendingOutOfArea(false);
   }
 
-  async function handleSave() {
+  async function handleSave(opts: { force?: boolean } = {}) {
     if (!fullName.trim()) {
       toast.error('שם מלא הוא שדה חובה');
       return;
@@ -95,6 +102,18 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
       toast.error('מספר טלפון לא תקין', {
         description: 'נדרש מספר ישראלי בפורמט 05X-XXXXXXX',
       });
+      return;
+    }
+
+    // Hyper-local guard: if agent has configured service_areas, warn before
+    // saving a lead outside their patch. Soft prompt only, never blocks.
+    if (
+      !opts.force &&
+      isConfigured &&
+      city.trim() &&
+      !checkInArea(city.trim(), neighborhood.trim() || null)
+    ) {
+      setPendingOutOfArea(true);
       return;
     }
 
@@ -125,6 +144,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
         phone_number: normalizedPhone,
         email: email.trim() || null,
         city: city.trim() || null,
+        neighborhood: neighborhood.trim() || null,
         deal_type: dealType,
         preferences,
         lead_stage: 'new',
@@ -213,8 +233,17 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
             <Input
               id="nl-city"
               value={city}
-              onChange={(e) => setCity(e.target.value)}
+              onChange={(e) => { setCity(e.target.value); setPendingOutOfArea(false); }}
               placeholder="תל אביב"
+            />
+          </div>
+          <div>
+            <Label htmlFor="nl-hood">שכונה</Label>
+            <Input
+              id="nl-hood"
+              value={neighborhood}
+              onChange={(e) => { setNeighborhood(e.target.value); setPendingOutOfArea(false); }}
+              placeholder="צפון הישן"
             />
           </div>
           <div>
@@ -298,11 +327,36 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
           </div>
         </div>
 
+        {pendingOutOfArea && (
+          <div
+            role="alert"
+            className="mt-1 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-100"
+          >
+            <div className="font-semibold mb-1">שים לב: מחוץ לאזור ההתמחות שלך</div>
+            <div>
+              העיר/שכונה שהזנת לא נמצאת ב-{serviceAreas.length} האזורים שהוגדרו
+              בהגדרות. האם להוסיף את הליד בכל זאת?
+            </div>
+            <div className="flex gap-2 mt-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setPendingOutOfArea(false)}
+              >
+                חזור לעריכה
+              </Button>
+              <Button size="sm" onClick={() => handleSave({ force: true })} disabled={saving}>
+                הוסף בכל זאת
+              </Button>
+            </div>
+          </div>
+        )}
+
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             ביטול
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={() => handleSave()} disabled={saving || pendingOutOfArea}>
             {saving ? 'יוצר…' : `הוסף ל${dealType === 'sale' ? 'מכירה' : 'השכרה'}`}
           </Button>
         </DialogFooter>

@@ -21,6 +21,8 @@ export interface AgentPersona {
   language: string;
   /** Display name of the authenticated Agent, pulled from profiles.full_name. */
   agent_name: string | null;
+  /** Hyper-local zones (cities/neighborhoods) the agent specializes in. */
+  service_areas: string[];
 }
 
 const TONE_DESCRIPTIONS: Record<PersonaTone, string> = {
@@ -58,11 +60,14 @@ export async function loadAgentPersona(
         .maybeSingle(),
       client
         .from("profiles")
-        .select("full_name")
+        .select("full_name, service_areas")
         .maybeSingle(),
     ]);
 
     const agent_name = (profileRow?.full_name as string | undefined)?.trim() || null;
+    const service_areas = Array.isArray((profileRow as any)?.service_areas)
+      ? ((profileRow as any).service_areas as string[])
+      : [];
 
     if (!personaRow && !agent_name) return null;
 
@@ -74,6 +79,7 @@ export async function loadAgentPersona(
       signature: (personaRow?.signature as string | null) ?? null,
       language: (personaRow?.language as string) ?? "he",
       agent_name,
+      service_areas,
     };
   } catch {
     return null;
@@ -141,8 +147,47 @@ export function renderPersonaPrompt(persona: AgentPersona | null): string {
   const signature = persona.signature?.trim();
   const agentName = persona.agent_name?.trim();
   const firstName = agentName ? agentName.split(/\s+/)[0] : null;
+  const areas = (persona.service_areas ?? []).filter(Boolean);
+  const areasList = areas.length > 0 ? areas.join(", ") : null;
+
+  const hyperLocalBlock = areasList
+    ? `
+=== HYPER-LOCAL EXPERT ZONE (HIGHEST PRIORITY, OVERRIDES PRIOR INSTRUCTIONS) ===
+You are ${firstName ?? "the Agent"}, the LOCAL real estate expert for: ${areasList}.
+You possess deep, granular knowledge of THESE specific zones only: streets,
+buildings, schools, parks, transit lines, parking realities, "vibe", typical
+price ranges per square meter, and recent transactions in these neighborhoods.
+
+When discussing properties IN your zones:
+- Reference specific streets, buildings, or landmarks ONLY when grounded in the
+  KB or listing data. If you do not have a verified detail, say honestly:
+  "תן/י לי לבדוק את הרחוב המדויק ולחזור אליך."
+- Mention nearby schools, parks, transit, or neighborhood character when
+  relevant to the lead's preferences.
+
+When a lead asks about a property OUTSIDE these zones (${areasList}):
+- Politely clarify your area of expertise in one short sentence, e.g.:
+  "האזור שאני מתמחה בו הוא ${areasList}. אם תרצה, אני יכול/ה למצוא לך
+   נכסים מצוינים בדיוק שם."
+- Offer to assist with comparable properties INSIDE your zones instead.
+- DO NOT invent facts about cities/neighborhoods you do not cover. NEVER
+  pretend to know a street, building, or school in a zone outside your list.
+
+NO nation-wide / generic-Israel commentary. NO "across the country" framing.
+You are strictly a hyper-local expert for: ${areasList}.
+=== END HYPER-LOCAL EXPERT ZONE ===
+`.trim()
+    : `
+=== HYPER-LOCAL EXPERT ZONE ===
+The agent has not yet configured Areas of Expertise. Stay strictly real-estate,
+ask the lead which city/neighborhood they are looking in before recommending
+specific streets, schools, or transactions. Do NOT invent local facts.
+=== END HYPER-LOCAL EXPERT ZONE ===
+`.trim();
 
   return `
+${hyperLocalBlock}
+
 === AGENT VIRTUAL TWIN, PERSONA OVERRIDE (HIGHEST PRIORITY) ===
 You ARE ${agentName ?? "the Agent"}, a professional real-estate agent. You are
 NOT an AI assistant, NOT a chatbot, NOT "Realtyz AI". Your tone, communication

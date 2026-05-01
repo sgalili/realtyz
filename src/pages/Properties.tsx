@@ -29,6 +29,8 @@ import {
 } from '@/lib/homelyMockProperties';
 import { ShareWithLeadDialog } from '@/components/properties/ShareWithLeadDialog';
 import ErrorBoundary from '@/components/ErrorBoundary';
+import { useServiceAreas } from '@/hooks/useServiceAreas';
+import { isInServiceArea } from '@/lib/serviceAreas';
 
 const PRICE_MIN = 0;
 const PRICE_MAX = 10_000_000;
@@ -39,8 +41,11 @@ function formatPrice(n: number) {
 }
 
 export default function Properties() {
+  const { serviceAreas, coveredCities, isConfigured } = useServiceAreas();
   const [listingType, setListingType] = useState<ListingType>('sale');
-  const [city, setCity] = useState<string>('כל הערים');
+  // When agent has a hyper-local zone, default the city dropdown to "all my zones"
+  // (we use empty string as a sentinel) and hide the legacy "כל הערים" option.
+  const [city, setCity] = useState<string>(isConfigured ? '__my_zones__' : 'כל הערים');
   const [propertyType, setPropertyType] = useState<PropertyType | 'all'>('all');
   const [rooms, setRooms] = useState<string>('any');
   const [priceRange, setPriceRange] = useState<[number, number]>([PRICE_MIN, PRICE_MAX]);
@@ -97,14 +102,21 @@ export default function Properties() {
     return merged.filter((p) => {
       const pType: ListingType = (p.listing_type ?? 'sale') as ListingType;
       if (pType !== listingType) return false;
-      if (city !== 'כל הערים' && p.city !== city) return false;
+      // Hyper-local: when agent has service_areas, ALWAYS restrict to them
+      // (regardless of the city dropdown). The dropdown then narrows further.
+      if (isConfigured && !isInServiceArea(p.city ?? null, null, serviceAreas)) return false;
+      if (city === '__my_zones__') {
+        // already filtered by service_areas above, no extra city filter
+      } else if (city !== 'כל הערים' && p.city !== city) {
+        return false;
+      }
       if (propertyType !== 'all' && p.property_type !== propertyType) return false;
       if (rooms !== 'any' && p.rooms < Number(rooms)) return false;
       if (p.price < priceRange[0] || p.price > priceRange[1]) return false;
       if (areaMin && p.size_sqm < Number(areaMin)) return false;
       return true;
     });
-  }, [merged, listingType, city, propertyType, rooms, priceRange, areaMin]);
+  }, [merged, listingType, city, propertyType, rooms, priceRange, areaMin, isConfigured, serviceAreas]);
 
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6" dir="rtl">
@@ -115,7 +127,9 @@ export default function Properties() {
             נכסים
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            קטלוג הנכסים. סננו לפי תקציב, אזור, סוג נכס וחדרים — ושלחו ישירות למתעניינים.
+            {isConfigured
+              ? `קטלוג הנכסים באזורי ההתמחות שלך (${coveredCities.join(', ')}). סננו לפי תקציב, סוג ופרטים.`
+              : 'קטלוג הנכסים. סננו לפי תקציב, אזור, סוג נכס וחדרים, ושלחו ישירות למתעניינים.'}
           </p>
         </div>
         <Badge variant="secondary" className="text-sm">
@@ -151,7 +165,7 @@ export default function Properties() {
             <div className="flex items-center justify-between">
               <Label className="text-xs font-semibold">טווח מחירים</Label>
               <span className="text-xs text-muted-foreground">
-                {formatPrice(priceRange[0])} – {formatPrice(priceRange[1])}
+                {formatPrice(priceRange[0])} , {formatPrice(priceRange[1])}
               </span>
             </div>
             <Slider
@@ -172,9 +186,18 @@ export default function Properties() {
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {CITY_OPTIONS.map((c) => (
-                  <SelectItem key={c} value={c}>{c}</SelectItem>
-                ))}
+                {isConfigured ? (
+                  <>
+                    <SelectItem value="__my_zones__">כל אזורי ההתמחות שלי</SelectItem>
+                    {coveredCities.map((c) => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </>
+                ) : (
+                  CITY_OPTIONS.map((c) => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))
+                )}
               </SelectContent>
             </Select>
           </div>
@@ -230,7 +253,7 @@ export default function Properties() {
               size="sm"
               className="h-10 w-full"
               onClick={() => {
-                setCity('כל הערים');
+                setCity(isConfigured ? '__my_zones__' : 'כל הערים');
                 setPropertyType('all');
                 setRooms('any');
                 setPriceRange([PRICE_MIN, PRICE_MAX]);

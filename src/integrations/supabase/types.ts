@@ -1524,6 +1524,7 @@ export type Database = {
           lead_stage: string
           loyalty_tier: string | null
           messenger_id: string | null
+          neighborhood: string | null
           phone_number: string
           preferences: Json
           previous_priority_score: number
@@ -1557,6 +1558,7 @@ export type Database = {
           lead_stage?: string
           loyalty_tier?: string | null
           messenger_id?: string | null
+          neighborhood?: string | null
           phone_number: string
           preferences?: Json
           previous_priority_score?: number
@@ -1590,6 +1592,7 @@ export type Database = {
           lead_stage?: string
           loyalty_tier?: string | null
           messenger_id?: string | null
+          neighborhood?: string | null
           phone_number?: string
           preferences?: Json
           previous_priority_score?: number
@@ -1607,6 +1610,7 @@ export type Database = {
         Row: {
           asking_price: number
           candidate_name: string
+          city: string | null
           created_at: string
           description: string
           election_type: string
@@ -1616,6 +1620,7 @@ export type Database = {
           id: string
           is_published: boolean
           mandate_goal: number
+          neighborhood: string | null
           pillars: Json
           property_title: string
           slug: string
@@ -1627,6 +1632,7 @@ export type Database = {
         Insert: {
           asking_price?: number
           candidate_name: string
+          city?: string | null
           created_at?: string
           description: string
           election_type?: string
@@ -1636,6 +1642,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           mandate_goal?: number
+          neighborhood?: string | null
           pillars?: Json
           property_title: string
           slug: string
@@ -1647,6 +1654,7 @@ export type Database = {
         Update: {
           asking_price?: number
           candidate_name?: string
+          city?: string | null
           created_at?: string
           description?: string
           election_type?: string
@@ -1656,6 +1664,7 @@ export type Database = {
           id?: string
           is_published?: boolean
           mandate_goal?: number
+          neighborhood?: string | null
           pillars?: Json
           property_title?: string
           slug?: string
@@ -2176,6 +2185,7 @@ export type Database = {
           is_suspended: boolean
           last_sign_in_at: string | null
           plan_status: string
+          service_areas: string[]
           trial_start_date: string
           updated_at: string
         }
@@ -2188,6 +2198,7 @@ export type Database = {
           is_suspended?: boolean
           last_sign_in_at?: string | null
           plan_status?: string
+          service_areas?: string[]
           trial_start_date?: string
           updated_at?: string
         }
@@ -2200,6 +2211,7 @@ export type Database = {
           is_suspended?: boolean
           last_sign_in_at?: string | null
           plan_status?: string
+          service_areas?: string[]
           trial_start_date?: string
           updated_at?: string
         }
