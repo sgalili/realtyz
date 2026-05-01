@@ -611,6 +611,13 @@ export default function DealRoom() {
         onOpenChange={setOutreachOpen}
         defaultProspectId={outreachProspectId}
       />
+
+      <PropertyMatchmakerDialog
+        open={!!matchmakerProspect}
+        onOpenChange={(o) => { if (!o) setMatchmakerProspect(null); }}
+        prospect={matchmakerProspect}
+        onShareDraft={handleShareDraft}
+      />
     </div>
   );
 }
