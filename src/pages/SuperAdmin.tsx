@@ -15,6 +15,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ShieldCheck, ShieldAlert, Users, Activity, ServerCog, Search, Wallet, Bot, ExternalLink, ArrowRight, RadioTower, Flame, Crown, Gauge, BrainCircuit, MessageCircle, RotateCcw, PlugZap, AlertTriangle, RefreshCw, CheckCircle2 } from 'lucide-react';
 import { FinanceTab } from '@/components/admin/FinanceTab';
 import { TestTrialModeCard } from '@/components/admin/TestTrialModeCard';
+import { ErrorLogPanel } from '@/components/admin/ErrorLogPanel';
 import { DEMO_CANDIDATES } from '@/lib/demoData';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -381,6 +382,7 @@ const SuperAdmin = () => {
               <Badge variant="destructive" className="mr-2 h-4 px-1.5 text-[10px]">{connectionHealth!.length}</Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="errors"><AlertOctagon className="ml-2 h-4 w-4" /> שגיאות</TabsTrigger>
           <TabsTrigger value="system"><ServerCog className="ml-2 h-4 w-4" /> סטטוס</TabsTrigger>
         </TabsList>
 
