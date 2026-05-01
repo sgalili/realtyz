@@ -1466,6 +1466,9 @@ const LeadCRM = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Add Lead — deal_type-aware dynamic form (Sale vs Rent pipeline) */}
+      <NewLeadDialog open={newLeadOpen} onOpenChange={setNewLeadOpen} />
     </div>
   );
 };
