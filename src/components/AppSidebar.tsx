@@ -86,6 +86,7 @@ const NAV_GROUPS: NavGroup[] = [
       { title: 'ניהול לידים', url: '/lead-crm', icon: Users, iconColor: 'text-social-facebook', aliases: ['/crm'] },
       { title: 'תיבת הודעות', url: '/inbox', icon: MessageSquare, iconColor: 'text-social-messenger' },
       { title: 'Deal Room', url: '/deal-room', icon: Handshake, iconColor: 'text-warning' },
+      { title: 'נכסים', url: '/properties', icon: Home, iconColor: 'text-primary-glow' },
       { title: 'Automation Studio', url: '/automations', icon: Bot, iconColor: 'text-primary' },
     ],
   },

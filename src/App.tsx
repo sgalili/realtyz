@@ -48,6 +48,7 @@ const PerformanceInsights = lazy(() => import("./pages/PerformanceInsights"));
 const AutomationStudioPage = lazy(() => import("./pages/AutomationStudioPage"));
 const Team = lazy(() => import("./pages/Team"));
 const SignDocument = lazy(() => import("./pages/SignDocument"));
+const Properties = lazy(() => import("./pages/Properties"));
 
 
 let syncToastId: string | number | undefined;
@@ -149,6 +150,7 @@ const App = () => (
               <Route path="/lead-crm" element={<ProtectedRoute allowGuestDemo><LeadCRM /></ProtectedRoute>} />
               <Route path="/inbox" element={<ProtectedRoute allowGuestDemo><OmnichannelInbox /></ProtectedRoute>} />
               <Route path="/deal-room" element={<ProtectedRoute allowGuestDemo><DealRoom /></ProtectedRoute>} />
+              <Route path="/properties" element={<ProtectedRoute allowGuestDemo><Properties /></ProtectedRoute>} />
               <Route path="/automations" element={<ProtectedRoute allowGuestDemo><AutomationStudioPage /></ProtectedRoute>} />
               <Route path="/insights" element={<ProtectedRoute allowGuestDemo><PerformanceInsights /></ProtectedRoute>} />
               <Route path="/ai-content" element={<ProtectedRoute allowGuestDemo><AIContentGenerator /></ProtectedRoute>} />
