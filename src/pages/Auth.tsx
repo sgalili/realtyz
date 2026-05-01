@@ -217,7 +217,7 @@ const Auth = () => {
                 'left-[calc(50%+6px)] -translate-x-1/2 text-foreground',
               )}
             >
-              Demo
+              דמו
             </span>
           </Switch>
         </label>
@@ -233,7 +233,7 @@ const Auth = () => {
 
       <div className="auth-hero-content relative z-10 mx-auto w-full" dir="rtl">
         <div className="mb-8 translate-y-5 text-center">
-          <div className="kalpiz-logo auth-text-logo" aria-label="Kalpiz">Kalpiz</div>
+          <div className="kalpiz-logo auth-text-logo" aria-label="Realtyz">Realtyz</div>
           <p className="auth-official-slogan">הפלטפורמה שהופכת דאטה קרה למכונת המרה</p>
         </div>
 
