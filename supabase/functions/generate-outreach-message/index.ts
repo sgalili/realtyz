@@ -250,6 +250,12 @@ ${compliance}`;
       };
     }
 
+    // Compliance Fact-Check Layer: verify the AI didn't invent prices/titles.
+    const draftBody = [draft.subject, draft.message, ...(draft.highlights || []), draft.call_to_action]
+      .filter(Boolean)
+      .join("\n");
+    const fact_violations = factCheckDraft(String(draftBody), factListing);
+
     return new Response(
       JSON.stringify({
         ok: true,
@@ -261,6 +267,7 @@ ${compliance}`;
           full_name: prospect.full_name,
           phone_number: prospect.phone_number,
         },
+        fact_violations,
       }),
       { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
