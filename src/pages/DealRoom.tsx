@@ -23,7 +23,7 @@ import {
   Megaphone,
   Handshake,
   CheckCircle2,
-  MessageSquare,
+  
   Database,
   PenLine,
   Pencil,
