@@ -606,9 +606,12 @@ function CalculatorBody() {
                   </button>
                 </div>
                 <div className="mt-3 text-center text-[12.5px] font-medium text-muted-foreground">
+                  הערכת שיעור המרה: עסקה סגורה אחת לכל ~60 פרוספקטים מוסמכים
+                </div>
+                <div className="mt-1 text-center text-[11px] text-muted-foreground/80">
                   {mandates === 1
-                    ? `${unitSingular} = ${formatILS(VOTES_PER_MANDATE)}~ ${voterPlural} בקלפי`
-                    : `${mandates} ${unitPlural} = ${formatILS(mandates * VOTES_PER_MANDATE)}~ ${voterPlural} בקלפי`}
+                    ? `יעד: עסקה סגורה אחת ≈ ${formatILS(60)} פרוספקטים מוסמכים בפייפליין`
+                    : `יעד: ${mandates} עסקאות סגורות ≈ ${formatILS(mandates * 60)} פרוספקטים מוסמכים בפייפליין`}
                 </div>
               </div>
 
