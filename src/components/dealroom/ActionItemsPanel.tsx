@@ -57,14 +57,14 @@ type Suggestion = {
 };
 
 const TRIGGER_META: Record<string, { label: string; icon: typeof Clock; tone: string }> = {
-  post_viewing_24h: { label: "24h Follow-Up", icon: Calendar, tone: "text-primary" },
-  stale_negotiation: { label: "Stale Negotiation", icon: Clock, tone: "text-warning" },
-  cold_reengage: { label: "Cold Re-engage", icon: ThermometerSnowflake, tone: "text-muted-foreground" },
-  price_drop: { label: "Price Drop Match", icon: TrendingDown, tone: "text-success" },
+  post_viewing_24h: { label: "מעקב 24 שעות", icon: Calendar, tone: "text-primary" },
+  stale_negotiation: { label: "מו״מ תקוע", icon: Clock, tone: "text-warning" },
+  cold_reengage: { label: "חימום מחדש", icon: ThermometerSnowflake, tone: "text-muted-foreground" },
+  price_drop: { label: "התאמת ירידת מחיר", icon: TrendingDown, tone: "text-success" },
 };
 
 // Common loyalty tiers — the Agent can flip auto-draft per tier.
-const KNOWN_TIERS = ["Hot Lead", "Loyal", "מתלבט", "Cold"];
+const KNOWN_TIERS = ["ליד חם", "נאמן", "מתלבט", "ליד קר"];
 
 type Props = {
   onUseDraft: (suggestion: Suggestion) => void;
@@ -117,7 +117,7 @@ export function ActionItemsPanel({ onUseDraft }: Props) {
       { onConflict: "user_id,tier" }
     );
     if (error) {
-      toast.error("Could not save policy", { description: error.message });
+      toast.error("שמירת המדיניות נכשלה", { description: error.message });
       return;
     }
     qc.invalidateQueries({ queryKey: ["outreach-auto-policies"] });
@@ -130,11 +130,11 @@ export function ActionItemsPanel({ onUseDraft }: Props) {
       if (error) throw error;
       const inserted = (data as any)?.inserted ?? 0;
       toast.success(
-        inserted > 0 ? `Found ${inserted} new action item${inserted === 1 ? "" : "s"}` : "No new triggers right now"
+        inserted > 0 ? `נמצאו ${inserted} פעולות חדשות` : "אין טריגרים חדשים כרגע"
       );
       qc.invalidateQueries({ queryKey: ["outreach-suggestions"] });
     } catch (err: any) {
-      toast.error("Scan failed", { description: err?.message });
+      toast.error("הסריקה נכשלה", { description: err?.message });
     } finally {
       setScanning(false);
     }
@@ -146,7 +146,7 @@ export function ActionItemsPanel({ onUseDraft }: Props) {
       .update({ status: "dismissed", dismissed_at: new Date().toISOString() })
       .eq("id", id);
     if (error) {
-      toast.error("Could not dismiss", { description: error.message });
+      toast.error("הדחייה נכשלה", { description: error.message });
       return;
     }
     qc.invalidateQueries({ queryKey: ["outreach-suggestions"] });
@@ -162,34 +162,34 @@ export function ActionItemsPanel({ onUseDraft }: Props) {
             <Wand2 className="h-4 w-4" />
           </span>
           <div>
-            <h2 className="text-sm font-semibold leading-tight">Action Items</h2>
+            <h2 className="text-sm font-semibold leading-tight">פעולות מומלצות</h2>
             <p className="text-[11px] text-muted-foreground leading-tight">
-              Proactive follow-ups suggested by the Outreach Engine
+              מעקבים יזומים שמציעה מנוע הפנייה
             </p>
           </div>
         </div>
         <div className="flex items-center gap-2">
           <Badge variant="outline" className="text-xs font-normal">
-            {items.length} pending
+            {items.length} ממתינות
           </Badge>
           <Button size="sm" variant="outline" onClick={runScan} disabled={scanning} className="gap-1.5 h-8">
             <RefreshCw className={cn("h-3.5 w-3.5", scanning && "animate-spin")} />
-            {scanning ? "Scanning…" : "Scan Now"}
+            {scanning ? "סורק…" : "סריקה עכשיו"}
           </Button>
           <Popover>
             <PopoverTrigger asChild>
               <Button size="sm" variant="outline" className="gap-1.5 h-8">
                 <Settings2 className="h-3.5 w-3.5" />
-                Auto-Draft
+                טיוטה אוטומטית
               </Button>
             </PopoverTrigger>
             <PopoverContent align="end" className="w-72">
               <div className="space-y-3">
                 <div>
-                  <h3 className="text-sm font-medium">Auto-Draft by Tier</h3>
+                  <h3 className="text-sm font-medium">טיוטה אוטומטית לפי דרגה</h3>
                   <p className="text-[11px] text-muted-foreground">
-                    When enabled, suggested follow-ups for these tiers will be drafted by AI
-                    automatically and queued here for your one-click approval.
+                    כשפעיל, מעקבים מומלצים לדרגות אלה ינוסחו אוטומטית על ידי ה-AI
+                    ויחכו כאן לאישור בלחיצה אחת.
                   </p>
                 </div>
                 <div className="space-y-2">
@@ -222,7 +222,7 @@ export function ActionItemsPanel({ onUseDraft }: Props) {
         ) : items.length === 0 ? (
           <div className="text-center text-xs text-muted-foreground py-8">
             <Bot className="h-6 w-6 mx-auto mb-2 opacity-40" />
-            No action items right now. Click <span className="font-medium">Scan Now</span> to refresh.
+            אין פעולות ממתינות כרגע. לחצו <span className="font-medium">סריקה עכשיו</span> כדי לרענן.
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
@@ -244,16 +244,16 @@ export function ActionItemsPanel({ onUseDraft }: Props) {
                     <Button
                       size="icon"
                       variant="ghost"
-                      className="h-6 w-6 shrink-0 -mt-1 -mr-1"
+                      className="h-6 w-6 shrink-0 -mt-1 -ms-1"
                       onClick={() => dismiss(s.id)}
-                      title="Dismiss"
+                      title="דחייה"
                     >
                       <X className="h-3.5 w-3.5" />
                     </Button>
                   </div>
 
                   <div className="text-sm font-medium truncate">
-                    {s.lead?.full_name || "Unnamed Prospect"}
+                    {s.lead?.full_name || "לקוח ללא שם"}
                   </div>
                   <div className="text-[11px] text-muted-foreground -mt-1 truncate">
                     {s.trigger_reason}
@@ -270,11 +270,11 @@ export function ActionItemsPanel({ onUseDraft }: Props) {
                         className="gap-1 text-[10px] font-normal border-primary/30 bg-primary/5 text-primary"
                       >
                         <Sparkles className="h-2.5 w-2.5" />
-                        AI Generated Suggestion
+                        הצעת AI
                       </Badge>
                       {autoDrafted && (
                         <Badge variant="outline" className="text-[10px] font-normal">
-                          Auto-Drafted
+                          טיוטה אוטומטית
                         </Badge>
                       )}
                       {s.tier && (
@@ -285,7 +285,7 @@ export function ActionItemsPanel({ onUseDraft }: Props) {
                     </div>
                     <Button size="sm" className="h-7 text-xs gap-1" onClick={() => onUseDraft(s)}>
                       <Sparkles className="h-3 w-3" />
-                      Use Draft
+                      שימוש בטיוטה
                     </Button>
                   </div>
                 </Card>

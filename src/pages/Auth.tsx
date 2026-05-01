@@ -338,13 +338,13 @@ const Auth = () => {
 
       <footer className="auth-page-footer" dir="rtl">
         <p className="auth-footer-credit">
-          נבנה ב- <span className="auth-heart" aria-label="love">❤️</span> עבור אלו שמובילים את הפוליטיקה הישראלית
+          נבנה ב- <span className="auth-heart" aria-label="אהבה">❤️</span> עבור סוכני הנדל"ן המובילים בישראל
         </p>
         <div className="auth-footer-wave-band">
           <div className="auth-footer-white-wave" aria-hidden="true" />
         </div>
         <div className="auth-footer-legal">
-          <span dir="ltr" className="auth-footer-copyright">© 2026 Kalpiz. All rights reserved</span>
+          <span dir="ltr" className="auth-footer-copyright">© 2026 Realtyz. All rights reserved</span>
           <div className="auth-footer-links">
             <a href="/privacy">מדיניות פרטיות</a>
             <a href="/terms">תנאי שימוש</a>

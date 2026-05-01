@@ -32,56 +32,56 @@ type Automation = {
 };
 
 const TRIGGERS = [
-  { value: 'prospect_added', label: 'New prospect added' },
-  { value: 'meeting_booked', label: 'Meeting booked / negotiation started' },
-  { value: 'followup_after_hours', label: 'Follow-up after 48h of silence' },
-  { value: 'birthday_anniversary', label: 'Prospect birthday / anniversary' },
+  { value: 'prospect_added', label: 'לקוח חדש נוסף' },
+  { value: 'meeting_booked', label: 'נקבעה פגישה / נפתח משא ומתן' },
+  { value: 'followup_after_hours', label: 'מעקב לאחר 48 שעות שתיקה' },
+  { value: 'birthday_anniversary', label: 'יום הולדת / יום נישואין של לקוח' },
 ];
 
 const ACTIONS = [
-  { value: 'send_whatsapp', label: 'Send WhatsApp message' },
-  { value: 'create_note', label: 'Create internal note' },
-  { value: 'notify_agent', label: 'Notify me on WhatsApp' },
-  { value: 'composite', label: 'All of the above' },
+  { value: 'send_whatsapp', label: 'שליחת הודעת WhatsApp' },
+  { value: 'create_note', label: 'יצירת הערה פנימית' },
+  { value: 'notify_agent', label: 'התראה אליי ב-WhatsApp' },
+  { value: 'composite', label: 'כל הפעולות שלמעלה' },
 ];
 
 const TEMPLATES = [
   {
     key: 'welcome',
-    name: 'New Prospect Welcome',
-    description: 'Greet a brand-new lead with a friendly intro.',
+    name: 'ברכת לקוח חדש',
+    description: 'ברכו ליד טרי בהיכרות חמה.',
     trigger_type: 'prospect_added',
     action_type: 'composite',
     action_config: {
       message_template:
-        'Hi {{first_name}}! Thanks for reaching out — I\'m here to help you find the right property. When is a good time to chat?',
-      note_title: 'Welcome sent to {{name}}',
-      note_body: 'Auto welcome sent on first contact.',
+        'היי {{first_name}}! תודה שפנית — אני כאן כדי לעזור לך למצוא את הנכס המתאים. מתי נוח לדבר?',
+      note_title: 'נשלחה ברכת קבלה ל-{{name}}',
+      note_body: 'נשלחה ברכת קבלה אוטומטית בפנייה הראשונה.',
       notify_event_type: 'new_high_priority',
-      notify_detail: 'New prospect just signed up — auto-welcome sent.',
+      notify_detail: 'לקוח חדש נרשם — נשלחה ברכת קבלה אוטומטית.',
     },
   },
   {
     key: 'followup_48h',
-    name: 'Follow-up after 48h',
-    description: 'Re-engage prospects who went quiet for 2 days.',
+    name: 'מעקב לאחר 48 שעות',
+    description: 'חיברו מחדש לקוחות ששתקו יומיים.',
     trigger_type: 'followup_after_hours',
     action_type: 'send_whatsapp',
     action_config: {
       delay_hours: 48,
       message_template:
-        'Hi {{first_name}}, just checking in — did you get a chance to look at the options I shared? Happy to send more.',
+        'היי {{first_name}}, רק בודק/ת — הספקת להסתכל על האפשרויות ששלחתי? אשמח לשלוח עוד.',
     },
   },
   {
     key: 'birthday',
-    name: 'Birthday / Anniversary greeting',
-    description: 'Send a warm message on a special date.',
+    name: 'ברכת יום הולדת / יום נישואין',
+    description: 'שלחו הודעה חמה בתאריך מיוחד.',
     trigger_type: 'birthday_anniversary',
     action_type: 'send_whatsapp',
     action_config: {
       message_template:
-        'Wishing you a wonderful day, {{first_name}}! 🎉 Hope this year brings you the home you\'re dreaming of.',
+        'מאחל/ת לך יום נפלא, {{first_name}}! 🎉 שהשנה הזו תביא לך את הבית שאתם חולמים עליו.',
     },
   },
 ];
@@ -141,7 +141,7 @@ export function AutomationStudio() {
 
   const saveMutation = useMutation({
     mutationFn: async (payload: any) => {
-      if (!user) throw new Error('Not authenticated');
+      if (!user) throw new Error('לא מחובר');
       const { error } = await supabase.from('automations').insert({
         user_id: user.id,
         ...payload,
@@ -149,12 +149,12 @@ export function AutomationStudio() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success('Automation created');
+      toast.success('האוטומציה נוצרה');
       setOpen(false);
       setDraft(emptyDraft());
       qc.invalidateQueries({ queryKey: ['automations'] });
     },
-    onError: (e: any) => toast.error(e?.message || 'Failed to save'),
+    onError: (e: any) => toast.error(e?.message || 'שמירה נכשלה'),
   });
 
   const toggleMutation = useMutation({
@@ -171,7 +171,7 @@ export function AutomationStudio() {
       if (error) throw error;
     },
     onSuccess: () => {
-      toast.success('Automation deleted');
+      toast.success('האוטומציה נמחקה');
       qc.invalidateQueries({ queryKey: ['automations'] });
     },
   });
@@ -195,14 +195,14 @@ export function AutomationStudio() {
       <Card className="p-4 space-y-3">
         <div className="flex items-center gap-2">
           <Sparkles className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold">Pre-built Templates</h3>
+          <h3 className="text-sm font-semibold">תבניות מוכנות מראש</h3>
         </div>
         <div className="grid gap-3 sm:grid-cols-3">
           {TEMPLATES.map((t) => (
             <button
               key={t.key}
               onClick={() => applyTemplate(t)}
-              className="text-left rounded-lg border p-3 hover:border-primary hover:bg-muted/50 transition"
+              className="text-right rounded-lg border p-3 hover:border-primary hover:bg-muted/50 transition"
             >
               <div className="flex items-center gap-2 mb-1">
                 <Zap className="h-3.5 w-3.5 text-primary" />
@@ -217,30 +217,30 @@ export function AutomationStudio() {
       <Card className="p-4 space-y-3">
         <div className="flex items-center gap-2">
           <Bot className="h-4 w-4 text-primary" />
-          <h3 className="text-sm font-semibold">Your Workflows</h3>
+          <h3 className="text-sm font-semibold">הזרימים שלך</h3>
           <Dialog open={open} onOpenChange={setOpen}>
             <DialogTrigger asChild>
-              <Button size="sm" className="ml-auto h-8">
-                <Plus className="h-3.5 w-3.5 mr-1" />
-                New
+              <Button size="sm" className="ms-auto h-8">
+                <Plus className="h-3.5 w-3.5 ml-1" />
+                חדש
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-lg" dir="rtl">
               <DialogHeader>
-                <DialogTitle>Build an automation</DialogTitle>
+                <DialogTitle>בניית אוטומציה</DialogTitle>
               </DialogHeader>
               <div className="space-y-3">
                 <div>
-                  <Label className="text-xs">Name</Label>
+                  <Label className="text-xs">שם</Label>
                   <Input
                     value={draft.name}
                     onChange={(e) => setDraft({ ...draft, name: e.target.value })}
-                    placeholder="e.g. Welcome new leads"
+                    placeholder="לדוגמה: ברכת לידים חדשים"
                   />
                 </div>
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <Label className="text-xs">If this happens (Trigger)</Label>
+                    <Label className="text-xs">אם זה קורה (טריגר)</Label>
                     <Select value={draft.trigger_type} onValueChange={(v) => setDraft({ ...draft, trigger_type: v })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -249,7 +249,7 @@ export function AutomationStudio() {
                     </Select>
                   </div>
                   <div>
-                    <Label className="text-xs">Then do this (Action)</Label>
+                    <Label className="text-xs">אז עשה את זה (פעולה)</Label>
                     <Select value={draft.action_type} onValueChange={(v) => setDraft({ ...draft, action_type: v })}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
@@ -261,10 +261,10 @@ export function AutomationStudio() {
 
                 {(draft.action_type === 'send_whatsapp' || draft.action_type === 'composite') && (
                   <div>
-                    <Label className="text-xs">WhatsApp message template</Label>
+                    <Label className="text-xs">תבנית הודעת WhatsApp</Label>
                     <Textarea
                       rows={3}
-                      placeholder="Hi {{first_name}}, …"
+                      placeholder="היי {{first_name}}, …"
                       value={draft.action_config.message_template}
                       onChange={(e) => setDraft({
                         ...draft,
@@ -272,7 +272,7 @@ export function AutomationStudio() {
                       })}
                     />
                     <p className="text-[10px] text-muted-foreground mt-1">
-                      Variables: {`{{name}} {{first_name}} {{phone}} {{city}}`}
+                      משתנים: {`{{name}} {{first_name}} {{phone}} {{city}}`}
                     </p>
                   </div>
                 )}
@@ -280,7 +280,7 @@ export function AutomationStudio() {
                 {(draft.action_type === 'create_note' || draft.action_type === 'composite') && (
                   <div className="grid gap-2">
                     <Input
-                      placeholder="Note title"
+                      placeholder="כותרת ההערה"
                       value={draft.action_config.note_title}
                       onChange={(e) => setDraft({
                         ...draft,
@@ -289,7 +289,7 @@ export function AutomationStudio() {
                     />
                     <Textarea
                       rows={2}
-                      placeholder="Note body"
+                      placeholder="גוף ההערה"
                       value={draft.action_config.note_body}
                       onChange={(e) => setDraft({
                         ...draft,
@@ -302,7 +302,7 @@ export function AutomationStudio() {
                 {(draft.action_type === 'notify_agent' || draft.action_type === 'composite') && (
                   <div className="grid grid-cols-2 gap-3">
                     <div>
-                      <Label className="text-xs">Notification type</Label>
+                      <Label className="text-xs">סוג התראה</Label>
                       <Select
                         value={draft.action_config.notify_event_type}
                         onValueChange={(v: any) => setDraft({
@@ -312,14 +312,14 @@ export function AutomationStudio() {
                       >
                         <SelectTrigger><SelectValue /></SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="new_high_priority">High priority</SelectItem>
-                          <SelectItem value="meeting_booked">Meeting</SelectItem>
-                          <SelectItem value="critical_question">Critical question</SelectItem>
+                          <SelectItem value="new_high_priority">עדיפות גבוהה</SelectItem>
+                          <SelectItem value="meeting_booked">פגישה</SelectItem>
+                          <SelectItem value="critical_question">שאלה קריטית</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
                     <div>
-                      <Label className="text-xs">Detail</Label>
+                      <Label className="text-xs">פירוט</Label>
                       <Input
                         value={draft.action_config.notify_detail}
                         onChange={(e) => setDraft({
@@ -332,12 +332,12 @@ export function AutomationStudio() {
                 )}
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setOpen(false)}>Cancel</Button>
+                <Button variant="outline" onClick={() => setOpen(false)}>ביטול</Button>
                 <Button
                   disabled={!draft.name || saveMutation.isPending}
                   onClick={() => saveMutation.mutate(draft)}
                 >
-                  Save automation
+                  שמירת אוטומציה
                 </Button>
               </DialogFooter>
             </DialogContent>
@@ -345,10 +345,10 @@ export function AutomationStudio() {
         </div>
 
         {isLoading ? (
-          <p className="text-xs text-muted-foreground">Loading…</p>
+          <p className="text-xs text-muted-foreground">טוען…</p>
         ) : !automations?.length ? (
           <p className="text-xs text-muted-foreground">
-            No automations yet. Pick a template above or click "New" to create one.
+            אין אוטומציות עדיין. בחרו תבנית למעלה או לחצו "חדש" כדי ליצור אחת.
           </p>
         ) : (
           <ul className="divide-y">
@@ -366,8 +366,8 @@ export function AutomationStudio() {
                     </Badge>
                   </div>
                   <p className="text-xs text-muted-foreground truncate">
-                    → {ACTIONS.find((x) => x.value === a.action_type)?.label || a.action_type}
-                    {a.run_count ? ` • ${a.run_count} runs` : ''}
+                    ← {ACTIONS.find((x) => x.value === a.action_type)?.label || a.action_type}
+                    {a.run_count ? ` • ${a.run_count} הרצות` : ''}
                   </p>
                 </div>
                 <Button
