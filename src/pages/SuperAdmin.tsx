@@ -12,7 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ShieldCheck, ShieldAlert, Users, Activity, ServerCog, Search, Wallet, Bot, ExternalLink, ArrowRight, RadioTower, Flame, Crown, Gauge, BrainCircuit, MessageCircle, RotateCcw, PlugZap, AlertTriangle, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Users, Activity, ServerCog, Search, Wallet, Bot, ExternalLink, ArrowRight, RadioTower, Flame, Crown, Gauge, BrainCircuit, MessageCircle, RotateCcw, PlugZap, AlertTriangle, RefreshCw, CheckCircle2, AlertOctagon } from 'lucide-react';
 import { FinanceTab } from '@/components/admin/FinanceTab';
 import { TestTrialModeCard } from '@/components/admin/TestTrialModeCard';
 import { ErrorLogPanel } from '@/components/admin/ErrorLogPanel';
