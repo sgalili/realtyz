@@ -21,6 +21,7 @@ import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { getDemoCandidateKnowledgeDocuments, getDemoCandidateSurveyInsights } from '@/lib/demoData';
 import * as XLSX from 'xlsx';
 import { WhatsAppConversationImporter } from '@/components/strategybank/WhatsAppConversationImporter';
+import { UniversalKnowledgeInput } from '@/components/strategybank/UniversalKnowledgeInput';
 
 export default function KnowledgeBase() {
   const { user } = useAuth();
@@ -290,47 +291,9 @@ export default function KnowledgeBase() {
           <TabsTrigger value="knowledge"><Upload className="h-4 w-4 ml-2" /> מסמכי ידע</TabsTrigger>
           <TabsTrigger value="surveys"><BarChart3 className="h-4 w-4 ml-2" /> מודיעין סקרים</TabsTrigger>
         </TabsList>
-        <TabsContent value="knowledge" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base flex items-center gap-2">
-                <Upload className="h-4 w-4 text-primary" /> העלאת מסמכים
-              </CardTitle>
-              <CardDescription>PDF, TXT, Markdown, תמונות, וידאו והודעות קוליות - גרור ושחרר או לחץ למכירה</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div
-                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
-                onDragLeave={() => setDragging(false)}
-                onDrop={(e) => { e.preventDefault(); setDragging(false); handleFiles(e.dataTransfer.files); }}
-                onClick={() => fileInputRef.current?.click()}
-                className={`border-2 border-dashed rounded-lg p-10 text-center cursor-pointer transition-colors ${dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/60 hover:bg-muted/30'}`}
-              >
-                <input ref={fileInputRef} type="file" multiple accept=".txt,.md,.pdf,image/*,video/*,audio/*,text/plain,text/markdown,application/pdf" className="hidden" onChange={(e) => e.target.files && handleFiles(e.target.files)} />
-                {ingesting ? (
-                  <div className="flex flex-col items-center gap-2">
-                    <Loader2 className="h-8 w-8 text-primary animate-spin" />
-                    <p className="text-sm">מעבד ומטמיע ב-pgvector...</p>
-                  </div>
-                ) : (
-                  <>
-                    <Upload className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
-                    <p className="text-sm font-medium">גרור קבצים לכאן או לחץ למכירה</p>
-                    <div className="mt-2 flex items-center justify-center gap-3 text-xs text-muted-foreground">
-                      <span className="inline-flex items-center gap-1"><FileText className="h-3 w-3" /> מסמכים</span>
-                      <span className="inline-flex items-center gap-1"><Image className="h-3 w-3" /> תמונות</span>
-                      <span className="inline-flex items-center gap-1"><Video className="h-3 w-3" /> וידאו</span>
-                      <span className="inline-flex items-center gap-1"><Mic className="h-3 w-3" /> אודיו</span>
-                    </div>
-                  </>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="mt-4">
-            <WhatsAppConversationImporter />
-          </div>
+        <TabsContent value="knowledge" className="mt-4 space-y-4">
+          <UniversalKnowledgeInput />
+          <WhatsAppConversationImporter />
         </TabsContent>
         <TabsContent value="surveys" className="mt-4 space-y-4">
           <Card>
