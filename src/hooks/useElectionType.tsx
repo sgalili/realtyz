@@ -102,21 +102,15 @@ export function ElectionTypeProvider({ children }: { children: ReactNode }) {
     }
     let cancelled = false;
 
-    supabase
-      .from('onboarding_state')
-      .select('election_type')
-      .eq('user_id', user.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (cancelled) return;
-        const nextType = data?.election_type === 'primaries' ? 'primaries' : 'national';
-        setTypeState(nextType);
-        try {
-          window.localStorage.setItem(STORAGE_KEY, nextType);
-        } catch {
-          /* ignore */
-        }
-      });
+    // election_type column was removed during the real-estate pivot.
+    // Always default to 'national' (now means "general sales mode").
+    const nextType: ElectionType = 'national';
+    setTypeState(nextType);
+    try {
+      window.localStorage.setItem(STORAGE_KEY, nextType);
+    } catch {
+      /* ignore */
+    }
 
     return () => { cancelled = true; };
   }, [user?.id, isDemoMode, demoCandidateId]);

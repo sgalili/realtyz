@@ -79,11 +79,11 @@ export function OnboardingWizard({ open, onClose }: OnboardingWizardProps) {
   useEffect(() => {
     if (existing) {
       setStep(existing.step || 1);
-      setCandidate(existing.candidate_or_party ?? '');
-      setElectionType(existing.election_type ?? 'general');
+      setCandidate('');
+      setElectionType('general');
       setTone(existing.tone ?? 'professional');
-      setMandateTarget(existing.mandate_target ?? 2);
-      setMonthsToElection(Math.min(existing.months_to_election ?? maxMonthsToElection, maxMonthsToElection));
+      setMandateTarget(2);
+      setMonthsToElection(maxMonthsToElection);
       setHotConversionRate(existing.hot_conversion_rate ?? 40);
       setColdConversionRate(existing.cold_conversion_rate ?? 10);
       setHotList(existing.hot_list_count ?? mandatePlan.hotContactsRequired);
