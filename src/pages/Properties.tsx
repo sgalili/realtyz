@@ -28,6 +28,7 @@ import {
   type ListingType,
 } from '@/lib/homelyMockProperties';
 import { ShareWithLeadDialog } from '@/components/properties/ShareWithLeadDialog';
+import { ReferralButton } from '@/components/referrals/ReferralButton';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
 import { isInServiceArea } from '@/lib/serviceAreas';
