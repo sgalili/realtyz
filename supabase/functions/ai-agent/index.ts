@@ -7,7 +7,7 @@ import {
   renderListingFacts,
   type ListingFact,
 } from "../_shared/guardrails.ts";
-import { loadAgentPersona, renderPersonaPrompt } from "../_shared/persona.ts";
+import { loadAgentPersona, renderPersonaPrompt, renderDealTypeBlock, type DealType } from "../_shared/persona.ts";
 import { maskMessages } from "../_shared/pii.ts";
 
 const corsHeaders = {
