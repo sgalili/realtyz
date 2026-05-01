@@ -62,7 +62,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { LiveActivityFeed } from '@/components/dashboard/LiveActivityFeed';
 import { StrategicPdfExportButton } from '@/components/dashboard/StrategicPdfExportButton';
-import { StartTrialCta } from '@/components/StartTrialCta';
+
 import { SidebarIntelInput } from '@/components/SidebarIntelInput';
 
 type NavItem = {
