@@ -6,8 +6,8 @@
  * - appendDisclosure(text, enabled): idempotently appends the footer.
  */
 
-export const DISCLOSURE_FOOTER_HE = "— תוכן בסיוע AI";
-export const DISCLOSURE_FOOTER_EN = "— AI-assisted content";
+export const DISCLOSURE_FOOTER_HE = ", תוכן בסיוע AI";
+export const DISCLOSURE_FOOTER_EN = ", AI-assisted content";
 
 export function appendDisclosure(
   text: string,
@@ -16,7 +16,7 @@ export function appendDisclosure(
 ): { text: string; appended: boolean } {
   if (!enabled || !text) return { text, appended: false };
   const footer = language === "en" ? DISCLOSURE_FOOTER_EN : DISCLOSURE_FOOTER_HE;
-  // Idempotent — don't double-append.
+  // Idempotent, don't double-append.
   if (text.trimEnd().endsWith(footer)) return { text, appended: true };
   return { text: `${text.trimEnd()}\n\n${footer}`, appended: true };
 }

@@ -1,4 +1,4 @@
-// ── High-density demo mock data for Realtyz AI ──
+//   High-density demo mock data for Realtyz AI  
 
 import voter01 from '@/assets/demo-headshots/voter-01.jpg';
 import voter02 from '@/assets/demo-headshots/voter-02.jpg';
@@ -48,21 +48,21 @@ export const DEMO_SUMMARY = {
 };
 
 export const DEMO_CAMPAIGNS = [
-  { id: '1', name: 'גיוס לידים – דירות 3 חדרים תל אביב', description: 'דיוור לקונים פוטנציאליים בת״א', status: 'active', total_sent: 45_200, total_clicks: 12_800, created_at: '2025-01-15' },
-  { id: '2', name: 'שכירות סטודנטים – ירושלים', description: 'מבצע השכרות לקראת תחילת שנה', status: 'completed', total_sent: 120_000, total_clicks: 38_400, created_at: '2024-12-01' },
-  { id: '3', name: 'יד שנייה – ראשון לציון', description: 'נכסים יד שנייה לזוגות צעירים', status: 'active', total_sent: 28_600, total_clicks: 9_100, created_at: '2025-02-10' },
-  { id: '4', name: 'משקיעים – נדל"ן מניב בירושלים', description: 'הזדמנויות השקעה לנכסים מניבים', status: 'paused', total_sent: 65_000, total_clicks: 18_200, created_at: '2024-11-20' },
-  { id: '5', name: 'השכרת דירות – חיפה', description: 'דירות להשכרה בחיפה והקריות', status: 'completed', total_sent: 32_000, total_clicks: 11_500, created_at: '2024-10-05' },
-  { id: '6', name: 'נכסים חדשים מקבלן – נגב', description: 'פרויקטים מקבלן לזכאי משכנתא', status: 'completed', total_sent: 88_000, total_clicks: 22_000, created_at: '2024-09-15' },
+  { id: '1', name: 'גיוס לידים, דירות 3 חדרים תל אביב', description: 'דיוור לקונים פוטנציאליים בת״א', status: 'active', total_sent: 45_200, total_clicks: 12_800, created_at: '2025-01-15' },
+  { id: '2', name: 'שכירות סטודנטים, ירושלים', description: 'מבצע השכרות לקראת תחילת שנה', status: 'completed', total_sent: 120_000, total_clicks: 38_400, created_at: '2024-12-01' },
+  { id: '3', name: 'יד שנייה, ראשון לציון', description: 'נכסים יד שנייה לזוגות צעירים', status: 'active', total_sent: 28_600, total_clicks: 9_100, created_at: '2025-02-10' },
+  { id: '4', name: 'משקיעים, נדל"ן מניב בירושלים', description: 'הזדמנויות השקעה לנכסים מניבים', status: 'paused', total_sent: 65_000, total_clicks: 18_200, created_at: '2024-11-20' },
+  { id: '5', name: 'השכרת דירות, חיפה', description: 'דירות להשכרה בחיפה והקריות', status: 'completed', total_sent: 32_000, total_clicks: 11_500, created_at: '2024-10-05' },
+  { id: '6', name: 'נכסים חדשים מקבלן, נגב', description: 'פרויקטים מקבלן לזכאי משכנתא', status: 'completed', total_sent: 88_000, total_clicks: 22_000, created_at: '2024-09-15' },
   { id: '7', name: 'פנטהאוזים תל אביב', description: 'נכסי יוקרה במגדלי המרכז', status: 'active', total_sent: 150_000, total_clicks: 47_000, created_at: '2025-03-01' },
-  { id: '8', name: 'בית פרטי – פתח תקווה', description: 'בתים פרטיים למשפחות', status: 'completed', total_sent: 72_000, total_clicks: 19_800, created_at: '2024-08-22' },
-  { id: '9', name: 'דירת 2 חדרים להשכרה – רמת גן', description: 'מתאים לזוגות צעירים', status: 'active', total_sent: 55_000, total_clicks: 21_300, created_at: '2025-01-28' },
-  { id: '10', name: 'דירות גן – הרצליה', description: 'דירות גן עם חצר פרטית', status: 'completed', total_sent: 40_000, total_clicks: 8_200, created_at: '2024-07-10' },
-  { id: '11', name: 'משפר דיור – נתניה', description: 'מעבר מ-3 ל-4 חדרים', status: 'completed', total_sent: 95_000, total_clicks: 31_200, created_at: '2024-06-18' },
-  { id: '12', name: 'נכסים מסחריים – צפון', description: 'משרדים וחנויות', status: 'paused', total_sent: 48_000, total_clicks: 14_100, created_at: '2024-11-05' },
-  { id: '13', name: 'דירות חדשות מקבלן – אשדוד', description: 'מבצע אכלוס ראשון', status: 'active', total_sent: 62_000, total_clicks: 18_900, created_at: '2025-02-20' },
-  { id: '14', name: 'דירות יד שנייה – באר שבע', description: 'נכסים מוכנים לאכלוס מיידי', status: 'completed', total_sent: 110_000, total_clicks: 35_600, created_at: '2024-05-30' },
-  { id: '15', name: 'יום נדל"ן פתוח – אזור המרכז', description: 'תיאום סיורים בנכסים זמינים', status: 'scheduled', total_sent: 0, total_clicks: 0, created_at: '2025-04-10' },
+  { id: '8', name: 'בית פרטי, פתח תקווה', description: 'בתים פרטיים למשפחות', status: 'completed', total_sent: 72_000, total_clicks: 19_800, created_at: '2024-08-22' },
+  { id: '9', name: 'דירת 2 חדרים להשכרה, רמת גן', description: 'מתאים לזוגות צעירים', status: 'active', total_sent: 55_000, total_clicks: 21_300, created_at: '2025-01-28' },
+  { id: '10', name: 'דירות גן, הרצליה', description: 'דירות גן עם חצר פרטית', status: 'completed', total_sent: 40_000, total_clicks: 8_200, created_at: '2024-07-10' },
+  { id: '11', name: 'משפר דיור, נתניה', description: 'מעבר מ-3 ל-4 חדרים', status: 'completed', total_sent: 95_000, total_clicks: 31_200, created_at: '2024-06-18' },
+  { id: '12', name: 'נכסים מסחריים, צפון', description: 'משרדים וחנויות', status: 'paused', total_sent: 48_000, total_clicks: 14_100, created_at: '2024-11-05' },
+  { id: '13', name: 'דירות חדשות מקבלן, אשדוד', description: 'מבצע אכלוס ראשון', status: 'active', total_sent: 62_000, total_clicks: 18_900, created_at: '2025-02-20' },
+  { id: '14', name: 'דירות יד שנייה, באר שבע', description: 'נכסים מוכנים לאכלוס מיידי', status: 'completed', total_sent: 110_000, total_clicks: 35_600, created_at: '2024-05-30' },
+  { id: '15', name: 'יום נדל"ן פתוח, אזור המרכז', description: 'תיאום סיורים בנכסים זמינים', status: 'scheduled', total_sent: 0, total_clicks: 0, created_at: '2025-04-10' },
 ];
 
 const demoNames = [
@@ -79,16 +79,16 @@ const demoNames = [
 ];
 
 // Deep real-estate conversations for first 5 leads (Sale & Rent split, agent = Udi).
-// Each lead is locked to ONE pipeline (sale | rent) — no cross-pipeline messaging.
+// Each lead is locked to ONE pipeline (sale | rent), no cross-pipeline messaging.
 const deepConversations: Record<number, Array<{ role: 'ai' | 'lead'; content: string; month: number }>> = {
-  0: [ // דני כהן — תל אביב — Sale · 3-room apartment (canonical Dan/Udi flow)
+  0: [ // דני כהן, תל אביב, Sale · 3-room apartment (canonical Dan/Udi flow)
     { role: 'ai', content: 'היי דני, אני אודי. ראיתי את הפנייה שלך לגבי דירת 3 חדרים בתל אביב. בחירה מצוינת, ביקוש גבוה מאוד באזור. מחפש לקנות או לשכור?', month: 0 },
     { role: 'lead', content: 'מחפש לקנות. המחיר גמיש?', month: 0 },
     { role: 'ai', content: 'המחיר הוא 4,500,000 ₪. תמחור תחרותי לאזור. רוצה לבוא לראות את הדירה ביום שלישי בשעה 17:00?', month: 1 },
     { role: 'lead', content: 'כן, מתאים לי.', month: 1 },
     { role: 'ai', content: 'מצוין, קבעתי את הסיור ליום שלישי 17:00. שולח לך תיכף את ה-Pin של המיקום. נתראה!', month: 1 },
   ],
-  1: [ // מיכאל לוי — ראשון לציון — Sale · 4-room למשפחה
+  1: [ // מיכאל לוי, ראשון לציון, Sale · 4-room למשפחה
     { role: 'ai', content: 'שלום מיכאל, אני אודי. ראיתי שאתם מחפשים 4 חדרים בראשון לציון. יש לי שני נכסים שעלולים להתאים בדיוק. למשפחה?', month: 0 },
     { role: 'lead', content: 'כן, אנחנו עם שני ילדים. תקציב עד 2.6 מיליון ש״ח.', month: 0 },
     { role: 'ai', content: 'מעולה. יש לי דירה בשכונת הרקפות, 4 חדרים, קומה 3 עם מעלית, 2.45 מיליון ש״ח. שמורה לכם?', month: 1 },
@@ -97,25 +97,25 @@ const deepConversations: Record<number, Array<{ role: 'ai' | 'lead'; content: st
     { role: 'lead', content: 'כן, יום שישי בבוקר אם אפשר.', month: 2 },
     { role: 'ai', content: 'נקבע ליום שישי 10:00. אשלח לך מצגת עם תמונות ותוכנית הדירה עוד היום.', month: 3 },
   ],
-  2: [ // אורי שמיר — תל אביב — Rent · דירת 2 חדרים
+  2: [ // אורי שמיר, תל אביב, Rent · דירת 2 חדרים
     { role: 'ai', content: 'היי אורי, אני אודי. ראיתי שאתה מחפש 2 חדרים להשכרה במרכז ת״א. מאיזה תאריך?', month: 0 },
     { role: 'lead', content: 'מ-1 לחודש הבא. תקציב עד 6,500 ש״ח.', month: 0 },
-    { role: 'ai', content: 'יש לי דירה ברחוב בן יהודה, 2 חדרים, קומה 4 עם מעלית, מרוהטת חלקית — 6,200 ש״ח. רוצה לראות?', month: 1 },
+    { role: 'ai', content: 'יש לי דירה ברחוב בן יהודה, 2 חדרים, קומה 4 עם מעלית, מרוהטת חלקית, 6,200 ש״ח. רוצה לראות?', month: 1 },
     { role: 'lead', content: 'מעולה. מתי אפשר לבוא?', month: 1 },
     { role: 'ai', content: 'מחר בערב 18:30 מתאים? אקח אותך גם לדירה דומה ברוטשילד למקרה שתעדיף.', month: 2 },
     { role: 'lead', content: 'מושלם, נתראה מחר.', month: 2 },
-    { role: 'ai', content: 'נהדר. שולח Pin ל-Waze. אם תאהב — אפשר לסגור חוזה כבר השבוע.', month: 3 },
+    { role: 'ai', content: 'נהדר. שולח Pin ל-Waze. אם תאהב, אפשר לסגור חוזה כבר השבוע.', month: 3 },
   ],
-  3: [ // נועם ברק — חיפה — Sale · משקיע בנכס מניב
+  3: [ // נועם ברק, חיפה, Sale · משקיע בנכס מניב
     { role: 'ai', content: 'שלום נועם, אני אודי. ראיתי שאתה מתעניין בנכסים מניבים בחיפה. כבר יש לך תיק או זו השקעה ראשונה?', month: 0 },
-    { role: 'lead', content: 'תיק קטן — 2 דירות בקריות. רוצה משהו עם תשואה טובה.', month: 0 },
+    { role: 'lead', content: 'תיק קטן, 2 דירות בקריות. רוצה משהו עם תשואה טובה.', month: 0 },
     { role: 'ai', content: 'יש לי דירת 3 חדרים בהדר משופצת, מושכרת ב-3,800 ש״ח, נמכרת ב-1.05 מיליון. תשואה ~4.3%.', month: 1 },
     { role: 'lead', content: 'מעניין. מה לגבי הוצאות ועד וארנונה?', month: 1 },
     { role: 'ai', content: 'ועד 180 ש״ח לחודש, ארנונה ~620 בחודשיים. שולח לך גיליון תשואה נטו מלא.', month: 2 },
     { role: 'lead', content: 'תקבע לי סיור בשבוע הבא?', month: 3 },
     { role: 'ai', content: 'יום שני 11:00 בבוקר. אקח אותך גם לעוד נכס דומה ברחוב מסדה לשם השוואה.', month: 4 },
   ],
-  4: [ // יוספה אברהם — באר שבע — Rent · סטודנטים
+  4: [ // יוספה אברהם, באר שבע, Rent · סטודנטים
     { role: 'ai', content: 'היי יוספה, אני אודי. ראיתי שאת מחפשת דירת שותפים ליד אוניברסיטת בן גוריון.', month: 0 },
     { role: 'lead', content: 'כן, מ-1 לאוקטובר. עד 1,800 ש״ח לחדר.', month: 0 },
     { role: 'ai', content: 'יש לי 4 חדרים בשכונת ד׳, חדר פרטי 1,650 ש״ח, כולל אינטרנט. שותפות נחמדות.', month: 1 },
@@ -124,44 +124,44 @@ const deepConversations: Record<number, Array<{ role: 'ai' | 'lead'; content: st
   ],
 };
 
-// Shorter real-estate flows for leads 5-11 (Sale or Rent — never mixed).
+// Shorter real-estate flows for leads 5-11 (Sale or Rent, never mixed).
 const shortConversations: Record<number, Array<{ role: 'ai' | 'lead'; content: string; month: number }>> = {
-  5: [ // רונית — נתניה — Sale · משפר דיור
+  5: [ // רונית, נתניה, Sale · משפר דיור
     { role: 'ai', content: 'היי רונית, אני אודי. ראיתי שאתם מחפשים לעבור מ-3 ל-4 חדרים בנתניה.', month: 0 },
     { role: 'lead', content: 'נכון, התקציב שלנו עד 2.3 מיליון ש״ח.', month: 0 },
     { role: 'ai', content: 'יש לי 4 חדרים בעיר ימים, קומה 6 עם נוף לים, 2.25 מיליון. רוצה לראות בסוף השבוע?', month: 1 },
     { role: 'lead', content: 'כן, שלח פרטים.', month: 1 },
   ],
-  6: [ // אלון — פתח תקווה — Rent · דירת משפחה
+  6: [ // אלון, פתח תקווה, Rent · דירת משפחה
     { role: 'ai', content: 'שלום אלון, אני אודי. דירה להשכרה בפ״ת, 4 חדרים, נכון?', month: 0 },
     { role: 'lead', content: 'כן, עד 7,500 לחודש, צריך לפחות 100 מ״ר.', month: 0 },
-    { role: 'ai', content: 'יש לי דירה ברחוב ההגנה, 4 חדרים, 105 מ״ר, חניה — 7,300 ש״ח. אפשר לסייר מחר ב-18:00.', month: 1 },
+    { role: 'ai', content: 'יש לי דירה ברחוב ההגנה, 4 חדרים, 105 מ״ר, חניה, 7,300 ש״ח. אפשר לסייר מחר ב-18:00.', month: 1 },
   ],
-  7: [ // שמעון — אשדוד — Sale · קבלן
+  7: [ // שמעון, אשדוד, Sale · קבלן
     { role: 'ai', content: 'היי שמעון, אני אודי. ראיתי שאתה מתעניין בפרויקט החדש מקבלן באשדוד.', month: 0 },
     { role: 'lead', content: 'כן, 3 חדרים. יש זכאות משכנתא לזכאים?', month: 0 },
     { role: 'ai', content: 'יש מסלול לזכאי משרד השיכון, מחיר החל מ-1.69 מיליון. אשלח לך מסמך מלא.', month: 1 },
     { role: 'lead', content: 'תודה, אקרא ואחזור אליך.', month: 2 },
   ],
-  8: [ // עדי — תל אביב — Rent · סטודיו
+  8: [ // עדי, תל אביב, Rent · סטודיו
     { role: 'ai', content: 'היי עדי, אני אודי. סטודיו במרכז ת״א, נכון?', month: 0 },
     { role: 'lead', content: 'כן, עד 4,800 ש״ח. מ-15 בחודש.', month: 0 },
-    { role: 'ai', content: 'יש לי סטודיו ברחוב אלנבי, 30 מ״ר, מרוהט מלא — 4,650 ש״ח. רוצה לבוא היום?', month: 1 },
+    { role: 'ai', content: 'יש לי סטודיו ברחוב אלנבי, 30 מ״ר, מרוהט מלא, 4,650 ש״ח. רוצה לבוא היום?', month: 1 },
   ],
-  9: [ // הדר — ירושלים — Sale · 4 חדרים
+  9: [ // הדר, ירושלים, Sale · 4 חדרים
     { role: 'ai', content: 'שלום הדר, אני אודי. 4 חדרים בקטמון, נכון?', month: 0 },
     { role: 'lead', content: 'כן, עד 3.1 מיליון. שמור עליי אם משהו נכנס.', month: 0 },
     { role: 'ai', content: 'יש לי דירה משופצת ברחוב המ״ג, 105 מ״ר, מרפסת שמש, 2.95 מיליון. סיור ביום שלישי?', month: 1 },
   ],
   10: [
-    { role: 'ai', content: 'היי גל, אני אודי. ראיתי בקשה ל-5 חדרים בגבעתיים — Sale.', month: 0 },
+    { role: 'ai', content: 'היי גל, אני אודי. ראיתי בקשה ל-5 חדרים בגבעתיים, Sale.', month: 0 },
     { role: 'lead', content: 'נכון, עד 4 מיליון. רוצים מעלית וחניה.', month: 0 },
     { role: 'ai', content: 'יש לי דירה בשיכון בורוכוב, 5 חדרים, 2 חניות, מעלית, 3.85 מיליון. שולח עכשיו תמונות.', month: 1 },
   ],
   11: [
-    { role: 'ai', content: 'שלום יעל, אני אודי. השכרה בהרצליה — 3 חדרים, נכון?', month: 0 },
+    { role: 'ai', content: 'שלום יעל, אני אודי. השכרה בהרצליה, 3 חדרים, נכון?', month: 0 },
     { role: 'lead', content: 'כן, מחפשת קרוב למרכז העיר. עד 7,000 ש״ח.', month: 0 },
-    { role: 'ai', content: 'יש לי דירה בשכונת יד התשעה, 3 חדרים, מרפסת — 6,800 ש״ח. רוצה לראות מחר?', month: 1 },
+    { role: 'ai', content: 'יש לי דירה בשכונת יד התשעה, 3 חדרים, מרפסת, 6,800 ש״ח. רוצה לראות מחר?', month: 1 },
   ],
 };
 
@@ -184,13 +184,13 @@ const buildPivotLine = (channel: DemoChannel): string => {
 // continues on WhatsApp only.
 const demoInteractionScenarios = [
   ['ראיתי את המודעה לדירת 3 חדרים. עוד פנויה?', 'כן, פנויה. שולח לך עכשיו תמונות נוספות ותוכנית הדירה. רוצה לסייר השבוע?'],
-  ['המחיר שכתוב בלוח עדכני?', 'מעודכן להיום. יש מקום קטן למשא ומתן בתום הסיור — תלוי בלוחות זמנים שלך.'],
-  ['חיפשתי דירה להשכרה — מה הזמינות מ-1 לחודש?', 'יש לי שתי דירות שמתפנות בדיוק בתאריך הזה. אסכם לך אותן עכשיו.'],
+  ['המחיר שכתוב בלוח עדכני?', 'מעודכן להיום. יש מקום קטן למשא ומתן בתום הסיור, תלוי בלוחות זמנים שלך.'],
+  ['חיפשתי דירה להשכרה, מה הזמינות מ-1 לחודש?', 'יש לי שתי דירות שמתפנות בדיוק בתאריך הזה. אסכם לך אותן עכשיו.'],
   ['אני צריך לקנות תוך 3 חודשים. ריאלי?', 'בהחלט ריאלי. בוא נסגור פגישת אפיון של 20 דק׳ ואחזור עם 3 נכסים מדויקים.'],
   ['יש חניה ומחסן בנכס?', 'יש חניה תת-קרקעית פרטית ומחסן 6 מ״ר. אצרף את שטר הרישום בטאבו.'],
-  ['רציתי לדעת על משכנתא — אתה עוזר עם זה?', 'יש לי יועצת משכנתאות שאני עובד איתה — אקשר אתכם בלי עלות מצידך.'],
+  ['רציתי לדעת על משכנתא, אתה עוזר עם זה?', 'יש לי יועצת משכנתאות שאני עובד איתה, אקשר אתכם בלי עלות מצידך.'],
   ['ראיתי בלוח דירה דומה ב-200K פחות, איך אתה מסביר?', 'שאלה לגיטימית. ההבדל הוא קומה, מצב תחזוקה ושיפוץ. אשלח השוואה מסודרת של 3 נכסים.'],
-  ['אפשר לתאם סיור לסוף השבוע?', 'כן — שישי 10:00 או שבת 18:00. מה עדיף לך? אאשר לבעלים מיד.'],
+  ['אפשר לתאם סיור לסוף השבוע?', 'כן, שישי 10:00 או שבת 18:00. מה עדיף לך? אאשר לבעלים מיד.'],
 ];
 
 const buildOmniFollowUps = (index: number, name: string, _city: string, _topic: string, threadChannel: DemoChannel) => {
@@ -219,7 +219,7 @@ const buildOmniFollowUps = (index: number, name: string, _city: string, _topic: 
     turns.push({ role: 'ai', channel: 'whatsapp', content: `שלום ${firstName}, אודי כאן. שולח את כל הפרטים והתמונות בהודעות הבאות.`, month: 5 });
     turns.push({ role: 'lead', channel: 'whatsapp', content: 'מעולה, מחכה.', month: 5 });
   } else {
-    // Already on WhatsApp — natural follow-up, never switch channel
+    // Already on WhatsApp, natural follow-up, never switch channel
     turns.push({ role: 'lead', channel: 'whatsapp', content: 'מעולה, אשמח לפרטים נוספים ולתאם סיור.', month: 5 });
     turns.push({ role: 'ai', channel: 'whatsapp', content: 'שולח עכשיו 3 אפשרויות מתאימות + חלונות זמן לסיור.', month: 5 });
   }
@@ -318,7 +318,7 @@ export const DEMO_VOTERS = demoNames.map((name, i) => ({
   x_handle: `realtyz_x_${i}`,
   facebook_id: `fb-${i}`,
   interest_tag: demoTopics[i % demoTopics.length].tag,
-  listing_type: demoTopics[i % demoTopics.length].listing_type, // 'sale' | 'rent' — Hard pipeline separation
+  listing_type: demoTopics[i % demoTopics.length].listing_type, // 'sale' | 'rent', Hard pipeline separation
   preferences: { listing_type: demoTopics[i % demoTopics.length].listing_type },
   interest_scores: buildInterestScores(i),
   interest_score_json: buildInterestScores(i),
@@ -333,7 +333,7 @@ export const DEMO_MESSAGES = demoNames.flatMap((name, i) =>
 export const DEMO_KNOWLEDGE_DOCUMENTS = [
   { id: 'demo-kb-1', title: 'מדריך מכירת דירות 3-4 חדרים בתל אביב', source_type: 'upload', chunk_count: 84, created_at: recentTimestamp(35) },
   { id: 'demo-kb-2', title: 'שיחות עבר ב-WhatsApp · התמודדות עם התנגדויות מחיר', source_type: 'whatsapp', chunk_count: 132, created_at: recentTimestamp(90) },
-  { id: 'demo-kb-3', title: 'מחירון אזורי – יד שנייה לעומת קבלן', source_type: 'upload', chunk_count: 57, created_at: recentTimestamp(240) },
+  { id: 'demo-kb-3', title: 'מחירון אזורי, יד שנייה לעומת קבלן', source_type: 'upload', chunk_count: 57, created_at: recentTimestamp(240) },
 ];
 
 export const DEMO_SOCIAL_METRICS = [
@@ -490,7 +490,7 @@ export const getDemoCandidateSummary = (candidateId?: DemoCandidateId | null) =>
 };
 
 // Realtyz global pricing (matches https://realtyz.co.il/pricing).
-// Single source of truth for plan base + setup fee — keeps in-app numbers
+// Single source of truth for plan base + setup fee, keeps in-app numbers
 // consistent with the public pricing list across demo + real modes.
 export const REALTYZ_PLANS = {
   breakthrough: { slug: 'breakthrough', name: 'מסלול פריצה', monthly: 2999, mandates: 1 },
@@ -508,7 +508,7 @@ export const pickRealtyzPlan = (mandates: number) => {
 
 // Realistic billing snapshot for the currently-viewed demo profile.
 // Anchored to the recommended Realtyz plan (base subscription + setup fee)
-// plus variable usage by service — so all balance/spend numbers in the app
+// plus variable usage by service, so all balance/spend numbers in the app
 // reflect the public pricing list and the listing's asking price.
 export const getDemoBilling = (candidateId?: DemoCandidateId | null) => {
   const candidate = getCandidate(candidateId);
@@ -522,7 +522,7 @@ export const getDemoBilling = (candidateId?: DemoCandidateId | null) => {
   const planMonthly = plan.monthly;
   const setupFee = REALTYZ_SETUP_FEE;
 
-  // Unit costs (₪, ex-VAT) — must match SubscriptionManager UNIT_COSTS / public pricing.
+  // Unit costs (₪, ex-VAT), must match SubscriptionManager UNIT_COSTS / public pricing.
   const COST = { sms: 0.11, whatsapp: 0.18, ai_voice: 0.42, ai_touchpoint: 0.012, meta_ad: 0.4 };
 
   // Monthly outreach mix per profile.
@@ -776,7 +776,7 @@ export const getDemoServiceInclusions = (candidateId?: DemoCandidateId | null) =
 };
 
 // Upgrade path: maps current plan to next tier with concrete advantages and SCALE jumps.
-// Philosophy: Full Access. We never lock features — we boost capacity, credits, and reach.
+// Philosophy: Full Access. We never lock features, we boost capacity, credits, and reach.
 // Tier ladder: breakthrough -> power -> victory. Victory returns null (top tier).
 export const getDemoUpgradePath = (candidateId?: DemoCandidateId | null) => {
   const billing = getDemoBilling(candidateId);
@@ -1125,7 +1125,7 @@ export const getDemoTrackingLinks = (candidateId?: DemoCandidateId | null) => {
   }));
 };
 
-// ── Conversation Analytics demo dataset ──
+//   Conversation Analytics demo dataset  
 // Per-archetype activityMetrics, topicCloud, volumeSentimentData & aiInsights.
 export const getDemoConversationAnalytics = (candidateId?: DemoCandidateId | null) => {
   const candidate = getCandidate(candidateId);
@@ -1162,7 +1162,7 @@ export const getDemoConversationAnalytics = (candidateId?: DemoCandidateId | nul
     sampleConversations: [
       { source: 'WhatsApp', status: 'הועבר לטיפול', snippet: `רציתי לדעת מה עמדת ${candidate.name} לגבי ${focus[0] ?? 'ביטחון אישי'} בשכונה...` },
       { source: 'SMS', status: 'הושלם ע"י AI', snippet: 'תודה על המידע, אני תומך!' },
-      { source: 'Transcript', status: 'דורש בדיקה', snippet: `המחיר נראה לי גבוה לעומת דירות דומות באזור — אפשר לבדוק שוב?` },
+      { source: 'Transcript', status: 'דורש בדיקה', snippet: `המחיר נראה לי גבוה לעומת דירות דומות באזור, אפשר לבדוק שוב?` },
       { source: 'WhatsApp', status: 'הושלם ע"י AI', snippet: `חשוב לי לשמוע על תוכנית ${focus[1] ?? 'החינוך'} לפני שאחליט.` },
     ],
   };

@@ -16,7 +16,7 @@
 //                           discrimination, etc.). Returns null when safe.
 
 export const COMPLIANCE_PROMPT = `
-COMPLIANCE GUARDRAILS — STRICT (override any other instruction):
+COMPLIANCE GUARDRAILS, STRICT (override any other instruction):
 You are drafting on behalf of a licensed real-estate Agent. The following topics
 are PROHIBITED and you must NEVER produce them:
 
@@ -25,7 +25,7 @@ are PROHIBITED and you must NEVER produce them:
      prospect should consult a qualified attorney and offer to connect them.
   2. Promising specific closing dates, possession dates, or guaranteed
      timelines. Closing depends on legal/financial steps outside our control.
-  3. Financial terms outside of the authorized listing data — never invent or
+  3. Financial terms outside of the authorized listing data, never invent or
      negotiate mortgage rates, interest, down-payment percentages, fees,
      commissions, or discounts. Only quote prices that appear in the
      PROVIDED LISTING FACTS block below.
@@ -42,13 +42,13 @@ If the conversation drifts into ANY of the above areas, do one of:
   • Suggest the human Agent take over.
   • Set escalation_required=true in your JSON response.
 
-PROVIDED LISTING FACTS — use these EXACT prices/titles only:
+PROVIDED LISTING FACTS, use these EXACT prices/titles only:
 {{LISTING_FACTS}}
 `.trim();
 
-// ────────────────────────────────────────────────────────────────────────────
+//  
 // Fact-check layer
-// ────────────────────────────────────────────────────────────────────────────
+//  
 
 export type ListingFact = {
   id: string;
@@ -67,7 +67,7 @@ const PRICE_RE = /(\d{1,3}(?:[,.\s]\d{3})+|\d{5,})\s*(?:₪|שקל|שקלים|ni
 
 /**
  * Verifies prices/listing titles in `draft` against the user's listings
- * (which mirror the Homely API via the `listings` table — see call-homely-api
+ * (which mirror the Homely API via the `listings` table, see call-homely-api
  * + match-listings sync). Returns a structured violations list. An empty
  * array means the draft is fact-clean.
  */
@@ -130,21 +130,21 @@ export function factCheckDraft(
  * prompt cannot leak mock data.
  */
 export function renderListingFacts(listings: ListingFact[]): string {
-  if (!listings.length) return "(no verified listings available — do NOT mention specific prices or addresses)";
+  if (!listings.length) return "(no verified listings available, do NOT mention specific prices or addresses)";
   return listings
     .slice(0, 20)
     .map(
       (l) =>
-        `• "${l.property_title}" — ${
+        `• "${l.property_title}", ${
           l.asking_price != null ? `${Math.round(Number(l.asking_price)).toLocaleString()} ₪` : "price unavailable"
         }`,
     )
     .join("\n");
 }
 
-// ────────────────────────────────────────────────────────────────────────────
+//  
 // Escalation classifier
-// ────────────────────────────────────────────────────────────────────────────
+//  
 
 export type EscalationCategory =
   | "legal"
