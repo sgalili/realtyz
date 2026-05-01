@@ -279,12 +279,50 @@ export function StrategicGrowthSlider() {
               </button>
             </div>
 
-            <p
-              key={`req-${projected}`}
-              className="animate-fade-in text-[13px] font-semibold tabular-nums text-primary/70"
-            >
-              דרושים ~<span className="font-bold text-primary">{formatNumber(reachFor(projected))}</span> {audienceLabel}
-            </p>
+            {(() => {
+              // Pipeline Health: how many active prospects are needed for the
+              // chosen target, vs how many are actually in the pipeline now.
+              const prospectsNeeded = Math.max(1, projected * ACTIVE_PROSPECTS_PER_DEAL);
+              const activeProspects = isDemoMode
+                ? Math.round(prospectsNeeded * 0.42) // lively demo fill
+                : activeProspectsLive;
+              const pct = Math.min(100, Math.round((activeProspects / prospectsNeeded) * 100));
+              const encouragement =
+                pct >= 100
+                  ? 'הפייפליין שלך מוכן ליעד 🎯'
+                  : pct >= 66
+                    ? 'כמעט שם — המשך לטפח פרוספקטים'
+                    : pct >= 33
+                      ? 'בדרך הנכונה — הוסף עוד פרוספקטים איכותיים'
+                      : 'בוא נמלא את הפייפליין יחד';
+              return (
+                <div
+                  key={`pipeline-${projected}`}
+                  className="mt-1 flex w-full max-w-[420px] animate-fade-in flex-col items-center gap-1.5"
+                >
+                  <div className="flex items-center gap-1.5 text-[12px] font-medium text-primary/75">
+                    <Activity className="h-3 w-3" />
+                    <span>בריאות הפייפליין</span>
+                    <span className="text-primary/40">·</span>
+                    <span className="tabular-nums">
+                      עסקה ≈ <span className="font-bold text-primary">{ACTIVE_PROSPECTS_PER_DEAL}</span> פרוספקטים פעילים
+                    </span>
+                  </div>
+                  <Progress
+                    value={pct}
+                    className="h-1.5 w-full transition-all duration-500"
+                    aria-label="התקדמות פייפליין"
+                  />
+                  <p className="text-[11px] tabular-nums text-muted-foreground">
+                    <span className="font-semibold text-primary">{formatNumber(activeProspects)}</span>
+                    {' / '}
+                    <span>{formatNumber(prospectsNeeded)}</span> פרוספקטים בפייפליין
+                    <span className="text-primary/40"> · </span>
+                    <span className="text-primary/80">{encouragement}</span>
+                  </p>
+                </div>
+              );
+            })()}
           </div>
         </div>
         {/* === /SELECTOR PANEL === */}
