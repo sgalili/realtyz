@@ -351,10 +351,40 @@ export default function DealRoom() {
             Pipeline view of every Prospect — drag intent into action.
           </p>
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
           <Badge variant="secondary" className="text-sm">
             {leads?.length ?? 0} Prospects
           </Badge>
+          <Button
+            variant={sortMode === 'priority' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setSortMode((m) => (m === 'priority' ? 'recent' : 'priority'))}
+            className="gap-1.5 h-11"
+            title="Sort by Predictive Prospect Score"
+          >
+            {sortMode === 'priority' ? (
+              <Flame className="h-4 w-4" />
+            ) : (
+              <ArrowDownUp className="h-4 w-4" />
+            )}
+            <span className="hidden sm:inline">
+              {sortMode === 'priority' ? 'Sorted by Priority' : 'Sort by Priority'}
+            </span>
+            <span className="sm:hidden">
+              {sortMode === 'priority' ? 'Priority' : 'Sort'}
+            </span>
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={recomputeAllScores}
+            disabled={recomputing}
+            className="gap-1.5 h-11"
+            title="Recompute all prospect scores"
+          >
+            <RefreshCw className={cn('h-4 w-4', recomputing && 'animate-spin')} />
+            <span className="hidden md:inline">Recompute scores</span>
+          </Button>
           <Button
             onClick={() => {
               setOutreachProspectId(null);
@@ -415,8 +445,16 @@ export default function DealRoom() {
                           className="h-10 w-10 shrink-0"
                         />
                         <div className="min-w-0 flex-1">
-                          <div className="font-medium text-sm truncate">
-                            {p.full_name || 'Unnamed Prospect'}
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="font-medium text-sm truncate min-w-0 flex-1">
+                              {p.full_name || 'Unnamed Prospect'}
+                            </div>
+                            <PriorityScoreBadge
+                              score={p.priority_score ?? 0}
+                              components={p.priority_score_components}
+                              previousScore={p.previous_priority_score ?? undefined}
+                              className="shrink-0"
+                            />
                           </div>
                           <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
                             <Clock className="h-3 w-3" />
