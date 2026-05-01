@@ -103,6 +103,8 @@ function timeAgo(iso: string | null): string {
 export default function DealRoom() {
   const queryClient = useQueryClient();
   const [activeProspect, setActiveProspect] = useState<Lead | null>(null);
+  const [outreachProspectId, setOutreachProspectId] = useState<string | null>(null);
+  const [outreachOpen, setOutreachOpen] = useState(false);
   const [smartReply, setSmartReply] = useState<string>('');
   const [generating, setGenerating] = useState(false);
 
