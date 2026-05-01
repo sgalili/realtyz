@@ -6,7 +6,7 @@ import { AppSidebar } from '@/components/AppSidebar';
 import { Search, Bot, User, LayoutDashboard, Radio, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, CornerDownLeft, Menu } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
-import { DemoModeToggle } from '@/components/dashboard/DemoModeToggle';
+
 import { MandateSelector } from '@/components/dashboard/MandateSelector';
 import { MagicMandateSelector } from '@/components/dashboard/MagicMandateSelector';
 import { MandateSelectorMount } from '@/components/MandateSelectorMount';
@@ -615,9 +615,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <SidebarTrigger className="kalpiz-title-menu-button text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground [&_svg]:!h-7 [&_svg]:!w-7" aria-label="פתח תפריט">
               <Menu className="h-7 w-7" />
             </SidebarTrigger>
-            <div className="kalpiz-title-demo-cluster">
-              <DemoModeToggle />
-            </div>
             {children}
             <HeroWaveMount />
             <MandateSelectorMount />
