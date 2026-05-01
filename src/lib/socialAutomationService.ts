@@ -194,7 +194,7 @@ export const SocialAutomationService = {
       method,
       // Real QR request token: nonce per-call, includes platform + expiry.
       qrPayload: method === 'qr'
-        ? `kalpiz://link?platform=${platform}&sid=${sessionId}&n=${crypto.randomUUID()}&exp=${Date.now() + 90_000}`
+        ? `realtyz://link?platform=${platform}&sid=${sessionId}&n=${crypto.randomUUID()}&exp=${Date.now() + 90_000}`
         : undefined,
       otpTarget: method === 'otp' ? '••• ••• 1841' : undefined,
       expiresAt: Date.now() + 90_000,

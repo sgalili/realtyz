@@ -54,7 +54,7 @@ export function ComplianceReport({ data }: { data?: ReportData }) {
       lines.push('=== אישור תאימות ===');
       lines.push('כל הנתונים מאוחסנים בהתאם לתקנות הגנת הפרטיות');
       lines.push('גישה לנתונים מוגנת באמצעות Row-Level Security');
-      lines.push(`חתימת דוח: KALPIZ-${Date.now().toString(36).toUpperCase()}`);
+      lines.push(`חתימת דוח: REALTYZ-${Date.now().toString(36).toUpperCase()}`);
 
       // Add BOM for Excel Hebrew support
       const BOM = '\uFEFF';

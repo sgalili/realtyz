@@ -83,7 +83,7 @@ export async function createStrategicPdf(data: StrategicPdfData) {
   ctx.fillStyle = navy;
   ctx.font = `900 150px ${font}`;
   ctx.textAlign = 'center';
-  ctx.fillText('KALPIZ AI', 0, 0);
+  ctx.fillText('REALTYZ AI', 0, 0);
   ctx.restore();
 
   // ===== HEADER =====
@@ -94,7 +94,7 @@ export async function createStrategicPdf(data: StrategicPdfData) {
   rtl(data.name ? `הוכן עבור ${data.name}` : 'מסמך ייעוץ אסטרטגי', 1160, 138, 26, silver, 700);
   rtl(date, 1160, 172, 20, '#94a3b8', 600);
   // Left side - Realtyz brand (LTR)
-  ltr('KALPIZ', 80, 92, 38, '#ffffff', 900);
+  ltr('REALTYZ', 80, 92, 38, '#ffffff', 900);
   ltr('AI Strategy Engine', 80, 132, 18, '#94a3b8', 600);
 
   // Accent line

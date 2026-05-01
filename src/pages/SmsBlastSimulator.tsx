@@ -169,7 +169,7 @@ export default function SmsBlastSimulator() {
     whatsapp: false, sms: true, email: false, voice: false, ivr: false,
     linkedin: false, instagram: false, tiktok: false, telegram: false,
   });
-  // Connected account labels (e.g. "kalpizai@gmail.com") shown under the channel name on each card.
+  // Connected account labels (e.g. "realtyzai@gmail.com") shown under the channel name on each card.
   const [connectedAccounts, setConnectedAccounts] = useState<Partial<Record<ChannelId, string>>>({});
   const refreshConnectionStatus = useCallback(async () => {
     try {
