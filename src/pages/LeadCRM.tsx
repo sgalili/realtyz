@@ -340,22 +340,18 @@ const LeadCRM = () => {
     if (!leads) return leads;
     if (profileFilter === 'all') return leads;
     return leads.filter((v) => {
-      // Compute profile badge inline (mirror getPoliticalProfile logic)
-      const eng = v.engagement_score ?? 0;
-      const sentKey = eng >= 60 ? 'positive' : eng >= 30 ? 'neutral' : 'negative';
+      // Mirror getPoliticalProfile (real-estate lead stage)
       const status = v.status;
-      const loyaltyTier =
-        status === 'supporter' || status === 'voted' ? 'high'
-        : status === 'active' ? 'med'
-        : status === 'inactive' ? 'rival'
-        : 'low';
-      let badge = '';
-      if (sentKey === 'negative' && loyaltyTier === 'rival') badge = 'מתנגד';
-      else if (sentKey === 'negative' && eng >= 60) badge = 'מתנגד פעיל';
-      else if (sentKey === 'negative') badge = 'מתנגד';
-      else if (sentKey === 'neutral') badge = 'מתלבט';
-      else if (sentKey === 'positive' && loyaltyTier === 'high') badge = 'תומך ליבה';
-      else badge = 'תומך פוטנציאלי';
+      const tier =
+        status === 'closed' || status === 'supporter' || status === 'voted' ? 'closed'
+        : status === 'negotiation' ? 'negotiation'
+        : status === 'qualified' || status === 'active' ? 'qualified'
+        : 'cold';
+      const badge =
+        tier === 'closed' ? 'נסגר'
+        : tier === 'negotiation' ? 'במשא ומתן'
+        : tier === 'qualified' ? 'ליד מוסמך'
+        : 'ליד קר';
       return badge === profileFilter;
     });
   }, [leads, profileFilter]);
