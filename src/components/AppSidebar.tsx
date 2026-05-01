@@ -62,7 +62,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { LiveActivityFeed } from '@/components/dashboard/LiveActivityFeed';
 import { StrategicPdfExportButton } from '@/components/dashboard/StrategicPdfExportButton';
-import { StartTrialCta } from '@/components/StartTrialCta';
+
 import { SidebarIntelInput } from '@/components/SidebarIntelInput';
 
 type NavItem = {
@@ -244,13 +244,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     <>
     <Sidebar collapsible="offcanvas" className="realtyz-premium-sidebar border-l border-r-0 border-sidebar-border" side="right">
       <SidebarContent className="realtyz-sidebar-menu pt-2">
-        {isDemoMode && (
-          <SidebarGroup>
-            <SidebarGroupContent className="px-3 pb-2">
-              <StartTrialCta collapsed={collapsed} />
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
+        {/* Free-trial CTA removed from sidebar per UX cleanup. */}
         <SidebarGroup>
           <SidebarGroupContent className="px-3 pb-2">
             <StrategicPdfExportButton compact={collapsed} className={collapsed ? 'mx-auto' : ''} />
