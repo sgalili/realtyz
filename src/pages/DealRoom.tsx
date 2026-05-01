@@ -48,6 +48,14 @@ import { CallHistoryList } from '@/components/dealroom/CallHistoryList';
 import { PriorityScoreBadge } from '@/components/dealroom/PriorityScoreBadge';
 import { DealRoomComments } from '@/components/dealroom/DealRoomComments';
 import { ClosingRoomDialog } from '@/components/dealroom/ClosingRoomDialog';
+import { useUserRole } from '@/hooks/useUserRole';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type LeadStage = 'new_prospect' | 'listing_outreach' | 'negotiation' | 'awaiting_signature' | 'closed';
 
@@ -70,6 +78,7 @@ type Lead = {
   priority_score?: number | null;
   priority_score_components?: ScoreComponents | null;
   previous_priority_score?: number | null;
+  assigned_to?: string | null;
 };
 
 type SortMode = 'recent' | 'priority';
@@ -164,6 +173,40 @@ export default function DealRoom() {
   // so the agent sees the property card pinned to the chat preview.
   const [pinnedProperty, setPinnedProperty] = useState<PropertyResult | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('recent');
+  const { canAssignProspects, isJuniorOnly } = useUserRole();
+
+  // Team members available for delegation (Assign To dropdown).
+  const { data: teamMembers = [] } = useQuery({
+    queryKey: ['deal-room-team-members'],
+    enabled: canAssignProspects,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('user_roles')
+        .select('user_id, role')
+        .in('role', ['managing_broker', 'lead_agent', 'agent', 'assistant', 'junior_agent']);
+      // Deduplicate by user_id (a user can hold several roles).
+      const seen = new Set<string>();
+      return (data || []).filter((r) => {
+        if (seen.has(r.user_id)) return false;
+        seen.add(r.user_id);
+        return true;
+      }) as Array<{ user_id: string; role: string }>;
+    },
+    staleTime: 60_000,
+  });
+
+  async function assignProspect(leadId: string, userId: string | null) {
+    const { error } = await supabase
+      .from('leads')
+      .update({ assigned_to: userId })
+      .eq('id', leadId);
+    if (error) {
+      toast.error('Could not delegate prospect', { description: error.message });
+      return;
+    }
+    toast.success(userId ? 'Prospect delegated' : 'Assignment cleared');
+    queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
+  }
   const [recomputing, setRecomputing] = useState(false);
 
   const { data: leads, isLoading } = useQuery({
@@ -171,7 +214,7 @@ export default function DealRoom() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')
-        .select('id, full_name, phone_number, lead_stage, last_interaction_at, profile_picture_url, city, interest_tag, priority_score, priority_score_components, previous_priority_score')
+        .select('id, full_name, phone_number, lead_stage, last_interaction_at, profile_picture_url, city, interest_tag, priority_score, priority_score_components, previous_priority_score, assigned_to')
         .eq('is_demo', false)
         .order('last_interaction_at', { ascending: false, nullsFirst: false })
         .limit(500);
@@ -512,6 +555,29 @@ export default function DealRoom() {
                           Outreach
                         </Button>
                       </div>
+                      {canAssignProspects && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <span className="text-[11px] text-muted-foreground shrink-0">Assign to</span>
+                          <Select
+                            value={p.assigned_to ?? '__unassigned__'}
+                            onValueChange={(v) =>
+                              assignProspect(p.id, v === '__unassigned__' ? null : v)
+                            }
+                          >
+                            <SelectTrigger className="h-7 text-[11px]">
+                              <SelectValue placeholder="Unassigned" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="__unassigned__">Unassigned</SelectItem>
+                              {teamMembers.map((m) => (
+                                <SelectItem key={m.user_id} value={m.user_id}>
+                                  {m.user_id.slice(0, 8)}… · {m.role.replace('_', ' ')}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                     </Card>
                   ))}
                 </div>

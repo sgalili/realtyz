@@ -25,18 +25,24 @@ import {
 import { UserPlus, Shield, Trash2, Users } from 'lucide-react';
 import { toast } from 'sonner';
 
-type TeamRole = Extract<AppRole, 'agent' | 'assistant' | 'junior_agent'>;
+type TeamRole = Extract<AppRole, 'managing_broker' | 'lead_agent' | 'assistant' | 'junior_agent'>;
 
 const ROLE_LABEL: Record<TeamRole, string> = {
-  agent: 'Agent',
+  managing_broker: 'Managing Broker',
+  lead_agent: 'Lead Agent',
   assistant: 'Assistant',
   junior_agent: 'Junior Agent',
 };
 
 const ROLE_DESCRIPTION: Record<TeamRole, string> = {
-  agent: 'Full authority — can approve contracts and close deals.',
-  assistant: 'Supports the agent — can manage tasks and data ingestion. Cannot close deals.',
-  junior_agent: 'Learning role — can manage tasks and data ingestion. Cannot close deals.',
+  managing_broker:
+    'Full authority — settings, billing, team management, and contracts. The owner of the agency.',
+  lead_agent:
+    'Owns deals end-to-end — Deal Room, Strategy Bank, Listing Outreach, and the Closing Room. No billing or team-billing access.',
+  assistant:
+    'Supports the agents — Strategy Bank data entry and Deal Room task management. Cannot delete prospects or open the Closing Room.',
+  junior_agent:
+    'Learning role — restricted to their own assigned prospects in the Deal Room.',
 };
 
 type Invitation = {
@@ -58,7 +64,7 @@ export default function Team() {
   const { canInviteTeam, loading } = useUserRole();
   const queryClient = useQueryClient();
   const [email, setEmail] = useState('');
-  const [role, setRole] = useState<TeamRole>('assistant');
+  const [role, setRole] = useState<TeamRole>('lead_agent');
   const [inviting, setInviting] = useState(false);
 
   const { data: invitations = [] } = useQuery({
@@ -81,7 +87,7 @@ export default function Team() {
       const { data, error } = await supabase
         .from('user_roles')
         .select('user_id, role')
-        .in('role', ['agent', 'assistant', 'junior_agent']);
+        .in('role', ['managing_broker', 'lead_agent', 'agent', 'assistant', 'junior_agent']);
       if (error) throw error;
       return (data || []) as Member[];
     },
@@ -189,7 +195,8 @@ export default function Team() {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="agent">Agent</SelectItem>
+              <SelectItem value="managing_broker">Managing Broker</SelectItem>
+              <SelectItem value="lead_agent">Lead Agent</SelectItem>
               <SelectItem value="assistant">Assistant</SelectItem>
               <SelectItem value="junior_agent">Junior Agent</SelectItem>
             </SelectContent>
@@ -278,11 +285,12 @@ export default function Team() {
 
       <Card className="p-5 bg-muted/30">
         <h2 className="font-medium mb-2 text-sm">Permission matrix</h2>
-        <div className="text-xs text-muted-foreground space-y-1">
-          <p>• <strong>Agent</strong> — close deals, approve contract changes, manage data &amp; tasks.</p>
-          <p>• <strong>Assistant</strong> — manage tasks &amp; data ingestion. Cannot close deals.</p>
-          <p>• <strong>Junior Agent</strong> — manage tasks &amp; data ingestion. Cannot close deals.</p>
-          <p>• All team members can read &amp; post internal Deal Room comments.</p>
+        <div className="text-xs text-muted-foreground space-y-1.5">
+          <p>• <strong>Managing Broker</strong> — full access to settings, billing, team management, and contracts.</p>
+          <p>• <strong>Lead Agent</strong> — Deal Room, Strategy Bank, Listing Outreach, and the Closing Room. No billing or team management.</p>
+          <p>• <strong>Assistant</strong> — Strategy Bank data entry and Deal Room task management. Cannot delete prospects or open the Closing Room.</p>
+          <p>• <strong>Junior Agent</strong> — restricted to their own assigned prospects in the Deal Room only.</p>
+          <p>• All team members can read &amp; post internal Deal Room comments. Every stage change and re-assignment is captured in the audit log.</p>
         </div>
       </Card>
     </div>

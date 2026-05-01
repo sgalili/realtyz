@@ -8,6 +8,8 @@ export type AppRole =
   | 'moderator'
   | 'user'
   | 'super_admin'
+  | 'managing_broker'
+  | 'lead_agent'
   | 'agent'
   | 'assistant'
   | 'junior_agent';
@@ -47,32 +49,55 @@ export function useUserRole() {
   const isAdmin = roles.includes('admin') || isSuperAdmin;
   const isModerator = roles.includes('moderator') || isAdmin;
 
-  // --- Team collaboration roles ---
-  const isAgent = roles.includes('agent') || isAdmin;
+  // --- Real-estate team roles ---
+  const isManagingBroker = roles.includes('managing_broker') || isAdmin;
+  const isLeadAgent = roles.includes('lead_agent') || isManagingBroker;
+  const isAgent = roles.includes('agent') || isLeadAgent;
   const isAssistant = roles.includes('assistant');
   const isJuniorAgent = roles.includes('junior_agent');
-  const isTeamMember = isAgent || isAssistant || isJuniorAgent || isAdmin;
+  const isTeamMember =
+    isManagingBroker || isLeadAgent || isAgent || isAssistant || isJuniorAgent || isAdmin;
 
-  // --- Permissions ---
-  // Only Agents (and Admin/Super Admin) can close deals or approve contract changes.
+  // True only when junior_agent is the user's *highest* role.
+  // Used for Junior-Agent UI restrictions (own-prospects-only view).
+  const isJuniorOnly =
+    isJuniorAgent && !isAssistant && !isAgent && !isLeadAgent && !isManagingBroker && !isAdmin;
+
+  // --- Permissions (mirror DB helpers in supabase migrations) ---
+  // Close deals: Managing Broker, Lead Agent, Agent, Admin, Super Admin.
   const canCloseDeals = isAgent;
-  // Assistants and Junior Agents handle data ingestion + tasks.
+  // Closing Room (contracts): same set as can-close (Assistant + Junior blocked).
+  const canUseClosingRoom = isAgent;
+  // Delete prospects: Managing Broker, Lead Agent, Agent, Admin, Super Admin.
+  const canDeleteProspects = isAgent;
+  // Strategy Bank + Deal Room data ingestion: any team member.
   const canManageData = isTeamMember;
-  // Only the workspace owner / admin can invite teammates.
-  const canInviteTeam = isAdmin;
+  // Billing & subscription: Managing Broker / Admin only.
+  const canAccessBilling = isManagingBroker;
+  // Invite teammates / change roles: Managing Broker / Admin only.
+  const canInviteTeam = isManagingBroker;
+  // Delegate prospects (Assign To): Managing Broker or Lead Agent.
+  const canAssignProspects = isLeadAgent;
 
   return {
     roles,
     isAdmin,
     isSuperAdmin,
     isModerator,
+    isManagingBroker,
+    isLeadAgent,
     isAgent,
     isAssistant,
     isJuniorAgent,
+    isJuniorOnly,
     isTeamMember,
     canCloseDeals,
+    canUseClosingRoom,
+    canDeleteProspects,
     canManageData,
+    canAccessBilling,
     canInviteTeam,
+    canAssignProspects,
     loading: isLoading,
   };
 }

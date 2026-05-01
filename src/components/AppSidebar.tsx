@@ -105,8 +105,8 @@ const NAV_GROUPS: NavGroup[] = [
       { title: 'ניתוח שיחות', url: '/conversation-analytics', icon: BarChart3, iconColor: 'text-primary-glow' },
       { title: 'Performance Insights', url: '/insights', icon: Gauge, iconColor: 'text-warning' },
       { title: 'יומן פעילות', url: '/activity-log', icon: History, iconColor: 'text-social-telegram' },
-      { title: 'ניהול חבילה', url: '/subscription', icon: Crown, iconColor: 'text-warning' },
-      { title: 'חיובים וחשבוניות', url: '/finance', icon: Wallet, iconColor: 'text-primary' },
+      { title: 'ניהול חבילה', url: '/subscription', icon: Crown, iconColor: 'text-warning', requires: 'managing_broker' },
+      { title: 'חיובים וחשבוניות', url: '/finance', icon: Wallet, iconColor: 'text-primary', requires: 'managing_broker' },
     ],
   },
   {
@@ -123,7 +123,7 @@ const NAV_GROUPS: NavGroup[] = [
       { title: 'הגדרות API ותשתיות', url: '/api-settings', icon: Cpu, iconColor: 'text-primary', requires: 'super_admin' },
       { title: 'אבטחה', url: '/security', icon: Shield, iconColor: 'text-destructive', requires: 'admin' },
       { title: 'פרטיות וציות', url: '/privacy', icon: ShieldCheck, iconColor: 'text-primary' },
-      { title: 'ניהול צוות', url: '/team', icon: Users, iconColor: 'text-primary', requires: 'admin' },
+      { title: 'ניהול צוות', url: '/team', icon: Users, iconColor: 'text-primary', requires: 'managing_broker' },
       { title: 'פניות נכנסות', url: '/leads', icon: Inbox, iconColor: 'text-social-telegram', requires: 'admin' },
     ],
   },
@@ -150,7 +150,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const collapsed = state === 'collapsed';
   const location = useLocation();
   const { signOut, user } = useAuth();
-  const { isAdmin, isSuperAdmin, loading: rolesLoading } = useUserRole();
+  const { isAdmin, isSuperAdmin, isManagingBroker, loading: rolesLoading } = useUserRole();
   const { isDemoMode, demoCandidateId } = useDemoMode();
   const [logoutOpen, setLogoutOpen] = useState(false);
 
@@ -223,6 +223,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     if (!item.requires) return true;
     if (item.requires === 'super_admin') return isSuperAdmin;
     if (item.requires === 'admin') return isAdmin;
+    if (item.requires === 'managing_broker') return isManagingBroker;
     return true;
   };
 
