@@ -89,6 +89,111 @@ export async function loadAgentPersona(
 export type DealType = 'sale' | 'rent';
 
 /**
+ * Hat-Swapping: dynamic stage-based persona overlay for the unified Udi-Bot.
+ * The same Agent persona stays in character, but the playbook focus and CTA
+ * adapt to where the Lead is in the pipeline.
+ *
+ * Stages we recognise (case-insensitive, English + Hebrew aliases):
+ *   - new          ("new", "חדש", "lead", "inbound")
+ *   - qualified    ("qualified", "מתעניין מוסמך", "matching", "matched")
+ *   - negotiation  ("negotiation", "meeting", "פגישה", "מו"מ", "offer")
+ *   - followup     ("followup", "follow_up", "follow-up", "מעקב", "nurture")
+ */
+export type LeadHat = 'qualifier' | 'matching_expert' | 'negotiator' | 'nurture_expert' | 'unknown';
+
+export function resolveLeadHat(stage: string | null | undefined): LeadHat {
+  const s = String(stage ?? '').toLowerCase().trim();
+  if (!s) return 'unknown';
+  if (/(^|\b)(new|inbound|חדש|lead)(\b|$)/.test(s)) return 'qualifier';
+  if (/(qualified|matched|matching|מוסמך|מתעניין מוסמך|hot)/.test(s)) return 'matching_expert';
+  if (/(negotiation|meeting|פגישה|מו["׳]?מ|offer|closing|won|signed)/.test(s)) return 'negotiator';
+  if (/(follow[\s_-]?up|nurture|מעקב|cold|dormant)/.test(s)) return 'nurture_expert';
+  return 'unknown';
+}
+
+export function renderStageHatBlock(stage: string | null | undefined, leadName?: string | null): string {
+  const hat = resolveLeadHat(stage);
+  const lead = leadName ? `Lead: ${leadName}\n` : '';
+  const stageLabel = stage ? `Stage (raw): ${stage}\n` : 'Stage (raw): UNKNOWN\n';
+
+  const hats: Record<LeadHat, { title: string; focus: string; do: string; dont: string; cta: string }> = {
+    qualifier: {
+      title: 'THE QUALIFIER (BANT mode)',
+      focus: 'This Lead is brand new. Your single job is to QUALIFY them using BANT: Budget, Authority, Need, Timing.',
+      do: [
+        'Open warmly in the Agent voice, then ask 1, max 2 short qualifying questions per turn.',
+        'Probe gently: תקציב משוער, מי שותף להחלטה, סוג נכס וצרכים, לוח זמנים לכניסה.',
+        'Capture answers; if Budget/Need is clear, summarise back in one line and confirm.',
+      ].join(' '),
+      dont: 'Do NOT pitch specific listings, prices, or "limited offers" yet. Do NOT push for a meeting before BANT basics are known.',
+      cta: 'CTA: a small next step (a quick call, or one more question), not a viewing.',
+    },
+    matching_expert: {
+      title: 'THE MATCHING EXPERT (consultative)',
+      focus: 'BANT is mostly known. Your job is to MATCH this Lead to the right property and act as a professional consultant.',
+      do: [
+        'Reference 1, 2 concrete listing fits from the listings table or KB (only verified facts).',
+        'Add neighbourhood vibe, transit, schools, parking realities, typical price/sqm, ONLY if grounded in KB.',
+        'Compare options briefly (pros/cons) and invite a viewing or a deeper consult.',
+      ].join(' '),
+      dont: 'Do NOT invent prices, addresses, or sold-comps. Do NOT BANT-interrogate again, you already know the basics.',
+      cta: 'CTA: propose a viewing or a focused consult call with 1, 2 time slots.',
+    },
+    negotiator: {
+      title: 'THE NEGOTIATOR / CLOSER',
+      focus: 'A meeting / offer / negotiation is in motion. Your job is to advance the deal cleanly.',
+      do: [
+        'Confirm next concrete step: meeting time, document needed, counter-offer, lawyer intro.',
+        'Reference earlier agreements verbatim if they appear in the chat history.',
+        'Stay calm, precise, professional; one clear ask per message.',
+      ].join(' '),
+      dont: 'Do NOT renegotiate already-agreed points. Do NOT add new BANT questions. Do NOT push aggressive language.',
+      cta: 'CTA: confirm the next meeting / signature / document hand-off.',
+    },
+    nurture_expert: {
+      title: 'THE NURTURE EXPERT (follow-up, no pressure)',
+      focus: 'This Lead is in long-cycle follow-up. Your job is a warm, value-first check-in.',
+      do: [
+        'Open with a short personal/contextual line (season, holiday, market note) in the Agent voice.',
+        'Add ONE concrete value-add: a relevant new listing, a market insight from the KB, or a useful tip.',
+        'Keep it short, human, and low-pressure.',
+      ].join(' '),
+      dont: 'NEVER use aggressive selling, urgency tactics ("הזדמנות אחרונה!"), discounts language, or guilt. NO sales pressure.',
+      cta: 'CTA: a soft, optional opener like "אם תרצה, אשלח לך פרטים" or "פתוח לצ\'ט קצר השבוע?".',
+    },
+    unknown: {
+      title: 'THE QUALIFIER (default, stage unknown)',
+      focus: 'Stage is not set. Default to gentle qualification while staying in character.',
+      do: 'Ask 1 short question to clarify intent (buy/rent, area, timing) before recommending anything specific.',
+      dont: 'Do NOT assume the stage. Do NOT push a viewing or pricing yet.',
+      cta: 'CTA: a single clarifying question.',
+    },
+  };
+
+  const h = hats[hat];
+  return `
+=== LEAD STAGE HAT (HIGHEST PRIORITY, OVERRIDES PRIOR PLAYBOOK) ===
+${lead}${stageLabel}Active Hat: ${h.title}
+
+FOCUS: ${h.focus}
+DO: ${h.do}
+DON'T: ${h.dont}
+${h.cta}
+
+These stage rules OVERRIDE any earlier "default playbook" instructions.
+You remain the SAME Agent (same voice, same KB, same persona), only the
+focus and CTA change to match this stage. Do NOT mention the stage label
+to the Lead, just behave accordingly.
+
+FORBIDDEN TOPICS (reinforced, override everything): politics, elections,
+parties, candidates, mandates, primaries, voting, ideology, "cost of
+living" rhetoric, national security, defence, war, foreign policy. If the
+Lead raises any of these, ignore the topic and pivot back to property and
+client needs in ONE short sentence, then continue with the hat above.
+=== END LEAD STAGE HAT ===`.trim();
+}
+
+/**
  * Render a hard-coded "current Lead" pipeline block. The AI must read this
  * BEFORE drafting and refuse to cross-suggest between Sale and Rent.
  *
