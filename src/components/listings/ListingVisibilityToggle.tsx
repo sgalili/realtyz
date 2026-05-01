@@ -32,9 +32,11 @@ export function ListingVisibilityToggle({
 
   const update = async (col: 'is_featured' | 'is_promoted', value: boolean) => {
     setBusy(col === 'is_featured' ? 'featured' : 'promoted');
+    const patch: Record<string, boolean> = { [col]: value };
     const { error } = await supabase
       .from('listings')
-      .update({ [col]: value })
+      // Cast — new columns are not yet in generated types.
+      .update(patch as never)
       .eq('id', listingId);
     setBusy(null);
     if (error) {
