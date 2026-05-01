@@ -24,6 +24,7 @@ import {
   Cpu,
   Handshake,
   Gauge,
+  Bot,
 } from 'lucide-react';
 import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
 import { useMemo, useState } from 'react';
@@ -85,6 +86,7 @@ const NAV_GROUPS: NavGroup[] = [
       { title: 'ניהול לידים', url: '/lead-crm', icon: Users, iconColor: 'text-social-facebook', aliases: ['/crm'] },
       { title: 'תיבת הודעות', url: '/inbox', icon: MessageSquare, iconColor: 'text-social-messenger' },
       { title: 'Deal Room', url: '/deal-room', icon: Handshake, iconColor: 'text-warning' },
+      { title: 'Automation Studio', url: '/automations', icon: Bot, iconColor: 'text-primary' },
     ],
   },
   {
