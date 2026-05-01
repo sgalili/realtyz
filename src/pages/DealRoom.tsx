@@ -594,18 +594,18 @@ export default function DealRoom() {
           }
         }}
       >
-        <SheetContent side="right" className="w-full sm:max-w-md flex flex-col p-4 sm:p-6 pb-[max(env(safe-area-inset-bottom),1rem)]" dir="ltr">
+        <SheetContent side="left" className="w-full sm:max-w-md flex flex-col p-4 sm:p-6 pb-[max(env(safe-area-inset-bottom),1rem)]" dir="rtl">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
-              Smart Reply
+              תשובה חכמה
             </SheetTitle>
             <SheetDescription>
-              Suggested reply for{' '}
+              תשובה מוצעת עבור{' '}
               <span className="font-medium text-foreground">
-                {activeProspect?.full_name || 'this Prospect'}
+                {activeProspect?.full_name || 'מועמד זה'}
               </span>
-              , drafted in your authentic voice from the Strategy Bank.
+              , נכתבה בקול האותנטי שלך מתוך מאגר האסטרטגיה.
             </SheetDescription>
           </SheetHeader>
 
@@ -620,12 +620,12 @@ export default function DealRoom() {
                   {genPhase === 'searching' ? (
                     <>
                       <Database className="h-4 w-4 text-primary animate-pulse" />
-                      <span>Searching Strategy Bank…</span>
+                      <span>מחפש במאגר האסטרטגיה…</span>
                     </>
                   ) : (
                     <>
                       <PenLine className="h-4 w-4 text-primary animate-pulse" />
-                      <span>Drafting reply in your voice…</span>
+                      <span>מנסח תשובה בסגנון שלך…</span>
                     </>
                   )}
                 </div>
@@ -638,15 +638,15 @@ export default function DealRoom() {
               <div className="space-y-2">
                 {escalation && (
                   <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                    🚨 Escalation Alert ({escalation.severity}) — category: <strong>{escalation.category}</strong>
-                    {escalation.matched?.length ? <> · keywords: {escalation.matched.join(', ')}</> : null}
-                    <div className="mt-0.5 text-[11px] opacity-80">A WhatsApp ping was sent to your phone. Take over manually before sending.</div>
+                    🚨 התראת הסלמה ({escalation.severity}) — קטגוריה: <strong>{escalation.category}</strong>
+                    {escalation.matched?.length ? <> · מילות מפתח: {escalation.matched.join(', ')}</> : null}
+                    <div className="mt-0.5 text-[11px] opacity-80">נשלחה התראת WhatsApp לטלפון שלך. השתלט ידנית לפני השליחה.</div>
                   </div>
                 )}
                 {factViolations.length > 0 && (
                   <div className="rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-xs">
-                    ⚠️ Fact-check failed — verify against Homely listings:
-                    <ul className="list-disc ms-4 mt-1 space-y-0.5">
+                    ⚠️ בדיקת עובדות נכשלה — אמת מול נכסי Homely:
+                    <ul className="list-disc me-4 mt-1 space-y-0.5">
                       {factViolations.map((v, i) => (<li key={i}><strong>{v.kind}:</strong> {v.value} — {v.reason}</li>))}
                     </ul>
                   </div>
@@ -654,7 +654,7 @@ export default function DealRoom() {
                 {pinnedProperty && (
                   <div className="space-y-1">
                     <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                      <Home className="h-3 w-3" /> Property Snippet
+                      <Home className="h-3 w-3" /> פרטי נכס
                     </div>
                     <PropertySnippet property={pinnedProperty} />
                   </div>
@@ -665,20 +665,20 @@ export default function DealRoom() {
                     className="gap-1.5 border-primary/30 bg-primary/5 text-primary font-normal"
                   >
                     <ShieldCheck className="h-3 w-3" />
-                    {activeSuggestionId ? 'AI Generated Suggestion — awaiting approval' : 'AI Draft — awaiting approval'}
+                    {activeSuggestionId ? 'הצעת AI — ממתינה לאישור' : 'טיוטת AI — ממתינה לאישור'}
                   </Badge>
                   {draftMode === 'editing' && (
-                    <span className="text-[11px] text-muted-foreground">Editing</span>
+                    <span className="text-[11px] text-muted-foreground">עריכה</span>
                   )}
                 </div>
                 {draftMode === 'review' ? (
                   <div
                     className="w-full rounded-md border-2 border-dashed border-primary/30 bg-primary/[0.03] p-3 text-sm leading-relaxed whitespace-pre-wrap min-h-[14rem]"
-                    aria-label="AI-generated draft reply, read-only until edited"
+                    aria-label="טיוטת AI לתשובה, לקריאה בלבד עד עריכה"
                   >
                     {smartReply || (
                       <span className="text-muted-foreground italic">
-                        Your Smart Reply will appear here…
+                        התשובה החכמה שלך תופיע כאן…
                       </span>
                     )}
                   </div>
@@ -689,11 +689,11 @@ export default function DealRoom() {
                     rows={10}
                     autoFocus
                     className="w-full rounded-md border-2 border-primary/40 bg-background p-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-                    placeholder="Edit your reply…"
+                    placeholder="ערוך את התשובה שלך…"
                   />
                 )}
                 <p className="text-[11px] text-muted-foreground leading-snug">
-                  Nothing is sent to the Prospect until you click <span className="font-medium text-foreground">Approve &amp; Send</span>.
+                  שום דבר לא נשלח למועמד עד שתלחץ <span className="font-medium text-foreground">אשר ושלח</span>.
                 </p>
               </div>
             )}
@@ -721,13 +721,13 @@ export default function DealRoom() {
               >
                 {draftMode === 'editing' ? (
                   <>
-                    <Check className="h-4 w-4 mr-1.5" />
-                    Done
+                    <Check className="h-4 w-4 ms-1.5" />
+                    סיום
                   </>
                 ) : (
                   <>
-                    <Pencil className="h-4 w-4 mr-1.5" />
-                    Edit
+                    <Pencil className="h-4 w-4 ms-1.5" />
+                    ערוך
                   </>
                 )}
               </Button>
@@ -737,8 +737,8 @@ export default function DealRoom() {
                 disabled={generating || sending}
                 onClick={() => activeProspect && openSmartReply(activeProspect)}
               >
-                <Sparkles className="h-4 w-4 mr-1.5" />
-                Regen
+                <Sparkles className="h-4 w-4 ms-1.5" />
+                צור מחדש
               </Button>
               <Button
                 variant="outline"
@@ -746,8 +746,8 @@ export default function DealRoom() {
                 disabled={generating || sending || !activeProspect}
                 onClick={() => activeProspect && setMatchmakerProspect(activeProspect)}
               >
-                <Home className="h-4 w-4 mr-1.5 text-success" />
-                Find
+                <Home className="h-4 w-4 ms-1.5 text-success" />
+                מצא
               </Button>
             </div>
             <Button
@@ -757,13 +757,13 @@ export default function DealRoom() {
             >
               {sending ? (
                 <>
-                  <Send className="h-5 w-5 mr-1.5 animate-pulse" />
-                  Sending via WhatsApp…
+                  <Send className="h-5 w-5 ms-1.5 animate-pulse" />
+                  שולח דרך WhatsApp…
                 </>
               ) : (
                 <>
-                  <Send className="h-5 w-5 mr-1.5" />
-                  Approve &amp; Send
+                  <Send className="h-5 w-5 ms-1.5" />
+                  אשר ושלח
                 </>
               )}
             </Button>
