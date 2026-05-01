@@ -132,6 +132,7 @@ const NAV_GROUPS: NavGroup[] = [
       { title: 'ניהול צוות', url: '/team', icon: Users, iconColor: 'text-primary', requires: 'managing_broker' },
       { title: 'עסקאות משותפות', url: '/shared-deals', icon: Handshake, iconColor: 'text-primary' },
       { title: 'מיתוג הסוכנות', url: '/settings/branding', icon: Palette, iconColor: 'text-primary', requires: 'managing_broker' },
+      { title: 'הגדרות פלטפורמה', url: '/settings/platform', icon: Settings, iconColor: 'text-primary', requires: 'managing_broker' },
       { title: 'פניות נכנסות', url: '/leads', icon: Inbox, iconColor: 'text-social-telegram', requires: 'admin' },
     ],
   },
