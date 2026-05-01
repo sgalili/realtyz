@@ -166,7 +166,7 @@ ${personaBlock ? personaBlock + "\n\n" : ""}${compliance}`;
     );
     const listingBlock = JSON.stringify(listing, null, 2);
 
-    const userPrompt = `PROSPECT:\n${leadBlock}\n\nLISTING:\n${listingBlock}\n\nAGENT NOTE: ${agent_note || "(none)"}\n\nDraft the outreach now.`;
+    const userPrompt = `LEAD:\n${leadBlock}\n\nLISTING:\n${listingBlock}\n\nAGENT NOTE: ${agent_note || "(none)"}\n\nDraft the outreach now.`;
 
     const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
