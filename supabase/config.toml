@@ -14,3 +14,9 @@ verify_jwt = false
 
 [functions.elevenlabs-call-webhook]
 verify_jwt = false
+
+[functions.sign-closing-doc]
+verify_jwt = false
+
+[functions.closing-doc-reminder-cron]
+verify_jwt = false

@@ -805,6 +805,75 @@ export type Database = {
           },
         ]
       }
+      closing_documents: {
+        Row: {
+          created_at: string
+          expires_at: string
+          fields: Json
+          id: string
+          lead_id: string
+          listing_id: string | null
+          pdf_path: string | null
+          reminder_sent_at: string | null
+          sent_at: string | null
+          sign_token: string
+          signature_data: string | null
+          signed_at: string | null
+          signed_pdf_path: string | null
+          signer_name: string | null
+          status: string
+          template_key: string
+          title: string
+          updated_at: string
+          user_id: string
+          viewed_at: string | null
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          fields?: Json
+          id?: string
+          lead_id: string
+          listing_id?: string | null
+          pdf_path?: string | null
+          reminder_sent_at?: string | null
+          sent_at?: string | null
+          sign_token: string
+          signature_data?: string | null
+          signed_at?: string | null
+          signed_pdf_path?: string | null
+          signer_name?: string | null
+          status?: string
+          template_key: string
+          title: string
+          updated_at?: string
+          user_id: string
+          viewed_at?: string | null
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          fields?: Json
+          id?: string
+          lead_id?: string
+          listing_id?: string | null
+          pdf_path?: string | null
+          reminder_sent_at?: string | null
+          sent_at?: string | null
+          sign_token?: string
+          signature_data?: string | null
+          signed_at?: string | null
+          signed_pdf_path?: string | null
+          signer_name?: string | null
+          status?: string
+          template_key?: string
+          title?: string
+          updated_at?: string
+          user_id?: string
+          viewed_at?: string | null
+        }
+        Relationships: []
+      }
       contact_submissions: {
         Row: {
           created_at: string
