@@ -135,6 +135,34 @@ async function fetchDriveIdentity(accessToken: string) {
   };
 }
 
+async function fetchCalendarIdentity(accessToken: string) {
+  const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const userJson = await userRes.json().catch(() => ({}));
+  if (!userRes.ok) {
+    return { error: userJson.error?.message || `userinfo ${userRes.status}`, status: userRes.status };
+  }
+  // Probe primary calendar to confirm scope
+  const calRes = await fetch(
+    'https://www.googleapis.com/calendar/v3/calendars/primary',
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  const calJson = await calRes.json().catch(() => ({}));
+  if (!calRes.ok) {
+    return { error: calJson.error?.message || `calendar ${calRes.status}`, status: calRes.status };
+  }
+  return {
+    platform: 'google_calendar' as const,
+    account_name: userJson.email ?? 'Google Calendar',
+    email: userJson.email,
+    calendar_id: calJson.id ?? 'primary',
+    calendar_summary: calJson.summary ?? 'Primary',
+    timezone: calJson.timeZone ?? 'UTC',
+    verified_at: new Date().toISOString(),
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
