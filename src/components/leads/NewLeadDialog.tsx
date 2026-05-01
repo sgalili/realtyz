@@ -233,8 +233,17 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
             <Input
               id="nl-city"
               value={city}
-              onChange={(e) => setCity(e.target.value)}
+              onChange={(e) => { setCity(e.target.value); setPendingOutOfArea(false); }}
               placeholder="תל אביב"
+            />
+          </div>
+          <div>
+            <Label htmlFor="nl-hood">שכונה</Label>
+            <Input
+              id="nl-hood"
+              value={neighborhood}
+              onChange={(e) => { setNeighborhood(e.target.value); setPendingOutOfArea(false); }}
+              placeholder="צפון הישן"
             />
           </div>
           <div>
@@ -318,11 +327,36 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
           </div>
         </div>
 
+        {pendingOutOfArea && (
+          <div
+            role="alert"
+            className="mt-1 rounded-md border border-amber-500/40 bg-amber-500/10 p-3 text-xs text-amber-900 dark:text-amber-100"
+          >
+            <div className="font-semibold mb-1">שים לב: מחוץ לאזור ההתמחות שלך</div>
+            <div>
+              העיר/שכונה שהזנת לא נמצאת ב-{serviceAreas.length} האזורים שהוגדרו
+              בהגדרות. האם להוסיף את הליד בכל זאת?
+            </div>
+            <div className="flex gap-2 mt-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setPendingOutOfArea(false)}
+              >
+                חזור לעריכה
+              </Button>
+              <Button size="sm" onClick={() => handleSave({ force: true })} disabled={saving}>
+                הוסף בכל זאת
+              </Button>
+            </div>
+          </div>
+        )}
+
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={saving}>
             ביטול
           </Button>
-          <Button onClick={handleSave} disabled={saving}>
+          <Button onClick={() => handleSave()} disabled={saving || pendingOutOfArea}>
             {saving ? 'יוצר…' : `הוסף ל${dealType === 'sale' ? 'מכירה' : 'השכרה'}`}
           </Button>
         </DialogFooter>
