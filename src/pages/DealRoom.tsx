@@ -48,6 +48,14 @@ import { CallHistoryList } from '@/components/dealroom/CallHistoryList';
 import { PriorityScoreBadge } from '@/components/dealroom/PriorityScoreBadge';
 import { DealRoomComments } from '@/components/dealroom/DealRoomComments';
 import { ClosingRoomDialog } from '@/components/dealroom/ClosingRoomDialog';
+import { useUserRole } from '@/hooks/useUserRole';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 
 type LeadStage = 'new_prospect' | 'listing_outreach' | 'negotiation' | 'awaiting_signature' | 'closed';
 
@@ -171,7 +179,7 @@ export default function DealRoom() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')
-        .select('id, full_name, phone_number, lead_stage, last_interaction_at, profile_picture_url, city, interest_tag, priority_score, priority_score_components, previous_priority_score')
+        .select('id, full_name, phone_number, lead_stage, last_interaction_at, profile_picture_url, city, interest_tag, priority_score, priority_score_components, previous_priority_score, assigned_to')
         .eq('is_demo', false)
         .order('last_interaction_at', { ascending: false, nullsFirst: false })
         .limit(500);
