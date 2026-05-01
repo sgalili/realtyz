@@ -2,6 +2,7 @@
 // Accepts { title, raw_text, source_type?, source_metadata? } OR { document_id } to re-embed.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
+import { maskPii } from "../_shared/pii.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -125,7 +126,11 @@ Deno.serve(async (req) => {
     }
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
-    const finalText = raw_text?.trim() || await analyzeMedia(title, file_data_url!, mime_type, source_type, LOVABLE_API_KEY);
+    const rawFinalText = raw_text?.trim() || await analyzeMedia(title, file_data_url!, mime_type, source_type, LOVABLE_API_KEY);
+
+    // Privacy Guardrail: mask PII (IDs, cards, IBAN, emails, phones) before
+    // persisting to the Strategy Bank. Originals are NOT stored.
+    const { text: finalText, hits: piiHits } = maskPii(rawFinalText);
 
     // 1) create document row
     const { data: doc, error: docErr } = await admin
@@ -135,7 +140,12 @@ Deno.serve(async (req) => {
         source_type,
         title,
         raw_text: finalText,
-        source_metadata: { ...(source_metadata ?? {}), analyzed_from_media: Boolean(file_data_url), mime_type: mime_type ?? null },
+        source_metadata: {
+          ...(source_metadata ?? {}),
+          analyzed_from_media: Boolean(file_data_url),
+          mime_type: mime_type ?? null,
+          pii_masked: piiHits,
+        },
         is_active: true,
       })
       .select()
