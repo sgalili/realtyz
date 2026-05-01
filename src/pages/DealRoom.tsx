@@ -633,6 +633,10 @@ export default function DealRoom() {
             {activeProspect && (
               <AutomationActivityFeed leadId={activeProspect.id} limit={10} />
             )}
+
+            {activeProspect && (
+              <DealRoomComments leadId={activeProspect.id} />
+            )}
           </div>
 
           <div className="flex flex-col gap-2 pt-4 border-t">
