@@ -718,22 +718,32 @@ const ApiSettings = () => {
           <AccordionTrigger className="flex-1 px-4 py-3 hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20 [&>svg]:hidden">
             <div className="flex items-center gap-3 w-full">
               <Icon className={`h-5 w-5 shrink-0 ${iconColor} ${!enabled ? 'opacity-40' : ''}`} />
-              <div className="flex flex-col items-start min-w-0">
+              <div className="flex flex-col items-start min-w-0 flex-1">
                 <span className={`text-sm font-bold truncate ${!enabled ? 'text-muted-foreground' : ''}`}>{title}</span>
-              </div>
-              <div className="me-auto flex items-center gap-2 ms-2">
-                <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
               </div>
             </div>
           </AccordionTrigger>
           <div
-            className="flex items-center px-3 border-s border-border/40"
+            className="flex items-center gap-3 px-3 border-s border-border/40"
             onClick={(e) => { e.stopPropagation(); }}
           >
             <Switch
               checked={enabled}
               onCheckedChange={(v) => toggleService.mutate({ key: serviceKey, enabled: v })}
               aria-label={`Toggle ${title}`}
+            />
+            <ChevronDown
+              className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 cursor-pointer"
+              data-chevron
+              onClick={(e) => {
+                e.stopPropagation();
+                const trigger = (e.currentTarget.closest('[class*="flex items-stretch"]') as HTMLElement | null)
+                  ?.querySelector('button[data-state]') as HTMLButtonElement | null;
+                trigger?.click();
+              }}
+              style={{
+                transform: 'var(--chevron-rotate, none)',
+              }}
             />
           </div>
         </div>
