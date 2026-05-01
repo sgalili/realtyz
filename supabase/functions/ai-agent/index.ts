@@ -7,7 +7,7 @@ import {
   renderListingFacts,
   type ListingFact,
 } from "../_shared/guardrails.ts";
-import { loadAgentPersona, renderPersonaPrompt } from "../_shared/persona.ts";
+import { loadAgentPersona, renderPersonaPrompt, renderDealTypeBlock, type DealType } from "../_shared/persona.ts";
 import { maskMessages } from "../_shared/pii.ts";
 
 const corsHeaders = {
@@ -21,7 +21,7 @@ You speak Hebrew and English. You are sharp, professional, warm, and consultativ
 
 You have read access (SELECT only) to a PostgreSQL database with these tables:
 
-TABLE leads (Prospects): id (uuid PK), phone_number (text), full_name (text), city (text), interest_tag (text), engagement_score (int 0-100), status (text), is_voted (bool), last_interaction_at (timestamptz), created_at (timestamptz), loyalty_tier (text), sentiment (text: positive/neutral/negative), identity_number (text), ai_autopilot (bool), lead_stage (text), preferences (jsonb)
+TABLE leads (Prospects): id (uuid PK), phone_number (text), full_name (text), city (text), interest_tag (text), engagement_score (int 0-100), status (text), is_voted (bool), last_interaction_at (timestamptz), created_at (timestamptz), loyalty_tier (text), sentiment (text: positive/neutral/negative), identity_number (text), ai_autopilot (bool), lead_stage (text), preferences (jsonb), deal_type (text: 'sale' | 'rent' — STRICT pipeline separator)
 
 TABLE chat_history: id (uuid PK), lead_id (uuid FK->leads), role (text: user/assistant), content (text), sentiment (text), created_at (timestamptz)
 
@@ -86,7 +86,8 @@ serve(async (req) => {
   }
 
   try {
-    const { messages } = await req.json();
+    const body = await req.json();
+    const { messages, lead_id, prospect_name } = body ?? {};
     if (!messages || !Array.isArray(messages)) {
       return new Response(JSON.stringify({ error: "messages array required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -215,10 +216,33 @@ serve(async (req) => {
     );
     const personaBlock = renderPersonaPrompt(persona);
 
+    // Hard pipeline separation — fetch the Lead's deal_type and inject a
+    // forbid-list so the AI cannot offer mortgages to renters or rentals to buyers.
+    let dealType: DealType | null = null;
+    let resolvedLeadName: string | null = prospect_name ?? null;
+    if (lead_id) {
+      try {
+        const { data: leadRow } = await supabase
+          .from("leads")
+          .select("deal_type, full_name, preferences")
+          .eq("id", lead_id)
+          .maybeSingle();
+        const dt =
+          (leadRow?.deal_type as string | undefined) ||
+          (leadRow?.preferences as any)?.listing_type;
+        if (dt === "sale" || dt === "rent") dealType = dt;
+        if (!resolvedLeadName) resolvedLeadName = (leadRow?.full_name as string | undefined) ?? null;
+      } catch (e) {
+        console.warn("deal_type lookup failed:", e);
+      }
+    }
+    const dealTypeBlock = renderDealTypeBlock(dealType, resolvedLeadName);
+
     const systemPrompt = SCHEMA_CONTEXT
       .replace("{{CAMPAIGN_CONTEXT}}", campaignContext)
       .replace("{{KB_CONTEXT}}", kbContext)
       + (personaBlock ? "\n\n" + personaBlock : "")
+      + "\n\n" + dealTypeBlock
       + "\n\n" + compliance;
 
     // Escalation Trigger: classify the most recent prospect/user message.

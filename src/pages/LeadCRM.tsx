@@ -36,6 +36,7 @@ import {
   RadarChart, PolarGrid, PolarAngleAxis, PolarRadiusAxis, Radar,
   ResponsiveContainer
 } from 'recharts';
+import NewLeadDialog from '@/components/leads/NewLeadDialog';
 
 // Strict Israeli mobile cleaner. Returns 9725XXXXXXXX (12 digits) for storage, or null if invalid.
 // Rules per spec:
@@ -187,6 +188,7 @@ const LeadCRM = () => {
   const [selectedVoterId, setSelectedVoterId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [newLeadOpen, setNewLeadOpen] = useState(false);
   const [importPreview, setImportPreview] = useState<ImportRow[]>([]);
   const [importStats, setImportStats] = useState<{ total: number; valid: number; duplicates: number; invalid: number; healthPct: number; detectedFields: string[]; missingPhone: boolean } | null>(null);
   const [importing, setImporting] = useState(false);
@@ -811,6 +813,9 @@ const LeadCRM = () => {
             </Select>
             <Button variant="outline" size="sm" className="gap-1.5 h-8 shrink-0" onClick={() => handleExportExcel('filtered')}>
               <FileSpreadsheet className="h-3.5 w-3.5" /> ייצוא
+            </Button>
+            <Button size="sm" className="gap-1.5 h-8 shrink-0" onClick={() => setNewLeadOpen(true)}>
+              <UserPlus className="h-3.5 w-3.5" /> ליד חדש
             </Button>
           </div>}
         </CardHeader>
@@ -1461,6 +1466,9 @@ const LeadCRM = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Add Lead — deal_type-aware dynamic form (Sale vs Rent pipeline) */}
+      <NewLeadDialog open={newLeadOpen} onOpenChange={setNewLeadOpen} />
     </div>
   );
 };

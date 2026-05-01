@@ -80,6 +80,44 @@ export async function loadAgentPersona(
   }
 }
 
+export type DealType = 'sale' | 'rent';
+
+/**
+ * Render a hard-coded "current Lead" pipeline block. The AI must read this
+ * BEFORE drafting and refuse to cross-suggest between Sale and Rent.
+ *
+ * Pass `dealType=null` only when no Lead is attached to the call (e.g. generic
+ * Agent question). When attached to a Deal Room reply this MUST be set.
+ */
+export function renderDealTypeBlock(dealType: DealType | null, leadName?: string | null): string {
+  if (!dealType) {
+    return `
+=== CURRENT LEAD PIPELINE ===
+Pipeline: UNKNOWN — no lead context attached. If the conversation references a
+specific Prospect, ASK them whether they want to BUY (למכירה) or RENT (להשכרה)
+before recommending any property, financing tool, or contract.
+=== END CURRENT LEAD PIPELINE ===`.trim();
+  }
+  const isSale = dealType === 'sale';
+  const heb = isSale ? 'מכירה (Sale)' : 'השכרה (Rent)';
+  const allowed = isSale
+    ? '- Allowed topics: asking price, mortgage / financing, down-payment, taxes (mas rechisha / mas shevach), inspection, lawyer, closing (סגירת עסקה), title transfer (טאבו).'
+    : '- Allowed topics: monthly rent, security deposit (פיקדון), guarantor (ערב), lease length, move-in date, utilities, lease signing (חתימת חוזה שכירות), inventory checklist.';
+  const forbidden = isSale
+    ? '- FORBIDDEN: do NOT discuss monthly rent, security deposits, guarantors, lease terms, or rental move-in dates. NEVER offer rental listings.'
+    : '- FORBIDDEN: do NOT discuss mortgages, down-payments, purchase taxes, title transfer, or "closing" in the sale sense. NEVER offer for-sale listings, NEVER suggest taking a mortgage.';
+  return `
+=== CURRENT LEAD PIPELINE ===
+${leadName ? `Lead: ${leadName}` : ''}
+Pipeline: ${heb}
+${allowed}
+${forbidden}
+- If the Prospect explicitly switches intent (e.g. "actually I want to rent instead"),
+  ACKNOWLEDGE the switch and tell the Agent to update the Lead's deal_type. Do NOT
+  silently start mixing the pipelines.
+=== END CURRENT LEAD PIPELINE ===`.trim();
+}
+
 /**
  * Render the persona as a system-prompt block to inject before generation.
  * Always includes hard rules:

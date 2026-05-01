@@ -58,6 +58,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 type LeadStage = 'new_prospect' | 'listing_outreach' | 'negotiation' | 'awaiting_signature' | 'closed';
 
@@ -67,6 +68,8 @@ type ScoreComponents = {
   response_speed?: number;
   property_interest?: number;
 };
+
+type DealType = 'sale' | 'rent';
 
 type Lead = {
   id: string;
@@ -81,57 +84,48 @@ type Lead = {
   priority_score_components?: ScoreComponents | null;
   previous_priority_score?: number | null;
   assigned_to?: string | null;
+  deal_type?: DealType | null;
+  preferences?: Record<string, unknown> | null;
 };
 
 type SortMode = 'recent' | 'priority';
 
-const STAGE_COLUMNS: Array<{
+// Stage columns are pipeline-specific. The KEY (lead_stage value) is shared so
+// data lives in one column on the table; only the displayed TITLE differs per
+// pipeline (e.g. "סגירה" for Sale vs "חתימת חוזה שכירות" for Rent).
+type StageColumn = {
   key: LeadStage;
   title: string;
   icon: typeof UserPlus;
   accent: string;
   legacyKeys: string[];
-}> = [
-  {
-    key: 'new_prospect',
-    title: 'מתעניין חדש',
-    icon: UserPlus,
-    accent: 'text-primary',
-    legacyKeys: ['new', 'lead', 'new_prospect'],
-  },
-  {
-    key: 'listing_outreach',
-    title: 'פנייה אקטיבית',
-    icon: Megaphone,
-    accent: 'text-social-facebook',
-    legacyKeys: ['contacted', 'outreach', 'listing_outreach', 'campaign'],
-  },
-  {
-    key: 'negotiation',
-    title: 'משא ומתן',
-    icon: Handshake,
-    accent: 'text-warning',
-    legacyKeys: ['negotiation', 'qualified', 'meeting'],
-  },
-  {
-    key: 'awaiting_signature',
-    title: 'ממתין לחתימה',
-    icon: PenLine,
-    accent: 'text-primary',
-    legacyKeys: ['awaiting_signature', 'signature_pending'],
-  },
-  {
-    key: 'closed',
-    title: 'נסגר',
-    icon: CheckCircle2,
-    accent: 'text-success',
-    legacyKeys: ['closed', 'won', 'converted', 'lost'],
-  },
+};
+
+const SALE_STAGE_COLUMNS: StageColumn[] = [
+  { key: 'new_prospect',       title: 'מתעניין חדש',          icon: UserPlus,      accent: 'text-primary',          legacyKeys: ['new', 'lead', 'new_prospect'] },
+  { key: 'listing_outreach',   title: 'שליחת נכסים למכירה',   icon: Megaphone,     accent: 'text-social-facebook',  legacyKeys: ['contacted', 'outreach', 'listing_outreach', 'campaign'] },
+  { key: 'negotiation',        title: 'משא ומתן על מחיר',     icon: Handshake,     accent: 'text-warning',          legacyKeys: ['negotiation', 'qualified', 'meeting'] },
+  { key: 'awaiting_signature', title: 'ממתין לחתימת זיכרון',  icon: PenLine,       accent: 'text-primary',          legacyKeys: ['awaiting_signature', 'signature_pending'] },
+  { key: 'closed',             title: 'סגירה',                icon: CheckCircle2,  accent: 'text-success',          legacyKeys: ['closed', 'won', 'converted', 'lost'] },
 ];
+
+const RENT_STAGE_COLUMNS: StageColumn[] = [
+  { key: 'new_prospect',       title: 'מתעניין חדש',           icon: UserPlus,      accent: 'text-primary',          legacyKeys: ['new', 'lead', 'new_prospect'] },
+  { key: 'listing_outreach',   title: 'שליחת נכסים להשכרה',    icon: Megaphone,     accent: 'text-social-facebook',  legacyKeys: ['contacted', 'outreach', 'listing_outreach', 'campaign'] },
+  { key: 'negotiation',        title: 'תיאום צפייה / מו״מ',    icon: Handshake,     accent: 'text-warning',          legacyKeys: ['negotiation', 'qualified', 'meeting'] },
+  { key: 'awaiting_signature', title: 'ממתין לחתימת חוזה שכירות', icon: PenLine,    accent: 'text-primary',          legacyKeys: ['awaiting_signature', 'signature_pending'] },
+  { key: 'closed',             title: 'מאוכלס',                icon: CheckCircle2,  accent: 'text-success',          legacyKeys: ['closed', 'won', 'converted', 'lost'] },
+];
+
+function columnsFor(deal: DealType): StageColumn[] {
+  return deal === 'rent' ? RENT_STAGE_COLUMNS : SALE_STAGE_COLUMNS;
+}
+
+const SHARED_LEGACY_KEYS = SALE_STAGE_COLUMNS;
 
 function bucketFor(stage: string | null): LeadStage {
   const s = (stage || 'new').toLowerCase();
-  for (const col of STAGE_COLUMNS) {
+  for (const col of SHARED_LEGACY_KEYS) {
     if (col.legacyKeys.includes(s)) return col.key;
   }
   return 'new_prospect';
@@ -175,6 +169,11 @@ export default function DealRoom() {
   // so the agent sees the property card pinned to the chat preview.
   const [pinnedProperty, setPinnedProperty] = useState<PropertyResult | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('recent');
+  // Hard pipeline separation — only one of {sale, rent} is visible at a time.
+  // Persists in the URL so deep links + refresh keep the agent on the right view.
+  const initialDealType: DealType =
+    (searchParams.get('pipeline') as DealType) === 'rent' ? 'rent' : 'sale';
+  const [activeDealType, setActiveDealType] = useState<DealType>(initialDealType);
   const { canAssignProspects, isJuniorOnly } = useUserRole();
 
   // Team members available for delegation (Assign To dropdown).
@@ -238,7 +237,7 @@ export default function DealRoom() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')
-        .select('id, full_name, phone_number, lead_stage, last_interaction_at, profile_picture_url, city, interest_tag, priority_score, priority_score_components, previous_priority_score, assigned_to')
+        .select('id, full_name, phone_number, lead_stage, last_interaction_at, profile_picture_url, city, interest_tag, priority_score, priority_score_components, previous_priority_score, assigned_to, deal_type, preferences')
         .eq('is_demo', false)
         .order('last_interaction_at', { ascending: false, nullsFirst: false })
         .limit(500);
@@ -246,6 +245,30 @@ export default function DealRoom() {
       return (data || []) as Lead[];
     },
   });
+
+  // Resolve a lead's pipeline. Prefer the new top-level deal_type column;
+  // fall back to legacy preferences.listing_type for older rows.
+  function resolveDealType(l: Lead): DealType {
+    const dt = (l.deal_type as DealType | null | undefined)
+      ?? (l.preferences as any)?.listing_type;
+    return dt === 'rent' ? 'rent' : 'sale';
+  }
+
+  const visibleLeads = useMemo(
+    () => (leads || []).filter((l) => resolveDealType(l) === activeDealType),
+    [leads, activeDealType],
+  );
+
+  const saleCount = useMemo(
+    () => (leads || []).filter((l) => resolveDealType(l) === 'sale').length,
+    [leads],
+  );
+  const rentCount = useMemo(
+    () => (leads || []).filter((l) => resolveDealType(l) === 'rent').length,
+    [leads],
+  );
+
+  const stageColumns = useMemo(() => columnsFor(activeDealType), [activeDealType]);
 
   const grouped = useMemo(() => {
     const map: Record<LeadStage, Lead[]> = {
@@ -255,7 +278,7 @@ export default function DealRoom() {
       awaiting_signature: [],
       closed: [],
     };
-    (leads || []).forEach((l) => {
+    visibleLeads.forEach((l) => {
       map[bucketFor(l.lead_stage)].push(l);
     });
     if (sortMode === 'priority') {
@@ -264,7 +287,7 @@ export default function DealRoom() {
       });
     }
     return map;
-  }, [leads, sortMode]);
+  }, [visibleLeads, sortMode]);
 
   async function recomputeAllScores() {
     if (recomputing) return;
@@ -428,7 +451,7 @@ export default function DealRoom() {
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
           <Badge variant="secondary" className="text-sm">
-            {leads?.length ?? 0} מתעניינים
+            {visibleLeads.length} {activeDealType === 'rent' ? 'מתעניינים בהשכרה' : 'מתעניינים במכירה'}
           </Badge>
           <Button
             variant={sortMode === 'priority' ? 'default' : 'outline'}
@@ -487,9 +510,35 @@ export default function DealRoom() {
 
       <ActionItemsPanel onUseDraft={openFromSuggestion} />
 
+      {/* Hard pipeline separation: Sale (מכירה) vs Rent (השכרה) — only one
+          pipeline is visible at a time. The selected pipeline is mirrored in
+          the URL so deep links + reloads keep the agent on the same view. */}
+      <Tabs
+        value={activeDealType}
+        onValueChange={(v) => {
+          const next = (v === 'rent' ? 'rent' : 'sale') as DealType;
+          setActiveDealType(next);
+          const params = new URLSearchParams(searchParams);
+          params.set('pipeline', next);
+          setSearchParams(params, { replace: true });
+        }}
+        dir="rtl"
+      >
+        <TabsList className="grid w-full max-w-sm grid-cols-2">
+          <TabsTrigger value="sale" className="gap-2">
+            מכירה
+            <Badge variant="secondary" className="text-[10px] font-normal">{saleCount}</Badge>
+          </TabsTrigger>
+          <TabsTrigger value="rent" className="gap-2">
+            השכרה
+            <Badge variant="secondary" className="text-[10px] font-normal">{rentCount}</Badge>
+          </TabsTrigger>
+        </TabsList>
+      </Tabs>
+
       <ErrorBoundary source="DealRoom.Grid">
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
-        {STAGE_COLUMNS.map((col) => {
+        {stageColumns.map((col) => {
           const Icon = col.icon;
           const items = grouped[col.key];
           return (
