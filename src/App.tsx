@@ -5,6 +5,7 @@ import { Toaster as Sonner } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { AuthProvider, useAuth } from "@/hooks/useAuth";
 import { useUserRole } from "@/hooks/useUserRole";
+import { WhiteLabelProvider } from "@/hooks/useWhiteLabel";
 import { AppLayout } from "@/components/AppLayout";
 import { DemoModeProvider, useDemoMode } from "@/hooks/useDemoMode";
 import { ElectionTypeProvider } from "@/hooks/useElectionType";
@@ -190,6 +191,7 @@ const App = () => (
             </MandateProvider>
             </ElectionTypeProvider>
             </DemoModeProvider>
+            </WhiteLabelProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
