@@ -1,21 +1,18 @@
-# Memory: index.md
-Updated: today
-
 # Project Memory
 
 ## Core
-- **Realtyz AI** (pivoted from Kalpiz AI). Real-estate CRM. Avoid legacy 'Kalpiz', 'voters', 'candidate_pages'.
+- **Realtyz AI** (full rebrand from Kalpiz, completed). Real-estate CRM. The codebase contains zero `Kalpiz` references in source — only the legacy DB column `hide_kalpiz_branding` (in `white_label_settings`) and the original SQL migration files retain the old name; treat that column as read-only legacy.
+- **Component prefixes**: All prior `KalpizX` components are now `RealtyzX` (RealtyzWave, RealtyzLoader, RealtyzWordmarkSvg). All CSS classes that were `kalpiz-*` are now `realtyz-*`. All localStorage keys (`realtyz-authenticated-session`, `realtyz-demo-mode`, etc.) follow the same convention.
 - **Schema**: Use `leads` (was voters), `listings` (was candidate_pages), `contact_submissions` (was leads), `messages.lead_id`, `chat_history.lead_id`.
 - **New columns**: leads.preferences (jsonb), leads.lead_stage (text). listings.property_title, .description, .features (jsonb), .asking_price (numeric).
 - **Design**: RTL Hebrew layout, Assistant/Inter fonts. Clean minimal style (blues, whites, slate).
 - **Data**: Live data only. Normalize phones to 9725XXXXXXXX internally, display as 05X-XXXXXXX.
 - **Privacy**: Supabase Realtime disabled for 'leads' & 'messages'. RLS requires auth.uid().
 - **UI strings**: Hebrew copy still uses political terms ("בוחרים", "מועמד", "מנדטים"). Realtyz Hebrew copy ("לידים", "נכסים", "מחיר") is a pending UX pass.
-- **Demo Mode**: Client-side context flag (super-admin toggle in header). NO separate auth user, NO secrets, NO session swap. `useDemoMode()` reads localStorage `realtyz-demo-mode`. Components branch on `if (isDemoMode)` to read `src/lib/demoData.ts`.
+- **Demo Mode**: PERMANENTLY REMOVED. `useDemoMode`/`DemoModeProvider` are no-op stubs; never re-add the toggle or `if (isDemoMode)` branches. Keep `is_demo=false` filters in queries.
 
 ## Memories
-- [Project Identity](mem://project/identity) — Kalpiz AI - Political campaign dashboard. UX metaphor: Digital Friend. (LEGACY — see Realtyz pivot)
-- [Visual Identity](mem://style/visual-identity) — Kalpiz branding: minimalist, no icons/emojis in headers. Israeli Liberal-Right aesthetic.
+- [Visual Identity](mem://style/visual-identity) — Realtyz branding: minimalist, no icons/emojis in headers.
 - [Localization & Typography](mem://style/localization) — RTL Hebrew layout, Assistant/Inter fonts, specific Hebrew terminology.
 - [AI Personality Style](mem://ai/personality-style) — AI tone: 'Sharren Haskel' (Liberal-Right, sharp). Addresses voters warmly in Hebrew by full name.
 - [Automation Architecture](mem://tech/automation-architecture) — n8n automation hub integration. Event types: message_sent, contacts_synced, campaign_dispatch.
@@ -36,4 +33,4 @@ Updated: today
 - [Compliance & Audit Layer](mem://features/compliance-audit) — audit_logs, PII masking before AI (`_shared/pii.ts`), `/privacy` GDPR page, AI disclosure footer (`_shared/compliance.ts`), `gdpr_delete_lead()` RPC.
 - [Team Collaboration & RBAC](mem://features/team-collaboration) — agent/assistant/junior_agent roles, team_invitations + auto-claim trigger, deal_room_comments, can_close_deal trigger on leads, /team page.
 - [System Health Watchdog](mem://features/system-health) — integration_error_logs, watchdog cron, get_system_status() RPC, /settings/system-health admin page, SystemStatus footer dot.
-- [Demo Mode Context Switcher](mem://features/demo-mode) — Client-side context flag, super-admin only toggle in header. No auth swap, no secrets.
+- [No Demo Mode](mem://constraints/no-demo-mode) — Demo toggle/state retired. Hooks are no-op stubs. Never reintroduce demo branches.
