@@ -1,7 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Minus, Plus, TrendingUp, Users, Mic, MessageSquare } from 'lucide-react';
+import { Minus, Plus, TrendingUp, Users, Mic, MessageSquare, Activity } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Progress } from '@/components/ui/progress';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useMandate } from '@/hooks/useMandate';
 import { useDemoMode } from '@/hooks/useDemoMode';
