@@ -1227,6 +1227,87 @@ export type Database = {
         }
         Relationships: []
       }
+      notification_preferences: {
+        Row: {
+          created_at: string
+          delivery_channel: string
+          id: string
+          notify_critical_question: boolean
+          notify_meeting_booked: boolean
+          notify_new_high_priority: boolean
+          quiet_hours_end: string | null
+          quiet_hours_start: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          delivery_channel?: string
+          id?: string
+          notify_critical_question?: boolean
+          notify_meeting_booked?: boolean
+          notify_new_high_priority?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          delivery_channel?: string
+          id?: string
+          notify_critical_question?: boolean
+          notify_meeting_booked?: boolean
+          notify_new_high_priority?: boolean
+          quiet_hours_end?: string | null
+          quiet_hours_start?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      notifications: {
+        Row: {
+          body: string
+          channel: string
+          created_at: string
+          deep_link: string
+          delivered: boolean
+          delivery_result: Json
+          event_type: string
+          id: string
+          lead_id: string | null
+          title: string
+          user_id: string
+        }
+        Insert: {
+          body: string
+          channel?: string
+          created_at?: string
+          deep_link: string
+          delivered?: boolean
+          delivery_result?: Json
+          event_type: string
+          id?: string
+          lead_id?: string | null
+          title: string
+          user_id: string
+        }
+        Update: {
+          body?: string
+          channel?: string
+          created_at?: string
+          deep_link?: string
+          delivered?: boolean
+          delivery_result?: Json
+          event_type?: string
+          id?: string
+          lead_id?: string | null
+          title?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       onboarding_progress: {
         Row: {
           completed_at: string | null
