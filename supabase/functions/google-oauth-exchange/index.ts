@@ -135,6 +135,34 @@ async function fetchDriveIdentity(accessToken: string) {
   };
 }
 
+async function fetchCalendarIdentity(accessToken: string) {
+  const userRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const userJson = await userRes.json().catch(() => ({}));
+  if (!userRes.ok) {
+    return { error: userJson.error?.message || `userinfo ${userRes.status}`, status: userRes.status };
+  }
+  // Probe primary calendar to confirm scope
+  const calRes = await fetch(
+    'https://www.googleapis.com/calendar/v3/calendars/primary',
+    { headers: { Authorization: `Bearer ${accessToken}` } },
+  );
+  const calJson = await calRes.json().catch(() => ({}));
+  if (!calRes.ok) {
+    return { error: calJson.error?.message || `calendar ${calRes.status}`, status: calRes.status };
+  }
+  return {
+    platform: 'google_calendar' as const,
+    account_name: userJson.email ?? 'Google Calendar',
+    email: userJson.email,
+    calendar_id: calJson.id ?? 'primary',
+    calendar_summary: calJson.summary ?? 'Primary',
+    timezone: calJson.timeZone ?? 'UTC',
+    verified_at: new Date().toISOString(),
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
 
@@ -173,9 +201,9 @@ Deno.serve(async (req) => {
     const code = body.code;
     const redirectUri = body.redirect_uri;
 
-    if (platform !== 'gmail' && platform !== 'youtube' && platform !== 'google_drive') {
+    if (platform !== 'gmail' && platform !== 'youtube' && platform !== 'google_drive' && platform !== 'google_calendar') {
       return new Response(
-        JSON.stringify({ error: 'platform must be "gmail", "youtube", or "google_drive"' }),
+        JSON.stringify({ error: 'platform must be "gmail", "youtube", "google_drive", or "google_calendar"' }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } },
       );
     }
@@ -269,7 +297,9 @@ Deno.serve(async (req) => {
         ? await fetchGmailIdentity(tokens.access_token)
         : platform === 'youtube'
           ? await fetchYouTubeIdentity(tokens.access_token)
-          : await fetchDriveIdentity(tokens.access_token);
+          : platform === 'google_calendar'
+            ? await fetchCalendarIdentity(tokens.access_token)
+            : await fetchDriveIdentity(tokens.access_token);
 
     if ('error' in identity) {
       await admin
@@ -314,7 +344,7 @@ Deno.serve(async (req) => {
     const upd = {
       platform,
       created_by: callerUserId,
-      display_name: row?.display_name ?? (platform === 'gmail' ? 'Gmail · Google Workspace' : platform === 'youtube' ? 'YouTube' : 'Google Drive'),
+      display_name: row?.display_name ?? (platform === 'gmail' ? 'Gmail · Google Workspace' : platform === 'youtube' ? 'YouTube' : platform === 'google_calendar' ? 'Google Calendar' : 'Google Drive'),
       credentials: newCreds,
       encrypted_session: sessionMarker,
       session_method: 'oauth' as const,
