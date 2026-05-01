@@ -344,7 +344,7 @@ Deno.serve(async (req) => {
     const upd = {
       platform,
       created_by: callerUserId,
-      display_name: row?.display_name ?? (platform === 'gmail' ? 'Gmail · Google Workspace' : platform === 'youtube' ? 'YouTube' : 'Google Drive'),
+      display_name: row?.display_name ?? (platform === 'gmail' ? 'Gmail · Google Workspace' : platform === 'youtube' ? 'YouTube' : platform === 'google_calendar' ? 'Google Calendar' : 'Google Drive'),
       credentials: newCreds,
       encrypted_session: sessionMarker,
       session_method: 'oauth' as const,
