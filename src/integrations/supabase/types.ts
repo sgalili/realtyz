@@ -1500,10 +1500,12 @@ export type Database = {
       }
       messages: {
         Row: {
+          ai_assisted: boolean
           channel: string | null
           content: string | null
           created_at: string | null
           direction: string | null
+          disclosure_appended: boolean
           id: string
           lead_id: string | null
           metadata: Json | null
@@ -1511,10 +1513,12 @@ export type Database = {
           sender_type: string | null
         }
         Insert: {
+          ai_assisted?: boolean
           channel?: string | null
           content?: string | null
           created_at?: string | null
           direction?: string | null
+          disclosure_appended?: boolean
           id?: string
           lead_id?: string | null
           metadata?: Json | null
@@ -1522,10 +1526,12 @@ export type Database = {
           sender_type?: string | null
         }
         Update: {
+          ai_assisted?: boolean
           channel?: string | null
           content?: string | null
           created_at?: string | null
           direction?: string | null
+          disclosure_appended?: boolean
           id?: string
           lead_id?: string | null
           metadata?: Json | null
@@ -2673,6 +2679,7 @@ export type Database = {
         Returns: undefined
       }
       execute_readonly_query: { Args: { query_text: string }; Returns: Json }
+      gdpr_delete_lead: { Args: { _lead_id: string }; Returns: Json }
       get_user_balance: {
         Args: { _user_id: string }
         Returns: {
