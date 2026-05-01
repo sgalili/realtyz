@@ -149,6 +149,7 @@ export default function DealRoom() {
   }, [leads]);
 
   async function openSmartReply(prospect: Lead) {
+    setActiveSuggestionId(null);
     setActiveProspect(prospect);
     setSmartReply('');
     setDraftMode('review');
@@ -180,6 +181,26 @@ export default function DealRoom() {
     }
   }
 
+  // One-click from an Action Item card: open the Smart Reply sheet pre-filled with the
+  // suggested draft so the Agent can review/edit and Approve & Send. We skip the AI call
+  // because the suggestion already contains a draft (templated or auto-drafted).
+  function openFromSuggestion(suggestion: {
+    id: string;
+    draft_message: string;
+    lead?: any;
+  }) {
+    if (!suggestion.lead) {
+      toast.error('Prospect not available for this suggestion');
+      return;
+    }
+    setActiveSuggestionId(suggestion.id);
+    setActiveProspect(suggestion.lead as Lead);
+    setSmartReply(suggestion.draft_message);
+    setDraftMode('review');
+    setGenerating(false);
+    setGenPhase('idle');
+  }
+
   // Human-in-the-loop: only fires WhatsApp after the Agent explicitly approves the draft.
   async function approveAndSend() {
     if (!activeProspect || !smartReply.trim() || sending) return;
@@ -203,6 +224,16 @@ export default function DealRoom() {
       toast.success('Reply approved & sent', {
         description: `WhatsApp delivered to ${activeProspect.full_name || 'Prospect'}`,
       });
+      // If this draft came from an Action Item, mark the suggestion as used so it
+      // disappears from the queue and we don't suggest the same thing again.
+      if (activeSuggestionId) {
+        await supabase
+          .from('outreach_suggestions')
+          .update({ status: 'used', used_at: new Date().toISOString() })
+          .eq('id', activeSuggestionId);
+        queryClient.invalidateQueries({ queryKey: ['outreach-suggestions'] });
+      }
+      setActiveSuggestionId(null);
       setActiveProspect(null);
       // Refresh both the Kanban (last_interaction_at) and any open chat history.
       queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
