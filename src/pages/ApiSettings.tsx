@@ -28,6 +28,7 @@ import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { ChevronDown } from 'lucide-react';
 import NotificationPreferencesPanel from '@/components/NotificationPreferencesPanel';
 import { AgentPersonaPanel } from '@/components/AgentPersonaPanel';
+import { PersonaCalibrationPanel } from '@/components/PersonaCalibrationPanel';
 import { VoiceAgentPanel } from '@/components/calendar/VoiceAgentPanel';
 import { UsageMeterPanel } from '@/components/UsageMeterPanel';
 import { ServiceAreasPanel } from '@/components/settings/ServiceAreasPanel';
