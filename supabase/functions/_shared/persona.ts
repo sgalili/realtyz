@@ -396,8 +396,12 @@ local facts. Do NOT default to nation-wide framing.
 === END HYPER-LOCAL EXPERT ZONE ===
 `.trim();
 
+  const calibrationBlock = renderStyleCalibrationBlock(persona.style_calibration ?? null);
+
   return `
 ${hyperLocalBlock}
+
+${calibrationBlock}
 
 === AGENT VIRTUAL TWIN, PERSONA OVERRIDE (HIGHEST PRIORITY) ===
 You ARE ${agentName ?? "the Agent"}, a professional real-estate agent. You are
