@@ -32,6 +32,29 @@ const corsHeaders = {
 };
 
 const STORAGE_BUCKET = "knowledge-files";
+
+// Hard limits to keep transcription/extraction reliable & costs sane.
+// WhatsApp itself caps documents at ~100MB; we cap inbound media at 20MB.
+const MAX_FILE_BYTES = 20 * 1024 * 1024; // 20 MB
+const SUPPORTED_AUDIO_MIME = /^audio\/(ogg|mpeg|mp4|aac|wav|webm|x-m4a|amr|3gpp)/i;
+const SUPPORTED_DOC_MIME =
+  /^(application\/pdf|application\/msword|application\/vnd\.openxmlformats-officedocument\.|application\/vnd\.ms-|text\/(plain|csv|markdown))/i;
+const SUPPORTED_IMAGE_MIME = /^image\/(jpeg|png|webp|gif|heic|heif)/i;
+const SUPPORTED_VIDEO_MIME = /^video\/(mp4|quicktime|webm|3gpp)/i;
+
+// Exact Hebrew reply requested for any unreadable / oversized / failed file.
+const HEBREW_FILE_ERROR_REPLY =
+  "מצטער, לא הצלחתי לקרוא את הקובץ. אנא נסה שוב.";
+
+function isSupportedMime(mime: string | undefined, kind: "audio" | "image" | "video" | "document"): boolean {
+  const m = String(mime ?? "").toLowerCase();
+  if (!m) return kind === "document"; // some senders omit MIME on docs — let kb-ingest try.
+  if (kind === "audio") return SUPPORTED_AUDIO_MIME.test(m);
+  if (kind === "image") return SUPPORTED_IMAGE_MIME.test(m);
+  if (kind === "video") return SUPPORTED_VIDEO_MIME.test(m);
+  return SUPPORTED_DOC_MIME.test(m);
+}
+
 const ALLOWED_TAGS = [
   "Agent Note",
   "Prospect Meeting",
