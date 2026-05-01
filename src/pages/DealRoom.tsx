@@ -29,11 +29,17 @@ import {
   Pencil,
   Check,
   ShieldCheck,
+  Home,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ListingOutreachDialog } from '@/components/dealroom/ListingOutreachDialog';
 import { ActionItemsPanel } from '@/components/dealroom/ActionItemsPanel';
+import {
+  PropertyMatchmakerDialog,
+  PropertySnippet,
+  type PropertyResult,
+} from '@/components/dealroom/PropertyMatchmakerDialog';
 
 type LeadStage = 'new_prospect' | 'listing_outreach' | 'negotiation' | 'closed';
 
