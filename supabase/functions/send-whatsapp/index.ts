@@ -20,6 +20,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
+import { appendDisclosure } from "../_shared/compliance.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -53,6 +54,11 @@ const BodySchema = z
       .optional(),
     // Optional explicit override; otherwise auto-routed by tenant config.
     force_provider: z.enum(["WBA", "GreenAPI"]).optional(),
+    // Compliance: when true, the message was AI-drafted. We append a subtle
+    // "תוכן בסיוע AI" footer to the outbound text and log it on the message
+    // row + audit_logs so the agent can prove disclosure.
+    ai_assisted: z.boolean().optional(),
+    disclosure_language: z.enum(["he", "en"]).optional(),
   })
   .refine((v) => !!v.lead_id || !!v.phone_number, {
     message: "lead_id or phone_number is required",
