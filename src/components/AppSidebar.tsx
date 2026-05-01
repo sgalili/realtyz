@@ -100,6 +100,7 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { title: 'ניתוח סנטימנט', url: '/sentiment', icon: Activity, iconColor: 'text-success' },
       { title: 'ניתוח שיחות', url: '/conversation-analytics', icon: BarChart3, iconColor: 'text-primary-glow' },
+      { title: 'Performance Insights', url: '/insights', icon: Gauge, iconColor: 'text-warning' },
       { title: 'יומן פעילות', url: '/activity-log', icon: History, iconColor: 'text-social-telegram' },
       { title: 'ניהול חבילה', url: '/subscription', icon: Crown, iconColor: 'text-warning' },
       { title: 'חיובים וחשבוניות', url: '/finance', icon: Wallet, iconColor: 'text-primary' },
