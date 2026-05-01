@@ -29,11 +29,17 @@ import {
   Pencil,
   Check,
   ShieldCheck,
+  Home,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ListingOutreachDialog } from '@/components/dealroom/ListingOutreachDialog';
 import { ActionItemsPanel } from '@/components/dealroom/ActionItemsPanel';
+import {
+  PropertyMatchmakerDialog,
+  PropertySnippet,
+  type PropertyResult,
+} from '@/components/dealroom/PropertyMatchmakerDialog';
 
 type LeadStage = 'new_prospect' | 'listing_outreach' | 'negotiation' | 'closed';
 
@@ -125,6 +131,11 @@ export default function DealRoom() {
   // Compliance signals returned by the ai-agent edge function for the current draft.
   const [factViolations, setFactViolations] = useState<Array<{ kind: string; value: string; reason: string }>>([]);
   const [escalation, setEscalation] = useState<{ category: string; severity: string; matched: string[] } | null>(null);
+  // Smart Matchmaker — opens the Find Property overlay for a chosen prospect
+  const [matchmakerProspect, setMatchmakerProspect] = useState<Lead | null>(null);
+  // When the Smart Reply was pre-filled by the matchmaker we keep the snippet
+  // so the agent sees the property card pinned to the chat preview.
+  const [pinnedProperty, setPinnedProperty] = useState<PropertyResult | null>(null);
 
   const { data: leads, isLoading } = useQuery({
     queryKey: ['deal-room-prospects'],
@@ -223,6 +234,22 @@ export default function DealRoom() {
     setGenPhase('idle');
   }
 
+  // Smart Matchmaker callback: AI drafted a personalized share message for the
+  // selected property → pre-fill the Smart Reply sheet for the same prospect so
+  // the agent can review/edit and Approve & Send through the existing flow.
+  function handleShareDraft({ draft, property }: { draft: string; property: PropertyResult }) {
+    if (!matchmakerProspect) return;
+    setActiveSuggestionId(null);
+    setFactViolations([]);
+    setEscalation(null);
+    setActiveProspect(matchmakerProspect);
+    setSmartReply(draft);
+    setPinnedProperty(property);
+    setDraftMode('review');
+    setGenerating(false);
+    setGenPhase('idle');
+  }
+
   // Human-in-the-loop: only fires WhatsApp after the Agent explicitly approves the draft.
   async function approveAndSend() {
     if (!activeProspect || !smartReply.trim() || sending) return;
@@ -257,6 +284,7 @@ export default function DealRoom() {
       }
       setActiveSuggestionId(null);
       setActiveProspect(null);
+      setPinnedProperty(null);
       // Refresh both the Kanban (last_interaction_at) and any open chat history.
       queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
       queryClient.invalidateQueries({ queryKey: ['messages', activeProspect.id] });
@@ -359,7 +387,7 @@ export default function DealRoom() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-1.5 mt-3">
+                      <div className="grid grid-cols-3 gap-1.5 mt-3">
                         <Button
                           size="sm"
                           variant="outline"
@@ -368,6 +396,15 @@ export default function DealRoom() {
                         >
                           <Sparkles className="h-3.5 w-3.5 text-primary" />
                           Reply
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          className="gap-1 h-8 text-xs"
+                          onClick={() => setMatchmakerProspect(p)}
+                        >
+                          <Home className="h-3.5 w-3.5 text-success" />
+                          Find Property
                         </Button>
                         <Button
                           size="sm"
@@ -397,6 +434,7 @@ export default function DealRoom() {
           if (!o) {
             setActiveProspect(null);
             setActiveSuggestionId(null);
+            setPinnedProperty(null);
           }
         }}
       >
@@ -455,6 +493,14 @@ export default function DealRoom() {
                     <ul className="list-disc ms-4 mt-1 space-y-0.5">
                       {factViolations.map((v, i) => (<li key={i}><strong>{v.kind}:</strong> {v.value} — {v.reason}</li>))}
                     </ul>
+                  </div>
+                )}
+                {pinnedProperty && (
+                  <div className="space-y-1">
+                    <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
+                      <Home className="h-3 w-3" /> Property Snippet
+                    </div>
+                    <PropertySnippet property={pinnedProperty} />
                   </div>
                 )}
                 <div className="flex items-center justify-between">
@@ -528,6 +574,16 @@ export default function DealRoom() {
                 <Sparkles className="h-4 w-4 mr-1.5" />
                 Regenerate
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="flex-1"
+                disabled={generating || sending || !activeProspect}
+                onClick={() => activeProspect && setMatchmakerProspect(activeProspect)}
+              >
+                <Home className="h-4 w-4 mr-1.5 text-success" />
+                Find Property
+              </Button>
             </div>
             <Button
               className="w-full"
@@ -554,6 +610,13 @@ export default function DealRoom() {
         open={outreachOpen}
         onOpenChange={setOutreachOpen}
         defaultProspectId={outreachProspectId}
+      />
+
+      <PropertyMatchmakerDialog
+        open={!!matchmakerProspect}
+        onOpenChange={(o) => { if (!o) setMatchmakerProspect(null); }}
+        prospect={matchmakerProspect}
+        onShareDraft={handleShareDraft}
       />
     </div>
   );
