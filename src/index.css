@@ -1073,66 +1073,13 @@
     animation: realtyz-wave-morph 14s linear infinite; will-change: transform, clip-path; backface-visibility: hidden;
   }
 
-  /* Dark navy hero block — applied to the first child of main's wrapper that
-     contains an h1. Pages that bring their OWN layout (SubscriptionManager,
-     etc.) opt out via [data-no-hero-wave] on the root. */
+  /* Legacy per-page hero stripe (the navy <main> > div > div:first-child block
+     that wrapped the page title) is REPLACED by the global <PageHero>.
+     Hide it so the page title isn't duplicated below the wave. Pages that
+     bring their own layout opt out via [data-no-hero-wave]. */
   main > div > div:first-child:has(> h1):not([data-no-hero-wave] *):not([data-no-hero-wave]),
   main > div > div:first-child:has(> div > h1):not([data-no-hero-wave] *):not([data-no-hero-wave]) {
-    position: sticky;
-    top: 0;
-    z-index: 40;
-    min-height: 0;
-    /* Pull hero flush to the top/sides of <main> by canceling the page wrapper's p-6 padding.
-       No bottom margin so scrolled content slides directly underneath the wave. */
-    margin: -1.5rem -1.5rem 0;
-    /* Title sits at burger center; wave anchors at bottom. */
-    padding: 6px 1.5rem 28px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    overflow: hidden;
-    border-radius: 0;
-    background: linear-gradient(160deg, hsl(var(--brand-deep)) 0%, hsl(var(--brand-navy)) 60%, hsl(var(--brand-blue)) 100%);
-    color: hsl(var(--primary-foreground));
-    box-shadow: none;
-  }
-
-  /* Reinstate spacing between hero and following content without breaking the sticky/scroll-under effect. */
-  main > div > div:first-child:has(> h1):not([data-no-hero-wave] *):not([data-no-hero-wave]) + *,
-  main > div > div:first-child:has(> div > h1):not([data-no-hero-wave] *):not([data-no-hero-wave]) + * {
-    margin-top: calc(1rem + 15px);
-  }
-
-
-  /* Hero wave is rendered as a real <RealtyzWave> SVG via HeroWaveMount.
-     Suppress the legacy CSS pseudo-element so we don't double-render. */
-  main > div > div:first-child:has(> h1)::after,
-  main > div > div:first-child:has(> div > h1)::after {
-    content: none;
-  }
-
-
-
-  main > div > div:first-child:has(> h1) > h1,
-  main > div > div:first-child:has(> div > h1) > div > h1 {
-    position: relative;
-    z-index: 1;
-    width: 100%;
-    text-align: center;
-    color: hsl(var(--primary-foreground)) !important;
-    /* Vertically center title with the top-bar burger (~2.5rem tall). */
-    min-height: 2.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    margin: 0;
-  }
-
-  main > div > div:first-child:has(> h1) > h1 + p,
-  main > div > div:first-child:has(> h1) > h1 ~ p,
-  main > div > div:first-child:has(> div > h1) > div > h1 + p,
-  main > div > div:first-child:has(> div > h1) > div > h1 ~ p {
-    display: none;
+    display: none !important;
   }
 
   /* Organic morphing wave - inspired by realtyz.co.il hero divider.

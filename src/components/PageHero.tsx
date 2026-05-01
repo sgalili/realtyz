@@ -61,9 +61,9 @@ export function PageHero() {
   return (
     <div
       dir="rtl"
-      data-no-hero-wave
+      data-page-hero
       className="relative w-full shrink-0 overflow-hidden text-primary-foreground print:hidden"
-      style={{ backgroundColor: '#0082CA' }}
+      style={{ backgroundColor: '#0096E6' }}
     >
       {/* Center-aligned 3-zone toolbar */}
       <div className="relative z-10 flex h-20 items-center justify-between gap-3 px-4 sm:px-6">
@@ -76,7 +76,7 @@ export function PageHero() {
         </SidebarTrigger>
 
         {/* Center: dynamic page title */}
-        <h1 className="min-w-0 flex-1 truncate text-center text-xl font-bold tracking-tight text-primary-foreground sm:text-2xl">
+        <h1 className="min-w-0 flex-1 truncate text-center text-xl font-bold tracking-tight text-white sm:text-2xl">
           {title}
         </h1>
 
