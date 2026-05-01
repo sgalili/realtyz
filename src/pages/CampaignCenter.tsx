@@ -110,6 +110,9 @@ const CampaignCenter = () => {
                 <span>דו"חות מסירה</span>
               </TabsTrigger>
             </TabsList>
+            <TabsContent value="community" className="mt-6">
+              <Suspense fallback={<PageFallback />}><CommunityBroadcastPanel /></Suspense>
+            </TabsContent>
             <TabsContent value="send" className="mt-6">
               <Suspense fallback={<PageFallback />}><SmsBlastSimulator /></Suspense>
             </TabsContent>
