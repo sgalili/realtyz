@@ -433,6 +433,7 @@ export default function DealRoom() {
           if (!o) {
             setActiveProspect(null);
             setActiveSuggestionId(null);
+            setPinnedProperty(null);
           }
         }}
       >
