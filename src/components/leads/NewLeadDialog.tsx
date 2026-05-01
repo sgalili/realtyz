@@ -53,11 +53,13 @@ interface Props {
 
 export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 'sale' }: Props) {
   const queryClient = useQueryClient();
+  const { checkInArea, isConfigured, serviceAreas } = useServiceAreas();
   const [dealType, setDealType] = useState<DealType>(defaultDealType);
   const [fullName, setFullName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
   const [city, setCity] = useState('');
+  const [neighborhood, setNeighborhood] = useState('');
 
   // Sale-only fields
   const [budgetMax, setBudgetMax] = useState('');
@@ -71,6 +73,8 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
   const [rooms, setRooms] = useState('');
   const [notes, setNotes] = useState('');
   const [saving, setSaving] = useState(false);
+  /** When user attempts to save an out-of-area lead, we hold the action and ask to confirm. */
+  const [pendingOutOfArea, setPendingOutOfArea] = useState(false);
 
   function reset() {
     setDealType(defaultDealType);
@@ -78,12 +82,14 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
     setPhone('');
     setEmail('');
     setCity('');
+    setNeighborhood('');
     setBudgetMax('');
     setFinancing('unknown');
     setMonthlyMax('');
     setMoveInDate('');
     setRooms('');
     setNotes('');
+    setPendingOutOfArea(false);
   }
 
   async function handleSave() {
