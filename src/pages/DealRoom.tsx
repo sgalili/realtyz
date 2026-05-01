@@ -51,6 +51,7 @@ import { DealRoomComments } from '@/components/dealroom/DealRoomComments';
 import { OutcomePicker, OutcomeBadge } from '@/components/dealroom/OutcomePicker';
 import { ClosingRoomDialog } from '@/components/dealroom/ClosingRoomDialog';
 import { AiMessageFeedback } from '@/components/AiMessageFeedback';
+import { ReferralButton } from '@/components/referrals/ReferralButton';
 import { useUserRole } from '@/hooks/useUserRole';
 import {
   Select,
