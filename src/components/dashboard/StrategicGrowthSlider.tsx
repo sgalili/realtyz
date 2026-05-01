@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { aiVoiceQuota, voterPool, monthlyPackagePrice } from '@/lib/quotaCalculator';
 import { logUpgradeInterest } from '@/lib/upgradeLeads';
 import { UpgradePlanModal } from './UpgradePlanModal';
-import { ElectionTypeSwitcher } from '@/components/ElectionTypeSwitcher';
+
 
 /**
  * Strategic Growth Slider — the dashboard-only "turn up the volume" upsell tool.
@@ -206,11 +206,6 @@ export function StrategicGrowthSlider() {
   return (
     <TooltipProvider delayDuration={200}>
       <div className="flex w-full flex-col items-center gap-3">
-        {isDemoMode && (
-          <div className="flex w-full max-w-3xl justify-center">
-            <ElectionTypeSwitcher size="sm" />
-          </div>
-        )}
         <div
           dir="rtl"
           className="realtyz-growth-slider w-full max-w-3xl rounded-2xl border border-primary/10 bg-background px-5 pb-4 pt-3 shadow-md transition-shadow hover:shadow-lg"

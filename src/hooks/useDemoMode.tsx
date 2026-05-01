@@ -9,6 +9,7 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import type { DemoCandidateId } from '@/lib/demoData';
+import { toast as sonnerToast } from 'sonner';
 
 const STORAGE_KEY = 'realtyz-demo-mode';
 const CANDIDATE_KEY = 'realtyz-demo-candidate';
@@ -56,7 +57,49 @@ export function DemoModeProvider({ children }: { children: ReactNode }) {
     setDemoCandidate(id);
   }, []);
 
-  // Sync across tabs.
+  // Silence ALL sonner toasts while demo mode is ON. We monkey-patch every
+  // callable method on the shared `toast` singleton so any module that
+  // imported it earlier still gets the muted version. Original methods are
+  // restored when demo mode turns off.
+  useEffect(() => {
+    const target = sonnerToast as unknown as Record<string, unknown>;
+    const noop = () => '' as unknown as string | number;
+    const originals = new Map<string, unknown>();
+
+    const applyMute = () => {
+      // Save + replace the function-call form (toast("..."))
+      // and every method (toast.success, .error, .info, .warning, .message,
+      // .promise, .loading, .custom, etc.).
+      const callable = sonnerToast as unknown as (...args: unknown[]) => unknown;
+      originals.set('__call__', callable);
+      // Replace by re-assigning known methods. We can't reassign the function
+      // identity itself, but Sonner reads its methods off this object, so
+      // overriding the methods is sufficient for all standard usage.
+      for (const key of Object.keys(target)) {
+        const value = target[key];
+        if (typeof value === 'function') {
+          originals.set(key, value);
+          target[key] = noop;
+        }
+      }
+    };
+
+    const restore = () => {
+      for (const [key, value] of originals) {
+        if (key === '__call__') continue;
+        target[key] = value;
+      }
+      originals.clear();
+    };
+
+    if (isDemoMode) {
+      applyMute();
+      return restore;
+    }
+    return undefined;
+  }, [isDemoMode]);
+
+
   useEffect(() => {
     const onStorage = (e: StorageEvent) => {
       if (e.key === STORAGE_KEY) setIsDemoMode(e.newValue === 'true');
