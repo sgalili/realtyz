@@ -169,6 +169,11 @@ export default function DealRoom() {
   // so the agent sees the property card pinned to the chat preview.
   const [pinnedProperty, setPinnedProperty] = useState<PropertyResult | null>(null);
   const [sortMode, setSortMode] = useState<SortMode>('recent');
+  // Hard pipeline separation — only one of {sale, rent} is visible at a time.
+  // Persists in the URL so deep links + refresh keep the agent on the right view.
+  const initialDealType: DealType =
+    (searchParams.get('pipeline') as DealType) === 'rent' ? 'rent' : 'sale';
+  const [activeDealType, setActiveDealType] = useState<DealType>(initialDealType);
   const { canAssignProspects, isJuniorOnly } = useUserRole();
 
   // Team members available for delegation (Assign To dropdown).
