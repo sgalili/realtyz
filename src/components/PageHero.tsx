@@ -61,7 +61,6 @@ export function PageHero() {
   return (
     <div
       dir="rtl"
-      data-no-hero-wave
       data-page-hero
       className="relative w-full shrink-0 overflow-hidden text-primary-foreground print:hidden"
       style={{ backgroundColor: '#0096E6' }}
