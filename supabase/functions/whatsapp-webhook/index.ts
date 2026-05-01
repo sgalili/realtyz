@@ -24,6 +24,7 @@
 // ============================================================
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -521,6 +522,11 @@ Deno.serve(async (req) => {
   } catch (e) {
     const message = e instanceof Error ? e.message : "unknown";
     console.error("whatsapp-webhook pipeline error:", message);
+    await logIntegrationError({
+      integration: "whatsapp",
+      functionName: "whatsapp-webhook",
+      errorMessage: message,
+    });
     // Try to notify the Agent that something went wrong so they aren't left guessing.
     try {
       await sendRawWhatsApp(

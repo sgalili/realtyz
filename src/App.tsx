@@ -52,6 +52,7 @@ const Team = lazy(() => import("./pages/Team"));
 const SignDocument = lazy(() => import("./pages/SignDocument"));
 const Properties = lazy(() => import("./pages/Properties"));
 const WhiteLabelSettings = lazy(() => import("./pages/WhiteLabelSettings"));
+const SystemHealth = lazy(() => import("./pages/SystemHealth"));
 
 
 let syncToastId: string | number | undefined;
@@ -170,6 +171,7 @@ const App = () => (
               <Route path="/settings/connections" element={<ProtectedRoute allowGuestDemo><ConnectionSettings /></ProtectedRoute>} />
               <Route path="/settings/branding" element={<ProtectedRoute><WhiteLabelSettings /></ProtectedRoute>} />
               <Route path="/settings/white-label" element={<Navigate to="/settings/branding" replace />} />
+              <Route path="/settings/system-health" element={<ProtectedRoute><SystemHealth /></ProtectedRoute>} />
               <Route path="/homely-api" element={<Navigate to="/api-settings" replace />} />
               <Route path="/social-connect" element={<ProtectedRoute allowGuestDemo><SocialConnect /></ProtectedRoute>} />
               <Route path="/leads" element={<ProtectedRoute allowGuestDemo><AdminLeads /></ProtectedRoute>} />

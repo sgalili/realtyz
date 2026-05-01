@@ -35,6 +35,7 @@ import { TrialQuickStartWizard } from '@/components/TrialQuickStartWizard';
 import { StartTrialCta } from '@/components/StartTrialCta';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { BrandMark } from '@/components/branding/BrandMark';
+import { SystemStatus } from '@/components/SystemStatus';
 
 const DEMO_ARCHETYPES: DemoCandidateId[] = ['primary-single', 'primary-slate', 'national-small', 'national-mid', 'national-large'];
 const TUTORIAL_STEPS = [
@@ -621,6 +622,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <HeroWaveMount />
             <MandateSelectorMount />
             <DemoSidebarPeek />
+            <footer className="mt-8 flex justify-center pb-4 print:hidden">
+              <SystemStatus />
+            </footer>
           </main>
           <AiAgentDrawer />
           <Dialog open={upgradeOpen} onOpenChange={setUpgradeOpen}>

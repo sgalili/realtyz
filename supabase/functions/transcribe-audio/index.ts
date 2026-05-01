@@ -2,6 +2,7 @@
 // Accepts { audio_data_url: string, mime_type?: string, language?: string }
 // Returns { text: string }
 import { z } from "https://esm.sh/zod@3.25.76";
+import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -50,6 +51,12 @@ Deno.serve(async (req) => {
 
     if (!res.ok) {
       const t = await res.text();
+      await logIntegrationError({
+        integration: "transcription",
+        functionName: "transcribe-audio",
+        errorCode: res.status,
+        errorMessage: t.slice(0, 500),
+      });
       return new Response(JSON.stringify({ error: `transcription failed ${res.status}: ${t}` }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -62,6 +69,11 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error("transcribe-audio error:", e);
+    await logIntegrationError({
+      integration: "transcription",
+      functionName: "transcribe-audio",
+      errorMessage: e instanceof Error ? e.message : "unknown",
+    });
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "unknown" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
