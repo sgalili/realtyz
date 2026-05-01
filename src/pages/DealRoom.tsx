@@ -69,6 +69,8 @@ type ScoreComponents = {
   property_interest?: number;
 };
 
+type DealType = 'sale' | 'rent';
+
 type Lead = {
   id: string;
   full_name: string | null;
@@ -82,57 +84,48 @@ type Lead = {
   priority_score_components?: ScoreComponents | null;
   previous_priority_score?: number | null;
   assigned_to?: string | null;
+  deal_type?: DealType | null;
+  preferences?: Record<string, unknown> | null;
 };
 
 type SortMode = 'recent' | 'priority';
 
-const STAGE_COLUMNS: Array<{
+// Stage columns are pipeline-specific. The KEY (lead_stage value) is shared so
+// data lives in one column on the table; only the displayed TITLE differs per
+// pipeline (e.g. "סגירה" for Sale vs "חתימת חוזה שכירות" for Rent).
+type StageColumn = {
   key: LeadStage;
   title: string;
   icon: typeof UserPlus;
   accent: string;
   legacyKeys: string[];
-}> = [
-  {
-    key: 'new_prospect',
-    title: 'מתעניין חדש',
-    icon: UserPlus,
-    accent: 'text-primary',
-    legacyKeys: ['new', 'lead', 'new_prospect'],
-  },
-  {
-    key: 'listing_outreach',
-    title: 'פנייה אקטיבית',
-    icon: Megaphone,
-    accent: 'text-social-facebook',
-    legacyKeys: ['contacted', 'outreach', 'listing_outreach', 'campaign'],
-  },
-  {
-    key: 'negotiation',
-    title: 'משא ומתן',
-    icon: Handshake,
-    accent: 'text-warning',
-    legacyKeys: ['negotiation', 'qualified', 'meeting'],
-  },
-  {
-    key: 'awaiting_signature',
-    title: 'ממתין לחתימה',
-    icon: PenLine,
-    accent: 'text-primary',
-    legacyKeys: ['awaiting_signature', 'signature_pending'],
-  },
-  {
-    key: 'closed',
-    title: 'נסגר',
-    icon: CheckCircle2,
-    accent: 'text-success',
-    legacyKeys: ['closed', 'won', 'converted', 'lost'],
-  },
+};
+
+const SALE_STAGE_COLUMNS: StageColumn[] = [
+  { key: 'new_prospect',       title: 'מתעניין חדש',          icon: UserPlus,      accent: 'text-primary',          legacyKeys: ['new', 'lead', 'new_prospect'] },
+  { key: 'listing_outreach',   title: 'שליחת נכסים למכירה',   icon: Megaphone,     accent: 'text-social-facebook',  legacyKeys: ['contacted', 'outreach', 'listing_outreach', 'campaign'] },
+  { key: 'negotiation',        title: 'משא ומתן על מחיר',     icon: Handshake,     accent: 'text-warning',          legacyKeys: ['negotiation', 'qualified', 'meeting'] },
+  { key: 'awaiting_signature', title: 'ממתין לחתימת זיכרון',  icon: PenLine,       accent: 'text-primary',          legacyKeys: ['awaiting_signature', 'signature_pending'] },
+  { key: 'closed',             title: 'סגירה',                icon: CheckCircle2,  accent: 'text-success',          legacyKeys: ['closed', 'won', 'converted', 'lost'] },
 ];
+
+const RENT_STAGE_COLUMNS: StageColumn[] = [
+  { key: 'new_prospect',       title: 'מתעניין חדש',           icon: UserPlus,      accent: 'text-primary',          legacyKeys: ['new', 'lead', 'new_prospect'] },
+  { key: 'listing_outreach',   title: 'שליחת נכסים להשכרה',    icon: Megaphone,     accent: 'text-social-facebook',  legacyKeys: ['contacted', 'outreach', 'listing_outreach', 'campaign'] },
+  { key: 'negotiation',        title: 'תיאום צפייה / מו״מ',    icon: Handshake,     accent: 'text-warning',          legacyKeys: ['negotiation', 'qualified', 'meeting'] },
+  { key: 'awaiting_signature', title: 'ממתין לחתימת חוזה שכירות', icon: PenLine,    accent: 'text-primary',          legacyKeys: ['awaiting_signature', 'signature_pending'] },
+  { key: 'closed',             title: 'מאוכלס',                icon: CheckCircle2,  accent: 'text-success',          legacyKeys: ['closed', 'won', 'converted', 'lost'] },
+];
+
+function columnsFor(deal: DealType): StageColumn[] {
+  return deal === 'rent' ? RENT_STAGE_COLUMNS : SALE_STAGE_COLUMNS;
+}
+
+const SHARED_LEGACY_KEYS = SALE_STAGE_COLUMNS;
 
 function bucketFor(stage: string | null): LeadStage {
   const s = (stage || 'new').toLowerCase();
-  for (const col of STAGE_COLUMNS) {
+  for (const col of SHARED_LEGACY_KEYS) {
     if (col.legacyKeys.includes(s)) return col.key;
   }
   return 'new_prospect';
