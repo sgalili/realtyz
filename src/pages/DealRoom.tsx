@@ -23,6 +23,8 @@ import {
   Handshake,
   CheckCircle2,
   MessageSquare,
+  Database,
+  PenLine,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -107,6 +109,7 @@ export default function DealRoom() {
   const [outreachOpen, setOutreachOpen] = useState(false);
   const [smartReply, setSmartReply] = useState<string>('');
   const [generating, setGenerating] = useState(false);
+  const [genPhase, setGenPhase] = useState<'idle' | 'searching' | 'drafting'>('idle');
 
   const { data: leads, isLoading } = useQuery({
     queryKey: ['deal-room-prospects'],
@@ -139,6 +142,10 @@ export default function DealRoom() {
     setActiveProspect(prospect);
     setSmartReply('');
     setGenerating(true);
+    setGenPhase('searching');
+    // Flip the status to "drafting" shortly after kick-off so the Agent sees both phases
+    // even on fast responses. The edge function performs the vector search first, then drafts.
+    const phaseTimer = window.setTimeout(() => setGenPhase('drafting'), 900);
     try {
       const { data, error } = await supabase.functions.invoke('ai-agent', {
         body: {
@@ -156,7 +163,9 @@ export default function DealRoom() {
       setSmartReply('');
       toast.error('Could not generate Smart Reply', { description: err?.message });
     } finally {
+      window.clearTimeout(phaseTimer);
       setGenerating(false);
+      setGenPhase('idle');
     }
   }
 
