@@ -15,6 +15,7 @@ import {
 import { format, formatDistanceToNow, startOfMonth, subHours } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
+import { PendingListingsCard } from '@/components/PendingListingsCard';
 
 /* ────────────────────────────────────────────────────────────────────
    Realtyz — Real-Estate Dashboard
