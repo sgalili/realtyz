@@ -37,6 +37,7 @@ import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { BrandMark } from '@/components/branding/BrandMark';
 
 import { DemoModeToggle } from '@/components/DemoModeToggle';
+import { PageToolbar } from '@/components/PageToolbar';
 
 const DEMO_ARCHETYPES: DemoCandidateId[] = ['primary-single', 'primary-slate', 'national-small', 'national-mid', 'national-large'];
 const TUTORIAL_STEPS = [
