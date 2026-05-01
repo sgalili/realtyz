@@ -34,8 +34,10 @@ const CampaignCenter = () => {
     { value: 'approvals' as const, label: 'אישורים',      icon: ShieldCheck,   description: 'תוכן AI שממתין לאישור אנושי' },
     { value: 'broadcast' as const, label: 'הפצת הודעות',  icon: Radio,         description: `WhatsApp, SMS ואימייל ל${terms.audience} - כולל דו"חות מסירה` },
   ];
-  const initialSub = (searchParams.get('sub') as BroadcastSubTab) ?? 'send';
-  const activeSub: BroadcastSubTab = initialSub === 'reports' ? 'reports' : 'send';
+  const initialSub = (searchParams.get('sub') as BroadcastSubTab) ?? 'community';
+  const activeSub: BroadcastSubTab = (['community', 'send', 'reports'] as BroadcastSubTab[]).includes(initialSub)
+    ? initialSub
+    : 'community';
   const initial = (searchParams.get('tab') as TabValue) ?? 'strategy';
   const active: TabValue = TABS.some((t) => t.value === initial) ? initial : 'strategy';
   const activeMeta = TABS.find((t) => t.value === active)!;
