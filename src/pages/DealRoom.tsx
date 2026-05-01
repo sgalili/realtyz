@@ -25,6 +25,9 @@ import {
   MessageSquare,
   Database,
   PenLine,
+  Pencil,
+  Check,
+  ShieldCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -110,6 +113,9 @@ export default function DealRoom() {
   const [smartReply, setSmartReply] = useState<string>('');
   const [generating, setGenerating] = useState(false);
   const [genPhase, setGenPhase] = useState<'idle' | 'searching' | 'drafting'>('idle');
+  // Human-in-the-loop draft lifecycle: review (read-only AI draft) → editing → sending → sent
+  const [draftMode, setDraftMode] = useState<'review' | 'editing'>('review');
+  const [sending, setSending] = useState(false);
 
   const { data: leads, isLoading } = useQuery({
     queryKey: ['deal-room-prospects'],
