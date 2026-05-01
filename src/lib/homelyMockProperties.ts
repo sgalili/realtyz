@@ -77,7 +77,7 @@ export const CITY_OPTIONS = [
 const PHOTO = (seed: string) =>
   `https://images.unsplash.com/photo-${seed}?auto=format&fit=crop&w=1200&q=80`;
 
-export const MOCK_HOMELY_PROPERTIES: HomelyProperty[] = [
+const RAW_MOCK_HOMELY_PROPERTIES: HomelyProperty[] = [
   {
     id: "homely-p-1001",
     source: "homely",
@@ -169,3 +169,25 @@ export const MOCK_HOMELY_PROPERTIES: HomelyProperty[] = [
     url: null, features: ["נוף לים", "מטבח אי", "מעלית", "חניה"],
   },
 ];
+
+
+// Enrich raw mock with listing_type, floor, address, agent details so the
+// catalogue and the property detail page have rich data without a backend.
+export const MOCK_HOMELY_PROPERTIES: HomelyProperty[] = RAW_MOCK_HOMELY_PROPERTIES.map((p, i) => {
+  const isRent = i % 3 === 2; // ~1 in 3 listings is for rent
+  return {
+    ...p,
+    listing_type: (p.listing_type ?? (isRent ? "rent" : "sale")) as ListingType,
+    price: isRent && p.price > 200_000 ? Math.round(p.price / 600 / 100) * 100 : p.price,
+    floor: p.floor ?? ((i % 8) + 1),
+    total_floors: p.total_floors ?? Math.max(((i % 8) + 1), ((i % 8) + 3)),
+    address: p.address ?? `רחוב הרצל ${10 + i}, ${p.city}`,
+    year_built: p.year_built ?? 2005 + (i % 18),
+    agent: p.agent ?? {
+      ...DEFAULT_AGENT,
+      name: ["דניאל לוי", "מיכל כהן", "אורן ברק", "נועה שפירא"][i % 4],
+      phone: ["052-555-1234", "054-777-8821", "050-219-4477", "053-441-9090"][i % 4],
+      email: ["daniel@realtyz.ai","michal@realtyz.ai","oren@realtyz.ai","noa@realtyz.ai"][i % 4],
+    },
+  };
+});
