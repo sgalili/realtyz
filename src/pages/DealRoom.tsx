@@ -176,6 +176,8 @@ export default function DealRoom() {
   // When the Smart Reply was pre-filled by the matchmaker we keep the snippet
   // so the agent sees the property card pinned to the chat preview.
   const [pinnedProperty, setPinnedProperty] = useState<PropertyResult | null>(null);
+  const [commissionLead, setCommissionLead] = useState<Lead | null>(null);
+  const { settings } = usePlatformSettings();
   const [sortMode, setSortMode] = useState<SortMode>('recent');
   // Hard pipeline separation — only one of {sale, rent} is visible at a time.
   // Persists in the URL so deep links + refresh keep the agent on the right view.
