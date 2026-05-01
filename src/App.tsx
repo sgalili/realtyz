@@ -57,6 +57,7 @@ const PropertyDetail = lazy(() => import("./pages/PropertyDetail"));
 const WhiteLabelSettings = lazy(() => import("./pages/WhiteLabelSettings"));
 const SystemHealth = lazy(() => import("./pages/SystemHealth"));
 const SharedDeals = lazy(() => import("./pages/SharedDeals"));
+const ClientPortal = lazy(() => import("./pages/ClientPortal"));
 
 
 let syncToastId: string | number | undefined;
@@ -149,6 +150,7 @@ const App = () => (
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/oauth/callback" element={<Suspense fallback={<PageLoader />}><OAuthCallback /></Suspense>} />
               <Route path="/p/:slug" element={<Suspense fallback={<PageLoader />}><PublicListingPage /></Suspense>} />
+              <Route path="/portal/:token" element={<Suspense fallback={<PageLoader />}><ClientPortal /></Suspense>} />
               <Route path="/unsubscribe" element={<Suspense fallback={<PageLoader />}><Unsubscribe /></Suspense>} />
               <Route path="/" element={<ProtectedRoute allowGuestDemo><Index /></ProtectedRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute allowGuestDemo><Index /></ProtectedRoute>} />
