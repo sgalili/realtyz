@@ -894,6 +894,80 @@ export type Database = {
           },
         ]
       }
+      client_portal_links: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          last_viewed_at: string | null
+          lead_id: string
+          revoked_at: string | null
+          token: string
+          updated_at: string
+          user_id: string
+          view_count: number
+        }
+        Insert: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          last_viewed_at?: string | null
+          lead_id: string
+          revoked_at?: string | null
+          token: string
+          updated_at?: string
+          user_id: string
+          view_count?: number
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          last_viewed_at?: string | null
+          lead_id?: string
+          revoked_at?: string | null
+          token?: string
+          updated_at?: string
+          user_id?: string
+          view_count?: number
+        }
+        Relationships: []
+      }
+      client_portal_views: {
+        Row: {
+          id: string
+          ip_address: string | null
+          link_id: string
+          referrer: string | null
+          user_agent: string | null
+          viewed_at: string
+        }
+        Insert: {
+          id?: string
+          ip_address?: string | null
+          link_id: string
+          referrer?: string | null
+          user_agent?: string | null
+          viewed_at?: string
+        }
+        Update: {
+          id?: string
+          ip_address?: string | null
+          link_id?: string
+          referrer?: string | null
+          user_agent?: string | null
+          viewed_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_portal_views_link_id_fkey"
+            columns: ["link_id"]
+            isOneToOne: false
+            referencedRelation: "client_portal_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       closing_documents: {
         Row: {
           created_at: string

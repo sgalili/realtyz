@@ -1,22 +1,4 @@
 project_id = "jlkfdwbkoxixrcrtxqjx"
 
-[functions.whatsapp-webhook]
-verify_jwt = false
-
-[functions.book-meeting]
-verify_jwt = false
-
-[functions.meeting-reminder-cron]
-verify_jwt = false
-
-[functions.elevenlabs-call-token]
-verify_jwt = false
-
-[functions.elevenlabs-call-webhook]
-verify_jwt = false
-
-[functions.sign-closing-doc]
-verify_jwt = false
-
-[functions.closing-doc-reminder-cron]
+[functions.client-portal]
 verify_jwt = false

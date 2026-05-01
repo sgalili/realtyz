@@ -52,6 +52,7 @@ import { OutcomePicker, OutcomeBadge } from '@/components/dealroom/OutcomePicker
 import { ClosingRoomDialog } from '@/components/dealroom/ClosingRoomDialog';
 import { AiMessageFeedback } from '@/components/AiMessageFeedback';
 import { ReferralButton } from '@/components/referrals/ReferralButton';
+import ClientPortalShareButton from '@/components/dealroom/ClientPortalShareButton';
 import { useUserRole } from '@/hooks/useUserRole';
 import {
   Select,
@@ -660,6 +661,16 @@ export default function DealRoom() {
                           value={p.interaction_outcome ?? null}
                         />
                       </div>
+                      {['negotiation', 'awaiting_signature', 'closed'].includes(bucketFor(p.lead_stage)) && (
+                        <div className="mt-2">
+                          <ClientPortalShareButton
+                            leadId={p.id}
+                            leadName={p.full_name}
+                            leadPhone={p.phone_number}
+                            className="w-full h-9 text-xs"
+                          />
+                        </div>
+                      )}
                       {canAssignLeads && (
                         <div className="mt-2 flex items-center gap-2">
                           <span className="text-[11px] text-muted-foreground shrink-0">הקצה ל</span>
