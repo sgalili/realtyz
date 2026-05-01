@@ -38,11 +38,11 @@ export async function logUpgradeInterest({
       lead_type: 'upgrade_interest',
       current_target: currentTarget,
       attempted_target: attemptedTarget,
-      election_type: electionType ?? null,
       status: 'new',
       metadata: {
         source,
         delta: attemptedTarget - currentTarget,
+        election_type: electionType ?? null,
         captured_at: new Date().toISOString(),
         path: typeof window !== 'undefined' ? window.location.pathname : null,
       },
