@@ -940,6 +940,15 @@ const ApiSettings = () => {
         <AgentPersonaPanel />
       </div>
 
+      {/* ── Section A.4-fine-tune: AI Fine-Tuning ── */}
+      <div className="space-y-2">
+        <div>
+          <h2 className="text-sm font-bold tracking-tight">AI Fine-Tuning · כיול סגנון מהשיחות שלך</h2>
+          <p className="text-xs text-muted-foreground">העלה ייצואי WhatsApp / מיילים, ה-AI ילמד את הקול שלך, ותוכל לבדוק זאת לפני שהוא יוצא לאוויר.</p>
+        </div>
+        <PersonaCalibrationPanel />
+      </div>
+
       {/* ── Section A.4a: Area of Expertise (Hyper-local) ── */}
       <div className="space-y-2">
         <div>
