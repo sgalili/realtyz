@@ -527,7 +527,7 @@ export default function DealRoom() {
                           onClick={() => openSmartReply(p)}
                         >
                           <Sparkles className="h-4 w-4 text-primary" />
-                          Reply
+                          תשובה
                         </Button>
                         <Button
                           size="sm"
@@ -536,8 +536,8 @@ export default function DealRoom() {
                           onClick={() => setMatchmakerProspect(p)}
                         >
                           <Home className="h-4 w-4 text-success" />
-                          <span className="hidden xs:inline sm:inline">Find Property</span>
-                          <span className="xs:hidden sm:hidden">Find</span>
+                          <span className="hidden xs:inline sm:inline">מצא נכס</span>
+                          <span className="xs:hidden sm:hidden">מצא</span>
                         </Button>
                         <Button
                           size="sm"
@@ -549,12 +549,12 @@ export default function DealRoom() {
                           }}
                         >
                           <Megaphone className="h-4 w-4 text-warning" />
-                          Outreach
+                          פנייה
                         </Button>
                       </div>
                       {canAssignProspects && (
                         <div className="mt-2 flex items-center gap-2">
-                          <span className="text-[11px] text-muted-foreground shrink-0">Assign to</span>
+                          <span className="text-[11px] text-muted-foreground shrink-0">הקצה ל</span>
                           <Select
                             value={p.assigned_to ?? '__unassigned__'}
                             onValueChange={(v) =>
@@ -562,10 +562,10 @@ export default function DealRoom() {
                             }
                           >
                             <SelectTrigger className="h-7 text-[11px]">
-                              <SelectValue placeholder="Unassigned" />
+                              <SelectValue placeholder="לא מוקצה" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="__unassigned__">Unassigned</SelectItem>
+                              <SelectItem value="__unassigned__">לא מוקצה</SelectItem>
                               {teamMembers.map((m) => (
                                 <SelectItem key={m.user_id} value={m.user_id}>
                                   {m.user_id.slice(0, 8)}… · {m.role.replace('_', ' ')}
