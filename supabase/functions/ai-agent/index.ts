@@ -390,6 +390,27 @@ serve(async (req) => {
       }
     }
 
+    // Smart Property Extraction (fire-and-forget): scan the latest lead message
+    // for structured property data. If a real listing is detected, the helper
+    // edge function inserts a PENDING listings row for the Agent to confirm
+    // from the dashboard. Never block the user's reply on this.
+    if (lastUserMsg && lead_id) {
+      const authHeader = req.headers.get("Authorization") ?? "";
+      if (authHeader.startsWith("Bearer ")) {
+        const ctxMessages = (messages as Array<{ role: string; content: string }>)
+          .slice(-6)
+          .map((m) => ({ role: m.role, content: String(m.content ?? "").slice(0, 600) }));
+        fetch(`${supabaseUrl}/functions/v1/extract-property`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: authHeader },
+          body: JSON.stringify({
+            lead_id,
+            text: String(lastUserMsg).slice(0, 4000),
+            context_messages: ctxMessages,
+          }),
+        }).catch((e) => console.warn("extract-property dispatch failed:", e));
+      }
+    }
 
     // Step 1: Ask AI to generate SQL or text response
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

@@ -1611,47 +1611,80 @@ export type Database = {
       }
       listings: {
         Row: {
+          address: string | null
           asking_price: number
           city: string | null
           created_at: string
           description: string
+          elevator: boolean | null
           embedding: string | null
+          extracted_from_lead_id: string | null
+          extracted_from_message_id: string | null
+          extraction_metadata: Json
           features: Json
+          floor: number | null
           id: string
           is_published: boolean
           neighborhood: string | null
+          parking: boolean | null
           property_title: string
+          rooms: number | null
           slug: string
+          source: string
+          sqm: number | null
+          status: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          address?: string | null
           asking_price?: number
           city?: string | null
           created_at?: string
           description: string
+          elevator?: boolean | null
           embedding?: string | null
+          extracted_from_lead_id?: string | null
+          extracted_from_message_id?: string | null
+          extraction_metadata?: Json
           features?: Json
+          floor?: number | null
           id?: string
           is_published?: boolean
           neighborhood?: string | null
+          parking?: boolean | null
           property_title: string
+          rooms?: number | null
           slug: string
+          source?: string
+          sqm?: number | null
+          status?: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          address?: string | null
           asking_price?: number
           city?: string | null
           created_at?: string
           description?: string
+          elevator?: boolean | null
           embedding?: string | null
+          extracted_from_lead_id?: string | null
+          extracted_from_message_id?: string | null
+          extraction_metadata?: Json
           features?: Json
+          floor?: number | null
           id?: string
           is_published?: boolean
           neighborhood?: string | null
+          parking?: boolean | null
           property_title?: string
+          rooms?: number | null
           slug?: string
+          source?: string
+          sqm?: number | null
+          status?: string
           updated_at?: string
           user_id?: string
         }
