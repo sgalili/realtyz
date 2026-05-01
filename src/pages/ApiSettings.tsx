@@ -826,6 +826,15 @@ const ApiSettings = () => {
         </div>
       </div>
 
+      {/* ── Section A.5: Notification Preferences ── */}
+      <div className="space-y-2">
+        <div>
+          <h2 className="text-sm font-bold tracking-tight">העדפות התראות חכמות</h2>
+          <p className="text-xs text-muted-foreground">Smart Notifications — אירועים קריטיים נשלחים אליך ב-WhatsApp עם קישור ישיר ל-Deal Room</p>
+        </div>
+        <NotificationPreferencesPanel />
+      </div>
+
       {/* ── Section B: Integrations ── */}
       <div className="space-y-2">
         <div>
