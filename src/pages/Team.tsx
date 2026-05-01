@@ -87,7 +87,7 @@ export default function Team() {
       const { data, error } = await supabase
         .from('user_roles')
         .select('user_id, role')
-        .in('role', ['agent', 'assistant', 'junior_agent']);
+        .in('role', ['managing_broker', 'lead_agent', 'agent', 'assistant', 'junior_agent']);
       if (error) throw error;
       return (data || []) as Member[];
     },
