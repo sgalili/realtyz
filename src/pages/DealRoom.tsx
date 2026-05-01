@@ -451,7 +451,7 @@ export default function DealRoom() {
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
           <Badge variant="secondary" className="text-sm">
-            {leads?.length ?? 0} מתעניינים
+            {visibleLeads.length} {activeDealType === 'rent' ? 'מתעניינים בהשכרה' : 'מתעניינים במכירה'}
           </Badge>
           <Button
             variant={sortMode === 'priority' ? 'default' : 'outline'}
