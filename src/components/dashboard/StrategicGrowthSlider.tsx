@@ -70,6 +70,24 @@ export function StrategicGrowthSlider() {
     },
   });
 
+
+  // Live count of "active prospects" — leads currently in the pipeline (not
+  // closed/won/lost). In demo mode we skip the query and synthesise a number
+  // from the selected target so the gauge feels alive.
+  const { data: activeProspectsLive = 0 } = useQuery({
+    queryKey: ['active-prospects-count', user?.id],
+    enabled: !!user?.id && !isDemoMode,
+    queryFn: async () => {
+      const { count } = await supabase
+        .from('leads')
+        .select('id', { count: 'exact', head: true })
+        .not('lead_stage', 'in', `(${CLOSED_STAGES.join(',')})`);
+      return count ?? 0;
+    },
+    staleTime: 60_000,
+    refetchInterval: 60_000,
+  });
+
   const currentPlan = planTarget ?? selectedMandates;
   const projected = selectedMandates;
 
