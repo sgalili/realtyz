@@ -179,8 +179,6 @@ export default function DealRoom() {
   const [pinnedProperty, setPinnedProperty] = useState<PropertyResult | null>(null);
   const [commissionLead, setCommissionLead] = useState<Lead | null>(null);
   const { settings } = usePlatformSettings();
-  const [commissionLead, setCommissionLead] = useState<Lead | null>(null);
-  const { settings } = usePlatformSettings();
   const [sortMode, setSortMode] = useState<SortMode>('recent');
   // Hard pipeline separation — only one of {sale, rent} is visible at a time.
   // Persists in the URL so deep links + refresh keep the agent on the right view.
