@@ -954,6 +954,50 @@ const ApiSettings = () => {
             </Button>
           </div>
         </div>
+        {homelyDiag && (
+          <div className={`mt-3 rounded-lg border p-3 text-xs space-y-2 ${
+            homelyDiag.ok
+              ? 'border-emerald-500/30 bg-emerald-500/5'
+              : 'border-red-500/30 bg-red-500/5'
+          }`}>
+            <div className="flex items-center justify-between">
+              <span className="font-semibold">
+                {homelyDiag.ok ? '✅ Connection OK' : '❌ Connection failed'}
+              </span>
+              <span className="text-muted-foreground text-[10px]">
+                {new Date(homelyDiag.timestamp).toLocaleTimeString('he-IL')}
+              </span>
+            </div>
+            <div dir="ltr" className="space-y-1.5 font-mono">
+              <div>
+                <span className="text-muted-foreground">Method:</span> {homelyDiag.request.method}
+              </div>
+              <div className="break-all">
+                <span className="text-muted-foreground">URL:</span> {homelyDiag.request.url}
+              </div>
+              <div>
+                <span className="text-muted-foreground">Headers:</span>
+                <pre className="mt-0.5 p-2 rounded bg-background/60 overflow-auto text-[10px]">
+{JSON.stringify(homelyDiag.request.headers, null, 2)}
+                </pre>
+              </div>
+              <div>
+                <span className="text-muted-foreground">Response:</span>{' '}
+                <span className={homelyDiag.ok ? 'text-emerald-600' : 'text-red-600'}>
+                  {homelyDiag.response.status ?? '—'} {homelyDiag.response.statusText}
+                </span>
+                <pre className="mt-0.5 p-2 rounded bg-background/60 overflow-auto text-[10px] max-h-40">
+{JSON.stringify(homelyDiag.response.body, null, 2)}
+                </pre>
+              </div>
+              {homelyDiag.error && (
+                <div className="text-red-600">
+                  <span className="text-muted-foreground">Error:</span> {homelyDiag.error}
+                </div>
+              )}
+            </div>
+          </div>
+        )}
       </ServiceCard>
 
       <ServiceCard
