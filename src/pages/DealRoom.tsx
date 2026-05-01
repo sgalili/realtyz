@@ -480,7 +480,7 @@ export default function DealRoom() {
 
                   {!isLoading && items.length === 0 && (
                     <div className="text-center text-xs text-muted-foreground py-8">
-                      No Prospects in this stage
+                      אין מועמדים בשלב זה
                     </div>
                   )}
 
