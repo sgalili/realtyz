@@ -12,9 +12,10 @@ import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Skeleton } from '@/components/ui/skeleton';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from '@/components/ui/alert-dialog';
-import { ShieldCheck, ShieldAlert, Users, Activity, ServerCog, Search, Wallet, Bot, ExternalLink, ArrowRight, RadioTower, Flame, Crown, Gauge, BrainCircuit, MessageCircle, RotateCcw, PlugZap, AlertTriangle, RefreshCw, CheckCircle2 } from 'lucide-react';
+import { ShieldCheck, ShieldAlert, Users, Activity, ServerCog, Search, Wallet, Bot, ExternalLink, ArrowRight, RadioTower, Flame, Crown, Gauge, BrainCircuit, MessageCircle, RotateCcw, PlugZap, AlertTriangle, RefreshCw, CheckCircle2, AlertOctagon } from 'lucide-react';
 import { FinanceTab } from '@/components/admin/FinanceTab';
 import { TestTrialModeCard } from '@/components/admin/TestTrialModeCard';
+import { ErrorLogPanel } from '@/components/admin/ErrorLogPanel';
 import { DEMO_CANDIDATES } from '@/lib/demoData';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -381,6 +382,7 @@ const SuperAdmin = () => {
               <Badge variant="destructive" className="mr-2 h-4 px-1.5 text-[10px]">{connectionHealth!.length}</Badge>
             )}
           </TabsTrigger>
+          <TabsTrigger value="errors"><AlertOctagon className="ml-2 h-4 w-4" /> שגיאות</TabsTrigger>
           <TabsTrigger value="system"><ServerCog className="ml-2 h-4 w-4" /> סטטוס</TabsTrigger>
         </TabsList>
 
@@ -482,6 +484,7 @@ const SuperAdmin = () => {
           </Card>
         </TabsContent>
 
+        <TabsContent value="errors" className="mt-4"><ErrorLogPanel /></TabsContent>
         <TabsContent value="system" className="mt-4 space-y-4"><div className="grid gap-4 md:grid-cols-4"><StatCard label="סה״כ לידים" value={stats?.voters ?? 0} /><StatCard label="הודעות" value={stats?.messages ?? 0} /><StatCard label="קמפיינים" value={stats?.campaigns ?? 0} /><StatCard label="חיבורים פעילים" value={stats?.connections ?? 0} /></div><Card><CardHeader><CardTitle>System Status</CardTitle><CardDescription>בדיקת בריאות ל-WhatsApp ולמנועי AI בזמן פגישה.</CardDescription></CardHeader><CardContent className="grid gap-3 md:grid-cols-2"><HealthToggle label="WhatsApp Gateway" status={health.whatsapp} onChange={(v) => checkHealth('whatsapp', v)} /><HealthToggle label="AI Engines" status={health.ai} onChange={(v) => checkHealth('ai', v)} /></CardContent></Card></TabsContent>
       </Tabs>
     </div>

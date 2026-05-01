@@ -1143,6 +1143,45 @@ export type Database = {
           },
         ]
       }
+      error_logs: {
+        Row: {
+          context: Json | null
+          created_at: string
+          id: string
+          message: string
+          severity: string
+          source: string
+          stack: string | null
+          url: string | null
+          user_email: string | null
+          user_id: string | null
+        }
+        Insert: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          message: string
+          severity?: string
+          source: string
+          stack?: string | null
+          url?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          context?: Json | null
+          created_at?: string
+          id?: string
+          message?: string
+          severity?: string
+          source?: string
+          stack?: string | null
+          url?: string | null
+          user_email?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       escalation_alerts: {
         Row: {
           acknowledged_at: string | null

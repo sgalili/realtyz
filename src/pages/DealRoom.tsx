@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import {
   Sheet,
   SheetContent,
@@ -486,6 +487,7 @@ export default function DealRoom() {
 
       <ActionItemsPanel onUseDraft={openFromSuggestion} />
 
+      <ErrorBoundary source="DealRoom.Grid">
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {STAGE_COLUMNS.map((col) => {
           const Icon = col.icon;
@@ -617,6 +619,7 @@ export default function DealRoom() {
           );
         })}
       </div>
+      </ErrorBoundary>
 
       <Sheet
         open={!!activeProspect}

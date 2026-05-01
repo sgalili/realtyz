@@ -25,6 +25,7 @@ import {
   type PropertyType,
 } from '@/lib/homelyMockProperties';
 import { ShareWithProspectDialog } from '@/components/properties/ShareWithProspectDialog';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 const PRICE_MIN = 0;
 const PRICE_MAX = 10_000_000;
@@ -218,23 +219,25 @@ export default function Properties() {
       </Card>
 
       {/* Grid */}
-      {isLoading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {Array.from({ length: 6 }).map((_, i) => (
-            <Skeleton key={i} className="h-72 w-full rounded-lg" />
-          ))}
-        </div>
-      ) : filtered.length === 0 ? (
-        <Card className="p-12 text-center text-muted-foreground">
-          לא נמצאו נכסים תואמים. נסו להרחיב את הסינון.
-        </Card>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {filtered.map((p) => (
-            <PropertyCard key={p.id} property={p} onShare={() => setShareTarget(p)} />
-          ))}
-        </div>
-      )}
+      <ErrorBoundary source="Properties.Grid">
+        {isLoading ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 6 }).map((_, i) => (
+              <Skeleton key={i} className="h-72 w-full rounded-lg" />
+            ))}
+          </div>
+        ) : filtered.length === 0 ? (
+          <Card className="p-12 text-center text-muted-foreground">
+            לא נמצאו נכסים תואמים. נסו להרחיב את הסינון.
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {filtered.map((p) => (
+              <PropertyCard key={p.id} property={p} onShare={() => setShareTarget(p)} />
+            ))}
+          </div>
+        )}
+      </ErrorBoundary>
 
       <ShareWithProspectDialog
         property={shareTarget}
