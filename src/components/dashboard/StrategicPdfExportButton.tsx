@@ -33,7 +33,7 @@ export function StrategicPdfExportButton({
   const [whatsapp, setWhatsapp] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const buildWhatsappFollowUp = (fullName: string) => `שלום ${fullName || '[שם המשתמש]'}, כאן ה-AI של Kalpiz. 🚀
+  const buildWhatsappFollowUp = (fullName: string) => `שלום ${fullName || '[שם המשתמש]'}, כאן ה-AI של Realtyz. 🚀
 
 הדוח האסטרטגי שלך מוכן והורד כרגע למכשיר שלך.
 

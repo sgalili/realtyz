@@ -737,7 +737,7 @@ export const getDemoServiceInclusions = (candidateId?: DemoCandidateId | null) =
   return [
     { label: 'תובנות AI ללא הגבלה', value: 'פעיל', tone: 'ok' as const },
     { label: 'ערוצי WhatsApp מחוברים', value: `${waChannelsConnected}/${waChannelsTotal}`, tone: 'ok' as const },
-    { label: 'ספק SMS פעיל', value: 'Kalpiz', tone: 'ok' as const },
+    { label: 'ספק SMS פעיל', value: 'Realtyz', tone: 'ok' as const },
     { label: 'שימוש בקול אנושי / מוקלט', value: '0.20 ₪ לדקה', tone: 'ok' as const },
     { label: 'יצירת קול AI מבוסס טקסט (TTS)', value: '1.00 ₪ לדקה', tone: 'ok' as const },
     { label: 'ניתוח סנטימנט בזמן אמת', value: 'פעיל', tone: 'ok' as const },

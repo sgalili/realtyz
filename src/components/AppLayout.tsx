@@ -593,7 +593,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="kalpiz-app-shell h-screen overflow-hidden flex w-full bg-background">
         <AppSidebar tutorialHighlightPath={activeTutorialStep?.path} />
         <div className="flex-1 flex h-screen min-w-0 flex-col overflow-hidden">
-          <header className="h-16 text-primary-foreground backdrop-blur-md flex items-center px-4 gap-0 shrink-0 sticky top-0 z-30" style={{ backgroundColor: 'hsl(var(--header-bg))' }}>
+          <header className="h-16 text-primary-foreground backdrop-blur-md flex items-center px-4 gap-2 shrink-0 sticky top-0 z-30" style={{ backgroundColor: 'hsl(var(--header-bg))' }}>
             <HeaderCrisisAlert />
             <NotificationCenter />
             <SearchExpandable />
@@ -605,6 +605,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             >
               <Bot className="h-4 w-4" />
             </Button>
+            <DemoModeToggle />
             <TrialBadge />
             <div className="flex-1" />
             <div className="ms-auto flex items-center gap-0">

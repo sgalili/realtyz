@@ -33,7 +33,7 @@ export default function TotpSetup() {
     try {
       const { data, error } = await supabase.auth.mfa.enroll({
         factorType: 'totp',
-        friendlyName: 'Kalpiz Authenticator',
+        friendlyName: 'Realtyz AI Authenticator',
       });
       if (error) throw error;
       setQrUri(data.totp.qr_code);
