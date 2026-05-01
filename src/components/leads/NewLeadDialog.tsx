@@ -104,6 +104,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
     const preferences: Record<string, unknown> = {
       listing_type: dealType, // legacy mirror for older code paths
       rooms: rooms ? Number(rooms) : undefined,
+      notes: notes.trim() || undefined,
     };
     if (dealType === 'sale') {
       preferences.budget_max = budgetMax ? Number(budgetMax) : undefined;
