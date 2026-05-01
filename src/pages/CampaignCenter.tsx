@@ -2,7 +2,7 @@ import { lazy, Suspense } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { RealtyzLoader } from '@/components/RealtyzLoader';
-import { Crosshair, Megaphone, Calendar, ShieldCheck, Radio, ClipboardList, Send } from 'lucide-react';
+import { Crosshair, Megaphone, Calendar, ShieldCheck, Radio, ClipboardList, Send, Users } from 'lucide-react';
 import { useElectionType } from '@/hooks/useElectionType';
 
 const CampaignStrategy = lazy(() => import('./CampaignStrategy'));
@@ -11,9 +11,11 @@ const ContentCalendar = lazy(() => import('./ContentCalendar'));
 const ApprovalQueue = lazy(() => import('./ApprovalQueue'));
 const SmsBlastSimulator = lazy(() => import('./SmsBlastSimulator'));
 const DeliveryReports = lazy(() => import('./DeliveryReports'));
+const CommunityBroadcastPanel = lazy(() => import('@/components/CommunityBroadcastPanel'));
 
 type TabValue = 'strategy' | 'campaigns' | 'calendar' | 'approvals' | 'broadcast';
-type BroadcastSubTab = 'send' | 'reports';
+type BroadcastSubTab = 'community' | 'send' | 'reports';
+
 
 
 const PageFallback = () => (
