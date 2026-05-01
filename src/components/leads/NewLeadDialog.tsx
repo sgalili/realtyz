@@ -92,7 +92,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
     setPendingOutOfArea(false);
   }
 
-  async function handleSave() {
+  async function handleSave(opts: { force?: boolean } = {}) {
     if (!fullName.trim()) {
       toast.error('שם מלא הוא שדה חובה');
       return;
@@ -102,6 +102,18 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
       toast.error('מספר טלפון לא תקין', {
         description: 'נדרש מספר ישראלי בפורמט 05X-XXXXXXX',
       });
+      return;
+    }
+
+    // Hyper-local guard: if agent has configured service_areas, warn before
+    // saving a lead outside their patch. Soft prompt only, never blocks.
+    if (
+      !opts.force &&
+      isConfigured &&
+      city.trim() &&
+      !checkInArea(city.trim(), neighborhood.trim() || null)
+    ) {
+      setPendingOutOfArea(true);
       return;
     }
 
@@ -132,6 +144,7 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
         phone_number: normalizedPhone,
         email: email.trim() || null,
         city: city.trim() || null,
+        neighborhood: neighborhood.trim() || null,
         deal_type: dealType,
         preferences,
         lead_stage: 'new',
