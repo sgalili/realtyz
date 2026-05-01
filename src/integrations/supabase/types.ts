@@ -1518,6 +1518,7 @@ export type Database = {
           id: string
           identity_number: string | null
           instagram_handle: string | null
+          interaction_outcome: string | null
           interest_score_json: Json | null
           interest_scores: Json | null
           interest_tag: string | null
@@ -1528,6 +1529,8 @@ export type Database = {
           loyalty_tier: string | null
           messenger_id: string | null
           neighborhood: string | null
+          outcome_set_at: string | null
+          outcome_set_by: string | null
           phone_number: string
           preferences: Json
           previous_priority_score: number
@@ -1552,6 +1555,7 @@ export type Database = {
           id?: string
           identity_number?: string | null
           instagram_handle?: string | null
+          interaction_outcome?: string | null
           interest_score_json?: Json | null
           interest_scores?: Json | null
           interest_tag?: string | null
@@ -1562,6 +1566,8 @@ export type Database = {
           loyalty_tier?: string | null
           messenger_id?: string | null
           neighborhood?: string | null
+          outcome_set_at?: string | null
+          outcome_set_by?: string | null
           phone_number: string
           preferences?: Json
           previous_priority_score?: number
@@ -1586,6 +1592,7 @@ export type Database = {
           id?: string
           identity_number?: string | null
           instagram_handle?: string | null
+          interaction_outcome?: string | null
           interest_score_json?: Json | null
           interest_scores?: Json | null
           interest_tag?: string | null
@@ -1596,6 +1603,8 @@ export type Database = {
           loyalty_tier?: string | null
           messenger_id?: string | null
           neighborhood?: string | null
+          outcome_set_at?: string | null
+          outcome_set_by?: string | null
           phone_number?: string
           preferences?: Json
           previous_priority_score?: number
@@ -1769,6 +1778,8 @@ export type Database = {
           metadata: Json | null
           platform: string | null
           sender_type: string | null
+          template_key: string | null
+          template_label: string | null
         }
         Insert: {
           ai_assisted?: boolean
@@ -1782,6 +1793,8 @@ export type Database = {
           metadata?: Json | null
           platform?: string | null
           sender_type?: string | null
+          template_key?: string | null
+          template_label?: string | null
         }
         Update: {
           ai_assisted?: boolean
@@ -1795,6 +1808,8 @@ export type Database = {
           metadata?: Json | null
           platform?: string | null
           sender_type?: string | null
+          template_key?: string | null
+          template_label?: string | null
         }
         Relationships: [
           {
@@ -3029,6 +3044,21 @@ export type Database = {
           last_failure_at: string
           recent_failures: number
           status: string
+        }[]
+      }
+      get_template_performance: {
+        Args: { user_uuid: string }
+        Returns: {
+          ghosted_count: number
+          lost_count: number
+          pending_count: number
+          qualified_count: number
+          scheduled_count: number
+          success_rate: number
+          template_key: string
+          template_label: string
+          total_leads: number
+          won_count: number
         }[]
       }
       get_user_balance: {

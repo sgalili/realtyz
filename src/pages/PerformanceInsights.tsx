@@ -38,6 +38,7 @@ import {
   CartesianGrid,
 } from 'recharts';
 import { cn } from '@/lib/utils';
+import { TemplatePerformanceCard } from '@/components/TemplatePerformanceCard';
 
 type RangeKey = 'week' | 'month';
 
@@ -348,6 +349,9 @@ export default function PerformanceInsights() {
           tone="text-social-facebook"
         />
       </div>
+
+      {/* Template performance — outcome-based learning */}
+      <TemplatePerformanceCard />
 
       {/* Charts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
