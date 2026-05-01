@@ -60,16 +60,27 @@ const interestHebrew: Record<string, string> = {
   Legal: 'משפט', Campaign: 'קמפיין', 'Smart Link': 'קישור חכם', Engagement: 'מעורבות',
 };
 const statusHebrew: Record<string, string> = {
-  lead: 'ליד', supporter: 'תומך', active: 'פעיל',
-  inactive: 'לא פעיל', contacted: 'נוצר קשר', voted: 'הצביע',
+  // Real-estate CRM lead statuses
+  cold: 'ליד קר',
+  qualified: 'ליד מוסמך',
+  negotiation: 'במשא ומתן',
+  closed: 'נסגר',
+  // Legacy fallbacks
+  lead: 'ליד קר', supporter: 'נסגר', active: 'ליד מוסמך',
+  inactive: 'לא רלוונטי', contacted: 'נוצר קשר', voted: 'נסגר',
 };
 const loyaltyConfig: Record<string, { label: string; color: string }> = {
-  supporter: { label: 'תומך', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-300' },
-  active: { label: 'פעיל', color: 'bg-blue-500/15 text-blue-700 border-blue-300' },
-  lead: { label: 'מתלבט', color: 'bg-amber-500/15 text-amber-700 border-amber-300' },
-  inactive: { label: 'מתנגד', color: 'bg-red-500/15 text-red-700 border-red-300' },
+  cold: { label: 'ליד קר', color: 'bg-slate-500/15 text-slate-700 border-slate-300' },
+  qualified: { label: 'ליד מוסמך', color: 'bg-blue-500/15 text-blue-700 border-blue-300' },
+  negotiation: { label: 'במשא ומתן', color: 'bg-amber-500/15 text-amber-700 border-amber-300' },
+  closed: { label: 'נסגר', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-300' },
+  // Legacy
+  supporter: { label: 'נסגר', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-300' },
+  active: { label: 'ליד מוסמך', color: 'bg-blue-500/15 text-blue-700 border-blue-300' },
+  lead: { label: 'ליד קר', color: 'bg-slate-500/15 text-slate-700 border-slate-300' },
+  inactive: { label: 'לא רלוונטי', color: 'bg-red-500/15 text-red-700 border-red-300' },
   contacted: { label: 'נוצר קשר', color: 'bg-slate-500/15 text-slate-700 border-slate-300' },
-  voted: { label: 'הצביע', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-300' },
+  voted: { label: 'נסגר', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-300' },
 };
 const hebrewLabel = (map: Record<string, string>, val: string | null | undefined) =>
   val ? map[val] || val : null;
@@ -804,14 +815,13 @@ const LeadCRM = () => {
               </SelectContent>
             </Select>
             <Select value={profileFilter} onValueChange={setProfileFilter}>
-              <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="פרופיל פוליטי" /></SelectTrigger>
+              <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="שלב ליד" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="all">כל הפרופילים</SelectItem>
-                <SelectItem value="תומך ליבה">תומך ליבה</SelectItem>
-                <SelectItem value="תומך פוטנציאלי">תומך פוטנציאלי</SelectItem>
-                <SelectItem value="מתלבט">מתלבט</SelectItem>
-                <SelectItem value="מתנגד פעיל">מתנגד פעיל</SelectItem>
-                <SelectItem value="מתנגד">מתנגד</SelectItem>
+                <SelectItem value="all">כל השלבים</SelectItem>
+                <SelectItem value="ליד קר">ליד קר</SelectItem>
+                <SelectItem value="ליד מוסמך">ליד מוסמך</SelectItem>
+                <SelectItem value="במשא ומתן">במשא ומתן</SelectItem>
+                <SelectItem value="נסגר">נסגר</SelectItem>
               </SelectContent>
             </Select>
             <Button variant="outline" size="sm" className="gap-1.5 h-8 shrink-0" onClick={() => handleExportExcel('filtered')}>
