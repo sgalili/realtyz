@@ -319,9 +319,9 @@ const LeadCRM = () => {
   });
 
   const selectedVoter = leads?.find((v) => v.id === selectedVoterId);
-  const activeVoterMessages = isDemoMode && selectedVoterId?.startsWith('demo-lead-')
+  const activeVoterMessages = (isDemoMode && selectedVoterId?.startsWith('demo-lead-')
     ? demoMessages.filter((m) => m.lead_id === selectedVoterId)
-    : voterMessages;
+    : voterMessages) as any[];
   const activeVoterChatHistory = isDemoMode && selectedVoterId?.startsWith('demo-lead-')
     ? demoMessages.filter((m) => m.lead_id === selectedVoterId)
     : voterChatHistory;
