@@ -204,13 +204,16 @@ async function runOne(supabase: ReturnType<typeof createClient>, runId: string) 
     })
     .eq("id", r.id);
 
-  if (ok) {
+  if (ok && automation) {
+    const { data: cur } = await supabase
+      .from("automations")
+      .select("run_count")
+      .eq("id", automation.id)
+      .maybeSingle();
     await supabase
       .from("automations")
-      .update({ last_run_at: new Date().toISOString(), run_count: (automation as any).run_count ? undefined : undefined })
+      .update({ last_run_at: new Date().toISOString(), run_count: ((cur as any)?.run_count ?? 0) + 1 })
       .eq("id", automation.id);
-    // increment via rpc-less raw bump
-    await supabase.rpc("noop_increment", {}).catch(() => {});
   }
   return { ok, summary: summaries.join(" • "), errors };
 }
