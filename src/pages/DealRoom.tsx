@@ -32,6 +32,7 @@ import {
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { ListingOutreachDialog } from '@/components/dealroom/ListingOutreachDialog';
+import { ActionItemsPanel } from '@/components/dealroom/ActionItemsPanel';
 
 type LeadStage = 'new_prospect' | 'listing_outreach' | 'negotiation' | 'closed';
 
@@ -116,6 +117,9 @@ export default function DealRoom() {
   // Human-in-the-loop draft lifecycle: review (read-only AI draft) → editing → sending → sent
   const [draftMode, setDraftMode] = useState<'review' | 'editing'>('review');
   const [sending, setSending] = useState(false);
+  // When the Smart Reply sheet was opened from an Action Item, we keep the suggestion id
+  // so we can flip it to `used` after Approve & Send and badge the sheet appropriately.
+  const [activeSuggestionId, setActiveSuggestionId] = useState<string | null>(null);
 
   const { data: leads, isLoading } = useQuery({
     queryKey: ['deal-room-prospects'],
@@ -145,6 +149,7 @@ export default function DealRoom() {
   }, [leads]);
 
   async function openSmartReply(prospect: Lead) {
+    setActiveSuggestionId(null);
     setActiveProspect(prospect);
     setSmartReply('');
     setDraftMode('review');
@@ -176,6 +181,26 @@ export default function DealRoom() {
     }
   }
 
+  // One-click from an Action Item card: open the Smart Reply sheet pre-filled with the
+  // suggested draft so the Agent can review/edit and Approve & Send. We skip the AI call
+  // because the suggestion already contains a draft (templated or auto-drafted).
+  function openFromSuggestion(suggestion: {
+    id: string;
+    draft_message: string;
+    lead?: any;
+  }) {
+    if (!suggestion.lead) {
+      toast.error('Prospect not available for this suggestion');
+      return;
+    }
+    setActiveSuggestionId(suggestion.id);
+    setActiveProspect(suggestion.lead as Lead);
+    setSmartReply(suggestion.draft_message);
+    setDraftMode('review');
+    setGenerating(false);
+    setGenPhase('idle');
+  }
+
   // Human-in-the-loop: only fires WhatsApp after the Agent explicitly approves the draft.
   async function approveAndSend() {
     if (!activeProspect || !smartReply.trim() || sending) return;
@@ -199,6 +224,16 @@ export default function DealRoom() {
       toast.success('Reply approved & sent', {
         description: `WhatsApp delivered to ${activeProspect.full_name || 'Prospect'}`,
       });
+      // If this draft came from an Action Item, mark the suggestion as used so it
+      // disappears from the queue and we don't suggest the same thing again.
+      if (activeSuggestionId) {
+        await supabase
+          .from('outreach_suggestions')
+          .update({ status: 'used', used_at: new Date().toISOString() })
+          .eq('id', activeSuggestionId);
+        queryClient.invalidateQueries({ queryKey: ['outreach-suggestions'] });
+      }
+      setActiveSuggestionId(null);
       setActiveProspect(null);
       // Refresh both the Kanban (last_interaction_at) and any open chat history.
       queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
@@ -240,6 +275,8 @@ export default function DealRoom() {
           </Button>
         </div>
       </header>
+
+      <ActionItemsPanel onUseDraft={openFromSuggestion} />
 
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4">
         {STAGE_COLUMNS.map((col) => {
@@ -332,7 +369,15 @@ export default function DealRoom() {
         })}
       </div>
 
-      <Sheet open={!!activeProspect} onOpenChange={(o) => !o && setActiveProspect(null)}>
+      <Sheet
+        open={!!activeProspect}
+        onOpenChange={(o) => {
+          if (!o) {
+            setActiveProspect(null);
+            setActiveSuggestionId(null);
+          }
+        }}
+      >
         <SheetContent side="right" className="w-full sm:max-w-md flex flex-col" dir="ltr">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
@@ -381,7 +426,7 @@ export default function DealRoom() {
                     className="gap-1.5 border-primary/30 bg-primary/5 text-primary font-normal"
                   >
                     <ShieldCheck className="h-3 w-3" />
-                    AI Draft — awaiting approval
+                    {activeSuggestionId ? 'AI Generated Suggestion — awaiting approval' : 'AI Draft — awaiting approval'}
                   </Badge>
                   {draftMode === 'editing' && (
                     <span className="text-[11px] text-muted-foreground">Editing</span>
