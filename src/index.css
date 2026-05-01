@@ -119,18 +119,30 @@
     touch-action: pan-x pan-y pinch-zoom;
     overscroll-behavior: none;
     background:
-      radial-gradient(900px 360px at 20% -10%, hsl(var(--brand-blue) / 0.08), transparent 62%),
-      linear-gradient(180deg, hsl(210 24% 98%) 0%, hsl(var(--brand-silver)) 48%, hsl(214 20% 88%) 100%);
+      radial-gradient(1100px 420px at 12% -10%, hsl(var(--brand-gold) / 0.06), transparent 65%),
+      radial-gradient(900px 360px at 100% 0%, hsl(var(--brand-navy) / 0.04), transparent 60%),
+      linear-gradient(180deg, hsl(var(--brand-cream)) 0%, hsl(0 0% 100%) 40%, hsl(var(--brand-cream)) 100%);
     background-attachment: fixed;
-    font-family: 'Assistant', 'Heebo', 'Inter', system-ui, sans-serif;
+    font-family: 'Plus Jakarta Sans', 'Assistant', 'Heebo', 'Inter', system-ui, sans-serif;
     font-weight: 400;
+    letter-spacing: -0.005em;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
   h1, h2, h3, h4, h5, h6 {
-    font-family: 'Assistant', 'Heebo', 'Inter', system-ui, sans-serif;
+    font-family: 'Playfair Display', 'Assistant', 'Heebo', 'Inter', system-ui, serif;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    line-height: 1.15;
+  }
+  /* Hebrew script keeps its dedicated humanist sans for legibility */
+  :lang(he) h1, :lang(he) h2, :lang(he) h3, :lang(he) h4, :lang(he) h5, :lang(he) h6,
+  [dir="rtl"] h1, [dir="rtl"] h2, [dir="rtl"] h3, [dir="rtl"] h4, [dir="rtl"] h5, [dir="rtl"] h6 {
+    font-family: 'Assistant', 'Heebo', 'Plus Jakarta Sans', system-ui, sans-serif;
     font-weight: 700;
-    letter-spacing: -0.015em;
+  }
+  :lang(he), [dir="rtl"] body, [dir="rtl"] {
+    font-family: 'Assistant', 'Heebo', 'Plus Jakarta Sans', 'Inter', system-ui, sans-serif;
   }
 }
 
