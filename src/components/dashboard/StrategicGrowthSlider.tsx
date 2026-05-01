@@ -13,7 +13,7 @@ import { cn } from '@/lib/utils';
 import { aiVoiceQuota, voterPool, monthlyPackagePrice } from '@/lib/quotaCalculator';
 import { logUpgradeInterest } from '@/lib/upgradeLeads';
 import { UpgradePlanModal } from './UpgradePlanModal';
-import { ElectionTypeSwitcher } from '@/components/ElectionTypeSwitcher';
+
 
 /**
  * Strategic Growth Slider — the dashboard-only "turn up the volume" upsell tool.
