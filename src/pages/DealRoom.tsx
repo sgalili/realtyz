@@ -147,6 +147,7 @@ export default function DealRoom() {
   async function openSmartReply(prospect: Lead) {
     setActiveProspect(prospect);
     setSmartReply('');
+    setDraftMode('review');
     setGenerating(true);
     setGenPhase('searching');
     // Flip the status to "drafting" shortly after kick-off so the Agent sees both phases
@@ -175,23 +176,37 @@ export default function DealRoom() {
     }
   }
 
-  async function sendReply() {
-    if (!activeProspect || !smartReply.trim()) return;
+  // Human-in-the-loop: only fires WhatsApp after the Agent explicitly approves the draft.
+  async function approveAndSend() {
+    if (!activeProspect || !smartReply.trim() || sending) return;
+    setSending(true);
     try {
-      const { error } = await supabase.from('messages').insert({
-        lead_id: activeProspect.id,
-        direction: 'outbound',
-        sender_type: 'agent',
-        content: smartReply.trim(),
-        channel: 'whatsapp',
-        platform: 'whatsapp',
+      // Route through the unified send-whatsapp gateway (WBA → GreenAPI fallback).
+      // The gateway resolves the recipient phone from lead_id and inserts the
+      // outbound row into `messages` on success — that becomes the Deal Room history entry.
+      const { data, error } = await supabase.functions.invoke('send-whatsapp', {
+        body: {
+          lead_id: activeProspect.id,
+          body: smartReply.trim(),
+        },
       });
       if (error) throw error;
-      toast.success('Reply sent to Prospect');
+      const ok = (data as any)?.ok ?? (data as any)?.success ?? true;
+      if (!ok) {
+        const reason = (data as any)?.error || 'WhatsApp gateway rejected the message';
+        throw new Error(reason);
+      }
+      toast.success('Reply approved & sent', {
+        description: `WhatsApp delivered to ${activeProspect.full_name || 'Prospect'}`,
+      });
       setActiveProspect(null);
+      // Refresh both the Kanban (last_interaction_at) and any open chat history.
       queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
+      queryClient.invalidateQueries({ queryKey: ['messages', activeProspect.id] });
     } catch (err: any) {
       toast.error('Failed to send reply', { description: err?.message });
+    } finally {
+      setSending(false);
     }
   }
 
