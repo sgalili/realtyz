@@ -65,8 +65,8 @@ export function PageHero() {
       className="relative w-full shrink-0 overflow-hidden text-primary-foreground print:hidden"
       style={{ backgroundColor: '#0096E6' }}
     >
-      {/* Center-aligned 3-zone toolbar */}
-      <div className="relative z-10 flex h-20 items-center justify-between gap-3 px-4 sm:px-6">
+      {/* Center-aligned 3-zone toolbar — height reduced by 15px (80 → 65px). */}
+      <div className="relative z-10 flex items-center justify-between gap-3 px-4 sm:px-6" style={{ height: '65px' }}>
         {/* Visual right (RTL flex start): Burger / nav toggle */}
         <SidebarTrigger
           className="h-10 w-10 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground [&_svg]:!h-6 [&_svg]:!w-6"
