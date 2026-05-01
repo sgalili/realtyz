@@ -606,7 +606,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <TrialBadge />
             <div className="flex-1" />
             <div className="ms-auto flex items-center gap-0">
-              <Link className="kalpiz-logo" to="/" aria-label="Kalpiz - דף הבית">Kalpiz</Link>
+              <BrandMark to="/" />
             </div>
           </header>
           <main className="kalpiz-main-surface flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6 pt-0">
