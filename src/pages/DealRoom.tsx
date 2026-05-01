@@ -296,13 +296,13 @@ export default function DealRoom() {
       });
       if (error) throw error;
       const reply = (data as any)?.reply || (data as any)?.message || (data as any)?.content || '';
-      setSmartReply(reply || 'No suggestion available right now. Try again in a moment.');
+      setSmartReply(reply || 'אין הצעה זמינה כרגע. נסה שוב בעוד רגע.');
       setFactViolations(((data as any)?.fact_violations as any[]) || []);
       setEscalation(((data as any)?.escalation as any) || null);
     } catch (err: any) {
       console.error('Smart reply error', err);
       setSmartReply('');
-      toast.error('Could not generate Smart Reply', { description: err?.message });
+      toast.error('לא ניתן ליצור תשובה חכמה', { description: err?.message });
     } finally {
       window.clearTimeout(phaseTimer);
       setGenerating(false);
