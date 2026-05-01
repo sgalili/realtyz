@@ -39,6 +39,7 @@ import {
 } from 'recharts';
 import { cn } from '@/lib/utils';
 import { TemplatePerformanceCard } from '@/components/TemplatePerformanceCard';
+import { UdiIntelligenceCard } from '@/components/UdiIntelligenceCard';
 
 type RangeKey = 'week' | 'month';
 
@@ -349,6 +350,9 @@ export default function PerformanceInsights() {
           tone="text-social-facebook"
         />
       </div>
+
+      {/* Udi Intelligence — outcome-based intelligence */}
+      <UdiIntelligenceCard />
 
       {/* Template performance — outcome-based learning */}
       <TemplatePerformanceCard />

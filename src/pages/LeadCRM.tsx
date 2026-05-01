@@ -13,6 +13,7 @@ import { Separator } from '@/components/ui/separator';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Progress } from '@/components/ui/progress';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
+import { OutcomePicker, OutcomeBadge, type InteractionOutcome } from '@/components/dealroom/OutcomePicker';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import {
   Search, CheckCircle2, XCircle, User, MapPin, Tag, Clock,
@@ -1157,6 +1158,21 @@ const LeadCRM = () => {
                 </SheetHeader>
 
                 <div className="mt-6 space-y-6">
+                  {/* Outcome tagging — feeds Udi Intelligence */}
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <p className="text-xs font-semibold text-primary">תוצאת אינטראקציה</p>
+                      {(selectedVoter as any).interaction_outcome && (
+                        <OutcomeBadge value={(selectedVoter as any).interaction_outcome as InteractionOutcome} />
+                      )}
+                    </div>
+                    <OutcomePicker
+                      leadId={selectedVoter.id}
+                      value={(selectedVoter as any).interaction_outcome ?? null}
+                      size="md"
+                    />
+                  </div>
+
                   {/* Quick Info Grid */}
                   <div className="grid grid-cols-2 gap-3">
                     <div className="p-3 rounded-lg bg-muted/40 space-y-1">

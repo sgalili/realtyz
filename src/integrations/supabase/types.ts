@@ -1615,6 +1615,8 @@ export type Database = {
           is_voted: boolean | null
           last_interaction_at: string | null
           lead_stage: string
+          loss_reason: string | null
+          loss_reason_note: string | null
           loyalty_tier: string | null
           messenger_id: string | null
           neighborhood: string | null
@@ -1655,6 +1657,8 @@ export type Database = {
           is_voted?: boolean | null
           last_interaction_at?: string | null
           lead_stage?: string
+          loss_reason?: string | null
+          loss_reason_note?: string | null
           loyalty_tier?: string | null
           messenger_id?: string | null
           neighborhood?: string | null
@@ -1695,6 +1699,8 @@ export type Database = {
           is_voted?: boolean | null
           last_interaction_at?: string | null
           lead_stage?: string
+          loss_reason?: string | null
+          loss_reason_note?: string | null
           loyalty_tier?: string | null
           messenger_id?: string | null
           neighborhood?: string | null
@@ -3174,6 +3180,11 @@ export type Database = {
       gdpr_delete_lead: { Args: { _lead_id: string }; Returns: Json }
       get_business_performance: {
         Args: { days_window?: number; user_uuid: string }
+        Returns: Json
+      }
+      get_followup_suggestions: { Args: { _user_id: string }; Returns: Json }
+      get_outcome_intelligence: {
+        Args: { _days?: number; _user_id: string }
         Returns: Json
       }
       get_system_status: {
