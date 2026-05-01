@@ -48,21 +48,21 @@ export const DEMO_SUMMARY = {
 };
 
 export const DEMO_CAMPAIGNS = [
-  { id: '1', name: 'גיוס לידים בתל אביב', description: 'קמפיין דיגיטלי ממוקד לתל אביב', status: 'active', total_sent: 45_200, total_clicks: 12_800, created_at: '2025-01-15' },
-  { id: '2', name: 'סקר מדיניות מס', description: 'סקר עמדות מיסוי ארצי', status: 'completed', total_sent: 120_000, total_clicks: 38_400, created_at: '2024-12-01' },
-  { id: '3', name: 'שכנוע מתלבטים בראשון לציון', description: 'שכנוע מתלבטים בראשון', status: 'active', total_sent: 28_600, total_clicks: 9_100, created_at: '2025-02-10' },
-  { id: '4', name: 'חיזוק מעורבות בירושלים', description: 'חיזוק מעורבות בירושלים', status: 'paused', total_sent: 65_000, total_clicks: 18_200, created_at: '2024-11-20' },
-  { id: '5', name: 'קמפיין סטודנטים בחיפה', description: 'קמפיין סטודנטים בחיפה', status: 'completed', total_sent: 32_000, total_clicks: 11_500, created_at: '2024-10-05' },
-  { id: '6', name: 'מבצע SMS בנגב', description: 'SMS מסיבי לנגב', status: 'completed', total_sent: 88_000, total_clicks: 22_000, created_at: '2024-09-15' },
-  { id: '7', name: 'דחיפת מדיניות ביטחון', description: 'הפצת מדיניות ביטחון', status: 'active', total_sent: 150_000, total_clicks: 47_000, created_at: '2025-03-01' },
-  { id: '8', name: 'קמפיין כלכלה תחילה', description: 'קמפיין כלכלה ראשונה', status: 'completed', total_sent: 72_000, total_clicks: 19_800, created_at: '2024-08-22' },
-  { id: '9', name: 'יוזמת לידים צעירים', description: 'יוזמת צעירים 18-25', status: 'active', total_sent: 55_000, total_clicks: 21_300, created_at: '2025-01-28' },
-  { id: '10', name: 'פנייה לגמלאים', description: 'תקשורת עם גמלאים', status: 'completed', total_sent: 40_000, total_clicks: 8_200, created_at: '2024-07-10' },
-  { id: '11', name: 'סקר משבר הדיור', description: 'סקר משבר הדיור', status: 'completed', total_sent: 95_000, total_clicks: 31_200, created_at: '2024-06-18' },
-  { id: '12', name: 'ביטחון גבול הצפון', description: 'ביטחון גבול צפון', status: 'paused', total_sent: 48_000, total_clicks: 14_100, created_at: '2024-11-05' },
-  { id: '13', name: 'קמפיין רפורמת חינוך', description: 'קמפיין רפורמת חינוך', status: 'active', total_sent: 62_000, total_clicks: 18_900, created_at: '2025-02-20' },
-  { id: '14', name: 'הבטחת מערכת הבריאות', description: 'הבטחת בריאות לכולם', status: 'completed', total_sent: 110_000, total_clicks: 35_600, created_at: '2024-05-30' },
-  { id: '15', name: 'מבצע הצבעה בשבוע האחרון', description: 'הנעה לקלפיות - שבוע אחרון', status: 'scheduled', total_sent: 0, total_clicks: 0, created_at: '2025-04-10' },
+  { id: '1', name: 'גיוס לידים – דירות 3 חדרים תל אביב', description: 'דיוור לקונים פוטנציאליים בת״א', status: 'active', total_sent: 45_200, total_clicks: 12_800, created_at: '2025-01-15' },
+  { id: '2', name: 'שכירות סטודנטים – ירושלים', description: 'מבצע השכרות לקראת תחילת שנה', status: 'completed', total_sent: 120_000, total_clicks: 38_400, created_at: '2024-12-01' },
+  { id: '3', name: 'יד שנייה – ראשון לציון', description: 'נכסים יד שנייה לזוגות צעירים', status: 'active', total_sent: 28_600, total_clicks: 9_100, created_at: '2025-02-10' },
+  { id: '4', name: 'משקיעים – נדל"ן מניב בירושלים', description: 'הזדמנויות השקעה לנכסים מניבים', status: 'paused', total_sent: 65_000, total_clicks: 18_200, created_at: '2024-11-20' },
+  { id: '5', name: 'השכרת דירות – חיפה', description: 'דירות להשכרה בחיפה והקריות', status: 'completed', total_sent: 32_000, total_clicks: 11_500, created_at: '2024-10-05' },
+  { id: '6', name: 'נכסים חדשים מקבלן – נגב', description: 'פרויקטים מקבלן לזכאי משכנתא', status: 'completed', total_sent: 88_000, total_clicks: 22_000, created_at: '2024-09-15' },
+  { id: '7', name: 'פנטהאוזים תל אביב', description: 'נכסי יוקרה במגדלי המרכז', status: 'active', total_sent: 150_000, total_clicks: 47_000, created_at: '2025-03-01' },
+  { id: '8', name: 'בית פרטי – פתח תקווה', description: 'בתים פרטיים למשפחות', status: 'completed', total_sent: 72_000, total_clicks: 19_800, created_at: '2024-08-22' },
+  { id: '9', name: 'דירת 2 חדרים להשכרה – רמת גן', description: 'מתאים לזוגות צעירים', status: 'active', total_sent: 55_000, total_clicks: 21_300, created_at: '2025-01-28' },
+  { id: '10', name: 'דירות גן – הרצליה', description: 'דירות גן עם חצר פרטית', status: 'completed', total_sent: 40_000, total_clicks: 8_200, created_at: '2024-07-10' },
+  { id: '11', name: 'משפר דיור – נתניה', description: 'מעבר מ-3 ל-4 חדרים', status: 'completed', total_sent: 95_000, total_clicks: 31_200, created_at: '2024-06-18' },
+  { id: '12', name: 'נכסים מסחריים – צפון', description: 'משרדים וחנויות', status: 'paused', total_sent: 48_000, total_clicks: 14_100, created_at: '2024-11-05' },
+  { id: '13', name: 'דירות חדשות מקבלן – אשדוד', description: 'מבצע אכלוס ראשון', status: 'active', total_sent: 62_000, total_clicks: 18_900, created_at: '2025-02-20' },
+  { id: '14', name: 'דירות יד שנייה – באר שבע', description: 'נכסים מוכנים לאכלוס מיידי', status: 'completed', total_sent: 110_000, total_clicks: 35_600, created_at: '2024-05-30' },
+  { id: '15', name: 'יום נדל"ן פתוח – אזור המרכז', description: 'תיאום סיורים בנכסים זמינים', status: 'scheduled', total_sent: 0, total_clicks: 0, created_at: '2025-04-10' },
 ];
 
 const demoNames = [
