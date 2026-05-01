@@ -594,29 +594,39 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="realtyz-app-shell h-screen overflow-hidden flex w-full bg-background">
         <AppSidebar tutorialHighlightPath={activeTutorialStep?.path} />
         <div className="flex-1 flex h-screen min-w-0 flex-col overflow-hidden">
-          <header className="h-16 text-primary-foreground backdrop-blur-md flex items-center px-4 gap-2 shrink-0 sticky top-0 z-30" style={{ backgroundColor: 'hsl(var(--header-bg))' }}>
-            <HeaderCrisisAlert />
-            <NotificationCenter />
-            <SearchExpandable />
-            <Button
-              variant="ghost"
-              size="icon"
-              className="h-9 w-9 p-0 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
-              onClick={() => window.dispatchEvent(new Event('open-ai-drawer'))}
+          <header className="h-16 text-primary-foreground backdrop-blur-md flex items-center px-4 gap-2 shrink-0 sticky top-0 z-30" style={{ backgroundColor: 'hsl(var(--header-bg))' }} dir="rtl">
+            {/* Right: burger menu (RTL — visually right side) */}
+            <SidebarTrigger
+              className="text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground h-9 w-9 [&_svg]:!h-6 [&_svg]:!w-6"
+              aria-label="פתח תפריט"
             >
-              <Bot className="h-4 w-4" />
-            </Button>
-            <DemoModeToggle />
-            <TrialBadge />
-            <div className="flex-1" />
-            <div className="ms-auto flex items-center gap-0">
+              <Menu className="h-6 w-6" />
+            </SidebarTrigger>
+
+            {/* Center: Realtyz AI brand, vertically aligned */}
+            <div className="flex-1 flex items-center justify-center">
               <BrandMark to="/" />
+            </div>
+
+            {/* Left: utilities + Demo switch (opposite the burger) */}
+            <div className="flex items-center gap-1.5">
+              <HeaderCrisisAlert />
+              <NotificationCenter />
+              <SearchExpandable />
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-9 w-9 p-0 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+                onClick={() => window.dispatchEvent(new Event('open-ai-drawer'))}
+                aria-label="פתח עוזר AI"
+              >
+                <Bot className="h-4 w-4" />
+              </Button>
+              <TrialBadge />
+              <DemoModeToggle />
             </div>
           </header>
           <main className="realtyz-main-surface flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6 pt-0">
-            <SidebarTrigger className="realtyz-title-menu-button text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground [&_svg]:!h-7 [&_svg]:!w-7" aria-label="פתח תפריט">
-              <Menu className="h-7 w-7" />
-            </SidebarTrigger>
             {children}
             <HeroWaveMount />
             <MandateSelectorMount />
