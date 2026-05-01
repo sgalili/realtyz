@@ -15,6 +15,7 @@ import { HeroWaveMount } from '@/components/HeroWaveMount';
 import NotificationCenter from '@/components/NotificationCenter';
 import AiAgentDrawer from '@/components/AiAgentDrawer';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
+import { MobileBottomNav } from '@/components/mobile/MobileBottomNav';
 import { RealtyzOnboardingWizard } from '@/components/RealtyzOnboardingWizard';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
@@ -608,7 +609,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <Link className="kalpiz-logo" to="/" aria-label="Kalpiz - דף הבית">Kalpiz</Link>
             </div>
           </header>
-          <main className="kalpiz-main-surface flex-1 overflow-y-auto overflow-x-hidden px-6 pb-6 pt-0">
+          <main className="kalpiz-main-surface flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6 pt-0">
             <SidebarTrigger className="kalpiz-title-menu-button text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground [&_svg]:!h-7 [&_svg]:!w-7" aria-label="פתח תפריט">
               <Menu className="h-7 w-7" />
             </SidebarTrigger>
@@ -692,6 +693,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <StartTrialCta variant="fab" />
           {user && <RealtyzOnboardingWizard />}
         </div>
+        <MobileBottomNav />
       </div>
     </SidebarProvider>
   );
