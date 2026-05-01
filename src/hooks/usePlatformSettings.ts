@@ -34,11 +34,11 @@ export function usePlatformSettings() {
     staleTime: 60_000,
     queryFn: async (): Promise<PlatformSettings> => {
       const { data, error } = await supabase
-        .from('platform_settings')
+        .from('platform_settings' as never)
         .select('*')
         .eq('user_id', user!.id)
         .maybeSingle();
-      if (error && error.code !== 'PGRST116') throw error;
+      if (error && (error as any).code !== 'PGRST116') throw error;
       if (!data) return DEFAULTS;
       return { ...DEFAULTS, ...(data as any) };
     },
@@ -47,12 +47,10 @@ export function usePlatformSettings() {
   const update = useMutation({
     mutationFn: async (patch: Partial<PlatformSettings>) => {
       if (!user?.id) throw new Error('not signed in');
+      const row = { user_id: user.id, ...query.data, ...patch };
       const { error } = await supabase
-        .from('platform_settings')
-        .upsert(
-          { user_id: user.id, ...query.data, ...patch },
-          { onConflict: 'user_id' },
-        );
+        .from('platform_settings' as never)
+        .upsert(row as never, { onConflict: 'user_id' });
       if (error) throw error;
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ['platform-settings', user?.id] }),
