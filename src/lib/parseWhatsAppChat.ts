@@ -6,7 +6,7 @@
 //   12.3.2024, 14:05 - Sharon: Hi
 // System notifications (group subject changes, encryption notices, "joined", etc.) are skipped.
 // Output groups consecutive messages from the same sender into "turns" and pairs them
-// into Agent ↔ Prospect conversation chunks suitable for embedding in the Strategy Bank.
+// into Agent ↔ Lead conversation chunks suitable for embedding in the Strategy Bank.
 
 export interface WhatsAppMessage {
   date: string;
@@ -17,7 +17,7 @@ export interface WhatsAppMessage {
 
 export interface ConversationTurn {
   sender: string;
-  role: "agent" | "prospect";
+  role: "agent" | "lead";
   content: string;
   date: string;
   time: string;
@@ -107,7 +107,7 @@ export function parseWhatsAppChat(raw: string, opts?: { agentName?: string }): P
   // Group consecutive same-sender messages into turns.
   const turns: ConversationTurn[] = [];
   for (const msg of messages) {
-    const role: "agent" | "prospect" = msg.sender === agentName ? "agent" : "prospect";
+    const role: "agent" | "lead" = msg.sender === agentName ? "agent" : "lead";
     const last = turns[turns.length - 1];
     if (last && last.sender === msg.sender) {
       last.content += `\n${msg.content}`;
@@ -118,7 +118,7 @@ export function parseWhatsAppChat(raw: string, opts?: { agentName?: string }): P
     }
   }
 
-  // Build chunks: ~8 turns per chunk, capped at ~3500 chars, prefer ending after a prospect→agent pair.
+  // Build chunks: ~8 turns per chunk, capped at ~3500 chars, prefer ending after a lead→agent pair.
   const chunks: ConversationChunk[] = [];
   const TURNS_PER_CHUNK = 8;
   const MAX_CHARS = 3500;
@@ -128,7 +128,7 @@ export function parseWhatsAppChat(raw: string, opts?: { agentName?: string }): P
   const flush = () => {
     if (buffer.length === 0) return;
     const text = buffer
-      .map((t) => `${t.role === "agent" ? "Agent" : "Prospect"} (${t.sender}) [${t.date} ${t.time}]: ${t.content}`)
+      .map((t) => `${t.role === "agent" ? "Agent" : "Lead"} (${t.sender}) [${t.date} ${t.time}]: ${t.content}`)
       .join("\n");
     chunks.push({
       title: `WhatsApp · ${buffer[0].date} → ${buffer[buffer.length - 1].date}`,

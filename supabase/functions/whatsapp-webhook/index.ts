@@ -58,7 +58,7 @@ function isSupportedMime(mime: string | undefined, kind: "audio" | "image" | "vi
 
 const ALLOWED_TAGS = [
   "Agent Note",
-  "Prospect Meeting",
+  "Lead Meeting",
   "Market Insight",
   "Objection Handling",
   "Closing Script",

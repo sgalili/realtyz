@@ -136,7 +136,7 @@ export default function NotificationPreferencesPanel() {
                 icon={Flame}
                 iconColor="text-warning"
                 title="New Hot Lead"
-                description="התראה כאשר נוסף ליד חדש בעדיפות גבוהה (Hot Lead)"
+                description="התראה כאשר נוסף מתעניין חדש בעדיפות גבוהה (Hot Lead)"
                 checked={local.notify_new_high_priority}
                 onCheckedChange={toggle('notify_new_high_priority')}
               />
@@ -144,7 +144,7 @@ export default function NotificationPreferencesPanel() {
                 icon={CalendarCheck}
                 iconColor="text-success"
                 title="Meeting Booked"
-                description="התראה כאשר ליד נכנס לשלב 'משא ומתן / פגישה'"
+                description="התראה כאשר מתעניין נכנס לשלב 'משא ומתן / פגישה'"
                 checked={local.notify_meeting_booked}
                 onCheckedChange={toggle('notify_meeting_booked')}
               />
@@ -152,7 +152,7 @@ export default function NotificationPreferencesPanel() {
                 icon={AlertTriangle}
                 iconColor="text-destructive"
                 title="Critical Question"
-                description="התראה מיידית כאשר ליד שואל שאלה קריטית הדורשת התערבות אנושית"
+                description="התראה מיידית כאשר מתעניין שואל שאלה קריטית הדורשת התערבות אנושית"
                 checked={local.notify_critical_question}
                 onCheckedChange={toggle('notify_critical_question')}
               />

@@ -1,16 +1,16 @@
-// Homely Prospects Importer
+// Homely Leads Importer
 //
-// Fetches prospect leads from Homely. If the user has connected a real Homely
+// Fetches lead leads from Homely. If the user has connected a real Homely
 // API key (stored in `user_api_keys.homely_api_key`) we attempt the real API;
 // otherwise we return a typed mock dataset so the rest of the product can be
 // built and demoed end-to-end. When real Homely credentials are available the
-// only thing that needs to change is the `fetchHomelyProspects` function.
+// only thing that needs to change is the `fetchHomelyLeads` function.
 //
 // Request body:
 //   { dry_run?: boolean }
 //
 // Returns:
-//   { source: "homely" | "mock", imported: number, prospects: HomelyProspect[] }
+//   { source: "homely" | "mock", imported: number, leads: HomelyLead[] }
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
@@ -24,7 +24,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-type HomelyProspect = {
+type HomelyLead = {
   external_id: string;
   full_name: string;
   phone_number: string;
@@ -49,7 +49,7 @@ function normalizePhone(raw: string): string {
   return digits;
 }
 
-const MOCK_PROSPECTS: HomelyProspect[] = [
+const MOCK_LEADS: HomelyLead[] = [
   { external_id: "homely-9001", full_name: "דנה לוי",      phone_number: "0541234501", email: "dana.l@example.co.il",  city: "תל אביב",   interest_tag: "דירת 4 חדרים", preferences: { rooms: 4, max_price: 3200000, city: "תל אביב" } },
   { external_id: "homely-9002", full_name: "אורי כהן",     phone_number: "0541234502", email: null,                    city: "רמת גן",    interest_tag: "דופלקס",        preferences: { rooms: 5, max_price: 4500000, city: "רמת גן" } },
   { external_id: "homely-9003", full_name: "מאיה ברק",     phone_number: "0541234503", email: "maya.b@example.co.il",  city: "הרצליה",    interest_tag: "פנטהאוז",       preferences: { rooms: 5, min_price: 5000000, city: "הרצליה" } },
@@ -60,7 +60,7 @@ const MOCK_PROSPECTS: HomelyProspect[] = [
   { external_id: "homely-9008", full_name: "אבי טל",       phone_number: "0541234508", email: null,                    city: "כפר סבא",   interest_tag: "קוטג'",         preferences: { rooms: 5, garden: true, city: "כפר סבא" } },
 ];
 
-async function fetchHomelyProspects(apiKey: string): Promise<HomelyProspect[] | null> {
+async function fetchHomelyLeads(apiKey: string): Promise<HomelyLead[] | null> {
   // Real Homely API call — endpoint name + auth header are best-guess; replace
   // with the documented spec when you have it. Returning null tells the caller
   // to fall back to the mock dataset.
@@ -74,7 +74,7 @@ async function fetchHomelyProspects(apiKey: string): Promise<HomelyProspect[] | 
       },
     });
     if (!upstream.ok) {
-      console.warn("[homely-prospects] upstream", upstream.status);
+      console.warn("[homely-leads] upstream", upstream.status);
       return null;
     }
     const payload = await upstream.json().catch(() => null);
@@ -90,7 +90,7 @@ async function fetchHomelyProspects(apiKey: string): Promise<HomelyProspect[] | 
       preferences: (it?.preferences as Record<string, unknown>) ?? {},
     }));
   } catch (e) {
-    console.warn("[homely-prospects] homely fetch failed:", (e as Error).message);
+    console.warn("[homely-leads] homely fetch failed:", (e as Error).message);
     return null;
   }
 }
@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
 
     // Fetch real Homely first if a key is configured.
     let source: "homely" | "mock" = "mock";
-    let prospects: HomelyProspect[] = MOCK_PROSPECTS;
+    let leads: HomelyLead[] = MOCK_LEADS;
 
     const { data: keyRow } = await admin
       .from("user_api_keys")
@@ -123,22 +123,22 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (keyRow?.homely_api_key) {
-      const real = await fetchHomelyProspects(keyRow.homely_api_key);
+      const real = await fetchHomelyLeads(keyRow.homely_api_key);
       if (real && real.length) {
         source = "homely";
-        prospects = real;
+        leads = real;
       }
     }
 
     if (dryRun) {
-      return json({ source, imported: 0, prospects });
+      return json({ source, imported: 0, leads });
     }
 
-    // Upsert into `leads`. We use phone_number as the natural key — any prospect
+    // Upsert into `leads`. We use phone_number as the natural key — any lead
     // already in the table is skipped (no duplicates). RLS does not apply for
     // service-role inserts, so we tag ownership explicitly via assigned_to.
     let imported = 0;
-    for (const p of prospects) {
+    for (const p of leads) {
       const phone = normalizePhone(p.phone_number);
       if (!phone) continue;
 
@@ -156,17 +156,17 @@ Deno.serve(async (req) => {
         city: p.city,
         interest_tag: p.interest_tag,
         preferences: p.preferences as any,
-        lead_stage: "new_prospect",
+        lead_stage: "new_lead",
         assigned_to: user.id,
         is_demo: false,
       });
       if (!insErr) imported += 1;
-      else console.warn("[homely-prospects] insert failed:", insErr.message);
+      else console.warn("[homely-leads] insert failed:", insErr.message);
     }
 
-    return json({ source, imported, prospects });
+    return json({ source, imported, leads });
   } catch (e) {
-    console.error("[homely-prospects] fatal", e);
+    console.error("[homely-leads] fatal", e);
     return json({ error: (e as Error).message }, 500);
   }
 });

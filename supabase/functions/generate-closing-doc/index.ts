@@ -1,7 +1,7 @@
 /**
  * generate-closing-doc
  * --------------------
- * Generates a pre-filled PDF (offer letter or lease agreement) for a prospect
+ * Generates a pre-filled PDF (offer letter or lease agreement) for a lead
  * using their Deal Room data + (optionally) a listing, uploads it to the
  * private `closing-docs` bucket, and creates a `closing_documents` row in
  * status='draft' with a unique sign_token.
@@ -46,7 +46,7 @@ function fmtMoney(n: number | null | undefined): string {
 
 function buildPdf(opts: {
   template: "offer_letter" | "lease_agreement";
-  prospectName: string;
+  leadName: string;
   agentName: string;
   agentEmail: string;
   propertyTitle: string;
@@ -77,7 +77,7 @@ function buildPdf(opts: {
   doc.text("PARTIES", margin, y);
   y += 16;
   doc.setFont("helvetica", "normal").setFontSize(11);
-  doc.text(`Prospective ${opts.template === "lease_agreement" ? "Tenant" : "Buyer"}: ${opts.prospectName}`, margin, y);
+  doc.text(`Leadive ${opts.template === "lease_agreement" ? "Tenant" : "Buyer"}: ${opts.leadName}`, margin, y);
   y += 16;
   doc.text(`Listing Agent: ${opts.agentName}  (${opts.agentEmail})`, margin, y);
   y += 28;
@@ -136,7 +136,7 @@ function buildPdf(opts: {
   doc.setDrawColor(0).line(margin, y + 30, margin + colW, y + 30);
   doc.line(margin + colW + 24, y + 30, w - margin, y + 30);
   doc.setTextColor(120);
-  doc.text(opts.prospectName, margin, y + 44);
+  doc.text(opts.leadName, margin, y + 44);
   doc.text("Signed via Realtyz secure link", margin, y + 56);
   doc.text(opts.agentName, margin + colW + 24, y + 44);
   doc.text(opts.agentEmail, margin + colW + 24, y + 56);
@@ -196,14 +196,14 @@ Deno.serve(async (req) => {
 
     const docId = crypto.randomUUID();
     const signToken = token();
-    const prospectName = lead.full_name || lead.phone_number || "Prospect";
+    const leadName = lead.full_name || lead.phone_number || "Lead";
     const propertyTitle = listing.property_title || lead.interest_tag || "Subject Property";
     const propertyDescription = listing.description || "";
     const price = price_override ?? listing.asking_price ?? null;
 
     const pdfBytes = buildPdf({
       template: template_key,
-      prospectName,
+      leadName,
       agentName: userEmail.split("@")[0],
       agentEmail: userEmail,
       propertyTitle,
@@ -229,13 +229,13 @@ Deno.serve(async (req) => {
       lead_id,
       listing_id: listing_id ?? null,
       template_key,
-      title: `${title} — ${prospectName}`,
+      title: `${title} — ${leadName}`,
       status: "draft",
       pdf_path: path,
       sign_token: signToken,
-      signer_name: prospectName,
+      signer_name: leadName,
       fields: {
-        prospect_name: prospectName,
+        lead_name: leadName,
         property_title: propertyTitle,
         price,
         terms: terms ?? null,

@@ -171,7 +171,7 @@ export default function ActivityLog() {
                       <div className="mb-2 flex flex-wrap items-center gap-2">
                         <Badge variant={isAi ? 'secondary' : isSupervisor ? 'default' : 'outline'} className="gap-1">
                           {isAi ? <Bot className="h-3 w-3" /> : <UserRound className="h-3 w-3" />}
-                          {isAi ? 'AI Agent' : isSupervisor ? 'Supervisor' : 'ליד'}
+                          {isAi ? 'AI Agent' : isSupervisor ? 'Supervisor' : 'מתעניין'}
                         </Badge>
                         <Badge variant="outline">{entry.platform || 'כללי'}</Badge>
                         <span className="text-xs text-muted-foreground">{format(new Date(entry.created_at), 'dd/MM HH:mm')}</span>

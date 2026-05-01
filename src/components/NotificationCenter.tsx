@@ -36,7 +36,7 @@ type DemoNotification = {
 const DEMO_EVENT_TEMPLATES = [
   { title: 'הגנת משבר', message: 'זוהתה מתקפת בוטים מתואמת - מערכת ההגנה הציעה תגובת נגד.', cta: 'צפה בפרטים', path: '/sentiment' },
   { title: 'שיפור סנטימנט', message: 'עלייה בסנטימנט החיובי בקרב קהל היעד ב{city}.', cta: 'צפה בפרטים', path: '/sentiment' },
-  { title: 'המרת מתלבט', message: 'ליד מתנדנד הפך לתומך לאחר שיחת AI ב-WhatsApp.', cta: 'צפה בפרטים', path: '/leads' },
+  { title: 'המרת מתלבט', message: 'מתעניין מתנדנד הפך לתומך לאחר שיחת AI ב-WhatsApp.', cta: 'צפה בפרטים', path: '/leads' },
   { title: 'אבן דרך לעסקה', message: 'התקרבת ליעד העסקה ה-{transaction}! נדרשים עוד 2,300 תומכים ב{region}.', cta: 'צפה בהתקדמות', path: '/dashboard' },
   { title: 'אופטימיזציית מודעות', message: 'ה-AI ביצע אופטימיזציה לקמפיין Meta: עלות לליד ירדה ב-12%.', cta: 'צפה בפרטים', path: '/campaigns' },
   { title: 'טפטוף קמפיין', message: 'רצף WhatsApp חדש תוזמן להפצה מדורגת הערב.', cta: 'צפה בפרטים', path: '/calendar' },
@@ -49,7 +49,7 @@ const resolveToastPath = (notification: Pick<DemoNotification, 'title' | 'messag
   const text = `${notification.title} ${notification.message}`;
   if (/Meta|מודעות|Ads|קמפיין Meta/i.test(text)) return '/campaigns';
   if (/סנטימנט|משבר|בוטים|Crisis/i.test(text)) return '/sentiment';
-  if (/ליד|CRM|תומך|WhatsApp/i.test(text)) return '/leads';
+  if (/מתעניין|CRM|תומך|WhatsApp/i.test(text)) return '/leads';
   if (/טפטוף|תוזמן|Calendar|Drip/i.test(text)) return '/calendar';
   return notification.path;
 };
@@ -61,7 +61,7 @@ const getDemoNotificationIcon = (notification: DemoNotification) => {
   const text = `${notification.title} ${notification.message} ${notification.path}`;
   if (/משבר|בוטים|הגנה|sentiment/i.test(text)) return ShieldAlert;
   if (/סנטימנט|עלייה|שיפור/i.test(text)) return TrendingUp;
-  if (/ליד|תומך|WhatsApp|voters/i.test(text)) return UserCheck;
+  if (/מתעניין|תומך|WhatsApp|voters/i.test(text)) return UserCheck;
   if (/עסקה|יעד|dashboard/i.test(text)) return Target;
   if (/מודעות|Meta|Ads|campaigns/i.test(text)) return Megaphone;
   if (/טפטוף|תוזמן|calendar/i.test(text)) return CalendarClock;
@@ -419,7 +419,7 @@ export default function NotificationCenter() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-1.5">
                       <span className="text-sm font-medium truncate">
-                        {voterMap[a.lead_id ?? ''] || 'ליד'}
+                        {voterMap[a.lead_id ?? ''] || 'מתעניין'}
                       </span>
                       {keyword && (
                         <span className="text-[10px] bg-destructive/15 text-destructive px-1.5 py-0.5 rounded-full font-medium shrink-0">

@@ -60,7 +60,7 @@ import {
 } from '@/components/ui/select';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
-type LeadStage = 'new_prospect' | 'listing_outreach' | 'negotiation' | 'awaiting_signature' | 'closed';
+type LeadStage = 'new_lead' | 'listing_outreach' | 'negotiation' | 'awaiting_signature' | 'closed';
 
 type ScoreComponents = {
   frequency?: number;
@@ -102,7 +102,7 @@ type StageColumn = {
 };
 
 const SALE_STAGE_COLUMNS: StageColumn[] = [
-  { key: 'new_prospect',       title: 'מתעניין חדש',          icon: UserPlus,      accent: 'text-primary',          legacyKeys: ['new', 'lead', 'new_prospect'] },
+  { key: 'new_lead',       title: 'מתעניין חדש',          icon: UserPlus,      accent: 'text-primary',          legacyKeys: ['new', 'lead', 'new_lead'] },
   { key: 'listing_outreach',   title: 'שליחת נכסים למכירה',   icon: Megaphone,     accent: 'text-social-facebook',  legacyKeys: ['contacted', 'outreach', 'listing_outreach', 'campaign'] },
   { key: 'negotiation',        title: 'משא ומתן על מחיר',     icon: Handshake,     accent: 'text-warning',          legacyKeys: ['negotiation', 'qualified', 'meeting'] },
   { key: 'awaiting_signature', title: 'ממתין לחתימת זיכרון',  icon: PenLine,       accent: 'text-primary',          legacyKeys: ['awaiting_signature', 'signature_pending'] },
@@ -110,7 +110,7 @@ const SALE_STAGE_COLUMNS: StageColumn[] = [
 ];
 
 const RENT_STAGE_COLUMNS: StageColumn[] = [
-  { key: 'new_prospect',       title: 'מתעניין חדש',           icon: UserPlus,      accent: 'text-primary',          legacyKeys: ['new', 'lead', 'new_prospect'] },
+  { key: 'new_lead',       title: 'מתעניין חדש',           icon: UserPlus,      accent: 'text-primary',          legacyKeys: ['new', 'lead', 'new_lead'] },
   { key: 'listing_outreach',   title: 'שליחת נכסים להשכרה',    icon: Megaphone,     accent: 'text-social-facebook',  legacyKeys: ['contacted', 'outreach', 'listing_outreach', 'campaign'] },
   { key: 'negotiation',        title: 'תיאום צפייה / מו״מ',    icon: Handshake,     accent: 'text-warning',          legacyKeys: ['negotiation', 'qualified', 'meeting'] },
   { key: 'awaiting_signature', title: 'ממתין לחתימת חוזה שכירות', icon: PenLine,    accent: 'text-primary',          legacyKeys: ['awaiting_signature', 'signature_pending'] },
@@ -128,7 +128,7 @@ function bucketFor(stage: string | null): LeadStage {
   for (const col of SHARED_LEGACY_KEYS) {
     if (col.legacyKeys.includes(s)) return col.key;
   }
-  return 'new_prospect';
+  return 'new_lead';
 }
 
 function timeAgo(iso: string | null): string {
@@ -148,8 +148,8 @@ function timeAgo(iso: string | null): string {
 export default function DealRoom() {
   const queryClient = useQueryClient();
   const [searchParams, setSearchParams] = useSearchParams();
-  const [activeProspect, setActiveProspect] = useState<Lead | null>(null);
-  const [outreachProspectId, setOutreachProspectId] = useState<string | null>(null);
+  const [activeLead, setActiveLead] = useState<Lead | null>(null);
+  const [outreachLeadId, setOutreachLeadId] = useState<string | null>(null);
   const [outreachOpen, setOutreachOpen] = useState(false);
   const [smartReply, setSmartReply] = useState<string>('');
   const [generating, setGenerating] = useState(false);
@@ -163,8 +163,8 @@ export default function DealRoom() {
   // Compliance signals returned by the ai-agent edge function for the current draft.
   const [factViolations, setFactViolations] = useState<Array<{ kind: string; value: string; reason: string }>>([]);
   const [escalation, setEscalation] = useState<{ category: string; severity: string; matched: string[] } | null>(null);
-  // Smart Matchmaker — opens the Find Property overlay for a chosen prospect
-  const [matchmakerProspect, setMatchmakerProspect] = useState<Lead | null>(null);
+  // Smart Matchmaker — opens the Find Property overlay for a chosen lead
+  const [matchmakerLead, setMatchmakerLead] = useState<Lead | null>(null);
   // When the Smart Reply was pre-filled by the matchmaker we keep the snippet
   // so the agent sees the property card pinned to the chat preview.
   const [pinnedProperty, setPinnedProperty] = useState<PropertyResult | null>(null);
@@ -174,12 +174,12 @@ export default function DealRoom() {
   const initialDealType: DealType =
     (searchParams.get('pipeline') as DealType) === 'rent' ? 'rent' : 'sale';
   const [activeDealType, setActiveDealType] = useState<DealType>(initialDealType);
-  const { canAssignProspects, isJuniorOnly } = useUserRole();
+  const { canAssignLeads, isJuniorOnly } = useUserRole();
 
   // Team members available for delegation (Assign To dropdown).
   const { data: teamMembers = [] } = useQuery({
     queryKey: ['deal-room-team-members'],
-    enabled: canAssignProspects,
+    enabled: canAssignLeads,
     queryFn: async () => {
       const { data } = await supabase
         .from('user_roles')
@@ -196,7 +196,7 @@ export default function DealRoom() {
     staleTime: 60_000,
   });
 
-  async function assignProspect(leadId: string, userId: string | null) {
+  async function assignLead(leadId: string, userId: string | null) {
     const { error } = await supabase
       .from('leads')
       .update({ assigned_to: userId })
@@ -206,25 +206,25 @@ export default function DealRoom() {
       return;
     }
     toast.success(userId ? 'המתעניין הוקצה' : 'ההקצאה בוטלה');
-    queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
+    queryClient.invalidateQueries({ queryKey: ['deal-room-leads'] });
   }
   const [recomputing, setRecomputing] = useState(false);
   const [importing, setImporting] = useState(false);
 
-  async function importHomelyProspects() {
+  async function importHomelyLeads() {
     if (importing) return;
     setImporting(true);
     try {
-      const { data, error } = await supabase.functions.invoke('homely-prospects', {
+      const { data, error } = await supabase.functions.invoke('homely-leads', {
         body: {},
       });
       if (error) throw error;
       const n = (data as any)?.imported ?? 0;
       const src = (data as any)?.source === 'homely' ? 'Homely' : 'מאגר דמו';
-      toast.success(`Imported ${n} new prospects`, {
+      toast.success(`Imported ${n} new leads`, {
         description: `מקור: ${src}`,
       });
-      queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
+      queryClient.invalidateQueries({ queryKey: ['deal-room-leads'] });
     } catch (err: any) {
       toast.error('ייבוא המתעניינים נכשל', { description: err?.message });
     } finally {
@@ -233,7 +233,7 @@ export default function DealRoom() {
   }
 
   const { data: leads, isLoading } = useQuery({
-    queryKey: ['deal-room-prospects'],
+    queryKey: ['deal-room-leads'],
     queryFn: async () => {
       const { data, error } = await supabase
         .from('leads')
@@ -272,7 +272,7 @@ export default function DealRoom() {
 
   const grouped = useMemo(() => {
     const map: Record<LeadStage, Lead[]> = {
-      new_prospect: [],
+      new_lead: [],
       listing_outreach: [],
       negotiation: [],
       awaiting_signature: [],
@@ -293,13 +293,13 @@ export default function DealRoom() {
     if (recomputing) return;
     setRecomputing(true);
     try {
-      const { data, error } = await supabase.functions.invoke('compute-prospect-score', {
+      const { data, error } = await supabase.functions.invoke('compute-lead-score', {
         body: { recompute_all: true },
       });
       if (error) throw error;
       const n = (data as any)?.processed ?? 0;
       toast.success(`חושבו מחדש ${n} ציוני מתעניין`);
-      queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
+      queryClient.invalidateQueries({ queryKey: ['deal-room-leads'] });
     } catch (err: any) {
       toast.error('לא ניתן לחשב מחדש את הציונים', { description: err?.message });
     } finally {
@@ -307,10 +307,10 @@ export default function DealRoom() {
     }
   }
 
-  // Smart Notification deep link: ?leadId=<uuid> opens that prospect's Smart Reply sheet.
+  // Smart Notification deep link: ?leadId=<uuid> opens that lead's Smart Reply sheet.
   useEffect(() => {
     const leadId = searchParams.get('leadId');
-    if (!leadId || !leads || activeProspect) return;
+    if (!leadId || !leads || activeLead) return;
     const target = leads.find((l) => l.id === leadId);
     if (target) {
       void openSmartReply(target);
@@ -322,9 +322,9 @@ export default function DealRoom() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [leads, searchParams]);
 
-  async function openSmartReply(prospect: Lead) {
+  async function openSmartReply(lead: Lead) {
     setActiveSuggestionId(null);
-    setActiveProspect(prospect);
+    setActiveLead(lead);
     setSmartReply('');
     setDraftMode('review');
     setGenerating(true);
@@ -336,9 +336,9 @@ export default function DealRoom() {
       const { data, error } = await supabase.functions.invoke('ai-agent', {
         body: {
           mode: 'deal_room_reply',
-          lead_id: prospect.id,
-          prospect_name: prospect.full_name,
-          context: `Prospect stage: ${prospect.lead_stage}. City: ${prospect.city || 'unknown'}. Interest: ${prospect.interest_tag || 'general'}.`,
+          lead_id: lead.id,
+          lead_name: lead.full_name,
+          context: `Lead stage: ${lead.lead_stage}. City: ${lead.city || 'unknown'}. Interest: ${lead.interest_tag || 'general'}.`,
         },
       });
       if (error) throw error;
@@ -370,7 +370,7 @@ export default function DealRoom() {
       return;
     }
     setActiveSuggestionId(suggestion.id);
-    setActiveProspect(suggestion.lead as Lead);
+    setActiveLead(suggestion.lead as Lead);
     setSmartReply(suggestion.draft_message);
     setDraftMode('review');
     setGenerating(false);
@@ -378,14 +378,14 @@ export default function DealRoom() {
   }
 
   // Smart Matchmaker callback: AI drafted a personalized share message for the
-  // selected property → pre-fill the Smart Reply sheet for the same prospect so
+  // selected property → pre-fill the Smart Reply sheet for the same lead so
   // the agent can review/edit and Approve & Send through the existing flow.
   function handleShareDraft({ draft, property }: { draft: string; property: PropertyResult }) {
-    if (!matchmakerProspect) return;
+    if (!matchmakerLead) return;
     setActiveSuggestionId(null);
     setFactViolations([]);
     setEscalation(null);
-    setActiveProspect(matchmakerProspect);
+    setActiveLead(matchmakerLead);
     setSmartReply(draft);
     setPinnedProperty(property);
     setDraftMode('review');
@@ -395,7 +395,7 @@ export default function DealRoom() {
 
   // Human-in-the-loop: only fires WhatsApp after the Agent explicitly approves the draft.
   async function approveAndSend() {
-    if (!activeProspect || !smartReply.trim() || sending) return;
+    if (!activeLead || !smartReply.trim() || sending) return;
     setSending(true);
     try {
       // Route through the unified send-whatsapp gateway (WBA → GreenAPI fallback).
@@ -403,7 +403,7 @@ export default function DealRoom() {
       // outbound row into `messages` on success — that becomes the Deal Room history entry.
       const { data, error } = await supabase.functions.invoke('send-whatsapp', {
         body: {
-          lead_id: activeProspect.id,
+          lead_id: activeLead.id,
           body: smartReply.trim(),
         },
       });
@@ -414,7 +414,7 @@ export default function DealRoom() {
         throw new Error(reason);
       }
       toast.success('התשובה אושרה ונשלחה', {
-        description: `WhatsApp נמסר ל-${activeProspect.full_name || 'המתעניין'}`,
+        description: `WhatsApp נמסר ל-${activeLead.full_name || 'המתעניין'}`,
       });
       // If this draft came from an Action Item, mark the suggestion as used so it
       // disappears from the queue and we don't suggest the same thing again.
@@ -426,11 +426,11 @@ export default function DealRoom() {
         queryClient.invalidateQueries({ queryKey: ['outreach-suggestions'] });
       }
       setActiveSuggestionId(null);
-      setActiveProspect(null);
+      setActiveLead(null);
       setPinnedProperty(null);
       // Refresh both the Kanban (last_interaction_at) and any open chat history.
-      queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
-      queryClient.invalidateQueries({ queryKey: ['messages', activeProspect.id] });
+      queryClient.invalidateQueries({ queryKey: ['deal-room-leads'] });
+      queryClient.invalidateQueries({ queryKey: ['messages', activeLead.id] });
     } catch (err: any) {
       toast.error('שליחת התשובה נכשלה', { description: err?.message });
     } finally {
@@ -446,7 +446,7 @@ export default function DealRoom() {
             עסקאות
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            תצוגת פייפליין של כל המתעניינים — גרור כוונה לפעולה.
+            תצוגת ניהול מתעניינים של כל המתעניינים — גרור כוונה לפעולה.
           </p>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
@@ -486,7 +486,7 @@ export default function DealRoom() {
           <Button
             variant="outline"
             size="sm"
-            onClick={importHomelyProspects}
+            onClick={importHomelyLeads}
             disabled={importing}
             className="gap-1.5 h-11"
             title="ייבוא מתעניינים חדשים מ-Homely"
@@ -496,7 +496,7 @@ export default function DealRoom() {
           </Button>
           <Button
             onClick={() => {
-              setOutreachProspectId(null);
+              setOutreachLeadId(null);
               setOutreachOpen(true);
             }}
             className="gap-1.5 h-11 flex-1 sm:flex-none"
@@ -618,7 +618,7 @@ export default function DealRoom() {
                           size="sm"
                           variant="outline"
                           className="gap-1 h-11 sm:h-9 text-xs"
-                          onClick={() => setMatchmakerProspect(p)}
+                          onClick={() => setMatchmakerLead(p)}
                         >
                           <Home className="h-4 w-4 text-success" />
                           <span className="hidden xs:inline sm:inline">מצא נכס</span>
@@ -629,7 +629,7 @@ export default function DealRoom() {
                           variant="outline"
                           className="gap-1 h-11 sm:h-9 text-xs"
                           onClick={() => {
-                            setOutreachProspectId(p.id);
+                            setOutreachLeadId(p.id);
                             setOutreachOpen(true);
                           }}
                         >
@@ -637,13 +637,13 @@ export default function DealRoom() {
                           פנייה
                         </Button>
                       </div>
-                      {canAssignProspects && (
+                      {canAssignLeads && (
                         <div className="mt-2 flex items-center gap-2">
                           <span className="text-[11px] text-muted-foreground shrink-0">הקצה ל</span>
                           <Select
                             value={p.assigned_to ?? '__unassigned__'}
                             onValueChange={(v) =>
-                              assignProspect(p.id, v === '__unassigned__' ? null : v)
+                              assignLead(p.id, v === '__unassigned__' ? null : v)
                             }
                           >
                             <SelectTrigger className="h-7 text-[11px]">
@@ -671,10 +671,10 @@ export default function DealRoom() {
       </ErrorBoundary>
 
       <Sheet
-        open={!!activeProspect}
+        open={!!activeLead}
         onOpenChange={(o) => {
           if (!o) {
-            setActiveProspect(null);
+            setActiveLead(null);
             setActiveSuggestionId(null);
             setPinnedProperty(null);
           }
@@ -689,7 +689,7 @@ export default function DealRoom() {
             <SheetDescription>
               תשובה מוצעת עבור{' '}
               <span className="font-medium text-foreground">
-                {activeProspect?.full_name || 'מתעניין זה'}
+                {activeLead?.full_name || 'מתעניין זה'}
               </span>
               , נכתבה בקול האותנטי שלך מתוך מאגר האסטרטגיה.
             </SheetDescription>
@@ -785,23 +785,23 @@ export default function DealRoom() {
                   <AiMessageFeedback
                     aiMessage={smartReply}
                     surface="deal_room"
-                    leadId={activeProspect?.id ?? null}
+                    leadId={activeLead?.id ?? null}
                     suggestionId={activeSuggestionId ?? null}
                   />
                 )}
               </div>
             )}
 
-            {activeProspect && (
-              <CallHistoryList leadId={activeProspect.id} limit={5} />
+            {activeLead && (
+              <CallHistoryList leadId={activeLead.id} limit={5} />
             )}
 
-            {activeProspect && (
-              <AutomationActivityFeed leadId={activeProspect.id} limit={10} />
+            {activeLead && (
+              <AutomationActivityFeed leadId={activeLead.id} limit={10} />
             )}
 
-            {activeProspect && (
-              <DealRoomComments leadId={activeProspect.id} />
+            {activeLead && (
+              <DealRoomComments leadId={activeLead.id} />
             )}
           </div>
 
@@ -829,7 +829,7 @@ export default function DealRoom() {
                 variant="outline"
                 className="h-12 text-sm"
                 disabled={generating || sending}
-                onClick={() => activeProspect && openSmartReply(activeProspect)}
+                onClick={() => activeLead && openSmartReply(activeLead)}
               >
                 <Sparkles className="h-4 w-4 ms-1.5" />
                 צור מחדש
@@ -837,8 +837,8 @@ export default function DealRoom() {
               <Button
                 variant="outline"
                 className="h-12 text-sm"
-                disabled={generating || sending || !activeProspect}
-                onClick={() => activeProspect && setMatchmakerProspect(activeProspect)}
+                disabled={generating || sending || !activeLead}
+                onClick={() => activeLead && setMatchmakerLead(activeLead)}
               >
                 <Home className="h-4 w-4 ms-1.5 text-success" />
                 מצא
@@ -868,13 +868,13 @@ export default function DealRoom() {
       <ListingOutreachDialog
         open={outreachOpen}
         onOpenChange={setOutreachOpen}
-        defaultProspectId={outreachProspectId}
+        defaultLeadId={outreachLeadId}
       />
 
       <PropertyMatchmakerDialog
-        open={!!matchmakerProspect}
-        onOpenChange={(o) => { if (!o) setMatchmakerProspect(null); }}
-        prospect={matchmakerProspect}
+        open={!!matchmakerLead}
+        onOpenChange={(o) => { if (!o) setMatchmakerLead(null); }}
+        lead={matchmakerLead}
         onShareDraft={handleShareDraft}
       />
     </div>

@@ -1,13 +1,13 @@
 // Smart Matchmaker — property search
 //
-// Searches properties matching a prospect's preferences. Tries Homely first
+// Searches properties matching a lead's preferences. Tries Homely first
 // (proxied through the user's API key, same pattern as call-homely-api), then
 // falls back to the local `listings` table so the feature still works for
 // agents who haven't connected Homely yet.
 //
 // Request body:
 //   {
-//     prospect_id?: uuid,                 // optional; if provided we read prospect.preferences
+//     lead_id?: uuid,                 // optional; if provided we read lead.preferences
 //     min_price?: number,
 //     max_price?: number,
 //     city?: string,
@@ -114,7 +114,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({}));
     let {
-      prospect_id,
+      lead_id,
       min_price,
       max_price,
       city,
@@ -122,7 +122,7 @@ Deno.serve(async (req) => {
       keywords,
       limit = 12,
     } = body as {
-      prospect_id?: string;
+      lead_id?: string;
       min_price?: number;
       max_price?: number;
       city?: string;
@@ -131,12 +131,12 @@ Deno.serve(async (req) => {
       limit?: number;
     };
 
-    // Hydrate filters from prospect preferences when not explicitly provided
-    if (prospect_id && (!min_price && !max_price && !city && !rooms)) {
+    // Hydrate filters from lead preferences when not explicitly provided
+    if (lead_id && (!min_price && !max_price && !city && !rooms)) {
       const { data: lead } = await admin
         .from("leads")
         .select("preferences, city, interest_tag")
-        .eq("id", prospect_id)
+        .eq("id", lead_id)
         .maybeSingle();
       const prefs = (lead?.preferences || {}) as Record<string, any>;
       min_price ??= Number(prefs.min_price) || undefined;

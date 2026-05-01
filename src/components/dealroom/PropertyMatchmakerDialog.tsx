@@ -44,7 +44,7 @@ export type PropertyResult = {
   features: string[];
 };
 
-type Prospect = {
+type Lead = {
   id: string;
   full_name: string | null;
   city?: string | null;
@@ -75,13 +75,13 @@ function formatPrice(price: number | null, currency = '₪') {
 export function PropertyMatchmakerDialog({
   open,
   onOpenChange,
-  prospect,
+  lead,
   onShareDraft,
 }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  prospect: Prospect | null;
-  /** Called when the agent confirms "Share with Prospect" — receives the AI draft. */
+  lead: Lead | null;
+  /** Called when the agent confirms "Share with Lead" — receives the AI draft. */
   onShareDraft: (args: { draft: string; property: PropertyResult }) => void;
 }) {
   const [filters, setFilters] = useState<Filters>(EMPTY_FILTERS);
@@ -91,7 +91,7 @@ export function PropertyMatchmakerDialog({
   const [selected, setSelected] = useState<PropertyResult | null>(null);
   const [drafting, setDrafting] = useState(false);
 
-  // Pre-fill filters from prospect each time the dialog opens
+  // Pre-fill filters from lead each time the dialog opens
   useEffect(() => {
     if (!open) return;
     setSelected(null);
@@ -99,21 +99,21 @@ export function PropertyMatchmakerDialog({
     setSource(null);
     setFilters({
       ...EMPTY_FILTERS,
-      city: prospect?.city || '',
-      keywords: prospect?.interest_tag || '',
+      city: lead?.city || '',
+      keywords: lead?.interest_tag || '',
     });
-    // Auto-run an initial search if we have a prospect
-    if (prospect) {
-      void runSearch({ ...EMPTY_FILTERS, city: prospect.city || '', keywords: prospect.interest_tag || '' });
+    // Auto-run an initial search if we have a lead
+    if (lead) {
+      void runSearch({ ...EMPTY_FILTERS, city: lead.city || '', keywords: lead.interest_tag || '' });
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, prospect?.id]);
+  }, [open, lead?.id]);
 
   async function runSearch(f: Filters) {
     setLoading(true);
     setSelected(null);
     try {
-      const body: Record<string, unknown> = { prospect_id: prospect?.id };
+      const body: Record<string, unknown> = { lead_id: lead?.id };
       if (f.min_price) body.min_price = Number(f.min_price);
       if (f.max_price) body.max_price = Number(f.max_price);
       if (f.city.trim()) body.city = f.city.trim();
@@ -139,12 +139,12 @@ export function PropertyMatchmakerDialog({
     }
   }
 
-  async function shareWithProspect() {
-    if (!selected || !prospect) return;
+  async function shareWithLead() {
+    if (!selected || !lead) return;
     setDrafting(true);
     try {
       const { data, error } = await supabase.functions.invoke('draft-property-share', {
-        body: { prospect_id: prospect.id, property: selected },
+        body: { lead_id: lead.id, property: selected },
       });
       if (error) throw error;
       const draft = (data as any)?.draft as string;
@@ -166,9 +166,9 @@ export function PropertyMatchmakerDialog({
   }
 
   const headerSubtitle = useMemo(() => {
-    if (!prospect) return 'בחרו לקוח תחילה';
-    return `עבור ${prospect.full_name || 'הלקוח'}${prospect.city ? ` · ${prospect.city}` : ''}`;
-  }, [prospect]);
+    if (!lead) return 'בחרו לקוח תחילה';
+    return `עבור ${lead.full_name || 'הלקוח'}${lead.city ? ` · ${lead.city}` : ''}`;
+  }, [lead]);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -253,7 +253,7 @@ export function PropertyMatchmakerDialog({
               <Button variant="outline" size="sm" onClick={() => setSelected(null)}>
                 בחירת נכס אחר
               </Button>
-              <Button onClick={shareWithProspect} disabled={drafting || !prospect} className="gap-1.5">
+              <Button onClick={shareWithLead} disabled={drafting || !lead} className="gap-1.5">
                 {drafting ? (
                   <><Sparkles className="h-4 w-4 animate-pulse" />מנסח הודעה אישית…</>
                 ) : (

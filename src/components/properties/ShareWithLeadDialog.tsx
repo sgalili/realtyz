@@ -18,7 +18,7 @@ import { toast } from 'sonner';
 import { ListingOutreachDialog } from '@/components/dealroom/ListingOutreachDialog';
 import type { HomelyProperty } from '@/lib/homelyMockProperties';
 
-type Prospect = {
+type Lead = {
   id: string;
   full_name: string | null;
   phone_number: string;
@@ -26,7 +26,7 @@ type Prospect = {
   lead_stage: string | null;
 };
 
-const ACTIVE_STAGES = ['new', 'new_prospect', 'lead', 'contacted', 'outreach', 'listing_outreach', 'negotiation', 'qualified', 'meeting'];
+const ACTIVE_STAGES = ['new', 'new_lead', 'lead', 'contacted', 'outreach', 'listing_outreach', 'negotiation', 'qualified', 'meeting'];
 
 interface Props {
   property: HomelyProperty | null;
@@ -34,13 +34,13 @@ interface Props {
   onOpenChange: (o: boolean) => void;
 }
 
-export function ShareWithProspectDialog({ property, open, onOpenChange }: Props) {
+export function ShareWithLeadDialog({ property, open, onOpenChange }: Props) {
   const [search, setSearch] = useState('');
-  const [outreachProspectId, setOutreachProspectId] = useState<string | null>(null);
+  const [outreachLeadId, setOutreachLeadId] = useState<string | null>(null);
   const [outreachOpen, setOutreachOpen] = useState(false);
 
-  const { data: prospects, isLoading } = useQuery({
-    queryKey: ['active-prospects-share'],
+  const { data: leads, isLoading } = useQuery({
+    queryKey: ['active-leads-share'],
     enabled: open,
     queryFn: async () => {
       const { data, error } = await supabase
@@ -51,26 +51,26 @@ export function ShareWithProspectDialog({ property, open, onOpenChange }: Props)
         .order('last_interaction_at', { ascending: false, nullsFirst: false })
         .limit(200);
       if (error) throw error;
-      return (data || []) as Prospect[];
+      return (data || []) as Lead[];
     },
   });
 
   const filtered = useMemo(() => {
     const q = search.trim().toLowerCase();
-    if (!q) return prospects ?? [];
-    return (prospects ?? []).filter((p) =>
+    if (!q) return leads ?? [];
+    return (leads ?? []).filter((p) =>
       (p.full_name || '').toLowerCase().includes(q) ||
       p.phone_number.includes(q) ||
       (p.city || '').toLowerCase().includes(q),
     );
-  }, [prospects, search]);
+  }, [leads, search]);
 
-  function handlePick(prospect: Prospect) {
+  function handlePick(lead: Lead) {
     if (!property) return;
-    setOutreachProspectId(prospect.id);
+    setOutreachLeadId(lead.id);
     setOutreachOpen(true);
     onOpenChange(false);
-    toast.success(`טיוטת פנייה נפתחת עבור ${prospect.full_name || prospect.phone_number}`);
+    toast.success(`טיוטת פנייה נפתחת עבור ${lead.full_name || lead.phone_number}`);
   }
 
   return (
@@ -144,7 +144,7 @@ export function ShareWithProspectDialog({ property, open, onOpenChange }: Props)
       <ListingOutreachDialog
         open={outreachOpen}
         onOpenChange={setOutreachOpen}
-        defaultProspectId={outreachProspectId}
+        defaultLeadId={outreachLeadId}
       />
     </>
   );

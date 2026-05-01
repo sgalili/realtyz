@@ -7,7 +7,7 @@ import { Phone, MessageSquare, Sparkles, Megaphone, Inbox, Radio } from 'lucide-
 import { toast } from 'sonner';
 
 const SERVICES = [
-  { key: 'ai_voice', label: 'שיחות AI (Touchpoint)', desc: 'בוט קולי שמתקשר ללידים חמים', icon: Phone },
+  { key: 'ai_voice', label: 'שיחות AI (Touchpoint)', desc: 'בוט קולי שמתקשר למתעניינים חמים', icon: Phone },
   { key: 'whatsapp', label: 'WhatsApp', desc: 'שליחה וקבלה דרך הערוץ העסקי המחובר', icon: MessageSquare },
   { key: 'sms', label: 'SMS Blast', desc: 'משלוח המוני דרך ספק ההודעות המחובר', icon: Radio },
   { key: 'ai_content', label: 'מחולל תוכן AI', desc: 'יצירת פוסטים, סלוגנים ותגובות', icon: Sparkles },

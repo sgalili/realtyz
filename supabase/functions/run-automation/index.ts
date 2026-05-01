@@ -180,7 +180,7 @@ async function runOne(supabase: ReturnType<typeof createClient>, runId: string) 
           body: JSON.stringify({
             event_type: evt,
             lead_id: r.lead_id,
-            prospect_name: lead?.full_name || lead?.phone_number || "Prospect",
+            lead_name: lead?.full_name || lead?.phone_number || "Lead",
             detail: renderTemplate(cfg.notify_detail || automation.name, lead, r.payload),
             override_user_id: r.user_id,
           }),

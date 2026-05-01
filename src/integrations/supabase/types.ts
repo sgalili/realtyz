@@ -487,12 +487,12 @@ export type Database = {
           duration_minutes: number
           expires_at: string
           id: string
+          lead_email: string | null
           lead_id: string | null
+          lead_name: string | null
+          lead_phone: string | null
           meeting_id: string | null
           proposed_slots: Json
-          prospect_email: string | null
-          prospect_name: string | null
-          prospect_phone: string | null
           selected_slot: string | null
           status: string
           token: string
@@ -504,12 +504,12 @@ export type Database = {
           duration_minutes?: number
           expires_at?: string
           id?: string
+          lead_email?: string | null
           lead_id?: string | null
+          lead_name?: string | null
+          lead_phone?: string | null
           meeting_id?: string | null
           proposed_slots?: Json
-          prospect_email?: string | null
-          prospect_name?: string | null
-          prospect_phone?: string | null
           selected_slot?: string | null
           status?: string
           token: string
@@ -521,12 +521,12 @@ export type Database = {
           duration_minutes?: number
           expires_at?: string
           id?: string
+          lead_email?: string | null
           lead_id?: string | null
+          lead_name?: string | null
+          lead_phone?: string | null
           meeting_id?: string | null
           proposed_slots?: Json
-          prospect_email?: string | null
-          prospect_name?: string | null
-          prospect_phone?: string | null
           selected_slot?: string | null
           status?: string
           token?: string
@@ -1189,10 +1189,10 @@ export type Database = {
           created_at: string
           id: string
           lead_id: string | null
+          lead_message: string
           metadata: Json
           notification_result: Json
           notified_agent: boolean
-          prospect_message: string
           resolved_at: string | null
           severity: string
           status: string
@@ -1206,10 +1206,10 @@ export type Database = {
           created_at?: string
           id?: string
           lead_id?: string | null
+          lead_message: string
           metadata?: Json
           notification_result?: Json
           notified_agent?: boolean
-          prospect_message: string
           resolved_at?: string | null
           severity?: string
           status?: string
@@ -1223,10 +1223,10 @@ export type Database = {
           created_at?: string
           id?: string
           lead_id?: string | null
+          lead_message?: string
           metadata?: Json
           notification_result?: Json
           notified_agent?: boolean
-          prospect_message?: string
           resolved_at?: string | null
           severity?: string
           status?: string
@@ -1674,12 +1674,12 @@ export type Database = {
           ends_at: string
           google_calendar_event_id: string | null
           id: string
+          lead_email: string | null
           lead_id: string | null
+          lead_name: string | null
+          lead_phone: string | null
           location: string | null
           metadata: Json
-          prospect_email: string | null
-          prospect_name: string | null
-          prospect_phone: string | null
           reminder_1h_sent_at: string | null
           starts_at: string
           status: string
@@ -1695,12 +1695,12 @@ export type Database = {
           ends_at: string
           google_calendar_event_id?: string | null
           id?: string
+          lead_email?: string | null
           lead_id?: string | null
+          lead_name?: string | null
+          lead_phone?: string | null
           location?: string | null
           metadata?: Json
-          prospect_email?: string | null
-          prospect_name?: string | null
-          prospect_phone?: string | null
           reminder_1h_sent_at?: string | null
           starts_at: string
           status?: string
@@ -1716,12 +1716,12 @@ export type Database = {
           ends_at?: string
           google_calendar_event_id?: string | null
           id?: string
+          lead_email?: string | null
           lead_id?: string | null
+          lead_name?: string | null
+          lead_phone?: string | null
           location?: string | null
           metadata?: Json
-          prospect_email?: string | null
-          prospect_name?: string | null
-          prospect_phone?: string | null
           reminder_1h_sent_at?: string | null
           starts_at?: string
           status?: string
@@ -3010,7 +3010,7 @@ export type Database = {
         Returns: number
       }
       can_close_deal: { Args: { _user_id: string }; Returns: boolean }
-      can_delete_prospects: { Args: { _user_id: string }; Returns: boolean }
+      can_delete_leads: { Args: { _user_id: string }; Returns: boolean }
       can_manage_data: { Args: { _user_id: string }; Returns: boolean }
       can_use_closing_room: { Args: { _user_id: string }; Returns: boolean }
       claim_autopilot_jobs: {
@@ -3048,7 +3048,7 @@ export type Database = {
           _detail: string
           _event_type: string
           _lead_id: string
-          _prospect_name: string
+          _lead_name: string
           _user_id: string
         }
         Returns: undefined

@@ -100,7 +100,7 @@ export default function CampaignStrategy() {
             <CardTitle className="text-base flex items-center gap-2">
               טון ה-AI
             </CardTitle>
-            <CardDescription>בחר את סגנון התקשורת של ה-AI עם הלידים</CardDescription>
+            <CardDescription>בחר את סגנון התקשורת של ה-AI עם המתעניינים</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Select value={tone} onValueChange={setTone}>

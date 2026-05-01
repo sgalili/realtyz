@@ -474,7 +474,7 @@ Deno.serve(async (req) => {
 
     // Compliance: append the "AI-assisted content" disclosure footer when
     // requested by the caller. We do this AFTER body validation but BEFORE
-    // dispatching, so the prospect sees the same text we audit.
+    // dispatching, so the lead sees the same text we audit.
     let outboundMessage = parsed.data.message ?? null;
     let disclosureAppended = false;
     if (outboundMessage && parsed.data.ai_assisted) {

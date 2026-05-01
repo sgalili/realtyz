@@ -132,12 +132,12 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
       } as any);
       if (error) throw error;
       toast.success('הליד נוצר בהצלחה', {
-        description: `${fullName.trim()} נוסף לפייפליין ${dealType === 'sale' ? 'מכירה' : 'השכרה'}`,
+        description: `${fullName.trim()} נוסף לניהול מתעניינים ${dealType === 'sale' ? 'מכירה' : 'השכרה'}`,
       });
       reset();
       onOpenChange(false);
       queryClient.invalidateQueries({ queryKey: ['leads'] });
-      queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
+      queryClient.invalidateQueries({ queryKey: ['deal-room-leads'] });
     } catch (err: any) {
       toast.error('יצירת הליד נכשלה', { description: err?.message });
     } finally {
@@ -157,10 +157,10 @@ export default function NewLeadDialog({ open, onOpenChange, defaultDealType = 's
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <UserPlus className="h-5 w-5 text-primary" />
-            ליד חדש
+            מתעניין חדש
           </DialogTitle>
           <DialogDescription>
-            בחרו תחילה את סוג העסקה — השדות יותאמו אוטומטית לפייפליין הנכון.
+            בחרו תחילה את סוג העסקה — השדות יותאמו אוטומטית לניהול מתעניינים הנכון.
           </DialogDescription>
         </DialogHeader>
 

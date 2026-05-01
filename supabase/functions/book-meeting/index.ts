@@ -1,11 +1,11 @@
 // book-meeting
 //
-// PUBLIC endpoint (verify_jwt = false). Used by the prospect's booking page.
+// PUBLIC endpoint (verify_jwt = false). Used by the lead's booking page.
 //
-// GET  ?token=...           -> returns proposed_slots, prospect_name, agent display name
-// POST { token, slot_start, prospect_name?, prospect_email? }
+// GET  ?token=...           -> returns proposed_slots, lead_name, agent display name
+// POST { token, slot_start, lead_name?, lead_email? }
 //   -> validates the slot, creates a Google Calendar event on the agent's
-//      calendar (with the prospect as an attendee so Google sends the invite
+//      calendar (with the lead as an attendee so Google sends the invite
 //      email), inserts a meetings row, links it to the lead, and updates the
 //      lead's lead_stage to "negotiation".
 
@@ -41,7 +41,7 @@ Deno.serve(async (req) => {
       if (!token) return json({ error: "missing token" }, 400);
       const { data: bt } = await admin
         .from('booking_tokens')
-        .select('token, status, prospect_name, proposed_slots, duration_minutes, expires_at, user_id, meeting_id')
+        .select('token, status, lead_name, proposed_slots, duration_minutes, expires_at, user_id, meeting_id')
         .eq('token', token)
         .maybeSingle();
       if (!bt) return json({ error: "invalid token" }, 404);
@@ -55,7 +55,7 @@ Deno.serve(async (req) => {
       return json({
         ok: true,
         status: bt.status,
-        prospect_name: bt.prospect_name,
+        lead_name: bt.lead_name,
         proposed_slots: bt.proposed_slots,
         duration_minutes: bt.duration_minutes,
         agent_name: prof?.full_name || 'Your agent',
@@ -86,20 +86,20 @@ Deno.serve(async (req) => {
     const tok = await getFreshAccessToken(admin, bt.user_id as string);
     if ('error' in tok) return json({ error: `agent calendar: ${tok.error}` }, 502);
 
-    // Allow prospect to update name/email at confirm time
-    const prospectName = (body.prospect_name as string | undefined) || bt.prospect_name || 'Prospect';
-    const prospectEmail = (body.prospect_email as string | undefined) || bt.prospect_email || null;
-    const prospectPhone = bt.prospect_phone;
+    // Allow lead to update name/email at confirm time
+    const leadName = (body.lead_name as string | undefined) || bt.lead_name || 'Lead';
+    const leadEmail = (body.lead_email as string | undefined) || bt.lead_email || null;
+    const leadPhone = bt.lead_phone;
 
     const attendees: { email: string; displayName?: string }[] = [];
-    if (prospectEmail) attendees.push({ email: prospectEmail, displayName: prospectName });
+    if (leadEmail) attendees.push({ email: leadEmail, displayName: leadName });
 
     const ev = await createCalendarEvent({
       accessToken: tok.accessToken,
       calendarId: tok.calendarId,
       timezone: tok.timezone,
-      summary: `Realtyz · Meeting with ${prospectName}`,
-      description: `Auto-booked via Realtyz.\n\nProspect: ${prospectName}${prospectPhone ? `\nPhone: ${prospectPhone}` : ''}`,
+      summary: `Realtyz · Meeting with ${leadName}`,
+      description: `Auto-booked via Realtyz.\n\nLead: ${leadName}${leadPhone ? `\nPhone: ${leadPhone}` : ''}`,
       startISO: chosen.start,
       endISO: chosen.end,
       attendees,
@@ -112,16 +112,16 @@ Deno.serve(async (req) => {
       .insert({
         user_id: bt.user_id,
         lead_id: bt.lead_id,
-        title: `Meeting with ${prospectName}`,
+        title: `Meeting with ${leadName}`,
         description: 'Booked via public link',
         starts_at: chosen.start,
         ends_at: chosen.end,
         timezone: tok.timezone,
         conference_link: ev.meetLink || null,
         google_calendar_event_id: ev.id,
-        prospect_name: prospectName,
-        prospect_email: prospectEmail,
-        prospect_phone: prospectPhone,
+        lead_name: leadName,
+        lead_email: leadEmail,
+        lead_phone: leadPhone,
         metadata: { booking_token: token, html_link: ev.htmlLink },
       })
       .select('id')
@@ -135,8 +135,8 @@ Deno.serve(async (req) => {
         status: 'booked',
         selected_slot: chosen.start,
         meeting_id: meeting.id,
-        prospect_name: prospectName,
-        prospect_email: prospectEmail,
+        lead_name: leadName,
+        lead_email: leadEmail,
       })
       .eq('id', bt.id);
 

@@ -27,7 +27,7 @@ const STEPS: StepDef[] = [
   {
     key: "whatsapp",
     title: "חיבור WhatsApp",
-    description: "חבר את חשבון ה־WhatsApp שלך כדי להתחיל לתקשר עם לידים באופן אוטומטי.",
+    description: "חבר את חשבון ה־WhatsApp שלך כדי להתחיל לתקשר עם מתעניינים באופן אוטומטי.",
     icon: MessageCircle,
   },
   {

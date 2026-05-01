@@ -13,7 +13,7 @@ const HEADLINES_MOBILE = [
   'ווטסאפ, SMS ואימייל - הכל בפנים',
   'CRM ואסטרטגיה במקום אחד',
   'עליונות טכנולוגית על המתחרים',
-  'AI שמנהל ליד מקצה לקצה',
+  'AI שמנהל מתעניין מקצה לקצה',
 ];
 
 const VISIBLE_MS = 6000;   // each message stays fully visible for 6s

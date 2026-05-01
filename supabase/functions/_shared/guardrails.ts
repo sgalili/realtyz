@@ -11,7 +11,7 @@
 //                           caller decides whether to block, rewrite, or just
 //                           warn the human Agent.
 //   3. classifyEscalation() → keyword + regex classifier that flags a
-//                           prospect's inbound message as a high-risk
+//                           lead's inbound message as a high-risk
 //                           question (legal, financial promises, guarantees,
 //                           discrimination, etc.). Returns null when safe.
 
@@ -22,7 +22,7 @@ are PROHIBITED and you must NEVER produce them:
 
   1. Legal advice of any kind. Do not interpret contracts, tenancy law,
      building permits, inheritance, or tax law. If asked, respond that the
-     prospect should consult a qualified attorney and offer to connect them.
+     lead should consult a qualified attorney and offer to connect them.
   2. Promising specific closing dates, possession dates, or guaranteed
      timelines. Closing depends on legal/financial steps outside our control.
   3. Financial terms outside of the authorized listing data, never invent or
@@ -34,7 +34,7 @@ are PROHIBITED and you must NEVER produce them:
   5. Any statement that could be construed as discrimination based on
      religion, ethnicity, family status, disability, gender, or nationality
      (Israeli Fair Housing rules).
-  6. Sharing a Prospect's PII (phone, ID number) with another party.
+  6. Sharing a Lead's PII (phone, ID number) with another party.
 
 If the conversation drifts into ANY of the above areas, do one of:
   • Politely defer: "אבדוק עם המומחה ואחזור אליך" / "I'll verify with our

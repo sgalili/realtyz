@@ -1,7 +1,7 @@
 /**
  * send-closing-doc
  * ----------------
- * Sends an existing draft closing document to the prospect via WhatsApp:
+ * Sends an existing draft closing document to the lead via WhatsApp:
  *  - Generates a public sign URL using SITE_URL (or origin header fallback)
  *  - Sends a short WhatsApp message + the PDF as attachment
  *  - Marks document status='sent', sets sent_at

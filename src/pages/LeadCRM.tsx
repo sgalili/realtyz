@@ -62,23 +62,23 @@ const interestHebrew: Record<string, string> = {
 };
 const statusHebrew: Record<string, string> = {
   // Real-estate CRM lead statuses
-  cold: 'ליד קר',
-  qualified: 'ליד מוסמך',
+  cold: 'מתעניין קר',
+  qualified: 'מתעניין מוסמך',
   negotiation: 'במשא ומתן',
   closed: 'נסגר',
   // Legacy fallbacks
-  lead: 'ליד קר', supporter: 'נסגר', active: 'ליד מוסמך',
+  lead: 'מתעניין קר', supporter: 'נסגר', active: 'מתעניין מוסמך',
   inactive: 'לא רלוונטי', contacted: 'נוצר קשר', voted: 'נסגר',
 };
 const loyaltyConfig: Record<string, { label: string; color: string }> = {
-  cold: { label: 'ליד קר', color: 'bg-slate-500/15 text-slate-700 border-slate-300' },
-  qualified: { label: 'ליד מוסמך', color: 'bg-blue-500/15 text-blue-700 border-blue-300' },
+  cold: { label: 'מתעניין קר', color: 'bg-slate-500/15 text-slate-700 border-slate-300' },
+  qualified: { label: 'מתעניין מוסמך', color: 'bg-blue-500/15 text-blue-700 border-blue-300' },
   negotiation: { label: 'במשא ומתן', color: 'bg-amber-500/15 text-amber-700 border-amber-300' },
   closed: { label: 'נסגר', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-300' },
   // Legacy
   supporter: { label: 'נסגר', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-300' },
-  active: { label: 'ליד מוסמך', color: 'bg-blue-500/15 text-blue-700 border-blue-300' },
-  lead: { label: 'ליד קר', color: 'bg-slate-500/15 text-slate-700 border-slate-300' },
+  active: { label: 'מתעניין מוסמך', color: 'bg-blue-500/15 text-blue-700 border-blue-300' },
+  lead: { label: 'מתעניין קר', color: 'bg-slate-500/15 text-slate-700 border-slate-300' },
   inactive: { label: 'לא רלוונטי', color: 'bg-red-500/15 text-red-700 border-red-300' },
   contacted: { label: 'נוצר קשר', color: 'bg-slate-500/15 text-slate-700 border-slate-300' },
   voted: { label: 'נסגר', color: 'bg-emerald-500/15 text-emerald-700 border-emerald-300' },
@@ -352,8 +352,8 @@ const LeadCRM = () => {
       const badge =
         tier === 'closed' ? 'נסגר'
         : tier === 'negotiation' ? 'במשא ומתן'
-        : tier === 'qualified' ? 'ליד מוסמך'
-        : 'ליד קר';
+        : tier === 'qualified' ? 'מתעניין מוסמך'
+        : 'מתעניין קר';
       return badge === profileFilter;
     });
   }, [leads, profileFilter]);
@@ -390,9 +390,9 @@ const LeadCRM = () => {
       return { ...sent, badge: 'במשא ומתן', badgeClass: 'bg-amber-500 text-white border-amber-600' };
     }
     if (tier === 'qualified' || (sent.key === 'positive' && eng >= 60)) {
-      return { ...sent, badge: 'ליד מוסמך', badgeClass: 'bg-blue-500 text-white border-blue-600' };
+      return { ...sent, badge: 'מתעניין מוסמך', badgeClass: 'bg-blue-500 text-white border-blue-600' };
     }
-    return { ...sent, badge: 'ליד קר', badgeClass: 'bg-slate-500 text-white border-slate-600' };
+    return { ...sent, badge: 'מתעניין קר', badgeClass: 'bg-slate-500 text-white border-slate-600' };
   };
 
   const getSentimentFromMessages = (messages: typeof voterMessages) => {
@@ -430,22 +430,22 @@ const LeadCRM = () => {
     const rows = source?.map(v => ({
       'שם מלא': v.full_name, 'טלפון': formatPhoneDisplay(v.phone_number), 'עיר': v.city,
       'נושא עניין': v.interest_tag, 'דרגת נאמנות': getLoyalty(v.status).label,
-      'שלב ליד': getPoliticalProfile(v.status, v.engagement_score).badge,
+      'שלב מתעניין': getPoliticalProfile(v.status, v.engagement_score).badge,
       'הצביע': v.is_voted ? 'כן' : 'לא', 'ציון מעורבות': v.engagement_score,
     }));
     if (!rows?.length) { toast.error('אין נתונים לייצוא'); return; }
     const ws = XLSX.utils.json_to_sheet(rows);
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'לידים');
-    XLSX.writeFile(wb, `לידים_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
-    toast.success(`${rows.length} לידים יוצאו בהצלחה`);
+    XLSX.utils.book_append_sheet(wb, ws, 'מתעניינים');
+    XLSX.writeFile(wb, `מתעניינים_${format(new Date(), 'yyyy-MM-dd')}.xlsx`);
+    toast.success(`${rows.length} מתעניינים יוצאו בהצלחה`);
   };
 
   const handleAiBlastPreview = () => {
     const selected = leads?.filter(v => selectedIds.has(v.id)) ?? [];
     const previews = selected.slice(0, 10).map(v => {
       const interest = v.interest_tag || 'כללי';
-      const name = v.full_name || 'ליד';
+      const name = v.full_name || 'מתעניין';
       const score = v.engagement_score ?? 0;
       let tone = 'ידידותי';
       if (score >= 60) tone = 'חם ומחזק';
@@ -472,7 +472,7 @@ const LeadCRM = () => {
       queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
       queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] });
       setSelectedIds(new Set());
-      toast.success(`${count ?? ids.length} לידים עודכנו ל-${hebrewLabel(statusHebrew, newStatus)}`);
+      toast.success(`${count ?? ids.length} מתעניינים עודכנו ל-${hebrewLabel(statusHebrew, newStatus)}`);
     } catch (err: any) {
       toast.error('שגיאה בעדכון סטטוס: ' + (err?.message || ''));
     }
@@ -491,7 +491,7 @@ const LeadCRM = () => {
       queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
       queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] });
       setSelectedIds(new Set());
-      toast.success(`${count ?? ids.length} לידים עודכנו לתגית "${tag}"`);
+      toast.success(`${count ?? ids.length} מתעניינים עודכנו לתגית "${tag}"`);
     } catch (err: any) {
       toast.error('שגיאה בעדכון תגית: ' + (err?.message || ''));
     }
@@ -501,7 +501,7 @@ const LeadCRM = () => {
     if (blockDemoAction('delete-leads')) return;
     const ids = Array.from(selectedIds);
     if (!ids.length) return;
-    if (!confirm(`האם למחוק ${ids.length} לידים? פעולה זו בלתי הפיכה.`)) return;
+    if (!confirm(`האם למחוק ${ids.length} מתעניינים? פעולה זו בלתי הפיכה.`)) return;
     const { error, count } = await supabase
       .from('leads')
       .delete({ count: 'exact' })
@@ -517,14 +517,14 @@ const LeadCRM = () => {
       queryClient.invalidateQueries({ queryKey: ['leads-total'] }),
     ]);
     setSelectedIds(new Set());
-    toast.success(`${count} לידים נמחקו בהצלחה`);
+    toast.success(`${count} מתעניינים נמחקו בהצלחה`);
   };
 
   const handleAddToCampaign = async (campaignId: string) => {
     if (blockDemoAction('add-to-campaign')) return;
     const ids = Array.from(selectedIds);
     await sendToN8n('add_to_campaign', { campaign_id: campaignId, lead_ids: ids });
-    toast.success(`${ids.length} לידים נוספו לקמפיין`);
+    toast.success(`${ids.length} מתעניינים נוספו לקמפיין`);
     setAddToCampaignOpen(false);
     setSelectedIds(new Set());
   };
@@ -555,18 +555,18 @@ const LeadCRM = () => {
       queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
       queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] });
       queryClient.invalidateQueries({ queryKey: ['leads-total'] });
-      toast.success('ליד נוסף בהצלחה');
+      toast.success('מתעניין נוסף בהצלחה');
       setAddVoterOpen(false);
       setNewVoter({ full_name: '', phone_number: '', city: '', identity_number: '', instagram_handle: '', telegram_username: '' });
     } catch (err: any) {
       const msg = String(err?.message || '');
       if (msg.includes('TRIAL_RECORD_LIMIT')) {
-        toast.error('מסלול הניסיון מוגבל ל-100 רשומות. שדרג עכשיו כדי לנהל את כל מאגר הלידים שלך', {
+        toast.error('מסלול הניסיון מוגבל ל-100 רשומות. שדרג עכשיו כדי לנהל את כל מאגר המתעניינים שלך', {
           duration: 8000,
           action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/upgrade') },
         });
       } else {
-        toast.error('שגיאה בהוספת ליד: ' + (err?.message || 'שגיאה'));
+        toast.error('שגיאה בהוספת מתעניין: ' + (err?.message || 'שגיאה'));
       }
     } finally {
       setAddingVoter(false);
@@ -730,7 +730,7 @@ const LeadCRM = () => {
       {/* Header */}
       <div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-primary">ניהול לידים</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-primary">ניהול מתעניינים</h1>
           <p className="text-muted-foreground text-sm">
             סה״כ אנשי קשר במערכת: <span className="font-semibold text-foreground">{(isDemoMode ? totalCount : realTotalCount).toLocaleString('he-IL')}</span>
           </p>
@@ -739,10 +739,10 @@ const LeadCRM = () => {
       <div className="flex w-full gap-2 sm:w-auto sm:justify-end">
         <input type="file" ref={fileInputRef} accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileSelect} />
         <Button onClick={() => setAddVoterOpen(true)} variant="outline" size="sm" className="flex-1 gap-2 sm:flex-none">
-          <User className="h-4 w-4" /> הוספת ליד
+          <User className="h-4 w-4" /> הוספת מתעניין
         </Button>
         <Button onClick={() => fileInputRef.current?.click()} variant="outline" size="sm" className="flex-1 gap-2 sm:flex-none">
-          <Upload className="h-4 w-4" /> ייבוא לידים
+          <Upload className="h-4 w-4" /> ייבוא מתעניינים
         </Button>
       </div>
 
@@ -802,11 +802,11 @@ const LeadCRM = () => {
               </SelectContent>
             </Select>
             <Select value={profileFilter} onValueChange={setProfileFilter}>
-              <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="שלב ליד" /></SelectTrigger>
+              <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="שלב מתעניין" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">כל השלבים</SelectItem>
-                <SelectItem value="ליד קר">ליד קר</SelectItem>
-                <SelectItem value="ליד מוסמך">ליד מוסמך</SelectItem>
+                <SelectItem value="מתעניין קר">מתעניין קר</SelectItem>
+                <SelectItem value="מתעניין מוסמך">מתעניין מוסמך</SelectItem>
                 <SelectItem value="במשא ומתן">במשא ומתן</SelectItem>
                 <SelectItem value="נסגר">נסגר</SelectItem>
               </SelectContent>
@@ -815,7 +815,7 @@ const LeadCRM = () => {
               <FileSpreadsheet className="h-3.5 w-3.5" /> ייצוא
             </Button>
             <Button size="sm" className="gap-1.5 h-8 shrink-0" onClick={() => setNewLeadOpen(true)}>
-              <UserPlus className="h-3.5 w-3.5" /> ליד חדש
+              <UserPlus className="h-3.5 w-3.5" /> מתעניין חדש
             </Button>
           </div>}
         </CardHeader>
@@ -890,7 +890,7 @@ const LeadCRM = () => {
                     <TableRow><TableCell colSpan={5} className="py-12">
                       <div className="flex flex-col items-center gap-3">
                         <div className="realtyz-loader h-10 w-10" />
-                        <p className="text-sm text-muted-foreground">טוען לידים...</p>
+                        <p className="text-sm text-muted-foreground">טוען מתעניינים...</p>
                       </div>
                     </TableCell></TableRow>
                   )}
@@ -908,12 +908,12 @@ const LeadCRM = () => {
                               <p className="text-base font-semibold text-foreground mb-1">אין רשומות במאגר</p>
                               <p className="text-sm text-muted-foreground mb-3">העלה רשימה כדי להתחיל</p>
                               <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-2">
-                                <Upload className="h-4 w-4" /> ייבוא לידים
+                                <Upload className="h-4 w-4" /> ייבוא מתעניינים
                               </Button>
                             </>
                           ) : (
                             <>
-                              <p className="text-base font-semibold text-foreground mb-1">לא נמצאו לידים</p>
+                              <p className="text-base font-semibold text-foreground mb-1">לא נמצאו מתעניינים</p>
                               <p className="text-sm text-muted-foreground mb-3">נסה לשנות את הפילטרים או את מילות החיפוש</p>
                               {hasFilter && (
                                 <Button variant="outline" size="sm" onClick={() => { setInterestFilter('all'); setCityFilter('all'); setStatusFilter('all'); setProfileFilter('all'); setSearch(''); }}>
@@ -984,7 +984,7 @@ const LeadCRM = () => {
           </div>
           {/* Record count */}
           <div className="px-4 py-2 text-xs text-muted-foreground border-t flex items-center justify-between">
-              <span>מוצגים {leads.length} מתוך {totalCount.toLocaleString()} לידים</span>
+              <span>מוצגים {leads.length} מתוך {totalCount.toLocaleString()} מתעניינים</span>
               {hasNextPage && (
                 <Button variant="ghost" size="sm" className="text-xs h-6" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
                   טען עוד
@@ -999,7 +999,7 @@ const LeadCRM = () => {
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>הוסף לקמפיין</DialogTitle>
-            <DialogDescription>בחר קמפיין להוספת {selectedIds.size} לידים</DialogDescription>
+            <DialogDescription>בחר קמפיין להוספת {selectedIds.size} מתעניינים</DialogDescription>
           </DialogHeader>
           <div className="space-y-2 max-h-60 overflow-y-auto">
             {campaigns?.length === 0 && <p className="text-sm text-muted-foreground text-center py-4">אין קמפיינים פעילים</p>}
@@ -1022,7 +1022,7 @@ const LeadCRM = () => {
               תצוגה מקדימה - הודעת AI מותאמת אישית
             </DialogTitle>
             <DialogDescription>
-              {selectedIds.size} לידים נבחרו · מוצגות עד 10 דוגמאות
+              {selectedIds.size} מתעניינים נבחרו · מוצגות עד 10 דוגמאות
             </DialogDescription>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto space-y-3 py-2">
@@ -1040,7 +1040,7 @@ const LeadCRM = () => {
               </div>
             ))}
             {aiPreviews.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-8">בחר לידים כדי לצפות בתצוגה מקדימה</p>
+              <p className="text-sm text-muted-foreground text-center py-8">בחר מתעניינים כדי לצפות בתצוגה מקדימה</p>
             )}
           </div>
           <DialogFooter className="gap-2">
@@ -1068,7 +1068,7 @@ const LeadCRM = () => {
 
             // Creation event
             if (selectedVoter.created_at) {
-              events.push({ id: 'created', date: selectedVoter.created_at, type: 'created', label: 'נוסף למערכת', detail: selectedVoter.full_name || 'ליד חדש' });
+              events.push({ id: 'created', date: selectedVoter.created_at, type: 'created', label: 'נוסף למערכת', detail: selectedVoter.full_name || 'מתעניין חדש' });
             }
 
             // Messages from messages table
@@ -1088,7 +1088,7 @@ const LeadCRM = () => {
                 id: `chat-${ch.id}`,
                 date: ch.created_at || '',
                 type: ch.role === 'assistant' ? 'chat_ai' : 'chat_user',
-                label: ch.role === 'assistant' ? 'תגובת AI' : 'תגובת ליד',
+                label: ch.role === 'assistant' ? 'תגובת AI' : 'תגובת מתעניין',
                 detail: ch.content?.slice(0, 80) || '',
               });
             });
@@ -1124,7 +1124,7 @@ const LeadCRM = () => {
                   <SheetTitle className="flex items-center gap-3">
                     <VoterAvatar fullName={selectedVoter.full_name} profilePictureUrl={(selectedVoter as any).profile_picture_url} className="h-16 w-16 shadow-lg" textClassName="text-xl" />
                     <div className="flex-1">
-                      <p className="text-lg font-bold">{selectedVoter.full_name || 'ליד לא ידוע'}</p>
+                      <p className="text-lg font-bold">{selectedVoter.full_name || 'מתעניין לא ידוע'}</p>
                       <p className="text-sm text-muted-foreground font-normal" dir="ltr">{formatPhoneDisplay(selectedVoter.phone_number)}</p>
                       {selectedVoter.identity_number && (
                         <p className="text-xs text-muted-foreground flex items-center justify-center gap-1 text-center">
@@ -1309,7 +1309,7 @@ const LeadCRM = () => {
         <DialogContent className="sm:max-w-xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
-              <FileSpreadsheet className="h-5 w-5 text-primary" /> ייבוא לידים
+              <FileSpreadsheet className="h-5 w-5 text-primary" /> ייבוא מתעניינים
             </DialogTitle>
             <DialogDescription>סקירת בריאות הנתונים לפני ייבוא</DialogDescription>
           </DialogHeader>
@@ -1418,7 +1418,7 @@ const LeadCRM = () => {
               )}
               <span className="relative flex items-center gap-2">
                 <Upload className="h-4 w-4" />
-                {importing ? `${importProgress}%` : `ייבא ${importStats?.valid ?? 0} לידים`}
+                {importing ? `${importProgress}%` : `ייבא ${importStats?.valid ?? 0} מתעניינים`}
               </span>
             </Button>
           </DialogFooter>
@@ -1429,7 +1429,7 @@ const LeadCRM = () => {
       <Dialog open={addVoterOpen} onOpenChange={setAddVoterOpen}>
         <DialogContent className="sm:max-w-md" dir="rtl">
           <DialogHeader>
-            <DialogTitle>הוספת ליד חדש</DialogTitle>
+            <DialogTitle>הוספת מתעניין חדש</DialogTitle>
             <DialogDescription>הזן את פרטי הליד להוספה ידנית למערכת</DialogDescription>
           </DialogHeader>
           <div className="space-y-3">
@@ -1461,7 +1461,7 @@ const LeadCRM = () => {
           <DialogFooter>
             <Button variant="outline" onClick={() => setAddVoterOpen(false)}>ביטול</Button>
             <Button onClick={handleAddVoter} disabled={addingVoter}>
-              {addingVoter ? 'מוסיף...' : 'הוסף ליד'}
+              {addingVoter ? 'מוסיף...' : 'הוסף מתעניין'}
             </Button>
           </DialogFooter>
         </DialogContent>

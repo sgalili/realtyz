@@ -19,7 +19,7 @@ type Run = {
 };
 
 const TRIGGER_LABEL: Record<string, string> = {
-  prospect_added: 'New prospect',
+  lead_added: 'New lead',
   meeting_booked: 'Meeting booked',
   followup_after_hours: '48h follow-up',
   birthday_anniversary: 'Birthday/Anniversary',

@@ -8,7 +8,7 @@ import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 const QUICK_LINKS = [
   { label: 'לוח בקרה', path: '/', icon: LayoutDashboard },
-  { label: 'ניהול לידים', path: '/lead-crm', icon: User },
+  { label: 'ניהול מתעניינים', path: '/lead-crm', icon: User },
   { label: 'הפצת SMS', path: '/sms-blast', icon: Radio },
 ];
 
@@ -99,7 +99,7 @@ export function GlobalSearch() {
           <Input
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="חפש ליד, עיר, או עמוד..."
+            placeholder="חפש מתעניין, עיר, או עמוד..."
             className="border-0 focus-visible:ring-0 h-12 text-base"
             autoFocus
           />
