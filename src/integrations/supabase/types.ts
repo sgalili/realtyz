@@ -2259,6 +2259,16 @@ export type Database = {
         }
       }
       cleanup_expired_whatsapp_login_otps: { Args: never; Returns: undefined }
+      dispatch_smart_notification: {
+        Args: {
+          _detail: string
+          _event_type: string
+          _lead_id: string
+          _prospect_name: string
+          _user_id: string
+        }
+        Returns: undefined
+      }
       execute_readonly_query: { Args: { query_text: string }; Returns: Json }
       get_user_balance: {
         Args: { _user_id: string }
