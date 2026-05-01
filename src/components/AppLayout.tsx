@@ -34,6 +34,7 @@ import { TrialBadge } from '@/components/TrialBadge';
 import { TrialQuickStartWizard } from '@/components/TrialQuickStartWizard';
 import { StartTrialCta } from '@/components/StartTrialCta';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
+import { BrandMark } from '@/components/branding/BrandMark';
 
 const DEMO_ARCHETYPES: DemoCandidateId[] = ['primary-single', 'primary-slate', 'national-small', 'national-mid', 'national-large'];
 const TUTORIAL_STEPS = [
