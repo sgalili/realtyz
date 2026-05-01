@@ -100,7 +100,7 @@ export const UniversalKnowledgeInput = () => {
           source_metadata: {
             tags: [payload.tag],
             input_mode: mode,
-            is_demo: isDemoMode, // Auto-applied based on session state
+            is_demo: false, // Production-only mode — demo flag retired
             captured_at: new Date().toISOString(),
           },
         },
