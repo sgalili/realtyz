@@ -33,7 +33,7 @@ export const DEMO_SUMMARY = {
   targetVotes: 510_000,
   sentimentBreakdown: { positive: 6420, negative: 1840, neutral: 2740 },
   narrative:
-    'מגמת גידול משמעותית בתמיכה באזור המרכז - תל אביב וראשון לציון מציגות עלייה של 12% בחודש האחרון. ירושלים מסווגת כ"ניתנת לשכנוע" עם פוטנציאל גבוה. הצפון מציג יציבות, והנגב דורש חיזוק מיידי בקמפיין SMS.',
+    'ביקוש חזק במרכז: תל אביב וראשון לציון מציגות עלייה של 12% בפניות למכירה החודש. ירושלים בולטת בשוק ההשכרות עם פוטנציאל גבוה. בחיפה מומלץ לחזק נוכחות בנכסים יד שנייה, ובדרום שוק ההשכרות לסטודנטים תוסס.',
   mapboxToken: '',
   cityClusters: [
     { city: 'תל אביב', count: 42_180, positive: 32_000, negative: 3_100, neutral: 7_080 },
@@ -48,21 +48,21 @@ export const DEMO_SUMMARY = {
 };
 
 export const DEMO_CAMPAIGNS = [
-  { id: '1', name: 'גיוס לידים בתל אביב', description: 'קמפיין דיגיטלי ממוקד לתל אביב', status: 'active', total_sent: 45_200, total_clicks: 12_800, created_at: '2025-01-15' },
-  { id: '2', name: 'סקר מדיניות מס', description: 'סקר עמדות מיסוי ארצי', status: 'completed', total_sent: 120_000, total_clicks: 38_400, created_at: '2024-12-01' },
-  { id: '3', name: 'שכנוע מתלבטים בראשון לציון', description: 'שכנוע מתלבטים בראשון', status: 'active', total_sent: 28_600, total_clicks: 9_100, created_at: '2025-02-10' },
-  { id: '4', name: 'חיזוק מעורבות בירושלים', description: 'חיזוק מעורבות בירושלים', status: 'paused', total_sent: 65_000, total_clicks: 18_200, created_at: '2024-11-20' },
-  { id: '5', name: 'קמפיין סטודנטים בחיפה', description: 'קמפיין סטודנטים בחיפה', status: 'completed', total_sent: 32_000, total_clicks: 11_500, created_at: '2024-10-05' },
-  { id: '6', name: 'מבצע SMS בנגב', description: 'SMS מסיבי לנגב', status: 'completed', total_sent: 88_000, total_clicks: 22_000, created_at: '2024-09-15' },
-  { id: '7', name: 'דחיפת מדיניות ביטחון', description: 'הפצת מדיניות ביטחון', status: 'active', total_sent: 150_000, total_clicks: 47_000, created_at: '2025-03-01' },
-  { id: '8', name: 'קמפיין כלכלה תחילה', description: 'קמפיין כלכלה ראשונה', status: 'completed', total_sent: 72_000, total_clicks: 19_800, created_at: '2024-08-22' },
-  { id: '9', name: 'יוזמת לידים צעירים', description: 'יוזמת צעירים 18-25', status: 'active', total_sent: 55_000, total_clicks: 21_300, created_at: '2025-01-28' },
-  { id: '10', name: 'פנייה לגמלאים', description: 'תקשורת עם גמלאים', status: 'completed', total_sent: 40_000, total_clicks: 8_200, created_at: '2024-07-10' },
-  { id: '11', name: 'סקר משבר הדיור', description: 'סקר משבר הדיור', status: 'completed', total_sent: 95_000, total_clicks: 31_200, created_at: '2024-06-18' },
-  { id: '12', name: 'ביטחון גבול הצפון', description: 'ביטחון גבול צפון', status: 'paused', total_sent: 48_000, total_clicks: 14_100, created_at: '2024-11-05' },
-  { id: '13', name: 'קמפיין רפורמת חינוך', description: 'קמפיין רפורמת חינוך', status: 'active', total_sent: 62_000, total_clicks: 18_900, created_at: '2025-02-20' },
-  { id: '14', name: 'הבטחת מערכת הבריאות', description: 'הבטחת בריאות לכולם', status: 'completed', total_sent: 110_000, total_clicks: 35_600, created_at: '2024-05-30' },
-  { id: '15', name: 'מבצע הצבעה בשבוע האחרון', description: 'הנעה לקלפיות - שבוע אחרון', status: 'scheduled', total_sent: 0, total_clicks: 0, created_at: '2025-04-10' },
+  { id: '1', name: 'גיוס לידים – דירות 3 חדרים תל אביב', description: 'דיוור לקונים פוטנציאליים בת״א', status: 'active', total_sent: 45_200, total_clicks: 12_800, created_at: '2025-01-15' },
+  { id: '2', name: 'שכירות סטודנטים – ירושלים', description: 'מבצע השכרות לקראת תחילת שנה', status: 'completed', total_sent: 120_000, total_clicks: 38_400, created_at: '2024-12-01' },
+  { id: '3', name: 'יד שנייה – ראשון לציון', description: 'נכסים יד שנייה לזוגות צעירים', status: 'active', total_sent: 28_600, total_clicks: 9_100, created_at: '2025-02-10' },
+  { id: '4', name: 'משקיעים – נדל"ן מניב בירושלים', description: 'הזדמנויות השקעה לנכסים מניבים', status: 'paused', total_sent: 65_000, total_clicks: 18_200, created_at: '2024-11-20' },
+  { id: '5', name: 'השכרת דירות – חיפה', description: 'דירות להשכרה בחיפה והקריות', status: 'completed', total_sent: 32_000, total_clicks: 11_500, created_at: '2024-10-05' },
+  { id: '6', name: 'נכסים חדשים מקבלן – נגב', description: 'פרויקטים מקבלן לזכאי משכנתא', status: 'completed', total_sent: 88_000, total_clicks: 22_000, created_at: '2024-09-15' },
+  { id: '7', name: 'פנטהאוזים תל אביב', description: 'נכסי יוקרה במגדלי המרכז', status: 'active', total_sent: 150_000, total_clicks: 47_000, created_at: '2025-03-01' },
+  { id: '8', name: 'בית פרטי – פתח תקווה', description: 'בתים פרטיים למשפחות', status: 'completed', total_sent: 72_000, total_clicks: 19_800, created_at: '2024-08-22' },
+  { id: '9', name: 'דירת 2 חדרים להשכרה – רמת גן', description: 'מתאים לזוגות צעירים', status: 'active', total_sent: 55_000, total_clicks: 21_300, created_at: '2025-01-28' },
+  { id: '10', name: 'דירות גן – הרצליה', description: 'דירות גן עם חצר פרטית', status: 'completed', total_sent: 40_000, total_clicks: 8_200, created_at: '2024-07-10' },
+  { id: '11', name: 'משפר דיור – נתניה', description: 'מעבר מ-3 ל-4 חדרים', status: 'completed', total_sent: 95_000, total_clicks: 31_200, created_at: '2024-06-18' },
+  { id: '12', name: 'נכסים מסחריים – צפון', description: 'משרדים וחנויות', status: 'paused', total_sent: 48_000, total_clicks: 14_100, created_at: '2024-11-05' },
+  { id: '13', name: 'דירות חדשות מקבלן – אשדוד', description: 'מבצע אכלוס ראשון', status: 'active', total_sent: 62_000, total_clicks: 18_900, created_at: '2025-02-20' },
+  { id: '14', name: 'דירות יד שנייה – באר שבע', description: 'נכסים מוכנים לאכלוס מיידי', status: 'completed', total_sent: 110_000, total_clicks: 35_600, created_at: '2024-05-30' },
+  { id: '15', name: 'יום נדל"ן פתוח – אזור המרכז', description: 'תיאום סיורים בנכסים זמינים', status: 'scheduled', total_sent: 0, total_clicks: 0, created_at: '2025-04-10' },
 ];
 
 const demoNames = [
@@ -78,121 +78,106 @@ const demoNames = [
   'רחל פרידמן', 'אלעד גולן', 'שחר מזרחי', 'רותם דוד', 'שרון כץ',
 ];
 
-// Deep conversations for first 5 users (5+ exchanges each, city-specific topics)
+// Deep real-estate conversations for first 5 leads (Sale & Rent split, agent = Udi).
+// Each lead is locked to ONE pipeline (sale | rent) — no cross-pipeline messaging.
 const deepConversations: Record<number, Array<{ role: 'ai' | 'lead'; content: string; month: number }>> = {
-  0: [ // דני כהן - תל אביב - מיסוי
-    { role: 'ai', content: 'שלום דני! אני מהצוות שלנו. רציתי לדבר איתך על הנושאים שמעניינים אותך לקראת המכירות.', month: 0 },
-    { role: 'lead', content: 'היי, תשמעי - אני מתל אביב. יוקר המחיה פה הרג אותנו. הארנונה עלתה שוב', month: 0 },
-    { role: 'ai', content: 'אני שומעת אותך דני. יוקר המחיה בתל אביב הוא אחד הנושאים המרכזיים שלנו. יש לנו תוכנית להקפאת ארנונה ל-3 שנים ותמריצי מס לעצמאים. רוצה פרטים?', month: 0 },
-    { role: 'lead', content: 'הקפאת ארנונה? זה נשמע טוב מדי. איך תממנו את זה?', month: 1 },
-    { role: 'ai', content: 'שאלה מצוינת. המימון מגיע מקיצוץ בבירוקרטיה ממשלתית ומיסוי חברות טכנולוגיה רב-לאומיות שפועלות כאן בלי לשלם מס מלא. יש לנו מסמך מפורט - שולחת לך קישור.', month: 1 },
-    { role: 'lead', content: 'קראתי את המסמך. חלק מהרעיונות טובים, אבל מה עם הביטחון? אני גר ליד הים ובקיץ היו אזעקות', month: 2 },
-    { role: 'ai', content: 'דני, הביטחון הוא חלק בלתי נפרד מהתוכנית. הקמפיין שלנו, עם רקע ביטחוני מובהק, דוגלת בהגנה אקטיבית - כולל כיפת ברזל ימית למרכז. מה דעתך?', month: 2 },
-    { role: 'lead', content: 'כיפת ברזל ימית? זה קיים?', month: 3 },
-    { role: 'ai', content: 'כן, זה פרויקט שנמצא בפיתוח ואנחנו דוחפים לזרז אותו. אנחנו מאמינים שתל אביב צריכה להיות מוגנת מכל הכיוונים 🛡️', month: 3 },
-    { role: 'lead', content: 'אוקיי שכנעתם אותי. אני בפנים. כל קול נגד יוקר המחיה חשוב 💪', month: 4 },
-    { role: 'ai', content: 'תודה רבה דני! אנחנו מזמינים אותך לכנס תומכים בתל אביב בשבוע הבא. שולח לך פרטים. כל קול חשוב! 🎉', month: 5 },
+  0: [ // דני כהן — תל אביב — Sale · 3-room apartment (canonical Dan/Udi flow)
+    { role: 'ai', content: 'היי דני, אני אודי. ראיתי את הפנייה שלך לגבי דירת 3 חדרים בתל אביב. בחירה מצוינת, ביקוש גבוה מאוד באזור. מחפש לקנות או לשכור?', month: 0 },
+    { role: 'lead', content: 'מחפש לקנות. המחיר גמיש?', month: 0 },
+    { role: 'ai', content: 'המחיר הוא 4,500,000 ₪. תמחור תחרותי לאזור. רוצה לבוא לראות את הדירה ביום שלישי בשעה 17:00?', month: 1 },
+    { role: 'lead', content: 'כן, מתאים לי.', month: 1 },
+    { role: 'ai', content: 'מצוין, קבעתי את הסיור ליום שלישי 17:00. שולח לך תיכף את ה-Pin של המיקום. נתראה!', month: 1 },
   ],
-  1: [ // מיכל לוי - ראשון לציון - חינוך
-    { role: 'ai', content: 'שלום מיכל! כאן הצוות שלנו. ראינו שנושא החינוך חשוב לך - נשמח לשמוע מה דעתך.', month: 0 },
-    { role: 'lead', content: 'היי, כן. אני אמא לשלושה בראשון לציון. בתי הספר פה במצב קשה - כיתות צפופות, אין מספיק מורים', month: 0 },
-    { role: 'ai', content: 'את צודקת מיכל. התוכנית שלנו כוללת תוספת של 15,000 מורים חדשים ארצית, הקטנת כיתות ל-25 תלמידים, ותוספת שעות העשרה. רוצה לראות את התוכנית המלאה?', month: 1 },
-    { role: 'lead', content: 'כן בבקשה. ואיך לגבי מחיר הצהרונים? זה הורג אותנו כלכלית', month: 1 },
-    { role: 'ai', content: 'שאלה חשובה! אנחנו מציעים צהרון חינם עד גיל 9 ותמיכה כלכלית להורים עובדים. הנה קישור למסמך המלא 📄', month: 2 },
-    { role: 'lead', content: 'קראתי. הרעיונות טובים אבל שמעתי את אותן הבטחות מפוליטיקאים אחרים', month: 2 },
-    { role: 'ai', content: 'מבינה את הספקנות מיכל. ההבדל הוא שאנחנו כבר קידמנו חוק צהרונים חינם בכנסת הקודמת. היא לא רק מדברת - היא עושה. רוצה לראות מה היא כבר השיגה?', month: 3 },
-    { role: 'lead', content: 'כן, שלחי לי. חשוב לי לראות תוצאות אמיתיות', month: 3 },
-    { role: 'ai', content: 'שולחת! ובנוסף - יש לנו מפגש הורים עם הצוות בראשון לציון בשבוע הבא. מעוניינת להצטרף?', month: 4 },
-    { role: 'lead', content: 'אני מגיעה! ואני אביא עוד שלוש חברות. שכנעתם אותנו 😊', month: 5 },
-    { role: 'ai', content: 'מדהים מיכל! כל הורה שליד למען חינוך טוב - משנה עתיד. נשמח לראות אתכן! 🎉', month: 5 },
+  1: [ // מיכאל לוי — ראשון לציון — Sale · 4-room למשפחה
+    { role: 'ai', content: 'שלום מיכאל, אני אודי. ראיתי שאתם מחפשים 4 חדרים בראשון לציון. יש לי שני נכסים שעלולים להתאים בדיוק. למשפחה?', month: 0 },
+    { role: 'lead', content: 'כן, אנחנו עם שני ילדים. תקציב עד 2.6 מיליון ש״ח.', month: 0 },
+    { role: 'ai', content: 'מעולה. יש לי דירה בשכונת הרקפות, 4 חדרים, קומה 3 עם מעלית, 2.45 מיליון ש״ח. שמורה לכם?', month: 1 },
+    { role: 'lead', content: 'נשמע טוב. יש חניה?', month: 1 },
+    { role: 'ai', content: 'כן, חניה תת-קרקעית פרטית ומחסן. רוצה שאקבע סיור לסוף השבוע?', month: 2 },
+    { role: 'lead', content: 'כן, יום שישי בבוקר אם אפשר.', month: 2 },
+    { role: 'ai', content: 'נקבע ליום שישי 10:00. אשלח לך מצגת עם תמונות ותוכנית הדירה עוד היום.', month: 3 },
   ],
-  2: [ // אורי שמיר - ירושלים - ביטחון
-    { role: 'ai', content: 'שלום אורי! הצוות שלנו כאן. מה הנושא שהכי מעסיק אותך לקראת המכירות?', month: 0 },
-    { role: 'lead', content: 'ביטחון. אני גר בירושלים ובחודשים האחרונים המצב ביטחוני קשה מאוד', month: 0 },
-    { role: 'ai', content: 'אורי, הביטחון הוא הנושא מספר 1 שלנו. הקמפיין שלנו, עם רקע ביטחוני מובהק, מובילה גישה של אפס סובלנות לטרור ותגובה מיידית. רוצה לשמוע על התוכנית?', month: 1 },
-    { role: 'lead', content: 'כן. מה ההצעות הקונקרטיות? נמאס מסיסמאות', month: 1 },
-    { role: 'ai', content: 'בהחלט, הנה הנקודות: 1) תגבורת של 5,000 שוטרים בירושלים 2) מצלמות חכמות עם AI בכל שכונה 3) הריסת בתים של מחבלים תוך 48 שעות. זו גישה תקיפה ומידית.', month: 2 },
-    { role: 'lead', content: 'זה נשמע רציני. אבל מה לגבי הדיפלומטיה? אי אפשר רק בכוח', month: 2 },
-    { role: 'ai', content: 'צודק. אנחנו תומכים גם בדיפלומטיה מבוססת כוח - הסכמי אברהם סגנון. שלום עם מי שרוצה שלום, ותגובה נחרצת למי שליד בטרור.', month: 3 },
-    { role: 'lead', content: 'אוקיי, זה מתחבר לי. אני חושב שאצביע לכם', month: 4 },
-    { role: 'ai', content: 'תודה אורי! ירושלים צריכה להיות עיר בטוחה לכולם. אנחנו מזמינים אותך לכנס ביטחון בעיר הבירה 🇮🇱', month: 5 },
+  2: [ // אורי שמיר — תל אביב — Rent · דירת 2 חדרים
+    { role: 'ai', content: 'היי אורי, אני אודי. ראיתי שאתה מחפש 2 חדרים להשכרה במרכז ת״א. מאיזה תאריך?', month: 0 },
+    { role: 'lead', content: 'מ-1 לחודש הבא. תקציב עד 6,500 ש״ח.', month: 0 },
+    { role: 'ai', content: 'יש לי דירה ברחוב בן יהודה, 2 חדרים, קומה 4 עם מעלית, מרוהטת חלקית — 6,200 ש״ח. רוצה לראות?', month: 1 },
+    { role: 'lead', content: 'מעולה. מתי אפשר לבוא?', month: 1 },
+    { role: 'ai', content: 'מחר בערב 18:30 מתאים? אקח אותך גם לדירה דומה ברוטשילד למקרה שתעדיף.', month: 2 },
+    { role: 'lead', content: 'מושלם, נתראה מחר.', month: 2 },
+    { role: 'ai', content: 'נהדר. שולח Pin ל-Waze. אם תאהב — אפשר לסגור חוזה כבר השבוע.', month: 3 },
   ],
-  3: [ // נועה ברק - חיפה - סביבה
-    { role: 'ai', content: 'שלום נועה! כאן הצוות שלנו. ראינו שנושא הסביבה חשוב לך. רוצה לדבר על זה?', month: 0 },
-    { role: 'lead', content: 'כן! אני מחיפה ומפרץ חיפה הוא אסון אקולוגי. ילדים פה חולים. משהו חייב להשתנות', month: 0 },
-    { role: 'ai', content: 'את צודקת לגמרי נועה. אנחנו מחויבים לסגירת מפעלים מזהמים במפרץ חיפה תוך 3 שנים, ולהמרה לאנרגיה ירוקה. זה לא רק סביבה - זה בריאות של ילדים.', month: 1 },
-    { role: 'lead', content: 'איך תסגרו מפעלים? אנשים יפסידו עבודה', month: 1 },
-    { role: 'ai', content: 'שאלה חשובה. התוכנית כוללת הסבת עובדים לתעשיית הטק הירוק - חיפה יכולה להפוך למרכז Hi-Tech סביבתי. יש לנו תקציב ייעודי לזה.', month: 2 },
-    { role: 'lead', content: 'Hi-Tech ירוק? זה נשמע מעניין. יש דוגמאות מהעולם?', month: 2 },
-    { role: 'ai', content: 'בהחלט! קופנהגן, ברלין ונקובר עברו תהליכים דומים. שולחת לך מחקר השוואתי שהכנו 📊', month: 3 },
-    { role: 'lead', content: 'קראתי - מרשים. אני בפנים! 🌿', month: 4 },
-    { role: 'ai', content: 'תודה נועה! כל קול למען אוויר נקי בחיפה - משנה חיים. נשמח לראות אותך בכנס סביבה שלנו! 💚', month: 5 },
+  3: [ // נועם ברק — חיפה — Sale · משקיע בנכס מניב
+    { role: 'ai', content: 'שלום נועם, אני אודי. ראיתי שאתה מתעניין בנכסים מניבים בחיפה. כבר יש לך תיק או זו השקעה ראשונה?', month: 0 },
+    { role: 'lead', content: 'תיק קטן — 2 דירות בקריות. רוצה משהו עם תשואה טובה.', month: 0 },
+    { role: 'ai', content: 'יש לי דירת 3 חדרים בהדר משופצת, מושכרת ב-3,800 ש״ח, נמכרת ב-1.05 מיליון. תשואה ~4.3%.', month: 1 },
+    { role: 'lead', content: 'מעניין. מה לגבי הוצאות ועד וארנונה?', month: 1 },
+    { role: 'ai', content: 'ועד 180 ש״ח לחודש, ארנונה ~620 בחודשיים. שולח לך גיליון תשואה נטו מלא.', month: 2 },
+    { role: 'lead', content: 'תקבע לי סיור בשבוע הבא?', month: 3 },
+    { role: 'ai', content: 'יום שני 11:00 בבוקר. אקח אותך גם לעוד נכס דומה ברחוב מסדה לשם השוואה.', month: 4 },
   ],
-  4: [ // יוסי אברהם - באר שבע - כלכלה/פריפריה
-    { role: 'ai', content: 'שלום יוסי! אני מהצוות שלנו. רוצה לשמוע מה חשוב לך במכירות הקרובות.', month: 0 },
-    { role: 'lead', content: 'שלום. אני מבאר שבע ונמאס לי שהפריפריה מקבלת פירורים. כל הכסף הולך למרכז', month: 0 },
-    { role: 'ai', content: 'יוסי, את צודק ב-100%. אנחנו מגיעים מהפריפריה ויודעים מה זה. התוכנית שלנו כוללת: העברת משרדי ממשלה לנגב, רכבת מהירה באר שבע-תל אביב, והקמת קמפוס היי-טק בבאר שבע.', month: 1 },
-    { role: 'lead', content: 'רכבת מהירה? על זה מדברים כבר 20 שנה', month: 1 },
-    { role: 'ai', content: 'צודק שיש תסכול. ההבדל הוא שאנחנו כבר חתמנו על הצעת חוק עם לוח זמנים מחייב ותקציב ייעודי. זה לא הבטחה - זה תוכנית עם תאריכים.', month: 2 },
-    { role: 'lead', content: 'מעניין. ומה לגבי תעסוקה בנגב? אין מספיק מקומות עבודה טובים', month: 2 },
-    { role: 'ai', content: 'בדיוק בשביל זה הקמפוס - שיתוף פעולה עם BGU, חברות הזנק, ומענקים לחברות שפותחות משרדים בנגב. המטרה: 10,000 משרות חדשות תוך 4 שנים.', month: 3 },
-    { role: 'lead', content: 'אם באמת תעשו את זה - אני איתכם. הנגב צריך מהפכה', month: 4 },
-    { role: 'ai', content: 'תודה יוסי! הנגב הוא העתיד של ישראל ואנחנו לא נשכח אתכם. מוזמן לכנס שלנו בבאר שבע 🏜️🇮🇱', month: 5 },
+  4: [ // יוספה אברהם — באר שבע — Rent · סטודנטים
+    { role: 'ai', content: 'היי יוספה, אני אודי. ראיתי שאת מחפשת דירת שותפים ליד אוניברסיטת בן גוריון.', month: 0 },
+    { role: 'lead', content: 'כן, מ-1 לאוקטובר. עד 1,800 ש״ח לחדר.', month: 0 },
+    { role: 'ai', content: 'יש לי 4 חדרים בשכונת ד׳, חדר פרטי 1,650 ש״ח, כולל אינטרנט. שותפות נחמדות.', month: 1 },
+    { role: 'lead', content: 'נשמע טוב. אפשר לבוא לראות?', month: 2 },
+    { role: 'ai', content: 'יום רביעי 17:00? אגיע איתך ונפגוש גם את הבנות שגרות שם.', month: 2 },
   ],
 };
 
-// Shorter conversations for users 5-9 (2-3 exchanges)
+// Shorter real-estate flows for leads 5-11 (Sale or Rent — never mixed).
 const shortConversations: Record<number, Array<{ role: 'ai' | 'lead'; content: string; month: number }>> = {
-  5: [ // רונית פרידמן - נתניה
-    { role: 'ai', content: 'שלום רונית! כאן הצוות שלנו. מה הנושא שהכי מעסיק אותך?', month: 0 },
-    { role: 'lead', content: 'שלום, בעיקר בריאות. התורים בקופת חולים אצלנו בנתניה - חודשים!', month: 0 },
-    { role: 'ai', content: 'מבינה לגמרי רונית. יש לנו תוכנית לפתיחת 50 מרפאות ערב ברחבי הארץ, כולל נתניה. רוצה לשמוע עוד? 🏥', month: 1 },
-    { role: 'lead', content: 'כן, שלחי לי פרטים. זה נשמע חשוב', month: 1 },
+  5: [ // רונית — נתניה — Sale · משפר דיור
+    { role: 'ai', content: 'היי רונית, אני אודי. ראיתי שאתם מחפשים לעבור מ-3 ל-4 חדרים בנתניה.', month: 0 },
+    { role: 'lead', content: 'נכון, התקציב שלנו עד 2.3 מיליון ש״ח.', month: 0 },
+    { role: 'ai', content: 'יש לי 4 חדרים בעיר ימים, קומה 6 עם נוף לים, 2.25 מיליון. רוצה לראות בסוף השבוע?', month: 1 },
+    { role: 'lead', content: 'כן, שלח פרטים.', month: 1 },
   ],
-  6: [ // אלון גולן - פתח תקווה
-    { role: 'ai', content: 'שלום אלון! הצוות שלנו כאן. מה חשוב לך במכירות?', month: 0 },
-    { role: 'lead', content: 'היי. התחבורה ציבורית - אני נוסע מפתח תקווה לתל אביב כל יום ומבזבז 3 שעות', month: 0 },
-    { role: 'ai', content: 'אלון, 3 שעות ביום זה מטורף. התוכנית שלנו כוללת קו רכבל חדש פתח תקווה-תל אביב ותוספת אוטובוסים מהירים. רוצה את המסמך המלא? 🚊', month: 1 },
+  6: [ // אלון — פתח תקווה — Rent · דירת משפחה
+    { role: 'ai', content: 'שלום אלון, אני אודי. דירה להשכרה בפ״ת, 4 חדרים, נכון?', month: 0 },
+    { role: 'lead', content: 'כן, עד 7,500 לחודש, צריך לפחות 100 מ״ר.', month: 0 },
+    { role: 'ai', content: 'יש לי דירה ברחוב ההגנה, 4 חדרים, 105 מ״ר, חניה — 7,300 ש״ח. אפשר לסייר מחר ב-18:00.', month: 1 },
   ],
-  7: [ // שירה מזרחי - אשדוד
-    { role: 'ai', content: 'שלום שירה! כאן הצוות שלנו. מה חשוב לך?', month: 0 },
-    { role: 'lead', content: 'ביטחון באשדוד. עוד סבב והעיר שלנו בקו האש', month: 0 },
-    { role: 'ai', content: 'שירה, הביטחון שלך ושל המשפחה הוא בראש סדר העדיפויות. אנחנו דוחפים למערכת הגנה משופרת לערי הדרום כולל מקלטים חדשים ומערכת התרעה משודרגת. 🛡️', month: 1 },
-    { role: 'lead', content: 'סוף סוף מישהו שמדבר על אשדוד. תודה', month: 2 },
+  7: [ // שמעון — אשדוד — Sale · קבלן
+    { role: 'ai', content: 'היי שמעון, אני אודי. ראיתי שאתה מתעניין בפרויקט החדש מקבלן באשדוד.', month: 0 },
+    { role: 'lead', content: 'כן, 3 חדרים. יש זכאות משכנתא לזכאים?', month: 0 },
+    { role: 'ai', content: 'יש מסלול לזכאי משרד השיכון, מחיר החל מ-1.69 מיליון. אשלח לך מסמך מלא.', month: 1 },
+    { role: 'lead', content: 'תודה, אקרא ואחזור אליך.', month: 2 },
   ],
-  8: [ // עמית דוד - תל אביב
-    { role: 'ai', content: 'שלום עמית! הצוות שלנו. מעניין אותך לשמוע על התוכנית הכלכלית שלנו?', month: 0 },
-    { role: 'lead', content: 'אני סטודנט. אין לי כסף לשכירות בתל אביב. יש לכם פתרון?', month: 0 },
-    { role: 'ai', content: 'עמית, אנחנו מציעים מענק דיור לסטודנטים ותוכנית דירות להשכרה בפיקוח. שולח לך פרטים! 🏠', month: 1 },
+  8: [ // עדי — תל אביב — Rent · סטודיו
+    { role: 'ai', content: 'היי עדי, אני אודי. סטודיו במרכז ת״א, נכון?', month: 0 },
+    { role: 'lead', content: 'כן, עד 4,800 ש״ח. מ-15 בחודש.', month: 0 },
+    { role: 'ai', content: 'יש לי סטודיו ברחוב אלנבי, 30 מ״ר, מרוהט מלא — 4,650 ש״ח. רוצה לבוא היום?', month: 1 },
   ],
-  9: [ // הדר כץ - ירושלים
-    { role: 'ai', content: 'שלום הדר! כאן הצוות שלנו. מה הנושא שמעסיק אותך?', month: 0 },
-    { role: 'lead', content: 'תרבות בירושלים. העיר מתה בלילה, אין חיי לילה, אין תרבות', month: 0 },
-    { role: 'ai', content: 'הדר, ירושלים היא עיר עם פוטנציאל תרבותי עצום. אנחנו מציעים הקמת רובע תרבות חדש ושעות פתיחה מורחבות למוזיאונים. רוצה לשמוע עוד? 🎭', month: 1 },
+  9: [ // הדר — ירושלים — Sale · 4 חדרים
+    { role: 'ai', content: 'שלום הדר, אני אודי. 4 חדרים בקטמון, נכון?', month: 0 },
+    { role: 'lead', content: 'כן, עד 3.1 מיליון. שמור עליי אם משהו נכנס.', month: 0 },
+    { role: 'ai', content: 'יש לי דירה משופצת ברחוב המ״ג, 105 מ״ר, מרפסת שמש, 2.95 מיליון. סיור ביום שלישי?', month: 1 },
   ],
   10: [
-    { role: 'ai', content: 'שלום גל, בדקנו שהנושא הכלכלי חשוב לך. מה הכי מפריע לך היום?', month: 0 },
-    { role: 'lead', content: 'מס הכנסה ויוקר מחיה. צריך מישהו שמבין עצמאים.', month: 0 },
-    { role: 'ai', content: 'בדיוק לשם אנחנו מכוונים: הפחתת רגולציה לעצמאים ומדרגת מס פשוטה יותר. שולחת תקציר ממוקד.', month: 1 },
+    { role: 'ai', content: 'היי גל, אני אודי. ראיתי בקשה ל-5 חדרים בגבעתיים — Sale.', month: 0 },
+    { role: 'lead', content: 'נכון, עד 4 מיליון. רוצים מעלית וחניה.', month: 0 },
+    { role: 'ai', content: 'יש לי דירה בשיכון בורוכוב, 5 חדרים, 2 חניות, מעלית, 3.85 מיליון. שולח עכשיו תמונות.', month: 1 },
   ],
   11: [
-    { role: 'ai', content: 'שלום יעל, ראינו פעילות גבוהה שלך סביב נושא הביטחון האישי.', month: 0 },
-    { role: 'lead', content: 'נכון. אני רוצה תוכנית מעשית, לא סיסמאות.', month: 0 },
-    { role: 'ai', content: 'התוכנית שלנו כוללת תגבור שיטור, מצלמות חכמות ומוקד תגובה עירוני. אפשר לשלוח לך את המסמך?', month: 1 },
+    { role: 'ai', content: 'שלום יעל, אני אודי. השכרה בהרצליה — 3 חדרים, נכון?', month: 0 },
+    { role: 'lead', content: 'כן, מחפשת קרוב למרכז העיר. עד 7,000 ש״ח.', month: 0 },
+    { role: 'ai', content: 'יש לי דירה בשכונת יד התשעה, 3 חדרים, מרפסת — 6,800 ש״ח. רוצה לראות מחר?', month: 1 },
   ],
 };
 
 const months = ['2024-10', '2024-11', '2024-12', '2025-01', '2025-02', '2025-03'];
 const demoChannels = ['whatsapp', 'instagram', 'messenger', 'tiktok', 'signal', 'x', 'facebook', 'sms'] as const;
+// Real-estate omni follow-ups. Indexed by lead position; even = sale pipeline,
+// odd = rent pipeline. Pipelines never cross.
 const demoInteractionScenarios = [
-  ['ראיתי את הסרטון בטיקטוק. יש לכם מספרים אמיתיים או שזה עוד סלוגן?', 'שאלה לגיטימית. מצרפת מקור, תקציב ולוח זמנים - בלי הבטחות ריקות. סימנתי גם שנציג שטח יחזור אליך.'],
-  ['אני כועס. הבטיחו לנו ביטחון כבר שנים וכלום לא השתנה.', 'מבינה את הכעס ולא מבטלת אותו. אני מסכמת לך רק צעדים ביצועיים: תגבור כוחות, מוקד עירוני ולוחות זמנים - ואם תרצה נעביר לנציג אנושי.'],
-  ['הסטורי באינסטגרם היה טוב, אבל מה עם העיר שלי?', 'בדקתי לפי העיר שלך והעברתי אותך למסלול מקומי. שולחת עכשיו תוכנית אזורית קצרה ולא מסר כללי.'],
-  ['תפסיקו לשלוח לי הודעות. זה מציק.', 'קיבלתי. עצרתי הודעות שיווקיות וסימנתי העדפת קשר נמוכה. אם תרצה בעתיד, אפשר להמשיך רק בערוץ שתבחר.'],
-  ['אני מתלבט. מצד אחד מסכים איתכם, מצד שני לא סומך על פוליטיקאים.', 'זה הוגן. במקום לשכנע בסיסמאות, אני שולחת שלוש התחייבויות מדידות ומעקב ביצוע פתוח לציבור.'],
-  ['שלחתי שאלה בפייסבוק ואף אחד לא ענה לי.', 'צודק, זה לא היה צריך לקרות. איחדתי את הפנייה כאן, סימנתי SLA דחוף, וה-AI עונה עכשיו עם תקציר ברור.'],
-  ['ב-X כתבו שהתוכנית שלכם לא ממומנת. נכון?', 'בדקתי את הטענה. יש סעיף תקציבי מפורט - מצרפת קישור ומסמנת לצוות הדיגיטל להגיב גם בפומבי.'],
-  ['אפשר פרטים על הסעה לקלפי לאמא שלי?', 'כן. סימנתי בקשת הסעה, שמרתי את הערוץ המועדף, ונציג לוגיסטיקה יחזור עם שעה מדויקת.'],
+  ['ראיתי את המודעה לדירת 3 חדרים. עוד פנויה?', 'כן, פנויה. שולח לך עכשיו תמונות נוספות ותוכנית הדירה. רוצה לסייר השבוע?'],
+  ['המחיר שכתוב בלוח עדכני?', 'מעודכן להיום. יש מקום קטן למשא ומתן בתום הסיור — תלוי בלוחות זמנים שלך.'],
+  ['חיפשתי דירה להשכרה — מה הזמינות מ-1 לחודש?', 'יש לי שתי דירות שמתפנות בדיוק בתאריך הזה. אסכם לך אותן ב-WhatsApp.'],
+  ['אני צריך לקנות תוך 3 חודשים. ריאלי?', 'בהחלט ריאלי. בוא נסגור פגישת אפיון של 20 דק׳ ואחזור עם 3 נכסים מדויקים.'],
+  ['יש חניה ומחסן בנכס?', 'יש חניה תת-קרקעית פרטית ומחסן 6 מ״ר. אצרף את שטר הרישום בטאבו.'],
+  ['רציתי לדעת על משכנתא — אתה עוזר עם זה?', 'יש לי יועצת משכנתאות שאני עובד איתה — אקשר אתכם בלי עלות מצידך.'],
+  ['ראיתי בלוח דירה דומה ב-200K פחות, איך אתה מסביר?', 'שאלה לגיטימית. ההבדל הוא קומה, מצב תחזוקה ושיפוץ. אשלח השוואה מסודרת של 3 נכסים.'],
+  ['אפשר לתאם סיור לסוף השבוע?', 'כן — שישי 10:00 או שבת 18:00. מה עדיף לך? אאשר לבעלים מיד.'],
 ];
 
 const buildOmniFollowUps = (index: number, name: string, city: string, topic: string) => {
@@ -201,12 +186,14 @@ const buildOmniFollowUps = (index: number, name: string, city: string, topic: st
   const primary = demoChannels[index % demoChannels.length];
   const secondary = demoChannels[(index + 3) % demoChannels.length];
   const tertiary = demoChannels[(index + 5) % demoChannels.length];
+  const isSale = index % 2 === 0;
+  const pipelineLabel = isSale ? 'נכסים למכירה' : 'דירות להשכרה';
 
   return [
     { role: 'lead' as const, channel: primary, content: voterConcern, month: 5 },
     { role: 'ai' as const, channel: secondary, content: `${firstName}, ${aiResponse}`, month: 5 },
-    { role: 'lead' as const, channel: tertiary, content: index % 4 === 0 ? 'אוקיי, זה יותר מכבד. תמשיכו רק כאן.' : `תודה. מעניין אותי גם נושא ${topic} ב${city}.`, month: 5 },
-    { role: 'ai' as const, channel: demoChannels[(index + 7) % demoChannels.length], content: index % 5 === 0 ? 'מעולה. עדכנתי העדפות קשר, עצרתי כפילויות בין ערוצים, והשיחה תישאר במעקב AI.' : 'קיבלתי. איחדתי את כל הערוצים לפרופיל אחד והעברתי לצוות השטח עם הקשר המלא.', month: 5 },
+    { role: 'lead' as const, channel: tertiary, content: index % 4 === 0 ? 'אוקיי, תמשיך לעדכן רק ב-WhatsApp בבקשה.' : `תודה. מעניין אותי גם ${pipelineLabel} ב${city}.`, month: 5 },
+    { role: 'ai' as const, channel: demoChannels[(index + 7) % demoChannels.length], content: index % 5 === 0 ? 'מצוין. עדכנתי העדפת ערוץ, אעדכן אותך אישית כשייכנסו נכסים מתאימים.' : `קיבלתי. שמור על ${pipelineLabel} בלבד — אשלח רק נכסים שתואמים לפיילין שלך.`, month: 5 },
   ];
 };
 
@@ -216,17 +203,20 @@ function recentTimestamp(minutesAgo: number): string {
 }
 
 const recentOffsets = Array.from({ length: 50 }, (_, i) => [2, 5, 9, 14, 22, 31, 44, 58, 76, 95, 130, 175, 240, 330, 480, 720, 980, 1440][i % 18] + Math.floor(i / 18) * 11); // minutes ago per lead
+
+// Real-estate topics. `key` doubles as the dominant interest dimension.
+// Even index → 'sale' pipeline, odd → 'rent'. Hard separation.
 const demoTopics = [
-  { tag: 'ביטחון', key: 'security', voter: 'הביטחון האישי והתגובה לטרור חשובים לי מאוד.', ai: 'מבינה אותך. שלחתי לך תוכנית קצרה עם צעדים מעשיים לפי העיר שלך.' },
-  { tag: 'כלכלה', key: 'economy', voter: 'יוקר המחיה והעסק הקטן שלי הם הנושא המרכזי מבחינתי.', ai: 'בדיוק בזה אנחנו מתמקדים: פחות רגולציה, מס פשוט יותר ותמריצים לעצמאים.' },
-  { tag: 'משפט', key: 'judicial', voter: 'חשוב לי להבין איך תשמרו על איזון בין הרשויות.', ai: 'שולחת לך מסמך עמדה ברור על רפורמה אחראית, שקופה ומדורגת.' },
-  { tag: 'חברה', key: 'social', voter: 'אני רוצה לראות יותר שירותים קהילתיים ועזרה למשפחות.', ai: 'מסכימה. סימנתי אותך לקמפיין משפחות וקהילה באזור שלך.' },
-  { tag: 'ממשל', key: 'governance', voter: 'נמאס מבירוקרטיה. צריך ממשלה שעובדת מהר.', ai: 'זו בדיוק ההתחייבות: שירותים דיגיטליים, מדדי ביצוע ושקיפות לציבור.' },
+  { tag: 'דירה למכירה', key: 'sale_apt',     listing_type: 'sale' as const, voter: 'מחפש לקנות 3 חדרים, עד 2.5 מיליון.', ai: 'מעולה. אאסוף 3 נכסים שמתאימים בדיוק ואשלח עוד היום.' },
+  { tag: 'דירה להשכרה', key: 'rent_apt',     listing_type: 'rent' as const, voter: 'מחפש דירה להשכרה, מ-1 לחודש.', ai: 'יש לי כמה אפשרויות מדויקות לתאריך. שולח עכשיו.' },
+  { tag: 'נכס מניב',    key: 'investment',   listing_type: 'sale' as const, voter: 'מחפש השקעה בתשואה 4%+ לשנה.', ai: 'אצרף 3 נכסים מניבים עם גיליון תשואה נטו מלא.' },
+  { tag: 'שכירות סטודנטים', key: 'rent_student', listing_type: 'rent' as const, voter: 'דירת שותפים ליד האוניברסיטה.', ai: 'יש לי שתיים פנויות מאוקטובר. אקבע סיור.' },
+  { tag: 'בית פרטי',    key: 'house_sale',   listing_type: 'sale' as const, voter: 'בית פרטי עם גינה למשפחה.', ai: 'מצוין. אאתר נכסים עם גינה לפי תקציב ויישוב.' },
 ];
 
 const buildInterestScores = (index: number) => {
   const main = demoTopics[index % demoTopics.length].key;
-  const scores = { security: 28 + ((index * 7) % 45), economy: 24 + ((index * 11) % 48), judicial: 18 + ((index * 13) % 42), social: 20 + ((index * 17) % 44), governance: 22 + ((index * 19) % 46) } as Record<string, number>;
+  const scores = { sale_apt: 28 + ((index * 7) % 45), rent_apt: 24 + ((index * 11) % 48), investment: 18 + ((index * 13) % 42), rent_student: 20 + ((index * 17) % 44), house_sale: 22 + ((index * 19) % 46) } as Record<string, number>;
   scores[main] = 72 + ((index * 5) % 24);
   return scores;
 };
@@ -292,6 +282,8 @@ export const DEMO_VOTERS = demoNames.map((name, i) => ({
   x_handle: `realtyz_x_${i}`,
   facebook_id: `fb-${i}`,
   interest_tag: demoTopics[i % demoTopics.length].tag,
+  listing_type: demoTopics[i % demoTopics.length].listing_type, // 'sale' | 'rent' — Hard pipeline separation
+  preferences: { listing_type: demoTopics[i % demoTopics.length].listing_type },
   interest_scores: buildInterestScores(i),
   interest_score_json: buildInterestScores(i),
   is_voted: i % 6 === 0,
@@ -303,9 +295,9 @@ export const DEMO_MESSAGES = demoNames.flatMap((name, i) =>
 );
 
 export const DEMO_KNOWLEDGE_DOCUMENTS = [
-  { id: 'demo-kb-1', title: 'מסרי קמפיין מרכזיים 2026', source_type: 'upload', chunk_count: 84, created_at: recentTimestamp(35) },
-  { id: 'demo-kb-2', title: 'תשובות AI בנושא ביטחון ויוקר מחיה', source_type: 'whatsapp', chunk_count: 132, created_at: recentTimestamp(90) },
-  { id: 'demo-kb-3', title: 'תוכנית שטח לפי ערים ואזורים', source_type: 'upload', chunk_count: 57, created_at: recentTimestamp(240) },
+  { id: 'demo-kb-1', title: 'מדריך מכירת דירות 3-4 חדרים בתל אביב', source_type: 'upload', chunk_count: 84, created_at: recentTimestamp(35) },
+  { id: 'demo-kb-2', title: 'שיחות עבר ב-WhatsApp · התמודדות עם התנגדויות מחיר', source_type: 'whatsapp', chunk_count: 132, created_at: recentTimestamp(90) },
+  { id: 'demo-kb-3', title: 'מחירון אזורי – יד שנייה לעומת קבלן', source_type: 'upload', chunk_count: 57, created_at: recentTimestamp(240) },
 ];
 
 export const DEMO_SOCIAL_METRICS = [
@@ -316,11 +308,11 @@ export const DEMO_SOCIAL_METRICS = [
 ];
 
 export const DEMO_LIVE_ACTIONS = [
-  'שיחת AI Voice הסתיימה עם דני כהן · סווג כתומך',
-  'ליד חדש מטיקטוק נכנס למשפך תל אביב',
-  'קמפיין WhatsApp הגיע ל-85% מסירה',
-  'ה-AI ענה אוטומטית ל-14 שאלות בנושא ביטחון',
-  'תגובה חיובית מאינסטגרם הפכה למשימת מעקב',
+  'שיחת AI Voice הסתיימה עם דני כהן · סווג כליד חם למכירה',
+  'ליד חדש מאינסטגרם נכנס לפיילין השכרות בת״א',
+  'דיוור WhatsApp לדירת 3 חד׳ ברמת גן הגיע ל-85% מסירה',
+  'ה-AI ענה אוטומטית ל-14 שאלות לגבי משכנתא וזכאות',
+  'בקשת סיור התקבלה מפייסבוק · נכס למכירה בראשון לציון',
 ];
 
 // District-level data for SVG map - 7 official Israeli districts + Judea & Samaria
@@ -1134,7 +1126,7 @@ export const getDemoConversationAnalytics = (candidateId?: DemoCandidateId | nul
     sampleConversations: [
       { source: 'WhatsApp', status: 'הועבר לטיפול', snippet: `רציתי לדעת מה עמדת ${candidate.name} לגבי ${focus[0] ?? 'ביטחון אישי'} בשכונה...` },
       { source: 'SMS', status: 'הושלם ע"י AI', snippet: 'תודה על המידע, אני תומך!' },
-      { source: 'Transcript', status: 'דורש בדיקה', snippet: `הארנונה עלתה שוב, מה אתם מתכוונים לעשות בנושא?` },
+      { source: 'Transcript', status: 'דורש בדיקה', snippet: `המחיר נראה לי גבוה לעומת דירות דומות באזור — אפשר לבדוק שוב?` },
       { source: 'WhatsApp', status: 'הושלם ע"י AI', snippet: `חשוב לי לשמוע על תוכנית ${focus[1] ?? 'החינוך'} לפני שאחליט.` },
     ],
   };
