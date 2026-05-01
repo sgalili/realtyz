@@ -956,7 +956,9 @@
 
   .realtyz-main-surface {
     position: relative;
-    background: hsl(210 8% 91%);
+    /* Page surface — must match the PageHero wave fill so the wave melts
+       seamlessly into the content area (no visible seam). */
+    background: #f1f5f9;
     /* Prevent iOS/macOS rubber-band overscroll bounce so the sticky hero stays anchored. */
     overscroll-behavior: none;
     -webkit-overflow-scrolling: auto;
