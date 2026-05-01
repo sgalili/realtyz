@@ -282,6 +282,8 @@ export const DEMO_VOTERS = demoNames.map((name, i) => ({
   x_handle: `realtyz_x_${i}`,
   facebook_id: `fb-${i}`,
   interest_tag: demoTopics[i % demoTopics.length].tag,
+  listing_type: demoTopics[i % demoTopics.length].listing_type, // 'sale' | 'rent' — Hard pipeline separation
+  preferences: { listing_type: demoTopics[i % demoTopics.length].listing_type },
   interest_scores: buildInterestScores(i),
   interest_score_json: buildInterestScores(i),
   is_voted: i % 6 === 0,
@@ -293,9 +295,9 @@ export const DEMO_MESSAGES = demoNames.flatMap((name, i) =>
 );
 
 export const DEMO_KNOWLEDGE_DOCUMENTS = [
-  { id: 'demo-kb-1', title: 'מסרי קמפיין מרכזיים 2026', source_type: 'upload', chunk_count: 84, created_at: recentTimestamp(35) },
-  { id: 'demo-kb-2', title: 'תשובות AI בנושא ביטחון ויוקר מחיה', source_type: 'whatsapp', chunk_count: 132, created_at: recentTimestamp(90) },
-  { id: 'demo-kb-3', title: 'תוכנית שטח לפי ערים ואזורים', source_type: 'upload', chunk_count: 57, created_at: recentTimestamp(240) },
+  { id: 'demo-kb-1', title: 'מדריך מכירת דירות 3-4 חדרים בתל אביב', source_type: 'upload', chunk_count: 84, created_at: recentTimestamp(35) },
+  { id: 'demo-kb-2', title: 'שיחות עבר ב-WhatsApp · התמודדות עם התנגדויות מחיר', source_type: 'whatsapp', chunk_count: 132, created_at: recentTimestamp(90) },
+  { id: 'demo-kb-3', title: 'מחירון אזורי – יד שנייה לעומת קבלן', source_type: 'upload', chunk_count: 57, created_at: recentTimestamp(240) },
 ];
 
 export const DEMO_SOCIAL_METRICS = [
@@ -306,11 +308,11 @@ export const DEMO_SOCIAL_METRICS = [
 ];
 
 export const DEMO_LIVE_ACTIONS = [
-  'שיחת AI Voice הסתיימה עם דני כהן · סווג כתומך',
-  'ליד חדש מטיקטוק נכנס למשפך תל אביב',
-  'קמפיין WhatsApp הגיע ל-85% מסירה',
-  'ה-AI ענה אוטומטית ל-14 שאלות בנושא ביטחון',
-  'תגובה חיובית מאינסטגרם הפכה למשימת מעקב',
+  'שיחת AI Voice הסתיימה עם דני כהן · סווג כליד חם למכירה',
+  'ליד חדש מאינסטגרם נכנס לפיילין השכרות בת״א',
+  'דיוור WhatsApp לדירת 3 חד׳ ברמת גן הגיע ל-85% מסירה',
+  'ה-AI ענה אוטומטית ל-14 שאלות לגבי משכנתא וזכאות',
+  'בקשת סיור התקבלה מפייסבוק · נכס למכירה בראשון לציון',
 ];
 
 // District-level data for SVG map - 7 official Israeli districts + Judea & Samaria
@@ -1124,7 +1126,7 @@ export const getDemoConversationAnalytics = (candidateId?: DemoCandidateId | nul
     sampleConversations: [
       { source: 'WhatsApp', status: 'הועבר לטיפול', snippet: `רציתי לדעת מה עמדת ${candidate.name} לגבי ${focus[0] ?? 'ביטחון אישי'} בשכונה...` },
       { source: 'SMS', status: 'הושלם ע"י AI', snippet: 'תודה על המידע, אני תומך!' },
-      { source: 'Transcript', status: 'דורש בדיקה', snippet: `הארנונה עלתה שוב, מה אתם מתכוונים לעשות בנושא?` },
+      { source: 'Transcript', status: 'דורש בדיקה', snippet: `המחיר נראה לי גבוה לעומת דירות דומות באזור — אפשר לבדוק שוב?` },
       { source: 'WhatsApp', status: 'הושלם ע"י AI', snippet: `חשוב לי לשמוע על תוכנית ${focus[1] ?? 'החינוך'} לפני שאחליט.` },
     ],
   };
