@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
@@ -21,8 +22,10 @@ import {
   MOCK_HOMELY_PROPERTIES,
   PROPERTY_TYPE_LABELS_HE,
   CITY_OPTIONS,
+  LISTING_TYPE_LABELS_HE,
   type HomelyProperty,
   type PropertyType,
+  type ListingType,
 } from '@/lib/homelyMockProperties';
 import { ShareWithProspectDialog } from '@/components/properties/ShareWithProspectDialog';
 import ErrorBoundary from '@/components/ErrorBoundary';
