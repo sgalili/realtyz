@@ -625,6 +625,10 @@ export default function DealRoom() {
             )}
 
             {activeProspect && (
+              <CallHistoryList leadId={activeProspect.id} limit={5} />
+            )}
+
+            {activeProspect && (
               <AutomationActivityFeed leadId={activeProspect.id} limit={10} />
             )}
           </div>
