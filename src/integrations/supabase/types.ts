@@ -1507,6 +1507,7 @@ export type Database = {
           assigned_to: string | null
           city: string | null
           created_at: string | null
+          deal_type: string
           email: string | null
           engagement_score: number | null
           fts: unknown
@@ -1539,6 +1540,7 @@ export type Database = {
           assigned_to?: string | null
           city?: string | null
           created_at?: string | null
+          deal_type?: string
           email?: string | null
           engagement_score?: number | null
           fts?: unknown
@@ -1571,6 +1573,7 @@ export type Database = {
           assigned_to?: string | null
           city?: string | null
           created_at?: string | null
+          deal_type?: string
           email?: string | null
           engagement_score?: number | null
           fts?: unknown
