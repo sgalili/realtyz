@@ -363,11 +363,11 @@ export default function DealRoom() {
       if (error) throw error;
       const ok = (data as any)?.ok ?? (data as any)?.success ?? true;
       if (!ok) {
-        const reason = (data as any)?.error || 'WhatsApp gateway rejected the message';
+        const reason = (data as any)?.error || 'שער ה-WhatsApp דחה את ההודעה';
         throw new Error(reason);
       }
-      toast.success('Reply approved & sent', {
-        description: `WhatsApp delivered to ${activeProspect.full_name || 'Prospect'}`,
+      toast.success('התשובה אושרה ונשלחה', {
+        description: `WhatsApp נמסר ל-${activeProspect.full_name || 'המועמד'}`,
       });
       // If this draft came from an Action Item, mark the suggestion as used so it
       // disappears from the queue and we don't suggest the same thing again.
@@ -385,7 +385,7 @@ export default function DealRoom() {
       queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
       queryClient.invalidateQueries({ queryKey: ['messages', activeProspect.id] });
     } catch (err: any) {
-      toast.error('Failed to send reply', { description: err?.message });
+      toast.error('שליחת התשובה נכשלה', { description: err?.message });
     } finally {
       setSending(false);
     }
