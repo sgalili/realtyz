@@ -7,7 +7,15 @@ import {
   renderListingFacts,
   type ListingFact,
 } from "../_shared/guardrails.ts";
-import { loadAgentPersona, renderPersonaPrompt, renderDealTypeBlock, renderStageHatBlock, type DealType } from "../_shared/persona.ts";
+import {
+  loadAgentPersona,
+  renderPersonaPrompt,
+  renderDealTypeBlock,
+  renderStageHatBlock,
+  renderChannelBlock,
+  detectWhatsAppPivotAgreement,
+  type DealType,
+} from "../_shared/persona.ts";
 import { maskMessages } from "../_shared/pii.ts";
 
 const corsHeaders = {
@@ -233,6 +241,7 @@ serve(async (req) => {
     let dealType: DealType | null = null;
     let resolvedLeadName: string | null = lead_name ?? null;
     let leadStage: string | null = null;
+    let leadPreferences: any = {};
     if (lead_id) {
       try {
         const { data: leadRow } = await supabase
@@ -249,6 +258,7 @@ serve(async (req) => {
           (leadRow?.lead_stage as string | undefined) ??
           (leadRow?.status as string | undefined) ??
           null;
+        leadPreferences = (leadRow?.preferences as any) ?? {};
       } catch (e) {
         console.warn("deal_type lookup failed:", e);
       }
@@ -256,13 +266,102 @@ serve(async (req) => {
     const dealTypeBlock = renderDealTypeBlock(dealType, resolvedLeadName);
     const stageHatBlock = renderStageHatBlock(leadStage, resolvedLeadName);
 
+    // === CHANNEL INTEGRITY: detect inbound channel + persisted pivot state ===
+    // Read the latest inbound message from `messages` to learn which channel
+    // the Lead actually wrote on this turn. Fall back to whatsapp.
+    let inboundChannel: string | null = "whatsapp";
+    let pivotAttempts = 0;
+    if (lead_id) {
+      try {
+        const { data: lastMsg } = await supabase
+          .from("messages")
+          .select("channel, platform, direction, sender_type, content, created_at")
+          .eq("lead_id", lead_id)
+          .eq("direction", "inbound")
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        inboundChannel =
+          (lastMsg?.channel as string | undefined) ||
+          (lastMsg?.platform as string | undefined) ||
+          "whatsapp";
+
+        // Count pivot CTAs already sent on the current social thread.
+        const channelLower = inboundChannel.toLowerCase();
+        if (channelLower !== "whatsapp") {
+          const { data: outBound } = await supabase
+            .from("messages")
+            .select("content, created_at")
+            .eq("lead_id", lead_id)
+            .eq("direction", "outbound")
+            .eq("channel", channelLower)
+            .order("created_at", { ascending: false })
+            .limit(5);
+          pivotAttempts = (outBound ?? []).filter((m: any) =>
+            /WhatsApp/i.test(String(m?.content ?? ""))
+          ).length;
+        }
+      } catch (e) {
+        console.warn("channel lookup failed:", e);
+      }
+    }
+
+    const channelState = (leadPreferences?.channel_state as any) ?? {};
+    const channelBlock = renderChannelBlock({
+      inboundChannel,
+      leadName: resolvedLeadName,
+      whatsappLink: (leadPreferences?.whatsapp_link as string | undefined) ?? null,
+      primaryChannel: (channelState?.primary_channel as string | undefined) ?? null,
+      inactiveChannels: Array.isArray(channelState?.inactive_channels)
+        ? (channelState.inactive_channels as string[])
+        : [],
+      pivotAttempts,
+    });
+
     const systemPrompt = SCHEMA_CONTEXT
       .replace("{{CAMPAIGN_CONTEXT}}", campaignContext)
       .replace("{{KB_CONTEXT}}", kbContext)
       + (personaBlock ? "\n\n" + personaBlock : "")
       + "\n\n" + dealTypeBlock
       + "\n\n" + stageHatBlock
+      + "\n\n" + channelBlock
       + "\n\n" + compliance;
+
+    // Persist WhatsApp Pivot agreement: if the Lead's latest inbound says "yes"
+    // (or shares a phone number) on a NON-WhatsApp social channel and we already
+    // sent at least one pivot CTA, flip channel_state so the social channel is
+    // marked INACTIVE and primary_channel becomes 'whatsapp' for all future turns.
+    try {
+      if (lead_id && inboundChannel && inboundChannel.toLowerCase() !== "whatsapp" && pivotAttempts >= 1) {
+        const lastUserText = [...messages].reverse().find((m: any) => m.role === "user")?.content;
+        if (detectWhatsAppPivotAgreement(String(lastUserText ?? ""))) {
+          const inactive = new Set<string>(
+            (Array.isArray(channelState?.inactive_channels)
+              ? (channelState.inactive_channels as string[])
+              : []
+            ).map((c) => c.toLowerCase()),
+          );
+          inactive.add(inboundChannel.toLowerCase());
+          const nextPrefs = {
+            ...(leadPreferences ?? {}),
+            channel_state: {
+              ...(channelState ?? {}),
+              primary_channel: "whatsapp",
+              inactive_channels: Array.from(inactive),
+              pivoted_at: new Date().toISOString(),
+              pivoted_from: inboundChannel.toLowerCase(),
+            },
+          };
+          await supabase
+            .from("leads")
+            .update({ preferences: nextPrefs })
+            .eq("id", lead_id);
+        }
+      }
+    } catch (e) {
+      console.warn("channel pivot persistence failed:", e);
+    }
+
 
     // Escalation Trigger: classify the most recent lead/user message.
     // When a high-risk topic is detected, fire-and-forget the alert function
