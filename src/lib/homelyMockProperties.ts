@@ -7,6 +7,16 @@
 
 export type PropertySource = "homely" | "listings" | "mock";
 
+export type ListingType = "sale" | "rent";
+
+export type PropertyAgent = {
+  name: string;
+  phone: string;
+  email: string;
+  agency?: string;
+  photo?: string;
+};
+
 export type HomelyProperty = {
   id: string;
   source: PropertySource;
@@ -21,6 +31,24 @@ export type HomelyProperty = {
   photos: string[];
   url: string | null;
   features: string[];
+  listing_type?: ListingType;
+  floor?: number;
+  total_floors?: number;
+  address?: string;
+  year_built?: number;
+  agent?: PropertyAgent;
+};
+
+export const LISTING_TYPE_LABELS_HE: Record<ListingType, string> = {
+  sale: "למכירה",
+  rent: "להשכרה",
+};
+
+const DEFAULT_AGENT: PropertyAgent = {
+  name: 'דניאל לוי',
+  phone: '052-555-1234',
+  email: 'daniel@realtyz.ai',
+  agency: 'Realtyz AI',
 };
 
 export type PropertyType = "apartment" | "penthouse" | "house" | "duplex" | "garden_apt";
