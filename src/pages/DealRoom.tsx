@@ -23,7 +23,7 @@ import {
   Megaphone,
   Handshake,
   CheckCircle2,
-  MessageSquare,
+  
   Database,
   PenLine,
   Pencil,
@@ -92,35 +92,35 @@ const STAGE_COLUMNS: Array<{
 }> = [
   {
     key: 'new_prospect',
-    title: 'New Prospect',
+    title: 'מועמד חדש',
     icon: UserPlus,
     accent: 'text-primary',
     legacyKeys: ['new', 'lead', 'new_prospect'],
   },
   {
     key: 'listing_outreach',
-    title: 'Listing Outreach',
+    title: 'פנייה אקטיבית',
     icon: Megaphone,
     accent: 'text-social-facebook',
     legacyKeys: ['contacted', 'outreach', 'listing_outreach', 'campaign'],
   },
   {
     key: 'negotiation',
-    title: 'Negotiation',
+    title: 'משא ומתן',
     icon: Handshake,
     accent: 'text-warning',
     legacyKeys: ['negotiation', 'qualified', 'meeting'],
   },
   {
     key: 'awaiting_signature',
-    title: 'Awaiting Signature',
+    title: 'ממתין לחתימה',
     icon: PenLine,
     accent: 'text-primary',
     legacyKeys: ['awaiting_signature', 'signature_pending'],
   },
   {
     key: 'closed',
-    title: 'Closed',
+    title: 'נסגר',
     icon: CheckCircle2,
     accent: 'text-success',
     legacyKeys: ['closed', 'won', 'converted', 'lost'],
@@ -136,17 +136,17 @@ function bucketFor(stage: string | null): LeadStage {
 }
 
 function timeAgo(iso: string | null): string {
-  if (!iso) return 'No interaction yet';
+  if (!iso) return 'אין אינטראקציה עדיין';
   const diff = Date.now() - new Date(iso).getTime();
   const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'Just now';
-  if (mins < 60) return `${mins}m ago`;
+  if (mins < 1) return 'הרגע';
+  if (mins < 60) return `לפני ${mins} ד׳`;
   const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `${hrs}h ago`;
+  if (hrs < 24) return `לפני ${hrs} ש׳`;
   const days = Math.floor(hrs / 24);
-  if (days < 30) return `${days}d ago`;
+  if (days < 30) return `לפני ${days} ימים`;
   const months = Math.floor(days / 30);
-  return `${months}mo ago`;
+  return `לפני ${months} חודשים`;
 }
 
 export default function DealRoom() {
@@ -201,10 +201,10 @@ export default function DealRoom() {
       .update({ assigned_to: userId })
       .eq('id', leadId);
     if (error) {
-      toast.error('Could not delegate prospect', { description: error.message });
+      toast.error('לא ניתן להקצות את המועמד', { description: error.message });
       return;
     }
-    toast.success(userId ? 'Prospect delegated' : 'Assignment cleared');
+    toast.success(userId ? 'המועמד הוקצה' : 'ההקצאה בוטלה');
     queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
   }
   const [recomputing, setRecomputing] = useState(false);
@@ -251,10 +251,10 @@ export default function DealRoom() {
       });
       if (error) throw error;
       const n = (data as any)?.processed ?? 0;
-      toast.success(`Recomputed ${n} prospect scores`);
+      toast.success(`חושבו מחדש ${n} ציוני מועמד`);
       queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
     } catch (err: any) {
-      toast.error('Could not recompute scores', { description: err?.message });
+      toast.error('לא ניתן לחשב מחדש את הציונים', { description: err?.message });
     } finally {
       setRecomputing(false);
     }
@@ -296,13 +296,13 @@ export default function DealRoom() {
       });
       if (error) throw error;
       const reply = (data as any)?.reply || (data as any)?.message || (data as any)?.content || '';
-      setSmartReply(reply || 'No suggestion available right now. Try again in a moment.');
+      setSmartReply(reply || 'אין הצעה זמינה כרגע. נסה שוב בעוד רגע.');
       setFactViolations(((data as any)?.fact_violations as any[]) || []);
       setEscalation(((data as any)?.escalation as any) || null);
     } catch (err: any) {
       console.error('Smart reply error', err);
       setSmartReply('');
-      toast.error('Could not generate Smart Reply', { description: err?.message });
+      toast.error('לא ניתן ליצור תשובה חכמה', { description: err?.message });
     } finally {
       window.clearTimeout(phaseTimer);
       setGenerating(false);
@@ -319,7 +319,7 @@ export default function DealRoom() {
     lead?: any;
   }) {
     if (!suggestion.lead) {
-      toast.error('Prospect not available for this suggestion');
+      toast.error('המועמד אינו זמין עבור הצעה זו');
       return;
     }
     setActiveSuggestionId(suggestion.id);
@@ -363,11 +363,11 @@ export default function DealRoom() {
       if (error) throw error;
       const ok = (data as any)?.ok ?? (data as any)?.success ?? true;
       if (!ok) {
-        const reason = (data as any)?.error || 'WhatsApp gateway rejected the message';
+        const reason = (data as any)?.error || 'שער ה-WhatsApp דחה את ההודעה';
         throw new Error(reason);
       }
-      toast.success('Reply approved & sent', {
-        description: `WhatsApp delivered to ${activeProspect.full_name || 'Prospect'}`,
+      toast.success('התשובה אושרה ונשלחה', {
+        description: `WhatsApp נמסר ל-${activeProspect.full_name || 'המועמד'}`,
       });
       // If this draft came from an Action Item, mark the suggestion as used so it
       // disappears from the queue and we don't suggest the same thing again.
@@ -385,36 +385,33 @@ export default function DealRoom() {
       queryClient.invalidateQueries({ queryKey: ['deal-room-prospects'] });
       queryClient.invalidateQueries({ queryKey: ['messages', activeProspect.id] });
     } catch (err: any) {
-      toast.error('Failed to send reply', { description: err?.message });
+      toast.error('שליחת התשובה נכשלה', { description: err?.message });
     } finally {
       setSending(false);
     }
   }
 
   return (
-    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6" dir="ltr">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6" dir="rtl">
       <header className="flex items-start justify-between gap-3 flex-wrap">
         <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-semibold tracking-tight flex items-center gap-2 sm:gap-3">
-            <span className="inline-flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-lg bg-primary/10 text-primary">
-              <MessageSquare className="h-5 w-5" />
-            </span>
-            Deal Room
+          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
+            חדר עסקאות
           </h1>
           <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            Pipeline view of every Prospect — drag intent into action.
+            תצוגת פייפליין של כל המועמדים — גרור כוונה לפעולה.
           </p>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
           <Badge variant="secondary" className="text-sm">
-            {leads?.length ?? 0} Prospects
+            {leads?.length ?? 0} מועמדים
           </Badge>
           <Button
             variant={sortMode === 'priority' ? 'default' : 'outline'}
             size="sm"
             onClick={() => setSortMode((m) => (m === 'priority' ? 'recent' : 'priority'))}
             className="gap-1.5 h-11"
-            title="Sort by Predictive Prospect Score"
+            title="מיון לפי ציון מועמד חזוי"
           >
             {sortMode === 'priority' ? (
               <Flame className="h-4 w-4" />
@@ -422,10 +419,10 @@ export default function DealRoom() {
               <ArrowDownUp className="h-4 w-4" />
             )}
             <span className="hidden sm:inline">
-              {sortMode === 'priority' ? 'Sorted by Priority' : 'Sort by Priority'}
+              {sortMode === 'priority' ? 'ממויין לפי עדיפות' : 'מיין לפי עדיפות'}
             </span>
             <span className="sm:hidden">
-              {sortMode === 'priority' ? 'Priority' : 'Sort'}
+              {sortMode === 'priority' ? 'עדיפות' : 'מיין'}
             </span>
           </Button>
           <Button
@@ -434,10 +431,10 @@ export default function DealRoom() {
             onClick={recomputeAllScores}
             disabled={recomputing}
             className="gap-1.5 h-11"
-            title="Recompute all prospect scores"
+            title="חשב מחדש את כל ציוני המועמדים"
           >
             <RefreshCw className={cn('h-4 w-4', recomputing && 'animate-spin')} />
-            <span className="hidden md:inline">Recompute scores</span>
+            <span className="hidden md:inline">חשב מחדש ציונים</span>
           </Button>
           <Button
             onClick={() => {
@@ -447,8 +444,8 @@ export default function DealRoom() {
             className="gap-1.5 h-11 flex-1 sm:flex-none"
           >
             <Megaphone className="h-4 w-4" />
-            <span className="hidden sm:inline">New Listing Outreach</span>
-            <span className="sm:hidden">New Outreach</span>
+            <span className="hidden sm:inline">פנייה אקטיבית חדשה</span>
+            <span className="sm:hidden">פנייה חדשה</span>
           </Button>
         </div>
       </header>
@@ -483,7 +480,7 @@ export default function DealRoom() {
 
                   {!isLoading && items.length === 0 && (
                     <div className="text-center text-xs text-muted-foreground py-8">
-                      No Prospects in this stage
+                      אין מועמדים בשלב זה
                     </div>
                   )}
 
@@ -501,7 +498,7 @@ export default function DealRoom() {
                         <div className="min-w-0 flex-1">
                           <div className="flex items-start justify-between gap-2">
                             <div className="font-medium text-sm truncate min-w-0 flex-1">
-                              {p.full_name || 'Unnamed Prospect'}
+                              {p.full_name || 'מועמד ללא שם'}
                             </div>
                             <PriorityScoreBadge
                               score={p.priority_score ?? 0}
@@ -530,7 +527,7 @@ export default function DealRoom() {
                           onClick={() => openSmartReply(p)}
                         >
                           <Sparkles className="h-4 w-4 text-primary" />
-                          Reply
+                          תשובה
                         </Button>
                         <Button
                           size="sm"
@@ -539,8 +536,8 @@ export default function DealRoom() {
                           onClick={() => setMatchmakerProspect(p)}
                         >
                           <Home className="h-4 w-4 text-success" />
-                          <span className="hidden xs:inline sm:inline">Find Property</span>
-                          <span className="xs:hidden sm:hidden">Find</span>
+                          <span className="hidden xs:inline sm:inline">מצא נכס</span>
+                          <span className="xs:hidden sm:hidden">מצא</span>
                         </Button>
                         <Button
                           size="sm"
@@ -552,12 +549,12 @@ export default function DealRoom() {
                           }}
                         >
                           <Megaphone className="h-4 w-4 text-warning" />
-                          Outreach
+                          פנייה
                         </Button>
                       </div>
                       {canAssignProspects && (
                         <div className="mt-2 flex items-center gap-2">
-                          <span className="text-[11px] text-muted-foreground shrink-0">Assign to</span>
+                          <span className="text-[11px] text-muted-foreground shrink-0">הקצה ל</span>
                           <Select
                             value={p.assigned_to ?? '__unassigned__'}
                             onValueChange={(v) =>
@@ -565,10 +562,10 @@ export default function DealRoom() {
                             }
                           >
                             <SelectTrigger className="h-7 text-[11px]">
-                              <SelectValue placeholder="Unassigned" />
+                              <SelectValue placeholder="לא מוקצה" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="__unassigned__">Unassigned</SelectItem>
+                              <SelectItem value="__unassigned__">לא מוקצה</SelectItem>
                               {teamMembers.map((m) => (
                                 <SelectItem key={m.user_id} value={m.user_id}>
                                   {m.user_id.slice(0, 8)}… · {m.role.replace('_', ' ')}
@@ -597,18 +594,18 @@ export default function DealRoom() {
           }
         }}
       >
-        <SheetContent side="right" className="w-full sm:max-w-md flex flex-col p-4 sm:p-6 pb-[max(env(safe-area-inset-bottom),1rem)]" dir="ltr">
+        <SheetContent side="left" className="w-full sm:max-w-md flex flex-col p-4 sm:p-6 pb-[max(env(safe-area-inset-bottom),1rem)]" dir="rtl">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <Sparkles className="h-4 w-4 text-primary" />
-              Smart Reply
+              תשובה חכמה
             </SheetTitle>
             <SheetDescription>
-              Suggested reply for{' '}
+              תשובה מוצעת עבור{' '}
               <span className="font-medium text-foreground">
-                {activeProspect?.full_name || 'this Prospect'}
+                {activeProspect?.full_name || 'מועמד זה'}
               </span>
-              , drafted in your authentic voice from the Strategy Bank.
+              , נכתבה בקול האותנטי שלך מתוך מאגר האסטרטגיה.
             </SheetDescription>
           </SheetHeader>
 
@@ -623,12 +620,12 @@ export default function DealRoom() {
                   {genPhase === 'searching' ? (
                     <>
                       <Database className="h-4 w-4 text-primary animate-pulse" />
-                      <span>Searching Strategy Bank…</span>
+                      <span>מחפש במאגר האסטרטגיה…</span>
                     </>
                   ) : (
                     <>
                       <PenLine className="h-4 w-4 text-primary animate-pulse" />
-                      <span>Drafting reply in your voice…</span>
+                      <span>מנסח תשובה בסגנון שלך…</span>
                     </>
                   )}
                 </div>
@@ -641,15 +638,15 @@ export default function DealRoom() {
               <div className="space-y-2">
                 {escalation && (
                   <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
-                    🚨 Escalation Alert ({escalation.severity}) — category: <strong>{escalation.category}</strong>
-                    {escalation.matched?.length ? <> · keywords: {escalation.matched.join(', ')}</> : null}
-                    <div className="mt-0.5 text-[11px] opacity-80">A WhatsApp ping was sent to your phone. Take over manually before sending.</div>
+                    🚨 התראת הסלמה ({escalation.severity}) — קטגוריה: <strong>{escalation.category}</strong>
+                    {escalation.matched?.length ? <> · מילות מפתח: {escalation.matched.join(', ')}</> : null}
+                    <div className="mt-0.5 text-[11px] opacity-80">נשלחה התראת WhatsApp לטלפון שלך. השתלט ידנית לפני השליחה.</div>
                   </div>
                 )}
                 {factViolations.length > 0 && (
                   <div className="rounded-md border border-warning/50 bg-warning/10 px-3 py-2 text-xs">
-                    ⚠️ Fact-check failed — verify against Homely listings:
-                    <ul className="list-disc ms-4 mt-1 space-y-0.5">
+                    ⚠️ בדיקת עובדות נכשלה — אמת מול נכסי Homely:
+                    <ul className="list-disc me-4 mt-1 space-y-0.5">
                       {factViolations.map((v, i) => (<li key={i}><strong>{v.kind}:</strong> {v.value} — {v.reason}</li>))}
                     </ul>
                   </div>
@@ -657,7 +654,7 @@ export default function DealRoom() {
                 {pinnedProperty && (
                   <div className="space-y-1">
                     <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide flex items-center gap-1">
-                      <Home className="h-3 w-3" /> Property Snippet
+                      <Home className="h-3 w-3" /> פרטי נכס
                     </div>
                     <PropertySnippet property={pinnedProperty} />
                   </div>
@@ -668,20 +665,20 @@ export default function DealRoom() {
                     className="gap-1.5 border-primary/30 bg-primary/5 text-primary font-normal"
                   >
                     <ShieldCheck className="h-3 w-3" />
-                    {activeSuggestionId ? 'AI Generated Suggestion — awaiting approval' : 'AI Draft — awaiting approval'}
+                    {activeSuggestionId ? 'הצעת AI — ממתינה לאישור' : 'טיוטת AI — ממתינה לאישור'}
                   </Badge>
                   {draftMode === 'editing' && (
-                    <span className="text-[11px] text-muted-foreground">Editing</span>
+                    <span className="text-[11px] text-muted-foreground">עריכה</span>
                   )}
                 </div>
                 {draftMode === 'review' ? (
                   <div
                     className="w-full rounded-md border-2 border-dashed border-primary/30 bg-primary/[0.03] p-3 text-sm leading-relaxed whitespace-pre-wrap min-h-[14rem]"
-                    aria-label="AI-generated draft reply, read-only until edited"
+                    aria-label="טיוטת AI לתשובה, לקריאה בלבד עד עריכה"
                   >
                     {smartReply || (
                       <span className="text-muted-foreground italic">
-                        Your Smart Reply will appear here…
+                        התשובה החכמה שלך תופיע כאן…
                       </span>
                     )}
                   </div>
@@ -692,11 +689,11 @@ export default function DealRoom() {
                     rows={10}
                     autoFocus
                     className="w-full rounded-md border-2 border-primary/40 bg-background p-3 text-sm leading-relaxed focus:outline-none focus:ring-2 focus:ring-ring resize-none"
-                    placeholder="Edit your reply…"
+                    placeholder="ערוך את התשובה שלך…"
                   />
                 )}
                 <p className="text-[11px] text-muted-foreground leading-snug">
-                  Nothing is sent to the Prospect until you click <span className="font-medium text-foreground">Approve &amp; Send</span>.
+                  שום דבר לא נשלח למועמד עד שתלחץ <span className="font-medium text-foreground">אשר ושלח</span>.
                 </p>
               </div>
             )}
@@ -724,13 +721,13 @@ export default function DealRoom() {
               >
                 {draftMode === 'editing' ? (
                   <>
-                    <Check className="h-4 w-4 mr-1.5" />
-                    Done
+                    <Check className="h-4 w-4 ms-1.5" />
+                    סיום
                   </>
                 ) : (
                   <>
-                    <Pencil className="h-4 w-4 mr-1.5" />
-                    Edit
+                    <Pencil className="h-4 w-4 ms-1.5" />
+                    ערוך
                   </>
                 )}
               </Button>
@@ -740,8 +737,8 @@ export default function DealRoom() {
                 disabled={generating || sending}
                 onClick={() => activeProspect && openSmartReply(activeProspect)}
               >
-                <Sparkles className="h-4 w-4 mr-1.5" />
-                Regen
+                <Sparkles className="h-4 w-4 ms-1.5" />
+                צור מחדש
               </Button>
               <Button
                 variant="outline"
@@ -749,8 +746,8 @@ export default function DealRoom() {
                 disabled={generating || sending || !activeProspect}
                 onClick={() => activeProspect && setMatchmakerProspect(activeProspect)}
               >
-                <Home className="h-4 w-4 mr-1.5 text-success" />
-                Find
+                <Home className="h-4 w-4 ms-1.5 text-success" />
+                מצא
               </Button>
             </div>
             <Button
@@ -760,13 +757,13 @@ export default function DealRoom() {
             >
               {sending ? (
                 <>
-                  <Send className="h-5 w-5 mr-1.5 animate-pulse" />
-                  Sending via WhatsApp…
+                  <Send className="h-5 w-5 ms-1.5 animate-pulse" />
+                  שולח דרך WhatsApp…
                 </>
               ) : (
                 <>
-                  <Send className="h-5 w-5 mr-1.5" />
-                  Approve &amp; Send
+                  <Send className="h-5 w-5 ms-1.5" />
+                  אשר ושלח
                 </>
               )}
             </Button>
