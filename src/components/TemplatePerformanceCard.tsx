@@ -2,7 +2,6 @@ import { useEffect, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Skeleton } from '@/components/ui/skeleton';
 import { TrendingUp, Trophy, Calendar, XCircle, Ghost, UserCheck, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -64,10 +63,13 @@ export function TemplatePerformanceCard() {
           }
           return;
         }
-        // @ts-expect-error - rpc not in generated types yet
-        const { data, error } = await supabase.rpc('get_template_performance', {
-          user_uuid: u.user.id,
-        });
+        const { data, error } = await (supabase.rpc as unknown as (
+          fn: string,
+          args: Record<string, unknown>,
+        ) => Promise<{ data: TemplateRow[] | null; error: { message: string } | null }>)(
+          'get_template_performance',
+          { user_uuid: u.user.id },
+        );
         if (cancelled) return;
         if (error) {
           setError(error.message);
@@ -140,11 +142,12 @@ export function TemplatePerformanceCard() {
                   {r.success_rate}%
                 </Badge>
               </div>
-              <Progress
-                value={r.success_rate}
-                className="h-1.5 mb-2"
-                indicatorClassName={progressTone(r.success_rate)}
-              />
+              <div className="h-1.5 w-full rounded-full bg-secondary mb-2 overflow-hidden">
+                <div
+                  className={cn('h-full transition-all', progressTone(r.success_rate))}
+                  style={{ width: `${Math.max(0, Math.min(100, r.success_rate))}%` }}
+                />
+              </div>
               <div className="flex flex-wrap gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
                 <span className="inline-flex items-center gap-1">
                   <Trophy className="h-3 w-3 text-emerald-600" />
