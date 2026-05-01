@@ -93,7 +93,8 @@ type Lead = {
   deal_type?: DealType | null;
   preferences?: Record<string, unknown> | null;
   interaction_outcome?: import('@/components/dealroom/OutcomePicker').InteractionOutcome | null;
-};
+  commission_amount?: number | null;
+  expected_close_date?: string | null;
 
 type SortMode = 'recent' | 'priority';
 
