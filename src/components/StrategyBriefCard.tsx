@@ -82,7 +82,7 @@ ${brief.signature_message}
         {/* Header */}
         <div className="p-5 border-b bg-primary/8">
           <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-primary font-bold">
-            <Sparkles className="h-3 w-3" /> Campaign Strategy Brief
+            <Sparkles className="h-3 w-3" /> Listing Outreach Strategy Brief
           </div>
           <h2 className="text-xl font-black mt-1.5 leading-tight">{brief.headline}</h2>
           <p className="text-sm text-muted-foreground mt-2 leading-relaxed">{brief.thesis}</p>
