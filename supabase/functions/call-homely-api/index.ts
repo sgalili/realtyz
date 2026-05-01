@@ -1,5 +1,6 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
+import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -95,6 +96,11 @@ Deno.serve(async (req) => {
       },
     );
   } catch (err) {
+    await logIntegrationError({
+      integration: "homely",
+      functionName: "call-homely-api",
+      errorMessage: (err as Error).message,
+    });
     return new Response(JSON.stringify({ error: (err as Error).message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -19,6 +19,7 @@
 // Returns: { source: "homely" | "listings", results: PropertyResult[] }
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -208,6 +209,11 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error("[homely-search] fatal", e);
+    await logIntegrationError({
+      integration: "homely",
+      functionName: "homely-search",
+      errorMessage: (e as Error).message,
+    });
     return json({ error: (e as Error).message }, 500);
   }
 });
