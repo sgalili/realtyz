@@ -234,6 +234,22 @@ export default function DealRoom() {
     setGenPhase('idle');
   }
 
+  // Smart Matchmaker callback: AI drafted a personalized share message for the
+  // selected property → pre-fill the Smart Reply sheet for the same prospect so
+  // the agent can review/edit and Approve & Send through the existing flow.
+  function handleShareDraft({ draft, property }: { draft: string; property: PropertyResult }) {
+    if (!matchmakerProspect) return;
+    setActiveSuggestionId(null);
+    setFactViolations([]);
+    setEscalation(null);
+    setActiveProspect(matchmakerProspect);
+    setSmartReply(draft);
+    setPinnedProperty(property);
+    setDraftMode('review');
+    setGenerating(false);
+    setGenPhase('idle');
+  }
+
   // Human-in-the-loop: only fires WhatsApp after the Agent explicitly approves the draft.
   async function approveAndSend() {
     if (!activeProspect || !smartReply.trim() || sending) return;
