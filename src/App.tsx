@@ -183,6 +183,7 @@ const App = () => (
               <Route path="/settings/white-label" element={<Navigate to="/settings/branding" replace />} />
               <Route path="/settings/system-health" element={<ProtectedRoute><SystemHealth /></ProtectedRoute>} />
               <Route path="/settings/platform" element={<ProtectedRoute><PlatformSettings /></ProtectedRoute>} />
+              <Route path="/settings/homely-admin" element={<ProtectedRoute><HomelyAdmin /></ProtectedRoute>} />
               <Route path="/homely-api" element={<Navigate to="/api-settings" replace />} />
               <Route path="/social-connect" element={<ProtectedRoute allowGuestDemo><SocialConnect /></ProtectedRoute>} />
               <Route path="/leads" element={<ProtectedRoute allowGuestDemo><AdminLeads /></ProtectedRoute>} />
