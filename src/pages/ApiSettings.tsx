@@ -548,8 +548,90 @@ const ApiSettings = () => {
         setHomelyAutoPush(Boolean((data as any).homely_auto_push));
       }
       setHomelyLoaded(true);
+
+      // Load Homely broker credentials (login + webhook)
+      const { data: cred } = await supabaseClient
+        .from('homely_broker_credentials' as any)
+        .select('homely_username, connection_status, last_verified_at, webhook_token, homely_password_encrypted')
+        .eq('user_id', authUser.id)
+        .maybeSingle();
+      if (cred) {
+        setHomelyUsername((cred as any).homely_username || '');
+        setHomelyConnStatus((cred as any).connection_status || 'not_configured');
+        setHomelyLastVerified((cred as any).last_verified_at || null);
+        setHomelyWebhookToken((cred as any).webhook_token || '');
+        setHomelyHasPassword(Boolean((cred as any).homely_password_encrypted));
+      }
     })();
   }, [authUser]);
+
+  const handleSaveHomelyLogin = async () => {
+    if (!authUser) return;
+    if (!homelyUsername.trim()) { toast.error('יש להזין שם משתמש Homely'); return; }
+    setSavingKey('homely-login');
+    try {
+      // Save username (and webhook token if missing) via plain upsert
+      const { error: upErr } = await supabaseClient
+        .from('homely_broker_credentials' as any)
+        .upsert({
+          user_id: authUser.id,
+          homely_username: homelyUsername.trim(),
+          updated_at: new Date().toISOString(),
+        } as any, { onConflict: 'user_id' });
+      if (upErr) throw upErr;
+
+      // Save password (only if user typed a new one) via SECURITY DEFINER RPC
+      if (homelyPassword.trim()) {
+        const { error: pwErr } = await supabaseClient.rpc('set_homely_password' as any, {
+          _user_id: authUser.id,
+          _password: homelyPassword,
+        });
+        if (pwErr) throw pwErr;
+        setHomelyHasPassword(true);
+        setHomelyPassword('');
+      }
+
+      // Reload to capture freshly-issued webhook_token
+      const { data: cred } = await supabaseClient
+        .from('homely_broker_credentials' as any)
+        .select('webhook_token, connection_status, last_verified_at')
+        .eq('user_id', authUser.id)
+        .maybeSingle();
+      if (cred) {
+        setHomelyWebhookToken((cred as any).webhook_token || '');
+        setHomelyConnStatus((cred as any).connection_status || 'not_configured');
+        setHomelyLastVerified((cred as any).last_verified_at || null);
+      }
+      toast.success('✅ פרטי כניסה ל‑Homely נשמרו');
+    } catch (e: any) {
+      toast.error('שמירה נכשלה: ' + e.message);
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const handleVerifyHomelyLogin = async () => {
+    if (!authUser) return;
+    setTestingService('homely-login');
+    try {
+      const { data, error } = await supabaseClient.functions.invoke('homely-verify-login', {
+        body: { user_id: authUser.id },
+      });
+      if (error) throw error;
+      const ok = (data as any)?.ok;
+      const status = (data as any)?.status || 'unknown';
+      setHomelyConnStatus(status);
+      setHomelyLastVerified(new Date().toISOString());
+      if (ok) toast.success(status === 'manually_verified'
+        ? '✅ פרטי הכניסה נשמרו (אימות אוטומטי יופעל לאחר חיבור Homely)'
+        : '✅ חיבור ל‑Homely תקין');
+      else toast.error('בדיקה נכשלה');
+    } catch (e: any) {
+      toast.error('בדיקה נכשלה: ' + e.message);
+    } finally {
+      setTestingService(null);
+    }
+  };
 
   const handleSaveOpenCard = async () => {
     if (!authUser) return;
