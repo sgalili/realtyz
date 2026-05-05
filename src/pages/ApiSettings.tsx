@@ -297,6 +297,11 @@ const ApiSettings = () => {
   const [homelyApiKey, setHomelyApiKey] = useState('');
   const [homelyHasKey, setHomelyHasKey] = useState(false);
   const [homelyLoaded, setHomelyLoaded] = useState(false);
+  // Open Card (auto-push) credentials
+  const [homelyClientCode, setHomelyClientCode] = useState('');
+  const [homelyProvider, setHomelyProvider] = useState('Realtyz');
+  const [homelyDefaultAgent, setHomelyDefaultAgent] = useState('');
+  const [homelyAutoPush, setHomelyAutoPush] = useState(false);
   // Diagnostic snapshot from the last "Test Connection" run.
   const [homelyDiag, setHomelyDiag] = useState<null | {
     ok: boolean;
