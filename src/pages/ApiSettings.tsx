@@ -569,14 +569,16 @@ const ApiSettings = () => {
 
   const handleSaveHomelyLogin = async () => {
     if (!authUser) return;
+    if (!homelyAgency.trim()) { toast.error('יש להזין קוד משרד Homely'); return; }
     if (!homelyUsername.trim()) { toast.error('יש להזין שם משתמש Homely'); return; }
     setSavingKey('homely-login');
     try {
-      // Save username (and webhook token if missing) via plain upsert
+      // Save agency + username (and webhook token if missing) via plain upsert
       const { error: upErr } = await supabaseClient
         .from('homely_broker_credentials' as any)
         .upsert({
           user_id: authUser.id,
+          homely_agency: homelyAgency.trim(),
           homely_username: homelyUsername.trim(),
           updated_at: new Date().toISOString(),
         } as any, { onConflict: 'user_id' });
