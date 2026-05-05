@@ -1438,6 +1438,53 @@ export type Database = {
         }
         Relationships: []
       }
+      homely_push_log: {
+        Row: {
+          category: string | null
+          created_at: string
+          error: string | null
+          http_status: number | null
+          id: string
+          lead_id: string | null
+          request: Json | null
+          response: Json | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          error?: string | null
+          http_status?: number | null
+          id?: string
+          lead_id?: string | null
+          request?: Json | null
+          response?: Json | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          error?: string | null
+          http_status?: number | null
+          id?: string
+          lead_id?: string | null
+          request?: Json | null
+          response?: Json | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "homely_push_log_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integration_alert_state: {
         Row: {
           integration: string
@@ -3009,6 +3056,10 @@ export type Database = {
         Row: {
           created_at: string
           homely_api_key: string | null
+          homely_auto_push: boolean
+          homely_client_code: string | null
+          homely_default_agent: string | null
+          homely_provider: string | null
           id: string
           updated_at: string
           user_id: string
@@ -3016,6 +3067,10 @@ export type Database = {
         Insert: {
           created_at?: string
           homely_api_key?: string | null
+          homely_auto_push?: boolean
+          homely_client_code?: string | null
+          homely_default_agent?: string | null
+          homely_provider?: string | null
           id?: string
           updated_at?: string
           user_id: string
@@ -3023,6 +3078,10 @@ export type Database = {
         Update: {
           created_at?: string
           homely_api_key?: string | null
+          homely_auto_push?: boolean
+          homely_client_code?: string | null
+          homely_default_agent?: string | null
+          homely_provider?: string | null
           id?: string
           updated_at?: string
           user_id?: string
