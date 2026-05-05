@@ -1438,6 +1438,78 @@ export type Database = {
         }
         Relationships: []
       }
+      homely_broker_credentials: {
+        Row: {
+          connection_status: string
+          created_at: string
+          disabled_by: string | null
+          disabled_reason: string | null
+          homely_password_encrypted: string | null
+          homely_username: string | null
+          last_error: string | null
+          last_verified_at: string | null
+          updated_at: string
+          user_id: string
+          webhook_token: string
+        }
+        Insert: {
+          connection_status?: string
+          created_at?: string
+          disabled_by?: string | null
+          disabled_reason?: string | null
+          homely_password_encrypted?: string | null
+          homely_username?: string | null
+          last_error?: string | null
+          last_verified_at?: string | null
+          updated_at?: string
+          user_id: string
+          webhook_token?: string
+        }
+        Update: {
+          connection_status?: string
+          created_at?: string
+          disabled_by?: string | null
+          disabled_reason?: string | null
+          homely_password_encrypted?: string | null
+          homely_username?: string | null
+          last_error?: string | null
+          last_verified_at?: string | null
+          updated_at?: string
+          user_id?: string
+          webhook_token?: string
+        }
+        Relationships: []
+      }
+      homely_inbound_events: {
+        Row: {
+          created_at: string
+          event_type: string | null
+          id: string
+          payload: Json
+          processed: boolean
+          processing_note: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          event_type?: string | null
+          id?: string
+          payload?: Json
+          processed?: boolean
+          processing_note?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          event_type?: string | null
+          id?: string
+          payload?: Json
+          processed?: boolean
+          processing_note?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       homely_push_log: {
         Row: {
           category: string | null
@@ -3385,6 +3457,8 @@ export type Database = {
         Returns: Json
       }
       get_followup_suggestions: { Args: { _user_id: string }; Returns: Json }
+      get_homely_admin_overview: { Args: never; Returns: Json }
+      get_homely_password: { Args: { _user_id: string }; Returns: string }
       get_outcome_intelligence: {
         Args: { _days?: number; _user_id: string }
         Returns: Json
@@ -3487,6 +3561,14 @@ export type Database = {
       }
       requeue_stuck_autopilot_jobs: { Args: never; Returns: number }
       seed_demo_data: { Args: never; Returns: Json }
+      set_homely_broker_disabled: {
+        Args: { _disabled: boolean; _reason?: string; _user_id: string }
+        Returns: undefined
+      }
+      set_homely_password: {
+        Args: { _password: string; _user_id: string }
+        Returns: undefined
+      }
       trial_outbound_used: { Args: { _user_id: string }; Returns: number }
       wipe_demo_data: { Args: never; Returns: Json }
     }
