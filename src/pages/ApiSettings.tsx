@@ -1285,7 +1285,7 @@ const ApiSettings = () => {
             </p>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={handleVerifyHomelyLogin}
-                disabled={testingService === 'homely-login' || (!homelyHasPassword && !homelyPassword)}>
+                disabled={testingService === 'homely-login' || !homelyAgency.trim() || !homelyUsername.trim() || (!homelyHasPassword && !homelyPassword)}>
                 {testingService === 'homely-login' ? 'בודק…' : 'בדוק כניסה'}
               </Button>
               <Button size="sm" onClick={handleSaveHomelyLogin} disabled={savingKey === 'homely-login'}>
