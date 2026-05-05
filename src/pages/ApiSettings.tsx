@@ -302,6 +302,13 @@ const ApiSettings = () => {
   const [homelyProvider, setHomelyProvider] = useState('Realtyz');
   const [homelyDefaultAgent, setHomelyDefaultAgent] = useState('');
   const [homelyAutoPush, setHomelyAutoPush] = useState(false);
+  // Per-broker Homely login (stored encrypted server-side)
+  const [homelyUsername, setHomelyUsername] = useState('');
+  const [homelyPassword, setHomelyPassword] = useState('');
+  const [homelyHasPassword, setHomelyHasPassword] = useState(false);
+  const [homelyConnStatus, setHomelyConnStatus] = useState<string>('not_configured');
+  const [homelyLastVerified, setHomelyLastVerified] = useState<string | null>(null);
+  const [homelyWebhookToken, setHomelyWebhookToken] = useState<string>('');
   // Diagnostic snapshot from the last "Test Connection" run.
   const [homelyDiag, setHomelyDiag] = useState<null | {
     ok: boolean;
