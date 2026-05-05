@@ -1244,7 +1244,17 @@ const ApiSettings = () => {
             </Badge>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">קוד משרד (client)</Label>
+              <Input
+                dir="ltr"
+                value={homelyAgency}
+                onChange={(e) => setHomelyAgency(e.target.value)}
+                placeholder="לדוגמה: 9095"
+                autoComplete="off"
+              />
+            </div>
             <div className="space-y-1">
               <Label className="text-xs">שם משתמש Homely</Label>
               <Input
