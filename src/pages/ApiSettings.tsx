@@ -302,6 +302,13 @@ const ApiSettings = () => {
   const [homelyProvider, setHomelyProvider] = useState('Realtyz');
   const [homelyDefaultAgent, setHomelyDefaultAgent] = useState('');
   const [homelyAutoPush, setHomelyAutoPush] = useState(false);
+  // Per-broker Homely login (stored encrypted server-side)
+  const [homelyUsername, setHomelyUsername] = useState('');
+  const [homelyPassword, setHomelyPassword] = useState('');
+  const [homelyHasPassword, setHomelyHasPassword] = useState(false);
+  const [homelyConnStatus, setHomelyConnStatus] = useState<string>('not_configured');
+  const [homelyLastVerified, setHomelyLastVerified] = useState<string | null>(null);
+  const [homelyWebhookToken, setHomelyWebhookToken] = useState<string>('');
   // Diagnostic snapshot from the last "Test Connection" run.
   const [homelyDiag, setHomelyDiag] = useState<null | {
     ok: boolean;
@@ -541,8 +548,90 @@ const ApiSettings = () => {
         setHomelyAutoPush(Boolean((data as any).homely_auto_push));
       }
       setHomelyLoaded(true);
+
+      // Load Homely broker credentials (login + webhook)
+      const { data: cred } = await supabaseClient
+        .from('homely_broker_credentials' as any)
+        .select('homely_username, connection_status, last_verified_at, webhook_token, homely_password_encrypted')
+        .eq('user_id', authUser.id)
+        .maybeSingle();
+      if (cred) {
+        setHomelyUsername((cred as any).homely_username || '');
+        setHomelyConnStatus((cred as any).connection_status || 'not_configured');
+        setHomelyLastVerified((cred as any).last_verified_at || null);
+        setHomelyWebhookToken((cred as any).webhook_token || '');
+        setHomelyHasPassword(Boolean((cred as any).homely_password_encrypted));
+      }
     })();
   }, [authUser]);
+
+  const handleSaveHomelyLogin = async () => {
+    if (!authUser) return;
+    if (!homelyUsername.trim()) { toast.error('יש להזין שם משתמש Homely'); return; }
+    setSavingKey('homely-login');
+    try {
+      // Save username (and webhook token if missing) via plain upsert
+      const { error: upErr } = await supabaseClient
+        .from('homely_broker_credentials' as any)
+        .upsert({
+          user_id: authUser.id,
+          homely_username: homelyUsername.trim(),
+          updated_at: new Date().toISOString(),
+        } as any, { onConflict: 'user_id' });
+      if (upErr) throw upErr;
+
+      // Save password (only if user typed a new one) via SECURITY DEFINER RPC
+      if (homelyPassword.trim()) {
+        const { error: pwErr } = await supabaseClient.rpc('set_homely_password' as any, {
+          _user_id: authUser.id,
+          _password: homelyPassword,
+        });
+        if (pwErr) throw pwErr;
+        setHomelyHasPassword(true);
+        setHomelyPassword('');
+      }
+
+      // Reload to capture freshly-issued webhook_token
+      const { data: cred } = await supabaseClient
+        .from('homely_broker_credentials' as any)
+        .select('webhook_token, connection_status, last_verified_at')
+        .eq('user_id', authUser.id)
+        .maybeSingle();
+      if (cred) {
+        setHomelyWebhookToken((cred as any).webhook_token || '');
+        setHomelyConnStatus((cred as any).connection_status || 'not_configured');
+        setHomelyLastVerified((cred as any).last_verified_at || null);
+      }
+      toast.success('✅ פרטי כניסה ל‑Homely נשמרו');
+    } catch (e: any) {
+      toast.error('שמירה נכשלה: ' + e.message);
+    } finally {
+      setSavingKey(null);
+    }
+  };
+
+  const handleVerifyHomelyLogin = async () => {
+    if (!authUser) return;
+    setTestingService('homely-login');
+    try {
+      const { data, error } = await supabaseClient.functions.invoke('homely-verify-login', {
+        body: { user_id: authUser.id },
+      });
+      if (error) throw error;
+      const ok = (data as any)?.ok;
+      const status = (data as any)?.status || 'unknown';
+      setHomelyConnStatus(status);
+      setHomelyLastVerified(new Date().toISOString());
+      if (ok) toast.success(status === 'manually_verified'
+        ? '✅ פרטי הכניסה נשמרו (אימות אוטומטי יופעל לאחר חיבור Homely)'
+        : '✅ חיבור ל‑Homely תקין');
+      else toast.error('בדיקה נכשלה');
+    } catch (e: any) {
+      toast.error('בדיקה נכשלה: ' + e.message);
+    } finally {
+      setTestingService(null);
+    }
+  };
 
   const handleSaveOpenCard = async () => {
     if (!authUser) return;
@@ -1124,6 +1213,100 @@ const ApiSettings = () => {
             הקטגוריה (קונה / שוכר / מוכר וכו׳) נגזרת אוטומטית מסוג העסקה והעדפות המתעניין.
           </p>
         </div>
+
+        {/* ── Homely account login (per-broker) ── */}
+        <div className="mt-4 rounded-lg border border-border/40 bg-muted/20 p-3 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">חשבון Homely שלך</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                פרטי הכניסה שלך לאתר Homely. הסיסמה נשמרת מוצפנת ולא נחשפת חזרה לדפדפן.
+              </p>
+            </div>
+            <Badge variant="outline" className={
+              homelyConnStatus === 'ok' || homelyConnStatus === 'manually_verified'
+                ? 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30'
+                : homelyConnStatus === 'failed'
+                ? 'bg-red-500/15 text-red-700 border-red-500/30'
+                : homelyConnStatus === 'disabled_by_admin'
+                ? 'bg-amber-500/15 text-amber-800 border-amber-500/30'
+                : 'bg-muted text-muted-foreground'
+            }>
+              {homelyConnStatus === 'ok' && 'תקין'}
+              {homelyConnStatus === 'manually_verified' && 'מאומת'}
+              {homelyConnStatus === 'failed' && 'נכשל'}
+              {homelyConnStatus === 'disabled_by_admin' && 'הושבת ע״י אדמין'}
+              {homelyConnStatus === 'not_configured' && 'לא מוגדר'}
+            </Badge>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">שם משתמש Homely</Label>
+              <Input
+                dir="ltr"
+                value={homelyUsername}
+                onChange={(e) => setHomelyUsername(e.target.value)}
+                autoComplete="off"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">סיסמה {homelyHasPassword && <span className="text-muted-foreground">(שמורה — מלאי רק כדי להחליף)</span>}</Label>
+              <Input
+                type="password"
+                dir="ltr"
+                value={homelyPassword}
+                onChange={(e) => setHomelyPassword(e.target.value)}
+                placeholder={homelyHasPassword ? '•••••••• (שמורה)' : 'הזן סיסמה'}
+                autoComplete="new-password"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] text-muted-foreground">
+              {homelyLastVerified
+                ? `אומת לאחרונה: ${new Date(homelyLastVerified).toLocaleString('he-IL')}`
+                : 'טרם אומת'}
+            </p>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={handleVerifyHomelyLogin}
+                disabled={testingService === 'homely-login' || (!homelyHasPassword && !homelyPassword)}>
+                {testingService === 'homely-login' ? 'בודק…' : 'בדוק כניסה'}
+              </Button>
+              <Button size="sm" onClick={handleSaveHomelyLogin} disabled={savingKey === 'homely-login'}>
+                {savingKey === 'homely-login' ? 'שומר…' : 'שמור פרטי כניסה'}
+              </Button>
+            </div>
+          </div>
+
+          {homelyWebhookToken && (
+            <div className="space-y-1 pt-2 border-t border-border/30">
+              <Label className="text-xs">כתובת Webhook נכנס מ‑Homely</Label>
+              <div className="flex gap-2">
+                <Input
+                  dir="ltr"
+                  readOnly
+                  value={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/homely-webhook?token=${homelyWebhookToken}`}
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
+                  className="font-mono text-[11px]"
+                />
+                <Button size="sm" variant="outline" onClick={() => {
+                  navigator.clipboard.writeText(
+                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/homely-webhook?token=${homelyWebhookToken}`
+                  );
+                  toast.success('הועתק');
+                }}>
+                  העתק
+                </Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                הדבק כתובת זו בהגדרות ה‑Webhook בחשבון ה‑Homely שלך כדי שלידים ועדכוני סטטוס יזרמו אוטומטית ל‑Realtyz.
+              </p>
+            </div>
+          )}
+        </div>
+
 
         {homelyDiag && (
           <div className={`mt-3 rounded-lg border p-3 text-xs space-y-2 ${
