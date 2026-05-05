@@ -303,6 +303,7 @@ const ApiSettings = () => {
   const [homelyDefaultAgent, setHomelyDefaultAgent] = useState('');
   const [homelyAutoPush, setHomelyAutoPush] = useState(false);
   // Per-broker Homely login (stored encrypted server-side)
+  const [homelyAgency, setHomelyAgency] = useState('');
   const [homelyUsername, setHomelyUsername] = useState('');
   const [homelyPassword, setHomelyPassword] = useState('');
   const [homelyHasPassword, setHomelyHasPassword] = useState(false);
@@ -552,11 +553,12 @@ const ApiSettings = () => {
       // Load Homely broker credentials (login + webhook)
       const { data: cred } = await supabaseClient
         .from('homely_broker_credentials' as any)
-        .select('homely_username, connection_status, last_verified_at, webhook_token, homely_password_encrypted')
+        .select('homely_username, homely_agency, connection_status, last_verified_at, webhook_token, homely_password_encrypted')
         .eq('user_id', authUser.id)
         .maybeSingle();
       if (cred) {
         setHomelyUsername((cred as any).homely_username || '');
+        setHomelyAgency((cred as any).homely_agency || '');
         setHomelyConnStatus((cred as any).connection_status || 'not_configured');
         setHomelyLastVerified((cred as any).last_verified_at || null);
         setHomelyWebhookToken((cred as any).webhook_token || '');
@@ -567,14 +569,16 @@ const ApiSettings = () => {
 
   const handleSaveHomelyLogin = async () => {
     if (!authUser) return;
+    if (!homelyAgency.trim()) { toast.error('יש להזין קוד משרד Homely'); return; }
     if (!homelyUsername.trim()) { toast.error('יש להזין שם משתמש Homely'); return; }
     setSavingKey('homely-login');
     try {
-      // Save username (and webhook token if missing) via plain upsert
+      // Save agency + username (and webhook token if missing) via plain upsert
       const { error: upErr } = await supabaseClient
         .from('homely_broker_credentials' as any)
         .upsert({
           user_id: authUser.id,
+          homely_agency: homelyAgency.trim(),
           homely_username: homelyUsername.trim(),
           updated_at: new Date().toISOString(),
         } as any, { onConflict: 'user_id' });
@@ -1240,7 +1244,17 @@ const ApiSettings = () => {
             </Badge>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">קוד משרד (client)</Label>
+              <Input
+                dir="ltr"
+                value={homelyAgency}
+                onChange={(e) => setHomelyAgency(e.target.value)}
+                placeholder="לדוגמה: 9095"
+                autoComplete="off"
+              />
+            </div>
             <div className="space-y-1">
               <Label className="text-xs">שם משתמש Homely</Label>
               <Input
@@ -1271,7 +1285,7 @@ const ApiSettings = () => {
             </p>
             <div className="flex gap-2">
               <Button size="sm" variant="outline" onClick={handleVerifyHomelyLogin}
-                disabled={testingService === 'homely-login' || (!homelyHasPassword && !homelyPassword)}>
+                disabled={testingService === 'homely-login' || !homelyAgency.trim() || !homelyUsername.trim() || (!homelyHasPassword && !homelyPassword)}>
                 {testingService === 'homely-login' ? 'בודק…' : 'בדוק כניסה'}
               </Button>
               <Button size="sm" onClick={handleSaveHomelyLogin} disabled={savingKey === 'homely-login'}>

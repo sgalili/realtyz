@@ -1,8 +1,7 @@
-// Verify a broker's stored Homely username/password.
-// Until you provide the real Homely login URL, this performs a "manual" check:
-// it confirms credentials are stored + decryptable, marks the connection as
-// `manually_verified`, and stamps `last_verified_at`. Once the real endpoint
-// is provided, replace `attemptHomelyLogin()` with a real fetch.
+// Verify a broker's stored Homely (Webtiv) login by calling the real endpoint:
+//   POST https://webtivapi.webtiv.co.il/api/login/LoginNewByAgent
+// Body: { client, username, password, theme, version, deviceInfo }
+// Success heuristic: HTTP 200 AND response.db != 0 (the web client treats db==0 as bad credentials).
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -12,6 +11,8 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
+const HOMELY_LOGIN_URL = "https://webtivapi.webtiv.co.il/api/login/LoginNewByAgent";
+
 function json(b: unknown, status = 200) {
   return new Response(JSON.stringify(b), {
     status,
@@ -19,20 +20,44 @@ function json(b: unknown, status = 200) {
   });
 }
 
-async function attemptHomelyLogin(_username: string, _password: string): Promise<{
+async function attemptHomelyLogin(agency: string, username: string, password: string): Promise<{
   ok: boolean;
   status: number;
   note: string;
 }> {
-  // TODO: replace with real Homely login URL once provided.
-  // Example shape once we have it:
-  //   const res = await fetch("https://crm.homely.co.il/api/login", {
-  //     method: "POST",
-  //     headers: { "Content-Type": "application/json" },
-  //     body: JSON.stringify({ username, password }),
-  //   });
-  //   return { ok: res.ok, status: res.status, note: res.ok ? "ok" : await res.text() };
-  return { ok: true, status: 200, note: "credentials_stored_pending_real_endpoint" };
+  try {
+    const res = await fetch(HOMELY_LOGIN_URL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify({
+        client: agency,
+        username,
+        password,
+        theme: "",
+        version: "realtyz-1.0",
+        deviceInfo: {
+          DeviceType: "server",
+          UserAgent: "Realtyz/1.0 (+https://realtyz.udiman.com)",
+          Os: "deno",
+          Platform: "edge-function",
+        },
+      }),
+    });
+    let data: any = null;
+    const text = await res.text();
+    try { data = JSON.parse(text); } catch { /* not json */ }
+    if (!res.ok) return { ok: false, status: res.status, note: text.slice(0, 200) || "http_error" };
+    // db == 0 means "wrong username or password" per the web client
+    if (data && (data.db === 0 || data.db === "0")) {
+      return { ok: false, status: 401, note: "invalid_credentials" };
+    }
+    return { ok: true, status: 200, note: "ok" };
+  } catch (e) {
+    return { ok: false, status: 0, note: `network_error:${(e as Error).message}` };
+  }
 }
 
 Deno.serve(async (req) => {
@@ -64,25 +89,24 @@ Deno.serve(async (req) => {
 
     const { data: row } = await admin
       .from("homely_broker_credentials")
-      .select("homely_username")
+      .select("homely_username, homely_agency")
       .eq("user_id", targetUserId)
       .maybeSingle();
     const username = (row as any)?.homely_username;
+    const agency = (row as any)?.homely_agency;
 
-    if (!username || !pw) {
+    if (!username || !pw || !agency) {
       await admin.from("homely_broker_credentials").upsert({
         user_id: targetUserId,
         connection_status: "not_configured",
-        last_error: "missing_credentials",
+        last_error: "missing_credentials (need agency + username + password)",
         updated_at: new Date().toISOString(),
       } as any, { onConflict: "user_id" });
-      return json({ ok: false, status: "not_configured" });
+      return json({ ok: false, status: "not_configured", note: "missing agency/username/password" });
     }
 
-    const result = await attemptHomelyLogin(username, pw as unknown as string);
-    const status = result.ok
-      ? (result.note === "credentials_stored_pending_real_endpoint" ? "manually_verified" : "ok")
-      : "failed";
+    const result = await attemptHomelyLogin(String(agency), String(username), pw as unknown as string);
+    const status = result.ok ? "ok" : "failed";
 
     await admin.from("homely_broker_credentials").upsert({
       user_id: targetUserId,
