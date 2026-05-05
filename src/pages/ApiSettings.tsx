@@ -1308,6 +1308,7 @@ const ApiSettings = () => {
         </div>
 
 
+        {homelyDiag && (
           <div className={`mt-3 rounded-lg border p-3 text-xs space-y-2 ${
             homelyDiag.ok
               ? 'border-emerald-500/30 bg-emerald-500/5'
