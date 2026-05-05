@@ -527,16 +527,46 @@ const ApiSettings = () => {
     (async () => {
       const { data } = await supabaseClient
         .from('user_api_keys')
-        .select('homely_api_key')
+        .select('homely_api_key, homely_client_code, homely_provider, homely_default_agent, homely_auto_push')
         .eq('user_id', authUser.id)
         .maybeSingle();
       if (data?.homely_api_key) {
         setHomelyApiKey(data.homely_api_key);
         setHomelyHasKey(true);
       }
+      if (data) {
+        setHomelyClientCode((data as any).homely_client_code || '');
+        setHomelyProvider((data as any).homely_provider || 'Realtyz');
+        setHomelyDefaultAgent((data as any).homely_default_agent || '');
+        setHomelyAutoPush(Boolean((data as any).homely_auto_push));
+      }
       setHomelyLoaded(true);
     })();
   }, [authUser]);
+
+  const handleSaveOpenCard = async () => {
+    if (!authUser) return;
+    if (!homelyClientCode.trim()) { toast.error('יש להזין קוד לקוח Homely'); return; }
+    setSavingKey('homely-opencard');
+    const { error } = await supabaseClient
+      .from('user_api_keys')
+      .upsert(
+        {
+          user_id: authUser.id,
+          homely_client_code: homelyClientCode.trim(),
+          homely_provider: homelyProvider.trim() || 'Realtyz',
+          homely_default_agent: homelyDefaultAgent.trim() || null,
+          homely_auto_push: homelyAutoPush,
+          updated_at: new Date().toISOString(),
+        } as any,
+        { onConflict: 'user_id' },
+      );
+    setSavingKey(null);
+    if (error) { toast.error('שמירה נכשלה: ' + error.message); return; }
+    toast.success(homelyAutoPush
+      ? '✅ פרטי Homely Open Card נשמרו — סנכרון אוטומטי פעיל'
+      : '✅ פרטי Homely Open Card נשמרו');
+  };
 
   const handleSaveHomely = async () => {
     if (!authUser) return;
