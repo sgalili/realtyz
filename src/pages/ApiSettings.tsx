@@ -1214,7 +1214,100 @@ const ApiSettings = () => {
           </p>
         </div>
 
-        {homelyDiag && (
+        {/* ── Homely account login (per-broker) ── */}
+        <div className="mt-4 rounded-lg border border-border/40 bg-muted/20 p-3 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">חשבון Homely שלך</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                פרטי הכניסה שלך לאתר Homely. הסיסמה נשמרת מוצפנת ולא נחשפת חזרה לדפדפן.
+              </p>
+            </div>
+            <Badge variant="outline" className={
+              homelyConnStatus === 'ok' || homelyConnStatus === 'manually_verified'
+                ? 'bg-emerald-500/15 text-emerald-700 border-emerald-500/30'
+                : homelyConnStatus === 'failed'
+                ? 'bg-red-500/15 text-red-700 border-red-500/30'
+                : homelyConnStatus === 'disabled_by_admin'
+                ? 'bg-amber-500/15 text-amber-800 border-amber-500/30'
+                : 'bg-muted text-muted-foreground'
+            }>
+              {homelyConnStatus === 'ok' && 'תקין'}
+              {homelyConnStatus === 'manually_verified' && 'מאומת'}
+              {homelyConnStatus === 'failed' && 'נכשל'}
+              {homelyConnStatus === 'disabled_by_admin' && 'הושבת ע״י אדמין'}
+              {homelyConnStatus === 'not_configured' && 'לא מוגדר'}
+            </Badge>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">שם משתמש Homely</Label>
+              <Input
+                dir="ltr"
+                value={homelyUsername}
+                onChange={(e) => setHomelyUsername(e.target.value)}
+                autoComplete="off"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">סיסמה {homelyHasPassword && <span className="text-muted-foreground">(שמורה — מלאי רק כדי להחליף)</span>}</Label>
+              <Input
+                type="password"
+                dir="ltr"
+                value={homelyPassword}
+                onChange={(e) => setHomelyPassword(e.target.value)}
+                placeholder={homelyHasPassword ? '•••••••• (שמורה)' : 'הזן סיסמה'}
+                autoComplete="new-password"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-[10px] text-muted-foreground">
+              {homelyLastVerified
+                ? `אומת לאחרונה: ${new Date(homelyLastVerified).toLocaleString('he-IL')}`
+                : 'טרם אומת'}
+            </p>
+            <div className="flex gap-2">
+              <Button size="sm" variant="outline" onClick={handleVerifyHomelyLogin}
+                disabled={testingService === 'homely-login' || (!homelyHasPassword && !homelyPassword)}>
+                {testingService === 'homely-login' ? 'בודק…' : 'בדוק כניסה'}
+              </Button>
+              <Button size="sm" onClick={handleSaveHomelyLogin} disabled={savingKey === 'homely-login'}>
+                {savingKey === 'homely-login' ? 'שומר…' : 'שמור פרטי כניסה'}
+              </Button>
+            </div>
+          </div>
+
+          {homelyWebhookToken && (
+            <div className="space-y-1 pt-2 border-t border-border/30">
+              <Label className="text-xs">כתובת Webhook נכנס מ‑Homely</Label>
+              <div className="flex gap-2">
+                <Input
+                  dir="ltr"
+                  readOnly
+                  value={`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/homely-webhook?token=${homelyWebhookToken}`}
+                  onClick={(e) => (e.target as HTMLInputElement).select()}
+                  className="font-mono text-[11px]"
+                />
+                <Button size="sm" variant="outline" onClick={() => {
+                  navigator.clipboard.writeText(
+                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/homely-webhook?token=${homelyWebhookToken}`
+                  );
+                  toast.success('הועתק');
+                }}>
+                  העתק
+                </Button>
+              </div>
+              <p className="text-[10px] text-muted-foreground">
+                הדבק כתובת זו בהגדרות ה‑Webhook בחשבון ה‑Homely שלך כדי שלידים ועדכוני סטטוס יזרמו אוטומטית ל‑Realtyz.
+              </p>
+            </div>
+          )}
+        </div>
+
+
           <div className={`mt-3 rounded-lg border p-3 text-xs space-y-2 ${
             homelyDiag.ok
               ? 'border-emerald-500/30 bg-emerald-500/5'
