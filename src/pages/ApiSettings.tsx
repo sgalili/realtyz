@@ -303,6 +303,7 @@ const ApiSettings = () => {
   const [homelyDefaultAgent, setHomelyDefaultAgent] = useState('');
   const [homelyAutoPush, setHomelyAutoPush] = useState(false);
   // Per-broker Homely login (stored encrypted server-side)
+  const [homelyAgency, setHomelyAgency] = useState('');
   const [homelyUsername, setHomelyUsername] = useState('');
   const [homelyPassword, setHomelyPassword] = useState('');
   const [homelyHasPassword, setHomelyHasPassword] = useState(false);
