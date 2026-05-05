@@ -297,6 +297,11 @@ const ApiSettings = () => {
   const [homelyApiKey, setHomelyApiKey] = useState('');
   const [homelyHasKey, setHomelyHasKey] = useState(false);
   const [homelyLoaded, setHomelyLoaded] = useState(false);
+  // Open Card (auto-push) credentials
+  const [homelyClientCode, setHomelyClientCode] = useState('');
+  const [homelyProvider, setHomelyProvider] = useState('Realtyz');
+  const [homelyDefaultAgent, setHomelyDefaultAgent] = useState('');
+  const [homelyAutoPush, setHomelyAutoPush] = useState(false);
   // Diagnostic snapshot from the last "Test Connection" run.
   const [homelyDiag, setHomelyDiag] = useState<null | {
     ok: boolean;
@@ -522,16 +527,46 @@ const ApiSettings = () => {
     (async () => {
       const { data } = await supabaseClient
         .from('user_api_keys')
-        .select('homely_api_key')
+        .select('homely_api_key, homely_client_code, homely_provider, homely_default_agent, homely_auto_push')
         .eq('user_id', authUser.id)
         .maybeSingle();
       if (data?.homely_api_key) {
         setHomelyApiKey(data.homely_api_key);
         setHomelyHasKey(true);
       }
+      if (data) {
+        setHomelyClientCode((data as any).homely_client_code || '');
+        setHomelyProvider((data as any).homely_provider || 'Realtyz');
+        setHomelyDefaultAgent((data as any).homely_default_agent || '');
+        setHomelyAutoPush(Boolean((data as any).homely_auto_push));
+      }
       setHomelyLoaded(true);
     })();
   }, [authUser]);
+
+  const handleSaveOpenCard = async () => {
+    if (!authUser) return;
+    if (!homelyClientCode.trim()) { toast.error('יש להזין קוד לקוח Homely'); return; }
+    setSavingKey('homely-opencard');
+    const { error } = await supabaseClient
+      .from('user_api_keys')
+      .upsert(
+        {
+          user_id: authUser.id,
+          homely_client_code: homelyClientCode.trim(),
+          homely_provider: homelyProvider.trim() || 'Realtyz',
+          homely_default_agent: homelyDefaultAgent.trim() || null,
+          homely_auto_push: homelyAutoPush,
+          updated_at: new Date().toISOString(),
+        } as any,
+        { onConflict: 'user_id' },
+      );
+    setSavingKey(null);
+    if (error) { toast.error('שמירה נכשלה: ' + error.message); return; }
+    toast.success(homelyAutoPush
+      ? '✅ פרטי Homely Open Card נשמרו — סנכרון אוטומטי פעיל'
+      : '✅ פרטי Homely Open Card נשמרו');
+  };
 
   const handleSaveHomely = async () => {
     if (!authUser) return;
@@ -1040,6 +1075,56 @@ const ApiSettings = () => {
             </Button>
           </div>
         </div>
+
+        {/* ── Open Card auto-push (push leads INTO Homely CRM) ── */}
+        <div className="mt-4 rounded-lg border border-border/40 bg-muted/20 p-3 space-y-3">
+          <div className="flex items-start justify-between gap-3">
+            <div>
+              <p className="text-sm font-semibold">סנכרון אוטומטי לכרטסת Homely</p>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                כל מתעניין חדש שנוצר ב‑Realtyz ייפתח אוטומטית ככרטיס ב‑Homely שלך.
+              </p>
+            </div>
+            <Switch checked={homelyAutoPush} onCheckedChange={setHomelyAutoPush} />
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+            <div className="space-y-1">
+              <Label className="text-xs">קוד לקוח Homely *</Label>
+              <Input
+                dir="ltr"
+                placeholder="XXXXXX-XXXXX-XXX-XXXXXX"
+                value={homelyClientCode}
+                onChange={(e) => setHomelyClientCode(e.target.value)}
+                autoComplete="off"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">שם ספק (Provider)</Label>
+              <Input
+                placeholder="Realtyz"
+                value={homelyProvider}
+                onChange={(e) => setHomelyProvider(e.target.value)}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs">סוכן ברירת מחדל</Label>
+              <Input
+                placeholder="אילן (אופציונלי)"
+                value={homelyDefaultAgent}
+                onChange={(e) => setHomelyDefaultAgent(e.target.value)}
+              />
+            </div>
+          </div>
+          <div className="flex justify-end">
+            <Button size="sm" onClick={handleSaveOpenCard} disabled={savingKey === 'homely-opencard'}>
+              {savingKey === 'homely-opencard' ? 'שומר…' : 'שמור פרטי Open Card'}
+            </Button>
+          </div>
+          <p className="text-[10px] text-muted-foreground">
+            הקטגוריה (קונה / שוכר / מוכר וכו׳) נגזרת אוטומטית מסוג העסקה והעדפות המתעניין.
+          </p>
+        </div>
+
         {homelyDiag && (
           <div className={`mt-3 rounded-lg border p-3 text-xs space-y-2 ${
             homelyDiag.ok
