@@ -59,6 +59,7 @@ const SystemHealth = lazy(() => import("./pages/SystemHealth"));
 const SharedDeals = lazy(() => import("./pages/SharedDeals"));
 const ClientPortal = lazy(() => import("./pages/ClientPortal"));
 const PlatformSettings = lazy(() => import("./pages/PlatformSettings"));
+const HomelyAdmin = lazy(() => import("./pages/HomelyAdmin"));
 
 
 let syncToastId: string | number | undefined;
