@@ -178,7 +178,8 @@ export default function KnowledgeBase() {
           if (error) throw error;
           toast.success(`נטען: ${file.name}`);
         } catch (e: any) {
-          toast.error(`כשל בטעינת ${file.name}: ${e.message}`);
+          const msg = typeof e?.message === 'string' ? e.message : JSON.stringify(e);
+          toast.error(`כשל בטעינת ${file.name}: ${msg}`);
         }
       }
       setIngesting(false);

@@ -11,7 +11,7 @@ const corsHeaders = {
 
 const Body = z.object({
   title: z.string().min(1).max(300),
-  raw_text: z.string().max(500_000).optional(),
+  raw_text: z.string().max(5_000_000).optional(),
   file_data_url: z.string().max(30_000_000).optional(),
   mime_type: z.string().max(120).optional(),
   source_type: z.enum(["pdf", "text", "whatsapp", "image", "video", "audio"]).default("text"),
@@ -113,7 +113,16 @@ Deno.serve(async (req) => {
     }
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
-    const rawFinalText = raw_text?.trim() || await analyzeMedia(title, file_data_url!, mime_type, source_type, LOVABLE_API_KEY);
+    // Strip NULL bytes (Postgres text columns reject \u0000) and BOM.
+    const sanitize = (s: string) => s.replace(/\u0000/g, "").replace(/^\uFEFF/, "");
+    const rawFinalText = sanitize(
+      raw_text?.trim() || await analyzeMedia(title, file_data_url!, mime_type, source_type, LOVABLE_API_KEY),
+    );
+    if (!rawFinalText) {
+      return new Response(JSON.stringify({ error: "empty document content" }), {
+        status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
 
     // Privacy Guardrail: mask PII (IDs, cards, IBAN, emails, phones) before
     // persisting to the Strategy Bank. Originals are NOT stored.
