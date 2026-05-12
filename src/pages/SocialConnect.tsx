@@ -119,11 +119,26 @@ export default function SocialConnect() {
     setLinkingPlatform(platform);
     try {
       const { data, error } = await supabase.functions.invoke('ayrshare-social-link', { body: { platform } });
-      if (error) throw error;
-      if (!data?.url) throw new Error('לא התקבל קישור');
+      // Surface the real backend error message (FunctionsHttpError exposes context.response)
+      let backendMsg: string | null = null;
+      if (error) {
+        try {
+          const resp = (error as any)?.context?.response ?? (error as any)?.context;
+          if (resp && typeof resp.json === 'function') {
+            const body = await resp.json();
+            backendMsg = body?.error || body?.message || null;
+          } else if (data && typeof data === 'object' && (data as any).error) {
+            backendMsg = (data as any).error;
+          }
+        } catch { /* ignore */ }
+        throw new Error(backendMsg || error.message || 'Edge Function error');
+      }
+      if (data && (data as any).error) throw new Error((data as any).error);
+      if (!data?.url) throw new Error('לא התקבל קישור מהשרת');
       window.top!.location.replace(data.url);
     } catch (e: any) {
-      toast.error('שגיאה ביצירת קישור', { description: e.message });
+      console.error('[SocialConnect] connect failed', e);
+      toast.error('שגיאה בחיבור הרשת', { description: e?.message || 'שגיאה לא ידועה' });
       setLinkingPlatform(null);
     }
   }
