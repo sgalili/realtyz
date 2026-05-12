@@ -128,10 +128,7 @@ const Auth = () => {
       ? await supabase.functions.invoke('whatsapp-auth', { body: { action: 'send', phone: normalizedPhone } })
       : activeMethod === 'sms'
         ? await supabase.auth.signInWithOtp({ phone: normalizedPhone })
-        : await supabase.auth.signInWithOtp({
-          email,
-          options: { emailRedirectTo: window.location.origin, shouldCreateUser: true },
-        });
+        : await supabase.functions.invoke('email-auth', { body: { action: 'send', email } });
     if (error) {
       toast.error(error.message);
     } else {
