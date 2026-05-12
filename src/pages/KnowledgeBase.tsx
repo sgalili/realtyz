@@ -9,9 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
+import { Textarea } from '@/components/ui/textarea';
 import {
   Upload, FileText, Trash2, Phone, Plus, CheckCircle2, Loader2, FileCheck,
-  Image, Video, Mic, Sparkles, Brain, RefreshCw, BookOpen,
+  Image, Video, Mic, Sparkles, Brain, RefreshCw, BookOpen, MessageSquare, Send,
 } from 'lucide-react';
 import { SectionDivider } from '@/components/SectionDivider';
 import { toast } from 'sonner';
