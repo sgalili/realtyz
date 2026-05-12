@@ -57,7 +57,7 @@ export function PendingListingsCard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('listings')
-        .select('id, property_title, description, asking_price, city, neighborhood, address, rooms, sqm, floor, parking, elevator, features, extracted_from_lead_id, extraction_metadata, created_at')
+        .select('id, property_title, description, asking_price, city, neighborhood, address, rooms, sqm, floor, parking, elevator, features, extracted_from_lead_id, extraction_metadata, source, source_url, is_investment_opportunity, created_at')
         .eq('user_id', user!.id)
         .eq('status', 'pending')
         .order('created_at', { ascending: false })
