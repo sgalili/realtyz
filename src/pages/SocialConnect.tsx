@@ -181,7 +181,18 @@ export default function SocialConnect() {
       }
       if (data && (data as any).error) throw new Error((data as any).error);
       if (!data?.url) throw new Error('לא התקבל קישור מהשרת');
-      window.top!.location.replace(data.url);
+      const targetUrl: string = data.url;
+      // Show fallback link after 3s in case sandbox/CSP blocks the redirect
+      setTimeout(() => {
+        toast('לחץ כאן כדי להשלים את החיבור', {
+          duration: 30000,
+          action: {
+            label: 'פתח',
+            onClick: () => window.open(targetUrl, '_blank', 'noopener,noreferrer'),
+          },
+        });
+      }, 3000);
+      window.location.href = targetUrl;
     } catch (e: any) {
       console.error('[SocialConnect] connect failed', e);
       toast.error('שגיאה בחיבור הרשת', { description: e?.message || 'שגיאה לא ידועה' });
