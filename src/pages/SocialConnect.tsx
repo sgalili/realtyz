@@ -127,8 +127,8 @@ export default function SocialConnect() {
         throw new Error(`${body?.error || body?.message || error.message || 'Diagnostic failed'}${status ? ` (status ${status})` : ''}`);
       }
       console.log('[ayrshare-diagnostic]', body);
-      const ok = body?.api_key_valid && body?.private_key_format_valid && body?.domain_match;
-      const desc = `API key: ${body?.api_key_valid ? '✓' : '✗'} · Private key: ${body?.private_key_format_valid ? '✓' : '✗'} (${body?.details?.private_key_format ?? '—'}) · Domain: ${body?.domain_match ? '✓' : '✗'} (${body?.secrets_present?.AYR_DOMAIN})`;
+      const ok = body?.api_key_valid && body?.private_key_format_valid;
+      const desc = `API key: ${body?.api_key_valid ? '✓' : '✗'} · Private key: ${body?.private_key_format_valid ? '✓' : '✗'} (${body?.details?.private_key_format ?? '—'})`;
       if (ok) toast.success('כל הסודות תקינים', { description: desc });
       else toast.error('בעיה בתצורת Ayrshare', { description: desc, duration: 10000 });
     } catch (e: unknown) {
