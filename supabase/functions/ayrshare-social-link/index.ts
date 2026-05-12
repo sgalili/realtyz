@@ -1,5 +1,6 @@
-// Ayrshare White Label social-link generator.
-// Issues a JWT linking URL for the broker (creates an Ayrshare profile if needed).
+// Ayrshare Business Plan social-link generator (no JWT / no white-label domain).
+// Uses the saved profileKey to build a direct Ayrshare social-connect URL.
+// SAFETY: only operates on profiles whose refId starts with "realtyz-".
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
@@ -10,6 +11,7 @@ const corsHeaders = {
 };
 
 const AYR_API = 'https://api.ayrshare.com/api';
+const REALTYZ_PREFIX = 'realtyz-';
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -23,49 +25,31 @@ Deno.serve(async (req) => {
 
   try {
     const AYRSHARE_API_KEY = Deno.env.get('AYRSHARE_API_KEY');
-    const AYRSHARE_PRIVATE_KEY = Deno.env.get('AYRSHARE_PRIVATE_KEY');
-    const AYR_DOMAIN = Deno.env.get('AYR_DOMAIN') || 'id-realtyz';
     const SUPABASE_URL = Deno.env.get('SUPABASE_URL')!;
     const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
     const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    // ---- Secret validation with explicit messages ----
     if (!AYRSHARE_API_KEY) {
       console.error('[ayrshare-social-link] Missing AYRSHARE_API_KEY');
       return jsonResponse({ error: 'Ayrshare API Key not configured in Supabase Secrets (AYRSHARE_API_KEY).' }, 500);
     }
-    if (!AYRSHARE_PRIVATE_KEY) {
-      console.error('[ayrshare-social-link] Missing AYRSHARE_PRIVATE_KEY');
-      return jsonResponse({
-        error:
-          'Ayrshare Private Key not configured in Supabase Secrets (AYRSHARE_PRIVATE_KEY). White-label JWT linking requires the RSA private key generated in your Ayrshare dashboard → Profiles → Generate Key Pair.',
-      }, 500);
-    }
-    if (!AYR_DOMAIN) {
-      console.error('[ayrshare-social-link] Missing AYR_DOMAIN');
-      return jsonResponse({ error: 'Ayrshare domain not configured (AYR_DOMAIN). Expected "id-realtyz".' }, 500);
-    }
 
     // ---- Auth ----
     const auth = req.headers.get('Authorization');
-    if (!auth?.startsWith('Bearer ')) {
-      return jsonResponse({ error: 'Unauthorized' }, 401);
-    }
+    if (!auth?.startsWith('Bearer ')) return jsonResponse({ error: 'Unauthorized' }, 401);
     const userClient = createClient(SUPABASE_URL, ANON, { global: { headers: { Authorization: auth } } });
     const { data: claims } = await userClient.auth.getClaims(auth.replace('Bearer ', ''));
     const userId = claims?.claims?.sub as string | undefined;
     if (!userId) return jsonResponse({ error: 'Invalid token' }, 401);
 
-    // ---- Body / platform validation ----
+    // ---- Body / platform ----
     const body = await req.json().catch(() => ({} as any));
     const platform: string = (body?.platform || '').toString().toLowerCase().trim();
-    if (!platform) {
-      return jsonResponse({ error: 'Missing required "platform" parameter.' }, 400);
-    }
+    if (!platform) return jsonResponse({ error: 'Missing required "platform" parameter.' }, 400);
 
     const admin = createClient(SUPABASE_URL, SERVICE);
 
-    // ---- Load profile ----
+    // ---- Load broker profile ----
     const { data: profile, error: profileErr } = await admin
       .from('profiles')
       .select('id, email, full_name, ayrshare_profile_key, ayrshare_ref_id')
@@ -79,25 +63,25 @@ Deno.serve(async (req) => {
     let profileKey = profile?.ayrshare_profile_key as string | null;
     let refId = profile?.ayrshare_ref_id as string | null;
 
+    // ---- SAFETY GUARD: only touch realtyz- prefixed profiles ----
+    if (refId && !refId.startsWith(REALTYZ_PREFIX)) {
+      console.warn('[ayrshare-social-link] refusing to act on non-realtyz refId', { refId });
+      return jsonResponse({
+        error: `Safety guard: this account is linked to an Ayrshare profile (refId="${refId}") that is not managed by Realtyz. No changes were made.`,
+      }, 403);
+    }
+
     // ---- Create Ayrshare profile if missing ----
     if (!profileKey) {
-      refId = refId || `realtyz-${userId.slice(0, 8)}-${Date.now()}`;
+      refId = `${REALTYZ_PREFIX}${userId.slice(0, 8)}-${Date.now()}`;
       const baseName = profile?.full_name || profile?.email?.split('@')[0] || `Realtyz ${userId.slice(0, 6)}`;
       const rand = Math.floor(1000 + Math.random() * 9000).toString();
       const title = `Realtyz - ${baseName} - ${rand}`;
 
       const createRes = await fetch(`${AYR_API}/profiles/profile`, {
         method: 'POST',
-        headers: {
-          Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title,
-          email: profile?.email || undefined,
-          refId,
-          domain: AYR_DOMAIN,
-        }),
+        headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, email: profile?.email || undefined, refId }),
       });
       const created = await createRes.json().catch(() => ({}));
 
@@ -106,42 +90,30 @@ Deno.serve(async (req) => {
       } else {
         const msg: string = (created?.message || created?.error || `HTTP ${createRes.status}`).toString();
         console.error('[ayrshare-social-link] create profile failed', created);
-
-        // Title or refId already exists -> try to recover via refId lookup
         const isDuplicate = /already exists|duplicate|exists/i.test(msg);
         if (isDuplicate) {
-          // Try GET /profiles?refId=... then fallback to listing all profiles
+          // Recover only realtyz- profiles by refId
           try {
             const lookup = await fetch(`${AYR_API}/profiles?refId=${encodeURIComponent(refId)}`, {
               headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}` },
             });
             const lookupData = await lookup.json().catch(() => ({}));
             const list = Array.isArray(lookupData?.profiles) ? lookupData.profiles : (Array.isArray(lookupData) ? lookupData : []);
-            const match = list.find((p: any) => p.refId === refId) || list[0];
+            const match = list.find((p: any) => p.refId === refId && typeof p.refId === 'string' && p.refId.startsWith(REALTYZ_PREFIX));
             if (match?.profileKey) {
               profileKey = match.profileKey;
-              console.log('[ayrshare-social-link] recovered existing profileKey via refId');
+              console.log('[ayrshare-social-link] recovered existing realtyz- profileKey via refId');
             }
           } catch (e) {
             console.error('[ayrshare-social-link] refId lookup failed', e);
           }
-
-          // Last resort: retry creation with a fresh refId + new random title
           if (!profileKey) {
-            const newRefId = `realtyz-${userId.slice(0, 8)}-${Date.now()}-${rand}`;
+            const newRefId = `${REALTYZ_PREFIX}${userId.slice(0, 8)}-${Date.now()}-${rand}`;
             const retryTitle = `Realtyz - ${baseName} - ${Date.now().toString().slice(-5)}`;
             const retryRes = await fetch(`${AYR_API}/profiles/profile`, {
               method: 'POST',
-              headers: {
-                Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                title: retryTitle,
-                email: profile?.email || undefined,
-                refId: newRefId,
-                domain: AYR_DOMAIN,
-              }),
+              headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}`, 'Content-Type': 'application/json' },
+              body: JSON.stringify({ title: retryTitle, email: profile?.email || undefined, refId: newRefId }),
             });
             const retryData = await retryRes.json().catch(() => ({}));
             if (retryRes.ok) {
@@ -158,7 +130,6 @@ Deno.serve(async (req) => {
       }
 
       if (!profileKey) {
-        console.error('[ayrshare-social-link] no profileKey resolved');
         return jsonResponse({ error: 'Ayrshare did not return a profileKey.' }, 500);
       }
       const { error: upErr } = await admin
@@ -168,89 +139,14 @@ Deno.serve(async (req) => {
       if (upErr) console.error('[ayrshare-social-link] save profileKey failed', upErr);
     }
 
-    // ---- Generate JWT URL ----
-    const redirect = `https://profile.ayrshare.com/social/${platform}`;
-
-    // Sanitize private key: strip BOM, tabs, CR, trailing whitespace, normalize line endings
-    let cleanedKey = AYRSHARE_PRIVATE_KEY
-      .replace(/^\uFEFF/, '')
-      .replace(/\r\n/g, '\n')
-      .replace(/\r/g, '\n')
-      .replace(/\t/g, '')
-      .replace(/[ \t]+\n/g, '\n')
-      .trim();
-
-    // If key has PEM headers but body lines are joined, re-wrap base64 body to 64-char lines
-    const pemMatch = cleanedKey.match(/-----BEGIN ([A-Z ]+)-----([\s\S]+?)-----END \1-----/);
-    if (pemMatch) {
-      const label = pemMatch[1];
-      const body = pemMatch[2].replace(/\s+/g, '');
-      const wrapped = body.match(/.{1,64}/g)?.join('\n') || body;
-      cleanedKey = `-----BEGIN ${label}-----\n${wrapped}\n-----END ${label}-----`;
+    // ---- Re-check guard after potential creation ----
+    if (!refId || !refId.startsWith(REALTYZ_PREFIX)) {
+      return jsonResponse({ error: 'Safety guard: missing realtyz- refId after profile resolution.' }, 403);
     }
 
-    // Detect format (PKCS#1 = RSA PRIVATE KEY, PKCS#8 = PRIVATE KEY)
-    const isPkcs1 = /-----BEGIN RSA PRIVATE KEY-----/.test(cleanedKey);
-    const isPkcs8 = /-----BEGIN PRIVATE KEY-----/.test(cleanedKey);
-
-    // Try alternate domain forms — Ayrshare error "Missing or incorrect domain" hints the value
-    // sent must match exactly what's set in the white-label dashboard (sometimes without "id-" prefix).
-    const domainCandidates = Array.from(new Set([
-      AYR_DOMAIN,
-      AYR_DOMAIN.replace(/^id-/, ''),
-      `id-${AYR_DOMAIN.replace(/^id-/, '')}`,
-    ]));
-
-    console.log('[ayrshare-social-link] JWT prep', {
-      key_starts_with: cleanedKey.slice(0, 28),
-      key_ends_with: cleanedKey.slice(-26),
-      key_length: cleanedKey.length,
-      key_format: isPkcs1 ? 'PKCS#1 (RSA PRIVATE KEY)' : isPkcs8 ? 'PKCS#8 (PRIVATE KEY)' : 'UNKNOWN',
-      domain_candidates: domainCandidates,
-      profileKey_preview: profileKey?.slice(0, 8) + '...',
-    });
-
-    let jwtRes!: Response;
-    let jwtData: any = {};
-    let usedDomain = AYR_DOMAIN;
-    for (const d of domainCandidates) {
-      jwtRes = await fetch(`${AYR_API}/profiles/generateJWT`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        domain: d,
-        privateKey: cleanedKey,
-        profileKey,
-        redirect,
-        autoLink: true,
-        autoSocialLink: true,
-        hideHeader: true,
-        hideFooter: true,
-        hideTitle: true,
-        logout: true,
-        socialLink: platform,
-        platform,
-      }),
-    });
-      jwtData = await jwtRes.json().catch(() => ({}));
-      usedDomain = d;
-      if (jwtRes.ok) break;
-      const detail = (jwtData?.details || jwtData?.message || '').toString();
-      console.warn('[ayrshare-social-link] JWT attempt failed', { domain: d, status: jwtRes.status, code: jwtData?.code, detail });
-      // Only retry on domain-related failures
-      if (!/domain/i.test(detail) && !/domain/i.test(jwtData?.message || '')) break;
-    }
-    if (!jwtRes.ok) {
-      console.error('[ayrshare-social-link] generateJWT failed', jwtData);
-      const msg = jwtData?.message || jwtData?.error || `HTTP ${jwtRes.status}`;
-      const detail = jwtData?.details ? ` (${jwtData.details})` : '';
-      return jsonResponse({ error: `Ayrshare token generation failed: ${msg}${detail}`, tried_domains: domainCandidates }, 500);
-    }
-
-    return jsonResponse({ url: jwtData.url, token: jwtData.token, profileKey, refId, redirect, domain: usedDomain });
+    // ---- Build direct Ayrshare social-connect URL (Business Plan) ----
+    const url = `https://app.ayrshare.com/social?profileKey=${encodeURIComponent(profileKey!)}&platform=${encodeURIComponent(platform)}`;
+    return jsonResponse({ url, profileKey, refId, platform });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error('[ayrshare-social-link] unexpected error', msg);
