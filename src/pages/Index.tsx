@@ -67,7 +67,7 @@ const Dashboard = () => {
           const title = row.property_title || row.address || 'נכס חדש';
           const city = row.city ? ` · ${row.city}` : '';
           if (isYad2 || isSmart) {
-            toast(isSmart ? '⚡ עסקה חכמה חדשה' : '🏠 עסקה חדשה מהשוק', {
+            toast(isSmart ? '⚡ עסקה חכמה — מציאת שוק' : '🏠 נכס חדש נקלט מהשוק', {
               description: `${title}${city}`,
               action: row.source_url
                 ? { label: 'מקור', onClick: () => window.open(row.source_url, '_blank') }
@@ -105,7 +105,6 @@ const Dashboard = () => {
       const { count } = await (supabase as any)
         .from('leads')
         .select('id', { count: 'exact', head: true })
-        .eq('is_demo', false)
         .gte('last_interaction_at', since);
       return count ?? 0;
     },
@@ -136,7 +135,6 @@ const Dashboard = () => {
       const { count } = await (supabase as any)
         .from('leads')
         .select('id', { count: 'exact', head: true })
-        .eq('is_demo', false)
         .eq('lead_stage', 'closed')
         .gte('last_interaction_at', monthStart);
       return count ?? 0;
@@ -151,7 +149,6 @@ const Dashboard = () => {
       const { data } = await (supabase as any)
         .from('leads')
         .select('city')
-        .eq('is_demo', false)
         .not('city', 'is', null);
       const counts: Record<string, number> = {};
       (data ?? []).forEach((row: { city: string | null }) => {

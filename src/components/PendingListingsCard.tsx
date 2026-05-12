@@ -172,7 +172,9 @@ export function PendingListingsCard() {
                             <Zap className="h-3 w-3" /> עסקה חכמה
                           </Badge>
                         ) : null}
-                        {l.source && l.source !== 'manual' ? (
+                        {l.source === 'yad2' ? (
+                          <Badge className="text-[10px] bg-sky-500/15 text-sky-700 border border-sky-500/40 hover:bg-sky-500/20">מציאת שוק</Badge>
+                        ) : l.source && l.source !== 'manual' ? (
                           <Badge variant="outline" className="text-[10px] uppercase">{l.source}</Badge>
                         ) : null}
                         {l.asking_price ? <Badge variant="outline" className="text-[10px]">{fmtPrice(l.asking_price)}</Badge> : null}

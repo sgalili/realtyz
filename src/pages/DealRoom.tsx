@@ -252,7 +252,6 @@ export default function DealRoom() {
       const { data, error } = await supabase
         .from('leads')
         .select('id, full_name, phone_number, lead_stage, last_interaction_at, profile_picture_url, city, interest_tag, priority_score, priority_score_components, previous_priority_score, assigned_to, deal_type, preferences, interaction_outcome, commission_amount, expected_close_date')
-        .eq('is_demo', false)
         .order('last_interaction_at', { ascending: false, nullsFirst: false })
         .limit(500);
       if (error) throw error;
