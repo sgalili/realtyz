@@ -135,7 +135,6 @@ const Dashboard = () => {
       const { count } = await (supabase as any)
         .from('leads')
         .select('id', { count: 'exact', head: true })
-        .eq('is_demo', false)
         .eq('lead_stage', 'closed')
         .gte('last_interaction_at', monthStart);
       return count ?? 0;
