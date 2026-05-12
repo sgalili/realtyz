@@ -71,7 +71,7 @@ export async function uploadMediaToLibrary(input: UploadMediaInput) {
         size_bytes: blob.size,
         media_kind: kind,
         source: input.source ?? null,
-        source_metadata: (input.sourceMetadata ?? {}) as Record<string, unknown>,
+        source_metadata: JSON.parse(JSON.stringify(input.sourceMetadata ?? {})),
       },
     ])
     .select()
