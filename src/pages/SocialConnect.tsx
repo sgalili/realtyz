@@ -107,6 +107,7 @@ export default function SocialConnect() {
   const [networks, setNetworks] = useState<Network[]>([]);
   const [connected, setConnected] = useState<Connected[]>([]);
   const [diagnosing, setDiagnosing] = useState(false);
+  const [manualLoginUrl, setManualLoginUrl] = useState<string | null>(null);
   const { isAdmin } = useUserRole();
 
   async function runDiagnostic() {
@@ -190,17 +191,16 @@ export default function SocialConnect() {
       if (data && (data as any).error) throw new Error((data as any).error);
       if (!data?.url) throw new Error('לא התקבל קישור מהשרת');
       const targetUrl: string = data.url;
-      // Show fallback link after 3s in case sandbox/CSP blocks the redirect
+      // Show a prominent manual-login button after 2s in case sandbox/CSP/mobile blocks the redirect
+      setManualLoginUrl(null);
       setTimeout(() => {
-        toast('לחץ כאן כדי להשלים את החיבור', {
-          duration: 30000,
-          action: {
-            label: 'פתח',
-            onClick: () => window.open(targetUrl, '_blank', 'noopener,noreferrer'),
-          },
-        });
-      }, 3000);
-      window.location.href = targetUrl;
+        setManualLoginUrl(targetUrl);
+      }, 2000);
+      try {
+        window.location.assign(targetUrl);
+      } catch {
+        window.open(targetUrl, '_blank', 'noopener,noreferrer');
+      }
     } catch (e: any) {
       console.error('[SocialConnect] connect failed', e);
       toast.error('שגיאה בחיבור הרשת', { description: e?.message || 'שגיאה לא ידועה' });
@@ -234,6 +234,26 @@ export default function SocialConnect() {
           </Button>
         </div>
       </div>
+
+      {manualLoginUrl && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 flex items-center justify-between gap-3">
+          <div className="text-sm text-blue-900">
+            הדפדפן חסם את ההפניה האוטומטית. השלם את החיבור ידנית:
+          </div>
+          <Button
+            size="lg"
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+            onClick={() => {
+              window.open(manualLoginUrl, '_blank', 'noopener,noreferrer');
+              setManualLoginUrl(null);
+              setLinkingPlatform(null);
+            }}
+          >
+            <ExternalLink className="h-4 w-4 ml-2" />
+            התחברות ידנית
+          </Button>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex items-center justify-center py-20 text-muted-foreground">
