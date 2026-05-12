@@ -457,6 +457,78 @@ export type Database = {
           },
         ]
       }
+      ayrshare_social_accounts: {
+        Row: {
+          connected: boolean
+          connected_at: string
+          display_name: string | null
+          id: string
+          platform: string
+          profile_url: string | null
+          raw: Json | null
+          updated_at: string
+          user_id: string
+          username: string | null
+        }
+        Insert: {
+          connected?: boolean
+          connected_at?: string
+          display_name?: string | null
+          id?: string
+          platform: string
+          profile_url?: string | null
+          raw?: Json | null
+          updated_at?: string
+          user_id: string
+          username?: string | null
+        }
+        Update: {
+          connected?: boolean
+          connected_at?: string
+          display_name?: string | null
+          id?: string
+          platform?: string
+          profile_url?: string | null
+          raw?: Json | null
+          updated_at?: string
+          user_id?: string
+          username?: string | null
+        }
+        Relationships: []
+      }
+      ayrshare_webhook_events: {
+        Row: {
+          ayrshare_ref_id: string | null
+          created_at: string
+          event_type: string | null
+          id: string
+          payload: Json
+          platform: string | null
+          processed: boolean
+          user_id: string | null
+        }
+        Insert: {
+          ayrshare_ref_id?: string | null
+          created_at?: string
+          event_type?: string | null
+          id?: string
+          payload: Json
+          platform?: string | null
+          processed?: boolean
+          user_id?: string | null
+        }
+        Update: {
+          ayrshare_ref_id?: string | null
+          created_at?: string
+          event_type?: string | null
+          id?: string
+          payload?: Json
+          platform?: string | null
+          processed?: boolean
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       balance_adjustments: {
         Row: {
           amount: number
@@ -2601,6 +2673,8 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
+          ayrshare_profile_key: string | null
+          ayrshare_ref_id: string | null
           created_at: string
           email: string | null
           full_name: string | null
@@ -2614,6 +2688,8 @@ export type Database = {
         }
         Insert: {
           avatar_url?: string | null
+          ayrshare_profile_key?: string | null
+          ayrshare_ref_id?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
@@ -2627,6 +2703,8 @@ export type Database = {
         }
         Update: {
           avatar_url?: string | null
+          ayrshare_profile_key?: string | null
+          ayrshare_ref_id?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
