@@ -1,11 +1,6 @@
 // Ayrshare diagnostic — verifies API key, private key RSA format, and domain.
 import { createClient } from 'npm:@supabase/supabase-js@2';
-
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'Access-Control-Allow-Methods': 'POST, GET, OPTIONS',
-};
+import { corsHeaders } from '../_shared/cors.ts';
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body, null, 2), {
@@ -86,9 +81,14 @@ Deno.serve(async (req) => {
     if (!roleRow) return json({ error: 'Admin access required' }, 403);
 
     const AYRSHARE_API_KEY = Deno.env.get('AYRSHARE_API_KEY');
-    const AYRSHARE_PRIVATE_KEY = Deno.env.get('AYRSHARE_PRIVATE_KEY');
+    const AYRSHARE_PRIVATE_KEY = Deno.env.get('AYRSHARE_PRIVATE_KEY')?.trim() ?? '';
     const AYR_DOMAIN_ENV = Deno.env.get('AYR_DOMAIN') || 'id-realtyz';
     const EXPECTED_DOMAIN = 'id-realtyz';
+
+    if (!AYRSHARE_PRIVATE_KEY) {
+      console.error('[ayrshare-diagnostic] AYRSHARE_PRIVATE_KEY is missing or empty');
+      return json({ error: 'Private Key Missing from Supabase Secrets' }, 400);
+    }
 
     const report: Record<string, unknown> = {
       secrets_present: {
@@ -129,7 +129,7 @@ Deno.serve(async (req) => {
 
     // 2) Private key RSA format check + dummy signature
     if (AYRSHARE_PRIVATE_KEY) {
-      const trimmed = AYRSHARE_PRIVATE_KEY.trim();
+      const trimmed = AYRSHARE_PRIVATE_KEY;
       const hasHeader = /-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(trimmed);
       const hasFooter = /-----END [A-Z ]*PRIVATE KEY-----/.test(trimmed);
       (report.details as any).private_key_has_pem_headers = hasHeader && hasFooter;
