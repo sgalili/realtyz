@@ -235,14 +235,22 @@ Deno.serve(async (req) => {
         platform,
       }),
     });
-    const jwtData = await jwtRes.json().catch(() => ({}));
+      jwtData = await jwtRes.json().catch(() => ({}));
+      usedDomain = d;
+      if (jwtRes.ok) break;
+      const detail = (jwtData?.details || jwtData?.message || '').toString();
+      console.warn('[ayrshare-social-link] JWT attempt failed', { domain: d, status: jwtRes.status, code: jwtData?.code, detail });
+      // Only retry on domain-related failures
+      if (!/domain/i.test(detail) && !/domain/i.test(jwtData?.message || '')) break;
+    }
     if (!jwtRes.ok) {
       console.error('[ayrshare-social-link] generateJWT failed', jwtData);
       const msg = jwtData?.message || jwtData?.error || `HTTP ${jwtRes.status}`;
-      return jsonResponse({ error: `Ayrshare token generation failed: ${msg}` }, 500);
+      const detail = jwtData?.details ? ` (${jwtData.details})` : '';
+      return jsonResponse({ error: `Ayrshare token generation failed: ${msg}${detail}`, tried_domains: domainCandidates }, 500);
     }
 
-    return jsonResponse({ url: jwtData.url, token: jwtData.token, profileKey, refId, redirect });
+    return jsonResponse({ url: jwtData.url, token: jwtData.token, profileKey, refId, redirect, domain: usedDomain });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error('[ayrshare-social-link] unexpected error', msg);
