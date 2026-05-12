@@ -90,6 +90,10 @@ Deno.serve(async (req) => {
       } else {
         const msg: string = (created?.message || created?.error || `HTTP ${createRes.status}`).toString();
         console.error('[ayrshare-social-link] create profile failed', created);
+        const isQuota = /over maximum number of user profiles|maximum.*profiles|profile.*limit|quota/i.test(msg);
+        if (isQuota) {
+          return jsonResponse({ error: msg, code: 'QUOTA_EXCEEDED' }, 402);
+        }
         const isDuplicate = /already exists|duplicate|exists/i.test(msg);
         if (isDuplicate) {
           // Recover only realtyz- profiles by refId
@@ -120,8 +124,12 @@ Deno.serve(async (req) => {
               profileKey = retryData.profileKey || retryData.profile?.profileKey;
               refId = newRefId;
             } else {
+              const retryMsg = (retryData?.message || retryData?.error || `HTTP ${retryRes.status}`).toString();
               console.error('[ayrshare-social-link] retry create failed', retryData);
-              return jsonResponse({ error: `Ayrshare profile create failed (retry): ${retryData?.message || retryData?.error || `HTTP ${retryRes.status}`}` }, 500);
+              if (/over maximum number of user profiles|maximum.*profiles|profile.*limit|quota/i.test(retryMsg)) {
+                return jsonResponse({ error: retryMsg, code: 'QUOTA_EXCEEDED' }, 402);
+              }
+              return jsonResponse({ error: `Ayrshare profile create failed (retry): ${retryMsg}` }, 500);
             }
           }
         } else {

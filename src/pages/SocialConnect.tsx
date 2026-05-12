@@ -167,16 +167,24 @@ export default function SocialConnect() {
       const { data, error } = await supabase.functions.invoke('ayrshare-social-link', { body: { platform } });
       // Surface the real backend error message (FunctionsHttpError exposes context.response)
       let backendMsg: string | null = null;
+      let backendCode: string | null = null;
       if (error) {
         try {
           const resp = (error as any)?.context?.response ?? (error as any)?.context;
           if (resp && typeof resp.json === 'function') {
             const body = await resp.json();
             backendMsg = body?.error || body?.message || null;
+            backendCode = body?.code || null;
           } else if (data && typeof data === 'object' && (data as any).error) {
             backendMsg = (data as any).error;
+            backendCode = (data as any).code || null;
           }
         } catch { /* ignore */ }
+        if (backendCode === 'QUOTA_EXCEEDED' || /over maximum number of user profiles|maximum.*profiles|quota/i.test(backendMsg || '')) {
+          toast.error('הגענו למכסת המשתמשים בחבילה הנוכחית. אנא צור קשר עם התמיכה.', { duration: 10000 });
+          setLinkingPlatform(null);
+          return;
+        }
         throw new Error(backendMsg || error.message || 'Edge Function error');
       }
       if (data && (data as any).error) throw new Error((data as any).error);
