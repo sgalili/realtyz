@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import {
   Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle,
 } from '@/components/ui/sheet';
-import { Sparkles, Building2, Check, Trash2, Pencil, Loader2, FileQuestion } from 'lucide-react';
+import { Sparkles, Building2, Check, Trash2, Pencil, Loader2, FileQuestion, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
