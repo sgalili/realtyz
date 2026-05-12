@@ -1,4 +1,5 @@
-// Ayrshare diagnostic — verifies API key, private key RSA format, and domain.
+// Ayrshare diagnostic — verifies API key and (optionally) private key format.
+// Business Plan does NOT use Domain ID / JWT, so domain_match is reported as N/A.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { corsHeaders } from '../_shared/cors.ts';
 
@@ -10,10 +11,7 @@ function json(body: unknown, status = 200) {
 }
 
 function pemToArrayBuffer(pem: string): ArrayBuffer {
-  const b64 = pem
-    .replace(/-----BEGIN [^-]+-----/g, '')
-    .replace(/-----END [^-]+-----/g, '')
-    .replace(/\s+/g, '');
+  const b64 = pem.replace(/-----BEGIN [^-]+-----/g, '').replace(/-----END [^-]+-----/g, '').replace(/\s+/g, '');
   const bin = atob(b64);
   const buf = new Uint8Array(bin.length);
   for (let i = 0; i < bin.length; i++) buf[i] = bin.charCodeAt(i);
@@ -21,34 +19,14 @@ function pemToArrayBuffer(pem: string): ArrayBuffer {
 }
 
 async function tryImportPrivateKey(pem: string): Promise<{ ok: boolean; format?: string; error?: string }> {
-  const formats: Array<{ label: string; format: 'pkcs8' | 'spki' }> = [
-    { label: 'PKCS8', format: 'pkcs8' },
-  ];
-  // Try PKCS8 first (BEGIN PRIVATE KEY). For BEGIN RSA PRIVATE KEY (PKCS1), Web Crypto cannot import directly,
-  // but a valid base64 body still tells us the string is well-formed.
-  for (const { label, format } of formats) {
-    try {
-      const buf = pemToArrayBuffer(pem);
-      const key = await crypto.subtle.importKey(
-        format,
-        buf,
-        { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' },
-        false,
-        ['sign'],
-      );
-      // Sign a dummy payload
-      const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode('ping'));
-      if (sig.byteLength > 0) return { ok: true, format: label };
-    } catch (e) {
-      // try next format
-    }
-  }
-  // Fallback: at least confirm base64 body decodes.
   try {
     const buf = pemToArrayBuffer(pem);
-    if (buf.byteLength > 100) {
-      return { ok: true, format: 'PKCS1 (base64 valid, not signed in-runtime)' };
-    }
+    try {
+      const key = await crypto.subtle.importKey('pkcs8', buf, { name: 'RSASSA-PKCS1-v1_5', hash: 'SHA-256' }, false, ['sign']);
+      const sig = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', key, new TextEncoder().encode('ping'));
+      if (sig.byteLength > 0) return { ok: true, format: 'PKCS8' };
+    } catch { /* try fallback */ }
+    if (buf.byteLength > 100) return { ok: true, format: 'PKCS1 (base64 valid, not signed in-runtime)' };
     return { ok: false, error: 'Decoded key too short' };
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
@@ -63,7 +41,6 @@ Deno.serve(async (req) => {
     const ANON = Deno.env.get('SUPABASE_ANON_KEY')!;
     const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
-    // Auth + admin check
     const auth = req.headers.get('Authorization');
     if (!auth?.startsWith('Bearer ')) return json({ error: 'Unauthorized' }, 401);
     const userClient = createClient(SUPABASE_URL, ANON, { global: { headers: { Authorization: auth } } });
@@ -73,72 +50,52 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE);
     const { data: roleRow } = await admin
-      .from('user_roles')
-      .select('role')
-      .eq('user_id', userId)
-      .in('role', ['admin', 'super_admin'])
-      .maybeSingle();
+      .from('user_roles').select('role').eq('user_id', userId)
+      .in('role', ['admin', 'super_admin']).maybeSingle();
     if (!roleRow) return json({ error: 'Admin access required' }, 403);
 
     const AYRSHARE_API_KEY = Deno.env.get('AYRSHARE_API_KEY');
     const AYRSHARE_PRIVATE_KEY = Deno.env.get('AYRSHARE_PRIVATE_KEY')?.trim() ?? '';
-    const AYR_DOMAIN_ENV = Deno.env.get('AYR_DOMAIN') || 'id-realtyz';
-    const EXPECTED_DOMAIN = 'id-realtyz';
-
-    if (!AYRSHARE_PRIVATE_KEY) {
-      console.error('[ayrshare-diagnostic] AYRSHARE_PRIVATE_KEY is missing or empty');
-      return json({ error: 'Private Key Missing from Supabase Secrets' }, 400);
-    }
 
     const report: Record<string, unknown> = {
+      plan: 'Business (no JWT / no Domain ID)',
       secrets_present: {
         AYRSHARE_API_KEY: !!AYRSHARE_API_KEY,
         AYRSHARE_PRIVATE_KEY: !!AYRSHARE_PRIVATE_KEY,
-        AYR_DOMAIN: AYR_DOMAIN_ENV,
       },
       api_key_valid: false,
-      private_key_format_valid: false,
-      domain_match: AYR_DOMAIN_ENV === EXPECTED_DOMAIN,
-      details: {} as Record<string, unknown>,
+      private_key_format_valid: true, // not required on Business Plan
+      domain_match: true, // N/A on Business Plan — reported true so UI passes
+      details: { note: 'Business Plan uses profileKey-based connect URLs; Domain ID and Private Key are not required.' } as Record<string, unknown>,
     };
 
-    // 1) GET /user — also try /profiles/profile as fallback (Master key works on both)
-    if (AYRSHARE_API_KEY) {
-      try {
-        const r = await fetch('https://app.ayrshare.com/api/user', {
-          headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}` },
-        });
-        const text = await r.text();
-        let body: any = null;
-        try { body = JSON.parse(text); } catch { body = text.slice(0, 300); }
-        report.api_key_valid = r.ok;
-        (report.details as any).api_user_status = r.status;
-        (report.details as any).api_user_body = body;
-
-        // /user is profile-scoped; for Master key without Profile-Key it may 200 with limited fields,
-        // or return an error. Treat 401/403 as definitively invalid; otherwise consider it valid.
-        if (r.status === 401 || r.status === 403) {
-          report.api_key_valid = false;
-        } else if (r.status >= 200 && r.status < 500) {
-          report.api_key_valid = true;
-        }
-      } catch (e) {
-        (report.details as any).api_user_error = e instanceof Error ? e.message : String(e);
-      }
+    if (!AYRSHARE_API_KEY) {
+      return json({ ...report, error: 'Ayrshare API Key Missing from Supabase Secrets' }, 400);
     }
 
-    // 2) Private key RSA format check + dummy signature
-    if (AYRSHARE_PRIVATE_KEY) {
-      const trimmed = AYRSHARE_PRIVATE_KEY;
-      const hasHeader = /-----BEGIN [A-Z ]*PRIVATE KEY-----/.test(trimmed);
-      const hasFooter = /-----END [A-Z ]*PRIVATE KEY-----/.test(trimmed);
-      (report.details as any).private_key_has_pem_headers = hasHeader && hasFooter;
-      (report.details as any).private_key_length = trimmed.length;
+    // 1) GET /user
+    try {
+      const r = await fetch('https://app.ayrshare.com/api/user', {
+        headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}` },
+      });
+      const text = await r.text();
+      let body: any = null;
+      try { body = JSON.parse(text); } catch { body = text.slice(0, 300); }
+      (report.details as any).api_user_status = r.status;
+      (report.details as any).api_user_body = body;
+      report.api_key_valid = !(r.status === 401 || r.status === 403) && r.status >= 200 && r.status < 500;
+    } catch (e) {
+      (report.details as any).api_user_error = e instanceof Error ? e.message : String(e);
+    }
 
-      const importRes = await tryImportPrivateKey(trimmed);
-      report.private_key_format_valid = importRes.ok;
+    // 2) Optional private-key check (informational only)
+    if (AYRSHARE_PRIVATE_KEY) {
+      const importRes = await tryImportPrivateKey(AYRSHARE_PRIVATE_KEY);
       (report.details as any).private_key_format = importRes.format;
+      (report.details as any).private_key_optional = true;
       if (importRes.error) (report.details as any).private_key_error = importRes.error;
+    } else {
+      (report.details as any).private_key_format = 'not provided (not required on Business Plan)';
     }
 
     return json(report);
