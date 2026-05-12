@@ -22,6 +22,7 @@ import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { getDemoCandidateKnowledgeDocuments } from '@/lib/demoData';
 import { WhatsAppConversationImporter } from '@/components/strategybank/WhatsAppConversationImporter';
 import { UniversalKnowledgeInput } from '@/components/strategybank/UniversalKnowledgeInput';
+import { MediaLibraryPanel } from '@/components/MediaLibraryPanel';
 
 export default function KnowledgeBase() {
   const { user } = useAuth();
@@ -290,6 +291,7 @@ export default function KnowledgeBase() {
       <div className="w-full space-y-4">
         <UniversalKnowledgeInput />
         <WhatsAppConversationImporter />
+        <MediaLibraryPanel />
       </div>
 
       {/* ─── KB Chat ─── */}
