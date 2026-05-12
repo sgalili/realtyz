@@ -1025,9 +1025,9 @@ export const getDemoMetaAdCampaigns = (candidateId?: DemoCandidateId | null) => 
       created_at: recentTimestamp(2),
       metrics: { spend: 4_280, engagements: 12_450, cpa: 3.4, roas: 0 },
       creative_variants: [
-        { headline: 'מקשיבים. פועלים. מנצחים.', primary_text: `מסר ממוקד למתלבטים סביב ${focus}.` },
-        { headline: 'הקול שלך הופך להשפעה', primary_text: 'פנייה רגשית קצרה.' },
-        { headline: 'תוכנית מעשית לשינוי אמיתי', primary_text: 'מסר מבוסס נתונים.' },
+        { headline: 'מזהים. מנתחים. סוגרים.', primary_text: 'בשן, הרצליה: 4 חדרים במחיר של 2. מציאת שוק אמיתית.' },
+        { headline: 'הנכס שלך הופך לעסקה.', primary_text: 'מתעניינים מסוננים, פגישות מתואמות, סגירה מהירה.' },
+        { headline: 'תוכנית עבודה למכירה בשיא.', primary_text: 'תמחור מבוסס נתוני שוק חיים, חשיפה לקהל הנכון.' },
       ],
     },
     {

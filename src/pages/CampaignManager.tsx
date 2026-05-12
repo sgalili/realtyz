@@ -165,7 +165,7 @@ const CampaignManager = () => {
       const variants = [1, 2, 3].map((n) => ({
         title: `וריאציה ${n}`,
         primary_text: `${metaBrief || 'מסר קמפיין ממוקד'}. פנייה קצרה, ברורה ומבוססת נתונים לקהל ${AUDIENCE_LABELS[metaAudience] ?? 'מותאם'}.`,
-        headline: n === 1 ? 'מקשיבים. פועלים. מנצחים.' : n === 2 ? 'הקול שלך הופך להשפעה' : 'תוכנית מעשית לשינוי אמיתי',
+        headline: n === 1 ? 'מזהים. מנתחים. סוגרים.' : n === 2 ? 'הנכס שלך הופך לעסקה.' : 'תוכנית עבודה למכירה בשיא.',
       }));
       const { error } = await supabase.from('meta_ad_campaigns').insert({
         user_id: user.id,
@@ -209,7 +209,7 @@ const CampaignManager = () => {
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs">שם קמפיין</Label>
-                <Input value={metaName} onChange={(e) => setMetaName(e.target.value)} placeholder="קמפיין מתלבטים חיפה" />
+                <Input value={metaName} onChange={(e) => setMetaName(e.target.value)} placeholder="שוכרים הרצליה - בשן 4 ח׳" />
               </div>
               <div className="space-y-2">
                 <Label className="text-xs">קהל יעד</Label>
