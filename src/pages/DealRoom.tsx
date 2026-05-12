@@ -164,8 +164,6 @@ export default function DealRoom() {
   // 3 short AI variants — Agent picks one then optionally edits.
   const [replyVariants, setReplyVariants] = useState<string[]>([]);
   const [selectedVariantIdx, setSelectedVariantIdx] = useState<number | null>(null);
-  // ... keep existing code (other state declarations)
-  const [draftMode, setDraftMode] = useState<'review' | 'editing'>('review');
   const [generating, setGenerating] = useState(false);
   const [genPhase, setGenPhase] = useState<'idle' | 'searching' | 'drafting'>('idle');
   // Human-in-the-loop draft lifecycle: review (read-only AI draft) → editing → sending → sent
