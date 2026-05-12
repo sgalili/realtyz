@@ -1,5 +1,7 @@
-import { useQuery } from '@tanstack/react-query';
+import { useEffect } from 'react';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
@@ -48,6 +50,37 @@ interface ActivityFeedItem {
 const Dashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const queryClient = useQueryClient();
+
+  /* ───── Realtime: new listings (Yad2 / Madlan injections) ───── */
+  useEffect(() => {
+    if (!user?.id) return;
+    const channel = supabase
+      .channel(`listings-inserts-${user.id}`)
+      .on(
+        'postgres_changes' as any,
+        { event: 'INSERT', schema: 'public', table: 'listings' },
+        (payload: any) => {
+          const row = payload?.new ?? {};
+          const isYad2 = row.source === 'yad2';
+          const isSmart = !!row.is_investment_opportunity;
+          const title = row.property_title || row.address || 'נכס חדש';
+          const city = row.city ? ` · ${row.city}` : '';
+          if (isYad2 || isSmart) {
+            toast(isSmart ? '⚡ עסקה חכמה חדשה' : '🏠 עסקה חדשה מהשוק', {
+              description: `${title}${city}`,
+              action: row.source_url
+                ? { label: 'מקור', onClick: () => window.open(row.source_url, '_blank') }
+                : undefined,
+            });
+          }
+          queryClient.invalidateQueries({ queryKey: ['pending-listings', user.id] });
+          queryClient.invalidateQueries({ queryKey: ['kpi-active-listings', user.id] });
+        },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [user?.id, queryClient]);
 
   /* ───── KPIs ───── */
   const { data: activeListings, isLoading: loadingListings } = useQuery({

@@ -12,7 +12,7 @@ import { Label } from '@/components/ui/label';
 import {
   Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle,
 } from '@/components/ui/sheet';
-import { Sparkles, Building2, Check, Trash2, Pencil, Loader2, FileQuestion } from 'lucide-react';
+import { Sparkles, Building2, Check, Trash2, Pencil, Loader2, FileQuestion, Zap } from 'lucide-react';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
@@ -33,6 +33,9 @@ interface PendingListing {
   features: any;
   extracted_from_lead_id: string | null;
   extraction_metadata: any;
+  source: string | null;
+  source_url: string | null;
+  is_investment_opportunity: boolean | null;
   created_at: string;
 }
 
@@ -54,7 +57,7 @@ export function PendingListingsCard() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('listings')
-        .select('id, property_title, description, asking_price, city, neighborhood, address, rooms, sqm, floor, parking, elevator, features, extracted_from_lead_id, extraction_metadata, created_at')
+        .select('id, property_title, description, asking_price, city, neighborhood, address, rooms, sqm, floor, parking, elevator, features, extracted_from_lead_id, extraction_metadata, source, source_url, is_investment_opportunity, created_at')
         .eq('user_id', user!.id)
         .eq('status', 'pending')
         .order('created_at', { ascending: false })
@@ -164,6 +167,14 @@ export function PendingListingsCard() {
                     <div className="min-w-0">
                       <p className="text-sm font-semibold truncate">{l.property_title}</p>
                       <div className="flex flex-wrap gap-1 mt-1">
+                        {l.is_investment_opportunity ? (
+                          <Badge className="text-[10px] bg-amber-500/15 text-amber-700 border border-amber-500/40 hover:bg-amber-500/20 gap-1">
+                            <Zap className="h-3 w-3" /> עסקה חכמה
+                          </Badge>
+                        ) : null}
+                        {l.source && l.source !== 'manual' ? (
+                          <Badge variant="outline" className="text-[10px] uppercase">{l.source}</Badge>
+                        ) : null}
                         {l.asking_price ? <Badge variant="outline" className="text-[10px]">{fmtPrice(l.asking_price)}</Badge> : null}
                         {l.rooms ? <Badge variant="outline" className="text-[10px]">{l.rooms} חד׳</Badge> : null}
                         {l.sqm ? <Badge variant="outline" className="text-[10px]">{l.sqm} מ"ר</Badge> : null}
