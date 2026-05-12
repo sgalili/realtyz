@@ -35,6 +35,41 @@ export default function KnowledgeBase() {
   const [waPhone, setWaPhone] = useState('');
   const [waLabel, setWaLabel] = useState('');
 
+  /* ── KB Chat ── */
+  type ChatMsg = { role: 'user' | 'assistant'; content: string; sources?: string[]; isError?: boolean };
+  const [chatInput, setChatInput] = useState('');
+  const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: 'smooth' });
+  }, [chatMessages, chatLoading]);
+
+  const sendKbChat = async () => {
+    const text = chatInput.trim();
+    if (!text || chatLoading) return;
+    const next: ChatMsg[] = [...chatMessages, { role: 'user', content: text }];
+    setChatMessages(next);
+    setChatInput('');
+    setChatLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('kb-chat', {
+        body: { messages: next.map(({ role, content }) => ({ role, content })) },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) {
+        setChatMessages((p) => [...p, { role: 'assistant', content: data.error, isError: true }]);
+      } else {
+        setChatMessages((p) => [...p, { role: 'assistant', content: data?.content ?? 'לא התקבלה תשובה.', sources: data?.sources }]);
+      }
+    } catch (e: any) {
+      setChatMessages((p) => [...p, { role: 'assistant', content: `שגיאה: ${e.message}`, isError: true }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
+
   const fileToDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
