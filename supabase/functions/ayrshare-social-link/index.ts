@@ -171,15 +171,58 @@ Deno.serve(async (req) => {
     // ---- Generate JWT URL ----
     const redirect = `https://profile.ayrshare.com/social/${platform}`;
 
-    const jwtRes = await fetch(`${AYR_API}/profiles/generateJWT`, {
+    // Sanitize private key: strip BOM, tabs, CR, trailing whitespace, normalize line endings
+    let cleanedKey = AYRSHARE_PRIVATE_KEY
+      .replace(/^\uFEFF/, '')
+      .replace(/\r\n/g, '\n')
+      .replace(/\r/g, '\n')
+      .replace(/\t/g, '')
+      .replace(/[ \t]+\n/g, '\n')
+      .trim();
+
+    // If key has PEM headers but body lines are joined, re-wrap base64 body to 64-char lines
+    const pemMatch = cleanedKey.match(/-----BEGIN ([A-Z ]+)-----([\s\S]+?)-----END \1-----/);
+    if (pemMatch) {
+      const label = pemMatch[1];
+      const body = pemMatch[2].replace(/\s+/g, '');
+      const wrapped = body.match(/.{1,64}/g)?.join('\n') || body;
+      cleanedKey = `-----BEGIN ${label}-----\n${wrapped}\n-----END ${label}-----`;
+    }
+
+    // Detect format (PKCS#1 = RSA PRIVATE KEY, PKCS#8 = PRIVATE KEY)
+    const isPkcs1 = /-----BEGIN RSA PRIVATE KEY-----/.test(cleanedKey);
+    const isPkcs8 = /-----BEGIN PRIVATE KEY-----/.test(cleanedKey);
+
+    // Try alternate domain forms — Ayrshare error "Missing or incorrect domain" hints the value
+    // sent must match exactly what's set in the white-label dashboard (sometimes without "id-" prefix).
+    const domainCandidates = Array.from(new Set([
+      AYR_DOMAIN,
+      AYR_DOMAIN.replace(/^id-/, ''),
+      `id-${AYR_DOMAIN.replace(/^id-/, '')}`,
+    ]));
+
+    console.log('[ayrshare-social-link] JWT prep', {
+      key_starts_with: cleanedKey.slice(0, 28),
+      key_ends_with: cleanedKey.slice(-26),
+      key_length: cleanedKey.length,
+      key_format: isPkcs1 ? 'PKCS#1 (RSA PRIVATE KEY)' : isPkcs8 ? 'PKCS#8 (PRIVATE KEY)' : 'UNKNOWN',
+      domain_candidates: domainCandidates,
+      profileKey_preview: profileKey?.slice(0, 8) + '...',
+    });
+
+    let jwtRes!: Response;
+    let jwtData: any = {};
+    let usedDomain = AYR_DOMAIN;
+    for (const d of domainCandidates) {
+      jwtRes = await fetch(`${AYR_API}/profiles/generateJWT`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${AYRSHARE_API_KEY}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        domain: AYR_DOMAIN,
-        privateKey: AYRSHARE_PRIVATE_KEY,
+        domain: d,
+        privateKey: cleanedKey,
         profileKey,
         redirect,
         autoLink: true,
@@ -192,14 +235,22 @@ Deno.serve(async (req) => {
         platform,
       }),
     });
-    const jwtData = await jwtRes.json().catch(() => ({}));
+      jwtData = await jwtRes.json().catch(() => ({}));
+      usedDomain = d;
+      if (jwtRes.ok) break;
+      const detail = (jwtData?.details || jwtData?.message || '').toString();
+      console.warn('[ayrshare-social-link] JWT attempt failed', { domain: d, status: jwtRes.status, code: jwtData?.code, detail });
+      // Only retry on domain-related failures
+      if (!/domain/i.test(detail) && !/domain/i.test(jwtData?.message || '')) break;
+    }
     if (!jwtRes.ok) {
       console.error('[ayrshare-social-link] generateJWT failed', jwtData);
       const msg = jwtData?.message || jwtData?.error || `HTTP ${jwtRes.status}`;
-      return jsonResponse({ error: `Ayrshare token generation failed: ${msg}` }, 500);
+      const detail = jwtData?.details ? ` (${jwtData.details})` : '';
+      return jsonResponse({ error: `Ayrshare token generation failed: ${msg}${detail}`, tried_domains: domainCandidates }, 500);
     }
 
-    return jsonResponse({ url: jwtData.url, token: jwtData.token, profileKey, refId, redirect });
+    return jsonResponse({ url: jwtData.url, token: jwtData.token, profileKey, refId, redirect, domain: usedDomain });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error('[ayrshare-social-link] unexpected error', msg);
