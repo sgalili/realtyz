@@ -67,7 +67,7 @@ const Dashboard = () => {
           const title = row.property_title || row.address || 'נכס חדש';
           const city = row.city ? ` · ${row.city}` : '';
           if (isYad2 || isSmart) {
-            toast(isSmart ? '⚡ עסקה חכמה חדשה' : '🏠 עסקה חדשה מהשוק', {
+            toast(isSmart ? '⚡ עסקה חכמה — מציאת שוק' : '🏠 נכס חדש נקלט מהשוק', {
               description: `${title}${city}`,
               action: row.source_url
                 ? { label: 'מקור', onClick: () => window.open(row.source_url, '_blank') }
