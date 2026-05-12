@@ -142,7 +142,7 @@ const Auth = () => {
   };
 
   const handleVerifyCode = async (code = otp) => {
-    const expectedLength = activeMethod === 'whatsapp' ? 4 : 6;
+    const expectedLength = activeMethod === 'sms' ? 6 : 4;
     if (isGoogleFlow || code.length !== expectedLength || loading || otpAttempts >= 3) return;
     setLoading(true);
     window.localStorage.setItem(DEMO_EXIT_PENDING_KEY, 'true');
@@ -155,7 +155,11 @@ const Auth = () => {
         })
       : activeMethod === 'sms'
         ? await supabase.auth.verifyOtp({ phone: normalizedPhone, token: code, type: 'sms' })
-        : await supabase.auth.verifyOtp({ email, token: code, type: 'email' });
+        : await supabase.functions.invoke('email-auth', { body: { action: 'verify', email, code } }).then(async ({ data, error }) => {
+            if (error) return { error };
+            if (!data?.token_hash) return { error: new Error('קוד אומת, אך הכניסה נכשלה') };
+            return await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'email' } as any);
+          });
     if (error) {
       setOtpAttempts((attempts) => attempts + 1);
       setOtp('');
