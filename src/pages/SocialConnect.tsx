@@ -97,15 +97,19 @@ export default function SocialConnect() {
 
   async function runDiagnostic() {
     setDiagnosing(true);
+    const delayFailureReset = () => new Promise((resolve) => setTimeout(resolve, 1000));
     try {
       const { data, error } = await supabase.functions.invoke('ayrshare-diagnostic', { body: {} });
       let body: any = data;
+      let status: number | undefined;
       if (error) {
         try {
           const resp = (error as any)?.context?.response;
+          status = resp?.status;
           if (resp?.json) body = await resp.json();
         } catch { /* ignore */ }
-        if (!body) throw new Error(error.message);
+        await delayFailureReset();
+        throw new Error(`${body?.error || body?.message || error.message || 'Diagnostic failed'}${status ? ` (status ${status})` : ''}`);
       }
       console.log('[ayrshare-diagnostic]', body);
       const ok = body?.api_key_valid && body?.private_key_format_valid && body?.domain_match;
