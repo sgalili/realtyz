@@ -161,6 +161,9 @@ export default function DealRoom() {
   const [outreachLeadId, setOutreachLeadId] = useState<string | null>(null);
   const [outreachOpen, setOutreachOpen] = useState(false);
   const [smartReply, setSmartReply] = useState<string>('');
+  // 3 short AI variants — Agent picks one then optionally edits.
+  const [replyVariants, setReplyVariants] = useState<string[]>([]);
+  const [selectedVariantIdx, setSelectedVariantIdx] = useState<number | null>(null);
   const [generating, setGenerating] = useState(false);
   const [genPhase, setGenPhase] = useState<'idle' | 'searching' | 'drafting'>('idle');
   // Human-in-the-loop draft lifecycle: review (read-only AI draft) → editing → sending → sent
@@ -337,11 +340,11 @@ export default function DealRoom() {
     setActiveSuggestionId(null);
     setActiveLead(lead);
     setSmartReply('');
+    setReplyVariants([]);
+    setSelectedVariantIdx(null);
     setDraftMode('review');
     setGenerating(true);
     setGenPhase('searching');
-    // Flip the status to "drafting" shortly after kick-off so the Agent sees both phases
-    // even on fast responses. The edge function performs the vector search first, then drafts.
     const phaseTimer = window.setTimeout(() => setGenPhase('drafting'), 900);
     try {
       const { data, error } = await supabase.functions.invoke('ai-agent', {
@@ -349,17 +352,23 @@ export default function DealRoom() {
           mode: 'deal_room_reply',
           lead_id: lead.id,
           lead_name: lead.full_name,
+          variants: 3,
           context: `Lead stage: ${lead.lead_stage}. City: ${lead.city || 'unknown'}. Interest: ${lead.interest_tag || 'general'}.`,
         },
       });
       if (error) throw error;
-      const reply = (data as any)?.reply || (data as any)?.message || (data as any)?.content || '';
+      const vs = Array.isArray((data as any)?.variants) ? ((data as any).variants as string[]) : [];
+      const reply = vs[0] || (data as any)?.reply || (data as any)?.content || (data as any)?.message || '';
+      setReplyVariants(vs);
+      setSelectedVariantIdx(vs.length ? 0 : null);
       setSmartReply(reply || 'אין הצעה זמינה כרגע. נסה שוב בעוד רגע.');
       setFactViolations(((data as any)?.fact_violations as any[]) || []);
       setEscalation(((data as any)?.escalation as any) || null);
     } catch (err: any) {
       console.error('Smart reply error', err);
       setSmartReply('');
+      setReplyVariants([]);
+      setSelectedVariantIdx(null);
       toast.error('לא ניתן ליצור תשובה חכמה', { description: err?.message });
     } finally {
       window.clearTimeout(phaseTimer);
@@ -383,6 +392,8 @@ export default function DealRoom() {
     setActiveSuggestionId(suggestion.id);
     setActiveLead(suggestion.lead as Lead);
     setSmartReply(suggestion.draft_message);
+    setReplyVariants([]);
+    setSelectedVariantIdx(null);
     setDraftMode('review');
     setGenerating(false);
     setGenPhase('idle');
@@ -398,6 +409,8 @@ export default function DealRoom() {
     setEscalation(null);
     setActiveLead(matchmakerLead);
     setSmartReply(draft);
+    setReplyVariants([]);
+    setSelectedVariantIdx(null);
     setPinnedProperty(property);
     setDraftMode('review');
     setGenerating(false);
@@ -814,6 +827,43 @@ export default function DealRoom() {
                       <Home className="h-3 w-3" /> פרטי נכס
                     </div>
                     <PropertySnippet property={pinnedProperty} />
+                  </div>
+                )}
+                {replyVariants.length > 1 && (
+                  <div className="space-y-1.5">
+                    <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                      בחר את הגרסה הטובה ביותר ({replyVariants.length})
+                    </div>
+                    <div className="grid gap-2">
+                      {replyVariants.map((v, i) => {
+                        const active = selectedVariantIdx === i;
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => {
+                              setSelectedVariantIdx(i);
+                              setSmartReply(v);
+                              setDraftMode('review');
+                            }}
+                            className={`text-right rounded-md border p-2.5 text-xs leading-relaxed transition ${
+                              active
+                                ? 'border-primary bg-primary/10 text-foreground shadow-sm'
+                                : 'border-border bg-background hover:border-primary/40 hover:bg-muted/40 text-muted-foreground'
+                            }`}
+                            aria-pressed={active}
+                          >
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className={`inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold ${
+                                active ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                              }`}>{i + 1}</span>
+                              <span className="text-[10px] uppercase tracking-wide">גרסה {i + 1}</span>
+                            </div>
+                            <div className="whitespace-pre-wrap">{v}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
                 <div className="flex items-center justify-between">

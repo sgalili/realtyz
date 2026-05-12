@@ -107,12 +107,57 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { messages, lead_id, lead_name } = body ?? {};
-    if (!messages || !Array.isArray(messages)) {
+    const { lead_id, lead_name, mode, context, variants: variantsReq } = body ?? {};
+    let { messages } = body ?? {};
+    const variantCount = Math.max(1, Math.min(5, Number(variantsReq ?? 1) || 1));
+
+    // Deal-Room call shape: no `messages` provided — synthesize from chat_history
+    // so the function still works as a "draft-the-next-reply" call.
+    if ((!messages || !Array.isArray(messages) || messages.length === 0) && lead_id) {
+      try {
+        const tmpUrl = Deno.env.get("SUPABASE_URL")!;
+        const tmpKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const tmp = createClient(tmpUrl, tmpKey);
+        const { data: hist } = await tmp
+          .from("chat_history")
+          .select("role, content, created_at")
+          .eq("lead_id", lead_id)
+          .order("created_at", { ascending: false })
+          .limit(12);
+        const ordered = (hist ?? []).reverse().map((h: any) => ({
+          role: h.role === "assistant" ? "assistant" : "user",
+          content: String(h.content ?? ""),
+        }));
+        // If still empty, seed a single prompt so the model has something to react to.
+        if (ordered.length === 0) {
+          ordered.push({
+            role: "user",
+            content:
+              `נסח טיוטת תשובה ראשונה קצרה (1-2 משפטים) ב-WhatsApp עבור ${lead_name || "המתעניין"}.` +
+              (context ? `\nהקשר: ${context}` : ""),
+          });
+        }
+        messages = ordered;
+      } catch (e) {
+        console.warn("chat_history synth failed:", e);
+        messages = [{ role: "user", content: context || "נסח טיוטת תשובה קצרה." }];
+      }
+    }
+
+    if ((!messages || !Array.isArray(messages) || messages.length === 0) && (mode === "deal_room_reply" || context)) {
+      messages = [{
+        role: "user",
+        content: `נסח טיוטת תשובה קצרה (1-2 משפטים) ב-WhatsApp עבור ${lead_name || "המתעניין"}.` +
+          (context ? `\nהקשר: ${context}` : ""),
+      }];
+    }
+
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return new Response(JSON.stringify({ error: "messages array required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    void mode;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
@@ -412,7 +457,66 @@ serve(async (req) => {
       }
     }
 
-    // Step 1: Ask AI to generate SQL or text response
+    // === MULTI-VARIANT MODE ===
+    // When the caller asks for N short variants (Deal Room "pick the best"), we
+    // skip SQL routing and directly produce N parallel short Hebrew drafts.
+    if (variantCount > 1) {
+      const variantSystem =
+        systemPrompt +
+        `\n\nVARIANT MODE: Produce ONE short draft reply only (1-2 sentences, max ~280 chars), in Hebrew, in the Agent's voice. ` +
+        `No JSON, no preamble, no explanations — return the message text only. ` +
+        `Vary the angle/opening between calls (do NOT repeat the same wording).`;
+
+      const maskedMsgs = maskMessages(messages as Array<{ role: string; content: string }>).messages;
+
+      const callOnce = async (i: number) => {
+        const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-3-flash-preview",
+            temperature: 0.85 + i * 0.05,
+            messages: [
+              { role: "system", content: variantSystem },
+              ...maskedMsgs,
+              { role: "user", content: `נסח גרסה קצרה ${i + 1} (שונה מהגרסאות האחרות).` },
+            ],
+          }),
+        });
+        if (!r.ok) return "";
+        const j = await r.json();
+        return String(j?.choices?.[0]?.message?.content ?? "")
+          .replace(/^```[a-z]*\n?/i, "")
+          .replace(/```$/, "")
+          .trim();
+      };
+
+      const variantResults = await Promise.all(
+        Array.from({ length: variantCount }, (_, i) => callOnce(i)),
+      );
+      const cleaned = variantResults.map((s) => s.trim()).filter(Boolean);
+      if (cleaned.length === 0) {
+        return new Response(JSON.stringify({ error: "AI gateway returned no variants" }), {
+          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const fact_violations = factCheckDraft(cleaned[0], listingFacts);
+      return new Response(JSON.stringify({
+        type: "text",
+        content: cleaned[0],
+        variants: cleaned,
+        sources: kbSources,
+        escalation,
+        fact_violations,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Step 1: Ask AI to generate SQL or text response (legacy single-shot path)
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
