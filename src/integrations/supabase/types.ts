@@ -2113,6 +2113,7 @@ export type Database = {
           description: string
           elevator: boolean | null
           embedding: string | null
+          external_id: string | null
           extracted_from_lead_id: string | null
           extracted_from_message_id: string | null
           extraction_metadata: Json
@@ -2121,6 +2122,7 @@ export type Database = {
           floor: number | null
           id: string
           is_featured: boolean
+          is_investment_opportunity: boolean
           is_promoted: boolean
           is_published: boolean
           neighborhood: string | null
@@ -2130,6 +2132,7 @@ export type Database = {
           rooms: number | null
           slug: string
           source: string
+          source_url: string | null
           sqm: number | null
           status: string
           updated_at: string
@@ -2143,6 +2146,7 @@ export type Database = {
           description: string
           elevator?: boolean | null
           embedding?: string | null
+          external_id?: string | null
           extracted_from_lead_id?: string | null
           extracted_from_message_id?: string | null
           extraction_metadata?: Json
@@ -2151,6 +2155,7 @@ export type Database = {
           floor?: number | null
           id?: string
           is_featured?: boolean
+          is_investment_opportunity?: boolean
           is_promoted?: boolean
           is_published?: boolean
           neighborhood?: string | null
@@ -2160,6 +2165,7 @@ export type Database = {
           rooms?: number | null
           slug: string
           source?: string
+          source_url?: string | null
           sqm?: number | null
           status?: string
           updated_at?: string
@@ -2173,6 +2179,7 @@ export type Database = {
           description?: string
           elevator?: boolean | null
           embedding?: string | null
+          external_id?: string | null
           extracted_from_lead_id?: string | null
           extracted_from_message_id?: string | null
           extraction_metadata?: Json
@@ -2181,6 +2188,7 @@ export type Database = {
           floor?: number | null
           id?: string
           is_featured?: boolean
+          is_investment_opportunity?: boolean
           is_promoted?: boolean
           is_published?: boolean
           neighborhood?: string | null
@@ -2190,6 +2198,7 @@ export type Database = {
           rooms?: number | null
           slug?: string
           source?: string
+          source_url?: string | null
           sqm?: number | null
           status?: string
           updated_at?: string
@@ -3873,6 +3882,7 @@ export type Database = {
         | "junior_agent"
         | "managing_broker"
         | "lead_agent"
+      listing_source: "yad2" | "madlan" | "manual"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4011,6 +4021,7 @@ export const Constants = {
         "managing_broker",
         "lead_agent",
       ],
+      listing_source: ["yad2", "madlan", "manual"],
     },
   },
 } as const
