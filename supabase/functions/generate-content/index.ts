@@ -89,7 +89,21 @@ serve(async (req) => {
     }
 
     const data = await response.json();
-    const content = data.choices?.[0]?.message?.content || "";
+    let content: string = data.choices?.[0]?.message?.content || "";
+
+    // Persona post-processing: strip bullets/markdown, collapse blank lines
+    content = content
+      .replace(/^\s*[-*•]\s+/gm, "")
+      .replace(/^\s*\d+[\.)]\s+/gm, "")
+      .replace(/[#*_`]+/g, "")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
+    // Hard char cap for X/Twitter
+    const p = String(platform).toLowerCase();
+    if ((p === "twitter" || p === "x") && content.length > 280) {
+      content = content.slice(0, 277).trimEnd() + "...";
+    }
 
     let approvalId = null;
     if (userData.user) {
