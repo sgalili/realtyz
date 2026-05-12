@@ -829,6 +829,43 @@ export default function DealRoom() {
                     <PropertySnippet property={pinnedProperty} />
                   </div>
                 )}
+                {replyVariants.length > 1 && (
+                  <div className="space-y-1.5">
+                    <div className="text-[11px] font-medium text-muted-foreground uppercase tracking-wide">
+                      בחר את הגרסה הטובה ביותר ({replyVariants.length})
+                    </div>
+                    <div className="grid gap-2">
+                      {replyVariants.map((v, i) => {
+                        const active = selectedVariantIdx === i;
+                        return (
+                          <button
+                            key={i}
+                            type="button"
+                            onClick={() => {
+                              setSelectedVariantIdx(i);
+                              setSmartReply(v);
+                              setDraftMode('review');
+                            }}
+                            className={`text-right rounded-md border p-2.5 text-xs leading-relaxed transition ${
+                              active
+                                ? 'border-primary bg-primary/10 text-foreground shadow-sm'
+                                : 'border-border bg-background hover:border-primary/40 hover:bg-muted/40 text-muted-foreground'
+                            }`}
+                            aria-pressed={active}
+                          >
+                            <div className="flex items-center gap-1.5 mb-1">
+                              <span className={`inline-flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold ${
+                                active ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                              }`}>{i + 1}</span>
+                              <span className="text-[10px] uppercase tracking-wide">גרסה {i + 1}</span>
+                            </div>
+                            <div className="whitespace-pre-wrap">{v}</div>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
                 <div className="flex items-center justify-between">
                   <Badge
                     variant="outline"
