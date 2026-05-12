@@ -11,7 +11,7 @@ const corsHeaders = {
 
 const Body = z.object({
   title: z.string().min(1).max(300),
-  raw_text: z.string().max(500_000).optional(),
+  raw_text: z.string().max(5_000_000).optional(),
   file_data_url: z.string().max(30_000_000).optional(),
   mime_type: z.string().max(120).optional(),
   source_type: z.enum(["pdf", "text", "whatsapp", "image", "video", "audio"]).default("text"),
