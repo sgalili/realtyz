@@ -392,6 +392,8 @@ export default function DealRoom() {
     setActiveSuggestionId(suggestion.id);
     setActiveLead(suggestion.lead as Lead);
     setSmartReply(suggestion.draft_message);
+    setReplyVariants([]);
+    setSelectedVariantIdx(null);
     setDraftMode('review');
     setGenerating(false);
     setGenPhase('idle');
