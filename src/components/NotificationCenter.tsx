@@ -189,15 +189,11 @@ export default function NotificationCenter() {
     const schedule = () => {
       timeoutId = setTimeout(() => {
         const template = DEMO_EVENT_TEMPLATES[Math.floor(Math.random() * DEMO_EVENT_TEMPLATES.length)];
-        const focus = activeCandidate.focus[Math.floor(Math.random() * activeCandidate.focus.length)];
         const notification: DemoNotification = {
           id: `demo-${Date.now()}`,
           title: template.title,
-          subtext: `${activeCandidate.name} · ${focus}`,
-          message: template.message
-            .replace('{city}', DEMO_CITIES[Math.floor(Math.random() * DEMO_CITIES.length)])
-            .replace('{region}', DEMO_REGIONS[Math.floor(Math.random() * DEMO_REGIONS.length)])
-            .replace('{transaction}', String(activeCandidate.mandateGoal)),
+          subtext: 'Realtyz AI · הרצליה',
+          message: template.message,
           cta: template.cta,
           path: template.path,
           createdAt: new Date().toISOString(),
