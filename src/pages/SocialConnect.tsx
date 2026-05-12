@@ -191,17 +191,16 @@ export default function SocialConnect() {
       if (data && (data as any).error) throw new Error((data as any).error);
       if (!data?.url) throw new Error('לא התקבל קישור מהשרת');
       const targetUrl: string = data.url;
-      // Show fallback link after 3s in case sandbox/CSP blocks the redirect
+      // Show a prominent manual-login button after 2s in case sandbox/CSP/mobile blocks the redirect
+      setManualLoginUrl(null);
       setTimeout(() => {
-        toast('לחץ כאן כדי להשלים את החיבור', {
-          duration: 30000,
-          action: {
-            label: 'פתח',
-            onClick: () => window.open(targetUrl, '_blank', 'noopener,noreferrer'),
-          },
-        });
-      }, 3000);
-      window.location.href = targetUrl;
+        setManualLoginUrl(targetUrl);
+      }, 2000);
+      try {
+        window.location.assign(targetUrl);
+      } catch {
+        window.open(targetUrl, '_blank', 'noopener,noreferrer');
+      }
     } catch (e: any) {
       console.error('[SocialConnect] connect failed', e);
       toast.error('שגיאה בחיבור הרשת', { description: e?.message || 'שגיאה לא ידועה' });
