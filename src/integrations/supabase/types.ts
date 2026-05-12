@@ -2197,6 +2197,48 @@ export type Database = {
         }
         Relationships: []
       }
+      media_library: {
+        Row: {
+          created_at: string
+          file_name: string
+          id: string
+          media_kind: string
+          mime_type: string | null
+          public_url: string
+          size_bytes: number | null
+          source: string | null
+          source_metadata: Json | null
+          storage_path: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          file_name: string
+          id?: string
+          media_kind: string
+          mime_type?: string | null
+          public_url: string
+          size_bytes?: number | null
+          source?: string | null
+          source_metadata?: Json | null
+          storage_path: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          file_name?: string
+          id?: string
+          media_kind?: string
+          mime_type?: string | null
+          public_url?: string
+          size_bytes?: number | null
+          source?: string | null
+          source_metadata?: Json | null
+          storage_path?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       meetings: {
         Row: {
           conference_link: string | null
