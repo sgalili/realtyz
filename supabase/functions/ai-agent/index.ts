@@ -144,6 +144,14 @@ serve(async (req) => {
       }
     }
 
+    if ((!messages || !Array.isArray(messages) || messages.length === 0) && (mode === "deal_room_reply" || context)) {
+      messages = [{
+        role: "user",
+        content: `נסח טיוטת תשובה קצרה (1-2 משפטים) ב-WhatsApp עבור ${lead_name || "המתעניין"}.` +
+          (context ? `\nהקשר: ${context}` : ""),
+      }];
+    }
+
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return new Response(JSON.stringify({ error: "messages array required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
