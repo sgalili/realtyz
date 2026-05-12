@@ -82,7 +82,10 @@ Deno.serve(async (req) => {
     // ---- Create Ayrshare profile if missing ----
     if (!profileKey) {
       refId = refId || `realtyz-${userId.slice(0, 8)}-${Date.now()}`;
-      const title = profile?.full_name || profile?.email || `Realtyz ${userId.slice(0, 6)}`;
+      const baseName = profile?.full_name || profile?.email?.split('@')[0] || `Realtyz ${userId.slice(0, 6)}`;
+      const rand = Math.floor(1000 + Math.random() * 9000).toString();
+      const title = `Realtyz - ${baseName} - ${rand}`;
+
       const createRes = await fetch(`${AYR_API}/profiles/profile`, {
         method: 'POST',
         headers: {
@@ -97,14 +100,65 @@ Deno.serve(async (req) => {
         }),
       });
       const created = await createRes.json().catch(() => ({}));
-      if (!createRes.ok) {
+
+      if (createRes.ok) {
+        profileKey = created.profileKey || created.profile?.profileKey;
+      } else {
+        const msg: string = (created?.message || created?.error || `HTTP ${createRes.status}`).toString();
         console.error('[ayrshare-social-link] create profile failed', created);
-        const msg = created?.message || created?.error || `HTTP ${createRes.status}`;
-        return jsonResponse({ error: `Ayrshare profile create failed: ${msg}` }, 500);
+
+        // Title or refId already exists -> try to recover via refId lookup
+        const isDuplicate = /already exists|duplicate|exists/i.test(msg);
+        if (isDuplicate) {
+          // Try GET /profiles?refId=... then fallback to listing all profiles
+          try {
+            const lookup = await fetch(`${AYR_API}/profiles?refId=${encodeURIComponent(refId)}`, {
+              headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}` },
+            });
+            const lookupData = await lookup.json().catch(() => ({}));
+            const list = Array.isArray(lookupData?.profiles) ? lookupData.profiles : (Array.isArray(lookupData) ? lookupData : []);
+            const match = list.find((p: any) => p.refId === refId) || list[0];
+            if (match?.profileKey) {
+              profileKey = match.profileKey;
+              console.log('[ayrshare-social-link] recovered existing profileKey via refId');
+            }
+          } catch (e) {
+            console.error('[ayrshare-social-link] refId lookup failed', e);
+          }
+
+          // Last resort: retry creation with a fresh refId + new random title
+          if (!profileKey) {
+            const newRefId = `realtyz-${userId.slice(0, 8)}-${Date.now()}-${rand}`;
+            const retryTitle = `Realtyz - ${baseName} - ${Date.now().toString().slice(-5)}`;
+            const retryRes = await fetch(`${AYR_API}/profiles/profile`, {
+              method: 'POST',
+              headers: {
+                Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({
+                title: retryTitle,
+                email: profile?.email || undefined,
+                refId: newRefId,
+                domain: AYR_DOMAIN,
+              }),
+            });
+            const retryData = await retryRes.json().catch(() => ({}));
+            if (retryRes.ok) {
+              profileKey = retryData.profileKey || retryData.profile?.profileKey;
+              refId = newRefId;
+            } else {
+              console.error('[ayrshare-social-link] retry create failed', retryData);
+              return jsonResponse({ error: `Ayrshare profile create failed (retry): ${retryData?.message || retryData?.error || `HTTP ${retryRes.status}`}` }, 500);
+            }
+          }
+        } else {
+          return jsonResponse({ error: `Ayrshare profile create failed: ${msg}` }, 500);
+        }
       }
-      profileKey = created.profileKey || created.profile?.profileKey;
+
       if (!profileKey) {
-        console.error('[ayrshare-social-link] no profileKey in response', created);
+        console.error('[ayrshare-social-link] no profileKey resolved');
         return jsonResponse({ error: 'Ayrshare did not return a profileKey.' }, 500);
       }
       const { error: upErr } = await admin
