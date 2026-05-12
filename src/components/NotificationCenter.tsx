@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { DEMO_CANDIDATES } from '@/lib/demoData';
-import { Bell, BarChart3, CalendarClock, ExternalLink, Home, LineChart, Megaphone, Target, TrendingUp, User, Wallet } from 'lucide-react';
+import { Bell, AlertTriangle, CalendarClock, ExternalLink, Home, LineChart, Megaphone, Target, TrendingUp, User, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
