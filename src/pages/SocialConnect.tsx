@@ -107,6 +107,7 @@ export default function SocialConnect() {
   const [networks, setNetworks] = useState<Network[]>([]);
   const [connected, setConnected] = useState<Connected[]>([]);
   const [diagnosing, setDiagnosing] = useState(false);
+  const [manualLoginUrl, setManualLoginUrl] = useState<string | null>(null);
   const { isAdmin } = useUserRole();
 
   async function runDiagnostic() {
