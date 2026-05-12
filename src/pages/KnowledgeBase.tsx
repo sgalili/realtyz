@@ -291,6 +291,83 @@ export default function KnowledgeBase() {
         <WhatsAppConversationImporter />
       </div>
 
+      {/* ─── KB Chat ─── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <MessageSquare className="h-4 w-4 text-primary" /> שיחה עם מאגר הידע
+          </CardTitle>
+          <CardDescription>
+            שאל שאלות וקבל תשובות אך ורק על סמך המסמכים שהעלית למאגר. לא נעשה שימוש בידע חיצוני.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div
+            ref={chatScrollRef}
+            className="h-72 overflow-y-auto rounded-md border bg-muted/20 p-3 space-y-2"
+          >
+            {chatMessages.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-10">
+                התחל שיחה — לדוגמה: "מה עיקרי המצע?" או "מה כתוב על דיור?"
+              </p>
+            )}
+            {chatMessages.map((m, i) => (
+              <div
+                key={i}
+                className={`rounded-lg px-3 py-2 text-sm whitespace-pre-wrap leading-relaxed max-w-[90%] ${
+                  m.role === 'user'
+                    ? 'bg-primary text-primary-foreground ms-auto'
+                    : m.isError
+                      ? 'bg-destructive/15 text-destructive border border-destructive/30'
+                      : 'bg-background border'
+                }`}
+              >
+                {m.content}
+                {m.sources && m.sources.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-border/50 flex flex-wrap gap-1">
+                    {m.sources.map((s, j) => (
+                      <Badge key={j} variant="secondary" className="text-[10px]">
+                        <FileText className="h-2.5 w-2.5 me-1" />{s}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+            {chatLoading && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> מחפש במאגר...
+              </div>
+            )}
+          </div>
+          <div className="flex items-end gap-2">
+            <Textarea
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  sendKbChat();
+                }
+              }}
+              placeholder="שאל שאלה על מאגר הידע..."
+              rows={1}
+              dir="rtl"
+              disabled={chatLoading}
+              className="flex-1 min-h-[44px] max-h-32 resize-none"
+            />
+            <Button onClick={sendKbChat} disabled={chatLoading || !chatInput.trim()}>
+              {chatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </Button>
+            {chatMessages.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => setChatMessages([])}>
+                נקה
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
+
       {/* ─── WhatsApp Whitelist ─── */}
       <Card>
         <CardHeader>
