@@ -128,10 +128,7 @@ const Auth = () => {
       ? await supabase.functions.invoke('whatsapp-auth', { body: { action: 'send', phone: normalizedPhone } })
       : activeMethod === 'sms'
         ? await supabase.auth.signInWithOtp({ phone: normalizedPhone })
-        : await supabase.auth.signInWithOtp({
-          email,
-          options: { emailRedirectTo: window.location.origin, shouldCreateUser: true },
-        });
+        : await supabase.functions.invoke('email-auth', { body: { action: 'send', email } });
     if (error) {
       toast.error(error.message);
     } else {
@@ -145,7 +142,7 @@ const Auth = () => {
   };
 
   const handleVerifyCode = async (code = otp) => {
-    const expectedLength = activeMethod === 'whatsapp' ? 4 : 6;
+    const expectedLength = activeMethod === 'sms' ? 6 : 4;
     if (isGoogleFlow || code.length !== expectedLength || loading || otpAttempts >= 3) return;
     setLoading(true);
     window.localStorage.setItem(DEMO_EXIT_PENDING_KEY, 'true');
@@ -158,7 +155,11 @@ const Auth = () => {
         })
       : activeMethod === 'sms'
         ? await supabase.auth.verifyOtp({ phone: normalizedPhone, token: code, type: 'sms' })
-        : await supabase.auth.verifyOtp({ email, token: code, type: 'email' });
+        : await supabase.functions.invoke('email-auth', { body: { action: 'verify', email, code } }).then(async ({ data, error }) => {
+            if (error) return { error };
+            if (!data?.token_hash) return { error: new Error('קוד אומת, אך הכניסה נכשלה') };
+            return await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'email' } as any);
+          });
     if (error) {
       setOtpAttempts((attempts) => attempts + 1);
       setOtp('');
@@ -245,14 +246,14 @@ const Auth = () => {
               {codeSent && !isGoogleFlow ? (
                 <div className="space-y-4 text-center animate-fade-in">
                   <Label className="block text-xl font-bold text-primary-foreground">הזינו את הקוד שקיבלתם {activeMethod === 'whatsapp' ? 'בווטסאפ' : activeMethod === 'sms' ? 'ב-SMS' : 'באימייל'}</Label>
-                  <InputOTP maxLength={activeMethod === 'whatsapp' ? 4 : 6} value={otp} onChange={(value) => { setOtp(value); if (activeMethod === 'whatsapp' && value.length === 4) void handleVerifyCode(value); }} containerClassName="justify-center" dir="ltr" disabled={otpAttempts >= 3}>
+                  <InputOTP maxLength={activeMethod === 'sms' ? 6 : 4} value={otp} onChange={(value) => { const len = activeMethod === 'sms' ? 6 : 4; setOtp(value); if (value.length === len) void handleVerifyCode(value); }} containerClassName="justify-center" dir="ltr" disabled={otpAttempts >= 3}>
                     <InputOTPGroup className="flex-row-reverse gap-2">
-                      {Array.from({ length: activeMethod === 'whatsapp' ? 4 : 6 }).map((_, index) => (
+                      {Array.from({ length: activeMethod === 'sms' ? 6 : 4 }).map((_, index) => (
                         <InputOTPSlot key={index} index={index} className="h-20 w-20 rounded-md border bg-background p-0 text-7xl font-black leading-none text-primary" />
                       ))}
                     </InputOTPGroup>
                   </InputOTP>
-                  {activeMethod !== 'whatsapp' && <Button type="button" className="auth-gold-button w-full" onClick={() => handleVerifyCode()} disabled={loading || otp.length !== 6}>
+                  {activeMethod === 'sms' && <Button type="button" className="auth-gold-button w-full" onClick={() => handleVerifyCode()} disabled={loading || otp.length !== 6}>
                     {loading ? 'מאמת...' : 'כניסה למערכת'}
                   </Button>}
                   {resendSeconds > 0 ? (
