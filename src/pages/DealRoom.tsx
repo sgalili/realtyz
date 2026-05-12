@@ -409,6 +409,8 @@ export default function DealRoom() {
     setEscalation(null);
     setActiveLead(matchmakerLead);
     setSmartReply(draft);
+    setReplyVariants([]);
+    setSelectedVariantIdx(null);
     setPinnedProperty(property);
     setDraftMode('review');
     setGenerating(false);
