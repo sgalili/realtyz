@@ -107,12 +107,49 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { messages, lead_id, lead_name } = body ?? {};
-    if (!messages || !Array.isArray(messages)) {
+    const { lead_id, lead_name, mode, context, variants: variantsReq } = body ?? {};
+    let { messages } = body ?? {};
+    const variantCount = Math.max(1, Math.min(5, Number(variantsReq ?? 1) || 1));
+
+    // Deal-Room call shape: no `messages` provided — synthesize from chat_history
+    // so the function still works as a "draft-the-next-reply" call.
+    if ((!messages || !Array.isArray(messages) || messages.length === 0) && lead_id) {
+      try {
+        const tmpUrl = Deno.env.get("SUPABASE_URL")!;
+        const tmpKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+        const tmp = createClient(tmpUrl, tmpKey);
+        const { data: hist } = await tmp
+          .from("chat_history")
+          .select("role, content, created_at")
+          .eq("lead_id", lead_id)
+          .order("created_at", { ascending: false })
+          .limit(12);
+        const ordered = (hist ?? []).reverse().map((h: any) => ({
+          role: h.role === "assistant" ? "assistant" : "user",
+          content: String(h.content ?? ""),
+        }));
+        // If still empty, seed a single prompt so the model has something to react to.
+        if (ordered.length === 0) {
+          ordered.push({
+            role: "user",
+            content:
+              `נסח טיוטת תשובה ראשונה קצרה (1-2 משפטים) ב-WhatsApp עבור ${lead_name || "המתעניין"}.` +
+              (context ? `\nהקשר: ${context}` : ""),
+          });
+        }
+        messages = ordered;
+      } catch (e) {
+        console.warn("chat_history synth failed:", e);
+        messages = [{ role: "user", content: context || "נסח טיוטת תשובה קצרה." }];
+      }
+    }
+
+    if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return new Response(JSON.stringify({ error: "messages array required" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+    void mode;
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
