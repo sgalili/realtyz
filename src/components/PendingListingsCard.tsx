@@ -33,6 +33,9 @@ interface PendingListing {
   features: any;
   extracted_from_lead_id: string | null;
   extraction_metadata: any;
+  source: string | null;
+  source_url: string | null;
+  is_investment_opportunity: boolean | null;
   created_at: string;
 }
 
