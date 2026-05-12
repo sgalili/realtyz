@@ -209,7 +209,7 @@ const CampaignManager = () => {
             <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="text-xs">שם קמפיין</Label>
-                <Input value={metaName} onChange={(e) => setMetaName(e.target.value)} placeholder="קמפיין מתלבטים חיפה" />
+                <Input value={metaName} onChange={(e) => setMetaName(e.target.value)} placeholder="שוכרים הרצליה - בשן 4 ח׳" />
               </div>
               <div className="space-y-2">
                 <Label className="text-xs">קהל יעד</Label>
