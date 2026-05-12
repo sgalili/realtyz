@@ -5,3 +5,6 @@ verify_jwt = false
 
 [functions.homely-webhook]
 verify_jwt = false
+
+[functions.ayrshare-webhook]
+verify_jwt = false
