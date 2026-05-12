@@ -92,6 +92,32 @@ export default function SocialConnect() {
   const [linkingPlatform, setLinkingPlatform] = useState<string | null>(null);
   const [networks, setNetworks] = useState<Network[]>([]);
   const [connected, setConnected] = useState<Connected[]>([]);
+  const [diagnosing, setDiagnosing] = useState(false);
+  const { isAdmin } = useUserRole();
+
+  async function runDiagnostic() {
+    setDiagnosing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('ayrshare-diagnostic', { body: {} });
+      let body: any = data;
+      if (error) {
+        try {
+          const resp = (error as any)?.context?.response;
+          if (resp?.json) body = await resp.json();
+        } catch { /* ignore */ }
+        if (!body) throw new Error(error.message);
+      }
+      console.log('[ayrshare-diagnostic]', body);
+      const ok = body?.api_key_valid && body?.private_key_format_valid && body?.domain_match;
+      const desc = `API key: ${body?.api_key_valid ? '✓' : '✗'} · Private key: ${body?.private_key_format_valid ? '✓' : '✗'} (${body?.details?.private_key_format ?? '—'}) · Domain: ${body?.domain_match ? '✓' : '✗'} (${body?.secrets_present?.AYR_DOMAIN})`;
+      if (ok) toast.success('כל הסודות תקינים', { description: desc });
+      else toast.error('בעיה בתצורת Ayrshare', { description: desc, duration: 10000 });
+    } catch (e: any) {
+      toast.error('Diagnostic failed', { description: e?.message || 'unknown' });
+    } finally {
+      setDiagnosing(false);
+    }
+  }
 
   async function load() {
     setLoading(true);
