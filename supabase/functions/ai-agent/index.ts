@@ -449,7 +449,66 @@ serve(async (req) => {
       }
     }
 
-    // Step 1: Ask AI to generate SQL or text response
+    // === MULTI-VARIANT MODE ===
+    // When the caller asks for N short variants (Deal Room "pick the best"), we
+    // skip SQL routing and directly produce N parallel short Hebrew drafts.
+    if (variantCount > 1) {
+      const variantSystem =
+        systemPrompt +
+        `\n\nVARIANT MODE: Produce ONE short draft reply only (1-2 sentences, max ~280 chars), in Hebrew, in the Agent's voice. ` +
+        `No JSON, no preamble, no explanations — return the message text only. ` +
+        `Vary the angle/opening between calls (do NOT repeat the same wording).`;
+
+      const maskedMsgs = maskMessages(messages as Array<{ role: string; content: string }>).messages;
+
+      const callOnce = async (i: number) => {
+        const r = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-3-flash-preview",
+            temperature: 0.85 + i * 0.05,
+            messages: [
+              { role: "system", content: variantSystem },
+              ...maskedMsgs,
+              { role: "user", content: `נסח גרסה קצרה ${i + 1} (שונה מהגרסאות האחרות).` },
+            ],
+          }),
+        });
+        if (!r.ok) return "";
+        const j = await r.json();
+        return String(j?.choices?.[0]?.message?.content ?? "")
+          .replace(/^```[a-z]*\n?/i, "")
+          .replace(/```$/, "")
+          .trim();
+      };
+
+      const variantResults = await Promise.all(
+        Array.from({ length: variantCount }, (_, i) => callOnce(i)),
+      );
+      const cleaned = variantResults.map((s) => s.trim()).filter(Boolean);
+      if (cleaned.length === 0) {
+        return new Response(JSON.stringify({ error: "AI gateway returned no variants" }), {
+          status: 502, headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const fact_violations = factCheckDraft(cleaned[0], listingFacts);
+      return new Response(JSON.stringify({
+        type: "text",
+        content: cleaned[0],
+        variants: cleaned,
+        sources: kbSources,
+        escalation,
+        fact_violations,
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Step 1: Ask AI to generate SQL or text response (legacy single-shot path)
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
