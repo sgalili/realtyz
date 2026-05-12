@@ -46,9 +46,10 @@ export async function uploadMediaToLibrary(input: UploadMediaInput) {
   const blob =
     input.data instanceof Blob
       ? input.data
-      : new Blob([input.data instanceof Uint8Array ? input.data : new Uint8Array(input.data)], {
-          type: mime,
-        });
+      : new Blob(
+          [input.data instanceof Uint8Array ? new Uint8Array(input.data).buffer : input.data],
+          { type: mime },
+        );
 
   const { error: upErr } = await supabase.storage
     .from("media-library")
@@ -60,17 +61,19 @@ export async function uploadMediaToLibrary(input: UploadMediaInput) {
 
   const { data: row, error: insErr } = await supabase
     .from("media_library")
-    .insert({
-      user_id: input.userId,
-      file_name: input.fileName,
-      storage_path: path,
-      public_url: publicUrl,
-      mime_type: mime,
-      size_bytes: blob.size,
-      media_kind: kind,
-      source: input.source ?? null,
-      source_metadata: input.sourceMetadata ?? {},
-    })
+    .insert([
+      {
+        user_id: input.userId,
+        file_name: input.fileName,
+        storage_path: path,
+        public_url: publicUrl,
+        mime_type: mime,
+        size_bytes: blob.size,
+        media_kind: kind,
+        source: input.source ?? null,
+        source_metadata: (input.sourceMetadata ?? {}) as Record<string, unknown>,
+      },
+    ])
     .select()
     .single();
   if (insErr) throw insErr;
