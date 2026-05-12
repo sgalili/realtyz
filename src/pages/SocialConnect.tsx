@@ -235,6 +235,26 @@ export default function SocialConnect() {
         </div>
       </div>
 
+      {manualLoginUrl && (
+        <div className="rounded-xl border border-blue-200 bg-blue-50 p-4 flex items-center justify-between gap-3">
+          <div className="text-sm text-blue-900">
+            הדפדפן חסם את ההפניה האוטומטית. השלם את החיבור ידנית:
+          </div>
+          <Button
+            size="lg"
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+            onClick={() => {
+              window.open(manualLoginUrl, '_blank', 'noopener,noreferrer');
+              setManualLoginUrl(null);
+              setLinkingPlatform(null);
+            }}
+          >
+            <ExternalLink className="h-4 w-4 ml-2" />
+            התחברות ידנית
+          </Button>
+        </div>
+      )}
+
       {loading ? (
         <div className="flex items-center justify-center py-20 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin ml-2" /> טוען רשתות...
