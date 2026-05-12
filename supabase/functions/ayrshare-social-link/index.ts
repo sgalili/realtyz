@@ -152,9 +152,12 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Safety guard: missing realtyz- refId after profile resolution.' }, 403);
     }
 
-    // ---- Build direct Ayrshare social-connect URL (Business Plan) ----
-    const url = `https://app.ayrshare.com/social?profileKey=${encodeURIComponent(profileKey!)}&platform=${encodeURIComponent(platform)}`;
-    return jsonResponse({ url, profileKey, refId, platform });
+    // ---- Build direct Ayrshare social-link URL (Business Plan, non-white-label) ----
+    const cleanKey = (profileKey || '').toString().trim();
+    const cleanPlatform = platform.toLowerCase().trim();
+    const url = `https://app.ayrshare.com/social-link?profileKey=${encodeURIComponent(cleanKey)}&platform=${encodeURIComponent(cleanPlatform)}`;
+    console.log('Final Redirect URL:', url);
+    return jsonResponse({ url, profileKey: cleanKey, refId, platform: cleanPlatform });
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error('[ayrshare-social-link] unexpected error', msg);
