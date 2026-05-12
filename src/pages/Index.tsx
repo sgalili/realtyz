@@ -149,7 +149,6 @@ const Dashboard = () => {
       const { data } = await (supabase as any)
         .from('leads')
         .select('city')
-        .eq('is_demo', false)
         .not('city', 'is', null);
       const counts: Record<string, number> = {};
       (data ?? []).forEach((row: { city: string | null }) => {
