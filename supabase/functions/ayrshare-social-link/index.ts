@@ -153,9 +153,10 @@ Deno.serve(async (req) => {
     }
 
     // ---- Build direct Ayrshare social-link URL (Business Plan, non-white-label) ----
-    const cleanKey = (profileKey || '').toString().trim();
+    // Strict trim: strip whitespace and stray surrounding quotes from the DB value.
+    const cleanKey = (profileKey || '').toString().trim().replace(/^['"`]+|['"`]+$/g, '');
     const cleanPlatform = platform.toLowerCase().trim();
-    const url = `https://app.ayrshare.com/social-link?profileKey=${encodeURIComponent(cleanKey)}&platform=${encodeURIComponent(cleanPlatform)}`;
+    const url = `https://app.ayrshare.com/social/direct?profileKey=${encodeURIComponent(cleanKey)}&network=${encodeURIComponent(cleanPlatform)}`;
     console.log('Final Redirect URL:', url);
     return jsonResponse({ url, profileKey: cleanKey, refId, platform: cleanPlatform });
   } catch (e) {
