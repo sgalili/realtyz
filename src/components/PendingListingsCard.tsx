@@ -167,6 +167,14 @@ export function PendingListingsCard() {
                     <div className="min-w-0">
                       <p className="text-sm font-semibold truncate">{l.property_title}</p>
                       <div className="flex flex-wrap gap-1 mt-1">
+                        {l.is_investment_opportunity ? (
+                          <Badge className="text-[10px] bg-amber-500/15 text-amber-700 border border-amber-500/40 hover:bg-amber-500/20 gap-1">
+                            <Zap className="h-3 w-3" /> עסקה חכמה
+                          </Badge>
+                        ) : null}
+                        {l.source && l.source !== 'manual' ? (
+                          <Badge variant="outline" className="text-[10px] uppercase">{l.source}</Badge>
+                        ) : null}
                         {l.asking_price ? <Badge variant="outline" className="text-[10px]">{fmtPrice(l.asking_price)}</Badge> : null}
                         {l.rooms ? <Badge variant="outline" className="text-[10px]">{l.rooms} חד׳</Badge> : null}
                         {l.sqm ? <Badge variant="outline" className="text-[10px]">{l.sqm} מ"ר</Badge> : null}
