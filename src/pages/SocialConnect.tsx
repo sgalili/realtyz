@@ -20,6 +20,20 @@ type Connected = {
   userImage?: string;
 };
 
+type DiagnosticReport = {
+  api_key_valid?: boolean;
+  private_key_format_valid?: boolean;
+  domain_match?: boolean;
+  error?: string;
+  message?: string;
+  details?: { private_key_format?: string };
+  secrets_present?: { AYR_DOMAIN?: string };
+};
+
+type FunctionError = Error & {
+  context?: Response | { response?: Response };
+};
+
 const PLATFORM_META: Record<string, { name: string; bg: string; ring: string; text: string; logo: JSX.Element }> = {
   instagram: {
     name: 'Instagram',
@@ -100,13 +114,14 @@ export default function SocialConnect() {
     const delayFailureReset = () => new Promise((resolve) => setTimeout(resolve, 1000));
     try {
       const { data, error } = await supabase.functions.invoke('ayrshare-diagnostic', { body: {} });
-      let body: any = data;
+      let body = data as DiagnosticReport | null;
       let status: number | undefined;
       if (error) {
         try {
-          const resp = (error as any)?.context?.response;
+          const context = (error as FunctionError).context;
+          const resp = context instanceof Response ? context : context?.response;
           status = resp?.status;
-          if (resp?.json) body = await resp.json();
+          if (resp?.json) body = (await resp.json()) as DiagnosticReport;
         } catch { /* ignore */ }
         await delayFailureReset();
         throw new Error(`${body?.error || body?.message || error.message || 'Diagnostic failed'}${status ? ` (status ${status})` : ''}`);
@@ -116,8 +131,8 @@ export default function SocialConnect() {
       const desc = `API key: ${body?.api_key_valid ? '✓' : '✗'} · Private key: ${body?.private_key_format_valid ? '✓' : '✗'} (${body?.details?.private_key_format ?? '—'}) · Domain: ${body?.domain_match ? '✓' : '✗'} (${body?.secrets_present?.AYR_DOMAIN})`;
       if (ok) toast.success('כל הסודות תקינים', { description: desc });
       else toast.error('בעיה בתצורת Ayrshare', { description: desc, duration: 10000 });
-    } catch (e: any) {
-      toast.error('Diagnostic failed', { description: e?.message || 'unknown' });
+    } catch (e: unknown) {
+      toast.error('Diagnostic failed', { description: e instanceof Error ? e.message : 'unknown' });
     } finally {
       setDiagnosing(false);
     }
