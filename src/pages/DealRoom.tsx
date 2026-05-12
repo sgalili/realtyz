@@ -340,11 +340,11 @@ export default function DealRoom() {
     setActiveSuggestionId(null);
     setActiveLead(lead);
     setSmartReply('');
+    setReplyVariants([]);
+    setSelectedVariantIdx(null);
     setDraftMode('review');
     setGenerating(true);
     setGenPhase('searching');
-    // Flip the status to "drafting" shortly after kick-off so the Agent sees both phases
-    // even on fast responses. The edge function performs the vector search first, then drafts.
     const phaseTimer = window.setTimeout(() => setGenPhase('drafting'), 900);
     try {
       const { data, error } = await supabase.functions.invoke('ai-agent', {
@@ -352,17 +352,23 @@ export default function DealRoom() {
           mode: 'deal_room_reply',
           lead_id: lead.id,
           lead_name: lead.full_name,
+          variants: 3,
           context: `Lead stage: ${lead.lead_stage}. City: ${lead.city || 'unknown'}. Interest: ${lead.interest_tag || 'general'}.`,
         },
       });
       if (error) throw error;
-      const reply = (data as any)?.reply || (data as any)?.message || (data as any)?.content || '';
+      const vs = Array.isArray((data as any)?.variants) ? ((data as any).variants as string[]) : [];
+      const reply = vs[0] || (data as any)?.reply || (data as any)?.content || (data as any)?.message || '';
+      setReplyVariants(vs);
+      setSelectedVariantIdx(vs.length ? 0 : null);
       setSmartReply(reply || 'אין הצעה זמינה כרגע. נסה שוב בעוד רגע.');
       setFactViolations(((data as any)?.fact_violations as any[]) || []);
       setEscalation(((data as any)?.escalation as any) || null);
     } catch (err: any) {
       console.error('Smart reply error', err);
       setSmartReply('');
+      setReplyVariants([]);
+      setSelectedVariantIdx(null);
       toast.error('לא ניתן ליצור תשובה חכמה', { description: err?.message });
     } finally {
       window.clearTimeout(phaseTimer);
