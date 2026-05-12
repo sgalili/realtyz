@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { DEMO_CANDIDATES } from '@/lib/demoData';
-import { Bell, AlertTriangle, CalendarClock, ExternalLink, Megaphone, ShieldAlert, Target, TrendingUp, UserCheck, Wallet } from 'lucide-react';
+import { Bell, AlertTriangle, CalendarClock, ExternalLink, Home, LineChart, Megaphone, Target, TrendingUp, User, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -34,37 +34,36 @@ type DemoNotification = {
 };
 
 const DEMO_EVENT_TEMPLATES = [
-  { title: 'הגנת משבר', message: 'זוהתה מתקפת בוטים מתואמת - מערכת ההגנה הציעה תגובת נגד.', cta: 'צפה בפרטים', path: '/sentiment' },
-  { title: 'שיפור סנטימנט', message: 'עלייה בסנטימנט החיובי בקרב קהל היעד ב{city}.', cta: 'צפה בפרטים', path: '/sentiment' },
-  { title: 'המרת מתלבט', message: 'מתעניין מתנדנד הפך לתומך לאחר שיחת AI ב-WhatsApp.', cta: 'צפה בפרטים', path: '/leads' },
-  { title: 'אבן דרך לעסקה', message: 'התקרבת ליעד העסקה ה-{transaction}! נדרשים עוד 2,300 תומכים ב{region}.', cta: 'צפה בהתקדמות', path: '/dashboard' },
-  { title: 'אופטימיזציית מודעות', message: 'ה-AI ביצע אופטימיזציה לקמפיין Meta: עלות לליד ירדה ב-12%.', cta: 'צפה בפרטים', path: '/campaigns' },
-  { title: 'טפטוף קמפיין', message: 'רצף WhatsApp חדש תוזמן להפצה מדורגת הערב.', cta: 'צפה בפרטים', path: '/calendar' },
+  { title: 'הזדמנות חמה בבשן', message: 'זוהה נכס בבשן 4 חדרים במחיר של 2. ה-AI יצר טיוטת מודעה ל-Meta.', cta: 'צפה בנכס', path: '/properties' },
+  { title: 'סגירת עסקה קרובה', message: 'ליד חם (אלון) סיים שיחת WhatsApp עם ה-AI וביקש לתאם פגישה בבשן.', cta: 'פתח חדר עסקה', path: '/deal-room' },
+  { title: 'אופטימיזציית מודעות', message: 'הקמפיין לדירת הבשן עבר אופטימיזציה: העלות לליד ירדה ב-12%.', cta: 'צפה בביצועים', path: '/campaigns' },
+  { title: 'ליד חדש מהשוק', message: 'ה-AI זיהה נכס חדש ב-Yad2 התואם את פרופיל ההשבחה שלך (דירות 2 חדרים גדולות).', cta: 'צפה בנכס', path: '/properties' },
+  { title: 'סיכום יום', message: '5 לידים חדשים תואמו היום לסיור בנכסים בהרצליה. ה-AI שלח תזכורות אוטומטיות.', cta: 'צפה בלידים', path: '/leads' },
+  { title: 'אבן דרך לעסקה', message: 'התקרבת ליעד המכירות החודשי. נדרשת עוד עסקה אחת לסגירת המכסה.', cta: 'צפה בביצועים', path: '/business-performance' },
+  { title: 'ניתוח שוק', message: 'עלייה של 5% בביקושים לשכירויות בשכונת הבשן בהרצליה. מומלץ לעדכן מחיר.', cta: 'צפה בניתוח', path: '/insights' },
 ];
-
-const DEMO_CITIES = ['חיפה', 'ירושלים', 'תל אביב', 'באר שבע', 'ראשון לציון'];
-const DEMO_REGIONS = ['השרון', 'גוש דן', 'הצפון', 'אזור השפלה', 'ירושלים'];
 
 const resolveToastPath = (notification: Pick<DemoNotification, 'title' | 'message' | 'path'>) => {
   const text = `${notification.title} ${notification.message}`;
-  if (/Meta|מודעות|Ads|קמפיין Meta/i.test(text)) return '/campaigns';
-  if (/סנטימנט|משבר|בוטים|Crisis/i.test(text)) return '/sentiment';
-  if (/מתעניין|CRM|תומך|WhatsApp/i.test(text)) return '/leads';
-  if (/טפטוף|תוזמן|Calendar|Drip/i.test(text)) return '/calendar';
+  if (/Meta|מודעות|Ads|קמפיין|אופטימיזצי/i.test(text)) return '/campaigns';
+  if (/נכס|Yad2|בשן|שכירויות|נדל"ן|דירת|דירות/i.test(text)) return '/properties';
+  if (/ליד|לידים|WhatsApp|פגישה/i.test(text)) return '/leads';
+  if (/עסקה|מכירות|מכסה|יעד/i.test(text)) return '/business-performance';
+  if (/ניתוח|שוק|ביקוש/i.test(text)) return '/insights';
   return notification.path;
 };
 
 const isHighPriorityToast = (notification: Pick<DemoNotification, 'title' | 'message'>) =>
-  /משבר|בוטים|שלילי|חריגה|Critical|Crisis/i.test(`${notification.title} ${notification.message}`);
+  /הזדמנות חמה|סגירת עסקה|אבן דרך/i.test(`${notification.title} ${notification.message}`);
 
 const getDemoNotificationIcon = (notification: DemoNotification) => {
   const text = `${notification.title} ${notification.message} ${notification.path}`;
-  if (/משבר|בוטים|הגנה|sentiment/i.test(text)) return ShieldAlert;
-  if (/סנטימנט|עלייה|שיפור/i.test(text)) return TrendingUp;
-  if (/מתעניין|תומך|WhatsApp|voters/i.test(text)) return UserCheck;
-  if (/עסקה|יעד|dashboard/i.test(text)) return Target;
-  if (/מודעות|Meta|Ads|campaigns/i.test(text)) return Megaphone;
-  if (/טפטוף|תוזמן|calendar/i.test(text)) return CalendarClock;
+  if (/אופטימיזצי|מודעות|Meta|Ads|campaigns/i.test(text)) return Megaphone;
+  if (/ניתוח|שוק|ביקוש|insights/i.test(text)) return LineChart;
+  if (/ליד|לידים|WhatsApp|פגישה|leads/i.test(text)) return User;
+  if (/אבן דרך|מכירות|מכסה|יעד|performance/i.test(text)) return Target;
+  if (/סיכום יום|תזכורת|calendar/i.test(text)) return CalendarClock;
+  if (/נכס|Yad2|בשן|שכירויות|דירת|דירות|properties/i.test(text)) return Home;
   return Bell;
 };
 
@@ -190,15 +189,11 @@ export default function NotificationCenter() {
     const schedule = () => {
       timeoutId = setTimeout(() => {
         const template = DEMO_EVENT_TEMPLATES[Math.floor(Math.random() * DEMO_EVENT_TEMPLATES.length)];
-        const focus = activeCandidate.focus[Math.floor(Math.random() * activeCandidate.focus.length)];
         const notification: DemoNotification = {
           id: `demo-${Date.now()}`,
           title: template.title,
-          subtext: `${activeCandidate.name} · ${focus}`,
-          message: template.message
-            .replace('{city}', DEMO_CITIES[Math.floor(Math.random() * DEMO_CITIES.length)])
-            .replace('{region}', DEMO_REGIONS[Math.floor(Math.random() * DEMO_REGIONS.length)])
-            .replace('{transaction}', String(activeCandidate.mandateGoal)),
+          subtext: 'Realtyz AI · הרצליה',
+          message: template.message,
           cta: template.cta,
           path: template.path,
           createdAt: new Date().toISOString(),
