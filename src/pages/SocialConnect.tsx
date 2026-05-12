@@ -183,10 +183,18 @@ export default function SocialConnect() {
             חבר את חשבונות הסושיאל שלך ב־Realtyz — אינסטגרם, פייסבוק, לינקדאין, X ועוד. ההתחברות חלקה, ללא מיתוג צד שלישי.
           </p>
         </div>
-        <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-          <RefreshCw className={`h-4 w-4 ml-1 ${loading ? 'animate-spin' : ''}`} />
-          רענן
-        </Button>
+        <div className="flex items-center gap-2">
+          {isAdmin && (
+            <Button variant="secondary" size="sm" onClick={runDiagnostic} disabled={diagnosing}>
+              <Stethoscope className={`h-4 w-4 ml-1 ${diagnosing ? 'animate-pulse' : ''}`} />
+              Run Connection Test
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+            <RefreshCw className={`h-4 w-4 ml-1 ${loading ? 'animate-spin' : ''}`} />
+            רענן
+          </Button>
+        </div>
       </div>
 
       {loading ? (
