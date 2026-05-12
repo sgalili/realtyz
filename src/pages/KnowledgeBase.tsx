@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
@@ -9,9 +9,10 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
+import { Textarea } from '@/components/ui/textarea';
 import {
   Upload, FileText, Trash2, Phone, Plus, CheckCircle2, Loader2, FileCheck,
-  Image, Video, Mic, Sparkles, Brain, RefreshCw, BookOpen,
+  Image, Video, Mic, Sparkles, Brain, RefreshCw, BookOpen, MessageSquare, Send,
 } from 'lucide-react';
 import { SectionDivider } from '@/components/SectionDivider';
 import { toast } from 'sonner';
@@ -33,6 +34,41 @@ export default function KnowledgeBase() {
   
   const [waPhone, setWaPhone] = useState('');
   const [waLabel, setWaLabel] = useState('');
+
+  /* ── KB Chat ── */
+  type ChatMsg = { role: 'user' | 'assistant'; content: string; sources?: string[]; isError?: boolean };
+  const [chatInput, setChatInput] = useState('');
+  const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
+  const [chatLoading, setChatLoading] = useState(false);
+  const chatScrollRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: 'smooth' });
+  }, [chatMessages, chatLoading]);
+
+  const sendKbChat = async () => {
+    const text = chatInput.trim();
+    if (!text || chatLoading) return;
+    const next: ChatMsg[] = [...chatMessages, { role: 'user', content: text }];
+    setChatMessages(next);
+    setChatInput('');
+    setChatLoading(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('kb-chat', {
+        body: { messages: next.map(({ role, content }) => ({ role, content })) },
+      });
+      if (error) throw new Error(error.message);
+      if (data?.error) {
+        setChatMessages((p) => [...p, { role: 'assistant', content: data.error, isError: true }]);
+      } else {
+        setChatMessages((p) => [...p, { role: 'assistant', content: data?.content ?? 'לא התקבלה תשובה.', sources: data?.sources }]);
+      }
+    } catch (e: any) {
+      setChatMessages((p) => [...p, { role: 'assistant', content: `שגיאה: ${e.message}`, isError: true }]);
+    } finally {
+      setChatLoading(false);
+    }
+  };
 
   const fileToDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -254,6 +290,83 @@ export default function KnowledgeBase() {
         <UniversalKnowledgeInput />
         <WhatsAppConversationImporter />
       </div>
+
+      {/* ─── KB Chat ─── */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <MessageSquare className="h-4 w-4 text-primary" /> שיחה עם מאגר הידע
+          </CardTitle>
+          <CardDescription>
+            שאל שאלות וקבל תשובות אך ורק על סמך המסמכים שהעלית למאגר. לא נעשה שימוש בידע חיצוני.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div
+            ref={chatScrollRef}
+            className="h-72 overflow-y-auto rounded-md border bg-muted/20 p-3 space-y-2"
+          >
+            {chatMessages.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-10">
+                התחל שיחה — לדוגמה: "מה עיקרי המצע?" או "מה כתוב על דיור?"
+              </p>
+            )}
+            {chatMessages.map((m, i) => (
+              <div
+                key={i}
+                className={`rounded-lg px-3 py-2 text-sm whitespace-pre-wrap leading-relaxed max-w-[90%] ${
+                  m.role === 'user'
+                    ? 'bg-primary text-primary-foreground ms-auto'
+                    : m.isError
+                      ? 'bg-destructive/15 text-destructive border border-destructive/30'
+                      : 'bg-background border'
+                }`}
+              >
+                {m.content}
+                {m.sources && m.sources.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-border/50 flex flex-wrap gap-1">
+                    {m.sources.map((s, j) => (
+                      <Badge key={j} variant="secondary" className="text-[10px]">
+                        <FileText className="h-2.5 w-2.5 me-1" />{s}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+            ))}
+            {chatLoading && (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> מחפש במאגר...
+              </div>
+            )}
+          </div>
+          <div className="flex items-end gap-2">
+            <Textarea
+              value={chatInput}
+              onChange={(e) => setChatInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && !e.shiftKey) {
+                  e.preventDefault();
+                  sendKbChat();
+                }
+              }}
+              placeholder="שאל שאלה על מאגר הידע..."
+              rows={1}
+              dir="rtl"
+              disabled={chatLoading}
+              className="flex-1 min-h-[44px] max-h-32 resize-none"
+            />
+            <Button onClick={sendKbChat} disabled={chatLoading || !chatInput.trim()}>
+              {chatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            </Button>
+            {chatMessages.length > 0 && (
+              <Button variant="ghost" size="sm" onClick={() => setChatMessages([])}>
+                נקה
+              </Button>
+            )}
+          </div>
+        </CardContent>
+      </Card>
 
       {/* ─── WhatsApp Whitelist ─── */}
       <Card>
