@@ -65,6 +65,7 @@ import { LiveActivityFeed } from '@/components/dashboard/LiveActivityFeed';
 import { StrategicPdfExportButton } from '@/components/dashboard/StrategicPdfExportButton';
 
 import { SidebarIntelInput } from '@/components/SidebarIntelInput';
+import { ProfileCapsule } from '@/components/sidebar/ProfileCapsule';
 
 type NavItem = {
   title: string;
