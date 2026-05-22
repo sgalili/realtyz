@@ -312,37 +312,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                 <SuperAdminLeadAlert collapsed={collapsed} />
               </div>
             )}
-            {collapsed ? (
-              <SidebarMenuButton
-                onClick={() => setLogoutOpen(true)}
-                aria-label="התנתקות"
-                className="text-primary/75 hover:text-primary hover:bg-primary/10 hover:shadow-[0_10px_24px_-14px_hsl(var(--primary)/0.35)]"
-              >
-                <LogOut className="h-4 w-4 shrink-0" />
-              </SidebarMenuButton>
-            ) : (
-              <div className="flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-primary/5">
-                {user && (
-                  <p className="min-w-0 flex-1 truncate text-[11px] text-primary/55">
-                    {user.email}
-                  </p>
-                )}
-                {isSuperAdmin && (
-                  <span className="shrink-0 rounded-full bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none tracking-wider text-warning">
-                    Admin
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setLogoutOpen(true)}
-                  aria-label="התנתקות"
-                  title="התנתקות"
-                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-primary/70 transition-all duration-200 hover:bg-primary/10 hover:text-primary active:scale-95"
-                >
-                  <LogOut className="h-4 w-4" />
-                </button>
-              </div>
-            )}
+            <ProfileCapsule />
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
