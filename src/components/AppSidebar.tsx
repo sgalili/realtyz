@@ -111,8 +111,7 @@ const NAV_GROUPS: NavGroup[] = [
       { title: 'Performance Insights', url: '/insights', icon: Gauge, iconColor: 'text-warning' },
       { title: 'ביצועים עסקיים', url: '/business-performance', icon: Briefcase, iconColor: 'text-primary' },
       { title: 'יומן פעילות', url: '/activity-log', icon: History, iconColor: 'text-social-telegram' },
-      { title: 'ניהול חבילה', url: '/subscription', icon: Crown, iconColor: 'text-warning', requires: 'managing_broker' },
-      { title: 'חיובים וחשבוניות', url: '/finance', icon: Wallet, iconColor: 'text-primary', requires: 'managing_broker' },
+      // Subscription + finance moved into ProfileCapsule (bottom popover).
     ],
   },
   {
