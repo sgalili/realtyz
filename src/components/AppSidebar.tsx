@@ -318,18 +318,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
         </SidebarGroup>
       </SidebarContent>
     </Sidebar>
-    <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
-      <AlertDialogContent dir="rtl" className="text-right">
-        <AlertDialogHeader className="text-right">
-          <AlertDialogTitle>להתנתק מהמערכת?</AlertDialogTitle>
-          <AlertDialogDescription>לאחר ההתנתקות תועבר למסך הכניסה.</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter className="gap-2 sm:justify-start sm:space-x-0">
-          <AlertDialogAction onClick={confirmSignOut}>התנתקות</AlertDialogAction>
-          <AlertDialogCancel>ביטול</AlertDialogCancel>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    {/* Logout dialog now lives inside ProfileCapsule. */}
     </>
   );
 }
