@@ -1,106 +1,124 @@
-## Homely full integration — what I'll build
+# Realtyz Premium Overhaul + Full Kalpiz Engine Port
 
-You confirmed three pillars:
-
-1. **Each broker enters their own Homely username + password** (plus the existing client code) inside their personal API Settings.
-2. **You (super admin) get an oversight console** — view every broker's connection status, push history, and force-disable a broken integration. No global API key.
-3. **Inbound webhook** — Homely can call back into Realtyz when something changes on their side, per broker.
+Compilation on hold. This expanded plan covers the global shell **and** ports the heavy machinery (Campaign Center, CRM database, automations) from Kalpiz, rebranded to broker vocabulary.
 
 ---
 
-### What I still need from you
+## Workstream A — Shell, Sidebar, Profile Capsule
 
-Before I code, please answer these two so I get it right the first time:
+**Files:** `src/components/AppSidebar.tsx`, `src/components/AppLayout.tsx`, new `src/components/sidebar/ProfileCapsule.tsx`
 
-1. **Login URL & login flow Homely actually uses.**
-   The Webtiv "Open Card" doc you shared has no login endpoint. Homely's broker-facing site lives somewhere like `https://crm.homely.co.il` (or similar) — I need:
-   - The exact login page URL each broker uses today.
-   - Whether the login posts a form (HTML) or hits a JSON endpoint.
-   - If you have it: a screenshot of the broker dashboard's "API / Integrations / Webhooks" page.
-   Without this, "username + password" can only be **stored**, not actually used to fetch data — Homely needs to expose either an API or a webhook trigger we can hook into.
+- Remove from main sidebar matrix: `הפרופיל שלי`, `ניהול חבילה` (`/subscription`), `חשבוניות ותשלומים` (`/finance`).
+- Build `ProfileCapsule` pinned to `SidebarFooter`: avatar + display name + chevron, opens Radix Popover with three actions → `/profile`, `/subscription`, `/finance`. Logout action included.
+- Minimal high-contrast nav: thin dividers, single accent, no decorative emoji icons in group labels.
+- Header app-name lock → "Realtyz AI" (read from `useWhiteLabel()` with that as default).
 
-2. **Webhook endpoint spec from Homely.**
-   For inbound, Homely has to be able to POST to us. Does Homely's CRM have a documented webhook setting (where the broker pastes our URL), or do they only push via their own integrations? If yes, send the doc link.
+## Workstream B — War Room ("חדר מלחמה ועסקאות")
 
-If you don't have either, I'll still ship Pillars 1 & 2 (storage + oversight) and stub Pillar 3 with a generic `POST /homely-webhook/:broker_token` endpoint that you can configure in Homely once they expose it.
+**Files:** new `src/pages/WarRoom.tsx`, `src/components/warroom/{RadarTab,GeoPulseTab,SegmentationTab,MediaSlicesTab}.tsx`, route `/war-room` (and link from dashboard).
+
+4 RTL tabs:
+1. **מכ"ם נכסים** — matrix: rows = high-intent leads (lead_score desc), cols = property class (rooms × deal_type × city band). Cell click → DealRoom filtered.
+2. **דופק גיאוגרפי** — Recharts bar/heat per city from `leads.preferences.city` ∩ `listings.city`, sentiment overlay from `leads.sentiment`.
+3. **פילוח דמוגרפי** — budget brackets, family context, requirements stacked bars from `leads.preferences`.
+4. **פלחי מדיה** — AI voice call telemetry vs inbound WhatsApp streams (`messages` + `interaction_activity_log`).
+
+## Workstream C — Full Campaign Center Port ("מרכז הקמפיינים")
+
+**Current:** `src/pages/CampaignCenter.tsx` already has the 5-tab shell. Port the missing dispatch engine + queue UI.
+
+**Files:**
+- Refit `src/pages/CampaignManager.tsx` → "קמפיין נכסים חמים" card list (active/scheduled/draft), per-card metrics (reach, replies, conversions), launch/pause/duplicate actions.
+- New `src/components/campaigns/DispatchQueueCard.tsx` — shows pending `autopilot_queue` items + `campaign_logs` recent dispatches, retry / cancel.
+- New `src/components/campaigns/AutomationFlowCard.tsx` — "אוטומציות שיווק ללידים" list: trigger (new lead / stage change / property match) → action (WhatsApp / SMS / email / AI nudge). Toggle active.
+- Rewrite vocab on `CampaignStrategy.tsx`, `SmsBlastSimulator.tsx`, `CommunityBroadcastPanel.tsx`:
+  - "IVR / הודעה קולית" → removed (real-estate has no IVR).
+  - Audience labels → "קונים", "שוכרים", "מתעניינים בעיר X".
+  - Campaign types → "קמפיין נכסים חמים", "הפצה לקונים/שוכרים", "ניוזלטר שוק".
+
+**Edge function:** `dispatch-campaign` (port pattern from Kalpiz) — reads campaign row, expands recipients via `leads` filters, enqueues into `autopilot_queue` with channel + template. Existing `autopilot-queue-drain` already handles sending.
+
+**Schema additions (migration):**
+- `campaigns` table: extend (if missing) with `campaign_type` (`hot_property|buyers_blast|renters_blast|newsletter|automation`), `target_filters` (jsonb), `template_id`, `status`, `scheduled_for`, `metrics` (jsonb).
+- `marketing_automations` table: `trigger_type`, `trigger_config` (jsonb), `action_type`, `action_config` (jsonb), `is_active`, `last_run_at`.
+- RLS: owner-only (`auth.uid() = user_id`).
+
+## Workstream D — Full CRM Database Port ("מאגר לקוחות פוטנציאליים / מחפשי דירות")
+
+**Current:** `src/pages/LeadCRM.tsx` exists but lighter than Kalpiz. Port full grid + filters + drawer.
+
+**Files:**
+- Rebuild `LeadCRM.tsx` with:
+  - Advanced filter bar: deal_type (sale/rent), budget range slider, target cities multi-select, rooms range, lead_stage, lead_score range, channel source, date range.
+  - High-density grid (existing pattern): name, phone, deal_type chip, budget, target cities, rooms, score, sentiment, last_contact, owner_agent.
+  - Inline metadata tags editor (rooms, must-haves) — writes to `leads.preferences`.
+  - Multi-select bulk: assign agent, bulk WhatsApp, bulk add to campaign, bulk export.
+- New `src/components/leads/LeadHistoryDrawer.tsx` — communication history timeline (messages, calls, emails, automation events, manual notes) from `messages` + `interaction_activity_log` + `chat_history`. Reuses existing `VoterProfileSidebar` patterns, renamed/refactored to `LeadProfileSidebar`.
+
+**Data bridge for Homely sync (template, not active):**
+- `homely_sync_map` table: `lead_id`, `homely_client_id`, `last_synced_at`, `sync_direction` (`pull|push|bidirectional`), `field_map` (jsonb).
+- `homely_sync_log` table: per-event log.
+- Empty edge function stub `homely-sync-leads` with TODO scaffold so future API key wiring is a config-only change.
+
+## Workstream E — Approved Managers + Digest
+
+**Schema (migration):**
+- `approved_managers`: `id`, `user_id` (owner broker), `full_name`, `phone`, `gender` (`male|female|neutral`), `role_label`, `is_active`, timestamps. RLS owner-only.
+- `manager_digest_log`: `user_id`, `sent_at`, `summary_text`, `match_count`, `completion_count`.
+
+**Edge function:** `managers-daily-digest` — scheduled 18:00 Asia/Jerusalem via `pg_cron` + `pg_net`. Aggregates today's platform matches + broker completions per owner, formats single WhatsApp text, sends via WhatsApp gateway, logs row.
+
+**UI:** new `src/pages/ApprovedManagers.tsx` route `/managers`:
+- Manager CRUD table.
+- "הודעה קבוצתית למורשים" modal with template textarea, variable chips `[שם פרטי]`, `[זמין/ה]`, `[יכול/ה]`. On send, per-recipient render replaces slash forms based on `gender`:
+  - male → `זמין`, `יכול`
+  - female → `זמינה`, `יכולה`
+  - neutral → keeps `/` form.
+- Real-time per-event notifications to managers suppressed: matches + completions write to `pending_digest` queue, not push.
+
+## Workstream F — Vocabulary Lock + Currency
+
+- Sweep remaining political/Sharren references project-wide:
+  - "שרן הסכל", "מצביע", "בוחר", "מפלגה", "בחירות", "מנדט", "סקר" → `מתווך`, `לקוח קצה`, `נכס למכירה`, `נכס להשכרה`, `קונה`, `שוכר`.
+  - Update `useElectionType` terms map + `mem://ai/personality-style` derived prompts (broker tone, not political).
+- New `src/lib/formatCurrency.ts`:
+  ```ts
+  export const fmtILS = (n: number) =>
+    `₪${n.toLocaleString('he-IL', { maximumFractionDigits: 0 })}`;
+  ```
+  Render with `<bdi dir="ltr">{fmtILS(n)}</bdi>` so `₪` is always **left** of the digits in RTL flow.
+- Replace inline price formatting in: `Finance.tsx`, `BusinessPerformance.tsx`, `Properties.tsx`, `PropertyDetail.tsx`, `DealRoom.tsx`, `CommissionEditor.tsx`, `SubscriptionManager.tsx`, `Upgrade.tsx`, `Broadcast.tsx`, `LeadCRM.tsx` (budget cells), `WarRoom` segmentation tab.
+
+## Workstream G — Page-Level Visual Replication
+
+For every primary page (Dashboard, Inbox, DealRoom, Properties, CRM, Campaigns, War Room, Activity Log, Settings):
+- Apply consistent `PageHero` + `PageToolbar` pattern already in repo.
+- Card surfaces: `border border-border/60 bg-background`, single subtle shadow, 8px radius.
+- Section spacing tokens normalized (`space-y-6`, padded `p-6`).
+- No emojis in section titles; lucide-react icons only, size 16, accent color tokens.
+- Tables: sticky header, zebra off, hover row, compact density.
 
 ---
 
-### What I'll build
+## Execution Order (once approved)
 
-#### 1. Per-broker credentials (encrypted at rest)
+1. **F** — Vocabulary + currency helper (low-risk groundwork).
+2. **A** — Sidebar + Profile Capsule.
+3. **D** — CRM database port (highest user value).
+4. **C** — Campaign Center port + dispatch engine.
+5. **E** — Approved Managers + 18:00 digest cron.
+6. **B** — War Room.
+7. **G** — Per-page visual polish pass.
 
-New table `homely_broker_credentials` (one row per user):
-- `homely_username` (text)
-- `homely_password_encrypted` (text — encrypted with `pgcrypto` using a server secret `HOMELY_CRED_KEY`)
-- `homely_client_code` (already exists on `user_api_keys`, will move here)
-- `homely_provider`, `homely_default_agent`, `homely_auto_push` (already exist, will migrate)
-- `webhook_token` (random, used in inbound URL)
-- `connection_status` ('not_configured' | 'ok' | 'failed' | 'disabled_by_admin')
-- `last_verified_at`, `last_error`
+Each workstream ships as its own batch with migration → code → verify.
 
-RLS: brokers see/edit only their own row; super-admins see all.
-Plain password is **never** sent back to the client — UI shows "•••• stored" with a "replace" affordance.
+## Out of Scope
 
-#### 2. ApiSettings UI (each broker)
-
-The existing Homely card gets a new "Homely Account Login" panel:
-- Username
-- Password (write-only)
-- "Test login" button → invokes `homely-verify-login` edge fn
-- Status pill: green ✓ / red ✗ / gray (not configured) / orange (disabled by admin)
-- The existing Open Card panel (client code / provider / agent / auto-push) stays.
-- Inbound webhook URL: read-only, copyable: `https://<project>.supabase.co/functions/v1/homely-webhook/<webhook_token>` with a "Copy" button and a one-line instruction.
-
-#### 3. Super-admin oversight console (`/settings/homely-admin`)
-
-Visible only to `super_admin` / `admin`. Shows:
-- Table of every broker: name, email, connection status, last verified, last push, push success rate (from `homely_push_log`).
-- Per-row actions: **View push log**, **Disable** (sets `connection_status = 'disabled_by_admin'` — trigger then refuses to push), **Re-enable**, **Force re-test**.
-- Aggregate counters at top: total brokers configured / failing / pushes today / last-24h error rate.
-- Sidebar entry under "Settings" group: "Homely Admin" (admin-only).
-
-#### 4. Edge functions (new)
-
-- `homely-verify-login` — POST `{user_id?}`. Decrypts the broker's password, attempts the real Homely login (curl the page you give me), updates `connection_status` + `last_verified_at`. Logs to `integration_error_logs` on failure.
-- `homely-webhook` — Public POST endpoint, route format `/homely-webhook/{token}`. Looks up the broker by `webhook_token`, validates payload, then either:
-  - upserts into `leads` (if it's a new-lead event), or
-  - updates an existing lead's stage (if it's a status-change event).
-  All received payloads land in a new `homely_inbound_events` table for audit.
-- `homely-push-lead` (existing) — extended to refuse when `connection_status = 'disabled_by_admin'`.
-
-#### 5. Database changes
-
-```text
-ALTER TABLE user_api_keys
-  DROP COLUMN homely_client_code, homely_provider,
-              homely_default_agent, homely_auto_push;
-  -- Migrated into the new dedicated table:
-
-CREATE TABLE homely_broker_credentials (...)  -- see Pillar 1
-CREATE TABLE homely_inbound_events (
-  id, user_id, event_type, payload, processed, created_at
-)
--- pgcrypto extension enabled in `extensions` schema
-```
-
-RLS:
-- `homely_broker_credentials`: owner OR `is_admin_or_above`
-- `homely_inbound_events`: owner OR `is_admin_or_above`
-- All admin actions logged to `audit_logs`.
-
-#### 6. Secrets
-
-I'll request **one** new Lovable Cloud secret from you: `HOMELY_CRED_KEY` (any 32+ char random string — I'll generate it for you to paste). It's the symmetric key used by `pgcrypto` to encrypt the broker passwords at rest.
+- Activating live Homely API sync (schema + stub only; API key wiring deferred).
+- Backfilling historical campaign metrics or digests.
+- Migrating Kalpiz political AI persona prompts; broker persona stays as-is.
+- Rebuilding inbox/KB UIs beyond consistency tokens.
 
 ---
 
-### Out of scope (won't touch)
-
-- The existing Open Card auto-push trigger keeps working.
-- The existing per-user `homely_api_key` field in `user_api_keys` stays (it's still used by `call-homely-api` proxy and `homely-search`).
-- No changes to leads schema or any UI outside ApiSettings + new admin page.
-
----
-
-**Reply with answers to the two questions above (or "go ahead, ship Pillars 1 & 2, stub Pillar 3") and I'll implement.**
+**Approve to begin execution starting at Workstream F**, or tell me to reorder / drop any block.
