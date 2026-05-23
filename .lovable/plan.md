@@ -1,124 +1,99 @@
-# Realtyz Premium Overhaul + Full Kalpiz Engine Port
+# Workstream D — Realtyz CRM + Homely Bridge + Freemium Guardrails
 
-Compilation on hold. This expanded plan covers the global shell **and** ports the heavy machinery (Campaign Center, CRM database, automations) from Kalpiz, rebranded to broker vocabulary.
-
----
-
-## Workstream A — Shell, Sidebar, Profile Capsule
-
-**Files:** `src/components/AppSidebar.tsx`, `src/components/AppLayout.tsx`, new `src/components/sidebar/ProfileCapsule.tsx`
-
-- Remove from main sidebar matrix: `הפרופיל שלי`, `ניהול חבילה` (`/subscription`), `חשבוניות ותשלומים` (`/finance`).
-- Build `ProfileCapsule` pinned to `SidebarFooter`: avatar + display name + chevron, opens Radix Popover with three actions → `/profile`, `/subscription`, `/finance`. Logout action included.
-- Minimal high-contrast nav: thin dividers, single accent, no decorative emoji icons in group labels.
-- Header app-name lock → "Realtyz AI" (read from `useWhiteLabel()` with that as default).
-
-## Workstream B — War Room ("חדר מלחמה ועסקאות")
-
-**Files:** new `src/pages/WarRoom.tsx`, `src/components/warroom/{RadarTab,GeoPulseTab,SegmentationTab,MediaSlicesTab}.tsx`, route `/war-room` (and link from dashboard).
-
-4 RTL tabs:
-1. **מכ"ם נכסים** — matrix: rows = high-intent leads (lead_score desc), cols = property class (rooms × deal_type × city band). Cell click → DealRoom filtered.
-2. **דופק גיאוגרפי** — Recharts bar/heat per city from `leads.preferences.city` ∩ `listings.city`, sentiment overlay from `leads.sentiment`.
-3. **פילוח דמוגרפי** — budget brackets, family context, requirements stacked bars from `leads.preferences`.
-4. **פלחי מדיה** — AI voice call telemetry vs inbound WhatsApp streams (`messages` + `interaction_activity_log`).
-
-## Workstream C — Full Campaign Center Port ("מרכז הקמפיינים")
-
-**Current:** `src/pages/CampaignCenter.tsx` already has the 5-tab shell. Port the missing dispatch engine + queue UI.
-
-**Files:**
-- Refit `src/pages/CampaignManager.tsx` → "קמפיין נכסים חמים" card list (active/scheduled/draft), per-card metrics (reach, replies, conversions), launch/pause/duplicate actions.
-- New `src/components/campaigns/DispatchQueueCard.tsx` — shows pending `autopilot_queue` items + `campaign_logs` recent dispatches, retry / cancel.
-- New `src/components/campaigns/AutomationFlowCard.tsx` — "אוטומציות שיווק ללידים" list: trigger (new lead / stage change / property match) → action (WhatsApp / SMS / email / AI nudge). Toggle active.
-- Rewrite vocab on `CampaignStrategy.tsx`, `SmsBlastSimulator.tsx`, `CommunityBroadcastPanel.tsx`:
-  - "IVR / הודעה קולית" → removed (real-estate has no IVR).
-  - Audience labels → "קונים", "שוכרים", "מתעניינים בעיר X".
-  - Campaign types → "קמפיין נכסים חמים", "הפצה לקונים/שוכרים", "ניוזלטר שוק".
-
-**Edge function:** `dispatch-campaign` (port pattern from Kalpiz) — reads campaign row, expands recipients via `leads` filters, enqueues into `autopilot_queue` with channel + template. Existing `autopilot-queue-drain` already handles sending.
-
-**Schema additions (migration):**
-- `campaigns` table: extend (if missing) with `campaign_type` (`hot_property|buyers_blast|renters_blast|newsletter|automation`), `target_filters` (jsonb), `template_id`, `status`, `scheduled_for`, `metrics` (jsonb).
-- `marketing_automations` table: `trigger_type`, `trigger_config` (jsonb), `action_type`, `action_config` (jsonb), `is_active`, `last_run_at`.
-- RLS: owner-only (`auth.uid() = user_id`).
-
-## Workstream D — Full CRM Database Port ("מאגר לקוחות פוטנציאליים / מחפשי דירות")
-
-**Current:** `src/pages/LeadCRM.tsx` exists but lighter than Kalpiz. Port full grid + filters + drawer.
-
-**Files:**
-- Rebuild `LeadCRM.tsx` with:
-  - Advanced filter bar: deal_type (sale/rent), budget range slider, target cities multi-select, rooms range, lead_stage, lead_score range, channel source, date range.
-  - High-density grid (existing pattern): name, phone, deal_type chip, budget, target cities, rooms, score, sentiment, last_contact, owner_agent.
-  - Inline metadata tags editor (rooms, must-haves) — writes to `leads.preferences`.
-  - Multi-select bulk: assign agent, bulk WhatsApp, bulk add to campaign, bulk export.
-- New `src/components/leads/LeadHistoryDrawer.tsx` — communication history timeline (messages, calls, emails, automation events, manual notes) from `messages` + `interaction_activity_log` + `chat_history`. Reuses existing `VoterProfileSidebar` patterns, renamed/refactored to `LeadProfileSidebar`.
-
-**Data bridge for Homely sync (template, not active):**
-- `homely_sync_map` table: `lead_id`, `homely_client_id`, `last_synced_at`, `sync_direction` (`pull|push|bidirectional`), `field_map` (jsonb).
-- `homely_sync_log` table: per-event log.
-- Empty edge function stub `homely-sync-leads` with TODO scaffold so future API key wiring is a config-only change.
-
-## Workstream E — Approved Managers + Digest
-
-**Schema (migration):**
-- `approved_managers`: `id`, `user_id` (owner broker), `full_name`, `phone`, `gender` (`male|female|neutral`), `role_label`, `is_active`, timestamps. RLS owner-only.
-- `manager_digest_log`: `user_id`, `sent_at`, `summary_text`, `match_count`, `completion_count`.
-
-**Edge function:** `managers-daily-digest` — scheduled 18:00 Asia/Jerusalem via `pg_cron` + `pg_net`. Aggregates today's platform matches + broker completions per owner, formats single WhatsApp text, sends via WhatsApp gateway, logs row.
-
-**UI:** new `src/pages/ApprovedManagers.tsx` route `/managers`:
-- Manager CRUD table.
-- "הודעה קבוצתית למורשים" modal with template textarea, variable chips `[שם פרטי]`, `[זמין/ה]`, `[יכול/ה]`. On send, per-recipient render replaces slash forms based on `gender`:
-  - male → `זמין`, `יכול`
-  - female → `זמינה`, `יכולה`
-  - neutral → keeps `/` form.
-- Real-time per-event notifications to managers suppressed: matches + completions write to `pending_digest` queue, not push.
-
-## Workstream F — Vocabulary Lock + Currency
-
-- Sweep remaining political/Sharren references project-wide:
-  - "שרן הסכל", "מצביע", "בוחר", "מפלגה", "בחירות", "מנדט", "סקר" → `מתווך`, `לקוח קצה`, `נכס למכירה`, `נכס להשכרה`, `קונה`, `שוכר`.
-  - Update `useElectionType` terms map + `mem://ai/personality-style` derived prompts (broker tone, not political).
-- New `src/lib/formatCurrency.ts`:
-  ```ts
-  export const fmtILS = (n: number) =>
-    `₪${n.toLocaleString('he-IL', { maximumFractionDigits: 0 })}`;
-  ```
-  Render with `<bdi dir="ltr">{fmtILS(n)}</bdi>` so `₪` is always **left** of the digits in RTL flow.
-- Replace inline price formatting in: `Finance.tsx`, `BusinessPerformance.tsx`, `Properties.tsx`, `PropertyDetail.tsx`, `DealRoom.tsx`, `CommissionEditor.tsx`, `SubscriptionManager.tsx`, `Upgrade.tsx`, `Broadcast.tsx`, `LeadCRM.tsx` (budget cells), `WarRoom` segmentation tab.
-
-## Workstream G — Page-Level Visual Replication
-
-For every primary page (Dashboard, Inbox, DealRoom, Properties, CRM, Campaigns, War Room, Activity Log, Settings):
-- Apply consistent `PageHero` + `PageToolbar` pattern already in repo.
-- Card surfaces: `border border-border/60 bg-background`, single subtle shadow, 8px radius.
-- Section spacing tokens normalized (`space-y-6`, padded `p-6`).
-- No emojis in section titles; lucide-react icons only, size 16, accent color tokens.
-- Tables: sticky header, zebra off, hover row, compact density.
+Scope: `/crm` (LeadCRM) page + Homely inbound sync scaffold + pencil-icon inline edits + freemium 30d / 100-contact / ₪50 wallet limits. No KalpizAI political logic. `₪` always renders left of digits via existing `PriceTag`/`fmtILS`.
 
 ---
 
-## Execution Order (once approved)
+## 1. Real-Estate CRM rebuild (`src/pages/LeadCRM.tsx`)
 
-1. **F** — Vocabulary + currency helper (low-risk groundwork).
-2. **A** — Sidebar + Profile Capsule.
-3. **D** — CRM database port (highest user value).
-4. **C** — Campaign Center port + dispatch engine.
-5. **E** — Approved Managers + 18:00 digest cron.
-6. **B** — War Room.
-7. **G** — Per-page visual polish pass.
+**Filter bar** (sticky, collapsible):
+- `deal_type` — multi: `קנייה`, `מכירה`, `שכירות`, `השכרה` (stored as `buy|sell|rent|lease` in `leads.deal_type`)
+- `cities` — multi tag picker reading distinct `leads.city` + `leads.preferences->>'city'`
+- `budget_min` / `budget_max` — ₪ inputs via `PriceTag` preview
+- `rooms_min` / `rooms_max` — numeric stepper
+- `lead_score` ≥ slider
+- `lead_stage` — multi
+- `assigned_to` — broker dropdown
+- `source` — multi (homely | manual | whatsapp | web)
+- `date_range` — created_at preset (7d/30d/90d/custom)
 
-Each workstream ships as its own batch with migration → code → verify.
+Filter state is URL-synced (`useSearchParams`) so links are shareable.
 
-## Out of Scope
+**Grid**:
+- High-density TanStack-style table (existing patterns). Columns: name, phone, city, deal_type chip, budget range (`PriceTag`), rooms, lead_score, stage, source, last_interaction.
+- Multi-select with bulk actions (assign, change stage, push to Homely, delete).
+- Row-click → opens existing `LeadProfileSheet` (or `LeadHistoryDrawer` if no full profile).
+- **Collapse toggle** in toolbar: switches between full grid and compact 1-line rows (hides secondary cols, smaller row height, no avatar). State persisted in `localStorage('crm.compact')`.
 
-- Activating live Homely API sync (schema + stub only; API key wiring deferred).
-- Backfilling historical campaign metrics or digests.
-- Migrating Kalpiz political AI persona prompts; broker persona stays as-is.
-- Rebuilding inbox/KB UIs beyond consistency tokens.
+**Inline edits**:
+- Replace every `עריכה (הוספה/הסרה)` text link with a small `<Pencil className="h-3.5 w-3.5"/>` ghost button in a `Tooltip`. Applies to tag chips on the row (`interest_tag`, `lead_stage`, `assigned_to`).
+- Pencil opens a `Popover` with the right control (combobox / select / multi-tag). Save on blur or Enter.
+
+**Empty state** uses existing `EmptyState`.
 
 ---
 
-**Approve to begin execution starting at Workstream F**, or tell me to reorder / drop any block.
+## 2. Homely live-sync scaffold
+
+**DB migration** (additive only):
+- `leads.external_id text` + `leads.external_source text default 'manual'` + unique partial index on `(external_source, external_id) where external_id is not null`.
+- New `public.homely_inbound_log` — `id, user_id, payload jsonb, status text, error text, processed_at, created_at`. RLS owner-only read; service role writes.
+- New `public.homely_sync_map` — `id, user_id, homely_field text, realtyz_field text, transform text`. Seeded with default mapping (name→full_name, phone→phone_number, email→email, city→city, budget→preferences.budget, rooms→preferences.rooms, deal_type→deal_type).
+
+**Edge function `homely-webhook`** (new, `verify_jwt=false`, HMAC signature header `X-Homely-Signature` checked against `HOMELY_WEBHOOK_SECRET`):
+- Validates payload with Zod.
+- Looks up `user_id` from `user_api_keys.homely_client_code`.
+- Reads `homely_sync_map`, normalizes phones via existing util, upserts into `leads` by `(external_source='homely', external_id)`.
+- Writes one row per call to `homely_inbound_log`.
+- Returns `202 { received: true }`.
+
+**Edge function `homely-pull-leads`** (stub, scheduled hourly via existing cron pattern): placeholder that logs `not_configured` until real Homely API endpoint is provided. Easy swap when the user shares the endpoint.
+
+**UI** in `ApiSettings` → existing Homely card: add "Webhook URL" read-only field showing `${SUPABASE_URL}/functions/v1/homely-webhook` + copy button + last-sync timestamp from `homely_inbound_log`.
+
+---
+
+## 3. Freemium guardrails (additive — no rebuild of pricing page)
+
+**DB migration**:
+- `profiles.trial_end_date timestamptz` (default `created_at + interval '30 days'`).
+- `profiles.wallet_balance_agorot int default 5000` (₪50 in agorot, integer-safe).
+- Update `handle_new_user()` trigger to set both (idempotent `ON CONFLICT DO NOTHING`).
+- Update `enforce_trial_lead_cap()` to also reject when `trial_end_date < now()` with message `TRIAL_TIME_EXPIRED: תקופת ההתנסות הסתיימה - שדרג כדי להמשיך`.
+
+**Frontend hook `useFreemiumStatus.ts`** (new):
+- Returns `{ daysLeft, contactsUsed, contactsCap: 100, walletILS, isBlocked, blockReason }`.
+- Used by:
+  - `LeadCRM` import buttons + "New Lead" CTA: disabled with tooltip when `contactsUsed >= 100`.
+  - `Broadcast` / autopilot send paths: throw `trial_quota_exceeded` when `isBlocked`, route user to `/subscription`.
+- Trial banner already present is updated to read this hook.
+
+No pricing-card rebuild this workstream — that's the separate freemium plan.
+
+---
+
+## 4. Currency lock
+
+All new ₪ rendering goes through `<PriceTag value={n} />` or `fmtILS()`. Filter inputs show `<PriceTag>` previews, wallet badge in CRM toolbar shows `<PriceTag value={walletILS} />`.
+
+---
+
+## Files touched
+
+- Migration: leads.external_id/external_source + homely_inbound_log + homely_sync_map + profiles.trial_end_date + profiles.wallet_balance_agorot + updated handle_new_user + updated enforce_trial_lead_cap.
+- `supabase/functions/homely-webhook/index.ts` (new)
+- `supabase/functions/homely-pull-leads/index.ts` (stub, new)
+- `src/pages/LeadCRM.tsx` (rebuild filter bar + grid + collapsible + Pencil inline edits)
+- `src/components/leads/InlinePencilEdit.tsx` (new shared)
+- `src/components/leads/LeadFilters.tsx` (new)
+- `src/hooks/useFreemiumStatus.ts` (new)
+- `src/pages/ApiSettings.tsx` (Homely webhook URL field)
+
+## Out of scope (separate workstreams)
+
+- Subscription / pricing card redesign (Freemium UI plan).
+- Approved-managers role override.
+- War Room, Campaign Center port, Managers digest cron.
+- Real Homely outbound REST polling (stub only — needs endpoint from user).
+
+Reply **"approve"** to ship, or call out items to drop/reorder.
