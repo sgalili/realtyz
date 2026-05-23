@@ -286,9 +286,9 @@ export function StrategicGrowthSlider() {
                 pct >= 100
                   ? 'הניהול מתעניינים שלך מוכן ליעד 🎯'
                   : pct >= 66
-                    ? 'כמעט שם — המשך לטפח פרוספקטים'
+                    ? 'כמעט שם — המשך לטפח מתעניינים'
                     : pct >= 33
-                      ? 'בדרך הנכונה — הוסף עוד פרוספקטים איכותיים'
+                      ? 'בדרך הנכונה — הוסף עוד מתעניינים איכותיים'
                       : 'בוא נמלא את הניהול מתעניינים יחד';
               return (
                 <div
@@ -300,7 +300,7 @@ export function StrategicGrowthSlider() {
                     <span>בריאות הניהול מתעניינים</span>
                     <span className="text-primary/40">·</span>
                     <span className="tabular-nums">
-                      עסקה ≈ <span className="font-bold text-primary">{ACTIVE_LEADS_PER_DEAL}</span> פרוספקטים פעילים
+                      עסקה ≈ <span className="font-bold text-primary">{ACTIVE_LEADS_PER_DEAL}</span> מתעניינים פעילים
                     </span>
                   </div>
                   <Progress
@@ -311,7 +311,7 @@ export function StrategicGrowthSlider() {
                   <p className="text-[11px] tabular-nums text-muted-foreground">
                     <span className="font-semibold text-primary">{formatNumber(activeLeads)}</span>
                     {' / '}
-                    <span>{formatNumber(leadsNeeded)}</span> פרוספקטים בניהול מתעניינים
+                    <span>{formatNumber(leadsNeeded)}</span> מתעניינים בניהול מתעניינים
                     <span className="text-primary/40"> · </span>
                     <span className="text-primary/80">{encouragement}</span>
                   </p>
