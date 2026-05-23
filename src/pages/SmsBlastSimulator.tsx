@@ -236,7 +236,7 @@ export default function SmsBlastSimulator() {
       const waLive = isLiveWhatsApp(waRow) || apiActive(['Green API', 'WhatsApp Business']);
 
       setConnectedChannels({
-        sms:         true, // always-on via shared super-admin 019 SMS account
+        sms:         true,
         whatsapp:    waLive,
         email:       gmailLive,
         voice:       false,
@@ -245,6 +245,9 @@ export default function SmsBlastSimulator() {
         instagram:   isLiveGeneric(findSC('instagram')) || isLiveGeneric(findSC('facebook')),
         tiktok:      isLiveGeneric(findSC('tiktok')),
         telegram:    isLiveGeneric(findSC('telegram')),
+        messenger:   isLiveGeneric(findSC('fb_messenger')) || isLiveGeneric(findSC('facebook')),
+        twitter:     isLiveGeneric(findSC('twitter')),
+        youtube:     isLiveGeneric(findSC('youtube')),
       });
       setEmailAccountInfo({ count: gmailAccountCount, addresses: gmailAddresses });
       setConnectedAccounts({
