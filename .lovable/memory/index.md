@@ -9,7 +9,7 @@
 - **Data**: Live data only. Normalize phones to 9725XXXXXXXX internally, display as 05X-XXXXXXX.
 - **Privacy**: Supabase Realtime disabled for 'leads' & 'messages'. RLS requires auth.uid().
 - **UI strings**: Hebrew copy still uses political terms ("בוחרים", "מועמד", "מנדטים"). Realtyz Hebrew copy ("לידים", "נכסים", "מחיר") is a pending UX pass.
-- **Demo Mode**: PERMANENTLY REMOVED. `useDemoMode`/`DemoModeProvider` are no-op stubs; never re-add the toggle or `if (isDemoMode)` branches. Keep `is_demo=false` filters in queries.
+- **Demo Mode**: SCOPED. Off everywhere except `src/pages/SmsBlastSimulator.tsx` which may branch on `useDemoMode`/`useDemoGuard` to short-circuit dispatch POSTs and show a "מצב הדגמה" banner. Keep `is_demo=false` filters in queries.
 - **Freemium**: 30-day trial · 100 contacts cap · ₪50 wallet (profiles.trial_end_date + wallet_balance_agorot). `useFreemiumStatus()` gates Add/Import buttons in CRM. `enforce_trial_lead_cap` trigger blocks inserts when expired (TRIAL_TIME_EXPIRED / TRIAL_RECORD_LIMIT). Currency always rendered via `<PriceTag>` (₪ left of digits).
 
 ## Memories
