@@ -993,8 +993,6 @@ const LeadCRM = () => {
                       : 'cursor-pointer hover:bg-accent/40 transition-colors text-sm [&>td]:!px-0';
                     return (
                       <TableRow key={lead.id} className={rowCls}>
-                    return (
-                      <TableRow key={lead.id} className="cursor-pointer hover:bg-accent/40 transition-colors text-sm [&>td]:!px-0">
                         <TableCell className="font-medium whitespace-nowrap" onClick={() => setSelectedVoterId(lead.id)}>
                           <div className="flex min-w-0 items-center gap-1.5 whitespace-nowrap">
                             <VoterAvatar fullName={lead.full_name} profilePictureUrl={(lead as any).profile_picture_url} className="h-7 w-7" textClassName="text-[10px]" />
