@@ -60,6 +60,7 @@ const SharedDeals = lazy(() => import("./pages/SharedDeals"));
 const ClientPortal = lazy(() => import("./pages/ClientPortal"));
 const PlatformSettings = lazy(() => import("./pages/PlatformSettings"));
 const HomelyAdmin = lazy(() => import("./pages/HomelyAdmin"));
+const AiDialer = lazy(() => import("./pages/AiDialer"));
 
 
 let syncToastId: string | number | undefined;
