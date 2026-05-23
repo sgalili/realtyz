@@ -606,12 +606,12 @@ function CalculatorBody() {
                   </button>
                 </div>
                 <div className="mt-3 text-center text-[12.5px] font-medium text-muted-foreground">
-                  הערכת שיעור המרה: עסקה סגורה אחת לכל ~60 פרוספקטים מוסמכים
+                  הערכת שיעור המרה: עסקה סגורה אחת לכל ~60 מתעניינים מוסמכים
                 </div>
                 <div className="mt-1 text-center text-[11px] text-muted-foreground/80">
                   {mandates === 1
-                    ? `יעד: עסקה סגורה אחת ≈ ${formatILS(60)} פרוספקטים מוסמכים בניהול מתעניינים`
-                    : `יעד: ${mandates} עסקאות סגורות ≈ ${formatILS(mandates * 60)} פרוספקטים מוסמכים בניהול מתעניינים`}
+                    ? `יעד: עסקה סגורה אחת ≈ ${formatILS(60)} מתעניינים מוסמכים בניהול מתעניינים`
+                    : `יעד: ${mandates} עסקאות סגורות ≈ ${formatILS(mandates * 60)} מתעניינים מוסמכים בניהול מתעניינים`}
                 </div>
               </div>
 
@@ -625,7 +625,7 @@ function CalculatorBody() {
                 >
                   <span className="flex items-center gap-2 text-[13px] font-semibold text-foreground">
                     <SlidersHorizontal className="h-4 w-4 text-primary" />
-                    פילוח קהל (Leading) · רשימות פרוספקטים
+                    פילוח קהל (Leading) · רשימות מתעניינים
                   </span>
                   <span className="flex items-center gap-2">
                     <span className="text-[11px] tabular-nums text-muted-foreground">{formatILS(listSize)}</span>
@@ -650,7 +650,7 @@ function CalculatorBody() {
                     >
                       <div className="mt-3 space-y-4 rounded-lg border border-border bg-secondary/40 p-4">
                         <div className="text-[12px] text-muted-foreground">
-                          כמה פרוספקטים יש לכם במאגר / ברשימות הפעילות?
+                          כמה מתעניינים יש לכם במאגר / ברשימות הפעילות?
                         </div>
 
                         {/* Warm */}
@@ -684,7 +684,7 @@ function CalculatorBody() {
                               <span className="inline-block h-2 w-2 rounded-full bg-sky-500" />
                               {isPrimaries ? 'פוטנציאל מתפקדים' : 'רשימה קרה'}
                               <InfoTip title={isPrimaries ? 'פוטנציאל מתפקדים' : 'רשימה קרה'}>
-                                פרוספקטים פוטנציאליים שעדיין לא מכירים אתכם. שיעור המרה נמוך ({coldPct}%) אך הקהל גדול בהרבה.
+                                מתעניינים פוטנציאליים שעדיין לא מכירים אתכם. שיעור המרה נמוך ({coldPct}%) אך הקהל גדול בהרבה.
                               </InfoTip>
                             </div>
                             <span className="text-[12.5px] font-bold tabular-nums text-foreground">{formatILS(coldSize)}</span>
@@ -707,8 +707,8 @@ function CalculatorBody() {
 
                 {inputsTouched && listShortfall && (
                   <WarnBlock>
-                    התמהיל מניב <span className="font-black">{formatILS(projectedVotes)}</span> פרוספקטים מוסמכים, מתוך{' '}
-                    <span className="font-black">{formatILS(requiredVotes)}</span> פרוספקטים נדרשים ליעד של {mandates} עסקאות סגורות.
+                    התמהיל מניב <span className="font-black">{formatILS(projectedVotes)}</span> מתעניינים מוסמכים, מתוך{' '}
+                    <span className="font-black">{formatILS(requiredVotes)}</span> מתעניינים נדרשים ליעד של {mandates} עסקאות סגורות.
                     <button
                       type="button"
                       onClick={() => handleMandatesChange(Math.max(1, optimizedMandates))}
@@ -820,11 +820,11 @@ function CalculatorBody() {
                     <ResourceSlider
                       icon={<Users className="h-4 w-4 text-primary" />}
                       title="חשיפה לשוק (Market Exposure)"
-                      info={<>כלל הזהב המקצועי: {TOUCHPOINTS_PER_VOTER_TOTAL} נקודות חשיפה לכל פרוספקט עד להבשלת עסקה. הפחתה תקטין הוצאה אך גם את סיכויי הסגירה.</>}
+                      info={<>כלל הזהב המקצועי: {TOUCHPOINTS_PER_VOTER_TOTAL} נקודות חשיפה לכל מתעניין עד להבשלת עסקה. הפחתה תקטין הוצאה אך גם את סיכויי הסגירה.</>}
                       min={5} max={30} step={1}
                       value={touchpointsPerVoter}
                       onChange={setTouchpointsPerVoter}
-                      valueLabel={`${touchpointsPerVoter} חשיפות / פרוספקט · סה״כ ${formatCompact(totalCampaignTouchpoints)}`}
+                      valueLabel={`${touchpointsPerVoter} חשיפות / מתעניין · סה״כ ${formatCompact(totalCampaignTouchpoints)}`}
                       cost={monthlyTouchpointCost}
                       onReset={touchpointsPerVoter !== TOUCHPOINTS_PER_VOTER_TOTAL ? () => setTouchpointsPerVoter(TOUCHPOINTS_PER_VOTER_TOTAL) : undefined}
                     />
@@ -833,7 +833,7 @@ function CalculatorBody() {
                       icon={<MessageSquare className="h-4 w-4 text-primary" />}
                       title="עדכונים לאימות (SMS)"
                       rateNote={`₪${SMS_RATE.toFixed(2)} / עדכון`}
-                      info={<>{formatILS(includedSms)} עדכוני אימות (SMS) כלולים בחבילה — לאישורי פגישה, קודי OTP ועדכוני סטטוס לפרוספקטים. מעבר לכך, חיוב של ₪{SMS_RATE.toFixed(2)} להודעה.</>}
+                      info={<>{formatILS(includedSms)} עדכוני אימות (SMS) כלולים בחבילה — לאישורי פגישה, קודי OTP ועדכוני סטטוס למתעניינים. מעבר לכך, חיוב של ₪{SMS_RATE.toFixed(2)} להודעה.</>}
                       min={0} max={Math.max(suggestedSms * 3, 1_000_000)} step={5_000}
                       value={effectiveSms}
                       onChange={(v) => { setSmsVolume(v); setSmsTouched(true); }}
@@ -862,7 +862,7 @@ function CalculatorBody() {
                       icon={<AudioLines className="h-4 w-4 text-primary" />}
                       title="שיחות סינון מתעניינים (AI)"
                       rateNote={`₪${VOICE_RATE.toFixed(2)} / דקה`}
-                      info={<>סוכן AI קולי שמסנן מתעניינים נכנסים, מאמת תקציב, צרכי דיור ולוחות זמנים — ומעביר אליך רק פרוספקטים חמים ומוכנים לפגישה. תמחור: דקות בפועל × ₪{VOICE_RATE.toFixed(2)}.</>}
+                      info={<>סוכן AI קולי שמסנן מתעניינים נכנסים, מאמת תקציב, צרכי דיור ולוחות זמנים — ומעביר אליך רק מתעניינים חמים ומוכנים לפגישה. תמחור: דקות בפועל × ₪{VOICE_RATE.toFixed(2)}.</>}
                       min={0} max={Math.max(suggestedVoiceMinutes * 3, 50_000)} step={500}
                       value={effectiveVoiceMinutes}
                       onChange={(v) => { setVoiceVolume(v); setVoiceTouched(true); }}
@@ -988,8 +988,8 @@ function CalculatorBody() {
                       <FormulaRow
                         icon={<AlertTriangle className="h-3.5 w-3.5 text-orange-500" />}
                         label={dbTier2Active
-                          ? `דמי אחסון מאגר פרוספקטים, מעל ${formatCompact(DB_TIER_2_THRESHOLD)} פרוספקטים`
-                          : `דמי אחסון מאגר פרוספקטים, מעל ${formatCompact(DB_TIER_1_THRESHOLD)} פרוספקטים`}
+                          ? `דמי אחסון מאגר מתעניינים, מעל ${formatCompact(DB_TIER_2_THRESHOLD)} מתעניינים`
+                          : `דמי אחסון מאגר מתעניינים, מעל ${formatCompact(DB_TIER_1_THRESHOLD)} מתעניינים`}
                         value={audienceScalingFee}
                       />
                     )}
@@ -1093,7 +1093,7 @@ function CalculatorBody() {
         </section>
 
         <p className="mx-auto mt-8 max-w-3xl text-center text-[11px] leading-relaxed text-muted-foreground">
-          החישוב מבוסס על תמהיל רשימות פרוספקטים: {warmPct}% המרה לפרוספקטים חמים ו-{coldPct}% לפרוספקטים קרים בעבודה אינטנסיבית עם Realtyz AI.
+          החישוב מבוסס על תמהיל רשימות מתעניינים: {warmPct}% המרה למתעניינים חמים ו-{coldPct}% למתעניינים קרים בעבודה אינטנסיבית עם Realtyz AI.
           המספרים המוצגים הם הערכה מקצועית בלבד ואינם מהווים התחייבות לתוצאת מכירות. המחיר אינו כולל מע״מ ועלויות מדיה ישירות ל-Meta.
         </p>
       </div>
