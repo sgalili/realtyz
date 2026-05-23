@@ -170,6 +170,7 @@ function PlanTab() {
 }
 
 const WORKSPACE_STORAGE_KEY = 'realtyz-workspace-details';
+const LOGO_STORAGE_KEY = 'realtyz-agency-logo';
 
 function WorkspaceTab() {
   const { user } = useAuth();
@@ -199,6 +200,8 @@ function WorkspaceTab() {
   );
 
   const [values, setValues] = useState(defaults);
+  const [logoUrl, setLogoUrl] = useState<string>('');
+  const [uploading, setUploading] = useState(false);
 
   useEffect(() => {
     try {
@@ -206,14 +209,50 @@ function WorkspaceTab() {
       if (raw) {
         const saved = JSON.parse(raw);
         setValues({ ...defaults, ...saved });
-        return;
+      } else {
+        setValues(defaults);
       }
+      const savedLogo = window.localStorage.getItem(LOGO_STORAGE_KEY);
+      if (savedLogo) setLogoUrl(savedLogo);
     } catch {}
-    setValues(defaults);
   }, [defaults]);
 
   const update = (key: keyof typeof values) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setValues((v) => ({ ...v, [key]: e.target.value }));
+
+  const onLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user?.id) return;
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('הקובץ גדול מדי (מקסימום 5MB)');
+      return;
+    }
+    setUploading(true);
+    try {
+      const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
+      const path = `${user.id}/logo-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from('agency-logos')
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+      const { data: pub } = supabase.storage.from('agency-logos').getPublicUrl(path);
+      const url = pub.publicUrl;
+      setLogoUrl(url);
+      window.localStorage.setItem(LOGO_STORAGE_KEY, url);
+      toast.success('הלוגו הועלה בהצלחה');
+    } catch (err: any) {
+      toast.error(err?.message || 'שגיאה בהעלאת הלוגו');
+    } finally {
+      setUploading(false);
+      e.target.value = '';
+    }
+  };
+
+  const removeLogo = () => {
+    setLogoUrl('');
+    window.localStorage.removeItem(LOGO_STORAGE_KEY);
+    toast.success('הלוגו הוסר');
+  };
 
   const save = () => {
     window.localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(values));
@@ -234,6 +273,47 @@ function WorkspaceTab() {
         <CardTitle className="text-right">פרטי המשרד והסוכנות</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
+        <div className="rounded-lg border bg-card/40 p-3 text-right">
+          <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
+            <ImageIcon className="h-3.5 w-3.5" />
+            <span>לוגו המשרד</span>
+          </div>
+          <div className="flex items-center gap-3 flex-row-reverse">
+            <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-background">
+              {logoUrl ? (
+                <img src={logoUrl} alt="לוגו המשרד" className="h-full w-full object-contain" />
+              ) : (
+                <ImageIcon className="h-7 w-7 text-muted-foreground/50" />
+              )}
+            </div>
+            <div className="flex flex-1 flex-col gap-2">
+              <label className="inline-flex">
+                <input
+                  type="file"
+                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
+                  className="hidden"
+                  onChange={onLogoUpload}
+                  disabled={uploading}
+                />
+                <span className={cn(
+                  'inline-flex items-center justify-center gap-1.5 rounded-md border bg-background px-3 py-2 text-sm font-medium cursor-pointer hover:bg-accent transition-colors',
+                  uploading && 'opacity-50 pointer-events-none',
+                )}>
+                  <Upload className="h-3.5 w-3.5" />
+                  {uploading ? 'מעלה...' : logoUrl ? 'החלפת לוגו' : 'העלאת לוגו'}
+                </span>
+              </label>
+              {logoUrl && (
+                <Button type="button" variant="ghost" size="sm" onClick={removeLogo} className="text-destructive hover:bg-destructive/10 self-start">
+                  <Trash2 className="h-3.5 w-3.5 ml-1" />
+                  הסר לוגו
+                </Button>
+              )}
+              <p className="text-xs text-muted-foreground">PNG, JPG, WEBP או SVG. עד 5MB.</p>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {fields.map((f) => {
             const Icon = f.icon;
