@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { ChevronUp, User, Crown, Wallet, LogOut, Shield } from 'lucide-react';
+import { ChevronDown, User, Crown, Wallet, LogOut, Shield, ShieldCheck } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
@@ -23,14 +23,16 @@ type CapsuleItem = {
   icon: typeof User;
   to: string;
   iconClass?: string;
-  requires?: 'managing_broker';
+  requires?: 'managing_broker' | 'super_admin';
 };
 
 const ITEMS: CapsuleItem[] = [
   { label: 'הפרופיל שלי', icon: User, to: '/api-settings', iconClass: 'text-primary' },
-  { label: 'ניהול חבילה', icon: Crown, to: '/subscription', iconClass: 'text-warning', requires: 'managing_broker' },
-  { label: 'חשבוניות ותשלומים', icon: Wallet, to: '/finance', iconClass: 'text-primary-glow', requires: 'managing_broker' },
+  { label: 'ניהול חבילה ויתרה', icon: Crown, to: '/subscription', iconClass: 'text-warning' },
+  { label: 'מנהלים מורשים', icon: ShieldCheck, to: '/team', iconClass: 'text-primary-glow', requires: 'managing_broker' },
+  { label: 'חשבוניות ותשלומים', icon: Wallet, to: '/finance', iconClass: 'text-primary-glow' },
 ];
+
 
 export function ProfileCapsule() {
   const [open, setOpen] = useState(false);
@@ -85,13 +87,13 @@ export function ProfileCapsule() {
                     Admin
                   </span>
                 )}
-                <ChevronUp className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
               </>
             )}
           </button>
         </PopoverTrigger>
         <PopoverContent
-          side="top"
+          side="bottom"
           align="end"
           dir="rtl"
           className="w-60 p-1.5"
