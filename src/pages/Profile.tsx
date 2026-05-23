@@ -1,0 +1,353 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Button } from '@/components/ui/button';
+import { Switch } from '@/components/ui/switch';
+import { Badge } from '@/components/ui/badge';
+import { Plus, Trash2, Sparkles, Mail, Phone, MessageCircle, Building2, MapPin, User as UserIcon, Briefcase } from 'lucide-react';
+import { toast } from 'sonner';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
+import { useQuery } from '@tanstack/react-query';
+import Finance from '@/pages/Finance';
+import { cn } from '@/lib/utils';
+
+const SEAT_PRICE = 350;
+const SEAT_WALLET_CREDIT = 200;
+const SALES_PHONE = '972546811841';
+
+type ContactList = { id: string; value: string }[];
+
+const newRow = (value = ''): ContactList[number] => ({ id: crypto.randomUUID(), value });
+
+function ContactArrayEditor({
+  label,
+  icon: Icon,
+  rows,
+  onChange,
+  placeholder,
+  type = 'text',
+  dir = 'rtl',
+}: {
+  label: string;
+  icon: typeof Mail;
+  rows: ContactList;
+  onChange: (next: ContactList) => void;
+  placeholder: string;
+  type?: string;
+  dir?: 'rtl' | 'ltr';
+}) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2">
+        <Icon className="h-4 w-4 text-primary" />
+        <Label className="text-sm font-semibold">{label}</Label>
+      </div>
+      <div className="space-y-2">
+        {rows.map((row, idx) => (
+          <div key={row.id} className="flex items-center gap-2">
+            <Input
+              type={type}
+              dir={dir}
+              placeholder={placeholder}
+              value={row.value}
+              onChange={(e) =>
+                onChange(rows.map((r) => (r.id === row.id ? { ...r, value: e.target.value } : r)))
+              }
+              className={dir === 'ltr' ? 'text-left' : 'text-right'}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={() => onChange(rows.filter((r) => r.id !== row.id))}
+              disabled={rows.length === 1 && idx === 0}
+              aria-label="מחיקה"
+              className="text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          </div>
+        ))}
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          onClick={() => onChange([...rows, newRow()])}
+          className="gap-1.5"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          הוסף שורה
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+function AiSparkleSwitch({ checked, onCheckedChange }: { checked: boolean; onCheckedChange: (v: boolean) => void }) {
+  return (
+    <div className="flex items-center justify-between rounded-lg border bg-card/50 p-3">
+      <div className="flex items-center gap-2">
+        <div
+          className={cn(
+            'relative flex h-9 w-9 items-center justify-center rounded-full transition-all',
+            checked ? 'bg-emerald-500/15 ring-2 ring-emerald-400/60 shadow-[0_0_18px_-4px_hsl(142_70%_45%/0.7)]' : 'bg-muted',
+          )}
+        >
+          <Sparkles className={cn('h-4 w-4 transition-colors', checked ? 'text-emerald-500 animate-pulse' : 'text-muted-foreground')} />
+        </div>
+        <div className="text-right">
+          <p className="text-sm font-semibold">סוכן AI אוטונומי</p>
+          <p className="text-xs text-muted-foreground">מענה אוטומטי, ניסוח טיוטות והמלצות חכמות</p>
+        </div>
+      </div>
+      <Switch
+        checked={checked}
+        onCheckedChange={onCheckedChange}
+        className={cn(
+          'data-[state=checked]:bg-emerald-500',
+          'data-[state=unchecked]:bg-muted-foreground/40',
+        )}
+      />
+    </div>
+  );
+}
+
+function formatIls(n: number): string {
+  return `₪${n.toLocaleString('he-IL')}`;
+}
+
+function PlanTab() {
+  const [seats, setSeats] = useState(1);
+  const monthly = seats * SEAT_PRICE;
+  const wallet = seats * SEAT_WALLET_CREDIT;
+
+  const requestTopup = () => {
+    const text = `היי, אני רוצה לרכוש מנוי ריאלטיז נדל"ן עבור ${seats} מושבים (₪${monthly} לחודש, כולל ₪${wallet} קרדיט פרימיום בארנק).`;
+    const url = `https://wa.me/${SALES_PHONE}?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank', 'noopener,noreferrer');
+  };
+
+  return (
+    <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-right">חבילת מתווך — מחיר קבוע</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          <div className="rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-transparent p-5 text-right">
+            <Badge className="mb-2 bg-primary text-primary-foreground">חבילה יחידה</Badge>
+            <div className="flex items-baseline justify-end gap-1">
+              <span className="text-xs text-muted-foreground">/ חודש / מושב</span>
+              <span className="text-4xl font-bold tabular-nums text-primary">{formatIls(SEAT_PRICE)}</span>
+            </div>
+            <p className="mt-3 text-sm text-muted-foreground">
+              מחיר אחיד למתווכים. כולל מעטפת AI מלאה, ניהול לידים, חיבור גרין-API וכל מודולי המערכת.
+            </p>
+          </div>
+
+          <div className="space-y-2">
+            <Label className="text-right text-sm">כמות מושבים</Label>
+            <div className="flex items-center justify-end gap-2">
+              <Button variant="outline" size="icon" onClick={() => setSeats(Math.max(1, seats - 1))}>-</Button>
+              <Input
+                type="number"
+                min={1}
+                value={seats}
+                onChange={(e) => setSeats(Math.max(1, Number(e.target.value) || 1))}
+                className="w-24 text-center"
+              />
+              <Button variant="outline" size="icon" onClick={() => setSeats(seats + 1)}>+</Button>
+            </div>
+          </div>
+
+          <div className="rounded-lg border bg-muted/30 p-4 space-y-2 text-sm">
+            <div className="flex items-center justify-between">
+              <span className="font-bold tabular-nums">{formatIls(monthly)}</span>
+              <span className="text-muted-foreground">עלות חודשית כוללת</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="font-bold tabular-nums text-emerald-600">+ {formatIls(wallet)}</span>
+              <span className="text-muted-foreground">קרדיט פרימיום בארנק (₪200 לכל מושב)</span>
+            </div>
+          </div>
+
+          <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 text-xs text-muted-foreground text-right leading-relaxed">
+            לכל מושב פעיל בחיוב מוזרק אוטומטית קרדיט בסך <strong className="text-primary tabular-nums">₪200</strong> לארנק
+            השירותים. הקרדיט משמש לשירותי פרימיום (SMS, WhatsApp בחריגה, שיחות AI). כאשר הקרדיט הבסיסי מתרוקן, ניתן
+            להטעין ידנית את הארנק דרך מודאל המכירות ב-WhatsApp כדי להמשיך בהפצות.
+          </div>
+
+          <Button onClick={requestTopup} size="lg" className="w-full">
+            פתח חלון תשלום ב-WhatsApp
+          </Button>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function WorkspaceTab() {
+  const { user } = useAuth();
+  const meta = (user?.user_metadata ?? {}) as Record<string, any>;
+  const { data: onboarding } = useQuery({
+    queryKey: ['profile-onboarding-state', user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('onboarding_state')
+        .select('*')
+        .eq('user_id', user!.id)
+        .maybeSingle();
+      return data;
+    },
+  });
+
+  const fields = useMemo(
+    () => [
+      { icon: Building2, label: 'שם המשרד', value: meta.agency_name || 'ריאלטיז נדל"ן' },
+      { icon: UserIcon, label: 'מנהל פעיל', value: 'אודי ויטמן' },
+      { icon: Briefcase, label: 'טון תקשורת', value: onboarding?.tone || 'מקצועי' },
+      { icon: MapPin, label: 'אזורי שירות', value: meta.service_areas || 'מרכז הארץ' },
+      { icon: MessageCircle, label: 'מסר פתיחה', value: onboarding?.initial_message || '—' },
+    ],
+    [meta, onboarding],
+  );
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-right">פרטי המשרד והסוכנות</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
+          {fields.map((f) => {
+            const Icon = f.icon;
+            return (
+              <div key={f.label} className="rounded-lg border bg-card/40 p-3 text-right">
+                <div className="mb-1 flex items-center justify-end gap-2 text-xs text-muted-foreground">
+                  <span>{f.label}</span>
+                  <Icon className="h-3.5 w-3.5" />
+                </div>
+                <p className="truncate text-sm font-semibold">{f.value}</p>
+              </div>
+            );
+          })}
+        </div>
+        <p className="mt-4 text-right text-xs text-muted-foreground">
+          הנתונים נשלפים מטופס ההצטרפות (onboarding). לעריכה נא לפנות לאשף ההגדרות.
+        </p>
+      </CardContent>
+    </Card>
+  );
+}
+
+function PersonalTab() {
+  const { user } = useAuth();
+  const [emails, setEmails] = useState<ContactList>([newRow(user?.email ?? '')]);
+  const [whatsapps, setWhatsapps] = useState<ContactList>([newRow('')]);
+  const [phones, setPhones] = useState<ContactList>([newRow('')]);
+  const [aiEnabled, setAiEnabled] = useState(true);
+  const [fullName, setFullName] = useState('אודי ויטמן');
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem('realtyz-profile-contacts');
+      if (raw) {
+        const p = JSON.parse(raw);
+        if (Array.isArray(p.emails) && p.emails.length) setEmails(p.emails);
+        if (Array.isArray(p.whatsapps) && p.whatsapps.length) setWhatsapps(p.whatsapps);
+        if (Array.isArray(p.phones) && p.phones.length) setPhones(p.phones);
+        if (typeof p.aiEnabled === 'boolean') setAiEnabled(p.aiEnabled);
+        if (typeof p.fullName === 'string') setFullName(p.fullName);
+      }
+    } catch {}
+  }, []);
+
+  const save = () => {
+    window.localStorage.setItem(
+      'realtyz-profile-contacts',
+      JSON.stringify({ emails, whatsapps, phones, aiEnabled, fullName }),
+    );
+    toast.success('הפרופיל נשמר');
+  };
+
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle className="text-right">הפרופיל האישי שלי</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-5">
+        <div className="space-y-2">
+          <Label htmlFor="full-name" className="text-right text-sm">שם מלא להצגה</Label>
+          <Input id="full-name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="text-right" dir="rtl" />
+        </div>
+
+        <ContactArrayEditor
+          label="כתובות מייל"
+          icon={Mail}
+          rows={emails}
+          onChange={setEmails}
+          placeholder="name@example.com"
+          type="email"
+          dir="ltr"
+        />
+        <ContactArrayEditor
+          label="מספרי WhatsApp"
+          icon={MessageCircle}
+          rows={whatsapps}
+          onChange={setWhatsapps}
+          placeholder="05X-XXXXXXX"
+          type="tel"
+          dir="ltr"
+        />
+        <ContactArrayEditor
+          label="טלפונים נוספים"
+          icon={Phone}
+          rows={phones}
+          onChange={setPhones}
+          placeholder="05X-XXXXXXX"
+          type="tel"
+          dir="ltr"
+        />
+
+        <AiSparkleSwitch checked={aiEnabled} onCheckedChange={setAiEnabled} />
+
+        <Button onClick={save} className="w-full" size="lg">
+          שמירת הפרופיל
+        </Button>
+      </CardContent>
+    </Card>
+  );
+}
+
+export default function Profile() {
+  const [params, setParams] = useSearchParams();
+  const tab = params.get('tab') ?? 'personal';
+
+  const setTab = (v: string) => {
+    const next = new URLSearchParams(params);
+    next.set('tab', v);
+    setParams(next, { replace: true });
+  };
+
+  return (
+    <div dir="rtl" className="mx-auto w-full max-w-4xl space-y-4 p-2 sm:p-4">
+      <Tabs value={tab} onValueChange={setTab} dir="rtl">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+          <TabsTrigger value="personal">הפרופיל האישי שלי</TabsTrigger>
+          <TabsTrigger value="plan">ניהול חבילה</TabsTrigger>
+          <TabsTrigger value="workspace">פרטי המשרד והסוכנות</TabsTrigger>
+          <TabsTrigger value="finance">חשבונות ותשלומים</TabsTrigger>
+        </TabsList>
+        <TabsContent value="personal" className="mt-4"><PersonalTab /></TabsContent>
+        <TabsContent value="plan" className="mt-4"><PlanTab /></TabsContent>
+        <TabsContent value="workspace" className="mt-4"><WorkspaceTab /></TabsContent>
+        <TabsContent value="finance" className="mt-4"><Finance /></TabsContent>
+      </Tabs>
+    </div>
+  );
+}
