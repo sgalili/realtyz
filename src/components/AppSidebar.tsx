@@ -65,6 +65,7 @@ import { LiveActivityFeed } from '@/components/dashboard/LiveActivityFeed';
 import { StrategicPdfExportButton } from '@/components/dashboard/StrategicPdfExportButton';
 
 import { SidebarIntelInput } from '@/components/SidebarIntelInput';
+import { ProfileCapsule } from '@/components/sidebar/ProfileCapsule';
 
 type NavItem = {
   title: string;
@@ -111,8 +112,7 @@ const NAV_GROUPS: NavGroup[] = [
       { title: 'Performance Insights', url: '/insights', icon: Gauge, iconColor: 'text-warning' },
       { title: 'ביצועים עסקיים', url: '/business-performance', icon: Briefcase, iconColor: 'text-primary' },
       { title: 'יומן פעילות', url: '/activity-log', icon: History, iconColor: 'text-social-telegram' },
-      { title: 'ניהול חבילה', url: '/subscription', icon: Crown, iconColor: 'text-warning', requires: 'managing_broker' },
-      { title: 'חיובים וחשבוניות', url: '/finance', icon: Wallet, iconColor: 'text-primary', requires: 'managing_broker' },
+      // Subscription + finance moved into ProfileCapsule (bottom popover).
     ],
   },
   {
@@ -313,53 +313,12 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                 <SuperAdminLeadAlert collapsed={collapsed} />
               </div>
             )}
-            {collapsed ? (
-              <SidebarMenuButton
-                onClick={() => setLogoutOpen(true)}
-                aria-label="התנתקות"
-                className="text-primary/75 hover:text-primary hover:bg-primary/10 hover:shadow-[0_10px_24px_-14px_hsl(var(--primary)/0.35)]"
-              >
-                <LogOut className="h-4 w-4 shrink-0" />
-              </SidebarMenuButton>
-            ) : (
-              <div className="flex items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-primary/5">
-                {user && (
-                  <p className="min-w-0 flex-1 truncate text-[11px] text-primary/55">
-                    {user.email}
-                  </p>
-                )}
-                {isSuperAdmin && (
-                  <span className="shrink-0 rounded-full bg-warning/15 px-1.5 py-0.5 text-[9px] font-bold uppercase leading-none tracking-wider text-warning">
-                    Admin
-                  </span>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setLogoutOpen(true)}
-                  aria-label="התנתקות"
-                  title="התנתקות"
-                  className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full text-primary/70 transition-all duration-200 hover:bg-primary/10 hover:text-primary active:scale-95"
-                >
-                  <LogOut className="h-4 w-4" />
-                </button>
-              </div>
-            )}
+            <ProfileCapsule />
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
     </Sidebar>
-    <AlertDialog open={logoutOpen} onOpenChange={setLogoutOpen}>
-      <AlertDialogContent dir="rtl" className="text-right">
-        <AlertDialogHeader className="text-right">
-          <AlertDialogTitle>להתנתק מהמערכת?</AlertDialogTitle>
-          <AlertDialogDescription>לאחר ההתנתקות תועבר למסך הכניסה.</AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter className="gap-2 sm:justify-start sm:space-x-0">
-          <AlertDialogAction onClick={confirmSignOut}>התנתקות</AlertDialogAction>
-          <AlertDialogCancel>ביטול</AlertDialogCancel>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
+    {/* Logout dialog now lives inside ProfileCapsule. */}
     </>
   );
 }
