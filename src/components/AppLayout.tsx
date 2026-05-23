@@ -627,7 +627,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               className="realtyz-logo relative inline-block text-xl font-bold tracking-tight text-primary-foreground"
             >
               Realtyz
-              <span className="absolute top-[6px] -right-4 text-[0.55em] font-semibold text-primary-foreground/80 tracking-wide leading-none">
+              <span className="absolute top-[6px] -right-[19px] text-[calc(0.55em+2px)] font-semibold text-primary-foreground/80 tracking-wide leading-none">
                 AI
               </span>
             </a>
