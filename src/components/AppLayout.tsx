@@ -698,7 +698,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               if (user) localStorage.setItem(`realtyz-onboarding-dismissed-${user.id}`, '1');
             }}
           />}
-          <StartTrialCta variant="fab" />
+          
           {user && <RealtyzOnboardingWizard />}
         </div>
         
