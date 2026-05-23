@@ -15,9 +15,6 @@ import { useQuery } from '@tanstack/react-query';
 import { IsraeliCityPicker } from '@/components/IsraeliCityPicker';
 import { cn } from '@/lib/utils';
 
-const SEAT_PRICE = 350;
-const SEAT_WALLET_CREDIT = 200;
-const SALES_PHONE = '972546811841';
 
 type ContactList = { id: string; value: string }[];
 
