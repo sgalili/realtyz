@@ -3,6 +3,8 @@ import {
   Users,
   Megaphone,
   Brain,
+  Handshake,
+  Briefcase,
 } from 'lucide-react';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -47,7 +49,19 @@ const NAV_ITEMS: NavItem[] = [
     url: '/lead-crm',
     icon: Users,
     iconColor: 'text-social-facebook',
-    aliases: ['/crm', '/properties', '/deal-room', '/property'],
+    aliases: ['/crm', '/leads', '/properties', '/property'],
+  },
+  {
+    title: 'חדר עסקה (Pipeline)',
+    url: '/deal-room',
+    icon: Briefcase,
+    iconColor: 'text-primary-glow',
+  },
+  {
+    title: 'עסקאות משותפות',
+    url: '/shared-deals',
+    icon: Handshake,
+    iconColor: 'text-warning',
   },
   {
     title: 'מרכז הפצה ואוטומציות',

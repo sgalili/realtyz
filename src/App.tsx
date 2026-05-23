@@ -29,7 +29,7 @@ const ConnectionSettings = lazy(() => import("./pages/ConnectionSettings"));
 const SentimentDashboard = lazy(() => import("./pages/SentimentDashboard"));
 const SubscriptionManager = lazy(() => import("./pages/SubscriptionManager"));
 const ContactForm = lazy(() => import("./pages/ContactForm"));
-const AdminLeads = lazy(() => import("./pages/AdminLeads"));
+
 const LiveConversations = lazy(() => import("./pages/LiveConversations"));
 const LiveActivity = lazy(() => import("./pages/LiveActivity"));
 const ConversationAnalytics = lazy(() => import("./pages/ConversationAnalytics"));
@@ -190,7 +190,7 @@ const App = () => (
               <Route path="/settings/homely-admin" element={<ProtectedRoute><HomelyAdmin /></ProtectedRoute>} />
               <Route path="/homely-api" element={<Navigate to="/api-settings" replace />} />
               <Route path="/social-connect" element={<ProtectedRoute allowGuestDemo><SocialConnect /></ProtectedRoute>} />
-              <Route path="/leads" element={<ProtectedRoute allowGuestDemo><AdminLeads /></ProtectedRoute>} />
+              
              <Route path="/live-conversations" element={<ProtectedRoute allowGuestDemo><LiveConversations /></ProtectedRoute>} />
              <Route path="/ai-dialer" element={<ProtectedRoute><AiDialer /></ProtectedRoute>} />
              <Route path="/settings/credentials" element={<ProtectedRoute><PlatformCredentials /></ProtectedRoute>} />
