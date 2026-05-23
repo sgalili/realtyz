@@ -96,10 +96,9 @@ export function PageHero() {
           {title}
         </h1>
 
-        {/* Visual left (RTL flex end): Demo switch —
-            nudged 5px toward the visual-left edge via negative margin. */}
+        {/* Visual left (RTL flex end): live credit-balance pill (opens top-up dialog). */}
         <div className="flex items-center justify-end" style={{ marginLeft: '-5px' }}>
-          <DemoModeToggle variant="hero" />
+          <CreditBalancePill />
         </div>
       </div>
 
