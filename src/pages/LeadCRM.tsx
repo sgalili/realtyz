@@ -38,6 +38,9 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import NewLeadDialog from '@/components/leads/NewLeadDialog';
+import { useFreemiumStatus } from '@/hooks/useFreemiumStatus';
+import { PriceTag } from '@/components/PriceTag';
+import { Rows, Rows3, Home, Building2 } from 'lucide-react';
 
 // Strict Israeli mobile cleaner. Returns 9725XXXXXXXX (12 digits) for storage, or null if invalid.
 // Rules per spec:
