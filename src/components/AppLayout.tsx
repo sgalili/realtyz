@@ -616,9 +616,11 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
             <div className="flex-1" />
 
-            <div className="flex items-center">
+            <div className="flex items-center gap-3">
               <BrandMark to="/" />
+              <HeaderProfileMenu />
             </div>
+
           </header>
           <PageHero />
           <main className="realtyz-main-surface flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6 pt-0">
