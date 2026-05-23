@@ -56,7 +56,17 @@ function resolvePageTitle(pathname: string): string {
 
 export function PageHero() {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const title = resolvePageTitle(location.pathname);
+
+  // On /campaigns with a lead context, CampaignCenter renders its own
+  // avatar+name hero — skip the default hero to avoid a stacked duplicate.
+  if (
+    location.pathname.startsWith('/campaigns') &&
+    (searchParams.get('lead') || searchParams.get('client') || searchParams.get('voter'))
+  ) {
+    return null;
+  }
 
   return (
     <div
