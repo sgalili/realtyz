@@ -205,10 +205,6 @@ function WorkspaceTab() {
 
   const fields: { key: keyof typeof values; icon: typeof Mail; label: string }[] = [
     { key: 'agency_name', icon: Building2, label: 'שם המשרד' },
-    { key: 'manager', icon: UserIcon, label: 'מנהל פעיל' },
-    { key: 'tone', icon: Briefcase, label: 'טון תקשורת' },
-    { key: 'service_areas', icon: MapPin, label: 'אזורי שירות' },
-    { key: 'initial_message', icon: MessageCircle, label: 'מסר פתיחה' },
   ];
 
   return (
@@ -276,6 +272,18 @@ function WorkspaceTab() {
               </div>
             );
           })}
+
+          <div className="rounded-lg border bg-card/40 p-3 text-right">
+            <div className="mb-1.5 flex items-center gap-2 text-xs text-muted-foreground">
+              <MapPin className="h-3.5 w-3.5" />
+              <span>אזורי שירות</span>
+            </div>
+            <IsraeliCityPicker
+              value={values.service_areas}
+              onChange={(v) => setValues((s) => ({ ...s, service_areas: v }))}
+              placeholder="בחר עיר / אזור"
+            />
+          </div>
         </div>
         <Button onClick={save} size="lg" className="w-full">שמירת פרטי המשרד</Button>
       </CardContent>
