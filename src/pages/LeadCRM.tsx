@@ -988,6 +988,11 @@ const LeadCRM = () => {
                   {filtered?.map((lead) => {
                     const profile = getPoliticalProfile(lead.status, lead.engagement_score);
                     const eng = lead.engagement_score ?? 0;
+                    const rowCls = compactMode
+                      ? 'cursor-pointer hover:bg-accent/40 transition-colors text-[12px] leading-tight [&>td]:!px-0 [&>td]:py-1'
+                      : 'cursor-pointer hover:bg-accent/40 transition-colors text-sm [&>td]:!px-0';
+                    return (
+                      <TableRow key={lead.id} className={rowCls}>
                     return (
                       <TableRow key={lead.id} className="cursor-pointer hover:bg-accent/40 transition-colors text-sm [&>td]:!px-0">
                         <TableCell className="font-medium whitespace-nowrap" onClick={() => setSelectedVoterId(lead.id)}>
