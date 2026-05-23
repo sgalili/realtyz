@@ -915,7 +915,7 @@ const LeadCRM = () => {
                   <TableHead className="w-auto font-semibold text-xs">שם</TableHead>
                   <TableHead className="w-auto font-semibold text-xs text-right">טלפון</TableHead>
                   <TableHead className="w-auto font-semibold text-xs">עיר</TableHead>
-                  <TableHead className="w-auto text-center font-semibold text-xs">פרופיל פוליטי</TableHead>
+                  <TableHead className="w-auto text-center font-semibold text-xs">שלב מתעניין</TableHead>
                   <TableHead className="w-10 text-center">
                     <Checkbox checked={allFilteredSelected} onCheckedChange={toggleAll} />
                   </TableHead>
