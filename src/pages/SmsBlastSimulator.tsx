@@ -174,6 +174,7 @@ export default function SmsBlastSimulator() {
   const [connectedChannels, setConnectedChannels] = useState<Record<ChannelId, boolean>>({
     whatsapp: false, sms: true, email: false, voice: false, ivr: false,
     linkedin: false, instagram: false, tiktok: false, telegram: false,
+    messenger: false, twitter: false, youtube: false,
   });
   // Connected account labels (e.g. "realtyzai@gmail.com") shown under the channel name on each card.
   const [connectedAccounts, setConnectedAccounts] = useState<Partial<Record<ChannelId, string>>>({});
