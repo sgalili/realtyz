@@ -54,6 +54,7 @@ const AutomationStudioPage = lazy(() => import("./pages/AutomationStudioPage"));
 const Team = lazy(() => import("./pages/Team"));
 const SignDocument = lazy(() => import("./pages/SignDocument"));
 const Properties = lazy(() => import("./pages/Properties"));
+const PropertiesHub = lazy(() => import("./pages/PropertiesHub"));
 const PropertyDetail = lazy(() => import("./pages/PropertyDetail"));
 const WhiteLabelSettings = lazy(() => import("./pages/WhiteLabelSettings"));
 const SystemHealth = lazy(() => import("./pages/SystemHealth"));
@@ -165,7 +166,9 @@ const App = () => (
               <Route path="/inbox" element={<ProtectedRoute allowGuestDemo><OmnichannelInbox /></ProtectedRoute>} />
               <Route path="/deal-room" element={<ProtectedRoute allowGuestDemo><DealRoom /></ProtectedRoute>} />
               <Route path="/properties" element={<ProtectedRoute allowGuestDemo><Properties /></ProtectedRoute>} />
+              <Route path="/properties-hub" element={<ProtectedRoute allowGuestDemo><PropertiesHub /></ProtectedRoute>} />
               <Route path="/properties/:id" element={<ProtectedRoute allowGuestDemo><PropertyDetail /></ProtectedRoute>} />
+
               <Route path="/automations" element={<ProtectedRoute allowGuestDemo><AutomationStudioPage /></ProtectedRoute>} />
               <Route path="/insights" element={<ProtectedRoute allowGuestDemo><PerformanceInsights /></ProtectedRoute>} />
               <Route path="/business-performance" element={<ProtectedRoute><BusinessPerformance /></ProtectedRoute>} />

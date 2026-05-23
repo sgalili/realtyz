@@ -2206,6 +2206,33 @@ export type Database = {
         }
         Relationships: []
       }
+      market_pulse_cache: {
+        Row: {
+          cache_key: string
+          expires_at: string
+          fetched_at: string
+          id: string
+          payload: Json
+          source: string
+        }
+        Insert: {
+          cache_key: string
+          expires_at: string
+          fetched_at?: string
+          id?: string
+          payload: Json
+          source: string
+        }
+        Update: {
+          cache_key?: string
+          expires_at?: string
+          fetched_at?: string
+          id?: string
+          payload?: Json
+          source?: string
+        }
+        Relationships: []
+      }
       media_library: {
         Row: {
           created_at: string

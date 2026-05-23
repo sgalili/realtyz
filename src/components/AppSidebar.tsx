@@ -5,6 +5,7 @@ import {
   Brain,
   Handshake,
   Briefcase,
+  Building2,
 } from 'lucide-react';
 import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
@@ -50,6 +51,12 @@ const NAV_ITEMS: NavItem[] = [
     icon: Users,
     iconColor: 'text-social-facebook',
     aliases: ['/crm', '/leads', '/properties', '/property'],
+  },
+  {
+    title: 'מאגר נכסים משולב AI',
+    url: '/properties-hub',
+    icon: Building2,
+    iconColor: 'text-primary',
   },
   {
     title: 'חדר עסקה (Pipeline)',
