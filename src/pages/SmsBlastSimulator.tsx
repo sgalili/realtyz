@@ -165,6 +165,52 @@ export default function SmsBlastSimulator() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // ── Lead context (when launched from a single lead's CRM profile) ─────────
+  // Drives per-channel gray-out: any channel whose destination coordinate is
+  // missing on this lead (e.g. no email → email card disabled) is faded.
+  const leadSearchParams = new URLSearchParams(location.search);
+  const contextLeadId = leadSearchParams.get('lead') ?? leadSearchParams.get('voter');
+  const [leadCoords, setLeadCoords] = useState<{
+    phone: boolean; email: boolean; linkedin: boolean; instagram: boolean;
+    telegram: boolean; messenger: boolean;
+  } | null>(null);
+  useEffect(() => {
+    if (!contextLeadId) { setLeadCoords(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('leads')
+        .select('phone_number, email, instagram_handle, messenger_id, telegram_username')
+        .eq('id', contextLeadId)
+        .maybeSingle();
+      if (cancelled) return;
+      const r: any = data ?? {};
+      setLeadCoords({
+        phone: !!r.phone_number && /\d{7,}/.test(String(r.phone_number)),
+        email: !!r.email && /@/.test(String(r.email)),
+        linkedin: false, // no column on leads → always missing for single-lead context
+        instagram: !!r.instagram_handle,
+        telegram: !!r.telegram_username,
+        messenger: !!r.messenger_id,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [contextLeadId]);
+
+  // Returns true when this channel can't possibly reach the targeted lead.
+  const leadMissingChannel = useCallback((c: ChannelId): boolean => {
+    if (!leadCoords) return false; // bulk mode → don't gate per-lead
+    if (c === 'whatsapp' || c === 'sms' || c === 'voice' || c === 'ivr') return !leadCoords.phone;
+    if (c === 'email') return !leadCoords.email;
+    if (c === 'linkedin') return !leadCoords.linkedin;
+    if (c === 'instagram') return !leadCoords.instagram;
+    if (c === 'telegram') return !leadCoords.telegram;
+    if (c === 'messenger') return !leadCoords.messenger;
+    // tiktok / twitter / youtube — no per-lead coord on schema → block in lead context
+    return true;
+  }, [leadCoords]);
+
+
   // ── Live connection map: which channels are actually connected? ───────────
   // Refreshed on mount + whenever the user returns to /campaigns?tab=broadcast
   // after connecting a channel on /social-connect.
