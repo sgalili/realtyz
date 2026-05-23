@@ -52,6 +52,12 @@ const NAV_ITEMS: NavItem[] = [
     aliases: ['/crm', '/leads', '/properties', '/property'],
   },
   {
+    title: 'מאגר נכסים משולב AI',
+    url: '/properties-hub',
+    icon: Building2,
+    iconColor: 'text-primary',
+  },
+  {
     title: 'חדר עסקה (Pipeline)',
     url: '/deal-room',
     icon: Briefcase,
