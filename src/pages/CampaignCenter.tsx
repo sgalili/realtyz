@@ -1,11 +1,13 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { RealtyzLoader } from '@/components/RealtyzLoader';
 import { RealtyzWave } from '@/components/RealtyzWave';
 import { Crosshair, Megaphone, Calendar, ShieldCheck, Radio, ClipboardList, Send, Users, ArrowRight } from 'lucide-react';
 import { useElectionType } from '@/hooks/useElectionType';
+import { supabase } from '@/integrations/supabase/client';
 
 const CampaignStrategy = lazy(() => import('./CampaignStrategy'));
 const CampaignManager = lazy(() => import('./CampaignManager'));
@@ -67,29 +69,64 @@ const CampaignCenter = () => {
   const fromRaw = searchParams.get('from');
   const fromCrm = fromRaw === 'crm' || fromRaw === 'voter-crm';
 
+  // Pull the lead's avatar/full name so the Hero shows a true profile chip.
+  const [leadAvatar, setLeadAvatar] = useState<string | null>(null);
+  const [leadFullName, setLeadFullName] = useState<string | null>(null);
+  useEffect(() => {
+    if (!leadId) { setLeadAvatar(null); setLeadFullName(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('leads')
+        .select('full_name, profile_picture_url')
+        .eq('id', leadId)
+        .maybeSingle();
+      if (cancelled) return;
+      setLeadAvatar((data as any)?.profile_picture_url ?? null);
+      setLeadFullName((data as any)?.full_name ?? null);
+    })();
+    return () => { cancelled = true; };
+  }, [leadId]);
+  const displayName = leadFullName ?? leadName ?? '';
+  const initials = displayName
+    .split(/\s+/).filter(Boolean).slice(0, 2).map((s) => s[0]).join('').toUpperCase() || '?';
+
   return (
     <div className="space-y-6" dir="rtl">
-      {leadId && leadName ? (
+      {leadId && displayName ? (
         <div
           className="relative -mx-6 -mt-6 mb-2 overflow-hidden text-primary-foreground"
           style={{ backgroundColor: '#0096E6' }}
           data-no-hero-wave
         >
-          <div className="relative z-10 flex items-center justify-center gap-3 px-6" style={{ minHeight: '88px' }}>
-            {fromCrm && (
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() => navigate(`/lead-crm?lead=${encodeURIComponent(leadId)}`)}
-                className="text-primary-foreground hover:bg-primary-foreground/10"
-                aria-label="חזרה לפרופיל המתעניין"
-              >
-                <ArrowRight className="h-5 w-5" />
-              </Button>
-            )}
-            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-center">
-              שולחים ל- {leadName}
-            </h1>
+          <div className="relative z-10 grid items-center px-4 sm:px-6" style={{ minHeight: '88px', gridTemplateColumns: '1fr auto 1fr' }}>
+            {/* RIGHT edge: back arrow (RTL: visually rightmost column comes first in grid) */}
+            <div className="flex justify-start">
+              {fromCrm && (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  onClick={() => navigate(`/lead-crm?lead=${encodeURIComponent(leadId)}`)}
+                  className="text-primary-foreground hover:bg-primary-foreground/10"
+                  aria-label="חזרה לפרופיל המתעניין"
+                >
+                  <ArrowRight className="h-5 w-5" />
+                </Button>
+              )}
+            </div>
+            {/* CENTER: avatar + name on the same flexline */}
+            <div className="flex items-center justify-center gap-3">
+              <Avatar className="h-10 w-10 ring-2 ring-primary-foreground/40 shrink-0">
+                {leadAvatar ? <AvatarImage src={leadAvatar} alt={displayName} /> : null}
+                <AvatarFallback className="bg-primary-foreground/15 text-primary-foreground text-sm font-semibold">
+                  {initials}
+                </AvatarFallback>
+              </Avatar>
+              <h1 className="text-xl sm:text-2xl font-bold tracking-tight whitespace-nowrap">
+                {displayName}
+              </h1>
+            </div>
+            <div />
           </div>
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6">
             <RealtyzWave position="bottom" variant="wave-soft" fill="#f1f5f9" seed={7} />

@@ -165,6 +165,52 @@ export default function SmsBlastSimulator() {
   const navigate = useNavigate();
   const location = useLocation();
 
+  // ── Lead context (when launched from a single lead's CRM profile) ─────────
+  // Drives per-channel gray-out: any channel whose destination coordinate is
+  // missing on this lead (e.g. no email → email card disabled) is faded.
+  const leadSearchParams = new URLSearchParams(location.search);
+  const contextLeadId = leadSearchParams.get('lead') ?? leadSearchParams.get('voter');
+  const [leadCoords, setLeadCoords] = useState<{
+    phone: boolean; email: boolean; linkedin: boolean; instagram: boolean;
+    telegram: boolean; messenger: boolean;
+  } | null>(null);
+  useEffect(() => {
+    if (!contextLeadId) { setLeadCoords(null); return; }
+    let cancelled = false;
+    (async () => {
+      const { data } = await supabase
+        .from('leads')
+        .select('phone_number, email, instagram_handle, messenger_id, telegram_username')
+        .eq('id', contextLeadId)
+        .maybeSingle();
+      if (cancelled) return;
+      const r: any = data ?? {};
+      setLeadCoords({
+        phone: !!r.phone_number && /\d{7,}/.test(String(r.phone_number)),
+        email: !!r.email && /@/.test(String(r.email)),
+        linkedin: false, // no column on leads → always missing for single-lead context
+        instagram: !!r.instagram_handle,
+        telegram: !!r.telegram_username,
+        messenger: !!r.messenger_id,
+      });
+    })();
+    return () => { cancelled = true; };
+  }, [contextLeadId]);
+
+  // Returns true when this channel can't possibly reach the targeted lead.
+  const leadMissingChannel = useCallback((c: ChannelId): boolean => {
+    if (!leadCoords) return false; // bulk mode → don't gate per-lead
+    if (c === 'whatsapp' || c === 'sms' || c === 'voice' || c === 'ivr') return !leadCoords.phone;
+    if (c === 'email') return !leadCoords.email;
+    if (c === 'linkedin') return !leadCoords.linkedin;
+    if (c === 'instagram') return !leadCoords.instagram;
+    if (c === 'telegram') return !leadCoords.telegram;
+    if (c === 'messenger') return !leadCoords.messenger;
+    // tiktok / twitter / youtube — no per-lead coord on schema → block in lead context
+    return true;
+  }, [leadCoords]);
+
+
   // ── Live connection map: which channels are actually connected? ───────────
   // Refreshed on mount + whenever the user returns to /campaigns?tab=broadcast
   // after connecting a channel on /social-connect.
@@ -1113,12 +1159,21 @@ export default function SmsBlastSimulator() {
                     const isConnected = connectedChannels[channel.id];
                     const isPending = !!channel.pending;
                     const isFree = channel.unitPriceNis === 0;
+                    // Dual gray-out conditions:
+                    //   (1) Provider not connected at brokerage level (legacy: handled by !isConnected style).
+                    //   (2) In lead-context mode, the lead has no destination coord (no email, no phone, no handle).
+                    const missingForLead = leadMissingChannel(channel.id);
+                    const disabledForLead = !!contextLeadId && missingForLead;
                     const priceText = isPending
                       ? 'בחישוב'
                       : isFree
                         ? 'חינם'
                         : `₪${channel.unitPriceNis.toLocaleString('he-IL', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
                     const handleCardClick = () => {
+                      if (disabledForLead) {
+                        toast.info('למתעניין זה אין כתובת/מספר מתאים לערוץ זה.');
+                        return;
+                      }
                       if (isPending) {
                         toast.info('ערוץ זה ממתין לחיבור ספק - נחזור בקרוב.');
                         return;
@@ -1135,14 +1190,19 @@ export default function SmsBlastSimulator() {
                         type="button"
                         onClick={handleCardClick}
                         aria-pressed={checked}
+                        aria-disabled={disabledForLead}
+                        title={disabledForLead ? 'אין יעד זמין למתעניין זה בערוץ הזה' : undefined}
                         className={`relative flex flex-col items-center justify-start gap-1.5 rounded-xl border-2 p-2.5 sm:p-3 text-center transition-all min-h-[8.75rem] ${
-                          checked
-                            ? 'border-primary bg-primary/10 shadow-[0_4px_18px_-6px_hsl(var(--primary)/0.55)] ring-1 ring-primary/30'
-                            : isConnected
-                              ? 'border-border bg-card hover:border-primary/40 hover:bg-secondary/40'
-                              : 'border-dashed border-border/70 bg-muted/30 hover:border-primary/30 hover:bg-muted/50'
+                          disabledForLead
+                            ? 'opacity-40 pointer-events-none border-dashed border-border/60 bg-muted/30'
+                            : checked
+                              ? 'border-primary bg-primary/10 shadow-[0_4px_18px_-6px_hsl(var(--primary)/0.55)] ring-1 ring-primary/30'
+                              : isConnected
+                                ? 'border-border bg-card hover:border-primary/40 hover:bg-secondary/40'
+                                : 'border-dashed border-border/70 bg-muted/30 hover:border-primary/30 hover:bg-muted/50'
                         }`}
                       >
+
                         {checked && isConnected && (
                           <span
                             className="absolute top-2 right-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-primary text-primary-foreground shadow-sm"

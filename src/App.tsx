@@ -61,6 +61,7 @@ const ClientPortal = lazy(() => import("./pages/ClientPortal"));
 const PlatformSettings = lazy(() => import("./pages/PlatformSettings"));
 const HomelyAdmin = lazy(() => import("./pages/HomelyAdmin"));
 const AiDialer = lazy(() => import("./pages/AiDialer"));
+const PlatformCredentials = lazy(() => import("./pages/PlatformCredentials"));
 
 
 let syncToastId: string | number | undefined;
@@ -190,6 +191,7 @@ const App = () => (
               <Route path="/leads" element={<ProtectedRoute allowGuestDemo><AdminLeads /></ProtectedRoute>} />
              <Route path="/live-conversations" element={<ProtectedRoute allowGuestDemo><LiveConversations /></ProtectedRoute>} />
              <Route path="/ai-dialer" element={<ProtectedRoute><AiDialer /></ProtectedRoute>} />
+             <Route path="/settings/credentials" element={<ProtectedRoute><PlatformCredentials /></ProtectedRoute>} />
               <Route path="/live-activity" element={<ProtectedRoute allowGuestDemo><LiveActivity /></ProtectedRoute>} />
               <Route path="/conversation-analytics" element={<ProtectedRoute allowGuestDemo><ConversationAnalytics /></ProtectedRoute>} />
               <Route path="/security" element={<ProtectedRoute allowGuestDemo><SecurityDashboard /></ProtectedRoute>} />
