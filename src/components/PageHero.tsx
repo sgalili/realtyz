@@ -98,7 +98,7 @@ export function PageHero() {
 
         {/* Visual left (RTL flex end): live credit-balance pill (opens top-up dialog). */}
         <div className="flex items-center justify-end" style={{ marginLeft: '-5px' }}>
-          <CreditBalancePill />
+          {location.pathname.startsWith('/campaigns') && <CreditBalancePill />}
         </div>
       </div>
 
