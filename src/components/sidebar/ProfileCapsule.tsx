@@ -93,7 +93,7 @@ export function ProfileCapsule() {
           </button>
         </PopoverTrigger>
         <PopoverContent
-          side="top"
+          side="bottom"
           align="end"
           dir="rtl"
           className="w-60 p-1.5"
