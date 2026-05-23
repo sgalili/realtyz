@@ -38,6 +38,9 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import NewLeadDialog from '@/components/leads/NewLeadDialog';
+import { useFreemiumStatus } from '@/hooks/useFreemiumStatus';
+import { PriceTag } from '@/components/PriceTag';
+import { Rows, Rows3, Home, Building2 } from 'lucide-react';
 
 // Strict Israeli mobile cleaner. Returns 9725XXXXXXXX (12 digits) for storage, or null if invalid.
 // Rules per spec:
@@ -186,6 +189,14 @@ const LeadCRM = () => {
   const [cityFilter, setCityFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [profileFilter, setProfileFilter] = useState<string>('all');
+  const [dealTypeFilter, setDealTypeFilter] = useState<string>('all');
+  const [compactMode, setCompactMode] = useState<boolean>(() => {
+    try { return localStorage.getItem('crm.compact') === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('crm.compact', compactMode ? '1' : '0'); } catch {}
+  }, [compactMode]);
+  const freemium = useFreemiumStatus();
   const [selectedVoterId, setSelectedVoterId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -224,7 +235,7 @@ const LeadCRM = () => {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['leads-infinite', debouncedSearch, interestFilter, cityFilter, statusFilter],
+    queryKey: ['leads-infinite', debouncedSearch, interestFilter, cityFilter, statusFilter, dealTypeFilter],
     enabled: !isDemoMode,
     queryFn: async ({ pageParam = 0 }) => {
       let query = supabase.from('leads').select('*', { count: 'exact' });
@@ -237,6 +248,7 @@ const LeadCRM = () => {
       if (interestFilter !== 'all') query = query.eq('interest_tag', interestFilter);
       if (cityFilter !== 'all') query = query.eq('city', cityFilter);
       if (statusFilter !== 'all') query = query.eq('status', statusFilter);
+      if (dealTypeFilter !== 'all') query = query.eq('deal_type', dealTypeFilter);
 
       const from = pageParam * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
@@ -737,12 +749,35 @@ const LeadCRM = () => {
           </p>
         </div>
       </div>
-      <div className="flex w-full gap-2 sm:w-auto sm:justify-end">
+      <div className="flex w-full gap-2 sm:w-auto sm:items-center sm:justify-end">
         <input type="file" ref={fileInputRef} accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileSelect} />
-        <Button onClick={() => setAddVoterOpen(true)} variant="outline" size="sm" className="flex-1 gap-2 sm:flex-none">
+        {freemium.isTrial && (
+          <div className="hidden sm:flex items-center gap-3 me-2 rounded-md border border-border/60 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground">
+            <span>נותרו <span className="font-semibold text-foreground tabular-nums">{freemium.daysLeft}</span> ימי התנסות</span>
+            <span className="text-border">·</span>
+            <span><span className="font-semibold text-foreground tabular-nums">{freemium.contactsUsed}</span> / {freemium.contactsCap} אנשי קשר</span>
+            <span className="text-border">·</span>
+            <span>יתרה <PriceTag value={freemium.walletILS} fractionDigits={2} /></span>
+          </div>
+        )}
+        <Button
+          onClick={() => setAddVoterOpen(true)}
+          variant="outline"
+          size="sm"
+          className="flex-1 gap-2 sm:flex-none"
+          disabled={freemium.isBlocked}
+          title={freemium.isBlocked ? (freemium.blockReason === 'time' ? 'תקופת ההתנסות הסתיימה' : 'הגעת ל-100 אנשי קשר. שדרג כדי להמשיך') : undefined}
+        >
           <User className="h-4 w-4" /> הוספת מתעניין
         </Button>
-        <Button onClick={() => fileInputRef.current?.click()} variant="outline" size="sm" className="flex-1 gap-2 sm:flex-none">
+        <Button
+          onClick={() => fileInputRef.current?.click()}
+          variant="outline"
+          size="sm"
+          className="flex-1 gap-2 sm:flex-none"
+          disabled={freemium.isBlocked}
+          title={freemium.isBlocked ? (freemium.blockReason === 'time' ? 'תקופת ההתנסות הסתיימה' : 'הגעת ל-100 אנשי קשר. שדרג כדי להמשיך') : undefined}
+        >
           <Upload className="h-4 w-4" /> ייבוא מתעניינים
         </Button>
       </div>
@@ -812,10 +847,33 @@ const LeadCRM = () => {
                 <SelectItem value="נסגר">נסגר</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={dealTypeFilter} onValueChange={setDealTypeFilter}>
+              <SelectTrigger className="w-[150px] h-8 text-xs"><Home className="h-3 w-3 ml-1" /><SelectValue placeholder="סוג עסקה" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">כל סוגי העסקה</SelectItem>
+                <SelectItem value="sale">קנייה / מכירה</SelectItem>
+                <SelectItem value="rent">שכירות / השכרה</SelectItem>
+              </SelectContent>
+            </Select>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={compactMode ? 'default' : 'outline'}
+                  size="sm"
+                  className="gap-1.5 h-8 shrink-0"
+                  onClick={() => setCompactMode((v) => !v)}
+                  aria-pressed={compactMode}
+                >
+                  {compactMode ? <Rows3 className="h-3.5 w-3.5" /> : <Rows className="h-3.5 w-3.5" />}
+                  {compactMode ? 'תצוגה מורחבת' : 'תצוגה צפופה'}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>החלפה בין שורות מורחבות לטבלה צפופה</TooltipContent>
+            </Tooltip>
             <Button variant="outline" size="sm" className="gap-1.5 h-8 shrink-0" onClick={() => handleExportExcel('filtered')}>
               <FileSpreadsheet className="h-3.5 w-3.5" /> ייצוא
             </Button>
-            <Button size="sm" className="gap-1.5 h-8 shrink-0" onClick={() => setNewLeadOpen(true)}>
+            <Button size="sm" className="gap-1.5 h-8 shrink-0" onClick={() => setNewLeadOpen(true)} disabled={freemium.isBlocked}>
               <UserPlus className="h-3.5 w-3.5" /> מתעניין חדש
             </Button>
           </div>}
@@ -880,7 +938,7 @@ const LeadCRM = () => {
                   <TableHead className="w-auto font-semibold text-xs">שם</TableHead>
                   <TableHead className="w-auto font-semibold text-xs text-right">טלפון</TableHead>
                   <TableHead className="w-auto font-semibold text-xs">עיר</TableHead>
-                  <TableHead className="w-auto text-center font-semibold text-xs">פרופיל פוליטי</TableHead>
+                  <TableHead className="w-auto text-center font-semibold text-xs">שלב מתעניין</TableHead>
                   <TableHead className="w-10 text-center">
                     <Checkbox checked={allFilteredSelected} onCheckedChange={toggleAll} />
                   </TableHead>
@@ -930,8 +988,11 @@ const LeadCRM = () => {
                   {filtered?.map((lead) => {
                     const profile = getPoliticalProfile(lead.status, lead.engagement_score);
                     const eng = lead.engagement_score ?? 0;
+                    const rowCls = compactMode
+                      ? 'cursor-pointer hover:bg-accent/40 transition-colors text-[12px] leading-tight [&>td]:!px-0 [&>td]:py-1'
+                      : 'cursor-pointer hover:bg-accent/40 transition-colors text-sm [&>td]:!px-0';
                     return (
-                      <TableRow key={lead.id} className="cursor-pointer hover:bg-accent/40 transition-colors text-sm [&>td]:!px-0">
+                      <TableRow key={lead.id} className={rowCls}>
                         <TableCell className="font-medium whitespace-nowrap" onClick={() => setSelectedVoterId(lead.id)}>
                           <div className="flex min-w-0 items-center gap-1.5 whitespace-nowrap">
                             <VoterAvatar fullName={lead.full_name} profilePictureUrl={(lead as any).profile_picture_url} className="h-7 w-7" textClassName="text-[10px]" />

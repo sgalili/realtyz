@@ -3,7 +3,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 
 export const TRIAL_RECORD_CAP = 100;
-export const TRIAL_DAYS = 7;
+export const TRIAL_DAYS = 30;
 
 export type PlanStatus = 'trial' | 'active' | 'expired' | string;
 
