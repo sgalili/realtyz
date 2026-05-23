@@ -31,7 +31,7 @@ import { toast } from 'sonner';
 import { DEMO_CANDIDATES, getDemoCandidateCrisisAlerts, type DemoCandidateId } from '@/lib/demoData';
 import { TrialQuickStartWizard } from '@/components/TrialQuickStartWizard';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
-import { BrandMark } from '@/components/branding/BrandMark';
+
 import { HeaderProfileMenu } from '@/components/header/HeaderProfileMenu';
 
 
