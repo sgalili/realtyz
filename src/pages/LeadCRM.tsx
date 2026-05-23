@@ -235,7 +235,7 @@ const LeadCRM = () => {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['leads-infinite', debouncedSearch, interestFilter, cityFilter, statusFilter],
+    queryKey: ['leads-infinite', debouncedSearch, interestFilter, cityFilter, statusFilter, dealTypeFilter],
     enabled: !isDemoMode,
     queryFn: async ({ pageParam = 0 }) => {
       let query = supabase.from('leads').select('*', { count: 'exact' });
@@ -248,6 +248,7 @@ const LeadCRM = () => {
       if (interestFilter !== 'all') query = query.eq('interest_tag', interestFilter);
       if (cityFilter !== 'all') query = query.eq('city', cityFilter);
       if (statusFilter !== 'all') query = query.eq('status', statusFilter);
+      if (dealTypeFilter !== 'all') query = query.eq('deal_type', dealTypeFilter);
 
       const from = pageParam * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
