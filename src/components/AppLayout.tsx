@@ -624,7 +624,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
           </header>
           <PageHero />
-          <main className="realtyz-main-surface flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6 pt-0">
+          <main className="realtyz-main-surface flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-6 pb-6 pt-0">
             {children}
             <MandateSelectorMount />
             <DemoSidebarPeek />
