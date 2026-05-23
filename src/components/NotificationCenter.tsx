@@ -304,18 +304,19 @@ export default function NotificationCenter() {
   const getMatchedKeyword = (content: string) =>
     ALERT_KEYWORDS.find(kw => content.includes(kw)) || '';
 
+  if (badgeCount <= 0) return null;
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
         <Button variant="ghost" size="icon" aria-label="מרכז התראות" className={`relative h-9 w-9 p-0 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground ${bellPulse ? 'realtyz-notification-pulse' : ''}`}>
           <Bell className="h-4 w-4" />
-          {badgeCount > 0 && (
-            <span className="absolute right-0 top-0 h-4 min-w-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
-              {badgeCount > 9 ? '9+' : badgeCount}
-            </span>
-          )}
+          <span className="absolute right-0 top-0 h-4 min-w-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+            {badgeCount > 9 ? '9+' : badgeCount}
+          </span>
         </Button>
       </PopoverTrigger>
+
       <PopoverContent className="realtyz-notification-drawer w-80 p-0 overflow-hidden" align="end" dir="rtl">
         <div className="flex items-center justify-between px-4 py-3 border-b border-primary/15">
           <h4 className="text-sm font-semibold text-primary">מרכז התראות</h4>
