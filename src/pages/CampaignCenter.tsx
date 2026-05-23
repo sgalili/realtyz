@@ -58,12 +58,48 @@ const CampaignCenter = () => {
     setSearchParams(next, { replace: true });
   };
 
+  // Lead-context hero: when launching the composer from a specific lead's CRM
+  // profile, the URL carries ?lead=<id>&name=<full name>&from=crm (legacy
+  // value 'voter-crm' is treated identically).
+  const navigate = useNavigate();
+  const leadId = searchParams.get('lead') ?? searchParams.get('voter');
+  const leadName = searchParams.get('name');
+  const fromRaw = searchParams.get('from');
+  const fromCrm = fromRaw === 'crm' || fromRaw === 'voter-crm';
+
   return (
     <div className="space-y-6" dir="rtl">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-primary">מרכז הקמפיינים</h1>
-        <p className="text-sm text-muted-foreground mt-1">{activeMeta.description}</p>
-      </div>
+      {leadId && leadName ? (
+        <div
+          className="relative -mx-6 -mt-6 mb-2 overflow-hidden text-primary-foreground"
+          style={{ backgroundColor: '#0096E6' }}
+          data-no-hero-wave
+        >
+          <div className="relative z-10 flex items-center justify-center gap-3 px-6" style={{ minHeight: '88px' }}>
+            {fromCrm && (
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() => navigate(`/lead-crm?lead=${encodeURIComponent(leadId)}`)}
+                className="text-primary-foreground hover:bg-primary-foreground/10"
+                aria-label="חזרה לפרופיל המתעניין"
+              >
+                <ArrowRight className="h-5 w-5" />
+              </Button>
+            )}
+            <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-center">
+              שולחים ל- {leadName}
+            </h1>
+          </div>
+          <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6">
+            <RealtyzWave position="bottom" variant="wave-soft" fill="#f1f5f9" seed={7} />
+          </div>
+        </div>
+      ) : (
+        <div>
+          <p className="text-sm text-muted-foreground mt-1">{activeMeta.description}</p>
+        </div>
+      )}
 
       <Tabs value={active} onValueChange={handleChange} className="w-full">
         <div className="sticky top-0 z-30 -mx-6 px-6 py-2 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border/60">
