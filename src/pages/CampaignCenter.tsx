@@ -88,8 +88,22 @@ const CampaignCenter = () => {
             className="relative z-10 grid items-center px-4 sm:px-6"
             style={{ minHeight: '88px', gridTemplateColumns: '1fr auto 1fr' }}
           >
-            {/* Visual LEFT column (RTL flex end): back arrow */}
-            <div />
+            {/* Visual RIGHT column (RTL flex start): back arrow flush to viewport edge */}
+            <div className="flex justify-start">
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={() =>
+                  fromCrm
+                    ? navigate(`/lead-crm?lead=${encodeURIComponent(leadId!)}`)
+                    : navigate('/lead-crm')
+                }
+                className="text-primary-foreground hover:bg-primary-foreground/10"
+                aria-label="חזרה לפרופיל המתעניין"
+              >
+                <ArrowRight className="h-5 w-5" />
+              </Button>
+            </div>
             <div className="flex items-center justify-center gap-3">
               <Avatar className="h-10 w-10 ring-2 ring-primary-foreground/40 shrink-0">
                 {leadAvatar ? <AvatarImage src={leadAvatar} alt={displayName} /> : null}
@@ -101,21 +115,8 @@ const CampaignCenter = () => {
                 {displayName}
               </h1>
             </div>
-            <div className="flex justify-end">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={() =>
-                  fromCrm
-                    ? navigate(`/lead-crm?lead=${encodeURIComponent(leadId!)}`)
-                    : navigate('/lead-crm')
-                }
-                className="text-primary-foreground hover:bg-primary-foreground/10"
-                aria-label="חזרה לניהול המתעניינים"
-              >
-                <ArrowRight className="h-5 w-5" />
-              </Button>
-            </div>
+            <div />
+
           </div>
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6">
             <RealtyzWave position="bottom" variant="wave-soft" fill="#f1f5f9" seed={7} />
