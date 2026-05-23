@@ -311,7 +311,7 @@ export default function KnowledgeBase() {
           >
             {chatMessages.length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-10">
-                התחל שיחה — לדוגמה: "מה עיקרי המצע?" או "מה כתוב על דיור?"
+                התחל שיחה — לדוגמה: "מה גובה העמלה המקובלת?" או "איך עונים על התנגדות מחיר?"
               </p>
             )}
             {chatMessages.map((m, i) => (
