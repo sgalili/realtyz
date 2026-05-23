@@ -189,6 +189,14 @@ const LeadCRM = () => {
   const [cityFilter, setCityFilter] = useState<string>('all');
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [profileFilter, setProfileFilter] = useState<string>('all');
+  const [dealTypeFilter, setDealTypeFilter] = useState<string>('all');
+  const [compactMode, setCompactMode] = useState<boolean>(() => {
+    try { return localStorage.getItem('crm.compact') === '1'; } catch { return false; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('crm.compact', compactMode ? '1' : '0'); } catch {}
+  }, [compactMode]);
+  const freemium = useFreemiumStatus();
   const [selectedVoterId, setSelectedVoterId] = useState<string | null>(null);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [importDialogOpen, setImportDialogOpen] = useState(false);
