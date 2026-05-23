@@ -595,13 +595,14 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <AppSidebar tutorialHighlightPath={activeTutorialStep?.path} />
         <div className="flex-1 flex h-screen min-w-0 flex-col overflow-hidden">
           <header className="h-16 text-primary-foreground backdrop-blur-md flex items-center px-4 gap-2 shrink-0 sticky top-0 z-30" style={{ backgroundColor: 'hsl(var(--header-bg))' }} dir="rtl">
-            {/* RTL: first child = visual right. Profile on visual right, system icons on visual left. */}
+            {/* Profile avatar on visual right */}
             <div className="flex items-center gap-3">
               <HeaderProfileMenu />
             </div>
 
             <div className="flex-1" />
 
+            {/* Centered action buttons */}
             <div className="flex items-center gap-1.5">
               <HeaderCrisisAlert />
               <NotificationCenter />
@@ -617,6 +618,19 @@ export function AppLayout({ children }: { children: ReactNode }) {
               </Button>
             </div>
 
+            <div className="flex-1" />
+
+            {/* Realtyz AI logo locked on visual left */}
+            <a
+              href="/"
+              aria-label="Realtyz AI - דף הבית"
+              className="realtyz-logo relative inline-block text-xl font-bold tracking-tight text-primary-foreground"
+            >
+              Realtyz
+              <span className="absolute top-[6px] -right-4 text-[0.55em] font-semibold text-primary-foreground/80 tracking-wide leading-none">
+                AI
+              </span>
+            </a>
           </header>
           <PageHero />
           <main className="realtyz-main-surface flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-6 pb-6 pt-0">

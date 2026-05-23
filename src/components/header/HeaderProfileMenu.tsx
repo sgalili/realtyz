@@ -74,13 +74,6 @@ export function HeaderProfileMenu() {
   return (
     <>
       <div dir="rtl" className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={goProfile}
-          className="text-sm font-semibold text-primary-foreground hover:underline"
-        >
-          {displayName}
-        </button>
 
         <Popover open={open} onOpenChange={setOpen}>
           <PopoverTrigger asChild>

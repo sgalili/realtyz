@@ -354,7 +354,7 @@ export default function Profile() {
   return (
     <div dir="rtl" className="mx-auto w-full max-w-4xl space-y-4 p-2 sm:p-4">
       <Tabs value={tab} onValueChange={setTab} dir="rtl">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4">
+        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mb-[15px]">
           <TabsTrigger value="personal">הפרופיל האישי שלי</TabsTrigger>
           <TabsTrigger value="plan">ניהול חבילה</TabsTrigger>
           <TabsTrigger value="workspace">פרטי המשרד והסוכנות</TabsTrigger>
