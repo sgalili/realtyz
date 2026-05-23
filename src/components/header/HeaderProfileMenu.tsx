@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ChevronDown, Crown, LogOut, Shield, ShieldCheck, User, Wallet } from 'lucide-react';
+import { Crown, LogOut, Shield, ShieldCheck, User, Wallet } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   AlertDialog,
@@ -14,6 +14,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
+import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
 import { cn } from '@/lib/utils';
 
@@ -41,6 +42,8 @@ export function HeaderProfileMenu() {
   const { user, signOut } = useAuth();
   const { isManagingBroker, isSuperAdmin } = useUserRole();
 
+  const { settings: brand } = useWhiteLabel();
+
   if (!user) return null;
 
   const meta = (user.user_metadata ?? {}) as Record<string, any>;
@@ -65,31 +68,16 @@ export function HeaderProfileMenu() {
 
   const visibleItems = ITEMS.filter((it) => !it.requires || (it.requires === 'managing_broker' && isManagingBroker));
 
+  const agencyName = brand?.agency_name ?? '';
+  const agencyLogo = brand?.logo_url ?? '';
+
   return (
     <>
       <div dir="rtl" className="flex items-center gap-2">
         <button
           type="button"
           onClick={goProfile}
-          aria-label="פתח פרופיל"
-          className={cn(
-            'relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-foreground/15 text-xs font-bold text-primary-foreground ring-1 ring-primary-foreground/30 transition hover:bg-primary-foreground/25',
-          )}
-        >
-          {avatarUrl ? (
-            <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
-          ) : (
-            initial
-          )}
-          {isSuperAdmin && (
-            <span className="absolute -bottom-0.5 -left-0.5 h-2.5 w-2.5 rounded-full bg-warning ring-2 ring-[hsl(var(--header-bg))]" />
-          )}
-        </button>
-
-        <button
-          type="button"
-          onClick={goProfile}
-          className="hidden text-sm font-semibold text-primary-foreground hover:underline sm:inline-block"
+          className="text-sm font-semibold text-primary-foreground hover:underline"
         >
           {displayName}
         </button>
@@ -99,12 +87,31 @@ export function HeaderProfileMenu() {
             <button
               type="button"
               aria-label="תפריט פרופיל"
-              className="flex h-7 w-7 items-center justify-center rounded-full text-primary-foreground hover:bg-primary-foreground/15"
+              className={cn(
+                'relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-foreground/15 text-xs font-bold text-primary-foreground ring-1 ring-primary-foreground/30 transition hover:bg-primary-foreground/25',
+              )}
             >
-              <ChevronDown className="h-4 w-4" />
+              {avatarUrl ? (
+                <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+              ) : (
+                initial
+              )}
+              {isSuperAdmin && (
+                <span className="absolute -bottom-0.5 -left-0.5 h-2.5 w-2.5 rounded-full bg-warning ring-2 ring-[hsl(var(--header-bg))]" />
+              )}
             </button>
           </PopoverTrigger>
           <PopoverContent side="bottom" align="end" dir="rtl" sideOffset={10} className="w-64 p-1.5">
+            {(agencyLogo || agencyName) && (
+              <div className="flex items-center gap-2 border-b border-border/60 px-2.5 py-2 mb-1">
+                {agencyLogo && (
+                  <img src={agencyLogo} alt={agencyName || 'Agency logo'} className="h-6 w-auto max-w-[80px] object-contain" />
+                )}
+                {agencyName && (
+                  <span className="truncate text-xs font-bold text-primary">{agencyName}</span>
+                )}
+              </div>
+            )}
             <div className="border-b border-border/60 px-2.5 py-2 mb-1">
               <p className="truncate text-xs font-semibold text-primary">{displayName}</p>
               <p className="truncate text-[10px] text-muted-foreground">{user.email}</p>

@@ -172,6 +172,8 @@ function PlanTab() {
   );
 }
 
+const WORKSPACE_STORAGE_KEY = 'realtyz-workspace-details';
+
 function WorkspaceTab() {
   const { user } = useAuth();
   const meta = (user?.user_metadata ?? {}) as Record<string, any>;
@@ -188,40 +190,73 @@ function WorkspaceTab() {
     },
   });
 
-  const fields = useMemo(
-    () => [
-      { icon: Building2, label: 'שם המשרד', value: meta.agency_name || 'ריאלטיז נדל"ן' },
-      { icon: UserIcon, label: 'מנהל פעיל', value: 'אודי ויטמן' },
-      { icon: Briefcase, label: 'טון תקשורת', value: onboarding?.tone || 'מקצועי' },
-      { icon: MapPin, label: 'אזורי שירות', value: meta.service_areas || 'מרכז הארץ' },
-      { icon: MessageCircle, label: 'מסר פתיחה', value: onboarding?.initial_message || '—' },
-    ],
+  const defaults = useMemo(
+    () => ({
+      agency_name: meta.agency_name || 'ריאלטיז נדל"ן',
+      manager: 'אודי ויטמן',
+      tone: onboarding?.tone || 'מקצועי',
+      service_areas: meta.service_areas || 'מרכז הארץ',
+      initial_message: onboarding?.initial_message || '',
+    }),
     [meta, onboarding],
   );
+
+  const [values, setValues] = useState(defaults);
+
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(WORKSPACE_STORAGE_KEY);
+      if (raw) {
+        const saved = JSON.parse(raw);
+        setValues({ ...defaults, ...saved });
+        return;
+      }
+    } catch {}
+    setValues(defaults);
+  }, [defaults]);
+
+  const update = (key: keyof typeof values) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
+    setValues((v) => ({ ...v, [key]: e.target.value }));
+
+  const save = () => {
+    window.localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(values));
+    toast.success('פרטי המשרד נשמרו');
+  };
+
+  const fields: { key: keyof typeof values; icon: typeof Mail; label: string }[] = [
+    { key: 'agency_name', icon: Building2, label: 'שם המשרד' },
+    { key: 'manager', icon: UserIcon, label: 'מנהל פעיל' },
+    { key: 'tone', icon: Briefcase, label: 'טון תקשורת' },
+    { key: 'service_areas', icon: MapPin, label: 'אזורי שירות' },
+    { key: 'initial_message', icon: MessageCircle, label: 'מסר פתיחה' },
+  ];
 
   return (
     <Card>
       <CardHeader>
         <CardTitle className="text-right">פרטי המשרד והסוכנות</CardTitle>
       </CardHeader>
-      <CardContent>
+      <CardContent className="space-y-4">
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {fields.map((f) => {
             const Icon = f.icon;
             return (
-              <div key={f.label} className="rounded-lg border bg-card/40 p-3 text-right">
-                <div className="mb-1 flex items-center justify-end gap-2 text-xs text-muted-foreground">
-                  <span>{f.label}</span>
+              <div key={f.key} className="rounded-lg border bg-card/40 p-3 text-right">
+                <div className="mb-1.5 flex items-center gap-2 text-xs text-muted-foreground">
                   <Icon className="h-3.5 w-3.5" />
+                  <span>{f.label}</span>
                 </div>
-                <p className="truncate text-sm font-semibold">{f.value}</p>
+                <Input
+                  dir="rtl"
+                  value={values[f.key]}
+                  onChange={update(f.key)}
+                  className="h-9 text-right text-sm font-semibold"
+                />
               </div>
             );
           })}
         </div>
-        <p className="mt-4 text-right text-xs text-muted-foreground">
-          הנתונים נשלפים מטופס ההצטרפות (onboarding). לעריכה נא לפנות לאשף ההגדרות.
-        </p>
+        <Button onClick={save} size="lg" className="w-full">שמירת פרטי המשרד</Button>
       </CardContent>
     </Card>
   );
