@@ -103,17 +103,15 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   return (
     <Sidebar collapsible="offcanvas" className="realtyz-premium-sidebar border-l border-r-0 border-sidebar-border" side="right">
       <SidebarContent className="realtyz-sidebar-menu pt-3">
-        {/* Profile capsule pinned to TOP */}
-        <SidebarGroup>
-          <SidebarGroupContent className="px-3 pb-3 border-b border-primary/10">
-            {isSuperAdmin && (
-              <div className="mb-2">
-                <SuperAdminLeadAlert collapsed={collapsed} />
-              </div>
-            )}
-            <ProfileCapsule />
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {isSuperAdmin && (
+          <SidebarGroup>
+            <SidebarGroupContent className="px-3 pb-3 border-b border-primary/10">
+              <SuperAdminLeadAlert collapsed={collapsed} />
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+
 
         {/* 4 minimal nav nodes */}
         <SidebarGroup className="pt-3">
