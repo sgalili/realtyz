@@ -132,14 +132,11 @@ function PlanTab() {
   };
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-4 mt-5">
       <Card>
-        <CardHeader>
-          <CardTitle className="text-right">חבילת מתווך — מחיר קבוע</CardTitle>
-        </CardHeader>
         <CardContent className="space-y-5">
           <div className="rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-transparent p-5 text-center">
-            <div className="flex items-baseline justify-center gap-1">
+            <div className="flex flex-col items-center gap-1">
               <span className="text-4xl font-bold tabular-nums text-primary">{formatIls(SEAT_PRICE)}</span>
               <span className="text-xs text-muted-foreground">/ חודש / מתווך</span>
             </div>
