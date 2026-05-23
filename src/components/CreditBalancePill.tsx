@@ -63,8 +63,7 @@ export function CreditBalancePill() {
         aria-label="יתרת קרדיטים"
       >
         <Wallet className="h-3.5 w-3.5" />
-        <span className="opacity-90">יתרת קרדיטים</span>
-        <span className="font-bold tabular-nums">{formatIls(balance)}</span>
+        <span className="font-bold tabular-nums text-[15px]">{formatIls(balance)}</span>
       </button>
 
       <Dialog open={open} onOpenChange={setOpen}>
