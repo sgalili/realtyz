@@ -19,7 +19,7 @@ export default function AiDialer() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from("leads")
-        .select("id, lead_name, lead_phone, city")
+        .select("id, full_name, phone_number, city")
         .order("created_at", { ascending: false })
         .limit(100);
       if (error) throw error;
@@ -29,8 +29,8 @@ export default function AiDialer() {
 
   const onSelectLead = (id: string) => {
     setLeadId(id);
-    const lead = leads.find((l: any) => l.id === id);
-    setPhone(lead?.lead_phone ?? "");
+    const lead = leads.find((l) => l.id === id);
+    setPhone(lead?.phone_number ?? "");
   };
 
   const startCall = async () => {
