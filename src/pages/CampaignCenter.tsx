@@ -1,8 +1,10 @@
 import { lazy, Suspense } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 import { RealtyzLoader } from '@/components/RealtyzLoader';
-import { Crosshair, Megaphone, Calendar, ShieldCheck, Radio, ClipboardList, Send, Users } from 'lucide-react';
+import { RealtyzWave } from '@/components/RealtyzWave';
+import { Crosshair, Megaphone, Calendar, ShieldCheck, Radio, ClipboardList, Send, Users, ArrowRight } from 'lucide-react';
 import { useElectionType } from '@/hooks/useElectionType';
 
 const CampaignStrategy = lazy(() => import('./CampaignStrategy'));
