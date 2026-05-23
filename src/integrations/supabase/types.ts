@@ -2851,8 +2851,10 @@ export type Database = {
           last_sign_in_at: string | null
           plan_status: string
           service_areas: string[]
+          trial_end_date: string | null
           trial_start_date: string
           updated_at: string
+          wallet_balance_agorot: number
         }
         Insert: {
           avatar_url?: string | null
@@ -2866,8 +2868,10 @@ export type Database = {
           last_sign_in_at?: string | null
           plan_status?: string
           service_areas?: string[]
+          trial_end_date?: string | null
           trial_start_date?: string
           updated_at?: string
+          wallet_balance_agorot?: number
         }
         Update: {
           avatar_url?: string | null
@@ -2881,8 +2885,10 @@ export type Database = {
           last_sign_in_at?: string | null
           plan_status?: string
           service_areas?: string[]
+          trial_end_date?: string | null
           trial_start_date?: string
           updated_at?: string
+          wallet_balance_agorot?: number
         }
         Relationships: []
       }
