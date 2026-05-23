@@ -1159,11 +1159,13 @@ export default function SmsBlastSimulator() {
                     const isConnected = connectedChannels[channel.id];
                     const isPending = !!channel.pending;
                     const isFree = channel.unitPriceNis === 0;
-                    // Dual gray-out conditions:
-                    //   (1) Provider not connected at brokerage level (legacy: handled by !isConnected style).
-                    //   (2) In lead-context mode, the lead has no destination coord (no email, no phone, no handle).
+                    // Dual gray-out conditions (hard-disable both):
+                    //   (1) Provider not connected at brokerage level (e.g. WhatsApp instance not linked).
+                    //   (2) In lead-context mode, the lead has no destination coord (no email/phone/handle).
                     const missingForLead = leadMissingChannel(channel.id);
                     const disabledForLead = !!contextLeadId && missingForLead;
+                    const disabledForIntegration = !isConnected && !isPending;
+                    const isHardDisabled = disabledForLead || disabledForIntegration;
                     const priceText = isPending
                       ? 'בחישוב'
                       : isFree
@@ -1179,21 +1181,27 @@ export default function SmsBlastSimulator() {
                         return;
                       }
                       if (!isConnected) {
-                        handleConnectChannel(channel.id);
+                        // Brokerage integration missing - block selection entirely.
+                        toast.info('ערוץ זה אינו מחובר בהגדרות המשרד. יש לחבר אותו תחילה.');
                         return;
                       }
                       toggleChannel(channel.id);
                     };
+                    const disabledTitle = disabledForLead
+                      ? 'אין יעד זמין למתעניין זה בערוץ הזה'
+                      : disabledForIntegration
+                        ? 'הערוץ אינו מחובר בהגדרות המשרד'
+                        : undefined;
                     return (
                       <button
                         key={channel.id}
                         type="button"
                         onClick={handleCardClick}
                         aria-pressed={checked}
-                        aria-disabled={disabledForLead}
-                        title={disabledForLead ? 'אין יעד זמין למתעניין זה בערוץ הזה' : undefined}
+                        aria-disabled={isHardDisabled}
+                        title={disabledTitle}
                         className={`relative flex flex-col items-center justify-start gap-1.5 rounded-xl border-2 p-2.5 sm:p-3 text-center transition-all min-h-[8.75rem] ${
-                          disabledForLead
+                          isHardDisabled
                             ? 'opacity-40 pointer-events-none border-dashed border-border/60 bg-muted/30'
                             : checked
                               ? 'border-primary bg-primary/10 shadow-[0_4px_18px_-6px_hsl(var(--primary)/0.55)] ring-1 ring-primary/30'
@@ -1202,6 +1210,7 @@ export default function SmsBlastSimulator() {
                                 : 'border-dashed border-border/70 bg-muted/30 hover:border-primary/30 hover:bg-muted/50'
                         }`}
                       >
+
 
                         {checked && isConnected && (
                           <span
