@@ -1,99 +1,52 @@
-# Workstream D — Realtyz CRM + Homely Bridge + Freemium Guardrails
+## Workstream C — Broadcast Port into Realtyz
 
-Scope: `/crm` (LeadCRM) page + Homely inbound sync scaffold + pencil-icon inline edits + freemium 30d / 100-contact / ₪50 wallet limits. No KalpizAI political logic. `₪` always renders left of digits via existing `PriceTag`/`fmtILS`.
+### Scope
 
----
+Delta-port from KalpizAi `CampaignCenter.tsx` + `SmsBlastSimulator.tsx` into Realtyz. Realtyz already has 90% of these files; this plan covers only the differences. **No new tables created** — uses existing `leads` + `listings` + `dispatch-campaign` edge fn + `get_user_balance` RPC (if absent, falls back to `useFreemiumStatus`).
 
-## 1. Real-Estate CRM rebuild (`src/pages/LeadCRM.tsx`)
+### 1. `src/pages/CampaignCenter.tsx` — Hero shell
 
-**Filter bar** (sticky, collapsible):
-- `deal_type` — multi: `קנייה`, `מכירה`, `שכירות`, `השכרה` (stored as `buy|sell|rent|lease` in `leads.deal_type`)
-- `cities` — multi tag picker reading distinct `leads.city` + `leads.preferences->>'city'`
-- `budget_min` / `budget_max` — ₪ inputs via `PriceTag` preview
-- `rooms_min` / `rooms_max` — numeric stepper
-- `lead_score` ≥ slider
-- `lead_stage` — multi
-- `assigned_to` — broker dropdown
-- `source` — multi (homely | manual | whatsapp | web)
-- `date_range` — created_at preset (7d/30d/90d/custom)
+- Read query: `tab`, `lead` (was `voter`), `phone`, `name`, `from` (treat `from=crm` and legacy `from=voter-crm` as same).
+- Render a deep-blue gradient hero with a white `RealtyzWave` bottom edge (reuse `<RealtyzWave>`).
+- Hero title: `שולחים ל- {name}` only (no phone, no digits). Prepend an `ArrowRight` IconButton that calls `navigate(\`/lead-crm?lead=${leadId}\`)` when `from=crm`.
+- Hide the hero (and back-arrow) when no `lead` param is present — keeps default `/campaigns` clean.
+- Remove "קמפיין AI" header text, wallet pill, balance badge from this view (they live in `HeaderProfileMenu` and the freemium banner on `/lead-crm`).
 
-Filter state is URL-synced (`useSearchParams`) so links are shareable.
+### 2. `src/pages/SmsBlastSimulator.tsx` — Broker composer
 
-**Grid**:
-- High-density TanStack-style table (existing patterns). Columns: name, phone, city, deal_type chip, budget range (`PriceTag`), rooms, lead_score, stage, source, last_interaction.
-- Multi-select with bulk actions (assign, change stage, push to Homely, delete).
-- Row-click → opens existing `LeadProfileSheet` (or `LeadHistoryDrawer` if no full profile).
-- **Collapse toggle** in toolbar: switches between full grid and compact 1-line rows (hides secondary cols, smaller row height, no avatar). State persisted in `localStorage('crm.compact')`.
+- `ChannelId` extended to 12: add `messenger | twitter | youtube` (ivr already present). Slot them into the same `CHANNELS` metadata pattern (icon, color, unit price, label).
+- Collapse channels 7–12 behind a `"עוד ערוצים"` toggle (Collapsible). First six remain visible.
+- Recipient data source: replace any `voters` query with `leads` (`lead_name`, `lead_phone`, `lead_email`, `city`, `preferences`, `lead_stage`). Filter chips swap "מפלגה / קלפי" → `deal_type` (sale/rent) and `city`. Personalization tags become `[שם_פרטי]`, `[עיר]`, `[נכס]` (resolved from `listings.property_title`).
+- File parser: keep `.csv/.txt/.xlsx` via `xlsx` lib, validate phone/email per row, cap at 10M rows.
+- Dispatch: keep call to edge fn `dispatch-campaign` with `mode: 'test' | 'preflight' | 'campaign'`. Wallet read via `supabase.rpc('get_user_balance', { _user_id })` with try/catch fallback to `useFreemiumStatus().walletBalanceAgorot / 100`.
+- WhatsApp payloads: ensure `preview_url: false` is included in the edge-fn body.
+- Currency: every ₪ amount rendered via `<PriceTag value={...} />` (₪ stays left).
 
-**Inline edits**:
-- Replace every `עריכה (הוספה/הסרה)` text link with a small `<Pencil className="h-3.5 w-3.5"/>` ghost button in a `Tooltip`. Applies to tag chips on the row (`interest_tag`, `lead_stage`, `assigned_to`).
-- Pencil opens a `Popover` with the right control (combobox / select / multi-tag). Save on blur or Enter.
+### 3. Demo Mode override (per user decision)
 
-**Empty state** uses existing `EmptyState`.
+- `useDemoMode` / `useDemoGuard` re-wired inside `SmsBlastSimulator` only:
+  - When `isDemoMode === true`: skip the actual `supabase.functions.invoke('dispatch-campaign', ...)` POST, generate `generateFakeLog()` results, show a sticky banner `"מצב הדגמה — לא נשלחות הודעות אמיתיות"`.
+  - When OFF: real dispatch path.
+- Update memory: revise core rule + `mem://constraints/no-demo-mode` to scope the "no demo branches" rule to everywhere **except** the broadcast composer.
 
----
+### 4. Header capsule
 
-## 2. Homely live-sync scaffold
+- Already implemented as `HeaderProfileMenu` last turn. Verify it pulls `[user name] (agency name)` from `useAuth` + `useWhiteLabel`. No changes unless the format drifts.
 
-**DB migration** (additive only):
-- `leads.external_id text` + `leads.external_source text default 'manual'` + unique partial index on `(external_source, external_id) where external_id is not null`.
-- New `public.homely_inbound_log` — `id, user_id, payload jsonb, status text, error text, processed_at, created_at`. RLS owner-only read; service role writes.
-- New `public.homely_sync_map` — `id, user_id, homely_field text, realtyz_field text, transform text`. Seeded with default mapping (name→full_name, phone→phone_number, email→email, city→city, budget→preferences.budget, rooms→preferences.rooms, deal_type→deal_type).
+### 5. Out of scope / explicit non-changes
 
-**Edge function `homely-webhook`** (new, `verify_jwt=false`, HMAC signature header `X-Homely-Signature` checked against `HOMELY_WEBHOOK_SECRET`):
-- Validates payload with Zod.
-- Looks up `user_id` from `user_api_keys.homely_client_code`.
-- Reads `homely_sync_map`, normalizes phones via existing util, upserts into `leads` by `(external_source='homely', external_id)`.
-- Writes one row per call to `homely_inbound_log`.
-- Returns `202 { received: true }`.
+- No new tables (no `clients` / `properties_pipeline`).
+- No notification webhook changes (18:00 digest already enforced elsewhere).
+- No edits to `HeaderProfileMenu`, `AppSidebar`, `NotificationCenter` (already done).
+- No changes to `properties_pipeline` references — they don't exist and won't be created.
 
-**Edge function `homely-pull-leads`** (stub, scheduled hourly via existing cron pattern): placeholder that logs `not_configured` until real Homely API endpoint is provided. Easy swap when the user shares the endpoint.
+### Files touched
 
-**UI** in `ApiSettings` → existing Homely card: add "Webhook URL" read-only field showing `${SUPABASE_URL}/functions/v1/homely-webhook` + copy button + last-sync timestamp from `homely_inbound_log`.
+- `src/pages/CampaignCenter.tsx` — hero block, query-param remap.
+- `src/pages/SmsBlastSimulator.tsx` — channel expansion, leads schema, demo branch, collapsible.
+- `.lovable/memory/index.md` + `mem://constraints/no-demo-mode` — scope the demo rule.
 
----
+### Risks
 
-## 3. Freemium guardrails (additive — no rebuild of pricing page)
-
-**DB migration**:
-- `profiles.trial_end_date timestamptz` (default `created_at + interval '30 days'`).
-- `profiles.wallet_balance_agorot int default 5000` (₪50 in agorot, integer-safe).
-- Update `handle_new_user()` trigger to set both (idempotent `ON CONFLICT DO NOTHING`).
-- Update `enforce_trial_lead_cap()` to also reject when `trial_end_date < now()` with message `TRIAL_TIME_EXPIRED: תקופת ההתנסות הסתיימה - שדרג כדי להמשיך`.
-
-**Frontend hook `useFreemiumStatus.ts`** (new):
-- Returns `{ daysLeft, contactsUsed, contactsCap: 100, walletILS, isBlocked, blockReason }`.
-- Used by:
-  - `LeadCRM` import buttons + "New Lead" CTA: disabled with tooltip when `contactsUsed >= 100`.
-  - `Broadcast` / autopilot send paths: throw `trial_quota_exceeded` when `isBlocked`, route user to `/subscription`.
-- Trial banner already present is updated to read this hook.
-
-No pricing-card rebuild this workstream — that's the separate freemium plan.
-
----
-
-## 4. Currency lock
-
-All new ₪ rendering goes through `<PriceTag value={n} />` or `fmtILS()`. Filter inputs show `<PriceTag>` previews, wallet badge in CRM toolbar shows `<PriceTag value={walletILS} />`.
-
----
-
-## Files touched
-
-- Migration: leads.external_id/external_source + homely_inbound_log + homely_sync_map + profiles.trial_end_date + profiles.wallet_balance_agorot + updated handle_new_user + updated enforce_trial_lead_cap.
-- `supabase/functions/homely-webhook/index.ts` (new)
-- `supabase/functions/homely-pull-leads/index.ts` (stub, new)
-- `src/pages/LeadCRM.tsx` (rebuild filter bar + grid + collapsible + Pencil inline edits)
-- `src/components/leads/InlinePencilEdit.tsx` (new shared)
-- `src/components/leads/LeadFilters.tsx` (new)
-- `src/hooks/useFreemiumStatus.ts` (new)
-- `src/pages/ApiSettings.tsx` (Homely webhook URL field)
-
-## Out of scope (separate workstreams)
-
-- Subscription / pricing card redesign (Freemium UI plan).
-- Approved-managers role override.
-- War Room, Campaign Center port, Managers digest cron.
-- Real Homely outbound REST polling (stub only — needs endpoint from user).
-
-Reply **"approve"** to ship, or call out items to drop/reorder.
+- Demo override conflicts with a long-standing rule. Memory will be updated to reflect the new scope so future sessions don't re-remove it.
+- `dispatch-campaign` edge fn must accept all 12 channel IDs; if it currently rejects `messenger/twitter/youtube`, those channels will show as "בפיתוח" disabled until the fn is updated (out of scope here).

@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { z } from 'zod';
 import confetti from 'canvas-confetti';
-import { Mail, MessageCircle, Radio, Send, Smartphone, Sparkles, WalletCards, Zap, CheckCircle2, Users, MessageSquare, Coins, Shield, ShieldCheck, AlertTriangle, Clock, List, Filter, FileSpreadsheet, X, Mic, AudioWaveform, AudioLines, Paperclip, Image as ImageIcon, FileText, Film, Square, StopCircle, Linkedin, Instagram, Send as TelegramIcon, Plug, ChevronDown, Settings2, PhoneCall, Check } from 'lucide-react';
+import { Mail, MessageCircle, Radio, Send, Smartphone, Sparkles, WalletCards, Zap, CheckCircle2, Users, MessageSquare, Coins, Shield, ShieldCheck, AlertTriangle, Clock, List, Filter, FileSpreadsheet, X, Mic, AudioWaveform, AudioLines, Paperclip, Image as ImageIcon, FileText, Film, Square, StopCircle, Linkedin, Instagram, Send as TelegramIcon, Plug, ChevronDown, Settings2, PhoneCall, Check, Twitter, Youtube } from 'lucide-react';
 import { TikTokOfficial } from '@/components/social/brand-icons/TikTokOfficial';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -30,7 +30,7 @@ import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { DeliverySettings } from '@/components/DeliverySettings';
 
-type ChannelId = 'whatsapp' | 'sms' | 'email' | 'voice' | 'ivr' | 'linkedin' | 'instagram' | 'tiktok' | 'telegram';
+type ChannelId = 'whatsapp' | 'sms' | 'email' | 'voice' | 'ivr' | 'linkedin' | 'instagram' | 'tiktok' | 'telegram' | 'messenger' | 'twitter' | 'youtube';
 
 type SimLogEntry = {
   id: number;
@@ -91,42 +91,47 @@ const CHANNELS: Array<ChannelMeta> = [
   { id: 'instagram',   label: 'Instagram',   icon: Instagram,    color: 'text-[#E4405F]',         bgTint: 'bg-[#E4405F]/10 border-[#E4405F]/40',                 previewLabel: 'Instagram',    unitPriceNis: 0,     unitLabel: 'לפוסט / ריל' },
   { id: 'tiktok',      label: 'TikTok',      icon: TikTokOfficial, color: 'text-foreground',      bgTint: 'bg-[#FE2C55]/10 border-[#FE2C55]/40',                 previewLabel: 'TikTok',       unitPriceNis: 0,     unitLabel: 'לסרטון' },
   { id: 'telegram',    label: 'Telegram',    icon: TelegramIcon, color: 'text-[#229ED9]',         bgTint: 'bg-[#229ED9]/10 border-[#229ED9]/40',                 previewLabel: 'Telegram',     unitPriceNis: 0,     unitLabel: 'להודעה' },
+  { id: 'messenger',   label: 'Messenger',   icon: MessageCircle, color: 'text-[#0084FF]',        bgTint: 'bg-[#0084FF]/10 border-[#0084FF]/40',                 previewLabel: 'Messenger',    unitPriceNis: 0,     unitLabel: 'להודעה' },
+  { id: 'twitter',     label: 'X',           icon: Twitter,      color: 'text-foreground',        bgTint: 'bg-foreground/10 border-foreground/40',               previewLabel: 'X',            unitPriceNis: 0,     unitLabel: 'לפוסט' },
+  { id: 'youtube',     label: 'YouTube',     icon: Youtube,      color: 'text-[#FF0000]',         bgTint: 'bg-[#FF0000]/10 border-[#FF0000]/40',                 previewLabel: 'YouTube',      unitPriceNis: 0,     unitLabel: 'לסרטון' },
 ];
 
 // Maps a broadcast channel to the platform key in the social_connections table
 // (or to a synthetic 'sms' key resolved against api_configs / 019 SMS provider).
 const CHANNEL_TO_PLATFORM: Record<ChannelId, string | null> = {
   whatsapp:    'whatsapp_green',
-  sms:         'sms',         // resolved separately via api_configs (019 SMS)
-  voice:       null,           // pending provider
-  ivr:         null,           // pending provider
+  sms:         'sms',
+  voice:       null,
+  ivr:         null,
   email:       'gmail',
   linkedin:    'linkedin',
   instagram:   'instagram',
   tiktok:      'tiktok',
   telegram:    'telegram',
+  messenger:   'fb_messenger',
+  twitter:     'twitter',
+  youtube:     'youtube',
 };
 
 // Channels considered "paid" for the cost calculation. Social channels are free (₪0).
 const PAID_CHANNELS = new Set<ChannelId>(['sms', 'whatsapp', 'voice', 'email']);
 
-// "The Big 3" — always visible in the default view of the channel selector.
-// Everything else lives behind the "אפשרויות נוספות" expandable drawer.
-const CORE_CHANNEL_IDS: ChannelId[] = ['whatsapp', 'sms', 'email'];
+// First 6 channels always visible. Channels 7–12 live behind "עוד ערוצים".
+const CORE_CHANNEL_IDS: ChannelId[] = ['whatsapp', 'sms', 'voice', 'ivr', 'email', 'linkedin'];
 
-const PERSONALIZATION_TAGS = ['[שם_פרטי]', '[עיר]', '[קלפי]'];
+const PERSONALIZATION_TAGS = ['[שם_פרטי]', '[עיר]', '[נכס]'];
 const CREDIT_RATE = 420 / 15420;
 
 const DEMO_CITIES = ['ירושלים', 'תל אביב-יפו', 'חיפה', 'ראשון לציון', 'פתח תקווה', 'אשדוד', 'נתניה', 'באר שבע', 'בני ברק', 'חולון', 'רמת גן', 'אשקלון', 'רחובות', 'בת ים', 'הרצליה', 'כפר סבא', 'מודיעין', 'נצרת', 'רעננה', 'לוד'];
-const DEMO_TAGS = ['ביטחון', 'כלכלה', 'חינוך', 'בריאות', 'דיור', 'תחבורה', 'דת ומדינה', 'איכות הסביבה', 'משפט וצדק', 'מתנדבים פעילים', 'תורמים', 'מובילי דעה'];
-const DEMO_LOYALTY = ['חם מאוד', 'חם', 'פושר', 'מתלבט', 'קר', 'מתנגד'];
-const DEMO_TOTAL_VOTERS = 248_500;
+const DEMO_TAGS = ['קנייה', 'מכירה', 'שכירות', 'השקעה', 'דירת גן', 'פנטהאוז', 'דופלקס', 'וילה', '3 חדרים', '4 חדרים', '5 חדרים', 'מסחרי'];
+const DEMO_LOYALTY = ['חם מאוד', 'חם', 'פושר', 'מתלבט', 'קר', 'לא רלוונטי'];
+const DEMO_TOTAL_VOTERS = 12_500;
 
 const BroadcastSchema = z.object({
   blastName: z.string().trim().min(1, 'נא להזין שם קמפיין').max(100, 'שם קמפיין ארוך מדי'),
   messageBody: z.string().trim().min(1, 'נא להזין תוכן הודעה').max(1000, 'תוכן ההודעה ארוך מדי'),
   totalRecipients: z.number().int().min(1).max(10_000_000),
-  selectedChannels: z.array(z.enum(['whatsapp', 'sms', 'email', 'voice', 'ivr', 'linkedin', 'instagram', 'tiktok', 'telegram'])).min(1, 'נא לבחור לפחות ערוץ אחד'),
+  selectedChannels: z.array(z.enum(['whatsapp', 'sms', 'email', 'voice', 'ivr', 'linkedin', 'instagram', 'tiktok', 'telegram', 'messenger', 'twitter', 'youtube'])).min(1, 'נא לבחור לפחות ערוץ אחד'),
 });
 
 const TestPhoneSchema = z.string().trim().regex(/^(05\d-?\d{7}|\+9725\d{8})$/, 'מספר בדיקה חייב להיות בפורמט 05X-XXXXXXX או +9725XXXXXXXX');
@@ -146,10 +151,10 @@ function generateFakeLog(total: number, channels: ChannelId[]): SimLogEntry[] {
 }
 
 function personalize(message: string) {
-  return (message || 'שלום [שם_פרטי], מזכירים לך שהקלפי שלך ב[עיר] פתוחה היום. נשמח לראות אותך ב[קלפי].')
+  return (message || 'שלום [שם_פרטי], רצינו לעדכן אותך על נכס חדש ב[עיר] שעשוי להתאים לך - [נכס].')
     .replace(/\[שם_פרטי\]/g, 'דניאל')
-    .replace(/\[עיר\]/g, 'חיפה')
-    .replace(/\[קלפי\]/g, 'קלפי 42');
+    .replace(/\[עיר\]/g, 'תל אביב')
+    .replace(/\[נכס\]/g, 'דירת 4 חדרים, רוטשילד');
 }
 
 export default function SmsBlastSimulator() {
@@ -168,6 +173,7 @@ export default function SmsBlastSimulator() {
   const [connectedChannels, setConnectedChannels] = useState<Record<ChannelId, boolean>>({
     whatsapp: false, sms: true, email: false, voice: false, ivr: false,
     linkedin: false, instagram: false, tiktok: false, telegram: false,
+    messenger: false, twitter: false, youtube: false,
   });
   // Connected account labels (e.g. "realtyzai@gmail.com") shown under the channel name on each card.
   const [connectedAccounts, setConnectedAccounts] = useState<Partial<Record<ChannelId, string>>>({});
@@ -229,7 +235,7 @@ export default function SmsBlastSimulator() {
       const waLive = isLiveWhatsApp(waRow) || apiActive(['Green API', 'WhatsApp Business']);
 
       setConnectedChannels({
-        sms:         true, // always-on via shared super-admin 019 SMS account
+        sms:         true,
         whatsapp:    waLive,
         email:       gmailLive,
         voice:       false,
@@ -238,6 +244,9 @@ export default function SmsBlastSimulator() {
         instagram:   isLiveGeneric(findSC('instagram')) || isLiveGeneric(findSC('facebook')),
         tiktok:      isLiveGeneric(findSC('tiktok')),
         telegram:    isLiveGeneric(findSC('telegram')),
+        messenger:   isLiveGeneric(findSC('fb_messenger')) || isLiveGeneric(findSC('facebook')),
+        twitter:     isLiveGeneric(findSC('twitter')),
+        youtube:     isLiveGeneric(findSC('youtube')),
       });
       setEmailAccountInfo({ count: gmailAccountCount, addresses: gmailAddresses });
       setConnectedAccounts({

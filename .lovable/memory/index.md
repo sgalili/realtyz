@@ -9,7 +9,7 @@
 - **Data**: Live data only. Normalize phones to 9725XXXXXXXX internally, display as 05X-XXXXXXX.
 - **Privacy**: Supabase Realtime disabled for 'leads' & 'messages'. RLS requires auth.uid().
 - **UI strings**: Hebrew copy still uses political terms ("בוחרים", "מועמד", "מנדטים"). Realtyz Hebrew copy ("לידים", "נכסים", "מחיר") is a pending UX pass.
-- **Demo Mode**: PERMANENTLY REMOVED. `useDemoMode`/`DemoModeProvider` are no-op stubs; never re-add the toggle or `if (isDemoMode)` branches. Keep `is_demo=false` filters in queries.
+- **Demo Mode**: SCOPED. Off everywhere except `src/pages/SmsBlastSimulator.tsx` which may branch on `useDemoMode`/`useDemoGuard` to short-circuit dispatch POSTs and show a "מצב הדגמה" banner. Keep `is_demo=false` filters in queries.
 - **Freemium**: 30-day trial · 100 contacts cap · ₪50 wallet (profiles.trial_end_date + wallet_balance_agorot). `useFreemiumStatus()` gates Add/Import buttons in CRM. `enforce_trial_lead_cap` trigger blocks inserts when expired (TRIAL_TIME_EXPIRED / TRIAL_RECORD_LIMIT). Currency always rendered via `<PriceTag>` (₪ left of digits).
 
 ## Memories
@@ -34,4 +34,4 @@
 - [Compliance & Audit Layer](mem://features/compliance-audit) — audit_logs, PII masking before AI (`_shared/pii.ts`), `/privacy` GDPR page, AI disclosure footer (`_shared/compliance.ts`), `gdpr_delete_lead()` RPC.
 - [Team Collaboration & RBAC](mem://features/team-collaboration) — agent/assistant/junior_agent roles, team_invitations + auto-claim trigger, deal_room_comments, can_close_deal trigger on leads, /team page.
 - [System Health Watchdog](mem://features/system-health) — integration_error_logs, watchdog cron, get_system_status() RPC, /settings/system-health admin page, SystemStatus footer dot.
-- [No Demo Mode](mem://constraints/no-demo-mode) — Demo toggle/state retired. Hooks are no-op stubs. Never reintroduce demo branches.
+- [No Demo Mode](mem://constraints/no-demo-mode) — Demo mode scoped to SmsBlastSimulator only; no demo branches elsewhere.
