@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Sparkles, Mail, Phone, MessageCircle, Building2, MapPin, User as UserIcon, Briefcase } from 'lucide-react';
+import { Plus, Trash2, Sparkles, Mail, Phone, MessageCircle, Building2, MapPin, User as UserIcon, Briefcase, Upload, ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
