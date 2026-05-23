@@ -701,7 +701,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <StartTrialCta variant="fab" />
           {user && <RealtyzOnboardingWizard />}
         </div>
-        <MobileBottomNav />
+        
       </div>
     </SidebarProvider>
   );
