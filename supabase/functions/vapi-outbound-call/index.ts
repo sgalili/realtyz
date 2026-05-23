@@ -200,10 +200,10 @@ Deno.serve(async (req) => {
     if (lead_id) {
       const { data: lead } = await supabase
         .from("leads")
-        .select("lead_name, city, preferences")
+        .select("full_name, city, preferences")
         .eq("id", lead_id)
         .maybeSingle();
-      leadName = (lead?.lead_name || "").toString().trim();
+      leadName = (lead?.full_name || "").toString().trim();
       city = (lead?.city || "").toString().trim();
       preferences = lead?.preferences ? JSON.stringify(lead.preferences).slice(0, 600) : "";
     }
