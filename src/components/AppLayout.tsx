@@ -15,7 +15,6 @@ import { RotatingHeadline } from '@/components/RotatingHeadline';
 import NotificationCenter from '@/components/NotificationCenter';
 import AiAgentDrawer from '@/components/AiAgentDrawer';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
-import { MobileBottomNav } from '@/components/mobile/MobileBottomNav';
 import { RealtyzOnboardingWizard } from '@/components/RealtyzOnboardingWizard';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
