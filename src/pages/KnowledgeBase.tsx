@@ -190,20 +190,20 @@ export default function KnowledgeBase() {
   );
 
   const demoDocuments = [
-    { id: 'demo-1', title: 'מצע רשמי - מכירות 2026.pdf', type: 'PDF', chunks: 142 },
-    { id: 'demo-2', title: 'נאום פתיחת קמפיין - חזון העיר.docx', type: 'DOCX', chunks: 38 },
-    { id: 'demo-3', title: 'דף מסרים: כלכלה ודיור', type: 'PDF', chunks: 24 },
-    { id: 'demo-4', title: 'תגובות רשמיות לאירועי ביטחון', type: 'DOCX', chunks: 31 },
+    { id: 'demo-1', title: 'הסכם בלעדיות לשיווק נכס.pdf', type: 'PDF', chunks: 86 },
+    { id: 'demo-2', title: 'מדריך לטיפול בהתנגדויות מחיר קונים.docx', type: 'DOCX', chunks: 42 },
+    { id: 'demo-3', title: 'תסריט שיחה ללידים חמים מאתר הומלי.txt', type: 'TXT', chunks: 28 },
+    { id: 'demo-4', title: 'מחירון עמלות תיווך ונהלי סגירה.pdf', type: 'PDF', chunks: 19 },
   ];
-  const coreValues = ['מנהיגות אחראית', 'שקיפות', 'ציונות', 'חדשנות'];
+  const coreValues = ['מקצועיות', 'אמינות', 'שקיפות', 'שירות אישי'];
   const qaPairs = [
     {
-      q: 'מה עמדתנו על פתיחת עסקים בשבת?',
-      a: 'הנכס דוגל בסטטוס קוו תוך כבוד הדדי וחיזוק המרחב הקהילתי, עם מתן מענה לצרכים מקומיים ללא פגיעה באופי השכונות.',
+      q: 'מה גובה העמלה המקובלת בעסקת מכירה?',
+      a: 'העמלה הסטנדרטית היא 2% מערך העסקה בתוספת מע"מ, משולמת במעמד חתימת ההסכם. ניתן להתאים לפי סוג הנכס והבלעדיות.',
     },
     {
-      q: 'איך נתמודד עם יוקר הדיור בעיר?',
-      a: 'תוכנית רב שנתית להאצת היתרי בנייה, שיווק קרקעות לצעירים, ושיתופי פעולה עם המגזר הפרטי לדיור בר השגה.',
+      q: 'איך מתמודדים עם קונה שטוען שהמחיר גבוה מדי?',
+      a: 'מציגים השוואת עסקאות אחרונות באזור, מדגישים יתרונות ייחודיים של הנכס, ובוחנים פערים אמיתיים לעומת התנגדות טקטית לפני משא ומתן.',
     },
   ];
 
@@ -212,7 +212,7 @@ export default function KnowledgeBase() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-primary">מאגר הידע</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          הזן מסמכים והודעות WhatsApp למוח של סוכן ה-AI. כל ידע מומר לווקטורים סמנטיים לחיפוש מדויק.
+          הזן מסמכי תיווך, תסריטי שיחה והודעות WhatsApp למוח של סוכן ה-AI. כל ידע מומר לווקטורים סמנטיים לחיפוש מדויק.
         </p>
       </div>
       {isDemoMode && (
@@ -223,7 +223,7 @@ export default function KnowledgeBase() {
                 <CardTitle className="text-base flex items-center gap-2">
                   <BookOpen className="h-4 w-4 text-primary" /> מקורות ידע פעילים
                 </CardTitle>
-                <CardDescription>הספרייה שמזינה את מוח ה-AI של הקמפיין</CardDescription>
+                <CardDescription>הספרייה שמזינה את מוח ה-AI של המשרד</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 {demoDocuments.map((doc) => (
@@ -311,7 +311,7 @@ export default function KnowledgeBase() {
           >
             {chatMessages.length === 0 && (
               <p className="text-xs text-muted-foreground text-center py-10">
-                התחל שיחה — לדוגמה: "מה עיקרי המצע?" או "מה כתוב על דיור?"
+                התחל שיחה — לדוגמה: "מה גובה העמלה המקובלת?" או "איך עונים על התנגדות מחיר?"
               </p>
             )}
             {chatMessages.map((m, i) => (

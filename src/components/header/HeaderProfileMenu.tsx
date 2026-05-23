@@ -49,7 +49,7 @@ export function HeaderProfileMenu() {
   const initial = (meta.full_name || user.email || 'U').slice(0, 1).toUpperCase();
   const displayName = meta.full_name || user.email?.split('@')[0] || 'משתמש';
   const agencyName = settings?.agency_name || 'ריאלטיז נדל"ן';
-  const headerLine = `${displayName} (${agencyName})`;
+  const headerLine = displayName;
 
   const go = (path: string) => {
     setOpen(false);
