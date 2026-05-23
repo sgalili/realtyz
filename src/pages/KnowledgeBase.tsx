@@ -212,7 +212,7 @@ export default function KnowledgeBase() {
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-primary">מאגר הידע</h1>
         <p className="text-sm text-muted-foreground mt-1">
-          הזן מסמכים והודעות WhatsApp למוח של סוכן ה-AI. כל ידע מומר לווקטורים סמנטיים לחיפוש מדויק.
+          הזן מסמכי תיווך, תסריטי שיחה והודעות WhatsApp למוח של סוכן ה-AI. כל ידע מומר לווקטורים סמנטיים לחיפוש מדויק.
         </p>
       </div>
       {isDemoMode && (
