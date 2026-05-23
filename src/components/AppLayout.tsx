@@ -29,9 +29,7 @@ import { LiveActivityFeed } from '@/components/dashboard/LiveActivityFeed';
 import { Label } from '@/components/ui/label';
 import { toast } from 'sonner';
 import { DEMO_CANDIDATES, getDemoCandidateCrisisAlerts, type DemoCandidateId } from '@/lib/demoData';
-import { TrialBadge } from '@/components/TrialBadge';
 import { TrialQuickStartWizard } from '@/components/TrialQuickStartWizard';
-import { StartTrialCta } from '@/components/StartTrialCta';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { BrandMark } from '@/components/branding/BrandMark';
 import { HeaderProfileMenu } from '@/components/header/HeaderProfileMenu';
@@ -612,7 +610,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               >
                 <Bot className="h-4 w-4" />
               </Button>
-              <TrialBadge />
+              
             </div>
 
             <div className="flex-1" />
@@ -698,7 +696,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               if (user) localStorage.setItem(`realtyz-onboarding-dismissed-${user.id}`, '1');
             }}
           />}
-          <StartTrialCta variant="fab" />
+          
           {user && <RealtyzOnboardingWizard />}
         </div>
         

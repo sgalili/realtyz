@@ -13,7 +13,7 @@ import { useLocation, useSearchParams } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { RealtyzWave } from '@/components/RealtyzWave';
-import { DemoModeToggle } from '@/components/DemoModeToggle';
+import { CreditBalancePill } from '@/components/CreditBalancePill';
 
 const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/(dashboard)?$/, title: 'לוח בקרה' },
@@ -96,10 +96,9 @@ export function PageHero() {
           {title}
         </h1>
 
-        {/* Visual left (RTL flex end): Demo switch —
-            nudged 5px toward the visual-left edge via negative margin. */}
+        {/* Visual left (RTL flex end): live credit-balance pill (opens top-up dialog). */}
         <div className="flex items-center justify-end" style={{ marginLeft: '-5px' }}>
-          <DemoModeToggle variant="hero" />
+          <CreditBalancePill />
         </div>
       </div>
 
