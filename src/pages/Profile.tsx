@@ -60,6 +60,16 @@ function ContactArrayEditor({
               type="button"
               variant="ghost"
               size="icon"
+              onClick={() => onChange([...rows, newRow()])}
+              aria-label="הוסף שורה"
+              className="text-primary hover:bg-primary/10"
+            >
+              <Plus className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
               onClick={() => onChange(rows.filter((r) => r.id !== row.id))}
               disabled={rows.length === 1 && idx === 0}
               aria-label="מחיקה"
@@ -69,16 +79,6 @@ function ContactArrayEditor({
             </Button>
           </div>
         ))}
-        <Button
-          type="button"
-          variant="outline"
-          size="sm"
-          onClick={() => onChange([...rows, newRow()])}
-          className="gap-1.5"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          הוסף שורה
-        </Button>
       </div>
     </div>
   );
