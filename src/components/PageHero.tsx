@@ -13,7 +13,7 @@ import { useLocation, useSearchParams } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { RealtyzWave } from '@/components/RealtyzWave';
-import { DemoModeToggle } from '@/components/DemoModeToggle';
+import { CreditBalancePill } from '@/components/CreditBalancePill';
 
 const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/(dashboard)?$/, title: 'לוח בקרה' },
