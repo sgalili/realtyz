@@ -24,7 +24,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { SidebarIntelInput } from '@/components/SidebarIntelInput';
-import { ProfileCapsule } from '@/components/sidebar/ProfileCapsule';
+
 
 type NavItem = {
   title: string;
