@@ -116,23 +116,22 @@ const CHANNEL_TO_PLATFORM: Record<ChannelId, string | null> = {
 // Channels considered "paid" for the cost calculation. Social channels are free (₪0).
 const PAID_CHANNELS = new Set<ChannelId>(['sms', 'whatsapp', 'voice', 'email']);
 
-// "The Big 3" — always visible in the default view of the channel selector.
-// Everything else lives behind the "אפשרויות נוספות" expandable drawer.
-const CORE_CHANNEL_IDS: ChannelId[] = ['whatsapp', 'sms', 'email'];
+// First 6 channels always visible. Channels 7–12 live behind "עוד ערוצים".
+const CORE_CHANNEL_IDS: ChannelId[] = ['whatsapp', 'sms', 'voice', 'ivr', 'email', 'linkedin'];
 
-const PERSONALIZATION_TAGS = ['[שם_פרטי]', '[עיר]', '[קלפי]'];
+const PERSONALIZATION_TAGS = ['[שם_פרטי]', '[עיר]', '[נכס]'];
 const CREDIT_RATE = 420 / 15420;
 
 const DEMO_CITIES = ['ירושלים', 'תל אביב-יפו', 'חיפה', 'ראשון לציון', 'פתח תקווה', 'אשדוד', 'נתניה', 'באר שבע', 'בני ברק', 'חולון', 'רמת גן', 'אשקלון', 'רחובות', 'בת ים', 'הרצליה', 'כפר סבא', 'מודיעין', 'נצרת', 'רעננה', 'לוד'];
-const DEMO_TAGS = ['ביטחון', 'כלכלה', 'חינוך', 'בריאות', 'דיור', 'תחבורה', 'דת ומדינה', 'איכות הסביבה', 'משפט וצדק', 'מתנדבים פעילים', 'תורמים', 'מובילי דעה'];
-const DEMO_LOYALTY = ['חם מאוד', 'חם', 'פושר', 'מתלבט', 'קר', 'מתנגד'];
-const DEMO_TOTAL_VOTERS = 248_500;
+const DEMO_TAGS = ['קנייה', 'מכירה', 'שכירות', 'השקעה', 'דירת גן', 'פנטהאוז', 'דופלקס', 'וילה', '3 חדרים', '4 חדרים', '5 חדרים', 'מסחרי'];
+const DEMO_LOYALTY = ['חם מאוד', 'חם', 'פושר', 'מתלבט', 'קר', 'לא רלוונטי'];
+const DEMO_TOTAL_VOTERS = 12_500;
 
 const BroadcastSchema = z.object({
   blastName: z.string().trim().min(1, 'נא להזין שם קמפיין').max(100, 'שם קמפיין ארוך מדי'),
   messageBody: z.string().trim().min(1, 'נא להזין תוכן הודעה').max(1000, 'תוכן ההודעה ארוך מדי'),
   totalRecipients: z.number().int().min(1).max(10_000_000),
-  selectedChannels: z.array(z.enum(['whatsapp', 'sms', 'email', 'voice', 'ivr', 'linkedin', 'instagram', 'tiktok', 'telegram'])).min(1, 'נא לבחור לפחות ערוץ אחד'),
+  selectedChannels: z.array(z.enum(['whatsapp', 'sms', 'email', 'voice', 'ivr', 'linkedin', 'instagram', 'tiktok', 'telegram', 'messenger', 'twitter', 'youtube'])).min(1, 'נא לבחור לפחות ערוץ אחד'),
 });
 
 const TestPhoneSchema = z.string().trim().regex(/^(05\d-?\d{7}|\+9725\d{8})$/, 'מספר בדיקה חייב להיות בפורמט 05X-XXXXXXX או +9725XXXXXXXX');
