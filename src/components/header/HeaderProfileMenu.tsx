@@ -43,8 +43,11 @@ export function HeaderProfileMenu() {
 
   if (!user) return null;
 
-  const initial = (user.email ?? 'U').slice(0, 1).toUpperCase();
-  const displayName = user.user_metadata?.full_name || user.email?.split('@')[0] || 'משתמש';
+  const meta = (user.user_metadata ?? {}) as Record<string, any>;
+  const avatarUrl: string | null =
+    meta.avatar_url || meta.picture || meta.profile_picture_url || null;
+  const initial = (meta.full_name || user.email || 'U').slice(0, 1).toUpperCase();
+  const displayName = meta.full_name || user.email?.split('@')[0] || 'משתמש';
   const agencyName = settings?.agency_name || 'ריאלטיז נדל"ן';
   const headerLine = `${displayName} (${agencyName})`;
 
@@ -71,10 +74,14 @@ export function HeaderProfileMenu() {
             type="button"
             aria-label="תפריט פרופיל"
             className={cn(
-              'relative flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary-foreground/15 text-xs font-bold text-primary-foreground ring-1 ring-primary-foreground/30 transition hover:bg-primary-foreground/25',
+              'relative flex h-9 w-9 shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-foreground/15 text-xs font-bold text-primary-foreground ring-1 ring-primary-foreground/30 transition hover:bg-primary-foreground/25',
             )}
           >
-            {initial}
+            {avatarUrl ? (
+              <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" />
+            ) : (
+              initial
+            )}
             {isSuperAdmin && (
               <span className="absolute -bottom-0.5 -left-0.5 h-2.5 w-2.5 rounded-full bg-warning ring-2 ring-[hsl(var(--header-bg))]" />
             )}

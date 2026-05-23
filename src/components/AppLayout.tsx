@@ -15,7 +15,6 @@ import { RotatingHeadline } from '@/components/RotatingHeadline';
 import NotificationCenter from '@/components/NotificationCenter';
 import AiAgentDrawer from '@/components/AiAgentDrawer';
 import { OnboardingWizard } from '@/components/OnboardingWizard';
-import { MobileBottomNav } from '@/components/mobile/MobileBottomNav';
 import { RealtyzOnboardingWizard } from '@/components/RealtyzOnboardingWizard';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
@@ -625,7 +624,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
           </header>
           <PageHero />
-          <main className="realtyz-main-surface flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-6 pb-[calc(5rem+env(safe-area-inset-bottom))] md:pb-6 pt-0">
+          <main className="realtyz-main-surface flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-6 pb-6 pt-0">
             {children}
             <MandateSelectorMount />
             <DemoSidebarPeek />
@@ -702,7 +701,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <StartTrialCta variant="fab" />
           {user && <RealtyzOnboardingWizard />}
         </div>
-        <MobileBottomNav />
+        
       </div>
     </SidebarProvider>
   );

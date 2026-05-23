@@ -9,7 +9,7 @@
  * Background: solid primary blue with the white RealtyzWave at the bottom.
  * Mounted once at the layout level to avoid per-route hero "jumps".
  */
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { RealtyzWave } from '@/components/RealtyzWave';
@@ -56,7 +56,17 @@ function resolvePageTitle(pathname: string): string {
 
 export function PageHero() {
   const location = useLocation();
+  const [searchParams] = useSearchParams();
   const title = resolvePageTitle(location.pathname);
+
+  // On /campaigns with a lead context, CampaignCenter renders its own
+  // avatar+name hero — skip the default hero to avoid a stacked duplicate.
+  if (
+    location.pathname.startsWith('/campaigns') &&
+    (searchParams.get('lead') || searchParams.get('client') || searchParams.get('voter'))
+  ) {
+    return null;
+  }
 
   return (
     <div
