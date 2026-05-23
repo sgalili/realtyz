@@ -35,6 +35,8 @@ import { TrialQuickStartWizard } from '@/components/TrialQuickStartWizard';
 import { StartTrialCta } from '@/components/StartTrialCta';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { BrandMark } from '@/components/branding/BrandMark';
+import { HeaderProfileMenu } from '@/components/header/HeaderProfileMenu';
+
 
 import { DemoModeToggle } from '@/components/DemoModeToggle';
 import { PageHero } from '@/components/PageHero';
