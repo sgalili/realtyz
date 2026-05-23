@@ -383,16 +383,12 @@ export default function Profile() {
   return (
     <div dir="rtl" className="mx-auto w-full max-w-4xl space-y-4 p-2 sm:p-4">
       <Tabs value={tab} onValueChange={setTab} dir="rtl">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mb-[15px]">
+        <TabsList className="grid w-full grid-cols-2 mb-[15px]">
           <TabsTrigger value="personal">הפרופיל האישי שלי</TabsTrigger>
-          <TabsTrigger value="plan">ניהול חבילה</TabsTrigger>
           <TabsTrigger value="workspace">פרטי המשרד והסוכנות</TabsTrigger>
-          <TabsTrigger value="finance">חשבונות ותשלומים</TabsTrigger>
         </TabsList>
-        <TabsContent value="personal" className="mt-4"><PersonalTab /></TabsContent>
-        <TabsContent value="plan" className="mt-4"><PlanTab /></TabsContent>
-        <TabsContent value="workspace" className="mt-4"><WorkspaceTab /></TabsContent>
-        <TabsContent value="finance" className="mt-4"><Finance /></TabsContent>
+        <TabsContent value="personal" className="mt-[20px]"><PersonalTab /></TabsContent>
+        <TabsContent value="workspace" className="mt-[20px]"><WorkspaceTab /></TabsContent>
       </Tabs>
     </div>
   );
