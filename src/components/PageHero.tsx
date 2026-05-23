@@ -9,7 +9,7 @@
  * Background: solid primary blue with the white RealtyzWave at the bottom.
  * Mounted once at the layout level to avoid per-route hero "jumps".
  */
-import { useLocation } from 'react-router-dom';
+import { useLocation, useSearchParams } from 'react-router-dom';
 import { Menu } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { RealtyzWave } from '@/components/RealtyzWave';
