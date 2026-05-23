@@ -71,9 +71,9 @@ export default function AiDialer() {
             <Select value={leadId} onValueChange={onSelectLead}>
               <SelectTrigger><SelectValue placeholder="בחר מתעניין מהרשימה" /></SelectTrigger>
               <SelectContent>
-                {leads.map((l: any) => (
+                {leads.map((l) => (
                   <SelectItem key={l.id} value={l.id}>
-                    {l.lead_name ?? "ללא שם"} · {l.lead_phone ?? "ללא טלפון"} · {l.city ?? ""}
+                    {l.full_name ?? "ללא שם"} · {l.phone_number ?? "ללא טלפון"} · {l.city ?? ""}
                   </SelectItem>
                 ))}
               </SelectContent>
