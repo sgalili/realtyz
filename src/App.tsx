@@ -60,6 +60,7 @@ const SharedDeals = lazy(() => import("./pages/SharedDeals"));
 const ClientPortal = lazy(() => import("./pages/ClientPortal"));
 const PlatformSettings = lazy(() => import("./pages/PlatformSettings"));
 const HomelyAdmin = lazy(() => import("./pages/HomelyAdmin"));
+const AiDialer = lazy(() => import("./pages/AiDialer"));
 
 
 let syncToastId: string | number | undefined;
@@ -187,7 +188,8 @@ const App = () => (
               <Route path="/homely-api" element={<Navigate to="/api-settings" replace />} />
               <Route path="/social-connect" element={<ProtectedRoute allowGuestDemo><SocialConnect /></ProtectedRoute>} />
               <Route path="/leads" element={<ProtectedRoute allowGuestDemo><AdminLeads /></ProtectedRoute>} />
-              <Route path="/live-conversations" element={<ProtectedRoute allowGuestDemo><LiveConversations /></ProtectedRoute>} />
+             <Route path="/live-conversations" element={<ProtectedRoute allowGuestDemo><LiveConversations /></ProtectedRoute>} />
+             <Route path="/ai-dialer" element={<ProtectedRoute><AiDialer /></ProtectedRoute>} />
               <Route path="/live-activity" element={<ProtectedRoute allowGuestDemo><LiveActivity /></ProtectedRoute>} />
               <Route path="/conversation-analytics" element={<ProtectedRoute allowGuestDemo><ConversationAnalytics /></ProtectedRoute>} />
               <Route path="/security" element={<ProtectedRoute allowGuestDemo><SecurityDashboard /></ProtectedRoute>} />

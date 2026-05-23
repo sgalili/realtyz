@@ -26,3 +26,6 @@ verify_jwt = false
 
 [functions.handle-email-suppression]
 verify_jwt = false
+
+[functions.vapi-tool-handler]
+verify_jwt = false
