@@ -190,7 +190,7 @@ const App = () => (
               <Route path="/settings/homely-admin" element={<ProtectedRoute><HomelyAdmin /></ProtectedRoute>} />
               <Route path="/homely-api" element={<Navigate to="/api-settings" replace />} />
               <Route path="/social-connect" element={<ProtectedRoute allowGuestDemo><SocialConnect /></ProtectedRoute>} />
-              <Route path="/leads" element={<ProtectedRoute allowGuestDemo><AdminLeads /></ProtectedRoute>} />
+              
              <Route path="/live-conversations" element={<ProtectedRoute allowGuestDemo><LiveConversations /></ProtectedRoute>} />
              <Route path="/ai-dialer" element={<ProtectedRoute><AiDialer /></ProtectedRoute>} />
              <Route path="/settings/credentials" element={<ProtectedRoute><PlatformCredentials /></ProtectedRoute>} />
