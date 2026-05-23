@@ -145,7 +145,7 @@ function PlanTab() {
               <span className="text-4xl font-bold tabular-nums text-primary">{formatIls(SEAT_PRICE)}</span>
             </div>
             <p className="mt-3 text-sm text-muted-foreground">
-              מחיר אחיד למתווכים. כולל מעטפת AI מלאה, ניהול לידים, חיבור גרין-API וכל מודולי המערכת.
+              כולל מעטפת AI מלאה, ניהול לידים, חיבור להומלי, יד2, מדל״ן, לווטסאפ ולכל הרשתות החברתיות שלכם בקליק.
             </p>
           </div>
 
