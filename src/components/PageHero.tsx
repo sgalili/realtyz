@@ -47,6 +47,8 @@ const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/settings\/branding/, title: 'מיתוג הסוכנות' },
   { match: /^\/settings\/system-health/, title: 'תקינות המערכת' },
   { match: /^\/leads/, title: 'פניות נכנסות' },
+  { match: /^\/profile/, title: 'הפרופיל שלי' },
+  { match: /^\/billing/, title: 'חבילה וחשבוניות' },
   { match: /^\/auth/, title: 'התחברות' },
 ];
 

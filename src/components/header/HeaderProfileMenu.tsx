@@ -28,9 +28,9 @@ type Item = {
 
 const ITEMS: Item[] = [
   { label: 'הפרופיל שלי', icon: User, to: '/profile', iconClass: 'text-primary' },
-  { label: 'ניהול חבילה ויתרה', icon: Crown, to: '/profile?tab=plan', iconClass: 'text-warning' },
+  { label: 'ניהול חבילה ויתרה', icon: Crown, to: '/billing?tab=plan', iconClass: 'text-warning' },
   { label: 'מנהלים מורשים', icon: ShieldCheck, to: '/team', iconClass: 'text-primary-glow', requires: 'managing_broker' },
-  { label: 'חשבוניות ותשלומים', icon: Wallet, to: '/profile?tab=finance', iconClass: 'text-primary-glow' },
+  { label: 'חשבוניות ותשלומים', icon: Wallet, to: '/billing?tab=finance', iconClass: 'text-primary-glow' },
 ];
 
 const FORCED_DISPLAY_NAME = 'אודי ויטמן';

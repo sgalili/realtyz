@@ -12,12 +12,9 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import Finance from '@/pages/Finance';
+import { IsraeliCityPicker } from '@/components/IsraeliCityPicker';
 import { cn } from '@/lib/utils';
 
-const SEAT_PRICE = 350;
-const SEAT_WALLET_CREDIT = 200;
-const SALES_PHONE = '972546811841';
 
 type ContactList = { id: string; value: string }[];
 
@@ -116,59 +113,6 @@ function AiSparkleSwitch({ checked, onCheckedChange }: { checked: boolean; onChe
   );
 }
 
-function formatIls(n: number): string {
-  return `₪${n.toLocaleString('he-IL')}`;
-}
-
-function PlanTab() {
-  const [seats, setSeats] = useState(1);
-  const monthly = seats * SEAT_PRICE;
-  const wallet = seats * SEAT_WALLET_CREDIT;
-
-  const requestTopup = () => {
-    const text = `היי, אני רוצה לרכוש מנוי ריאלטיז נדל"ן עבור ${seats} מושבים (₪${monthly} לחודש, כולל ₪${wallet} קרדיט פרימיום בארנק).`;
-    const url = `https://wa.me/${SALES_PHONE}?text=${encodeURIComponent(text)}`;
-    window.open(url, '_blank', 'noopener,noreferrer');
-  };
-
-  return (
-    <div className="space-y-4 mt-5">
-      <Card>
-        <CardContent className="space-y-5">
-          <div className="rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-transparent p-5 text-center">
-            <div className="flex flex-col items-center gap-1">
-              <span className="text-4xl font-bold tabular-nums text-primary">{formatIls(SEAT_PRICE)}</span>
-              <span className="text-xs text-muted-foreground">/ חודש / מתווך</span>
-            </div>
-            <p className="mt-3 text-sm font-bold text-foreground text-center">
-              כולל מעטפת AI מלאה, ניהול לידים, חיבור להומלי, יד2, מדל״ן, לווטסאפ ולכל הרשתות החברתיות שלכם בקליק.
-            </p>
-          </div>
-
-          <div className="flex items-center justify-between gap-3">
-            <Label className="text-right text-sm whitespace-nowrap">מספר מתווכים</Label>
-            <div className="flex items-center gap-2">
-              <Button variant="outline" size="icon" onClick={() => setSeats(Math.max(1, seats - 1))}>-</Button>
-              <Input
-                type="number"
-                min={1}
-                value={seats}
-                onChange={(e) => setSeats(Math.max(1, Number(e.target.value) || 1))}
-                className="w-20 text-center"
-              />
-              <Button variant="outline" size="icon" onClick={() => setSeats(seats + 1)}>+</Button>
-            </div>
-          </div>
-
-          <Button onClick={requestTopup} size="lg" className="w-full">
-            פתח חלון תשלום ב-WhatsApp
-          </Button>
-        </CardContent>
-      </Card>
-    </div>
-  );
-}
-
 const WORKSPACE_STORAGE_KEY = 'realtyz-workspace-details';
 const LOGO_STORAGE_KEY = 'realtyz-agency-logo';
 
@@ -261,10 +205,6 @@ function WorkspaceTab() {
 
   const fields: { key: keyof typeof values; icon: typeof Mail; label: string }[] = [
     { key: 'agency_name', icon: Building2, label: 'שם המשרד' },
-    { key: 'manager', icon: UserIcon, label: 'מנהל פעיל' },
-    { key: 'tone', icon: Briefcase, label: 'טון תקשורת' },
-    { key: 'service_areas', icon: MapPin, label: 'אזורי שירות' },
-    { key: 'initial_message', icon: MessageCircle, label: 'מסר פתיחה' },
   ];
 
   return (
@@ -332,6 +272,18 @@ function WorkspaceTab() {
               </div>
             );
           })}
+
+          <div className="rounded-lg border bg-card/40 p-3 text-right">
+            <div className="mb-1.5 flex items-center gap-2 text-xs text-muted-foreground">
+              <MapPin className="h-3.5 w-3.5" />
+              <span>אזורי שירות</span>
+            </div>
+            <IsraeliCityPicker
+              value={values.service_areas}
+              onChange={(v) => setValues((s) => ({ ...s, service_areas: v }))}
+              placeholder="בחר עיר / אזור"
+            />
+          </div>
         </div>
         <Button onClick={save} size="lg" className="w-full">שמירת פרטי המשרד</Button>
       </CardContent>
@@ -431,16 +383,12 @@ export default function Profile() {
   return (
     <div dir="rtl" className="mx-auto w-full max-w-4xl space-y-4 p-2 sm:p-4">
       <Tabs value={tab} onValueChange={setTab} dir="rtl">
-        <TabsList className="grid w-full grid-cols-2 sm:grid-cols-4 mb-[15px]">
+        <TabsList className="grid w-full grid-cols-2 mb-[15px]">
           <TabsTrigger value="personal">הפרופיל האישי שלי</TabsTrigger>
-          <TabsTrigger value="plan">ניהול חבילה</TabsTrigger>
           <TabsTrigger value="workspace">פרטי המשרד והסוכנות</TabsTrigger>
-          <TabsTrigger value="finance">חשבונות ותשלומים</TabsTrigger>
         </TabsList>
-        <TabsContent value="personal" className="mt-4"><PersonalTab /></TabsContent>
-        <TabsContent value="plan" className="mt-4"><PlanTab /></TabsContent>
-        <TabsContent value="workspace" className="mt-4"><WorkspaceTab /></TabsContent>
-        <TabsContent value="finance" className="mt-4"><Finance /></TabsContent>
+        <TabsContent value="personal" className="mt-[20px]"><PersonalTab /></TabsContent>
+        <TabsContent value="workspace" className="mt-[20px]"><WorkspaceTab /></TabsContent>
       </Tabs>
     </div>
   );
