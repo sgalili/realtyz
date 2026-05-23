@@ -36,18 +36,13 @@ export function CreditBalancePill() {
 
   useEffect(() => {
     if (!user?.id) return;
-    let cancelled = false;
-    (async () => {
-      const { data } = await supabase
-        .from('profiles')
-        .select('credit_balance')
-        .eq('id', user.id)
-        .maybeSingle();
-      if (cancelled) return;
-      const val = Number((data as any)?.credit_balance ?? 0);
+    try {
+      const cached = window.localStorage.getItem(`realtyz-credit-balance-${user.id}`);
+      const val = Number(cached ?? '0');
       setBalance(Number.isFinite(val) ? val : 0);
-    })();
-    return () => { cancelled = true; };
+    } catch {
+      setBalance(0);
+    }
   }, [user?.id]);
 
   const bonus = Math.max(0, Math.round(amount * 0.1));
