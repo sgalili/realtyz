@@ -87,7 +87,7 @@ export function ProfileCapsule() {
                     Admin
                   </span>
                 )}
-                <ChevronUp className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
+                <ChevronDown className="h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform group-data-[state=open]:rotate-180" />
               </>
             )}
           </button>
