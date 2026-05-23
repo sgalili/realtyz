@@ -847,10 +847,33 @@ const LeadCRM = () => {
                 <SelectItem value="נסגר">נסגר</SelectItem>
               </SelectContent>
             </Select>
+            <Select value={dealTypeFilter} onValueChange={setDealTypeFilter}>
+              <SelectTrigger className="w-[150px] h-8 text-xs"><Home className="h-3 w-3 ml-1" /><SelectValue placeholder="סוג עסקה" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">כל סוגי העסקה</SelectItem>
+                <SelectItem value="sale">קנייה / מכירה</SelectItem>
+                <SelectItem value="rent">שכירות / השכרה</SelectItem>
+              </SelectContent>
+            </Select>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={compactMode ? 'default' : 'outline'}
+                  size="sm"
+                  className="gap-1.5 h-8 shrink-0"
+                  onClick={() => setCompactMode((v) => !v)}
+                  aria-pressed={compactMode}
+                >
+                  {compactMode ? <Rows3 className="h-3.5 w-3.5" /> : <Rows className="h-3.5 w-3.5" />}
+                  {compactMode ? 'תצוגה מורחבת' : 'תצוגה צפופה'}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>החלפה בין שורות מורחבות לטבלה צפופה</TooltipContent>
+            </Tooltip>
             <Button variant="outline" size="sm" className="gap-1.5 h-8 shrink-0" onClick={() => handleExportExcel('filtered')}>
               <FileSpreadsheet className="h-3.5 w-3.5" /> ייצוא
             </Button>
-            <Button size="sm" className="gap-1.5 h-8 shrink-0" onClick={() => setNewLeadOpen(true)}>
+            <Button size="sm" className="gap-1.5 h-8 shrink-0" onClick={() => setNewLeadOpen(true)} disabled={freemium.isBlocked}>
               <UserPlus className="h-3.5 w-3.5" /> מתעניין חדש
             </Button>
           </div>}
