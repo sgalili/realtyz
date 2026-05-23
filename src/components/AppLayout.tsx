@@ -612,7 +612,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               >
                 <Bot className="h-4 w-4" />
               </Button>
-              <TrialBadge />
+              
             </div>
 
             <div className="flex-1" />
