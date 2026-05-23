@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
-import Finance from '@/pages/Finance';
+import { IsraeliCityPicker } from '@/components/IsraeliCityPicker';
 import { cn } from '@/lib/utils';
 
 const SEAT_PRICE = 350;
