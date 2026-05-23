@@ -24,6 +24,7 @@ const AIContentGenerator = lazy(() => import("./pages/AIContentGenerator"));
 const CampaignCenter = lazy(() => import("./pages/CampaignCenter"));
 const ActivityLog = lazy(() => import("./pages/ActivityLog"));
 const ApiSettings = lazy(() => import("./pages/ApiSettings"));
+const Profile = lazy(() => import("./pages/Profile"));
 const ConnectionSettings = lazy(() => import("./pages/ConnectionSettings"));
 const SentimentDashboard = lazy(() => import("./pages/SentimentDashboard"));
 const SubscriptionManager = lazy(() => import("./pages/SubscriptionManager"));
@@ -180,6 +181,7 @@ const App = () => (
               <Route path="/sentiment" element={<ProtectedRoute allowGuestDemo><SentimentDashboard /></ProtectedRoute>} />
               <Route path="/subscription" element={<ProtectedRoute allowGuestDemo><SubscriptionManager /></ProtectedRoute>} />
               <Route path="/api-settings" element={<ProtectedRoute allowGuestDemo><ApiSettings /></ProtectedRoute>} />
+              <Route path="/profile" element={<ProtectedRoute allowGuestDemo><Profile /></ProtectedRoute>} />
               <Route path="/settings/connections" element={<ProtectedRoute allowGuestDemo><ConnectionSettings /></ProtectedRoute>} />
               <Route path="/settings/branding" element={<ProtectedRoute><WhiteLabelSettings /></ProtectedRoute>} />
               <Route path="/settings/white-label" element={<Navigate to="/settings/branding" replace />} />
