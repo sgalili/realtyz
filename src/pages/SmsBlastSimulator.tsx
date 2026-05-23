@@ -91,20 +91,26 @@ const CHANNELS: Array<ChannelMeta> = [
   { id: 'instagram',   label: 'Instagram',   icon: Instagram,    color: 'text-[#E4405F]',         bgTint: 'bg-[#E4405F]/10 border-[#E4405F]/40',                 previewLabel: 'Instagram',    unitPriceNis: 0,     unitLabel: 'לפוסט / ריל' },
   { id: 'tiktok',      label: 'TikTok',      icon: TikTokOfficial, color: 'text-foreground',      bgTint: 'bg-[#FE2C55]/10 border-[#FE2C55]/40',                 previewLabel: 'TikTok',       unitPriceNis: 0,     unitLabel: 'לסרטון' },
   { id: 'telegram',    label: 'Telegram',    icon: TelegramIcon, color: 'text-[#229ED9]',         bgTint: 'bg-[#229ED9]/10 border-[#229ED9]/40',                 previewLabel: 'Telegram',     unitPriceNis: 0,     unitLabel: 'להודעה' },
+  { id: 'messenger',   label: 'Messenger',   icon: MessageCircle, color: 'text-[#0084FF]',        bgTint: 'bg-[#0084FF]/10 border-[#0084FF]/40',                 previewLabel: 'Messenger',    unitPriceNis: 0,     unitLabel: 'להודעה' },
+  { id: 'twitter',     label: 'X',           icon: Twitter,      color: 'text-foreground',        bgTint: 'bg-foreground/10 border-foreground/40',               previewLabel: 'X',            unitPriceNis: 0,     unitLabel: 'לפוסט' },
+  { id: 'youtube',     label: 'YouTube',     icon: Youtube,      color: 'text-[#FF0000]',         bgTint: 'bg-[#FF0000]/10 border-[#FF0000]/40',                 previewLabel: 'YouTube',      unitPriceNis: 0,     unitLabel: 'לסרטון' },
 ];
 
 // Maps a broadcast channel to the platform key in the social_connections table
 // (or to a synthetic 'sms' key resolved against api_configs / 019 SMS provider).
 const CHANNEL_TO_PLATFORM: Record<ChannelId, string | null> = {
   whatsapp:    'whatsapp_green',
-  sms:         'sms',         // resolved separately via api_configs (019 SMS)
-  voice:       null,           // pending provider
-  ivr:         null,           // pending provider
+  sms:         'sms',
+  voice:       null,
+  ivr:         null,
   email:       'gmail',
   linkedin:    'linkedin',
   instagram:   'instagram',
   tiktok:      'tiktok',
   telegram:    'telegram',
+  messenger:   'fb_messenger',
+  twitter:     'twitter',
+  youtube:     'youtube',
 };
 
 // Channels considered "paid" for the cost calculation. Social channels are free (₪0).
