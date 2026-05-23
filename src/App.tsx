@@ -29,7 +29,7 @@ const ConnectionSettings = lazy(() => import("./pages/ConnectionSettings"));
 const SentimentDashboard = lazy(() => import("./pages/SentimentDashboard"));
 const SubscriptionManager = lazy(() => import("./pages/SubscriptionManager"));
 const ContactForm = lazy(() => import("./pages/ContactForm"));
-const AdminLeads = lazy(() => import("./pages/AdminLeads"));
+
 const LiveConversations = lazy(() => import("./pages/LiveConversations"));
 const LiveActivity = lazy(() => import("./pages/LiveActivity"));
 const ConversationAnalytics = lazy(() => import("./pages/ConversationAnalytics"));
