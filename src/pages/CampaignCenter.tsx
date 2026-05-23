@@ -1,11 +1,13 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { RealtyzLoader } from '@/components/RealtyzLoader';
 import { RealtyzWave } from '@/components/RealtyzWave';
 import { Crosshair, Megaphone, Calendar, ShieldCheck, Radio, ClipboardList, Send, Users, ArrowRight } from 'lucide-react';
 import { useElectionType } from '@/hooks/useElectionType';
+import { supabase } from '@/integrations/supabase/client';
 
 const CampaignStrategy = lazy(() => import('./CampaignStrategy'));
 const CampaignManager = lazy(() => import('./CampaignManager'));
