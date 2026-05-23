@@ -595,8 +595,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <AppSidebar tutorialHighlightPath={activeTutorialStep?.path} />
         <div className="flex-1 flex h-screen min-w-0 flex-col overflow-hidden">
           <header className="h-16 text-primary-foreground backdrop-blur-md flex items-center px-4 gap-2 shrink-0 sticky top-0 z-30" style={{ backgroundColor: 'hsl(var(--header-bg))' }} dir="rtl">
-            {/* In RTL the visual right is the start of the flex row.
-                Swapped: system icons on visual right, brand on visual left. */}
+            {/* RTL: first child = visual right. Profile on visual right, system icons on visual left. */}
+            <div className="flex items-center gap-3">
+              <HeaderProfileMenu />
+            </div>
+
+            <div className="flex-1" />
+
             <div className="flex items-center gap-1.5">
               <HeaderCrisisAlert />
               <NotificationCenter />
@@ -610,14 +615,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
               >
                 <Bot className="h-4 w-4" />
               </Button>
-              
-            </div>
-
-            <div className="flex-1" />
-
-            <div className="flex items-center gap-3">
-              <BrandMark to="/" />
-              <HeaderProfileMenu />
             </div>
 
           </header>
