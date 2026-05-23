@@ -151,10 +151,10 @@ function generateFakeLog(total: number, channels: ChannelId[]): SimLogEntry[] {
 }
 
 function personalize(message: string) {
-  return (message || 'שלום [שם_פרטי], מזכירים לך שהקלפי שלך ב[עיר] פתוחה היום. נשמח לראות אותך ב[קלפי].')
+  return (message || 'שלום [שם_פרטי], רצינו לעדכן אותך על נכס חדש ב[עיר] שעשוי להתאים לך - [נכס].')
     .replace(/\[שם_פרטי\]/g, 'דניאל')
-    .replace(/\[עיר\]/g, 'חיפה')
-    .replace(/\[קלפי\]/g, 'קלפי 42');
+    .replace(/\[עיר\]/g, 'תל אביב')
+    .replace(/\[נכס\]/g, 'דירת 4 חדרים, רוטשילד');
 }
 
 export default function SmsBlastSimulator() {
