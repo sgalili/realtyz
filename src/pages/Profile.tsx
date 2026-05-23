@@ -138,47 +138,29 @@ function PlanTab() {
           <CardTitle className="text-right">חבילת מתווך — מחיר קבוע</CardTitle>
         </CardHeader>
         <CardContent className="space-y-5">
-          <div className="rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-transparent p-5 text-right">
-            <Badge className="mb-2 bg-primary text-primary-foreground">חבילה יחידה</Badge>
-            <div className="flex items-baseline justify-end gap-1">
-              <span className="text-xs text-muted-foreground">/ חודש / מושב</span>
+          <div className="rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-transparent p-5 text-center">
+            <div className="flex items-baseline justify-center gap-1">
               <span className="text-4xl font-bold tabular-nums text-primary">{formatIls(SEAT_PRICE)}</span>
+              <span className="text-xs text-muted-foreground">/ חודש / מתווך</span>
             </div>
-            <p className="mt-3 text-sm text-muted-foreground">
+            <p className="mt-3 text-sm font-bold text-foreground text-center">
               כולל מעטפת AI מלאה, ניהול לידים, חיבור להומלי, יד2, מדל״ן, לווטסאפ ולכל הרשתות החברתיות שלכם בקליק.
             </p>
           </div>
 
-          <div className="space-y-2">
-            <Label className="text-right text-sm">כמות מושבים</Label>
-            <div className="flex items-center justify-end gap-2">
+          <div className="flex items-center justify-between gap-3">
+            <Label className="text-right text-sm whitespace-nowrap">מספר מתווכים</Label>
+            <div className="flex items-center gap-2">
               <Button variant="outline" size="icon" onClick={() => setSeats(Math.max(1, seats - 1))}>-</Button>
               <Input
                 type="number"
                 min={1}
                 value={seats}
                 onChange={(e) => setSeats(Math.max(1, Number(e.target.value) || 1))}
-                className="w-24 text-center"
+                className="w-20 text-center"
               />
               <Button variant="outline" size="icon" onClick={() => setSeats(seats + 1)}>+</Button>
             </div>
-          </div>
-
-          <div className="rounded-lg border bg-muted/30 p-4 space-y-2 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="font-bold tabular-nums">{formatIls(monthly)}</span>
-              <span className="text-muted-foreground">עלות חודשית כוללת</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="font-bold tabular-nums text-emerald-600">+ {formatIls(wallet)}</span>
-              <span className="text-muted-foreground">קרדיט פרימיום בארנק (₪200 לכל מושב)</span>
-            </div>
-          </div>
-
-          <div className="rounded-lg bg-primary/5 border border-primary/20 p-3 text-xs text-muted-foreground text-right leading-relaxed">
-            לכל מושב פעיל בחיוב מוזרק אוטומטית קרדיט בסך <strong className="text-primary tabular-nums">₪200</strong> לארנק
-            השירותים. הקרדיט משמש לשירותי פרימיום (SMS, WhatsApp בחריגה, שיחות AI). כאשר הקרדיט הבסיסי מתרוקן, ניתן
-            להטעין ידנית את הארנק דרך מודאל המכירות ב-WhatsApp כדי להמשיך בהפצות.
           </div>
 
           <Button onClick={requestTopup} size="lg" className="w-full">
