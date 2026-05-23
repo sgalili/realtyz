@@ -223,7 +223,7 @@ export default function KnowledgeBase() {
                 <CardTitle className="text-base flex items-center gap-2">
                   <BookOpen className="h-4 w-4 text-primary" /> מקורות ידע פעילים
                 </CardTitle>
-                <CardDescription>הספרייה שמזינה את מוח ה-AI של הקמפיין</CardDescription>
+                <CardDescription>הספרייה שמזינה את מוח ה-AI של המשרד</CardDescription>
               </CardHeader>
               <CardContent className="space-y-2">
                 {demoDocuments.map((doc) => (
