@@ -5,12 +5,10 @@ import {
   Brain,
   Handshake,
   Briefcase,
-  Building2,
 } from 'lucide-react';
-import { useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { NavLink } from '@/components/NavLink';
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useDemoMode } from '@/hooks/useDemoMode';
@@ -27,7 +25,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { SidebarIntelInput } from '@/components/SidebarIntelInput';
-
+import { cn } from '@/lib/utils';
 
 type NavItem = {
   title: string;
@@ -39,27 +37,21 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   {
-    title: 'לוח בקרה',
+    title: 'סנטימנט ותובנות',
     url: '/',
     icon: LayoutDashboard,
     iconColor: 'text-primary',
     aliases: ['/dashboard'],
   },
   {
-    title: 'CRM ניהול לקוחות ונכסים',
+    title: 'לקוחות ונכסים',
     url: '/lead-crm',
     icon: Users,
     iconColor: 'text-social-facebook',
     aliases: ['/crm', '/leads', '/properties', '/property'],
   },
   {
-    title: 'מאגר נכסים משולב AI',
-    url: '/properties-hub',
-    icon: Building2,
-    iconColor: 'text-primary',
-  },
-  {
-    title: 'חדר עסקה (Pipeline)',
+    title: 'חדר עסקאות',
     url: '/deal-room',
     icon: Briefcase,
     iconColor: 'text-primary-glow',
@@ -71,14 +63,14 @@ const NAV_ITEMS: NavItem[] = [
     iconColor: 'text-warning',
   },
   {
-    title: 'מרכז הפצה ואוטומציות',
+    title: 'קמפיינים',
     url: '/campaigns',
     icon: Megaphone,
     iconColor: 'text-destructive',
     aliases: ['/broadcast', '/automations', '/campaign-strategy', '/approval-queue', '/calendar', '/sms-blast', '/ads'],
   },
   {
-    title: 'מוח ה-AI ומאגר הידע',
+    title: 'מוח AI',
     url: '/knowledge',
     icon: Brain,
     iconColor: 'text-social-instagram',
@@ -86,10 +78,13 @@ const NAV_ITEMS: NavItem[] = [
   },
 ];
 
+const FORCED_DISPLAY_NAME = 'אודי ויטמן';
+
 export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: string | null }) {
   const { state, isMobile, setOpenMobile } = useSidebar();
   const collapsed = state === 'collapsed';
   const location = useLocation();
+  const navigate = useNavigate();
   const { user } = useAuth();
   const { isSuperAdmin } = useUserRole();
   const { isDemoMode } = useDemoMode();
@@ -121,6 +116,12 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     location.pathname === item.url ||
     item.aliases?.some((a) => location.pathname === a || location.pathname.startsWith(a + '/'));
 
+  const meta = (user?.user_metadata ?? {}) as Record<string, any>;
+  const avatarUrl: string | null =
+    meta.avatar_url || meta.picture || meta.profile_picture_url || null;
+  const displayName = FORCED_DISPLAY_NAME;
+  const initial = displayName.slice(0, 1);
+
   return (
     <Sidebar collapsible="offcanvas" className="realtyz-premium-sidebar border-l border-r-0 border-sidebar-border" side="right">
       <SidebarContent className="realtyz-sidebar-menu pt-3">
@@ -132,9 +133,6 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
           </SidebarGroup>
         )}
 
-
-
-        {/* 4 minimal nav nodes */}
         <SidebarGroup className="pt-3">
           <SidebarGroupContent>
             <SidebarMenu>
@@ -174,11 +172,40 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
         </SidebarGroup>
 
         {!collapsed && (
-          <SidebarGroup className="mt-auto sticky bottom-0 z-10 p-0">
-            <SidebarGroupContent className="p-0">
-              <SidebarIntelInput />
-            </SidebarGroupContent>
-          </SidebarGroup>
+          <div className="mt-auto">
+            <SidebarGroup className="p-0">
+              <SidebarGroupContent className="p-0">
+                <SidebarIntelInput />
+              </SidebarGroupContent>
+            </SidebarGroup>
+
+            <SidebarGroup className="p-0 border-t border-sidebar-border">
+              <SidebarGroupContent className="px-3 py-2">
+                <button
+                  type="button"
+                  onClick={() => navigate('/profile')}
+                  className="flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-right transition-colors hover:bg-primary/10"
+                >
+                  <div className="w-10 h-10 min-w-[40px] min-h-[40px] max-w-[40px] max-h-[40px] rounded-full overflow-hidden shrink-0">
+                    {avatarUrl ? (
+                      <img
+                        src={avatarUrl}
+                        alt={displayName}
+                        className="w-10 h-10 min-w-[40px] min-h-[40px] max-w-[40px] max-h-[40px] rounded-full object-cover aspect-square block shrink-0"
+                      />
+                    ) : (
+                      <div className="flex h-full w-full items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
+                        {initial}
+                      </div>
+                    )}
+                  </div>
+                  <span className="truncate text-sm font-semibold text-primary">
+                    {displayName}
+                  </span>
+                </button>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          </div>
         )}
       </SidebarContent>
     </Sidebar>
