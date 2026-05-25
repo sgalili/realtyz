@@ -209,11 +209,14 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error("[homely-search] fatal", e);
-    await logIntegrationError({
-      integration: "homely",
-      functionName: "homely-search",
-      errorMessage: (e as Error).message,
-    });
-    return json({ error: (e as Error).message }, 500);
+    try {
+      await logIntegrationError({
+        integration: "homely",
+        functionName: "homely-search",
+        errorMessage: (e as Error).message,
+      });
+    } catch (_) { /* swallow logging errors */ }
+    // Safe fallback: return empty results so the client never sees a blank screen
+    return json({ source: "listings", results: [], error: (e as Error).message }, 200);
   }
 });
