@@ -112,7 +112,7 @@ function AnimatedPlaceholder({ text, idx }: { text: string; idx: number }) {
     >
       <span
         ref={textRef}
-        className="text-[17px] text-muted-foreground/70 whitespace-nowrap inline-block"
+        className="text-[15px] text-muted-foreground/90 whitespace-nowrap inline-block"
         style={{
           opacity: phase === 'in' ? 0 : 1,
           transform: phase === 'out' ? `translateX(${finalShift})` : undefined,
@@ -304,9 +304,9 @@ export function SidebarIntelInput() {
               }}
               placeholder=""
               disabled={isLoading}
-              rows={1}
+              rows={2}
               dir="rtl"
-              className="w-full text-[17px] min-h-[28px] h-7 py-1 px-1.5 resize-none bg-transparent border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 focus:min-h-[28px] focus:h-auto max-h-32 text-foreground whitespace-nowrap overflow-x-auto"
+              className="w-full text-[15px] min-h-[28px] py-1 px-3 resize-none bg-transparent border-0 shadow-none focus-visible:ring-0 focus-visible:ring-offset-0 focus:min-h-[28px] focus:h-auto max-h-32 text-gray-700"
             />
           </div>
           </div>
