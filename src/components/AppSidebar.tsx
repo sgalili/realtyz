@@ -3,7 +3,6 @@ import {
   Users,
   Megaphone,
   Brain,
-  Handshake,
   Briefcase,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
