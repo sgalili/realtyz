@@ -55,12 +55,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: Briefcase,
     iconColor: 'text-primary-glow',
   },
-  {
-    title: 'עסקאות משותפות',
-    url: '/shared-deals',
-    icon: Handshake,
-    iconColor: 'text-warning',
-  },
+
   {
     title: 'קמפיינים',
     url: '/campaigns',
