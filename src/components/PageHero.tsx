@@ -77,14 +77,13 @@ export function PageHero() {
       className="relative w-full shrink-0 overflow-hidden text-primary-foreground print:hidden"
       style={{ backgroundColor: '#0096E6' }}
     >
-      {/* Center-aligned 3-zone toolbar — toolbar row shifted up 15px without
-          changing the hero container height. */}
+      {/* 3-zone toolbar — title is absolutely centered to the viewport so it
+          stays perfectly centered regardless of side controls' widths. */}
       <div
         className="relative z-10 flex items-center justify-between gap-3 px-4 sm:px-6"
-        style={{ height: '65px', marginTop: '-15px' }}
+        style={{ minHeight: '65px', paddingTop: '10px', paddingBottom: '10px' }}
       >
-        {/* Visual right (RTL flex start): Burger / nav toggle —
-            nudged 15px toward the visual-right edge via negative margin. */}
+        {/* Visual right (RTL flex start): Burger / nav toggle */}
         <SidebarTrigger
           className="h-10 w-10 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground [&_svg]:!h-6 [&_svg]:!w-6"
           aria-label="פתח תפריט"
@@ -93,16 +92,17 @@ export function PageHero() {
           <Menu className="h-6 w-6" />
         </SidebarTrigger>
 
-        {/* Center: dynamic page title */}
-        <h1 className="min-w-0 flex-1 truncate py-[10px] text-center text-xl font-bold tracking-tight text-white sm:text-2xl">
+        {/* Absolute-centered page title — locked to screen center */}
+        <h1 className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap py-[10px] text-center text-xl font-bold tracking-tight text-white sm:text-2xl">
           {title}
         </h1>
 
-        {/* Visual left (RTL flex end): live credit-balance pill (opens top-up dialog). */}
+        {/* Visual left (RTL flex end): live credit-balance pill */}
         <div className="flex items-center justify-end" style={{ marginLeft: '-5px' }}>
           {location.pathname.startsWith('/campaigns') && <CreditBalancePill />}
         </div>
       </div>
+
 
       {/* Decorative wave at the bottom edge — fill matches the page surface
           (#f1f5f9) so the wave melts seamlessly into the content below. */}
