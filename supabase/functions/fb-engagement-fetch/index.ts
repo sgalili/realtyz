@@ -91,8 +91,9 @@ Deno.serve(async (req) => {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error('[fb-engagement-fetch]', msg);
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // Soft-fail: return 200 with empty dataset so UI doesn't hard-crash
+    return new Response(JSON.stringify({ ok: false, error: msg, fetched: 0, upserted: 0, data: [] }), {
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
