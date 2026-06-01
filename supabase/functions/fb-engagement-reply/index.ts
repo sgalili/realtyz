@@ -10,6 +10,7 @@ const corsHeaders = {
 };
 const AYR_API = 'https://api.ayrshare.com/api';
 const WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
+const WORKSPACE_PROFILE_KEY = '87984B37-4F534C11-A0FCD260-B6077DBA';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -42,14 +43,14 @@ Deno.serve(async (req) => {
       .from('workspace_social_profile')
       .select('ayrshare_profile_key')
       .eq('id', WORKSPACE_ID).maybeSingle();
-    if (!ws?.ayrshare_profile_key) throw new Error('Workspace Ayrshare profile not connected');
+    const profileKey = (ws?.ayrshare_profile_key?.toString().trim()) || WORKSPACE_PROFILE_KEY;
 
     // POST /comments/reply with commentId + comment + platforms
     const ayrRes = await fetch(`${AYR_API}/comments/reply`, {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${KEY}`,
-        'Profile-Key': ws.ayrshare_profile_key,
+        'Profile-Key': profileKey,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
