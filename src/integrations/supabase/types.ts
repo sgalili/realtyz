@@ -3687,6 +3687,39 @@ export type Database = {
         }
         Relationships: []
       }
+      workspace_social_profile: {
+        Row: {
+          ayrshare_profile_key: string | null
+          ayrshare_ref_id: string | null
+          connected_platforms: Json
+          created_at: string
+          facebook_page_id: string | null
+          facebook_page_name: string | null
+          id: string
+          updated_at: string
+        }
+        Insert: {
+          ayrshare_profile_key?: string | null
+          ayrshare_ref_id?: string | null
+          connected_platforms?: Json
+          created_at?: string
+          facebook_page_id?: string | null
+          facebook_page_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Update: {
+          ayrshare_profile_key?: string | null
+          ayrshare_ref_id?: string | null
+          connected_platforms?: Json
+          created_at?: string
+          facebook_page_id?: string | null
+          facebook_page_name?: string | null
+          id?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       usage_monthly_summary: {

@@ -33,27 +33,44 @@ Deno.serve(async (req) => {
     });
     const networks = netRes.ok ? await netRes.json() : null;
 
-    // Connected accounts for this broker
+    // Connected accounts for the SHARED workspace profile
     const admin = createClient(SUPABASE_URL, SERVICE);
-    const { data: profile } = await admin
-      .from('profiles')
+    const WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
+    const { data: ws } = await admin
+      .from('workspace_social_profile')
       .select('ayrshare_profile_key')
-      .eq('id', userId)
+      .eq('id', WORKSPACE_ID)
       .maybeSingle();
 
     let connected: any[] = [];
-    if (profile?.ayrshare_profile_key) {
+    if (ws?.ayrshare_profile_key) {
       const userRes = await fetch(`${AYR_API}/user`, {
         headers: {
           Authorization: `Bearer ${KEY}`,
-          'Profile-Key': profile.ayrshare_profile_key,
+          'Profile-Key': ws.ayrshare_profile_key,
         },
       });
       if (userRes.ok) {
         const data = await userRes.json();
         connected = data.activeSocialAccounts || data.displayNames || [];
 
-        // Sync to DB
+        // Cache connected platforms + capture FB page id/name when present
+        const platforms = Array.isArray(data.displayNames)
+          ? data.displayNames.map((a: any) => (a.platform || '').toLowerCase()).filter(Boolean)
+          : [];
+        const fb = Array.isArray(data.displayNames)
+          ? data.displayNames.find((a: any) => (a.platform || '').toLowerCase() === 'facebook')
+          : null;
+        await admin
+          .from('workspace_social_profile')
+          .update({
+            connected_platforms: platforms,
+            facebook_page_id: fb?.id || fb?.pageId || null,
+            facebook_page_name: fb?.displayName || fb?.username || null,
+          })
+          .eq('id', WORKSPACE_ID);
+
+        // Per-user cache (kept for backward compat with existing UI)
         if (Array.isArray(data.displayNames)) {
           for (const acct of data.displayNames) {
             const platform = (acct.platform || '').toLowerCase();
@@ -72,6 +89,7 @@ Deno.serve(async (req) => {
         }
       }
     }
+
 
     return new Response(JSON.stringify({ networks, connected }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
