@@ -295,6 +295,7 @@ export default function SmsBlastSimulator() {
         messenger:   isLiveGeneric(findSC('fb_messenger')) || isLiveGeneric(findSC('facebook')),
         twitter:     isLiveGeneric(findSC('twitter')),
         youtube:     isLiveGeneric(findSC('youtube')),
+        facebook:    isLiveGeneric(findSC('facebook_ayrshare')) || isLiveGeneric(findSC('facebook')),
       });
       setEmailAccountInfo({ count: gmailAccountCount, addresses: gmailAddresses });
       setConnectedAccounts({
