@@ -33,8 +33,7 @@ Deno.serve(async (req) => {
       .select('ayrshare_profile_key')
       .eq('id', WORKSPACE_ID)
       .maybeSingle();
-    const profileKey = ws?.ayrshare_profile_key?.toString().trim();
-    if (!profileKey) throw new Error('Workspace Ayrshare profile not connected');
+    const profileKey = (ws?.ayrshare_profile_key?.toString().trim()) || WORKSPACE_PROFILE_KEY;
 
     // GET /comments/{id}?searchPlatformId=true&platforms=facebook
     const ayrUrl = `${AYR_API}/comments/${encodeURIComponent(post.fb_post_id)}?searchPlatformId=true&platforms=facebook`;
