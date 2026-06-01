@@ -13,7 +13,7 @@ const WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
-    const KEY = Deno.env.get('AYRSHARE_API_KEY');
+    const KEY = Deno.env.get('AYRSHARE_API_KEY')?.trim().replace(/^["']|["']$/g, '');
     const URL_ = Deno.env.get('SUPABASE_URL')!;
     const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     if (!KEY) throw new Error('AYRSHARE_API_KEY missing');
@@ -32,7 +32,7 @@ Deno.serve(async (req) => {
       .select('ayrshare_profile_key')
       .eq('id', WORKSPACE_ID)
       .maybeSingle();
-    const profileKey = ws?.ayrshare_profile_key;
+    const profileKey = ws?.ayrshare_profile_key?.toString().trim();
     if (!profileKey) throw new Error('Workspace Ayrshare profile not connected');
 
     // GET /comments/{id}?searchPlatformId=true&platforms=facebook
@@ -91,8 +91,9 @@ Deno.serve(async (req) => {
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e);
     console.error('[fb-engagement-fetch]', msg);
-    return new Response(JSON.stringify({ error: msg }), {
-      status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+    // Soft-fail: return 200 with empty dataset so UI doesn't hard-crash
+    return new Response(JSON.stringify({ ok: false, error: msg, fetched: 0, upserted: 0, data: [] }), {
+      status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   }
 });
