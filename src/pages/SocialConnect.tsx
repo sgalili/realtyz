@@ -124,6 +124,8 @@ export default function SocialConnect() {
   const [diagnosing, setDiagnosing] = useState(false);
   const [manualLoginUrl, setManualLoginUrl] = useState<string | null>(null);
   const { isAdmin } = useUserRole();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const autoConnectedRef = useRef(false);
 
   async function runDiagnostic() {
     setDiagnosing(true);
