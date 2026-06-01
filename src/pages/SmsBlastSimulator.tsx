@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { z } from 'zod';
 import confetti from 'canvas-confetti';
-import { Mail, MessageCircle, Radio, Send, Smartphone, Sparkles, WalletCards, Zap, CheckCircle2, Users, MessageSquare, Coins, Shield, ShieldCheck, AlertTriangle, Clock, List, Filter, FileSpreadsheet, X, Mic, AudioWaveform, AudioLines, Paperclip, Image as ImageIcon, FileText, Film, Square, StopCircle, Linkedin, Instagram, Send as TelegramIcon, Plug, ChevronDown, Settings2, PhoneCall, Check, Twitter, Youtube } from 'lucide-react';
+import { Mail, MessageCircle, Radio, Send, Smartphone, Sparkles, WalletCards, Zap, CheckCircle2, Users, MessageSquare, Coins, Shield, ShieldCheck, AlertTriangle, Clock, List, Filter, FileSpreadsheet, X, Mic, AudioWaveform, AudioLines, Paperclip, Image as ImageIcon, FileText, Film, Square, StopCircle, Linkedin, Instagram, Send as TelegramIcon, Plug, ChevronDown, Settings2, PhoneCall, Check, Twitter, Youtube, Facebook } from 'lucide-react';
 import { TikTokOfficial } from '@/components/social/brand-icons/TikTokOfficial';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
