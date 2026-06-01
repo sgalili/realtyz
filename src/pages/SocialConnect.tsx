@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +7,20 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2, CheckCircle2, ExternalLink, RefreshCw, Stethoscope } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
+
+// Normalize external platform aliases (used by /campaigns deep-links) to the
+// Ayrshare network names this page supports.
+const PLATFORM_ALIASES: Record<string, string> = {
+  facebook_ayrshare: 'facebook',
+  fb_messenger: 'facebook',
+  messenger: 'facebook',
+  instagram_ayrshare: 'instagram',
+  x: 'twitter',
+};
+function normalizePlatform(p: string) {
+  const key = (p || '').toLowerCase().trim();
+  return PLATFORM_ALIASES[key] || key;
+}
 
 type Network = {
   platform: string;
