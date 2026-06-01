@@ -13,7 +13,7 @@ const WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
   try {
-    const KEY = Deno.env.get('AYRSHARE_API_KEY');
+    const KEY = Deno.env.get('AYRSHARE_API_KEY')?.trim().replace(/^["']|["']$/g, '');
     const URL_ = Deno.env.get('SUPABASE_URL')!;
     const SERVICE = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
     if (!KEY) throw new Error('AYRSHARE_API_KEY missing');
