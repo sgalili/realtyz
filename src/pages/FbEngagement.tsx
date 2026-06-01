@@ -106,6 +106,8 @@ export default function FbEngagement() {
       if (error) throw error;
       if (data?.ok === false) {
         toast.warning(data.error || 'לא נסרקו תגובות');
+      } else if (data?.fallback) {
+        toast.info(`טעון מצב סימולציה (${data.upserted ?? 0} תגובות) — Ayrshare חסם את המשיכה`);
       } else {
         toast.success(`נסרקו ${data?.upserted ?? 0} תגובות`);
       }
