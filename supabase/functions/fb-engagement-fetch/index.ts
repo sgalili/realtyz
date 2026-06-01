@@ -111,27 +111,74 @@ Deno.serve(async (req) => {
       usedFallback = true;
       ayrError = 'AYRSHARE_API_KEY missing';
     } else {
-      // Build the explicit Page-scoped target token. Prefer the composite
-      // `{pageId}_{postId}` form Ayrshare recommends for Business Page assets;
-      // fall back to the raw post id only if the DB row carries an override.
-      const targetId = post.fb_post_id === FB_POST_ID
-        ? FB_COMPOSITE_ID
-        : post.fb_post_id;
+      // Anchor phrase used to identify Udi's tracked Facebook post inside the
+      // /history feed when the hardcoded composite id is rejected.
+      const ANCHOR = 'אודי ויטמן';
+      const ANCHOR_FALLBACK = 'אנגלו סכסון הרצליה';
+      const ayrHeaders = {
+        Authorization: `Bearer ${KEY}`,
+        'Profile-Key': profileKey,
+      } as const;
+
+      // 1) Auto-discover the true Ayrshare post id via /history. Ayrshare's
+      // /comments endpoint is much more tolerant of ids it minted itself than
+      // raw FB composite ids, so resolving here removes the 156 false-negative.
+      let discoveredId: string | null = null;
       try {
-        const ayrUrl = `${AYR_API}/comments/${encodeURIComponent(targetId)}?searchPlatformId=true&platforms=facebook`;
-        const resp = await fetch(ayrUrl, {
-          headers: {
-            Authorization: `Bearer ${KEY}`,
-            'Profile-Key': profileKey,
-          },
+        const histResp = await fetch(
+          `${AYR_API}/history?platforms=facebook&lastRecords=50`,
+          { headers: ayrHeaders },
+        );
+        const histJson = await histResp.json().catch(() => ({} as any));
+        const items: any[] = Array.isArray(histJson)
+          ? histJson
+          : (histJson.history || histJson.posts || histJson.data || []);
+        const match = items.find((it: any) => {
+          const text = String(
+            it.post || it.message || it.text || it.caption || '',
+          );
+          const platformId = String(
+            it.platforms?.facebook?.id || it.id || it.postId || '',
+          );
+          return (
+            text.includes(ANCHOR) ||
+            text.includes(ANCHOR_FALLBACK) ||
+            platformId.includes(FB_POST_ID)
+          );
         });
+        if (match) {
+          discoveredId = String(
+            match.id ||
+              match.postId ||
+              match.platforms?.facebook?.id ||
+              '',
+          ) || null;
+        }
+        if (!histResp.ok) {
+          console.warn('[fb-engagement-fetch] history non-200', histResp.status);
+        }
+      } catch (hErr) {
+        console.warn('[fb-engagement-fetch] history lookup failed', hErr);
+      }
+
+      // 2) Pull comments. Prefer the auto-discovered id; fall back to the
+      // verified Page-scoped composite token; final fallback is the raw post id.
+      const targetId =
+        discoveredId ||
+        (post.fb_post_id === FB_POST_ID ? FB_COMPOSITE_ID : post.fb_post_id);
+      try {
+        const qs = discoveredId
+          ? 'platforms=facebook'
+          : 'searchPlatformId=true&platforms=facebook';
+        const ayrUrl = `${AYR_API}/comments/${encodeURIComponent(targetId)}?${qs}`;
+        const resp = await fetch(ayrUrl, { headers: ayrHeaders });
         const json = await resp.json().catch(() => ({} as any));
         const payloadStr = JSON.stringify(json);
         const is156 = payloadStr.includes('"code":156') || payloadStr.includes('code 156');
         if (!resp.ok || is156) {
           console.error('[fb-engagement-fetch] ayrshare error', resp.status, payloadStr.slice(0, 400));
           usedFallback = true;
-          ayrError = `Ayrshare ${resp.status}${is156 ? ' code:156' : ''}`;
+          ayrError = `Ayrshare ${resp.status}${is156 ? ' code:156' : ''}${discoveredId ? ' (discovered id)' : ''}`;
         } else {
           raw = Array.isArray(json) ? json
             : (json.facebook?.comments || json.comments || json.data || []);
@@ -141,6 +188,12 @@ Deno.serve(async (req) => {
         usedFallback = true;
         ayrError = innerErr instanceof Error ? innerErr.message : String(innerErr);
       }
+    }
+
+    // Live rows win: only hydrate fallback when Ayrshare yielded nothing real.
+    if (!usedFallback && raw.length === 0) {
+      usedFallback = true;
+      ayrError = ayrError || 'ayrshare_empty_payload';
     }
 
     let inserted = 0;
