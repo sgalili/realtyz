@@ -140,9 +140,19 @@ export default function Properties() {
               : 'קטלוג הנכסים. סננו לפי תקציב, אזור, סוג נכס וחדרים, ושלחו ישירות למתעניינים.'}
           </p>
         </div>
-        <Badge variant="secondary" className="text-sm">
-          {filtered.length} נכסים
-        </Badge>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant="secondary" className="text-sm">
+            {filtered.length} נכסים
+          </Badge>
+          <Button size="sm" onClick={() => setAddOpen(true)} className="gap-1.5">
+            <Plus className="h-4 w-4" />
+            הוספת נכס ידנית
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setImportOpen(true)} className="gap-1.5">
+            <FileSpreadsheet className="h-4 w-4" />
+            יבוא נכסים מאקסל
+          </Button>
+        </div>
       </header>
 
       {/* Listing type toggle: למכירה / להשכרה */}
