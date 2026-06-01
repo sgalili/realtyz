@@ -849,6 +849,7 @@ export default function SmsBlastSimulator() {
     instagram: ['Meta Graph API'],
     tiktok: ['TikTok Business API'],
     telegram: ['Telegram Bot API'],
+    facebook: ['Ayrshare'],
   };
 
   const startSend = useCallback(async () => {
