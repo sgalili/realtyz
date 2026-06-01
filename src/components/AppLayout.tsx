@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 
 import { MandateSelector } from '@/components/dashboard/MandateSelector';
 import { MagicMandateSelector } from '@/components/dashboard/MagicMandateSelector';
-import { MandateSelectorMount } from '@/components/MandateSelectorMount';
+
 import { RotatingHeadline } from '@/components/RotatingHeadline';
 
 import NotificationCenter from '@/components/NotificationCenter';
@@ -635,7 +635,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <PageHero />
           <main className="realtyz-main-surface flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-6 pb-6 pt-0">
             {children}
-            <MandateSelectorMount />
             <DemoSidebarPeek />
           </main>
           <AiAgentDrawer />
