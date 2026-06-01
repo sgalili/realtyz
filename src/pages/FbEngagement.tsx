@@ -38,6 +38,9 @@ export default function FbEngagement() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [injAuthor, setInjAuthor] = useState('');
+  const [injText, setInjText] = useState('');
+  const [injecting, setInjecting] = useState(false);
 
   // Mode
   const { data: modeRow } = useQuery({
