@@ -94,6 +94,7 @@ const CHANNELS: Array<ChannelMeta> = [
   { id: 'messenger',   label: 'Messenger',   icon: MessageCircle, color: 'text-[#0084FF]',        bgTint: 'bg-[#0084FF]/10 border-[#0084FF]/40',                 previewLabel: 'Messenger',    unitPriceNis: 0,     unitLabel: 'להודעה' },
   { id: 'twitter',     label: 'X',           icon: Twitter,      color: 'text-foreground',        bgTint: 'bg-foreground/10 border-foreground/40',               previewLabel: 'X',            unitPriceNis: 0,     unitLabel: 'לפוסט' },
   { id: 'youtube',     label: 'YouTube',     icon: Youtube,      color: 'text-[#FF0000]',         bgTint: 'bg-[#FF0000]/10 border-[#FF0000]/40',                 previewLabel: 'YouTube',      unitPriceNis: 0,     unitLabel: 'לסרטון' },
+  { id: 'facebook',    label: 'Facebook',    icon: Facebook,     color: 'text-[#1877F2]',         bgTint: 'bg-[#1877F2]/10 border-[#1877F2]/40',                 previewLabel: 'Facebook',     unitPriceNis: 0,     unitLabel: 'לפוסט (Ayrshare)' },
 ];
 
 // Maps a broadcast channel to the platform key in the social_connections table
