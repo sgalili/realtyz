@@ -9,7 +9,7 @@ import { Button } from '@/components/ui/button';
 
 import { MandateSelector } from '@/components/dashboard/MandateSelector';
 import { MagicMandateSelector } from '@/components/dashboard/MagicMandateSelector';
-import { MandateSelectorMount } from '@/components/MandateSelectorMount';
+
 import { RotatingHeadline } from '@/components/RotatingHeadline';
 
 import NotificationCenter from '@/components/NotificationCenter';
