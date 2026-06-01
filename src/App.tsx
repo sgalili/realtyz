@@ -65,6 +65,8 @@ const PlatformSettings = lazy(() => import("./pages/PlatformSettings"));
 const HomelyAdmin = lazy(() => import("./pages/HomelyAdmin"));
 const AiDialer = lazy(() => import("./pages/AiDialer"));
 const PlatformCredentials = lazy(() => import("./pages/PlatformCredentials"));
+const FbEngagement = lazy(() => import("./pages/FbEngagement"));
+
 
 
 let syncToastId: string | number | undefined;
@@ -195,6 +197,7 @@ const App = () => (
               <Route path="/settings/homely-admin" element={<ProtectedRoute><HomelyAdmin /></ProtectedRoute>} />
               <Route path="/homely-api" element={<Navigate to="/api-settings" replace />} />
               <Route path="/social-connect" element={<ProtectedRoute allowGuestDemo><SocialConnect /></ProtectedRoute>} />
+              <Route path="/social/engagement" element={<ProtectedRoute><FbEngagement /></ProtectedRoute>} />
               
              <Route path="/live-conversations" element={<ProtectedRoute allowGuestDemo><LiveConversations /></ProtectedRoute>} />
              <Route path="/ai-dialer" element={<ProtectedRoute><AiDialer /></ProtectedRoute>} />
