@@ -111,14 +111,18 @@ export default function FbEngagement() {
       if (error) throw error;
       if (data?.ok === false) {
         toast.warning(data.error || 'לא נסרקו תגובות');
+        setLiveStatus(null);
       } else if (data?.fallback) {
         toast.info(`טוען מצב סימולציה (${data.upserted ?? 0} תגובות): Ayrshare חסם את המשיכה`);
+        setLiveStatus('fallback');
       } else {
         toast.success(`נסרקו ${data?.upserted ?? 0} תגובות`);
+        setLiveStatus('live');
       }
       await qc.invalidateQueries({ queryKey: ['fb_comments'] });
     } catch (e: any) {
       toast.error(e?.message || 'שגיאה בסריקה');
+      setLiveStatus(null);
     } finally { setBusyId(null); }
   };
 
