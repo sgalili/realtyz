@@ -342,6 +342,7 @@ export function renderPersonaPrompt(persona: AgentPersona | null): string {
   const signature = persona.signature?.trim();
   const agentName = persona.agent_name?.trim();
   const firstName = agentName ? agentName.split(/\s+/)[0] : null;
+  const agencyName = persona.agency_name?.trim();
   const areas = (persona.service_areas ?? []).filter(Boolean);
   const areasList = areas.length > 0 ? areas.join(", ") : null;
 
