@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { IsraeliCityPicker } from '@/components/IsraeliCityPicker';
+import { WhatsAppGatewayCard } from '@/components/profile/WhatsAppGatewayCard';
 import { cn } from '@/lib/utils';
 
 
@@ -387,7 +388,10 @@ export default function Profile() {
           <TabsTrigger value="personal">הפרופיל האישי שלי</TabsTrigger>
           <TabsTrigger value="workspace">פרטי המשרד והסוכנות</TabsTrigger>
         </TabsList>
-        <TabsContent value="personal" className="mt-[20px]"><PersonalTab /></TabsContent>
+        <TabsContent value="personal" className="mt-[20px] space-y-4">
+          <PersonalTab />
+          <WhatsAppGatewayCard />
+        </TabsContent>
         <TabsContent value="workspace" className="mt-[20px]"><WorkspaceTab /></TabsContent>
       </Tabs>
     </div>
