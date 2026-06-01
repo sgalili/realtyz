@@ -218,8 +218,9 @@ export default function SocialConnect() {
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-primary">חיבור רשתות חברתיות</h1>
           <p className="mt-1 text-sm text-muted-foreground">
-            חבר את חשבונות הסושיאל שלך ב־Realtyz — אינסטגרם, פייסבוק, לינקדאין, X ועוד. ההתחברות חלקה, ללא מיתוג צד שלישי.
+            פרופיל סושיאל אחד משותף לכל הוורקספייס — חבר פעם אחת את פייסבוק (כולל בחירת ה־Page), אינסטגרם, לינקדאין, X ועוד, וכל חברי הצוות יוכלו לפרסם דרכו.
           </p>
+
         </div>
         <div className="flex items-center gap-2">
           {isAdmin && (
