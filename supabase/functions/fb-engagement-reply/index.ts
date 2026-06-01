@@ -10,6 +10,7 @@ const corsHeaders = {
 };
 const AYR_API = 'https://api.ayrshare.com/api';
 const WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
+const WORKSPACE_PROFILE_KEY = '87984B37-4F534C11-A0FCD260-B6077DBA';
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
