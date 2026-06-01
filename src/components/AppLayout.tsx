@@ -635,7 +635,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
           <PageHero />
           <main className="realtyz-main-surface flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-6 pb-6 pt-0">
             {children}
-            <MandateSelectorMount />
             <DemoSidebarPeek />
           </main>
           <AiAgentDrawer />
