@@ -37,6 +37,8 @@ const BodySchema = z
     phone_number: z.string().min(8).max(20).optional(),
     // Free-text body. Required for non-template sends.
     message: z.string().min(1).max(4096).optional(),
+    // Backward-compatible alias used by older UI callsites.
+    body: z.string().min(1).max(4096).optional(),
     // WBA-only template id. When provided AND provider is WBA, sends a template message
     // using { template_id, language, components? }. Ignored by GreenAPI (falls back to text).
     template_id: z.string().min(1).max(120).optional(),
@@ -64,7 +66,7 @@ const BodySchema = z
   .refine((v) => !!v.lead_id || !!v.phone_number, {
     message: "lead_id or phone_number is required",
   })
-  .refine((v) => !!v.message || !!v.template_id, {
+  .refine((v) => !!v.message || !!v.body || !!v.template_id, {
     message: "message or template_id is required",
   });
 
@@ -496,7 +498,7 @@ Deno.serve(async (req) => {
     // Compliance: append the "AI-assisted content" disclosure footer when
     // requested by the caller. We do this AFTER body validation but BEFORE
     // dispatching, so the lead sees the same text we audit.
-    let outboundMessage = parsed.data.message ?? null;
+    let outboundMessage = parsed.data.message ?? parsed.data.body ?? null;
     let disclosureAppended = false;
     if (outboundMessage && parsed.data.ai_assisted) {
       const r = appendDisclosure(
