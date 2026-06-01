@@ -16,8 +16,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Send, BedDouble, Ruler, MapPin, Building2 } from 'lucide-react';
+import { Send, BedDouble, Ruler, MapPin, Building2, Plus, FileSpreadsheet } from 'lucide-react';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
+import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
+import { ImportPropertiesDialog } from '@/components/properties/ImportPropertiesDialog';
 import {
   MOCK_HOMELY_PROPERTIES,
   PROPERTY_TYPE_LABELS_HE,
@@ -53,6 +56,10 @@ export default function Properties() {
   const [areaMin, setAreaMin] = useState<string>('');
 
   const [shareTarget, setShareTarget] = useState<HomelyProperty | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const refreshListings = () => queryClient.invalidateQueries({ queryKey: ['homely-search'] });
 
   // Calls homely-search: real Homely if a key is configured, otherwise the
   // function falls back to the local `listings` table. We merge whatever it
@@ -133,9 +140,19 @@ export default function Properties() {
               : 'קטלוג הנכסים. סננו לפי תקציב, אזור, סוג נכס וחדרים, ושלחו ישירות למתעניינים.'}
           </p>
         </div>
-        <Badge variant="secondary" className="text-sm">
-          {filtered.length} נכסים
-        </Badge>
+        <div className="flex items-center gap-2 flex-wrap">
+          <Badge variant="secondary" className="text-sm">
+            {filtered.length} נכסים
+          </Badge>
+          <Button size="sm" onClick={() => setAddOpen(true)} className="gap-1.5">
+            <Plus className="h-4 w-4" />
+            הוספת נכס ידנית
+          </Button>
+          <Button size="sm" variant="outline" onClick={() => setImportOpen(true)} className="gap-1.5">
+            <FileSpreadsheet className="h-4 w-4" />
+            יבוא נכסים מאקסל
+          </Button>
+        </div>
       </header>
 
       {/* Listing type toggle: למכירה / להשכרה */}
@@ -294,6 +311,9 @@ export default function Properties() {
         open={!!shareTarget}
         onOpenChange={(open) => { if (!open) setShareTarget(null); }}
       />
+
+      <AddPropertyDialog open={addOpen} onOpenChange={setAddOpen} onCreated={refreshListings} />
+      <ImportPropertiesDialog open={importOpen} onOpenChange={setImportOpen} onImported={refreshListings} />
     </div>
   );
 }
