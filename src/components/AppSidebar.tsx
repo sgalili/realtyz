@@ -70,7 +70,14 @@ const NAV_ITEMS: NavItem[] = [
     iconColor: 'text-social-instagram',
     aliases: ['/live-conversations', '/ai-content', '/sentiment', '/conversation-analytics', '/insights'],
   },
+  {
+    title: 'FB Engagement',
+    url: '/social/engagement',
+    icon: Megaphone,
+    iconColor: 'text-social-facebook',
+  },
 ];
+
 
 const FORCED_DISPLAY_NAME = 'אודי ויטמן';
 
