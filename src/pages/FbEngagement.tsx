@@ -250,6 +250,36 @@ export default function FbEngagement() {
         </div>
       )}
 
+      <Card className="border-primary/20">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">הזרקת תגובה חיה לבדיקת מוח ה-AI</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Input
+            value={injAuthor}
+            onChange={(e) => setInjAuthor(e.target.value)}
+            placeholder="שם המגיב (למשל: ישראל ישראלי)"
+            dir="rtl"
+            maxLength={120}
+          />
+          <Textarea
+            value={injText}
+            onChange={(e) => setInjText(e.target.value)}
+            placeholder="תוכן התגובה כפי שהיה מופיע בפייסבוק"
+            dir="rtl"
+            rows={3}
+            maxLength={1000}
+          />
+          <div className="flex justify-end">
+            <Button onClick={injectComment} disabled={injecting} size="sm" className="gap-1">
+              {injecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              הזרק תגובה למערכת
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+
       {isLoading && (
         <div className="flex justify-center py-12"><Loader2 className="animate-spin" /></div>
       )}
