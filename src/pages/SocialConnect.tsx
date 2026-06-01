@@ -177,7 +177,8 @@ export default function SocialConnect() {
 
   const connectedSet = useMemo(() => new Set(connected.map((c) => c.platform.toLowerCase())), [connected]);
 
-  async function connect(platform: string) {
+  async function connect(rawPlatform: string) {
+    const platform = normalizePlatform(rawPlatform);
     setLinkingPlatform(platform);
     try {
       const { data, error } = await supabase.functions.invoke('ayrshare-social-link', { body: { platform } });
