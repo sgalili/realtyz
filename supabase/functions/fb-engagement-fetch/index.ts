@@ -111,10 +111,19 @@ Deno.serve(async (req) => {
       usedFallback = true;
       ayrError = 'AYRSHARE_API_KEY missing';
     } else {
+      // Build the explicit Page-scoped target token. Prefer the composite
+      // `{pageId}_{postId}` form Ayrshare recommends for Business Page assets;
+      // fall back to the raw post id only if the DB row carries an override.
+      const targetId = post.fb_post_id === FB_POST_ID
+        ? FB_COMPOSITE_ID
+        : post.fb_post_id;
       try {
-        const ayrUrl = `${AYR_API}/comments/${encodeURIComponent(post.fb_post_id)}?searchPlatformId=true&platforms=facebook`;
+        const ayrUrl = `${AYR_API}/comments/${encodeURIComponent(targetId)}?searchPlatformId=true&platforms=facebook`;
         const resp = await fetch(ayrUrl, {
-          headers: { Authorization: `Bearer ${KEY}`, 'Profile-Key': profileKey },
+          headers: {
+            Authorization: `Bearer ${KEY}`,
+            'Profile-Key': profileKey,
+          },
         });
         const json = await resp.json().catch(() => ({} as any));
         const payloadStr = JSON.stringify(json);
