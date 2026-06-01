@@ -182,6 +182,7 @@ Deno.serve(async (req) => {
         } else {
           raw = Array.isArray(json) ? json
             : (json.facebook?.comments || json.comments || json.data || []);
+          console.log("REALTYZ-LIVE-INGESTION-SUCCESS: Fetched " + raw.length + " comments directly from live FB Page.");
         }
       } catch (innerErr) {
         console.error('[fb-engagement-fetch] network error', innerErr);
@@ -194,6 +195,10 @@ Deno.serve(async (req) => {
     if (!usedFallback && raw.length === 0) {
       usedFallback = true;
       ayrError = ayrError || 'ayrshare_empty_payload';
+    }
+
+    if (usedFallback) {
+      console.log("REALTYZ-FALLBACK-ACTIVATED: Utilizing seed simulation array due to provider handshake failure.");
     }
 
     let inserted = 0;
