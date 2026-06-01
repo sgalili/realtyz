@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { toast } from 'sonner';
 import { Loader2, RefreshCw, ExternalLink, Sparkles, Send, Bot, UserCheck } from 'lucide-react';
@@ -38,6 +39,9 @@ export default function FbEngagement() {
   const qc = useQueryClient();
   const [editing, setEditing] = useState<Record<string, string>>({});
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [injAuthor, setInjAuthor] = useState('');
+  const [injText, setInjText] = useState('');
+  const [injecting, setInjecting] = useState(false);
 
   // Mode
   const { data: modeRow } = useQuery({
@@ -147,6 +151,47 @@ export default function FbEngagement() {
     } finally { setBusyId(null); }
   };
 
+  const injectComment = async () => {
+    const author = injAuthor.trim();
+    const text = injText.trim();
+    if (!author || !text) {
+      toast.error('יש למלא שם ותגובה');
+      return;
+    }
+    setInjecting(true);
+    try {
+      const { data: post, error: postErr } = await supabase
+        .from('fb_engagement_posts')
+        .select('id')
+        .eq('fb_post_id', '122135406987020860')
+        .maybeSingle();
+      if (postErr || !post) throw new Error('הפוסט המנוטר לא נמצא');
+      const id = Date.now().toString();
+      const { error } = await supabase.from('fb_comments').insert({
+        post_id: post.id,
+        ayr_comment_id: `injected_${id}`,
+        author_name: author,
+        comment_text: text,
+        likes_count: 0,
+        shares_count: 0,
+        posted_at: new Date().toISOString(),
+        is_historical_replied: false,
+        status: 'new',
+        raw: { source: 'live_injector', injected_at: new Date().toISOString() },
+        fetched_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      setInjAuthor('');
+      setInjText('');
+      toast.success('התגובה הוזרקה למערכת');
+      qc.invalidateQueries({ queryKey: ['fb_comments'] });
+    } catch (e: any) {
+      toast.error(e?.message || 'שגיאה בהזרקת תגובה');
+    } finally {
+      setInjecting(false);
+    }
+  };
+
   // Pilot mode: auto-pick draft #1 (warm/personal) when drafts arrive
   useEffect(() => {
     if (mode !== 'pilot') return;
@@ -204,6 +249,36 @@ export default function FbEngagement() {
           מצב <b>AI Pilot</b> פעיל: טיוטות מאושרות ונשלחות אוטומטית. עברו ל-HITL כדי לסנן ידנית.
         </div>
       )}
+
+      <Card className="border-primary/20">
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">הזרקת תגובה חיה לבדיקת מוח ה-AI</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <Input
+            value={injAuthor}
+            onChange={(e) => setInjAuthor(e.target.value)}
+            placeholder="שם המגיב (למשל: ישראל ישראלי)"
+            dir="rtl"
+            maxLength={120}
+          />
+          <Textarea
+            value={injText}
+            onChange={(e) => setInjText(e.target.value)}
+            placeholder="תוכן התגובה כפי שהיה מופיע בפייסבוק"
+            dir="rtl"
+            rows={3}
+            maxLength={1000}
+          />
+          <div className="flex justify-end">
+            <Button onClick={injectComment} disabled={injecting} size="sm" className="gap-1">
+              {injecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              הזרק תגובה למערכת
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
 
       {isLoading && (
         <div className="flex justify-center py-12"><Loader2 className="animate-spin" /></div>
