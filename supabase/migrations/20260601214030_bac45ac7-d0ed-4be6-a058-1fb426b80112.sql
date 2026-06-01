@@ -1,0 +1,2 @@
+CREATE POLICY "auth insert comments" ON public.fb_comments FOR INSERT TO authenticated WITH CHECK (true);
+CREATE POLICY "auth delete comments" ON public.fb_comments FOR DELETE TO authenticated USING (true);
