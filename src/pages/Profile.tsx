@@ -13,6 +13,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { IsraeliCityPicker } from '@/components/IsraeliCityPicker';
+import { WhatsAppGatewayCard } from '@/components/profile/WhatsAppGatewayCard';
 import { cn } from '@/lib/utils';
 
 
