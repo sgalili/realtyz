@@ -1588,6 +1588,195 @@ export type Database = {
         }
         Relationships: []
       }
+      fb_comment_drafts: {
+        Row: {
+          comment_id: string
+          created_at: string
+          draft_index: number
+          draft_text: string
+          id: string
+          is_simulation: boolean
+          model: string | null
+        }
+        Insert: {
+          comment_id: string
+          created_at?: string
+          draft_index: number
+          draft_text: string
+          id?: string
+          is_simulation?: boolean
+          model?: string | null
+        }
+        Update: {
+          comment_id?: string
+          created_at?: string
+          draft_index?: number
+          draft_text?: string
+          id?: string
+          is_simulation?: boolean
+          model?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fb_comment_drafts_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "fb_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fb_comment_replies: {
+        Row: {
+          ayrshare_reply_id: string | null
+          ayrshare_response: Json | null
+          comment_id: string
+          final_text: string
+          id: string
+          kb_document_id: string | null
+          mode: string
+          posted_at: string
+          posted_by: string | null
+        }
+        Insert: {
+          ayrshare_reply_id?: string | null
+          ayrshare_response?: Json | null
+          comment_id: string
+          final_text: string
+          id?: string
+          kb_document_id?: string | null
+          mode: string
+          posted_at?: string
+          posted_by?: string | null
+        }
+        Update: {
+          ayrshare_reply_id?: string | null
+          ayrshare_response?: Json | null
+          comment_id?: string
+          final_text?: string
+          id?: string
+          kb_document_id?: string | null
+          mode?: string
+          posted_at?: string
+          posted_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fb_comment_replies_comment_id_fkey"
+            columns: ["comment_id"]
+            isOneToOne: false
+            referencedRelation: "fb_comments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fb_comments: {
+        Row: {
+          author_fb_id: string | null
+          author_name: string | null
+          ayr_comment_id: string
+          comment_text: string
+          fetched_at: string
+          historical_reply_text: string | null
+          id: string
+          is_historical_replied: boolean
+          likes_count: number
+          parent_comment_id: string | null
+          post_id: string
+          posted_at: string | null
+          raw: Json | null
+          shares_count: number
+          status: string
+        }
+        Insert: {
+          author_fb_id?: string | null
+          author_name?: string | null
+          ayr_comment_id: string
+          comment_text?: string
+          fetched_at?: string
+          historical_reply_text?: string | null
+          id?: string
+          is_historical_replied?: boolean
+          likes_count?: number
+          parent_comment_id?: string | null
+          post_id: string
+          posted_at?: string | null
+          raw?: Json | null
+          shares_count?: number
+          status?: string
+        }
+        Update: {
+          author_fb_id?: string | null
+          author_name?: string | null
+          ayr_comment_id?: string
+          comment_text?: string
+          fetched_at?: string
+          historical_reply_text?: string | null
+          id?: string
+          is_historical_replied?: boolean
+          likes_count?: number
+          parent_comment_id?: string | null
+          post_id?: string
+          posted_at?: string | null
+          raw?: Json | null
+          shares_count?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fb_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "fb_engagement_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      fb_engagement_posts: {
+        Row: {
+          created_at: string
+          fb_post_id: string
+          id: string
+          label: string | null
+          last_synced_at: string | null
+          post_url: string
+        }
+        Insert: {
+          created_at?: string
+          fb_post_id: string
+          id?: string
+          label?: string | null
+          last_synced_at?: string | null
+          post_url: string
+        }
+        Update: {
+          created_at?: string
+          fb_post_id?: string
+          id?: string
+          label?: string | null
+          last_synced_at?: string | null
+          post_url?: string
+        }
+        Relationships: []
+      }
+      fb_engagement_settings: {
+        Row: {
+          mode: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          mode?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          mode?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       feedback_logs: {
         Row: {
           ai_message: string
