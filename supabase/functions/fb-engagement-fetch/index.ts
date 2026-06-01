@@ -131,33 +131,58 @@ Deno.serve(async (req) => {
     if (usedFallback) {
       inserted = await hydrateFallback(admin, post.id);
     } else {
-      for (const c of raw) {
-        const ayrId = String(c.id || c.commentId || c.comment_id || '');
-        if (!ayrId) continue;
-        const childReplies: any[] = c.comments || c.replies || [];
-        const udiReply = childReplies.find((r) => {
-          const name = (r.from?.name || r.author || '').toLowerCase();
-          return name.includes('udi') || name.includes('אודי');
-        });
-        const replied = Boolean(c.comment_count > 0 || c.replied || c.hasReply || udiReply);
-        const { error: insErr } = await admin.from('fb_comments').upsert({
-          post_id: post.id,
-          ayr_comment_id: ayrId,
-          parent_comment_id: c.parent?.id || null,
-          author_name: c.from?.name || c.author || null,
-          author_fb_id: c.from?.id || null,
-          comment_text: c.message || c.text || c.comment || '',
-          likes_count: Number(c.like_count || c.likes || 0),
-          shares_count: Number(c.shares?.count || c.shares || 0),
-          posted_at: c.created_time || c.createdAt || null,
-          is_historical_replied: Boolean(udiReply),
-          historical_reply_text: udiReply ? (udiReply.message || udiReply.text || null) : null,
-          status: udiReply ? 'historical' : (replied ? 'replied' : 'new'),
-          raw: c,
-          fetched_at: new Date().toISOString(),
-        }, { onConflict: 'post_id,ayr_comment_id' });
-        if (!insErr) inserted++;
-      }
+      const isUdi = (name?: string | null) => {
+        const n = (name || '').toLowerCase();
+        return n.includes('udi') || n.includes('אודי');
+      };
+      const childrenOf = (n: any): any[] =>
+        n?.comments || n?.replies || n?.children || n?.thread || [];
+
+      // Recursive walker: traverses up to MAX_DEPTH levels of nested replies,
+      // upserts every node with accurate parent_comment_id mapping, and bubbles
+      // Udi's reply text up to its parent thread as historical_reply_text.
+      const MAX_DEPTH = 5;
+      const walkComments = async (
+        nodes: any[],
+        parentAyrId: string | null,
+        depth: number,
+      ): Promise<void> => {
+        if (!Array.isArray(nodes) || depth > MAX_DEPTH) return;
+        for (const c of nodes) {
+          const ayrId = String(c.id || c.commentId || c.comment_id || '');
+          if (!ayrId) continue;
+          const kids = childrenOf(c);
+          // find a direct-child reply authored by Udi (1 level down only — exactly
+          // mirrors how FB threads attribute the page-owner's response)
+          const udiReply = kids.find((r: any) => isUdi(r.from?.name || r.author));
+          const replied = Boolean(
+            c.comment_count > 0 || c.replied || c.hasReply || udiReply,
+          );
+          const { error: insErr } = await admin.from('fb_comments').upsert({
+            post_id: post.id,
+            ayr_comment_id: ayrId,
+            parent_comment_id: parentAyrId || c.parent?.id || null,
+            author_name: c.from?.name || c.author || null,
+            author_fb_id: c.from?.id || null,
+            comment_text: c.message || c.text || c.comment || '',
+            likes_count: Number(c.like_count || c.likes || 0),
+            shares_count: Number(c.shares?.count || c.shares || 0),
+            posted_at: c.created_time || c.createdAt || null,
+            is_historical_replied: Boolean(udiReply),
+            historical_reply_text: udiReply
+              ? (udiReply.message || udiReply.text || null)
+              : null,
+            status: udiReply ? 'historical' : (replied ? 'replied' : 'new'),
+            raw: c,
+            fetched_at: new Date().toISOString(),
+          }, { onConflict: 'post_id,ayr_comment_id' });
+          if (!insErr) inserted++;
+          // recurse into the sub-thread so 2nd / 3rd-level replies (incl. Udi's
+          // own answer node) are persisted with the correct parent linkage.
+          if (kids.length) await walkComments(kids, ayrId, depth + 1);
+        }
+      };
+      await walkComments(raw, null, 0);
     }
 
     await admin.from('fb_engagement_posts')
