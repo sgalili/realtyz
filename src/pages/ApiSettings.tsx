@@ -1650,6 +1650,7 @@ const ApiSettings = () => {
         </Accordion>
       </div>
     </div>
+    </ApiSettingsCtx.Provider>
   );
 };
 
