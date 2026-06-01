@@ -87,7 +87,7 @@ export async function loadAgentPersona(
       global: { headers: { Authorization: authHeader } },
     });
 
-    const [{ data: personaRow }, { data: profileRow }] = await Promise.all([
+    const [{ data: personaRow }, { data: profileRow }, { data: brandRow }] = await Promise.all([
       client
         .from("agent_personas")
         .select("tone, tone_custom, professional_bio, selling_philosophy, signature, language, style_calibration")
@@ -96,9 +96,14 @@ export async function loadAgentPersona(
         .from("profiles")
         .select("full_name, service_areas")
         .maybeSingle(),
+      client
+        .from("white_label_settings")
+        .select("agency_name")
+        .maybeSingle(),
     ]);
 
     const agent_name = (profileRow?.full_name as string | undefined)?.trim() || null;
+    const agency_name = ((brandRow as any)?.agency_name as string | undefined)?.trim() || null;
     const service_areas = Array.isArray((profileRow as any)?.service_areas)
       ? ((profileRow as any).service_areas as string[])
       : [];
@@ -113,6 +118,7 @@ export async function loadAgentPersona(
       signature: (personaRow?.signature as string | null) ?? null,
       language: (personaRow?.language as string) ?? "he",
       agent_name,
+      agency_name,
       service_areas,
       style_calibration: (personaRow as any)?.style_calibration ?? null,
     };
