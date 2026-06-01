@@ -12,6 +12,13 @@ import { MessageCircle, Save, Loader2, CheckCircle2 } from 'lucide-react';
  * Quick-update card for Green API WhatsApp gateway credentials.
  * Lives on /profile so the account owner can rotate the WA Instance
  * without diving into the full Settings → API page.
+ *
+ * On save (or successful test) we ALSO upsert a `social_connections`
+ * row for `whatsapp_green` with `is_connected = true` so every
+ * WA-aware surface across the app (inbox composer, deal-room reply,
+ * campaign center, SMS/blast simulator, dashboard channel pills,
+ * SocialConnectionsTab) immediately treats this account as a live
+ * WhatsApp gateway instead of showing the controls as disabled.
  */
 export function WhatsAppGatewayCard() {
   const [instanceId, setInstanceId] = useState('');
@@ -32,13 +39,56 @@ export function WhatsAppGatewayCard() {
           setInstanceId(parts[0] ?? '');
           setToken(parts.slice(1).join(':'));
         }
-      } catch (e: any) {
-        // silent; user will just enter fresh values
+      } catch {
+        /* silent — user will just enter fresh values */
       } finally {
         setLoading(false);
       }
     })();
   }, []);
+
+  const upsertSocialConnection = async (waState: 'authorized' | 'unknown') => {
+    try {
+      await supabase
+        .from('social_connections')
+        .upsert(
+          {
+            platform: 'whatsapp_green',
+            display_name: `WhatsApp · Instance ${instanceId.trim()}`,
+            is_connected: waState === 'authorized',
+            credentials: {
+              manual: {
+                instance_id: instanceId.trim(),
+                api_token: token.trim(),
+                token: token.trim(),
+                wa_state: waState,
+              },
+              wa_state: waState,
+              instance_id: instanceId.trim(),
+              token: token.trim(),
+              api_token: token.trim(),
+            },
+            connected_at: waState === 'authorized' ? new Date().toISOString() : null,
+            last_test_at: new Date().toISOString(),
+            last_test_status: waState === 'authorized' ? 'ok' : 'unknown',
+          } as any,
+          { onConflict: 'platform' },
+        );
+    } catch {
+      /* non-fatal: send-whatsapp's api_configs fallback still works */
+    }
+  };
+
+  const probeState = async (): Promise<'authorized' | 'unknown'> => {
+    try {
+      const res = await fetch(
+        `https://api.green-api.com/waInstance${instanceId.trim()}/getStateInstance/${token.trim()}`,
+      );
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data?.stateInstance === 'authorized') return 'authorized';
+    } catch { /* ignore */ }
+    return 'unknown';
+  };
 
   const save = async () => {
     if (!instanceId.trim() || !token.trim()) {
@@ -56,7 +106,14 @@ export function WhatsAppGatewayCard() {
         },
       });
       if (error) throw error;
-      toast.success('פרטי WhatsApp נשמרו');
+      const state = await probeState();
+      await upsertSocialConnection(state);
+      if (state === 'authorized') setStatus('ok');
+      toast.success(
+        state === 'authorized'
+          ? 'פרטי WhatsApp נשמרו והחיבור הופעל בכל הרכיבים במערכת'
+          : 'פרטי WhatsApp נשמרו (המתן לאישור המכשיר ולאחר מכן לחץ בדיקת חיבור)',
+      );
     } catch (e: any) {
       toast.error(`שמירה נכשלה: ${e?.message ?? e}`);
     } finally {
@@ -72,16 +129,15 @@ export function WhatsAppGatewayCard() {
     setTesting(true);
     setStatus('unknown');
     try {
-      const res = await fetch(
-        `https://api.green-api.com/waInstance${instanceId.trim()}/getStateInstance/${token.trim()}`,
-      );
-      const data = await res.json().catch(() => ({}));
-      if (res.ok && data?.stateInstance === 'authorized') {
+      const state = await probeState();
+      if (state === 'authorized') {
         setStatus('ok');
-        toast.success('✅ חיבור Green API תקין');
+        await upsertSocialConnection('authorized');
+        toast.success('✅ חיבור Green API תקין · WhatsApp פעיל בכל הרכיבים');
       } else {
         setStatus('err');
-        toast.error(`חיבור נכשל: ${data?.stateInstance ?? res.status}`);
+        await upsertSocialConnection('unknown');
+        toast.error('חיבור Green API לא מאומת. סרוק את ה-QR בלוח הבקרה של Green API ונסה שוב.');
       }
     } catch (e: any) {
       setStatus('err');
@@ -106,7 +162,7 @@ export function WhatsAppGatewayCard() {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-xs text-muted-foreground text-right">
-          עדכון מהיר של אישורי ה-Instance של WhatsApp לחשבון זה. הערכים נשמרים מוצפנים בלוח הבקרה.
+          עדכון מהיר של אישורי ה-Instance של WhatsApp לחשבון זה. שמירת הפרטים מפעילה את שליחת ה-WhatsApp בכל הרכיבים במערכת (דשבורד, חדר עסקאות, קמפיינים, תיבה משולבת).
         </p>
 
         <div className="space-y-1.5">
