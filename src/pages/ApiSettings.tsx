@@ -18,7 +18,7 @@ import {
   Phone, Send, Inbox, Map,
 } from 'lucide-react';
 import { supabase as supabaseClient } from '@/integrations/supabase/client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, createContext, useContext } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
@@ -252,6 +252,147 @@ const AuditLogCard = () => {
         )}
       </CardContent>
     </Card>
+  );
+};
+
+/* ─── Shared context for ServiceCard / FeatureRow (kept at module scope so
+ *     these helpers don't get a fresh component identity on every parent
+ *     render — which would unmount their <Input>s and steal focus on every
+ *     keystroke). ─── */
+type ApiSettingsCtxValue = {
+  isServiceEnabled: (key: string, fallback?: boolean) => boolean;
+  toggleService: { mutate: (vars: { key: string; enabled: boolean }) => void };
+  savingKey: string | null;
+  testingService: string | null;
+};
+const ApiSettingsCtx = createContext<ApiSettingsCtxValue | null>(null);
+const useApiSettingsCtx = () => {
+  const ctx = useContext(ApiSettingsCtx);
+  if (!ctx) throw new Error('ApiSettingsCtx missing');
+  return ctx;
+};
+
+const FeatureRow = ({
+  title, learnMore, icon: Icon, iconColor, serviceKey,
+}: {
+  title: string; description: string; learnMore: string;
+  icon: React.ElementType; iconColor: string; serviceKey: string;
+}) => {
+  const { isServiceEnabled, toggleService } = useApiSettingsCtx();
+  const enabled = isServiceEnabled(serviceKey, false);
+  return (
+    <div className="flex items-center gap-3 px-4 py-3 border border-border/50 bg-card first:rounded-t-lg last:rounded-b-lg -mt-px">
+      <Icon className={`h-5 w-5 shrink-0 ${iconColor} ${!enabled ? 'opacity-40' : ''}`} />
+      <div className="flex flex-col items-start min-w-0 flex-1">
+        <span className={`text-sm font-bold truncate ${!enabled ? 'text-muted-foreground' : ''}`}>{title}</span>
+        <Dialog>
+          <DialogTrigger asChild>
+            <button type="button" className="text-[11px] text-muted-foreground/70 hover:text-primary hover:underline transition-colors">
+              למידע נוסף
+            </button>
+          </DialogTrigger>
+          <DialogContent dir="rtl">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <Icon className={`h-5 w-5 ${iconColor}`} />
+                {title}
+              </DialogTitle>
+              <DialogDescription className="pt-2 text-sm leading-relaxed">
+                {learnMore}
+              </DialogDescription>
+            </DialogHeader>
+          </DialogContent>
+        </Dialog>
+      </div>
+      <Switch
+        checked={enabled}
+        onCheckedChange={(v) => toggleService.mutate({ key: serviceKey, enabled: v })}
+        aria-label={`Toggle ${title}`}
+      />
+      <span className="w-4 shrink-0" aria-hidden="true" />
+    </div>
+  );
+};
+
+const ServiceCard = ({
+  title, icon: Icon, iconColor, config, children, onDelete, onTest, onSave, saveLabel,
+  testLabel = 'בדיקת חיבור', badgeLabel, savingId, testingId, value, isConnected, serviceKey,
+  hideActions,
+}: {
+  title: string; icon: React.ElementType; iconColor: string; config?: ApiConfig | undefined;
+  children?: React.ReactNode; onDelete?: () => void; onTest?: () => void; onSave?: () => void;
+  saveLabel?: string; testLabel?: string; badgeLabel?: string; savingId?: string; testingId?: string;
+  value: string; isConnected?: boolean; serviceKey: string; hideActions?: boolean;
+}) => {
+  const { isServiceEnabled, toggleService, savingKey, testingService } = useApiSettingsCtx();
+  const connected = isConnected ?? !!config?.is_active;
+  const enabled = isServiceEnabled(serviceKey, connected);
+  return (
+    <AccordionItem value={value} className="border border-border/50 bg-card overflow-hidden first:rounded-t-lg last:rounded-b-lg data-[state=open]:border-border/80 data-[state=open]:shadow-sm data-[state=open]:relative data-[state=open]:z-10">
+      <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20 [&>svg]:hidden">
+        <div className="flex items-center gap-3 w-full">
+          <Icon className={`h-5 w-5 shrink-0 ${iconColor} ${!enabled ? 'opacity-40' : ''}`} />
+          <div className="flex flex-col items-start min-w-0 flex-1">
+            <span className={`text-sm font-bold truncate ${!enabled ? 'text-muted-foreground' : ''}`}>{title}</span>
+          </div>
+          <div
+            role="presentation"
+            onClick={(e) => { e.stopPropagation(); }}
+            onPointerDown={(e) => { e.stopPropagation(); }}
+            className="flex items-center"
+          >
+            <Switch
+              checked={enabled}
+              onCheckedChange={(v) => toggleService.mutate({ key: serviceKey, enabled: v })}
+              aria-label={`Toggle ${title}`}
+            />
+          </div>
+          <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
+        </div>
+      </AccordionTrigger>
+      {children && (
+        <AccordionContent className="px-4 pb-4 pt-2">
+          <div className="space-y-4">
+            <div className="flex items-center justify-between rounded-md border border-border/40 bg-muted/20 px-3 py-2">
+              <span className="text-xs font-medium text-muted-foreground">סטטוס</span>
+              <div className="flex items-center gap-2">
+                <span
+                  className={`h-2 w-2 rounded-full ${connected ? 'bg-emerald-500 shadow-[0_0_6px_hsl(var(--success))]' : 'bg-red-500'}`}
+                />
+                <span className={`text-xs font-medium ${connected ? 'text-emerald-600' : 'text-red-600'}`}>
+                  {connected ? 'מוכן' : 'לא מוגדר'}
+                </span>
+              </div>
+            </div>
+            {!connected && (
+              <div className="rounded-md border border-dashed border-border/60 bg-muted/10 px-3 py-2 text-[11px] text-muted-foreground">
+                הגדירו את השירות כדי להפעיל אותו — מלאו את השדות מטה ולחצו "שמירה".
+              </div>
+            )}
+            {children}
+            {!hideActions && onSave && (
+              <div className="flex gap-2 items-center">
+                <Button onClick={onSave} disabled={savingKey === savingId} className="flex-1" size="sm">
+                  <Save className="h-4 w-4 ml-2" />
+                  {savingKey === savingId ? 'שומר...' : saveLabel}
+                </Button>
+                {onTest && (
+                  <Button variant="outline" size="sm" onClick={onTest} disabled={testingService === testingId} className="gap-2">
+                    {testingService === testingId ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
+                    {testLabel}
+                  </Button>
+                )}
+                {config && onDelete && (
+                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0" onClick={onDelete}>
+                    <Trash2 className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        </AccordionContent>
+      )}
+    </AccordionItem>
   );
 };
 
@@ -838,130 +979,8 @@ const ApiSettings = () => {
     </div>
   );
 
-  const FeatureRow = ({
-    title, description, learnMore, icon: Icon, iconColor, serviceKey,
-  }: {
-    title: string; description: string; learnMore: string;
-    icon: React.ElementType; iconColor: string; serviceKey: string;
-  }) => {
-    const enabled = isServiceEnabled(serviceKey, false);
-    return (
-      <div className="flex items-center gap-3 px-4 py-3 border border-border/50 bg-card first:rounded-t-lg last:rounded-b-lg -mt-px">
-        <Icon className={`h-5 w-5 shrink-0 ${iconColor} ${!enabled ? 'opacity-40' : ''}`} />
-        <div className="flex flex-col items-start min-w-0 flex-1">
-          <span className={`text-sm font-bold truncate ${!enabled ? 'text-muted-foreground' : ''}`}>{title}</span>
-          <Dialog>
-            <DialogTrigger asChild>
-              <button type="button" className="text-[11px] text-muted-foreground/70 hover:text-primary hover:underline transition-colors">
-                למידע נוסף
-              </button>
-            </DialogTrigger>
-            <DialogContent dir="rtl">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-2">
-                  <Icon className={`h-5 w-5 ${iconColor}`} />
-                  {title}
-                </DialogTitle>
-                <DialogDescription className="pt-2 text-sm leading-relaxed">
-                  {learnMore}
-                </DialogDescription>
-              </DialogHeader>
-            </DialogContent>
-          </Dialog>
-        </div>
-        <Switch
-          checked={enabled}
-          onCheckedChange={(v) => toggleService.mutate({ key: serviceKey, enabled: v })}
-          aria-label={`Toggle ${title}`}
-        />
-        {/* Chevron spacer to keep vertical alignment with Section B accordion rows */}
-        <span className="w-4 shrink-0" aria-hidden="true" />
-      </div>
-    );
-  };
-
-  const ServiceCard = ({
-    title, icon: Icon, iconColor, config, children, onDelete, onTest, onSave, saveLabel,
-    testLabel = 'בדיקת חיבור', badgeLabel, savingId, testingId, value, isConnected, serviceKey,
-    hideActions,
-  }: {
-    title: string; icon: React.ElementType; iconColor: string; config?: ApiConfig | undefined;
-    children?: React.ReactNode; onDelete?: () => void; onTest?: () => void; onSave?: () => void;
-    saveLabel?: string; testLabel?: string; badgeLabel?: string; savingId?: string; testingId?: string;
-    value: string; isConnected?: boolean; serviceKey: string; hideActions?: boolean;
-  }) => {
-    const connected = isConnected ?? !!config?.is_active;
-    const enabled = isServiceEnabled(serviceKey, connected);
-    return (
-      <AccordionItem value={value} className="border border-border/50 bg-card overflow-hidden first:rounded-t-lg last:rounded-b-lg data-[state=open]:border-border/80 data-[state=open]:shadow-sm data-[state=open]:relative data-[state=open]:z-10">
-        <AccordionTrigger className="px-4 py-3 hover:no-underline hover:bg-muted/30 [&[data-state=open]]:bg-muted/20 [&>svg]:hidden">
-          <div className="flex items-center gap-3 w-full">
-            <Icon className={`h-5 w-5 shrink-0 ${iconColor} ${!enabled ? 'opacity-40' : ''}`} />
-            <div className="flex flex-col items-start min-w-0 flex-1">
-              <span className={`text-sm font-bold truncate ${!enabled ? 'text-muted-foreground' : ''}`}>{title}</span>
-            </div>
-            <div
-              role="presentation"
-              onClick={(e) => { e.stopPropagation(); }}
-              onPointerDown={(e) => { e.stopPropagation(); }}
-              className="flex items-center"
-            >
-              <Switch
-                checked={enabled}
-                onCheckedChange={(v) => toggleService.mutate({ key: serviceKey, enabled: v })}
-                aria-label={`Toggle ${title}`}
-              />
-            </div>
-            <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0 transition-transform duration-200 [[data-state=open]_&]:rotate-180" />
-          </div>
-        </AccordionTrigger>
-        {children && (
-          <AccordionContent className="px-4 pb-4 pt-2">
-            <div className="space-y-4">
-              <div className="flex items-center justify-between rounded-md border border-border/40 bg-muted/20 px-3 py-2">
-                <span className="text-xs font-medium text-muted-foreground">סטטוס</span>
-                <div className="flex items-center gap-2">
-                  <span
-                    className={`h-2 w-2 rounded-full ${connected ? 'bg-emerald-500 shadow-[0_0_6px_hsl(var(--success))]' : 'bg-red-500'}`}
-                  />
-                  <span className={`text-xs font-medium ${connected ? 'text-emerald-600' : 'text-red-600'}`}>
-                    {connected ? 'מוכן' : 'לא מוגדר'}
-                  </span>
-                </div>
-              </div>
-              {!connected && (
-                <div className="rounded-md border border-dashed border-border/60 bg-muted/10 px-3 py-2 text-[11px] text-muted-foreground">
-                  הגדירו את השירות כדי להפעיל אותו — מלאו את השדות מטה ולחצו "שמירה".
-                </div>
-              )}
-              {children}
-              {!hideActions && onSave && (
-                <div className="flex gap-2 items-center">
-                  <Button onClick={onSave} disabled={savingKey === savingId} className="flex-1" size="sm">
-                    <Save className="h-4 w-4 ml-2" />
-                    {savingKey === savingId ? 'שומר...' : saveLabel}
-                  </Button>
-                  {onTest && (
-                    <Button variant="outline" size="sm" onClick={onTest} disabled={testingService === testingId} className="gap-2">
-                      {testingService === testingId ? <Loader2 className="h-4 w-4 animate-spin" /> : <Zap className="h-4 w-4" />}
-                      {testLabel}
-                    </Button>
-                  )}
-                  {config && onDelete && (
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shrink-0" onClick={onDelete}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
-                </div>
-              )}
-            </div>
-          </AccordionContent>
-        )}
-      </AccordionItem>
-    );
-  };
-
   return (
+    <ApiSettingsCtx.Provider value={{ isServiceEnabled, toggleService, savingKey, testingService }}>
     <div className="space-y-6" dir="rtl">
       <div>
         <h1 className="text-2xl font-bold tracking-tight text-primary">הגדרות מערכת</h1>
@@ -1631,6 +1650,7 @@ const ApiSettings = () => {
         </Accordion>
       </div>
     </div>
+    </ApiSettingsCtx.Provider>
   );
 };
 
