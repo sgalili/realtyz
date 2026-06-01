@@ -1,4 +1,5 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -6,6 +7,20 @@ import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { Loader2, CheckCircle2, ExternalLink, RefreshCw, Stethoscope } from 'lucide-react';
 import { useUserRole } from '@/hooks/useUserRole';
+
+// Normalize external platform aliases (used by /campaigns deep-links) to the
+// Ayrshare network names this page supports.
+const PLATFORM_ALIASES: Record<string, string> = {
+  facebook_ayrshare: 'facebook',
+  fb_messenger: 'facebook',
+  messenger: 'facebook',
+  instagram_ayrshare: 'instagram',
+  x: 'twitter',
+};
+function normalizePlatform(p: string) {
+  const key = (p || '').toLowerCase().trim();
+  return PLATFORM_ALIASES[key] || key;
+}
 
 type Network = {
   platform: string;
@@ -109,6 +124,8 @@ export default function SocialConnect() {
   const [diagnosing, setDiagnosing] = useState(false);
   const [manualLoginUrl, setManualLoginUrl] = useState<string | null>(null);
   const { isAdmin } = useUserRole();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const autoConnectedRef = useRef(false);
 
   async function runDiagnostic() {
     setDiagnosing(true);
@@ -160,9 +177,26 @@ export default function SocialConnect() {
 
   useEffect(() => { load(); }, []);
 
+  // Deep-link: /social-connect?connect=facebook (or facebook_ayrshare, etc.)
+  // auto-fires the Ayrshare redirect once on mount.
+  useEffect(() => {
+    if (autoConnectedRef.current) return;
+    const raw = searchParams.get('connect');
+    if (!raw) return;
+    autoConnectedRef.current = true;
+    const platform = normalizePlatform(raw);
+    // Clear the param so a refresh doesn't re-trigger.
+    const next = new URLSearchParams(searchParams);
+    next.delete('connect');
+    setSearchParams(next, { replace: true });
+    connect(platform);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const connectedSet = useMemo(() => new Set(connected.map((c) => c.platform.toLowerCase())), [connected]);
 
-  async function connect(platform: string) {
+  async function connect(rawPlatform: string) {
+    const platform = normalizePlatform(rawPlatform);
     setLinkingPlatform(platform);
     try {
       const { data, error } = await supabase.functions.invoke('ayrshare-social-link', { body: { platform } });
