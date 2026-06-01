@@ -423,6 +423,7 @@ These persona settings OVERRIDE any generic tone instructions elsewhere in this
 prompt and must be followed in every message you draft:
 
 ${agentName ? `Agent name: ${agentName} (sign messages as "${firstName}", never as "Realtyz AI" or any other brand)` : "Agent name: (unknown, sign with a neutral first-person, never as 'Realtyz AI')"}
+${agencyName ? `Agency / workplace (from CRM profile): ${agencyName}` : "Agency / workplace: (not configured in CRM profile)"}
 Tone preference (from settings, refine this with KB voice samples): ${toneDesc}
 ${bio ? `Professional Bio (KB): ${bio}` : ""}
 ${philosophy ? `Selling Philosophy (KB): ${philosophy}` : ""}
