@@ -151,6 +151,47 @@ export default function FbEngagement() {
     } finally { setBusyId(null); }
   };
 
+  const injectComment = async () => {
+    const author = injAuthor.trim();
+    const text = injText.trim();
+    if (!author || !text) {
+      toast.error('יש למלא שם ותגובה');
+      return;
+    }
+    setInjecting(true);
+    try {
+      const { data: post, error: postErr } = await supabase
+        .from('fb_engagement_posts')
+        .select('id')
+        .eq('fb_post_id', '122135406987020860')
+        .maybeSingle();
+      if (postErr || !post) throw new Error('הפוסט המנוטר לא נמצא');
+      const id = Date.now().toString();
+      const { error } = await supabase.from('fb_comments').insert({
+        post_id: post.id,
+        ayr_comment_id: `injected_${id}`,
+        author_name: author,
+        comment_text: text,
+        likes_count: 0,
+        shares_count: 0,
+        posted_at: new Date().toISOString(),
+        is_historical_replied: false,
+        status: 'new',
+        raw: { source: 'live_injector', injected_at: new Date().toISOString() },
+        fetched_at: new Date().toISOString(),
+      });
+      if (error) throw error;
+      setInjAuthor('');
+      setInjText('');
+      toast.success('התגובה הוזרקה למערכת');
+      qc.invalidateQueries({ queryKey: ['fb_comments'] });
+    } catch (e: any) {
+      toast.error(e?.message || 'שגיאה בהזרקת תגובה');
+    } finally {
+      setInjecting(false);
+    }
+  };
+
   // Pilot mode: auto-pick draft #1 (warm/personal) when drafts arrive
   useEffect(() => {
     if (mode !== 'pilot') return;
