@@ -42,6 +42,7 @@ export default function FbEngagement() {
   const [injAuthor, setInjAuthor] = useState('');
   const [injText, setInjText] = useState('');
   const [injecting, setInjecting] = useState(false);
+  const [liveStatus, setLiveStatus] = useState<'live' | 'fallback' | null>(null);
 
   // Mode
   const { data: modeRow } = useQuery({
