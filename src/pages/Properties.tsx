@@ -311,6 +311,9 @@ export default function Properties() {
         open={!!shareTarget}
         onOpenChange={(open) => { if (!open) setShareTarget(null); }}
       />
+
+      <AddPropertyDialog open={addOpen} onOpenChange={setAddOpen} onCreated={refreshListings} />
+      <ImportPropertiesDialog open={importOpen} onOpenChange={setImportOpen} onImported={refreshListings} />
     </div>
   );
 }
