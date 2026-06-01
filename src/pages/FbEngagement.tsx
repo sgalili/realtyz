@@ -100,6 +100,7 @@ export default function FbEngagement() {
 
   const fetchComments = async () => {
     setBusyId('FETCH');
+    toast.dismiss();
     try {
       const { data, error } = await supabase.functions.invoke('fb-engagement-fetch', { body: {} });
       if (error) throw error;
@@ -108,7 +109,7 @@ export default function FbEngagement() {
       } else {
         toast.success(`נסרקו ${data?.upserted ?? 0} תגובות`);
       }
-      qc.invalidateQueries({ queryKey: ['fb_comments'] });
+      await qc.invalidateQueries({ queryKey: ['fb_comments'] });
     } catch (e: any) {
       toast.error(e?.message || 'שגיאה בסריקה');
     } finally { setBusyId(null); }
