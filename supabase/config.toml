@@ -29,3 +29,12 @@ verify_jwt = false
 
 [functions.vapi-tool-handler]
 verify_jwt = false
+
+[functions.fb-engagement-fetch]
+verify_jwt = false
+
+[functions.fb-engagement-draft]
+verify_jwt = false
+
+[functions.fb-engagement-daily-digest]
+verify_jwt = false
