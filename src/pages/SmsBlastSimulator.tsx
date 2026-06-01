@@ -30,7 +30,7 @@ import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { DeliverySettings } from '@/components/DeliverySettings';
 
-type ChannelId = 'whatsapp' | 'sms' | 'email' | 'voice' | 'ivr' | 'linkedin' | 'instagram' | 'tiktok' | 'telegram' | 'messenger' | 'twitter' | 'youtube';
+type ChannelId = 'whatsapp' | 'sms' | 'email' | 'voice' | 'ivr' | 'linkedin' | 'instagram' | 'tiktok' | 'telegram' | 'messenger' | 'twitter' | 'youtube' | 'facebook';
 
 type SimLogEntry = {
   id: number;
