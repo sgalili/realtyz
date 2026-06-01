@@ -18,7 +18,7 @@ import {
   Phone, Send, Inbox, Map,
 } from 'lucide-react';
 import { supabase as supabaseClient } from '@/integrations/supabase/client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, createContext, useContext } from 'react';
 import { toast } from 'sonner';
 import { supabase } from '@/lib/supabaseClient';
 import { useAuth } from '@/hooks/useAuth';
