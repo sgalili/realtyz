@@ -177,6 +177,22 @@ export default function SocialConnect() {
 
   useEffect(() => { load(); }, []);
 
+  // Deep-link: /social-connect?connect=facebook (or facebook_ayrshare, etc.)
+  // auto-fires the Ayrshare redirect once on mount.
+  useEffect(() => {
+    if (autoConnectedRef.current) return;
+    const raw = searchParams.get('connect');
+    if (!raw) return;
+    autoConnectedRef.current = true;
+    const platform = normalizePlatform(raw);
+    // Clear the param so a refresh doesn't re-trigger.
+    const next = new URLSearchParams(searchParams);
+    next.delete('connect');
+    setSearchParams(next, { replace: true });
+    connect(platform);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const connectedSet = useMemo(() => new Set(connected.map((c) => c.platform.toLowerCase())), [connected]);
 
   async function connect(rawPlatform: string) {
