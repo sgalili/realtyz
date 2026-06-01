@@ -51,6 +51,8 @@ export interface AgentPersona {
   language: string;
   /** Display name of the authenticated Agent, pulled from profiles.full_name. */
   agent_name: string | null;
+  /** Agency / workplace label from CRM profile (white_label_settings.agency_name). */
+  agency_name: string | null;
   /** Hyper-local zones (cities/neighborhoods) the agent specializes in. */
   service_areas: string[];
   /** AI-extracted Tone & Style profile from uploaded chat/email logs. */
