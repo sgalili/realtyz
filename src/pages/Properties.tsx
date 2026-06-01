@@ -56,6 +56,10 @@ export default function Properties() {
   const [areaMin, setAreaMin] = useState<string>('');
 
   const [shareTarget, setShareTarget] = useState<HomelyProperty | null>(null);
+  const [addOpen, setAddOpen] = useState(false);
+  const [importOpen, setImportOpen] = useState(false);
+  const queryClient = useQueryClient();
+  const refreshListings = () => queryClient.invalidateQueries({ queryKey: ['homely-search'] });
 
   // Calls homely-search: real Homely if a key is configured, otherwise the
   // function falls back to the local `listings` table. We merge whatever it
