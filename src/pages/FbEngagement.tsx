@@ -246,6 +246,21 @@ export default function FbEngagement() {
             {busyId === 'FETCH' ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
             רענן
           </Button>
+          {liveStatus === 'live' && (
+            <Badge className="bg-green-600 text-white hover:bg-green-700 animate-pulse gap-1">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-200 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-green-100"></span>
+              </span>
+              מחובר ל-פייסבוק לייב
+            </Badge>
+          )}
+          {liveStatus === 'fallback' && (
+            <Badge variant="secondary" className="bg-amber-100 text-amber-800 border-amber-300 gap-1">
+              <span className="inline-block h-2 w-2 rounded-full bg-amber-500"></span>
+              מצב סימולציה מקומי
+            </Badge>
+          )}
         </div>
       </div>
 
