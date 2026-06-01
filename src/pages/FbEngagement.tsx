@@ -354,9 +354,15 @@ function HistoricalSimCard({
         </div>
         {comment.historical_reply_text && (
           <div>
-            <div className="text-xs text-muted-foreground mb-1">התשובה של אודי (קיימת)</div>
+            <div className="flex items-center gap-2 mb-1">
+              <Badge variant="secondary" className="text-[10px]">מקורי · Facebook</Badge>
+              <span className="text-xs text-muted-foreground">התשובה המקורית של אודי בפייסבוק:</span>
+            </div>
             <p className="bg-primary/5 rounded-md p-3 whitespace-pre-wrap border border-primary/10">{comment.historical_reply_text}</p>
           </div>
+        )}
+        {drafts.length > 0 && (
+          <div className="text-xs text-muted-foreground -mb-1">חלופת AI לצורך כיול ולמידה (קריאה בלבד · לא נשלח לפייסבוק):</div>
         )}
         {drafts.length === 0 ? (
           <Button size="sm" variant="outline" onClick={onGenerate} disabled={busy} className="gap-1">
