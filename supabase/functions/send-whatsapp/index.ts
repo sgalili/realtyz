@@ -397,12 +397,33 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const parsed = BodySchema.safeParse(await req.json());
+    let rawBody: unknown = null;
+    try {
+      rawBody = await req.json();
+    } catch {
+      return json({
+        success: false,
+        provider: "GreenAPI",
+        message_id: null,
+        error: "Invalid JSON body",
+      }, 400);
+    }
+    const parsed = BodySchema.safeParse(rawBody);
     if (!parsed.success) {
-      return new Response(
-        JSON.stringify({ error: parsed.error.flatten().fieldErrors }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      const flat = parsed.error.flatten();
+      const formMsg = flat.formErrors?.[0];
+      const fieldMsg = Object.entries(flat.fieldErrors)
+        .map(([k, v]) => `${k}: ${(v as string[])?.[0]}`)
+        .join("; ");
+      const errMsg = formMsg || fieldMsg || "Invalid request body";
+      console.error("send-whatsapp validation failed:", errMsg, flat);
+      return json({
+        success: false,
+        provider: "GreenAPI",
+        message_id: null,
+        error: errMsg,
+        details: flat,
+      }, 400);
     }
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
