@@ -112,6 +112,7 @@ const CHANNEL_TO_PLATFORM: Record<ChannelId, string | null> = {
   messenger:   'fb_messenger',
   twitter:     'twitter',
   youtube:     'youtube',
+  facebook:    'facebook_ayrshare',
 };
 
 // Channels considered "paid" for the cost calculation. Social channels are free (₪0).
