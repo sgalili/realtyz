@@ -48,35 +48,43 @@ Deno.serve(async (req) => {
     if (!platform) return jsonResponse({ error: 'Missing required "platform" parameter.' }, 400);
 
     const admin = createClient(SUPABASE_URL, SERVICE);
+    const WORKSPACE_ID = '00000000-0000-0000-0000-000000000001';
 
-    // ---- Load broker profile ----
-    const { data: profile, error: profileErr } = await admin
+    // ---- Load broker profile (used for naming the workspace profile only) ----
+    const { data: profile } = await admin
       .from('profiles')
-      .select('id, email, full_name, ayrshare_profile_key, ayrshare_ref_id')
+      .select('id, email, full_name')
       .eq('id', userId)
       .maybeSingle();
-    if (profileErr) {
-      console.error('[ayrshare-social-link] profile load failed', profileErr);
-      return jsonResponse({ error: `Failed to load broker profile: ${profileErr.message}` }, 500);
+
+    // ---- Load the SHARED workspace Ayrshare profile ----
+    const { data: ws, error: wsErr } = await admin
+      .from('workspace_social_profile')
+      .select('ayrshare_profile_key, ayrshare_ref_id')
+      .eq('id', WORKSPACE_ID)
+      .maybeSingle();
+    if (wsErr) {
+      console.error('[ayrshare-social-link] workspace load failed', wsErr);
+      return jsonResponse({ error: `Failed to load workspace social profile: ${wsErr.message}` }, 500);
     }
 
-    let profileKey = profile?.ayrshare_profile_key as string | null;
-    let refId = profile?.ayrshare_ref_id as string | null;
+    let profileKey = (ws?.ayrshare_profile_key as string | null) || null;
+    let refId = (ws?.ayrshare_ref_id as string | null) || null;
 
     // ---- SAFETY GUARD: only touch realtyz- prefixed profiles ----
     if (refId && !refId.startsWith(REALTYZ_PREFIX)) {
       console.warn('[ayrshare-social-link] refusing to act on non-realtyz refId', { refId });
       return jsonResponse({
-        error: `Safety guard: this account is linked to an Ayrshare profile (refId="${refId}") that is not managed by Realtyz. No changes were made.`,
+        error: `Safety guard: workspace is linked to an Ayrshare profile (refId="${refId}") that is not managed by Realtyz.`,
       }, 403);
     }
 
-    // ---- Create Ayrshare profile if missing ----
+    // ---- Create the shared workspace Ayrshare profile if missing ----
     if (!profileKey) {
-      refId = `${REALTYZ_PREFIX}${userId.slice(0, 8)}-${Date.now()}`;
-      const baseName = profile?.full_name || profile?.email?.split('@')[0] || `Realtyz ${userId.slice(0, 6)}`;
+      refId = `${REALTYZ_PREFIX}workspace-${Date.now()}`;
+      const baseName = profile?.full_name || profile?.email?.split('@')[0] || 'Workspace';
       const rand = Math.floor(1000 + Math.random() * 9000).toString();
-      const title = `Realtyz - ${baseName} - ${rand}`;
+      const title = `Realtyz Workspace - ${baseName} - ${rand}`;
 
       const createRes = await fetch(`${AYR_API}/profiles/profile`, {
         method: 'POST',
@@ -91,12 +99,9 @@ Deno.serve(async (req) => {
         const msg: string = (created?.message || created?.error || `HTTP ${createRes.status}`).toString();
         console.error('[ayrshare-social-link] create profile failed', created);
         const isQuota = /over maximum number of user profiles|maximum.*profiles|profile.*limit|quota/i.test(msg);
-        if (isQuota) {
-          return jsonResponse({ error: msg, code: 'QUOTA_EXCEEDED' }, 402);
-        }
+        if (isQuota) return jsonResponse({ error: msg, code: 'QUOTA_EXCEEDED' }, 402);
         const isDuplicate = /already exists|duplicate|exists/i.test(msg);
         if (isDuplicate) {
-          // Recover only realtyz- profiles by refId
           try {
             const lookup = await fetch(`${AYR_API}/profiles?refId=${encodeURIComponent(refId)}`, {
               headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}` },
@@ -104,20 +109,16 @@ Deno.serve(async (req) => {
             const lookupData = await lookup.json().catch(() => ({}));
             const list = Array.isArray(lookupData?.profiles) ? lookupData.profiles : (Array.isArray(lookupData) ? lookupData : []);
             const match = list.find((p: any) => p.refId === refId && typeof p.refId === 'string' && p.refId.startsWith(REALTYZ_PREFIX));
-            if (match?.profileKey) {
-              profileKey = match.profileKey;
-              console.log('[ayrshare-social-link] recovered existing realtyz- profileKey via refId');
-            }
+            if (match?.profileKey) profileKey = match.profileKey;
           } catch (e) {
             console.error('[ayrshare-social-link] refId lookup failed', e);
           }
           if (!profileKey) {
-            const newRefId = `${REALTYZ_PREFIX}${userId.slice(0, 8)}-${Date.now()}-${rand}`;
-            const retryTitle = `Realtyz - ${baseName} - ${Date.now().toString().slice(-5)}`;
+            const newRefId = `${REALTYZ_PREFIX}workspace-${Date.now()}-${rand}`;
             const retryRes = await fetch(`${AYR_API}/profiles/profile`, {
               method: 'POST',
               headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}`, 'Content-Type': 'application/json' },
-              body: JSON.stringify({ title: retryTitle, email: profile?.email || undefined, refId: newRefId }),
+              body: JSON.stringify({ title: `${title}-r`, email: profile?.email || undefined, refId: newRefId }),
             });
             const retryData = await retryRes.json().catch(() => ({}));
             if (retryRes.ok) {
@@ -125,7 +126,6 @@ Deno.serve(async (req) => {
               refId = newRefId;
             } else {
               const retryMsg = (retryData?.message || retryData?.error || `HTTP ${retryRes.status}`).toString();
-              console.error('[ayrshare-social-link] retry create failed', retryData);
               if (/over maximum number of user profiles|maximum.*profiles|profile.*limit|quota/i.test(retryMsg)) {
                 return jsonResponse({ error: retryMsg, code: 'QUOTA_EXCEEDED' }, 402);
               }
@@ -137,14 +137,13 @@ Deno.serve(async (req) => {
         }
       }
 
-      if (!profileKey) {
-        return jsonResponse({ error: 'Ayrshare did not return a profileKey.' }, 500);
-      }
+      if (!profileKey) return jsonResponse({ error: 'Ayrshare did not return a profileKey.' }, 500);
+
       const { error: upErr } = await admin
-        .from('profiles')
+        .from('workspace_social_profile')
         .update({ ayrshare_profile_key: profileKey, ayrshare_ref_id: refId })
-        .eq('id', userId);
-      if (upErr) console.error('[ayrshare-social-link] save profileKey failed', upErr);
+        .eq('id', WORKSPACE_ID);
+      if (upErr) console.error('[ayrshare-social-link] save workspace profileKey failed', upErr);
     }
 
     // ---- Re-check guard after potential creation ----
