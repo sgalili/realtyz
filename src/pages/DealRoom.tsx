@@ -427,7 +427,7 @@ export default function DealRoom() {
       const { data, error } = await supabase.functions.invoke('send-whatsapp', {
         body: {
           lead_id: activeLead.id,
-          body: smartReply.trim(),
+          message: smartReply.trim(),
         },
       });
       if (error) throw error;
