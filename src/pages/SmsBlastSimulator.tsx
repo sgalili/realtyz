@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
 import { z } from 'zod';
 import confetti from 'canvas-confetti';
-import { Mail, MessageCircle, Radio, Send, Smartphone, Sparkles, WalletCards, Zap, CheckCircle2, Users, MessageSquare, Coins, Shield, ShieldCheck, AlertTriangle, Clock, List, Filter, FileSpreadsheet, X, Mic, AudioWaveform, AudioLines, Paperclip, Image as ImageIcon, FileText, Film, Square, StopCircle, Linkedin, Instagram, Send as TelegramIcon, Plug, ChevronDown, Settings2, PhoneCall, Check, Twitter, Youtube } from 'lucide-react';
+import { Mail, MessageCircle, Radio, Send, Smartphone, Sparkles, WalletCards, Zap, CheckCircle2, Users, MessageSquare, Coins, Shield, ShieldCheck, AlertTriangle, Clock, List, Filter, FileSpreadsheet, X, Mic, AudioWaveform, AudioLines, Paperclip, Image as ImageIcon, FileText, Film, Square, StopCircle, Linkedin, Instagram, Send as TelegramIcon, Plug, ChevronDown, Settings2, PhoneCall, Check, Twitter, Youtube, Facebook } from 'lucide-react';
 import { TikTokOfficial } from '@/components/social/brand-icons/TikTokOfficial';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate, useLocation } from 'react-router-dom';
@@ -30,7 +30,7 @@ import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { DeliverySettings } from '@/components/DeliverySettings';
 
-type ChannelId = 'whatsapp' | 'sms' | 'email' | 'voice' | 'ivr' | 'linkedin' | 'instagram' | 'tiktok' | 'telegram' | 'messenger' | 'twitter' | 'youtube';
+type ChannelId = 'whatsapp' | 'sms' | 'email' | 'voice' | 'ivr' | 'linkedin' | 'instagram' | 'tiktok' | 'telegram' | 'messenger' | 'twitter' | 'youtube' | 'facebook';
 
 type SimLogEntry = {
   id: number;
@@ -94,6 +94,7 @@ const CHANNELS: Array<ChannelMeta> = [
   { id: 'messenger',   label: 'Messenger',   icon: MessageCircle, color: 'text-[#0084FF]',        bgTint: 'bg-[#0084FF]/10 border-[#0084FF]/40',                 previewLabel: 'Messenger',    unitPriceNis: 0,     unitLabel: 'להודעה' },
   { id: 'twitter',     label: 'X',           icon: Twitter,      color: 'text-foreground',        bgTint: 'bg-foreground/10 border-foreground/40',               previewLabel: 'X',            unitPriceNis: 0,     unitLabel: 'לפוסט' },
   { id: 'youtube',     label: 'YouTube',     icon: Youtube,      color: 'text-[#FF0000]',         bgTint: 'bg-[#FF0000]/10 border-[#FF0000]/40',                 previewLabel: 'YouTube',      unitPriceNis: 0,     unitLabel: 'לסרטון' },
+  { id: 'facebook',    label: 'Facebook',    icon: Facebook,     color: 'text-[#1877F2]',         bgTint: 'bg-[#1877F2]/10 border-[#1877F2]/40',                 previewLabel: 'Facebook',     unitPriceNis: 0,     unitLabel: 'לפוסט (Ayrshare)' },
 ];
 
 // Maps a broadcast channel to the platform key in the social_connections table
@@ -111,6 +112,7 @@ const CHANNEL_TO_PLATFORM: Record<ChannelId, string | null> = {
   messenger:   'fb_messenger',
   twitter:     'twitter',
   youtube:     'youtube',
+  facebook:    'facebook_ayrshare',
 };
 
 // Channels considered "paid" for the cost calculation. Social channels are free (₪0).
@@ -219,7 +221,7 @@ export default function SmsBlastSimulator() {
   const [connectedChannels, setConnectedChannels] = useState<Record<ChannelId, boolean>>({
     whatsapp: false, sms: true, email: false, voice: false, ivr: false,
     linkedin: false, instagram: false, tiktok: false, telegram: false,
-    messenger: false, twitter: false, youtube: false,
+    messenger: false, twitter: false, youtube: false, facebook: false,
   });
   // Connected account labels (e.g. "realtyzai@gmail.com") shown under the channel name on each card.
   const [connectedAccounts, setConnectedAccounts] = useState<Partial<Record<ChannelId, string>>>({});
@@ -293,6 +295,7 @@ export default function SmsBlastSimulator() {
         messenger:   isLiveGeneric(findSC('fb_messenger')) || isLiveGeneric(findSC('facebook')),
         twitter:     isLiveGeneric(findSC('twitter')),
         youtube:     isLiveGeneric(findSC('youtube')),
+        facebook:    isLiveGeneric(findSC('facebook_ayrshare')) || isLiveGeneric(findSC('facebook')),
       });
       setEmailAccountInfo({ count: gmailAccountCount, addresses: gmailAddresses });
       setConnectedAccounts({
@@ -846,6 +849,7 @@ export default function SmsBlastSimulator() {
     instagram: ['Meta Graph API'],
     tiktok: ['TikTok Business API'],
     telegram: ['Telegram Bot API'],
+    facebook: ['Ayrshare'],
   };
 
   const startSend = useCallback(async () => {
