@@ -395,16 +395,25 @@ export default function AiAgentDrawer() {
           ))}
         </div>
 
-        {/* Input */}
+        {/* Input — mic on right, slate send on left */}
         <div className="px-4 py-3 border-t">
           <form
             onSubmit={(e) => { e.preventDefault(); sendMessage(input); }}
-            className="flex gap-2"
+            className="flex items-center gap-2"
           >
+            <Button
+              type="submit"
+              size="icon"
+              className="h-9 w-9 shrink-0 bg-slate-700 hover:bg-slate-800 text-white"
+              disabled={!input.trim() || isLoading}
+              aria-label="שלח"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={isListening ? '🎙️ מקשיב...' : 'שאל שאלה על הנתונים...'}
+              placeholder={isListening ? '🎙️ מקשיב...' : 'מה הולכים לבדוק או לבצע בנכסים ובקמפיין?'}
               className="flex-1 h-9 text-sm"
               disabled={isLoading}
             />
@@ -418,9 +427,6 @@ export default function AiAgentDrawer() {
               title={isListening ? 'הפסק הקלטה' : 'הקלט קול'}
             >
               {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-            </Button>
-            <Button type="submit" size="icon" className="h-9 w-9 shrink-0" disabled={!input.trim() || isLoading}>
-              <Send className="h-4 w-4" />
             </Button>
           </form>
         </div>
