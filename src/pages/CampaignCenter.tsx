@@ -12,8 +12,9 @@ import { BrandIcon } from '@/components/BrandIcon';
 import {
   ArrowRight, Plus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
   ChevronDown, ChevronUp, Archive, Send, Mic, Image as ImageIcon, Paperclip,
-  ChevronDown as ChevronDownIcon,
+  ChevronDown as ChevronDownIcon, Plug,
 } from 'lucide-react';
+
 import { supabase } from '@/integrations/supabase/client';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useAuth } from '@/hooks/useAuth';
@@ -40,58 +41,104 @@ type ChannelCard = {
   iconColor?: string;
 };
 
+// Top row (RTL): Facebook → Instagram → X
+// Middle row (RTL): IVR → Email → AI Voice
+// Bottom row (RTL): YouTube → LinkedIn → TikTok
 const CHANNEL_CARDS: ChannelCard[] = [
-  { id: 'x',         label: 'X',          free: true, brand: 'x' },
-  { id: 'instagram', label: 'Instagram',  free: true, brand: 'instagram' },
   { id: 'facebook',  label: 'Facebook',   free: true, brand: 'facebook' },
-  { id: 'ai-call',   label: 'שיחת AI',    price: '1.00', priceUnit: 'לדקה',   icon: Bot,   iconColor: 'text-amber-500' },
-  { id: 'email',     label: 'אימייל',     price: '0.01', priceUnit: 'לנמען',  icon: Mail,  iconColor: 'text-rose-500' },
+  { id: 'instagram', label: 'Instagram',  free: true, brand: 'instagram' },
+  { id: 'x',         label: 'X',          free: true, brand: 'x' },
   { id: 'ivr',       label: 'IVR',        price: '0.20', priceUnit: 'לדקה',   icon: Phone, iconColor: 'text-purple-500' },
+  { id: 'email',     label: 'אימייל',     price: '0.01', priceUnit: 'לנמען',  icon: Mail,  iconColor: 'text-rose-500' },
+  { id: 'ai-call',   label: 'שיחת AI',    price: '1.00', priceUnit: 'לדקה',   icon: Bot,   iconColor: 'text-amber-500' },
   { id: 'youtube',   label: 'YouTube',    free: true, brand: 'youtube' },
   { id: 'linkedin',  label: 'LinkedIn',   free: true, brand: 'linkedin' },
   { id: 'tiktok',    label: 'TikTok',     free: true, brand: 'tiktok' },
 ];
 
+// Channels considered "connected" by default in the workspace.
+// Disconnected channels render dashed border + grayscale + a "חבר" CTA.
+const DEFAULT_CONNECTED = new Set(['facebook', 'instagram', 'youtube', 'email', 'ivr', 'ai-call']);
+
+// Official brand colors applied only when the channel is connected.
+const BRAND_COLOR: Record<string, string> = {
+  facebook:  'text-[#1877F2]',
+  instagram: 'text-[#E1306C]',
+  x:         'text-foreground',
+  youtube:   'text-[#FF0000]',
+  linkedin:  'text-[#0A66C2]',
+  tiktok:    'text-foreground',
+};
+
 /* ───────────── Channel grid ───────────── */
 
 const ChannelGrid = ({
-  selectedId, onPick, brandName,
-}: { selectedId: string | null; onPick: (c: ChannelCard) => void; brandName: string }) => (
+  selectedId, onPick, brandName, connected = DEFAULT_CONNECTED,
+}: {
+  selectedId: string | null;
+  onPick: (c: ChannelCard) => void;
+  brandName: string;
+  connected?: Set<string>;
+}) => (
   <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-sm">
-    <div className="grid grid-cols-3 gap-3 sm:gap-4">
+    <div className="grid grid-cols-3 gap-3 sm:gap-4" dir="rtl">
       {CHANNEL_CARDS.map((c) => {
         const Icon = c.icon;
         const isSelected = selectedId === c.id;
+        const isConnected = connected.has(c.id);
+        const brandColor = isConnected ? (BRAND_COLOR[c.id] ?? c.iconColor ?? 'text-foreground') : 'text-muted-foreground/60';
         return (
-          <button key={c.id} type="button" onClick={() => onPick(c)}
+          <button key={c.id} type="button"
+            onClick={() => isConnected ? onPick(c) : onPick(c)}
             aria-pressed={isSelected}
             className={cn(
               'group relative flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border bg-background p-3 text-center transition active:scale-[0.98]',
-              isSelected
-                ? 'border-primary ring-2 ring-primary/30 shadow-md'
-                : 'border-border hover:border-primary/40 hover:shadow-md',
+              !isConnected && 'border-dashed border-border bg-muted/30',
+              isConnected && !isSelected && 'border-border hover:border-primary/40 hover:shadow-md',
+              isSelected && 'border-primary ring-2 ring-primary/30 shadow-md',
             )}>
-            <span aria-hidden className={cn(
-              'absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full',
-              isSelected ? 'text-primary' : 'text-muted-foreground/70 group-hover:text-primary',
-            )}>
-              <Plus className="h-4 w-4" />
-            </span>
+            {isConnected && (
+              <span aria-hidden className={cn(
+                'absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full',
+                isSelected ? 'text-primary' : 'text-muted-foreground/70 group-hover:text-primary',
+              )}>
+                <Plus className="h-4 w-4" />
+              </span>
+            )}
+
             <span className="flex h-7 w-7 items-center justify-center">
-              {c.brand ? <BrandIcon name={c.brand} className="h-6 w-6" />
-                       : Icon ? <Icon className={`h-6 w-6 ${c.iconColor ?? 'text-foreground'}`} /> : null}
+              {c.brand
+                ? <BrandIcon name={c.brand} className={cn('h-6 w-6', brandColor)} />
+                : Icon ? <Icon className={cn('h-6 w-6', brandColor)} /> : null}
             </span>
-            <span className="text-[13px] font-semibold text-foreground leading-tight">{c.label}</span>
+
+            <span className={cn(
+              'text-[13px] font-semibold leading-tight',
+              isConnected ? 'text-foreground' : 'text-muted-foreground/70',
+            )}>
+              {c.label}
+            </span>
+
             {c.free ? (
-              <span className="text-[11px] font-bold text-primary">חינם</span>
+              <span className={cn('text-[11px] font-bold', isConnected ? 'text-primary' : 'text-muted-foreground/60')}>
+                חינם
+              </span>
             ) : (
-              <span className="text-[12px] font-bold text-foreground" dir="ltr">
+              <span className={cn('text-[12px] font-bold', isConnected ? 'text-foreground' : 'text-muted-foreground/60')} dir="ltr">
                 <bdi dir="ltr">₪{c.price}</bdi>
               </span>
             )}
-            {isSelected && (
+
+            {isConnected && isSelected && (
               <span className="absolute inset-x-2 bottom-1.5 truncate text-[10px] font-semibold text-primary">
                 {brandName}
+              </span>
+            )}
+
+            {!isConnected && (
+              <span className="mt-1 inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                <Plug className="h-3 w-3" />
+                חבר
               </span>
             )}
           </button>
@@ -100,6 +147,8 @@ const ChannelGrid = ({
     </div>
   </div>
 );
+
+
 
 /* ───────────── Inline composer ───────────── */
 
@@ -622,7 +671,7 @@ const CampaignCenter = () => {
           <TabsList className="flex w-full h-auto gap-1 overflow-x-auto rounded-xl bg-muted/60 p-1">
             {TABS.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value}
-                className="flex-1 min-w-fit whitespace-nowrap px-3 py-2 text-xs sm:text-sm font-medium rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+                className="flex-1 min-w-fit whitespace-nowrap px-3 py-2 text-base sm:text-lg font-medium rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
                 {tab.label}
               </TabsTrigger>
             ))}
