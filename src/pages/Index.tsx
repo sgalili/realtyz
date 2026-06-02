@@ -20,7 +20,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { PendingListingsCard } from '@/components/PendingListingsCard';
 import { ListingVisibilityManagerCard } from '@/components/listings/ListingVisibilityManagerCard';
 import { GlobalSearchTrigger } from '@/components/GlobalSearch';
-import { KillSwitchCard } from '@/components/safety/KillSwitchCard';
+
 
 /* ────────────────────────────────────────────────────────────────────
    Realtyz — Real-Estate Dashboard
