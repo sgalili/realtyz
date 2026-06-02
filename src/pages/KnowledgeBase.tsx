@@ -163,13 +163,6 @@ export default function KnowledgeBase() {
 
   return (
     <div className="space-y-6" dir="rtl">
-      {/* Blue banner header */}
-      <div className="rounded-xl bg-primary text-primary-foreground px-6 py-5 shadow-sm">
-        <h1 className="text-2xl font-bold tracking-tight">מאגר הידע</h1>
-        <p className="text-sm opacity-90 mt-1">
-          הזן מסמכים, טקסטים והקלטות למוח של {brand}. הידע מומר לווקטורים סמנטיים לחיפוש מדויק.
-        </p>
-      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* RIGHT (first in RTL): Resource management */}
