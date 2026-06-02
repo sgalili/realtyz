@@ -488,14 +488,15 @@ const ResponsesView = () => {
   return (
     <div className="space-y-4">
       <div className="rounded-2xl border border-border/60 bg-card p-4 space-y-3">
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3" dir="rtl">
+          <Label htmlFor="pos-hold" className="text-sm text-right flex-1">לתגובות חיוביות: המתנה לנציג</Label>
           <Switch checked={positiveHold} onCheckedChange={setPositiveHold} id="pos-hold" />
-          <Label htmlFor="pos-hold" className="text-sm text-right">לתגובות חיוביות: המתנה לנציג</Label>
         </div>
-        <div className="flex items-center justify-between gap-3">
+        <div className="flex items-center justify-between gap-3" dir="rtl">
+          <Label htmlFor="neg-hold" className="text-sm text-right flex-1">לתגובות שליליות: המתנה לנציג</Label>
           <Switch checked={negativeHold} onCheckedChange={setNegativeHold} id="neg-hold" />
-          <Label htmlFor="neg-hold" className="text-sm text-right">לתגובות שליליות: המתנה לנציג</Label>
         </div>
+
       </div>
 
       <div className="rounded-xl border border-border bg-card p-1 flex items-center gap-1 overflow-x-auto" dir="rtl">
