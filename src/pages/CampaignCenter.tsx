@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -12,12 +11,15 @@ import { RealtyzWave } from '@/components/RealtyzWave';
 import { BrandIcon } from '@/components/BrandIcon';
 import {
   ArrowRight, Plus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
-  ChevronDown, ChevronUp, Archive, Radio,
+  ChevronDown, ChevronUp, Archive, Send, Mic, Image as ImageIcon, Paperclip,
+  ChevronDown as ChevronDownIcon,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+
 
 type TabValue = 'create' | 'published' | 'responses';
 
@@ -50,38 +52,240 @@ const CHANNEL_CARDS: ChannelCard[] = [
   { id: 'tiktok',    label: 'TikTok',     free: true, brand: 'tiktok' },
 ];
 
-/* ───────────── Channel wizard dialog ───────────── */
+/* ───────────── Channel grid ───────────── */
 
-const ChannelWizardDialog = ({
-  channel, open, onClose,
-}: { channel: ChannelCard | null; open: boolean; onClose: () => void }) => {
-  const [title, setTitle] = useState('');
+const ChannelGrid = ({
+  selectedId, onPick, brandName,
+}: { selectedId: string | null; onPick: (c: ChannelCard) => void; brandName: string }) => (
+  <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-sm">
+    <div className="grid grid-cols-3 gap-3 sm:gap-4">
+      {CHANNEL_CARDS.map((c) => {
+        const Icon = c.icon;
+        const isSelected = selectedId === c.id;
+        return (
+          <button key={c.id} type="button" onClick={() => onPick(c)}
+            aria-pressed={isSelected}
+            className={cn(
+              'group relative flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border bg-background p-3 text-center transition active:scale-[0.98]',
+              isSelected
+                ? 'border-primary ring-2 ring-primary/30 shadow-md'
+                : 'border-border hover:border-primary/40 hover:shadow-md',
+            )}>
+            <span aria-hidden className={cn(
+              'absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full',
+              isSelected ? 'text-primary' : 'text-muted-foreground/70 group-hover:text-primary',
+            )}>
+              <Plus className="h-4 w-4" />
+            </span>
+            <span className="flex h-7 w-7 items-center justify-center">
+              {c.brand ? <BrandIcon name={c.brand} className="h-6 w-6" />
+                       : Icon ? <Icon className={`h-6 w-6 ${c.iconColor ?? 'text-foreground'}`} /> : null}
+            </span>
+            <span className="text-[13px] font-semibold text-foreground leading-tight">{c.label}</span>
+            {c.free ? (
+              <span className="text-[11px] font-bold text-primary">חינם</span>
+            ) : (
+              <span className="text-[12px] font-bold text-foreground" dir="ltr">
+                <bdi dir="ltr">₪{c.price}</bdi>
+              </span>
+            )}
+            {isSelected && (
+              <span className="absolute inset-x-2 bottom-1.5 truncate text-[10px] font-semibold text-primary">
+                {brandName}
+              </span>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  </div>
+);
+
+/* ───────────── Inline composer ───────────── */
+
+const TAG_CHIPS = ['[שם_פרטי]', '[עיר]'];
+const MAX_CHARS = 1000;
+
+const InlineComposer = ({
+  channel, brandName, onConfirm,
+}: {
+  channel: ChannelCard;
+  brandName: string;
+  onConfirm: (payload: { body: string; mode: 'now' | 'scheduled' }) => void;
+}) => {
   const [body, setBody] = useState('');
-  const [audience, setAudience] = useState<'all' | 'hot' | 'recent'>('all');
-  const [sending, setSending] = useState(false);
-  const { settings } = useWhiteLabel();
-  const brandName = settings?.agency_name || 'Realtyz AI';
+  const [mode, setMode] = useState<'now' | 'scheduled'>('now');
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [generating, setGenerating] = useState(false);
 
-  useEffect(() => {
-    if (open) { setTitle(''); setBody(''); setAudience('all'); }
-  }, [open, channel?.id]);
+  // Reset on channel change
+  useEffect(() => { setBody(''); setMode('now'); }, [channel.id]);
+
+  const insertTag = (tag: string) => {
+    const el = textareaRef.current;
+    if (!el) { setBody((b) => (b + ' ' + tag).slice(0, MAX_CHARS)); return; }
+    const start = el.selectionStart ?? body.length;
+    const end = el.selectionEnd ?? body.length;
+    const next = (body.slice(0, start) + tag + body.slice(end)).slice(0, MAX_CHARS);
+    setBody(next);
+    requestAnimationFrame(() => {
+      el.focus();
+      const pos = Math.min(start + tag.length, next.length);
+      el.setSelectionRange(pos, pos);
+    });
+  };
+
+  const handleGenerate = async () => {
+    setGenerating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-content', {
+        body: {
+          purpose: 'campaign',
+          channel: channel.id,
+          brand: brandName,
+          tone: 'professional',
+          language: 'he',
+        },
+      });
+      if (error) throw error;
+      const text = (data?.text || data?.content || '').toString().slice(0, MAX_CHARS);
+      if (text) setBody(text);
+      else toast.info('לא התקבל טקסט מה-AI');
+    } catch (e: any) {
+      toast.error('יצירת טקסט נכשלה');
+    } finally {
+      setGenerating(false);
+    }
+  };
+
+  const hasBody = body.trim().length > 0;
+  const count = body.length;
+
+  return (
+    <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-sm space-y-4" dir="rtl">
+      {/* Header row */}
+      <div className="flex items-center justify-between gap-3">
+        <h3 className="text-sm font-semibold text-foreground">תוכן ההודעה</h3>
+        <div className="flex items-center gap-2">
+          <button type="button" onClick={handleGenerate} disabled={generating}
+            className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-60">
+            <Bot className="h-3.5 w-3.5" />
+            {generating ? 'מחולל…' : 'חולל טקסט עם AI'}
+          </button>
+          <span className="text-[11px] tabular-nums text-muted-foreground" dir="ltr">
+            {count}/{MAX_CHARS}
+          </span>
+        </div>
+      </div>
+
+      {/* Textarea */}
+      <Textarea
+        ref={textareaRef}
+        rows={6}
+        value={body}
+        maxLength={MAX_CHARS}
+        onChange={(e) => setBody(e.target.value)}
+        placeholder="הקלד את התוכן שיישלח למתעניינים…"
+        className="resize-y text-right"
+      />
+
+      {/* Tag pills + action icons */}
+      <div className="flex items-center justify-between gap-2 flex-wrap">
+        <div className="flex items-center gap-2">
+          <button type="button" className="rounded-lg border border-border bg-background p-2 text-muted-foreground hover:text-foreground" aria-label="הקלטה">
+            <Mic className="h-4 w-4" />
+          </button>
+          <button type="button" className="rounded-lg border border-border bg-background p-2 text-muted-foreground hover:text-foreground" aria-label="גלריה">
+            <ImageIcon className="h-4 w-4" />
+          </button>
+          <button type="button" className="rounded-lg border border-border bg-background p-2 text-muted-foreground hover:text-foreground" aria-label="קובץ מצורף">
+            <Paperclip className="h-4 w-4" />
+          </button>
+        </div>
+        <div className="flex items-center gap-2">
+          {TAG_CHIPS.map((tag) => (
+            <button key={tag} type="button" onClick={() => insertTag(tag)}
+              className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-foreground hover:border-primary/40 hover:text-primary">
+              {tag}
+            </button>
+          ))}
+          <span className="text-xs text-muted-foreground">תגיות:</span>
+        </div>
+      </div>
+
+      {/* Dispatch mode selector — only when body has content */}
+      {hasBody && (
+        <div className="rounded-xl border border-border bg-background p-2 grid grid-cols-2 gap-2">
+          {([
+            { id: 'now',       label: 'שליחה מיידית' },
+            { id: 'scheduled', label: 'תזמון עתידי' },
+          ] as const).map((opt) => {
+            const active = mode === opt.id;
+            return (
+              <button key={opt.id} type="button" onClick={() => setMode(opt.id)}
+                className={cn(
+                  'rounded-lg px-3 py-2.5 text-sm font-semibold transition',
+                  active
+                    ? 'border border-foreground/80 bg-background text-foreground shadow-sm'
+                    : 'border border-transparent text-muted-foreground hover:text-foreground',
+                )}>
+                {opt.label}
+              </button>
+            );
+          })}
+        </div>
+      )}
+
+      {/* Dispatch CTA */}
+      <button type="button"
+        onClick={() => hasBody && onConfirm({ body, mode })}
+        disabled={!hasBody}
+        className={cn(
+          'w-full rounded-xl px-4 py-3 text-sm font-bold transition flex items-center justify-center gap-2',
+          hasBody
+            ? 'bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)] shadow-md'
+            : 'bg-muted text-muted-foreground/80 cursor-not-allowed',
+        )}>
+        <Send className="h-4 w-4 -scale-x-100" />
+        שגר פוסט ציבורי עכשיו
+      </button>
+    </div>
+  );
+};
+
+/* ───────────── Dispatch confirmation modal ───────────── */
+
+const ConfirmDispatchDialog = ({
+  open, onClose, channel, body, brandName, onConfirmed,
+}: {
+  open: boolean;
+  onClose: () => void;
+  channel: ChannelCard | null;
+  body: string;
+  brandName: string;
+  onConfirmed: () => void;
+}) => {
+  const { user } = useAuth();
+  const [sending, setSending] = useState(false);
 
   if (!channel) return null;
 
-  const handleSubmit = async () => {
-    if (!body.trim()) { toast.error('יש לכתוב תוכן להודעה'); return; }
+  const profileLabel = `${brandName} · @${brandName.replace(/\s+/g, '')}`;
+  const initials = brandName.split(/\s+/).filter(Boolean).slice(0, 2).map((s) => s[0]).join('').toUpperCase() || 'R';
+  const summaryTitle = body.trim().slice(0, 24) || channel.label;
+
+  const handleConfirm = async () => {
+    if (!user) { toast.error('יש להתחבר'); return; }
     setSending(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error('not authenticated');
       const { data: leads, error } = await supabase
         .from('leads')
         .select('id, full_name, phone, email')
-        .limit(audience === 'all' ? 100 : 25);
+        .limit(100);
       if (error) throw error;
       const rows = (leads || []).map((l: any) => ({
         user_id: user.id,
-        campaign_name: title.trim() || `${brandName} · ${channel.label}`,
+        campaign_name: `${brandName} · ${channel.label}`,
         channel: channel.id,
         lead_id: l.id,
         recipient_phone: l.phone,
@@ -90,16 +294,15 @@ const ChannelWizardDialog = ({
         message_body: body,
         status: 'queued' as const,
       }));
-      if (rows.length === 0) {
-        toast.info('אין מתעניינים תואמים — נשמר טיוטה');
-      } else {
+      if (rows.length > 0) {
         const { error: insErr } = await supabase.from('campaign_logs').insert(rows);
         if (insErr) throw insErr;
-        toast.success(`נשלח ל-${rows.length} מתעניינים בערוץ ${channel.label}`);
       }
+      toast.success(`שודר ל-${rows.length} מתעניינים בערוץ ${channel.label}`);
+      onConfirmed();
       onClose();
-    } catch (e) {
-      toast.error('שליחה נכשלה: ' + (e as Error).message);
+    } catch (e: any) {
+      toast.error('שידור נכשל: ' + e.message);
     } finally {
       setSending(false);
     }
@@ -107,101 +310,46 @@ const ChannelWizardDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent dir="rtl" className="max-w-lg">
+      <DialogContent dir="rtl" className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-right">קמפיין חדש · {channel.label}</DialogTitle>
-          <DialogDescription className="text-right">
-            כתוב את ההודעה, בחר קהל יעד והפעל את הקמפיין.
+          <DialogTitle className="text-center text-lg">אישור דיוור וסיכום תקציב</DialogTitle>
+          <DialogDescription className="text-center">
+            קמפיין "{summaryTitle}" · ערוצים: {channel.label}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="campaign-title">שם הקמפיין</Label>
-            <Input id="campaign-title" value={title} onChange={(e) => setTitle(e.target.value)}
-                   placeholder={`${brandName} · ${channel.label}`} />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="campaign-body">תוכן ההודעה</Label>
-            <Textarea id="campaign-body" rows={5} value={body} onChange={(e) => setBody(e.target.value)}
-                      placeholder="הקלד את התוכן שיישלח למתעניינים…" />
-          </div>
-
-          <div className="space-y-2">
-            <Label>קהל יעד</Label>
-            <div className="grid grid-cols-3 gap-2">
-              {([
-                { id: 'all',    label: 'כל המתעניינים' },
-                { id: 'hot',    label: 'חמים' },
-                { id: 'recent', label: 'אחרונים' },
-              ] as const).map((a) => (
-                <button key={a.id} type="button" onClick={() => setAudience(a.id)}
-                        className={cn(
-                          'rounded-lg border px-2 py-2 text-sm transition',
-                          audience === a.id
-                            ? 'border-primary bg-primary/10 text-primary font-semibold'
-                            : 'border-border bg-background hover:border-primary/40',
-                        )}>
-                  {a.label}
-                </button>
-              ))}
+        <div className="space-y-3">
+          <div className="text-right text-sm font-semibold text-foreground">פרסום בעמוד / פרופיל</div>
+          <div className="rounded-xl border border-border bg-background p-3 space-y-3">
+            <button type="button"
+              className="flex w-full items-center justify-between rounded-lg border border-border bg-card px-3 py-2.5 text-sm">
+              <ChevronDownIcon className="h-4 w-4 text-muted-foreground" />
+              <span className="truncate font-medium text-foreground">{profileLabel}</span>
+            </button>
+            <div className="flex items-center justify-end gap-3 px-1">
+              <div className="text-right">
+                <div className="text-sm font-bold text-foreground">{brandName}</div>
+                <div className="text-xs text-muted-foreground" dir="ltr">@{brandName.replace(/\s+/g, '')}</div>
+              </div>
+              <Avatar className="h-9 w-9">
+                <AvatarFallback className="bg-muted text-xs font-semibold">{initials}</AvatarFallback>
+              </Avatar>
             </div>
           </div>
-
-          {!channel.free && channel.price && (
-            <div className="rounded-lg bg-muted/60 px-3 py-2 text-xs text-muted-foreground flex justify-between">
-              <span>עלות משוערת</span>
-              <span dir="ltr" className="font-semibold text-foreground">
-                <bdi dir="ltr">₪{channel.price}</bdi> {channel.priceUnit}
-              </span>
-            </div>
-          )}
         </div>
 
-        <DialogFooter className="gap-2 sm:gap-2">
-          <Button variant="outline" onClick={onClose} disabled={sending}>ביטול</Button>
-          <Button onClick={handleSubmit} disabled={sending}>
-            {sending ? 'שולח…' : 'הפעל קמפיין'}
+        <DialogFooter className="!justify-between gap-2 sm:gap-2 flex-row-reverse">
+          <Button onClick={handleConfirm} disabled={sending}
+            className="bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)]">
+            {sending ? 'משדר…' : 'אישור ושידור'}
           </Button>
+          <Button variant="outline" onClick={onClose} disabled={sending}>ביטול</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 };
 
-const ChannelGrid = ({ onPick }: { onPick: (c: ChannelCard) => void }) => (
-  <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-sm">
-    <div className="grid grid-cols-3 gap-3 sm:gap-4">
-      {CHANNEL_CARDS.map((c) => {
-        const Icon = c.icon;
-        return (
-          <button key={c.id} type="button" onClick={() => onPick(c)}
-            className="group relative flex aspect-square flex-col items-center justify-center gap-1.5 rounded-xl border border-border bg-background p-3 text-center transition hover:border-primary/40 hover:shadow-md active:scale-[0.98]">
-            <span aria-hidden className="absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground/70 group-hover:text-primary">
-              <Plus className="h-4 w-4" />
-            </span>
-            <span className="flex h-8 w-8 items-center justify-center">
-              {c.brand ? <BrandIcon name={c.brand} className="h-7 w-7" />
-                       : Icon ? <Icon className={`h-7 w-7 ${c.iconColor ?? 'text-foreground'}`} /> : null}
-            </span>
-            <span className="text-sm font-semibold text-foreground leading-tight">{c.label}</span>
-            {c.free ? (
-              <span className="text-xs font-bold text-primary">חינם</span>
-            ) : (
-              <>
-                <span className="text-sm font-bold text-foreground" dir="ltr">
-                  <bdi dir="ltr">₪{c.price}</bdi>
-                </span>
-                <span className="text-[11px] text-muted-foreground">{c.priceUnit}</span>
-              </>
-            )}
-          </button>
-        );
-      })}
-    </div>
-  </div>
-);
 
 /* ───────────── Tab 2: Published feed ───────────── */
 
@@ -393,7 +541,11 @@ const ResponsesView = () => {
 const CampaignCenter = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { settings } = useWhiteLabel();
+  const brandName = settings?.agency_name || 'Realtyz AI';
   const [pickedChannel, setPickedChannel] = useState<ChannelCard | null>(null);
+  const [confirmPayload, setConfirmPayload] = useState<{ body: string; mode: 'now' | 'scheduled' } | null>(null);
+
 
   const initial = (searchParams.get('tab') as string) ?? 'create';
   const remapped: TabValue =
@@ -475,8 +627,15 @@ const CampaignCenter = () => {
           </TabsList>
         </div>
 
-        <TabsContent value="create" className="mt-6 space-y-6">
-          <ChannelGrid onPick={setPickedChannel} />
+        <TabsContent value="create" className="mt-6 space-y-4">
+          <ChannelGrid selectedId={pickedChannel?.id ?? null} onPick={setPickedChannel} brandName={brandName} />
+          {pickedChannel && (
+            <InlineComposer
+              channel={pickedChannel}
+              brandName={brandName}
+              onConfirm={(p) => setConfirmPayload(p)}
+            />
+          )}
         </TabsContent>
         <TabsContent value="published" className="mt-6">
           <PublishedFeed />
@@ -486,9 +645,17 @@ const CampaignCenter = () => {
         </TabsContent>
       </Tabs>
 
-      <ChannelWizardDialog channel={pickedChannel} open={!!pickedChannel} onClose={() => setPickedChannel(null)} />
+      <ConfirmDispatchDialog
+        open={!!confirmPayload}
+        onClose={() => setConfirmPayload(null)}
+        channel={pickedChannel}
+        body={confirmPayload?.body ?? ''}
+        brandName={brandName}
+        onConfirmed={() => { setConfirmPayload(null); setPickedChannel(null); }}
+      />
     </div>
   );
 };
+
 
 export default CampaignCenter;
