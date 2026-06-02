@@ -6,15 +6,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { RealtyzLoader } from '@/components/RealtyzLoader';
 import { RealtyzWave } from '@/components/RealtyzWave';
 import { BrandIcon } from '@/components/BrandIcon';
-import { Radio, Calendar, ShieldCheck, ClipboardList, ArrowRight, Plus, Bot, Mail, Phone, MessageSquare } from 'lucide-react';
+import { Radio, Calendar, ArrowRight, Plus, Bot, Mail, Phone, MessageSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 const ContentCalendar = lazy(() => import('./ContentCalendar'));
-const ApprovalQueue = lazy(() => import('./ApprovalQueue'));
 const SmsBlastSimulator = lazy(() => import('./SmsBlastSimulator'));
-const DeliveryReports = lazy(() => import('./DeliveryReports'));
 
-type TabValue = 'create' | 'published' | 'responses' | 'approvals' | 'reports';
+type TabValue = 'create' | 'published' | 'responses';
 
 const PageFallback = () => (
   <div className="min-h-[40vh] flex items-center justify-center">
@@ -23,11 +21,9 @@ const PageFallback = () => (
 );
 
 const TABS: { value: TabValue; label: string; icon: typeof Radio }[] = [
-  { value: 'create',    label: 'צור קמפיין',     icon: Radio },
-  { value: 'published', label: 'פורסמו',         icon: Calendar },
-  { value: 'responses', label: 'תגובות',         icon: MessageSquare },
-  { value: 'approvals', label: 'אישורים',        icon: ShieldCheck },
-  { value: 'reports',   label: 'דו"חות מסירה',   icon: ClipboardList },
+  { value: 'create',    label: 'צור קמפיין', icon: Radio },
+  { value: 'published', label: 'פורסמו',     icon: Calendar },
+  { value: 'responses', label: 'תגובות',     icon: MessageSquare },
 ];
 
 type ChannelCard = {
@@ -222,19 +218,12 @@ const CampaignCenter = () => {
 
           <TabsContent value="create" className="mt-6 space-y-6">
             <ChannelGrid />
-            <Suspense fallback={<PageFallback />}><SmsBlastSimulator /></Suspense>
           </TabsContent>
           <TabsContent value="published" className="mt-6">
             <Suspense fallback={<PageFallback />}><ContentCalendar /></Suspense>
           </TabsContent>
           <TabsContent value="responses" className="mt-6">
             <EmptyState title="תגובות יוצגו כאן" hint="כל התגובות הנכנסות לקמפיינים יופיעו במסך זה." />
-          </TabsContent>
-          <TabsContent value="approvals" className="mt-6">
-            <Suspense fallback={<PageFallback />}><ApprovalQueue /></Suspense>
-          </TabsContent>
-          <TabsContent value="reports" className="mt-6">
-            <Suspense fallback={<PageFallback />}><DeliveryReports /></Suspense>
           </TabsContent>
         </Tabs>
       )}
