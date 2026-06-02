@@ -12,8 +12,9 @@ import { BrandIcon } from '@/components/BrandIcon';
 import {
   ArrowRight, Plus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
   ChevronDown, ChevronUp, Archive, Send, Mic, Image as ImageIcon, Paperclip,
-  ChevronDown as ChevronDownIcon, Plug,
+  ChevronDown as ChevronDownIcon, Plug, Camera, Sparkles, Square,
 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
@@ -167,8 +168,72 @@ const InlineComposer = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [generating, setGenerating] = useState(false);
 
+  // Attachment / media state
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachments, setAttachments] = useState<{ name: string; kind: 'image' | 'file' | 'audio'; url?: string }[]>([]);
+  const [generatingImage, setGeneratingImage] = useState(false);
+
+  // Audio recording
+  const [recording, setRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<BlobPart[]>([]);
+
   // Reset on channel change
-  useEffect(() => { setBody(''); setMode('now'); }, [channel.id]);
+  useEffect(() => { setBody(''); setMode('now'); setAttachments([]); }, [channel.id]);
+
+  const handleFiles = (files: FileList | null, kind: 'image' | 'file') => {
+    if (!files) return;
+    const max = 25 * 1024 * 1024;
+    const added: typeof attachments = [];
+    Array.from(files).forEach((f) => {
+      if (f.size > max) { toast.error(`${f.name}: גודל מעל 25MB`); return; }
+      added.push({ name: f.name, kind, url: URL.createObjectURL(f) });
+    });
+    if (added.length) setAttachments((a) => [...a, ...added]);
+  };
+
+  const handleAIImage = async () => {
+    const prompt = body.trim() || 'תמונת קמפיין נדל"ן עבור Realtyz AI';
+    setGeneratingImage(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-content', {
+        body: { purpose: 'image', prompt, brand: brandName, language: 'he' },
+      });
+      if (error) throw error;
+      const url = data?.url || data?.image_url;
+      if (url) {
+        setAttachments((a) => [...a, { name: 'AI Image', kind: 'image', url }]);
+        toast.success('תמונה נוצרה');
+      } else toast.info('לא התקבלה תמונה מה-AI');
+    } catch { toast.error('יצירת תמונה נכשלה'); }
+    finally { setGeneratingImage(false); }
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+      mr.ondataavailable = (e) => { if (e.data.size) audioChunksRef.current.push(e.data); };
+      mr.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const url = URL.createObjectURL(blob);
+        setAttachments((a) => [...a, { name: `הקלטה ${new Date().toLocaleTimeString('he-IL')}.webm`, kind: 'audio', url }]);
+        stream.getTracks().forEach((t) => t.stop());
+      };
+      mr.start();
+      mediaRecorderRef.current = mr;
+      setRecording(true);
+    } catch { toast.error('אין גישה למיקרופון'); }
+  };
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    mediaRecorderRef.current = null;
+    setRecording(false);
+  };
+
 
   const insertTag = (tag: string) => {
     const el = textareaRef.current;
@@ -234,20 +299,78 @@ const InlineComposer = ({
         value={body}
         maxLength={MAX_CHARS}
         onChange={(e) => setBody(e.target.value)}
-        placeholder="הקלד את התוכן שיישלח למתעניינים…"
         className="resize-y text-right"
       />
+
+      {/* Hidden inputs */}
+      <input ref={galleryInputRef} type="file" accept="image/*" multiple className="hidden"
+        onChange={(e) => { handleFiles(e.target.files, 'image'); e.target.value = ''; }} />
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
+        onChange={(e) => { handleFiles(e.target.files, 'image'); e.target.value = ''; }} />
+      <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" multiple className="hidden"
+        onChange={(e) => { handleFiles(e.target.files, 'file'); e.target.value = ''; }} />
+
+      {/* Attachments preview */}
+      {attachments.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {attachments.map((att, i) => (
+            <div key={i} className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-2 py-1 text-xs">
+              {att.kind === 'image' && att.url ? (
+                <img src={att.url} alt={att.name} className="h-8 w-8 rounded object-cover" />
+              ) : att.kind === 'audio' ? (
+                <Mic className="h-3.5 w-3.5 text-primary" />
+              ) : (
+                <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
+              )}
+              <span className="max-w-[140px] truncate">{att.name}</span>
+              <button type="button" onClick={() => setAttachments((a) => a.filter((_, j) => j !== i))}
+                className="text-muted-foreground hover:text-destructive">×</button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Tag pills + action icons */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
-          <button type="button" className="rounded-lg border border-border bg-background p-2 text-muted-foreground hover:text-foreground" aria-label="הקלטה">
-            <Mic className="h-4 w-4" />
+          <button type="button" onClick={recording ? stopRecording : startRecording}
+            className={cn(
+              'rounded-lg border p-2 transition',
+              recording
+                ? 'border-destructive bg-destructive/10 text-destructive animate-pulse'
+                : 'border-border bg-background text-muted-foreground hover:text-foreground',
+            )}
+            aria-label={recording ? 'עצור הקלטה' : 'הקלטה'}>
+            {recording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
           </button>
-          <button type="button" className="rounded-lg border border-border bg-background p-2 text-muted-foreground hover:text-foreground" aria-label="גלריה">
-            <ImageIcon className="h-4 w-4" />
-          </button>
-          <button type="button" className="rounded-lg border border-border bg-background p-2 text-muted-foreground hover:text-foreground" aria-label="קובץ מצורף">
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <button type="button" className="rounded-lg border border-border bg-background p-2 text-muted-foreground hover:text-foreground" aria-label="גלריה">
+                <ImageIcon className="h-4 w-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-44 p-1" dir="rtl">
+              <button type="button" onClick={() => galleryInputRef.current?.click()}
+                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
+                <span>גלריה</span>
+                <ImageIcon className="h-4 w-4 text-muted-foreground" />
+              </button>
+              <button type="button" onClick={() => cameraInputRef.current?.click()}
+                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
+                <span>מצלמה</span>
+                <Camera className="h-4 w-4 text-muted-foreground" />
+              </button>
+              <button type="button" onClick={handleAIImage} disabled={generatingImage}
+                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-60">
+                <span>{generatingImage ? 'מחולל…' : 'תמונת AI'}</span>
+                <Sparkles className="h-4 w-4 text-primary" />
+              </button>
+            </PopoverContent>
+          </Popover>
+
+          <button type="button" onClick={() => fileInputRef.current?.click()}
+            className="rounded-lg border border-border bg-background p-2 text-muted-foreground hover:text-foreground" aria-label="קובץ מצורף">
             <Paperclip className="h-4 w-4" />
           </button>
         </div>
@@ -261,6 +384,7 @@ const InlineComposer = ({
           <span className="text-xs text-muted-foreground">תגיות:</span>
         </div>
       </div>
+
 
       {/* Dispatch mode selector — only when body has content */}
       {hasBody && (
