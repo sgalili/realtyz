@@ -379,26 +379,18 @@ const OmnichannelInbox = () => {
     <div dir="rtl" className="space-y-3">
       {/* Autopilot toggle bar */}
       <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 flex items-center justify-between gap-3">
+        <div className="text-sm font-semibold text-foreground">
+          מענה אוטומטי: כלל הערוצים
+        </div>
         <Switch
           checked={aiAutopilot}
           onCheckedChange={setAiAutopilot}
           aria-label="מענה אוטומטי"
         />
-        <div className="text-sm font-semibold text-foreground">
-          מענה אוטומטי: כלל הערוצים
-        </div>
       </div>
 
       {/* Filter pills + bookmark */}
       <div className="flex items-center gap-2">
-        <button
-          type="button"
-          onClick={() => setBookmarkedOnly((v) => !v)}
-          aria-label="סימניות"
-          className={`h-10 w-10 shrink-0 inline-flex items-center justify-center rounded-lg border ${bookmarkedOnly ? 'bg-primary text-primary-foreground border-primary' : 'bg-card border-border text-muted-foreground hover:bg-muted/50'}`}
-        >
-          <Bookmark className="h-4 w-4" />
-        </button>
         <div className="flex flex-1 items-center gap-2 overflow-x-auto">
           <button
             type="button"
@@ -423,6 +415,14 @@ const OmnichannelInbox = () => {
             כל השיחות ({totalCount})
           </button>
         </div>
+        <button
+          type="button"
+          onClick={() => setBookmarkedOnly((v) => !v)}
+          aria-label="סימניות"
+          className={`h-10 w-10 shrink-0 inline-flex items-center justify-center rounded-lg border ${bookmarkedOnly ? 'bg-primary text-primary-foreground border-primary' : 'bg-card border-border text-muted-foreground hover:bg-muted/50'}`}
+        >
+          <Bookmark className="h-4 w-4" />
+        </button>
       </div>
 
       <div className="grid h-[calc(100svh-300px)] min-h-[480px] w-full grid-cols-1 overflow-hidden rounded-xl border border-border/50 bg-card shadow-soft lg:h-[calc(100vh-340px)] lg:grid-cols-[20rem_minmax(0,1fr)] xl:grid-cols-[20rem_minmax(0,1fr)_18rem]">
