@@ -148,16 +148,8 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
-                    aria-label="החלף חשבון"
                     onClick={() => navigate('/profile')}
-                    className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                  >
-                    <Repeat2 className="h-4 w-4" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => navigate('/profile')}
-                    className="flex flex-1 items-center gap-3 rounded-md px-1 py-1 text-right transition-colors hover:bg-primary/5 min-w-0"
+                    className="flex flex-1 items-center gap-3 rounded-md px-1 py-1 text-right transition-colors hover:bg-primary/10 min-w-0"
                   >
                     <div className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-lg overflow-hidden shrink-0 ring-1 ring-primary/10">
                       {avatarUrl ? (
@@ -178,6 +170,14 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                         חשבון המתווך · ניהול נכסים, משרד ובו...
                       </div>
                     </div>
+                  </button>
+                  <button
+                    type="button"
+                    aria-label="החלף חשבון"
+                    onClick={() => navigate('/profile')}
+                    className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                  >
+                    <Repeat2 className="h-4 w-4" />
                   </button>
                 </div>
               </SidebarGroupContent>
