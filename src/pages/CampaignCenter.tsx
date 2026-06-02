@@ -108,13 +108,15 @@ const CampaignCenter = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // Legacy mappings → broadcast.
-  const initial = (searchParams.get('tab') as string) ?? 'broadcast';
+  // Legacy mappings → create.
+  const initial = (searchParams.get('tab') as string) ?? 'create';
   const remapped: TabValue =
-    initial === 'campaigns' || initial === 'strategy' || initial === 'send'
-      ? 'broadcast'
+    initial === 'campaigns' || initial === 'strategy' || initial === 'send' || initial === 'broadcast'
+      ? 'create'
+      : initial === 'calendar'
+      ? 'published'
       : (initial as TabValue);
-  const active: TabValue = TABS.some((t) => t.value === remapped) ? remapped : 'broadcast';
+  const active: TabValue = TABS.some((t) => t.value === remapped) ? remapped : 'create';
 
   const handleChange = (value: string) => {
     const next = new URLSearchParams(searchParams);
