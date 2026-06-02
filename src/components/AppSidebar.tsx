@@ -121,7 +121,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                         to={item.url}
                         end={item.url === '/'}
                         onClick={handleNavClick}
-                        className={`group flex items-center gap-3 px-3 py-2.5 rounded-full text-primary hover:bg-primary/5 transition-all ${tutorialActive ? 'realtyz-tutorial-nav-glow' : ''}`}
+                        className={`group flex items-center gap-3 px-3 py-2.5 rounded-full text-primary hover:bg-slate-100 hover:text-primary hover:ring-1 hover:ring-primary/15 hover:shadow-sm transition-all ${tutorialActive ? 'realtyz-tutorial-nav-glow' : ''}`}
                         activeClassName="!bg-white !text-primary font-semibold ring-1 ring-primary/40 shadow-sm"
                       >
                         <item.icon className={`h-4 w-4 shrink-0 ${item.iconColor}`} />
