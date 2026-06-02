@@ -4,6 +4,7 @@ import {
   Megaphone,
   Brain,
   Briefcase,
+  MessageCircle,
 } from 'lucide-react';
 import { useQuery } from '@tanstack/react-query';
 import { NavLink } from '@/components/NavLink';
@@ -71,10 +72,11 @@ const NAV_ITEMS: NavItem[] = [
     aliases: ['/live-conversations', '/ai-content', '/sentiment', '/conversation-analytics', '/insights'],
   },
   {
-    title: 'FB Engagement',
-    url: '/social/engagement',
-    icon: Megaphone,
+    title: 'צ׳אטים',
+    url: '/inbox',
+    icon: MessageCircle,
     iconColor: 'text-social-facebook',
+    aliases: ['/communication'],
   },
 ];
 
