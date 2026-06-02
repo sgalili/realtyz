@@ -125,9 +125,9 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                         activeClassName="!bg-white !text-primary font-semibold ring-1 ring-primary/40 shadow-sm"
                       >
                         <item.icon className={`h-4 w-4 shrink-0 ${item.iconColor}`} />
-                        {!collapsed && <span className="text-sm flex-1">{item.title}</span>}
+                        {!collapsed && <span className="text-sm">{item.title}</span>}
                         {!collapsed && item.badge && (
-                          <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-bold leading-none text-primary shadow ring-1 ring-primary/10">
+                          <span className="ms-auto rounded-full bg-white px-2.5 py-0.5 text-xs font-bold leading-none text-primary shadow ring-1 ring-primary/10">
                             {item.badge}
                           </span>
                         )}
