@@ -183,7 +183,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
               </SidebarGroupContent>
             </SidebarGroup>
 
-            <SidebarGroup className="p-0 border-t border-sidebar-border">
+            <SidebarGroup className="p-0">
               <SidebarGroupContent className="p-0">
                 <SidebarIntelInput />
               </SidebarGroupContent>
