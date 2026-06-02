@@ -172,12 +172,6 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                     onClick={() => navigate('/profile')}
                     className="flex flex-1 items-center gap-3 rounded-md px-1 py-1 text-right transition-colors hover:bg-primary/5 min-w-0"
                   >
-                    <div className="min-w-0 flex-1 text-right">
-                      <div className="truncate text-sm font-bold text-primary">{brokerName}</div>
-                      <div className="truncate text-[11px] text-muted-foreground">
-                        חשבון המתווך · ניהול נכסים, משרד ובו...
-                      </div>
-                    </div>
                     <div className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-lg overflow-hidden shrink-0 ring-1 ring-primary/10">
                       {avatarUrl ? (
                         <img
@@ -190,6 +184,12 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                           {initial}
                         </div>
                       )}
+                    </div>
+                    <div className="min-w-0 flex-1 text-right">
+                      <div className="truncate text-sm font-bold text-primary">{brokerName}</div>
+                      <div className="truncate text-[11px] text-muted-foreground">
+                        חשבון המתווך · ניהול נכסים, משרד ובו...
+                      </div>
                     </div>
                   </button>
                 </div>
