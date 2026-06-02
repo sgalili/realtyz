@@ -220,19 +220,12 @@ const CampaignCenter = () => {
 
           <TabsContent value="create" className="mt-6 space-y-6">
             <ChannelGrid />
-            <Suspense fallback={<PageFallback />}><SmsBlastSimulator /></Suspense>
           </TabsContent>
           <TabsContent value="published" className="mt-6">
             <Suspense fallback={<PageFallback />}><ContentCalendar /></Suspense>
           </TabsContent>
           <TabsContent value="responses" className="mt-6">
             <EmptyState title="תגובות יוצגו כאן" hint="כל התגובות הנכנסות לקמפיינים יופיעו במסך זה." />
-          </TabsContent>
-          <TabsContent value="approvals" className="mt-6">
-            <Suspense fallback={<PageFallback />}><ApprovalQueue /></Suspense>
-          </TabsContent>
-          <TabsContent value="reports" className="mt-6">
-            <Suspense fallback={<PageFallback />}><DeliveryReports /></Suspense>
           </TabsContent>
         </Tabs>
       )}
