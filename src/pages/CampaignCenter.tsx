@@ -1,10 +1,9 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
-import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -12,12 +11,15 @@ import { RealtyzWave } from '@/components/RealtyzWave';
 import { BrandIcon } from '@/components/BrandIcon';
 import {
   ArrowRight, Plus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
-  ChevronDown, ChevronUp, Archive, Radio,
+  ChevronDown, ChevronUp, Archive, Send, Mic, Image as ImageIcon, Paperclip,
+  ChevronDown as ChevronDownIcon,
 } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+
 
 type TabValue = 'create' | 'published' | 'responses';
 
