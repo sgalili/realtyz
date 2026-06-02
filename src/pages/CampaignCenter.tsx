@@ -299,20 +299,78 @@ const InlineComposer = ({
         value={body}
         maxLength={MAX_CHARS}
         onChange={(e) => setBody(e.target.value)}
-        placeholder="הקלד את התוכן שיישלח למתעניינים…"
         className="resize-y text-right"
       />
+
+      {/* Hidden inputs */}
+      <input ref={galleryInputRef} type="file" accept="image/*" multiple className="hidden"
+        onChange={(e) => { handleFiles(e.target.files, 'image'); e.target.value = ''; }} />
+      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
+        onChange={(e) => { handleFiles(e.target.files, 'image'); e.target.value = ''; }} />
+      <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" multiple className="hidden"
+        onChange={(e) => { handleFiles(e.target.files, 'file'); e.target.value = ''; }} />
+
+      {/* Attachments preview */}
+      {attachments.length > 0 && (
+        <div className="flex flex-wrap gap-2">
+          {attachments.map((att, i) => (
+            <div key={i} className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-2 py-1 text-xs">
+              {att.kind === 'image' && att.url ? (
+                <img src={att.url} alt={att.name} className="h-8 w-8 rounded object-cover" />
+              ) : att.kind === 'audio' ? (
+                <Mic className="h-3.5 w-3.5 text-primary" />
+              ) : (
+                <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
+              )}
+              <span className="max-w-[140px] truncate">{att.name}</span>
+              <button type="button" onClick={() => setAttachments((a) => a.filter((_, j) => j !== i))}
+                className="text-muted-foreground hover:text-destructive">×</button>
+            </div>
+          ))}
+        </div>
+      )}
 
       {/* Tag pills + action icons */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
-          <button type="button" className="rounded-lg border border-border bg-background p-2 text-muted-foreground hover:text-foreground" aria-label="הקלטה">
-            <Mic className="h-4 w-4" />
+          <button type="button" onClick={recording ? stopRecording : startRecording}
+            className={cn(
+              'rounded-lg border p-2 transition',
+              recording
+                ? 'border-destructive bg-destructive/10 text-destructive animate-pulse'
+                : 'border-border bg-background text-muted-foreground hover:text-foreground',
+            )}
+            aria-label={recording ? 'עצור הקלטה' : 'הקלטה'}>
+            {recording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
           </button>
-          <button type="button" className="rounded-lg border border-border bg-background p-2 text-muted-foreground hover:text-foreground" aria-label="גלריה">
-            <ImageIcon className="h-4 w-4" />
-          </button>
-          <button type="button" className="rounded-lg border border-border bg-background p-2 text-muted-foreground hover:text-foreground" aria-label="קובץ מצורף">
+
+          <Popover>
+            <PopoverTrigger asChild>
+              <button type="button" className="rounded-lg border border-border bg-background p-2 text-muted-foreground hover:text-foreground" aria-label="גלריה">
+                <ImageIcon className="h-4 w-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-44 p-1" dir="rtl">
+              <button type="button" onClick={() => galleryInputRef.current?.click()}
+                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
+                <span>גלריה</span>
+                <ImageIcon className="h-4 w-4 text-muted-foreground" />
+              </button>
+              <button type="button" onClick={() => cameraInputRef.current?.click()}
+                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
+                <span>מצלמה</span>
+                <Camera className="h-4 w-4 text-muted-foreground" />
+              </button>
+              <button type="button" onClick={handleAIImage} disabled={generatingImage}
+                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-60">
+                <span>{generatingImage ? 'מחולל…' : 'תמונת AI'}</span>
+                <Sparkles className="h-4 w-4 text-primary" />
+              </button>
+            </PopoverContent>
+          </Popover>
+
+          <button type="button" onClick={() => fileInputRef.current?.click()}
+            className="rounded-lg border border-border bg-background p-2 text-muted-foreground hover:text-foreground" aria-label="קובץ מצורף">
             <Paperclip className="h-4 w-4" />
           </button>
         </div>
@@ -326,6 +384,7 @@ const InlineComposer = ({
           <span className="text-xs text-muted-foreground">תגיות:</span>
         </div>
       </div>
+
 
       {/* Dispatch mode selector — only when body has content */}
       {hasBody && (
