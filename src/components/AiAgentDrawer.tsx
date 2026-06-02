@@ -21,39 +21,38 @@ const CHART_COLORS = [
   'hsl(var(--accent-foreground))',
 ];
 
-// Quick actions per page
-const PAGE_QUICK_ACTIONS: Record<string, Array<{ label: string; prompt: string }>> = {
-  '/': [
-    { label: 'סיכום יומי', prompt: 'כמה הודעות נשלחו היום ומה הסנטימנט הכללי?' },
-    { label: 'מתעניינים פעילים', prompt: 'מי 10 המתעניינים הכי פעילים השבוע לפי מספר הודעות?' },
-    { label: 'ערים מובילות', prompt: 'מה 5 הערים עם הכי הרבה מתעניינים רשומים?' },
-  ],
-  '/lead-crm': [
-    { label: 'ניתוח סנטימנט לפי עיר', prompt: 'מה הסנטימנט הממוצע של מתעניינים בכל עיר?' },
-    { label: 'מתעניינים לא פעילים', prompt: 'מי המתעניינים שלא היה להם אינטראקציה מעל שבועיים?' },
-    { label: 'התפלגות נאמנות', prompt: 'כמה מתעניינים יש בכל דרגת נאמנות (status)?' },
-  ],
-  '/live-conversations': [
-    { label: 'סיכום שיחות היום', prompt: 'כמה שיחות התקיימו היום ומה הסנטימנט שלהן?' },
-    { label: 'מילות מפתח בולטות', prompt: 'מהן 10 המילים הכי נפוצות בהודעות של מתעניינים ב-7 ימים אחרונים?' },
-    { label: 'מתעניינים עצבניים', prompt: 'מי המתעניינים שהביעו סנטימנט שלילי בשיחות האחרונות?' },
-  ],
-  '/campaigns': [
-    { label: 'ביצועי קמפיינים', prompt: 'מה הקמפיינים עם הכי הרבה קליקים?' },
-    { label: 'קישורים פעילים', prompt: 'מה 10 הקישורים החכמים עם הכי הרבה לחיצות?' },
-    { label: 'יעילות SMS', prompt: 'כמה הודעות SMS נשלחו בכל קמפיין?' },
-  ],
-  '/conversation-analytics': [
-    { label: 'מגמות שבועיות', prompt: 'מה המגמה של מספר ההודעות בשבוע האחרון לפי יום?' },
-    { label: 'יחס AI לליד', prompt: 'מה היחס בין הודעות AI להודעות מתעניינים ב-7 ימים אחרונים?' },
-    { label: 'ערים שקטות', prompt: 'מאיזה ערים לא היו שיחות בשבוע האחרון?' },
-  ],
-};
+// Real-estate quick command pills (פקודות מהירות) — 9 buttons
+const DEFAULT_ACTIONS: Array<{ label: string; prompt: string }> = [
+  { label: 'סיכום כללי', prompt: 'תן לי סיכום כללי של מצב המשרד: כמה מתעניינים, נכסים פעילים, וסנטימנט כללי.' },
+  { label: 'בעיות דחופות', prompt: 'אילו מתעניינים או עסקאות דורשים טיפול מיידי השבוע?' },
+  { label: 'הזדמנויות חמות', prompt: 'מהן ההזדמנויות הכי חמות בצנרת המכירות שלי כרגע?' },
+  { label: 'נתוני מערכת', prompt: 'כמה לידים, נכסים פעילים, וקמפיינים יש במערכת?' },
+  { label: 'תוכנית 24 שעות', prompt: 'בנה לי תוכנית פעולה ל-24 השעות הקרובות עבור התיק הפעיל.' },
+  { label: 'ערים מובילות', prompt: 'מהן 5 הערים עם הכי הרבה מתעניינים פעילים בנכסים שלי?' },
+  { label: 'מגמת סנטימנט', prompt: 'מהי מגמת הסנטימנט של הרוכשים הפוטנציאליים בשבוע האחרון?' },
+  { label: 'מתלבטים לטיפול', prompt: 'מי המתעניינים המתלבטים שדורשים מגע נוסף כדי לקדם עסקה?' },
+  { label: 'רוכשים פוטנציאליים', prompt: 'הצג לי את 10 הרוכשים הפוטנציאליים עם רמת המוכנות הגבוהה ביותר.' },
+];
 
-const DEFAULT_ACTIONS = [
-  { label: 'סיכום כללי', prompt: 'תן לי סיכום כללי של מצב הקמפיין: כמה מתעניינים, כמה שיחות, סנטימנט כללי' },
-  { label: 'בעיות דחופות', prompt: 'האם יש מתעניינים עם סנטימנט שלילי שצריך לטפל בהם?' },
-  { label: 'נתונים כלליים', prompt: 'כמה מתעניינים, שיחות, וקמפיינים יש במערכת?' },
+// Real-estate suggestion card groups shown in the empty state
+const SUGGESTION_GROUPS: Array<{ title: string; prompts: string[] }> = [
+  {
+    title: 'בחר שאלה ספציפית בנושא "ערוצי שיווק נדל"ן":',
+    prompts: [
+      'הצג מגמה והשוואה לשבוע שעבר בנושא השוואת ערוצי פרסום נכסים.',
+      'אילו 3 פעולות הכי משתלמות עכשיו בנושא גיוס בלעדיות בערוצים?',
+    ],
+  },
+  {
+    title: 'בחר שאלה ספציפית בנושא "גודל קהל רוכשים אופטימלי":',
+    prompts: [
+      'מה גודל הקהל שמייצר את ה-CTR הכי גבוה (פילוח לפי תקציב נכס 100/500/1000+)?',
+      'תן לי סיכום מקוצר וחד על גודל קהל קונים אופטימלי באזור הביקוש.',
+      'מה הפעולה המומלצת מיידית בנושא גודל קהל מתעניינים?',
+      'הצג מגמה והשוואה לשבוע שעבר בנושא גודל קהל מתעניינים בנכס.',
+      'אילו 3 פעולות הכי משתלמות עכשיו בנושא פילוח קהל יעד חם?',
+    ],
+  },
 ];
 
 interface SourceTag {
@@ -174,8 +173,7 @@ export default function AiAgentDrawer() {
     window.addEventListener('open-ai-drawer', handler);
     return () => window.removeEventListener('open-ai-drawer', handler);
   }, []);
-
-  const quickActions = PAGE_QUICK_ACTIONS[location.pathname] || DEFAULT_ACTIONS;
+  const quickActions = DEFAULT_ACTIONS;
 
   const handleVoiceResult = useCallback((text: string) => {
     setInput(prev => (prev ? prev + ' ' + text : text));
@@ -260,10 +258,30 @@ export default function AiAgentDrawer() {
         {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
           {messages.length === 0 && (
-            <div className="text-center py-8 space-y-3">
-              <Bot className="h-10 w-10 mx-auto text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">שלום! אני קצין המודיעין של Realtyz.</p>
-              <p className="text-xs text-muted-foreground">שאל אותי כל שאלה - אני אנתח את הנתונים ואתן המלצות אסטרטגיות.</p>
+            <div className="space-y-5 py-2">
+              <div className="text-center space-y-2 pb-1">
+                <Bot className="h-10 w-10 mx-auto text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">שלום! אני קצין המודיעין של Realtyz.</p>
+                <p className="text-xs text-muted-foreground">שאל אותי כל שאלה על הנכסים, הקמפיינים והרוכשים שלך.</p>
+              </div>
+              {SUGGESTION_GROUPS.map((group, gi) => (
+                <div key={gi} className="space-y-2">
+                  <p className="text-[11px] font-semibold text-muted-foreground px-1">{group.title}</p>
+                  <div className="space-y-1.5">
+                    {group.prompts.map((p, pi) => (
+                      <button
+                        key={pi}
+                        type="button"
+                        onClick={() => sendMessage(p)}
+                        disabled={isLoading}
+                        className="w-full text-right text-xs leading-relaxed rounded-xl border border-border bg-card hover:bg-primary/5 hover:border-primary/30 transition-colors px-3 py-2.5 disabled:opacity-50"
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
@@ -377,16 +395,25 @@ export default function AiAgentDrawer() {
           ))}
         </div>
 
-        {/* Input */}
+        {/* Input — mic on right, slate send on left */}
         <div className="px-4 py-3 border-t">
           <form
             onSubmit={(e) => { e.preventDefault(); sendMessage(input); }}
-            className="flex gap-2"
+            className="flex items-center gap-2"
           >
+            <Button
+              type="submit"
+              size="icon"
+              className="h-9 w-9 shrink-0 bg-slate-700 hover:bg-slate-800 text-white"
+              disabled={!input.trim() || isLoading}
+              aria-label="שלח"
+            >
+              <Send className="h-4 w-4" />
+            </Button>
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={isListening ? '🎙️ מקשיב...' : 'שאל שאלה על הנתונים...'}
+              placeholder={isListening ? '🎙️ מקשיב...' : 'מה הולכים לבדוק או לבצע בנכסים ובקמפיין?'}
               className="flex-1 h-9 text-sm"
               disabled={isLoading}
             />
@@ -400,9 +427,6 @@ export default function AiAgentDrawer() {
               title={isListening ? 'הפסק הקלטה' : 'הקלט קול'}
             >
               {isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-            </Button>
-            <Button type="submit" size="icon" className="h-9 w-9 shrink-0" disabled={!input.trim() || isLoading}>
-              <Send className="h-4 w-4" />
             </Button>
           </form>
         </div>
