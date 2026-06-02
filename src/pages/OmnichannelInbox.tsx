@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Search, Send, Bot, MessageSquare, MessageCircle, Phone, AlertTriangle, Instagram, AtSign, MoreVertical, Paperclip, Mic, Facebook, Clock } from 'lucide-react';
+import { Search, Send, Bot, MessageSquare, MessageCircle, Phone, AlertTriangle, Instagram, AtSign, MoreVertical, Paperclip, Mic, Facebook, Clock, Bookmark } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { toast } from 'sonner';
