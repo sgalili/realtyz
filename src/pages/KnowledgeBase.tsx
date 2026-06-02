@@ -1,43 +1,32 @@
-import { useState, useRef, useCallback, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { useDemoGuard } from '@/hooks/useDemoGuard';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-
 import { Textarea } from '@/components/ui/textarea';
+import { Badge } from '@/components/ui/badge';
 import {
-  Upload, FileText, Trash2, Phone, Plus, CheckCircle2, Loader2, FileCheck,
-  Image, Video, Mic, Sparkles, Brain, RefreshCw, BookOpen, MessageSquare, Send,
+  Brain, Send, Loader2, Upload, Search, FileText, Link as LinkIcon, Mic, Type,
 } from 'lucide-react';
-import { SectionDivider } from '@/components/SectionDivider';
 import { toast } from 'sonner';
-import { format } from 'date-fns';
-import { useDemoMode } from '@/hooks/useDemoMode';
-import { useDemoGuard } from '@/hooks/useDemoGuard';
-import { getDemoCandidateKnowledgeDocuments } from '@/lib/demoData';
-import { WhatsAppConversationImporter } from '@/components/strategybank/WhatsAppConversationImporter';
-import { UniversalKnowledgeInput } from '@/components/strategybank/UniversalKnowledgeInput';
-import { MediaLibraryPanel } from '@/components/MediaLibraryPanel';
+
+type ChatMsg = { role: 'user' | 'assistant'; content: string; sources?: string[]; isError?: boolean };
+type Tab = 'files' | 'text' | 'link' | 'voice';
+type Filter = 'all' | 'images' | 'videos' | 'docs';
 
 export default function KnowledgeBase() {
   const { user } = useAuth();
-  const { isDemoMode, demoCandidateId } = useDemoMode();
+  const { settings } = useWhiteLabel();
   const blockDemoAction = useDemoGuard();
   const qc = useQueryClient();
-  const fileInputRef = useRef<HTMLInputElement>(null);
-  const [dragging, setDragging] = useState(false);
-  const [ingesting, setIngesting] = useState(false);
-  
-  const [waPhone, setWaPhone] = useState('');
-  const [waLabel, setWaLabel] = useState('');
 
-  /* ── KB Chat ── */
-  type ChatMsg = { role: 'user' | 'assistant'; content: string; sources?: string[]; isError?: boolean };
+  const brand = settings?.agency_name || 'Realtyz AI';
+
+  /* ── Knowledge tester chat ── */
   const [chatInput, setChatInput] = useState('');
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
@@ -47,7 +36,7 @@ export default function KnowledgeBase() {
     chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: 'smooth' });
   }, [chatMessages, chatLoading]);
 
-  const sendKbChat = async () => {
+  const sendChat = async () => {
     const text = chatInput.trim();
     if (!text || chatLoading) return;
     const next: ChatMsg[] = [...chatMessages, { role: 'user', content: text }];
@@ -62,7 +51,11 @@ export default function KnowledgeBase() {
       if (data?.error) {
         setChatMessages((p) => [...p, { role: 'assistant', content: data.error, isError: true }]);
       } else {
-        setChatMessages((p) => [...p, { role: 'assistant', content: data?.content ?? 'לא התקבלה תשובה.', sources: data?.sources }]);
+        setChatMessages((p) => [...p, {
+          role: 'assistant',
+          content: data?.content ?? 'לא התקבלה תשובה.',
+          sources: data?.sources,
+        }]);
       }
     } catch (e: any) {
       setChatMessages((p) => [...p, { role: 'assistant', content: `שגיאה: ${e.message}`, isError: true }]);
@@ -70,6 +63,17 @@ export default function KnowledgeBase() {
       setChatLoading(false);
     }
   };
+
+  /* ── Resource management ── */
+  const [tab, setTab] = useState<Tab>('files');
+  const [filter, setFilter] = useState<Filter>('all');
+  const [search, setSearch] = useState('');
+  const [dragging, setDragging] = useState(false);
+  const [ingesting, setIngesting] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [textTitle, setTextTitle] = useState('');
+  const [textBody, setTextBody] = useState('');
+  const [linkUrl, setLinkUrl] = useState('');
 
   const fileToDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
@@ -86,408 +90,304 @@ export default function KnowledgeBase() {
     return 'text';
   };
 
-  /* ── Documents ── */
-  const { data: docs = [] } = useQuery({
-    queryKey: ['kb-documents', user?.id],
-    enabled: !!user?.id,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('knowledge_documents')
-        .select('*')
-        .eq('user_id', user!.id)
-        .order('created_at', { ascending: false });
-      return data ?? [];
-    },
-  });
-  const activeDocs = isDemoMode ? getDemoCandidateKnowledgeDocuments(demoCandidateId) : docs;
+  const handleFiles = useCallback(async (files: FileList | File[]) => {
+    const list = Array.from(files);
+    if (list.length === 0) return;
+    if (blockDemoAction('upload-knowledge-document')) return;
+    setIngesting(true);
+    for (const file of list) {
+      try {
+        const sourceType = getSourceType(file);
+        const isTextLike = sourceType === 'text' || sourceType === 'pdf';
+        const payload = isTextLike
+          ? { title: file.name, raw_text: await file.text(), source_type: sourceType, source_metadata: { mime_type: file.type, size: file.size } }
+          : { title: file.name, file_data_url: await fileToDataUrl(file), mime_type: file.type, source_type: sourceType, source_metadata: { mime_type: file.type, size: file.size } };
+        const { error } = await supabase.functions.invoke('kb-ingest', { body: payload });
+        if (error) throw error;
+        toast.success(`נטען: ${file.name}`);
+      } catch (e: any) {
+        toast.error(`כשל בטעינת ${file.name}: ${e?.message ?? 'שגיאה'}`);
+      }
+    }
+    setIngesting(false);
+    qc.invalidateQueries({ queryKey: ['kb-documents'] });
+  }, [qc, blockDemoAction]);
 
-
-  /* ── WA Whitelist ── */
-  const { data: whitelist = [] } = useQuery({
-    queryKey: ['kb-whitelist', user?.id],
-    enabled: !!user?.id,
-    queryFn: async () => {
-      const { data } = await supabase
-        .from('kb_whitelist')
-        .select('*')
-        .eq('user_id', user!.id)
-        .order('created_at', { ascending: false });
-      return data ?? [];
-    },
-  });
-
-  const addWhitelist = useMutation({
+  const saveText = useMutation({
     mutationFn: async () => {
-      if (blockDemoAction('add-kb-whitelist')) throw new Error('demo-blocked');
-      if (!waPhone.trim()) throw new Error('יש להזין מספר טלפון');
-      const normalized = waPhone.replace(/\D/g, '');
-      const { error } = await supabase
-        .from('kb_whitelist')
-        .insert({ user_id: user!.id, phone_number: normalized, label: waLabel || null });
+      if (blockDemoAction('add-knowledge-text')) throw new Error('demo-blocked');
+      if (!textBody.trim()) throw new Error('יש להזין תוכן');
+      const { error } = await supabase.functions.invoke('kb-ingest', {
+        body: {
+          title: textTitle.trim() || `הערה · ${new Date().toLocaleString('he-IL')}`,
+          raw_text: textBody.trim(),
+          source_type: 'text',
+        },
+      });
       if (error) throw error;
     },
     onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['kb-whitelist'] });
-      setWaPhone(''); setWaLabel('');
-      toast.success('מספר נוסף לרשימת ההיתרים');
+      toast.success('נשמר למאגר');
+      setTextTitle(''); setTextBody('');
+      qc.invalidateQueries({ queryKey: ['kb-documents'] });
     },
     onError: (e: Error) => { if (e.message !== 'demo-blocked') toast.error(e.message); },
   });
 
-  const removeWhitelist = useMutation({
-    mutationFn: async (id: string) => {
-      if (blockDemoAction('remove-kb-whitelist')) return;
-      const { error } = await supabase.from('kb_whitelist').delete().eq('id', id);
+  const saveLink = useMutation({
+    mutationFn: async () => {
+      if (blockDemoAction('add-knowledge-link')) throw new Error('demo-blocked');
+      if (!linkUrl.trim()) throw new Error('יש להזין קישור');
+      const { error } = await supabase.functions.invoke('kb-ingest', {
+        body: { title: linkUrl, raw_text: linkUrl, source_type: 'text', source_metadata: { url: linkUrl } },
+      });
       if (error) throw error;
     },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['kb-whitelist'] });
-      toast.success('הוסר');
-    },
+    onSuccess: () => { toast.success('הקישור נוסף'); setLinkUrl(''); },
+    onError: (e: Error) => { if (e.message !== 'demo-blocked') toast.error(e.message); },
   });
 
-  const deleteDoc = useMutation({
-    mutationFn: async (id: string) => {
-      if (blockDemoAction('delete-knowledge-document')) return;
-      await supabase.from('knowledge_chunks').delete().eq('document_id', id);
-      const { error } = await supabase.from('knowledge_documents').delete().eq('id', id);
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      qc.invalidateQueries({ queryKey: ['kb-documents'] });
-      toast.success('מסמך נמחק');
-    },
-  });
-
-
-  const handleFiles = useCallback(
-    async (files: FileList | File[]) => {
-      const list = Array.from(files);
-      if (list.length === 0) return;
-      if (blockDemoAction('upload-knowledge-document')) return;
-      setIngesting(true);
-      for (const file of list) {
-        try {
-          const sourceType = getSourceType(file);
-          const isTextLike = sourceType === 'text' || sourceType === 'pdf';
-          const payload = isTextLike
-            ? { title: file.name, raw_text: await file.text(), source_type: sourceType, source_metadata: { mime_type: file.type, size: file.size } }
-            : { title: file.name, file_data_url: await fileToDataUrl(file), mime_type: file.type, source_type: sourceType, source_metadata: { mime_type: file.type, size: file.size } };
-          const { error } = await supabase.functions.invoke('kb-ingest', {
-            body: payload,
-          });
-          if (error) throw error;
-          toast.success(`נטען: ${file.name}`);
-        } catch (e: any) {
-          const msg = typeof e?.message === 'string' ? e.message : JSON.stringify(e);
-          toast.error(`כשל בטעינת ${file.name}: ${msg}`);
-        }
-      }
-      setIngesting(false);
-      qc.invalidateQueries({ queryKey: ['kb-documents'] });
-    },
-    [qc]
-  );
-
-  const demoDocuments = [
-    { id: 'demo-1', title: 'הסכם בלעדיות לשיווק נכס.pdf', type: 'PDF', chunks: 86 },
-    { id: 'demo-2', title: 'מדריך לטיפול בהתנגדויות מחיר קונים.docx', type: 'DOCX', chunks: 42 },
-    { id: 'demo-3', title: 'תסריט שיחה ללידים חמים מאתר הומלי.txt', type: 'TXT', chunks: 28 },
-    { id: 'demo-4', title: 'מחירון עמלות תיווך ונהלי סגירה.pdf', type: 'PDF', chunks: 19 },
+  const tabs: { id: Tab; label: string; icon: typeof FileText }[] = [
+    { id: 'files', label: 'קבצים', icon: FileText },
+    { id: 'text', label: 'טקסט', icon: Type },
+    { id: 'link', label: 'קישור', icon: LinkIcon },
+    { id: 'voice', label: 'הקלטה', icon: Mic },
   ];
-  const coreValues = ['מקצועיות', 'אמינות', 'שקיפות', 'שירות אישי'];
-  const qaPairs = [
-    {
-      q: 'מה גובה העמלה המקובלת בעסקת מכירה?',
-      a: 'העמלה הסטנדרטית היא 2% מערך העסקה בתוספת מע"מ, משולמת במעמד חתימת ההסכם. ניתן להתאים לפי סוג הנכס והבלעדיות.',
-    },
-    {
-      q: 'איך מתמודדים עם קונה שטוען שהמחיר גבוה מדי?',
-      a: 'מציגים השוואת עסקאות אחרונות באזור, מדגישים יתרונות ייחודיים של הנכס, ובוחנים פערים אמיתיים לעומת התנגדות טקטית לפני משא ומתן.',
-    },
+
+  const filters: { id: Filter; label: string }[] = [
+    { id: 'all', label: 'הכל' },
+    { id: 'images', label: 'תמונות' },
+    { id: 'videos', label: 'סרטונים' },
+    { id: 'docs', label: 'מסמכים' },
   ];
 
   return (
     <div className="space-y-6" dir="rtl">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-primary">מאגר הידע</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          הזן מסמכי תיווך, תסריטי שיחה והודעות WhatsApp למוח של סוכן ה-AI. כל ידע מומר לווקטורים סמנטיים לחיפוש מדויק.
+      {/* Blue banner header */}
+      <div className="rounded-xl bg-primary text-primary-foreground px-6 py-5 shadow-sm">
+        <h1 className="text-2xl font-bold tracking-tight">מאגר הידע</h1>
+        <p className="text-sm opacity-90 mt-1">
+          הזן מסמכים, טקסטים והקלטות למוח של {brand}. הידע מומר לווקטורים סמנטיים לחיפוש מדויק.
         </p>
       </div>
-      {isDemoMode && (
-        <>
-          <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-            <Card className="lg:col-span-2">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <BookOpen className="h-4 w-4 text-primary" /> מקורות ידע פעילים
-                </CardTitle>
-                <CardDescription>הספרייה שמזינה את מוח ה-AI של המשרד</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-2">
-                {demoDocuments.map((doc) => (
-                  <div key={doc.id} className="flex items-center gap-3 p-3 rounded-md border bg-muted/30">
-                    <FileText className="h-4 w-4 text-primary shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <div className="text-sm font-medium truncate">{doc.title}</div>
-                      <div className="text-xs text-muted-foreground">{doc.type} · {doc.chunks} מקטעים סמנטיים</div>
-                    </div>
-                    <Badge variant="secondary" className="gap-1 text-xs">
-                      <CheckCircle2 className="h-3 w-3 text-emerald-600" /> נותח
-                    </Badge>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-base flex items-center gap-2">
-                  <Sparkles className="h-4 w-4 text-primary" /> ערכי ליבה מזוהים
-                </CardTitle>
-                <CardDescription>חולצו אוטומטית מהמסמכים שהוזנו</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="flex flex-wrap gap-2">
-                  {coreValues.map((v) => (
-                    <Badge key={v} variant="outline" className="px-3 py-1 text-sm border-primary/40 text-primary">
-                      {v}
-                    </Badge>
-                  ))}
-                </div>
-                <div className="mt-4 pt-4 border-t text-xs text-muted-foreground leading-relaxed">
-                  ה-AI מצליב את הערכים הללו עם כל הודעה יוצאת כדי לשמר עקביות מסר.
-                </div>
-              </CardContent>
-            </Card>
-          </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* RIGHT (first in RTL): Resource management */}
+        <Card>
+          <CardContent className="p-5 space-y-4">
+            {/* Tabs */}
+            <div className="flex gap-1 p-1 rounded-lg bg-muted">
+              {tabs.map((t) => {
+                const Icon = t.icon;
+                const active = tab === t.id;
+                return (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setTab(t.id)}
+                    className={`flex-1 flex items-center justify-center gap-1.5 text-xs font-medium py-2 rounded-md transition-colors ${
+                      active ? 'bg-background text-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    <Icon className="h-3.5 w-3.5" />
+                    {t.label}
+                  </button>
+                );
+              })}
+            </div>
 
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-base flex items-center gap-2">
-                <Brain className="h-4 w-4 text-primary" /> בדיקת ה-AI: זוגות אימון לדוגמה
-              </CardTitle>
-              <CardDescription>כך ה-AI עונה על שאלות מתעניינים בהתבסס על המסמכים שהוזנו</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {qaPairs.map((pair, idx) => (
-                <div key={idx} className="rounded-md border bg-muted/20 p-4 space-y-2">
-                  <div className="flex items-start gap-2">
-                    <Badge variant="secondary" className="shrink-0">שאלה</Badge>
-                    <p className="text-sm font-medium">{pair.q}</p>
-                  </div>
-                  <div className="flex items-start gap-2">
-                    <Badge className="shrink-0 bg-primary text-primary-foreground">תשובת AI</Badge>
-                    <p className="text-sm text-muted-foreground leading-relaxed">{pair.a}</p>
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-        </>
-      )}
-
-      <div className="w-full space-y-4">
-        <UniversalKnowledgeInput />
-        <WhatsAppConversationImporter />
-        <MediaLibraryPanel />
-      </div>
-
-      {/* ─── KB Chat ─── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <MessageSquare className="h-4 w-4 text-primary" /> שיחה עם מאגר הידע
-          </CardTitle>
-          <CardDescription>
-            שאל שאלות וקבל תשובות אך ורק על סמך המסמכים שהעלית למאגר. לא נעשה שימוש בידע חיצוני.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div
-            ref={chatScrollRef}
-            className="h-72 overflow-y-auto rounded-md border bg-muted/20 p-3 space-y-2"
-          >
-            {chatMessages.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center py-10">
-                התחל שיחה — לדוגמה: "מה גובה העמלה המקובלת?" או "איך עונים על התנגדות מחיר?"
-              </p>
-            )}
-            {chatMessages.map((m, i) => (
+            {tab === 'files' && (
               <div
-                key={i}
-                className={`rounded-lg px-3 py-2 text-sm whitespace-pre-wrap leading-relaxed max-w-[90%] ${
-                  m.role === 'user'
-                    ? 'bg-primary text-primary-foreground ms-auto'
-                    : m.isError
-                      ? 'bg-destructive/15 text-destructive border border-destructive/30'
-                      : 'bg-background border'
+                onDragOver={(e) => { e.preventDefault(); setDragging(true); }}
+                onDragLeave={() => setDragging(false)}
+                onDrop={(e) => { e.preventDefault(); setDragging(false); handleFiles(e.dataTransfer.files); }}
+                onClick={() => fileInputRef.current?.click()}
+                className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
+                  dragging ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/60 hover:bg-muted/30'
                 }`}
               >
-                {m.content}
-                {m.sources && m.sources.length > 0 && (
-                  <div className="mt-2 pt-2 border-t border-border/50 flex flex-wrap gap-1">
-                    {m.sources.map((s, j) => (
-                      <Badge key={j} variant="secondary" className="text-[10px]">
-                        <FileText className="h-2.5 w-2.5 me-1" />{s}
-                      </Badge>
-                    ))}
-                  </div>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  className="hidden"
+                  onChange={(e) => e.target.files && handleFiles(e.target.files)}
+                />
+                {ingesting ? (
+                  <Loader2 className="h-8 w-8 text-primary mx-auto mb-2 animate-spin" />
+                ) : (
+                  <Upload className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
                 )}
-              </div>
-            ))}
-            {chatLoading && (
-              <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                <Loader2 className="h-3.5 w-3.5 animate-spin" /> מחפש במאגר...
+                <p className="text-sm font-medium">גרור קבצים לכאן או לחץ לבחירה</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  PDF, Word, Excel, TXT, CSV, תמונות, וידאו, אודיו
+                </p>
               </div>
             )}
-          </div>
-          <div className="flex items-end gap-2">
-            <Textarea
-              value={chatInput}
-              onChange={(e) => setChatInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  sendKbChat();
-                }
-              }}
-              placeholder="שאל שאלה על מאגר הידע..."
-              rows={1}
-              dir="rtl"
-              disabled={chatLoading}
-              className="flex-1 min-h-[44px] max-h-32 resize-none"
-            />
-            <Button onClick={sendKbChat} disabled={chatLoading || !chatInput.trim()}>
-              {chatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            </Button>
-            {chatMessages.length > 0 && (
-              <Button variant="ghost" size="sm" onClick={() => setChatMessages([])}>
-                נקה
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* ─── WhatsApp Whitelist ─── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <Phone className="h-4 w-4 text-primary" /> רשימת מורשים
-          </CardTitle>
-          <CardDescription>
-            רק מספרים ברשימה הזו יכולים לשלוח הודעות עם <code className="bg-muted px-1 rounded">/kb</code> או <code className="bg-muted px-1 rounded">#knowledge</code> להזנה אוטומטית למאגר
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="flex flex-wrap items-end gap-2">
-            <div className="flex-1 min-w-[180px]">
-              <Label className="text-xs">מספר טלפון</Label>
-              <Input
-                value={waPhone}
-                onChange={(e) => setWaPhone(e.target.value)}
-                placeholder="0501234567"
-                dir="ltr"
-                className="text-right"
-              />
-            </div>
-            <div className="flex-1 min-w-[180px]">
-              <Label className="text-xs">תווית (אופציונלי)</Label>
-              <Input value={waLabel} onChange={(e) => setWaLabel(e.target.value)} placeholder="מנהל קמפיין" />
-            </div>
-            <Button onClick={() => addWhitelist.mutate()} disabled={addWhitelist.isPending}>
-              <Plus className="h-4 w-4" /> הוסף
-            </Button>
-          </div>
-          <div className="space-y-1">
-            {whitelist.length === 0 && (
-              <p className="text-xs text-muted-foreground text-center py-4">אין מספרים מאושרים עדיין</p>
-            )}
-            {whitelist.map((w) => (
-              <div key={w.id} className="flex items-center gap-2 p-2 rounded-md bg-muted/40 border">
-                <CheckCircle2 className="h-4 w-4 text-emerald-600" />
-                <span className="font-mono text-sm" dir="ltr">{w.phone_number}</span>
-                {w.label && <Badge variant="secondary" className="text-xs">{w.label}</Badge>}
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-7 w-7 mr-auto"
-                  onClick={() => removeWhitelist.mutate(w.id)}
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                </Button>
+            {tab === 'text' && (
+              <div className="space-y-2">
+                <Input
+                  value={textTitle}
+                  onChange={(e) => setTextTitle(e.target.value)}
+                  placeholder="כותרת (אופציונלי)"
+                />
+                <Textarea
+                  value={textBody}
+                  onChange={(e) => setTextBody(e.target.value)}
+                  placeholder="הקלד את התוכן..."
+                  className="min-h-[140px]"
+                />
+                <div className="flex justify-end">
+                  <Button onClick={() => saveText.mutate()} disabled={saveText.isPending}>
+                    {saveText.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'שמור למאגר'}
+                  </Button>
+                </div>
               </div>
-            ))}
-          </div>
-        </CardContent>
-      </Card>
+            )}
 
-      {/* ─── Documents List ─── */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base flex items-center gap-2">
-            <FileText className="h-4 w-4 text-primary" /> מסמכים במאגר ({activeDocs.length})
-          </CardTitle>
-          <CardDescription>סטטוס אינדוקס, מקור, וכמות chunks לכל מסמך</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>כותרת</TableHead>
-                <TableHead>מקור</TableHead>
-                <TableHead>Chunks</TableHead>
-                <TableHead>סטטוס</TableHead>
-                <TableHead>נוצר</TableHead>
-                <TableHead></TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {activeDocs.map((d) => (
-                <TableRow key={d.id}>
-                  <TableCell className="font-medium">{d.title}</TableCell>
-                  <TableCell>
-                    <Badge variant="outline" className="text-[10px]">
-                      {d.source_type === 'whatsapp' ? 'WhatsApp' : d.source_type === 'upload' ? 'העלאה' : d.source_type}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="tabular-nums">{d.chunk_count}</TableCell>
-                  <TableCell>
-                    {d.chunk_count > 0 ? (
-                      <div className="flex items-center gap-1 text-emerald-600 text-xs">
-                        <FileCheck className="h-3.5 w-3.5" /> מאונדקס
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-1 text-amber-600 text-xs">
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" /> מעבד
-                      </div>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-xs text-muted-foreground">
-                    {format(new Date(d.created_at), 'dd/MM HH:mm')}
-                  </TableCell>
-                  <TableCell>
-                    <Button variant="ghost" size="icon" className="h-7 w-7" disabled={isDemoMode} onClick={() => deleteDoc.mutate(d.id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {activeDocs.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={6} className="text-center text-muted-foreground py-8">
-                    לא נמצאו מסמכים במאגר. העלה מסמך ראשון כדי להתחיל.
-                  </TableCell>
-                </TableRow>
+            {tab === 'link' && (
+              <div className="space-y-2">
+                <Input
+                  value={linkUrl}
+                  onChange={(e) => setLinkUrl(e.target.value)}
+                  placeholder="https://..."
+                  dir="ltr"
+                />
+                <div className="flex justify-end">
+                  <Button onClick={() => saveLink.mutate()} disabled={saveLink.isPending}>
+                    {saveLink.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'הוסף קישור'}
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {tab === 'voice' && (
+              <div className="border rounded-lg p-8 text-center bg-muted/30">
+                <Mic className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+                <p className="text-sm text-muted-foreground">הקלטה קולית — בקרוב</p>
+              </div>
+            )}
+
+            {/* Search + filters */}
+            <div className="space-y-2 pt-2">
+              <div className="relative">
+                <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  placeholder="חיפוש לפי תיאור / כיתוב"
+                  className="pr-9"
+                />
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {filters.map((f) => {
+                  const active = filter === f.id;
+                  return (
+                    <button
+                      key={f.id}
+                      type="button"
+                      onClick={() => setFilter(f.id)}
+                      className={`text-xs px-3 py-1.5 rounded-full border transition-colors ${
+                        active
+                          ? 'bg-primary text-primary-foreground border-primary'
+                          : 'bg-background text-muted-foreground border-border hover:border-primary/40'
+                      }`}
+                    >
+                      {f.label}
+                    </button>
+                  );
+                })}
+              </div>
+              <div className="text-xs text-muted-foreground text-center py-8">
+                אין פריטים להצגה
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* LEFT (second in RTL): Knowledge tester */}
+        <Card>
+          <CardContent className="p-5 flex flex-col h-full min-h-[420px]">
+            <div className="mb-3">
+              <h2 className="text-base font-semibold flex items-center gap-2">
+                <Brain className="h-4 w-4 text-primary" />
+                בדיקת מאגר הידע
+              </h2>
+              <p className="text-xs text-muted-foreground mt-0.5">
+                שאל שאלות וראה איך ה-AI עונה על סמך המסמכים שהעלית
+              </p>
+            </div>
+
+            <div ref={chatScrollRef} className="flex-1 overflow-y-auto rounded-md border bg-muted/20 p-3 space-y-2 min-h-[240px]">
+              {chatMessages.length === 0 && !chatLoading ? (
+                <div className="h-full flex flex-col items-center justify-center text-center py-8">
+                  <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mb-3">
+                    <Brain className="h-8 w-8 text-primary/60" />
+                  </div>
+                  <p className="text-sm text-muted-foreground max-w-[240px]">
+                    שאל שאלה כדי לבדוק מה ה-AI יודע מהמאגר
+                  </p>
+                </div>
+              ) : (
+                <>
+                  {chatMessages.map((m, i) => (
+                    <div
+                      key={i}
+                      className={`rounded-lg px-3 py-2 text-sm whitespace-pre-wrap leading-relaxed max-w-[90%] ${
+                        m.role === 'user'
+                          ? 'bg-primary text-primary-foreground ms-auto'
+                          : m.isError
+                            ? 'bg-destructive/15 text-destructive border border-destructive/30'
+                            : 'bg-background border'
+                      }`}
+                    >
+                      {m.content}
+                      {m.sources && m.sources.length > 0 && (
+                        <div className="mt-2 pt-2 border-t border-border/50 flex flex-wrap gap-1">
+                          {m.sources.map((s, j) => (
+                            <Badge key={j} variant="secondary" className="text-[10px]">
+                              <FileText className="h-2.5 w-2.5 me-1" />{s}
+                            </Badge>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                  {chatLoading && (
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> מחפש במאגר...
+                    </div>
+                  )}
+                </>
               )}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
+            </div>
 
-      <SectionDivider className="mt-2" />
+            <div className="flex items-end gap-2 mt-3">
+              <Textarea
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+                }}
+                placeholder="שאל שאלה על המאגר..."
+                rows={1}
+                dir="rtl"
+                disabled={chatLoading}
+                className="flex-1 min-h-[44px] max-h-32 resize-none"
+              />
+              <Button
+                onClick={sendChat}
+                disabled={chatLoading || !chatInput.trim()}
+                className="bg-slate-700 hover:bg-slate-800 text-white gap-1.5"
+              >
+                {chatLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                שלח
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
