@@ -627,8 +627,15 @@ const CampaignCenter = () => {
           </TabsList>
         </div>
 
-        <TabsContent value="create" className="mt-6 space-y-6">
-          <ChannelGrid onPick={setPickedChannel} />
+        <TabsContent value="create" className="mt-6 space-y-4">
+          <ChannelGrid selectedId={pickedChannel?.id ?? null} onPick={setPickedChannel} brandName={brandName} />
+          {pickedChannel && (
+            <InlineComposer
+              channel={pickedChannel}
+              brandName={brandName}
+              onConfirm={(p) => setConfirmPayload(p)}
+            />
+          )}
         </TabsContent>
         <TabsContent value="published" className="mt-6">
           <PublishedFeed />
@@ -638,9 +645,17 @@ const CampaignCenter = () => {
         </TabsContent>
       </Tabs>
 
-      <ChannelWizardDialog channel={pickedChannel} open={!!pickedChannel} onClose={() => setPickedChannel(null)} />
+      <ConfirmDispatchDialog
+        open={!!confirmPayload}
+        onClose={() => setConfirmPayload(null)}
+        channel={pickedChannel}
+        body={confirmPayload?.body ?? ''}
+        brandName={brandName}
+        onConfirmed={() => { setConfirmPayload(null); setPickedChannel(null); }}
+      />
     </div>
   );
 };
+
 
 export default CampaignCenter;
