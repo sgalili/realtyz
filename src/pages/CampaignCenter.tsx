@@ -33,7 +33,7 @@ const TABS: { value: TabValue; label: string; icon: typeof Radio }[] = [
 type ChannelCard = {
   id: string;
   label: string;
-  price: string;        // localized price text without currency
+  price?: string;       // localized price text without currency
   priceUnit?: string;   // e.g. "לדקה" / "לנמען"
   free?: boolean;
   brand?: string;       // BrandIcon name
