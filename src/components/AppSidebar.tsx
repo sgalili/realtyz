@@ -72,10 +72,11 @@ const NAV_ITEMS: NavItem[] = [
     aliases: ['/live-conversations', '/ai-content', '/sentiment', '/conversation-analytics', '/insights'],
   },
   {
-    title: 'FB Engagement',
-    url: '/social/engagement',
-    icon: Megaphone,
+    title: 'צ׳אטים',
+    url: '/inbox',
+    icon: MessageCircle,
     iconColor: 'text-social-facebook',
+    aliases: ['/communication'],
   },
 ];
 
