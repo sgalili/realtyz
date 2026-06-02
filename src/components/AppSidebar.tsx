@@ -44,12 +44,26 @@ const NAV_ITEMS: NavItem[] = [
     aliases: ['/dashboard'],
   },
   {
-    title: 'CRM',
+    title: 'לקוחות',
     url: '/lead-crm',
     icon: Users,
     iconColor: 'text-primary',
-    aliases: ['/crm', '/leads', '/properties', '/property', '/deal-room'],
+    aliases: ['/crm', '/leads'],
     badge: '28',
+  },
+  {
+    title: 'נכסים',
+    url: '/properties',
+    icon: Building2,
+    iconColor: 'text-primary',
+    aliases: ['/property', '/listings'],
+  },
+  {
+    title: 'חדר עסקאות',
+    url: '/deal-room',
+    icon: Handshake,
+    iconColor: 'text-amber-600',
+    aliases: ['/deals'],
   },
   {
     title: 'צ׳אטים',
