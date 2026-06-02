@@ -459,11 +459,19 @@ export type Database = {
       }
       ayrshare_social_accounts: {
         Row: {
+          account_ref: string
+          account_type: string | null
+          account_username: string | null
+          avatar_url: string | null
           connected: boolean
           connected_at: string
           display_name: string | null
           id: string
+          is_active: boolean
+          last_synced_at: string
+          metadata: Json | null
           platform: string
+          profile_key: string | null
           profile_url: string | null
           raw: Json | null
           updated_at: string
@@ -471,11 +479,19 @@ export type Database = {
           username: string | null
         }
         Insert: {
+          account_ref: string
+          account_type?: string | null
+          account_username?: string | null
+          avatar_url?: string | null
           connected?: boolean
           connected_at?: string
           display_name?: string | null
           id?: string
+          is_active?: boolean
+          last_synced_at?: string
+          metadata?: Json | null
           platform: string
+          profile_key?: string | null
           profile_url?: string | null
           raw?: Json | null
           updated_at?: string
@@ -483,11 +499,19 @@ export type Database = {
           username?: string | null
         }
         Update: {
+          account_ref?: string
+          account_type?: string | null
+          account_username?: string | null
+          avatar_url?: string | null
           connected?: boolean
           connected_at?: string
           display_name?: string | null
           id?: string
+          is_active?: boolean
+          last_synced_at?: string
+          metadata?: Json | null
           platform?: string
+          profile_key?: string | null
           profile_url?: string | null
           raw?: Json | null
           updated_at?: string

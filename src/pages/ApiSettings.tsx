@@ -33,6 +33,7 @@ import { ProductionPrepPanel } from '@/components/ProductionPrepPanel';
 import { VoiceAgentPanel } from '@/components/calendar/VoiceAgentPanel';
 import { UsageMeterPanel } from '@/components/UsageMeterPanel';
 import { ServiceAreasPanel } from '@/components/settings/ServiceAreasPanel';
+import { SocialChannelsGrid } from '@/components/social/SocialChannelsGrid';
 
 interface ApiConfig {
   id: string;
@@ -1096,6 +1097,15 @@ const ApiSettings = () => {
           <p className="text-xs text-muted-foreground">דומיין מותאם, סביבת דמו, ייצוא נתונים ומחיקת פרטים אישיים — הכל במקום אחד.</p>
         </div>
         <ProductionPrepPanel />
+      </div>
+
+      {/* ── Section A.0b: Social Channels (Ayrshare dynamic grid) ── */}
+      <div className="space-y-2">
+        <div>
+          <h2 className="text-sm font-bold tracking-tight">רשתות חברתיות · Social Channels</h2>
+          <p className="text-xs text-muted-foreground">פרופיל Ayrshare ייעודי לסביבת העבודה (נוצר דינמית, לא משותף בין סוכנים), קטלוג ערוצים חי וייבוא חשבונות בלחיצה.</p>
+        </div>
+        <SocialChannelsGrid />
       </div>
 
       {/* ── Section A.4-fine-tune: AI Fine-Tuning ── */}
