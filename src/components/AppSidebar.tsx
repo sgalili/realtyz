@@ -140,19 +140,6 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
           </SidebarGroupContent>
         </SidebarGroup>
 
-        {!collapsed && (
-          <SidebarGroup className="pt-3">
-            <SidebarGroupContent className="px-3">
-              <button
-                type="button"
-                onClick={() => navigate('/campaigns')}
-                className="w-full rounded-xl bg-destructive px-4 py-3 text-sm font-semibold text-destructive-foreground shadow-lg shadow-destructive/30 hover:bg-destructive/90 transition-all"
-              >
-                הזנקת פעילות שטח
-              </button>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        )}
 
         {!collapsed && (
           <div className="mt-auto">
