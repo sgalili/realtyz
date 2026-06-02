@@ -1,18 +1,16 @@
 import {
-  LayoutDashboard,
+  Activity,
   Users,
   Megaphone,
   Brain,
-  Briefcase,
   MessageCircle,
+  Repeat2,
 } from 'lucide-react';
-import { useQuery } from '@tanstack/react-query';
 import { NavLink } from '@/components/NavLink';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
-import { useDemoMode } from '@/hooks/useDemoMode';
-import { supabase } from '@/integrations/supabase/client';
+import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { SuperAdminLeadAlert } from '@/components/admin/SuperAdminLeadAlert';
 import {
   Sidebar,
@@ -25,38 +23,39 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { SidebarIntelInput } from '@/components/SidebarIntelInput';
-import { cn } from '@/lib/utils';
 
 type NavItem = {
   title: string;
   url: string;
-  icon: typeof LayoutDashboard;
+  icon: typeof Activity;
   iconColor: string;
   aliases?: string[];
+  badge?: string;
 };
 
 const NAV_ITEMS: NavItem[] = [
   {
-    title: 'סנטימנט ותובנות',
+    title: 'דופק השטח',
     url: '/',
-    icon: LayoutDashboard,
+    icon: Activity,
     iconColor: 'text-primary',
     aliases: ['/dashboard'],
   },
   {
-    title: 'לקוחות ונכסים',
+    title: 'CRM',
     url: '/lead-crm',
     icon: Users,
-    iconColor: 'text-social-facebook',
-    aliases: ['/crm', '/leads', '/properties', '/property'],
+    iconColor: 'text-primary',
+    aliases: ['/crm', '/leads', '/properties', '/property', '/deal-room'],
+    badge: '28',
   },
   {
-    title: 'חדר עסקאות',
-    url: '/deal-room',
-    icon: Briefcase,
-    iconColor: 'text-primary-glow',
+    title: 'צ׳אטים',
+    url: '/inbox',
+    icon: MessageCircle,
+    iconColor: 'text-emerald-600',
+    aliases: ['/communication'],
   },
-
   {
     title: 'קמפיינים',
     url: '/campaigns',
@@ -68,20 +67,10 @@ const NAV_ITEMS: NavItem[] = [
     title: 'מוח AI',
     url: '/knowledge',
     icon: Brain,
-    iconColor: 'text-social-instagram',
+    iconColor: 'text-primary',
     aliases: ['/live-conversations', '/ai-content', '/sentiment', '/conversation-analytics', '/insights'],
   },
-  {
-    title: 'צ׳אטים',
-    url: '/inbox',
-    icon: MessageCircle,
-    iconColor: 'text-social-facebook',
-    aliases: ['/communication'],
-  },
 ];
-
-
-const FORCED_DISPLAY_NAME = 'אודי ויטמן';
 
 export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: string | null }) {
   const { state, isMobile, setOpenMobile } = useSidebar();
@@ -90,26 +79,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const navigate = useNavigate();
   const { user } = useAuth();
   const { isSuperAdmin } = useUserRole();
-  const { isDemoMode } = useDemoMode();
-
-  const { data: badgeCounts } = useQuery({
-    queryKey: ['sidebar-nav-counts', user?.id],
-    enabled: !!user?.id && !isDemoMode,
-    refetchInterval: 60_000,
-    queryFn: async () => {
-      const since24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
-      const [leads, approvals, knowledge] = await Promise.all([
-        supabase.from('leads').select('id', { count: 'exact', head: true }).gte('created_at', since24h),
-        supabase.from('approval_queue').select('id', { count: 'exact', head: true }).eq('status', 'pending'),
-        supabase.from('knowledge_documents').select('id', { count: 'exact', head: true }),
-      ]);
-      return {
-        '/lead-crm': leads.count ?? 0,
-        '/campaigns': approvals.count ?? 0,
-        '/knowledge': knowledge.count ?? 0,
-      } as Record<string, number>;
-    },
-  });
+  const { settings } = useWhiteLabel();
 
   const handleNavClick = () => {
     if (isMobile) setOpenMobile(false);
@@ -121,9 +91,9 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
 
   const meta = (user?.user_metadata ?? {}) as Record<string, any>;
   const avatarUrl: string | null =
-    meta.avatar_url || meta.picture || meta.profile_picture_url || null;
-  const displayName = FORCED_DISPLAY_NAME;
-  const initial = displayName.slice(0, 1);
+    settings?.logo_url || meta.avatar_url || meta.picture || meta.profile_picture_url || null;
+  const brokerName = settings?.agency_name || 'Realtyz AI';
+  const initial = brokerName.slice(0, 1);
 
   return (
     <Sidebar collapsible="offcanvas" className="realtyz-premium-sidebar border-l border-r-0 border-sidebar-border" side="right">
@@ -144,8 +114,6 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                 const tutorialActive =
                   tutorialHighlightPath === item.url ||
                   item.aliases?.includes(tutorialHighlightPath ?? '');
-                const count = badgeCounts?.[item.url] ?? 0;
-                const badge = count > 0 ? (count > 99 ? '99+' : String(count)) : '';
                 return (
                   <SidebarMenuItem key={item.title}>
                     <SidebarMenuButton asChild isActive={active}>
@@ -153,16 +121,14 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                         to={item.url}
                         end={item.url === '/'}
                         onClick={handleNavClick}
-                        className={`group flex items-center gap-3 px-3 py-2.5 rounded-md text-primary hover:text-primary hover:bg-primary/10 transition-all ${tutorialActive ? 'realtyz-tutorial-nav-glow' : ''}`}
-                        activeClassName="!bg-primary !text-primary-foreground font-semibold !shadow-[inset_-3px_0_0_hsl(var(--primary-glow))]"
+                        className={`group flex items-center gap-3 px-3 py-2.5 rounded-full text-primary hover:bg-primary/5 transition-all ${tutorialActive ? 'realtyz-tutorial-nav-glow' : ''}`}
+                        activeClassName="!bg-white !text-primary font-semibold ring-1 ring-primary/40 shadow-sm"
                       >
-                        <item.icon
-                          className={`h-4 w-4 shrink-0 ${active ? 'text-primary-foreground' : item.iconColor}`}
-                        />
-                        {!collapsed && <span className="text-sm">{item.title}</span>}
-                        {!collapsed && badge && (
-                          <span className="ms-auto rounded-full bg-white px-2 py-0.5 text-xs font-bold leading-none text-primary shadow-sm">
-                            {badge}
+                        <item.icon className={`h-4 w-4 shrink-0 ${item.iconColor}`} />
+                        {!collapsed && <span className="text-sm flex-1">{item.title}</span>}
+                        {!collapsed && item.badge && (
+                          <span className="rounded-full bg-white px-2.5 py-0.5 text-xs font-bold leading-none text-primary shadow ring-1 ring-primary/10">
+                            {item.badge}
                           </span>
                         )}
                       </NavLink>
@@ -175,37 +141,64 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
         </SidebarGroup>
 
         {!collapsed && (
+          <SidebarGroup className="pt-3">
+            <SidebarGroupContent className="px-3">
+              <button
+                type="button"
+                onClick={() => navigate('/campaigns')}
+                className="w-full rounded-xl bg-destructive px-4 py-3 text-sm font-semibold text-destructive-foreground shadow-lg shadow-destructive/30 hover:bg-destructive/90 transition-all"
+              >
+                הזנקת פעילות שטח
+              </button>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
+        {!collapsed && (
           <div className="mt-auto">
-            <SidebarGroup className="p-0">
-              <SidebarGroupContent className="p-0">
-                <SidebarIntelInput />
+            <SidebarGroup className="p-0 border-t border-sidebar-border">
+              <SidebarGroupContent className="px-3 py-3">
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    aria-label="החלף חשבון"
+                    onClick={() => navigate('/profile')}
+                    className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
+                  >
+                    <Repeat2 className="h-4 w-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => navigate('/profile')}
+                    className="flex flex-1 items-center gap-3 rounded-md px-1 py-1 text-right transition-colors hover:bg-primary/5 min-w-0"
+                  >
+                    <div className="min-w-0 flex-1 text-right">
+                      <div className="truncate text-sm font-bold text-primary">{brokerName}</div>
+                      <div className="truncate text-[11px] text-muted-foreground">
+                        חשבון המתווך · ניהול נכסים, משרד ובו...
+                      </div>
+                    </div>
+                    <div className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-lg overflow-hidden shrink-0 ring-1 ring-primary/10">
+                      {avatarUrl ? (
+                        <img
+                          src={avatarUrl}
+                          alt={brokerName}
+                          className="w-10 h-10 rounded-lg object-cover block"
+                        />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
+                          {initial}
+                        </div>
+                      )}
+                    </div>
+                  </button>
+                </div>
               </SidebarGroupContent>
             </SidebarGroup>
 
             <SidebarGroup className="p-0 border-t border-sidebar-border">
-              <SidebarGroupContent className="px-3 py-2">
-                <button
-                  type="button"
-                  onClick={() => navigate('/profile')}
-                  className="flex w-full items-center gap-3 rounded-md px-2 py-1.5 text-right transition-colors hover:bg-primary/10"
-                >
-                  <div className="w-10 h-10 min-w-[40px] min-h-[40px] max-w-[40px] max-h-[40px] rounded-full overflow-hidden shrink-0">
-                    {avatarUrl ? (
-                      <img
-                        src={avatarUrl}
-                        alt={displayName}
-                        className="w-10 h-10 min-w-[40px] min-h-[40px] max-w-[40px] max-h-[40px] rounded-full object-cover aspect-square block shrink-0"
-                      />
-                    ) : (
-                      <div className="flex h-full w-full items-center justify-center rounded-full bg-primary text-xs font-bold text-primary-foreground">
-                        {initial}
-                      </div>
-                    )}
-                  </div>
-                  <span className="truncate text-sm font-semibold text-primary">
-                    {displayName}
-                  </span>
-                </button>
+              <SidebarGroupContent className="p-0">
+                <SidebarIntelInput />
               </SidebarGroupContent>
             </SidebarGroup>
           </div>
