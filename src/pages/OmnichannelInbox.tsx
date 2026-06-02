@@ -379,14 +379,14 @@ const OmnichannelInbox = () => {
     <div dir="rtl" className="space-y-3">
       {/* Autopilot toggle bar */}
       <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 flex items-center justify-between gap-3">
+        <div className="text-sm font-semibold text-foreground">
+          מענה אוטומטי: כלל הערוצים
+        </div>
         <Switch
           checked={aiAutopilot}
           onCheckedChange={setAiAutopilot}
           aria-label="מענה אוטומטי"
         />
-        <div className="text-sm font-semibold text-foreground">
-          מענה אוטומטי: כלל הערוצים
-        </div>
       </div>
 
       {/* Filter pills + bookmark */}
