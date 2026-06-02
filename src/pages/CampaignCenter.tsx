@@ -77,7 +77,6 @@ const ChannelWizardDialog = ({
       const { data: leads, error } = await supabase
         .from('leads')
         .select('id, full_name, phone, email')
-        .eq('user_id', user.id)
         .limit(audience === 'all' ? 100 : 25);
       if (error) throw error;
       const rows = (leads || []).map((l: any) => ({
