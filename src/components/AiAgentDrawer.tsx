@@ -258,10 +258,30 @@ export default function AiAgentDrawer() {
         {/* Messages */}
         <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
           {messages.length === 0 && (
-            <div className="text-center py-8 space-y-3">
-              <Bot className="h-10 w-10 mx-auto text-muted-foreground/30" />
-              <p className="text-sm text-muted-foreground">שלום! אני קצין המודיעין של Realtyz.</p>
-              <p className="text-xs text-muted-foreground">שאל אותי כל שאלה - אני אנתח את הנתונים ואתן המלצות אסטרטגיות.</p>
+            <div className="space-y-5 py-2">
+              <div className="text-center space-y-2 pb-1">
+                <Bot className="h-10 w-10 mx-auto text-muted-foreground/30" />
+                <p className="text-sm text-muted-foreground">שלום! אני קצין המודיעין של Realtyz.</p>
+                <p className="text-xs text-muted-foreground">שאל אותי כל שאלה על הנכסים, הקמפיינים והרוכשים שלך.</p>
+              </div>
+              {SUGGESTION_GROUPS.map((group, gi) => (
+                <div key={gi} className="space-y-2">
+                  <p className="text-[11px] font-semibold text-muted-foreground px-1">{group.title}</p>
+                  <div className="space-y-1.5">
+                    {group.prompts.map((p, pi) => (
+                      <button
+                        key={pi}
+                        type="button"
+                        onClick={() => sendMessage(p)}
+                        disabled={isLoading}
+                        className="w-full text-right text-xs leading-relaxed rounded-xl border border-border bg-card hover:bg-primary/5 hover:border-primary/30 transition-colors px-3 py-2.5 disabled:opacity-50"
+                      >
+                        {p}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ))}
             </div>
           )}
 
