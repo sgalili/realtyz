@@ -106,6 +106,8 @@ const OmnichannelInbox = () => {
   }, [searchParams]);
   const [search, setSearch] = useState('');
   const [aiAutopilot, setAiAutopilot] = useState(true);
+  const [activeTab, setActiveTab] = useState<'all' | 'waiting' | 'handling'>('all');
+  const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
   const [sendChannel, setSendChannel] = useState<string>('whatsapp');
