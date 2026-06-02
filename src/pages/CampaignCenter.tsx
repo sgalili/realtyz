@@ -23,11 +23,9 @@ const PageFallback = () => (
 );
 
 const TABS: { value: TabValue; label: string; icon: typeof Radio }[] = [
-  { value: 'create',    label: 'צור קמפיין',     icon: Radio },
-  { value: 'published', label: 'פורסמו',         icon: Calendar },
-  { value: 'responses', label: 'תגובות',         icon: MessageSquare },
-  { value: 'approvals', label: 'אישורים',        icon: ShieldCheck },
-  { value: 'reports',   label: 'דו"חות מסירה',   icon: ClipboardList },
+  { value: 'create',    label: 'צור קמפיין', icon: Radio },
+  { value: 'published', label: 'פורסמו',     icon: Calendar },
+  { value: 'responses', label: 'תגובות',     icon: MessageSquare },
 ];
 
 type ChannelCard = {
