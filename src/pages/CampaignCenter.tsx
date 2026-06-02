@@ -541,7 +541,11 @@ const ResponsesView = () => {
 const CampaignCenter = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const { settings } = useWhiteLabel();
+  const brandName = settings?.agency_name || 'Realtyz AI';
   const [pickedChannel, setPickedChannel] = useState<ChannelCard | null>(null);
+  const [confirmPayload, setConfirmPayload] = useState<{ body: string; mode: 'now' | 'scheduled' } | null>(null);
+
 
   const initial = (searchParams.get('tab') as string) ?? 'create';
   const remapped: TabValue =
