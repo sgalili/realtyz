@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Search, Send, Bot, MessageSquare, MessageCircle, Phone, AlertTriangle, Instagram, AtSign, MoreVertical, Paperclip, Mic, Facebook, Clock } from 'lucide-react';
+import { Search, Send, Bot, MessageSquare, MessageCircle, Phone, AlertTriangle, Instagram, AtSign, MoreVertical, Paperclip, Mic, Facebook, Clock, Bookmark } from 'lucide-react';
 import { format, formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -106,6 +106,8 @@ const OmnichannelInbox = () => {
   }, [searchParams]);
   const [search, setSearch] = useState('');
   const [aiAutopilot, setAiAutopilot] = useState(true);
+  const [activeTab, setActiveTab] = useState<'all' | 'waiting' | 'handling'>('all');
+  const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
   const [sendChannel, setSendChannel] = useState<string>('whatsapp');
@@ -330,10 +332,32 @@ const OmnichannelInbox = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
-  const filteredVoters = voters?.filter((v) =>
-    (v.full_name?.toLowerCase() || '').includes(search.toLowerCase()) ||
-    (v.phone_number || '').includes(search)
-  );
+  const waitingCount = useMemo(() => {
+    if (!voters || !lastMessages) return 0;
+    return voters.filter((v) => {
+      const m: any = lastMessages.get(v.id);
+      return m && m.direction === 'inbound';
+    }).length;
+  }, [voters, lastMessages]);
+  const handlingCount = useMemo(() => {
+    if (!voters || !lastMessages) return 0;
+    return voters.filter((v) => {
+      const m: any = lastMessages.get(v.id);
+      return m && m.direction === 'outbound' && (m.sender_type === 'ai' || m.ai_assisted);
+    }).length;
+  }, [voters, lastMessages]);
+  const totalCount = voters?.length ?? 0;
+
+  const filteredVoters = voters?.filter((v) => {
+    const matchesSearch = (v.full_name?.toLowerCase() || '').includes(search.toLowerCase()) ||
+      (v.phone_number || '').includes(search);
+    if (!matchesSearch) return false;
+    const m: any = lastMessages?.get(v.id);
+    if (activeTab === 'waiting') return m?.direction === 'inbound';
+    if (activeTab === 'handling') return m?.direction === 'outbound' && (m?.sender_type === 'ai' || m?.ai_assisted);
+    if (bookmarkedOnly) return (v as any).is_bookmarked === true;
+    return true;
+  });
 
   const handleSend = () => {
     const content = newMessage.trim();
@@ -352,13 +376,56 @@ const OmnichannelInbox = () => {
   };
 
   return (
-    <div dir="rtl" className="space-y-4">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight text-primary">תיבת הודעות</h1>
-        <p className="text-muted-foreground text-sm">ניהול שיחות בכל הערוצים במקום אחד</p>
+    <div dir="rtl" className="space-y-3">
+      {/* Autopilot toggle bar */}
+      <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 flex items-center justify-between gap-3">
+        <Switch
+          checked={aiAutopilot}
+          onCheckedChange={setAiAutopilot}
+          aria-label="מענה אוטומטי"
+        />
+        <div className="text-sm font-semibold text-foreground">
+          מענה אוטומטי: כלל הערוצים
+        </div>
       </div>
 
-      <div className="grid h-[calc(100svh-178px)] min-h-[560px] w-full grid-cols-1 overflow-hidden rounded-xl border border-border/50 bg-card shadow-soft lg:h-[calc(100vh-238px)] lg:grid-cols-[20rem_minmax(0,1fr)] xl:grid-cols-[20rem_minmax(0,1fr)_18rem]">
+      {/* Filter pills + bookmark */}
+      <div className="flex items-center gap-2">
+        <button
+          type="button"
+          onClick={() => setBookmarkedOnly((v) => !v)}
+          aria-label="סימניות"
+          className={`h-10 w-10 shrink-0 inline-flex items-center justify-center rounded-lg border ${bookmarkedOnly ? 'bg-primary text-primary-foreground border-primary' : 'bg-card border-border text-muted-foreground hover:bg-muted/50'}`}
+        >
+          <Bookmark className="h-4 w-4" />
+        </button>
+        <div className="flex flex-1 items-center gap-2 overflow-x-auto">
+          <button
+            type="button"
+            onClick={() => setActiveTab('handling')}
+            className={`h-10 inline-flex items-center gap-1 rounded-lg px-3 text-sm font-medium whitespace-nowrap border ${activeTab === 'handling' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-foreground border-border hover:bg-muted/50'}`}
+          >
+            <Bot className="h-3.5 w-3.5" />
+            <span>בטיפול ({handlingCount}) AI</span>
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('waiting')}
+            className={`h-10 inline-flex items-center rounded-lg px-3 text-sm font-medium whitespace-nowrap border ${activeTab === 'waiting' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-foreground border-border hover:bg-muted/50'}`}
+          >
+            מחכות למענה ({waitingCount})
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('all')}
+            className={`h-10 inline-flex items-center rounded-lg px-3 text-sm font-medium whitespace-nowrap border ${activeTab === 'all' ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-foreground border-border hover:bg-muted/50'}`}
+          >
+            כל השיחות ({totalCount})
+          </button>
+        </div>
+      </div>
+
+      <div className="grid h-[calc(100svh-300px)] min-h-[480px] w-full grid-cols-1 overflow-hidden rounded-xl border border-border/50 bg-card shadow-soft lg:h-[calc(100vh-340px)] lg:grid-cols-[20rem_minmax(0,1fr)] xl:grid-cols-[20rem_minmax(0,1fr)_18rem]">
         {/* Right panel - Contact List */}
         <div className={`${selectedVoterId ? 'hidden lg:flex' : 'flex'} min-w-0 flex-col border-l bg-card`}>
           <div className="p-3 border-b">
