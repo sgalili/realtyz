@@ -100,7 +100,7 @@ const ChannelGrid = ({
             )}>
             {isConnected && (
               <span aria-hidden className={cn(
-                'absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full',
+                'absolute left-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full',
                 isSelected ? 'text-primary' : 'text-muted-foreground/70 group-hover:text-primary',
               )}>
                 <Plus className="h-4 w-4" />
