@@ -671,7 +671,7 @@ const CampaignCenter = () => {
           <TabsList className="flex w-full h-auto gap-1 overflow-x-auto rounded-xl bg-muted/60 p-1">
             {TABS.map((tab) => (
               <TabsTrigger key={tab.value} value={tab.value}
-                className="flex-1 min-w-fit whitespace-nowrap px-3 py-2 text-xs sm:text-sm font-medium rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
+                className="flex-1 min-w-fit whitespace-nowrap px-3 py-2 text-base sm:text-lg font-medium rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
                 {tab.label}
               </TabsTrigger>
             ))}
