@@ -207,28 +207,28 @@ const CampaignCenter = () => {
       ) : (
         <Tabs value={active} onValueChange={handleChange} className="w-full">
           <div className="sticky top-0 z-30 -mx-6 px-6 py-2 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border/60">
-            <TabsList className="grid w-full grid-cols-4 h-auto gap-1 bg-transparent p-1">
-              {TABS.map((tab) => {
-                const Icon = tab.icon;
-                return (
-                  <TabsTrigger
-                    key={tab.value}
-                    value={tab.value}
-                    className="flex flex-col items-center justify-center gap-1 py-2 px-1 text-[11px] sm:text-xs bg-background border border-border data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:border-primary data-[state=active]:shadow-sm"
-                  >
-                    <Icon className="h-4 w-4 shrink-0" />
-                    <span className="leading-none">{tab.label}</span>
-                  </TabsTrigger>
-                );
-              })}
+            <TabsList className="flex w-full h-auto gap-1 overflow-x-auto rounded-xl bg-muted/60 p-1">
+              {TABS.map((tab) => (
+                <TabsTrigger
+                  key={tab.value}
+                  value={tab.value}
+                  className="flex-1 min-w-fit whitespace-nowrap px-3 py-2 text-xs sm:text-sm font-medium rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm"
+                >
+                  {tab.label}
+                </TabsTrigger>
+              ))}
             </TabsList>
           </div>
 
-          <TabsContent value="broadcast" className="mt-6 space-y-6">
+          <TabsContent value="create" className="mt-6 space-y-6">
+            <ChannelGrid />
             <Suspense fallback={<PageFallback />}><SmsBlastSimulator /></Suspense>
           </TabsContent>
-          <TabsContent value="calendar" className="mt-6">
+          <TabsContent value="published" className="mt-6">
             <Suspense fallback={<PageFallback />}><ContentCalendar /></Suspense>
+          </TabsContent>
+          <TabsContent value="responses" className="mt-6">
+            <EmptyState title="תגובות יוצגו כאן" hint="כל התגובות הנכנסות לקמפיינים יופיעו במסך זה." />
           </TabsContent>
           <TabsContent value="approvals" className="mt-6">
             <Suspense fallback={<PageFallback />}><ApprovalQueue /></Suspense>
