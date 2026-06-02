@@ -518,14 +518,15 @@ const ResponsesView = () => {
 
       <div className="space-y-3">
         {visible.map((c) => (
-          <article key={c.id} className="rounded-2xl border border-border/60 bg-card overflow-hidden">
-            <header className="flex items-center justify-between px-4 py-3 border-b border-border">
-              <span className="inline-flex h-7 min-w-[28px] items-center justify-center rounded-full bg-muted px-2 text-xs font-semibold text-muted-foreground">0</span>
+          <article key={c.id} dir="rtl" className="rounded-2xl border border-border/60 bg-card overflow-hidden">
+            <header className="flex items-center justify-between px-4 py-3 border-b border-border" dir="rtl">
               <div className="flex items-center gap-2">
-                <h3 className="font-semibold text-foreground">{c.label}</h3>
                 {c.brand && <BrandIcon name={c.brand} className="h-5 w-5" />}
+                <h3 className="font-semibold text-foreground">{c.label}</h3>
               </div>
+              <span className="inline-flex h-7 min-w-[28px] items-center justify-center rounded-full bg-muted px-2 text-xs font-semibold text-muted-foreground">0</span>
             </header>
+
             <div className="px-4 py-8 text-center">
               <p className="text-sm text-foreground">אין אינטראקציות להצגה כרגע</p>
               <p className="mt-1 text-xs text-muted-foreground">ברגע שהחיבור יאומת ויגיעו נתונים, הפיד יתעדכן כאן אוטומטית.</p>
