@@ -277,10 +277,9 @@ const Dashboard = () => {
         </p>
       </div>
 
-      {/* Global search + emergency kill switch */}
+      {/* Global search */}
       <div className="space-y-3">
         <GlobalSearchTrigger />
-        <KillSwitchCard />
       </div>
 
       {/* 4 KPI widgets */}
