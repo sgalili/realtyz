@@ -332,10 +332,32 @@ const OmnichannelInbox = () => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [chatMessages]);
 
-  const filteredVoters = voters?.filter((v) =>
-    (v.full_name?.toLowerCase() || '').includes(search.toLowerCase()) ||
-    (v.phone_number || '').includes(search)
-  );
+  const waitingCount = useMemo(() => {
+    if (!voters || !lastMessages) return 0;
+    return voters.filter((v) => {
+      const m: any = lastMessages.get(v.id);
+      return m && m.direction === 'inbound';
+    }).length;
+  }, [voters, lastMessages]);
+  const handlingCount = useMemo(() => {
+    if (!voters || !lastMessages) return 0;
+    return voters.filter((v) => {
+      const m: any = lastMessages.get(v.id);
+      return m && m.direction === 'outbound' && (m.sender_type === 'ai' || m.ai_assisted);
+    }).length;
+  }, [voters, lastMessages]);
+  const totalCount = voters?.length ?? 0;
+
+  const filteredVoters = voters?.filter((v) => {
+    const matchesSearch = (v.full_name?.toLowerCase() || '').includes(search.toLowerCase()) ||
+      (v.phone_number || '').includes(search);
+    if (!matchesSearch) return false;
+    const m: any = lastMessages?.get(v.id);
+    if (activeTab === 'waiting') return m?.direction === 'inbound';
+    if (activeTab === 'handling') return m?.direction === 'outbound' && (m?.sender_type === 'ai' || m?.ai_assisted);
+    if (bookmarkedOnly) return (v as any).is_bookmarked === true;
+    return true;
+  });
 
   const handleSend = () => {
     const content = newMessage.trim();
