@@ -12,8 +12,9 @@ import { BrandIcon } from '@/components/BrandIcon';
 import {
   ArrowRight, Plus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
   ChevronDown, ChevronUp, Archive, Send, Mic, Image as ImageIcon, Paperclip,
-  ChevronDown as ChevronDownIcon, Plug,
+  ChevronDown as ChevronDownIcon, Plug, Camera, Sparkles, Square,
 } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 
 import { supabase } from '@/integrations/supabase/client';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
