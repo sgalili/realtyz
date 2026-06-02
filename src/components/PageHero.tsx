@@ -18,7 +18,8 @@ import { CreditBalancePill } from '@/components/CreditBalancePill';
 const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/(dashboard)?$/, title: 'לוח בקרה' },
   { match: /^\/lead-crm/, title: 'ניהול מתעניינים' },
-  { match: /^\/inbox/, title: 'תיבת הודעות' },
+  { match: /^\/inbox/, title: 'צ׳אטים בכל הערוצים' },
+  { match: /^\/communication/, title: 'צ׳אטים בכל הערוצים' },
   { match: /^\/deal-room/, title: 'עסקאות' },
   { match: /^\/properties\/[^/]+/, title: 'פרטי נכס' },
   { match: /^\/properties/, title: 'נכסים' },
