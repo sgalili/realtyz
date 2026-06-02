@@ -6,15 +6,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { RealtyzLoader } from '@/components/RealtyzLoader';
 import { RealtyzWave } from '@/components/RealtyzWave';
 import { BrandIcon } from '@/components/BrandIcon';
-import { Radio, Calendar, ShieldCheck, ClipboardList, ArrowRight, Plus, Bot, Mail, Phone, MessageSquare } from 'lucide-react';
+import { Radio, Calendar, ArrowRight, Plus, Bot, Mail, Phone, MessageSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 const ContentCalendar = lazy(() => import('./ContentCalendar'));
-const ApprovalQueue = lazy(() => import('./ApprovalQueue'));
 const SmsBlastSimulator = lazy(() => import('./SmsBlastSimulator'));
-const DeliveryReports = lazy(() => import('./DeliveryReports'));
 
-type TabValue = 'create' | 'published' | 'responses' | 'approvals' | 'reports';
+type TabValue = 'create' | 'published' | 'responses';
 
 const PageFallback = () => (
   <div className="min-h-[40vh] flex items-center justify-center">
