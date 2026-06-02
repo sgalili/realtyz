@@ -20,7 +20,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { PendingListingsCard } from '@/components/PendingListingsCard';
 import { ListingVisibilityManagerCard } from '@/components/listings/ListingVisibilityManagerCard';
 import { GlobalSearchTrigger } from '@/components/GlobalSearch';
-import { KillSwitchCard } from '@/components/safety/KillSwitchCard';
+
 
 /* ────────────────────────────────────────────────────────────────────
    Realtyz — Real-Estate Dashboard
@@ -277,10 +277,9 @@ const Dashboard = () => {
         </p>
       </div>
 
-      {/* Global search + emergency kill switch */}
+      {/* Global search */}
       <div className="space-y-3">
         <GlobalSearchTrigger />
-        <KillSwitchCard />
       </div>
 
       {/* 4 KPI widgets */}
