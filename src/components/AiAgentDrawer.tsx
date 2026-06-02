@@ -173,8 +173,7 @@ export default function AiAgentDrawer() {
     window.addEventListener('open-ai-drawer', handler);
     return () => window.removeEventListener('open-ai-drawer', handler);
   }, []);
-
-  const quickActions = PAGE_QUICK_ACTIONS[location.pathname] || DEFAULT_ACTIONS;
+  const quickActions = DEFAULT_ACTIONS;
 
   const handleVoiceResult = useCallback((text: string) => {
     setInput(prev => (prev ? prev + ' ' + text : text));
