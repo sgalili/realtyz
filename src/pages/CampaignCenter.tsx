@@ -5,7 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { RealtyzLoader } from '@/components/RealtyzLoader';
 import { RealtyzWave } from '@/components/RealtyzWave';
-import { Radio, Calendar, ShieldCheck, ClipboardList, ArrowRight } from 'lucide-react';
+import { BrandIcon } from '@/components/BrandIcon';
+import { Radio, Calendar, ShieldCheck, ClipboardList, ArrowRight, Plus, Bot, Mail, Phone, MessageSquare } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 
 const ContentCalendar = lazy(() => import('./ContentCalendar'));
@@ -13,7 +14,7 @@ const ApprovalQueue = lazy(() => import('./ApprovalQueue'));
 const SmsBlastSimulator = lazy(() => import('./SmsBlastSimulator'));
 const DeliveryReports = lazy(() => import('./DeliveryReports'));
 
-type TabValue = 'broadcast' | 'calendar' | 'approvals' | 'reports';
+type TabValue = 'create' | 'published' | 'responses' | 'approvals' | 'reports';
 
 const PageFallback = () => (
   <div className="min-h-[40vh] flex items-center justify-center">
@@ -22,11 +23,86 @@ const PageFallback = () => (
 );
 
 const TABS: { value: TabValue; label: string; icon: typeof Radio }[] = [
-  { value: 'broadcast', label: 'הפצת הודעות', icon: Radio },
-  { value: 'calendar',  label: 'יומן תוכן ותזמון', icon: Calendar },
-  { value: 'approvals', label: 'אישורים', icon: ShieldCheck },
-  { value: 'reports',   label: 'דו"חות מסירה', icon: ClipboardList },
+  { value: 'create',    label: 'צור קמפיין',     icon: Radio },
+  { value: 'published', label: 'פורסמו',         icon: Calendar },
+  { value: 'responses', label: 'תגובות',         icon: MessageSquare },
+  { value: 'approvals', label: 'אישורים',        icon: ShieldCheck },
+  { value: 'reports',   label: 'דו"חות מסירה',   icon: ClipboardList },
 ];
+
+type ChannelCard = {
+  id: string;
+  label: string;
+  price: string;        // localized price text without currency
+  priceUnit?: string;   // e.g. "לדקה" / "לנמען"
+  free?: boolean;
+  brand?: string;       // BrandIcon name
+  icon?: typeof Bot;    // fallback lucide icon
+  iconColor?: string;
+};
+
+const CHANNEL_CARDS: ChannelCard[] = [
+  { id: 'x',         label: 'X',          free: true, brand: 'x' },
+  { id: 'instagram', label: 'Instagram',  free: true, brand: 'instagram' },
+  { id: 'facebook',  label: 'Facebook',   free: true, brand: 'facebook' },
+  { id: 'ai-call',   label: 'שיחת AI',    price: '1.00', priceUnit: 'לדקה',   icon: Bot,   iconColor: 'text-amber-500' },
+  { id: 'email',     label: 'אימייל',     price: '0.01', priceUnit: 'לנמען',  icon: Mail,  iconColor: 'text-rose-500' },
+  { id: 'ivr',       label: 'IVR',        price: '0.20', priceUnit: 'לדקה',   icon: Phone, iconColor: 'text-purple-500' },
+  { id: 'youtube',   label: 'YouTube',    free: true, brand: 'youtube' },
+  { id: 'linkedin',  label: 'LinkedIn',   free: true, brand: 'linkedin' },
+  { id: 'tiktok',    label: 'TikTok',     free: true, brand: 'tiktok' },
+];
+
+const ChannelGrid = () => (
+  <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-sm">
+    <div className="grid grid-cols-3 gap-3 sm:gap-4">
+      {CHANNEL_CARDS.map((c) => {
+        const Icon = c.icon;
+        return (
+          <button
+            key={c.id}
+            type="button"
+            className="group relative flex aspect-square flex-col items-center justify-center gap-1.5 rounded-xl border border-border bg-background p-3 text-center transition hover:border-primary/40 hover:shadow-md"
+          >
+            <span
+              aria-hidden
+              className="absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full text-muted-foreground/70 group-hover:text-primary"
+            >
+              <Plus className="h-4 w-4" />
+            </span>
+            <span className="flex h-8 w-8 items-center justify-center">
+              {c.brand ? (
+                <BrandIcon name={c.brand} className="h-7 w-7" />
+              ) : Icon ? (
+                <Icon className={`h-7 w-7 ${c.iconColor ?? 'text-foreground'}`} />
+              ) : null}
+            </span>
+            <span className="text-sm font-semibold text-foreground leading-tight">{c.label}</span>
+            {c.free ? (
+              <span className="text-xs font-bold text-primary">חינם</span>
+            ) : (
+              <>
+                <span className="text-sm font-bold text-foreground" dir="ltr">
+                  <bdi dir="ltr">₪{c.price}</bdi>
+                </span>
+                <span className="text-[11px] text-muted-foreground">{c.priceUnit}</span>
+              </>
+            )}
+          </button>
+        );
+      })}
+    </div>
+  </div>
+);
+
+const EmptyState = ({ title, hint }: { title: string; hint?: string }) => (
+  <div className="rounded-2xl border border-dashed border-border bg-card/60 p-10 text-center">
+    <p className="text-sm font-semibold text-foreground">{title}</p>
+    {hint && <p className="mt-1 text-xs text-muted-foreground">{hint}</p>}
+  </div>
+);
+
+
 
 const CampaignCenter = () => {
   const [searchParams, setSearchParams] = useSearchParams();
