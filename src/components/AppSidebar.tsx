@@ -143,7 +143,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
 
         {!collapsed && (
           <div className="mt-auto">
-            <SidebarGroup className="p-0 border-t border-sidebar-border">
+            <SidebarGroup className="p-0">
               <SidebarGroupContent className="px-3 py-3">
                 <div className="flex items-center gap-3">
                   <button
