@@ -168,8 +168,72 @@ const InlineComposer = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [generating, setGenerating] = useState(false);
 
+  // Attachment / media state
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const cameraInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [attachments, setAttachments] = useState<{ name: string; kind: 'image' | 'file' | 'audio'; url?: string }[]>([]);
+  const [generatingImage, setGeneratingImage] = useState(false);
+
+  // Audio recording
+  const [recording, setRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<BlobPart[]>([]);
+
   // Reset on channel change
-  useEffect(() => { setBody(''); setMode('now'); }, [channel.id]);
+  useEffect(() => { setBody(''); setMode('now'); setAttachments([]); }, [channel.id]);
+
+  const handleFiles = (files: FileList | null, kind: 'image' | 'file') => {
+    if (!files) return;
+    const max = 25 * 1024 * 1024;
+    const added: typeof attachments = [];
+    Array.from(files).forEach((f) => {
+      if (f.size > max) { toast.error(`${f.name}: גודל מעל 25MB`); return; }
+      added.push({ name: f.name, kind, url: URL.createObjectURL(f) });
+    });
+    if (added.length) setAttachments((a) => [...a, ...added]);
+  };
+
+  const handleAIImage = async () => {
+    const prompt = body.trim() || 'תמונת קמפיין נדל"ן עבור Realtyz AI';
+    setGeneratingImage(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('generate-content', {
+        body: { purpose: 'image', prompt, brand: brandName, language: 'he' },
+      });
+      if (error) throw error;
+      const url = data?.url || data?.image_url;
+      if (url) {
+        setAttachments((a) => [...a, { name: 'AI Image', kind: 'image', url }]);
+        toast.success('תמונה נוצרה');
+      } else toast.info('לא התקבלה תמונה מה-AI');
+    } catch { toast.error('יצירת תמונה נכשלה'); }
+    finally { setGeneratingImage(false); }
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+      mr.ondataavailable = (e) => { if (e.data.size) audioChunksRef.current.push(e.data); };
+      mr.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const url = URL.createObjectURL(blob);
+        setAttachments((a) => [...a, { name: `הקלטה ${new Date().toLocaleTimeString('he-IL')}.webm`, kind: 'audio', url }]);
+        stream.getTracks().forEach((t) => t.stop());
+      };
+      mr.start();
+      mediaRecorderRef.current = mr;
+      setRecording(true);
+    } catch { toast.error('אין גישה למיקרופון'); }
+  };
+  const stopRecording = () => {
+    mediaRecorderRef.current?.stop();
+    mediaRecorderRef.current = null;
+    setRecording(false);
+  };
+
 
   const insertTag = (tag: string) => {
     const el = textareaRef.current;
