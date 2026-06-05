@@ -632,37 +632,36 @@ export default function DealRoom() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-3 gap-1.5 mt-3">
+                      <div className={`grid ${settings.enable_broker_referrals ? 'grid-cols-4' : 'grid-cols-3'} gap-1 mt-3`}>
                         <Button
                           size="sm"
                           variant="outline"
-                          className="gap-1 h-11 sm:h-9 text-xs"
+                          className="gap-1 h-11 sm:h-9 text-xs px-1 sm:px-2 min-w-0"
                           onClick={() => openSmartReply(p)}
                         >
-                          <Sparkles className="h-4 w-4 text-primary" />
-                          תשובה
+                          <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
+                          <span className="truncate">תשובה</span>
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
-                          className="gap-1 h-11 sm:h-9 text-xs"
+                          className="gap-1 h-11 sm:h-9 text-xs px-1 sm:px-2 min-w-0"
                           onClick={() => setMatchmakerLead(p)}
                         >
-                          <Home className="h-4 w-4 text-success" />
-                          <span className="hidden xs:inline sm:inline">מצא נכס</span>
-                          <span className="xs:hidden sm:hidden">מצא</span>
+                          <Home className="h-3.5 w-3.5 text-success shrink-0" />
+                          <span className="truncate">מצא</span>
                         </Button>
                         <Button
                           size="sm"
                           variant="outline"
-                          className="gap-1 h-11 sm:h-9 text-xs"
+                          className="gap-1 h-11 sm:h-9 text-xs px-1 sm:px-2 min-w-0"
                           onClick={() => {
                             setOutreachLeadId(p.id);
                             setOutreachOpen(true);
                           }}
                         >
-                          <Megaphone className="h-4 w-4 text-warning" />
-                          פנייה
+                          <Megaphone className="h-3.5 w-3.5 text-warning shrink-0" />
+                          <span className="truncate">פנייה</span>
                         </Button>
                         {settings.enable_broker_referrals && (
                           <ReferralButton
@@ -671,7 +670,7 @@ export default function DealRoom() {
                               id: p.id,
                               label: `${p.full_name ?? 'מתעניין'}${p.city ? ' · ' + p.city : ''}`,
                             }}
-                            className="h-11 sm:h-9 text-xs"
+                            className="h-11 sm:h-9 text-xs px-1 sm:px-2 min-w-0 gap-1 [&_svg]:h-3.5 [&_svg]:w-3.5 [&_svg]:shrink-0"
                           />
                         )}
                       </div>
