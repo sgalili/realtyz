@@ -24,12 +24,11 @@ import { cn } from '@/lib/utils';
 import { SentimentAutomationToggles } from '@/components/automation/SentimentAutomationToggles';
 
 
-type TabValue = 'create' | 'published' | 'responses';
+type TabValue = 'create' | 'published';
 
 const TABS: { value: TabValue; label: string }[] = [
   { value: 'create',    label: 'צור קמפיין' },
   { value: 'published', label: 'פורסמו' },
-  { value: 'responses', label: 'תגובות' },
 ];
 
 type ChannelCard = {
