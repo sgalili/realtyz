@@ -72,7 +72,9 @@ Deno.serve(async (req) => {
     const { email, password, full_name, phone_e164, send_whatsapp, initial_balance_agorot } = parsed.data;
     const normalizedPhone = normalizeIsraeliPhone(phone_e164);
 
-    // Create the auth user (auto-confirmed so they can log in immediately)
+    // Create the auth user (auto-confirmed so they can log in immediately), or
+    // repair/update an existing user created by the super admin.
+    let createdUser = null;
     const { data: created, error: createErr } = await admin.auth.admin.createUser({
       email,
       password,
@@ -80,12 +82,31 @@ Deno.serve(async (req) => {
       email_confirm: true,
       user_metadata: { full_name: full_name ?? "", created_by_super_admin: true, ...(normalizedPhone ? { phone_number: normalizedPhone } : {}) },
     });
-    if (createErr || !created.user) {
+    if (created.user) {
+      createdUser = created.user;
+    } else if (createErr && /already|registered|exists/i.test(createErr.message)) {
+      const { data: users } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+      const existing = users?.users?.find((u) => u.email?.toLowerCase() === email.toLowerCase());
+      if (!existing) throw createErr;
+      const { data: updated, error: updateErr } = await admin.auth.admin.updateUserById(existing.id, {
+        password,
+        ...(normalizedPhone ? { phone: `+${normalizedPhone}`, phone_confirm: true } : {}),
+        email_confirm: true,
+        user_metadata: {
+          ...(existing.user_metadata ?? {}),
+          full_name: full_name ?? (existing.user_metadata as { full_name?: string } | null)?.full_name ?? "",
+          created_by_super_admin: true,
+          ...(normalizedPhone ? { phone_number: normalizedPhone } : {}),
+        },
+      });
+      if (updateErr || !updated.user) throw updateErr ?? createErr;
+      createdUser = updated.user;
+    } else {
       return new Response(JSON.stringify({ error: createErr?.message ?? "createUser failed" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const newUid = created.user.id;
+    const newUid = createdUser.id;
 
     // Upsert profile: unlimited workspace, 1000 NIS balance, owns own workspace.
     // (handle_new_user trigger likely inserted a base row already.)
