@@ -163,7 +163,7 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
             <input
               ref={fileRef}
               type="file"
-              accept=".xlsx,.xls,.csv,.txt,.tsv,text/csv,text/plain,text/tab-separated-values,application/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,*/*"
+              accept="*/*"
               className="hidden"
               disabled={processing}
               onChange={(e) => {
