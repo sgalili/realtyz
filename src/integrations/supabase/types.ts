@@ -3661,8 +3661,12 @@ export type Database = {
           homely_default_agent: string | null
           homely_provider: string | null
           id: string
+          madlan_api_key: string | null
+          madlan_username: string | null
           updated_at: string
           user_id: string
+          yad2_api_key: string | null
+          yad2_username: string | null
         }
         Insert: {
           created_at?: string
@@ -3672,8 +3676,12 @@ export type Database = {
           homely_default_agent?: string | null
           homely_provider?: string | null
           id?: string
+          madlan_api_key?: string | null
+          madlan_username?: string | null
           updated_at?: string
           user_id: string
+          yad2_api_key?: string | null
+          yad2_username?: string | null
         }
         Update: {
           created_at?: string
@@ -3683,8 +3691,12 @@ export type Database = {
           homely_default_agent?: string | null
           homely_provider?: string | null
           id?: string
+          madlan_api_key?: string | null
+          madlan_username?: string | null
           updated_at?: string
           user_id?: string
+          yad2_api_key?: string | null
+          yad2_username?: string | null
         }
         Relationships: []
       }

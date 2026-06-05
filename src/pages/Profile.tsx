@@ -14,6 +14,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { useQuery } from '@tanstack/react-query';
 import { IsraeliCityPicker } from '@/components/IsraeliCityPicker';
 import { WhatsAppGatewayCard } from '@/components/profile/WhatsAppGatewayCard';
+import { ListingPortalsCard } from '@/components/profile/ListingPortalsCard';
 import { cn } from '@/lib/utils';
 
 
@@ -384,15 +385,17 @@ export default function Profile() {
   return (
     <div dir="rtl" className="mx-auto w-full max-w-4xl space-y-4 p-2 sm:p-4">
       <Tabs value={tab} onValueChange={setTab} dir="rtl">
-        <TabsList className="grid w-full grid-cols-2 mb-[15px]">
-          <TabsTrigger value="personal">הפרופיל האישי שלי</TabsTrigger>
-          <TabsTrigger value="workspace">פרטי המשרד והסוכנות</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-3 mb-[15px]">
+          <TabsTrigger value="personal">הפרופיל</TabsTrigger>
+          <TabsTrigger value="workspace">המשרד</TabsTrigger>
+          <TabsTrigger value="connections">חיבורים</TabsTrigger>
         </TabsList>
         <TabsContent value="personal" className="mt-[20px] space-y-4">
           <PersonalTab />
           <WhatsAppGatewayCard />
         </TabsContent>
         <TabsContent value="workspace" className="mt-[20px]"><WorkspaceTab /></TabsContent>
+        <TabsContent value="connections" className="mt-[20px]"><ListingPortalsCard /></TabsContent>
       </Tabs>
     </div>
   );

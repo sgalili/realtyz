@@ -749,20 +749,6 @@ const LeadCRM = () => {
             סה״כ אנשי קשר במערכת: <span className="font-semibold text-foreground">{(isDemoMode ? totalCount : realTotalCount).toLocaleString('he-IL')}</span>
           </p>
         </div>
-        <div className="mt-3 inline-flex rounded-lg border border-border bg-muted/30 p-1 gap-1">
-          <Link
-            to="/lead-crm"
-            className="px-4 py-1.5 text-sm font-medium rounded-md bg-background shadow-sm text-foreground"
-          >
-            מתעניינים
-          </Link>
-          <Link
-            to="/properties-hub"
-            className="px-4 py-1.5 text-sm font-medium rounded-md text-muted-foreground hover:text-foreground hover:bg-background/60 transition-colors"
-          >
-            מאגר נכסים משולב AI
-          </Link>
-        </div>
       </div>
 
       <div className="flex w-full gap-2 sm:w-auto sm:items-center sm:justify-end">
