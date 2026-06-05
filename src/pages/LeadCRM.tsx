@@ -752,7 +752,7 @@ const LeadCRM = () => {
       </div>
 
       <div className="flex w-full gap-2 sm:w-auto sm:items-center sm:justify-end">
-        <input type="file" ref={fileInputRef} accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileSelect} />
+        <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
         {freemium.isTrial && (
           <div className="hidden sm:flex items-center gap-3 me-2 rounded-md border border-border/60 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground">
             <span>נותרו <span className="font-semibold text-foreground tabular-nums">{freemium.daysLeft}</span> ימי התנסות</span>
