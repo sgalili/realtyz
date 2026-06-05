@@ -51,9 +51,10 @@ export function SuperAdminCreateUserCard() {
       toast.success(
         `נוצר חשבון ל-${email}` +
           (data?.wa_status === 'sent' ? ' · נשלח WhatsApp' :
-           data?.wa_status === 'failed' ? ` · WhatsApp נכשל: ${data?.wa_error ?? ''}` : ''),
+           data?.wa_status === 'failed' ? ` · WhatsApp נכשל: ${data?.wa_error ?? ''}` : '') +
+          ' · בתצוגה מקדימה ניתן להיכנס עם קוד מאסטר 9321',
       );
-      setEmail(''); setFullName(''); setPhone(''); setPassword(genPassword());
+      // Keep form values so the admin can copy / re-send creds. Only refresh the password suggestion.
     },
     onError: (e: Error) => toast.error(e.message || 'יצירת משתמש נכשלה'),
   });
@@ -61,6 +62,16 @@ export function SuperAdminCreateUserCard() {
   const copyCreds = async () => {
     await navigator.clipboard.writeText(`Email: ${email}\nPassword: ${password}`);
     toast.success('פרטי ההתחברות הועתקו');
+  };
+
+  const handleSubmit = (e: React.FormEvent | React.MouseEvent) => {
+    e.preventDefault();
+    if (!email || !password || create.isPending) return;
+    create.mutate();
+  };
+
+  const blockEnter = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') e.preventDefault();
   };
 
   return (
@@ -71,25 +82,26 @@ export function SuperAdminCreateUserCard() {
         </CardTitle>
         <CardDescription>
           כל משתמש שייווצר כאן יקבל מרחב עבודה נפרד עם 1,000 ₪ יתרה, חבילה ללא הגבלת מתעניינים/נכסים/דאטה.
+          לא נשלח OTP אוטומטית — בתצוגה מקדימה המשתמש החדש יכול להיכנס עם קוד מאסטר <code className="font-mono">9321</code>.
         </CardDescription>
       </CardHeader>
       <CardContent className="grid gap-3 md:grid-cols-2">
         <div className="grid gap-1.5">
           <Label htmlFor="su-email">אימייל</Label>
-          <Input id="su-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="user@example.com" />
+          <Input id="su-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} onKeyDown={blockEnter} placeholder="user@example.com" />
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="su-name">שם מלא</Label>
-          <Input id="su-name" value={fullName} onChange={(e) => setFullName(e.target.value)} placeholder="שם מלא" />
+          <Input id="su-name" value={fullName} onChange={(e) => setFullName(e.target.value)} onKeyDown={blockEnter} placeholder="שם מלא" />
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="su-phone">טלפון WhatsApp (אופציונלי)</Label>
-          <Input id="su-phone" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="05X-XXXXXXX" />
+          <Input id="su-phone" inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} onKeyDown={blockEnter} placeholder="05X-XXXXXXX" />
         </div>
         <div className="grid gap-1.5">
           <Label htmlFor="su-pwd">סיסמה זמנית</Label>
           <div className="flex gap-2">
-            <Input id="su-pwd" value={password} onChange={(e) => setPassword(e.target.value)} />
+            <Input id="su-pwd" value={password} onChange={(e) => setPassword(e.target.value)} onKeyDown={blockEnter} />
             <Button type="button" variant="outline" onClick={() => setPassword(genPassword())}>חדש</Button>
             <Button type="button" variant="outline" size="icon" onClick={copyCreds} title="העתק">
               <Copy className="h-4 w-4" />
@@ -104,7 +116,7 @@ export function SuperAdminCreateUserCard() {
           <Switch checked={sendWa} onCheckedChange={setSendWa} />
         </div>
         <div className="md:col-span-2 flex justify-end">
-          <Button onClick={() => create.mutate()} disabled={!email || !password || create.isPending}>
+          <Button type="button" onClick={handleSubmit} disabled={!email || !password || create.isPending}>
             {create.isPending ? 'יוצר…' : 'צור משתמש + Workspace'}
           </Button>
         </div>
