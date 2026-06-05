@@ -1429,7 +1429,7 @@ const LeadCRM = () => {
           {/* Lead-kind selector — agent tags the entire batch before import.
               Buyer/Seller stay on the sale pipeline; Renter/Landlord move to rent. */}
           <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
-            <Label className="text-xs font-semibold">סוג הרשימה</Label>
+            <div className="text-xs font-semibold">סוג הרשימה</div>
             <div className="grid grid-cols-4 gap-1.5" dir="rtl">
               {([
                 { v: 'buyer', label: 'קונים' },
