@@ -36,7 +36,7 @@ export function useSidebarCounts() {
         safeCount('listings'),
         safeCount('messages'),
         safeCount('leads', (q) => q.not('lead_stage', 'is', null)),
-        safeCount('campaign_logs'),
+        safeCount('campaign_logs', (q) => q.eq('is_archived', false)),
       ]);
 
       return { leads, listings, chats, deals, campaigns };
