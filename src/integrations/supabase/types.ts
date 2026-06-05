@@ -3084,10 +3084,12 @@ export type Database = {
           ayrshare_profile_key: string | null
           ayrshare_ref_id: string | null
           created_at: string
+          created_by_super_admin: boolean
           email: string | null
           full_name: string | null
           id: string
           is_suspended: boolean
+          is_unlimited: boolean
           last_sign_in_at: string | null
           plan_status: string
           service_areas: string[]
@@ -3095,16 +3097,19 @@ export type Database = {
           trial_start_date: string
           updated_at: string
           wallet_balance_agorot: number
+          workspace_owner_id: string | null
         }
         Insert: {
           avatar_url?: string | null
           ayrshare_profile_key?: string | null
           ayrshare_ref_id?: string | null
           created_at?: string
+          created_by_super_admin?: boolean
           email?: string | null
           full_name?: string | null
           id: string
           is_suspended?: boolean
+          is_unlimited?: boolean
           last_sign_in_at?: string | null
           plan_status?: string
           service_areas?: string[]
@@ -3112,16 +3117,19 @@ export type Database = {
           trial_start_date?: string
           updated_at?: string
           wallet_balance_agorot?: number
+          workspace_owner_id?: string | null
         }
         Update: {
           avatar_url?: string | null
           ayrshare_profile_key?: string | null
           ayrshare_ref_id?: string | null
           created_at?: string
+          created_by_super_admin?: boolean
           email?: string | null
           full_name?: string | null
           id?: string
           is_suspended?: boolean
+          is_unlimited?: boolean
           last_sign_in_at?: string | null
           plan_status?: string
           service_areas?: string[]
@@ -3129,6 +3137,7 @@ export type Database = {
           trial_start_date?: string
           updated_at?: string
           wallet_balance_agorot?: number
+          workspace_owner_id?: string | null
         }
         Relationships: []
       }
