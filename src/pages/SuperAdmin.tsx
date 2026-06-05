@@ -15,7 +15,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { ShieldCheck, ShieldAlert, Users, Activity, ServerCog, Search, Wallet, Bot, ExternalLink, ArrowRight, RadioTower, Flame, Crown, Gauge, BrainCircuit, MessageCircle, RotateCcw, PlugZap, AlertTriangle, RefreshCw, CheckCircle2, AlertOctagon } from 'lucide-react';
 import { FinanceTab } from '@/components/admin/FinanceTab';
 import { TestTrialModeCard } from '@/components/admin/TestTrialModeCard';
+import { SuperAdminCreateUserCard } from '@/components/admin/SuperAdminCreateUserCard';
 import { ErrorLogPanel } from '@/components/admin/ErrorLogPanel';
+
 import { DEMO_CANDIDATES } from '@/lib/demoData';
 import { toast } from 'sonner';
 import { format } from 'date-fns';
@@ -397,7 +399,9 @@ const SuperAdmin = () => {
         </TabsContent>
 
         <TabsContent value="users" className="mt-4 space-y-4">
+          <SuperAdminCreateUserCard />
           <TestTrialModeCard />
+
           <Card><CardHeader className="pb-3"><CardTitle>כל המשתמשים</CardTitle><CardDescription>צפה בכל המשתמשים, נהל הרשאות והשעה גישה</CardDescription></CardHeader><CardContent><div className="relative mb-4"><Search className="absolute right-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" /><Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="חפש לפי אימייל או שם..." className="pr-9" /></div>{profilesLoading ? <Skeleton className="h-64 w-full" /> : <div className="overflow-x-auto"><Table><TableHeader><TableRow><TableHead>אימייל</TableHead><TableHead>שם מלא</TableHead><TableHead>הרשמה</TableHead><TableHead>הרשאות</TableHead><TableHead>פעיל</TableHead><TableHead>פעולות</TableHead></TableRow></TableHeader><TableBody>{filtered.map((p) => { const userRoles = rolesByUser.get(p.id) ?? []; return <TableRow key={p.id}><TableCell className="font-mono text-xs">{p.email ?? '-'}</TableCell><TableCell>{p.full_name || '-'}</TableCell><TableCell className="text-xs text-muted-foreground">{format(new Date(p.created_at), 'dd/MM/yyyy')}</TableCell><TableCell><div className="flex flex-wrap gap-1">{userRoles.length === 0 && <Badge variant="outline">user</Badge>}{userRoles.map((r) => <Badge key={r} variant={r === 'super_admin' ? 'default' : 'secondary'}>{r}</Badge>)}</div></TableCell><TableCell><Switch checked={!p.is_suspended} onCheckedChange={(v) => toggleSuspend.mutate({ id: p.id, suspend: !v })} /></TableCell><TableCell><div className="flex flex-wrap gap-1">{ROLE_OPTIONS.map((role) => { const has = userRoles.includes(role); return <Button key={role} size="sm" variant={has ? 'default' : 'outline'} className="h-7 px-2 text-[10px]" onClick={() => toggleRole.mutate({ userId: p.id, role, enable: !has })}>{has ? '−' : '+'} {role}</Button>; })}</div></TableCell></TableRow>; })}{filtered.length === 0 && <TableRow><TableCell colSpan={6} className="py-8 text-center text-muted-foreground">לא נמצאו משתמשים</TableCell></TableRow>}</TableBody></Table></div>}</CardContent></Card>
         </TabsContent>
 

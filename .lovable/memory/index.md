@@ -35,3 +35,5 @@
 - [Team Collaboration & RBAC](mem://features/team-collaboration) — agent/assistant/junior_agent roles, team_invitations + auto-claim trigger, deal_room_comments, can_close_deal trigger on leads, /team page.
 - [System Health Watchdog](mem://features/system-health) — integration_error_logs, watchdog cron, get_system_status() RPC, /settings/system-health admin page, SystemStatus footer dot.
 - [No Demo Mode](mem://constraints/no-demo-mode) — Demo mode scoped to SmsBlastSimulator only; no demo branches elsewhere.
+- [Super-admin Workspaces](mem://features/super-admin-workspaces) — `super-admin-create-user` edge fn + `SuperAdminCreateUserCard` in /super-admin Users tab. profiles.is_unlimited / created_by_super_admin / workspace_owner_id. enforce_trial_lead_cap skips when is_unlimited. New users get 1000 NIS, managing_broker role, optional WA invite via GreenAPI.
+
