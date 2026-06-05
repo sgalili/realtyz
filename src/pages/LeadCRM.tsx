@@ -105,6 +105,9 @@ interface ImportRow {
   interest_tag?: string;
   identity_number?: string;
   email?: string;
+  /** All ORIGINAL columns from the source file (header → value), so we never
+   * lose data the agent might want later (budget, neighborhood, source, etc.). */
+  extra?: Record<string, string>;
 }
 
 // Bilingual header mapping (Hebrew + English). Keys are normalized (lowercased, trimmed, quotes stripped)
@@ -664,7 +667,28 @@ const LeadCRM = () => {
           if (!phone) { invalid++; continue; }
           if (seenPhones.has(phone) || existingPhones.has(phone)) { duplicates++; continue; }
           seenPhones.add(phone);
-          validRows.push({ full_name: name, phone_number: phone, city, interest_tag: interest, identity_number: identityNumber, email });
+
+          // Capture EVERY original column from the source file (mapped + unmapped),
+          // skipping empties. Keys are the original headers so the agent recognises them.
+          const extra: Record<string, string> = {};
+          for (const [origKey, value] of Object.entries(row)) {
+            if (value == null) continue;
+            const str = String(value).trim();
+            if (!str) continue;
+            // Skip the phone column — it's already normalized into phone_number
+            if (headerMap.phone === origKey) continue;
+            extra[origKey] = str;
+          }
+
+          validRows.push({
+            full_name: name,
+            phone_number: phone,
+            city,
+            interest_tag: interest,
+            identity_number: identityNumber,
+            email,
+            extra: Object.keys(extra).length ? extra : undefined,
+          });
         }
 
         const healthPct = rows.length > 0 ? Math.round((validRows.length / rows.length) * 100) : 0;
@@ -733,12 +757,20 @@ const LeadCRM = () => {
       for (let i = 0; i < rows.length; i += batchSize) {
         const dealType = importLeadKind === 'renter' || importLeadKind === 'landlord' ? 'rent' : 'sale';
         const batch = rows.slice(i, i + batchSize).map((r) => ({
-          full_name: r.full_name, phone_number: r.phone_number,
-          city: r.city || null, interest_tag: r.interest_tag || null,
+          full_name: r.full_name,
+          phone_number: r.phone_number,
+          email: r.email || null,
+          city: r.city || null,
+          interest_tag: r.interest_tag || null,
           identity_number: r.identity_number || null,
           status: 'uploaded',
           deal_type: dealType,
-          preferences: { lead_kind: importLeadKind },
+          // Persist the agent-chosen kind AND every original column from the file
+          // under preferences.extra_fields so nothing the user uploaded is lost.
+          preferences: {
+            lead_kind: importLeadKind,
+            ...(r.extra && Object.keys(r.extra).length ? { extra_fields: r.extra } : {}),
+          },
         }));
         const { data, error } = await supabase
           .from('leads')
@@ -1372,6 +1404,36 @@ const LeadCRM = () => {
                   </div>
 
                   <Separator />
+
+                  {/* Imported file columns — every column from the original
+                      upload, including the ones we don't have a dedicated field
+                      for, so the agent never loses context (budget, source, notes,
+                      neighborhood, etc.). */}
+                  {(() => {
+                    const prefs = ((selectedVoter as any).preferences ?? {}) as Record<string, any>;
+                    const extra = (prefs.extra_fields ?? {}) as Record<string, string>;
+                    const entries = Object.entries(extra).filter(([, v]) => v != null && String(v).trim() !== '');
+                    if (!entries.length) return null;
+                    return (
+                      <div>
+                        <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                          <FileSpreadsheet className="h-4 w-4" /> שדות מהקובץ שיובא
+                          <Badge variant="outline" className="text-[10px] mr-auto">{entries.length}</Badge>
+                        </h3>
+                        <div className="rounded-lg border border-border/60 divide-y divide-border/60 text-xs">
+                          {entries.map(([k, v]) => (
+                            <div key={k} className="flex items-start gap-3 px-3 py-2">
+                              <span className="font-medium text-muted-foreground min-w-[40%] break-words">{k}</span>
+                              <span className="text-foreground break-words">{String(v)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <Separator />
+
 
                   {/* Full History Timeline */}
                   <div>
