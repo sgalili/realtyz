@@ -77,7 +77,7 @@ export default function Properties() {
   const [priceRange, setPriceRange] = useState<[number, number]>([PRICE_MIN, PRICE_MAX]);
   const [areaMin, setAreaMin] = useState<string>('');
   // View mode for the property catalog — card grid (default) or compact list.
-  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'table'>('grid');
 
   const [shareTarget, setShareTarget] = useState<HomelyProperty | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -102,11 +102,11 @@ export default function Properties() {
         if (sourceTab === 'mine') {
           const { data, error } = await supabase
             .from('listings')
-            .select('id, property_title, description, asking_price, city, rooms, sqm, features')
+            .select('id, property_title, description, asking_price, city, rooms, sqm, features, source_metadata, source')
             .eq('status', 'live')
             .eq('is_published', true)
             .order('created_at', { ascending: false })
-            .limit(100);
+            .limit(500);
           if (error) throw error;
           return {
             connected: true,
@@ -125,6 +125,7 @@ export default function Properties() {
               url: null,
               features: Array.isArray(row.features) ? row.features.filter((f: any) => typeof f === 'string') : [],
               listing_type: extractListingType(row.features),
+              extras: (row.source_metadata && typeof row.source_metadata === 'object' ? (row.source_metadata.extras ?? {}) : {}) as Record<string, string>,
             })),
           };
         }
@@ -159,7 +160,7 @@ export default function Properties() {
   }, [liveResults]);
 
   const merged = useMemo<HomelyProperty[]>(() => {
-    const live = liveResults.map((r, i) => ({
+    const live = liveResults.map((r: any, i) => ({
       id: String(r.id ?? `live-${i}`),
       source: (r.source as HomelyProperty['source']) ?? sourceTab,
       title: r.title ?? '',
@@ -173,9 +174,11 @@ export default function Properties() {
       photos: Array.isArray(r.photos) ? r.photos as string[] : [],
       url: r.url ?? null,
       features: Array.isArray(r.features) ? r.features as string[] : [],
+      listing_type: (r.listing_type ?? 'sale') as ListingType,
+      extras: (r.extras ?? {}) as Record<string, string>,
     }));
     // Real data only — no mock catalogue. Each tab shows what its source returns.
-    return live;
+    return live as Array<HomelyProperty & { extras?: Record<string, string> }>;
   }, [liveResults, sourceTab]);
 
   const filtered = useMemo(() => {
@@ -235,6 +238,15 @@ export default function Properties() {
               title="תצוגת רשימה"
             >
               <List className="h-3.5 w-3.5" /> רשימה
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              aria-pressed={viewMode === 'table'}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-sm transition-colors ${viewMode === 'table' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              title="תצוגת טבלה — כל העמודות מהקובץ"
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5" /> טבלה
             </button>
           </div>
           <Button size="sm" onClick={() => setAddOpen(true)} className="gap-1.5">
@@ -422,6 +434,8 @@ export default function Properties() {
               <PropertyRow key={p.id} property={p} onShare={() => setShareTarget(p)} />
             ))}
           </Card>
+        ) : viewMode === 'table' ? (
+          <PropertyTable properties={filtered as any} />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((p) => (
@@ -559,5 +573,72 @@ function PropertyRow({ property, onShare }: { property: HomelyProperty; onShare:
         <Send className="h-3.5 w-3.5" /> שתף
       </Button>
     </div>
+  );
+}
+
+// Full table view — shows every column that was uploaded for each property.
+// Each row mixes core fields (price, city, rooms…) with all original column
+// headers preserved in source_metadata.extras during import.
+function PropertyTable({ properties }: { properties: Array<HomelyProperty & { extras?: Record<string, string> }> }) {
+  // Collect the union of every extras-key across all rows so we render one
+  // column per original spreadsheet header, in first-seen order.
+  const extraKeys = useMemo(() => {
+    const seen = new Set<string>();
+    const order: string[] = [];
+    for (const p of properties) {
+      const ex = p.extras ?? {};
+      for (const k of Object.keys(ex)) {
+        if (!seen.has(k)) { seen.add(k); order.push(k); }
+      }
+    }
+    return order;
+  }, [properties]);
+
+  return (
+    <Card className="overflow-x-auto">
+      <table className="w-full text-xs" dir="rtl">
+        <thead className="bg-muted/50 sticky top-0">
+          <tr className="text-right">
+            <th className="px-2 py-2 font-semibold whitespace-nowrap">סוג עסקה</th>
+            <th className="px-2 py-2 font-semibold whitespace-nowrap">כותרת</th>
+            <th className="px-2 py-2 font-semibold whitespace-nowrap">מחיר</th>
+            <th className="px-2 py-2 font-semibold whitespace-nowrap">עיר</th>
+            <th className="px-2 py-2 font-semibold whitespace-nowrap">חדרים</th>
+            <th className="px-2 py-2 font-semibold whitespace-nowrap">מ"ר</th>
+            {extraKeys.map((k) => (
+              <th key={k} className="px-2 py-2 font-semibold whitespace-nowrap text-muted-foreground">{k}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {properties.map((p) => {
+            const isRent = p.listing_type === 'rent';
+            return (
+              <tr key={p.id} className="border-t hover:bg-muted/30">
+                <td className="px-2 py-1.5 whitespace-nowrap">
+                  <Badge className={`text-[10px] ${isRent ? 'bg-amber-500 text-white' : 'bg-primary text-primary-foreground'}`}>
+                    {LISTING_TYPE_LABELS_HE[p.listing_type ?? 'sale']}
+                  </Badge>
+                </td>
+                <td className="px-2 py-1.5 max-w-[220px] truncate">
+                  <Link to={`/properties/${p.id}`} className="hover:underline">{p.title}</Link>
+                </td>
+                <td className="px-2 py-1.5 whitespace-nowrap font-semibold text-success">
+                  {p.price ? formatPrice(p.price) : '—'}{isRent && p.price ? <span className="text-[10px] text-muted-foreground">/ח</span> : null}
+                </td>
+                <td className="px-2 py-1.5 whitespace-nowrap">{p.city || '—'}</td>
+                <td className="px-2 py-1.5 whitespace-nowrap">{p.rooms || '—'}</td>
+                <td className="px-2 py-1.5 whitespace-nowrap">{p.size_sqm || '—'}</td>
+                {extraKeys.map((k) => (
+                  <td key={k} className="px-2 py-1.5 whitespace-nowrap max-w-[200px] truncate" title={p.extras?.[k] ?? ''}>
+                    {p.extras?.[k] ?? ''}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </Card>
   );
 }
