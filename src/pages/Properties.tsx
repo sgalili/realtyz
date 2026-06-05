@@ -75,9 +75,19 @@ export default function Properties() {
     queryKey: ['homely-search', { city, rooms, propertyType, priceRange, areaMin }],
     queryFn: async () => {
       try {
-        const { data, error } = await supabase.functions.invoke('homely-search', {
+  const fnName = sourceTab === 'yad2'
+    ? 'yad2-search'
+    : sourceTab === 'madlan'
+    ? 'madlan-search'
+    : 'homely-search';
+
+  const { data: liveResponse, isLoading } = useQuery({
+    queryKey: ['properties-search', sourceTab, { city, rooms, propertyType, priceRange, areaMin }],
+    queryFn: async () => {
+      try {
+        const { data, error } = await supabase.functions.invoke(fnName, {
           body: {
-            city: city !== 'כל הערים' ? city : undefined,
+            city: city !== 'כל הערים' && city !== '__my_zones__' ? city : undefined,
             min_price: priceRange[0] > PRICE_MIN ? priceRange[0] : undefined,
             max_price: priceRange[1] < PRICE_MAX ? priceRange[1] : undefined,
             rooms: rooms !== 'any' ? Number(rooms) : undefined,
@@ -85,18 +95,21 @@ export default function Properties() {
           },
         });
         if (error) throw error;
-        return (data?.results ?? []) as Array<Partial<HomelyProperty>>;
+        return data as { connected?: boolean; results?: Array<Partial<HomelyProperty>>; error?: string };
       } catch {
-        return [];
+        return { connected: false, results: [] };
       }
     },
     staleTime: 30_000,
   });
 
+  const liveResults = liveResponse?.results ?? [];
+  const externalConnected = liveResponse?.connected !== false;
+
   const merged = useMemo<HomelyProperty[]>(() => {
-    const live = (liveResults ?? []).map((r, i) => ({
+    const live = liveResults.map((r, i) => ({
       id: String(r.id ?? `live-${i}`),
-      source: (r.source as HomelyProperty['source']) ?? 'homely',
+      source: (r.source as HomelyProperty['source']) ?? sourceTab,
       title: r.title ?? '',
       description: r.description ?? '',
       price: Number(r.price ?? 0),
@@ -109,9 +122,11 @@ export default function Properties() {
       url: r.url ?? null,
       features: Array.isArray(r.features) ? r.features as string[] : [],
     }));
-    // Mock first so the grid is rich even when the API returns nothing.
-    return [...MOCK_HOMELY_PROPERTIES, ...live];
-  }, [liveResults]);
+    // Only the "mine" tab shows the local mock catalogue; external tabs show
+    // only what the connected portal returned.
+    if (sourceTab === 'mine') return [...MOCK_HOMELY_PROPERTIES, ...live];
+    return live;
+  }, [liveResults, sourceTab]);
 
   const filtered = useMemo(() => {
     return merged.filter((p) => {
