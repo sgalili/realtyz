@@ -57,9 +57,11 @@ const CHANNEL_CARDS: ChannelCard[] = [
   { id: 'tiktok',    label: 'TikTok',     free: true, brand: 'tiktok' },
 ];
 
-// Channels considered "connected" by default in the workspace.
-// Disconnected channels render dashed border + grayscale + a "חבר" CTA.
-const DEFAULT_CONNECTED = new Set(['facebook', 'instagram', 'youtube', 'email', 'ivr', 'ai-call']);
+// Connection state is resolved live per-workspace from `social_connections`
+// gated by a verified `workspace_social_profile` row. No hardcoded defaults —
+// each workspace must own its own Ayrshare profile key before any channel can
+// appear connected, preventing cross-tenant leak from shared/global keys.
+const EMPTY_CONNECTED = new Set<string>();
 
 // Official brand colors applied only when the channel is connected.
 const BRAND_COLOR: Record<string, string> = {
