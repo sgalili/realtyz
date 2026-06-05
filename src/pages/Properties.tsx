@@ -15,8 +15,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Send, BedDouble, Ruler, MapPin, Building2, Plus, FileSpreadsheet, LayoutGrid, List } from 'lucide-react';
+import { Send, BedDouble, Ruler, MapPin, Building2, Plus, FileSpreadsheet, LayoutGrid, SlidersHorizontal } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
@@ -62,9 +69,9 @@ function extractListingType(features: unknown): ListingType {
 type SourceTab = 'mine' | 'homely' | 'yad2' | 'madlan';
 const SOURCE_LABELS: Record<SourceTab, string> = {
   mine: 'הנכסים שלי',
-  homely: 'Homely',
-  yad2: 'Yad2',
-  madlan: 'Madlan',
+  homely: 'הומלי',
+  yad2: 'יד-2',
+  madlan: 'מדל״ן',
 };
 
 export default function Properties() {
@@ -74,10 +81,13 @@ export default function Properties() {
   const [city, setCity] = useState<string>(isConfigured ? '__my_zones__' : 'כל הערים');
   const [propertyType, setPropertyType] = useState<PropertyType | 'all'>('all');
   const [rooms, setRooms] = useState<string>('any');
-  const [priceRange, setPriceRange] = useState<[number, number]>([PRICE_MIN, PRICE_MAX]);
+  // Single max-price slider — default at the maximum so users see ALL listings.
+  const [maxPrice, setMaxPrice] = useState<number>(PRICE_MAX);
+  const priceRange: [number, number] = [PRICE_MIN, maxPrice];
   const [areaMin, setAreaMin] = useState<string>('');
-  // View mode for the property catalog — card grid (default) or compact list.
-  const [viewMode, setViewMode] = useState<'grid' | 'list' | 'table'>('grid');
+  // View mode for the property catalog — card grid (default) or table.
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [shareTarget, setShareTarget] = useState<HomelyProperty | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -177,7 +187,6 @@ export default function Properties() {
       listing_type: (r.listing_type ?? 'sale') as ListingType,
       extras: (r.extras ?? {}) as Record<string, string>,
     }));
-    // Real data only — no mock catalogue. Each tab shows what its source returns.
     return live as Array<HomelyProperty & { extras?: Record<string, string> }>;
   }, [liveResults, sourceTab]);
 
@@ -185,11 +194,9 @@ export default function Properties() {
     return merged.filter((p) => {
       const pType: ListingType = (p.listing_type ?? 'sale') as ListingType;
       if (pType !== listingType) return false;
-      // Hyper-local: when agent has service_areas, ALWAYS restrict to them
-      // (regardless of the city dropdown). The dropdown then narrows further.
       if (isConfigured && !isInServiceArea(p.city ?? null, null, serviceAreas)) return false;
       if (city === '__my_zones__') {
-        // already filtered by service_areas above, no extra city filter
+        // already filtered by service_areas above
       } else if (city !== 'כל הערים' && p.city !== city) {
         return false;
       }
@@ -203,62 +210,61 @@ export default function Properties() {
 
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6" dir="rtl">
-      {/* Hero header */}
+      {/* Hero header with "+" add menu on the far left, aligned with the burger */}
       <header className="flex items-start justify-between gap-3 flex-wrap">
-        <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
-            נכסים
-          </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            {isConfigured
-              ? `קטלוג הנכסים באזורי ההתמחות שלך (${coveredCities.join(', ')}). סננו לפי תקציב, סוג ופרטים.`
-              : 'קטלוג הנכסים. סננו לפי תקציב, אזור, סוג נכס וחדרים, ושלחו ישירות למתעניינים.'}
-          </p>
-        </div>
-        <div className="flex items-center gap-2 flex-wrap">
-          <Badge variant="secondary" className="text-sm">
-            {filtered.length} נכסים
-          </Badge>
-          {/* View mode toggle: grid (cards) vs list (compact rows). */}
-          <div className="inline-flex rounded-md border border-border bg-card/50 p-0.5" role="group" aria-label="מצב תצוגה">
-            <button
-              type="button"
-              onClick={() => setViewMode('grid')}
-              aria-pressed={viewMode === 'grid'}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-sm transition-colors ${viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-              title="תצוגת כרטיסיות"
-            >
-              <LayoutGrid className="h-3.5 w-3.5" /> כרטיסיות
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('list')}
-              aria-pressed={viewMode === 'list'}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-sm transition-colors ${viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-              title="תצוגת רשימה"
-            >
-              <List className="h-3.5 w-3.5" /> רשימה
-            </button>
-            <button
-              type="button"
-              onClick={() => setViewMode('table')}
-              aria-pressed={viewMode === 'table'}
-              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-sm transition-colors ${viewMode === 'table' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
-              title="תצוגת טבלה — כל העמודות מהקובץ"
-            >
-              <FileSpreadsheet className="h-3.5 w-3.5" /> טבלה
-            </button>
+        <div className="flex items-start gap-2 min-w-0">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                size="icon"
+                variant="outline"
+                className="h-9 w-9 shrink-0 rounded-full"
+                aria-label="הוספת נכס"
+              >
+                <Plus className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="start">
+              <DropdownMenuItem onClick={() => setAddOpen(true)} className="gap-2">
+                <Plus className="h-4 w-4" /> הוספת נכס ידנית
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setImportOpen(true)} className="gap-2">
+                <FileSpreadsheet className="h-4 w-4" /> יבוא נכסים מאקסל
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          <div className="min-w-0">
+            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
+              נכסים
+            </h1>
+            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+              {isConfigured
+                ? `קטלוג הנכסים באזורי ההתמחות שלך (${coveredCities.join(', ')}). סננו לפי תקציב, סוג ופרטים.`
+                : 'קטלוג הנכסים. סננו לפי תקציב, אזור, סוג נכס וחדרים, ושלחו ישירות למתעניינים.'}
+            </p>
           </div>
-          <Button size="sm" onClick={() => setAddOpen(true)} className="gap-1.5">
-            <Plus className="h-4 w-4" />
-            הוספת נכס ידנית
-          </Button>
-          <Button size="sm" variant="outline" onClick={() => setImportOpen(true)} className="gap-1.5">
-            <FileSpreadsheet className="h-4 w-4" />
-            יבוא נכסים מאקסל
-          </Button>
         </div>
       </header>
+
+      {/* Listing type toggle (moved to top) */}
+      <div className="flex justify-center">
+        <div className="inline-flex items-center rounded-xl border border-primary/20 bg-card/40 p-1 backdrop-blur-md" dir="rtl">
+          {(['sale', 'rent'] as ListingType[]).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setListingType(t)}
+              className={`px-5 py-2 text-sm font-bold rounded-lg transition-colors ${
+                listingType === t
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {LISTING_TYPE_LABELS_HE[t]}
+            </button>
+          ))}
+        </div>
+      </div>
 
       {/* Source tabs: Mine / Homely / Yad2 / Madlan */}
       <div className="flex justify-center">
@@ -286,137 +292,162 @@ export default function Properties() {
         </Card>
       )}
 
-      {/* Listing type toggle: למכירה / להשכרה */}
-      <div className="flex justify-center">
-        <div className="inline-flex items-center rounded-xl border border-primary/20 bg-card/40 p-1 backdrop-blur-md" dir="rtl">
-          {(['sale', 'rent'] as ListingType[]).map((t) => (
+      {/* View mode + filter trigger row */}
+      <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
+        <div className="flex items-center justify-end gap-2 flex-wrap">
+          <div className="inline-flex rounded-md border border-border bg-card/50 p-0.5" role="group" aria-label="מצב תצוגה">
             <button
-              key={t}
               type="button"
-              onClick={() => setListingType(t)}
-              className={`px-5 py-2 text-sm font-bold rounded-lg transition-colors ${
-                listingType === t
-                  ? 'bg-primary text-primary-foreground shadow-sm'
-                  : 'text-muted-foreground hover:text-foreground'
-              }`}
+              onClick={() => setViewMode('grid')}
+              aria-pressed={viewMode === 'grid'}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-sm transition-colors ${viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              title="תצוגת כרטיסיות"
             >
-              {LISTING_TYPE_LABELS_HE[t]}
+              <LayoutGrid className="h-3.5 w-3.5" /> כרטיסיות
             </button>
-          ))}
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              aria-pressed={viewMode === 'table'}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-sm transition-colors ${viewMode === 'table' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              title="תצוגת טבלה — כל העמודות מהקובץ"
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5" /> טבלה
+            </button>
+          </div>
+          <CollapsibleTrigger asChild>
+            <Button
+              size="icon"
+              variant="outline"
+              className="h-8 w-8"
+              aria-label="סינון"
+              title="סינון"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+            </Button>
+          </CollapsibleTrigger>
         </div>
+
+        <CollapsibleContent>
+          <Card className="p-4 sm:p-5 mt-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Max price */}
+              <div className="space-y-2 lg:col-span-2">
+                <div className="flex items-center justify-between">
+                  <Label className="text-xs font-semibold">מחיר מקסימלי</Label>
+                  <span className="text-xs text-muted-foreground">
+                    עד {formatPrice(maxPrice)}
+                  </span>
+                </div>
+                <Slider
+                  dir="rtl"
+                  min={PRICE_MIN}
+                  max={PRICE_MAX}
+                  step={PRICE_STEP}
+                  value={[maxPrice]}
+                  onValueChange={(v) => setMaxPrice(v[0] ?? PRICE_MAX)}
+                />
+              </div>
+
+              {/* Area / city */}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold">אזור</Label>
+                <Select value={city} onValueChange={setCity}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {isConfigured ? (
+                      <>
+                        <SelectItem value="__my_zones__">כל אזורי ההתמחות שלי</SelectItem>
+                        {coveredCities.map((c) => (
+                          <SelectItem key={c} value={c}>{c}</SelectItem>
+                        ))}
+                      </>
+                    ) : (
+                      cityOptions.map((c) => (
+                        <SelectItem key={c} value={c}>{c}</SelectItem>
+                      ))
+                    )}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Property type */}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold">סוג נכס</Label>
+                <Select value={propertyType} onValueChange={(v) => setPropertyType(v as PropertyType | 'all')}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {Object.entries(PROPERTY_TYPE_LABELS_HE).map(([k, label]) => (
+                      <SelectItem key={k} value={k}>{label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Bedrooms */}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold">חדרים (לפחות)</Label>
+                <Select value={rooms} onValueChange={setRooms}>
+                  <SelectTrigger className="h-10">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="any">כל מספר</SelectItem>
+                    {[2, 3, 4, 5, 6].map((n) => (
+                      <SelectItem key={n} value={String(n)}>{n}+ חדרים</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Min area */}
+              <div className="space-y-2">
+                <Label className="text-xs font-semibold">שטח מינימלי (מ"ר)</Label>
+                <Input
+                  type="number"
+                  inputMode="numeric"
+                  placeholder="לדוגמה 80"
+                  value={areaMin}
+                  onChange={(e) => setAreaMin(e.target.value)}
+                  className="h-10"
+                />
+              </div>
+
+              {/* Reset */}
+              <div className="flex items-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-10 w-full"
+                  onClick={() => {
+                    setCity(isConfigured ? '__my_zones__' : 'כל הערים');
+                    setPropertyType('all');
+                    setRooms('any');
+                    setMaxPrice(PRICE_MAX);
+                    setAreaMin('');
+                    toast.success('הסינון אופס');
+                  }}
+                >
+                  איפוס סינון
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </CollapsibleContent>
+      </Collapsible>
+
+      {/* Total count above the listings */}
+      <div className="flex items-center justify-between">
+        <Badge variant="secondary" className="text-sm">
+          {filtered.length} נכסים
+        </Badge>
       </div>
 
-      {/* Filter bar */}
-      <Card className="p-4 sm:p-5">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* Price range */}
-          <div className="space-y-2 lg:col-span-2">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-semibold">טווח מחירים</Label>
-              <span className="text-xs text-muted-foreground">
-                {formatPrice(priceRange[0])} , {formatPrice(priceRange[1])}
-              </span>
-            </div>
-            <Slider
-              dir="ltr"
-              min={PRICE_MIN}
-              max={PRICE_MAX}
-              step={PRICE_STEP}
-              value={priceRange}
-              onValueChange={(v) => setPriceRange([v[0], v[1]] as [number, number])}
-            />
-          </div>
-
-          {/* Area / city */}
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold">אזור</Label>
-            <Select value={city} onValueChange={setCity}>
-              <SelectTrigger className="h-10">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {isConfigured ? (
-                  <>
-                    <SelectItem value="__my_zones__">כל אזורי ההתמחות שלי</SelectItem>
-                    {coveredCities.map((c) => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))}
-                  </>
-                ) : (
-                  cityOptions.map((c) => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
-                  ))
-                )}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Property type */}
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold">סוג נכס</Label>
-            <Select value={propertyType} onValueChange={(v) => setPropertyType(v as PropertyType | 'all')}>
-              <SelectTrigger className="h-10">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Object.entries(PROPERTY_TYPE_LABELS_HE).map(([k, label]) => (
-                  <SelectItem key={k} value={k}>{label}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Bedrooms */}
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold">חדרים (לפחות)</Label>
-            <Select value={rooms} onValueChange={setRooms}>
-              <SelectTrigger className="h-10">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="any">כל מספר</SelectItem>
-                {[2, 3, 4, 5, 6].map((n) => (
-                  <SelectItem key={n} value={String(n)}>{n}+ חדרים</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Min area */}
-          <div className="space-y-2">
-            <Label className="text-xs font-semibold">שטח מינימלי (מ"ר)</Label>
-            <Input
-              type="number"
-              inputMode="numeric"
-              placeholder="לדוגמה 80"
-              value={areaMin}
-              onChange={(e) => setAreaMin(e.target.value)}
-              className="h-10"
-            />
-          </div>
-
-          {/* Reset */}
-          <div className="flex items-end">
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-10 w-full"
-              onClick={() => {
-                setCity(isConfigured ? '__my_zones__' : 'כל הערים');
-                setPropertyType('all');
-                setRooms('any');
-                setPriceRange([PRICE_MIN, PRICE_MAX]);
-                setAreaMin('');
-                toast.success('הסינון אופס');
-              }}
-            >
-              איפוס סינון
-            </Button>
-          </div>
-        </div>
-      </Card>
-
-      {/* Grid */}
+      {/* Grid / Table */}
       <ErrorBoundary source="Properties.Grid">
         {isLoading ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -427,12 +458,6 @@ export default function Properties() {
         ) : filtered.length === 0 ? (
           <Card className="p-12 text-center text-muted-foreground">
             לא נמצאו נכסים תואמים. נסו להרחיב את הסינון.
-          </Card>
-        ) : viewMode === 'list' ? (
-          <Card className="divide-y divide-border overflow-hidden">
-            {filtered.map((p) => (
-              <PropertyRow key={p.id} property={p} onShare={() => setShareTarget(p)} />
-            ))}
           </Card>
         ) : viewMode === 'table' ? (
           <PropertyTable properties={filtered as any} />
@@ -535,53 +560,10 @@ function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare
   );
 }
 
-// Compact list row — single line per property for scanning many at once.
-function PropertyRow({ property, onShare }: { property: HomelyProperty; onShare: () => void }) {
-  const photo = property.photos[0];
-  const isRent = property.listing_type === 'rent';
-  return (
-    <div className="flex items-center gap-3 p-3 hover:bg-muted/40 transition-colors">
-      <Link to={`/properties/${property.id}`} className="flex items-center gap-3 flex-1 min-w-0">
-        <div className="h-14 w-20 shrink-0 rounded-md overflow-hidden bg-muted">
-          {photo ? (
-            <img src={photo} alt={property.title} loading="lazy" className="h-full w-full object-cover" />
-          ) : (
-            <div className="h-full w-full flex items-center justify-center text-[10px] text-muted-foreground">אין תמונה</div>
-          )}
-        </div>
-        <div className="min-w-0 flex-1">
-          <div className="flex items-center gap-2">
-            <h3 className="font-semibold text-sm truncate">{property.title}</h3>
-            {property.listing_type && (
-              <Badge className={`text-[10px] ${isRent ? 'bg-amber-500 text-white' : 'bg-primary text-primary-foreground'}`}>
-                {LISTING_TYPE_LABELS_HE[property.listing_type]}
-              </Badge>
-            )}
-          </div>
-          <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-0.5">
-            {property.city && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{property.city}</span>}
-            {property.rooms ? <span className="inline-flex items-center gap-1"><BedDouble className="h-3 w-3" />{property.rooms} חד'</span> : null}
-            {property.size_sqm ? <span className="inline-flex items-center gap-1"><Ruler className="h-3 w-3" />{property.size_sqm} מ"ר</span> : null}
-            <span>{PROPERTY_TYPE_LABELS_HE[property.property_type]}</span>
-          </div>
-        </div>
-      </Link>
-      <div className="text-sm font-bold text-success whitespace-nowrap">
-        {formatPrice(property.price)}{isRent ? <span className="text-[10px] font-normal text-muted-foreground">/חודש</span> : null}
-      </div>
-      <Button size="sm" variant="outline" onClick={onShare} className="gap-1.5 shrink-0">
-        <Send className="h-3.5 w-3.5" /> שתף
-      </Button>
-    </div>
-  );
-}
-
-// Full table view — shows every column that was uploaded for each property.
-// Each row mixes core fields (price, city, rooms…) with all original column
-// headers preserved in source_metadata.extras during import.
+// Full table view — shows every column that was uploaded for each property,
+// plus a Share action per row (merged from the former list view).
 function PropertyTable({ properties }: { properties: Array<HomelyProperty & { extras?: Record<string, string> }> }) {
-  // Collect the union of every extras-key across all rows so we render one
-  // column per original spreadsheet header, in first-seen order.
+  const [shareTarget, setShareTarget] = useState<HomelyProperty | null>(null);
   const extraKeys = useMemo(() => {
     const seen = new Set<string>();
     const order: string[] = [];
@@ -595,50 +577,63 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
   }, [properties]);
 
   return (
-    <Card className="overflow-x-auto">
-      <table className="w-full text-xs" dir="rtl">
-        <thead className="bg-muted/50 sticky top-0">
-          <tr className="text-right">
-            <th className="px-2 py-2 font-semibold whitespace-nowrap">סוג עסקה</th>
-            <th className="px-2 py-2 font-semibold whitespace-nowrap">כותרת</th>
-            <th className="px-2 py-2 font-semibold whitespace-nowrap">מחיר</th>
-            <th className="px-2 py-2 font-semibold whitespace-nowrap">עיר</th>
-            <th className="px-2 py-2 font-semibold whitespace-nowrap">חדרים</th>
-            <th className="px-2 py-2 font-semibold whitespace-nowrap">מ"ר</th>
-            {extraKeys.map((k) => (
-              <th key={k} className="px-2 py-2 font-semibold whitespace-nowrap text-muted-foreground">{k}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          {properties.map((p) => {
-            const isRent = p.listing_type === 'rent';
-            return (
-              <tr key={p.id} className="border-t hover:bg-muted/30">
-                <td className="px-2 py-1.5 whitespace-nowrap">
-                  <Badge className={`text-[10px] ${isRent ? 'bg-amber-500 text-white' : 'bg-primary text-primary-foreground'}`}>
-                    {LISTING_TYPE_LABELS_HE[p.listing_type ?? 'sale']}
-                  </Badge>
-                </td>
-                <td className="px-2 py-1.5 max-w-[220px] truncate">
-                  <Link to={`/properties/${p.id}`} className="hover:underline">{p.title}</Link>
-                </td>
-                <td className="px-2 py-1.5 whitespace-nowrap font-semibold text-success">
-                  {p.price ? formatPrice(p.price) : '—'}{isRent && p.price ? <span className="text-[10px] text-muted-foreground">/ח</span> : null}
-                </td>
-                <td className="px-2 py-1.5 whitespace-nowrap">{p.city || '—'}</td>
-                <td className="px-2 py-1.5 whitespace-nowrap">{p.rooms || '—'}</td>
-                <td className="px-2 py-1.5 whitespace-nowrap">{p.size_sqm || '—'}</td>
-                {extraKeys.map((k) => (
-                  <td key={k} className="px-2 py-1.5 whitespace-nowrap max-w-[200px] truncate" title={p.extras?.[k] ?? ''}>
-                    {p.extras?.[k] ?? ''}
+    <>
+      <Card className="overflow-x-auto">
+        <table className="w-full text-xs" dir="rtl">
+          <thead className="bg-muted/50 sticky top-0">
+            <tr className="text-right">
+              <th className="px-2 py-2 font-semibold whitespace-nowrap">סוג עסקה</th>
+              <th className="px-2 py-2 font-semibold whitespace-nowrap">כותרת</th>
+              <th className="px-2 py-2 font-semibold whitespace-nowrap">מחיר</th>
+              <th className="px-2 py-2 font-semibold whitespace-nowrap">עיר</th>
+              <th className="px-2 py-2 font-semibold whitespace-nowrap">חדרים</th>
+              <th className="px-2 py-2 font-semibold whitespace-nowrap">מ"ר</th>
+              {extraKeys.map((k) => (
+                <th key={k} className="px-2 py-2 font-semibold whitespace-nowrap text-muted-foreground">{k}</th>
+              ))}
+              <th className="px-2 py-2 font-semibold whitespace-nowrap text-left">פעולות</th>
+            </tr>
+          </thead>
+          <tbody>
+            {properties.map((p) => {
+              const isRent = p.listing_type === 'rent';
+              return (
+                <tr key={p.id} className="border-t hover:bg-muted/30">
+                  <td className="px-2 py-1.5 whitespace-nowrap">
+                    <Badge className={`text-[10px] ${isRent ? 'bg-amber-500 text-white' : 'bg-primary text-primary-foreground'}`}>
+                      {LISTING_TYPE_LABELS_HE[p.listing_type ?? 'sale']}
+                    </Badge>
                   </td>
-                ))}
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </Card>
+                  <td className="px-2 py-1.5 max-w-[220px] truncate">
+                    <Link to={`/properties/${p.id}`} className="hover:underline">{p.title}</Link>
+                  </td>
+                  <td className="px-2 py-1.5 whitespace-nowrap font-semibold text-success">
+                    {p.price ? formatPrice(p.price) : '—'}{isRent && p.price ? <span className="text-[10px] text-muted-foreground">/ח</span> : null}
+                  </td>
+                  <td className="px-2 py-1.5 whitespace-nowrap">{p.city || '—'}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap">{p.rooms || '—'}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap">{p.size_sqm || '—'}</td>
+                  {extraKeys.map((k) => (
+                    <td key={k} className="px-2 py-1.5 whitespace-nowrap max-w-[200px] truncate" title={p.extras?.[k] ?? ''}>
+                      {p.extras?.[k] ?? ''}
+                    </td>
+                  ))}
+                  <td className="px-2 py-1.5 whitespace-nowrap text-left">
+                    <Button size="sm" variant="outline" onClick={() => setShareTarget(p)} className="gap-1.5">
+                      <Send className="h-3.5 w-3.5" /> שתף
+                    </Button>
+                  </td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+      </Card>
+      <ShareWithLeadDialog
+        property={shareTarget}
+        open={!!shareTarget}
+        onOpenChange={(open) => { if (!open) setShareTarget(null); }}
+      />
+    </>
   );
 }
