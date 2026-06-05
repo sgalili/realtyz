@@ -167,7 +167,7 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
           >
             <Upload className="h-8 w-8 text-primary" />
             <span className="text-sm font-semibold">לחצו לבחירת קובץ</span>
-            <span className="text-xs text-muted-foreground">.xlsx, .xls, .csv</span>
+            <span className="text-xs text-muted-foreground">.xlsx, .xls, .csv, .pdf</span>
             <input
               ref={fileRef}
               type="file"
