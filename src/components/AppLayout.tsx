@@ -692,22 +692,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               </DialogFooter>
             </DialogContent>
           </Dialog>
-          {user && <OnboardingWizard
-            open={wizardOpen}
-            onClose={() => {
-              setWizardOpen(false);
-              if (user) localStorage.setItem(`realtyz-onboarding-dismissed-${user.id}`, '1');
-            }}
-          />}
-          {user && <TrialQuickStartWizard
-            open={trialWizardOpen}
-            onClose={() => {
-              setTrialWizardOpen(false);
-              if (user) localStorage.setItem(`realtyz-onboarding-dismissed-${user.id}`, '1');
-            }}
-          />}
-          
-          {user && <RealtyzOnboardingWizard />}
+          {/* Onboarding wizards permanently disabled per product decision */}
         </div>
         
       </div>
