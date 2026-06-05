@@ -151,11 +151,36 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: 'Safety guard: missing realtyz- refId after profile resolution.' }, 403);
     }
 
-    // ---- Build direct Ayrshare social-link URL (Business Plan, non-white-label) ----
-    // Strict trim: strip whitespace and stray surrounding quotes from the DB value.
+    // ---- Generate JWT-based social-link URL (Ayrshare's official flow) ----
+    const AYRSHARE_PRIVATE_KEY = Deno.env.get('AYRSHARE_PRIVATE_KEY');
+    const AYRSHARE_DOMAIN = Deno.env.get('AYRSHARE_DOMAIN');
+    if (!AYRSHARE_PRIVATE_KEY) {
+      return jsonResponse({ error: 'Missing AYRSHARE_PRIVATE_KEY secret.' }, 500);
+    }
+    if (!AYRSHARE_DOMAIN) {
+      return jsonResponse({ error: 'Missing AYRSHARE_DOMAIN secret (Ayrshare dashboard → Profiles → Domain, e.g. "id-xxxxx").' }, 500);
+    }
+
     const cleanKey = (profileKey || '').toString().trim().replace(/^['"`]+|['"`]+$/g, '');
     const cleanPlatform = platform.toLowerCase().trim();
-    const url = `https://app.ayrshare.com/social/direct?profileKey=${encodeURIComponent(cleanKey)}&network=${encodeURIComponent(cleanPlatform)}`;
+
+    const jwtRes = await fetch(`${AYR_API}/profiles/generateJWT`, {
+      method: 'POST',
+      headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        domain: AYRSHARE_DOMAIN,
+        privateKey: AYRSHARE_PRIVATE_KEY,
+        profileKey: cleanKey,
+      }),
+    });
+    const jwtData = await jwtRes.json().catch(() => ({}));
+    if (!jwtRes.ok || !jwtData?.url) {
+      const msg = (jwtData?.message || jwtData?.error || `HTTP ${jwtRes.status}`).toString();
+      console.error('[ayrshare-social-link] generateJWT failed', jwtData);
+      return jsonResponse({ error: `Ayrshare generateJWT failed: ${msg}` }, 500);
+    }
+
+    const url = `${jwtData.url}${jwtData.url.includes('?') ? '&' : '?'}network=${encodeURIComponent(cleanPlatform)}`;
     console.log('Final Redirect URL:', url);
     return jsonResponse({ url, profileKey: cleanKey, refId, platform: cleanPlatform });
   } catch (e) {
