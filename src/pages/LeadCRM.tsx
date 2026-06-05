@@ -918,7 +918,7 @@ const LeadCRM = () => {
               ))}
             </div>
             {(() => {
-              const hasFilter = !!search.trim() || interestFilter !== 'all' || cityFilter !== 'all' || statusFilter !== 'all' || profileFilter !== 'all';
+              const hasFilter = !!search.trim() || interestFilter !== 'all' || cityFilter !== 'all' || statusFilter !== 'all' || profileFilter !== 'all' || leadKindFilter !== 'all';
               const accountTotal = isDemoMode ? leads.length : realTotalCount;
               const filteredTotal = isDemoMode ? filtered?.length ?? 0 : totalCount;
               return (
