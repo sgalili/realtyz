@@ -520,3 +520,44 @@ function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare
     </Card>
   );
 }
+
+// Compact list row — single line per property for scanning many at once.
+function PropertyRow({ property, onShare }: { property: HomelyProperty; onShare: () => void }) {
+  const photo = property.photos[0];
+  const isRent = property.listing_type === 'rent';
+  return (
+    <div className="flex items-center gap-3 p-3 hover:bg-muted/40 transition-colors">
+      <Link to={`/properties/${property.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+        <div className="h-14 w-20 shrink-0 rounded-md overflow-hidden bg-muted">
+          {photo ? (
+            <img src={photo} alt={property.title} loading="lazy" className="h-full w-full object-cover" />
+          ) : (
+            <div className="h-full w-full flex items-center justify-center text-[10px] text-muted-foreground">אין תמונה</div>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-sm truncate">{property.title}</h3>
+            {property.listing_type && (
+              <Badge className={`text-[10px] ${isRent ? 'bg-amber-500 text-white' : 'bg-primary text-primary-foreground'}`}>
+                {LISTING_TYPE_LABELS_HE[property.listing_type]}
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-0.5">
+            {property.city && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{property.city}</span>}
+            {property.rooms ? <span className="inline-flex items-center gap-1"><BedDouble className="h-3 w-3" />{property.rooms} חד'</span> : null}
+            {property.size_sqm ? <span className="inline-flex items-center gap-1"><Ruler className="h-3 w-3" />{property.size_sqm} מ"ר</span> : null}
+            <span>{PROPERTY_TYPE_LABELS_HE[property.property_type]}</span>
+          </div>
+        </div>
+      </Link>
+      <div className="text-sm font-bold text-success whitespace-nowrap">
+        {formatPrice(property.price)}{isRent ? <span className="text-[10px] font-normal text-muted-foreground">/חודש</span> : null}
+      </div>
+      <Button size="sm" variant="outline" onClick={onShare} className="gap-1.5 shrink-0">
+        <Send className="h-3.5 w-3.5" /> שתף
+      </Button>
+    </div>
+  );
+}
