@@ -22,12 +22,13 @@ const PORTALS: Portal[] = [
   {
     id: 'homely',
     label: 'Homely',
-    description: 'התחברות לחשבון Homely (Webtiv) — דורש קוד משרד, שם משתמש וסיסמה',
+    description: 'התחברות לחשבון Homely (Webtiv) + מפתח API לדחיפת לידים אוטומטית ל-OpenCard',
     link: 'https://www.homely.co.il/',
     fields: [
       { col: 'homely_agency', label: 'קוד משרד (Client)', dir: 'ltr', placeholder: 'agency code' },
       { col: 'homely_username', label: 'שם משתמש', dir: 'ltr' },
       { col: 'homely_password', label: 'סיסמה', type: 'password', dir: 'ltr', placeholder: '••••••••' },
+      { col: 'homely_api_key', label: 'API Key (OpenCard — אופציונלי)', type: 'password', dir: 'ltr', placeholder: 'Homely API key' },
     ],
   },
   {
