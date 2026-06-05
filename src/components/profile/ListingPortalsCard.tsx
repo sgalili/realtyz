@@ -72,7 +72,7 @@ export function ListingPortalsCard() {
         .eq('user_id', user.id)
         .maybeSingle();
       const v: Record<string, string> = {};
-      ['yad2_username', 'yad2_api_key', 'madlan_username', 'madlan_api_key'].forEach((c) => {
+      ['yad2_username', 'yad2_api_key', 'madlan_username', 'madlan_api_key', 'homely_api_key'].forEach((c) => {
         v[c] = (keys as any)?.[c] ?? '';
       });
 
