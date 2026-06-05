@@ -76,10 +76,11 @@ const BRAND_COLOR: Record<string, string> = {
 /* ───────────── Channel grid ───────────── */
 
 const ChannelGrid = ({
-  selectedId, onPick, brandName, connected = EMPTY_CONNECTED,
+  selectedId, onPick, onConnect, brandName, connected = EMPTY_CONNECTED,
 }: {
   selectedId: string | null;
   onPick: (c: ChannelCard) => void;
+  onConnect: (c: ChannelCard) => void;
   brandName: string;
   connected?: Set<string>;
 }) => (
@@ -92,7 +93,8 @@ const ChannelGrid = ({
         const brandColor = isConnected ? (BRAND_COLOR[c.id] ?? c.iconColor ?? 'text-foreground') : 'text-muted-foreground/60';
         return (
           <button key={c.id} type="button"
-            onClick={() => isConnected ? onPick(c) : onPick(c)}
+            onClick={() => isConnected ? onPick(c) : onConnect(c)}
+
             aria-pressed={isSelected}
             className={cn(
               'group relative flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border bg-background p-3 text-center transition active:scale-[0.98]',
@@ -695,6 +697,25 @@ const CampaignCenter = () => {
     return () => { cancelled = true; };
   }, []);
 
+  const handleConnectChannel = async (_c: ChannelCard) => {
+    try {
+      toast.loading('פותח חיבור Ayrshare…', { id: 'ayr-connect' });
+      const { data, error } = await supabase.functions.invoke('ayrshare-social-link', { body: {} });
+      toast.dismiss('ayr-connect');
+      if (error) throw error;
+      const url = (data as any)?.url;
+      if (!url) {
+        toast.error('לא התקבל קישור חיבור מ-Ayrshare');
+        return;
+      }
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (e: any) {
+      toast.dismiss('ayr-connect');
+      toast.error(e?.message ?? 'יצירת חיבור נכשלה');
+    }
+  };
+
+
 
   const initial = (searchParams.get('tab') as string) ?? 'create';
   const remapped: TabValue =
@@ -779,7 +800,7 @@ const CampaignCenter = () => {
         </div>
 
         <TabsContent value="create" className="mt-6 space-y-4">
-          <ChannelGrid selectedId={pickedChannel?.id ?? null} onPick={setPickedChannel} brandName={brandName} connected={connectedChannels} />
+          <ChannelGrid selectedId={pickedChannel?.id ?? null} onPick={setPickedChannel} onConnect={handleConnectChannel} brandName={brandName} connected={connectedChannels} />
           {pickedChannel && (
             <InlineComposer
               channel={pickedChannel}
