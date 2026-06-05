@@ -212,9 +212,7 @@ export function ListingPortalsCard() {
                   </div>
                   <p className="text-xs text-muted-foreground mt-0.5">{p.description}</p>
                 </div>
-                <a href={p.link} target="_blank" rel="noreferrer" className="text-xs text-primary hover:underline">
-                  פתח אתר
-                </a>
+                {/* External site link removed per product spec */}
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {p.fields.map((f) => (

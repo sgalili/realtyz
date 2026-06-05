@@ -234,7 +234,7 @@ const Auth = () => {
       <div className="pointer-events-none absolute top-1/3 left-1/2 -translate-x-1/2 h-[500px] w-[500px] rounded-full bg-gold/10 blur-[120px]" />
       {/* Top header bar with auth-only rotating headline and Demo switch */}
       <div className="absolute inset-x-0 top-0 z-20 h-7 bg-background" dir="rtl">
-        <div className="absolute right-4 left-[68px] top-[calc(50%+5px)] -translate-y-1/2 overflow-hidden text-right">
+        <div className="absolute right-4 left-4 top-[calc(50%+5px)] -translate-y-1/2 overflow-hidden text-right">
           <div className="auth-header-ticker" aria-live="polite">
             {AUTH_HEADER_HEADLINES.map((line, index) => (
               <span
@@ -249,22 +249,6 @@ const Auth = () => {
             ))}
           </div>
         </div>
-        <label className="absolute left-[6px] top-[calc(50%+7px)] flex -translate-y-1/2 cursor-pointer select-none items-center gap-2" dir="ltr">
-          <Switch
-            checked={false}
-            onCheckedChange={handleAuthDemoToggle}
-            className="h-[18px] w-14 [--switch-thumb-size:0.875rem] [--switch-thumb-translate:2.375rem] data-[state=checked]:bg-success data-[state=unchecked]:bg-input [&>span:last-child]:bg-foreground"
-          >
-            <span
-              className={cn(
-                'pointer-events-none absolute top-1/2 -translate-y-1/2 text-[10px] font-black uppercase leading-none',
-                'left-[calc(50%+6px)] -translate-x-1/2 text-foreground',
-              )}
-            >
-              דמו
-            </span>
-          </Switch>
-        </label>
       </div>
       {/* Top hero wave - cloned exactly from dashboard HeroWaveMount: wave-soft, 24px, background fill, random seed */}
       <RealtyzWave position="top" variant="wave-soft" fill="hsl(var(--background))" seed={heroWaveSeed} height={24} offset={28} />
