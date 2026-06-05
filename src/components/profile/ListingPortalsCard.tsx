@@ -61,6 +61,7 @@ export function ListingPortalsCard() {
   const [verifying, setVerifying] = useState(false);
   const [homelyHasPassword, setHomelyHasPassword] = useState(false);
   const [homelyStatus, setHomelyStatus] = useState<string>('not_configured');
+  const [shown, setShown] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!user?.id) return;
