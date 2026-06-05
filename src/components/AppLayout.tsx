@@ -35,7 +35,7 @@ import { useTrialStatus } from '@/hooks/useTrialStatus';
 import { HeaderProfileMenu } from '@/components/header/HeaderProfileMenu';
 
 
-import { DemoModeToggle } from '@/components/DemoModeToggle';
+// DemoModeToggle removed from app
 import { PageHero } from '@/components/PageHero';
 
 const DEMO_ARCHETYPES: DemoCandidateId[] = ['primary-single', 'primary-slate', 'national-small', 'national-mid', 'national-large'];
