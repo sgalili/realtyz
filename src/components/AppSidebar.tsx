@@ -161,6 +161,15 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                             {item.badge}
                           </span>
                         )}
+                        {!collapsed && !item.badge && (() => {
+                          const c = countFor(item.url);
+                          if (c === undefined || c === 0) return null;
+                          return (
+                            <span className="ms-auto rounded-full bg-muted text-muted-foreground px-2 py-0.5 text-[11px] font-semibold leading-none">
+                              {formatCount(c)}
+                            </span>
+                          );
+                        })()}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
