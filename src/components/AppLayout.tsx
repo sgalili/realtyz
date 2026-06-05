@@ -624,12 +624,13 @@ export function AppLayout({ children }: { children: ReactNode }) {
             <a
               href="/"
               aria-label="Realtyz AI - דף הבית"
-              className="realtyz-logo relative inline-block text-xl font-bold tracking-tight text-primary-foreground"
+              className="realtyz-logo inline-flex items-center"
             >
-              Realtyz
-              <span className="absolute top-[6px] -right-[19px] text-[calc(0.55em+2px)] font-semibold text-primary-foreground/80 tracking-wide leading-none">
-                AI
-              </span>
+              <img
+                src="/__l5e/assets-v1/0c4787e2-7c2d-419f-b619-90d17f5a6b93/realtyz-logo-rect.png"
+                alt="Realtyz AI"
+                className="h-8 w-auto object-contain"
+              />
             </a>
           </header>
           <PageHero />
