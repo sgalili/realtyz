@@ -20,18 +20,35 @@ interface Props {
   onImported?: () => void;
 }
 
-// Fuzzy header dictionary
+// Bilingual fuzzy header dictionary → canonical field name
 const FIELD_ALIASES: Record<string, string[]> = {
-  price: ['מחיר', 'עלות', 'מחיר מבוקש', 'price', 'cost'],
-  city: ['עיר', 'אזור', 'כתובת', 'שכונה', 'city', 'location', 'address'],
-  rooms: ['חדר', 'חדרים', 'מספר חדרים', 'rooms', 'bedrooms'],
-  sqm: ['מ"ר', 'מ״ר', 'שטח', 'גודל', 'sqm', 'size', 'area'],
-  title: ['כותרת', 'שם נכס', 'נכס', 'סוג נכס', 'title', 'property title', 'name'],
-  description: ['תיאור', 'description', 'desc'],
+  price:        ['מחיר', 'עלות', 'מחיר מבוקש', 'price', 'cost', 'asking price'],
+  city:         ['עיר', 'יישוב', 'ישוב', 'city', 'location'],
+  neighborhood: ['שכונה', 'אזור', 'אז', 'neighborhood', 'area'],
+  rooms:        ['חדר', 'חדרים', 'מספר חדרים', 'rooms', 'bedrooms'],
+  sqm:          ['מ"ר', 'מ״ר', 'מר', 'שטח', 'גודל', 'sqm', 'size', 'area sqm'],
+  title:        ['כותרת', 'שם נכס', 'סוג נכס', 'title', 'property title'],
+  property_type:['נכס', 'סוג הנכס', 'property type', 'type'],
+  description:  ['תיאור', 'description', 'desc', 'הערות', 'notes'],
+  street:       ['רחוב', 'כתובת', 'street', 'address'],
+  street_no:    ['מס', 'מספר', 'מס בית', 'street number', 'no'],
+  floor:        ['קו', 'קומה', 'floor'],
+  elevator:     ['מע', 'מעלית', 'elevator', 'lift'],
+  parking:      ['חניה', 'חנייה', 'parking'],
+  owner_name:   ['שם', 'שם בעלים', 'owner', 'בעלים', 'first name'],
+  owner_family: ['משפחה', 'שם משפחה', 'family', 'last name'],
+  owner_phone:  ['טלפון', 'טלפון1', 'טלפון 1', 'נייד', 'סלולרי', 'phone', 'mobile'],
+  agent:        ['סוכן', 'agent', 'broker'],
+  serial:       ['סדורי', 'סידורי', 'מספר סידורי', 'serial', 'serial number'],
+  opened_at:    ['פתיחה', 'נפתח', 'opened', 'opened at'],
+  updated_at_src:['עדכון', 'עודכן', 'updated', 'updated at'],
 };
 
 function normalizeKey(s: string) {
-  return String(s).trim().toLowerCase().replace(/["'`]/g, '').replace(/\s+/g, ' ');
+  return String(s ?? '').trim().toLowerCase()
+    .replace(/["'`]/g, '')
+    .replace(/[._-]+/g, ' ')
+    .replace(/\s+/g, ' ');
 }
 
 function buildHeaderMap(headers: string[]) {
@@ -53,6 +70,17 @@ function parseNumber(v: any): number | null {
   const cleaned = String(v).replace(/[₪,\s]/g, '').replace(/[^\d.-]/g, '');
   const n = Number(cleaned);
   return isFinite(n) ? n : null;
+}
+
+function parseBool(v: any): boolean | null {
+  if (v == null || v === '') return null;
+  const s = String(v).trim().toLowerCase();
+  if (['כן', 'יש', 'true', '1', 'yes', 'y', 'v'].includes(s)) return true;
+  if (['לא', 'אין', 'false', '0', 'no', 'n'].includes(s)) return false;
+  // partial matches (e.g. "כן,שתיים")
+  if (/כן|יש|yes/.test(s)) return true;
+  if (/לא|אין|no/.test(s)) return false;
+  return null;
 }
 
 function slugify(s: string) {
@@ -101,38 +129,77 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
       let skipped = 0;
       for (const row of rows) {
         const mapped: Record<string, any> = {};
-        for (const [origKey, field] of Object.entries(headerMap)) {
-          mapped[field] = row[origKey];
+        const extras: Record<string, string> = {};
+        for (const [origKey, val] of Object.entries(row)) {
+          const field = headerMap[origKey];
+          if (field) mapped[field] = val;
+          // Preserve EVERY original column verbatim
+          const sv = val == null ? '' : String(val).trim();
+          if (sv) extras[origKey] = sv;
         }
+
         const price = parseNumber(mapped.price);
+        // Require only a price OR a title/street so we don't drop rows just because city is missing
+        const street = mapped.street ? String(mapped.street).trim() : '';
+        const streetNo = mapped.street_no ? String(mapped.street_no).trim() : '';
+        const address = [street, streetNo].filter(Boolean).join(' ').trim();
+        const propertyType = mapped.property_type ? String(mapped.property_type).trim() : '';
         const city = mapped.city ? String(mapped.city).trim() : '';
-        if (!price || !city) {
+        const neighborhood = mapped.neighborhood ? String(mapped.neighborhood).trim() : '';
+        const rooms = parseNumber(mapped.rooms);
+        const sqm = parseNumber(mapped.sqm);
+        const floor = parseNumber(mapped.floor);
+        const elevator = parseBool(mapped.elevator);
+        const parking = parseBool(mapped.parking);
+
+        if (!price && !address && !propertyType) {
           skipped++;
           continue;
         }
-        const rooms = parseNumber(mapped.rooms);
-        const sqm = parseNumber(mapped.sqm);
+
+        const titleFromHeader = mapped.title ? String(mapped.title).trim() : '';
         const title =
-          (mapped.title ? String(mapped.title).trim() : '') ||
-          `נכס ב${city}${rooms ? ` · ${rooms} חד'` : ''}`;
+          titleFromHeader ||
+          [propertyType || 'נכס', address && `· ${address}`, rooms && `· ${rooms} חד'`]
+            .filter(Boolean)
+            .join(' ');
+
+        const ownerName = [mapped.owner_name, mapped.owner_family]
+          .filter(Boolean).map((s) => String(s).trim()).join(' ').trim();
+
         inserts.push({
           user_id: auth.user.id,
           slug: slugify(title),
           property_title: title,
           description: mapped.description ? String(mapped.description) : title,
-          asking_price: price,
-          city,
+          asking_price: price ?? 0,
+          city: city || null,
+          neighborhood: neighborhood || null,
+          address: address || null,
           rooms: rooms ?? null,
           sqm: sqm ? Math.round(sqm) : null,
+          floor: floor != null ? Math.round(floor) : null,
+          elevator,
+          parking,
           status: 'live',
           source: 'import',
           is_published: true,
-          features: [],
+          features: propertyType ? [propertyType] : [],
+          source_metadata: {
+            owner_name: ownerName || null,
+            owner_phone: mapped.owner_phone ? String(mapped.owner_phone).trim() : null,
+            agent: mapped.agent ? String(mapped.agent).trim() : null,
+            serial: mapped.serial ? String(mapped.serial).trim() : null,
+            opened_at: mapped.opened_at ? String(mapped.opened_at).trim() : null,
+            updated_at_src: mapped.updated_at_src ? String(mapped.updated_at_src).trim() : null,
+            property_type: propertyType || null,
+            extras,
+          },
         });
       }
 
       if (!inserts.length) {
-        toast.error('לא נמצאו שורות עם עיר ומחיר תקינים');
+        toast.error('לא נמצאו שורות לייבוא');
         setSummary({ imported: 0, skipped });
         return;
       }
@@ -154,10 +221,9 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent dir="rtl" className="max-w-lg">
         <DialogHeader>
-          <DialogTitle>יבוא נכסים מאקסל</DialogTitle>
+          <DialogTitle>יבוא נכסים מאקסל / PDF</DialogTitle>
           <DialogDescription>
-            העלו קובץ Excel, CSV או PDF. נזהה את העמודות אוטומטית (מחיר, עיר, חדרים, מ"ר).
-            שורות עם עיר ומחיר ייווספו אוטומטית כמאושרות.
+            העלו קובץ Excel, CSV או PDF. נזהה אוטומטית את כל העמודות: מחיר, נכס, חדרים, רחוב, מס, קומה, מעלית, חניה, פתיחה, עדכון, בעלים, סוכן ועוד. כל עמודה מהקובץ נשמרת כפי שהיא.
           </DialogDescription>
         </DialogHeader>
 
@@ -188,7 +254,7 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
             <div className="text-sm bg-muted/40 rounded-lg p-3 space-y-1">
               <div>נוספו: <strong>{summary.imported}</strong> נכסים</div>
               {summary.skipped > 0 && (
-                <div className="text-muted-foreground">דולגו: {summary.skipped} (חסר עיר או מחיר)</div>
+                <div className="text-muted-foreground">דולגו: {summary.skipped} שורות ריקות</div>
               )}
             </div>
           )}
