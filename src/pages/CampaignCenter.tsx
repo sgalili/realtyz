@@ -746,9 +746,6 @@ const CampaignCenter = () => {
         <TabsContent value="published" className="mt-6">
           <PublishedFeed />
         </TabsContent>
-        <TabsContent value="responses" className="mt-6">
-          <ResponsesView />
-        </TabsContent>
       </Tabs>
 
       <ConfirmDispatchDialog
