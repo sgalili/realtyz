@@ -1,5 +1,6 @@
 import { useRef, useState } from 'react';
 import * as XLSX from 'xlsx';
+import { parsePdfToRows } from '@/lib/parsePdfTable';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
@@ -73,10 +74,17 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
     setProcessing(true);
     setSummary(null);
     try {
-      const buf = await file.arrayBuffer();
-      const wb = XLSX.read(buf, { type: 'array' });
-      const ws = wb.Sheets[wb.SheetNames[0]];
-      const rows: Record<string, any>[] = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
+      let rows: Record<string, any>[];
+      if (isPdf) {
+        const res = await parsePdfToRows(file);
+        rows = res.rows;
+      } else {
+        const buf = await file.arrayBuffer();
+        const wb = XLSX.read(buf, { type: 'array' });
+        const ws = wb.Sheets[wb.SheetNames[0]];
+        rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
+      }
       if (!rows.length) {
         toast.error('הקובץ ריק');
         return;
