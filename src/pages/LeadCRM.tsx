@@ -297,7 +297,7 @@ const LeadCRM = () => {
     'עיר', 'city',
   ].map((s) => s.toLowerCase().trim()));
   const extraColumns = useMemo<string[]>(() => {
-    const counts = new Map<string, number>();
+    const counts: Record<string, number> = {};
     for (const lead of leads) {
       const ex = (lead as any).preferences?.extra_fields;
       if (!ex || typeof ex !== 'object') continue;
