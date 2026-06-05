@@ -1,0 +1,1 @@
+ALTER TABLE public.listings ADD COLUMN IF NOT EXISTS source_metadata JSONB DEFAULT '{}'::jsonb;

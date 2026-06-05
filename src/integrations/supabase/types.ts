@@ -2345,6 +2345,7 @@ export type Database = {
           rooms: number | null
           slug: string
           source: string
+          source_metadata: Json | null
           source_url: string | null
           sqm: number | null
           status: string
@@ -2378,6 +2379,7 @@ export type Database = {
           rooms?: number | null
           slug: string
           source?: string
+          source_metadata?: Json | null
           source_url?: string | null
           sqm?: number | null
           status?: string
@@ -2411,6 +2413,7 @@ export type Database = {
           rooms?: number | null
           slug?: string
           source?: string
+          source_metadata?: Json | null
           source_url?: string | null
           sqm?: number | null
           status?: string
