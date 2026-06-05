@@ -263,7 +263,7 @@ function WorkspaceTab() {
           {fields.map((f) => {
             const Icon = f.icon;
             return (
-              <div key={f.key} className="rounded-lg border bg-card/40 p-3 text-right">
+              <div key={String(f.key)} className="rounded-lg border bg-card/40 p-3 text-right">
                 <div className="mb-1.5 flex items-center gap-2 text-xs text-muted-foreground">
                   <Icon className="h-3.5 w-3.5" />
                   <span>{f.label}</span>
