@@ -22,7 +22,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
 import { ImportPropertiesDialog } from '@/components/properties/ImportPropertiesDialog';
 import {
-  MOCK_HOMELY_PROPERTIES,
   PROPERTY_TYPE_LABELS_HE,
   CITY_OPTIONS,
   LISTING_TYPE_LABELS_HE,
