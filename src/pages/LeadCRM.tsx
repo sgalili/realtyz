@@ -731,11 +731,14 @@ const LeadCRM = () => {
       const batchSize = 500;
       const totalRows = rows.length;
       for (let i = 0; i < rows.length; i += batchSize) {
+        const dealType = importLeadKind === 'renter' || importLeadKind === 'landlord' ? 'rent' : 'sale';
         const batch = rows.slice(i, i + batchSize).map((r) => ({
           full_name: r.full_name, phone_number: r.phone_number,
           city: r.city || null, interest_tag: r.interest_tag || null,
           identity_number: r.identity_number || null,
           status: 'uploaded',
+          deal_type: dealType,
+          preferences: { lead_kind: importLeadKind },
         }));
         const { data, error } = await supabase
           .from('leads')
