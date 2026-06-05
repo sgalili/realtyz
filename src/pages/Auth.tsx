@@ -118,7 +118,8 @@ const Auth = () => {
   // the master secret OTP "9321" for sign-in / sign-up (super-admin override).
   const isPreviewHost = typeof window !== 'undefined' && (
     window.location.hostname.startsWith('id-preview--') ||
-    window.location.hostname.endsWith('.lovable.dev')
+    window.location.hostname.endsWith('.lovable.dev') ||
+    window.location.hostname.endsWith('.lovableproject.com')
   );
 
   const handlePhoneChange = (value: string) => {
