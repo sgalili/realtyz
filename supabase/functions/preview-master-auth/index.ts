@@ -65,14 +65,28 @@ Deno.serve(async (req) => {
       const phone = normalizeIsraeliPhone(String(identifier));
       if (!phone) return json({ error: "bad phone" }, 400);
       targetPhone = phone;
-      // Look up existing user by phone first
+      // Super-admin-created accounts are email-first. Prefer the explicit
+      // create-user audit mapping before falling back to WA-only synthetic users.
+      const { data: auditRows } = await admin
+        .from("audit_logs")
+        .select("details")
+        .eq("action", "super_admin.create_user")
+        .eq("details->>phone_e164", phone)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const auditedEmail = (auditRows?.[0]?.details as { email?: string } | undefined)?.email;
+      if (auditedEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(auditedEmail)) {
+        targetEmail = auditedEmail.toLowerCase();
+      }
+
+      // Look up existing user by phone next.
       const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
       const match = list?.users?.find((u) => {
         const userPhone = String(u.phone ?? "").replace(/\D/g, "");
         const metaPhone = String((u.user_metadata as { phone_number?: string } | null)?.phone_number ?? "").replace(/\D/g, "");
         return userPhone === phone || metaPhone === phone;
       });
-      targetEmail = match?.email ?? `${phone}@whatsapp.realtyz.local`;
+      targetEmail = targetEmail || match?.email || `${phone}@whatsapp.realtyz.local`;
     } else {
       return json({ error: "bad kind" }, 400);
     }

@@ -137,7 +137,7 @@ Deno.serve(async (req) => {
       action: "super_admin.create_user",
       target_table: "auth.users",
       target_id: newUid,
-      details: { email, initial_balance_agorot, send_whatsapp: !!send_whatsapp },
+      details: { email, phone_e164: normalizedPhone, initial_balance_agorot, send_whatsapp: !!send_whatsapp },
     });
 
     // Optional: send WhatsApp credentials via GreenAPI (using super admin's wa_providers)
