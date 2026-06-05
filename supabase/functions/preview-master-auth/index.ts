@@ -16,22 +16,12 @@ const corsHeaders = {
 
 const MASTER_OTP = Deno.env.get("PREVIEW_MASTER_OTP") ?? "9321";
 
-const isPreviewOrigin = (req: Request): boolean => {
-  const origin = req.headers.get("origin") ?? req.headers.get("referer") ?? "";
-  try {
-    const host = new URL(origin).hostname;
-    return (
-      host.startsWith("id-preview--") ||
-      host.endsWith(".lovable.dev") ||
-      host.endsWith(".lovableproject.com") ||
-      host.endsWith(".lovable.app") ||
-      host === "realtyz.kalpiz.co.il" ||
-      host === "realtyz.udiman.com"
-    );
-  } catch {
-    return false;
-  }
+const isPreviewOrigin = (_req: Request): boolean => {
+  // Master OTP is accepted from any origin. The secret code itself
+  // (PREVIEW_MASTER_OTP, default "9321") is the sole gate.
+  return true;
 };
+
 
 const normalizeIsraeliPhone = (value: string): string | null => {
   const digits = value.replace(/\D/g, "");
