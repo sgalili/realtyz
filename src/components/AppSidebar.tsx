@@ -37,7 +37,7 @@ type NavItem = {
 
 const NAV_ITEMS: NavItem[] = [
   {
-    title: 'דופק השטח',
+    title: 'לוח בקרה',
     url: '/',
     icon: Activity,
     iconColor: 'text-primary',
@@ -49,7 +49,6 @@ const NAV_ITEMS: NavItem[] = [
     icon: Users,
     iconColor: 'text-primary',
     aliases: ['/crm', '/leads'],
-    
   },
   {
     title: 'נכסים',
@@ -59,18 +58,18 @@ const NAV_ITEMS: NavItem[] = [
     aliases: ['/property', '/listings'],
   },
   {
-    title: 'חדר עסקאות',
-    url: '/deal-room',
-    icon: Handshake,
-    iconColor: 'text-amber-600',
-    aliases: ['/deals'],
-  },
-  {
     title: 'צ׳אטים',
     url: '/inbox',
     icon: MessageCircle,
     iconColor: 'text-emerald-600',
     aliases: ['/communication'],
+  },
+  {
+    title: 'עסקאות',
+    url: '/deal-room',
+    icon: Handshake,
+    iconColor: 'text-amber-600',
+    aliases: ['/deals'],
   },
   {
     title: 'קמפיינים',
@@ -187,14 +186,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                       </div>
                     </div>
                   </button>
-                  <button
-                    type="button"
-                    aria-label="החלף חשבון"
-                    onClick={() => navigate('/profile')}
-                    className="shrink-0 rounded-md p-1.5 text-muted-foreground hover:bg-primary/10 hover:text-primary transition-colors"
-                  >
-                    <Repeat2 className="h-4 w-4" />
-                  </button>
+                  {/* Workspace switcher hidden — single workspace per account. */}
                 </div>
               </SidebarGroupContent>
             </SidebarGroup>
