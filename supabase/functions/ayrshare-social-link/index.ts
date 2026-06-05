@@ -141,8 +141,7 @@ Deno.serve(async (req) => {
 
       const { error: upErr } = await admin
         .from('workspace_social_profile')
-        .update({ ayrshare_profile_key: profileKey, ayrshare_ref_id: refId })
-        .eq('id', WORKSPACE_ID);
+        .upsert({ id: WORKSPACE_ID, ayrshare_profile_key: profileKey, ayrshare_ref_id: refId }, { onConflict: 'id' });
       if (upErr) console.error('[ayrshare-social-link] save workspace profileKey failed', upErr);
     }
 

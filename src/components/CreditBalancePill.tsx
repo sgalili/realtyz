@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 const SALES_PHONE = '972546811841';
 
@@ -36,6 +37,7 @@ export function CreditBalancePill() {
 
   useEffect(() => {
     if (!user?.id) return;
+    let cancelled = false;
     try {
       const cached = window.localStorage.getItem(`realtyz-credit-balance-${user.id}`);
       const val = Number(cached ?? '0');
@@ -43,6 +45,20 @@ export function CreditBalancePill() {
     } catch {
       setBalance(0);
     }
+
+    supabase.rpc('get_user_balance', { _user_id: user.id }).then(({ data, error }) => {
+      if (cancelled || error) return;
+      const liveBalance = Number(data?.[0]?.balance ?? 0);
+      if (!Number.isFinite(liveBalance)) return;
+      setBalance(liveBalance);
+      try {
+        window.localStorage.setItem(`realtyz-credit-balance-${user.id}`, String(liveBalance));
+      } catch {
+        // Cache is best-effort only.
+      }
+    });
+
+    return () => { cancelled = true; };
   }, [user?.id]);
 
   const bonus = Math.max(0, Math.round(amount * 0.1));
