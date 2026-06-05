@@ -98,6 +98,7 @@ export function ListingPortalsCard() {
     const agency = (values.homely_agency ?? '').trim();
     const username = (values.homely_username ?? '').trim();
     const password = (values.homely_password ?? '').trim();
+    const apiKey = (values.homely_api_key ?? '').trim();
     if (!agency) { toast.error('יש להזין קוד משרד Homely'); return; }
     if (!username) { toast.error('יש להזין שם משתמש Homely'); return; }
     if (!password && !homelyHasPassword) { toast.error('יש להזין סיסמת Homely'); return; }
@@ -122,6 +123,16 @@ export function ListingPortalsCard() {
         setHomelyHasPassword(true);
         setValues((s) => ({ ...s, homely_password: '' }));
       }
+
+      // Persist API key (OpenCard auto-push) in user_api_keys
+      const { error: keyErr } = await supabase
+        .from('user_api_keys')
+        .upsert({
+          user_id: user.id,
+          homely_api_key: apiKey || null,
+          updated_at: new Date().toISOString(),
+        } as any, { onConflict: 'user_id' });
+      if (keyErr) throw keyErr;
       toast.success('✅ פרטי Homely נשמרו');
     } catch (e: any) {
       toast.error(e?.message ?? 'שמירה נכשלה');
