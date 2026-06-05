@@ -395,10 +395,12 @@ export default function Profile() {
         </TabsList>
         <TabsContent value="personal" className="mt-[20px] space-y-4">
           <PersonalTab />
-          <WhatsAppGatewayCard />
         </TabsContent>
         <TabsContent value="workspace" className="mt-[20px]"><WorkspaceTab /></TabsContent>
-        <TabsContent value="connections" className="mt-[20px]"><ListingPortalsCard /></TabsContent>
+        <TabsContent value="connections" className="mt-[20px] space-y-4">
+          <WhatsAppGatewayCard />
+          <ListingPortalsCard />
+        </TabsContent>
       </Tabs>
     </div>
   );
