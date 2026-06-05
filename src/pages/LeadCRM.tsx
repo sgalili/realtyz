@@ -1067,7 +1067,7 @@ const LeadCRM = () => {
               </TableHeader>
               <TableBody>
                   {isLoading && (
-                    <TableRow><TableCell colSpan={6} className="py-12">
+                    <TableRow><TableCell colSpan={totalColCount} className="py-12">
                       <div className="flex flex-col items-center gap-3">
                         <div className="realtyz-loader h-10 w-10" />
                         <p className="text-sm text-muted-foreground">טוען מתעניינים...</p>
@@ -1078,7 +1078,7 @@ const LeadCRM = () => {
                     const hasFilter = !!search || interestFilter !== 'all' || cityFilter !== 'all' || statusFilter !== 'all' || profileFilter !== 'all';
                     const accountIsEmpty = !isDemoMode && realTotalCount === 0;
                     return (
-                      <TableRow><TableCell colSpan={6} className="py-0">
+                      <TableRow><TableCell colSpan={totalColCount} className="py-0">
                         <div className="empty-state animate-fade-in">
                           <div className="h-16 w-16 rounded-full bg-muted/40 flex items-center justify-center mb-3">
                             {accountIsEmpty ? <Upload className="h-7 w-7 text-muted-foreground/30" /> : <Search className="h-7 w-7 text-muted-foreground/30" />}
@@ -1189,7 +1189,7 @@ const LeadCRM = () => {
                     );
                   })}
                   {isFetchingNextPage && (
-                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-4">טוען עוד...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={totalColCount} className="text-center text-muted-foreground py-4">טוען עוד...</TableCell></TableRow>
                   )}
               </TableBody>
             </Table>
