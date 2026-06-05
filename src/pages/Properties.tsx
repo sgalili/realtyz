@@ -148,6 +148,14 @@ export default function Properties() {
   const liveResults = liveResponse?.results ?? [];
   const externalConnected = liveResponse?.connected !== false;
 
+  const cityOptions = useMemo(() => {
+    const cities = new Set<string>(CITY_OPTIONS as readonly string[]);
+    liveResults.forEach((result) => {
+      if (typeof result.city === 'string' && result.city.trim()) cities.add(result.city.trim());
+    });
+    return Array.from(cities);
+  }, [liveResults]);
+
   const merged = useMemo<HomelyProperty[]>(() => {
     const live = liveResults.map((r, i) => ({
       id: String(r.id ?? `live-${i}`),
@@ -300,7 +308,7 @@ export default function Properties() {
                     ))}
                   </>
                 ) : (
-                  CITY_OPTIONS.map((c) => (
+                  cityOptions.map((c) => (
                     <SelectItem key={c} value={c}>{c}</SelectItem>
                   ))
                 )}
