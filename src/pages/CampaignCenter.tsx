@@ -711,7 +711,19 @@ const CampaignCenter = () => {
       toast.loading('פותח חיבור Ayrshare…', { id: 'ayr-connect' });
       const { data, error } = await supabase.functions.invoke('ayrshare-social-link', { body: { platform } });
       toast.dismiss('ayr-connect');
-      if (error) throw error;
+      if (error) {
+        let backendMsg: string | null = null;
+        try {
+          const resp = (error as any)?.context?.response ?? (error as any)?.context;
+          if (resp && typeof resp.json === 'function') {
+            const body = await resp.json();
+            backendMsg = body?.error || body?.message || null;
+          } else if (data && typeof data === 'object' && (data as any).error) {
+            backendMsg = (data as any).error;
+          }
+        } catch { /* ignore */ }
+        throw new Error(backendMsg || error.message || 'יצירת חיבור נכשלה');
+      }
       const url = (data as any)?.url;
       if (!url) {
         toast.error((data as any)?.error || 'לא התקבל קישור חיבור מ-Ayrshare');
