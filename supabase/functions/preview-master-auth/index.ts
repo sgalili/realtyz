@@ -2,7 +2,7 @@
 // ──────────────────────
 // Allows sign-in/sign-up using a master OTP (default "9321") WITHOUT sending
 // anything to email/SMS/WhatsApp. ONLY accepts requests originating from a
-// Lovable preview host (id-preview--*.lovable.app or *.lovable.dev).
+// Lovable preview host (id-preview--*.lovable.app, *.lovable.dev or *.lovableproject.com).
 //
 // Input: { identifier: string, kind: 'email' | 'phone', code: string }
 // Output: { success, email, token_hash }  → client calls verifyOtp({type:'email'})
@@ -20,7 +20,7 @@ const isPreviewOrigin = (req: Request): boolean => {
   const origin = req.headers.get("origin") ?? req.headers.get("referer") ?? "";
   try {
     const host = new URL(origin).hostname;
-    return host.startsWith("id-preview--") || host.endsWith(".lovable.dev");
+    return host.startsWith("id-preview--") || host.endsWith(".lovable.dev") || host.endsWith(".lovableproject.com");
   } catch {
     return false;
   }
@@ -57,20 +57,36 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
     let targetEmail = "";
+    let targetPhone: string | null = null;
     if (kind === "email") {
       targetEmail = String(identifier).trim().toLowerCase();
       if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(targetEmail)) return json({ error: "bad email" }, 400);
     } else if (kind === "phone") {
       const phone = normalizeIsraeliPhone(String(identifier));
       if (!phone) return json({ error: "bad phone" }, 400);
-      // Look up existing user by phone first
+      targetPhone = phone;
+      // Super-admin-created accounts are email-first. Prefer the explicit
+      // create-user audit mapping before falling back to WA-only synthetic users.
+      const { data: auditRows } = await admin
+        .from("audit_logs")
+        .select("details")
+        .eq("action", "super_admin.create_user")
+        .eq("details->>phone_e164", phone)
+        .order("created_at", { ascending: false })
+        .limit(1);
+      const auditedEmail = (auditRows?.[0]?.details as { email?: string } | undefined)?.email;
+      if (auditedEmail && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(auditedEmail)) {
+        targetEmail = auditedEmail.toLowerCase();
+      }
+
+      // Look up existing user by phone next.
       const { data: list } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
       const match = list?.users?.find((u) => {
         const userPhone = String(u.phone ?? "").replace(/\D/g, "");
         const metaPhone = String((u.user_metadata as { phone_number?: string } | null)?.phone_number ?? "").replace(/\D/g, "");
         return userPhone === phone || metaPhone === phone;
       });
-      targetEmail = match?.email ?? `${phone}@whatsapp.realtyz.local`;
+      targetEmail = targetEmail || match?.email || `${phone}@whatsapp.realtyz.local`;
     } else {
       return json({ error: "bad kind" }, 400);
     }
@@ -78,8 +94,9 @@ Deno.serve(async (req) => {
     // Ensure the user exists (idempotent)
     const { error: createErr } = await admin.auth.admin.createUser({
       email: targetEmail,
+      ...(targetPhone ? { phone: `+${targetPhone}`, phone_confirm: true } : {}),
       email_confirm: true,
-      user_metadata: { provider: "preview_master_otp" },
+      user_metadata: { provider: "preview_master_otp", ...(targetPhone ? { phone_number: targetPhone } : {}) },
     });
     if (createErr && !/already|registered|exists/i.test(createErr.message)) {
       console.warn("preview-master-auth createUser", createErr.message);

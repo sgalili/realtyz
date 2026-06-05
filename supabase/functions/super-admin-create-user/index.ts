@@ -20,6 +20,14 @@ const Body = z.object({
   initial_balance_agorot: z.number().int().nonnegative().default(100000),
 });
 
+const normalizeIsraeliPhone = (value?: string): string | null => {
+  if (!value) return null;
+  const digits = value.replace(/\D/g, "");
+  if (/^05\d{8}$/.test(digits)) return `972${digits.slice(1)}`;
+  if (/^9725\d{8}$/.test(digits)) return digits;
+  return null;
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -62,20 +70,43 @@ Deno.serve(async (req) => {
       });
     }
     const { email, password, full_name, phone_e164, send_whatsapp, initial_balance_agorot } = parsed.data;
+    const normalizedPhone = normalizeIsraeliPhone(phone_e164);
 
-    // Create the auth user (auto-confirmed so they can log in immediately)
+    // Create the auth user (auto-confirmed so they can log in immediately), or
+    // repair/update an existing user created by the super admin.
+    let createdUser = null;
     const { data: created, error: createErr } = await admin.auth.admin.createUser({
       email,
       password,
+      ...(normalizedPhone ? { phone: `+${normalizedPhone}`, phone_confirm: true } : {}),
       email_confirm: true,
-      user_metadata: { full_name: full_name ?? "", created_by_super_admin: true },
+      user_metadata: { full_name: full_name ?? "", created_by_super_admin: true, ...(normalizedPhone ? { phone_number: normalizedPhone } : {}) },
     });
-    if (createErr || !created.user) {
+    if (created.user) {
+      createdUser = created.user;
+    } else if (createErr && /already|registered|exists/i.test(createErr.message)) {
+      const { data: users } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+      const existing = users?.users?.find((u) => u.email?.toLowerCase() === email.toLowerCase());
+      if (!existing) throw createErr;
+      const { data: updated, error: updateErr } = await admin.auth.admin.updateUserById(existing.id, {
+        password,
+        ...(normalizedPhone ? { phone: `+${normalizedPhone}`, phone_confirm: true } : {}),
+        email_confirm: true,
+        user_metadata: {
+          ...(existing.user_metadata ?? {}),
+          full_name: full_name ?? (existing.user_metadata as { full_name?: string } | null)?.full_name ?? "",
+          created_by_super_admin: true,
+          ...(normalizedPhone ? { phone_number: normalizedPhone } : {}),
+        },
+      });
+      if (updateErr || !updated.user) throw updateErr ?? createErr;
+      createdUser = updated.user;
+    } else {
       return new Response(JSON.stringify({ error: createErr?.message ?? "createUser failed" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
-    const newUid = created.user.id;
+    const newUid = createdUser.id;
 
     // Upsert profile: unlimited workspace, 1000 NIS balance, owns own workspace.
     // (handle_new_user trigger likely inserted a base row already.)
@@ -106,7 +137,7 @@ Deno.serve(async (req) => {
       action: "super_admin.create_user",
       target_table: "auth.users",
       target_id: newUid,
-      details: { email, initial_balance_agorot, send_whatsapp: !!send_whatsapp },
+      details: { email, phone_e164: normalizedPhone, initial_balance_agorot, send_whatsapp: !!send_whatsapp },
     });
 
     // Optional: send WhatsApp credentials via GreenAPI (using super admin's wa_providers)
