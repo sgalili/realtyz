@@ -320,9 +320,66 @@ export default function KnowledgeBase() {
                   );
                 })}
               </div>
-              <div className="text-xs text-muted-foreground text-center py-8">
-                אין פריטים להצגה
-              </div>
+              {(() => {
+                const matchFilter = (st: string) => {
+                  if (filter === 'all') return true;
+                  if (filter === 'images') return st === 'image';
+                  if (filter === 'videos') return st === 'video';
+                  if (filter === 'docs') return ['pdf', 'text', 'whatsapp', 'audio'].includes(st);
+                  return true;
+                };
+                const q = search.trim().toLowerCase();
+                const filtered = documents.filter((d: any) =>
+                  matchFilter(d.source_type) &&
+                  (!q || (d.title?.toLowerCase().includes(q) || d.raw_text?.toLowerCase().includes(q)))
+                );
+                if (docsLoading) {
+                  return (
+                    <div className="text-xs text-muted-foreground text-center py-8 flex items-center justify-center gap-2">
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" /> טוען...
+                    </div>
+                  );
+                }
+                if (filtered.length === 0) {
+                  return (
+                    <div className="text-xs text-muted-foreground text-center py-8">
+                      אין פריטים להצגה
+                    </div>
+                  );
+                }
+                const iconFor = (st: string) => {
+                  if (st === 'image') return ImageIcon;
+                  if (st === 'video') return VideoIcon;
+                  return FileText;
+                };
+                return (
+                  <div className="space-y-1.5 max-h-[320px] overflow-y-auto pr-1">
+                    {filtered.map((d: any) => {
+                      const Icon = iconFor(d.source_type);
+                      return (
+                        <div key={d.id} className="flex items-center gap-2 p-2 rounded-md border bg-background hover:bg-muted/30 transition-colors">
+                          <Icon className="h-4 w-4 text-primary shrink-0" />
+                          <div className="flex-1 min-w-0">
+                            <div className="text-sm font-medium truncate">{d.title}</div>
+                            <div className="text-[10px] text-muted-foreground">
+                              {new Date(d.created_at).toLocaleString('he-IL')} · {d.chunk_count ?? 0} מקטעים
+                            </div>
+                          </div>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                            onClick={() => deleteDoc.mutate(d.id)}
+                            disabled={deleteDoc.isPending}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </div>
           </CardContent>
         </Card>
