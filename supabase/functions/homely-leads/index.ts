@@ -1,28 +1,26 @@
-// Homely Leads Importer
+// Homely (Webtiv) Leads Importer — real data only.
 //
-// Fetches lead leads from Homely. If the user has connected a real Homely
-// API key (stored in `user_api_keys.homely_api_key`) we attempt the real API;
-// otherwise we return a typed mock dataset so the rest of the product can be
-// built and demoed end-to-end. When real Homely credentials are available the
-// only thing that needs to change is the `fetchHomelyLeads` function.
-//
-// Request body:
-//   { dry_run?: boolean }
-//
-// Returns:
-//   { source: "homely" | "mock", imported: number, leads: HomelyLead[] }
+// Logs into webtivapi.webtiv.co.il with the broker's stored credentials, then
+// posts to candidate Webtiv lead endpoints. Imports unique leads (phone as
+// natural key) into the `leads` table assigned to the calling user. No mock
+// fallback — when there is no connection or zero leads we return an empty
+// result so the UI does not show fake data.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
+import { corsHeaders } from "../_shared/cors.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+const WEBTIV_BASE = "https://webtivapi.webtiv.co.il";
+const LOGIN_URL = `${WEBTIV_BASE}/api/login/LoginNewByAgent`;
+const LEAD_ENDPOINTS = [
+  "/api/WebtivLid/GetLidim",
+  "/api/Lid/GetLidim",
+  "/api/Leads/GetAll",
+  "/api/WebtivLid/Search",
+];
 
 type HomelyLead = {
   external_id: string;
@@ -41,7 +39,6 @@ function json(body: unknown, status = 200) {
   });
 }
 
-// Israeli phone normalizer → 9725XXXXXXXX
 function normalizePhone(raw: string): string {
   const digits = String(raw || "").replace(/\D/g, "");
   if (digits.startsWith("972")) return digits;
@@ -49,50 +46,61 @@ function normalizePhone(raw: string): string {
   return digits;
 }
 
-const MOCK_LEADS: HomelyLead[] = [
-  { external_id: "homely-9001", full_name: "דנה לוי",      phone_number: "0541234501", email: "dana.l@example.co.il",  city: "תל אביב",   interest_tag: "דירת 4 חדרים", preferences: { rooms: 4, max_price: 3200000, city: "תל אביב" } },
-  { external_id: "homely-9002", full_name: "אורי כהן",     phone_number: "0541234502", email: null,                    city: "רמת גן",    interest_tag: "דופלקס",        preferences: { rooms: 5, max_price: 4500000, city: "רמת גן" } },
-  { external_id: "homely-9003", full_name: "מאיה ברק",     phone_number: "0541234503", email: "maya.b@example.co.il",  city: "הרצליה",    interest_tag: "פנטהאוז",       preferences: { rooms: 5, min_price: 5000000, city: "הרצליה" } },
-  { external_id: "homely-9004", full_name: "יואב פרץ",     phone_number: "0541234504", email: null,                    city: "באר שבע",   interest_tag: "דירת 3 חדרים", preferences: { rooms: 3, max_price: 1200000 } },
-  { external_id: "homely-9005", full_name: "שירה גולן",    phone_number: "0541234505", email: "shira.g@example.co.il", city: "ירושלים",   interest_tag: "גן עדן",        preferences: { rooms: 4, garden: true, city: "ירושלים" } },
-  { external_id: "homely-9006", full_name: "אלון ניר",     phone_number: "0541234506", email: null,                    city: "פתח תקווה", interest_tag: "השקעה",         preferences: { investment: true, max_price: 1800000 } },
-  { external_id: "homely-9007", full_name: "נועה שמיר",    phone_number: "0541234507", email: "noa.s@example.co.il",   city: "חיפה",      interest_tag: "דירת 4 חדרים", preferences: { rooms: 4, max_price: 1900000, city: "חיפה" } },
-  { external_id: "homely-9008", full_name: "אבי טל",       phone_number: "0541234508", email: null,                    city: "כפר סבא",   interest_tag: "קוטג'",         preferences: { rooms: 5, garden: true, city: "כפר סבא" } },
-];
-
-async function fetchHomelyLeads(apiKey: string): Promise<HomelyLead[] | null> {
-  // Real Homely API call — endpoint name + auth header are best-guess; replace
-  // with the documented spec when you have it. Returning null tells the caller
-  // to fall back to the mock dataset.
-  try {
-    const url = "https://api.homely.com/v1/leads";
-    const upstream = await fetch(url, {
-      method: "GET",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        Accept: "application/json",
-      },
-    });
-    if (!upstream.ok) {
-      console.warn("[homely-leads] upstream", upstream.status);
-      return null;
-    }
-    const payload = await upstream.json().catch(() => null);
-    const items: any[] = Array.isArray(payload) ? payload : payload?.data ?? payload?.leads ?? [];
-    if (!items.length) return null;
-    return items.map((it: any, i: number) => ({
-      external_id: String(it?.id ?? `homely-${i}`),
-      full_name: it?.full_name ?? it?.name ?? "—",
-      phone_number: normalizePhone(it?.phone ?? it?.phone_number ?? ""),
-      email: it?.email ?? null,
-      city: it?.city ?? null,
-      interest_tag: it?.interest ?? it?.tag ?? null,
-      preferences: (it?.preferences as Record<string, unknown>) ?? {},
-    }));
-  } catch (e) {
-    console.warn("[homely-leads] homely fetch failed:", (e as Error).message);
-    return null;
+async function webtivLogin(agency: string, username: string, password: string) {
+  const res = await fetch(LOGIN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      client: agency, username, password,
+      theme: "", version: "realtyz-1.0",
+      deviceInfo: { DeviceType: "server", UserAgent: "Realtyz/1.0", Os: "deno", Platform: "edge-function" },
+    }),
+  });
+  const text = await res.text();
+  let data: any = null;
+  try { data = JSON.parse(text); } catch { /* */ }
+  if (!res.ok || !data || data.db === 0 || data.db === "0") {
+    return { ok: false as const, status: res.status, note: text.slice(0, 200) };
   }
+  return { ok: true as const, session: data };
+}
+
+async function fetchWebtivLeads(session: any): Promise<HomelyLead[]> {
+  const token = session?.token || session?.Token || session?.accessToken;
+  const db = session?.db ?? session?.Db;
+  const headers: Record<string, string> = {
+    "Content-Type": "application/json",
+    Accept: "application/json",
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+  const filters = { db, token, page: 1, pageSize: 200 };
+
+  for (const path of LEAD_ENDPOINTS) {
+    try {
+      const r = await fetch(`${WEBTIV_BASE}${path}`, {
+        method: "POST", headers, body: JSON.stringify(filters),
+      });
+      if (!r.ok) continue;
+      const payload = await r.json().catch(() => null);
+      const items: any[] = Array.isArray(payload)
+        ? payload
+        : payload?.results || payload?.data || payload?.leads || payload?.Items || payload?.lidim || [];
+      console.log(`[homely-leads] ${path} -> ${items.length} items`);
+      if (items.length === 0) continue;
+      return items.map((it: any, i: number) => ({
+        external_id: String(it?.id ?? it?.Id ?? it?.lidId ?? `homely-${i}`),
+        full_name: it?.full_name ?? it?.fullName ?? it?.name ?? it?.shemMale ?? "—",
+        phone_number: normalizePhone(it?.phone ?? it?.phoneNumber ?? it?.telephone ?? ""),
+        email: it?.email ?? null,
+        city: it?.city ?? it?.ir ?? null,
+        interest_tag: it?.interest ?? it?.tag ?? it?.interestTag ?? null,
+        preferences: (it?.preferences as Record<string, unknown>) ?? {},
+      }));
+    } catch (e) {
+      console.warn(`[homely-leads] ${path} failed:`, (e as Error).message);
+    }
+  }
+  return [];
 }
 
 Deno.serve(async (req) => {
@@ -112,43 +120,36 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const dryRun = Boolean((body as any)?.dry_run);
 
-    // Fetch real Homely first if a key is configured.
-    let source: "homely" | "mock" = "mock";
-    let leads: HomelyLead[] = MOCK_LEADS;
-
-    const { data: keyRow } = await admin
-      .from("user_api_keys")
-      .select("homely_api_key")
+    // Load broker credentials
+    const { data: cred } = await admin
+      .from("homely_broker_credentials")
+      .select("homely_agency, homely_username")
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (keyRow?.homely_api_key) {
-      const real = await fetchHomelyLeads(keyRow.homely_api_key);
-      if (real && real.length) {
-        source = "homely";
-        leads = real;
-      }
+    if (!cred?.homely_agency || !cred?.homely_username) {
+      return json({ source: "homely", connected: false, imported: 0, leads: [], note: "no_credentials" });
+    }
+    const { data: pw } = await admin.rpc("get_homely_password", { _user_id: user.id });
+    if (!pw) {
+      return json({ source: "homely", connected: false, imported: 0, leads: [], note: "no_password" });
     }
 
-    if (dryRun) {
-      return json({ source, imported: 0, leads });
+    const login = await webtivLogin(String(cred.homely_agency), String(cred.homely_username), pw as unknown as string);
+    if (!login.ok) {
+      return json({ source: "homely", connected: false, imported: 0, leads: [], error: `login_failed:${login.status}:${login.note}` });
     }
 
-    // Upsert into `leads`. We use phone_number as the natural key — any lead
-    // already in the table is skipped (no duplicates). RLS does not apply for
-    // service-role inserts, so we tag ownership explicitly via assigned_to.
+    const leads = await fetchWebtivLeads(login.session);
+    if (dryRun) return json({ source: "homely", connected: true, imported: 0, leads });
+
     let imported = 0;
     for (const p of leads) {
       const phone = normalizePhone(p.phone_number);
       if (!phone) continue;
-
       const { data: existing } = await admin
-        .from("leads")
-        .select("id")
-        .eq("phone_number", phone)
-        .maybeSingle();
+        .from("leads").select("id").eq("phone_number", phone).maybeSingle();
       if (existing) continue;
-
       const { error: insErr } = await admin.from("leads").insert({
         phone_number: phone,
         full_name: p.full_name,
@@ -164,7 +165,7 @@ Deno.serve(async (req) => {
       else console.warn("[homely-leads] insert failed:", insErr.message);
     }
 
-    return json({ source, imported, leads });
+    return json({ source: "homely", connected: true, imported, leads });
   } catch (e) {
     console.error("[homely-leads] fatal", e);
     return json({ error: (e as Error).message }, 500);
