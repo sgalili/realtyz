@@ -44,11 +44,18 @@ function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
 }
 
+type SourceTab = 'mine' | 'homely' | 'yad2' | 'madlan';
+const SOURCE_LABELS: Record<SourceTab, string> = {
+  mine: 'הנכסים שלי',
+  homely: 'Homely',
+  yad2: 'Yad2',
+  madlan: 'Madlan',
+};
+
 export default function Properties() {
   const { serviceAreas, coveredCities, isConfigured } = useServiceAreas();
+  const [sourceTab, setSourceTab] = useState<SourceTab>('mine');
   const [listingType, setListingType] = useState<ListingType>('sale');
-  // When agent has a hyper-local zone, default the city dropdown to "all my zones"
-  // (we use empty string as a sentinel) and hide the legacy "כל הערים" option.
   const [city, setCity] = useState<string>(isConfigured ? '__my_zones__' : 'כל הערים');
   const [propertyType, setPropertyType] = useState<PropertyType | 'all'>('all');
   const [rooms, setRooms] = useState<string>('any');
@@ -59,7 +66,7 @@ export default function Properties() {
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const queryClient = useQueryClient();
-  const refreshListings = () => queryClient.invalidateQueries({ queryKey: ['homely-search'] });
+  const refreshListings = () => queryClient.invalidateQueries({ queryKey: ['properties-search'] });
 
   // Calls homely-search: real Homely if a key is configured, otherwise the
   // function falls back to the local `listings` table. We merge whatever it
