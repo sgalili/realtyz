@@ -114,6 +114,13 @@ const Auth = () => {
   const formattedPhone = plainPhone.length > 3 ? `${plainPhone.slice(0, 3)}-${plainPhone.slice(3, 10)}` : plainPhone;
   const canSubmit = isPhoneFlow ? /^05\d-\d{7}$/.test(formattedPhone) : /\S+@\S+\.\S+/.test(email);
 
+  // Preview host = Lovable preview sandbox. Skip real OTP delivery and accept
+  // the master secret OTP "9321" for sign-in / sign-up (super-admin override).
+  const isPreviewHost = typeof window !== 'undefined' && (
+    window.location.hostname.startsWith('id-preview--') ||
+    window.location.hostname.endsWith('.lovable.dev')
+  );
+
   const handlePhoneChange = (value: string) => {
     const digits = value.replace(/\D/g, '').slice(0, 10);
     setPhone(digits.length > 3 ? `${digits.slice(0, 3)}-${digits.slice(3)}` : digits);
@@ -123,6 +130,18 @@ const Auth = () => {
     e?.preventDefault();
     if (isGoogleFlow) return;
     setLoading(true);
+
+    // Preview-mode bypass: never send a real OTP.
+    if (isPreviewHost) {
+      setCodeSent(true);
+      setResendSeconds(0);
+      setOtpAttempts(0);
+      setOtp('');
+      setLoading(false);
+      toast.success('מצב Preview: השתמשו בקוד המאסטר 9321');
+      return;
+    }
+
     const normalizedPhone = formattedPhone.replace(/^0/, '+972').replace('-', '');
     const { error } = activeMethod === 'whatsapp'
       ? await supabase.functions.invoke('whatsapp-auth', { body: { action: 'send', phone: normalizedPhone } })
@@ -142,11 +161,34 @@ const Auth = () => {
   };
 
   const handleVerifyCode = async (code = otp) => {
-    const expectedLength = activeMethod === 'sms' ? 6 : 4;
+    const expectedLength = isPreviewHost ? 4 : (activeMethod === 'sms' ? 6 : 4);
     if (isGoogleFlow || code.length !== expectedLength || loading || otpAttempts >= 3) return;
     setLoading(true);
     window.localStorage.setItem(DEMO_EXIT_PENDING_KEY, 'true');
     const normalizedPhone = formattedPhone.replace(/^0/, '+972').replace('-', '');
+
+    // Preview-mode bypass: accept master OTP via preview-master-auth.
+    if (isPreviewHost) {
+      const { data, error: fnErr } = await supabase.functions.invoke('preview-master-auth', {
+        body: {
+          identifier: isPhoneFlow ? normalizedPhone : email,
+          kind: isPhoneFlow ? 'phone' : 'email',
+          code,
+        },
+      });
+      if (fnErr || !data?.token_hash) {
+        setOtpAttempts((a) => a + 1);
+        setOtp('');
+        toast.error(fnErr?.message || data?.error || 'קוד מאסטר שגוי');
+        setLoading(false);
+        return;
+      }
+      const { error: vErr } = await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'email' } as any);
+      if (vErr) toast.error(vErr.message);
+      setLoading(false);
+      return;
+    }
+
     const { error } = activeMethod === 'whatsapp'
       ? await supabase.functions.invoke('whatsapp-auth', { body: { action: 'verify', phone: normalizedPhone, code } }).then(async ({ data, error }) => {
           if (error) return { error };
