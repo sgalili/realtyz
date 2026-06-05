@@ -49,7 +49,7 @@ const NAV_ITEMS: NavItem[] = [
     icon: Users,
     iconColor: 'text-primary',
     aliases: ['/crm', '/leads'],
-    badge: '28',
+    
   },
   {
     title: 'נכסים',
