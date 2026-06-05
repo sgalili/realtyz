@@ -34,8 +34,8 @@ export function useSidebarCounts() {
       const [leads, listings, chats, deals, campaigns] = await Promise.all([
         safeCount('leads'),
         safeCount('listings'),
-        safeCount('messages', (q) => q.eq('is_read', false)),
-        safeCount('leads', (q) => q.in('lead_stage', ['new', 'contacted', 'qualified', 'negotiation', 'offer'])),
+        safeCount('messages'),
+        safeCount('leads', (q) => q.not('lead_stage', 'is', null)),
         safeCount('campaign_logs'),
       ]);
 
