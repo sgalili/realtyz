@@ -382,7 +382,7 @@ export default function MassiveImporter() {
             <input
               ref={fileRef}
               type="file"
-              accept=".xlsx,.xls,.csv,.txt"
+              accept=".xlsx,.xls,.csv,.txt,.tsv,text/csv,text/plain,text/tab-separated-values,application/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,*/*"
               className="hidden"
               onChange={e => { const f = e.target.files?.[0]; if (f) handleFile(f); }}
             />
