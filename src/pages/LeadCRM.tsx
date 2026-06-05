@@ -1405,6 +1405,36 @@ const LeadCRM = () => {
 
                   <Separator />
 
+                  {/* Imported file columns — every column from the original
+                      upload, including the ones we don't have a dedicated field
+                      for, so the agent never loses context (budget, source, notes,
+                      neighborhood, etc.). */}
+                  {(() => {
+                    const prefs = ((selectedVoter as any).preferences ?? {}) as Record<string, any>;
+                    const extra = (prefs.extra_fields ?? {}) as Record<string, string>;
+                    const entries = Object.entries(extra).filter(([, v]) => v != null && String(v).trim() !== '');
+                    if (!entries.length) return null;
+                    return (
+                      <div>
+                        <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
+                          <FileSpreadsheet className="h-4 w-4" /> שדות מהקובץ שיובא
+                          <Badge variant="outline" className="text-[10px] mr-auto">{entries.length}</Badge>
+                        </h3>
+                        <div className="rounded-lg border border-border/60 divide-y divide-border/60 text-xs">
+                          {entries.map(([k, v]) => (
+                            <div key={k} className="flex items-start gap-3 px-3 py-2">
+                              <span className="font-medium text-muted-foreground min-w-[40%] break-words">{k}</span>
+                              <span className="text-foreground break-words">{String(v)}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    );
+                  })()}
+
+                  <Separator />
+
+
                   {/* Full History Timeline */}
                   <div>
                     <h3 className="text-sm font-semibold flex items-center gap-2 mb-4">
