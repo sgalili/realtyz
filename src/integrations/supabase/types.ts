@@ -1519,6 +1519,71 @@ export type Database = {
         }
         Relationships: []
       }
+      engagement_events: {
+        Row: {
+          ai_action: string
+          ai_reply_text: string | null
+          created_at: string
+          external_id: string | null
+          external_post_id: string | null
+          id: string
+          inbound_text: string | null
+          is_archived: boolean
+          lead_id: string | null
+          metadata: Json
+          platform: string
+          sender_handle: string | null
+          sentiment: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          ai_action?: string
+          ai_reply_text?: string | null
+          created_at?: string
+          external_id?: string | null
+          external_post_id?: string | null
+          id?: string
+          inbound_text?: string | null
+          is_archived?: boolean
+          lead_id?: string | null
+          metadata?: Json
+          platform: string
+          sender_handle?: string | null
+          sentiment?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          ai_action?: string
+          ai_reply_text?: string | null
+          created_at?: string
+          external_id?: string | null
+          external_post_id?: string | null
+          id?: string
+          inbound_text?: string | null
+          is_archived?: boolean
+          lead_id?: string | null
+          metadata?: Json
+          platform?: string
+          sender_handle?: string | null
+          sentiment?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "engagement_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       error_logs: {
         Row: {
           context: Json | null
@@ -3083,6 +3148,8 @@ export type Database = {
       }
       profiles: {
         Row: {
+          auto_reply_negative: boolean
+          auto_reply_positive: boolean
           avatar_url: string | null
           ayrshare_profile_key: string | null
           ayrshare_ref_id: string | null
@@ -3103,6 +3170,8 @@ export type Database = {
           workspace_owner_id: string | null
         }
         Insert: {
+          auto_reply_negative?: boolean
+          auto_reply_positive?: boolean
           avatar_url?: string | null
           ayrshare_profile_key?: string | null
           ayrshare_ref_id?: string | null
@@ -3123,6 +3192,8 @@ export type Database = {
           workspace_owner_id?: string | null
         }
         Update: {
+          auto_reply_negative?: boolean
+          auto_reply_positive?: boolean
           avatar_url?: string | null
           ayrshare_profile_key?: string | null
           ayrshare_ref_id?: string | null
