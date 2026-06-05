@@ -697,15 +697,24 @@ const CampaignCenter = () => {
     return () => { cancelled = true; };
   }, []);
 
-  const handleConnectChannel = async (_c: ChannelCard) => {
+  const handleConnectChannel = async (c: ChannelCard) => {
+    const platformMap: Record<string, string> = {
+      facebook: 'facebook', instagram: 'instagram', x: 'twitter', twitter: 'twitter',
+      youtube: 'youtube', linkedin: 'linkedin', tiktok: 'tiktok',
+    };
+    const platform = platformMap[c.id];
+    if (!platform) {
+      toast.error('הערוץ הזה לא נתמך כרגע דרך Ayrshare');
+      return;
+    }
     try {
       toast.loading('פותח חיבור Ayrshare…', { id: 'ayr-connect' });
-      const { data, error } = await supabase.functions.invoke('ayrshare-social-link', { body: {} });
+      const { data, error } = await supabase.functions.invoke('ayrshare-social-link', { body: { platform } });
       toast.dismiss('ayr-connect');
       if (error) throw error;
       const url = (data as any)?.url;
       if (!url) {
-        toast.error('לא התקבל קישור חיבור מ-Ayrshare');
+        toast.error((data as any)?.error || 'לא התקבל קישור חיבור מ-Ayrshare');
         return;
       }
       window.open(url, '_blank', 'noopener,noreferrer');
@@ -714,6 +723,7 @@ const CampaignCenter = () => {
       toast.error(e?.message ?? 'יצירת חיבור נכשלה');
     }
   };
+
 
 
 
