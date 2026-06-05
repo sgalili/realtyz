@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Save, Link2, ShieldCheck } from 'lucide-react';
+import { Loader2, Save, Link2, ShieldCheck, Eye, EyeOff } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -61,6 +61,7 @@ export function ListingPortalsCard() {
   const [verifying, setVerifying] = useState(false);
   const [homelyHasPassword, setHomelyHasPassword] = useState(false);
   const [homelyStatus, setHomelyStatus] = useState<string>('not_configured');
+  const [shown, setShown] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     if (!user?.id) return;
@@ -224,14 +225,36 @@ export function ListingPortalsCard() {
                         <span className="text-muted-foreground mr-1">(שמורה — מלאו רק כדי להחליף)</span>
                       )}
                     </Label>
-                    <Input
-                      id={f.col}
-                      type={f.type ?? 'text'}
-                      dir={f.dir ?? 'ltr'}
-                      value={values[f.col] ?? ''}
-                      onChange={(e) => setValues((s) => ({ ...s, [f.col]: e.target.value }))}
-                      placeholder={f.placeholder ?? f.label}
-                    />
+                    {f.type === 'password' ? (
+                      <div className="relative">
+                        <Input
+                          id={f.col}
+                          type={shown[f.col] ? 'text' : 'password'}
+                          dir={f.dir ?? 'ltr'}
+                          value={values[f.col] ?? ''}
+                          onChange={(e) => setValues((s) => ({ ...s, [f.col]: e.target.value }))}
+                          placeholder={f.placeholder ?? f.label}
+                          className="pr-9"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShown((s) => ({ ...s, [f.col]: !s[f.col] }))}
+                          className="absolute inset-y-0 left-2 flex items-center text-muted-foreground hover:text-foreground"
+                          aria-label={shown[f.col] ? 'הסתר' : 'הצג'}
+                        >
+                          {shown[f.col] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    ) : (
+                      <Input
+                        id={f.col}
+                        type={f.type ?? 'text'}
+                        dir={f.dir ?? 'ltr'}
+                        value={values[f.col] ?? ''}
+                        onChange={(e) => setValues((s) => ({ ...s, [f.col]: e.target.value }))}
+                        placeholder={f.placeholder ?? f.label}
+                      />
+                    )}
                   </div>
                 ))}
               </div>
