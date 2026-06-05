@@ -781,7 +781,7 @@ const CampaignCenter = () => {
         </div>
 
         <TabsContent value="create" className="mt-6 space-y-4">
-          <ChannelGrid selectedId={pickedChannel?.id ?? null} onPick={setPickedChannel} brandName={brandName} connected={connectedChannels} />
+          <ChannelGrid selectedId={pickedChannel?.id ?? null} onPick={setPickedChannel} onConnect={handleConnectChannel} brandName={brandName} connected={connectedChannels} />
           {pickedChannel && (
             <InlineComposer
               channel={pickedChannel}
