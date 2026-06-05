@@ -160,7 +160,7 @@ export default function Properties() {
   }, [liveResults]);
 
   const merged = useMemo<HomelyProperty[]>(() => {
-    const live = liveResults.map((r, i) => ({
+    const live = liveResults.map((r: any, i) => ({
       id: String(r.id ?? `live-${i}`),
       source: (r.source as HomelyProperty['source']) ?? sourceTab,
       title: r.title ?? '',
@@ -174,9 +174,11 @@ export default function Properties() {
       photos: Array.isArray(r.photos) ? r.photos as string[] : [],
       url: r.url ?? null,
       features: Array.isArray(r.features) ? r.features as string[] : [],
+      listing_type: (r.listing_type ?? 'sale') as ListingType,
+      extras: (r.extras ?? {}) as Record<string, string>,
     }));
     // Real data only — no mock catalogue. Each tab shows what its source returns.
-    return live;
+    return live as Array<HomelyProperty & { extras?: Record<string, string> }>;
   }, [liveResults, sourceTab]);
 
   const filtered = useMemo(() => {
