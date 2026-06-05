@@ -68,18 +68,12 @@ export default function Properties() {
   const queryClient = useQueryClient();
   const refreshListings = () => queryClient.invalidateQueries({ queryKey: ['properties-search'] });
 
-  // Calls homely-search: real Homely if a key is configured, otherwise the
-  // function falls back to the local `listings` table. We merge whatever it
-  // returns with the mock catalogue so the page is never empty.
-  const { data: liveResults, isLoading } = useQuery({
-    queryKey: ['homely-search', { city, rooms, propertyType, priceRange, areaMin }],
-    queryFn: async () => {
-      try {
   const fnName = sourceTab === 'yad2'
     ? 'yad2-search'
     : sourceTab === 'madlan'
     ? 'madlan-search'
     : 'homely-search';
+
 
   const { data: liveResponse, isLoading } = useQuery({
     queryKey: ['properties-search', sourceTab, { city, rooms, propertyType, priceRange, areaMin }],
