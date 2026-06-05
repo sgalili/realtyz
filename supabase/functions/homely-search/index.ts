@@ -84,8 +84,8 @@ function normalizeListing(row: any): PropertyResult {
   return {
     id: String(row.id),
     source: "listings",
-    title: row.property_title || row.headline || "Property",
-    description: row.description || row.thesis || "",
+    title: row.property_title || "Property",
+    description: row.description || "",
     price: typeof row.asking_price === "number" ? row.asking_price : Number(row.asking_price) || null,
     currency: "₪",
     city: row?.source_metadata?.city || null,
@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
     // ── Fallback: local listings table ──
     let query = admin
       .from("listings")
-      .select("id, property_title, description, asking_price, features, headline, thesis, slug, source_metadata")
+      .select("id, property_title, description, asking_price, features, slug, source_metadata")
       .eq("is_published", true)
       .limit(limit);
 
