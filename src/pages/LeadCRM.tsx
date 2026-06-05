@@ -869,6 +869,29 @@ const LeadCRM = () => {
                 </button>
               </div>
             </div>
+            {/* Lead kind tabs */}
+            <div className="flex flex-wrap gap-1.5 -mt-1">
+              {([
+                { v: 'all', label: 'הכל' },
+                { v: 'buyer', label: 'קונים' },
+                { v: 'seller', label: 'מוכרים' },
+                { v: 'renter', label: 'שוכרים' },
+                { v: 'landlord', label: 'משכירים' },
+              ] as const).map((t) => (
+                <button
+                  key={t.v}
+                  type="button"
+                  onClick={() => setLeadKindFilter(t.v as typeof leadKindFilter)}
+                  className={`px-3 h-7 rounded-full text-xs font-medium border transition-colors ${
+                    leadKindFilter === t.v
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-muted-foreground border-border hover:bg-accent'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
             {(() => {
               const hasFilter = !!search.trim() || interestFilter !== 'all' || cityFilter !== 'all' || statusFilter !== 'all' || profileFilter !== 'all';
               const accountTotal = isDemoMode ? leads.length : realTotalCount;
