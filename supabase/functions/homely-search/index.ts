@@ -1,50 +1,34 @@
-// Smart Matchmaker — property search
+// Homely (Webtiv) property search.
 //
-// Searches properties matching a lead's preferences. Tries Homely first
-// (proxied through the user's API key, same pattern as call-homely-api), then
-// falls back to the local `listings` table so the feature still works for
-// agents who haven't connected Homely yet.
+// Real Homely runs on Webtiv's API. We log in with the broker's stored
+// agency + username + password (same flow as homely-verify-login), obtain the
+// session db+token, then call the Webtiv property listing endpoints.
 //
-// Request body:
-//   {
-//     lead_id?: uuid,                 // optional; if provided we read lead.preferences
-//     min_price?: number,
-//     max_price?: number,
-//     city?: string,
-//     rooms?: number,                     // minimum rooms
-//     keywords?: string,                  // freeform query
-//     limit?: number                      // default 12
-//   }
-//
-// Returns: { source: "homely" | "listings", results: PropertyResult[] }
+// If a separate OpenCard API key (homely_api_key) is stored we try that as a
+// bearer fallback. If nothing is configured we fall back to the local
+// `listings` table so the page is never blank.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { corsHeaders } from "../_shared/cors.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
-
-const corsHeaders = {
-  "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
-};
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-type PropertyResult = {
-  id: string;
-  source: "homely" | "listings";
-  title: string;
-  description: string;
-  price: number | null;
-  currency: string;
-  city: string | null;
-  rooms: number | null;
-  size_sqm: number | null;
-  photos: string[];
-  url: string | null;
-  features: string[];
-};
+const WEBTIV_BASE = "https://webtivapi.webtiv.co.il";
+const LOGIN_URL = `${WEBTIV_BASE}/api/login/LoginNewByAgent`;
+
+// Candidate Webtiv listing endpoints (different broker installs expose
+// slightly different routes). We POST the session+filters to each and return
+// the first one that yields rows. This makes the function resilient to the
+// undocumented API surface.
+const PROPERTY_ENDPOINTS = [
+  "/api/Nechasim/GetNechasim",      // נכסים
+  "/api/Property/GetProperties",
+  "/api/Properties/GetAll",
+  "/api/Nechasim/Search",
+];
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -53,47 +37,50 @@ function json(body: unknown, status = 200) {
   });
 }
 
-function normalizeHomelyResult(item: any): PropertyResult {
-  const photos: string[] = Array.isArray(item?.photos)
-    ? item.photos.map((p: any) => (typeof p === "string" ? p : p?.url)).filter(Boolean)
-    : Array.isArray(item?.images)
-    ? item.images.map((p: any) => (typeof p === "string" ? p : p?.url)).filter(Boolean)
-    : [];
-  return {
-    id: String(item?.id ?? item?.listing_id ?? crypto.randomUUID()),
-    source: "homely",
-    title: item?.title || item?.headline || item?.address || "Property",
-    description: item?.description || item?.summary || "",
-    price: typeof item?.price === "number" ? item.price : Number(item?.price) || null,
-    currency: item?.currency || "₪",
-    city: item?.city || item?.location?.city || null,
-    rooms: typeof item?.rooms === "number" ? item.rooms : Number(item?.rooms) || null,
-    size_sqm: typeof item?.size_sqm === "number" ? item.size_sqm : Number(item?.size_sqm || item?.area) || null,
-    photos,
-    url: item?.url || item?.public_url || null,
-    features: Array.isArray(item?.features) ? item.features : [],
-  };
+async function webtivLogin(agency: string, username: string, password: string) {
+  const res = await fetch(LOGIN_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    body: JSON.stringify({
+      client: agency, username, password,
+      theme: "", version: "realtyz-1.0",
+      deviceInfo: { DeviceType: "server", UserAgent: "Realtyz/1.0", Os: "deno", Platform: "edge-function" },
+    }),
+  });
+  const text = await res.text();
+  let data: any = null;
+  try { data = JSON.parse(text); } catch { /* */ }
+  if (!res.ok || !data || data.db === 0 || data.db === "0") {
+    return { ok: false as const, status: res.status, note: text.slice(0, 200) };
+  }
+  return { ok: true as const, session: data };
 }
 
-function normalizeListing(row: any): PropertyResult {
-  const features = Array.isArray(row?.features) ? row.features : [];
-  // Try to pull a photo from features (some seed rows store a "photo" entry)
-  const photos: string[] = features
-    .map((f: any) => (typeof f === "string" ? f : f?.photo || f?.image_url))
-    .filter((s: any) => typeof s === "string" && /^https?:\/\//.test(s));
+function normalize(item: any, idx: number) {
+  const photos: string[] = [];
+  for (const k of ["photos", "images", "Photos", "Images", "tmunot"]) {
+    const v = item?.[k];
+    if (Array.isArray(v)) {
+      for (const p of v) {
+        const u = typeof p === "string" ? p : p?.url || p?.Url || p?.src;
+        if (u) photos.push(u);
+      }
+    }
+  }
+  const price = Number(item?.price ?? item?.Price ?? item?.mehir ?? 0) || null;
   return {
-    id: String(row.id),
-    source: "listings",
-    title: row.property_title || "Property",
-    description: row.description || "",
-    price: typeof row.asking_price === "number" ? row.asking_price : Number(row.asking_price) || null,
+    id: String(item?.id ?? item?.Id ?? item?.nechesId ?? `homely-${idx}`),
+    source: "homely",
+    title: item?.title || item?.Title || item?.kotert || item?.address || "נכס Homely",
+    description: item?.description || item?.Description || item?.tiur || "",
+    price,
     currency: "₪",
-    city: row?.source_metadata?.city || null,
-    rooms: row?.source_metadata?.rooms || null,
-    size_sqm: row?.source_metadata?.size_sqm || null,
+    city: item?.city || item?.City || item?.ir || null,
+    rooms: Number(item?.rooms ?? item?.Rooms ?? item?.hadarim ?? 0) || null,
+    size_sqm: Number(item?.size_sqm ?? item?.area ?? item?.shetach ?? 0) || null,
     photos,
-    url: row.slug ? `/listing/${row.slug}` : null,
-    features: features.filter((f: any) => typeof f === "string"),
+    url: item?.url || item?.Url || null,
+    features: [],
   };
 }
 
@@ -103,109 +90,125 @@ Deno.serve(async (req) => {
   try {
     const auth = req.headers.get("Authorization") || "";
     if (!auth.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
-
-    const userClient = createClient(SUPABASE_URL, ANON_KEY, {
-      global: { headers: { Authorization: auth } },
-    });
+    const userClient = createClient(SUPABASE_URL, ANON_KEY, { global: { headers: { Authorization: auth } } });
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) return json({ error: "Unauthorized" }, 401);
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
-
     const body = await req.json().catch(() => ({}));
-    let {
-      lead_id,
-      min_price,
-      max_price,
-      city,
-      rooms,
-      keywords,
-      limit = 12,
-    } = body as {
-      lead_id?: string;
-      min_price?: number;
-      max_price?: number;
-      city?: string;
-      rooms?: number;
-      keywords?: string;
-      limit?: number;
-    };
+    const { city, min_price, max_price, rooms, limit = 24 } = body as any;
 
-    // Hydrate filters from lead preferences when not explicitly provided
-    if (lead_id && (!min_price && !max_price && !city && !rooms)) {
-      const { data: lead } = await admin
-        .from("leads")
-        .select("preferences, city, interest_tag")
-        .eq("id", lead_id)
-        .maybeSingle();
-      const prefs = (lead?.preferences || {}) as Record<string, any>;
-      min_price ??= Number(prefs.min_price) || undefined;
-      max_price ??= Number(prefs.max_price ?? prefs.budget) || undefined;
-      city ??= prefs.city || lead?.city || undefined;
-      rooms ??= Number(prefs.rooms ?? prefs.min_rooms) || undefined;
-      keywords ??= prefs.keywords || lead?.interest_tag || undefined;
-    }
-
-    // ── Try Homely first ──
-    const { data: keyRow } = await admin
-      .from("user_api_keys")
-      .select("homely_api_key")
+    // ── Load broker credentials (agency + username + decrypted password) ──
+    const { data: cred } = await admin
+      .from("homely_broker_credentials")
+      .select("homely_agency, homely_username, connection_status")
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (keyRow?.homely_api_key) {
-      try {
-        const url = new URL("https://api.homely.com/v1/properties/search");
-        if (city) url.searchParams.set("city", city);
-        if (min_price) url.searchParams.set("min_price", String(min_price));
-        if (max_price) url.searchParams.set("max_price", String(max_price));
-        if (rooms) url.searchParams.set("min_rooms", String(rooms));
-        if (keywords) url.searchParams.set("q", keywords);
-        url.searchParams.set("limit", String(Math.min(50, limit)));
+    let lastError: string | null = null;
 
-        const upstream = await fetch(url.toString(), {
-          method: "GET",
-          headers: {
-            Authorization: `Bearer ${keyRow.homely_api_key}`,
-            Accept: "application/json",
-          },
-        });
-        if (upstream.ok) {
-          const payload = await upstream.json().catch(() => ({}));
-          const items: any[] = Array.isArray(payload)
-            ? payload
-            : payload?.results || payload?.data || payload?.properties || [];
-          if (items.length > 0) {
-            return json({ source: "homely", results: items.slice(0, limit).map(normalizeHomelyResult) });
-          }
+    if (cred?.homely_agency && cred?.homely_username) {
+      const { data: pw } = await admin.rpc("get_homely_password", { _user_id: user.id });
+      if (pw) {
+        const login = await webtivLogin(String(cred.homely_agency), String(cred.homely_username), pw as unknown as string);
+        if (!login.ok) {
+          lastError = `login_failed:${login.status}:${login.note}`;
+          console.warn("[homely-search]", lastError);
         } else {
-          console.warn("[homely-search] upstream", upstream.status);
+          const session = login.session as any;
+          const token = session?.token || session?.Token || session?.accessToken;
+          const db = session?.db ?? session?.Db;
+          const headers: Record<string, string> = {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          };
+          if (token) headers["Authorization"] = `Bearer ${token}`;
+
+          const filters = {
+            db, token,
+            city: city || undefined,
+            minPrice: min_price || undefined,
+            maxPrice: max_price || undefined,
+            minRooms: rooms || undefined,
+            pageSize: Math.min(50, limit),
+            page: 1,
+          };
+
+          for (const path of PROPERTY_ENDPOINTS) {
+            try {
+              const upstream = await fetch(`${WEBTIV_BASE}${path}`, {
+                method: "POST",
+                headers,
+                body: JSON.stringify(filters),
+              });
+              if (!upstream.ok) {
+                lastError = `${path}:HTTP ${upstream.status}`;
+                continue;
+              }
+              const payload = await upstream.json().catch(() => null);
+              const items: any[] = Array.isArray(payload)
+                ? payload
+                : payload?.results || payload?.data || payload?.properties || payload?.Items || payload?.nechasim || [];
+              console.log(`[homely-search] ${path} -> ${items.length} items`);
+              if (items.length > 0) {
+                return json({
+                  source: "homely",
+                  connected: true,
+                  endpoint: path,
+                  results: items.slice(0, limit).map((it, i) => normalize(it, i)),
+                });
+              }
+            } catch (e) {
+              lastError = `${path}:${(e as Error).message}`;
+            }
+          }
+          // Logged in but no endpoint returned rows
+          return json({
+            source: "homely",
+            connected: true,
+            results: [],
+            note: "logged_in_but_no_listings_found",
+            last_error: lastError,
+          });
         }
-      } catch (e) {
-        console.warn("[homely-search] homely call failed", (e as Error).message);
+      } else {
+        lastError = "no_password_on_file";
       }
+    } else {
+      lastError = "no_credentials_configured";
     }
 
-    // ── Fallback: local listings table ──
-    let query = admin
+    // ── Fallback: local listings ──
+    const { data: rows } = await admin
       .from("listings")
       .select("id, property_title, description, asking_price, features, slug, source_metadata")
       .eq("is_published", true)
       .limit(limit);
 
-    if (min_price) query = query.gte("asking_price", min_price);
-    if (max_price) query = query.lte("asking_price", max_price);
-    if (keywords) {
-      // Naive ilike across title + description
-      query = query.or(`property_title.ilike.%${keywords}%,description.ilike.%${keywords}%`);
-    }
-
-    const { data: rows, error } = await query;
-    if (error) return json({ error: error.message }, 500);
-
     return json({
       source: "listings",
-      results: (rows || []).map(normalizeListing),
+      connected: !!cred?.homely_agency,
+      results: (rows || []).map((row: any) => {
+        const features = Array.isArray(row.features) ? row.features : [];
+        const photos = features
+          .map((f: any) => (typeof f === "string" ? f : f?.photo || f?.image_url))
+          .filter((s: any) => typeof s === "string" && /^https?:\/\//.test(s));
+        return {
+          id: String(row.id),
+          source: "listings",
+          title: row.property_title || "נכס",
+          description: row.description || "",
+          price: Number(row.asking_price) || null,
+          currency: "₪",
+          city: row?.source_metadata?.city || null,
+          rooms: row?.source_metadata?.rooms || null,
+          size_sqm: row?.source_metadata?.size_sqm || null,
+          photos,
+          url: row.slug ? `/listing/${row.slug}` : null,
+          features: features.filter((f: any) => typeof f === "string"),
+        };
+      }),
+      last_error: lastError,
     });
   } catch (e) {
     console.error("[homely-search] fatal", e);
@@ -215,8 +218,7 @@ Deno.serve(async (req) => {
         functionName: "homely-search",
         errorMessage: (e as Error).message,
       });
-    } catch (_) { /* swallow logging errors */ }
-    // Safe fallback: return empty results so the client never sees a blank screen
-    return json({ source: "listings", results: [], error: (e as Error).message }, 200);
+    } catch { /* */ }
+    return json({ source: "listings", connected: false, results: [], error: (e as Error).message });
   }
 });
