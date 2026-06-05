@@ -42,7 +42,20 @@ const FIELD_ALIASES: Record<string, string[]> = {
   serial:       ['סדורי', 'סידורי', 'מספר סידורי', 'serial', 'serial number'],
   opened_at:    ['פתיחה', 'נפתח', 'opened', 'opened at'],
   updated_at_src:['עדכון', 'עודכן', 'updated', 'updated at'],
+  listing_type: ['עסקה', 'סוג עסקה', 'מצב', 'deal', 'deal type', 'listing type'],
 };
+
+function detectListingType(extras: Record<string, string>, mappedListingType: any, price: number | null): 'sale' | 'rent' {
+  const explicit = mappedListingType ? String(mappedListingType).toLowerCase() : '';
+  if (/השכר|שכיר|rent|להשכרה/i.test(explicit)) return 'rent';
+  if (/מכיר|sale|למכירה/i.test(explicit)) return 'sale';
+  const blob = Object.entries(extras).map(([k, v]) => `${k} ${v}`).join(' ');
+  if (/השכר|שכיר|להשכרה|rent/i.test(blob)) return 'rent';
+  if (/למכירה|מכירה|sale/i.test(blob)) return 'sale';
+  // Heuristic: monthly rent prices typically < 30,000
+  if (price != null && price > 0 && price < 30000) return 'rent';
+  return 'sale';
+}
 
 function normalizeKey(s: string) {
   return String(s ?? '').trim().toLowerCase()
