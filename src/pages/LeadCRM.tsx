@@ -195,6 +195,7 @@ const LeadCRM = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [profileFilter, setProfileFilter] = useState<string>('all');
   const [dealTypeFilter, setDealTypeFilter] = useState<string>('all');
+  const [leadKindFilter, setLeadKindFilter] = useState<'all' | 'buyer' | 'seller' | 'renter' | 'landlord'>('all');
   const [compactMode, setCompactMode] = useState<boolean>(() => {
     try { return localStorage.getItem('crm.compact') === '1'; } catch { return false; }
   });
