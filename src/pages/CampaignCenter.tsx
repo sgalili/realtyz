@@ -76,10 +76,11 @@ const BRAND_COLOR: Record<string, string> = {
 /* ───────────── Channel grid ───────────── */
 
 const ChannelGrid = ({
-  selectedId, onPick, brandName, connected = EMPTY_CONNECTED,
+  selectedId, onPick, onConnect, brandName, connected = EMPTY_CONNECTED,
 }: {
   selectedId: string | null;
   onPick: (c: ChannelCard) => void;
+  onConnect: (c: ChannelCard) => void;
   brandName: string;
   connected?: Set<string>;
 }) => (
@@ -92,7 +93,8 @@ const ChannelGrid = ({
         const brandColor = isConnected ? (BRAND_COLOR[c.id] ?? c.iconColor ?? 'text-foreground') : 'text-muted-foreground/60';
         return (
           <button key={c.id} type="button"
-            onClick={() => isConnected ? onPick(c) : onPick(c)}
+            onClick={() => isConnected ? onPick(c) : onConnect(c)}
+
             aria-pressed={isSelected}
             className={cn(
               'group relative flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border bg-background p-3 text-center transition active:scale-[0.98]',
