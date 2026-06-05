@@ -650,6 +650,10 @@ const LeadCRM = () => {
         let duplicates = 0;
         let invalid = 0;
 
+        // Headers that already feed a known column — we still keep them in `extra`
+        // too, so the original file is fully round-trip preserved in the lead.
+        const mappedSourceHeaders = new Set(Object.values(headerMap));
+
         for (const row of rows) {
           const firstName = get(row, 'first_name');
           const lastName = get(row, 'last_name');
@@ -667,7 +671,28 @@ const LeadCRM = () => {
           if (!phone) { invalid++; continue; }
           if (seenPhones.has(phone) || existingPhones.has(phone)) { duplicates++; continue; }
           seenPhones.add(phone);
-          validRows.push({ full_name: name, phone_number: phone, city, interest_tag: interest, identity_number: identityNumber, email });
+
+          // Capture EVERY original column from the source file (mapped + unmapped),
+          // skipping empties. Keys are the original headers so the agent recognises them.
+          const extra: Record<string, string> = {};
+          for (const [origKey, value] of Object.entries(row)) {
+            if (value == null) continue;
+            const str = String(value).trim();
+            if (!str) continue;
+            // Skip the phone column — it's already normalized into phone_number
+            if (headerMap.phone === origKey) continue;
+            extra[origKey] = str;
+          }
+
+          validRows.push({
+            full_name: name,
+            phone_number: phone,
+            city,
+            interest_tag: interest,
+            identity_number: identityNumber,
+            email,
+            extra: Object.keys(extra).length ? extra : undefined,
+          });
         }
 
         const healthPct = rows.length > 0 ? Math.round((validRows.length / rows.length) * 100) : 0;
