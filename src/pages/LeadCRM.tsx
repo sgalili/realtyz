@@ -673,6 +673,41 @@ const LeadCRM = () => {
         toast.error('שגיאה בקריאת הקובץ: ' + (err?.message || 'פורמט לא נתמך'));
       }
     };
+
+    if (isPdf) {
+      parsePdfToRows(file)
+        .then((res) => {
+          if (!res.rows.length) { toast.error('לא נמצאו שורות נתונים ב-PDF'); return; }
+          processRows(res.rows);
+        })
+        .catch((err) => {
+          console.error('PDF parse error:', err);
+          toast.error('שגיאה בקריאת PDF: ' + (err?.message || ''));
+        })
+        .finally(() => { e.target.value = ''; });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        let workbook: XLSX.WorkBook;
+        if (isCsv) {
+          let text = evt.target?.result as string;
+          if (text && text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+          workbook = XLSX.read(text, { type: 'string', raw: false });
+        } else {
+          const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+          workbook = XLSX.read(data, { type: 'array' });
+        }
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows: Record<string, any>[] = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+        processRows(rows);
+      } catch (err: any) {
+        console.error('Import parse error:', err);
+        toast.error('שגיאה בקריאת הקובץ: ' + (err?.message || 'פורמט לא נתמך'));
+      }
+    };
     if (isCsv) reader.readAsText(file, 'UTF-8');
     else reader.readAsArrayBuffer(file);
     e.target.value = '';
