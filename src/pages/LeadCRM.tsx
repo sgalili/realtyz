@@ -303,10 +303,10 @@ const LeadCRM = () => {
       if (!ex || typeof ex !== 'object') continue;
       for (const k of Object.keys(ex)) {
         if (SKIP_EXTRA_KEYS.has(k.toLowerCase().trim())) continue;
-        counts.set(k, (counts.get(k) ?? 0) + 1);
+        counts[k] = (counts[k] ?? 0) + 1;
       }
     }
-    return Array.from(counts.entries())
+    return Object.entries(counts)
       .sort((a, b) => b[1] - a[1])
       .slice(0, 12)
       .map(([k]) => k);
