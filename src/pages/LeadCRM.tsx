@@ -27,6 +27,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
+import { parsePdfToRows } from '@/lib/parsePdfTable';
 import { sendToN8n } from '@/lib/n8nService';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import VoterAvatar from '@/components/VoterAvatar';
@@ -601,23 +602,13 @@ const LeadCRM = () => {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
     const isCsv = /\.csv$/i.test(file.name);
-    reader.onload = (evt) => {
+    const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
+
+    const processRows = (rows: Record<string, any>[]) => {
       try {
-        let workbook: XLSX.WorkBook;
-        if (isCsv) {
-          // UTF-8 + BOM stripping for Hebrew CSVs
-          let text = evt.target?.result as string;
-          if (text && text.charCodeAt(0) === 0xfeff) text = text.slice(1);
-          workbook = XLSX.read(text, { type: 'string', raw: false });
-        } else {
-          const data = new Uint8Array(evt.target?.result as ArrayBuffer);
-          workbook = XLSX.read(data, { type: 'array' });
-        }
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows: Record<string, any>[] = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
         if (rows.length === 0) { toast.error('הקובץ ריק'); return; }
+
 
         // Build canonical->actualHeader map from the first row's keys
         const headers = Object.keys(rows[0] ?? {});
