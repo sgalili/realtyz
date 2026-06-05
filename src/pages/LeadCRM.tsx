@@ -105,6 +105,9 @@ interface ImportRow {
   interest_tag?: string;
   identity_number?: string;
   email?: string;
+  /** All ORIGINAL columns from the source file (header → value), so we never
+   * lose data the agent might want later (budget, neighborhood, source, etc.). */
+  extra?: Record<string, string>;
 }
 
 // Bilingual header mapping (Hebrew + English). Keys are normalized (lowercased, trimmed, quotes stripped)
