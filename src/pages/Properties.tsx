@@ -44,11 +44,18 @@ function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
 }
 
+type SourceTab = 'mine' | 'homely' | 'yad2' | 'madlan';
+const SOURCE_LABELS: Record<SourceTab, string> = {
+  mine: 'הנכסים שלי',
+  homely: 'Homely',
+  yad2: 'Yad2',
+  madlan: 'Madlan',
+};
+
 export default function Properties() {
   const { serviceAreas, coveredCities, isConfigured } = useServiceAreas();
+  const [sourceTab, setSourceTab] = useState<SourceTab>('mine');
   const [listingType, setListingType] = useState<ListingType>('sale');
-  // When agent has a hyper-local zone, default the city dropdown to "all my zones"
-  // (we use empty string as a sentinel) and hide the legacy "כל הערים" option.
   const [city, setCity] = useState<string>(isConfigured ? '__my_zones__' : 'כל הערים');
   const [propertyType, setPropertyType] = useState<PropertyType | 'all'>('all');
   const [rooms, setRooms] = useState<string>('any');
@@ -59,18 +66,22 @@ export default function Properties() {
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const queryClient = useQueryClient();
-  const refreshListings = () => queryClient.invalidateQueries({ queryKey: ['homely-search'] });
+  const refreshListings = () => queryClient.invalidateQueries({ queryKey: ['properties-search'] });
 
-  // Calls homely-search: real Homely if a key is configured, otherwise the
-  // function falls back to the local `listings` table. We merge whatever it
-  // returns with the mock catalogue so the page is never empty.
-  const { data: liveResults, isLoading } = useQuery({
-    queryKey: ['homely-search', { city, rooms, propertyType, priceRange, areaMin }],
+  const fnName = sourceTab === 'yad2'
+    ? 'yad2-search'
+    : sourceTab === 'madlan'
+    ? 'madlan-search'
+    : 'homely-search';
+
+
+  const { data: liveResponse, isLoading } = useQuery({
+    queryKey: ['properties-search', sourceTab, { city, rooms, propertyType, priceRange, areaMin }],
     queryFn: async () => {
       try {
-        const { data, error } = await supabase.functions.invoke('homely-search', {
+        const { data, error } = await supabase.functions.invoke(fnName, {
           body: {
-            city: city !== 'כל הערים' ? city : undefined,
+            city: city !== 'כל הערים' && city !== '__my_zones__' ? city : undefined,
             min_price: priceRange[0] > PRICE_MIN ? priceRange[0] : undefined,
             max_price: priceRange[1] < PRICE_MAX ? priceRange[1] : undefined,
             rooms: rooms !== 'any' ? Number(rooms) : undefined,
@@ -78,18 +89,21 @@ export default function Properties() {
           },
         });
         if (error) throw error;
-        return (data?.results ?? []) as Array<Partial<HomelyProperty>>;
+        return data as { connected?: boolean; results?: Array<Partial<HomelyProperty>>; error?: string };
       } catch {
-        return [];
+        return { connected: false, results: [] };
       }
     },
     staleTime: 30_000,
   });
 
+  const liveResults = liveResponse?.results ?? [];
+  const externalConnected = liveResponse?.connected !== false;
+
   const merged = useMemo<HomelyProperty[]>(() => {
-    const live = (liveResults ?? []).map((r, i) => ({
+    const live = liveResults.map((r, i) => ({
       id: String(r.id ?? `live-${i}`),
-      source: (r.source as HomelyProperty['source']) ?? 'homely',
+      source: (r.source as HomelyProperty['source']) ?? sourceTab,
       title: r.title ?? '',
       description: r.description ?? '',
       price: Number(r.price ?? 0),
@@ -102,9 +116,11 @@ export default function Properties() {
       url: r.url ?? null,
       features: Array.isArray(r.features) ? r.features as string[] : [],
     }));
-    // Mock first so the grid is rich even when the API returns nothing.
-    return [...MOCK_HOMELY_PROPERTIES, ...live];
-  }, [liveResults]);
+    // Only the "mine" tab shows the local mock catalogue; external tabs show
+    // only what the connected portal returned.
+    if (sourceTab === 'mine') return [...MOCK_HOMELY_PROPERTIES, ...live];
+    return live;
+  }, [liveResults, sourceTab]);
 
   const filtered = useMemo(() => {
     return merged.filter((p) => {
@@ -154,6 +170,32 @@ export default function Properties() {
           </Button>
         </div>
       </header>
+
+      {/* Source tabs: Mine / Homely / Yad2 / Madlan */}
+      <div className="flex justify-center">
+        <div className="inline-flex items-center rounded-xl border border-primary/20 bg-card/40 p-1 backdrop-blur-md flex-wrap" dir="rtl">
+          {(Object.keys(SOURCE_LABELS) as SourceTab[]).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setSourceTab(t)}
+              className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${
+                sourceTab === t
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {SOURCE_LABELS[t]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {sourceTab !== 'mine' && !externalConnected && (
+        <Card className="p-4 text-sm text-center text-muted-foreground">
+          לא נמצא חיבור פעיל ל-{SOURCE_LABELS[sourceTab]}. הגדירו את פרטי ההתחברות בפרופיל כדי לראות נכסים מהמקור הזה.
+        </Card>
+      )}
 
       {/* Listing type toggle: למכירה / להשכרה */}
       <div className="flex justify-center">

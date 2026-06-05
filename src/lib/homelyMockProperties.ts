@@ -5,7 +5,7 @@
 // Shape mirrors `PropertyResult` from supabase/functions/homely-search/index.ts
 // so the page can swap the source transparently when a real API is connected.
 
-export type PropertySource = "homely" | "listings" | "mock";
+export type PropertySource = "homely" | "listings" | "mock" | "yad2" | "madlan" | "mine";
 
 export type ListingType = "sale" | "rent";
 
