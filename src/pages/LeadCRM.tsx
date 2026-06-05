@@ -27,6 +27,7 @@ import { useVirtualizer } from '@tanstack/react-virtual';
 import { format } from 'date-fns';
 import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
+import { parsePdfToRows } from '@/lib/parsePdfTable';
 import { sendToN8n } from '@/lib/n8nService';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import VoterAvatar from '@/components/VoterAvatar';
@@ -601,23 +602,13 @@ const LeadCRM = () => {
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
-    const reader = new FileReader();
     const isCsv = /\.csv$/i.test(file.name);
-    reader.onload = (evt) => {
+    const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
+
+    const processRows = (rows: Record<string, any>[]) => {
       try {
-        let workbook: XLSX.WorkBook;
-        if (isCsv) {
-          // UTF-8 + BOM stripping for Hebrew CSVs
-          let text = evt.target?.result as string;
-          if (text && text.charCodeAt(0) === 0xfeff) text = text.slice(1);
-          workbook = XLSX.read(text, { type: 'string', raw: false });
-        } else {
-          const data = new Uint8Array(evt.target?.result as ArrayBuffer);
-          workbook = XLSX.read(data, { type: 'array' });
-        }
-        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-        const rows: Record<string, any>[] = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
         if (rows.length === 0) { toast.error('הקובץ ריק'); return; }
+
 
         // Build canonical->actualHeader map from the first row's keys
         const headers = Object.keys(rows[0] ?? {});
@@ -677,6 +668,41 @@ const LeadCRM = () => {
         setImportStats({ total: rows.length, valid: validRows.length, duplicates, invalid, healthPct, detectedFields, missingPhone: false });
         setImportDialogOpen(true);
         (window as any).__importRows = validRows;
+      } catch (err: any) {
+        console.error('Import parse error:', err);
+        toast.error('שגיאה בקריאת הקובץ: ' + (err?.message || 'פורמט לא נתמך'));
+      }
+    };
+
+    if (isPdf) {
+      parsePdfToRows(file)
+        .then((res) => {
+          if (!res.rows.length) { toast.error('לא נמצאו שורות נתונים ב-PDF'); return; }
+          processRows(res.rows);
+        })
+        .catch((err) => {
+          console.error('PDF parse error:', err);
+          toast.error('שגיאה בקריאת PDF: ' + (err?.message || ''));
+        })
+        .finally(() => { e.target.value = ''; });
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = (evt) => {
+      try {
+        let workbook: XLSX.WorkBook;
+        if (isCsv) {
+          let text = evt.target?.result as string;
+          if (text && text.charCodeAt(0) === 0xfeff) text = text.slice(1);
+          workbook = XLSX.read(text, { type: 'string', raw: false });
+        } else {
+          const data = new Uint8Array(evt.target?.result as ArrayBuffer);
+          workbook = XLSX.read(data, { type: 'array' });
+        }
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+        const rows: Record<string, any>[] = XLSX.utils.sheet_to_json(firstSheet, { defval: '' });
+        processRows(rows);
       } catch (err: any) {
         console.error('Import parse error:', err);
         toast.error('שגיאה בקריאת הקובץ: ' + (err?.message || 'פורמט לא נתמך'));

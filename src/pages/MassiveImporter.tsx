@@ -1,5 +1,6 @@
 import { useState, useRef, useCallback, useMemo } from 'react';
 import * as XLSX from 'xlsx';
+import { parsePdfToRows } from '@/lib/parsePdfTable';
 import { supabase } from '@/integrations/supabase/client';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -182,16 +183,20 @@ export default function MassiveImporter() {
     setPreviewLimit(PREVIEW_INITIAL);
 
     try {
-      const buf = await f.arrayBuffer();
-      const wb = XLSX.read(buf, { type: 'array', cellDates: false, raw: false });
-      const sheetName = wb.SheetNames[0];
-      if (!sheetName) {
-        toast.error('הקובץ ריק');
-        return;
+      const isPdf = /\.pdf$/i.test(f.name) || f.type === 'application/pdf';
+      let matrix: string[][];
+      if (isPdf) {
+        const res = await parsePdfToRows(f);
+        if (!res.headers.length) { toast.error('לא נמצאה טבלה ב-PDF'); return; }
+        matrix = [res.headers, ...res.rows.map((r) => res.headers.map((h) => r[h] ?? ''))];
+      } else {
+        const buf = await f.arrayBuffer();
+        const wb = XLSX.read(buf, { type: 'array', cellDates: false, raw: false });
+        const sheetName = wb.SheetNames[0];
+        if (!sheetName) { toast.error('הקובץ ריק'); return; }
+        const sheet = wb.Sheets[sheetName];
+        matrix = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', blankrows: false });
       }
-      const sheet = wb.Sheets[sheetName];
-      // header:1 → 2D array; defval:'' so missing cells become empty strings (not undefined)
-      const matrix: string[][] = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '', blankrows: false });
 
       if (matrix.length < 2) {
         toast.error('הקובץ חייב לכלול שורת כותרת ולפחות שורת נתונים אחת');
