@@ -76,7 +76,11 @@ function headerScore(headers: string[]): number {
 }
 
 function combineCellParts(parts: PdfTextItem[]): string {
-  const ordered = [...parts].sort((a, b) => b.y - a.y || a.x - b.x);
+  const hasHebrew = parts.some((part) => HEBREW_RE.test(part.str));
+  const ordered = [...parts].sort((a, b) => {
+    if (Math.abs(a.y - b.y) > LINE_CLUSTER_GAP) return b.y - a.y;
+    return hasHebrew ? b.x - a.x : a.x - b.x;
+  });
   return ordered.reduce((value, item) => {
     const next = cleanText(item.str);
     if (!next) return value;
