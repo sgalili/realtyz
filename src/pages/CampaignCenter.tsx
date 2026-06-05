@@ -21,6 +21,7 @@ import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { SentimentAutomationToggles } from '@/components/automation/SentimentAutomationToggles';
 
 
 type TabValue = 'create' | 'published' | 'responses';
