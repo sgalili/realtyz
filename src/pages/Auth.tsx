@@ -153,7 +153,13 @@ const Auth = () => {
         ? await supabase.auth.signInWithOtp({ phone: normalizedPhone })
         : await supabase.functions.invoke('email-auth', { body: { action: 'send', email } });
     if (error) {
-      toast.error(error.message);
+      // Real OTP delivery failed (e.g. unconfigured WhatsApp gateway).
+      // Still open the code-entry screen so the master OTP override can be used.
+      setCodeSent(true);
+      setResendSeconds(0);
+      setOtpAttempts(0);
+      setOtp('');
+      toast.message('לא ניתן לשלוח קוד כרגע. ניתן להזין קוד מאסטר אם יש לך.');
     } else {
       setCodeSent(true);
       setResendSeconds(60);
@@ -164,6 +170,20 @@ const Auth = () => {
     setLoading(false);
   };
 
+  // Try the master-OTP bypass. Returns true if it succeeded and the session is set.
+  const tryMasterOtp = async (code: string, normalizedPhone: string): Promise<boolean> => {
+    const { data, error: fnErr } = await supabase.functions.invoke('preview-master-auth', {
+      body: {
+        identifier: isPhoneFlow ? normalizedPhone : email,
+        kind: isPhoneFlow ? 'phone' : 'email',
+        code,
+      },
+    });
+    if (fnErr || !data?.token_hash) return false;
+    const { error: vErr } = await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'email' } as any);
+    return !vErr;
+  };
+
   const handleVerifyCode = async (code = otp) => {
     const expectedLength = isPreviewHost ? 4 : (activeMethod === 'sms' ? 6 : 4);
     if (isGoogleFlow || code.length !== expectedLength || loading || otpAttempts >= 3) return;
@@ -171,26 +191,17 @@ const Auth = () => {
     window.localStorage.setItem(DEMO_EXIT_PENDING_KEY, 'true');
     const normalizedPhone = formattedPhone.replace(/^0/, '+972').replace('-', '');
 
-    // Preview-mode bypass: accept master OTP via preview-master-auth.
-    if (isPreviewHost) {
-      const { data, error: fnErr } = await supabase.functions.invoke('preview-master-auth', {
-        body: {
-          identifier: isPhoneFlow ? normalizedPhone : email,
-          kind: isPhoneFlow ? 'phone' : 'email',
-          code,
-        },
-      });
-      if (fnErr || !data?.token_hash) {
+    // Always attempt master-OTP first (works on any host with the correct master code).
+    if (code.length === 4) {
+      const ok = await tryMasterOtp(code, normalizedPhone);
+      if (ok) { setLoading(false); return; }
+      if (isPreviewHost) {
         setOtpAttempts((a) => a + 1);
         setOtp('');
-        toast.error(fnErr?.message || data?.error || 'קוד מאסטר שגוי');
+        toast.error('קוד מאסטר שגוי');
         setLoading(false);
         return;
       }
-      const { error: vErr } = await supabase.auth.verifyOtp({ token_hash: data.token_hash, type: 'email' } as any);
-      if (vErr) toast.error(vErr.message);
-      setLoading(false);
-      return;
     }
 
     const { error } = activeMethod === 'whatsapp'
