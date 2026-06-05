@@ -1168,6 +1168,20 @@ const LeadCRM = () => {
                             </Tooltip>
                           </TooltipProvider>
                         </TableCell>
+                        {extraColumns.map((col) => {
+                          const ex = (lead as any).preferences?.extra_fields ?? {};
+                          const val = ex?.[col];
+                          return (
+                            <TableCell
+                              key={`c-${lead.id}-${col}`}
+                              className="text-[11px] text-center text-muted-foreground"
+                              onClick={() => setSelectedVoterId(lead.id)}
+                              title={val ? String(val) : ''}
+                            >
+                              <span className="inline-block max-w-[160px] truncate align-middle">{val != null && val !== '' ? String(val) : '-'}</span>
+                            </TableCell>
+                          );
+                        })}
                         <TableCell className="w-10 text-center" onClick={(e) => e.stopPropagation()}>
                           <Checkbox checked={selectedIds.has(lead.id)} onCheckedChange={() => toggleOne(lead.id)} />
                         </TableCell>
