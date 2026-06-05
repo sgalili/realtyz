@@ -697,6 +697,25 @@ const CampaignCenter = () => {
     return () => { cancelled = true; };
   }, []);
 
+  const handleConnectChannel = async (_c: ChannelCard) => {
+    try {
+      toast.loading('פותח חיבור Ayrshare…', { id: 'ayr-connect' });
+      const { data, error } = await supabase.functions.invoke('ayrshare-social-link', { body: {} });
+      toast.dismiss('ayr-connect');
+      if (error) throw error;
+      const url = (data as any)?.url;
+      if (!url) {
+        toast.error('לא התקבל קישור חיבור מ-Ayrshare');
+        return;
+      }
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (e: any) {
+      toast.dismiss('ayr-connect');
+      toast.error(e?.message ?? 'יצירת חיבור נכשלה');
+    }
+  };
+
+
 
   const initial = (searchParams.get('tab') as string) ?? 'create';
   const remapped: TabValue =
