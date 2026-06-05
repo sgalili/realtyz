@@ -288,9 +288,9 @@ const Auth = () => {
               {codeSent && !isGoogleFlow ? (
                 <div className="space-y-4 text-center animate-fade-in">
                   <Label className="block text-xl font-bold text-primary-foreground">הזינו את הקוד שקיבלתם {activeMethod === 'whatsapp' ? 'בווטסאפ' : activeMethod === 'sms' ? 'ב-SMS' : 'באימייל'}</Label>
-                  <InputOTP maxLength={activeMethod === 'sms' ? 6 : 4} value={otp} onChange={(value) => { const len = activeMethod === 'sms' ? 6 : 4; setOtp(value); if (value.length === len) void handleVerifyCode(value); }} containerClassName="justify-center" dir="ltr" disabled={otpAttempts >= 3}>
+                  <InputOTP maxLength={isPreviewHost ? 4 : (activeMethod === 'sms' ? 6 : 4)} value={otp} onChange={(value) => { const len = isPreviewHost ? 4 : (activeMethod === 'sms' ? 6 : 4); setOtp(value); if (value.length === len) void handleVerifyCode(value); }} containerClassName="justify-center" dir="ltr" disabled={otpAttempts >= 3}>
                     <InputOTPGroup className="flex-row-reverse gap-2">
-                      {Array.from({ length: activeMethod === 'sms' ? 6 : 4 }).map((_, index) => (
+                      {Array.from({ length: isPreviewHost ? 4 : (activeMethod === 'sms' ? 6 : 4) }).map((_, index) => (
                         <InputOTPSlot key={index} index={index} className="h-20 w-20 rounded-md border bg-background p-0 text-7xl font-black leading-none text-primary" />
                       ))}
                     </InputOTPGroup>
