@@ -10,7 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import {
-  Brain, Send, Loader2, Upload, Search, FileText, Link as LinkIcon, Mic, Type,
+  Brain, Send, Loader2, Upload, Search, FileText, Link as LinkIcon, Mic, Type, Trash2, Image as ImageIcon, Video as VideoIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
