@@ -57,9 +57,11 @@ const CHANNEL_CARDS: ChannelCard[] = [
   { id: 'tiktok',    label: 'TikTok',     free: true, brand: 'tiktok' },
 ];
 
-// Channels considered "connected" by default in the workspace.
-// Disconnected channels render dashed border + grayscale + a "חבר" CTA.
-const DEFAULT_CONNECTED = new Set(['facebook', 'instagram', 'youtube', 'email', 'ivr', 'ai-call']);
+// Connection state is resolved live per-workspace from `social_connections`
+// gated by a verified `workspace_social_profile` row. No hardcoded defaults —
+// each workspace must own its own Ayrshare profile key before any channel can
+// appear connected, preventing cross-tenant leak from shared/global keys.
+const EMPTY_CONNECTED = new Set<string>();
 
 // Official brand colors applied only when the channel is connected.
 const BRAND_COLOR: Record<string, string> = {
@@ -74,7 +76,7 @@ const BRAND_COLOR: Record<string, string> = {
 /* ───────────── Channel grid ───────────── */
 
 const ChannelGrid = ({
-  selectedId, onPick, brandName, connected = DEFAULT_CONNECTED,
+  selectedId, onPick, brandName, connected = EMPTY_CONNECTED,
 }: {
   selectedId: string | null;
   onPick: (c: ChannelCard) => void;
@@ -649,6 +651,49 @@ const CampaignCenter = () => {
   const brandName = settings?.agency_name || 'Realtyz AI';
   const [pickedChannel, setPickedChannel] = useState<ChannelCard | null>(null);
   const [confirmPayload, setConfirmPayload] = useState<{ body: string; mode: 'now' | 'scheduled' } | null>(null);
+  const [connectedChannels, setConnectedChannels] = useState<Set<string>>(EMPTY_CONNECTED);
+
+  // STRICT WORKSPACE ISOLATION: only show a channel as connected when
+  // (1) this workspace owns a verified `workspace_social_profile` with its
+  //     OWN `ayrshare_profile_key` (never a shared/global key), AND
+  // (2) the channel exists in `social_connections` for the active user with
+  //     `is_connected = true`. Otherwise every card defaults to "חבר".
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { if (!cancelled) setConnectedChannels(EMPTY_CONNECTED); return; }
+
+      const { data: wsp } = await supabase
+        .from('workspace_social_profile')
+        .select('ayrshare_profile_key')
+        .maybeSingle();
+      const hasOwnProfile = !!(wsp as any)?.ayrshare_profile_key;
+      if (!hasOwnProfile) { if (!cancelled) setConnectedChannels(EMPTY_CONNECTED); return; }
+
+      const { data: conns } = await supabase
+        .from('social_connections')
+        .select('platform, is_connected')
+        .eq('created_by', user.id)
+        .eq('is_connected', true);
+      if (cancelled) return;
+      const set = new Set<string>();
+      (conns || []).forEach((c: any) => {
+        const p = String(c.platform || '').toLowerCase();
+        if (p.startsWith('facebook')) set.add('facebook');
+        else if (p.startsWith('instagram')) set.add('instagram');
+        else if (p === 'x' || p === 'twitter') set.add('x');
+        else if (p.startsWith('youtube')) set.add('youtube');
+        else if (p.startsWith('linkedin')) set.add('linkedin');
+        else if (p.startsWith('tiktok')) set.add('tiktok');
+        else if (p === 'email') set.add('email');
+        else if (p === 'ivr') set.add('ivr');
+        else if (p === 'ai-call' || p === 'ai_call') set.add('ai-call');
+      });
+      setConnectedChannels(set);
+    })();
+    return () => { cancelled = true; };
+  }, []);
 
 
   const initial = (searchParams.get('tab') as string) ?? 'create';
@@ -734,7 +779,7 @@ const CampaignCenter = () => {
         </div>
 
         <TabsContent value="create" className="mt-6 space-y-4">
-          <ChannelGrid selectedId={pickedChannel?.id ?? null} onPick={setPickedChannel} brandName={brandName} />
+          <ChannelGrid selectedId={pickedChannel?.id ?? null} onPick={setPickedChannel} brandName={brandName} connected={connectedChannels} />
           {pickedChannel && (
             <InlineComposer
               channel={pickedChannel}
