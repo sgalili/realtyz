@@ -163,7 +163,6 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
             <input
               ref={fileRef}
               type="file"
-              accept="*/*"
               className="hidden"
               disabled={processing}
               onChange={(e) => {
