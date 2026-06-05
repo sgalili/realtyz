@@ -197,7 +197,10 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
           status: 'live',
           source: 'import',
           is_published: true,
-          features: propertyType ? [propertyType] : [],
+          features: [
+            ...(propertyType ? [propertyType] : []),
+            { listing_type: detectListingType(extras, mapped.listing_type, price) },
+          ],
           source_metadata: {
             owner_name: ownerName || null,
             owner_phone: mapped.owner_phone ? String(mapped.owner_phone).trim() : null,
