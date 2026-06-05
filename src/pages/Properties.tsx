@@ -102,11 +102,11 @@ export default function Properties() {
         if (sourceTab === 'mine') {
           const { data, error } = await supabase
             .from('listings')
-            .select('id, property_title, description, asking_price, city, rooms, sqm, features')
+            .select('id, property_title, description, asking_price, city, rooms, sqm, features, source_metadata, source')
             .eq('status', 'live')
             .eq('is_published', true)
             .order('created_at', { ascending: false })
-            .limit(100);
+            .limit(500);
           if (error) throw error;
           return {
             connected: true,
@@ -125,6 +125,7 @@ export default function Properties() {
               url: null,
               features: Array.isArray(row.features) ? row.features.filter((f: any) => typeof f === 'string') : [],
               listing_type: extractListingType(row.features),
+              extras: (row.source_metadata && typeof row.source_metadata === 'object' ? (row.source_metadata.extras ?? {}) : {}) as Record<string, string>,
             })),
           };
         }
