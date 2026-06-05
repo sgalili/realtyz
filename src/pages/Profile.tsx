@@ -134,34 +134,37 @@ function WorkspaceTab() {
     },
   });
 
-  const defaults = useMemo(
-    () => ({
+  const initialValues = useMemo(() => {
+    const base = {
       agency_name: meta.agency_name || 'ריאלטיז נדל"ן',
       manager: 'אודי ויטמן',
       tone: onboarding?.tone || 'מקצועי',
       service_areas: meta.service_areas || 'מרכז הארץ',
       initial_message: onboarding?.initial_message || '',
-    }),
-    [meta, onboarding],
-  );
-
-  const [values, setValues] = useState(defaults);
-  const [logoUrl, setLogoUrl] = useState<string>('');
-  const [uploading, setUploading] = useState(false);
-
-  useEffect(() => {
+    };
     try {
       const raw = window.localStorage.getItem(WORKSPACE_STORAGE_KEY);
-      if (raw) {
-        const saved = JSON.parse(raw);
-        setValues({ ...defaults, ...saved });
-      } else {
-        setValues(defaults);
-      }
+      if (raw) return { ...base, ...JSON.parse(raw) };
+    } catch {}
+    return base;
+    // Depend on primitives only so this does NOT re-create on every render.
+  }, [meta.agency_name, meta.service_areas, onboarding?.tone, onboarding?.initial_message]);
+
+  const [values, setValues] = useState(initialValues);
+  const [logoUrl, setLogoUrl] = useState<string>('');
+  const [uploading, setUploading] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
+
+  // Hydrate exactly once after onboarding loads, then never overwrite user input again.
+  useEffect(() => {
+    if (hydrated) return;
+    setValues(initialValues);
+    try {
       const savedLogo = window.localStorage.getItem(LOGO_STORAGE_KEY);
       if (savedLogo) setLogoUrl(savedLogo);
     } catch {}
-  }, [defaults]);
+    setHydrated(true);
+  }, [initialValues, hydrated]);
 
   const update = (key: keyof typeof values) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
     setValues((v) => ({ ...v, [key]: e.target.value }));
@@ -260,7 +263,7 @@ function WorkspaceTab() {
           {fields.map((f) => {
             const Icon = f.icon;
             return (
-              <div key={f.key} className="rounded-lg border bg-card/40 p-3 text-right">
+              <div key={String(f.key)} className="rounded-lg border bg-card/40 p-3 text-right">
                 <div className="mb-1.5 flex items-center gap-2 text-xs text-muted-foreground">
                   <Icon className="h-3.5 w-3.5" />
                   <span>{f.label}</span>
