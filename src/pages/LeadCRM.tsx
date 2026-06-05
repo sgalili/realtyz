@@ -289,6 +289,31 @@ const LeadCRM = () => {
   }, [isDemoMode, dbVoters, demoVoters]);
   const totalCount = isDemoMode ? Math.max(1_000_000, leads.length) : (voterPages?.pages[0]?.total ?? 0);
 
+  // Discover extra columns dynamically from imported preferences.extra_fields.
+  // Keep keys that don't duplicate an already-shown native column, ordered by frequency.
+  const SKIP_EXTRA_KEYS = new Set([
+    'שם', 'שם מלא', 'full name', 'fullname', 'name',
+    'טלפון', 'טלפון1', 'טלפון 1', 'phone', 'mobile', 'נייד', 'סלולרי',
+    'עיר', 'city',
+  ].map((s) => s.toLowerCase().trim()));
+  const extraColumns = useMemo<string[]>(() => {
+    const counts: Record<string, number> = {};
+    for (const lead of leads) {
+      const ex = (lead as any).preferences?.extra_fields;
+      if (!ex || typeof ex !== 'object') continue;
+      for (const k of Object.keys(ex)) {
+        if (SKIP_EXTRA_KEYS.has(k.toLowerCase().trim())) continue;
+        counts[k] = (counts[k] ?? 0) + 1;
+      }
+    }
+    return Object.entries(counts)
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12)
+      .map(([k]) => k);
+  }, [leads]);
+  const baseColCount = 6;
+  const totalColCount = baseColCount + extraColumns.length;
+
   // Lightweight query for filter options (distinct values)
   const { data: filterOptions } = useQuery({
     queryKey: ['lead-filter-options'],
@@ -1032,6 +1057,9 @@ const LeadCRM = () => {
                   <TableHead className="w-auto font-semibold text-xs">עיר</TableHead>
                   <TableHead className="w-auto text-center font-semibold text-xs">סוג</TableHead>
                   <TableHead className="w-auto text-center font-semibold text-xs">שלב מתעניין</TableHead>
+                  {extraColumns.map((col) => (
+                    <TableHead key={`h-${col}`} className="w-auto font-semibold text-xs text-center">{col}</TableHead>
+                  ))}
                   <TableHead className="w-10 text-center">
                     <Checkbox checked={allFilteredSelected} onCheckedChange={toggleAll} />
                   </TableHead>
@@ -1039,7 +1067,7 @@ const LeadCRM = () => {
               </TableHeader>
               <TableBody>
                   {isLoading && (
-                    <TableRow><TableCell colSpan={6} className="py-12">
+                    <TableRow><TableCell colSpan={totalColCount} className="py-12">
                       <div className="flex flex-col items-center gap-3">
                         <div className="realtyz-loader h-10 w-10" />
                         <p className="text-sm text-muted-foreground">טוען מתעניינים...</p>
@@ -1050,7 +1078,7 @@ const LeadCRM = () => {
                     const hasFilter = !!search || interestFilter !== 'all' || cityFilter !== 'all' || statusFilter !== 'all' || profileFilter !== 'all';
                     const accountIsEmpty = !isDemoMode && realTotalCount === 0;
                     return (
-                      <TableRow><TableCell colSpan={6} className="py-0">
+                      <TableRow><TableCell colSpan={totalColCount} className="py-0">
                         <div className="empty-state animate-fade-in">
                           <div className="h-16 w-16 rounded-full bg-muted/40 flex items-center justify-center mb-3">
                             {accountIsEmpty ? <Upload className="h-7 w-7 text-muted-foreground/30" /> : <Search className="h-7 w-7 text-muted-foreground/30" />}
@@ -1140,6 +1168,20 @@ const LeadCRM = () => {
                             </Tooltip>
                           </TooltipProvider>
                         </TableCell>
+                        {extraColumns.map((col) => {
+                          const ex = (lead as any).preferences?.extra_fields ?? {};
+                          const val = ex?.[col];
+                          return (
+                            <TableCell
+                              key={`c-${lead.id}-${col}`}
+                              className="text-[11px] text-center text-muted-foreground"
+                              onClick={() => setSelectedVoterId(lead.id)}
+                              title={val ? String(val) : ''}
+                            >
+                              <span className="inline-block max-w-[160px] truncate align-middle">{val != null && val !== '' ? String(val) : '-'}</span>
+                            </TableCell>
+                          );
+                        })}
                         <TableCell className="w-10 text-center" onClick={(e) => e.stopPropagation()}>
                           <Checkbox checked={selectedIds.has(lead.id)} onCheckedChange={() => toggleOne(lead.id)} />
                         </TableCell>
@@ -1147,7 +1189,7 @@ const LeadCRM = () => {
                     );
                   })}
                   {isFetchingNextPage && (
-                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-4">טוען עוד...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={totalColCount} className="text-center text-muted-foreground py-4">טוען עוד...</TableCell></TableRow>
                   )}
               </TableBody>
             </Table>
