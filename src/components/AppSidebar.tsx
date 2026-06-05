@@ -4,7 +4,6 @@ import {
   Megaphone,
   Brain,
   MessageCircle,
-  Repeat2,
   Building2,
   Handshake,
 } from 'lucide-react';
