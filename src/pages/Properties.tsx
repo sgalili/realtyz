@@ -275,7 +275,7 @@ export default function Properties() {
 
       {/* Count + view mode + filter trigger — single row, right-aligned */}
       <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <div className="flex items-center justify-end gap-2 flex-wrap" dir="rtl">
+        <div className="flex items-center justify-start gap-2 flex-wrap" dir="rtl">
           <Badge variant="secondary" className="text-sm">
             {filtered.length} נכסים
           </Badge>
