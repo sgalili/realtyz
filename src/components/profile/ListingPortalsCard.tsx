@@ -81,7 +81,7 @@ export function ListingPortalsCard() {
       p.fields.forEach((f) => { patch[f.col] = (values[f.col] ?? '').trim() || null; });
       const { error } = await supabase
         .from('user_api_keys')
-        .upsert(patch, { onConflict: 'user_id' });
+        .upsert(patch as any, { onConflict: 'user_id' });
       if (error) throw error;
       toast.success(`חיבור ${p.label} נשמר`);
     } catch (e: any) {
