@@ -289,6 +289,31 @@ const LeadCRM = () => {
   }, [isDemoMode, dbVoters, demoVoters]);
   const totalCount = isDemoMode ? Math.max(1_000_000, leads.length) : (voterPages?.pages[0]?.total ?? 0);
 
+  // Discover extra columns dynamically from imported preferences.extra_fields.
+  // Keep keys that don't duplicate an already-shown native column, ordered by frequency.
+  const SKIP_EXTRA_KEYS = new Set([
+    'שם', 'שם מלא', 'full name', 'fullname', 'name',
+    'טלפון', 'טלפון1', 'טלפון 1', 'phone', 'mobile', 'נייד', 'סלולרי',
+    'עיר', 'city',
+  ].map((s) => s.toLowerCase().trim()));
+  const extraColumns = useMemo<string[]>(() => {
+    const counts = new Map<string, number>();
+    for (const lead of leads) {
+      const ex = (lead as any).preferences?.extra_fields;
+      if (!ex || typeof ex !== 'object') continue;
+      for (const k of Object.keys(ex)) {
+        if (SKIP_EXTRA_KEYS.has(k.toLowerCase().trim())) continue;
+        counts.set(k, (counts.get(k) ?? 0) + 1);
+      }
+    }
+    return Array.from(counts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 12)
+      .map(([k]) => k);
+  }, [leads]);
+  const baseColCount = 6;
+  const totalColCount = baseColCount + extraColumns.length;
+
   // Lightweight query for filter options (distinct values)
   const { data: filterOptions } = useQuery({
     queryKey: ['lead-filter-options'],
