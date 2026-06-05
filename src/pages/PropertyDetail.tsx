@@ -1,17 +1,20 @@
-import { useMemo, useState } from 'react';
+import { useState } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Skeleton } from '@/components/ui/skeleton';
 import {
   BedDouble, Ruler, MapPin, Building2, ArrowRight, Phone, Mail,
   Calendar, Layers, Send, Home,
 } from 'lucide-react';
 import {
-  MOCK_HOMELY_PROPERTIES,
   PROPERTY_TYPE_LABELS_HE,
   LISTING_TYPE_LABELS_HE,
   type HomelyProperty,
+  type PropertyType,
 } from '@/lib/homelyMockProperties';
 import { ShareWithLeadDialog } from '@/components/properties/ShareWithLeadDialog';
 
@@ -25,10 +28,47 @@ export default function PropertyDetail() {
   const [activePhoto, setActivePhoto] = useState(0);
   const [shareOpen, setShareOpen] = useState(false);
 
-  const property = useMemo<HomelyProperty | undefined>(
-    () => MOCK_HOMELY_PROPERTIES.find((p) => p.id === id),
-    [id],
-  );
+  const { data: property, isLoading } = useQuery({
+    queryKey: ['property-detail', id],
+    enabled: !!id,
+    queryFn: async (): Promise<HomelyProperty | null> => {
+      const { data: row } = await supabase
+        .from('listings')
+        .select('id, property_title, description, asking_price, features, slug, source_metadata')
+        .eq('id', id!)
+        .maybeSingle();
+      if (!row) return null;
+      const features = Array.isArray(row.features) ? row.features : [];
+      const photos: string[] = (features as any[])
+        .map((f) => (typeof f === 'string' ? f : (f as any)?.photo || (f as any)?.image_url))
+        .filter((s: any) => typeof s === 'string' && /^https?:\/\//.test(s));
+      const meta = (row as any).source_metadata || {};
+      return {
+        id: String(row.id),
+        source: 'listings',
+        title: row.property_title || 'נכס',
+        description: row.description || '',
+        price: Number(row.asking_price) || 0,
+        currency: '₪',
+        city: meta.city ?? '',
+        rooms: Number(meta.rooms ?? 0),
+        size_sqm: Number(meta.size_sqm ?? 0),
+        property_type: (meta.property_type as PropertyType) || 'apartment',
+        photos,
+        url: row.slug ? `/listing/${row.slug}` : null,
+        features: (features as any[]).filter((f) => typeof f === 'string') as string[],
+      };
+    },
+  });
+
+  if (isLoading) {
+    return (
+      <div className="p-6 space-y-4" dir="rtl">
+        <Skeleton className="h-8 w-48" />
+        <Skeleton className="h-64 w-full" />
+      </div>
+    );
+  }
 
   if (!property) {
     return (

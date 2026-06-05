@@ -22,7 +22,6 @@ import { useQueryClient } from '@tanstack/react-query';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
 import { ImportPropertiesDialog } from '@/components/properties/ImportPropertiesDialog';
 import {
-  MOCK_HOMELY_PROPERTIES,
   PROPERTY_TYPE_LABELS_HE,
   CITY_OPTIONS,
   LISTING_TYPE_LABELS_HE,
@@ -116,9 +115,7 @@ export default function Properties() {
       url: r.url ?? null,
       features: Array.isArray(r.features) ? r.features as string[] : [],
     }));
-    // Only the "mine" tab shows the local mock catalogue; external tabs show
-    // only what the connected portal returned.
-    if (sourceTab === 'mine') return [...MOCK_HOMELY_PROPERTIES, ...live];
+    // Real data only — no mock catalogue. Each tab shows what its source returns.
     return live;
   }, [liveResults, sourceTab]);
 
