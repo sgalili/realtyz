@@ -75,6 +75,34 @@ export default function KnowledgeBase() {
   const [textBody, setTextBody] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
 
+  /* ── Documents list ── */
+  const { data: documents = [], isLoading: docsLoading } = useQuery({
+    queryKey: ['kb-documents', user?.id],
+    enabled: !!user?.id,
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('knowledge_documents')
+        .select('id, title, source_type, chunk_count, created_at, raw_text')
+        .eq('user_id', user!.id)
+        .eq('is_active', true)
+        .order('created_at', { ascending: false });
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
+  const deleteDoc = useMutation({
+    mutationFn: async (id: string) => {
+      const { error } = await supabase.from('knowledge_documents').update({ is_active: false }).eq('id', id);
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('הפריט נמחק');
+      qc.invalidateQueries({ queryKey: ['kb-documents'] });
+    },
+    onError: (e: Error) => toast.error(e.message),
+  });
+
   const fileToDataUrl = (file: File) => new Promise<string>((resolve, reject) => {
     const reader = new FileReader();
     reader.onload = () => resolve(String(reader.result));
