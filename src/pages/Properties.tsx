@@ -575,3 +575,70 @@ function PropertyRow({ property, onShare }: { property: HomelyProperty; onShare:
     </div>
   );
 }
+
+// Full table view — shows every column that was uploaded for each property.
+// Each row mixes core fields (price, city, rooms…) with all original column
+// headers preserved in source_metadata.extras during import.
+function PropertyTable({ properties }: { properties: Array<HomelyProperty & { extras?: Record<string, string> }> }) {
+  // Collect the union of every extras-key across all rows so we render one
+  // column per original spreadsheet header, in first-seen order.
+  const extraKeys = useMemo(() => {
+    const seen = new Set<string>();
+    const order: string[] = [];
+    for (const p of properties) {
+      const ex = p.extras ?? {};
+      for (const k of Object.keys(ex)) {
+        if (!seen.has(k)) { seen.add(k); order.push(k); }
+      }
+    }
+    return order;
+  }, [properties]);
+
+  return (
+    <Card className="overflow-x-auto">
+      <table className="w-full text-xs" dir="rtl">
+        <thead className="bg-muted/50 sticky top-0">
+          <tr className="text-right">
+            <th className="px-2 py-2 font-semibold whitespace-nowrap">סוג עסקה</th>
+            <th className="px-2 py-2 font-semibold whitespace-nowrap">כותרת</th>
+            <th className="px-2 py-2 font-semibold whitespace-nowrap">מחיר</th>
+            <th className="px-2 py-2 font-semibold whitespace-nowrap">עיר</th>
+            <th className="px-2 py-2 font-semibold whitespace-nowrap">חדרים</th>
+            <th className="px-2 py-2 font-semibold whitespace-nowrap">מ"ר</th>
+            {extraKeys.map((k) => (
+              <th key={k} className="px-2 py-2 font-semibold whitespace-nowrap text-muted-foreground">{k}</th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          {properties.map((p) => {
+            const isRent = p.listing_type === 'rent';
+            return (
+              <tr key={p.id} className="border-t hover:bg-muted/30">
+                <td className="px-2 py-1.5 whitespace-nowrap">
+                  <Badge className={`text-[10px] ${isRent ? 'bg-amber-500 text-white' : 'bg-primary text-primary-foreground'}`}>
+                    {LISTING_TYPE_LABELS_HE[p.listing_type ?? 'sale']}
+                  </Badge>
+                </td>
+                <td className="px-2 py-1.5 max-w-[220px] truncate">
+                  <Link to={`/properties/${p.id}`} className="hover:underline">{p.title}</Link>
+                </td>
+                <td className="px-2 py-1.5 whitespace-nowrap font-semibold text-success">
+                  {p.price ? formatPrice(p.price) : '—'}{isRent && p.price ? <span className="text-[10px] text-muted-foreground">/ח</span> : null}
+                </td>
+                <td className="px-2 py-1.5 whitespace-nowrap">{p.city || '—'}</td>
+                <td className="px-2 py-1.5 whitespace-nowrap">{p.rooms || '—'}</td>
+                <td className="px-2 py-1.5 whitespace-nowrap">{p.size_sqm || '—'}</td>
+                {extraKeys.map((k) => (
+                  <td key={k} className="px-2 py-1.5 whitespace-nowrap max-w-[200px] truncate" title={p.extras?.[k] ?? ''}>
+                    {p.extras?.[k] ?? ''}
+                  </td>
+                ))}
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </Card>
+  );
+}
