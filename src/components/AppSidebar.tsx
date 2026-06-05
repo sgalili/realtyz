@@ -24,6 +24,7 @@ import {
   useSidebar,
 } from '@/components/ui/sidebar';
 import { SidebarIntelInput } from '@/components/SidebarIntelInput';
+import { useSidebarCounts } from '@/hooks/useSidebarCounts';
 
 type NavItem = {
   title: string;
@@ -94,6 +95,21 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
   const { user } = useAuth();
   const { isSuperAdmin } = useUserRole();
   const { settings } = useWhiteLabel();
+  const { data: counts } = useSidebarCounts();
+
+  const countFor = (url: string): number | undefined => {
+    if (!counts) return undefined;
+    switch (url) {
+      case '/lead-crm': return counts.leads;
+      case '/properties': return counts.listings;
+      case '/inbox': return counts.chats;
+      case '/deal-room': return counts.deals;
+      case '/campaigns': return counts.campaigns;
+      default: return undefined;
+    }
+  };
+
+  const formatCount = (n: number) => (n > 999 ? `${Math.floor(n / 1000)}k+` : String(n));
 
   const handleNavClick = () => {
     if (isMobile) setOpenMobile(false);
@@ -145,6 +161,15 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                             {item.badge}
                           </span>
                         )}
+                        {!collapsed && !item.badge && (() => {
+                          const c = countFor(item.url);
+                          if (c === undefined || c === 0) return null;
+                          return (
+                            <span className="ms-auto rounded-full bg-muted text-muted-foreground px-2 py-0.5 text-[11px] font-semibold leading-none">
+                              {formatCount(c)}
+                            </span>
+                          );
+                        })()}
                       </NavLink>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
