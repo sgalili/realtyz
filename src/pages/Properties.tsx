@@ -416,6 +416,12 @@ export default function Properties() {
           <Card className="p-12 text-center text-muted-foreground">
             לא נמצאו נכסים תואמים. נסו להרחיב את הסינון.
           </Card>
+        ) : viewMode === 'list' ? (
+          <Card className="divide-y divide-border overflow-hidden">
+            {filtered.map((p) => (
+              <PropertyRow key={p.id} property={p} onShare={() => setShareTarget(p)} />
+            ))}
+          </Card>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((p) => (
