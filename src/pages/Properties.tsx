@@ -216,6 +216,27 @@ export default function Properties() {
           <Badge variant="secondary" className="text-sm">
             {filtered.length} נכסים
           </Badge>
+          {/* View mode toggle: grid (cards) vs list (compact rows). */}
+          <div className="inline-flex rounded-md border border-border bg-card/50 p-0.5" role="group" aria-label="מצב תצוגה">
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              aria-pressed={viewMode === 'grid'}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-sm transition-colors ${viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              title="תצוגת כרטיסיות"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" /> כרטיסיות
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              aria-pressed={viewMode === 'list'}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-sm transition-colors ${viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              title="תצוגת רשימה"
+            >
+              <List className="h-3.5 w-3.5" /> רשימה
+            </button>
+          </div>
           <Button size="sm" onClick={() => setAddOpen(true)} className="gap-1.5">
             <Plus className="h-4 w-4" />
             הוספת נכס ידנית
