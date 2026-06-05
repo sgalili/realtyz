@@ -328,7 +328,10 @@ async function sendEmailResend(
 // Auto-appended to EVERY outbound email so recipients always have a one-click
 // removal path. Lowers spam-rate complaints and protects sender reputation.
 function buildUnsubscribeLink(recipientEmail: string, campaignName: string): string {
-  const base = Deno.env.get("PUBLIC_SITE_URL") ?? "https://realtyzai.lovable.app";
+  const base = (Deno.env.get("PUBLIC_SITE_URL") ?? "").replace(/\/+$/, "");
+  if (!base) {
+    throw new Error("PUBLIC_SITE_URL secret is not configured — required to build unsubscribe links.");
+  }
   const params = new URLSearchParams({ email: recipientEmail, c: campaignName });
   return `${base}/unsubscribe?${params.toString()}`;
 }
