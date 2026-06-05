@@ -207,6 +207,10 @@ const LeadCRM = () => {
   const [importStats, setImportStats] = useState<{ total: number; valid: number; duplicates: number; invalid: number; healthPct: number; detectedFields: string[]; missingPhone: boolean } | null>(null);
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
+  // Lead kind selected by the agent BEFORE confirming an import. Drives deal_type
+  // and preferences.lead_kind on every inserted row so buyers/sellers/renters/landlords
+  // stay in the right pipeline from day one.
+  const [importLeadKind, setImportLeadKind] = useState<'buyer' | 'seller' | 'renter' | 'landlord'>('buyer');
   const [addToCampaignOpen, setAddToCampaignOpen] = useState(false);
   const [aiBlastOpen, setAiBlastOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
@@ -727,11 +731,14 @@ const LeadCRM = () => {
       const batchSize = 500;
       const totalRows = rows.length;
       for (let i = 0; i < rows.length; i += batchSize) {
+        const dealType = importLeadKind === 'renter' || importLeadKind === 'landlord' ? 'rent' : 'sale';
         const batch = rows.slice(i, i + batchSize).map((r) => ({
           full_name: r.full_name, phone_number: r.phone_number,
           city: r.city || null, interest_tag: r.interest_tag || null,
           identity_number: r.identity_number || null,
           status: 'uploaded',
+          deal_type: dealType,
+          preferences: { lead_kind: importLeadKind },
         }));
         const { data, error } = await supabase
           .from('leads')
@@ -1418,6 +1425,34 @@ const LeadCRM = () => {
             </DialogTitle>
             <DialogDescription>סקירת בריאות הנתונים לפני ייבוא</DialogDescription>
           </DialogHeader>
+
+          {/* Lead-kind selector — agent tags the entire batch before import.
+              Buyer/Seller stay on the sale pipeline; Renter/Landlord move to rent. */}
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
+            <div className="text-xs font-semibold">סוג הרשימה</div>
+            <div className="grid grid-cols-4 gap-1.5" dir="rtl">
+              {([
+                { v: 'buyer', label: 'קונים' },
+                { v: 'seller', label: 'מוכרים' },
+                { v: 'renter', label: 'שוכרים' },
+                { v: 'landlord', label: 'משכירים' },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.v}
+                  type="button"
+                  onClick={() => setImportLeadKind(opt.v)}
+                  className={`px-2 py-1.5 rounded-md text-xs font-semibold border transition-colors ${
+                    importLeadKind === opt.v
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-muted-foreground border-border hover:text-foreground'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">כל הרשומות שייובאו יסומנו בסוג זה ויופנו לצינור המתאים (מכירה / השכרה).</p>
+          </div>
 
           {importStats && (
             <div className="space-y-4">

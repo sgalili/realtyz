@@ -16,7 +16,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Send, BedDouble, Ruler, MapPin, Building2, Plus, FileSpreadsheet } from 'lucide-react';
+import { Send, BedDouble, Ruler, MapPin, Building2, Plus, FileSpreadsheet, LayoutGrid, List } from 'lucide-react';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
@@ -76,6 +76,8 @@ export default function Properties() {
   const [rooms, setRooms] = useState<string>('any');
   const [priceRange, setPriceRange] = useState<[number, number]>([PRICE_MIN, PRICE_MAX]);
   const [areaMin, setAreaMin] = useState<string>('');
+  // View mode for the property catalog — card grid (default) or compact list.
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
 
   const [shareTarget, setShareTarget] = useState<HomelyProperty | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -214,6 +216,27 @@ export default function Properties() {
           <Badge variant="secondary" className="text-sm">
             {filtered.length} נכסים
           </Badge>
+          {/* View mode toggle: grid (cards) vs list (compact rows). */}
+          <div className="inline-flex rounded-md border border-border bg-card/50 p-0.5" role="group" aria-label="מצב תצוגה">
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              aria-pressed={viewMode === 'grid'}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-sm transition-colors ${viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              title="תצוגת כרטיסיות"
+            >
+              <LayoutGrid className="h-3.5 w-3.5" /> כרטיסיות
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('list')}
+              aria-pressed={viewMode === 'list'}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-sm transition-colors ${viewMode === 'list' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              title="תצוגת רשימה"
+            >
+              <List className="h-3.5 w-3.5" /> רשימה
+            </button>
+          </div>
           <Button size="sm" onClick={() => setAddOpen(true)} className="gap-1.5">
             <Plus className="h-4 w-4" />
             הוספת נכס ידנית
@@ -393,6 +416,12 @@ export default function Properties() {
           <Card className="p-12 text-center text-muted-foreground">
             לא נמצאו נכסים תואמים. נסו להרחיב את הסינון.
           </Card>
+        ) : viewMode === 'list' ? (
+          <Card className="divide-y divide-border overflow-hidden">
+            {filtered.map((p) => (
+              <PropertyRow key={p.id} property={p} onShare={() => setShareTarget(p)} />
+            ))}
+          </Card>
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((p) => (
@@ -489,5 +518,46 @@ function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare
         </div>
       </div>
     </Card>
+  );
+}
+
+// Compact list row — single line per property for scanning many at once.
+function PropertyRow({ property, onShare }: { property: HomelyProperty; onShare: () => void }) {
+  const photo = property.photos[0];
+  const isRent = property.listing_type === 'rent';
+  return (
+    <div className="flex items-center gap-3 p-3 hover:bg-muted/40 transition-colors">
+      <Link to={`/properties/${property.id}`} className="flex items-center gap-3 flex-1 min-w-0">
+        <div className="h-14 w-20 shrink-0 rounded-md overflow-hidden bg-muted">
+          {photo ? (
+            <img src={photo} alt={property.title} loading="lazy" className="h-full w-full object-cover" />
+          ) : (
+            <div className="h-full w-full flex items-center justify-center text-[10px] text-muted-foreground">אין תמונה</div>
+          )}
+        </div>
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            <h3 className="font-semibold text-sm truncate">{property.title}</h3>
+            {property.listing_type && (
+              <Badge className={`text-[10px] ${isRent ? 'bg-amber-500 text-white' : 'bg-primary text-primary-foreground'}`}>
+                {LISTING_TYPE_LABELS_HE[property.listing_type]}
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-3 text-[11px] text-muted-foreground mt-0.5">
+            {property.city && <span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{property.city}</span>}
+            {property.rooms ? <span className="inline-flex items-center gap-1"><BedDouble className="h-3 w-3" />{property.rooms} חד'</span> : null}
+            {property.size_sqm ? <span className="inline-flex items-center gap-1"><Ruler className="h-3 w-3" />{property.size_sqm} מ"ר</span> : null}
+            <span>{PROPERTY_TYPE_LABELS_HE[property.property_type]}</span>
+          </div>
+        </div>
+      </Link>
+      <div className="text-sm font-bold text-success whitespace-nowrap">
+        {formatPrice(property.price)}{isRent ? <span className="text-[10px] font-normal text-muted-foreground">/חודש</span> : null}
+      </div>
+      <Button size="sm" variant="outline" onClick={onShare} className="gap-1.5 shrink-0">
+        <Send className="h-3.5 w-3.5" /> שתף
+      </Button>
+    </div>
   );
 }
