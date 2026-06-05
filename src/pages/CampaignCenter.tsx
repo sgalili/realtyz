@@ -24,12 +24,11 @@ import { cn } from '@/lib/utils';
 import { SentimentAutomationToggles } from '@/components/automation/SentimentAutomationToggles';
 
 
-type TabValue = 'create' | 'published' | 'responses';
+type TabValue = 'create' | 'published';
 
 const TABS: { value: TabValue; label: string }[] = [
   { value: 'create',    label: 'צור קמפיין' },
   { value: 'published', label: 'פורסמו' },
-  { value: 'responses', label: 'תגובות' },
 ];
 
 type ChannelCard = {
@@ -639,78 +638,7 @@ const Stat = ({ icon: Icon, label, value }: { icon: any; label: string; value: n
   </div>
 );
 
-/* ───────────── Tab 3: Responses ───────────── */
-
-const RESPONSE_CHANNELS: { id: string; label: string; brand: string }[] = [
-  { id: 'all',       label: 'הכל',      brand: '' },
-  { id: 'facebook',  label: 'Facebook', brand: 'facebook' },
-  { id: 'instagram', label: 'Instagram',brand: 'instagram' },
-  { id: 'x',         label: 'X',        brand: 'x' },
-  { id: 'tiktok',    label: 'TikTok',   brand: 'tiktok' },
-  { id: 'linkedin',  label: 'LinkedIn', brand: 'linkedin' },
-];
-
-const ResponsesView = () => {
-  const [positiveHold, setPositiveHold] = useState(false);
-  const [negativeHold, setNegativeHold] = useState(false);
-  const [activeChannel, setActiveChannel] = useState<string>('all');
-
-  const visible = activeChannel === 'all'
-    ? RESPONSE_CHANNELS.filter((c) => c.id !== 'all')
-    : RESPONSE_CHANNELS.filter((c) => c.id === activeChannel);
-
-  return (
-    <div className="space-y-4">
-      <div className="rounded-2xl border border-border/60 bg-card p-4 space-y-3">
-        <div className="flex items-center justify-between gap-3" dir="rtl">
-          <Label htmlFor="pos-hold" className="text-sm text-right flex-1">לתגובות חיוביות: המתנה לנציג</Label>
-          <Switch checked={positiveHold} onCheckedChange={setPositiveHold} id="pos-hold" />
-        </div>
-        <div className="flex items-center justify-between gap-3" dir="rtl">
-          <Label htmlFor="neg-hold" className="text-sm text-right flex-1">לתגובות שליליות: המתנה לנציג</Label>
-          <Switch checked={negativeHold} onCheckedChange={setNegativeHold} id="neg-hold" />
-        </div>
-
-      </div>
-
-      <div className="rounded-xl border border-border bg-card p-1 flex items-center gap-1 overflow-x-auto" dir="rtl">
-        {RESPONSE_CHANNELS.map((c) => {
-          const active = activeChannel === c.id;
-          return (
-            <button key={c.id} onClick={() => setActiveChannel(c.id)}
-              className={cn(
-                'flex items-center gap-1.5 whitespace-nowrap rounded-lg px-3 py-1.5 text-sm transition',
-                active ? 'bg-primary text-primary-foreground font-semibold' : 'text-foreground hover:bg-muted',
-              )}>
-              {c.brand && <BrandIcon name={c.brand} className="h-3.5 w-3.5" />}
-              <span>{c.label}</span>
-              <span className={cn('text-[11px]', active ? 'text-primary-foreground/80' : 'text-muted-foreground')}>(0)</span>
-            </button>
-          );
-        })}
-      </div>
-
-      <div className="space-y-3">
-        {visible.map((c) => (
-          <article key={c.id} dir="rtl" className="rounded-2xl border border-border/60 bg-card overflow-hidden">
-            <header className="flex items-center justify-between px-4 py-3 border-b border-border" dir="rtl">
-              <div className="flex items-center gap-2">
-                {c.brand && <BrandIcon name={c.brand} className="h-5 w-5" />}
-                <h3 className="font-semibold text-foreground">{c.label}</h3>
-              </div>
-              <span className="inline-flex h-7 min-w-[28px] items-center justify-center rounded-full bg-muted px-2 text-xs font-semibold text-muted-foreground">0</span>
-            </header>
-
-            <div className="px-4 py-8 text-center">
-              <p className="text-sm text-foreground">אין אינטראקציות להצגה כרגע</p>
-              <p className="mt-1 text-xs text-muted-foreground">ברגע שהחיבור יאומת ויגיעו נתונים, הפיד יתעדכן כאן אוטומטית.</p>
-            </div>
-          </article>
-        ))}
-      </div>
-    </div>
-  );
-};
+/* Responses tab removed — comments stream lives inside each Published card. */
 
 /* ───────────── Page ───────────── */
 
@@ -817,9 +745,6 @@ const CampaignCenter = () => {
         </TabsContent>
         <TabsContent value="published" className="mt-6">
           <PublishedFeed />
-        </TabsContent>
-        <TabsContent value="responses" className="mt-6">
-          <ResponsesView />
         </TabsContent>
       </Tabs>
 
