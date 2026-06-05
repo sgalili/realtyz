@@ -1,0 +1,118 @@
+// Realtyz sync-comments — broad-spectrum poll across the connected Ayrshare
+// workspace profile: pulls the native feed + publish history for each platform,
+// then collects every post id and fans out to ayrshare-comments-fetch.
+// Strict tenant isolation: caller must be authenticated; workspace is the
+// singleton workspace_social_profile.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { corsHeaders } from "../_shared/cors.ts";
+import { AYR_BASE, resolveWorkspaceProfileKey } from "../_shared/ayrshare-helpers.ts";
+
+const json = (b: unknown, s = 200) =>
+  new Response(JSON.stringify(b), {
+    status: s,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  if (req.method !== "POST") return json({ error: "method" }, 405);
+
+  const AYRSHARE_API_KEY = Deno.env.get("AYRSHARE_API_KEY");
+  if (!AYRSHARE_API_KEY) return json({ error: "AYRSHARE_API_KEY not configured" }, 500);
+
+  const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+  const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+  const admin = createClient(SUPABASE_URL, SERVICE);
+
+  // Resolve tenant
+  let userId: string | null = null;
+  const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+  if (token) {
+    try {
+      const { data } = await admin.auth.getUser(token);
+      userId = data?.user?.id ?? null;
+    } catch { /* ignore */ }
+  }
+  let body: any = {};
+  try { body = await req.json(); } catch { /* noop */ }
+  if (!userId && body?.user_id) userId = String(body.user_id);
+  if (!userId) return json({ error: "user_id required" }, 401);
+
+  const { profileKey } = await resolveWorkspaceProfileKey(admin);
+  if (!profileKey) return json({ error: "workspace ayrshare profile key missing" }, 400);
+
+  const targets = new Map<string, { platform: string; postId: string }>();
+
+  const ingest = (posts: unknown, platform: string) => {
+    if (!Array.isArray(posts)) return;
+    for (const p of posts as any[]) {
+      if (!p || typeof p !== "object") continue;
+      const postId =
+        p?.id ||
+        p?.postId ||
+        p?.post_id ||
+        p?.postIds?.[0]?.id ||
+        p?.posts?.[0]?.postIds?.[0]?.id ||
+        p?.fbPostId ||
+        p?.igPostId ||
+        null;
+      if (!postId) continue;
+      const key = `${platform}:${postId}`;
+      if (!targets.has(key)) targets.set(key, { platform, postId: String(postId) });
+    }
+  };
+
+  for (const platform of ["facebook", "instagram"]) {
+    // 1. Native feed
+    try {
+      const fRes = await fetch(`${AYR_BASE}/feed?platforms=${platform}&limit=100`, {
+        headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}`, "Profile-Key": profileKey },
+      });
+      const fj = await fRes.json().catch(() => ({}));
+      const arr =
+        (Array.isArray(fj) ? fj : null) ||
+        fj?.[platform]?.posts ||
+        fj?.posts ||
+        fj?.feed ||
+        fj?.data ||
+        [];
+      ingest(arr, platform);
+    } catch (e) {
+      console.error("[ayrshare-sync-comments] feed failed", platform, e);
+    }
+    // 2. History
+    try {
+      const hRes = await fetch(
+        `${AYR_BASE}/history?platform=${platform}&lastDays=365&limit=200`,
+        { headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}`, "Profile-Key": profileKey } },
+      );
+      const hj = await hRes.json().catch(() => ({}));
+      const arr = (Array.isArray(hj) ? hj : null) || hj?.posts || hj?.history || [];
+      ingest(arr, platform);
+    } catch (e) {
+      console.error("[ayrshare-sync-comments] history failed", platform, e);
+    }
+  }
+
+  // Fan out per platform to comments-fetch.
+  const byPlatform = new Map<string, string[]>();
+  for (const t of targets.values()) {
+    const list = byPlatform.get(t.platform) ?? [];
+    list.push(t.postId);
+    byPlatform.set(t.platform, list);
+  }
+
+  const fanouts = await Promise.allSettled(
+    Array.from(byPlatform.entries()).map(([platform, ids]) =>
+      fetch(`${SUPABASE_URL}/functions/v1/ayrshare-comments-fetch`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${SERVICE}`, "Content-Type": "application/json" },
+        body: JSON.stringify({ user_id: userId, post_ids: ids, platform }),
+      })
+        .then((r) => r.json())
+        .catch((e) => ({ ok: false, error: String(e) })),
+    ),
+  );
+
+  return json({ success: true, targets: targets.size, fanouts });
+});
