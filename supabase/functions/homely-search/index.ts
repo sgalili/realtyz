@@ -84,8 +84,8 @@ function normalizeListing(row: any): PropertyResult {
   return {
     id: String(row.id),
     source: "listings",
-    title: row.property_title || row.headline || "Property",
-    description: row.description || row.thesis || "",
+    title: row.property_title || "Property",
+    description: row.description || "",
     price: typeof row.asking_price === "number" ? row.asking_price : Number(row.asking_price) || null,
     currency: "₪",
     city: row?.source_metadata?.city || null,
