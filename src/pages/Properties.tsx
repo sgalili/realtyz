@@ -115,9 +115,7 @@ export default function Properties() {
       url: r.url ?? null,
       features: Array.isArray(r.features) ? r.features as string[] : [],
     }));
-    // Only the "mine" tab shows the local mock catalogue; external tabs show
-    // only what the connected portal returned.
-    if (sourceTab === 'mine') return [...MOCK_HOMELY_PROPERTIES, ...live];
+    // Real data only — no mock catalogue. Each tab shows what its source returns.
     return live;
   }, [liveResults, sourceTab]);
 
