@@ -434,6 +434,8 @@ export default function Properties() {
               <PropertyRow key={p.id} property={p} onShare={() => setShareTarget(p)} />
             ))}
           </Card>
+        ) : viewMode === 'table' ? (
+          <PropertyTable properties={filtered as any} />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {filtered.map((p) => (
