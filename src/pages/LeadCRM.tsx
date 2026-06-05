@@ -207,6 +207,10 @@ const LeadCRM = () => {
   const [importStats, setImportStats] = useState<{ total: number; valid: number; duplicates: number; invalid: number; healthPct: number; detectedFields: string[]; missingPhone: boolean } | null>(null);
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
+  // Lead kind selected by the agent BEFORE confirming an import. Drives deal_type
+  // and preferences.lead_kind on every inserted row so buyers/sellers/renters/landlords
+  // stay in the right pipeline from day one.
+  const [importLeadKind, setImportLeadKind] = useState<'buyer' | 'seller' | 'renter' | 'landlord'>('buyer');
   const [addToCampaignOpen, setAddToCampaignOpen] = useState(false);
   const [aiBlastOpen, setAiBlastOpen] = useState(false);
   const [filtersOpen, setFiltersOpen] = useState(false);
