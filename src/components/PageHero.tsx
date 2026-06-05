@@ -10,10 +10,44 @@
  * Mounted once at the layout level to avoid per-route hero "jumps".
  */
 import { useLocation, useSearchParams } from 'react-router-dom';
-import { Menu } from 'lucide-react';
+import { Menu, Plus, FileSpreadsheet } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { RealtyzWave } from '@/components/RealtyzWave';
 import { CreditBalancePill } from '@/components/CreditBalancePill';
+import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+
+function PropertiesHeroAddButton() {
+  const dispatch = (action: 'manual' | 'import') =>
+    window.dispatchEvent(new CustomEvent('properties:add', { detail: { action } }));
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-9 w-9 rounded-full text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+          aria-label="הוספת נכס"
+        >
+          <Plus className="h-5 w-5" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => dispatch('manual')} className="gap-2">
+          <Plus className="h-4 w-4" /> הוספת נכס ידנית
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => dispatch('import')} className="gap-2">
+          <FileSpreadsheet className="h-4 w-4" /> יבוא נכסים מאקסל
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
 
 const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/(dashboard)?$/, title: 'לוח בקרה' },
