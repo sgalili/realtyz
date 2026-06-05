@@ -1094,6 +1094,21 @@ const LeadCRM = () => {
                         </TableCell>
                         <TableCell className="text-muted-foreground text-xs font-mono text-right" dir="ltr" onClick={() => setSelectedVoterId(lead.id)}>{formatPhoneDisplay(lead.phone_number)}</TableCell>
                         <TableCell className="text-xs" onClick={() => setSelectedVoterId(lead.id)}>{lead.city || '-'}</TableCell>
+                        <TableCell className="text-center" onClick={() => setSelectedVoterId(lead.id)}>
+                          {(() => {
+                            const kind = (lead as any).preferences?.lead_kind as string | undefined;
+                            const map: Record<string, { label: string; cls: string }> = {
+                              buyer:    { label: 'קונה',   cls: 'bg-blue-500/10 text-blue-700 border-blue-300' },
+                              seller:   { label: 'מוכר',   cls: 'bg-emerald-500/10 text-emerald-700 border-emerald-300' },
+                              renter:   { label: 'שוכר',   cls: 'bg-amber-500/10 text-amber-700 border-amber-300' },
+                              landlord: { label: 'משכיר', cls: 'bg-purple-500/10 text-purple-700 border-purple-300' },
+                            };
+                            const m = kind ? map[kind] : null;
+                            return m
+                              ? <Badge variant="outline" className={`text-[10px] font-normal ${m.cls}`}>{m.label}</Badge>
+                              : <span className="text-[10px] text-muted-foreground">-</span>;
+                          })()}
+                        </TableCell>
                         <TableCell className="text-center !px-0" onClick={() => setSelectedVoterId(lead.id)}>
                           <TooltipProvider delayDuration={150}>
                             <Tooltip>
