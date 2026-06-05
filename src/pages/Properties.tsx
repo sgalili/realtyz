@@ -171,6 +171,32 @@ export default function Properties() {
         </div>
       </header>
 
+      {/* Source tabs: Mine / Homely / Yad2 / Madlan */}
+      <div className="flex justify-center">
+        <div className="inline-flex items-center rounded-xl border border-primary/20 bg-card/40 p-1 backdrop-blur-md flex-wrap" dir="rtl">
+          {(Object.keys(SOURCE_LABELS) as SourceTab[]).map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => setSourceTab(t)}
+              className={`px-4 py-2 text-sm font-semibold rounded-lg transition-colors ${
+                sourceTab === t
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground'
+              }`}
+            >
+              {SOURCE_LABELS[t]}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {sourceTab !== 'mine' && !externalConnected && (
+        <Card className="p-4 text-sm text-center text-muted-foreground">
+          לא נמצא חיבור פעיל ל-{SOURCE_LABELS[sourceTab]}. הגדירו את פרטי ההתחברות בפרופיל כדי לראות נכסים מהמקור הזה.
+        </Card>
+      )}
+
       {/* Listing type toggle: למכירה / להשכרה */}
       <div className="flex justify-center">
         <div className="inline-flex items-center rounded-xl border border-primary/20 bg-card/40 p-1 backdrop-blur-md" dir="rtl">
