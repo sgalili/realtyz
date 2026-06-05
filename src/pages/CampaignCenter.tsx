@@ -76,7 +76,7 @@ const BRAND_COLOR: Record<string, string> = {
 /* ───────────── Channel grid ───────────── */
 
 const ChannelGrid = ({
-  selectedId, onPick, brandName, connected = DEFAULT_CONNECTED,
+  selectedId, onPick, brandName, connected = EMPTY_CONNECTED,
 }: {
   selectedId: string | null;
   onPick: (c: ChannelCard) => void;
