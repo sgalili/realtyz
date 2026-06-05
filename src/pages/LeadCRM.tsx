@@ -1426,6 +1426,34 @@ const LeadCRM = () => {
             <DialogDescription>סקירת בריאות הנתונים לפני ייבוא</DialogDescription>
           </DialogHeader>
 
+          {/* Lead-kind selector — agent tags the entire batch before import.
+              Buyer/Seller stay on the sale pipeline; Renter/Landlord move to rent. */}
+          <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
+            <Label className="text-xs font-semibold">סוג הרשימה</Label>
+            <div className="grid grid-cols-4 gap-1.5" dir="rtl">
+              {([
+                { v: 'buyer', label: 'קונים' },
+                { v: 'seller', label: 'מוכרים' },
+                { v: 'renter', label: 'שוכרים' },
+                { v: 'landlord', label: 'משכירים' },
+              ] as const).map((opt) => (
+                <button
+                  key={opt.v}
+                  type="button"
+                  onClick={() => setImportLeadKind(opt.v)}
+                  className={`px-2 py-1.5 rounded-md text-xs font-semibold border transition-colors ${
+                    importLeadKind === opt.v
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-muted-foreground border-border hover:text-foreground'
+                  }`}
+                >
+                  {opt.label}
+                </button>
+              ))}
+            </div>
+            <p className="text-[11px] text-muted-foreground">כל הרשומות שייובאו יסומנו בסוג זה ויופנו לצינור המתאים (מכירה / השכרה).</p>
+          </div>
+
           {importStats && (
             <div className="space-y-4">
               {importStats.missingPhone ? (
