@@ -110,7 +110,7 @@ interface ImportRow {
 // Bilingual header mapping (Hebrew + English). Keys are normalized (lowercased, trimmed, quotes stripped)
 const HEADER_ALIASES: Record<string, string[]> = {
   first_name: ['first name', 'firstname', 'private name', 'given name', 'שם פרטי', 'שם_פרטי'],
-  last_name: ['last name', 'lastname', 'family name', 'surname', 'שם משפחה', 'שם_משפחה'],
+  last_name: ['last name', 'lastname', 'family name', 'surname', 'שם משפחה', 'שם_משפחה', 'משפחה'],
   full_name: ['full name', 'fullname', 'name', 'שם', 'שם מלא', 'full_name'],
   phone: ['phone', 'mobile', 'phone number', 'cell', 'cellphone', 'mobile number', 'טלפון', 'סלולרי', 'נייד', 'מס טלפון', 'מס טלפון 1', 'מספר טלפון', 'phone_number'],
   email: ['email', 'e-mail', 'mail', 'אימייל', 'דוא"ל', 'דואל', 'דואר אלקטרוני'],

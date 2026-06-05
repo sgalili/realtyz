@@ -24,9 +24,9 @@ interface Props {
 const FIELD_ALIASES: Record<string, string[]> = {
   price: ['מחיר', 'עלות', 'מחיר מבוקש', 'price', 'cost'],
   city: ['עיר', 'אזור', 'כתובת', 'שכונה', 'city', 'location', 'address'],
-  rooms: ['חדרים', 'מספר חדרים', 'rooms', 'bedrooms'],
+  rooms: ['חדר', 'חדרים', 'מספר חדרים', 'rooms', 'bedrooms'],
   sqm: ['מ"ר', 'מ״ר', 'שטח', 'גודל', 'sqm', 'size', 'area'],
-  title: ['כותרת', 'שם', 'title', 'name'],
+  title: ['כותרת', 'שם נכס', 'נכס', 'סוג נכס', 'title', 'property title', 'name'],
   description: ['תיאור', 'description', 'desc'],
 };
 
@@ -156,7 +156,7 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
         <DialogHeader>
           <DialogTitle>יבוא נכסים מאקסל</DialogTitle>
           <DialogDescription>
-            העלו קובץ Excel או CSV. נזהה את העמודות אוטומטית (מחיר, עיר, חדרים, מ"ר).
+            העלו קובץ Excel, CSV או PDF. נזהה את העמודות אוטומטית (מחיר, עיר, חדרים, מ"ר).
             שורות עם עיר ומחיר ייווספו אוטומטית כמאושרות.
           </DialogDescription>
         </DialogHeader>
