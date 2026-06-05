@@ -239,6 +239,15 @@ export default function Properties() {
             >
               <List className="h-3.5 w-3.5" /> רשימה
             </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              aria-pressed={viewMode === 'table'}
+              className={`inline-flex items-center gap-1 px-2.5 py-1 text-xs rounded-sm transition-colors ${viewMode === 'table' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              title="תצוגת טבלה — כל העמודות מהקובץ"
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5" /> טבלה
+            </button>
           </div>
           <Button size="sm" onClick={() => setAddOpen(true)} className="gap-1.5">
             <Plus className="h-4 w-4" />
