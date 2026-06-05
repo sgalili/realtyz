@@ -650,10 +650,6 @@ const LeadCRM = () => {
         let duplicates = 0;
         let invalid = 0;
 
-        // Headers that already feed a known column — we still keep them in `extra`
-        // too, so the original file is fully round-trip preserved in the lead.
-        const mappedSourceHeaders = new Set(Object.values(headerMap));
-
         for (const row of rows) {
           const firstName = get(row, 'first_name');
           const lastName = get(row, 'last_name');
