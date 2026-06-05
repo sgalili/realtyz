@@ -81,7 +81,10 @@ export default function Properties() {
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const queryClient = useQueryClient();
-  const refreshListings = () => queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+  const refreshListings = () => {
+    setSourceTab('mine');
+    queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+  };
 
   const fnName = sourceTab === 'yad2'
     ? 'yad2-search'
