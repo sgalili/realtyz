@@ -22,12 +22,13 @@ const PORTALS: Portal[] = [
   {
     id: 'homely',
     label: 'Homely',
-    description: 'התחברות לחשבון Homely (Webtiv) — דורש קוד משרד, שם משתמש וסיסמה',
+    description: 'התחברות לחשבון Homely (Webtiv) + מפתח API לדחיפת לידים אוטומטית ל-OpenCard',
     link: 'https://www.homely.co.il/',
     fields: [
       { col: 'homely_agency', label: 'קוד משרד (Client)', dir: 'ltr', placeholder: 'agency code' },
       { col: 'homely_username', label: 'שם משתמש', dir: 'ltr' },
       { col: 'homely_password', label: 'סיסמה', type: 'password', dir: 'ltr', placeholder: '••••••••' },
+      { col: 'homely_api_key', label: 'API Key (OpenCard — אופציונלי)', type: 'password', dir: 'ltr', placeholder: 'Homely API key' },
     ],
   },
   {
@@ -71,7 +72,7 @@ export function ListingPortalsCard() {
         .eq('user_id', user.id)
         .maybeSingle();
       const v: Record<string, string> = {};
-      ['yad2_username', 'yad2_api_key', 'madlan_username', 'madlan_api_key'].forEach((c) => {
+      ['yad2_username', 'yad2_api_key', 'madlan_username', 'madlan_api_key', 'homely_api_key'].forEach((c) => {
         v[c] = (keys as any)?.[c] ?? '';
       });
 
@@ -97,6 +98,7 @@ export function ListingPortalsCard() {
     const agency = (values.homely_agency ?? '').trim();
     const username = (values.homely_username ?? '').trim();
     const password = (values.homely_password ?? '').trim();
+    const apiKey = (values.homely_api_key ?? '').trim();
     if (!agency) { toast.error('יש להזין קוד משרד Homely'); return; }
     if (!username) { toast.error('יש להזין שם משתמש Homely'); return; }
     if (!password && !homelyHasPassword) { toast.error('יש להזין סיסמת Homely'); return; }
@@ -121,6 +123,16 @@ export function ListingPortalsCard() {
         setHomelyHasPassword(true);
         setValues((s) => ({ ...s, homely_password: '' }));
       }
+
+      // Persist API key (OpenCard auto-push) in user_api_keys
+      const { error: keyErr } = await supabase
+        .from('user_api_keys')
+        .upsert({
+          user_id: user.id,
+          homely_api_key: apiKey || null,
+          updated_at: new Date().toISOString(),
+        } as any, { onConflict: 'user_id' });
+      if (keyErr) throw keyErr;
       toast.success('✅ פרטי Homely נשמרו');
     } catch (e: any) {
       toast.error(e?.message ?? 'שמירה נכשלה');
