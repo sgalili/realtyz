@@ -171,7 +171,7 @@ export default function KnowledgeBase() {
       });
       if (error) throw error;
     },
-    onSuccess: () => { toast.success('הקישור נוסף'); setLinkUrl(''); },
+    onSuccess: () => { toast.success('הקישור נוסף'); setLinkUrl(''); qc.invalidateQueries({ queryKey: ['kb-documents'] }); },
     onError: (e: Error) => { if (e.message !== 'demo-blocked') toast.error(e.message); },
   });
 
