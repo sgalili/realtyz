@@ -43,6 +43,22 @@ function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
 }
 
+function detectPropertyType(title: string): PropertyType {
+  if (/דופלקס/i.test(title)) return 'duplex';
+  if (/פנט|פנטהאוז/i.test(title)) return 'penthouse';
+  if (/בית|קוטג/i.test(title)) return 'house';
+  if (/גן/i.test(title)) return 'garden_apt';
+  return 'apartment';
+}
+
+function extractListingType(features: unknown): ListingType {
+  if (Array.isArray(features)) {
+    const typed = features.find((f) => typeof f === 'object' && f && 'listing_type' in f) as { listing_type?: ListingType } | undefined;
+    return typed?.listing_type === 'rent' ? 'rent' : 'sale';
+  }
+  return 'sale';
+}
+
 type SourceTab = 'mine' | 'homely' | 'yad2' | 'madlan';
 const SOURCE_LABELS: Record<SourceTab, string> = {
   mine: 'הנכסים שלי',
@@ -78,6 +94,36 @@ export default function Properties() {
     queryKey: ['properties-search', sourceTab, { city, rooms, propertyType, priceRange, areaMin }],
     queryFn: async () => {
       try {
+        if (sourceTab === 'mine') {
+          const { data, error } = await supabase
+            .from('listings')
+            .select('id, property_title, description, asking_price, city, rooms, sqm, features')
+            .eq('status', 'live')
+            .eq('is_published', true)
+            .order('created_at', { ascending: false })
+            .limit(100);
+          if (error) throw error;
+          return {
+            connected: true,
+            results: (data ?? []).map((row: any) => ({
+              id: row.id,
+              source: 'mine',
+              title: row.property_title || 'נכס',
+              description: row.description || '',
+              price: Number(row.asking_price ?? 0),
+              currency: '₪',
+              city: row.city ?? '',
+              rooms: Number(row.rooms ?? 0),
+              size_sqm: Number(row.sqm ?? 0),
+              property_type: detectPropertyType(`${row.property_title ?? ''} ${row.description ?? ''}`),
+              photos: [],
+              url: null,
+              features: Array.isArray(row.features) ? row.features.filter((f: any) => typeof f === 'string') : [],
+              listing_type: extractListingType(row.features),
+            })),
+          };
+        }
+
         const { data, error } = await supabase.functions.invoke(fnName, {
           body: {
             city: city !== 'כל הערים' && city !== '__my_zones__' ? city : undefined,
