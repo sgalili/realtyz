@@ -189,7 +189,7 @@ Deno.serve(async (req) => {
     // ── Fallback: local listings table ──
     let query = admin
       .from("listings")
-      .select("id, property_title, description, asking_price, features, headline, thesis, slug, source_metadata")
+      .select("id, property_title, description, asking_price, features, slug, source_metadata")
       .eq("is_published", true)
       .limit(limit);
 
