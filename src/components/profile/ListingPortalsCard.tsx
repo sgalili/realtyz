@@ -225,14 +225,36 @@ export function ListingPortalsCard() {
                         <span className="text-muted-foreground mr-1">(שמורה — מלאו רק כדי להחליף)</span>
                       )}
                     </Label>
-                    <Input
-                      id={f.col}
-                      type={f.type ?? 'text'}
-                      dir={f.dir ?? 'ltr'}
-                      value={values[f.col] ?? ''}
-                      onChange={(e) => setValues((s) => ({ ...s, [f.col]: e.target.value }))}
-                      placeholder={f.placeholder ?? f.label}
-                    />
+                    {f.type === 'password' ? (
+                      <div className="relative">
+                        <Input
+                          id={f.col}
+                          type={shown[f.col] ? 'text' : 'password'}
+                          dir={f.dir ?? 'ltr'}
+                          value={values[f.col] ?? ''}
+                          onChange={(e) => setValues((s) => ({ ...s, [f.col]: e.target.value }))}
+                          placeholder={f.placeholder ?? f.label}
+                          className="pr-9"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShown((s) => ({ ...s, [f.col]: !s[f.col] }))}
+                          className="absolute inset-y-0 left-2 flex items-center text-muted-foreground hover:text-foreground"
+                          aria-label={shown[f.col] ? 'הסתר' : 'הצג'}
+                        >
+                          {shown[f.col] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
+                    ) : (
+                      <Input
+                        id={f.col}
+                        type={f.type ?? 'text'}
+                        dir={f.dir ?? 'ltr'}
+                        value={values[f.col] ?? ''}
+                        onChange={(e) => setValues((s) => ({ ...s, [f.col]: e.target.value }))}
+                        placeholder={f.placeholder ?? f.label}
+                      />
+                    )}
                   </div>
                 ))}
               </div>
