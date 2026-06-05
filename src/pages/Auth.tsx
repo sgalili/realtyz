@@ -119,7 +119,10 @@ const Auth = () => {
   const isPreviewHost = typeof window !== 'undefined' && (
     window.location.hostname.startsWith('id-preview--') ||
     window.location.hostname.endsWith('.lovable.dev') ||
-    window.location.hostname.endsWith('.lovableproject.com')
+    window.location.hostname.endsWith('.lovableproject.com') ||
+    window.location.hostname.endsWith('.lovable.app') ||
+    window.location.hostname === 'realtyz.kalpiz.co.il' ||
+    window.location.hostname === 'realtyz.udiman.com'
   );
 
   const handlePhoneChange = (value: string) => {
