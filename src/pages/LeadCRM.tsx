@@ -195,6 +195,7 @@ const LeadCRM = () => {
   const [statusFilter, setStatusFilter] = useState<string>('all');
   const [profileFilter, setProfileFilter] = useState<string>('all');
   const [dealTypeFilter, setDealTypeFilter] = useState<string>('all');
+  const [leadKindFilter, setLeadKindFilter] = useState<'all' | 'buyer' | 'seller' | 'renter' | 'landlord'>('all');
   const [compactMode, setCompactMode] = useState<boolean>(() => {
     try { return localStorage.getItem('crm.compact') === '1'; } catch { return false; }
   });
@@ -244,7 +245,7 @@ const LeadCRM = () => {
     hasNextPage,
     isFetchingNextPage,
   } = useInfiniteQuery({
-    queryKey: ['leads-infinite', debouncedSearch, interestFilter, cityFilter, statusFilter, dealTypeFilter],
+    queryKey: ['leads-infinite', debouncedSearch, interestFilter, cityFilter, statusFilter, dealTypeFilter, leadKindFilter],
     enabled: !isDemoMode,
     queryFn: async ({ pageParam = 0 }) => {
       let query = supabase.from('leads').select('*', { count: 'exact' });
@@ -258,6 +259,7 @@ const LeadCRM = () => {
       if (cityFilter !== 'all') query = query.eq('city', cityFilter);
       if (statusFilter !== 'all') query = query.eq('status', statusFilter);
       if (dealTypeFilter !== 'all') query = query.eq('deal_type', dealTypeFilter);
+      if (leadKindFilter !== 'all') query = query.eq('preferences->>lead_kind', leadKindFilter);
 
       const from = pageParam * PAGE_SIZE;
       const to = from + PAGE_SIZE - 1;
@@ -867,6 +869,29 @@ const LeadCRM = () => {
                 </button>
               </div>
             </div>
+            {/* Lead kind tabs */}
+            <div className="flex flex-wrap gap-1.5 -mt-1">
+              {([
+                { v: 'all', label: 'הכל' },
+                { v: 'buyer', label: 'קונים' },
+                { v: 'seller', label: 'מוכרים' },
+                { v: 'renter', label: 'שוכרים' },
+                { v: 'landlord', label: 'משכירים' },
+              ] as const).map((t) => (
+                <button
+                  key={t.v}
+                  type="button"
+                  onClick={() => setLeadKindFilter(t.v as typeof leadKindFilter)}
+                  className={`px-3 h-7 rounded-full text-xs font-medium border transition-colors ${
+                    leadKindFilter === t.v
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-background text-muted-foreground border-border hover:bg-accent'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
             {(() => {
               const hasFilter = !!search.trim() || interestFilter !== 'all' || cityFilter !== 'all' || statusFilter !== 'all' || profileFilter !== 'all';
               const accountTotal = isDemoMode ? leads.length : realTotalCount;
@@ -1005,6 +1030,7 @@ const LeadCRM = () => {
                   <TableHead className="w-auto font-semibold text-xs">שם</TableHead>
                   <TableHead className="w-auto font-semibold text-xs text-right">טלפון</TableHead>
                   <TableHead className="w-auto font-semibold text-xs">עיר</TableHead>
+                  <TableHead className="w-auto text-center font-semibold text-xs">סוג</TableHead>
                   <TableHead className="w-auto text-center font-semibold text-xs">שלב מתעניין</TableHead>
                   <TableHead className="w-10 text-center">
                     <Checkbox checked={allFilteredSelected} onCheckedChange={toggleAll} />
@@ -1013,7 +1039,7 @@ const LeadCRM = () => {
               </TableHeader>
               <TableBody>
                   {isLoading && (
-                    <TableRow><TableCell colSpan={5} className="py-12">
+                    <TableRow><TableCell colSpan={6} className="py-12">
                       <div className="flex flex-col items-center gap-3">
                         <div className="realtyz-loader h-10 w-10" />
                         <p className="text-sm text-muted-foreground">טוען מתעניינים...</p>
@@ -1024,7 +1050,7 @@ const LeadCRM = () => {
                     const hasFilter = !!search || interestFilter !== 'all' || cityFilter !== 'all' || statusFilter !== 'all' || profileFilter !== 'all';
                     const accountIsEmpty = !isDemoMode && realTotalCount === 0;
                     return (
-                      <TableRow><TableCell colSpan={5} className="py-0">
+                      <TableRow><TableCell colSpan={6} className="py-0">
                         <div className="empty-state animate-fade-in">
                           <div className="h-16 w-16 rounded-full bg-muted/40 flex items-center justify-center mb-3">
                             {accountIsEmpty ? <Upload className="h-7 w-7 text-muted-foreground/30" /> : <Search className="h-7 w-7 text-muted-foreground/30" />}
@@ -1068,6 +1094,21 @@ const LeadCRM = () => {
                         </TableCell>
                         <TableCell className="text-muted-foreground text-xs font-mono text-right" dir="ltr" onClick={() => setSelectedVoterId(lead.id)}>{formatPhoneDisplay(lead.phone_number)}</TableCell>
                         <TableCell className="text-xs" onClick={() => setSelectedVoterId(lead.id)}>{lead.city || '-'}</TableCell>
+                        <TableCell className="text-center" onClick={() => setSelectedVoterId(lead.id)}>
+                          {(() => {
+                            const kind = (lead as any).preferences?.lead_kind as string | undefined;
+                            const map: Record<string, { label: string; cls: string }> = {
+                              buyer:    { label: 'קונה',   cls: 'bg-blue-500/10 text-blue-700 border-blue-300' },
+                              seller:   { label: 'מוכר',   cls: 'bg-emerald-500/10 text-emerald-700 border-emerald-300' },
+                              renter:   { label: 'שוכר',   cls: 'bg-amber-500/10 text-amber-700 border-amber-300' },
+                              landlord: { label: 'משכיר', cls: 'bg-purple-500/10 text-purple-700 border-purple-300' },
+                            };
+                            const m = kind ? map[kind] : null;
+                            return m
+                              ? <Badge variant="outline" className={`text-[10px] font-normal ${m.cls}`}>{m.label}</Badge>
+                              : <span className="text-[10px] text-muted-foreground">-</span>;
+                          })()}
+                        </TableCell>
                         <TableCell className="text-center !px-0" onClick={() => setSelectedVoterId(lead.id)}>
                           <TooltipProvider delayDuration={150}>
                             <Tooltip>
@@ -1106,7 +1147,7 @@ const LeadCRM = () => {
                     );
                   })}
                   {isFetchingNextPage && (
-                    <TableRow><TableCell colSpan={5} className="text-center text-muted-foreground py-4">טוען עוד...</TableCell></TableRow>
+                    <TableRow><TableCell colSpan={6} className="text-center text-muted-foreground py-4">טוען עוד...</TableCell></TableRow>
                   )}
               </TableBody>
             </Table>
