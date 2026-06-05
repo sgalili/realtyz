@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -85,8 +85,8 @@ export default function Properties() {
   const [maxPrice, setMaxPrice] = useState<number>(PRICE_MAX);
   const priceRange: [number, number] = [PRICE_MIN, maxPrice];
   const [areaMin, setAreaMin] = useState<string>('');
-  // View mode for the property catalog — card grid (default) or table.
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  // View mode for the property catalog — default to table per product spec.
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [filtersOpen, setFiltersOpen] = useState(false);
 
   const [shareTarget, setShareTarget] = useState<HomelyProperty | null>(null);
@@ -97,6 +97,17 @@ export default function Properties() {
     setSourceTab('mine');
     queryClient.invalidateQueries({ queryKey: ['properties-search'] });
   };
+
+  // Listen for hero-emitted add events (the '+' button lives in PageHero now).
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const action = (e as CustomEvent<{ action: 'manual' | 'import' }>).detail?.action;
+      if (action === 'manual') setAddOpen(true);
+      else if (action === 'import') setImportOpen(true);
+    };
+    window.addEventListener('properties:add', handler);
+    return () => window.removeEventListener('properties:add', handler);
+  }, []);
 
   const fnName = sourceTab === 'yad2'
     ? 'yad2-search'
@@ -210,44 +221,20 @@ export default function Properties() {
 
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6" dir="rtl">
-      {/* Hero header with "+" add menu on the far left, aligned with the burger */}
-      <header className="flex items-start justify-between gap-3 flex-wrap">
-        <div className="flex items-start gap-2 min-w-0">
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button
-                size="icon"
-                variant="outline"
-                className="h-9 w-9 shrink-0 rounded-full"
-                aria-label="הוספת נכס"
-              >
-                <Plus className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="start">
-              <DropdownMenuItem onClick={() => setAddOpen(true)} className="gap-2">
-                <Plus className="h-4 w-4" /> הוספת נכס ידנית
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => setImportOpen(true)} className="gap-2">
-                <FileSpreadsheet className="h-4 w-4" /> יבוא נכסים מאקסל
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
-          <div className="min-w-0">
-            <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
-              נכסים
-            </h1>
-            <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-              {isConfigured
-                ? `קטלוג הנכסים באזורי ההתמחות שלך (${coveredCities.join(', ')}). סננו לפי תקציב, סוג ופרטים.`
-                : 'קטלוג הנכסים. סננו לפי תקציב, אזור, סוג נכס וחדרים, ושלחו ישירות למתעניינים.'}
-            </p>
-          </div>
-        </div>
+      {/* Header — title only (the '+' button lives inside the global hero) */}
+      <header className="text-right">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
+          נכסים
+        </h1>
+        <p className="text-xs sm:text-sm text-muted-foreground mt-1">
+          {isConfigured
+            ? `קטלוג הנכסים באזורי ההתמחות שלך (${coveredCities.join(', ')}). סננו לפי תקציב, סוג ופרטים.`
+            : 'קטלוג הנכסים. סננו לפי תקציב, אזור, סוג נכס וחדרים, ושלחו ישירות למתעניינים.'}
+        </p>
       </header>
 
-      {/* Listing type toggle (moved to top) */}
-      <div className="flex justify-center">
+      {/* Listing type toggle — sits just 15px below the wave hero per spec */}
+      <div className="flex justify-center" style={{ marginTop: '15px' }}>
         <div className="inline-flex items-center rounded-xl border border-primary/20 bg-card/40 p-1 backdrop-blur-md" dir="rtl">
           {(['sale', 'rent'] as ListingType[]).map((t) => (
             <button
@@ -292,9 +279,12 @@ export default function Properties() {
         </Card>
       )}
 
-      {/* View mode + filter trigger row */}
+      {/* Count + view mode + filter trigger — single row, right-aligned */}
       <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <div className="flex items-center justify-end gap-2 flex-wrap">
+        <div className="flex items-center justify-end gap-2 flex-wrap" dir="rtl">
+          <Badge variant="secondary" className="text-sm">
+            {filtered.length} נכסים
+          </Badge>
           <div className="inline-flex rounded-md border border-border bg-card/50 p-0.5" role="group" aria-label="מצב תצוגה">
             <button
               type="button"
@@ -440,12 +430,7 @@ export default function Properties() {
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Total count above the listings */}
-      <div className="flex items-center justify-between">
-        <Badge variant="secondary" className="text-sm">
-          {filtered.length} נכסים
-        </Badge>
-      </div>
+      {/* (count moved into the view-mode row above) */}
 
       {/* Grid / Table */}
       <ErrorBoundary source="Properties.Grid">
