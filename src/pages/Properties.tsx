@@ -286,6 +286,15 @@ export default function Properties() {
           <Badge variant="secondary" className="text-sm">
             {filtered.length} נכסים
           </Badge>
+          <div className="relative flex-1 min-w-[180px] max-w-sm">
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="חיפוש לפי כתובת, עיר, כותרת..."
+              className="h-8 text-right pr-3"
+              dir="rtl"
+            />
+          </div>
           <div className="inline-flex rounded-md border border-border bg-card/50 p-0.5" role="group" aria-label="מצב תצוגה">
             <button
               type="button"
