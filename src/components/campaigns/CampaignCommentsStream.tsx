@@ -190,27 +190,43 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
   }, [userId, campaign.id, postIdsKey, campaign.channel]);
 
   // Build a shallow tree by metadata.parent_id (set by ayrshare-comments-fetch).
-  const tree = useMemo(() => {
+  // Defensive: guards against self-referencing rows, missing parents, and any
+  // unexpected data shape that previously froze the panel on the loader.
+  const tree = useMemo<Array<EngagementRow & { children: EngagementRow[] }>>(() => {
     const all = rows ?? [];
-    const byExt = new Map<string, EngagementRow>();
-    all.forEach((r) => r.external_id && byExt.set(r.external_id, r));
-    const roots: Array<EngagementRow & { children: EngagementRow[] }> = [];
-    const childMap = new Map<string, EngagementRow[]>();
-    all.forEach((r) => {
-      const parent = (r.metadata as any)?.parent_id as string | undefined;
-      if (parent && byExt.has(parent)) {
-        const arr = childMap.get(parent) ?? [];
-        arr.push(r);
-        childMap.set(parent, arr);
-      } else {
-        roots.push({ ...r, children: [] });
-      }
-    });
-    roots.forEach((r) => {
-      r.children = r.external_id ? childMap.get(r.external_id) ?? [] : [];
-    });
-    return roots;
+    try {
+      const byExt = new Map<string, EngagementRow>();
+      all.forEach((r) => {
+        if (r?.external_id) byExt.set(r.external_id, r);
+      });
+      const roots: Array<EngagementRow & { children: EngagementRow[] }> = [];
+      const childMap = new Map<string, EngagementRow[]>();
+      all.forEach((r) => {
+        if (!r) return;
+        let parent = (r.metadata as any)?.parent_id as string | undefined;
+        // Guard: a row pointing to itself would loop forever — flatten it.
+        if (parent && r.external_id && parent === r.external_id) {
+          parent = undefined;
+        }
+        if (parent && byExt.has(parent) && parent !== r.external_id) {
+          const arr = childMap.get(parent) ?? [];
+          arr.push(r);
+          childMap.set(parent, arr);
+        } else {
+          // Unknown/missing parent → render as a top-level node instead of dropping.
+          roots.push({ ...r, children: [] });
+        }
+      });
+      roots.forEach((r) => {
+        r.children = r.external_id ? childMap.get(r.external_id) ?? [] : [];
+      });
+      return roots;
+    } catch (err) {
+      console.error("[CampaignCommentsStream] tree build failed, falling back to flat rows", err);
+      return all.map((r) => ({ ...r, children: [] }));
+    }
   }, [rows]);
+
 
   const openReply = (row: EngagementRow) => {
     // Hard flush: never carry over draft text from a previous open.
