@@ -1217,22 +1217,19 @@ const PublishedFeed = () => {
         const dateStr = dt.toLocaleDateString('he-IL') + ', ' + dt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
         const platformMeta = FEED_PLATFORMS.find((p) => p.id === String(r.channel || '').toLowerCase());
         const postUrl = derivePostUrl(r);
+        const bodyText = r.message_body || '';
+        const isHe = /[\u0590-\u05FF]/.test(bodyText);
+        const dirAttr: 'rtl' | 'ltr' = isHe ? 'rtl' : 'ltr';
+        const alignClass = isHe ? 'text-right' : 'text-left';
+        const preview = bodyText.trim().slice(0, 100) + (bodyText.trim().length > 100 ? '…' : '');
+        const hasMetrics = !!r.metrics_updated_at;
+        const fmt = (v: number | null | undefined) => (hasMetrics && typeof v === 'number' ? v : '–');
         return (
-          <article key={r.id} className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
-            <header className="flex items-start justify-between gap-3 p-4">
-              <div className="flex items-center gap-1">
-                <button onClick={() => setExpanded((s) => ({ ...s, [r.id]: !isOpen }))}
-                        className="rounded-md p-1 text-muted-foreground hover:bg-muted">
-                  {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-                </button>
-                <button onClick={() => archiveCampaign(r)}
-                        className="rounded-md p-1 text-muted-foreground hover:bg-muted" aria-label="ארכיון">
-                  <Archive className="h-4 w-4" />
-                </button>
-              </div>
-              <div className="flex-1 text-right min-w-0">
+          <article key={r.id} className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden" dir={dirAttr}>
+            <header className={cn('flex items-start justify-between gap-3 p-4', isHe ? 'flex-row' : 'flex-row-reverse')}>
+              <div className={cn('flex-1 min-w-0', alignClass)}>
                 <h3 className="font-semibold text-foreground truncate">{r.campaign_name}</h3>
-                <div className="mt-1 flex items-center justify-end gap-2 text-xs text-muted-foreground">
+                <div className={cn('mt-1 flex items-center gap-2 text-xs text-muted-foreground flex-wrap', isHe ? 'justify-end' : 'justify-start')}>
                   <span className="font-medium text-foreground/80">{ownerName}</span>
                   <span>·</span>
                   <span>{dateStr}</span>
@@ -1245,19 +1242,42 @@ const PublishedFeed = () => {
                       <span className="text-[9px] font-bold uppercase">{r.channel?.slice(0, 2)}</span>
                     )}
                   </span>
+                  <span className="text-border">·</span>
+                  <span className="inline-flex items-center gap-1" title="לייקים">
+                    <Heart className="h-3.5 w-3.5" />
+                    <span className="tabular-nums">{fmt(r.like_count)}</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1" title="תגובות">
+                    <MessageSquare className="h-3.5 w-3.5" />
+                    <span className="tabular-nums">{fmt(r.comment_count)}</span>
+                  </span>
+                  <span className="inline-flex items-center gap-1" title="שיתופים">
+                    <Share2 className="h-3.5 w-3.5" />
+                    <span className="tabular-nums">{fmt(r.share_count)}</span>
+                  </span>
                 </div>
+                {!isOpen && preview && (
+                  <p className={cn('mt-1 text-xs text-muted-foreground truncate', alignClass)} dir={dirAttr}>
+                    {preview}
+                  </p>
+                )}
               </div>
+              <button onClick={() => setExpanded((s) => ({ ...s, [r.id]: !isOpen }))}
+                      className="rounded-md p-1 text-muted-foreground hover:bg-muted shrink-0"
+                      aria-label={isOpen ? 'כווץ' : 'הרחב'}>
+                {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+              </button>
             </header>
 
             {isOpen && (
               <>
-                <div className="mx-4 mb-3 rounded-xl border border-border bg-background p-4 text-sm text-foreground whitespace-pre-wrap text-right">
-                  {r.message_body || <span className="text-muted-foreground">אין תוכן הודעה</span>}
+                <div className={cn('mx-4 mb-3 rounded-xl border border-border bg-background p-4 text-sm text-foreground whitespace-pre-wrap', alignClass)} dir={dirAttr}>
+                  {bodyText || <span className="text-muted-foreground">אין תוכן הודעה</span>}
                 </div>
                 <div className="grid grid-cols-3 gap-2 px-4 pb-3">
-                  <Stat icon={MessageSquare} label="תגובות" value={r.comment_count} hasData={!!r.metrics_updated_at} />
-                  <Stat icon={Share2}         label="שיתופים" value={r.share_count}   hasData={!!r.metrics_updated_at} />
-                  <Stat icon={Heart}          label="לייקים"  value={r.like_count}    hasData={!!r.metrics_updated_at} />
+                  <Stat icon={MessageSquare} label="תגובות" value={r.comment_count} hasData={hasMetrics} />
+                  <Stat icon={Share2}         label="שיתופים" value={r.share_count}   hasData={hasMetrics} />
+                  <Stat icon={Heart}          label="לייקים"  value={r.like_count}    hasData={hasMetrics} />
                 </div>
                 <div className="flex items-center justify-between gap-2 px-4 pb-4" dir="rtl">
                   <Button variant="outline" size="sm" onClick={() => deleteCampaign(r)}
