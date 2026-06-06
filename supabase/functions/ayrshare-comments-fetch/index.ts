@@ -369,6 +369,7 @@ Deno.serve(async (req) => {
       errors,
       persisted,
       skipped,
+      blocked_self: blockedSelf,
       dispatched: toDispatch.length,
     });
   } catch (e) {
