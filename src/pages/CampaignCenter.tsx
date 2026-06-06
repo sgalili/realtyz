@@ -332,15 +332,8 @@ const InlineComposer = ({
         </div>
       </div>
 
-      {/* Textarea */}
-      <Textarea
-        ref={textareaRef}
-        rows={6}
-        value={body}
-        maxLength={MAX_CHARS}
-        onChange={(e) => setBody(e.target.value)}
-        className="resize-y text-right"
       {/* Broker steering: custom instructions + property promotion picker */}
+
       <div className="space-y-2 rounded-xl border border-primary/15 bg-primary/[0.03] p-3">
         <Label htmlFor="custom-instructions" className="text-xs font-semibold text-foreground">
           הנחיות ודגשים מיוחדים לפוסט
