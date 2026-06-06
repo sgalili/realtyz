@@ -134,6 +134,7 @@ export default function Properties() {
               price: Number(row.asking_price ?? 0),
               currency: '₪',
               city: row.city ?? '',
+              address: row.address ?? row.neighborhood ?? '',
               rooms: Number(row.rooms ?? 0),
               size_sqm: Number(row.sqm ?? 0),
               property_type: detectPropertyType(`${row.property_title ?? ''} ${row.description ?? ''}`),
