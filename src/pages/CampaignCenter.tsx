@@ -664,7 +664,13 @@ const InlineComposer = ({
 
       {/* Dispatch CTA */}
       <button type="button"
-        onClick={() => hasBody && onConfirm({ body, mode })}
+        onClick={() => hasBody && onConfirm({
+          body,
+          mode,
+          media_urls: attachments
+            .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
+            .map((a) => a.url as string),
+        })}
         disabled={!hasBody}
         className={cn(
           'w-full rounded-xl px-4 py-3 text-sm font-bold transition flex items-center justify-center gap-2',
