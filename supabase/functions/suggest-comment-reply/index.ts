@@ -22,7 +22,12 @@ import {
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
 
-const SALE_LEAK_RE = /(למכירה|מחיר מבוקש|משכנתא|רכישה|לקנות|for sale|asking price|mortgage|purchase|(^|[^\d])\d{1,3}[,.]?\d{3}[,.]?\d{3}([^\d]|$))/i;
+const MILLION_PRICE_RE = /(^|[^\d])\d{1,3}[,.]?\d{3}[,.]?\d{3}([^\d]|$)|מיליון|מליון/i;
+const STALE_DELETED_PROPERTY_RE = /(פורצי\s*הדרך|אבן\s*גבירול|רכיבה)/i;
+const SALE_LEAK_RE = /(למכירה|מחיר מבוקש|משכנתא|רכישה|לקנות|for sale|asking price|mortgage|purchase)/i;
+const RENT_SIGNAL_RE = /(להשכרה|שכירות|לשכור|להשכיר|שכר דירה|שכ"?ד|דמי שכירות|\brent(al|s)?\b|\bfor rent\b|\blease\b|\bto let\b)/i;
+const SALE_SIGNAL_RE = /(למכירה|לרכישה|לקנות|נמכרת|רכישה|\bfor sale\b|\bbuy(ing)?\b|\bpurchase\b|\bmortgage\b|משכנתא)/i;
+const RENTAL_DELETION_OVERRIDE = `CRITICAL WARNING: The property 'פורצי הדרך 36' is DELETED and does not exist. You are strictly forbidden from writing the words 'פורצי הדרך', 'אבן גבירול', 'רכיבה', or 'למכירה' in this turn. The current session context is 100% RENTAL ONLY (להשכרה). If you mention sales or millions, the application will crash.`;
 
 function normalizeText(value: unknown): string {
   return String(value ?? "").replace(/\s+/g, " ").trim().toLowerCase();
@@ -55,16 +60,57 @@ function isolateSnapshotForPrompt(snap: any, primaryType: ListingType | null, pr
   return { ...snap, sample_listings, total_listings: sample_listings.length };
 }
 
+function hasStaleSaleContext(text: string): boolean {
+  return STALE_DELETED_PROPERTY_RE.test(text) || MILLION_PRICE_RE.test(text) || SALE_LEAK_RE.test(text);
+}
+
+function scrubRentalCampaignContext(text: string): string {
+  if (!text) return "";
+  const scrubbed = text
+    .replace(/[^\n.!?]{0,80}(?:פורצי\s*הדרך|אבן\s*גבירול)[^\n.!?]{0,180}/gi, "")
+    .replace(/[^\n.!?]{0,60}(?:למכירה|מחיר מבוקש|משכנתא|רכישה|לקנות|for sale|asking price|mortgage|purchase)[^\n.!?]{0,140}/gi, "")
+    .replace(MILLION_PRICE_RE, "")
+    .replace(/רכיבה/gi, "")
+    .split(/\n+/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter((line) => line && !STALE_DELETED_PROPERTY_RE.test(line) && !MILLION_PRICE_RE.test(line))
+    .join("\n")
+    .trim();
+  return scrubbed || "[campaign post context omitted: stale sale wording detected; use LIVE PROPERTIES & CRM CONTEXT only]";
+}
+
+function forceSingleRentalSnapshot(snap: any, primaryListing: any) {
+  const sample = primaryListing
+    ? [{
+        title: primaryListing.title,
+        city: primaryListing.city ?? null,
+        rooms: primaryListing.rooms ?? null,
+        sqm: primaryListing.sqm ?? null,
+        asking_price: primaryListing.asking_price ?? null,
+        listing_type: "rent" as ListingType,
+      }]
+    : [];
+  return {
+    ...(snap ?? {}),
+    total_listings: sample.length,
+    cities: primaryListing?.city ? [{ city: primaryListing.city, count: 1 }] : [],
+    sample_listings: sample,
+    active_leads: snap?.active_leads ?? 0,
+    hot_leads: snap?.hot_leads ?? 0,
+    listing_type_filter: "rent" as ListingType,
+  };
+}
+
 function scrubKbForTransaction(kb: string, primaryType: ListingType | null): string {
   if (!kb || primaryType !== "rent") return kb;
   return kb
     .split(/\n---\n/g)
-    .filter((chunk) => !SALE_LEAK_RE.test(chunk) && !/(^|[^\d])\d{1,3}[,.]?\d{3}[,.]?\d{3}([^\d]|$)/.test(chunk))
+    .filter((chunk) => !hasStaleSaleContext(chunk))
     .join("\n---\n");
 }
 
 function hasRentalSaleLeak(text: string): boolean {
-  return SALE_LEAK_RE.test(text) || /(^|[^\d])\d{1,3}[,.]?\d{3}[,.]?\d{3}([^\d]|$)/.test(text);
+  return hasStaleSaleContext(text);
 }
 
 function renderStrictListingPayload(snap: any, primaryType: ListingType | null): string {
