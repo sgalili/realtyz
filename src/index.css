@@ -1020,7 +1020,7 @@
     --primary: 0 0% 100%;
     --primary-foreground: 213 73% 12%;
     --primary-glow: 47 100% 50%;
-    --muted-foreground: 0 0% 100% / 0.7;
+    --muted-foreground: 0 0% 100% / 0.9;
   }
   .realtyz-premium-sidebar [data-active="true"],
   .realtyz-sidebar-menu [data-active="true"] {
