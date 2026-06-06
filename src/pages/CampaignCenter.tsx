@@ -231,7 +231,7 @@ const InlineComposer = ({
 }: {
   channel: ChannelCard;
   brandName: string;
-  onConfirm: (payload: { body: string; mode: 'now' | 'scheduled' }) => void;
+  onConfirm: (payload: { body: string; mode: 'now' | 'scheduled'; media_urls: string[] }) => void;
 }) => {
   const [body, setBody] = useState('');
   const [mode, setMode] = useState<'now' | 'scheduled'>('now');
@@ -664,7 +664,13 @@ const InlineComposer = ({
 
       {/* Dispatch CTA */}
       <button type="button"
-        onClick={() => hasBody && onConfirm({ body, mode })}
+        onClick={() => hasBody && onConfirm({
+          body,
+          mode,
+          media_urls: attachments
+            .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
+            .map((a) => a.url as string),
+        })}
         disabled={!hasBody}
         className={cn(
           'w-full rounded-xl px-4 py-3 text-sm font-bold transition flex items-center justify-center gap-2',
@@ -682,13 +688,14 @@ const InlineComposer = ({
 /* ───────────── Dispatch confirmation modal ───────────── */
 
 const ConfirmDispatchDialog = ({
-  open, onClose, channel, body, brandName, onConfirmed,
+  open, onClose, channel, body, brandName, mediaUrls, onConfirmed,
 }: {
   open: boolean;
   onClose: () => void;
   channel: ChannelCard | null;
   body: string;
   brandName: string;
+  mediaUrls: string[];
   onConfirmed: () => void;
 }) => {
   const { user } = useAuth();
@@ -742,12 +749,19 @@ const ConfirmDispatchDialog = ({
       const campaignName = `${brandName} · ${channel.label}`;
 
       if (SOCIAL_CHANNELS.has(channel.id)) {
+        // mediaUrls was already filtered to public https links upstream by
+        // InlineComposer; if it ends up empty here while the composer had any
+        // image attachments, the edge function's guard will reject the post.
+        if (!mediaUrls) {
+          // defensive: should never happen since prop is typed string[]
+        }
         // Publish via Ayrshare to the workspace-connected social page.
         const { data, error } = await supabase.functions.invoke('ayrshare-post', {
           body: {
             post: body,
             channels: [channel.id],
             campaign_name: campaignName,
+            media_urls: mediaUrls,
           },
         });
         // When the edge function returns a non-2xx, supabase-js sets a generic
@@ -1340,7 +1354,7 @@ const CampaignCenter = () => {
   const { settings } = useWhiteLabel();
   const brandName = settings?.agency_name || 'Realtyz AI';
   const [pickedChannel, setPickedChannel] = useState<ChannelCard | null>(null);
-  const [confirmPayload, setConfirmPayload] = useState<{ body: string; mode: 'now' | 'scheduled' } | null>(null);
+  const [confirmPayload, setConfirmPayload] = useState<{ body: string; mode: 'now' | 'scheduled'; media_urls: string[] } | null>(null);
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(EMPTY_CONNECTED);
   const [channelAccountNames, setChannelAccountNames] = useState<Record<string, string>>({});
 
@@ -1540,6 +1554,7 @@ const CampaignCenter = () => {
         channel={pickedChannel}
         body={confirmPayload?.body ?? ''}
         brandName={brandName}
+        mediaUrls={confirmPayload?.media_urls ?? []}
         onConfirmed={() => { setConfirmPayload(null); setPickedChannel(null); }}
       />
     </div>
