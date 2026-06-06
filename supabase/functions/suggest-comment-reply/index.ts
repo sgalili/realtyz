@@ -639,10 +639,13 @@ Deno.serve(async (req) => {
       };
     }
 
-    // Final guardrail: strip any "no alternatives" disclaimers the model
-    // may have produced despite the prompt prohibition.
+    // Final guardrail: strip "no alternatives" disclaimers + the banned canned
+    // DM-advertisement closing line that we never want in public comments.
+    const BANNED_CLOSING_RE = /\s*(?:שלחתי\s+לך[^.\n]{0,120}(?:פרטי|מסנג'?ר|messenger)[^.\n]{0,120}(?:בדוק|check)[^.\n]{0,60}\.?|I\s+just\s+sent\s+you[^.\n]{0,140}(?:DM|Messenger)[^.\n]{0,100}\.?)/gi;
+    const scrubBannedClosing = (t: string) =>
+      (t || "").replace(BANNED_CLOSING_RE, "").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
     split = {
-      public_comment: stripNoAlternativeDisclaimers(split.public_comment),
+      public_comment: scrubBannedClosing(stripNoAlternativeDisclaimers(split.public_comment)),
       private_messenger_dm: stripNoAlternativeDisclaimers(split.private_messenger_dm),
     };
 
