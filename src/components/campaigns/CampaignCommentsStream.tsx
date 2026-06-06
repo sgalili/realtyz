@@ -235,9 +235,10 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
         <Button
           size="sm"
           variant="ghost"
-          onClick={load}
+          onClick={forceRefresh}
           disabled={loading}
           className="h-7 px-2 text-xs"
+          aria-label="רענן נתונים חיים"
         >
           <RefreshCw className={cn("ml-1 h-3.5 w-3.5", loading && "animate-spin")} />
           רענון
