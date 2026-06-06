@@ -309,7 +309,7 @@ export default function AiAgentDrawer() {
                         <thead>
                           <tr className="bg-muted/50">
                             {Object.keys(msg.data[0]).slice(0, 5).map(key => (
-                              <th key={key} className="px-2 py-1.5 text-right font-medium text-muted-foreground whitespace-nowrap">{key}</th>
+                              <th key={key} className="px-2 py-1.5 text-right font-medium text-muted-foreground whitespace-nowrap">{translateColumn(key)}</th>
                             ))}
                           </tr>
                         </thead>
