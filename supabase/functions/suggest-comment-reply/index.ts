@@ -95,7 +95,10 @@ Deno.serve(async (req) => {
         } catch { /* ignore */ }
       }
     }
-    const kbSnippets = await loadKbSnippets(admin, userId);
+    const [kbSnippets, crmSnap] = await Promise.all([
+      loadKbSnippets(admin, userId),
+      loadCrmSnapshot(admin, userId),
+    ]);
 
     // High-entropy seed forces lexical/structural variation across calls.
     const entropySeed = `${crypto.randomUUID()}-${Date.now()}`;
@@ -104,15 +107,14 @@ Deno.serve(async (req) => {
       platform ? `Platform: ${platform}` : null,
       firstName ? `Sender first name: ${firstName}` : null,
       campaignContext ? `Campaign context:\n"""${campaignContext}"""` : null,
-      kbSnippets
-        ? `WORKSPACE KNOWLEDGE BASE (ground every assertion strictly in these excerpts; do not invent beyond them):\n"""${kbSnippets}"""`
-        : `WORKSPACE KNOWLEDGE BASE: (empty — if the commenter asks a factual question outside general knowledge, honestly say you'll check and follow up in DM).`,
+      renderCrmBlock(crmSnap),
+      renderKbBlock(kbSnippets),
       `Required reply language: ${
         targetLang === "en" ? "English only" : targetLang === "he" ? "Hebrew only" : "same language as inbound"
       }.`,
       `Anti-spam entropy seed (use to vary opener, sentence shapes, vocabulary and CTA wording vs any prior reply): ${entropySeed}`,
       `Reply MUST quote or paraphrase at least one specific detail from the inbound text below so it is provably unique to this commenter.`,
-      `Close with ONE clear, localized Call-To-Action advancing the workspace agenda; phrase the CTA differently every time.`,
+      `CTA invites Messenger DM, WhatsApp, or office call — phrase differently every time.`,
       `Inbound comment:\n"""${inbound}"""`,
       regenerate ? "Produce a structurally fresh angle: different opener, different sentence count, different CTA shape." : null,
     ].filter(Boolean).join("\n\n");
