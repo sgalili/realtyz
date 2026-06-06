@@ -28,6 +28,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { SentimentAutomationToggles } from '@/components/automation/SentimentAutomationToggles';
 import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsStream';
+import { campaignMatchesExternalPost, normalizePostId } from '@/lib/campaignPostIds';
 
 
 type TabValue = 'create' | 'published';
@@ -1076,9 +1077,10 @@ const PublishedFeed = () => {
         (payload) => {
           const updated: any = payload.new;
           setRows((prev) => prev?.map((r) => {
-            if (r.id !== updated.id && r.provider_message_id !== updated.provider_message_id) return r;
+            if (r.id !== updated.id && !campaignMatchesExternalPost(r, updated.provider_message_id)) return r;
             return {
               ...r,
+              provider_message_id: r.provider_message_id || updated.provider_message_id,
               like_count: updated.like_count ?? r.like_count,
               comment_count: updated.comment_count ?? r.comment_count,
               share_count: updated.share_count ?? r.share_count,
@@ -1092,6 +1094,44 @@ const PublishedFeed = () => {
         'postgres_changes',
         { event: 'INSERT', schema: 'public', table: 'campaign_logs', filter: `user_id=eq.${userId}` },
         () => { load(); },
+      )
+      .on(
+        'postgres_changes',
+        { event: '*', schema: 'public', table: 'engagement_events', filter: `user_id=eq.${userId}` },
+        async (payload) => {
+          const changed: any = payload.new || payload.old;
+          const externalPostId = normalizePostId(changed?.external_post_id);
+          if (!externalPostId) return;
+
+          setRows((prev) => prev?.map((r) => {
+            if (!campaignMatchesExternalPost(r, externalPostId)) return r;
+            const current = typeof r.comment_count === 'number' ? r.comment_count : 0;
+            const nextCount = payload.eventType === 'INSERT'
+              ? current + 1
+              : payload.eventType === 'DELETE'
+                ? Math.max(0, current - 1)
+                : current;
+            return {
+              ...r,
+              comment_count: nextCount,
+              metrics_updated_at: r.metrics_updated_at ?? new Date().toISOString(),
+            };
+          }) ?? prev);
+
+          const { count } = await supabase
+            .from('engagement_events')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .eq('is_archived', false)
+            .eq('external_post_id', externalPostId);
+          if (typeof count === 'number') {
+            setRows((prev) => prev?.map((r) => (
+              campaignMatchesExternalPost(r, externalPostId)
+                ? { ...r, comment_count: count, metrics_updated_at: r.metrics_updated_at ?? new Date().toISOString() }
+                : r
+            )) ?? prev);
+          }
+        },
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
