@@ -106,19 +106,64 @@ Deno.serve(async (req) => {
       return json({ error: "ayrshare reply failed", status: ayrRes.status, details: ayrPayload }, 502);
     }
 
+    // Optional private Messenger / IG Direct DM tied to the same commentId.
+    let privateDmResult: any = null;
+    let privateDmStatus: number | null = null;
+    const sanitizedDm = sanitizeOutboundText(privateDmRaw ?? "");
+    if (sanitizedDm) {
+      try {
+        const dmRes = await fetch(AYR_MESSAGES_URL, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+            "Profile-Key": profileKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            platforms: [platform],
+            commentId: nativeCommentId,
+            message: sanitizedDm,
+            searchPlatformId: true,
+          }),
+        });
+        privateDmStatus = dmRes.status;
+        const dmText = await dmRes.text();
+        try { privateDmResult = dmText ? JSON.parse(dmText) : { ok: dmRes.ok }; }
+        catch { privateDmResult = { raw: dmText, ok: dmRes.ok }; }
+      } catch (e) {
+        privateDmResult = { error: e instanceof Error ? e.message : String(e) };
+      }
+    }
+    const privateDmSent = sanitizedDm
+      ? (privateDmStatus !== null && privateDmStatus >= 200 && privateDmStatus < 300)
+      : false;
+
     if (rowId) {
       await admin
         .from("engagement_events")
         .update({
           status: "sent",
           ai_reply_text: sanitized,
-          metadata: { ...rowMetadata, ayrshare_reply: ayrPayload },
+          metadata: {
+            ...rowMetadata,
+            ayrshare_reply: ayrPayload,
+            ...(sanitizedDm
+              ? { private_dm: { status: privateDmStatus, response: privateDmResult, text: sanitizedDm } }
+              : {}),
+          },
         })
         .eq("id", rowId)
         .eq("user_id", ownerUserId);
     }
 
-    return json({ success: true, commentId: nativeCommentId, ayrshare: ayrPayload });
+    return json({
+      success: true,
+      commentId: nativeCommentId,
+      ayrshare: ayrPayload,
+      private_dm_sent: privateDmSent,
+      private_dm: privateDmResult,
+      private_dm_status: privateDmStatus,
+    });
   } catch (e) {
     console.error("[ayrshare-comment-reply] error:", e);
     return json({ error: e instanceof Error ? e.message : "unknown" }, 500);
