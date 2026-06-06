@@ -313,8 +313,22 @@ const InlineComposer = ({
       });
       if (error) throw error;
       const text = (data?.content || data?.text || '').toString().slice(0, MAX_CHARS);
-      if (text) setBody(text);
-      else toast.info('לא התקבל טקסט');
+      if (text) {
+        setBody(text);
+        // Persist to ai_content_logs so the broker can revisit past generations.
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          await supabase.from('ai_content_logs').insert({
+            topic: topic.slice(0, 500),
+            generated_text: text,
+            platform: channel.id,
+            created_by: user?.id ?? null,
+          });
+          setHistoryRefresh((n) => n + 1);
+        } catch (logErr) {
+          console.warn('[CampaignCenter] history log failed', logErr);
+        }
+      } else toast.info('לא התקבל טקסט');
     } catch (e: any) {
       toast.error('יצירת טקסט נכשלה');
     } finally {
