@@ -88,7 +88,7 @@ const SOURCE_LABELS: Record<SourceTab, string> = {
 export default function Properties() {
   const { serviceAreas, coveredCities, isConfigured } = useServiceAreas();
   const [sourceTab, setSourceTab] = useState<SourceTab>('mine');
-  const [listingType, setListingType] = useState<ListingType>('sale');
+  const [listingType, setListingType] = useState<ListingType | 'all'>('all');
   const [city, setCity] = useState<string>('כל הערים');
   const [propertyType, setPropertyType] = useState<PropertyType | 'all'>('all');
   const [rooms, setRooms] = useState<string>('any');
@@ -208,6 +208,7 @@ export default function Properties() {
       price: Number(r.price ?? 0),
       currency: r.currency ?? '₪',
       city: r.city ?? '',
+      address: r.address ?? '',
       rooms: Number(r.rooms ?? 0),
       size_sqm: Number(r.size_sqm ?? 0),
       property_type: 'apartment' as PropertyType,
@@ -224,7 +225,7 @@ export default function Properties() {
     const q = searchQuery.trim().toLowerCase();
     return merged.filter((p) => {
       const pType: ListingType = (p.listing_type ?? 'sale') as ListingType;
-      if (pType !== listingType) return false;
+      if (listingType !== 'all' && pType !== listingType) return false;
       if (city === '__my_zones__') {
         if (isConfigured && !isInServiceArea(p.city ?? null, null, serviceAreas)) return false;
       } else if (city !== 'כל הערים' && p.city !== city) {
@@ -260,7 +261,7 @@ export default function Properties() {
       {/* Listing type toggle — sits just 15px below the wave hero per spec */}
       <div className="flex justify-center" style={{ marginTop: '15px' }}>
         <div className="inline-flex items-center rounded-xl border border-primary/20 bg-card/40 p-1 backdrop-blur-md" dir="rtl">
-          {(['sale', 'rent'] as ListingType[]).map((t) => (
+          {(['all', 'sale', 'rent'] as Array<ListingType | 'all'>).map((t) => (
             <button
               key={t}
               type="button"
@@ -271,7 +272,7 @@ export default function Properties() {
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              {LISTING_TYPE_LABELS_HE[t]}
+              {t === 'all' ? 'הכל' : LISTING_TYPE_LABELS_HE[t]}
             </button>
           ))}
         </div>
