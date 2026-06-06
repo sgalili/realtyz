@@ -258,6 +258,50 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
     }
   };
 
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+  const regenerateInline = async (row: EngagementRow) => {
+    if (!row.inbound_text) return;
+    setRegeneratingId(row.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("suggest-comment-reply", {
+        body: {
+          inbound_text: row.inbound_text,
+          platform: row.platform,
+          sender_handle: row.sender_handle,
+          user_id: userId,
+          campaign_context: [
+            `Campaign: ${campaign.campaign_name}`,
+            campaign.message_body ? `Published post:\n${campaign.message_body}` : null,
+          ].filter(Boolean).join("\n\n"),
+          regenerate: true,
+          cache_bust: `${Date.now()}-${crypto.randomUUID()}`,
+        },
+      });
+      if (error) throw error;
+      const pub = (data as any)?.public_comment ?? (data as any)?.draft;
+      if (typeof pub !== "string" || !pub.trim()) {
+        toast.error((data as any)?.error ?? "לא התקבל ניסוח");
+        return;
+      }
+      const next = pub.trim();
+      const { error: upErr } = await supabase
+        .from("engagement_events")
+        .update({ ai_reply_text: next })
+        .eq("id", row.id)
+        .eq("user_id", userId);
+      if (upErr) throw upErr;
+      setRows((prev) =>
+        (prev ?? []).map((r) => (r.id === row.id ? { ...r, ai_reply_text: next } : r)),
+      );
+      toast.success("הטקסט נוצר מחדש");
+    } catch (e: any) {
+      toast.error(e?.message ?? "ניסוח נכשל");
+    } finally {
+      setRegeneratingId(null);
+    }
+  };
+
+
   const sendReply = async () => {
     if (!replyOpen || !replyDraft.trim()) return;
     setSending(true);
@@ -329,12 +373,23 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
       <ul className="space-y-2">
         {tree.map((root) => (
           <li key={root.id}>
-            <CommentBubble row={root} onReply={openReply} />
+            <CommentBubble
+              row={root}
+              onReply={openReply}
+              onRegenerate={regenerateInline}
+              regenerating={regeneratingId === root.id}
+            />
             {root.children.length > 0 && (
               <ul className="mt-2 space-y-2 border-r-2 border-border/60 pr-3 mr-2">
                 {root.children.map((child) => (
                   <li key={child.id}>
-                    <CommentBubble row={child} onReply={openReply} isReply />
+                    <CommentBubble
+                      row={child}
+                      onReply={openReply}
+                      onRegenerate={regenerateInline}
+                      regenerating={regeneratingId === child.id}
+                      isReply
+                    />
                   </li>
                 ))}
               </ul>
@@ -342,6 +397,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
           </li>
         ))}
       </ul>
+
 
       <Dialog open={!!replyOpen} onOpenChange={(o) => !o && setReplyOpen(null)}>
         <DialogContent dir="rtl" className="max-w-lg">
@@ -471,10 +527,14 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
 function CommentBubble({
   row,
   onReply,
+  onRegenerate,
+  regenerating,
   isReply,
 }: {
   row: EngagementRow;
   onReply: (r: EngagementRow) => void;
+  onRegenerate?: (r: EngagementRow) => void;
+  regenerating?: boolean;
   isReply?: boolean;
 }) {
   const dt = new Date(row.created_at);
@@ -511,9 +571,24 @@ function CommentBubble({
       </p>
       {row.ai_reply_text && (
         <div className="mt-2 rounded-lg border border-primary/30 bg-primary/5 p-2 text-sm">
-          <div className="mb-1 flex items-center justify-end gap-1 text-[10px] text-primary">
-            <span className="font-semibold">תגובת AI</span>
-            <Bot className="h-3 w-3" />
+          <div className="mb-1 flex items-center justify-between gap-1 text-[10px] text-primary">
+            {onRegenerate && row.inbound_text && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-[10px] text-primary hover:text-primary"
+                onClick={() => onRegenerate(row)}
+                disabled={regenerating}
+                aria-label="צור טקסט מחדש"
+              >
+                <RefreshCw className={cn("ml-1 h-3 w-3", regenerating && "animate-spin")} />
+                צור מחדש
+              </Button>
+            )}
+            <div className="flex items-center gap-1">
+              <span className="font-semibold">תגובת AI</span>
+              <Bot className="h-3 w-3" />
+            </div>
           </div>
           <p className="whitespace-pre-wrap text-foreground">{row.ai_reply_text}</p>
           <div className="mt-1 text-[10px] text-muted-foreground">
@@ -535,3 +610,4 @@ function CommentBubble({
     </div>
   );
 }
+
