@@ -177,7 +177,7 @@ export function renderCrmBlock(snap: CrmSnapshot | null): string {
     : "(no city data)";
   const samples = snap.sample_listings.length
     ? snap.sample_listings
-        .map((l) => {
+        .map((l, index) => {
           const typeHe = l.listing_type === "rent"
             ? "להשכרה"
             : l.listing_type === "sale"
@@ -192,20 +192,20 @@ export function renderCrmBlock(snap: CrmSnapshot | null): string {
             l.sqm ? `${l.sqm} מ"ר` : null,
             l.asking_price ? `${priceLabel}: ${Number(l.asking_price).toLocaleString("he-IL")} ש"ח` : null,
           ].filter(Boolean);
-          return `- ${parts.join(" | ")}`;
+          return `OBJECT_${index + 1}: ${parts.join(" | ")}`;
         })
         .join("\n")
     : "(no live listings)";
   const filterLine = snap.listing_type_filter
-    ? `STRICT TRANSACTION FILTER: only ${snap.listing_type_filter === "rent" ? "RENTAL (להשכרה)" : "SALE (למכירה)"} listings are listed below. NEVER cross-quote a ${snap.listing_type_filter === "rent" ? "SALE" : "RENTAL"} property.`
+    ? `STRICT TRANSACTION FILTER: only ${snap.listing_type_filter === "rent" ? "RENTAL (להשכרה)" : "SALE (למכירה)"} listing objects are listed below. NEVER cross-quote a ${snap.listing_type_filter === "rent" ? "SALE" : "RENTAL"} property. Treat this block as the only allowed property payload.`
     : null;
   return [
-    "[LIVE PROPERTIES & CRM CONTEXT] (workspace-scoped, real DB rows — quote only these, never invent new ones):",
+    "[LIVE PROPERTIES & CRM CONTEXT] (STRICT DYNAMIC PAYLOAD ARRAY — workspace-scoped real DB rows only. Quote only these OBJECT_* entries. Never use examples, memory, previous drafts, campaign history, or invented addresses/prices.):",
     filterLine,
     `Active live listings: ${snap.total_listings}`,
     `Active regions: ${cityLine}`,
     `Pipeline: ${snap.active_leads} active leads, ${snap.hot_leads} hot/negotiation`,
-    `Sample live listings:\n${samples}`,
+    `Allowed real-estate objects:\n${samples}`,
   ].filter(Boolean).join("\n");
 }
 

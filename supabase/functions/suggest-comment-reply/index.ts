@@ -21,7 +21,7 @@ import {
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
 
-const SALE_LEAK_RE = /(פורצי הדרך|אבן גבירול|למכירה|מחיר מבוקש|משכנתא|רכישה|לקנות|2,?290,?000|for sale|asking price|mortgage|purchase)/i;
+const SALE_LEAK_RE = /(למכירה|מחיר מבוקש|משכנתא|רכישה|לקנות|for sale|asking price|mortgage|purchase|(^|[^\d])\d{1,3}[,.]?\d{3}[,.]?\d{3}([^\d]|$))/i;
 
 function normalizeText(value: unknown): string {
   return String(value ?? "").replace(/\s+/g, " ").trim().toLowerCase();
@@ -66,6 +66,24 @@ function hasRentalSaleLeak(text: string): boolean {
   return SALE_LEAK_RE.test(text) || /(^|[^\d])\d{1,3}[,.]?\d{3}[,.]?\d{3}([^\d]|$)/.test(text);
 }
 
+function renderStrictListingPayload(snap: any, primaryType: ListingType | null): string {
+  const objects = (snap?.sample_listings ?? []).map((listing: any, index: number) => ({
+    object_id: `OBJECT_${index + 1}`,
+    title: listing?.title || null,
+    city: listing?.city ?? null,
+    rooms: listing?.rooms ?? null,
+    sqm: listing?.sqm ?? null,
+    price_shekel: listing?.asking_price ?? null,
+    transaction_type: listing?.listing_type ?? primaryType,
+    price_label: (listing?.listing_type ?? primaryType) === "rent" ? "שכ\"ד ₪/חודש" : "מחיר מבוקש",
+  }));
+  return `[STRICT LISTING PAYLOAD JSON]\nOnly these JSON objects may be used for property facts. If a field is null or absent, do not mention it. Do not add furnishing, parking, elevator, floor, photos, availability, street, neighborhood, or condition unless that exact value is present here.\n${JSON.stringify(objects, null, 2)}`;
+}
+
+function hasUnsupportedPropertyFact(text: string): boolean {
+  return /(מרוהט|ריהוט|חניה|מעלית|קומה|מרפסת|פנוי|זמין|כניסה מיידית|תמונות|משופץ|furnished|parking|elevator|balcony|available|photos)/i.test(text);
+}
+
 const SYSTEM = `${UDI_PERSONA}
 
 You are replying to a single public social comment (Facebook, Instagram, etc) as the broker, personally and in first person. Your job is to SELL the relevant property, not to introduce Udi as a human.
@@ -82,13 +100,17 @@ ABSOLUTE PROHIBITIONS (zero tolerance — breaking any of these voids the reply)
 
 MANDATORY MULTI-SOURCE GROUNDING:
 - Every property fact (rooms, price, sqm, floor, elevator, parking, neighborhood, street) MUST come from [LIVE PROPERTIES & CRM CONTEXT]. Never invent.
+- STRICT DYNAMIC PAYLOAD ONLY: You are strictly forbidden from fabricating property addresses or prices from memory, prior outputs, examples, campaign history, or training data. Use ONLY real-estate objects dynamically injected in [LIVE PROPERTIES & CRM CONTEXT].
+- The [STRICT LISTING PAYLOAD JSON] block is the final source of truth for property facts. If a fact is missing from that JSON, do not mention it.
+- If a property is not present in the injected payload, it does not exist for this reply. Do NOT mention it, even as an example.
 - STRICT TRANSACTION TYPE FIREWALL: if the primary property is FOR RENT, alternatives and terminology MUST be RENTAL only (שכ"ד חודשי / monthly rent / lease / move-in). If FOR SALE, alternatives and terminology MUST be SALE only (מחיר מבוקש / purchase / mortgage). Crossing these is FORBIDDEN.
+- If the active context states RENT, every price must be written strictly as monthly rental: שכ"ד ₪/חודש. Never write sale price wording or million-tier prices in a rental reply.
 - If the commenter asked a yes/no attribute (elevator? parking? balcony?) and the data is in CRM, answer it directly and truthfully. If not in CRM, pivot to a concrete attribute that IS in CRM (room count, price, street, floor) without claiming the unknown attribute exists.
 - If the KB and CRM truly cannot answer, say honestly you'll verify and follow up in DM. Never fabricate.
 
 OUTPUT FORMAT (STRICT JSON, no markdown, no code fence, no commentary):
 {
-  "public_comment": "<1 to 2 SHORT sentences max. Direct answer to the commenter's explicit question using real attributes from CRM. End with exactly this closing in the matched language. Hebrew closing: 'שלחתי לך את כל הפרטים המלאים והתמונות ישירות לפרטי / למסנג'ר. כנס לבדוק.' English closing: 'I just sent you the full details and photos straight to your DM / Messenger. Check it out.'>",
+  "public_comment": "<1 to 2 SHORT sentences max. Direct answer to the commenter's explicit question using real attributes from CRM. End with exactly this closing in the matched language. Hebrew closing: 'שלחתי לך את כל הפרטים המלאים ישירות לפרטי / למסנג'ר. כנס לבדוק.' English closing: 'I just sent you the full details straight to your DM / Messenger. Check it out.'>",
   "private_messenger_dm": "<3 to 5 short lines. Detail the SPECIFIC property the commenter is asking about using CRM facts (rooms, sqm, floor, price, street/neighborhood, key features). Offer ONE alternative only if an allowed same-transaction listing appears in LIVE PROPERTIES & CRM CONTEXT within ~15% of the same price band; if none appears, propose NO alternative at all. Close with exactly ONE high-yield qualifying question (move-in date, exact budget ceiling, parking requirement, floor preference, must-have neighborhoods). No emojis. No biography. First person.>"
 }
 
@@ -253,7 +275,7 @@ Deno.serve(async (req) => {
       ? "[campaign post context omitted: stale sale wording detected; use LIVE PROPERTIES & CRM CONTEXT only]"
       : rawCampaignContext;
     const promptSnap = isolateSnapshotForPrompt(crmSnap, primaryType, primaryListing?.asking_price ?? null);
-    const promptKb = scrubKbForTransaction(kbSnippets, primaryType);
+    const promptKb = primaryType ? "" : scrubKbForTransaction(kbSnippets, primaryType);
 
     // High-entropy seed forces lexical/structural variation across calls.
     const entropySeed = `${crypto.randomUUID()}-${Date.now()}`;
@@ -290,6 +312,7 @@ Deno.serve(async (req) => {
       primaryBlock,
       transactionBlock,
       renderCrmBlock(promptSnap),
+      renderStrictListingPayload(promptSnap, primaryType),
       renderKbBlock(promptKb),
       `Required reply language: ${
         targetLang === "en" ? "English only" : targetLang === "he" ? "Hebrew only" : "same language as inbound"
@@ -396,7 +419,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (primaryType === "rent" && hasRentalSaleLeak(`${split.public_comment}\n${split.private_messenger_dm}`)) {
+    if (primaryType === "rent" && (hasRentalSaleLeak(`${split.public_comment}\n${split.private_messenger_dm}`) || hasUnsupportedPropertyFact(`${split.public_comment}\n${split.private_messenger_dm}`))) {
       const safeDm = [
         primaryListing
           ? `${primaryListing.title}${primaryListing.city ? " · " + primaryListing.city : ""}${primaryListing.rooms ? " · " + primaryListing.rooms + " חדרים" : ""}${primaryListing.sqm ? " · " + primaryListing.sqm + " מ\"ר" : ""}${primaryListing.asking_price ? " · שכ\"ד " + Number(primaryListing.asking_price).toLocaleString("he-IL") + " ₪/חודש" : ""}`
@@ -405,7 +428,9 @@ Deno.serve(async (req) => {
         "מה מועד הכניסה המועדף עליכם?",
       ].join("\n");
       split = {
-        public_comment: sanitizeOutboundText(split.public_comment.replace(SALE_LEAK_RE, "נכס להשכרה")).trim(),
+        public_comment: sanitizeOutboundText(primaryListing
+          ? `יש לי את הפרטים על ${primaryListing.title}${primaryListing.rooms ? `, ${primaryListing.rooms} חדרים` : ""}${primaryListing.asking_price ? `, שכ\"ד ${Number(primaryListing.asking_price).toLocaleString("he-IL")} ₪/חודש` : ""}. שלחתי לך את כל הפרטים המלאים ישירות לפרטי / למסנג'ר. כנס לבדוק.`
+          : "יש לי רק נכסי השכרה פעילים בהקשר הזה. שלחתי לך את כל הפרטים המלאים ישירות לפרטי / למסנג'ר. כנס לבדוק.").trim(),
         private_messenger_dm: sanitizeOutboundText(safeDm).trim(),
       };
     }
