@@ -305,27 +305,53 @@ function PersonalTab() {
   const [phones, setPhones] = useState<ContactList>([newRow('')]);
   const [aiEnabled, setAiEnabled] = useState(true);
   const [fullName, setFullName] = useState('אודי ויטמן');
+  const [hydrated, setHydrated] = useState(false);
 
+  // Hydrate from auth user_metadata first (cross-device), then fall back to
+  // localStorage so older sessions don't lose their phone numbers.
   useEffect(() => {
-    try {
-      const raw = window.localStorage.getItem('realtyz-profile-contacts');
-      if (raw) {
-        const p = JSON.parse(raw);
-        if (Array.isArray(p.emails) && p.emails.length) setEmails(p.emails);
-        if (Array.isArray(p.whatsapps) && p.whatsapps.length) setWhatsapps(p.whatsapps);
-        if (Array.isArray(p.phones) && p.phones.length) setPhones(p.phones);
-        if (typeof p.aiEnabled === 'boolean') setAiEnabled(p.aiEnabled);
-        if (typeof p.fullName === 'string') setFullName(p.fullName);
-      }
-    } catch {}
-  }, []);
+    if (hydrated || !user) return;
+    const meta = (user.user_metadata ?? {}) as Record<string, any>;
+    const contacts = meta.profile_contacts ?? null;
+    let loaded = false;
+    if (contacts && typeof contacts === 'object') {
+      if (Array.isArray(contacts.emails) && contacts.emails.length) setEmails(contacts.emails);
+      if (Array.isArray(contacts.whatsapps) && contacts.whatsapps.length) setWhatsapps(contacts.whatsapps);
+      if (Array.isArray(contacts.phones) && contacts.phones.length) setPhones(contacts.phones);
+      if (typeof contacts.aiEnabled === 'boolean') setAiEnabled(contacts.aiEnabled);
+      if (typeof contacts.fullName === 'string') setFullName(contacts.fullName);
+      loaded = true;
+    }
+    if (!loaded) {
+      try {
+        const raw = window.localStorage.getItem('realtyz-profile-contacts');
+        if (raw) {
+          const p = JSON.parse(raw);
+          if (Array.isArray(p.emails) && p.emails.length) setEmails(p.emails);
+          if (Array.isArray(p.whatsapps) && p.whatsapps.length) setWhatsapps(p.whatsapps);
+          if (Array.isArray(p.phones) && p.phones.length) setPhones(p.phones);
+          if (typeof p.aiEnabled === 'boolean') setAiEnabled(p.aiEnabled);
+          if (typeof p.fullName === 'string') setFullName(p.fullName);
+        }
+      } catch {}
+    }
+    setHydrated(true);
+  }, [user, hydrated]);
 
-  const save = () => {
-    window.localStorage.setItem(
-      'realtyz-profile-contacts',
-      JSON.stringify({ emails, whatsapps, phones, aiEnabled, fullName }),
-    );
-    toast.success('הפרופיל נשמר');
+  const save = async () => {
+    const payload = { emails, whatsapps, phones, aiEnabled, fullName };
+    // Local cache for instant rehydration.
+    try {
+      window.localStorage.setItem('realtyz-profile-contacts', JSON.stringify(payload));
+    } catch {}
+    // Cross-device durable store: auth user_metadata.
+    try {
+      const { error } = await supabase.auth.updateUser({ data: { profile_contacts: payload } });
+      if (error) throw error;
+      toast.success('הפרופיל נשמר');
+    } catch (err: any) {
+      toast.error('שמירה מקומית הצליחה, אך שמירה לשרת נכשלה: ' + (err?.message ?? 'שגיאה'));
+    }
   };
 
   return (
