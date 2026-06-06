@@ -58,7 +58,7 @@ serve(async (req) => {
           .filter(Boolean)
       : [];
     const listingTypeFromFeatures = (features: unknown) => Array.isArray(features)
-      ? features.find((feature) => feature && typeof feature === "object" && "listing_type" in feature)?.listing_type
+      ? ((features.find((feature) => feature && typeof feature === "object" && "listing_type" in feature) as Record<string, unknown> | undefined)?.listing_type)
       : null;
 
     // Fetch a specific promoted listing when supplied by the UI.
