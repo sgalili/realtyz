@@ -133,8 +133,9 @@ Deno.serve(async (req) => {
         ],
         temperature: regenerate ? 1.05 : 0.95,
         top_p: 0.95,
-        presence_penalty: 0.6,
-        frequency_penalty: 0.8,
+        presence_penalty: 0.7,
+        frequency_penalty: 0.85,
+        max_tokens: 500,
       }),
     });
 
