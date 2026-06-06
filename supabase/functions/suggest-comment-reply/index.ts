@@ -172,15 +172,18 @@ Deno.serve(async (req) => {
           .maybeSingle();
         if (row) {
           const lt = extractListingTypeFromFeatures((row as any).features);
-          primaryListing = {
-            title: String((row as any).property_title ?? ""),
-            city: (row as any).city ?? null,
-            asking_price: (row as any).asking_price ?? null,
-            listing_type: lt,
-            rooms: (row as any).rooms ?? null,
-            sqm: (row as any).sqm ?? null,
-          };
-          if (!primaryType && lt) primaryType = lt;
+          const effectiveType = primaryType ?? lt;
+          if (!effectiveType || isListingAllowedForType({ ...(row as any), listing_type: lt }, effectiveType)) {
+            primaryListing = {
+              title: String((row as any).property_title ?? ""),
+              city: (row as any).city ?? null,
+              asking_price: (row as any).asking_price ?? null,
+              listing_type: lt,
+              rooms: (row as any).rooms ?? null,
+              sqm: (row as any).sqm ?? null,
+            };
+            if (!primaryType && lt) primaryType = lt;
+          }
         }
       } catch { /* ignore */ }
     }
