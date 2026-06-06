@@ -76,13 +76,14 @@ const BRAND_COLOR: Record<string, string> = {
 /* ───────────── Channel grid ───────────── */
 
 const ChannelGrid = ({
-  selectedId, onPick, onConnect, brandName, connected = EMPTY_CONNECTED,
+  selectedId, onPick, onConnect, brandName, connected = EMPTY_CONNECTED, accountNames = {},
 }: {
   selectedId: string | null;
   onPick: (c: ChannelCard) => void;
   onConnect: (c: ChannelCard) => void;
   brandName: string;
   connected?: Set<string>;
+  accountNames?: Record<string, string>;
 }) => (
   <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-sm">
     <div className="grid grid-cols-3 gap-3 sm:gap-4" dir="rtl">
