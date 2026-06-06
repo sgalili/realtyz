@@ -12,7 +12,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
-import { Upload } from 'lucide-react';
+import { Upload, CheckCircle2, AlertCircle, Copy } from 'lucide-react';
 
 interface Props {
   open: boolean;
@@ -52,7 +52,6 @@ function detectListingType(extras: Record<string, string>, mappedListingType: an
   const blob = Object.entries(extras).map(([k, v]) => `${k} ${v}`).join(' ');
   if (/השכר|שכיר|להשכרה|rent/i.test(blob)) return 'rent';
   if (/למכירה|מכירה|sale/i.test(blob)) return 'sale';
-  // Price heuristic: millions = sale, thousands = rent.
   if (price != null && price > 0) return price >= 1_000_000 ? 'sale' : 'rent';
   return 'sale';
 }
@@ -90,7 +89,6 @@ function parseBool(v: any): boolean | null {
   const s = String(v).trim().toLowerCase();
   if (['כן', 'יש', 'true', '1', 'yes', 'y', 'v'].includes(s)) return true;
   if (['לא', 'אין', 'false', '0', 'no', 'n'].includes(s)) return false;
-  // partial matches (e.g. "כן,שתיים")
   if (/כן|יש|yes/.test(s)) return true;
   if (/לא|אין|no/.test(s)) return false;
   return null;
@@ -106,10 +104,34 @@ function slugify(s: string) {
   ) + '-' + Math.random().toString(36).slice(2, 8);
 }
 
+// Stable fingerprint used to detect duplicates inside the file and vs the DB.
+function fingerprintInsert(ins: any): string {
+  const norm = (v: any) => String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const parts = [
+    norm(ins.city),
+    norm(ins.address),
+    norm(ins.rooms),
+    norm(Math.round(Number(ins.asking_price ?? 0))),
+    norm(ins.property_title),
+  ];
+  return parts.join('|');
+}
+
+type Stats = {
+  totalRows: number;
+  emptySkipped: number;
+  fileDuplicates: number;
+  dbDuplicates: number;
+  toImport: number;
+};
+
 export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [processing, setProcessing] = useState(false);
   const [ocrRunning, setOcrRunning] = useState(false);
+  const [importing, setImporting] = useState(false);
+  const [pendingInserts, setPendingInserts] = useState<any[] | null>(null);
+  const [stats, setStats] = useState<Stats | null>(null);
   const [summary, setSummary] = useState<{ imported: number; skipped: number } | null>(null);
 
   const fileToDataUrl = (file: File): Promise<string> =>
@@ -136,23 +158,27 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
 
   const rowsLookEmpty = (rows: Record<string, any>[]): boolean => {
     if (!rows.length) return true;
-    // A row is "useful" if any value contains at least 2 word characters.
     const useful = rows.filter((r) =>
       Object.values(r).some((v) => v != null && String(v).trim().replace(/\s+/g, '').length >= 2),
     );
     return useful.length === 0;
   };
 
+  const resetPreview = () => {
+    setPendingInserts(null);
+    setStats(null);
+    setSummary(null);
+  };
+
   const handleFile = async (file: File) => {
     setProcessing(true);
-    setSummary(null);
+    resetPreview();
     try {
       const isPdf = /\.pdf$/i.test(file.name) || file.type === 'application/pdf';
       let rows: Record<string, any>[];
       if (isPdf) {
         const res = await parsePdfToRows(file);
         rows = res.rows;
-        // Fallback: pdfjs returned nothing parseable (scanned/image PDF).
         if (rowsLookEmpty(rows)) {
           rows = await runOcrFallback(file);
         }
@@ -254,8 +280,6 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
 
       let { inserts, skipped } = buildInserts(rows);
 
-      // Second-chance OCR fallback: pdfjs returned text but mapping found
-      // zero usable rows (garbled scan, wrong column layout, etc).
       if (isPdf && !inserts.length) {
         const ocrRows = await runOcrFallback(file);
         if (ocrRows.length) {
@@ -264,17 +288,46 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
         }
       }
 
+      const totalRows = rows.length;
+
       if (!inserts.length) {
         toast.error('לא נמצאו שורות לייבוא');
-        setSummary({ imported: 0, skipped });
+        setStats({ totalRows, emptySkipped: skipped, fileDuplicates: 0, dbDuplicates: 0, toImport: 0 });
         return;
       }
 
-      const { error } = await supabase.from('listings').insert(inserts);
-      if (error) throw error;
-      toast.success(`יובאו ${inserts.length} נכסים בהצלחה`);
-      setSummary({ imported: inserts.length, skipped });
-      onImported?.();
+      // Dedupe inside the file
+      const seen = new Set<string>();
+      const fileUnique: any[] = [];
+      let fileDuplicates = 0;
+      for (const ins of inserts) {
+        const fp = fingerprintInsert(ins);
+        if (seen.has(fp)) { fileDuplicates++; continue; }
+        seen.add(fp);
+        fileUnique.push(ins);
+      }
+
+      // Dedupe against existing DB rows for this user
+      const { data: existing } = await supabase
+        .from('listings')
+        .select('city,address,rooms,asking_price,property_title')
+        .eq('user_id', auth.user.id);
+      const dbFps = new Set<string>((existing ?? []).map((r: any) => fingerprintInsert(r)));
+      const finalInserts: any[] = [];
+      let dbDuplicates = 0;
+      for (const ins of fileUnique) {
+        if (dbFps.has(fingerprintInsert(ins))) { dbDuplicates++; continue; }
+        finalInserts.push(ins);
+      }
+
+      setPendingInserts(finalInserts);
+      setStats({
+        totalRows,
+        emptySkipped: skipped,
+        fileDuplicates,
+        dbDuplicates,
+        toImport: finalInserts.length,
+      });
     } catch (e: any) {
       toast.error(`שגיאה בייבוא: ${e.message ?? e}`);
     } finally {
@@ -283,59 +336,157 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
     }
   };
 
+  const confirmImport = async () => {
+    if (!pendingInserts?.length) return;
+    setImporting(true);
+    try {
+      const { error } = await supabase.from('listings').insert(pendingInserts);
+      if (error) throw error;
+      toast.success(`יובאו ${pendingInserts.length} נכסים בהצלחה`);
+      setSummary({ imported: pendingInserts.length, skipped: stats?.emptySkipped ?? 0 });
+      setPendingInserts(null);
+      setStats(null);
+      onImported?.();
+    } catch (e: any) {
+      toast.error(`שגיאה בשמירה: ${e.message ?? e}`);
+    } finally {
+      setImporting(false);
+    }
+  };
+
+  const cancelPreview = () => resetPreview();
+
+  const showPreview = !!stats && !summary;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="max-w-lg">
-        <DialogHeader>
-          <DialogTitle>יבוא נכסים מאקסל / PDF</DialogTitle>
-          <DialogDescription>
-            העלו קובץ Excel, CSV או PDF. נזהה אוטומטית את כל העמודות: מחיר, נכס, חדרים, רחוב, מס, קומה, מעלית, חניה, פתיחה, עדכון, בעלים, סוכן ועוד. כל עמודה מהקובץ נשמרת כפי שהיא.
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={(v) => { if (!v) resetPreview(); onOpenChange(v); }}>
+        <DialogContent dir="rtl" className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>יבוא נכסים מאקסל / PDF</DialogTitle>
+            <DialogDescription>
+              העלו קובץ Excel, CSV או PDF. נזהה אוטומטית את כל העמודות ונסיר כפילויות לפני הייבוא.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-3">
-          <label
-            className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-primary/30 rounded-xl p-8 cursor-pointer hover:bg-muted/40 transition-colors"
-          >
-            <Upload className="h-8 w-8 text-primary" />
-            <span className="text-sm font-semibold">לחצו לבחירת קובץ</span>
-            <span className="text-xs text-muted-foreground">.xlsx, .xls, .csv, .pdf</span>
-            <input
-              ref={fileRef}
-              type="file"
-              className="hidden"
-              disabled={processing}
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) handleFile(f);
-              }}
-            />
-          </label>
+          <div className="space-y-3">
+            <label
+              className="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-primary/30 rounded-xl p-8 cursor-pointer hover:bg-muted/40 transition-colors"
+            >
+              <Upload className="h-8 w-8 text-primary" />
+              <span className="text-sm font-semibold">לחצו לבחירת קובץ</span>
+              <span className="text-xs text-muted-foreground">.xlsx, .xls, .csv, .pdf</span>
+              <input
+                ref={fileRef}
+                type="file"
+                className="hidden"
+                disabled={processing || importing}
+                onChange={(e) => {
+                  const f = e.target.files?.[0];
+                  if (f) handleFile(f);
+                }}
+              />
+            </label>
 
-          {processing && (
-            <div className={`text-sm text-center rounded-lg p-3 ${ocrRunning ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground'}`}>
-              {ocrRunning
-                ? 'מפענח קובץ סרוק באמצעות בינה מלאכותית, אנא המתן...'
-                : 'מעבד את הקובץ...'}
+            {processing && (
+              <div className={`text-sm text-center rounded-lg p-3 ${ocrRunning ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground'}`}>
+                {ocrRunning
+                  ? 'מפענח קובץ סרוק באמצעות בינה מלאכותית, אנא המתן...'
+                  : 'מעבד את הקובץ...'}
+              </div>
+            )}
+
+            {summary && (
+              <div className="text-sm bg-muted/40 rounded-lg p-3 space-y-1">
+                <div>נוספו: <strong>{summary.imported}</strong> נכסים</div>
+                {summary.skipped > 0 && (
+                  <div className="text-muted-foreground">דולגו: {summary.skipped} שורות ריקות</div>
+                )}
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => onOpenChange(false)} disabled={processing || importing}>
+              סגור
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Confirmation dialog with parsed statistics */}
+      <Dialog open={showPreview} onOpenChange={(v) => { if (!v) cancelPreview(); }}>
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>אישור ייבוא נכסים</DialogTitle>
+            <DialogDescription>
+              להלן סיכום הקובץ. כפילויות זוהו אוטומטית והוסרו. אשרו כדי לייבא רק את הרשומות הייחודיות.
+            </DialogDescription>
+          </DialogHeader>
+
+          {stats && (
+            <div className="space-y-2 text-sm">
+              <StatRow label="סך שורות בקובץ" value={stats.totalRows} />
+              <StatRow label="שורות ריקות שדולגו" value={stats.emptySkipped} muted />
+              <StatRow
+                label="כפילויות בתוך הקובץ"
+                value={stats.fileDuplicates}
+                icon={<Copy className="h-4 w-4" />}
+                muted
+              />
+              <StatRow
+                label="כפילויות מול נכסים קיימים"
+                value={stats.dbDuplicates}
+                icon={<AlertCircle className="h-4 w-4 text-amber-500" />}
+                muted
+              />
+              <div className="h-px bg-border my-2" />
+              <StatRow
+                label="מוכן לייבוא"
+                value={stats.toImport}
+                icon={<CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+                strong
+              />
             </div>
           )}
 
-          {summary && (
-            <div className="text-sm bg-muted/40 rounded-lg p-3 space-y-1">
-              <div>נוספו: <strong>{summary.imported}</strong> נכסים</div>
-              {summary.skipped > 0 && (
-                <div className="text-muted-foreground">דולגו: {summary.skipped} שורות ריקות</div>
-              )}
-            </div>
-          )}
-        </div>
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={cancelPreview} disabled={importing}>
+              ביטול
+            </Button>
+            <Button
+              onClick={confirmImport}
+              disabled={importing || !pendingInserts?.length}
+            >
+              {importing ? 'מייבא...' : `אשר ייבוא ${stats?.toImport ?? 0} נכסים`}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  );
+}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={processing}>
-            סגור
-          </Button>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+function StatRow({
+  label,
+  value,
+  icon,
+  muted,
+  strong,
+}: {
+  label: string;
+  value: number;
+  icon?: React.ReactNode;
+  muted?: boolean;
+  strong?: boolean;
+}) {
+  return (
+    <div className={`flex items-center justify-between rounded-lg px-3 py-2 ${strong ? 'bg-primary/10' : 'bg-muted/40'}`}>
+      <div className={`flex items-center gap-2 ${muted ? 'text-muted-foreground' : ''}`}>
+        {icon}
+        <span>{label}</span>
+      </div>
+      <span className={strong ? 'font-bold text-primary text-base' : 'font-semibold'}>{value}</span>
+    </div>
   );
 }
