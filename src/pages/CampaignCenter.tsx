@@ -76,13 +76,14 @@ const BRAND_COLOR: Record<string, string> = {
 /* ───────────── Channel grid ───────────── */
 
 const ChannelGrid = ({
-  selectedId, onPick, onConnect, brandName, connected = EMPTY_CONNECTED,
+  selectedId, onPick, onConnect, brandName, connected = EMPTY_CONNECTED, accountNames = {},
 }: {
   selectedId: string | null;
   onPick: (c: ChannelCard) => void;
   onConnect: (c: ChannelCard) => void;
   brandName: string;
   connected?: Set<string>;
+  accountNames?: Record<string, string>;
 }) => (
   <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-sm">
     <div className="grid grid-cols-3 gap-3 sm:gap-4" dir="rtl">
@@ -136,7 +137,7 @@ const ChannelGrid = ({
 
             {isConnected && isSelected && (
               <span className="absolute inset-x-2 bottom-1.5 truncate text-[10px] font-semibold text-primary">
-                {brandName}
+                {accountNames[c.id] || brandName}
               </span>
             )}
 
@@ -654,6 +655,7 @@ const CampaignCenter = () => {
   const [pickedChannel, setPickedChannel] = useState<ChannelCard | null>(null);
   const [confirmPayload, setConfirmPayload] = useState<{ body: string; mode: 'now' | 'scheduled' } | null>(null);
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(EMPTY_CONNECTED);
+  const [channelAccountNames, setChannelAccountNames] = useState<Record<string, string>>({});
 
   // STRICT WORKSPACE ISOLATION: only show a channel as connected when
   // (1) this workspace owns a verified `workspace_social_profile` with its
@@ -668,10 +670,14 @@ const CampaignCenter = () => {
 
       const { data: wsp } = await supabase
         .from('workspace_social_profile')
-        .select('ayrshare_profile_key')
+        .select('ayrshare_profile_key, facebook_page_name')
         .maybeSingle();
       const hasOwnProfile = !!(wsp as any)?.ayrshare_profile_key;
       if (!hasOwnProfile) { if (!cancelled) setConnectedChannels(EMPTY_CONNECTED); return; }
+      const fbName = (wsp as any)?.facebook_page_name as string | null;
+      if (fbName && !cancelled) {
+        setChannelAccountNames((prev) => ({ ...prev, facebook: fbName }));
+      }
 
       // Auto-sync Ayrshare → social_connections so freshly linked pages appear
       // as connected without requiring a manual "Import accounts" click.
@@ -827,7 +833,7 @@ const CampaignCenter = () => {
         </div>
 
         <TabsContent value="create" className="mt-6 space-y-4">
-          <ChannelGrid selectedId={pickedChannel?.id ?? null} onPick={setPickedChannel} onConnect={handleConnectChannel} brandName={brandName} connected={connectedChannels} />
+          <ChannelGrid selectedId={pickedChannel?.id ?? null} onPick={setPickedChannel} onConnect={handleConnectChannel} brandName={brandName} connected={connectedChannels} accountNames={channelAccountNames} />
           {pickedChannel && (
             <InlineComposer
               channel={pickedChannel}
