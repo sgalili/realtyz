@@ -654,6 +654,7 @@ const CampaignCenter = () => {
   const [pickedChannel, setPickedChannel] = useState<ChannelCard | null>(null);
   const [confirmPayload, setConfirmPayload] = useState<{ body: string; mode: 'now' | 'scheduled' } | null>(null);
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(EMPTY_CONNECTED);
+  const [channelAccountNames, setChannelAccountNames] = useState<Record<string, string>>({});
 
   // STRICT WORKSPACE ISOLATION: only show a channel as connected when
   // (1) this workspace owns a verified `workspace_social_profile` with its
