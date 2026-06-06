@@ -195,6 +195,28 @@ const InlineComposer = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<BlobPart[]>([]);
 
+  // Generation history
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyRefresh, setHistoryRefresh] = useState(0);
+  const [history, setHistory] = useState<Array<{ id: string; topic: string | null; generated_text: string | null; platform: string | null; created_at: string }>>([]);
+  useEffect(() => {
+    if (!historyOpen) return;
+    let cancelled = false;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('ai_content_logs')
+        .select('id, topic, generated_text, platform, created_at')
+        .eq('created_by', user.id)
+        .eq('platform', channel.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (!cancelled) setHistory((data as any) || []);
+    })();
+    return () => { cancelled = true; };
+  }, [historyOpen, historyRefresh, channel.id]);
+
   // Reset on channel change
   useEffect(() => { setBody(''); setMode('now'); setAttachments([]); setCustomInstructions(''); setSelectedListingId(null); setListingQuery(''); }, [channel.id]);
 
@@ -313,8 +335,22 @@ const InlineComposer = ({
       });
       if (error) throw error;
       const text = (data?.content || data?.text || '').toString().slice(0, MAX_CHARS);
-      if (text) setBody(text);
-      else toast.info('לא התקבל טקסט');
+      if (text) {
+        setBody(text);
+        // Persist to ai_content_logs so the broker can revisit past generations.
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          await supabase.from('ai_content_logs').insert({
+            topic: topic.slice(0, 500),
+            generated_text: text,
+            platform: channel.id,
+            created_by: user?.id ?? null,
+          });
+          setHistoryRefresh((n) => n + 1);
+        } catch (logErr) {
+          console.warn('[CampaignCenter] history log failed', logErr);
+        }
+      } else toast.info('לא התקבל טקסט');
     } catch (e: any) {
       toast.error('יצירת טקסט נכשלה');
     } finally {
@@ -332,6 +368,30 @@ const InlineComposer = ({
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-semibold text-foreground">תוכן ההודעה</h3>
         <div className="flex items-center gap-2">
+          <Popover open={historyOpen} onOpenChange={setHistoryOpen}>
+            <PopoverTrigger asChild>
+              <button type="button"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-primary/30">
+                היסטוריה
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-[340px] p-2 max-h-96 overflow-auto" dir="rtl">
+              {history.length === 0 ? (
+                <p className="px-3 py-6 text-center text-xs text-muted-foreground">אין יצירות שמורות עדיין עבור {channel.label}</p>
+              ) : history.map((h) => (
+                <button key={h.id} type="button"
+                  onClick={() => { setBody((h.generated_text || '').slice(0, MAX_CHARS)); setHistoryOpen(false); toast.success('הטקסט הועתק לעורך'); }}
+                  className="mb-1 w-full rounded-md border border-border/60 bg-background px-3 py-2 text-right hover:bg-muted">
+                  <div className="text-[11px] text-muted-foreground">
+                    {new Date(h.created_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
+                  </div>
+                  <div className="mt-1 text-xs text-foreground line-clamp-3 whitespace-pre-wrap">
+                    {h.generated_text || h.topic || '—'}
+                  </div>
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
           <button type="button" onClick={handleGenerate} disabled={generating}
             className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-60">
             <Bot className="h-3.5 w-3.5" />
