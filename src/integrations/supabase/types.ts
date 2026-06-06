@@ -863,62 +863,77 @@ export type Database = {
         Row: {
           campaign_name: string
           channel: string
+          comment_count: number
           cost: number
           created_at: string
           failure_reason: string | null
           id: string
           is_archived: boolean
           lead_id: string | null
+          like_count: number
           message_body: string | null
+          metrics_updated_at: string | null
           provider_message_id: string | null
           provider_response: Json
           recipient_email: string | null
           recipient_name: string | null
           recipient_phone: string | null
           sent_at: string | null
+          share_count: number
           source_account: string | null
           status: string
           user_id: string
+          view_count: number
         }
         Insert: {
           campaign_name: string
           channel: string
+          comment_count?: number
           cost?: number
           created_at?: string
           failure_reason?: string | null
           id?: string
           is_archived?: boolean
           lead_id?: string | null
+          like_count?: number
           message_body?: string | null
+          metrics_updated_at?: string | null
           provider_message_id?: string | null
           provider_response?: Json
           recipient_email?: string | null
           recipient_name?: string | null
           recipient_phone?: string | null
           sent_at?: string | null
+          share_count?: number
           source_account?: string | null
           status?: string
           user_id: string
+          view_count?: number
         }
         Update: {
           campaign_name?: string
           channel?: string
+          comment_count?: number
           cost?: number
           created_at?: string
           failure_reason?: string | null
           id?: string
           is_archived?: boolean
           lead_id?: string | null
+          like_count?: number
           message_body?: string | null
+          metrics_updated_at?: string | null
           provider_message_id?: string | null
           provider_response?: Json
           recipient_email?: string | null
           recipient_name?: string | null
           recipient_phone?: string | null
           sent_at?: string | null
+          share_count?: number
           source_account?: string | null
           status?: string
           user_id?: string
+          view_count?: number
         }
         Relationships: []
       }
