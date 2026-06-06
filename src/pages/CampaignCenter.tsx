@@ -756,9 +756,9 @@ const ConfirmDispatchDialog = ({
         const { data: leads, error } = await supabase
           .from('leads')
           .select('id, full_name, phone_number, email')
-          .eq('user_id', user.id)
           .limit(100);
         if (error) throw error;
+
         const rows = (leads || []).map((l: any) => ({
           user_id: user.id,
           campaign_name: campaignName,
