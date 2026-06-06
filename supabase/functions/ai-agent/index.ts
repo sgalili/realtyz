@@ -490,25 +490,41 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
 
           // STRICT pipeline separation: extract listing_type from features and
           // drop anything that doesn't match the lead's deal_type. A rental
-          // lead must NEVER see sale alternatives, and vice-versa.
-          const extractType = (features: any): "sale" | "rent" | null => {
-            if (Array.isArray(features)) {
-              for (const f of features) {
-                if (f && typeof f === "object" && "listing_type" in f) {
-                  const v = String((f as any).listing_type ?? "").toLowerCase();
-                  if (v === "rent" || v === "sale") return v;
-                }
+          // lead must NEVER see sale alternatives, and vice-versa. When the
+          // listing has no explicit listing_type, fall back to a price-based
+          // heuristic (price < 50k → rent, price ≥ 100k → sale) so the mixed
+          // buyer/renter DB still routes cleanly.
+          const extractType = (features: any, price?: any): "sale" | "rent" | null => {
+            const fromFeatures = (f: any): "sale" | "rent" | null => {
+              if (f && typeof f === "object" && "listing_type" in f) {
+                const v = String((f as any).listing_type ?? "").toLowerCase();
+                if (v === "rent" || v === "sale") return v;
               }
               return null;
+            };
+            if (Array.isArray(features)) {
+              for (const f of features) {
+                const v = fromFeatures(f);
+                if (v) return v;
+              }
+            } else {
+              const v = fromFeatures(features);
+              if (v) return v;
             }
-            if (features && typeof features === "object") {
-              const v = String((features as any).listing_type ?? "").toLowerCase();
-              if (v === "rent" || v === "sale") return v;
+            const n = Number(price ?? 0);
+            if (Number.isFinite(n) && n > 0) {
+              if (n < 50_000) return "rent";
+              if (n >= 100_000) return "sale";
             }
             return null;
           };
           if (dealType === "rent" || dealType === "sale") {
-            candidates = candidates.filter((l) => extractType(l.features) === dealType);
+            candidates = candidates.filter((l) => {
+              const t = extractType(l.features, l.asking_price);
+              // If we cannot classify at all, drop it from the strict pipeline
+              // rather than risk leaking the wrong side.
+              return t === dealType;
+            });
           }
 
           // Soft-score by rooms/city overlap; keep top 5.
