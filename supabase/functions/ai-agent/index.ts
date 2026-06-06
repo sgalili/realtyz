@@ -298,6 +298,20 @@ serve(async (req) => {
           (leadRow?.deal_type as string | undefined) ||
           (leadRow?.preferences as any)?.listing_type;
         if (dt === "sale" || dt === "rent") dealType = dt;
+        // Price-based fallback — the DB mixes buyers and renters. If the
+        // lead has no explicit deal_type, infer it from their budget:
+        // budget in the thousands → rent; budget ≥ ~100k (typically 1M+) → sale.
+        if (!dealType) {
+          const prefs = (leadRow?.preferences as any) ?? {};
+          const budget = Number(
+            prefs.budget_max ?? prefs.price_max ?? prefs.max_price ??
+            prefs.budget_min ?? prefs.price_min ?? 0,
+          );
+          if (Number.isFinite(budget) && budget > 0) {
+            if (budget < 50_000) dealType = "rent";
+            else if (budget >= 100_000) dealType = "sale";
+          }
+        }
         if (!resolvedLeadName) resolvedLeadName = (leadRow?.full_name as string | undefined) ?? null;
         leadStage =
           (leadRow?.lead_stage as string | undefined) ??
