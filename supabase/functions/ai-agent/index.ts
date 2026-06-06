@@ -521,6 +521,28 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
               const price = l.asking_price ? `₪${Number(l.asking_price).toLocaleString()}${isRent ? "/חודש" : ""}` : "—";
               return `• ${l.property_title ?? "(ללא כותרת)"} | ${city} | ${rooms} חד׳ | ${sqm} מ"ר | ${priceLabel}: ${price}`;
             };
+            const directiveLines: string[] = [];
+            if (isRent) {
+              directiveLines.push(
+                "- Weave 1-2 of these RENTAL alternatives naturally, e.g. \"חוץ מהנכס הזה יש לי גם דירה להשכרה ב-X בתקציב דומה, פנויה לכניסה בקרוב\". NEVER offer a property למכירה — זה ליד שכירות.",
+                "- Use rental terminology only: שכ\"ד חודשי / דמי שכירות / שכר דירה / פנויה לכניסה / חוזה. Forbidden: מחיר מבוקש, רכישה, משכנתא, mortgage, purchase.",
+              );
+            } else if (dealType === "sale") {
+              directiveLines.push(
+                "- Weave 1-2 of these SALE alternatives naturally; NEVER offer a rental to a sale lead.",
+                "- Use sale terminology only: מחיר מבוקש / רכישה / משכנתא / mortgage / purchase. Forbidden: שכ\"ד / דמי שכירות / lease.",
+              );
+            } else {
+              directiveLines.push("- Weave 1-2 alternatives naturally; keep it conversational.");
+            }
+            directiveLines.push(
+              "- Match the ±15% budget margin strictly around the primary property's price.",
+              "- Never list more than 2 alternatives in a single message — keep it conversational, not a catalog.",
+              "- Only reference listings from the block above. Do NOT invent prices, addresses, or features.",
+            );
+            const qualBlock = isRent
+              ? "HIGH-YIELD QUALIFICATION QUESTIONS (rental persona — ask ONE per turn, only if missing from preferences):\n- \"לכמה זמן אתם מחפשים לשכור?\"\n- \"מה מועד הכניסה המועדף עליכם?\"\n- \"צריכים חניה או מעלית?\"\n- \"כמה דיירים יגורו בנכס?\"\n- תקציב שכ\"ד חודשי מקסימלי."
+              : "HIGH-YIELD QUALIFICATION QUESTIONS (sale persona — ask ONE per turn, only if missing from preferences):\n- Exact budget ceiling and floor (₪).\n- Preferred move-in date / urgency window.\n- Parking requirement (none / 1 / 2+).\n- Floor preference (low / mid / high / no preference) and elevator need.\n- Number of rooms and minimum size in מ\"ר.\n- Must-have neighborhoods or streets to exclude.";
             matchingBlock = [
               `MATCHING LISTINGS (scoped strictly to this owner's workspace via RLS, ${
                 isRent ? "RENTAL ONLY" : dealType === "sale" ? "SALE ONLY" : "type-mixed"
@@ -528,20 +550,9 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
               scored.map((s) => fmt(s.l)).join("\n"),
               "",
               "PROACTIVE MATCHING DIRECTIVE:",
-              isRent
-                ? "- Weave 1-2 of these RENTAL alternatives naturally, e.g. \"חוץ מהנכס הזה יש לי גם דירה להשכרה ב-X בתקציב דומה, פנויה לכניסה בקרוב\". NEVER offer a property למכירה — זה ליד שכירות.",
-                "- Use rental terminology only: שכ\"ד חודשי / דמי שכירות / שכר דירה / פנויה לכניסה / חוזה. Forbidden: מחיר מבוקש, רכישה, משכנתא, mortgage, purchase.",
-              ].filter(Boolean).join("\n") +
-              (dealType === "sale"
-                ? "\n- Weave 1-2 of these SALE alternatives naturally; NEVER offer a rental to a sale lead. Use sale terminology only (מחיר מבוקש / רכישה / משכנתא)."
-                : ""),
-              "- Match the ±15% budget margin strictly around the primary property's price.",
-              "- Never list more than 2 alternatives in a single message — keep it conversational, not a catalog.",
-              "- Only reference listings from the block above. Do NOT invent prices, addresses, or features.",
+              directiveLines.join("\n"),
               "",
-              isRent
-                ? "HIGH-YIELD QUALIFICATION QUESTIONS (rental persona — ask ONE per turn, only if missing from preferences):\n- \"לכמה זמן אתם מחפשים לשכור?\"\n- \"מה מועד הכניסה המועדף עליכם?\"\n- \"צריכים חניה או מעלית?\"\n- \"כמה דיירים יגורו בנכס?\"\n- תקציב שכ\"ד חודשי מקסימלי."
-                : "HIGH-YIELD QUALIFICATION QUESTIONS (sale persona — ask ONE per turn, only if missing from preferences):\n- Exact budget ceiling and floor (₪).\n- Preferred move-in date / urgency window.\n- Parking requirement (none / 1 / 2+).\n- Floor preference (low / mid / high / no preference) and elevator need.\n- Number of rooms and minimum size in מ\"ר.\n- Must-have neighborhoods or streets to exclude.",
+              qualBlock,
               "The more property details we unlock from the lead, the cleaner our database mapping becomes — but never interrogate; weave one question per reply.",
             ].join("\n");
           }
