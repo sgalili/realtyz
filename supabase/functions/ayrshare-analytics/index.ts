@@ -39,29 +39,55 @@ function pickNum(...vals: unknown[]): number {
 }
 
 function extractCounts(analytics: any, platform: string): Counts {
-  // Ayrshare returns shape like { facebook: { analytics: {...} } } or
-  // { facebook: {...} }, plus sometimes top-level { analytics: ... }.
-  const root =
-    analytics?.[platform]?.analytics ??
-    analytics?.[platform] ??
-    analytics?.analytics ??
-    analytics ?? {};
-  const likes = pickNum(
-    root.likeCount, root.likes, root.reactionsCount, root.reactions,
-    root.favoriteCount, root.favorites, root.heartCount,
-    root.likeAndReactionCount,
-  );
-  const comments = pickNum(
-    root.commentsCount, root.commentCount, root.comments, root.replyCount,
-  );
-  const shares = pickNum(
-    root.shareCount, root.shares, root.sharesCount, root.retweetCount,
-    root.repostCount, root.reshareCount,
-  );
-  const views = pickNum(
-    root.impressionCount, root.impressions, root.viewCount, root.views,
-    root.videoViews, root.playCount, root.reach,
-  );
+  // Ayrshare returns several shapes depending on endpoint/plan:
+  //   { [platform]: { analytics: {...} } }
+  //   { [platform]: {...} }
+  //   { analytics: {...} }
+  //   { posts: [ { [platform]: { analytics: {...} }, metrics: {...} } ] }
+  //   { data: { posts: [ { metrics: {...} } ] } }
+  //   { metrics: {...} }
+  const postsArr: any[] =
+    (Array.isArray(analytics?.posts) && analytics.posts) ||
+    (Array.isArray(analytics?.data?.posts) && analytics.data.posts) ||
+    [];
+  const firstPost = postsArr[0] ?? {};
+  const candidates: any[] = [
+    analytics?.[platform]?.analytics,
+    analytics?.[platform]?.metrics,
+    analytics?.[platform],
+    firstPost?.[platform]?.analytics,
+    firstPost?.[platform]?.metrics,
+    firstPost?.[platform],
+    firstPost?.analytics,
+    firstPost?.metrics,
+    analytics?.analytics,
+    analytics?.metrics,
+    analytics?.data?.metrics,
+    analytics,
+  ].filter((x) => x && typeof x === "object");
+  const pickFrom = (keys: string[]) => {
+    for (const c of candidates) {
+      const v = pickNum(...keys.map((k) => c?.[k]));
+      if (v > 0) return v;
+    }
+    return 0;
+  };
+  const likes = pickFrom([
+    "likeCount", "likes", "reactionsCount", "reactions",
+    "favoriteCount", "favorites", "heartCount", "likeAndReactionCount",
+    "likesCount",
+  ]);
+  const comments = pickFrom([
+    "commentsCount", "commentCount", "comments", "replyCount", "repliesCount",
+  ]);
+  const shares = pickFrom([
+    "shareCount", "shares", "sharesCount", "retweetCount",
+    "repostCount", "reshareCount", "sharedCount",
+  ]);
+  const views = pickFrom([
+    "impressionCount", "impressions", "viewCount", "views",
+    "videoViews", "playCount", "reach", "reachCount",
+  ]);
   return { likes, comments, shares, views };
 }
 
