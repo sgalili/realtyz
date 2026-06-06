@@ -12,6 +12,7 @@ import {
   renderKbBlock,
   renderCrmBlock,
   extractListingTypeFromFeatures,
+  isListingAllowedForType,
   UDI_PERSONA,
   ANTI_SPAM_RULES,
   CTA_RULE,
@@ -19,6 +20,51 @@ import {
 } from "../_shared/grounding.ts";
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
+
+const SALE_LEAK_RE = /(פורצי הדרך|אבן גבירול|למכירה|מחיר מבוקש|משכנתא|רכישה|לקנות|2,?290,?000|for sale|asking price|mortgage|purchase)/i;
+
+function normalizeText(value: unknown): string {
+  return String(value ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function overlapsListingText(haystack: string, listing: Record<string, unknown>): boolean {
+  const h = normalizeText(haystack);
+  if (!h) return false;
+  const candidates = [listing.property_title, listing.address, listing.neighborhood, listing.city]
+    .map(normalizeText)
+    .filter((v) => v.length >= 4);
+  return candidates.some((v) => h.includes(v));
+}
+
+function isolateSnapshotForPrompt(snap: any, primaryType: ListingType | null, primaryPrice: number | null) {
+  if (!snap || !primaryType) return snap;
+  const min = primaryPrice ? primaryPrice * 0.85 : null;
+  const max = primaryPrice ? primaryPrice * 1.15 : null;
+  const sample_listings = (snap.sample_listings ?? []).filter((listing: any) => {
+    const price = Number(listing?.asking_price ?? 0);
+    const title = String(listing?.title ?? "");
+    if (listing?.listing_type !== primaryType) return false;
+    if (primaryType === "rent") {
+      if (Number.isFinite(price) && price > 50_000) return false;
+      if (SALE_LEAK_RE.test(title)) return false;
+    }
+    if (min !== null && Number.isFinite(price) && price > 0 && (price < min || price > max)) return false;
+    return true;
+  });
+  return { ...snap, sample_listings, total_listings: sample_listings.length };
+}
+
+function scrubKbForTransaction(kb: string, primaryType: ListingType | null): string {
+  if (!kb || primaryType !== "rent") return kb;
+  return kb
+    .split(/\n---\n/g)
+    .filter((chunk) => !SALE_LEAK_RE.test(chunk) && !/(^|[^\d])\d{1,3}[,.]?\d{3}[,.]?\d{3}([^\d]|$)/.test(chunk))
+    .join("\n---\n");
+}
+
+function hasRentalSaleLeak(text: string): boolean {
+  return SALE_LEAK_RE.test(text) || /(^|[^\d])\d{1,3}[,.]?\d{3}[,.]?\d{3}([^\d]|$)/.test(text);
+}
 
 const SYSTEM = `${UDI_PERSONA}
 
@@ -43,7 +89,7 @@ MANDATORY MULTI-SOURCE GROUNDING:
 OUTPUT FORMAT (STRICT JSON, no markdown, no code fence, no commentary):
 {
   "public_comment": "<1 to 2 SHORT sentences max. Direct answer to the commenter's explicit question using real attributes from CRM. End with exactly this closing in the matched language. Hebrew closing: 'שלחתי לך את כל הפרטים המלאים והתמונות ישירות לפרטי / למסנג'ר. כנס לבדוק.' English closing: 'I just sent you the full details and photos straight to your DM / Messenger. Check it out.'>",
-  "private_messenger_dm": "<3 to 5 short lines. Detail the SPECIFIC property the commenter is asking about using CRM facts (rooms, sqm, floor, price, street/neighborhood, key features). Then offer exactly ONE alternative listing from CRM within ~15% of the same price band, named with its real city/street and price. Close with exactly ONE high-yield qualifying question (move-in date, exact budget ceiling, parking requirement, floor preference, must-have neighborhoods). No emojis. No biography. First person.>"
+  "private_messenger_dm": "<3 to 5 short lines. Detail the SPECIFIC property the commenter is asking about using CRM facts (rooms, sqm, floor, price, street/neighborhood, key features). Offer ONE alternative only if an allowed same-transaction listing appears in LIVE PROPERTIES & CRM CONTEXT within ~15% of the same price band; if none appears, propose NO alternative at all. Close with exactly ONE high-yield qualifying question (move-in date, exact budget ceiling, parking requirement, floor preference, must-have neighborhoods). No emojis. No biography. First person.>"
 }
 
 GENDER (Hebrew only): match Hebrew gender to the sender's first name when known; unknown -> masculine singular. Never slash forms.
@@ -83,8 +129,8 @@ Deno.serve(async (req) => {
     }
     const platform = typeof body?.platform === "string" ? body.platform : "";
     const sender = typeof body?.sender_handle === "string" ? body.sender_handle : "";
-    const campaignContext =
-      typeof body?.campaign_context === "string" ? body.campaign_context.slice(0, 800) : "";
+    const rawCampaignContext =
+      typeof body?.campaign_context === "string" ? body.campaign_context.slice(0, 1400) : "";
     const regenerate = Boolean(body?.regenerate);
     const targetLang = detectDominantLanguage(inbound);
     const firstName = sender.trim().split(/[\s_.@]+/)[0] || "";
@@ -116,9 +162,11 @@ Deno.serve(async (req) => {
       sqm: number | null;
     } | null = null;
     let primaryType: ListingType | null = null;
+    let primaryTypeLocked = false;
     const explicitType = String(body?.listing_type ?? "").toLowerCase();
     if (explicitType === "rent" || explicitType === "sale") {
       primaryType = explicitType as ListingType;
+      primaryTypeLocked = true;
     }
     const primaryListingId = typeof body?.primary_listing_id === "string" ? body.primary_listing_id : null;
     if (primaryListingId) {
@@ -130,15 +178,19 @@ Deno.serve(async (req) => {
           .maybeSingle();
         if (row) {
           const lt = extractListingTypeFromFeatures((row as any).features);
-          primaryListing = {
-            title: String((row as any).property_title ?? ""),
-            city: (row as any).city ?? null,
-            asking_price: (row as any).asking_price ?? null,
-            listing_type: lt,
-            rooms: (row as any).rooms ?? null,
-            sqm: (row as any).sqm ?? null,
-          };
-          if (!primaryType && lt) primaryType = lt;
+          const effectiveType = primaryType ?? lt;
+          if (!effectiveType || isListingAllowedForType({ ...(row as any), listing_type: lt }, effectiveType)) {
+            primaryListing = {
+              title: String((row as any).property_title ?? ""),
+              city: (row as any).city ?? null,
+              asking_price: (row as any).asking_price ?? null,
+              listing_type: lt,
+              rooms: (row as any).rooms ?? null,
+              sqm: (row as any).sqm ?? null,
+            };
+            if (!primaryType && lt) primaryType = lt;
+            if (lt) primaryTypeLocked = true;
+          }
         }
       } catch { /* ignore */ }
     }
@@ -147,7 +199,7 @@ Deno.serve(async (req) => {
     // context when neither primary_listing_id nor explicit listing_type was
     // provided. Hebrew + English rental/sale keyword sniff.
     if (!primaryType) {
-      const haystack = `${inbound}\n${campaignContext}`.toLowerCase();
+      const haystack = `${inbound}\n${rawCampaignContext}`.toLowerCase();
       const rentSignals = /(להשכרה|שכירות|לשכור|להשכיר|שכר דירה|שכ"?ד|\brent(al|s)?\b|\bfor rent\b|\blease\b|\bto let\b)/i;
       const saleSignals = /(למכירה|לרכישה|לקנות|נמכרת|רכישה|\bfor sale\b|\bbuy(ing)?\b|\bpurchase\b|\bmortgage\b|משכנתא)/i;
       const rentHit = rentSignals.test(haystack);
@@ -156,11 +208,52 @@ Deno.serve(async (req) => {
       else if (saleHit && !rentHit) primaryType = "sale";
     }
 
+    // Fresh live DB resolution: regeneration must not trust campaign_logs text
+    // or older generated post context as the property source of truth. Match the
+    // inbound/post text against current live listings, then re-lock type/price
+    // from the active listing row only.
+    if (!primaryListing && userId) {
+      try {
+        const { data: liveRows } = await admin
+          .from("listings")
+          .select("property_title,address,neighborhood,city,asking_price,features,rooms,sqm,status,is_published")
+          .eq("user_id", userId)
+          .eq("status", "live")
+          .eq("is_published", true)
+          .limit(120);
+        const haystack = `${inbound}\n${rawCampaignContext}`;
+        const strictTypeForLiveMatch = primaryTypeLocked ? primaryType : null;
+        const liveMatches = (liveRows ?? [])
+          .map((row: any) => ({ ...row, listing_type: extractListingTypeFromFeatures(row.features) }))
+          .filter((row: any) => (!strictTypeForLiveMatch || isListingAllowedForType(row, strictTypeForLiveMatch)) && overlapsListingText(haystack, row));
+        const row = liveMatches[0] ?? null;
+        if (row) {
+          const lt = extractListingTypeFromFeatures((row as any).features) ?? primaryType;
+          primaryListing = {
+            title: String((row as any).property_title ?? (row as any).address ?? ""),
+            city: (row as any).city ?? null,
+            asking_price: (row as any).asking_price ?? null,
+            listing_type: lt,
+            rooms: (row as any).rooms ?? null,
+            sqm: (row as any).sqm ?? null,
+          };
+          if (lt) primaryType = lt;
+          if (lt) primaryTypeLocked = true;
+        }
+      } catch { /* ignore */ }
+    }
+
 
     const [kbSnippets, crmSnap] = await Promise.all([
       loadKbSnippets(admin, userId),
       loadCrmSnapshot(admin, userId, { listingType: primaryType }),
     ]);
+
+    const campaignContext = primaryType === "rent" && SALE_LEAK_RE.test(rawCampaignContext)
+      ? "[campaign post context omitted: stale sale wording detected; use LIVE PROPERTIES & CRM CONTEXT only]"
+      : rawCampaignContext;
+    const promptSnap = isolateSnapshotForPrompt(crmSnap, primaryType, primaryListing?.asking_price ?? null);
+    const promptKb = scrubKbForTransaction(kbSnippets, primaryType);
 
     // High-entropy seed forces lexical/structural variation across calls.
     const entropySeed = `${crypto.randomUUID()}-${Date.now()}`;
@@ -171,7 +264,7 @@ Deno.serve(async (req) => {
             primaryType === "rent" ? "FOR RENT (להשכרה)" : "FOR SALE (למכירה)"
           }.`,
           primaryType === "rent"
-            ? "Use rental terminology ONLY: שכ\"ד חודשי / דמי שכירות / שכר דירה / פנויה לכניסה / חוזה / פיקדון / move-in date / monthly rent. NEVER say מחיר מבוקש, משכנתא, רכישה, mortgage, purchase, buyers, ROI on purchase."
+            ? "Use rental terminology ONLY and quote every price as monthly rent: שכ\"ד ₪/חודש / דמי שכירות חודשיים / שכר דירה / פנויה לכניסה / חוזה / פיקדון / move-in date / monthly rent. NEVER say מחיר מבוקש, משכנתא, רכישה, mortgage, purchase, buyers, ROI on purchase."
             : "Use sale terminology ONLY: מחיר מבוקש / רכישה / משכנתא / בעלות / mortgage / purchase / buyers. NEVER say שכ\"ד / דמי שכירות / שכירות חודשית / monthly rent / lease / tenants.",
           `Alternative listings MUST be ${primaryType.toUpperCase()} ONLY and within ±15% of the primary ${
             primaryType === "rent" ? "monthly rent" : "asking price"
@@ -196,8 +289,8 @@ Deno.serve(async (req) => {
       campaignContext ? `Campaign context:\n"""${campaignContext}"""` : null,
       primaryBlock,
       transactionBlock,
-      renderCrmBlock(crmSnap),
-      renderKbBlock(kbSnippets),
+      renderCrmBlock(promptSnap),
+      renderKbBlock(promptKb),
       `Required reply language: ${
         targetLang === "en" ? "English only" : targetLang === "he" ? "Hebrew only" : "same language as inbound"
       }.`,
@@ -301,6 +394,20 @@ Deno.serve(async (req) => {
         const retried = parseSplit(String(rj?.choices?.[0]?.message?.content ?? ""));
         if (retried) split = retried;
       }
+    }
+
+    if (primaryType === "rent" && hasRentalSaleLeak(`${split.public_comment}\n${split.private_messenger_dm}`)) {
+      const safeDm = [
+        primaryListing
+          ? `${primaryListing.title}${primaryListing.city ? " · " + primaryListing.city : ""}${primaryListing.rooms ? " · " + primaryListing.rooms + " חדרים" : ""}${primaryListing.sqm ? " · " + primaryListing.sqm + " מ\"ר" : ""}${primaryListing.asking_price ? " · שכ\"ד " + Number(primaryListing.asking_price).toLocaleString("he-IL") + " ₪/חודש" : ""}`
+          : "יש לי רק נכסי השכרה פעילים בהקשר הזה, בלי חלופות מכירה.",
+        "אין לי כרגע חלופת השכרה נוספת בטווח התקציב הזה שאפשר להציע בביטחון.",
+        "מה מועד הכניסה המועדף עליכם?",
+      ].join("\n");
+      split = {
+        public_comment: sanitizeOutboundText(split.public_comment.replace(SALE_LEAK_RE, "נכס להשכרה")).trim(),
+        private_messenger_dm: sanitizeOutboundText(safeDm).trim(),
+      };
     }
 
     if (!split.public_comment) {

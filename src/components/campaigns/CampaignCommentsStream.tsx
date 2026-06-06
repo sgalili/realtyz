@@ -41,6 +41,7 @@ type Props = {
     id: string;
     campaign_name: string;
     channel: string;
+    message_body?: string | null;
     created_at: string;
     provider_message_id?: string | null;
     provider_response?: any;
@@ -224,8 +225,12 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
             platform: row.platform,
             sender_handle: row.sender_handle,
             user_id: userId,
-            campaign_context: `Campaign: ${campaign.campaign_name}`,
+            campaign_context: [
+              `Campaign: ${campaign.campaign_name}`,
+              campaign.message_body ? `Published post:\n${campaign.message_body}` : null,
+            ].filter(Boolean).join("\n\n"),
             regenerate,
+            cache_bust: regenerate ? `${Date.now()}-${crypto.randomUUID()}` : undefined,
           },
         },
       );
