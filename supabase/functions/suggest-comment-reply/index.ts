@@ -117,18 +117,35 @@ function renderStrictListingPayload(snap: any, primaryType: ListingType | null):
   const objects = (snap?.sample_listings ?? []).map((listing: any, index: number) => ({
     object_id: `OBJECT_${index + 1}`,
     title: listing?.title || null,
+    address: listing?.address ?? null,
+    neighborhood: listing?.neighborhood ?? null,
     city: listing?.city ?? null,
     rooms: listing?.rooms ?? null,
     sqm: listing?.sqm ?? null,
     price_shekel: listing?.asking_price ?? null,
     transaction_type: listing?.listing_type ?? primaryType,
     price_label: (listing?.listing_type ?? primaryType) === "rent" ? "שכ\"ד ₪/חודש" : "מחיר מבוקש",
+    description_excerpt: listing?.description ?? null,
   }));
-  return `[STRICT LISTING PAYLOAD JSON]\nOnly these JSON objects may be used for property facts. If a field is null or absent, do not mention it. Do not add furnishing, parking, elevator, floor, photos, availability, street, neighborhood, or condition unless that exact value is present here.\n${JSON.stringify(objects, null, 2)}`;
+  return `[STRICT LISTING PAYLOAD JSON]\nThese JSON objects are the ONLY source of property facts. Use the structured fields AND scan description_excerpt for additional facts mentioned by the broker (elevator, parking, floor, balcony, condition, AC, furnishing, pets, move-in). If a fact is asserted in description_excerpt, treat it as TRUE; if denied, treat it as FALSE; if absent from BOTH structured fields and description_excerpt, do not invent it.\n${JSON.stringify(objects, null, 2)}`;
 }
 
-function hasUnsupportedPropertyFact(text: string): boolean {
-  return /(מרוהט|ריהוט|חניה|מרפסת|פנוי|זמין|כניסה מיידית|תמונות|משופץ|furnished|parking|balcony|available|photos)/i.test(text);
+function hasUnsupportedPropertyFact(text: string, primaryListing: any): boolean {
+  // Only flag fact words that are NOT supported by the primary listing's
+  // structured fields or description_excerpt.
+  const desc = String(primaryListing?.description ?? "").toLowerCase();
+  const checks: Array<[RegExp, RegExp]> = [
+    [/מרוהט|ריהוט|furnished|furniture/i, /מרוהט|ריהוט|furnished|furniture/i],
+    [/חני[הי]|parking/i, /חני[הי]|parking/i],
+    [/מרפסת|balcony|terrace/i, /מרפסת|balcony|terrace/i],
+    [/מעלית|elevator|lift/i, /מעלית|elevator|lift/i],
+    [/קומה|floor/i, /קומה|floor/i],
+    [/מיזוג|מזגן|a\/?c|air\s*condition/i, /מיזוג|מזגן|a\/?c|air\s*condition/i],
+  ];
+  for (const [outRe, srcRe] of checks) {
+    if (outRe.test(text) && !srcRe.test(desc)) return true;
+  }
+  return false;
 }
 
 const NO_ALT_RE = /(אין\s+לי\s+(?:כרגע\s+)?(?:חלופ\S{0,4}|עוד|נכס\S*|דיר\S{0,4}|אופצי\S{0,4})[^\n.!?]{0,100}|אין\s+ברשות[יו][^\n.!?]{0,100}|לא\s+(?:מצאתי|נמצא|מוצא)[^\n.!?]{0,100}(?:חלופ\S{0,4}|אלטרנטיב\S*)|no\s+alternative[s]?\s+available|i\s+don'?t\s+have\s+(?:any\s+)?(?:other|alternative)[^\n.!?]{0,80})/gi;
@@ -144,21 +161,82 @@ function stripNoAlternativeDisclaimers(text: string): string {
     .trim();
 }
 
-type FeatureAsk = { key: string; label_he: string; pattern: RegExp };
+type FeatureAsk = {
+  key: string;
+  label_he: string;
+  pattern: RegExp;
+  // Patterns used to extract a positive/negative answer from description text.
+  positive: RegExp;
+  negative: RegExp;
+};
 const FEATURE_ASKS: FeatureAsk[] = [
-  { key: "elevator", label_he: "מעלית", pattern: /מעלית|elevator|lift/i },
-  { key: "parking", label_he: "חניה", pattern: /חני[הי]|parking/i },
-  { key: "balcony", label_he: "מרפסת", pattern: /מרפסת|balcony|terrace/i },
-  { key: "floor", label_he: "קומה", pattern: /קומה|floor/i },
-  { key: "furnished", label_he: "ריהוט", pattern: /מרוהט|ריהוט|furnished|furniture/i },
-  { key: "pets", label_he: "חיות מחמד", pattern: /חיות|כלב|חתול|pet[s]?|dog|cat/i },
-  { key: "move_in", label_he: "מועד כניסה", pattern: /מועד\s*כניסה|כניסה\s*מיידית|move[- ]?in|available\s+from/i },
-  { key: "ac", label_he: "מיזוג", pattern: /מיזוג|מזגן|a\/?c|air\s*condition/i },
+  {
+    key: "elevator", label_he: "מעלית",
+    pattern: /מעלית|elevator|lift/i,
+    positive: /(יש\s+מעלית|כולל\s+מעלית|עם\s+מעלית|מעלית\s+(?:בבניין|חדשה|פעילה)|has\s+(?:an?\s+)?elevator|with\s+elevator)/i,
+    negative: /(אין\s+מעלית|ללא\s+מעלית|no\s+elevator|without\s+elevator)/i,
+  },
+  {
+    key: "parking", label_he: "חניה",
+    pattern: /חני[הי]|parking/i,
+    positive: /(יש\s+חני[הי]|חני[הי]\s+(?:צמודה|פרטית|בטאבו|מקורה)|כולל\s+חני[הי]|with\s+parking|has\s+parking)/i,
+    negative: /(אין\s+חני[הי]|ללא\s+חני[הי]|no\s+parking)/i,
+  },
+  {
+    key: "balcony", label_he: "מרפסת",
+    pattern: /מרפסת|balcony|terrace/i,
+    positive: /(יש\s+מרפסת|מרפסת\s+(?:שמש|גדולה|פתוחה)|כולל\s+מרפסת|with\s+(?:balcony|terrace))/i,
+    negative: /(אין\s+מרפסת|ללא\s+מרפסת|no\s+balcony)/i,
+  },
+  {
+    key: "floor", label_he: "קומה",
+    pattern: /קומה|floor/i,
+    positive: /קומה\s+\S+|floor\s+\d+/i,
+    negative: /(?!)/,
+  },
+  {
+    key: "furnished", label_he: "ריהוט",
+    pattern: /מרוהט|ריהוט|furnished|furniture/i,
+    positive: /(מרוהט|כולל\s+ריהוט|עם\s+ריהוט|furnished)/i,
+    negative: /(לא\s+מרוהט|ללא\s+ריהוט|unfurnished)/i,
+  },
+  {
+    key: "pets", label_he: "חיות מחמד",
+    pattern: /חיות|כלב|חתול|pet[s]?|dog|cat/i,
+    positive: /(חיות\s+מחמד\s+מותר|pet[- ]?friendly|pets\s+allowed)/i,
+    negative: /(ללא\s+חיות|אין\s+חיות|no\s+pets)/i,
+  },
+  {
+    key: "move_in", label_he: "מועד כניסה",
+    pattern: /מועד\s*כניסה|כניסה\s*מיידית|move[- ]?in|available\s+from/i,
+    positive: /(כניסה\s+(?:מיידית|ב\S+)|פנויה\s+(?:מ\S+|מיידית)|available\s+(?:from|now|immediately))/i,
+    negative: /(?!)/,
+  },
+  {
+    key: "ac", label_he: "מיזוג",
+    pattern: /מיזוג|מזגן|a\/?c|air\s*condition/i,
+    positive: /(מיזוג|מזגן|a\/?c|air[- ]?condition)/i,
+    negative: /(אין\s+מיזוג|ללא\s+מזגן|no\s+a\/?c)/i,
+  },
 ];
 
 function detectFeatureAsk(inbound: string): FeatureAsk | null {
   for (const f of FEATURE_ASKS) if (f.pattern.test(inbound)) return f;
   return null;
+}
+
+type FeatureFact = "yes" | "no" | "unknown";
+function extractFeatureFact(ask: FeatureAsk, primaryListing: any): FeatureFact {
+  const haystack = [
+    primaryListing?.description,
+    primaryListing?.title,
+    primaryListing?.address,
+    primaryListing?.neighborhood,
+  ].filter(Boolean).join("\n");
+  if (!haystack) return "unknown";
+  if (ask.negative.source !== "(?!)" && ask.negative.test(haystack)) return "no";
+  if (ask.positive.test(haystack)) return "yes";
+  return "unknown";
 }
 
 const SYSTEM = `${UDI_PERSONA}
