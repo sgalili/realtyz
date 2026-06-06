@@ -179,7 +179,7 @@ const InlineComposer = ({
   // Custom AI generation context (broker steering inputs)
   const [customInstructions, setCustomInstructions] = useState('');
   const [listingQuery, setListingQuery] = useState('');
-  const [listings, setListings] = useState<Array<{ id: string; property_title: string | null; city: string | null; address: string | null; rooms: number | null; asking_price: number | null; deal_type: string | null }>>([]);
+  const [listings, setListings] = useState<Array<{ id: string; property_title: string | null; city: string | null; neighborhood: string | null; address: string | null; rooms: number | null; asking_price: number | null; deal_type: string | null }>>([]);
   const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
   const [listingPickerOpen, setListingPickerOpen] = useState(false);
 
