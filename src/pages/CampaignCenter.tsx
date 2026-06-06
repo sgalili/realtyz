@@ -1027,11 +1027,15 @@ const PublishedFeed = () => {
     setArchivedCount(count ?? 0);
   };
 
-  // Ask the backend to refresh live Ayrshare analytics (likes/comments/shares/views)
-  // for every published post — results land back in campaign_logs and stream in via
-  // the realtime subscription below.
+  // Ask the backend to (a) refresh live Ayrshare analytics — likes/comments/shares/views
+  // land back on campaign_logs and stream in via the realtime subscription below — and
+  // (b) pull fresh inbound comments into engagement_events so the per-card comments tree
+  // updates without a manual refresh.
   const refreshMetrics = async () => {
-    try { await supabase.functions.invoke('ayrshare-analytics', { body: {} }); } catch { /* non-fatal */ }
+    await Promise.allSettled([
+      supabase.functions.invoke('ayrshare-analytics', { body: {} }),
+      supabase.functions.invoke('ayrshare-sync-comments', { body: {} }),
+    ]);
   };
 
   useEffect(() => {
