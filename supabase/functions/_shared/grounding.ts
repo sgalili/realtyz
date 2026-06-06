@@ -32,6 +32,27 @@ export async function loadKbSnippets(
   }
 }
 
+export type ListingType = "sale" | "rent";
+
+export function extractListingTypeFromFeatures(features: unknown): ListingType | null {
+  if (Array.isArray(features)) {
+    for (const f of features) {
+      if (f && typeof f === "object" && "listing_type" in (f as any)) {
+        const v = String((f as any).listing_type ?? "").toLowerCase();
+        if (v === "rent") return "rent";
+        if (v === "sale") return "sale";
+      }
+    }
+    return null;
+  }
+  if (features && typeof features === "object") {
+    const v = String((features as any).listing_type ?? "").toLowerCase();
+    if (v === "rent") return "rent";
+    if (v === "sale") return "sale";
+  }
+  return null;
+}
+
 export type CrmSnapshot = {
   total_listings: number;
   cities: { city: string; count: number }[];
@@ -41,25 +62,28 @@ export type CrmSnapshot = {
     rooms: number | null;
     sqm: number | null;
     asking_price: number | null;
+    listing_type: ListingType | null;
   }[];
   active_leads: number;
   hot_leads: number;
+  listing_type_filter: ListingType | null;
 };
 
 export async function loadCrmSnapshot(
   admin: SupabaseClient,
   userId: string | null,
+  opts: { listingType?: ListingType | null } = {},
 ): Promise<CrmSnapshot | null> {
   if (!userId) return null;
   try {
     const [listingsRes, leadsRes] = await Promise.all([
       admin
         .from("listings")
-        .select("property_title,city,rooms,sqm,asking_price,status,is_published")
+        .select("property_title,city,rooms,sqm,asking_price,status,is_published,features")
         .eq("user_id", userId)
         .eq("status", "live")
         .eq("is_published", true)
-        .limit(40),
+        .limit(80),
       admin
         .from("leads")
         .select("lead_stage,is_demo")
@@ -67,7 +91,17 @@ export async function loadCrmSnapshot(
         .eq("is_demo", false)
         .limit(500),
     ]);
-    const listings = listingsRes.data ?? [];
+    const rawListings = (listingsRes.data ?? []).map((l: any) => ({
+      ...l,
+      listing_type: extractListingTypeFromFeatures(l.features),
+    }));
+    // Strict pipeline separator: when caller specifies the deal type, NEVER
+    // bleed the other side into the snapshot. A rental lead must never see
+    // sale listings, and vice-versa.
+    const want = opts.listingType ?? null;
+    const listings = want
+      ? rawListings.filter((l: any) => l.listing_type === want)
+      : rawListings;
     const leads = leadsRes.data ?? [];
     const cityMap = new Map<string, number>();
     for (const l of listings) {
@@ -79,12 +113,13 @@ export async function loadCrmSnapshot(
       .sort((a, b) => b[1] - a[1])
       .slice(0, 8)
       .map(([city, count]) => ({ city, count }));
-    const sample = listings.slice(0, 6).map((l: any) => ({
+    const sample = listings.slice(0, 8).map((l: any) => ({
       title: String(l.property_title ?? "").slice(0, 80),
       city: l.city ?? null,
       rooms: l.rooms ?? null,
       sqm: l.sqm ?? null,
       asking_price: l.asking_price ?? null,
+      listing_type: l.listing_type as ListingType | null,
     }));
     const hot = leads.filter((l: any) =>
       ["hot", "negotiation", "closing", "qualified"].includes(String(l.lead_stage ?? "").toLowerCase()),
@@ -95,6 +130,7 @@ export async function loadCrmSnapshot(
       sample_listings: sample,
       active_leads: leads.length,
       hot_leads: hot,
+      listing_type_filter: want,
     };
   } catch {
     return null;
@@ -111,24 +147,35 @@ export function renderCrmBlock(snap: CrmSnapshot | null): string {
   const samples = snap.sample_listings.length
     ? snap.sample_listings
         .map((l) => {
+          const typeHe = l.listing_type === "rent"
+            ? "להשכרה"
+            : l.listing_type === "sale"
+            ? "למכירה"
+            : null;
+          const priceLabel = l.listing_type === "rent" ? "שכ\"ד חודשי" : "מחיר מבוקש";
           const parts = [
             l.title || "ללא כותרת",
+            typeHe ? `סוג עסקה: ${typeHe}` : null,
             l.city ? `עיר: ${l.city}` : null,
             l.rooms ? `${l.rooms} חדרים` : null,
             l.sqm ? `${l.sqm} מ"ר` : null,
-            l.asking_price ? `מחיר מבוקש: ${Number(l.asking_price).toLocaleString("he-IL")} ש"ח` : null,
+            l.asking_price ? `${priceLabel}: ${Number(l.asking_price).toLocaleString("he-IL")} ש"ח` : null,
           ].filter(Boolean);
           return `- ${parts.join(" | ")}`;
         })
         .join("\n")
     : "(no live listings)";
+  const filterLine = snap.listing_type_filter
+    ? `STRICT TRANSACTION FILTER: only ${snap.listing_type_filter === "rent" ? "RENTAL (להשכרה)" : "SALE (למכירה)"} listings are listed below. NEVER cross-quote a ${snap.listing_type_filter === "rent" ? "SALE" : "RENTAL"} property.`
+    : null;
   return [
     "[LIVE PROPERTIES & CRM CONTEXT] (workspace-scoped, real DB rows — quote only these, never invent new ones):",
+    filterLine,
     `Active live listings: ${snap.total_listings}`,
     `Active regions: ${cityLine}`,
     `Pipeline: ${snap.active_leads} active leads, ${snap.hot_leads} hot/negotiation`,
     `Sample live listings:\n${samples}`,
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }
 
 export function renderKbBlock(kb: string): string {

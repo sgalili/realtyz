@@ -474,6 +474,29 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
           const { data: candRows } = await q;
           let candidates = (candRows ?? []) as any[];
 
+          // STRICT pipeline separation: extract listing_type from features and
+          // drop anything that doesn't match the lead's deal_type. A rental
+          // lead must NEVER see sale alternatives, and vice-versa.
+          const extractType = (features: any): "sale" | "rent" | null => {
+            if (Array.isArray(features)) {
+              for (const f of features) {
+                if (f && typeof f === "object" && "listing_type" in f) {
+                  const v = String((f as any).listing_type ?? "").toLowerCase();
+                  if (v === "rent" || v === "sale") return v;
+                }
+              }
+              return null;
+            }
+            if (features && typeof features === "object") {
+              const v = String((features as any).listing_type ?? "").toLowerCase();
+              if (v === "rent" || v === "sale") return v;
+            }
+            return null;
+          };
+          if (dealType === "rent" || dealType === "sale") {
+            candidates = candidates.filter((l) => extractType(l.features) === dealType);
+          }
+
           // Soft-score by rooms/city overlap; keep top 5.
           const scored = candidates.map((l) => {
             const f = l.features ?? {};
@@ -488,30 +511,48 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
           }).sort((a, b) => b.score - a.score).slice(0, 5);
 
           if (scored.length > 0) {
+            const isRent = dealType === "rent";
+            const priceLabel = isRent ? "שכ\"ד" : "מחיר";
             const fmt = (l: any) => {
               const f = l.features ?? {};
               const city = f.city ?? f.neighborhood ?? "—";
               const rooms = f.rooms ?? f.room_count ?? "—";
               const sqm = f.size_sqm ?? f.size ?? "—";
-              const price = l.asking_price ? `₪${Number(l.asking_price).toLocaleString()}` : "—";
-              return `• ${l.property_title ?? "(ללא כותרת)"} | ${city} | ${rooms} חד׳ | ${sqm} מ"ר | ${price}`;
+              const price = l.asking_price ? `₪${Number(l.asking_price).toLocaleString()}${isRent ? "/חודש" : ""}` : "—";
+              return `• ${l.property_title ?? "(ללא כותרת)"} | ${city} | ${rooms} חד׳ | ${sqm} מ"ר | ${priceLabel}: ${price}`;
             };
+            const directiveLines: string[] = [];
+            if (isRent) {
+              directiveLines.push(
+                "- Weave 1-2 of these RENTAL alternatives naturally, e.g. \"חוץ מהנכס הזה יש לי גם דירה להשכרה ב-X בתקציב דומה, פנויה לכניסה בקרוב\". NEVER offer a property למכירה — זה ליד שכירות.",
+                "- Use rental terminology only: שכ\"ד חודשי / דמי שכירות / שכר דירה / פנויה לכניסה / חוזה. Forbidden: מחיר מבוקש, רכישה, משכנתא, mortgage, purchase.",
+              );
+            } else if (dealType === "sale") {
+              directiveLines.push(
+                "- Weave 1-2 of these SALE alternatives naturally; NEVER offer a rental to a sale lead.",
+                "- Use sale terminology only: מחיר מבוקש / רכישה / משכנתא / mortgage / purchase. Forbidden: שכ\"ד / דמי שכירות / lease.",
+              );
+            } else {
+              directiveLines.push("- Weave 1-2 alternatives naturally; keep it conversational.");
+            }
+            directiveLines.push(
+              "- Match the ±15% budget margin strictly around the primary property's price.",
+              "- Never list more than 2 alternatives in a single message — keep it conversational, not a catalog.",
+              "- Only reference listings from the block above. Do NOT invent prices, addresses, or features.",
+            );
+            const qualBlock = isRent
+              ? "HIGH-YIELD QUALIFICATION QUESTIONS (rental persona — ask ONE per turn, only if missing from preferences):\n- \"לכמה זמן אתם מחפשים לשכור?\"\n- \"מה מועד הכניסה המועדף עליכם?\"\n- \"צריכים חניה או מעלית?\"\n- \"כמה דיירים יגורו בנכס?\"\n- תקציב שכ\"ד חודשי מקסימלי."
+              : "HIGH-YIELD QUALIFICATION QUESTIONS (sale persona — ask ONE per turn, only if missing from preferences):\n- Exact budget ceiling and floor (₪).\n- Preferred move-in date / urgency window.\n- Parking requirement (none / 1 / 2+).\n- Floor preference (low / mid / high / no preference) and elevator need.\n- Number of rooms and minimum size in מ\"ר.\n- Must-have neighborhoods or streets to exclude.";
             matchingBlock = [
-              "MATCHING LISTINGS (scoped strictly to this owner's workspace via RLS — never invent or pull from other workspaces):",
+              `MATCHING LISTINGS (scoped strictly to this owner's workspace via RLS, ${
+                isRent ? "RENTAL ONLY" : dealType === "sale" ? "SALE ONLY" : "type-mixed"
+              } — never invent or pull from other workspaces):`,
               scored.map((s) => fmt(s.l)).join("\n"),
               "",
               "PROACTIVE MATCHING DIRECTIVE:",
-              "- Weave 1-2 of these alternatives naturally into your reply when relevant, e.g. \"בנוסף לנכס הזה, יש לי במאגר גם דירת X חדרים באזור Y בתקציב דומה שיכולה להתאים לך\".",
-              "- Never list more than 2 alternatives in a single message — keep it conversational, not a catalog.",
-              "- Only reference listings from the block above. Do NOT invent prices, addresses, or features.",
+              directiveLines.join("\n"),
               "",
-              "HIGH-YIELD QUALIFICATION QUESTIONS (ask ONE per turn, naturally, only when the attribute is missing from the lead preferences):",
-              "- Exact budget ceiling and floor (₪).",
-              "- Preferred move-in date / urgency window.",
-              "- Parking requirement (none / 1 / 2+).",
-              "- Floor preference (low / mid / high / no preference) and elevator need.",
-              "- Number of rooms and minimum size in מ\"ר.",
-              "- Must-have neighborhoods or streets to exclude.",
+              qualBlock,
               "The more property details we unlock from the lead, the cleaner our database mapping becomes — but never interrogate; weave one question per reply.",
             ].join("\n");
           }

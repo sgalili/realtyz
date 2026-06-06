@@ -11,9 +11,11 @@ import {
   loadCrmSnapshot,
   renderKbBlock,
   renderCrmBlock,
+  extractListingTypeFromFeatures,
   UDI_PERSONA,
   ANTI_SPAM_RULES,
   CTA_RULE,
+  type ListingType,
 } from "../_shared/grounding.ts";
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
@@ -34,6 +36,7 @@ ABSOLUTE PROHIBITIONS (zero tolerance — breaking any of these voids the reply)
 
 MANDATORY MULTI-SOURCE GROUNDING:
 - Every property fact (rooms, price, sqm, floor, elevator, parking, neighborhood, street) MUST come from [LIVE PROPERTIES & CRM CONTEXT]. Never invent.
+- STRICT TRANSACTION TYPE FIREWALL: if the primary property is FOR RENT, alternatives and terminology MUST be RENTAL only (שכ"ד חודשי / monthly rent / lease / move-in). If FOR SALE, alternatives and terminology MUST be SALE only (מחיר מבוקש / purchase / mortgage). Crossing these is FORBIDDEN.
 - If the commenter asked a yes/no attribute (elevator? parking? balcony?) and the data is in CRM, answer it directly and truthfully. If not in CRM, pivot to a concrete attribute that IS in CRM (room count, price, street, floor) without claiming the unknown attribute exists.
 - If the KB and CRM truly cannot answer, say honestly you'll verify and follow up in DM. Never fabricate.
 
@@ -100,18 +103,99 @@ Deno.serve(async (req) => {
         } catch { /* ignore */ }
       }
     }
+
+    // STRICT TRANSACTION TYPE ALIGNMENT — resolve the primary listing's
+    // sale/rent type so we NEVER cross-reference sale alternatives to a
+    // rental lead (or vice-versa).
+    let primaryListing: {
+      title: string;
+      city: string | null;
+      asking_price: number | null;
+      listing_type: ListingType | null;
+      rooms: number | null;
+      sqm: number | null;
+    } | null = null;
+    let primaryType: ListingType | null = null;
+    const explicitType = String(body?.listing_type ?? "").toLowerCase();
+    if (explicitType === "rent" || explicitType === "sale") {
+      primaryType = explicitType as ListingType;
+    }
+    const primaryListingId = typeof body?.primary_listing_id === "string" ? body.primary_listing_id : null;
+    if (primaryListingId) {
+      try {
+        const { data: row } = await admin
+          .from("listings")
+          .select("property_title,city,asking_price,features,rooms,sqm")
+          .eq("id", primaryListingId)
+          .maybeSingle();
+        if (row) {
+          const lt = extractListingTypeFromFeatures((row as any).features);
+          primaryListing = {
+            title: String((row as any).property_title ?? ""),
+            city: (row as any).city ?? null,
+            asking_price: (row as any).asking_price ?? null,
+            listing_type: lt,
+            rooms: (row as any).rooms ?? null,
+            sqm: (row as any).sqm ?? null,
+          };
+          if (!primaryType && lt) primaryType = lt;
+        }
+      } catch { /* ignore */ }
+    }
+
+    // Heuristic fallback: detect transaction type from inbound text + campaign
+    // context when neither primary_listing_id nor explicit listing_type was
+    // provided. Hebrew + English rental/sale keyword sniff.
+    if (!primaryType) {
+      const haystack = `${inbound}\n${campaignContext}`.toLowerCase();
+      const rentSignals = /(להשכרה|שכירות|לשכור|להשכיר|שכר דירה|שכ"?ד|\brent(al|s)?\b|\bfor rent\b|\blease\b|\bto let\b)/i;
+      const saleSignals = /(למכירה|לרכישה|לקנות|נמכרת|רכישה|\bfor sale\b|\bbuy(ing)?\b|\bpurchase\b|\bmortgage\b|משכנתא)/i;
+      const rentHit = rentSignals.test(haystack);
+      const saleHit = saleSignals.test(haystack);
+      if (rentHit && !saleHit) primaryType = "rent";
+      else if (saleHit && !rentHit) primaryType = "sale";
+    }
+
+
     const [kbSnippets, crmSnap] = await Promise.all([
       loadKbSnippets(admin, userId),
-      loadCrmSnapshot(admin, userId),
+      loadCrmSnapshot(admin, userId, { listingType: primaryType }),
     ]);
 
     // High-entropy seed forces lexical/structural variation across calls.
     const entropySeed = `${crypto.randomUUID()}-${Date.now()}`;
 
+    const transactionBlock = primaryType
+      ? [
+          `STRICT TRANSACTION TYPE (locked): the primary property is ${
+            primaryType === "rent" ? "FOR RENT (להשכרה)" : "FOR SALE (למכירה)"
+          }.`,
+          primaryType === "rent"
+            ? "Use rental terminology ONLY: שכ\"ד חודשי / דמי שכירות / שכר דירה / פנויה לכניסה / חוזה / פיקדון / move-in date / monthly rent. NEVER say מחיר מבוקש, משכנתא, רכישה, mortgage, purchase, buyers, ROI on purchase."
+            : "Use sale terminology ONLY: מחיר מבוקש / רכישה / משכנתא / בעלות / mortgage / purchase / buyers. NEVER say שכ\"ד / דמי שכירות / שכירות חודשית / monthly rent / lease / tenants.",
+          `Alternative listings MUST be ${primaryType.toUpperCase()} ONLY and within ±15% of the primary ${
+            primaryType === "rent" ? "monthly rent" : "asking price"
+          }${
+            primaryListing?.asking_price
+              ? ` (${primaryListing.asking_price.toLocaleString("he-IL")} ש"ח)`
+              : ""
+          }. If no compatible ${primaryType} alternative exists in CRM, omit the alternative — do NOT substitute the other transaction type.`,
+          primaryType === "rent"
+            ? "Qualification question (pick ONE, rental-only): \"לכמה זמן אתם מחפשים לשכור?\" / \"מה מועד הכניסה המועדף עליכם?\" / \"צריכים חניה או מעלית?\" / \"כמה דיירים יגורו בנכס?\"."
+            : "Qualification question (pick ONE, sale-only): exact budget ceiling, mortgage status, move-in horizon, must-have neighborhood, parking/floor preference.",
+        ].join("\n")
+      : null;
+
+    const primaryBlock = primaryListing
+      ? `[PRIMARY PROPERTY DISCUSSED]: ${primaryListing.title}${primaryListing.city ? " · " + primaryListing.city : ""}${primaryListing.rooms ? " · " + primaryListing.rooms + " חד'" : ""}${primaryListing.sqm ? " · " + primaryListing.sqm + " מ\"ר" : ""}${primaryListing.asking_price ? " · " + Number(primaryListing.asking_price).toLocaleString("he-IL") + " ש\"ח" : ""}${primaryListing.listing_type ? " · " + (primaryListing.listing_type === "rent" ? "להשכרה" : "למכירה") : ""}.`
+      : null;
+
     const userPrompt = [
       platform ? `Platform: ${platform}` : null,
       firstName ? `Sender first name: ${firstName}` : null,
       campaignContext ? `Campaign context:\n"""${campaignContext}"""` : null,
+      primaryBlock,
+      transactionBlock,
       renderCrmBlock(crmSnap),
       renderKbBlock(kbSnippets),
       `Required reply language: ${
