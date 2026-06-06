@@ -36,6 +36,24 @@ function overlapsListingText(haystack: string, listing: Record<string, unknown>)
   return candidates.some((v) => h.includes(v));
 }
 
+function isolateSnapshotForPrompt(snap: any, primaryType: ListingType | null, primaryPrice: number | null) {
+  if (!snap || !primaryType) return snap;
+  const min = primaryPrice ? primaryPrice * 0.85 : null;
+  const max = primaryPrice ? primaryPrice * 1.15 : null;
+  const sample_listings = (snap.sample_listings ?? []).filter((listing: any) => {
+    const price = Number(listing?.asking_price ?? 0);
+    const title = String(listing?.title ?? "");
+    if (listing?.listing_type !== primaryType) return false;
+    if (primaryType === "rent") {
+      if (Number.isFinite(price) && price > 50_000) return false;
+      if (SALE_LEAK_RE.test(title)) return false;
+    }
+    if (min !== null && Number.isFinite(price) && price > 0 && (price < min || price > max)) return false;
+    return true;
+  });
+  return { ...snap, sample_listings, total_listings: sample_listings.length };
+}
+
 const SYSTEM = `${UDI_PERSONA}
 
 You are replying to a single public social comment (Facebook, Instagram, etc) as the broker, personally and in first person. Your job is to SELL the relevant property, not to introduce Udi as a human.
@@ -59,7 +77,7 @@ MANDATORY MULTI-SOURCE GROUNDING:
 OUTPUT FORMAT (STRICT JSON, no markdown, no code fence, no commentary):
 {
   "public_comment": "<1 to 2 SHORT sentences max. Direct answer to the commenter's explicit question using real attributes from CRM. End with exactly this closing in the matched language. Hebrew closing: 'שלחתי לך את כל הפרטים המלאים והתמונות ישירות לפרטי / למסנג'ר. כנס לבדוק.' English closing: 'I just sent you the full details and photos straight to your DM / Messenger. Check it out.'>",
-  "private_messenger_dm": "<3 to 5 short lines. Detail the SPECIFIC property the commenter is asking about using CRM facts (rooms, sqm, floor, price, street/neighborhood, key features). Then offer exactly ONE alternative listing from CRM within ~15% of the same price band, named with its real city/street and price. Close with exactly ONE high-yield qualifying question (move-in date, exact budget ceiling, parking requirement, floor preference, must-have neighborhoods). No emojis. No biography. First person.>"
+  "private_messenger_dm": "<3 to 5 short lines. Detail the SPECIFIC property the commenter is asking about using CRM facts (rooms, sqm, floor, price, street/neighborhood, key features). Offer ONE alternative only if an allowed same-transaction listing appears in LIVE PROPERTIES & CRM CONTEXT within ~15% of the same price band; if none appears, propose NO alternative at all. Close with exactly ONE high-yield qualifying question (move-in date, exact budget ceiling, parking requirement, floor preference, must-have neighborhoods). No emojis. No biography. First person.>"
 }
 
 GENDER (Hebrew only): match Hebrew gender to the sender's first name when known; unknown -> masculine singular. Never slash forms.
