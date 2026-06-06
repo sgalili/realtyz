@@ -157,7 +157,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                         <item.icon className={`h-4 w-4 shrink-0 ${item.iconColor}`} />
                         {!collapsed && <span className="text-sm">{item.title}</span>}
                         {!collapsed && item.badge && (
-                          <span className="ms-auto rounded-full bg-white px-2.5 py-0.5 text-xs font-bold leading-none text-primary shadow ring-1 ring-primary/10">
+                          <span className="ms-auto rounded-full bg-[hsl(var(--brand-gold))] px-2.5 py-0.5 text-xs font-bold leading-none text-[#0b3982] shadow ring-1 ring-black/10">
                             {item.badge}
                           </span>
                         )}
@@ -165,7 +165,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                           const c = countFor(item.url);
                           if (c === undefined || c === 0) return null;
                           return (
-                            <span className="ms-auto rounded-full bg-muted text-muted-foreground px-2 py-0.5 text-[11px] font-semibold leading-none">
+                            <span className="ms-auto rounded-full bg-white px-2 py-0.5 text-[11px] font-bold leading-none text-[#0b3982] shadow-sm ring-1 ring-black/10">
                               {formatCount(c)}
                             </span>
                           );
