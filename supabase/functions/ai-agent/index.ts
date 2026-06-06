@@ -444,6 +444,83 @@ RESPONSE FORMAT (JSON בלבד, ללא markdown):
 
 ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למנהל לחבר מקור נתונים)"}\n`;
 
+    // === PROACTIVE CROSS-PROPERTY MATCHING ===
+    // For lead-facing chats, surface 3-5 alternative listings from THIS owner's
+    // workspace that match the lead's known preferences (deal_type, budget,
+    // rooms, city/neighborhood). RLS via the user's auth header guarantees we
+    // never leak listings from another workspace.
+    let matchingBlock = "";
+    if (!isInternalDashboard && lead_id) {
+      try {
+        const authHeader = req.headers.get("Authorization") ?? "";
+        if (authHeader.startsWith("Bearer ")) {
+          const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+            global: { headers: { Authorization: authHeader } },
+          });
+          const prefs = (leadPreferences ?? {}) as any;
+          const budgetMax = Number(prefs.budget_max ?? prefs.price_max ?? prefs.max_price ?? 0) || null;
+          const budgetMin = Number(prefs.budget_min ?? prefs.price_min ?? 0) || null;
+          const desiredCity = (prefs.desired_city ?? prefs.city ?? null) as string | null;
+          const desiredRooms = Number(prefs.rooms ?? prefs.room_count ?? 0) || null;
+
+          let q = userClient
+            .from("listings")
+            .select("id, property_title, asking_price, features, description")
+            .eq("is_published", true)
+            .order("created_at", { ascending: false })
+            .limit(30);
+          if (budgetMax) q = q.lte("asking_price", Math.round(budgetMax * 1.15));
+          if (budgetMin) q = q.gte("asking_price", Math.round(budgetMin * 0.85));
+          const { data: candRows } = await q;
+          let candidates = (candRows ?? []) as any[];
+
+          // Soft-score by rooms/city overlap; keep top 5.
+          const scored = candidates.map((l) => {
+            const f = l.features ?? {};
+            let score = 0;
+            if (desiredRooms && Number(f.rooms ?? f.room_count) === desiredRooms) score += 3;
+            if (desiredCity) {
+              const lc = String(f.city ?? f.neighborhood ?? "").toLowerCase();
+              if (lc && lc.includes(String(desiredCity).toLowerCase())) score += 2;
+            }
+            if (budgetMax && Number(l.asking_price) <= budgetMax) score += 1;
+            return { l, score };
+          }).sort((a, b) => b.score - a.score).slice(0, 5);
+
+          if (scored.length > 0) {
+            const fmt = (l: any) => {
+              const f = l.features ?? {};
+              const city = f.city ?? f.neighborhood ?? "—";
+              const rooms = f.rooms ?? f.room_count ?? "—";
+              const sqm = f.size_sqm ?? f.size ?? "—";
+              const price = l.asking_price ? `₪${Number(l.asking_price).toLocaleString()}` : "—";
+              return `• ${l.property_title ?? "(ללא כותרת)"} | ${city} | ${rooms} חד׳ | ${sqm} מ"ר | ${price}`;
+            };
+            matchingBlock = [
+              "MATCHING LISTINGS (scoped strictly to this owner's workspace via RLS — never invent or pull from other workspaces):",
+              scored.map((s) => fmt(s.l)).join("\n"),
+              "",
+              "PROACTIVE MATCHING DIRECTIVE:",
+              "- Weave 1-2 of these alternatives naturally into your reply when relevant, e.g. \"בנוסף לנכס הזה, יש לי במאגר גם דירת X חדרים באזור Y בתקציב דומה שיכולה להתאים לך\".",
+              "- Never list more than 2 alternatives in a single message — keep it conversational, not a catalog.",
+              "- Only reference listings from the block above. Do NOT invent prices, addresses, or features.",
+              "",
+              "HIGH-YIELD QUALIFICATION QUESTIONS (ask ONE per turn, naturally, only when the attribute is missing from the lead preferences):",
+              "- Exact budget ceiling and floor (₪).",
+              "- Preferred move-in date / urgency window.",
+              "- Parking requirement (none / 1 / 2+).",
+              "- Floor preference (low / mid / high / no preference) and elevator need.",
+              "- Number of rooms and minimum size in מ\"ר.",
+              "- Must-have neighborhoods or streets to exclude.",
+              "The more property details we unlock from the lead, the cleaner our database mapping becomes — but never interrogate; weave one question per reply.",
+            ].join("\n");
+          }
+        }
+      } catch (e) {
+        console.warn("proactive matching lookup failed:", e);
+      }
+    }
+
     const systemPrompt = isInternalDashboard
       ? MASTER_AGENT_PROMPT
       : SCHEMA_CONTEXT
@@ -453,7 +530,9 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
           + "\n\n" + dealTypeBlock
           + "\n\n" + stageHatBlock
           + "\n\n" + channelBlock
-          + "\n\n" + compliance;
+          + "\n\n" + compliance
+          + (matchingBlock ? "\n\n" + matchingBlock : "");
+
 
     // Persist WhatsApp Pivot agreement: if the Lead's latest inbound says "yes"
     // (or shares a phone number) on a NON-WhatsApp social channel and we already
