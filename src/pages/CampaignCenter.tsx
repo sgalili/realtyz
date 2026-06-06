@@ -838,7 +838,7 @@ const ConfirmDispatchDialog = ({
         <DialogFooter className="!justify-between gap-2 sm:gap-2 flex-row-reverse">
           <Button onClick={handleConfirm} disabled={sending}
             className="bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)]">
-            {sending ? 'משדר…' : 'אישור ושידור'}
+            {sending ? 'מפרסם ברשתות החברתיות...' : 'אישור ושידור'}
           </Button>
           <Button variant="outline" onClick={onClose} disabled={sending}>ביטול</Button>
         </DialogFooter>
