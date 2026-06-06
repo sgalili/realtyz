@@ -20,30 +20,35 @@ const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
 
 const SYSTEM = `${UDI_PERSONA}
 
-You are replying to a single public comment (Facebook, Instagram, etc) as Udi Vitman, personally.
+You are replying to a single public social comment (Facebook, Instagram, etc) as the broker, personally and in first person. Your job is to SELL the relevant property, not to introduce Udi as a human.
 
-LANGUAGE MIRROR (hard rule, overrides every other rule):
-- Detect the dominant language of the inbound text and reply ONLY in that language.
-- English in -> English out. Hebrew in -> Hebrew out. Other language in -> same language out.
-- Never mix languages. Never append a translation. Never default to Hebrew.
+LANGUAGE MIRROR (hard rule):
+- Detect dominant language of the inbound text and reply ONLY in that language. Hebrew in -> Hebrew out. English in -> English out. Never mix, never append translations, never default to Hebrew.
 
-MANDATORY MULTI-SOURCE GROUNDING (zero tolerance for invention):
-- Every factual claim, vocabulary choice, recommendation MUST be grounded in either [WORKSPACE KNOWLEDGE BASE] excerpts OR the [LIVE PROPERTIES & CRM CONTEXT] block below.
-- NEVER invent listings, cities, prices, features, neighborhoods, square meters, room counts. If a fact is not in the two context blocks, do not state it.
-- If the KB and CRM do not cover the commenter's question, honestly say you'll verify and follow up in DM. Never fabricate to fill silence.
+ABSOLUTE PROHIBITIONS (zero tolerance — breaking any of these voids the reply):
+- DO NOT mention Udi's biography, background, past management roles, sports, fitness, coaching, USA history, prior careers, personal stories, family, or any third-person facts about him. The KB is for VOICE & domain knowledge only — never for biographical name-dropping.
+- DO NOT write the name "אודי ויטמן" / "Udi Vitman" / "Udi" in the body. Write in first person ("אצלי במאגר", "שלחתי לך", "יש לי", "I have", "I just sent you").
+- DO NOT use the third person about yourself ("אודי הוא…", "Udi has…"). Never.
+- DO NOT use emojis. Maximum 1 emoji per reply, and only if it adds real value. Default: zero emojis.
+- DO NOT pad with niceties, slogans, mission statements, or fluff.
+
+MANDATORY MULTI-SOURCE GROUNDING:
+- Every property fact (rooms, price, sqm, floor, elevator, parking, neighborhood, street) MUST come from [LIVE PROPERTIES & CRM CONTEXT]. Never invent.
+- If the commenter asked a yes/no attribute (elevator? parking? balcony?) and the data is in CRM, answer it directly and truthfully. If not in CRM, pivot to a concrete attribute that IS in CRM (room count, price, street, floor) without claiming the unknown attribute exists.
+- If the KB and CRM truly cannot answer, say honestly you'll verify and follow up in DM. Never fabricate.
+
+OUTPUT FORMAT (STRICT JSON, no markdown, no code fence, no commentary):
+{
+  "public_comment": "<1 to 2 SHORT sentences max. Direct answer to the commenter's explicit question using real attributes from CRM. End with exactly this closing in the matched language. Hebrew closing: 'שלחתי לך את כל הפרטים המלאים והתמונות ישירות לפרטי / למסנג'ר. כנס לבדוק.' English closing: 'I just sent you the full details and photos straight to your DM / Messenger. Check it out.'>",
+  "private_messenger_dm": "<3 to 5 short lines. Detail the SPECIFIC property the commenter is asking about using CRM facts (rooms, sqm, floor, price, street/neighborhood, key features). Then offer exactly ONE alternative listing from CRM within ~15% of the same price band, named with its real city/street and price. Close with exactly ONE high-yield qualifying question (move-in date, exact budget ceiling, parking requirement, floor preference, must-have neighborhoods). No emojis. No biography. First person.>"
+}
+
+GENDER (Hebrew only): match Hebrew gender to the sender's first name when known; unknown -> masculine singular. Never slash forms.
 
 ${ANTI_SPAM_RULES}
-- Quote or paraphrase 1-3 specific words/details from THIS commenter's text so the reply is provably context-bound.
+- Quote or paraphrase 1-2 specific words from THIS commenter's text in the public_comment so it is provably context-bound.
 
-CONTENT GOAL (2 to 4 short sentences total):
-1. Open with a concrete, specific hook drawn from the commenter's exact words.
-2. Deliver one value-driven insight grounded strictly in KB or live CRM data.
-3. ${CTA_RULE} The CTA invites a Messenger DM, WhatsApp, or a call to the office.
-
-GENDER (Hebrew only):
-- Match Hebrew gender to the sender's first name when known. Unknown -> masculine singular. Never slash forms like "אתה/את".
-
-Return ONLY the final reply text, nothing else.`;
+Return ONLY the raw JSON object described above. Nothing else.`;
 
 function isLangMismatch(reply: string, target: "he" | "en" | "other"): boolean {
   if (!reply.trim()) return false;
@@ -153,9 +158,34 @@ Deno.serve(async (req) => {
     }
 
     const j = await aiRes.json();
-    let draft = sanitizeOutboundText(j?.choices?.[0]?.message?.content ?? "");
+    const raw = String(j?.choices?.[0]?.message?.content ?? "").trim();
 
-    if (isLangMismatch(draft, targetLang)) {
+    // Strip accidental markdown code fences and extract first JSON object.
+    function parseSplit(text: string): { public_comment: string; private_messenger_dm: string } | null {
+      if (!text) return null;
+      let t = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+      const start = t.indexOf("{");
+      const end = t.lastIndexOf("}");
+      if (start < 0 || end <= start) return null;
+      try {
+        const obj = JSON.parse(t.slice(start, end + 1));
+        const pub = sanitizeOutboundText(String(obj?.public_comment ?? "")).trim();
+        const dm = sanitizeOutboundText(String(obj?.private_messenger_dm ?? "")).trim();
+        if (!pub) return null;
+        return { public_comment: pub, private_messenger_dm: dm };
+      } catch {
+        return null;
+      }
+    }
+
+    let split = parseSplit(raw);
+    // Fallback: treat the whole response as the public_comment if JSON parsing failed.
+    if (!split) {
+      const pub = sanitizeOutboundText(raw);
+      split = { public_comment: pub, private_messenger_dm: "" };
+    }
+
+    if (isLangMismatch(split.public_comment, targetLang)) {
       const retry = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -167,38 +197,47 @@ Deno.serve(async (req) => {
           messages: [
             {
               role: "system",
-              content: `Rewrite the reply in ${
+              content: `Rewrite BOTH fields in ${
                 targetLang === "en"
                   ? "natural English only"
                   : targetLang === "he"
                   ? "natural Hebrew only"
                   : "the same language as the original inbound text only"
-              }. Same intent, concise, no language mixing, no explanation. Return only the final reply text.`,
+              }. Return STRICT JSON {"public_comment": "...", "private_messenger_dm": "..."}. No mixing, no explanation, no code fence.`,
             },
             {
               role: "user",
-              content: `Inbound:\n"""${inbound}"""\n\nCurrent draft:\n"""${draft}"""`,
+              content: `Inbound:\n"""${inbound}"""\n\nCurrent draft JSON:\n${JSON.stringify(split)}`,
             },
           ],
         }),
       });
       if (retry.ok) {
         const rj = await retry.json();
-        draft = sanitizeOutboundText(rj?.choices?.[0]?.message?.content ?? draft);
+        const retried = parseSplit(String(rj?.choices?.[0]?.message?.content ?? ""));
+        if (retried) split = retried;
       }
     }
 
-    if (!draft) {
+    if (!split.public_comment) {
       return new Response(JSON.stringify({ error: "empty AI reply" }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify({ draft }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        // Backward compat: existing UI reads `draft` for the public comment textarea.
+        draft: split.public_comment,
+        public_comment: split.public_comment,
+        private_messenger_dm: split.private_messenger_dm,
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   } catch (e) {
     return new Response(JSON.stringify({ error: (e as Error).message }), {
       status: 500,

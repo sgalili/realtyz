@@ -62,6 +62,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
   const [loading, setLoading] = useState(false);
   const [replyOpen, setReplyOpen] = useState<EngagementRow | null>(null);
   const [replyDraft, setReplyDraft] = useState("");
+  const [dmDraft, setDmDraft] = useState("");
   const [drafting, setDrafting] = useState(false);
   const [sending, setSending] = useState(false);
   const postIds = useMemo(() => getCampaignPostIds(campaign), [campaign.channel, campaign.provider_message_id, campaign.provider_response]);
@@ -205,6 +206,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
   const openReply = async (row: EngagementRow) => {
     setReplyOpen(row);
     setReplyDraft(row.ai_reply_text ?? "");
+    setDmDraft("");
     if (!row.ai_reply_text) {
       await generateDraft(row, false);
     }
@@ -228,9 +230,11 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
         },
       );
       if (error) throw error;
-      const draft = (data as any)?.draft;
-      if (typeof draft === "string" && draft.trim()) {
-        setReplyDraft(draft.trim());
+      const pub = (data as any)?.public_comment ?? (data as any)?.draft;
+      const dm = (data as any)?.private_messenger_dm ?? "";
+      if (typeof pub === "string" && pub.trim()) {
+        setReplyDraft(pub.trim());
+        setDmDraft(typeof dm === "string" ? dm.trim() : "");
       } else {
         toast.error((data as any)?.error ?? "לא התקבל ניסוח");
       }
@@ -344,14 +348,49 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
                 </p>
               </div>
 
-              <Textarea
-                value={replyDraft}
-                onChange={(e) => setReplyDraft(e.target.value)}
-                dir="auto"
-                rows={5}
-                placeholder={drafting ? "מנסח..." : "הזן תגובה..."}
-                className="text-right"
-              />
+              <div className="space-y-1">
+                <p className="text-[11px] font-medium text-muted-foreground">
+                  תגובה פומבית (1-2 משפטים, ישירה לעניין)
+                </p>
+                <Textarea
+                  value={replyDraft}
+                  onChange={(e) => setReplyDraft(e.target.value)}
+                  dir="auto"
+                  rows={4}
+                  placeholder={drafting ? "מנסח..." : "הזן תגובה..."}
+                  className="text-right"
+                />
+              </div>
+
+              <div className="space-y-1">
+                <div className="flex items-center justify-between">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2 text-[11px]"
+                    onClick={() => {
+                      if (dmDraft.trim()) {
+                        navigator.clipboard.writeText(dmDraft.trim());
+                        toast.success("ה-DM הועתק ללוח");
+                      }
+                    }}
+                    disabled={!dmDraft.trim() || drafting}
+                  >
+                    העתק DM
+                  </Button>
+                  <p className="text-[11px] font-medium text-muted-foreground">
+                    הודעה פרטית למסנג'ר (פרטי הנכס + חלופה + שאלה אחת)
+                  </p>
+                </div>
+                <Textarea
+                  value={dmDraft}
+                  onChange={(e) => setDmDraft(e.target.value)}
+                  dir="auto"
+                  rows={6}
+                  placeholder={drafting ? "מנסח DM..." : "טיוטת DM פרטי"}
+                  className="text-right bg-muted/30"
+                />
+              </div>
             </div>
           )}
           <DialogFooter className="gap-2 sm:gap-2">
