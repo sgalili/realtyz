@@ -688,13 +688,14 @@ const InlineComposer = ({
 /* ───────────── Dispatch confirmation modal ───────────── */
 
 const ConfirmDispatchDialog = ({
-  open, onClose, channel, body, brandName, onConfirmed,
+  open, onClose, channel, body, brandName, mediaUrls, onConfirmed,
 }: {
   open: boolean;
   onClose: () => void;
   channel: ChannelCard | null;
   body: string;
   brandName: string;
+  mediaUrls: string[];
   onConfirmed: () => void;
 }) => {
   const { user } = useAuth();
