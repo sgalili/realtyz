@@ -230,7 +230,7 @@ const InlineComposer = ({
         .from('listings')
         .select('id, property_title, city, neighborhood, address, rooms, asking_price, deal_type, status')
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(1000);
       if (q.length > 0) {
         const like = `%${q}%`;
         query = query.or(
