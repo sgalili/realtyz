@@ -99,15 +99,23 @@ Deno.serve(async (req) => {
 
   if (error) return json({ error: error.message }, 500);
 
-  const targets: { id: string; platform: string; postId: string; needsBackfill: boolean }[] = [];
+  const targets: { id: string; platform: string; postId: string; backfillNativeId: string | null }[] = [];
   for (const r of rows ?? []) {
     const ch = String((r as any).channel || "").toLowerCase();
     const platform = PLATFORM_MAP[ch];
     if (!platform) continue;
     const pr: any = (r as any).provider_response ?? {};
-    // Ayrshare returns one of:
-    //   { id, postIds: [{ platform, id, postUrl }, ...] }              (flat)
-    //   { posts: [{ id, postIds: [{ platform, id, postUrl }, ...] }] } (wrapped)
+    // The Ayrshare /analytics/post endpoint requires the AYRSHARE top-level id
+    // (e.g. "OMQB3v213OP0hmj35qV0") returned from /post — NOT the native
+    // Facebook/Instagram post id. Response shape is either:
+    //   { id, postIds: [{ platform, id (native), postUrl }, ...] }
+    //   { posts: [{ id, postIds: [{ platform, id (native), postUrl }, ...] }] }
+    const ayrTopId: string | null =
+      (typeof pr?.id === "string" && pr.id) ||
+      (Array.isArray(pr?.posts) && typeof pr.posts[0]?.id === "string" && pr.posts[0].id) ||
+      null;
+    if (!ayrTopId) continue;
+    // Also surface the native id so we can backfill provider_message_id when missing.
     const flatPostIds: any[] = Array.isArray(pr?.postIds) ? pr.postIds : [];
     const wrappedPostIds: any[] = Array.isArray(pr?.posts)
       ? pr.posts.flatMap((p: any) => Array.isArray(p?.postIds) ? p.postIds : [])
@@ -116,19 +124,12 @@ Deno.serve(async (req) => {
     const platformMatch = allPostIds.find(
       (p: any) => String(p?.platform || "").toLowerCase() === platform,
     );
-    const ayrId =
-      platformMatch?.id ||
-      allPostIds[0]?.id ||
-      (typeof pr?.id === "string" && pr.id) ||
-      (Array.isArray(pr?.posts) && typeof pr.posts[0]?.id === "string" && pr.posts[0].id) ||
-      (r as any).provider_message_id ||
-      null;
-    if (!ayrId) continue;
+    const nativeId = platformMatch?.id || allPostIds[0]?.id || null;
     targets.push({
       id: (r as any).id,
       platform,
-      postId: String(ayrId),
-      needsBackfill: !(r as any).provider_message_id,
+      postId: ayrTopId,
+      backfillNativeId: (r as any).provider_message_id ? null : (nativeId ? String(nativeId) : null),
     });
   }
 
@@ -156,7 +157,7 @@ Deno.serve(async (req) => {
           share_count: counts.shares,
           view_count: counts.views,
           metrics_updated_at: new Date().toISOString(),
-          ...(t.needsBackfill ? { provider_message_id: t.postId } : {}),
+          ...(t.backfillNativeId ? { provider_message_id: t.backfillNativeId } : {}),
         })
         .eq("id", t.id)
         .eq("user_id", userId);
