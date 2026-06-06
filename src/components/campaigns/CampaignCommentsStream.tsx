@@ -286,6 +286,8 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
     if (!replyOpen) {
       setReplyDraft("");
       setDmDraft("");
+      setOriginalReply("");
+      setOriginalDm("");
       setDrafting(false);
       return;
     }
