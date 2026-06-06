@@ -749,7 +749,21 @@ const ConfirmDispatchDialog = ({
             campaign_name: campaignName,
           },
         });
-        if (error) throw new Error(error.message || 'שגיאת רשת');
+        // When the edge function returns a non-2xx, supabase-js sets a generic
+        // "non-2xx status code" message and stuffs the real body into
+        // error.context.response — read it so the user sees our Hebrew message
+        // (e.g. duplicate-content guidance) instead of the raw status text.
+        if (error) {
+          let friendly: string | null = null;
+          try {
+            const resp = (error as any)?.context?.response;
+            if (resp && typeof resp.json === 'function') {
+              const body = await resp.json();
+              friendly = body?.error || body?.message || null;
+            }
+          } catch { /* ignore */ }
+          throw new Error(friendly || error.message || 'שגיאת רשת');
+        }
         if ((data as any)?.error) throw new Error((data as any).error);
         toast.success(`הקמפיין פורסם בהצלחה ב-${channel.label}!`);
       } else {
