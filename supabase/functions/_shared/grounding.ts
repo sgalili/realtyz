@@ -64,20 +64,44 @@ export function extractListingTypeFromFeatures(features: unknown): ListingType |
   return null;
 }
 
+// Price-based heuristic — the DB mixes sale and rent rows. Owner rule:
+// • price in the thousands (< 100k ₪)  → rent / looking to rent
+// • price ≥ ~100k ₪ (typically 1M+)    → sale / looking to buy
+// Returns null for the small ambiguous band so explicit signals can win.
+export function inferListingTypeFromPrice(price: unknown): ListingType | null {
+  const n = Number(price ?? 0);
+  if (!Number.isFinite(n) || n <= 0) return null;
+  if (n < 50_000) return "rent";
+  if (n >= 100_000) return "sale";
+  return null;
+}
+
+// Best-effort classifier: explicit feature flag wins, otherwise fall back to
+// the price heuristic so mixed-DB rows still land in the right pipeline.
+export function resolveListingType(listing: Record<string, unknown>): ListingType | null {
+  const explicit = extractListingTypeFromFeatures(listing.features);
+  if (explicit) return explicit;
+  return inferListingTypeFromPrice(listing.asking_price);
+}
+
 export function isListingAllowedForType(listing: Record<string, unknown>, want: ListingType | null): boolean {
   if (!want) return true;
   const explicit = extractListingTypeFromFeatures(listing.features);
+  const priceType = inferListingTypeFromPrice(listing.asking_price);
   const price = Number(listing.asking_price ?? 0);
   const text = searchableListingText(listing);
 
   if (want === "rent") {
     if (explicit === "sale") return false;
+    if (priceType === "sale") return false; // price ≥ 100k → treat as sale, never as rent
     if (Number.isFinite(price) && price > 50_000) return false;
     if (SALE_CONTEXT_RE.test(text)) return false;
-    return explicit === "rent" || RENT_CONTEXT_RE.test(text) || !price || price <= 50_000;
+    return explicit === "rent" || priceType === "rent" || RENT_CONTEXT_RE.test(text) || !price || price <= 50_000;
   }
 
+  // want === "sale"
   if (explicit === "rent") return false;
+  if (priceType === "rent") return false; // price in the thousands → rental, not sale
   if (RENT_CONTEXT_RE.test(text)) return false;
   return true;
 }
