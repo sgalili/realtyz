@@ -359,24 +359,39 @@ export default function AiAgentDrawer() {
                 <p className="text-sm text-muted-foreground">שלום! אני קצין המודיעין של Realtyz.</p>
                 <p className="text-xs text-muted-foreground">שאל אותי כל שאלה על הנכסים, הקמפיינים והרוכשים שלך.</p>
               </div>
-              {SUGGESTION_GROUPS.map((group, gi) => (
-                <div key={gi} className="space-y-2">
-                  <p className="text-[11px] font-semibold text-muted-foreground px-1">{group.title}</p>
-                  <div className="space-y-1.5">
-                    {group.prompts.map((p, pi) => (
+              <div className="space-y-1.5">
+                <p className="text-[11px] font-semibold text-muted-foreground px-1">בחר נושא לקבלת 3 שאלות מומלצות:</p>
+                {TOPICS.map((topic, ti) => {
+                  const isOpen = expandedTopic === ti;
+                  return (
+                    <div key={ti} className="rounded-xl border border-border bg-card overflow-hidden">
                       <button
-                        key={pi}
                         type="button"
-                        onClick={() => sendMessage(p)}
-                        disabled={isLoading}
-                        className="w-full text-right text-xs leading-relaxed rounded-xl border border-border bg-card hover:bg-primary/5 hover:border-primary/30 transition-colors px-3 py-2.5 disabled:opacity-50"
+                        onClick={() => setExpandedTopic(isOpen ? null : ti)}
+                        className="w-full flex items-center justify-between text-right px-3 py-2.5 text-xs font-medium hover:bg-primary/5 transition-colors"
                       >
-                        {p}
+                        <span>{topic.label}</span>
+                        {isOpen ? <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" /> : <ChevronLeft className="h-3.5 w-3.5 text-muted-foreground" />}
                       </button>
-                    ))}
-                  </div>
-                </div>
-              ))}
+                      {isOpen && (
+                        <div className="border-t border-border/50 bg-background/50 p-2 space-y-1.5">
+                          {topic.prompts.map((p, pi) => (
+                            <button
+                              key={pi}
+                              type="button"
+                              onClick={() => sendMessage(p)}
+                              disabled={isLoading}
+                              className="w-full text-right text-[11px] leading-relaxed rounded-lg border border-border/60 bg-card hover:bg-primary/5 hover:border-primary/30 transition-colors px-2.5 py-2 disabled:opacity-50"
+                            >
+                              {p}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           )}
 
