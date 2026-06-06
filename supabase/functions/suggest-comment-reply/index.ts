@@ -143,6 +143,20 @@ Deno.serve(async (req) => {
       } catch { /* ignore */ }
     }
 
+    // Heuristic fallback: detect transaction type from inbound text + campaign
+    // context when neither primary_listing_id nor explicit listing_type was
+    // provided. Hebrew + English rental/sale keyword sniff.
+    if (!primaryType) {
+      const haystack = `${inbound}\n${campaignContext}`.toLowerCase();
+      const rentSignals = /(להשכרה|שכירות|לשכור|להשכיר|שכר דירה|שכ"?ד|\brent(al|s)?\b|\bfor rent\b|\blease\b|\bto let\b)/i;
+      const saleSignals = /(למכירה|לרכישה|לקנות|נמכרת|רכישה|\bfor sale\b|\bbuy(ing)?\b|\bpurchase\b|\bmortgage\b|משכנתא)/i;
+      const rentHit = rentSignals.test(haystack);
+      const saleHit = saleSignals.test(haystack);
+      if (rentHit && !saleHit) primaryType = "rent";
+      else if (saleHit && !rentHit) primaryType = "sale";
+    }
+
+
     const [kbSnippets, crmSnap] = await Promise.all([
       loadKbSnippets(admin, userId),
       loadCrmSnapshot(admin, userId, { listingType: primaryType }),
