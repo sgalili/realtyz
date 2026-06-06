@@ -231,7 +231,8 @@ const InlineComposer = ({
   };
 
   const handleAIImage = async () => {
-    const prompt = body.trim() || 'תמונת קמפיין נדל"ן עבור Realtyz AI';
+    const prompt = body.trim() || customInstructions.trim() || 'תמונת נדל"ן יוקרתית עבור פוסט שיווקי של מתווך בכיר';
+
     setGeneratingImage(true);
     try {
       const { data, error } = await supabase.functions.invoke('generate-content', {
