@@ -647,7 +647,7 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
               return (
                 <tr key={p.id} className="border-t hover:bg-muted/30">
                   <td className="px-2 py-1.5 whitespace-nowrap">
-                    <Badge className={`text-[10px] ${isRent ? 'bg-amber-500 text-white' : 'bg-primary text-primary-foreground'}`}>
+                    <Badge className={`text-[10px] ${isRent ? 'bg-[#0b3982] text-white' : 'bg-primary text-primary-foreground'}`}>
                       {LISTING_TYPE_LABELS_HE[p.listing_type ?? 'sale']}
                     </Badge>
                   </td>
