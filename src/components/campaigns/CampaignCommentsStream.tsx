@@ -97,17 +97,26 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
     setRows((data ?? []) as EngagementRow[]);
   };
 
+  // On mount / when the active post id resolves, run an explicit query
+  // against engagement_events. The realtime subscription only delivers NEW
+  // rows — existing comments must come from this fetch.
   const load = async () => {
     setLoading(true);
     try {
       await fetchRows();
     } catch (e: any) {
+      console.error("[CampaignCommentsStream] initial fetch failed", {
+        campaign_id: campaign.id,
+        postIds,
+        error: e?.message ?? String(e),
+      });
       toast.error(e?.message ?? "טעינת תגובות נכשלה");
       setRows([]);
     } finally {
       setLoading(false);
     }
   };
+
 
   // Manual refresh: bypass the 45s polling loop and force an immediate
   // server-side pull of analytics + comments scoped to THIS card's
