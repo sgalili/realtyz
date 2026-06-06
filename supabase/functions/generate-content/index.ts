@@ -54,9 +54,8 @@ serve(async (req) => {
       try {
         const { data: row } = await admin
           .from("listings")
-          .select("property_title,description,address,city,neighborhood,rooms,sqm,asking_price,features,status,deal_type")
+          .select("property_title,description,address,city,neighborhood,rooms,sqm,asking_price,features,status")
           .eq("id", selectedListingId)
-          .eq("user_id", userId)
           .maybeSingle();
         if (row) promotedListing = row;
       } catch { /* non-fatal */ }
@@ -95,7 +94,6 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
       ? [
           "[PROMOTED LISTING — THIS POST MUST PROMOTE THIS EXACT PROPERTY] (use ONLY these real fields — never alter prices, address, rooms, or features):",
           promotedListing.property_title ? `כותרת: ${promotedListing.property_title}` : null,
-          promotedListing.deal_type ? `סוג עסקה: ${promotedListing.deal_type === "rent" ? "השכרה" : "מכירה"}` : null,
           promotedListing.address ? `כתובת: ${promotedListing.address}` : null,
           promotedListing.neighborhood ? `שכונה: ${promotedListing.neighborhood}` : null,
           promotedListing.city ? `עיר: ${promotedListing.city}` : null,

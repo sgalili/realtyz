@@ -498,7 +498,7 @@ const InlineComposer = ({
                 <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
                 <span className={cn('truncate', selectedListing ? 'text-foreground font-medium' : 'text-muted-foreground')}>
                   {selectedListing
-                    ? [selectedListing.property_title || 'נכס', selectedListing.city, selectedListing.address].filter(Boolean).join(' · ')
+                    ? listingOptionLabel(selectedListing as CampaignListing)
                     : 'ללא קידום נכס ספציפי (פוסט כללי של אודי)'}
                 </span>
               </button>
@@ -516,18 +516,21 @@ const InlineComposer = ({
                   נקה בחירה — פוסט כללי
                 </button>
               )}
-              {listings.length === 0 ? (
-                <p className="px-3 py-4 text-center text-xs text-muted-foreground">לא נמצאו נכסים במאגר</p>
-              ) : listings.map((l) => (
+              <div className="mb-2 px-1 text-[11px] text-muted-foreground">
+                {listingsLoading ? 'טוען נכסים מהמאגר…' : `${visibleListings.length} נכסים במאגר`}
+              </div>
+              {!listingsLoading && visibleListings.length === 0 ? (
+                <p className="px-3 py-4 text-center text-xs text-muted-foreground">לא נמצאו נכסים תואמים לחיפוש</p>
+              ) : visibleListings.map((l) => (
                 <button key={l.id} type="button"
                   onClick={() => { setSelectedListingId(l.id); setListingPickerOpen(false); }}
                   className={cn(
                     'mb-1 w-full rounded-md px-3 py-2 text-right text-sm hover:bg-muted',
                     selectedListingId === l.id && 'bg-primary/10 text-primary',
                   )}>
-                  <div className="font-medium truncate">{l.property_title || 'נכס ללא כותרת'}</div>
+                  <div className="font-medium truncate">{listingOptionLabel(l)}</div>
                   <div className="text-[11px] text-muted-foreground truncate">
-                    {[l.neighborhood, l.city, l.address, l.rooms ? `${l.rooms} חד׳` : null, l.asking_price ? `${Number(l.asking_price).toLocaleString('he-IL')} ₪` : null]
+                    {[l.property_title, l.neighborhood, l.rooms ? `${l.rooms} חד׳` : null, l.sqm ? `${l.sqm} מ״ר` : null]
                       .filter(Boolean).join(' · ')}
                   </div>
                 </button>
