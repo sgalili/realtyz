@@ -73,10 +73,12 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
     let q = supabase
       .from("engagement_events")
       .select(
-        "id, user_id, platform, sender_handle, inbound_text, ai_reply_text, status, sentiment, external_id, external_post_id, metadata, created_at",
+        "id, user_id, platform, sender_handle, inbound_text, ai_reply_text, status, sentiment, external_id, external_post_id, metadata, created_at, is_archived",
       )
       .eq("user_id", userId)
-      .eq("is_archived", false)
+      // NOTE: do NOT filter on is_archived — incoming comments are not
+      // guaranteed to be initialized to false, and archived AI rows still
+      // belong on the thread for full visibility.
       .order("created_at", { ascending: true })
       .limit(500);
 
@@ -98,6 +100,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
     if (error) throw error;
     setRows((data ?? []) as EngagementRow[]);
   };
+
 
   // On mount / when the active post id resolves, run an explicit query
   // against engagement_events. The realtime subscription only delivers NEW
