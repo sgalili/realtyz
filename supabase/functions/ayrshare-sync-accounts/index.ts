@@ -205,12 +205,6 @@ Deno.serve(async (req) => {
       const linked = new Set<string>(active.map(normalize));
       for (const a of accounts) linked.add(normalize(a.platform));
 
-      const AYR_MANAGED = new Set([
-        "facebook", "instagram", "twitter", "tiktok", "linkedin",
-        "youtube", "pinterest", "threads", "snapchat", "reddit",
-        "bluesky", "telegram", "gmb",
-      ]);
-
       if (linked.size > 0) {
         const rows = Array.from(linked).map((platform) => ({
           platform,
