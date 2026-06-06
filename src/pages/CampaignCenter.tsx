@@ -1597,7 +1597,7 @@ const CampaignCenter = () => {
     <div className="space-y-6" dir="rtl">
       {isTargetedMode && (
         <div className="relative -mx-3 sm:-mx-6 -mt-6 mb-2 overflow-hidden text-primary-foreground"
-             style={{ backgroundColor: '#0B2545' }} data-no-hero-wave>
+             style={{ backgroundColor: 'hsl(var(--header-bg))' }} data-no-hero-wave>
           <div className="relative z-10 grid items-center px-4 sm:px-6"
                style={{ minHeight: '88px', gridTemplateColumns: '1fr auto 1fr' }}>
             <div className="flex justify-start">
@@ -1617,7 +1617,7 @@ const CampaignCenter = () => {
             <div />
           </div>
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6">
-            <RealtyzWave position="bottom" variant="wave-soft" fill="#f1f5f9" seed={7} />
+            <RealtyzWave position="bottom" variant="wave-soft" fill="hsl(var(--background))" seed={7} />
           </div>
         </div>
       )}
