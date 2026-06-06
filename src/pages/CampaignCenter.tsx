@@ -538,20 +538,23 @@ type CampaignRow = {
   channel: string;
   message_body: string | null;
   created_at: string;
+  provider_message_id: string | null;
   recipient_count?: number;
 };
 
 const PublishedFeed = () => {
   const [rows, setRows] = useState<CampaignRow[] | null>(null);
+  const [userId, setUserId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
 
   useEffect(() => {
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setRows([]); return; }
+      setUserId(user.id);
       const { data } = await supabase
         .from('campaign_logs')
-        .select('id, campaign_name, channel, message_body, created_at')
+        .select('id, campaign_name, channel, message_body, created_at, provider_message_id')
         .eq('user_id', user.id)
         .order('created_at', { ascending: false })
         .limit(500);
@@ -561,6 +564,9 @@ const PublishedFeed = () => {
         const existing = grouped.get(key);
         if (existing) {
           existing.recipient_count = (existing.recipient_count || 1) + 1;
+          if (!existing.provider_message_id && r.provider_message_id) {
+            existing.provider_message_id = r.provider_message_id;
+          }
         } else {
           grouped.set(key, { ...r, recipient_count: 1 });
         }
