@@ -118,7 +118,7 @@ export default function Properties() {
         if (sourceTab === 'mine') {
           const { data, error } = await supabase
             .from('listings')
-            .select('id, property_title, description, asking_price, city, rooms, sqm, features, source_metadata, source')
+            .select('id, property_title, description, asking_price, city, address, neighborhood, rooms, sqm, features, source_metadata, source')
             .eq('status', 'live')
             .eq('is_published', true)
             .order('created_at', { ascending: false })
