@@ -1031,6 +1031,15 @@ const PublishedFeed = () => {
     load();
   };
 
+  const deleteCampaign = async (id: string) => {
+    if (!confirm('למחוק את הקמפיין הזה לצמיתות?')) return;
+    const { error } = await supabase.from('campaign_logs').delete().eq('id', id);
+    if (error) { toast.error('מחיקה נכשלה: ' + error.message); return; }
+    toast.success('הקמפיין נמחק');
+    load();
+  };
+
+
   const filteredRows = useMemo(() => {
     if (!rows) return rows;
     if (activeChannel === 'all') return rows;
