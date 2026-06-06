@@ -431,13 +431,14 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
     setSending(true);
     try {
       const dmText = dmDraft.trim();
+      const finalPublic = replyDraft.trim();
       const { data, error } = await supabase.functions.invoke(
         "ayrshare-comment-reply",
         {
           body: {
             event_id: replyOpen.id,
             user_id: userId,
-            comment: replyDraft.trim(),
+            comment: finalPublic,
             platform: replyOpen.platform,
             comment_id: replyOpen.external_id,
             private_dm: dmText || undefined,
@@ -454,9 +455,31 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
       } else {
         toast.success("התגובה פורסמה");
       }
+
+      // Active-learning capture: if the broker edited either draft before
+      // publishing, send the original/edited pair to learn-from-edit so the
+      // persona prompt picks up the correction on future generations.
+      const pairs: Array<{ label: string; original: string; edited: string }> = [];
+      if (originalReply && finalPublic && originalReply !== finalPublic) {
+        pairs.push({ label: "public_comment", original: originalReply, edited: finalPublic });
+      }
+      if (originalDm && dmText && originalDm !== dmText) {
+        pairs.push({ label: "private_messenger_dm", original: originalDm, edited: dmText });
+      }
+      if (pairs.length > 0) {
+        void supabase.functions.invoke("learn-from-edit", {
+          body: {
+            context: `campaign_reply:${replyOpen.platform}`,
+            pairs,
+          },
+        }).catch(() => { /* background, never block UI */ });
+      }
+
       setReplyOpen(null);
       setReplyDraft("");
       setDmDraft("");
+      setOriginalReply("");
+      setOriginalDm("");
       await load();
     } catch (e: any) {
       toast.error(e?.message ?? "פרסום נכשל");
@@ -464,6 +487,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
       setSending(false);
     }
   };
+
 
   if (loading && rows === null) {
     return (
