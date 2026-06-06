@@ -43,6 +43,9 @@ Deno.serve(async (req) => {
     const rawMediaInput: unknown[] = Array.isArray(body?.media_urls) ? body.media_urls.filter(Boolean) : [];
     const listingId: string | null = body?.listing_id ?? null;
     const scheduledAtRaw: string | null = typeof body?.scheduled_at === "string" ? body.scheduled_at : null;
+    const groupIds: string[] = Array.isArray(body?.group_ids)
+      ? body.group_ids.map((g: unknown) => String(g ?? "").trim()).filter(Boolean)
+      : [];
     let scheduledIso: string | null = null;
     if (scheduledAtRaw) {
       const d = new Date(scheduledAtRaw);
