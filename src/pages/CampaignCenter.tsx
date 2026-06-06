@@ -673,22 +673,30 @@ const InlineComposer = ({
       )}
 
       {/* Scheduled date+time picker */}
-      {hasBody && mode === 'scheduled' && (
-        <div className="rounded-xl border border-border bg-background p-3 space-y-2">
-          <label className="block text-xs font-semibold text-foreground">תאריך ושעת פרסום</label>
-          <input
-            type="datetime-local"
-            value={scheduledLocal}
-            min={new Date(Date.now() + 60_000).toISOString().slice(0, 16)}
-            onChange={(e) => setScheduledLocal(e.target.value)}
-            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
-            dir="ltr"
-          />
-          {scheduledLocal && new Date(scheduledLocal).getTime() <= Date.now() && (
-            <p className="text-xs text-destructive">יש לבחור מועד עתידי</p>
-          )}
-        </div>
-      )}
+      {hasBody && mode === 'scheduled' && (() => {
+        // datetime-local expects LOCAL wall-clock time. toISOString() returns
+        // UTC, which in IL evenings yields a "min" in tomorrow's local clock
+        // and silently blocks valid picks. Build the floor in local time.
+        const floor = new Date(Date.now() + 60_000);
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const minLocal = `${floor.getFullYear()}-${pad(floor.getMonth() + 1)}-${pad(floor.getDate())}T${pad(floor.getHours())}:${pad(floor.getMinutes())}`;
+        return (
+          <div className="rounded-xl border border-border bg-background p-3 space-y-2">
+            <label className="block text-xs font-semibold text-foreground">תאריך ושעת פרסום</label>
+            <input
+              type="datetime-local"
+              value={scheduledLocal}
+              min={minLocal}
+              onChange={(e) => setScheduledLocal(e.target.value)}
+              className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+              dir="ltr"
+            />
+            {scheduledLocal && new Date(scheduledLocal).getTime() <= Date.now() && (
+              <p className="text-xs text-destructive">יש לבחור מועד עתידי</p>
+            )}
+          </div>
+        );
+      })()}
 
       {(() => {
         const scheduledDate = scheduledLocal ? new Date(scheduledLocal) : null;
