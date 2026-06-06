@@ -1,41 +1,44 @@
 // Realtyz suggest-comment-reply — generates a single AI draft reply to a
-// public social comment in the SAME language as the inbound text. KB-grounded
-// broker tone with anti-spam high-entropy phrasing. Pure compose-and-return.
+// public social comment in the SAME language as the inbound text. Grounded in
+// workspace KB + live CRM/listings snapshot, locked to the Udi Vitman persona,
+// with anti-spam high-entropy phrasing. Pure compose-and-return.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { sanitizeOutboundText, detectDominantLanguage } from "../_shared/ayrshare-helpers.ts";
+import {
+  adminClient,
+  loadKbSnippets,
+  loadCrmSnapshot,
+  renderKbBlock,
+  renderCrmBlock,
+  UDI_PERSONA,
+  ANTI_SPAM_RULES,
+  CTA_RULE,
+} from "../_shared/grounding.ts";
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
 
-const SYSTEM = `You are the workspace owner's social-engagement voice replying to a single public comment (Facebook, Instagram, etc).
+const SYSTEM = `${UDI_PERSONA}
+
+You are replying to a single public comment (Facebook, Instagram, etc) as Udi Vitman, personally.
 
 LANGUAGE MIRROR (hard rule, overrides every other rule):
 - Detect the dominant language of the inbound text and reply ONLY in that language.
 - English in -> English out. Hebrew in -> Hebrew out. Other language in -> same language out.
 - Never mix languages. Never append a translation. Never default to Hebrew.
 
-KNOWLEDGE-BASE GROUNDING (highest priority for content):
-- Every factual claim, vocabulary choice, value proposition, and recommendation MUST be grounded in the workspace KNOWLEDGE BASE excerpts provided below.
-- If the KB does not cover something the user asked, do NOT invent it. Either ask a clarifying question or honestly say you will check and follow up privately.
-- Never adopt any legacy persona name; speak as the workspace owner.
+MANDATORY MULTI-SOURCE GROUNDING (zero tolerance for invention):
+- Every factual claim, vocabulary choice, recommendation MUST be grounded in either [WORKSPACE KNOWLEDGE BASE] excerpts OR the [LIVE PROPERTIES & CRM CONTEXT] block below.
+- NEVER invent listings, cities, prices, features, neighborhoods, square meters, room counts. If a fact is not in the two context blocks, do not state it.
+- If the KB and CRM do not cover the commenter's question, honestly say you'll verify and follow up in DM. Never fabricate to fill silence.
 
-ANTI-SPAM HIGH-ENTROPY RULES (Meta-safety; prevents template detection):
-- Treat the response as a fingerprint that must be unique vs. all prior replies. NEVER reuse the same opener, the same sentence skeleton, or the same closing question.
-- Heavily vary sentence structure, length, vocabulary, register, and rhythm between replies. Mix short punchy sentences with one longer reflective sentence.
-- Quote or paraphrase 1-3 specific words/details from THIS commenter's text so the reply is provably context-bound (a name, a city, a budget, a number, a feeling they expressed, a specific question they asked).
-- Forbidden generic openers: "Thanks for your comment", "Great question", "Hi there", "Hello", "תודה על התגובה", "שאלה מצוינת", "היי". Find a fresh, specific opener every time.
-- The reply must read like a human typing live — small natural asymmetries, varied punctuation cadence, no templated parallelism.
+${ANTI_SPAM_RULES}
+- Quote or paraphrase 1-3 specific words/details from THIS commenter's text so the reply is provably context-bound.
 
 CONTENT GOAL (2 to 4 short sentences total):
 1. Open with a concrete, specific hook drawn from the commenter's exact words.
-2. Deliver one value-driven insight or honest answer grounded ONLY in the KB.
-3. Close with ONE clear, localized Call-To-Action that advances the workspace's current agenda (e.g. invite a DM, propose a short call, point to a specific KB-backed resource). Phrase the CTA differently every single time.
-
-ABSOLUTE PROHIBITIONS:
-- No asterisks (*), em-dashes (—), en-dashes (–), double dashes (--), markdown, emojis, hashtags.
-- No "I am an AI" / "as a bot" / "automated message" wording.
-- No generic platitudes, no scripted/repeating CTAs, no legacy persona name.
-- Never invent facts, prices, listings, products, or claims not present in the KB.
+2. Deliver one value-driven insight grounded strictly in KB or live CRM data.
+3. ${CTA_RULE} The CTA invites a Messenger DM, WhatsApp, or a call to the office.
 
 GENDER (Hebrew only):
 - Match Hebrew gender to the sender's first name when known. Unknown -> masculine singular. Never slash forms like "אתה/את".
@@ -49,24 +52,6 @@ function isLangMismatch(reply: string, target: "he" | "en" | "other"): boolean {
   if (target === "en") return hasHe || !hasEn;
   if (target === "he") return hasEn || !hasHe;
   return false;
-}
-
-async function loadKbSnippets(admin: ReturnType<typeof createClient>, userId: string | null): Promise<string> {
-  if (!userId) return "";
-  try {
-    const { data } = await admin
-      .from("knowledge_chunks")
-      .select("content")
-      .eq("user_id", userId)
-      .limit(8);
-    const parts = (data ?? [])
-      .map((r: any) => String(r?.content ?? "").trim())
-      .filter(Boolean)
-      .map((c) => c.slice(0, 600));
-    return parts.join("\n---\n").slice(0, 4000);
-  } catch {
-    return "";
-  }
 }
 
 Deno.serve(async (req) => {
