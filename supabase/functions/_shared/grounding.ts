@@ -116,6 +116,9 @@ export type CrmSnapshot = {
     sqm: number | null;
     asking_price: number | null;
     listing_type: ListingType | null;
+    description: string | null;
+    address: string | null;
+    neighborhood: string | null;
   }[];
   active_leads: number;
   hot_leads: number;
