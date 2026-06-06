@@ -190,10 +190,12 @@ Deno.serve(async (req) => {
       }
 
       if (!res.ok) {
+        console.warn("[ayrshare-analytics] fetch failed", { id: t.id, platform: t.platform, status: res.status, body: j });
         return { id: t.id, ok: false, status: res.status, error: j?.message || j?.error || res.statusText };
       }
       const counts = extractCounts(j, t.platform);
-      await admin
+      console.log("[ayrshare-analytics] counts", { id: t.id, platform: t.platform, counts });
+      const { error: updErr } = await admin
         .from("campaign_logs")
         .update({
           like_count: counts.likes,
@@ -201,10 +203,14 @@ Deno.serve(async (req) => {
           share_count: counts.shares,
           view_count: counts.views,
           metrics_updated_at: new Date().toISOString(),
-          ...(t.backfillNativeId ? { provider_message_id: t.backfillNativeId } : {}),
+          ...(t.backfillNativeId ? { provider_message_id: String(t.backfillNativeId) } : {}),
         })
-        .eq("id", t.id)
+        .eq("id", String(t.id))
         .eq("user_id", userId);
+      if (updErr) {
+        console.error("[ayrshare-analytics] update failed", { id: t.id, error: updErr });
+        return { id: t.id, ok: false, error: updErr.message };
+      }
       return { id: t.id, ok: true, counts };
     }),
   );
