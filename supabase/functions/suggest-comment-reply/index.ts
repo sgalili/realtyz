@@ -81,7 +81,7 @@ function renderStrictListingPayload(snap: any, primaryType: ListingType | null):
 }
 
 function hasUnsupportedPropertyFact(text: string): boolean {
-  return /(מרוהט|ריהוט|חניה|מעלית|קומה|מרפסת|פנוי|כניסה מיידית|תמונות|משופץ|furnished|parking|elevator|balcony|available|photos)/i.test(text);
+  return /(מרוהט|ריהוט|חניה|מעלית|קומה|מרפסת|פנוי|זמין|כניסה מיידית|תמונות|משופץ|furnished|parking|elevator|balcony|available|photos)/i.test(text);
 }
 
 const SYSTEM = `${UDI_PERSONA}
@@ -110,7 +110,7 @@ MANDATORY MULTI-SOURCE GROUNDING:
 
 OUTPUT FORMAT (STRICT JSON, no markdown, no code fence, no commentary):
 {
-  "public_comment": "<1 to 2 SHORT sentences max. Direct answer to the commenter's explicit question using real attributes from CRM. End with exactly this closing in the matched language. Hebrew closing: 'שלחתי לך את כל הפרטים המלאים והתמונות ישירות לפרטי / למסנג'ר. כנס לבדוק.' English closing: 'I just sent you the full details and photos straight to your DM / Messenger. Check it out.'>",
+  "public_comment": "<1 to 2 SHORT sentences max. Direct answer to the commenter's explicit question using real attributes from CRM. End with exactly this closing in the matched language. Hebrew closing: 'שלחתי לך את כל הפרטים המלאים ישירות לפרטי / למסנג'ר. כנס לבדוק.' English closing: 'I just sent you the full details straight to your DM / Messenger. Check it out.'>",
   "private_messenger_dm": "<3 to 5 short lines. Detail the SPECIFIC property the commenter is asking about using CRM facts (rooms, sqm, floor, price, street/neighborhood, key features). Offer ONE alternative only if an allowed same-transaction listing appears in LIVE PROPERTIES & CRM CONTEXT within ~15% of the same price band; if none appears, propose NO alternative at all. Close with exactly ONE high-yield qualifying question (move-in date, exact budget ceiling, parking requirement, floor preference, must-have neighborhoods). No emojis. No biography. First person.>"
 }
 
@@ -428,7 +428,9 @@ Deno.serve(async (req) => {
         "מה מועד הכניסה המועדף עליכם?",
       ].join("\n");
       split = {
-        public_comment: sanitizeOutboundText(split.public_comment.replace(SALE_LEAK_RE, "נכס להשכרה")).trim(),
+        public_comment: sanitizeOutboundText(primaryListing
+          ? `יש לי את הפרטים על ${primaryListing.title}${primaryListing.rooms ? `, ${primaryListing.rooms} חדרים` : ""}${primaryListing.asking_price ? `, שכ\"ד ${Number(primaryListing.asking_price).toLocaleString("he-IL")} ₪/חודש` : ""}. שלחתי לך את כל הפרטים המלאים ישירות לפרטי / למסנג'ר. כנס לבדוק.`
+          : "יש לי רק נכסי השכרה פעילים בהקשר הזה. שלחתי לך את כל הפרטים המלאים ישירות לפרטי / למסנג'ר. כנס לבדוק.").trim(),
         private_messenger_dm: sanitizeOutboundText(safeDm).trim(),
       };
     }
