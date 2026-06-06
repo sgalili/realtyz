@@ -858,7 +858,30 @@ type CampaignRow = {
   message_body: string | null;
   created_at: string;
   provider_message_id: string | null;
+  provider_response?: any;
   recipient_count?: number;
+};
+
+// Derive the live native post URL from Ayrshare provider response, or build
+// a best-effort fallback URL from the platform + native post id.
+const derivePostUrl = (r: CampaignRow): string | null => {
+  const ids = (r.provider_response as any)?.postIds;
+  if (Array.isArray(ids)) {
+    const ch = String(r.channel || '').toLowerCase();
+    const match = ids.find((p: any) => String(p?.platform || '').toLowerCase() === (ch === 'x' ? 'twitter' : ch));
+    const url = match?.postUrl || match?.url;
+    if (typeof url === 'string' && url.startsWith('http')) return url;
+  }
+  const pid = r.provider_message_id;
+  if (!pid) return null;
+  const ch = String(r.channel || '').toLowerCase();
+  if (ch === 'facebook') return `https://www.facebook.com/${pid}`;
+  if (ch === 'instagram') return `https://www.instagram.com/p/${pid}/`;
+  if (ch === 'x' || ch === 'twitter') return `https://twitter.com/i/web/status/${pid}`;
+  if (ch === 'linkedin') return `https://www.linkedin.com/feed/update/${pid}`;
+  if (ch === 'youtube') return `https://www.youtube.com/watch?v=${pid}`;
+  if (ch === 'tiktok') return `https://www.tiktok.com/@/video/${pid}`;
+  return null;
 };
 
 const FEED_PLATFORMS: { id: string; label: string; brand?: string; icon?: typeof Bot }[] = [
