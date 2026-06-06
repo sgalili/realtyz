@@ -213,10 +213,14 @@ function useVoiceInput(onResult: (text: string) => void) {
 }
 
 export default function AiAgentDrawer() {
+  const { user } = useAuth();
   const [open, setOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [expandedTopic, setExpandedTopic] = useState<number | null>(null);
+  const [expandedBarTopic, setExpandedBarTopic] = useState<number | null>(null);
+  const [historyLoaded, setHistoryLoaded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
   const navigate = useNavigate();
@@ -227,7 +231,37 @@ export default function AiAgentDrawer() {
     window.addEventListener('open-ai-drawer', handler);
     return () => window.removeEventListener('open-ai-drawer', handler);
   }, []);
-  const quickActions = DEFAULT_ACTIONS;
+
+  // Load full chat history for this user (permanent — never forgets).
+  useEffect(() => {
+    if (!user?.id || historyLoaded) return;
+    (async () => {
+      const { data, error } = await supabase
+        .from('ai_drawer_history')
+        .select('role, content, payload, created_at')
+        .eq('user_id', user.id)
+        .order('created_at', { ascending: true });
+      if (!error && data) {
+        setMessages(data.map((r: any) => ({
+          role: r.role,
+          content: r.content,
+          ...(r.payload ?? {}),
+        })) as Message[]);
+      }
+      setHistoryLoaded(true);
+    })();
+  }, [user?.id, historyLoaded]);
+
+  const persistMessage = useCallback(async (m: Message) => {
+    if (!user?.id) return;
+    const { role, content, ...rest } = m;
+    await supabase.from('ai_drawer_history').insert({
+      user_id: user.id,
+      role,
+      content,
+      payload: rest,
+    });
+  }, [user?.id]);
 
   const handleVoiceResult = useCallback((text: string) => {
     setInput(prev => (prev ? prev + ' ' + text : text));
@@ -240,6 +274,7 @@ export default function AiAgentDrawer() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
+
 
   const sendMessage = async (text: string) => {
     if (!text.trim() || isLoading) return;
