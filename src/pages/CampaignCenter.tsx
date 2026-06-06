@@ -737,7 +737,7 @@ const ConfirmDispatchDialog = ({
     try {
       const { data: leads, error } = await supabase
         .from('leads')
-        .select('id, full_name, lead_phone, lead_email')
+        .select('id, full_name, phone_number, email')
         .limit(100);
       if (error) throw error;
       const rows = (leads || []).map((l: any) => ({
@@ -745,8 +745,8 @@ const ConfirmDispatchDialog = ({
         campaign_name: `${brandName} · ${channel.label}`,
         channel: channel.id,
         lead_id: l.id,
-        recipient_phone: l.lead_phone,
-        recipient_email: l.lead_email,
+        recipient_phone: l.phone_number,
+        recipient_email: l.email,
         recipient_name: l.full_name,
         message_body: body,
         status: 'queued' as const,
