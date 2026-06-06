@@ -94,29 +94,42 @@ Deno.serve(async (req) => {
     .select("id, channel, provider_message_id, provider_response, created_at")
     .eq("user_id", userId)
     .eq("is_archived", false)
-    .not("provider_message_id", "is", null)
     .order("created_at", { ascending: false })
     .limit(limit);
 
   if (error) return json({ error: error.message }, 500);
 
-  const targets: { id: string; platform: string; postId: string }[] = [];
+  const targets: { id: string; platform: string; postId: string; needsBackfill: boolean }[] = [];
   for (const r of rows ?? []) {
     const ch = String((r as any).channel || "").toLowerCase();
     const platform = PLATFORM_MAP[ch];
     if (!platform) continue;
-    // Prefer Ayrshare top-level id from provider_response.id when present,
-    // otherwise the per-platform postId we stored, otherwise the raw
-    // provider_message_id.
     const pr: any = (r as any).provider_response ?? {};
+    // Ayrshare returns one of:
+    //   { id, postIds: [{ platform, id, postUrl }, ...] }              (flat)
+    //   { posts: [{ id, postIds: [{ platform, id, postUrl }, ...] }] } (wrapped)
+    const flatPostIds: any[] = Array.isArray(pr?.postIds) ? pr.postIds : [];
+    const wrappedPostIds: any[] = Array.isArray(pr?.posts)
+      ? pr.posts.flatMap((p: any) => Array.isArray(p?.postIds) ? p.postIds : [])
+      : [];
+    const allPostIds = [...flatPostIds, ...wrappedPostIds];
+    const platformMatch = allPostIds.find(
+      (p: any) => String(p?.platform || "").toLowerCase() === platform,
+    );
     const ayrId =
+      platformMatch?.id ||
+      allPostIds[0]?.id ||
       (typeof pr?.id === "string" && pr.id) ||
-      (Array.isArray(pr?.postIds) &&
-        (pr.postIds.find((p: any) => String(p?.platform || "").toLowerCase() === platform)?.id ||
-         pr.postIds[0]?.id)) ||
-      (r as any).provider_message_id;
+      (Array.isArray(pr?.posts) && typeof pr.posts[0]?.id === "string" && pr.posts[0].id) ||
+      (r as any).provider_message_id ||
+      null;
     if (!ayrId) continue;
-    targets.push({ id: (r as any).id, platform, postId: String(ayrId) });
+    targets.push({
+      id: (r as any).id,
+      platform,
+      postId: String(ayrId),
+      needsBackfill: !(r as any).provider_message_id,
+    });
   }
 
   const results = await Promise.allSettled(
