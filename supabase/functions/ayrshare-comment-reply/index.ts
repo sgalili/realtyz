@@ -3,7 +3,7 @@
 // owning user_id (workspace_social_profile is the single workspace profile).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { sanitizeOutboundText, resolveWorkspaceProfileKey } from "../_shared/ayrshare-helpers.ts";
+import { sanitizeOutboundText, resolveWorkspaceProfileKey, likeNativeComment } from "../_shared/ayrshare-helpers.ts";
 
 const AYR_REPLY_URL = "https://api.ayrshare.com/api/comments/reply";
 const AYR_MESSAGES_URL = "https://api.ayrshare.com/api/messages";
