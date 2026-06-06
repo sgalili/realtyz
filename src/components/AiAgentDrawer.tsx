@@ -255,12 +255,12 @@ export default function AiAgentDrawer() {
   const persistMessage = useCallback(async (m: Message) => {
     if (!user?.id) return;
     const { role, content, ...rest } = m;
-    await supabase.from('ai_drawer_history').insert({
+    await supabase.from('ai_drawer_history').insert([{
       user_id: user.id,
       role,
       content,
-      payload: rest,
-    });
+      payload: rest as any,
+    }]);
   }, [user?.id]);
 
   const handleVoiceResult = useCallback((text: string) => {
