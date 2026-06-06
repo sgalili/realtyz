@@ -368,6 +368,30 @@ const InlineComposer = ({
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-semibold text-foreground">תוכן ההודעה</h3>
         <div className="flex items-center gap-2">
+          <Popover open={historyOpen} onOpenChange={setHistoryOpen}>
+            <PopoverTrigger asChild>
+              <button type="button"
+                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-primary/30">
+                היסטוריה
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="start" className="w-[340px] p-2 max-h-96 overflow-auto" dir="rtl">
+              {history.length === 0 ? (
+                <p className="px-3 py-6 text-center text-xs text-muted-foreground">אין יצירות שמורות עדיין עבור {channel.label}</p>
+              ) : history.map((h) => (
+                <button key={h.id} type="button"
+                  onClick={() => { setBody((h.generated_text || '').slice(0, MAX_CHARS)); setHistoryOpen(false); toast.success('הטקסט הועתק לעורך'); }}
+                  className="mb-1 w-full rounded-md border border-border/60 bg-background px-3 py-2 text-right hover:bg-muted">
+                  <div className="text-[11px] text-muted-foreground">
+                    {new Date(h.created_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
+                  </div>
+                  <div className="mt-1 text-xs text-foreground line-clamp-3 whitespace-pre-wrap">
+                    {h.generated_text || h.topic || '—'}
+                  </div>
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
           <button type="button" onClick={handleGenerate} disabled={generating}
             className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-60">
             <Bot className="h-3.5 w-3.5" />
