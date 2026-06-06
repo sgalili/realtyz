@@ -476,5 +476,23 @@ export default function KnowledgeBase() {
         </Card>
       </div>
     </div>
+      </div>
+
+      <Dialog open={!!viewDoc} onOpenChange={(o) => !o && setViewDoc(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-right">{viewDoc?.title}</DialogTitle>
+            <p className="text-xs text-muted-foreground text-right">
+              {viewDoc && new Date(viewDoc.created_at).toLocaleString('he-IL')} · {viewDoc?.chunk_count ?? 0} מקטעים
+            </p>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto rounded-md border bg-muted/20 p-3 text-sm whitespace-pre-wrap leading-relaxed">
+            {viewDoc?.raw_text?.trim()
+              ? viewDoc.raw_text
+              : <span className="text-muted-foreground">אין תוכן טקסטואלי זמין לתצוגה.</span>}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
   );
 }
