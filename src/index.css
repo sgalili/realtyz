@@ -5,84 +5,88 @@
 @tailwind utilities;
 
 /* ============================================================
-   REALTYZ — Premium Real Estate visual system.
-   Palette: Deep Charcoal-Navy primary, Soft Warm Gold accent,
-   crisp white surfaces, refined neutrals, generous spacing.
+   REALTYZ — Anglo Saxon brand identity.
+   Primary surface accents: deep corporate Navy (#0B2545) for
+   headers, sidebar, page chrome and titles. Action accent: bright
+   corporate Gold/Yellow (#FFC800) for primary buttons, toggles and
+   active badges. Neutrals: pure white + soft canvas grey #F8F9FA.
    ============================================================ */
 @layer base {
   :root {
-    /* Surfaces — crisp white with neutral charcoal text */
+    /* Surfaces — clean white canvas + soft grey neutrals */
     --background: 0 0% 100%;
-    --foreground: 0 0% 20%; /* #333333 */
+    --foreground: 213 73% 12%; /* navy ink for legibility on white */
 
     --card: 0 0% 100%;
-    --card-foreground: 0 0% 20%;
+    --card-foreground: 213 73% 12%;
 
     --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 20%;
+    --popover-foreground: 213 73% 12%;
 
-    /* PRIMARY — Homely-MLS Blue #0082CA */
-    --primary: 201 100% 40%;
-    --primary-foreground: 0 0% 100%;
-    --primary-glow: 201 100% 50%;
+    /* PRIMARY — Anglo Saxon Gold #FFC800 (action accent) */
+    --primary: 47 100% 50%;
+    --primary-foreground: 213 73% 12%; /* navy text on gold */
+    --primary-glow: 44 100% 48%;       /* deeper gold on hover */
 
-    --secondary: 210 20% 96%;
-    --secondary-foreground: 0 0% 20%;
+    --secondary: 210 17% 98%;          /* #F8F9FA canvas */
+    --secondary-foreground: 213 73% 16%;
 
-    --muted: 210 16% 96%;
-    --muted-foreground: 215 14% 42%;
+    --muted: 210 17% 96%;
+    --muted-foreground: 213 20% 38%;
 
-    /* ACCENT — Soft Warm Gold (kept for highlights) */
-    --accent: 38 52% 58%;
-    --accent-foreground: 0 0% 20%;
+    /* ACCENT — Anglo Saxon Gold (same family, used for highlights) */
+    --accent: 47 100% 50%;
+    --accent-foreground: 213 73% 12%;
 
     --destructive: 0 72% 48%;
     --destructive-foreground: 0 0% 100%;
 
-    --border: 210 16% 90%;
-    --input: 210 16% 90%;
-    --ring: 201 100% 40%;
+    --border: 213 25% 88%;
+    --input: 213 25% 88%;
+    --ring: 47 100% 50%;
 
     --radius: 0.75rem;
 
-    /* SIDEBAR — Homely Blue with white text */
-    --sidebar-background: 201 100% 40%;
+    /* SIDEBAR / HEADER — Anglo Saxon Navy with white + gold accents */
+    --sidebar-background: 213 73% 16%;     /* #0B2545 */
     --sidebar-foreground: 0 0% 100%;
-    --sidebar-primary: 0 0% 100%;
-    --sidebar-primary-foreground: 201 100% 40%;
-    --sidebar-accent: 201 100% 32%;
+    --sidebar-primary: 47 100% 50%;        /* gold accent */
+    --sidebar-primary-foreground: 213 73% 12%;
+    --sidebar-accent: 215 65% 22%;         /* #13315C deeper navy */
     --sidebar-accent-foreground: 0 0% 100%;
-    --sidebar-border: 201 100% 32%;
-    --sidebar-ring: 0 0% 100%;
+    --sidebar-border: 215 65% 22%;
+    --sidebar-ring: 47 100% 50%;
 
-    /* SUCCESS — Homely-MLS Green #28A745 (used for prices & financials) */
+    /* SUCCESS / WARNING */
     --success: 134 61% 41%;
     --success-foreground: 0 0% 100%;
-    --warning: 38 92% 50%;
-    --warning-foreground: 0 0% 20%;
+    --warning: 47 100% 50%;
+    --warning-foreground: 213 73% 12%;
 
-    --brand-navy: 201 100% 40%;
-    --brand-blue: 201 100% 40%;
-    --brand-deep: 201 100% 28%;
-    --brand-gold: 38 52% 58%;
-    --brand-gold-soft: 38 60% 72%;
+    /* BRAND tokens — Anglo Saxon Navy + Gold */
+    --brand-navy: 213 73% 16%;     /* #0B2545 */
+    --brand-blue: 213 73% 16%;     /* alias for legacy class names */
+    --brand-deep: 215 78% 10%;     /* darkest navy for gradients */
+    --brand-gold: 47 100% 50%;     /* #FFC800 */
+    --brand-gold-soft: 47 100% 72%;
     --brand-silver: 210 14% 94%;
-    --brand-cream: 210 30% 97%;
-    --brand-hero: var(--brand-blue);
-    --header-bg: 201 100% 40%;
+    --brand-cream: 210 30% 98%;
+    --brand-hero: var(--brand-navy);
+    --header-bg: 213 73% 16%;
+
     --google-blue: 217 89% 61%;
     --google-red: 5 81% 56%;
     --google-yellow: 45 97% 50%;
     --google-green: 136 53% 43%;
 
-    --auth-navy: var(--brand-blue);
+    --auth-navy: var(--brand-navy);
     --auth-navy-deep: var(--brand-deep);
-    --auth-blue: var(--brand-blue);
+    --auth-blue: var(--brand-navy);
     --auth-gold: var(--brand-gold);
-    --auth-gold-foreground: 0 0% 20%;
-    --auth-panel: 201 100% 32%;
+    --auth-gold-foreground: 213 73% 12%;
+    --auth-panel: 215 65% 22%;
     --auth-panel-foreground: 0 0% 100%;
-    --gradient-auth-diagonal: linear-gradient(180deg, hsl(var(--auth-navy-deep)) 0%, hsl(var(--auth-navy)) 52%, hsl(var(--auth-blue)) 100%);
+    --gradient-auth-diagonal: linear-gradient(180deg, hsl(var(--auth-navy-deep)) 0%, hsl(var(--auth-navy)) 52%, hsl(215 65% 22%) 100%);
 
     --whatsapp-header: 173 63% 29%;
     --whatsapp-header-foreground: 0 0% 100%;
