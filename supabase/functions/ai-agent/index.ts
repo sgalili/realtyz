@@ -363,14 +363,97 @@ serve(async (req) => {
       pivotAttempts,
     });
 
-    const systemPrompt = SCHEMA_CONTEXT
-      .replace("{{CAMPAIGN_CONTEXT}}", campaignContext)
-      .replace("{{KB_CONTEXT}}", kbContext)
-      + (personaBlock ? "\n\n" + personaBlock : "")
-      + "\n\n" + dealTypeBlock
-      + "\n\n" + stageHatBlock
-      + "\n\n" + channelBlock
-      + "\n\n" + compliance;
+    const isInternalDashboard = !lead_id;
+
+    // === MASTER AGENT MODE (internal dashboard chief-of-staff) ===
+    // When the workspace owner/manager chats from the dashboard sidebar (no lead_id),
+    // we DO NOT impersonate the human Agent. We act as their Master AI Agent /
+    // chief of staff, and pre-fetch a live workspace snapshot scoped strictly by
+    // user_id so the model answers with real data instead of asking generic questions.
+    let liveDataBlock = "";
+    if (isInternalDashboard) {
+      try {
+        const authHeader = req.headers.get("Authorization") ?? "";
+        if (authHeader.startsWith("Bearer ")) {
+          const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+            global: { headers: { Authorization: authHeader } },
+          });
+          const { data: uRes } = await userClient.auth.getUser();
+          const uid = uRes?.user?.id;
+          if (uid) {
+            const [listingsRes, leadsRes, leadsCount, listingsCount] = await Promise.all([
+              userClient.from("listings")
+                .select("id, property_title, asking_price, features, description, is_published, created_at")
+                .eq("user_id", uid)
+                .order("created_at", { ascending: false })
+                .limit(25),
+              userClient.from("leads")
+                .select("id, full_name, city, interest_tag, engagement_score, status, lead_stage, deal_type, sentiment, preferences, last_interaction_at")
+                .eq("user_id", uid)
+                .order("last_interaction_at", { ascending: false, nullsFirst: false })
+                .limit(25),
+              userClient.from("leads").select("id", { count: "exact", head: true }).eq("user_id", uid),
+              userClient.from("listings").select("id", { count: "exact", head: true }).eq("user_id", uid),
+            ]);
+            const listingsArr = (listingsRes.data ?? []) as any[];
+            const leadsArr = (leadsRes.data ?? []) as any[];
+            const fmtListing = (l: any) => {
+              const f = l.features ?? {};
+              const city = f.city ?? f.neighborhood ?? "";
+              const rooms = f.rooms ?? f.room_count ?? "";
+              const size = f.size_sqm ?? f.size ?? "";
+              const price = l.asking_price ? `₪${Number(l.asking_price).toLocaleString()}` : "—";
+              return `• [${String(l.id).slice(0,8)}] ${l.property_title ?? "(ללא כותרת)"} | ${city} | ${rooms} חד׳ | ${size} מ"ר | ${price}${l.is_published ? "" : " (טיוטה)"}`;
+            };
+            const fmtLead = (v: any) => {
+              const prefs = v.preferences ?? {};
+              const want = prefs.desired_city ?? prefs.city ?? v.city ?? "";
+              return `• [${String(v.id).slice(0,8)}] ${v.full_name ?? "—"} | אזור: ${want || "—"} | סוג: ${v.deal_type ?? "—"} | שלב: ${v.lead_stage ?? v.status ?? "—"} | סקור: ${v.engagement_score ?? 0} | סנט׳: ${v.sentiment ?? "—"}`;
+            };
+            liveDataBlock = [
+              `LIVE WORKSPACE SNAPSHOT (scoped to current owner, user_id=${uid.slice(0,8)}…):`,
+              `Totals: leads=${leadsCount.count ?? leadsArr.length}, listings=${listingsCount.count ?? listingsArr.length}`,
+              "",
+              `LISTINGS (${listingsArr.length} most recent):`,
+              listingsArr.length ? listingsArr.map(fmtListing).join("\n") : "(אין נכסים פעילים)",
+              "",
+              `LEADS (${leadsArr.length} most recent):`,
+              leadsArr.length ? leadsArr.map(fmtLead).join("\n") : "(אין לידים פעילים)",
+            ].join("\n");
+          }
+        }
+      } catch (e) {
+        console.warn("master-agent live snapshot failed:", e);
+      }
+    }
+
+    const MASTER_AGENT_PROMPT = `אתה ה-Master AI Agent — הרמטכ"ל הדיגיטלי (chief of staff) של בעל סביבת העבודה ב-Realtyz AI.
+אתה מדבר עם המנהל/בעלים עצמו (לא עם לקוח קצה). פנה אליו בכבוד בגוף שני, כאל המפקד שלך.
+אסור לך בשום אופן להציג את עצמך בשמו של בעל סביבת העבודה (למשל "היי, אני אודי ויטמן"). אינך מתחזה אליו — אתה הנכס התפעולי שלו.
+
+עקרונות ביצוע:
+1. עיגון בנתונים חיים: לפני שאתה עונה על שאלות על נכסים, לידים, מצב או מטריקות — קרא קודם את ה-LIVE WORKSPACE SNAPSHOT שמצורף למטה. אם חסר עומק, החזר שאילתת SELECT (LIMIT 50) על הטבלאות leads / listings / messages / chat_history / campaigns, ותמיד הוסף WHERE user_id = (המנהל הנוכחי) כשהעמודה קיימת.
+2. גישת פתרון: אל תשאל את המנהל שאלות פתיחה גנריות ("איזה אזור?", "מה התקציב?"). הוא המנהל. במקום זה, שלוף התאמות מהנתונים, סנתז אותן, והצג 1-3 פעולות הבאות מומלצות.
+3. סגנון: תכליתי, ישיר, עברית עסקית. ללא פתיחות AI גנריות, ללא התנצלויות, ללא בולטים מיותרים, ללא מקפים ארוכים.
+4. אם הנתונים החיים אכן ריקים — אמור זאת במשפט אחד והצע צעד תפעולי קונקרטי (ייבוא, חיבור מקור, יצירת ליד/נכס).
+5. אסור להמציא נכסים, לידים, מחירים או עסקאות שלא מופיעים ב-snapshot או בתוצאות ה-SQL.
+
+RESPONSE FORMAT (JSON בלבד, ללא markdown):
+- אם נדרשת שאילתה: {"type":"sql","query":"SELECT ... LIMIT 50","explanation":"הסבר קצר למנהל"}
+- אם יש תשובה מוכנה מה-snapshot: {"type":"text","content":"תשובה תכליתית + הצעת פעולה"}
+
+${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למנהל לחבר מקור נתונים)"}\n`;
+
+    const systemPrompt = isInternalDashboard
+      ? MASTER_AGENT_PROMPT
+      : SCHEMA_CONTEXT
+          .replace("{{CAMPAIGN_CONTEXT}}", campaignContext)
+          .replace("{{KB_CONTEXT}}", kbContext)
+          + (personaBlock ? "\n\n" + personaBlock : "")
+          + "\n\n" + dealTypeBlock
+          + "\n\n" + stageHatBlock
+          + "\n\n" + channelBlock
+          + "\n\n" + compliance;
 
     // Persist WhatsApp Pivot agreement: if the Lead's latest inbound says "yes"
     // (or shares a phone number) on a NON-WhatsApp social channel and we already
