@@ -1167,9 +1167,9 @@ const PublishedFeed = () => {
                   {r.message_body || <span className="text-muted-foreground">אין תוכן הודעה</span>}
                 </div>
                 <div className="grid grid-cols-3 gap-2 px-4 pb-3">
-                  <Stat icon={MessageSquare} label="תגובות" value={r.comment_count ?? 0} />
-                  <Stat icon={Share2}         label="שיתופים" value={r.share_count ?? 0} />
-                  <Stat icon={Heart}          label="לייקים"  value={r.like_count ?? 0} />
+                  <Stat icon={MessageSquare} label="תגובות" value={r.comment_count} hasData={!!r.metrics_updated_at} />
+                  <Stat icon={Share2}         label="שיתופים" value={r.share_count}   hasData={!!r.metrics_updated_at} />
+                  <Stat icon={Heart}          label="לייקים"  value={r.like_count}    hasData={!!r.metrics_updated_at} />
                 </div>
                 <div className="flex items-center justify-between gap-2 px-4 pb-4" dir="rtl">
                   <Button variant="outline" size="sm" onClick={() => deleteCampaign(r.id)}
@@ -1201,15 +1201,21 @@ const PublishedFeed = () => {
 };
 
 
-const Stat = ({ icon: Icon, label, value }: { icon: any; label: string; value: number }) => (
-  <div className="rounded-xl border border-border bg-background px-3 py-2 flex items-center justify-between">
-    <Icon className="h-4 w-4 text-muted-foreground" />
-    <div className="text-right">
-      <div className="text-sm font-bold text-foreground">{value}</div>
-      <div className="text-[10px] text-muted-foreground">{label}</div>
+const Stat = ({ icon: Icon, label, value, hasData = true }: { icon: any; label: string; value: number | null | undefined; hasData?: boolean }) => {
+  // When Ayrshare hasn't returned analytics yet (e.g. historical posts the
+  // current Ayrshare plan can't pull, or freshly published posts before the
+  // first refresh) we render a clean "–" instead of misleading zeros.
+  const display = hasData && typeof value === 'number' ? value : '–';
+  return (
+    <div className="rounded-xl border border-border bg-background px-3 py-2 flex items-center justify-between">
+      <Icon className="h-4 w-4 text-muted-foreground" />
+      <div className="text-right">
+        <div className="text-sm font-bold text-foreground">{display}</div>
+        <div className="text-[10px] text-muted-foreground">{label}</div>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 /* Responses tab removed — comments stream lives inside each Published card. */
 
