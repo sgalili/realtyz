@@ -195,6 +195,28 @@ const InlineComposer = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<BlobPart[]>([]);
 
+  // Generation history
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyRefresh, setHistoryRefresh] = useState(0);
+  const [history, setHistory] = useState<Array<{ id: string; topic: string | null; generated_text: string | null; platform: string | null; created_at: string }>>([]);
+  useEffect(() => {
+    if (!historyOpen) return;
+    let cancelled = false;
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('ai_content_logs')
+        .select('id, topic, generated_text, platform, created_at')
+        .eq('created_by', user.id)
+        .eq('platform', channel.id)
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (!cancelled) setHistory((data as any) || []);
+    })();
+    return () => { cancelled = true; };
+  }, [historyOpen, historyRefresh, channel.id]);
+
   // Reset on channel change
   useEffect(() => { setBody(''); setMode('now'); setAttachments([]); setCustomInstructions(''); setSelectedListingId(null); setListingQuery(''); }, [channel.id]);
 
