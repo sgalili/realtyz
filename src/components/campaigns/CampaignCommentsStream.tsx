@@ -258,6 +258,50 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
     }
   };
 
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+  const regenerateInline = async (row: EngagementRow) => {
+    if (!row.inbound_text) return;
+    setRegeneratingId(row.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("suggest-comment-reply", {
+        body: {
+          inbound_text: row.inbound_text,
+          platform: row.platform,
+          sender_handle: row.sender_handle,
+          user_id: userId,
+          campaign_context: [
+            `Campaign: ${campaign.campaign_name}`,
+            campaign.message_body ? `Published post:\n${campaign.message_body}` : null,
+          ].filter(Boolean).join("\n\n"),
+          regenerate: true,
+          cache_bust: `${Date.now()}-${crypto.randomUUID()}`,
+        },
+      });
+      if (error) throw error;
+      const pub = (data as any)?.public_comment ?? (data as any)?.draft;
+      if (typeof pub !== "string" || !pub.trim()) {
+        toast.error((data as any)?.error ?? "לא התקבל ניסוח");
+        return;
+      }
+      const next = pub.trim();
+      const { error: upErr } = await supabase
+        .from("engagement_events")
+        .update({ ai_reply_text: next })
+        .eq("id", row.id)
+        .eq("user_id", userId);
+      if (upErr) throw upErr;
+      setRows((prev) =>
+        (prev ?? []).map((r) => (r.id === row.id ? { ...r, ai_reply_text: next } : r)),
+      );
+      toast.success("הטקסט נוצר מחדש");
+    } catch (e: any) {
+      toast.error(e?.message ?? "ניסוח נכשל");
+    } finally {
+      setRegeneratingId(null);
+    }
+  };
+
+
   const sendReply = async () => {
     if (!replyOpen || !replyDraft.trim()) return;
     setSending(true);
