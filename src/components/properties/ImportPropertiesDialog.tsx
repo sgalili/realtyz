@@ -313,7 +313,11 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
           </label>
 
           {processing && (
-            <div className="text-sm text-center text-muted-foreground">מעבד את הקובץ...</div>
+            <div className={`text-sm text-center rounded-lg p-3 ${ocrRunning ? 'bg-primary/10 text-primary font-medium' : 'text-muted-foreground'}`}>
+              {ocrRunning
+                ? 'מפענח קובץ סרוק באמצעות בינה מלאכותית, אנא המתן...'
+                : 'מעבד את הקובץ...'}
+            </div>
           )}
 
           {summary && (
