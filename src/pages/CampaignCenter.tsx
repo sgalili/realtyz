@@ -164,6 +164,64 @@ const ChannelGrid = ({
 const TAG_CHIPS = ['[שם_פרטי]', '[עיר]'];
 const MAX_CHARS = 1000;
 
+type CampaignListing = {
+  id: string;
+  property_title: string | null;
+  description: string | null;
+  city: string | null;
+  neighborhood: string | null;
+  address: string | null;
+  rooms: number | null;
+  sqm: number | null;
+  floor: number | null;
+  asking_price: number | null;
+  features: unknown;
+  source_metadata: Record<string, unknown> | null;
+  status: string | null;
+  is_published: boolean | null;
+  created_at: string | null;
+};
+
+const normalizeListingText = (value: unknown) => String(value ?? '').replace(/\s+/g, ' ').trim();
+
+const listingSearchText = (listing: CampaignListing) => [
+  listing.property_title,
+  listing.description,
+  listing.city,
+  listing.neighborhood,
+  listing.address,
+  listing.rooms,
+  listing.sqm,
+  listing.asking_price,
+  Array.isArray(listing.features)
+    ? listing.features.map((feature) => typeof feature === 'string' ? feature : JSON.stringify(feature)).join(' ')
+    : listing.features ? JSON.stringify(listing.features) : '',
+  listing.source_metadata ? JSON.stringify(listing.source_metadata) : '',
+].map(normalizeListingText).join(' ').toLowerCase();
+
+const listingDedupeKey = (listing: CampaignListing) => {
+  const key = [listing.address, listing.city, listing.property_title, listing.rooms, listing.asking_price]
+    .map((value) => normalizeListingText(value).toLowerCase())
+    .join('|');
+  return key.replace(/\|/g, '').length ? key : listing.id;
+};
+
+const dedupeListings = (rows: CampaignListing[]) => {
+  const seen = new Set<string>();
+  return rows.filter((row) => {
+    const key = listingDedupeKey(row);
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+};
+
+const listingOptionLabel = (listing: CampaignListing) => {
+  const location = [listing.address || listing.property_title || 'נכס', listing.city].filter(Boolean).join(', ');
+  const price = listing.asking_price ? `${Number(listing.asking_price).toLocaleString('he-IL')} ₪` : null;
+  return price ? `${location} — ${price}` : location;
+};
+
 const InlineComposer = ({
   channel, brandName, onConfirm,
 }: {
@@ -179,7 +237,8 @@ const InlineComposer = ({
   // Custom AI generation context (broker steering inputs)
   const [customInstructions, setCustomInstructions] = useState('');
   const [listingQuery, setListingQuery] = useState('');
-  const [listings, setListings] = useState<Array<{ id: string; property_title: string | null; city: string | null; neighborhood: string | null; address: string | null; rooms: number | null; asking_price: number | null; deal_type: string | null }>>([]);
+  const [listings, setListings] = useState<CampaignListing[]>([]);
+  const [listingsLoading, setListingsLoading] = useState(false);
   const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
   const [listingPickerOpen, setListingPickerOpen] = useState(false);
 
@@ -220,36 +279,47 @@ const InlineComposer = ({
   // Reset on channel change
   useEffect(() => { setBody(''); setMode('now'); setAttachments([]); setCustomInstructions(''); setSelectedListingId(null); setListingQuery(''); }, [channel.id]);
 
-  // Live property search from listings table. Runs on mount AND whenever the picker opens or
-  // the search query changes. Relies on RLS for workspace/user isolation (matches Properties.tsx).
+  // Load the full live property list on mount and refresh when the picker opens.
+  // Search is client-side so the dropdown always shows every listing by default.
+  // The query relies on backend RLS for tenant/workspace isolation.
   useEffect(() => {
     let cancelled = false;
-    const t = setTimeout(async () => {
-      const q = listingQuery.trim().replace(/[(),%]/g, ' ');
-      let query = supabase
-        .from('listings')
-        .select('id, property_title, city, neighborhood, address, rooms, asking_price, deal_type, status')
-        .order('created_at', { ascending: false })
-        .limit(1000);
-      if (q.length > 0) {
-        const like = `%${q}%`;
-        query = query.or(
-          `property_title.ilike.${like},city.ilike.${like},neighborhood.ilike.${like},address.ilike.${like}`
-        );
-      }
-      const { data, error } = await query;
-      if (error) {
+    (async () => {
+      setListingsLoading(true);
+      try {
+        const pageSize = 1000;
+        const rows: CampaignListing[] = [];
+        for (let from = 0; ; from += pageSize) {
+          const { data, error } = await supabase
+            .from('listings')
+            .select('id, property_title, description, city, neighborhood, address, rooms, sqm, floor, asking_price, features, source_metadata, status, is_published, created_at')
+            .order('created_at', { ascending: false })
+            .range(from, from + pageSize - 1);
+          if (error) throw error;
+          const page = (data as CampaignListing[]) || [];
+          rows.push(...page);
+          if (page.length < pageSize) break;
+        }
+        if (!cancelled) setListings(dedupeListings(rows));
+      } catch (error) {
         console.error('[CampaignCenter] listings fetch failed', error);
         if (!cancelled) setListings([]);
-        return;
+      } finally {
+        if (!cancelled) setListingsLoading(false);
       }
-      if (!cancelled) setListings((data as any) || []);
-    }, 150);
-    return () => { cancelled = true; clearTimeout(t); };
-  }, [listingQuery, listingPickerOpen]);
+    })();
+    return () => { cancelled = true; };
+  }, [listingPickerOpen]);
 
   const selectedListing = listings.find((l) => l.id === selectedListingId)
-    || (selectedListingId ? { id: selectedListingId, property_title: 'נכס נבחר', city: null, neighborhood: null, address: null, rooms: null, asking_price: null, deal_type: null } : null);
+    || (selectedListingId ? { id: selectedListingId, property_title: 'נכס נבחר', description: null, city: null, neighborhood: null, address: null, rooms: null, sqm: null, floor: null, asking_price: null, features: null, source_metadata: null, status: null, is_published: null, created_at: null } : null);
+
+  const visibleListings = useMemo(() => {
+    const q = normalizeListingText(listingQuery).toLowerCase();
+    const deduped = dedupeListings(listings);
+    if (!q) return deduped;
+    return deduped.filter((listing) => listingSearchText(listing).includes(q));
+  }, [listings, listingQuery]);
 
 
   const handleFiles = (files: FileList | null, kind: 'image' | 'file') => {
