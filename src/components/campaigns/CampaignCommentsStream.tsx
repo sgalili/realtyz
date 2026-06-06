@@ -499,11 +499,12 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
                   </p>
                 </div>
                 <Textarea
-                  value={replyDraft}
+                  value={drafting ? "" : replyDraft}
                   onChange={(e) => setReplyDraft(e.target.value)}
                   dir="auto"
                   rows={4}
-                  placeholder={drafting ? "מנסח..." : "הזן תגובה..."}
+                  placeholder={drafting ? "מנסח תגובה מקצועית..." : "הזן תגובה..."}
+                  disabled={drafting}
                   className="text-right"
                 />
               </div>
