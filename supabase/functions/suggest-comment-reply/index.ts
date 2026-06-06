@@ -200,7 +200,7 @@ Deno.serve(async (req) => {
           .eq("id", primaryListingId)
           .maybeSingle();
         if (row) {
-          const lt = extractListingTypeFromFeatures((row as any).features);
+          const lt = resolveListingType(row as any);
           const effectiveType = primaryType ?? lt;
           if (!effectiveType || isListingAllowedForType({ ...(row as any), listing_type: lt }, effectiveType)) {
             primaryListing = {
