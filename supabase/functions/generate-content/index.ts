@@ -131,11 +131,44 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
 
     const FOCUS_ONLY_RULE = focusOnly ? `
 LISTING-FOCUS MODE (HARD OVERRIDE — highest priority):
-- This post is a short, direct sales/rental ad for the [PROMOTED LISTING] above and NOTHING else.
-- 2-4 short sentences MAXIMUM. No personal owner story, no broker biography, no market analysis, no neighborhood essay, no testimonials, no philosophy.
-- Open with one concrete hook about the property (rooms / sqm / standout feature / location). Follow with 1-2 selling points pulled verbatim from the listing fields. End with a single short CTA to WhatsApp/Messenger Udi.
-- Do NOT mention Udi's history, achievements, elite sports, US projects, or any context unrelated to selling this specific property.
-- Pure, clean, scroll-stopping sales copy for ONE property.` : "";
+- This post is a direct sales/rental ad for the [PROMOTED LISTING] above and NOTHING else.
+- No personal owner story, no broker biography, no market analysis, no neighborhood essay, no testimonials, no philosophy.
+- Use the EXACT template structure below (Hebrew, RTL, short lines, blank line between blocks, leading bullet space before each feature line). Replace bracketed slots with the real listing fields. Skip any line whose data is missing — never invent.
+- End with a CTA inviting WhatsApp/phone, followed by Udi's signature line and 2-3 relevant hashtags.
+
+REFERENCE TEMPLATE (match this rhythm and tone exactly — adapt wording per listing, never copy verbatim):
+"""
+[חדרים] חדרים ב[עיר] במחיר שכבר קשה למצוא!
+
+[רחוב ומספר] | שכונת [שכונה] | [עיר]
+
+מחפשים [חדרים] חדרים?
+
+[משפט פתיחה אחד קצר על הערך/ההזדמנות של הנכס הספציפי הזה.]
+
+מה תמצאו בדירה?
+
+ כ-[שטח] מ"ר
+ [פיצ'ר 1]
+ [פיצ'ר 2]
+ [פיצ'ר 3]
+ קומה [קומה]
+ [חניה / מעלית / מיזוג — רק אם קיים]
+ כניסה [מיידית/בתאריך אם ידוע]
+
+[שכר דירה/מחיר מבוקש]: [מחיר מעוצב] ₪
+
+[משפט סגירה קצר אחד שמדגיש את ההזדמנות.]
+
+אם זה נשמע מעניין, שלחו הודעה או התקשרו
+
+אודי ויטמן | אנגלו סכסון הרצליה/רמ"ש
+052-2973500
+רישיון תיווך 3251767
+
+#[האשטג1] #[האשטג2] #[האשטג3]
+"""` : "";
+
 
     const systemPrompt = `${BROKER_PERSONA}
 
@@ -191,7 +224,7 @@ ${CTA_RULE}
         top_p: 0.95,
         presence_penalty: 0.7,
         frequency_penalty: 0.85,
-        max_tokens: focusOnly ? 260 : 800,
+        max_tokens: focusOnly ? 700 : 800,
       }),
     });
 
