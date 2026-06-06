@@ -791,6 +791,7 @@ const ConfirmDispatchDialog = ({
             channels: [channel.id],
             campaign_name: campaignName,
             media_urls: mediaUrls,
+            scheduled_at: scheduledAt,
           },
         });
         // When the edge function returns a non-2xx, supabase-js sets a generic
@@ -809,7 +810,12 @@ const ConfirmDispatchDialog = ({
           throw new Error(friendly || error.message || 'שגיאת רשת');
         }
         if ((data as any)?.error) throw new Error((data as any).error);
-        toast.success(`הקמפיין פורסם בהצלחה ב-${channel.label}!`);
+        if (scheduledAt) {
+          const when = new Date(scheduledAt).toLocaleString('he-IL');
+          toast.success(`הפוסט תוזמן ל-${when} בערוץ ${channel.label}`);
+        } else {
+          toast.success(`הקמפיין פורסם בהצלחה ב-${channel.label}!`);
+        }
       } else {
         // Direct-messaging channels (SMS / email / IVR) still broadcast to leads.
         const { data: leads, error } = await supabase
