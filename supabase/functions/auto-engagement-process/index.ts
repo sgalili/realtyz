@@ -9,8 +9,7 @@
 // Strict tenant isolation: user_id is required and scopes every DB query.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { sanitizeOutboundText } from "../_shared/ayrshare-helpers.ts";
-import { resolveWorkspaceProfileKey } from "../_shared/ayrshare-helpers.ts";
+import { sanitizeOutboundText, resolveWorkspaceProfileKey, likeNativeComment } from "../_shared/ayrshare-helpers.ts";
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
 const AYRSHARE_API_KEY = Deno.env.get("AYRSHARE_API_KEY") ?? "";
@@ -271,38 +270,59 @@ Deno.serve(async (req) => {
       dispatch = await r.json().catch(() => ({ ok: false }));
     }
 
-    // 4. DUAL FUNNEL: always attempt a private DM (Messenger / IG Direct) so the
-    //    commenter is moved into a 1:1 conversation loop. Public reply (above)
-    //    is gated by sentiment toggles; the DM is not.
+    // 4. DUAL FUNNEL + ALGO BOOST: run private DM and Auto-Like in parallel.
+    //    DM moves the commenter into a 1:1 loop; Like signals engagement to the
+    //    platform algorithm. Both are non-blocking — failures never break the
+    //    public reply pipeline.
     let private_dm: any = null;
-    if (event_type === "comment" && external_id && analysis.reply && AYRSHARE_API_KEY) {
+    let auto_like: any = null;
+    if (event_type === "comment" && external_id && AYRSHARE_API_KEY) {
       try {
         const { profileKey } = await resolveWorkspaceProfileKey(admin);
         if (profileKey) {
-          const dmRes = await fetch(AYR_MESSAGES_URL, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-              "Profile-Key": profileKey,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              platforms: [platform],
-              commentId: external_id,
-              message: analysis.reply,
-              searchPlatformId: true,
-            }),
+          const dmTask = analysis.reply
+            ? fetch(AYR_MESSAGES_URL, {
+                method: "POST",
+                headers: {
+                  Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+                  "Profile-Key": profileKey,
+                  "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                  platforms: [platform],
+                  commentId: external_id,
+                  message: analysis.reply,
+                  searchPlatformId: true,
+                }),
+              }).then(async (r) => {
+                const t = await r.text();
+                let p: any; try { p = t ? JSON.parse(t) : { ok: r.ok }; } catch { p = { raw: t, ok: r.ok }; }
+                return { status: r.status, response: p };
+              }).catch((e) => ({ status: 0, response: { error: e instanceof Error ? e.message : String(e) } }))
+            : Promise.resolve(null);
+
+          const likeTask = likeNativeComment({
+            apiKey: AYRSHARE_API_KEY,
+            profileKey,
+            platform,
+            commentId: external_id,
           });
-          const dmText = await dmRes.text();
-          try { private_dm = dmText ? JSON.parse(dmText) : { ok: dmRes.ok }; }
-          catch { private_dm = { raw: dmText, ok: dmRes.ok }; }
+
+          const [dmResult, likeResult] = await Promise.all([dmTask, likeTask]);
+          private_dm = dmResult?.response ?? null;
+          auto_like = likeResult;
+          if (!likeResult.ok) {
+            console.warn("[auto-engagement-process] auto-like non-fatal failure", likeResult);
+          }
+
           if (rowId) {
             await admin
               .from("engagement_events")
               .update({
                 metadata: {
                   ...mergedMetadata,
-                  private_dm: { status: dmRes.status, response: private_dm },
+                  ...(dmResult ? { private_dm: dmResult } : {}),
+                  auto_like: likeResult,
                 },
               })
               .eq("id", rowId)
@@ -310,10 +330,11 @@ Deno.serve(async (req) => {
           }
         }
       } catch (e) {
-        console.error("[auto-engagement-process] private DM failed", e);
-        private_dm = { error: e instanceof Error ? e.message : String(e) };
+        console.error("[auto-engagement-process] dm/like dispatch failed", e);
+        private_dm = private_dm ?? { error: e instanceof Error ? e.message : String(e) };
       }
     }
+
 
     return json({
       ok: true,
@@ -322,6 +343,7 @@ Deno.serve(async (req) => {
       auto_reply: willAutoReply,
       dispatch,
       private_dm,
+      auto_like,
     });
   } catch (e) {
     console.error("[auto-engagement-process] error:", e);
