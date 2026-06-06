@@ -28,6 +28,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { SentimentAutomationToggles } from '@/components/automation/SentimentAutomationToggles';
 import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsStream';
+import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { campaignMatchesExternalPost, normalizePostId } from '@/lib/campaignPostIds';
 
 
