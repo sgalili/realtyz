@@ -1028,6 +1028,14 @@
     color: hsl(213 73% 12%) !important;
     box-shadow: 0 6px 18px -8px hsl(47 100% 50% / 0.6);
   }
+  /* Hover state — keep white text on a translucent navy/gold tint for legibility */
+  .realtyz-premium-sidebar [data-sidebar="menu-button"]:hover:not([data-active="true"]),
+  .realtyz-sidebar-menu [data-sidebar="menu-button"]:hover:not([data-active="true"]),
+  .realtyz-premium-sidebar a:hover:not([data-active="true"]),
+  .realtyz-sidebar-menu a:hover:not([data-active="true"]) {
+    background-color: hsl(47 100% 50% / 0.18) !important;
+    color: hsl(0 0% 100%) !important;
+  }
 
   .realtyz-sidebar-brand {
     position: relative;
