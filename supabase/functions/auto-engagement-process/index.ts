@@ -9,8 +9,7 @@
 // Strict tenant isolation: user_id is required and scopes every DB query.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { sanitizeOutboundText } from "../_shared/ayrshare-helpers.ts";
-import { resolveWorkspaceProfileKey } from "../_shared/ayrshare-helpers.ts";
+import { sanitizeOutboundText, resolveWorkspaceProfileKey, likeNativeComment } from "../_shared/ayrshare-helpers.ts";
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
 const AYRSHARE_API_KEY = Deno.env.get("AYRSHARE_API_KEY") ?? "";
