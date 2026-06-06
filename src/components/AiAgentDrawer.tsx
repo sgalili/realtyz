@@ -281,6 +281,7 @@ export default function AiAgentDrawer() {
 
     const userMsg: Message = { role: 'user', content: text };
     setMessages(prev => [...prev, userMsg]);
+    persistMessage(userMsg);
     setInput('');
     setIsLoading(true);
 
@@ -298,33 +299,38 @@ export default function AiAgentDrawer() {
         throw new Error(error.message || 'שגיאה בקריאה ל-AI');
       }
 
+      let assistantMsg: Message;
       if (data?.error) {
         toast.error(data.error);
-        setMessages(prev => [...prev, { role: 'assistant', content: data.error, type: 'error' }]);
+        assistantMsg = { role: 'assistant', content: data.error, type: 'error' };
       } else if (data?.type === 'data') {
-        setMessages(prev => [...prev, {
+        assistantMsg = {
           role: 'assistant',
           content: data.explanation || 'הנה התוצאות:',
           data: data.data,
           query: data.query,
           type: 'data',
           sources: data.sources ?? [],
-        }]);
+        };
       } else {
-        setMessages(prev => [...prev, {
+        assistantMsg = {
           role: 'assistant',
           content: data?.content || data?.explanation || 'לא הצלחתי לעבד את הבקשה',
           type: 'text',
           sources: data?.sources ?? [],
-        }]);
+        };
       }
+      setMessages(prev => [...prev, assistantMsg]);
+      persistMessage(assistantMsg);
     } catch (e) {
       console.error('AI Agent error:', e);
-      setMessages(prev => [...prev, {
+      const errMsg: Message = {
         role: 'assistant',
         content: `שגיאה: ${e instanceof Error ? e.message : 'Unknown error'}`,
         type: 'error',
-      }]);
+      };
+      setMessages(prev => [...prev, errMsg]);
+      persistMessage(errMsg);
     } finally {
       setIsLoading(false);
     }
