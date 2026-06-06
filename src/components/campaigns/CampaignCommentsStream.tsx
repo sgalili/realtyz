@@ -295,6 +295,8 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
     (async () => {
       setReplyDraft("");
       setDmDraft("");
+      setOriginalReply("");
+      setOriginalDm("");
       setDrafting(true);
       try {
         const { data, error } = await supabase.functions.invoke(
