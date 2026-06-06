@@ -1,0 +1,152 @@
+import { useRef, useState } from 'react';
+import { toast } from 'sonner';
+import { Upload, Trash2, User as UserIcon } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Label } from '@/components/ui/label';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/hooks/useAuth';
+import { cn } from '@/lib/utils';
+
+const ONE_YEAR = 60 * 60 * 24 * 365;
+
+export function ProfileAvatarUploader() {
+  const { user } = useAuth();
+  const inputRef = useRef<HTMLInputElement>(null);
+  const meta = ((user?.user_metadata ?? {}) as Record<string, any>);
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(
+    meta.avatar_url || meta.picture || meta.profile_picture_url || null,
+  );
+  const [avatarPath, setAvatarPath] = useState<string | null>(meta.avatar_path ?? null);
+  const [busy, setBusy] = useState(false);
+
+  if (!user) return null;
+
+  const onPick = () => inputRef.current?.click();
+
+  const onFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      toast.error('יש לבחור קובץ תמונה');
+      return;
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error('הקובץ גדול מ-5MB');
+      return;
+    }
+    setBusy(true);
+    try {
+      const ext = (file.name.split('.').pop() || 'jpg').toLowerCase();
+      const path = `${user.id}/avatar-${Date.now()}.${ext}`;
+      const { error: upErr } = await supabase.storage
+        .from('avatars')
+        .upload(path, file, { upsert: true, contentType: file.type });
+      if (upErr) throw upErr;
+
+      const { data: signed, error: signErr } = await supabase.storage
+        .from('avatars')
+        .createSignedUrl(path, ONE_YEAR);
+      if (signErr || !signed?.signedUrl) throw signErr ?? new Error('signed url missing');
+
+      // Delete previous file (best-effort)
+      if (avatarPath && avatarPath !== path) {
+        await supabase.storage.from('avatars').remove([avatarPath]).catch(() => {});
+      }
+
+      const { error: metaErr } = await supabase.auth.updateUser({
+        data: { avatar_path: path, avatar_url: signed.signedUrl },
+      });
+      if (metaErr) throw metaErr;
+
+      await supabase
+        .from('profiles')
+        .update({ avatar_url: signed.signedUrl })
+        .eq('id', user.id)
+        .then(() => undefined, () => undefined);
+
+      setAvatarPath(path);
+      setAvatarUrl(signed.signedUrl);
+      toast.success('תמונת הפרופיל עודכנה');
+    } catch (err: any) {
+      console.error('[avatar upload]', err);
+      toast.error(err?.message || 'העלאת התמונה נכשלה');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const onRemove = async () => {
+    setBusy(true);
+    try {
+      if (avatarPath) {
+        await supabase.storage.from('avatars').remove([avatarPath]).catch(() => {});
+      }
+      await supabase.auth.updateUser({ data: { avatar_path: null, avatar_url: null } });
+      await supabase
+        .from('profiles')
+        .update({ avatar_url: null })
+        .eq('id', user.id)
+        .then(() => undefined, () => undefined);
+      setAvatarPath(null);
+      setAvatarUrl(null);
+      toast.success('התמונה הוסרה');
+    } catch (err: any) {
+      toast.error(err?.message || 'הסרת התמונה נכשלה');
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="rounded-lg border bg-card/40 p-3 text-right">
+      <Label className="mb-2 block text-sm font-semibold">תמונת פרופיל</Label>
+      <div className="flex items-center gap-3 flex-row-reverse">
+        <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-full border bg-background">
+          {avatarUrl ? (
+            <img src={avatarUrl} alt="תמונת פרופיל" className="h-full w-full object-cover" />
+          ) : (
+            <UserIcon className="h-8 w-8 text-muted-foreground/50" />
+          )}
+        </div>
+        <div className="flex flex-1 flex-col gap-2">
+          <input
+            ref={inputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp"
+            className="hidden"
+            onChange={onFile}
+            disabled={busy}
+          />
+          <Button
+            type="button"
+            variant="outline"
+            size="sm"
+            onClick={onPick}
+            disabled={busy}
+            className={cn('self-start gap-1.5')}
+          >
+            <Upload className="h-3.5 w-3.5" />
+            {busy ? 'מעלה...' : avatarUrl ? 'החלפת תמונה' : 'העלאת תמונה'}
+          </Button>
+          {avatarUrl && (
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              onClick={onRemove}
+              disabled={busy}
+              className="self-start gap-1.5 text-destructive hover:bg-destructive/10"
+            >
+              <Trash2 className="h-3.5 w-3.5" />
+              הסר תמונה
+            </Button>
+          )}
+          <p className="text-xs text-muted-foreground">PNG, JPG או WEBP. עד 5MB.</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+export default ProfileAvatarUploader;
