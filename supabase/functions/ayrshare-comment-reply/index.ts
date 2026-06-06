@@ -6,6 +6,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { sanitizeOutboundText, resolveWorkspaceProfileKey } from "../_shared/ayrshare-helpers.ts";
 
 const AYR_REPLY_URL = "https://api.ayrshare.com/api/comments/reply";
+const AYR_MESSAGES_URL = "https://api.ayrshare.com/api/messages";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
