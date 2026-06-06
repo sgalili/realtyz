@@ -373,12 +373,23 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
       <ul className="space-y-2">
         {tree.map((root) => (
           <li key={root.id}>
-            <CommentBubble row={root} onReply={openReply} />
+            <CommentBubble
+              row={root}
+              onReply={openReply}
+              onRegenerate={regenerateInline}
+              regenerating={regeneratingId === root.id}
+            />
             {root.children.length > 0 && (
               <ul className="mt-2 space-y-2 border-r-2 border-border/60 pr-3 mr-2">
                 {root.children.map((child) => (
                   <li key={child.id}>
-                    <CommentBubble row={child} onReply={openReply} isReply />
+                    <CommentBubble
+                      row={child}
+                      onReply={openReply}
+                      onRegenerate={regenerateInline}
+                      regenerating={regeneratingId === child.id}
+                      isReply
+                    />
                   </li>
                 ))}
               </ul>
@@ -386,6 +397,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
           </li>
         ))}
       </ul>
+
 
       <Dialog open={!!replyOpen} onOpenChange={(o) => !o && setReplyOpen(null)}>
         <DialogContent dir="rtl" className="max-w-lg">
