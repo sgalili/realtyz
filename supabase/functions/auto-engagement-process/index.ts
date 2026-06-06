@@ -343,6 +343,7 @@ Deno.serve(async (req) => {
       auto_reply: willAutoReply,
       dispatch,
       private_dm,
+      auto_like,
     });
   } catch (e) {
     console.error("[auto-engagement-process] error:", e);
