@@ -42,6 +42,21 @@ Deno.serve(async (req) => {
   if (!profileKey) return json({ error: "workspace ayrshare profile key missing" }, 400);
 
   const targets = new Map<string, { platform: string; postId: string }>();
+  const apiErrors: any[] = [];
+
+  const parseAyrError = async (res: Response) => {
+    const text = await res.text();
+    let payload: any = {};
+    try { payload = text ? JSON.parse(text) : {}; } catch { payload = { rawText: text }; }
+    return {
+      status: res.status,
+      payload: {
+        message: payload?.message ?? payload?.error ?? payload?.errors?.[0]?.message ?? text.slice(0, 500),
+        code: payload?.code ?? payload?.errors?.[0]?.code ?? null,
+        raw: payload,
+      },
+    };
+  };
 
   const ingest = (posts: unknown, platform: string) => {
     if (!Array.isArray(posts)) return;
@@ -68,6 +83,12 @@ Deno.serve(async (req) => {
       const fRes = await fetch(`${AYR_BASE}/feed?platforms=${platform}&limit=100`, {
         headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}`, "Profile-Key": profileKey },
       });
+      if (!fRes.ok) {
+        const err = { endpoint: "/feed", platform, ...(await parseAyrError(fRes)) };
+        apiErrors.push(err);
+        console.error("[ayrshare-sync-comments] Ayrshare API rejected feed", err);
+        continue;
+      }
       const fj = await fRes.json().catch(() => ({}));
       const arr =
         (Array.isArray(fj) ? fj : null) ||
@@ -86,6 +107,12 @@ Deno.serve(async (req) => {
         `${AYR_BASE}/history?platform=${platform}&lastDays=365&limit=200`,
         { headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}`, "Profile-Key": profileKey } },
       );
+      if (!hRes.ok) {
+        const err = { endpoint: "/history", platform, ...(await parseAyrError(hRes)) };
+        apiErrors.push(err);
+        console.error("[ayrshare-sync-comments] Ayrshare API rejected history", err);
+        continue;
+      }
       const hj = await hRes.json().catch(() => ({}));
       const arr = (Array.isArray(hj) ? hj : null) || hj?.posts || hj?.history || [];
       ingest(arr, platform);
@@ -114,5 +141,6 @@ Deno.serve(async (req) => {
     ),
   );
 
-  return json({ success: true, targets: targets.size, fanouts });
+  const status = targets.size === 0 && apiErrors.length ? Number(apiErrors[0]?.status || 502) : 200;
+  return json({ success: true, targets: targets.size, api_errors: apiErrors, fanouts }, status);
 });
