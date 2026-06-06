@@ -206,7 +206,6 @@ Deno.serve(async (req) => {
         domain: AYRSHARE_DOMAIN,
         privateKey: cleanPrivateKey,
         profileKey: cleanKey,
-        expiresIn: 5,
       }),
     });
     const jwtData = await jwtRes.json().catch(() => ({}));
