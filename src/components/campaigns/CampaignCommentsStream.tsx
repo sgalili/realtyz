@@ -527,10 +527,14 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
 function CommentBubble({
   row,
   onReply,
+  onRegenerate,
+  regenerating,
   isReply,
 }: {
   row: EngagementRow;
   onReply: (r: EngagementRow) => void;
+  onRegenerate?: (r: EngagementRow) => void;
+  regenerating?: boolean;
   isReply?: boolean;
 }) {
   const dt = new Date(row.created_at);
@@ -567,9 +571,24 @@ function CommentBubble({
       </p>
       {row.ai_reply_text && (
         <div className="mt-2 rounded-lg border border-primary/30 bg-primary/5 p-2 text-sm">
-          <div className="mb-1 flex items-center justify-end gap-1 text-[10px] text-primary">
-            <span className="font-semibold">תגובת AI</span>
-            <Bot className="h-3 w-3" />
+          <div className="mb-1 flex items-center justify-between gap-1 text-[10px] text-primary">
+            {onRegenerate && row.inbound_text && (
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-6 px-2 text-[10px] text-primary hover:text-primary"
+                onClick={() => onRegenerate(row)}
+                disabled={regenerating}
+                aria-label="צור טקסט מחדש"
+              >
+                <RefreshCw className={cn("ml-1 h-3 w-3", regenerating && "animate-spin")} />
+                צור מחדש
+              </Button>
+            )}
+            <div className="flex items-center gap-1">
+              <span className="font-semibold">תגובת AI</span>
+              <Bot className="h-3 w-3" />
+            </div>
           </div>
           <p className="whitespace-pre-wrap text-foreground">{row.ai_reply_text}</p>
           <div className="mt-1 text-[10px] text-muted-foreground">
@@ -591,3 +610,4 @@ function CommentBubble({
     </div>
   );
 }
+
