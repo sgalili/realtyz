@@ -96,15 +96,40 @@ Deno.serve(async (req) => {
     const targetLang = detectDominantLanguage(inbound);
     const firstName = sender.trim().split(/[\s_.@]+/)[0] || "";
 
+    // Resolve workspace user_id (body wins, else from caller JWT) for KB scoping.
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+    const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const admin = createClient(SUPABASE_URL, SERVICE, { auth: { persistSession: false } });
+    let userId: string | null = typeof body?.user_id === "string" ? body.user_id : null;
+    if (!userId) {
+      const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+      if (token) {
+        try {
+          const { data } = await admin.auth.getUser(token);
+          userId = data?.user?.id ?? null;
+        } catch { /* ignore */ }
+      }
+    }
+    const kbSnippets = await loadKbSnippets(admin, userId);
+
+    // High-entropy seed forces lexical/structural variation across calls.
+    const entropySeed = `${crypto.randomUUID()}-${Date.now()}`;
+
     const userPrompt = [
       platform ? `Platform: ${platform}` : null,
       firstName ? `Sender first name: ${firstName}` : null,
       campaignContext ? `Campaign context:\n"""${campaignContext}"""` : null,
+      kbSnippets
+        ? `WORKSPACE KNOWLEDGE BASE (ground every assertion strictly in these excerpts; do not invent beyond them):\n"""${kbSnippets}"""`
+        : `WORKSPACE KNOWLEDGE BASE: (empty — if the commenter asks a factual question outside general knowledge, honestly say you'll check and follow up in DM).`,
       `Required reply language: ${
         targetLang === "en" ? "English only" : targetLang === "he" ? "Hebrew only" : "same language as inbound"
       }.`,
+      `Anti-spam entropy seed (use to vary opener, sentence shapes, vocabulary and CTA wording vs any prior reply): ${entropySeed}`,
+      `Reply MUST quote or paraphrase at least one specific detail from the inbound text below so it is provably unique to this commenter.`,
+      `Close with ONE clear, localized Call-To-Action advancing the workspace agenda; phrase the CTA differently every time.`,
       `Inbound comment:\n"""${inbound}"""`,
-      regenerate ? "Produce a fresh angle, same rules and tone." : null,
+      regenerate ? "Produce a structurally fresh angle: different opener, different sentence count, different CTA shape." : null,
     ].filter(Boolean).join("\n\n");
 
     const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -119,7 +144,10 @@ Deno.serve(async (req) => {
           { role: "system", content: SYSTEM },
           { role: "user", content: userPrompt },
         ],
-        temperature: regenerate ? 0.95 : 0.7,
+        temperature: regenerate ? 1.05 : 0.95,
+        top_p: 0.95,
+        presence_penalty: 0.6,
+        frequency_penalty: 0.8,
       }),
     });
 
