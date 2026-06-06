@@ -4,7 +4,7 @@
 // Strict tenant isolation: user_id is required and scopes every DB query.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { AYR_BASE, resolveWorkspaceProfileKey } from "../_shared/ayrshare-helpers.ts";
+import { AYR_BASE, resolveWorkspaceProfileKey, resolveOwnPageIdentity, isSelfAuthoredComment } from "../_shared/ayrshare-helpers.ts";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
