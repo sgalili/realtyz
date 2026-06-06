@@ -481,8 +481,16 @@ Deno.serve(async (req) => {
       : null;
 
     const featureAsk = detectFeatureAsk(inbound);
+    const featureFact: FeatureFact = featureAsk ? extractFeatureFact(featureAsk, primaryListing) : "unknown";
+    const featureAnswerHe = featureAsk
+      ? (featureFact === "yes"
+          ? `כן, יש ${featureAsk.label_he} בנכס (מאושר בתיאור הנכס).`
+          : featureFact === "no"
+          ? `אין ${featureAsk.label_he} בנכס (לפי תיאור הנכס).`
+          : `לגבי ${featureAsk.label_he} — אבדוק בתיאור הנכס ואעדכן אותך במסנג'ר.`)
+      : "";
     const featureAskBlock = featureAsk
-      ? `[FEATURE QUESTION DETECTED]: the commenter explicitly asked about "${featureAsk.label_he}". You MUST answer this directly in the FIRST sentence of public_comment and the first content line of private_messenger_dm, using ONLY [STRICT LISTING PAYLOAD JSON]. If that exact field is null/absent in the payload, do not claim it exists or doesn't — say honestly "אבדוק עבורך ואעדכן במסנג'ר" and pivot to a confirmed attribute (rooms, sqm, monthly rent, street).`
+      ? `[FEATURE QUESTION DETECTED]: the commenter explicitly asked about "${featureAsk.label_he}".\nGROUND-TRUTH ANSWER (derived from the active listing's structured fields + PDF description_excerpt): ${featureFact.toUpperCase()}.\nYou MUST open public_comment AND private_messenger_dm with this exact factual answer in the matched language. Suggested Hebrew phrasing: "${featureAnswerHe}". If GROUND-TRUTH = UNKNOWN, do NOT claim it exists or doesn't — say honestly you'll verify in DM and pivot to a confirmed attribute (rooms, sqm, monthly rent, street).\nIMPORTANT: also scan description_excerpt inside [STRICT LISTING PAYLOAD JSON] for any additional facts the broker wrote there (PDF-extracted), and you may quote those facts when relevant.`
       : null;
 
     const userPrompt = [
