@@ -209,6 +209,7 @@ Deno.serve(async (req) => {
       external_id: string;
       external_post_id: string;
       sender_handle: string | null;
+      sender_id: string | null;
       inbound_text: string;
       platform: string;
       parent_id: string | null;
