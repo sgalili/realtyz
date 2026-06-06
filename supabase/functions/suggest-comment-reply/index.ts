@@ -321,10 +321,14 @@ Deno.serve(async (req) => {
       loadCrmSnapshot(admin, userId, { listingType: primaryType }),
     ]);
 
-    const campaignContext = primaryType === "rent" && SALE_LEAK_RE.test(rawCampaignContext)
-      ? "[campaign post context omitted: stale sale wording detected; use LIVE PROPERTIES & CRM CONTEXT only]"
+    const rentalContextConflict = primaryType === "rent" && hasStaleSaleContext(rawCampaignContext);
+    const campaignContext = primaryType === "rent"
+      ? scrubRentalCampaignContext(rawCampaignContext)
       : rawCampaignContext;
-    const promptSnap = isolateSnapshotForPrompt(crmSnap, primaryType, primaryListing?.asking_price ?? null);
+    const isolatedSnap = isolateSnapshotForPrompt(crmSnap, primaryType, primaryListing?.asking_price ?? null);
+    const promptSnap = rentalContextConflict
+      ? forceSingleRentalSnapshot(isolatedSnap, primaryListing)
+      : isolatedSnap;
     const promptKb = primaryType ? "" : scrubKbForTransaction(kbSnippets, primaryType);
 
     // High-entropy seed forces lexical/structural variation across calls.
@@ -345,6 +349,12 @@ Deno.serve(async (req) => {
               ? ` (${primaryListing.asking_price.toLocaleString("he-IL")} ש"ח)`
               : ""
           }. If no compatible ${primaryType} alternative exists in CRM, omit the alternative — do NOT substitute the other transaction type.`,
+          primaryType === "rent"
+            ? RENTAL_DELETION_OVERRIDE
+            : null,
+          primaryType === "rent" && (promptSnap?.sample_listings ?? []).length === 0
+            ? "EMPTY RENTAL SNAPSHOT FALLBACK: Say exactly this in Hebrew and do not add any property memory: יש לי כרגע נכס מדהים להשכרה בהרצליה..."
+            : null,
           primaryType === "rent"
             ? "Qualification question (pick ONE, rental-only): \"לכמה זמן אתם מחפשים לשכור?\" / \"מה מועד הכניסה המועדף עליכם?\" / \"צריכים חניה או מעלית?\" / \"כמה דיירים יגורו בנכס?\"."
             : "Qualification question (pick ONE, sale-only): exact budget ceiling, mortgage status, move-in horizon, must-have neighborhood, parking/floor preference.",
@@ -383,7 +393,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: SYSTEM },
+          { role: "system", content: primaryType === "rent" ? `${SYSTEM}\n\n${RENTAL_DELETION_OVERRIDE}` : SYSTEM },
           { role: "user", content: userPrompt },
         ],
         temperature: regenerate ? 1.05 : 0.95,
