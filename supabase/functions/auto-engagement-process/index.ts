@@ -28,6 +28,7 @@ async function analyzeWithAI(input: {
   platform: string;
   event_type: string;
   sender_name?: string | null;
+  kb_snippets?: string;
 }): Promise<Analysis> {
   if (!LOVABLE_API_KEY) {
     return { sentiment: "neutral", key_concerns: [], reply: "", summary: "" };
