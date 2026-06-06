@@ -212,14 +212,67 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
     return roots;
   }, [rows]);
 
-  const openReply = async (row: EngagementRow) => {
-    setReplyOpen(row);
-    setReplyDraft(row.ai_reply_text ?? "");
+  const openReply = (row: EngagementRow) => {
+    // Hard flush: never carry over draft text from a previous open.
+    setReplyDraft("");
     setDmDraft("");
-    if (!row.ai_reply_text) {
-      await generateDraft(row, false);
-    }
+    setDrafting(true);
+    setReplyOpen(row);
   };
+
+  // Whenever the modal mounts on a new comment, force a fresh live invocation
+  // of suggest-comment-reply with a cache-bust token. Closing the modal wipes
+  // the draft state so the next open starts from a clean tree.
+  useEffect(() => {
+    if (!replyOpen) {
+      setReplyDraft("");
+      setDmDraft("");
+      setDrafting(false);
+      return;
+    }
+    let cancelled = false;
+    (async () => {
+      setReplyDraft("");
+      setDmDraft("");
+      setDrafting(true);
+      try {
+        const { data, error } = await supabase.functions.invoke(
+          "suggest-comment-reply",
+          {
+            body: {
+              inbound_text: replyOpen.inbound_text,
+              platform: replyOpen.platform,
+              sender_handle: replyOpen.sender_handle,
+              user_id: userId,
+              campaign_context: [
+                `Campaign: ${campaign.campaign_name}`,
+                campaign.message_body ? `Published post:\n${campaign.message_body}` : null,
+              ].filter(Boolean).join("\n\n"),
+              regenerate: true,
+              cache_bust: `${Date.now()}-${crypto.randomUUID()}`,
+            },
+          },
+        );
+        if (cancelled) return;
+        if (error) throw error;
+        const pub = (data as any)?.public_comment ?? (data as any)?.draft;
+        const dm = (data as any)?.private_messenger_dm ?? "";
+        if (typeof pub === "string" && pub.trim()) {
+          setReplyDraft(pub.trim());
+          setDmDraft(typeof dm === "string" ? dm.trim() : "");
+        } else {
+          toast.error((data as any)?.error ?? "לא התקבל ניסוח");
+        }
+      } catch (e: any) {
+        if (!cancelled) toast.error(e?.message ?? "ניסוח נכשל");
+      } finally {
+        if (!cancelled) setDrafting(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replyOpen?.id]);
+
 
   const generateDraft = async (row: EngagementRow, regenerate: boolean) => {
     if (!row.inbound_text) return;
