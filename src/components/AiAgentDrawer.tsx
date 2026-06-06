@@ -488,21 +488,43 @@ export default function AiAgentDrawer() {
           )}
         </div>
 
-        {/* Quick Actions */}
-        <div className="px-4 py-2 border-t flex gap-2 overflow-x-auto">
-          {quickActions.map((action, i) => (
-            <Button
-              key={i}
-              variant="outline"
-              size="sm"
-              className="text-[11px] h-7 whitespace-nowrap shrink-0 gap-1"
-              onClick={() => sendMessage(action.prompt)}
-              disabled={isLoading}
-            >
-              <Sparkles className="h-3 w-3" />
-              {action.label}
-            </Button>
-          ))}
+        {/* Quick Actions — 10 topic chips; tap to reveal 3 best prompts */}
+        <div className="border-t bg-muted/20">
+          <div className="px-3 py-2 flex gap-1.5 overflow-x-auto">
+            {TOPICS.map((topic, i) => {
+              const active = expandedBarTopic === i;
+              return (
+                <Button
+                  key={i}
+                  variant={active ? 'default' : 'outline'}
+                  size="sm"
+                  className="text-[11px] h-7 whitespace-nowrap shrink-0 gap-1"
+                  onClick={() => setExpandedBarTopic(active ? null : i)}
+                  disabled={isLoading}
+                >
+                  <Sparkles className="h-3 w-3" />
+                  {topic.label}
+                </Button>
+              );
+            })}
+          </div>
+          {expandedBarTopic !== null && (
+            <div className="px-3 pb-2 flex gap-1.5 overflow-x-auto border-t border-border/40 pt-2">
+              {TOPICS[expandedBarTopic].prompts.map((p, pi) => (
+                <Button
+                  key={pi}
+                  variant="secondary"
+                  size="sm"
+                  className="text-[11px] h-7 whitespace-nowrap shrink-0 max-w-[260px] truncate"
+                  title={p}
+                  onClick={() => { sendMessage(p); setExpandedBarTopic(null); }}
+                  disabled={isLoading}
+                >
+                  {p}
+                </Button>
+              ))}
+            </div>
+          )}
         </div>
 
         {/* Input — mic on right, slate send on left */}
