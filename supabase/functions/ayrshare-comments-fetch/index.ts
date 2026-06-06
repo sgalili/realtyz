@@ -121,32 +121,64 @@ Deno.serve(async (req) => {
     const results: Record<string, any[]> = {};
     const errors: Record<string, string> = {};
 
+    const extractComments = (payload: any, platform: string): any[] => {
+      const platformNode = payload?.[platform];
+      const candidates = [
+        payload,
+        payload?.comments,
+        payload?.data?.comments,
+        payload?.data,
+        platformNode,
+        platformNode?.comments,
+        platformNode?.data,
+      ];
+      for (const candidate of candidates) {
+        if (Array.isArray(candidate)) return candidate;
+      }
+      return [];
+    };
+
+    const fetchComments = async (target: CommentFetchTarget, useSocialId: boolean) => {
+      const id = useSocialId ? target.nativePostId : target.fetchPostId;
+      const qs = useSocialId
+        ? `limit=100&platform=${encodeURIComponent(target.platform)}&searchPlatformId=true`
+        : "limit=100";
+      const r = await fetch(`${AYR_BASE}/comments/${encodeURIComponent(id)}?${qs}`, {
+        headers: {
+          Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+          "Profile-Key": profileKey,
+          "Content-Type": "application/json",
+        },
+      });
+      const text = await r.text();
+      let payload: any = {};
+      try { payload = text ? JSON.parse(text) : {}; } catch { payload = {}; }
+      return { ok: r.ok, status: r.status, payload, text };
+    };
+
     await Promise.all(
       Array.from(targets.values()).map(async (target) => {
-        const { fetchPostId, nativePostId } = target;
+        const { fetchPostId, nativePostId, platform } = target;
         try {
-          const r = await fetch(
-            `${AYR_BASE}/comments/${encodeURIComponent(fetchPostId)}?limit=100`,
-            {
-              headers: {
-                Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-                "Profile-Key": profileKey,
-                "Content-Type": "application/json",
-              },
-            },
-          );
-          const text = await r.text();
-          let payload: any = {};
-          try { payload = text ? JSON.parse(text) : {}; } catch { payload = {}; }
+          let fetched = await fetchComments(target, false);
+          let arr: any[] = fetched.ok ? extractComments(fetched.payload, platform) : [];
 
-          if (!r.ok) {
-            errors[nativePostId] = `HTTP ${r.status}: ${payload?.message ?? payload?.error ?? text.slice(0, 200)}`;
+          // If Ayrshare's top-level id route is empty/unavailable, retry with
+          // the native platform id. The UI still stores/matches the native id.
+          if ((arr.length === 0 || !fetched.ok) && fetchPostId !== nativePostId) {
+            const socialFetched = await fetchComments(target, true);
+            const socialArr = socialFetched.ok ? extractComments(socialFetched.payload, platform) : [];
+            if (socialFetched.ok || socialArr.length > 0) {
+              fetched = socialFetched;
+              arr = socialArr;
+            }
+          }
+
+          if (!fetched.ok) {
+            errors[nativePostId] = `HTTP ${fetched.status}: ${fetched.payload?.message ?? fetched.payload?.error ?? fetched.text.slice(0, 200)}`;
             results[nativePostId] = [];
             return;
           }
-          const arr: any[] = Array.isArray(payload)
-            ? payload
-            : payload?.comments || payload?.data?.comments || payload?.data || [];
 
           // Flatten one level of replies.
           const flat: any[] = [];
