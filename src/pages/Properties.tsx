@@ -197,6 +197,7 @@ export default function Properties() {
   }, [liveResults, sourceTab]);
 
   const filtered = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
     return merged.filter((p) => {
       const pType: ListingType = (p.listing_type ?? 'sale') as ListingType;
       if (pType !== listingType) return false;
@@ -210,9 +211,14 @@ export default function Properties() {
       if (rooms !== 'any' && p.rooms < Number(rooms)) return false;
       if (p.price < priceRange[0] || p.price > priceRange[1]) return false;
       if (areaMin && p.size_sqm < Number(areaMin)) return false;
+      if (q) {
+        const hay = [p.title, p.description, p.city, (p as any).address, ...(p.features || [])]
+          .filter(Boolean).join(' ').toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
       return true;
     });
-  }, [merged, listingType, city, propertyType, rooms, priceRange, areaMin, isConfigured, serviceAreas]);
+  }, [merged, listingType, city, propertyType, rooms, priceRange, areaMin, isConfigured, serviceAreas, searchQuery]);
 
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6" dir="rtl">
