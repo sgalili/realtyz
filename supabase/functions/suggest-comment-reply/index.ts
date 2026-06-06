@@ -62,6 +62,10 @@ function scrubKbForTransaction(kb: string, primaryType: ListingType | null): str
     .join("\n---\n");
 }
 
+function hasRentalSaleLeak(text: string): boolean {
+  return SALE_LEAK_RE.test(text) || /(^|[^\d])\d{1,3}[,.]?\d{3}[,.]?\d{3}([^\d]|$)/.test(text);
+}
+
 const SYSTEM = `${UDI_PERSONA}
 
 You are replying to a single public social comment (Facebook, Instagram, etc) as the broker, personally and in first person. Your job is to SELL the relevant property, not to introduce Udi as a human.
@@ -385,6 +389,20 @@ Deno.serve(async (req) => {
         const retried = parseSplit(String(rj?.choices?.[0]?.message?.content ?? ""));
         if (retried) split = retried;
       }
+    }
+
+    if (primaryType === "rent" && hasRentalSaleLeak(`${split.public_comment}\n${split.private_messenger_dm}`)) {
+      const safeDm = [
+        primaryListing
+          ? `${primaryListing.title}${primaryListing.city ? " · " + primaryListing.city : ""}${primaryListing.rooms ? " · " + primaryListing.rooms + " חדרים" : ""}${primaryListing.sqm ? " · " + primaryListing.sqm + " מ\"ר" : ""}${primaryListing.asking_price ? " · שכ\"ד " + Number(primaryListing.asking_price).toLocaleString("he-IL") + " ₪/חודש" : ""}`
+          : "יש לי רק נכסי השכרה פעילים בהקשר הזה, בלי חלופות מכירה.",
+        "אין לי כרגע חלופת השכרה נוספת בטווח התקציב הזה שאפשר להציע בביטחון.",
+        "מה מועד הכניסה המועדף עליכם?",
+      ].join("\n");
+      split = {
+        public_comment: sanitizeOutboundText(split.public_comment.replace(SALE_LEAK_RE, "נכס להשכרה")).trim(),
+        private_messenger_dm: sanitizeOutboundText(safeDm).trim(),
+      };
     }
 
     if (!split.public_comment) {
