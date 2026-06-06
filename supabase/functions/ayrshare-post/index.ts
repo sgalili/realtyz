@@ -212,10 +212,10 @@ Deno.serve(async (req) => {
         campaign_name: campaignName,
         channel: lc,
         message_body: postText,
-        status: match?.status === "success" || ayrRes.ok ? "sent" : "queued",
+        status: scheduledIso ? "scheduled" : (match?.status === "success" || ayrRes.ok ? "sent" : "queued"),
         provider_message_id: match?.id ?? null,
         provider_response: ayrJson ?? {},
-        sent_at: new Date().toISOString(),
+        sent_at: scheduledIso ?? new Date().toISOString(),
         source_account: "ayrshare",
       } as any;
     });
