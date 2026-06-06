@@ -331,6 +331,7 @@ const InlineComposer = ({
           platform: channel.id,
           customInstructions: customInstructions.trim() || undefined,
           selectedListingId: selectedListingId || undefined,
+          listingFocusOnly: !!selectedListingId,
         },
       });
       if (error) throw error;
