@@ -1083,19 +1083,48 @@ const PublishedFeed = () => {
     return () => { supabase.removeChannel(channel); };
   }, [userId]);
 
-  const archiveCampaign = async (id: string) => {
-    await supabase.from('campaign_logs').update({ is_archived: true }).eq('id', id);
+  // Each card represents a GROUP of campaign_logs rows (same campaign_name +
+  // channel + minute bucket). Archive / delete must act on every row in the
+  // group, otherwise sibling rows reappear on the next refresh.
+  const groupFilter = (r: CampaignRow) => {
+    const minute = new Date(r.created_at);
+    const from = new Date(minute);
+    from.setSeconds(0, 0);
+    const to = new Date(from.getTime() + 60_000);
+    return { from: from.toISOString(), to: to.toISOString() };
+  };
+
+  const archiveCampaign = async (r: CampaignRow) => {
+    const { from, to } = groupFilter(r);
+    const { error } = await supabase
+      .from('campaign_logs')
+      .update({ is_archived: true })
+      .eq('campaign_name', r.campaign_name)
+      .eq('channel', r.channel)
+      .gte('created_at', from)
+      .lt('created_at', to);
+    if (error) { toast.error('העברה לארכיון נכשלה: ' + error.message); return; }
+    setRows((prev) => prev?.filter((x) => x.id !== r.id) ?? prev);
     toast.success('הקמפיין הועבר לארכיון');
     load();
   };
 
-  const deleteCampaign = async (id: string) => {
+  const deleteCampaign = async (r: CampaignRow) => {
     if (!confirm('למחוק את הקמפיין הזה לצמיתות?')) return;
-    const { error } = await supabase.from('campaign_logs').delete().eq('id', id);
+    const { from, to } = groupFilter(r);
+    const { error, count } = await supabase
+      .from('campaign_logs')
+      .delete({ count: 'exact' })
+      .eq('campaign_name', r.campaign_name)
+      .eq('channel', r.channel)
+      .gte('created_at', from)
+      .lt('created_at', to);
     if (error) { toast.error('מחיקה נכשלה: ' + error.message); return; }
-    toast.success('הקמפיין נמחק');
+    setRows((prev) => prev?.filter((x) => x.id !== r.id) ?? prev);
+    toast.success(`הקמפיין נמחק${typeof count === 'number' ? ` (${count} רשומות)` : ''}`);
     load();
   };
+
 
 
   const filteredRows = useMemo(() => {
