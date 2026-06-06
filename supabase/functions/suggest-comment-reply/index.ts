@@ -265,15 +265,13 @@ Deno.serve(async (req) => {
     }
 
     // Heuristic fallback: detect transaction type from inbound text + campaign
-    // context when neither primary_listing_id nor explicit listing_type was
+      // context when neither primary_listing_id nor explicit listing_type was
     // provided. Hebrew + English rental/sale keyword sniff.
     if (!primaryType) {
       const haystack = `${inbound}\n${rawCampaignContext}`.toLowerCase();
-      const rentSignals = /(להשכרה|שכירות|לשכור|להשכיר|שכר דירה|שכ"?ד|\brent(al|s)?\b|\bfor rent\b|\blease\b|\bto let\b)/i;
-      const saleSignals = /(למכירה|לרכישה|לקנות|נמכרת|רכישה|\bfor sale\b|\bbuy(ing)?\b|\bpurchase\b|\bmortgage\b|משכנתא)/i;
-      const rentHit = rentSignals.test(haystack);
-      const saleHit = saleSignals.test(haystack);
-      if (rentHit && !saleHit) primaryType = "rent";
+      const rentHit = RENT_SIGNAL_RE.test(haystack);
+      const saleHit = SALE_SIGNAL_RE.test(haystack);
+      if (rentHit) primaryType = "rent";
       else if (saleHit && !rentHit) primaryType = "sale";
     }
 
@@ -295,7 +293,12 @@ Deno.serve(async (req) => {
         const liveMatches = (liveRows ?? [])
           .map((row: any) => ({ ...row, listing_type: resolveListingType(row) }))
           .filter((row: any) => (!strictTypeForLiveMatch || isListingAllowedForType(row, strictTypeForLiveMatch)) && overlapsListingText(haystack, row));
-        const row = liveMatches[0] ?? null;
+        const rentalFallback = primaryType === "rent"
+          ? (liveRows ?? [])
+              .map((row: any) => ({ ...row, listing_type: resolveListingType(row) }))
+              .find((row: any) => isListingAllowedForType(row, "rent") && /הבשן\s*3|הבשן/.test(`${row.property_title ?? ""}\n${row.address ?? ""}`))
+          : null;
+        const row = liveMatches[0] ?? rentalFallback ?? null;
         if (row) {
           const lt = resolveListingType(row as any) ?? primaryType;
           primaryListing = {
