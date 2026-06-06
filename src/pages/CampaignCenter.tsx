@@ -627,9 +627,12 @@ const PublishedFeed = () => {
                   <Stat icon={Share2}         label="שיתופים" value={0} />
                   <Stat icon={Heart}          label="לייקים"  value={0} />
                 </div>
-                <div className="border-t border-border bg-muted/30 px-4 py-3 text-right">
-                  <p className="text-xs font-semibold text-foreground">תגובות לקמפיין</p>
-                  <p className="mt-1 text-xs text-muted-foreground">אין תגובות עדיין לקמפיין זה</p>
+                <div className="border-t border-border bg-muted/30 px-4 py-3">
+                  {userId ? (
+                    <CampaignCommentsStream userId={userId} campaign={r} />
+                  ) : (
+                    <p className="text-xs text-muted-foreground text-right">נדרשת התחברות לצפייה בתגובות</p>
+                  )}
                 </div>
               </>
             )}
