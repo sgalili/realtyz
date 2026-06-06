@@ -32,7 +32,7 @@
     --secondary-foreground: 213 73% 16%;
 
     --muted: 210 17% 96%;
-    --muted-foreground: 213 30% 24%; /* darkened for stronger icon/text contrast */
+    --muted-foreground: 213 60% 16%; /* near-navy for high-contrast icons/labels on light bg */
 
     /* ACCENT — Anglo Saxon Gold (same family, used for highlights) */
     --accent: 47 100% 50%;
@@ -292,6 +292,27 @@
 
   .empty-state { @apply flex flex-col items-center justify-center py-16 text-center; }
   .empty-state-icon { @apply h-16 w-16 text-muted-foreground/30 mb-4; }
+
+  /* High-contrast icon pass: lucide icons on light surfaces.
+     - Boost faded muted variants so they remain legible.
+     - Strengthen stroke width for crispness. */
+  :root svg.lucide {
+    stroke-width: 2.25;
+  }
+  :root .text-muted-foreground\/30,
+  :root .text-muted-foreground\/40,
+  :root .text-muted-foreground\/50,
+  :root .text-muted-foreground\/60,
+  :root .text-muted-foreground\/70 {
+    color: hsl(213 55% 22%) !important;
+  }
+  /* Gold/primary icons on white card surfaces are low-contrast; swap to deep navy
+     when used as standalone icons inside cards (not buttons). */
+  .card-glass .text-primary > svg.lucide,
+  [data-card="true"] .text-primary > svg.lucide,
+  .bg-card .text-primary > svg.lucide {
+    color: hsl(213 73% 18%);
+  }
 
   .realtyz-logo {
     font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
