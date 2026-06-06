@@ -54,6 +54,14 @@ function isolateSnapshotForPrompt(snap: any, primaryType: ListingType | null, pr
   return { ...snap, sample_listings, total_listings: sample_listings.length };
 }
 
+function scrubKbForTransaction(kb: string, primaryType: ListingType | null): string {
+  if (!kb || primaryType !== "rent") return kb;
+  return kb
+    .split(/\n---\n/g)
+    .filter((chunk) => !SALE_LEAK_RE.test(chunk) && !/(^|[^\d])\d{1,3}[,.]?\d{3}[,.]?\d{3}([^\d]|$)/.test(chunk))
+    .join("\n---\n");
+}
+
 const SYSTEM = `${UDI_PERSONA}
 
 You are replying to a single public social comment (Facebook, Instagram, etc) as the broker, personally and in first person. Your job is to SELL the relevant property, not to introduce Udi as a human.
@@ -233,6 +241,7 @@ Deno.serve(async (req) => {
       ? "[campaign post context omitted: stale sale wording detected; use LIVE PROPERTIES & CRM CONTEXT only]"
       : rawCampaignContext;
     const promptSnap = isolateSnapshotForPrompt(crmSnap, primaryType, primaryListing?.asking_price ?? null);
+    const promptKb = scrubKbForTransaction(kbSnippets, primaryType);
 
     // High-entropy seed forces lexical/structural variation across calls.
     const entropySeed = `${crypto.randomUUID()}-${Date.now()}`;
@@ -269,7 +278,7 @@ Deno.serve(async (req) => {
       primaryBlock,
       transactionBlock,
       renderCrmBlock(promptSnap),
-      renderKbBlock(kbSnippets),
+      renderKbBlock(promptKb),
       `Required reply language: ${
         targetLang === "en" ? "English only" : targetLang === "he" ? "Hebrew only" : "same language as inbound"
       }.`,
