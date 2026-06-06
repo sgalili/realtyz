@@ -340,6 +340,76 @@ const InlineComposer = ({
         maxLength={MAX_CHARS}
         onChange={(e) => setBody(e.target.value)}
         className="resize-y text-right"
+      {/* Broker steering: custom instructions + property promotion picker */}
+      <div className="space-y-2 rounded-xl border border-primary/15 bg-primary/[0.03] p-3">
+        <Label htmlFor="custom-instructions" className="text-xs font-semibold text-foreground">
+          הנחיות ודגשים מיוחדים לפוסט
+        </Label>
+        <Input
+          id="custom-instructions"
+          value={customInstructions}
+          onChange={(e) => setCustomInstructions(e.target.value)}
+          placeholder='למשל: "תתמקד באווירה המשפחתית בשכונה", "דגש על משקיעים", "טון קצר ואגרסיבי"'
+          className="text-right"
+          maxLength={300}
+        />
+
+        <div className="pt-1">
+          <Label className="text-xs font-semibold text-foreground">קדם נכס ספציפי מהמאגר</Label>
+          <Popover open={listingPickerOpen} onOpenChange={setListingPickerOpen}>
+            <PopoverTrigger asChild>
+              <button type="button"
+                className="mt-1 flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm text-right hover:border-primary/40">
+                <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
+                <span className={cn('truncate', selectedListing ? 'text-foreground font-medium' : 'text-muted-foreground')}>
+                  {selectedListing
+                    ? [selectedListing.property_title || 'נכס', selectedListing.city, selectedListing.address].filter(Boolean).join(' · ')
+                    : 'ללא קידום נכס ספציפי (פוסט כללי של אודי)'}
+                </span>
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-[--radix-popover-trigger-width] p-2 max-h-80 overflow-auto" dir="rtl">
+              <Input
+                value={listingQuery}
+                onChange={(e) => setListingQuery(e.target.value)}
+                placeholder="חפש לפי כותרת, עיר או כתובת…"
+                className="mb-2 text-right"
+              />
+              {selectedListingId && (
+                <button type="button" onClick={() => { setSelectedListingId(null); setListingPickerOpen(false); }}
+                  className="mb-1 w-full rounded-md border border-dashed border-border px-3 py-2 text-right text-xs text-muted-foreground hover:bg-muted">
+                  נקה בחירה — פוסט כללי
+                </button>
+              )}
+              {listings.length === 0 ? (
+                <p className="px-3 py-4 text-center text-xs text-muted-foreground">לא נמצאו נכסים במאגר</p>
+              ) : listings.map((l) => (
+                <button key={l.id} type="button"
+                  onClick={() => { setSelectedListingId(l.id); setListingPickerOpen(false); }}
+                  className={cn(
+                    'mb-1 w-full rounded-md px-3 py-2 text-right text-sm hover:bg-muted',
+                    selectedListingId === l.id && 'bg-primary/10 text-primary',
+                  )}>
+                  <div className="font-medium truncate">{l.property_title || 'נכס ללא כותרת'}</div>
+                  <div className="text-[11px] text-muted-foreground truncate">
+                    {[l.city, l.address, l.rooms ? `${l.rooms} חד׳` : null, l.asking_price ? `${Number(l.asking_price).toLocaleString('he-IL')} ₪` : null]
+                      .filter(Boolean).join(' · ')}
+                  </div>
+                </button>
+              ))}
+            </PopoverContent>
+          </Popover>
+        </div>
+      </div>
+
+      {/* Textarea */}
+      <Textarea
+        ref={textareaRef}
+        rows={6}
+        value={body}
+        maxLength={MAX_CHARS}
+        onChange={(e) => setBody(e.target.value)}
+        className="resize-y text-right"
       />
 
       {/* Hidden inputs */}
@@ -347,6 +417,7 @@ const InlineComposer = ({
         onChange={(e) => { handleFiles(e.target.files, 'image'); e.target.value = ''; }} />
       <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
         onChange={(e) => { handleFiles(e.target.files, 'image'); e.target.value = ''; }} />
+
       <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" multiple className="hidden"
         onChange={(e) => { handleFiles(e.target.files, 'file'); e.target.value = ''; }} />
 
