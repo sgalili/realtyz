@@ -206,6 +206,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
   const openReply = async (row: EngagementRow) => {
     setReplyOpen(row);
     setReplyDraft(row.ai_reply_text ?? "");
+    setDmDraft("");
     if (!row.ai_reply_text) {
       await generateDraft(row, false);
     }
@@ -229,9 +230,11 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
         },
       );
       if (error) throw error;
-      const draft = (data as any)?.draft;
-      if (typeof draft === "string" && draft.trim()) {
-        setReplyDraft(draft.trim());
+      const pub = (data as any)?.public_comment ?? (data as any)?.draft;
+      const dm = (data as any)?.private_messenger_dm ?? "";
+      if (typeof pub === "string" && pub.trim()) {
+        setReplyDraft(pub.trim());
+        setDmDraft(typeof dm === "string" ? dm.trim() : "");
       } else {
         toast.error((data as any)?.error ?? "לא התקבל ניסוח");
       }
