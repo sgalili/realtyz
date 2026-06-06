@@ -17,6 +17,50 @@ export async function resolveWorkspaceProfileKey(
   };
 }
 
+// Resolve the workspace's own Facebook Page identity so downstream functions
+// can refuse to react to comments authored by ourselves (anti self-reply loop).
+export async function resolveOwnPageIdentity(
+  admin: any,
+): Promise<{ pageId: string | null; pageName: string | null }> {
+  const { data } = await admin
+    .from("workspace_social_profile")
+    .select("facebook_page_id, facebook_page_name")
+    .eq("id", "00000000-0000-0000-0000-000000000001")
+    .maybeSingle();
+  return {
+    pageId: typeof data?.facebook_page_id === "string" ? data.facebook_page_id.trim() : null,
+    pageName: typeof data?.facebook_page_name === "string" ? data.facebook_page_name.trim() : null,
+  };
+}
+
+// True when the inbound comment was authored by our own connected Page,
+// by Ayrshare on our behalf, or carries our system reply signature.
+export function isSelfAuthoredComment(args: {
+  fromId?: string | null;
+  fromName?: string | null;
+  text?: string | null;
+  ownPageId?: string | null;
+  ownPageName?: string | null;
+}): boolean {
+  const norm = (v: unknown) => String(v ?? "").trim().toLowerCase();
+  const fromId = norm(args.fromId);
+  const fromName = norm(args.fromName);
+  const ownId = norm(args.ownPageId);
+  const ownName = norm(args.ownPageName);
+  if (ownId && fromId && fromId === ownId) return true;
+  if (ownName && fromName && fromName === ownName) return true;
+  // Common Ayrshare/Realtyz reply signature fragments (Hebrew) that should never
+  // bounce back into our own ingestion pipeline.
+  const t = String(args.text ?? "").toLowerCase();
+  const signatures = [
+    "אני מודה לך אודי ויטמן",
+    "תודה רבה על העדכון",
+    "[ai realtyz]",
+  ];
+  if (t && signatures.some((s) => t.includes(s))) return true;
+  return false;
+}
+
 export function sanitizeOutboundText(input: string): string {
   let out = String(input ?? "");
   // Strip em/en dash, double-dash, asterisks, common emoji ranges
