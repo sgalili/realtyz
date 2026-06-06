@@ -1659,6 +1659,7 @@ const CampaignCenter = () => {
         brandName={brandName}
         mediaUrls={confirmPayload?.media_urls ?? []}
         scheduledAt={confirmPayload?.scheduled_at ?? null}
+        groupIds={confirmPayload?.group_ids ?? []}
         onConfirmed={() => { setConfirmPayload(null); setPickedChannel(null); }}
       />
     </div>
