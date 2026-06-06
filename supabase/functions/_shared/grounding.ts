@@ -129,7 +129,9 @@ export async function loadCrmSnapshot(
     // sale listings, and vice-versa.
     const want = opts.listingType ?? null;
     const listings = want
-      ? rawListings.filter((l: any) => l.listing_type === want)
+      ? rawListings
+          .filter((l: any) => isListingAllowedForType(l, want))
+          .map((l: any) => ({ ...l, listing_type: want }))
       : rawListings;
     const leads = leadsRes.data ?? [];
     const cityMap = new Map<string, number>();
@@ -181,7 +183,7 @@ export function renderCrmBlock(snap: CrmSnapshot | null): string {
             : l.listing_type === "sale"
             ? "למכירה"
             : null;
-          const priceLabel = l.listing_type === "rent" ? "שכ\"ד חודשי" : "מחיר מבוקש";
+          const priceLabel = l.listing_type === "rent" ? "שכ\"ד ₪/חודש" : "מחיר מבוקש";
           const parts = [
             l.title || "ללא כותרת",
             typeHe ? `סוג עסקה: ${typeHe}` : null,
