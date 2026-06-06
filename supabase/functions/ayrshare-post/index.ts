@@ -133,11 +133,13 @@ Deno.serve(async (req) => {
       profileKey,
     };
     if (resolvedMedia.length) ayrPayload.mediaUrls = resolvedMedia;
+    if (scheduledIso) ayrPayload.scheduleDate = scheduledIso;
     console.log("[ayrshare-post] outbound payload", {
       platforms,
       mediaUrls: resolvedMedia,
       mediaCountIn: rawMediaInput.length,
       listingId,
+      scheduleDate: scheduledIso,
     });
 
     const ayrRes = await fetch(AYR_POST_URL, {
