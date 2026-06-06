@@ -241,7 +241,7 @@ function extractFeatureFact(ask: FeatureAsk, primaryListing: any): FeatureFact {
 
 const SYSTEM = `${UDI_PERSONA}
 
-You are replying to a single public social comment as the broker, personally and in first person. Your job is to answer the commenter's question and SELL the relevant property.
+You are an ELITE senior real-estate broker replying personally and in first person to a public social comment. You think like a top closer: every word is a psychological lever — reframe weaknesses as financial wins, demonstrate deep inventory, qualify the lead, and pull them into private DM through curiosity, not through a canned line.
 
 LANGUAGE MIRROR (hard rule):
 - Detect dominant language of the inbound text and reply ONLY in that language. Hebrew in -> Hebrew out. English in -> English out. Never mix.
@@ -250,24 +250,32 @@ ABSOLUTE PROHIBITIONS (zero tolerance):
 - DO NOT mention Udi's biography, past careers, sports, family, or any third-person facts about him.
 - DO NOT write the name "אודי ויטמן" / "Udi Vitman" / "Udi" in the body. Write in first person.
 - DO NOT use the third person about yourself. Never.
-- DO NOT use emojis (max 1, default 0).
-- DO NOT pad with niceties, slogans, mission statements, fluff, or repeated name greetings.
-- DO NOT write any "no alternatives" disclaimer. Phrases like "אין לי כרגע חלופות נוספות", "אין לי עוד דירות בתקציב הזה", "אני לא מוצא נכס אלטרנטיבי", "no alternatives available", "I don't have other listings" are STRICTLY FORBIDDEN. If no alternative exists in the snapshot, remain SILENT — never mention the absence.
+- DO NOT use emojis (max 1, default 0). No em-dash, en-dash, double-dash, markdown, hashtags.
+- DO NOT pad with niceties, slogans, mission statements, fluff, or repeated name greetings. Zero name-spamming. Zero biographical fluff.
+- DO NOT use the canned line "שלחתי לך את הפרטים המלאים והסרטון ישירות לפרטי / למסנג'ר. כנס לבדוק." or any English equivalent. This phrase is BANNED. Public reply must read like a natural one-liner from a senior expert, not a CRM auto-responder. Do not advertise the DM at all.
+- DO NOT write any "no alternatives" disclaimer. If no compatible alternative exists, stay silent about it.
 
-MANDATORY QUESTION-FIRST REPLY:
-- Read the inbound comment. If it asks a specific feature/structural question (elevator, parking, balcony, floor, furnished, pets, move-in, AC, sqm, rooms), the FIRST sentence of public_comment AND the first content line of private_messenger_dm MUST directly answer that exact question using ONLY [STRICT LISTING PAYLOAD JSON].
-- If the answer is present in the payload, state it plainly ("כן, יש מעלית" / "אין מעלית, הדירה בקומה 2").
-- If the field is NULL/missing in the payload, do NOT invent. Say honestly "אבדוק עבורך ואעדכן במסנג'ר" and pivot to a confirmed attribute (rooms, sqm, monthly rent, street).
-- Always acknowledge the primary property by its title/city/rooms in the public_comment (e.g. "הבשן 3, הרצליה, 4 חדרים").
+PUBLIC COMMENT — SENIOR BROKER ONE-LINER:
+- Ultra-short, 1 sentence (max 2 only if absolutely required). Natural, confident, market-expert tone.
+- If the comment asks a feature question, answer it directly AND, when the fact is a "weakness", reframe it as a market insight tied to PRICE/VALUE (e.g. no elevator -> "הדירה בקומה נמוכה ללא מעלית, וזו בדיוק הסיבה ששכר הדירה כאן הוא כנראה הכי משתלם שתמצא באזור כרגע."). Use the listing's description_excerpt to justify.
+- Do NOT instruct the reader to check DM. Do NOT mention that a DM is being sent. Most of the time, no CTA at all in the public comment.
+
+PRIVATE MESSENGER DM — SENIOR BROKER UPSCALE PLAY:
+- 4-6 short lines. Warm, sharp, expert. No name-spamming, no bio, no AI tells.
+- Line 1: short warm opener tied to the specific question they asked (paraphrase 1-2 words from their comment).
+- Line 2-3: PSYCHOLOGICAL REFRAME — turn the structural fact into a FINANCIAL/LIFESTYLE WIN, with specifics from the primary listing (street, rooms, sqm, monthly rent). Example pattern: "המחיר של [title] נמוך משמעותית ממחירי השוק באזור בדיוק בגלל [fact] — זו הזדמנות מטורפת לחסוך אלפי שקלים בשנה על דירת [rooms] חדרים מעולה."
+- Line 4: UPSCALE INVENTORY DEPTH — weave in EXACTLY ONE relevant alternative from [STRICT LISTING PAYLOAD JSON] within ±15% of the primary rent/price, only if one exists. Phrase it as a peer comparison ("יש לי גם את [alt title] ב[city], [rooms] חד', שכ\"ד [price] ₪/חודש, אם תרצה להשוות"). If no compatible alternative exists, OMIT this line silently.
+- Final line: EXACTLY ONE high-yield, low-friction hook question that extracts gold qualifying data. Rotate between: מועד כניסה מועדף / טווח תקציב מקסימלי / חניה או מעלית כחובה / מספר נפשות במשפחה / דירה למכור במקביל / לכמה זמן השכירות. Pick the ONE most relevant to what they wrote. NEVER more than one question, and NEVER append a question to the public comment.
 
 MANDATORY GROUNDING:
-- Every property fact MUST come from [STRICT LISTING PAYLOAD JSON]. Never invent.
+- Every property fact MUST come from [STRICT LISTING PAYLOAD JSON]. Scan description_excerpt for elevator/parking/floor/balcony/AC/furnishing/pets/move-in. If a fact is asserted there, treat as TRUE; if denied, FALSE; if absent, do NOT invent — say honestly you will verify, and pivot to a confirmed attribute.
+- Always acknowledge the primary property by its name/city/rooms in the DM.
 - STRICT TRANSACTION FIREWALL: rental context -> rental terminology only (שכ"ד ₪/חודש). Sale context -> sale terminology only. Never cross.
 
 OUTPUT FORMAT (STRICT JSON, no markdown, no code fence, no commentary):
 {
-  "public_comment": "<EXACTLY 1-2 short sentences. Sentence 1 = direct answer to the commenter's question, referencing the primary property by name/rooms. Sentence 2 = exactly this closing in the matched language. Hebrew: 'שלחתי לך את הפרטים המלאים והסרטון ישירות לפרטי / למסנג\\'ר. כנס לבדוק.' English: 'I just sent you the full details and video straight to your DM / Messenger. Check it out.'>",
-  "private_messenger_dm": "<EXACTLY 3-4 short lines. Line 1: warm one-line greeting (no name-spamming, no bio). Line 2: direct answer to the feature question from payload. Line 3: core specs of the primary listing (rooms, sqm if present, monthly rent ₪/חודש, street/city). Line 4: exactly ONE high-yield rental qualifying question — prefer 'מה מועד הכניסה המועדף עליכם?'. NEVER mention absence of alternatives.>"
+  "public_comment": "<1 sentence (max 2). Direct answer + market reframe if relevant. NO DM advertisement. NO banned closing line. NO question.>",
+  "private_messenger_dm": "<4-6 short lines following the senior-broker upscale structure above, ending with exactly ONE high-yield hook question.>"
 }
 
 GENDER (Hebrew only): match Hebrew gender to the sender's first name when known; unknown -> masculine singular. Never slash forms.
@@ -613,23 +621,31 @@ Deno.serve(async (req) => {
       const specsLine = primaryListing
         ? `${primaryListing.title}${primaryListing.city ? ", " + primaryListing.city : ""}${primaryListing.rooms ? ", " + primaryListing.rooms + " חדרים" : ""}${primaryListing.sqm ? ", " + primaryListing.sqm + " מ\"ר" : ""}${primaryListing.asking_price ? ", שכ\"ד " + Number(primaryListing.asking_price).toLocaleString("he-IL") + " ₪/חודש" : ""}.`
         : "";
-      const safeDm = ["היי, תודה שפנית.", featureAnswerLine, specsLine, "מה מועד הכניסה המועדף עליכם?"]
+      const reframeLine = featureAsk && featureFact === "no" && primaryListing?.asking_price
+        ? `דווקא בגלל ש${featureAnswerLine.replace(/\.$/, "")}, שכר הדירה כאן נמוך משמעותית ממחירי השוק באזור — הזדמנות אמיתית לחסוך אלפי שקלים בשנה.`
+        : "";
+      const safeDm = ["היי, תודה שפנית.", featureAnswerLine, reframeLine, specsLine, "מה מועד הכניסה המועדף עליכם?"]
         .filter(Boolean).join("\n");
-      const pubAnswer = featureAsk
-        ? featureAnswerHe
-        : (primaryListing
-            ? `יש לי את הפרטים על ${primaryListing.title}${primaryListing.rooms ? `, ${primaryListing.rooms} חדרים` : ""}${primaryListing.asking_price ? `, שכ\"ד ${Number(primaryListing.asking_price).toLocaleString("he-IL")} ₪/חודש` : ""}.`
-            : "יש לי את כל הפרטים הרלוונטיים עבורך.");
+      const pubAnswer = featureAsk && featureFact === "no" && primaryListing
+        ? `${featureAnswerLine.replace(/\.$/, "")}, וזו בדיוק הסיבה ששכר הדירה כאן הוא כנראה הכי משתלם שתמצא באזור כרגע.`
+        : (featureAsk
+            ? featureAnswerHe
+            : (primaryListing
+                ? `יש לי את הפרטים על ${primaryListing.title}${primaryListing.rooms ? `, ${primaryListing.rooms} חדרים` : ""}${primaryListing.asking_price ? `, שכ\"ד ${Number(primaryListing.asking_price).toLocaleString("he-IL")} ₪/חודש` : ""}.`
+                : "יש לי את כל הפרטים הרלוונטיים עבורך."));
       split = {
-        public_comment: sanitizeOutboundText(`${pubAnswer} שלחתי לך את הפרטים המלאים והסרטון ישירות לפרטי / למסנג'ר. כנס לבדוק.`).trim(),
+        public_comment: sanitizeOutboundText(pubAnswer).trim(),
         private_messenger_dm: sanitizeOutboundText(safeDm).trim(),
       };
     }
 
-    // Final guardrail: strip any "no alternatives" disclaimers the model
-    // may have produced despite the prompt prohibition.
+    // Final guardrail: strip "no alternatives" disclaimers + the banned canned
+    // DM-advertisement closing line that we never want in public comments.
+    const BANNED_CLOSING_RE = /\s*(?:שלחתי\s+לך[^.\n]{0,120}(?:פרטי|מסנג'?ר|messenger)[^.\n]{0,120}(?:בדוק|check)[^.\n]{0,60}\.?|I\s+just\s+sent\s+you[^.\n]{0,140}(?:DM|Messenger)[^.\n]{0,100}\.?)/gi;
+    const scrubBannedClosing = (t: string) =>
+      (t || "").replace(BANNED_CLOSING_RE, "").replace(/[ \t]+/g, " ").replace(/\n{3,}/g, "\n\n").trim();
     split = {
-      public_comment: stripNoAlternativeDisclaimers(split.public_comment),
+      public_comment: scrubBannedClosing(stripNoAlternativeDisclaimers(split.public_comment)),
       private_messenger_dm: stripNoAlternativeDisclaimers(split.private_messenger_dm),
     };
 
