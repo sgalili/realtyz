@@ -62,6 +62,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
   const [loading, setLoading] = useState(false);
   const [replyOpen, setReplyOpen] = useState<EngagementRow | null>(null);
   const [replyDraft, setReplyDraft] = useState("");
+  const [dmDraft, setDmDraft] = useState("");
   const [drafting, setDrafting] = useState(false);
   const [sending, setSending] = useState(false);
   const postIds = useMemo(() => getCampaignPostIds(campaign), [campaign.channel, campaign.provider_message_id, campaign.provider_response]);
