@@ -664,25 +664,51 @@ const InlineComposer = ({
         </div>
       )}
 
-      {/* Dispatch CTA */}
-      <button type="button"
-        onClick={() => hasBody && onConfirm({
-          body,
-          mode,
-          media_urls: attachments
-            .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
-            .map((a) => a.url as string),
-        })}
-        disabled={!hasBody}
-        className={cn(
-          'w-full rounded-xl px-4 py-3 text-sm font-bold transition flex items-center justify-center gap-2',
-          hasBody
-            ? 'bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)] shadow-md'
-            : 'bg-muted text-muted-foreground/80 cursor-not-allowed',
-        )}>
-        <Send className="h-4 w-4 -scale-x-100" />
-        שגר פוסט ציבורי עכשיו
-      </button>
+      {/* Scheduled date+time picker */}
+      {hasBody && mode === 'scheduled' && (
+        <div className="rounded-xl border border-border bg-background p-3 space-y-2">
+          <label className="block text-xs font-semibold text-foreground">תאריך ושעת פרסום</label>
+          <input
+            type="datetime-local"
+            value={scheduledLocal}
+            min={new Date(Date.now() + 60_000).toISOString().slice(0, 16)}
+            onChange={(e) => setScheduledLocal(e.target.value)}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+            dir="ltr"
+          />
+          {scheduledLocal && new Date(scheduledLocal).getTime() <= Date.now() && (
+            <p className="text-xs text-destructive">יש לבחור מועד עתידי</p>
+          )}
+        </div>
+      )}
+
+      {(() => {
+        const scheduledDate = scheduledLocal ? new Date(scheduledLocal) : null;
+        const scheduledValid = mode === 'now' || (!!scheduledDate && scheduledDate.getTime() > Date.now());
+        const canSend = hasBody && scheduledValid;
+        return (
+          /* Dispatch CTA */
+          <button type="button"
+            onClick={() => canSend && onConfirm({
+              body,
+              mode,
+              media_urls: attachments
+                .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
+                .map((a) => a.url as string),
+              scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
+            })}
+            disabled={!canSend}
+            className={cn(
+              'w-full rounded-xl px-4 py-3 text-sm font-bold transition flex items-center justify-center gap-2',
+              canSend
+                ? 'bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)] shadow-md'
+                : 'bg-muted text-muted-foreground/80 cursor-not-allowed',
+            )}>
+            <Send className="h-4 w-4 -scale-x-100" />
+            {mode === 'scheduled' ? 'תזמן פרסום' : 'שגר פוסט ציבורי עכשיו'}
+          </button>
+        );
+      })()}
     </div>
   );
 };
