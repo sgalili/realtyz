@@ -1064,15 +1064,42 @@ const PublishedFeed = () => {
     // Force a direct live page fetch every time — bypass any cached counters
     // so the UI mirrors the exact real-time Meta payload via Ayrshare.
     const cacheBust = `${Date.now()}-${crypto.randomUUID()}`;
-    await Promise.allSettled([
-      supabase.functions.invoke('ayrshare-analytics', {
+    // Fire the comments sync in parallel but DO NOT let its result (or its
+    // failure) gate the counter UI update — metrics must repaint instantly
+    // off the analytics response even if comment parsing trips somewhere.
+    supabase.functions.invoke('ayrshare-sync-comments', {
+      body: { force_live: true, cache_bust: cacheBust },
+    }).catch((err) => console.warn('[refreshMetrics] sync-comments failed (non-fatal)', err));
+
+    try {
+      const { data, error } = await supabase.functions.invoke('ayrshare-analytics', {
         body: { force_live: true, cache_bust: cacheBust },
-      }),
-      supabase.functions.invoke('ayrshare-sync-comments', {
-        body: { force_live: true, cache_bust: cacheBust },
-      }),
-    ]);
+      });
+      if (error) {
+        console.warn('[refreshMetrics] analytics invoke error', error);
+        return;
+      }
+      const results: Array<{ id: string; ok: boolean; counts?: { likes: number; comments: number; shares: number; views: number }; metrics_updated_at?: string }> = Array.isArray((data as any)?.results) ? (data as any).results : [];
+      if (!results.length) return;
+      const byId = new Map(results.filter((r) => r.ok && r.counts).map((r) => [r.id, r]));
+      if (byId.size === 0) return;
+      setRows((prev) => prev?.map((r) => {
+        const hit = byId.get(r.id);
+        if (!hit || !hit.counts) return r;
+        return {
+          ...r,
+          like_count: hit.counts.likes,
+          comment_count: hit.counts.comments,
+          share_count: hit.counts.shares,
+          view_count: hit.counts.views,
+          metrics_updated_at: hit.metrics_updated_at ?? new Date().toISOString(),
+        };
+      }) ?? prev);
+    } catch (err) {
+      console.warn('[refreshMetrics] analytics crashed (non-fatal)', err);
+    }
   };
+
 
   useEffect(() => {
     load();
