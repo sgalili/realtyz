@@ -120,6 +120,21 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
       if (isPdf) {
         const res = await parsePdfToRows(file);
         rows = res.rows;
+        // Fallback: if pdfjs returned no rows (scanned/image PDF), call AI OCR.
+        if (!rows.length) {
+          toast.info('הקובץ נראה סרוק — מפעיל זיהוי טקסט חכם...');
+          const dataUrl: string = await new Promise((resolve, reject) => {
+            const r = new FileReader();
+            r.onload = () => resolve(String(r.result));
+            r.onerror = () => reject(r.error);
+            r.readAsDataURL(file);
+          });
+          const { data, error } = await supabase.functions.invoke('extract-pdf-properties', {
+            body: { file_data_url: dataUrl, file_name: file.name },
+          });
+          if (error) throw error;
+          rows = (data?.rows ?? []) as Record<string, any>[];
+        }
       } else {
         const buf = await file.arrayBuffer();
         const wb = XLSX.read(buf, { type: 'array' });
@@ -127,7 +142,7 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
         rows = XLSX.utils.sheet_to_json(ws, { defval: '' });
       }
       if (!rows.length) {
-        toast.error('הקובץ ריק');
+        toast.error('לא ניתן היה לחלץ נתונים מהקובץ. ודאו שה-PDF מכיל טבלה קריאה.');
         return;
       }
       const headerMap = buildHeaderMap(Object.keys(rows[0]));
