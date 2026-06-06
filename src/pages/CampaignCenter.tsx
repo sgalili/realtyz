@@ -731,39 +731,60 @@ const ConfirmDispatchDialog = ({
   const initials = (selectedPage?.name || brandName).split(/\s+/).filter(Boolean).slice(0, 2).map((s) => s[0]).join('').toUpperCase() || 'R';
   const summaryTitle = body.trim().slice(0, 24) || channel.label;
 
+  const SOCIAL_CHANNELS = new Set(['facebook', 'instagram', 'x', 'twitter', 'linkedin', 'youtube', 'tiktok']);
+
   const handleConfirm = async () => {
     if (!user) { toast.error('יש להתחבר'); return; }
     setSending(true);
     try {
-      const { data: leads, error } = await supabase
-        .from('leads')
-        .select('id, full_name, phone_number, email')
-        .limit(100);
-      if (error) throw error;
-      const rows = (leads || []).map((l: any) => ({
-        user_id: user.id,
-        campaign_name: `${brandName} · ${channel.label}`,
-        channel: channel.id,
-        lead_id: l.id,
-        recipient_phone: l.phone_number,
-        recipient_email: l.email,
-        recipient_name: l.full_name,
-        message_body: body,
-        status: 'queued' as const,
-      }));
-      if (rows.length > 0) {
-        const { error: insErr } = await supabase.from('campaign_logs').insert(rows);
-        if (insErr) throw insErr;
+      const campaignName = `${brandName} · ${channel.label}`;
+
+      if (SOCIAL_CHANNELS.has(channel.id)) {
+        // Publish via Ayrshare to the workspace-connected social page.
+        const { data, error } = await supabase.functions.invoke('ayrshare-post', {
+          body: {
+            post: body,
+            channels: [channel.id],
+            campaign_name: campaignName,
+          },
+        });
+        if (error) throw new Error(error.message || 'שגיאת רשת');
+        if ((data as any)?.error) throw new Error((data as any).error);
+        toast.success(`הקמפיין פורסם בהצלחה ב-${channel.label}!`);
+      } else {
+        // Direct-messaging channels (SMS / email / IVR) still broadcast to leads.
+        const { data: leads, error } = await supabase
+          .from('leads')
+          .select('id, full_name, phone_number, email')
+          .eq('user_id', user.id)
+          .limit(100);
+        if (error) throw error;
+        const rows = (leads || []).map((l: any) => ({
+          user_id: user.id,
+          campaign_name: campaignName,
+          channel: channel.id,
+          lead_id: l.id,
+          recipient_phone: l.phone_number,
+          recipient_email: l.email,
+          recipient_name: l.full_name,
+          message_body: body,
+          status: 'queued' as const,
+        }));
+        if (rows.length > 0) {
+          const { error: insErr } = await supabase.from('campaign_logs').insert(rows);
+          if (insErr) throw insErr;
+        }
+        toast.success(`שודר ל-${rows.length} מתעניינים בערוץ ${channel.label}`);
       }
-      toast.success(`שודר ל-${rows.length} מתעניינים בערוץ ${channel.label}`);
       onConfirmed();
       onClose();
     } catch (e: any) {
-      toast.error('שידור נכשל: ' + e.message);
+      toast.error('פרסום נכשל: ' + (e?.message ?? 'שגיאה לא ידועה'));
     } finally {
       setSending(false);
     }
   };
+
 
   return (
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
