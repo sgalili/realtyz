@@ -5,6 +5,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { Card, CardContent } from '@/components/ui/card';
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -31,6 +32,7 @@ export default function KnowledgeBase() {
   const [chatMessages, setChatMessages] = useState<ChatMsg[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
+  const [viewDoc, setViewDoc] = useState<any | null>(null);
 
   useEffect(() => {
     chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -357,7 +359,14 @@ export default function KnowledgeBase() {
                     {filtered.map((d: any) => {
                       const Icon = iconFor(d.source_type);
                       return (
-                        <div key={d.id} className="flex items-center gap-2 p-2 rounded-md border bg-background hover:bg-muted/30 transition-colors">
+                        <div
+                          key={d.id}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setViewDoc(d)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setViewDoc(d); } }}
+                          className="flex items-center gap-2 p-2 rounded-md border bg-background hover:bg-muted/30 transition-colors cursor-pointer"
+                        >
                           <Icon className="h-4 w-4 text-primary shrink-0" />
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium truncate">{d.title}</div>
@@ -369,7 +378,7 @@ export default function KnowledgeBase() {
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                            onClick={() => deleteDoc.mutate(d.id)}
+                            onClick={(e) => { e.stopPropagation(); deleteDoc.mutate(d.id); }}
                             disabled={deleteDoc.isPending}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
@@ -466,6 +475,24 @@ export default function KnowledgeBase() {
           </CardContent>
         </Card>
       </div>
+
+
+
+      <Dialog open={!!viewDoc} onOpenChange={(o) => !o && setViewDoc(null)}>
+        <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-right">{viewDoc?.title}</DialogTitle>
+            <p className="text-xs text-muted-foreground text-right">
+              {viewDoc && new Date(viewDoc.created_at).toLocaleString('he-IL')} · {viewDoc?.chunk_count ?? 0} מקטעים
+            </p>
+          </DialogHeader>
+          <div className="flex-1 overflow-y-auto rounded-md border bg-muted/20 p-3 text-sm whitespace-pre-wrap leading-relaxed">
+            {viewDoc?.raw_text?.trim()
+              ? viewDoc.raw_text
+              : <span className="text-muted-foreground">אין תוכן טקסטואלי זמין לתצוגה.</span>}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
