@@ -289,7 +289,7 @@ Deno.serve(async (req) => {
           .eq("is_published", true)
           .limit(120);
         const haystack = `${inbound}\n${rawCampaignContext}`;
-        const strictTypeForLiveMatch = primaryTypeLocked ? primaryType : null;
+        const strictTypeForLiveMatch = primaryType ?? null;
         const liveMatches = (liveRows ?? [])
           .map((row: any) => ({ ...row, listing_type: resolveListingType(row) }))
           .filter((row: any) => (!strictTypeForLiveMatch || isListingAllowedForType(row, strictTypeForLiveMatch)) && overlapsListingText(haystack, row));
