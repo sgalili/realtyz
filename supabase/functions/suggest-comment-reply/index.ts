@@ -621,15 +621,20 @@ Deno.serve(async (req) => {
       const specsLine = primaryListing
         ? `${primaryListing.title}${primaryListing.city ? ", " + primaryListing.city : ""}${primaryListing.rooms ? ", " + primaryListing.rooms + " חדרים" : ""}${primaryListing.sqm ? ", " + primaryListing.sqm + " מ\"ר" : ""}${primaryListing.asking_price ? ", שכ\"ד " + Number(primaryListing.asking_price).toLocaleString("he-IL") + " ₪/חודש" : ""}.`
         : "";
-      const safeDm = ["היי, תודה שפנית.", featureAnswerLine, specsLine, "מה מועד הכניסה המועדף עליכם?"]
+      const reframeLine = featureAsk && featureFact === "no" && primaryListing?.asking_price
+        ? `דווקא בגלל ש${featureAnswerLine.replace(/\.$/, "")}, שכר הדירה כאן נמוך משמעותית ממחירי השוק באזור — הזדמנות אמיתית לחסוך אלפי שקלים בשנה.`
+        : "";
+      const safeDm = ["היי, תודה שפנית.", featureAnswerLine, reframeLine, specsLine, "מה מועד הכניסה המועדף עליכם?"]
         .filter(Boolean).join("\n");
-      const pubAnswer = featureAsk
-        ? featureAnswerHe
-        : (primaryListing
-            ? `יש לי את הפרטים על ${primaryListing.title}${primaryListing.rooms ? `, ${primaryListing.rooms} חדרים` : ""}${primaryListing.asking_price ? `, שכ\"ד ${Number(primaryListing.asking_price).toLocaleString("he-IL")} ₪/חודש` : ""}.`
-            : "יש לי את כל הפרטים הרלוונטיים עבורך.");
+      const pubAnswer = featureAsk && featureFact === "no" && primaryListing
+        ? `${featureAnswerLine.replace(/\.$/, "")}, וזו בדיוק הסיבה ששכר הדירה כאן הוא כנראה הכי משתלם שתמצא באזור כרגע.`
+        : (featureAsk
+            ? featureAnswerHe
+            : (primaryListing
+                ? `יש לי את הפרטים על ${primaryListing.title}${primaryListing.rooms ? `, ${primaryListing.rooms} חדרים` : ""}${primaryListing.asking_price ? `, שכ\"ד ${Number(primaryListing.asking_price).toLocaleString("he-IL")} ₪/חודש` : ""}.`
+                : "יש לי את כל הפרטים הרלוונטיים עבורך."));
       split = {
-        public_comment: sanitizeOutboundText(`${pubAnswer} שלחתי לך את הפרטים המלאים והסרטון ישירות לפרטי / למסנג'ר. כנס לבדוק.`).trim(),
+        public_comment: sanitizeOutboundText(pubAnswer).trim(),
         private_messenger_dm: sanitizeOutboundText(safeDm).trim(),
       };
     }
