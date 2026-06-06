@@ -475,8 +475,8 @@ export default function KnowledgeBase() {
           </CardContent>
         </Card>
       </div>
-    </div>
-      </div>
+
+
 
       <Dialog open={!!viewDoc} onOpenChange={(o) => !o && setViewDoc(null)}>
         <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col" dir="rtl">
