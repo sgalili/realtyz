@@ -359,7 +359,14 @@ export default function KnowledgeBase() {
                     {filtered.map((d: any) => {
                       const Icon = iconFor(d.source_type);
                       return (
-                        <div key={d.id} className="flex items-center gap-2 p-2 rounded-md border bg-background hover:bg-muted/30 transition-colors">
+                        <div
+                          key={d.id}
+                          role="button"
+                          tabIndex={0}
+                          onClick={() => setViewDoc(d)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setViewDoc(d); } }}
+                          className="flex items-center gap-2 p-2 rounded-md border bg-background hover:bg-muted/30 transition-colors cursor-pointer"
+                        >
                           <Icon className="h-4 w-4 text-primary shrink-0" />
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium truncate">{d.title}</div>
@@ -371,7 +378,7 @@ export default function KnowledgeBase() {
                             variant="ghost"
                             size="icon"
                             className="h-7 w-7 text-muted-foreground hover:text-destructive"
-                            onClick={() => deleteDoc.mutate(d.id)}
+                            onClick={(e) => { e.stopPropagation(); deleteDoc.mutate(d.id); }}
                             disabled={deleteDoc.isPending}
                           >
                             <Trash2 className="h-3.5 w-3.5" />
