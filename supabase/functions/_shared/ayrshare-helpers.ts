@@ -38,3 +38,41 @@ export function detectDominantLanguage(text: string): "he" | "en" | "other" {
   if (hebrew > english && hebrew >= 2) return "he";
   return "other";
 }
+
+// Fire-and-forget Auto-Like for an inbound comment. Targets the user's native
+// comment via Ayrshare so the workspace's connected page reacts with a Like,
+// boosting algorithmic reach. Never throws — caller uses Promise.all safely.
+export async function likeNativeComment(params: {
+  apiKey: string;
+  profileKey: string;
+  platform: string;
+  commentId: string;
+}): Promise<{ ok: boolean; status?: number; response?: unknown; error?: string }> {
+  const { apiKey, profileKey, platform, commentId } = params;
+  if (!apiKey || !profileKey || !commentId) {
+    return { ok: false, error: "missing_params" };
+  }
+  try {
+    const res = await fetch(`${AYR_BASE}/comments/like`, {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        "Profile-Key": profileKey,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        platforms: [platform],
+        id: commentId,
+        commentId,
+        like: true,
+        searchPlatformId: true,
+      }),
+    });
+    const text = await res.text();
+    let payload: unknown = text;
+    try { payload = text ? JSON.parse(text) : null; } catch { /* keep raw */ }
+    return { ok: res.ok, status: res.status, response: payload };
+  } catch (e) {
+    return { ok: false, error: e instanceof Error ? e.message : String(e) };
+  }
+}
