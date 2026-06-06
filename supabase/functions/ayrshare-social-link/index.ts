@@ -22,10 +22,27 @@ function jsonResponse(body: unknown, status = 200) {
 }
 
 function normalizePrivateKey(value: string) {
-  return value
+  const cleaned = value
     .trim()
     .replace(/^['"`]+|['"`]+$/g, '')
-    .replace(/\\n/g, '\n');
+    .replace(/\\r\\n/g, '\n')
+    .replace(/\\n/g, '\n')
+    .replace(/\r\n/g, '\n')
+    .replace(/\r/g, '\n')
+    .trim();
+
+  const headerMatch = cleaned.match(/-----BEGIN [^-]+-----/);
+  const footerMatch = cleaned.match(/-----END [^-]+-----/);
+  if (!headerMatch || !footerMatch) return cleaned;
+
+  const header = headerMatch[0];
+  const footer = footerMatch[0];
+  const body = cleaned
+    .slice(headerMatch.index! + header.length, cleaned.indexOf(footer))
+    .replace(/\s+/g, '');
+
+  const lines = body.match(/.{1,64}/g) || [];
+  return [header, ...lines, footer].join('\n');
 }
 
 function normalizeDomain(value: string | undefined | null) {
@@ -190,7 +207,7 @@ Deno.serve(async (req) => {
 
     // ---- Generate JWT-based social-link URL (Ayrshare's official flow) ----
     const AYRSHARE_PRIVATE_KEY = Deno.env.get('AYRSHARE_PRIVATE_KEY');
-    const AYRSHARE_DOMAIN = normalizeDomain(Deno.env.get('AYRSHARE_DOMAIN'));
+    const AYRSHARE_DOMAIN = AYRSHARE_INTEGRATION_DOMAIN;
     if (!AYRSHARE_PRIVATE_KEY) {
       return jsonResponse({ error: 'Missing AYRSHARE_PRIVATE_KEY secret.' }, 500);
     }
@@ -199,19 +216,27 @@ Deno.serve(async (req) => {
     const cleanPrivateKey = normalizePrivateKey(AYRSHARE_PRIVATE_KEY);
     const cleanPlatform = platform.toLowerCase().trim();
 
+    const jwtBody = new URLSearchParams({
+      domain: AYRSHARE_DOMAIN,
+      privateKey: cleanPrivateKey,
+      profileKey: cleanKey,
+      logout: 'true',
+    });
+
     const jwtRes = await fetch(`${AYR_API}/profiles/generateJWT`, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        domain: AYRSHARE_DOMAIN,
-        privateKey: cleanPrivateKey,
-        profileKey: cleanKey,
-      }),
+      headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+      body: jwtBody.toString(),
     });
     const jwtData = await jwtRes.json().catch(() => ({}));
     if (!jwtRes.ok || !jwtData?.url) {
       const msg = (jwtData?.message || jwtData?.error || `HTTP ${jwtRes.status}`).toString();
-      console.error('[ayrshare-social-link] generateJWT failed', jwtData);
+      console.error('[ayrshare-social-link] generateJWT failed', {
+        ...jwtData,
+        sentDomain: AYRSHARE_DOMAIN,
+        profileKeyPrefix: cleanKey.slice(0, 8),
+        privateKeyHeader: cleanPrivateKey.split('\n')[0],
+      });
       return jsonResponse({ error: `Ayrshare generateJWT failed: ${msg}` }, 500);
     }
 
