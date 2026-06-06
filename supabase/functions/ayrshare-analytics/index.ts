@@ -39,29 +39,55 @@ function pickNum(...vals: unknown[]): number {
 }
 
 function extractCounts(analytics: any, platform: string): Counts {
-  // Ayrshare returns shape like { facebook: { analytics: {...} } } or
-  // { facebook: {...} }, plus sometimes top-level { analytics: ... }.
-  const root =
-    analytics?.[platform]?.analytics ??
-    analytics?.[platform] ??
-    analytics?.analytics ??
-    analytics ?? {};
-  const likes = pickNum(
-    root.likeCount, root.likes, root.reactionsCount, root.reactions,
-    root.favoriteCount, root.favorites, root.heartCount,
-    root.likeAndReactionCount,
-  );
-  const comments = pickNum(
-    root.commentsCount, root.commentCount, root.comments, root.replyCount,
-  );
-  const shares = pickNum(
-    root.shareCount, root.shares, root.sharesCount, root.retweetCount,
-    root.repostCount, root.reshareCount,
-  );
-  const views = pickNum(
-    root.impressionCount, root.impressions, root.viewCount, root.views,
-    root.videoViews, root.playCount, root.reach,
-  );
+  // Ayrshare returns several shapes depending on endpoint/plan:
+  //   { [platform]: { analytics: {...} } }
+  //   { [platform]: {...} }
+  //   { analytics: {...} }
+  //   { posts: [ { [platform]: { analytics: {...} }, metrics: {...} } ] }
+  //   { data: { posts: [ { metrics: {...} } ] } }
+  //   { metrics: {...} }
+  const postsArr: any[] =
+    (Array.isArray(analytics?.posts) && analytics.posts) ||
+    (Array.isArray(analytics?.data?.posts) && analytics.data.posts) ||
+    [];
+  const firstPost = postsArr[0] ?? {};
+  const candidates: any[] = [
+    analytics?.[platform]?.analytics,
+    analytics?.[platform]?.metrics,
+    analytics?.[platform],
+    firstPost?.[platform]?.analytics,
+    firstPost?.[platform]?.metrics,
+    firstPost?.[platform],
+    firstPost?.analytics,
+    firstPost?.metrics,
+    analytics?.analytics,
+    analytics?.metrics,
+    analytics?.data?.metrics,
+    analytics,
+  ].filter((x) => x && typeof x === "object");
+  const pickFrom = (keys: string[]) => {
+    for (const c of candidates) {
+      const v = pickNum(...keys.map((k) => c?.[k]));
+      if (v > 0) return v;
+    }
+    return 0;
+  };
+  const likes = pickFrom([
+    "likeCount", "likes", "reactionsCount", "reactions",
+    "favoriteCount", "favorites", "heartCount", "likeAndReactionCount",
+    "likesCount",
+  ]);
+  const comments = pickFrom([
+    "commentsCount", "commentCount", "comments", "replyCount", "repliesCount",
+  ]);
+  const shares = pickFrom([
+    "shareCount", "shares", "sharesCount", "retweetCount",
+    "repostCount", "reshareCount", "sharedCount",
+  ]);
+  const views = pickFrom([
+    "impressionCount", "impressions", "viewCount", "views",
+    "videoViews", "playCount", "reach", "reachCount",
+  ]);
   return { likes, comments, shares, views };
 }
 
@@ -164,10 +190,12 @@ Deno.serve(async (req) => {
       }
 
       if (!res.ok) {
+        console.warn("[ayrshare-analytics] fetch failed", { id: t.id, platform: t.platform, status: res.status, body: j });
         return { id: t.id, ok: false, status: res.status, error: j?.message || j?.error || res.statusText };
       }
       const counts = extractCounts(j, t.platform);
-      await admin
+      console.log("[ayrshare-analytics] counts", { id: t.id, platform: t.platform, counts });
+      const { error: updErr } = await admin
         .from("campaign_logs")
         .update({
           like_count: counts.likes,
@@ -175,10 +203,14 @@ Deno.serve(async (req) => {
           share_count: counts.shares,
           view_count: counts.views,
           metrics_updated_at: new Date().toISOString(),
-          ...(t.backfillNativeId ? { provider_message_id: t.backfillNativeId } : {}),
+          ...(t.backfillNativeId ? { provider_message_id: String(t.backfillNativeId) } : {}),
         })
-        .eq("id", t.id)
+        .eq("id", String(t.id))
         .eq("user_id", userId);
+      if (updErr) {
+        console.error("[ayrshare-analytics] update failed", { id: t.id, error: updErr });
+        return { id: t.id, ok: false, error: updErr.message };
+      }
       return { id: t.id, ok: true, counts };
     }),
   );
