@@ -725,7 +725,7 @@ const InlineComposer = ({
 /* ───────────── Dispatch confirmation modal ───────────── */
 
 const ConfirmDispatchDialog = ({
-  open, onClose, channel, body, brandName, mediaUrls, scheduledAt, onConfirmed,
+  open, onClose, channel, body, brandName, mediaUrls, scheduledAt, groupIds, onConfirmed,
 }: {
   open: boolean;
   onClose: () => void;
@@ -734,6 +734,7 @@ const ConfirmDispatchDialog = ({
   brandName: string;
   mediaUrls: string[];
   scheduledAt: string | null;
+  groupIds: string[];
   onConfirmed: () => void;
 }) => {
   const { user } = useAuth();
