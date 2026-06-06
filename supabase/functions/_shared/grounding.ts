@@ -146,7 +146,7 @@ export async function loadCrmSnapshot(
     ]);
     const rawListings = (listingsRes.data ?? []).map((l: any) => ({
       ...l,
-      listing_type: extractListingTypeFromFeatures(l.features),
+      listing_type: resolveListingType(l),
     }));
     // Strict pipeline separator: when caller specifies the deal type, NEVER
     // bleed the other side into the snapshot. A rental lead must never see
