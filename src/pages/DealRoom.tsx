@@ -548,13 +548,19 @@ export default function DealRoom() {
         dir="rtl"
       >
         <TabsList className="grid w-full max-w-sm grid-cols-2">
-          <TabsTrigger value="sale" className="gap-2">
+          <TabsTrigger
+            value="sale"
+            className="gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground"
+          >
             מכירה
-            <Badge variant="secondary" className="text-[10px] font-normal">{saleCount}</Badge>
+            <Badge variant="secondary" className="text-[10px] font-normal bg-white/90 text-primary border border-primary/20">{saleCount}</Badge>
           </TabsTrigger>
-          <TabsTrigger value="rent" className="gap-2">
+          <TabsTrigger
+            value="rent"
+            className="gap-2 data-[state=active]:bg-[#0b3982] data-[state=active]:text-white"
+          >
             השכרה
-            <Badge variant="secondary" className="text-[10px] font-normal">{rentCount}</Badge>
+            <Badge variant="secondary" className="text-[10px] font-normal bg-white/90 text-[#0b3982] border border-[#0b3982]/30">{rentCount}</Badge>
           </TabsTrigger>
         </TabsList>
       </Tabs>
