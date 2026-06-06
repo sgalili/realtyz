@@ -135,7 +135,8 @@ Deno.serve(async (req) => {
 
   const results = await Promise.allSettled(
     targets.map(async (t) => {
-      const res = await fetch(`${AYR_BASE}/analytics/post`, {
+      // 1) Try Ayrshare's /analytics/post with the top-level Ayrshare id.
+      let res = await fetch(`${AYR_BASE}/analytics/post`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${AYRSHARE_API_KEY}`,
@@ -144,7 +145,24 @@ Deno.serve(async (req) => {
         },
         body: JSON.stringify({ id: t.postId, platforms: [t.platform] }),
       });
-      const j = await res.json().catch(() => ({}));
+      let j: any = await res.json().catch(() => ({}));
+
+      // 2) Fallback to /analytics/social with the NATIVE platform id when
+      //    /analytics/post 404s (older posts or plan restrictions).
+      if (!res.ok && t.backfillNativeId) {
+        const sres = await fetch(`${AYR_BASE}/analytics/social`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+            "Profile-Key": profileKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ id: t.backfillNativeId, platform: t.platform }),
+        });
+        const sj: any = await sres.json().catch(() => ({}));
+        if (sres.ok) { res = sres; j = sj; }
+      }
+
       if (!res.ok) {
         return { id: t.id, ok: false, status: res.status, error: j?.message || j?.error || res.statusText };
       }
