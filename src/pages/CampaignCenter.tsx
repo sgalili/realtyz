@@ -952,11 +952,14 @@ const GlobalSocialFeed = ({
 };
 
 const PublishedFeed = () => {
+  const { settings } = useWhiteLabel();
+  const ownerName = settings?.agency_name || 'אודי ויטמן';
   const [rows, setRows] = useState<CampaignRow[] | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [activeChannel, setActiveChannel] = useState<string>('all');
   const [archivedCount, setArchivedCount] = useState<number>(0);
+
 
   const load = async () => {
     const { data: { user } } = await supabase.auth.getUser();
