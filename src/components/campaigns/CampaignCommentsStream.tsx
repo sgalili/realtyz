@@ -543,11 +543,12 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
                   </p>
                 </div>
                 <Textarea
-                  value={dmDraft}
+                  value={drafting ? "" : dmDraft}
                   onChange={(e) => setDmDraft(e.target.value)}
                   dir="auto"
                   rows={6}
-                  placeholder={drafting ? "מנסח DM..." : "טיוטת DM פרטי"}
+                  placeholder={drafting ? "מנסח DM מקצועי..." : "טיוטת DM פרטי"}
+                  disabled={drafting}
                   className="text-right bg-muted/30"
                 />
               </div>
