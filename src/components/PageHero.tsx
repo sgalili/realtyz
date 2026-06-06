@@ -110,7 +110,7 @@ export function PageHero() {
       dir="rtl"
       data-page-hero
       className="relative w-full shrink-0 overflow-hidden text-primary-foreground print:hidden"
-      style={{ backgroundColor: '#0B2545' }}
+      style={{ backgroundColor: 'hsl(var(--header-bg))' }}
     >
       {/* 3-zone toolbar — title is absolutely centered to the viewport so it
           stays perfectly centered regardless of side controls' widths. */}
