@@ -1,15 +1,20 @@
 // Realtyz auto-engagement-process — for a new inbound comment/DM:
-//  1. Run sentiment + voting-style analysis via Lovable AI.
+//  1. Run sentiment + KB-grounded analysis via Lovable AI.
 //  2. Persist sentiment + draft into engagement_events (creating row if needed).
-//  3. If the workspace has auto_reply_positive/negative enabled and the
-//     sentiment matches, auto-dispatch the reply via ayrshare-comment-reply.
+//  3. ALWAYS dispatch a private Messenger DM to the commenter (dual-funnel) so
+//     the conversation moves into a private loop, regardless of toggle.
+//  4. If the workspace has auto_reply_positive/negative enabled AND sentiment
+//     matches, ALSO auto-publish the public reply via ayrshare-comment-reply.
 //     Otherwise leave the row in `pending_approval` for the human queue.
 // Strict tenant isolation: user_id is required and scopes every DB query.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { sanitizeOutboundText } from "../_shared/ayrshare-helpers.ts";
+import { resolveWorkspaceProfileKey } from "../_shared/ayrshare-helpers.ts";
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
+const AYRSHARE_API_KEY = Deno.env.get("AYRSHARE_API_KEY") ?? "";
+const AYR_MESSAGES_URL = "https://api.ayrshare.com/api/messages";
 
 type Analysis = {
   sentiment: "positive" | "neutral" | "negative";
@@ -23,12 +28,13 @@ async function analyzeWithAI(input: {
   platform: string;
   event_type: string;
   sender_name?: string | null;
+  kb_snippets?: string;
 }): Promise<Analysis> {
   if (!LOVABLE_API_KEY) {
     return { sentiment: "neutral", key_concerns: [], reply: "", summary: "" };
   }
-  const variantSeed = Math.floor(Math.random() * 1_000_000);
-  const system = `You are a senior real-estate broker assistant analyzing an inbound social interaction and drafting a public reply.
+  const variantSeed = `${crypto.randomUUID()}-${Math.floor(Math.random()*1_000_000)}`;
+  const system = `You are the workspace owner's social-engagement voice analyzing an inbound interaction and drafting a public reply.
 
 Return JSON ONLY with this shape:
 {
@@ -38,20 +44,30 @@ Return JSON ONLY with this shape:
   "summary": "<short English internal summary>"
 }
 
-LANGUAGE MIRROR: detect the inbound language and reply ONLY in that language. English in -> English out. Hebrew in -> Hebrew out. Never mix.
+LANGUAGE MIRROR: detect inbound language and reply ONLY in it. English in -> English out. Hebrew in -> Hebrew out. Never mix.
 
-REPLY RULES:
-- Warm, concrete, never salesy. End with one open question that surfaces budget / location / timing / family size.
-- No asterisks, em-dashes, double dashes, markdown, emojis, hashtags.
-- No "AI" / "bot" / "automated" wording.
-- Hebrew gender: match grammatical gender to the sender's first name; unknown defaults to masculine singular. Never slash forms.
-- seed=${variantSeed}, vary openers and length to avoid templated tone.`;
+KB GROUNDING: ground every assertion strictly in the workspace KNOWLEDGE BASE excerpts in the user message. Never invent facts, prices, listings or claims outside the KB. If KB lacks the answer, ask a clarifying question or honestly offer to follow up privately.
 
+ANTI-SPAM HIGH-ENTROPY (Meta-safety, prevents template detection):
+- Reply must be structurally unique vs. any prior reply: vary opener, sentence count, sentence length, vocabulary, register, rhythm and CTA wording.
+- Quote or paraphrase at least one specific detail from THIS inbound text (name, place, budget, feeling, exact question) so the reply is provably context-bound.
+- Forbidden generic openers: "Thanks for your comment", "Great question", "Hi there", "תודה על התגובה", "שאלה מצוינת", "היי".
+- Close with ONE clear, localized Call-To-Action that advances the workspace agenda; phrase it differently every time.
+
+ABSOLUTE PROHIBITIONS:
+- No asterisks, em-dashes, en-dashes, double dashes, markdown, emojis, hashtags.
+- No "AI" / "bot" / "automated" wording. No legacy persona name.
+- Hebrew gender: match grammatical gender to sender's first name; unknown defaults to masculine singular. Never slash forms.
+- entropy_seed=${variantSeed}`;
+
+  const kbBlock = input.kb_snippets && input.kb_snippets.trim()
+    ? `WORKSPACE KNOWLEDGE BASE (ground every assertion strictly here):\n"""${input.kb_snippets}"""\n\n`
+    : `WORKSPACE KNOWLEDGE BASE: (empty — if needed, ask a clarifying question or offer to follow up privately).\n\n`;
   const user = `Platform: ${input.platform}
 Event: ${input.event_type}
 Sender: ${input.sender_name ?? "unknown"}
 
-Inbound text:
+${kbBlock}Inbound text:
 """${input.text}"""`;
 
   const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -154,12 +170,29 @@ Deno.serve(async (req) => {
     const autoReplyPositive = Boolean(profileRow?.auto_reply_positive);
     const autoReplyNegative = Boolean(profileRow?.auto_reply_negative);
 
+    // Load workspace KB snippets (strict isolation via .eq user_id).
+    let kbSnippets = "";
+    try {
+      const { data: kbRows } = await admin
+        .from("knowledge_chunks")
+        .select("content")
+        .eq("user_id", user_id)
+        .limit(8);
+      kbSnippets = (kbRows ?? [])
+        .map((r: any) => String(r?.content ?? "").trim())
+        .filter(Boolean)
+        .map((c: string) => c.slice(0, 600))
+        .join("\n---\n")
+        .slice(0, 4000);
+    } catch { /* ignore */ }
+
     // 1. AI analysis
     const analysis = await analyzeWithAI({
       text: inbound_text,
       platform,
       event_type,
       sender_name,
+      kb_snippets: kbSnippets,
     });
 
     const willAutoReply =
@@ -222,7 +255,7 @@ Deno.serve(async (req) => {
       rowId = ins.id;
     }
 
-    // 3. If auto-reply is enabled and we have a draft, dispatch via reply fn.
+    // 3. If auto-reply is enabled and we have a draft, publish public reply.
     let dispatch: any = null;
     if (willAutoReply && analysis.reply && rowId) {
       const r = await fetch(`${SUPABASE_URL}/functions/v1/ayrshare-comment-reply`, {
@@ -238,12 +271,57 @@ Deno.serve(async (req) => {
       dispatch = await r.json().catch(() => ({ ok: false }));
     }
 
+    // 4. DUAL FUNNEL: always attempt a private DM (Messenger / IG Direct) so the
+    //    commenter is moved into a 1:1 conversation loop. Public reply (above)
+    //    is gated by sentiment toggles; the DM is not.
+    let private_dm: any = null;
+    if (event_type === "comment" && external_id && analysis.reply && AYRSHARE_API_KEY) {
+      try {
+        const { profileKey } = await resolveWorkspaceProfileKey(admin);
+        if (profileKey) {
+          const dmRes = await fetch(AYR_MESSAGES_URL, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+              "Profile-Key": profileKey,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              platforms: [platform],
+              commentId: external_id,
+              message: analysis.reply,
+              searchPlatformId: true,
+            }),
+          });
+          const dmText = await dmRes.text();
+          try { private_dm = dmText ? JSON.parse(dmText) : { ok: dmRes.ok }; }
+          catch { private_dm = { raw: dmText, ok: dmRes.ok }; }
+          if (rowId) {
+            await admin
+              .from("engagement_events")
+              .update({
+                metadata: {
+                  ...mergedMetadata,
+                  private_dm: { status: dmRes.status, response: private_dm },
+                },
+              })
+              .eq("id", rowId)
+              .eq("user_id", user_id);
+          }
+        }
+      } catch (e) {
+        console.error("[auto-engagement-process] private DM failed", e);
+        private_dm = { error: e instanceof Error ? e.message : String(e) };
+      }
+    }
+
     return json({
       ok: true,
       row_id: rowId,
       sentiment: analysis.sentiment,
       auto_reply: willAutoReply,
       dispatch,
+      private_dm,
     });
   } catch (e) {
     console.error("[auto-engagement-process] error:", e);
