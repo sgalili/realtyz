@@ -749,16 +749,11 @@ const ConfirmDispatchDialog = ({
       const campaignName = `${brandName} · ${channel.label}`;
 
       if (SOCIAL_CHANNELS.has(channel.id)) {
-        // Only forward attachments whose URL is already public (https) — blob:
-        // / data: URLs are unreachable by Facebook and will be rejected by the
-        // edge function's media-resolution guard.
-        const mediaUrls = attachments
-          .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
-          .map((a) => a.url as string);
-        if (attachments.some((a) => a.kind === 'image') && mediaUrls.length === 0) {
-          toast.error('יש להעלות את התמונות לספריית המדיה לפני פרסום (לא ניתן לפרסם תמונות מקומיות)');
-          setSending(false);
-          return;
+        // mediaUrls was already filtered to public https links upstream by
+        // InlineComposer; if it ends up empty here while the composer had any
+        // image attachments, the edge function's guard will reject the post.
+        if (!mediaUrls) {
+          // defensive: should never happen since prop is typed string[]
         }
         // Publish via Ayrshare to the workspace-connected social page.
         const { data, error } = await supabase.functions.invoke('ayrshare-post', {
