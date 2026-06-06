@@ -247,11 +247,11 @@ Deno.serve(async (req) => {
         const haystack = `${inbound}\n${rawCampaignContext}`;
         const strictTypeForLiveMatch = primaryTypeLocked ? primaryType : null;
         const liveMatches = (liveRows ?? [])
-          .map((row: any) => ({ ...row, listing_type: extractListingTypeFromFeatures(row.features) }))
+          .map((row: any) => ({ ...row, listing_type: resolveListingType(row) }))
           .filter((row: any) => (!strictTypeForLiveMatch || isListingAllowedForType(row, strictTypeForLiveMatch)) && overlapsListingText(haystack, row));
         const row = liveMatches[0] ?? null;
         if (row) {
-          const lt = extractListingTypeFromFeatures((row as any).features) ?? primaryType;
+          const lt = resolveListingType(row as any) ?? primaryType;
           primaryListing = {
             title: String((row as any).property_title ?? (row as any).address ?? ""),
             city: (row as any).city ?? null,
