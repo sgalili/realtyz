@@ -82,6 +82,7 @@ export default function Properties() {
   // View mode for the property catalog — default to table per product spec.
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [shareTarget, setShareTarget] = useState<HomelyProperty | null>(null);
   const [addOpen, setAddOpen] = useState(false);
