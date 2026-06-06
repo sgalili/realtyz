@@ -593,6 +593,9 @@ function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare
 // plus a Share action per row (merged from the former list view).
 function PropertyTable({ properties }: { properties: Array<HomelyProperty & { extras?: Record<string, string> }> }) {
   const [shareTarget, setShareTarget] = useState<HomelyProperty | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<HomelyProperty | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const queryClient = useQueryClient();
   const extraKeys = useMemo(() => {
     const seen = new Set<string>();
     const order: string[] = [];
@@ -604,6 +607,20 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
     }
     return order;
   }, [properties]);
+
+  const handleDelete = async () => {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    const { error } = await supabase.from('listings').delete().eq('id', deleteTarget.id);
+    setDeleting(false);
+    if (error) {
+      toast.error('מחיקת הנכס נכשלה: ' + error.message);
+      return;
+    }
+    toast.success('הנכס נמחק');
+    setDeleteTarget(null);
+    queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+  };
 
   return (
     <>
@@ -626,6 +643,7 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
           <tbody>
             {properties.map((p) => {
               const isRent = p.listing_type === 'rent';
+              const isMine = p.source === 'mine';
               return (
                 <tr key={p.id} className="border-t hover:bg-muted/30">
                   <td className="px-2 py-1.5 whitespace-nowrap">
@@ -648,9 +666,23 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
                     </td>
                   ))}
                   <td className="px-2 py-1.5 whitespace-nowrap text-left">
-                    <Button size="sm" variant="outline" onClick={() => setShareTarget(p)} className="gap-1.5">
-                      <Send className="h-3.5 w-3.5" /> שתף
-                    </Button>
+                    <div className="inline-flex items-center gap-1.5">
+                      <Button size="sm" variant="outline" onClick={() => setShareTarget(p)} className="gap-1.5">
+                        <Send className="h-3.5 w-3.5" /> שתף
+                      </Button>
+                      {isMine && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => setDeleteTarget(p)}
+                          className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
+                          title="מחק נכס"
+                          aria-label="מחק נכס"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
                   </td>
                 </tr>
               );
@@ -663,6 +695,26 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
         open={!!shareTarget}
         onOpenChange={(open) => { if (!open) setShareTarget(null); }}
       />
+      <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>למחוק את הנכס?</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget?.title ? `"${deleteTarget.title}" ` : ''}יימחק לצמיתות. לא ניתן לבטל פעולה זו.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>ביטול</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={deleting}
+              onClick={(e) => { e.preventDefault(); handleDelete(); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'מוחק…' : 'מחק'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
