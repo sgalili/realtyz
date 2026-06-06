@@ -232,6 +232,7 @@ Deno.serve(async (req) => {
     const campaignContext = primaryType === "rent" && SALE_LEAK_RE.test(rawCampaignContext)
       ? "[campaign post context omitted: stale sale wording detected; use LIVE PROPERTIES & CRM CONTEXT only]"
       : rawCampaignContext;
+    const promptSnap = isolateSnapshotForPrompt(crmSnap, primaryType, primaryListing?.asking_price ?? null);
 
     // High-entropy seed forces lexical/structural variation across calls.
     const entropySeed = `${crypto.randomUUID()}-${Date.now()}`;
@@ -242,7 +243,7 @@ Deno.serve(async (req) => {
             primaryType === "rent" ? "FOR RENT (להשכרה)" : "FOR SALE (למכירה)"
           }.`,
           primaryType === "rent"
-            ? "Use rental terminology ONLY: שכ\"ד חודשי / דמי שכירות / שכר דירה / פנויה לכניסה / חוזה / פיקדון / move-in date / monthly rent. NEVER say מחיר מבוקש, משכנתא, רכישה, mortgage, purchase, buyers, ROI on purchase."
+            ? "Use rental terminology ONLY and quote every price as monthly rent: שכ\"ד ₪/חודש / דמי שכירות חודשיים / שכר דירה / פנויה לכניסה / חוזה / פיקדון / move-in date / monthly rent. NEVER say מחיר מבוקש, משכנתא, רכישה, mortgage, purchase, buyers, ROI on purchase."
             : "Use sale terminology ONLY: מחיר מבוקש / רכישה / משכנתא / בעלות / mortgage / purchase / buyers. NEVER say שכ\"ד / דמי שכירות / שכירות חודשית / monthly rent / lease / tenants.",
           `Alternative listings MUST be ${primaryType.toUpperCase()} ONLY and within ±15% of the primary ${
             primaryType === "rent" ? "monthly rent" : "asking price"
@@ -267,7 +268,7 @@ Deno.serve(async (req) => {
       campaignContext ? `Campaign context:\n"""${campaignContext}"""` : null,
       primaryBlock,
       transactionBlock,
-      renderCrmBlock(crmSnap),
+      renderCrmBlock(promptSnap),
       renderKbBlock(kbSnippets),
       `Required reply language: ${
         targetLang === "en" ? "English only" : targetLang === "he" ? "Hebrew only" : "same language as inbound"
