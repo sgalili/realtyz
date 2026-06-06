@@ -12,6 +12,7 @@ import {
   renderKbBlock,
   renderCrmBlock,
   extractListingTypeFromFeatures,
+  isListingAllowedForType,
   UDI_PERSONA,
   ANTI_SPAM_RULES,
   CTA_RULE,
@@ -19,6 +20,21 @@ import {
 } from "../_shared/grounding.ts";
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
+
+const SALE_LEAK_RE = /(פורצי הדרך|אבן גבירול|למכירה|מחיר מבוקש|משכנתא|רכישה|לקנות|2,?290,?000|for sale|asking price|mortgage|purchase)/i;
+
+function normalizeText(value: unknown): string {
+  return String(value ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+function overlapsListingText(haystack: string, listing: Record<string, unknown>): boolean {
+  const h = normalizeText(haystack);
+  if (!h) return false;
+  const candidates = [listing.property_title, listing.address, listing.neighborhood, listing.city]
+    .map(normalizeText)
+    .filter((v) => v.length >= 4);
+  return candidates.some((v) => h.includes(v));
+}
 
 const SYSTEM = `${UDI_PERSONA}
 
@@ -83,8 +99,8 @@ Deno.serve(async (req) => {
     }
     const platform = typeof body?.platform === "string" ? body.platform : "";
     const sender = typeof body?.sender_handle === "string" ? body.sender_handle : "";
-    const campaignContext =
-      typeof body?.campaign_context === "string" ? body.campaign_context.slice(0, 800) : "";
+    const rawCampaignContext =
+      typeof body?.campaign_context === "string" ? body.campaign_context.slice(0, 1400) : "";
     const regenerate = Boolean(body?.regenerate);
     const targetLang = detectDominantLanguage(inbound);
     const firstName = sender.trim().split(/[\s_.@]+/)[0] || "";
@@ -147,7 +163,7 @@ Deno.serve(async (req) => {
     // context when neither primary_listing_id nor explicit listing_type was
     // provided. Hebrew + English rental/sale keyword sniff.
     if (!primaryType) {
-      const haystack = `${inbound}\n${campaignContext}`.toLowerCase();
+      const haystack = `${inbound}\n${rawCampaignContext}`.toLowerCase();
       const rentSignals = /(להשכרה|שכירות|לשכור|להשכיר|שכר דירה|שכ"?ד|\brent(al|s)?\b|\bfor rent\b|\blease\b|\bto let\b)/i;
       const saleSignals = /(למכירה|לרכישה|לקנות|נמכרת|רכישה|\bfor sale\b|\bbuy(ing)?\b|\bpurchase\b|\bmortgage\b|משכנתא)/i;
       const rentHit = rentSignals.test(haystack);
@@ -156,11 +172,48 @@ Deno.serve(async (req) => {
       else if (saleHit && !rentHit) primaryType = "sale";
     }
 
+    // Fresh live DB resolution: regeneration must not trust campaign_logs text
+    // or older generated post context as the property source of truth. Match the
+    // inbound/post text against current live listings, then re-lock type/price
+    // from the active listing row only.
+    if (!primaryListing && userId) {
+      try {
+        const { data: liveRows } = await admin
+          .from("listings")
+          .select("property_title,address,neighborhood,city,asking_price,features,rooms,sqm,status,is_published")
+          .eq("user_id", userId)
+          .eq("status", "live")
+          .eq("is_published", true)
+          .limit(120);
+        const haystack = `${inbound}\n${rawCampaignContext}`;
+        const liveMatches = (liveRows ?? [])
+          .map((row: any) => ({ ...row, listing_type: extractListingTypeFromFeatures(row.features) }))
+          .filter((row: any) => (!primaryType || isListingAllowedForType(row, primaryType)) && overlapsListingText(haystack, row));
+        const row = liveMatches[0] ?? null;
+        if (row) {
+          const lt = extractListingTypeFromFeatures((row as any).features) ?? primaryType;
+          primaryListing = {
+            title: String((row as any).property_title ?? (row as any).address ?? ""),
+            city: (row as any).city ?? null,
+            asking_price: (row as any).asking_price ?? null,
+            listing_type: lt,
+            rooms: (row as any).rooms ?? null,
+            sqm: (row as any).sqm ?? null,
+          };
+          if (lt) primaryType = lt;
+        }
+      } catch { /* ignore */ }
+    }
+
 
     const [kbSnippets, crmSnap] = await Promise.all([
       loadKbSnippets(admin, userId),
       loadCrmSnapshot(admin, userId, { listingType: primaryType }),
     ]);
+
+    const campaignContext = primaryType === "rent" && SALE_LEAK_RE.test(rawCampaignContext)
+      ? "[campaign post context omitted: stale sale wording detected; use LIVE PROPERTIES & CRM CONTEXT only]"
+      : rawCampaignContext;
 
     // High-entropy seed forces lexical/structural variation across calls.
     const entropySeed = `${crypto.randomUUID()}-${Date.now()}`;
