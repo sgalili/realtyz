@@ -17,6 +17,8 @@ import {
   ChevronDown as ChevronDownIcon, Plug, Camera, Sparkles, Square,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 
 import { supabase } from '@/integrations/supabase/client';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
