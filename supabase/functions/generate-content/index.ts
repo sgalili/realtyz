@@ -48,13 +48,26 @@ serve(async (req) => {
       loadCrmSnapshot(admin, userId),
     ]);
 
+    const featureLabels = (features: unknown) => Array.isArray(features)
+      ? features
+          .map((feature) => typeof feature === "string"
+            ? feature
+            : feature && typeof feature === "object" && "label" in feature
+              ? String((feature as Record<string, unknown>).label ?? "")
+              : "")
+          .filter(Boolean)
+      : [];
+    const listingTypeFromFeatures = (features: unknown) => Array.isArray(features)
+      ? features.find((feature) => feature && typeof feature === "object" && "listing_type" in feature)?.listing_type
+      : null;
+
     // Fetch a specific promoted listing when supplied by the UI.
     let promotedListing: any = null;
     if (selectedListingId && userId) {
       try {
         const { data: row } = await admin
           .from("listings")
-          .select("property_title,description,address,city,neighborhood,rooms,sqm,asking_price,features,status")
+          .select("*")
           .eq("id", selectedListingId)
           .maybeSingle();
         if (row) promotedListing = row;
@@ -90,18 +103,25 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
       ? `[BROKER'S CUSTOM INSTRUCTIONS FOR THIS POST] (highest priority — obey verbatim):\n"""${String(customInstructions).trim().slice(0, 1500)}"""`
       : "";
 
+    const promotedFeatures = promotedListing ? featureLabels(promotedListing.features) : [];
+    const promotedListingType = promotedListing ? listingTypeFromFeatures(promotedListing.features) : null;
+
     const promotedBlock = promotedListing
       ? [
           "[PROMOTED LISTING — THIS POST MUST PROMOTE THIS EXACT PROPERTY] (use ONLY these real fields — never alter prices, address, rooms, or features):",
           promotedListing.property_title ? `כותרת: ${promotedListing.property_title}` : null,
+          promotedListingType ? `סוג עסקה: ${promotedListingType === "rent" ? "השכרה" : "מכירה"}` : null,
           promotedListing.address ? `כתובת: ${promotedListing.address}` : null,
           promotedListing.neighborhood ? `שכונה: ${promotedListing.neighborhood}` : null,
           promotedListing.city ? `עיר: ${promotedListing.city}` : null,
           promotedListing.rooms ? `חדרים: ${promotedListing.rooms}` : null,
           promotedListing.sqm ? `שטח: ${promotedListing.sqm} מ"ר` : null,
+          promotedListing.floor ? `קומה: ${promotedListing.floor}` : null,
           promotedListing.asking_price ? `מחיר מבוקש: ${Number(promotedListing.asking_price).toLocaleString("he-IL")} ש"ח` : null,
-          Array.isArray(promotedListing.features) && promotedListing.features.length
-            ? `מאפיינים בולטים: ${promotedListing.features.slice(0, 8).join(", ")}`
+          promotedListing.parking ? `חניה: כן` : null,
+          promotedListing.elevator ? `מעלית: כן` : null,
+          promotedFeatures.length
+            ? `מאפיינים בולטים: ${promotedFeatures.slice(0, 8).join(", ")}`
             : null,
           promotedListing.description ? `תיאור מקצועי קצר: ${String(promotedListing.description).slice(0, 600)}` : null,
         ].filter(Boolean).join("\n")
