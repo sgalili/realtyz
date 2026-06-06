@@ -196,6 +196,25 @@ ${CTA_RULE}
       .replace(/\n{3,}/g, "\n\n")
       .trim();
 
+    // HARD SCRUB: forbidden vendor/tech vocabulary must never reach the public.
+    const FORBIDDEN_PATTERNS: { re: RegExp; replacement: string }[] = [
+      { re: /\brealtyz(?:\s*ai)?\b/gi, replacement: "" },
+      { re: /ריאלטיז(?:\s*AI)?/gi, replacement: "" },
+      { re: /\bA\.?I\.?\b/g, replacement: "" },
+      { re: /בינה\s+מלאכותית/gi, replacement: "מומחיות" },
+      { re: /אלגוריתם[ים]*/gi, replacement: "ניסיון" },
+      { re: /\b(platform|algorithm)\b/gi, replacement: "" },
+      { re: /פלטפורמ[הת]/gi, replacement: "משרד" },
+      { re: /\bבוט\b/gi, replacement: "" },
+      { re: /צ['׳]?אטבוט/gi, replacement: "" },
+      { re: /אוטומצי[הת]/gi, replacement: "" },
+    ];
+    for (const { re, replacement } of FORBIDDEN_PATTERNS) {
+      content = content.replace(re, replacement);
+    }
+    content = content.replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+
+
     const p = String(platform).toLowerCase();
     if ((p === "twitter" || p === "x") && content.length > 280) {
       content = content.slice(0, 277).trimEnd() + "...";
