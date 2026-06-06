@@ -399,6 +399,7 @@ export default function Profile() {
         <TabsContent value="workspace" className="mt-[20px]"><WorkspaceTab /></TabsContent>
         <TabsContent value="connections" className="mt-[20px] space-y-4">
           <WhatsAppGatewayCard />
+          <VoiceGatewayCard />
           <ListingPortalsCard />
         </TabsContent>
       </Tabs>
