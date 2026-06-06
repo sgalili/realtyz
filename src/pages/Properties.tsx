@@ -60,6 +60,23 @@ function extractListingType(features: unknown): ListingType {
   return 'sale';
 }
 
+function propertyDedupeKey(property: Partial<HomelyProperty> & { address?: string }) {
+  return [property.address, property.city, property.title, property.rooms, property.price]
+    .map((value) => String(value ?? '').replace(/\s+/g, ' ').trim().toLowerCase())
+    .join('|');
+}
+
+function dedupeProperties<T extends Partial<HomelyProperty> & { address?: string }>(properties: T[]): T[] {
+  const seen = new Set<string>();
+  return properties.filter((property) => {
+    const key = propertyDedupeKey(property);
+    if (!key.replace(/\|/g, '')) return true;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 type SourceTab = 'mine' | 'homely' | 'yad2' | 'madlan';
 const SOURCE_LABELS: Record<SourceTab, string> = {
   mine: 'הנכסים שלי',
@@ -71,8 +88,8 @@ const SOURCE_LABELS: Record<SourceTab, string> = {
 export default function Properties() {
   const { serviceAreas, coveredCities, isConfigured } = useServiceAreas();
   const [sourceTab, setSourceTab] = useState<SourceTab>('mine');
-  const [listingType, setListingType] = useState<ListingType>('sale');
-  const [city, setCity] = useState<string>(isConfigured ? '__my_zones__' : 'כל הערים');
+  const [listingType, setListingType] = useState<ListingType | 'all'>('all');
+  const [city, setCity] = useState<string>('כל הערים');
   const [propertyType, setPropertyType] = useState<PropertyType | 'all'>('all');
   const [rooms, setRooms] = useState<string>('any');
   // Single max-price slider — default at the maximum so users see ALL listings.
@@ -116,17 +133,23 @@ export default function Properties() {
     queryFn: async () => {
       try {
         if (sourceTab === 'mine') {
-          const { data, error } = await supabase
-            .from('listings')
-            .select('id, property_title, description, asking_price, city, address, neighborhood, rooms, sqm, features, source_metadata, source')
-            .eq('status', 'live')
-            .eq('is_published', true)
-            .order('created_at', { ascending: false })
-            .limit(500);
-          if (error) throw error;
+          const rows: any[] = [];
+          const pageSize = 1000;
+          for (let from = 0; ; from += pageSize) {
+            const { data, error } = await supabase
+              .from('listings')
+              .select('id, property_title, description, asking_price, city, address, neighborhood, rooms, sqm, features, source_metadata, source, created_at')
+              .eq('status', 'live')
+              .eq('is_published', true)
+              .order('created_at', { ascending: false })
+              .range(from, from + pageSize - 1);
+            if (error) throw error;
+            rows.push(...(data ?? []));
+            if ((data ?? []).length < pageSize) break;
+          }
           return {
             connected: true,
-            results: (data ?? []).map((row: any) => ({
+            results: dedupeProperties(rows.map((row: any) => ({
               id: row.id,
               source: 'mine',
               title: row.property_title || 'נכס',
@@ -143,7 +166,7 @@ export default function Properties() {
               features: Array.isArray(row.features) ? row.features.filter((f: any) => typeof f === 'string') : [],
               listing_type: extractListingType(row.features),
               extras: (row.source_metadata && typeof row.source_metadata === 'object' ? (row.source_metadata.extras ?? {}) : {}) as Record<string, string>,
-            })),
+            }))),
           };
         }
 
@@ -185,6 +208,7 @@ export default function Properties() {
       price: Number(r.price ?? 0),
       currency: r.currency ?? '₪',
       city: r.city ?? '',
+      address: r.address ?? '',
       rooms: Number(r.rooms ?? 0),
       size_sqm: Number(r.size_sqm ?? 0),
       property_type: 'apartment' as PropertyType,
@@ -201,10 +225,9 @@ export default function Properties() {
     const q = searchQuery.trim().toLowerCase();
     return merged.filter((p) => {
       const pType: ListingType = (p.listing_type ?? 'sale') as ListingType;
-      if (pType !== listingType) return false;
-      if (isConfigured && !isInServiceArea(p.city ?? null, null, serviceAreas)) return false;
+      if (listingType !== 'all' && pType !== listingType) return false;
       if (city === '__my_zones__') {
-        // already filtered by service_areas above
+        if (isConfigured && !isInServiceArea(p.city ?? null, null, serviceAreas)) return false;
       } else if (city !== 'כל הערים' && p.city !== city) {
         return false;
       }
@@ -238,7 +261,7 @@ export default function Properties() {
       {/* Listing type toggle — sits just 15px below the wave hero per spec */}
       <div className="flex justify-center" style={{ marginTop: '15px' }}>
         <div className="inline-flex items-center rounded-xl border border-primary/20 bg-card/40 p-1 backdrop-blur-md" dir="rtl">
-          {(['sale', 'rent'] as ListingType[]).map((t) => (
+          {(['all', 'sale', 'rent'] as Array<ListingType | 'all'>).map((t) => (
             <button
               key={t}
               type="button"
@@ -249,7 +272,7 @@ export default function Properties() {
                   : 'text-muted-foreground hover:text-foreground'
               }`}
             >
-              {LISTING_TYPE_LABELS_HE[t]}
+              {t === 'all' ? 'הכל' : LISTING_TYPE_LABELS_HE[t]}
             </button>
           ))}
         </div>
@@ -425,7 +448,7 @@ export default function Properties() {
                   size="sm"
                   className="h-10 w-full"
                   onClick={() => {
-                    setCity(isConfigured ? '__my_zones__' : 'כל הערים');
+                    setCity('כל הערים');
                     setPropertyType('all');
                     setRooms('any');
                     setMaxPrice(PRICE_MAX);

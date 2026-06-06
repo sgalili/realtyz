@@ -90,6 +90,21 @@ Deno.serve(async (req) => {
       }
     }
 
+    // If Ayrshare returns a partial/empty response after refresh, keep showing
+    // the persisted workspace connections. Only a manual disconnect should hide
+    // a previously connected platform.
+    if (!Array.isArray(connected) || connected.length === 0) {
+      const { data: cached } = await admin
+        .from('social_connections')
+        .select('platform, display_name')
+        .eq('created_by', userId)
+        .eq('is_connected', true);
+      connected = (cached ?? []).map((row: any) => ({
+        platform: row.platform === 'twitter' ? 'x' : row.platform,
+        displayName: row.display_name || row.platform,
+      }));
+    }
+
 
     return new Response(JSON.stringify({ networks, connected }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
