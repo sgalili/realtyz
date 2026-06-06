@@ -80,6 +80,10 @@ function renderStrictListingPayload(snap: any, primaryType: ListingType | null):
   return `[STRICT LISTING PAYLOAD JSON]\nOnly these JSON objects may be used for property facts. If a field is null or absent, do not mention it. Do not add furnishing, parking, elevator, floor, photos, availability, street, neighborhood, or condition unless that exact value is present here.\n${JSON.stringify(objects, null, 2)}`;
 }
 
+function hasUnsupportedPropertyFact(text: string): boolean {
+  return /(מרוהט|ריהוט|חניה|מעלית|קומה|מרפסת|פנוי|כניסה מיידית|תמונות|משופץ|furnished|parking|elevator|balcony|available|photos)/i.test(text);
+}
+
 const SYSTEM = `${UDI_PERSONA}
 
 You are replying to a single public social comment (Facebook, Instagram, etc) as the broker, personally and in first person. Your job is to SELL the relevant property, not to introduce Udi as a human.
@@ -415,7 +419,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (primaryType === "rent" && hasRentalSaleLeak(`${split.public_comment}\n${split.private_messenger_dm}`)) {
+    if (primaryType === "rent" && (hasRentalSaleLeak(`${split.public_comment}\n${split.private_messenger_dm}`) || hasUnsupportedPropertyFact(`${split.public_comment}\n${split.private_messenger_dm}`))) {
       const safeDm = [
         primaryListing
           ? `${primaryListing.title}${primaryListing.city ? " · " + primaryListing.city : ""}${primaryListing.rooms ? " · " + primaryListing.rooms + " חדרים" : ""}${primaryListing.sqm ? " · " + primaryListing.sqm + " מ\"ר" : ""}${primaryListing.asking_price ? " · שכ\"ד " + Number(primaryListing.asking_price).toLocaleString("he-IL") + " ₪/חודש" : ""}`
