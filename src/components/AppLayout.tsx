@@ -594,7 +594,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="realtyz-app-shell h-screen overflow-hidden flex w-full bg-background">
         <AppSidebar tutorialHighlightPath={activeTutorialStep?.path} />
         <div className="flex-1 flex h-screen min-w-0 flex-col overflow-hidden">
-          <header className="h-16 text-primary-foreground backdrop-blur-md flex items-center px-4 gap-2 shrink-0 sticky top-0 z-30" style={{ backgroundColor: 'hsl(var(--header-bg))' }} dir="rtl">
+          <header className="h-16 text-foreground backdrop-blur-md flex items-center px-4 gap-2 shrink-0 sticky top-0 z-30" style={{ backgroundColor: '#fdf251' }} dir="rtl">
             {/* Profile avatar on visual right */}
             <div className="flex items-center gap-3">
               <HeaderProfileMenu />
@@ -610,7 +610,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-9 w-9 p-0 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+                className="h-9 w-9 p-0 text-foreground hover:bg-foreground/10 hover:text-foreground"
                 onClick={() => window.dispatchEvent(new Event('open-ai-drawer'))}
                 aria-label="פתח עוזר AI"
               >
@@ -627,9 +627,9 @@ export function AppLayout({ children }: { children: ReactNode }) {
               className="realtyz-logo inline-flex items-center"
             >
               <img
-                src="/__l5e/assets-v1/0c4787e2-7c2d-419f-b619-90d17f5a6b93/realtyz-logo-rect.png"
+                src="/__l5e/assets-v1/ef688210-357f-40bf-b80d-6fab38365e66/realtyz-logo-yellow.png"
                 alt="Realtyz AI"
-                className="h-8 w-auto object-contain"
+                className="h-10 w-auto object-contain"
               />
             </a>
           </header>
