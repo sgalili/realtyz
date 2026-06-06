@@ -146,7 +146,7 @@ export function PageHero() {
         <RealtyzWave
           position="bottom"
           variant="wave-soft"
-          fill="#f1f5f9"
+          fill="hsl(var(--background))"
           seed={7}
         />
       </div>

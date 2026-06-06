@@ -962,7 +962,7 @@
     position: relative;
     /* Page surface — must match the PageHero wave fill so the wave melts
        seamlessly into the content area (no visible seam). */
-    background: #f1f5f9;
+    background: hsl(var(--background));
     /* Prevent iOS/macOS rubber-band overscroll bounce so the sticky hero stays anchored. */
     overscroll-behavior: none;
     -webkit-overflow-scrolling: auto;

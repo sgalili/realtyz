@@ -1617,7 +1617,7 @@ const CampaignCenter = () => {
             <div />
           </div>
           <div className="pointer-events-none absolute inset-x-0 bottom-0 h-6">
-            <RealtyzWave position="bottom" variant="wave-soft" fill="#f1f5f9" seed={7} />
+            <RealtyzWave position="bottom" variant="wave-soft" fill="hsl(var(--background))" seed={7} />
           </div>
         </div>
       )}
