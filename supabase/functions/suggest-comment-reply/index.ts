@@ -521,20 +521,31 @@ Deno.serve(async (req) => {
     }
 
     if (primaryType === "rent" && (hasRentalSaleLeak(`${split.public_comment}\n${split.private_messenger_dm}`) || hasUnsupportedPropertyFact(`${split.public_comment}\n${split.private_messenger_dm}`))) {
-      const safeDm = [
-        primaryListing
-          ? `${primaryListing.title}${primaryListing.city ? " · " + primaryListing.city : ""}${primaryListing.rooms ? " · " + primaryListing.rooms + " חדרים" : ""}${primaryListing.sqm ? " · " + primaryListing.sqm + " מ\"ר" : ""}${primaryListing.asking_price ? " · שכ\"ד " + Number(primaryListing.asking_price).toLocaleString("he-IL") + " ₪/חודש" : ""}`
-          : "יש לי רק נכסי השכרה פעילים בהקשר הזה, בלי חלופות מכירה.",
-        "אין לי כרגע חלופת השכרה נוספת בטווח התקציב הזה שאפשר להציע בביטחון.",
-        "מה מועד הכניסה המועדף עליכם?",
-      ].join("\n");
+      const featureAnswerLine = featureAsk
+        ? `לגבי ${featureAsk.label_he} — אבדוק עבורך ואעדכן אותך כאן במסנג'ר.`
+        : "";
+      const specsLine = primaryListing
+        ? `${primaryListing.title}${primaryListing.city ? ", " + primaryListing.city : ""}${primaryListing.rooms ? ", " + primaryListing.rooms + " חדרים" : ""}${primaryListing.sqm ? ", " + primaryListing.sqm + " מ\"ר" : ""}${primaryListing.asking_price ? ", שכ\"ד " + Number(primaryListing.asking_price).toLocaleString("he-IL") + " ₪/חודש" : ""}.`
+        : "";
+      const safeDm = ["היי, תודה שפנית.", featureAnswerLine, specsLine, "מה מועד הכניסה המועדף עליכם?"]
+        .filter(Boolean).join("\n");
+      const pubAnswer = featureAsk
+        ? `לגבי ${featureAsk.label_he} ב${primaryListing?.title ?? "נכס"} — אבדוק ואעדכן אותך ישירות.`
+        : (primaryListing
+            ? `יש לי את הפרטים על ${primaryListing.title}${primaryListing.rooms ? `, ${primaryListing.rooms} חדרים` : ""}${primaryListing.asking_price ? `, שכ\"ד ${Number(primaryListing.asking_price).toLocaleString("he-IL")} ₪/חודש` : ""}.`
+            : "יש לי את כל הפרטים הרלוונטיים עבורך.");
       split = {
-        public_comment: sanitizeOutboundText(primaryListing
-          ? `יש לי את הפרטים על ${primaryListing.title}${primaryListing.rooms ? `, ${primaryListing.rooms} חדרים` : ""}${primaryListing.asking_price ? `, שכ\"ד ${Number(primaryListing.asking_price).toLocaleString("he-IL")} ₪/חודש` : ""}. שלחתי לך את כל הפרטים המלאים ישירות לפרטי / למסנג'ר. כנס לבדוק.`
-          : "יש לי רק נכסי השכרה פעילים בהקשר הזה. שלחתי לך את כל הפרטים המלאים ישירות לפרטי / למסנג'ר. כנס לבדוק.").trim(),
+        public_comment: sanitizeOutboundText(`${pubAnswer} שלחתי לך את הפרטים המלאים והסרטון ישירות לפרטי / למסנג'ר. כנס לבדוק.`).trim(),
         private_messenger_dm: sanitizeOutboundText(safeDm).trim(),
       };
     }
+
+    // Final guardrail: strip any "no alternatives" disclaimers the model
+    // may have produced despite the prompt prohibition.
+    split = {
+      public_comment: stripNoAlternativeDisclaimers(split.public_comment),
+      private_messenger_dm: stripNoAlternativeDisclaimers(split.private_messenger_dm),
+    };
 
     if (!split.public_comment) {
       return new Response(JSON.stringify({ error: "empty AI reply" }), {
