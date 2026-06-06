@@ -125,6 +125,33 @@ export type Database = {
         }
         Relationships: []
       }
+      ai_drawer_history: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          payload: Json
+          role: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          role: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          payload?: Json
+          role?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       api_configs: {
         Row: {
           api_key: string
