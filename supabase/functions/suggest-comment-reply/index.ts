@@ -21,7 +21,7 @@ import {
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
 
-const SALE_LEAK_RE = /(פורצי הדרך|אבן גבירול|למכירה|מחיר מבוקש|משכנתא|רכישה|לקנות|2,?290,?000|for sale|asking price|mortgage|purchase)/i;
+const SALE_LEAK_RE = /(למכירה|מחיר מבוקש|משכנתא|רכישה|לקנות|for sale|asking price|mortgage|purchase|(^|[^\d])\d{1,3}[,.]?\d{3}[,.]?\d{3}([^\d]|$))/i;
 
 function normalizeText(value: unknown): string {
   return String(value ?? "").replace(/\s+/g, " ").trim().toLowerCase();
@@ -82,7 +82,10 @@ ABSOLUTE PROHIBITIONS (zero tolerance — breaking any of these voids the reply)
 
 MANDATORY MULTI-SOURCE GROUNDING:
 - Every property fact (rooms, price, sqm, floor, elevator, parking, neighborhood, street) MUST come from [LIVE PROPERTIES & CRM CONTEXT]. Never invent.
+- STRICT DYNAMIC PAYLOAD ONLY: You are strictly forbidden from fabricating property addresses or prices from memory, prior outputs, examples, campaign history, or training data. Use ONLY real-estate objects dynamically injected in [LIVE PROPERTIES & CRM CONTEXT].
+- If a property is not present in the injected payload, it does not exist for this reply. Do NOT mention it, even as an example.
 - STRICT TRANSACTION TYPE FIREWALL: if the primary property is FOR RENT, alternatives and terminology MUST be RENTAL only (שכ"ד חודשי / monthly rent / lease / move-in). If FOR SALE, alternatives and terminology MUST be SALE only (מחיר מבוקש / purchase / mortgage). Crossing these is FORBIDDEN.
+- If the active context states RENT, every price must be written strictly as monthly rental: שכ"ד ₪/חודש. Never write sale price wording or million-tier prices in a rental reply.
 - If the commenter asked a yes/no attribute (elevator? parking? balcony?) and the data is in CRM, answer it directly and truthfully. If not in CRM, pivot to a concrete attribute that IS in CRM (room count, price, street, floor) without claiming the unknown attribute exists.
 - If the KB and CRM truly cannot answer, say honestly you'll verify and follow up in DM. Never fabricate.
 
