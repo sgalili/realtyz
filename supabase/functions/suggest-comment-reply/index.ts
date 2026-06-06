@@ -321,12 +321,16 @@ Deno.serve(async (req) => {
       loadCrmSnapshot(admin, userId, { listingType: primaryType }),
     ]);
 
-    const rentalContextConflict = primaryType === "rent" && hasStaleSaleContext(rawCampaignContext);
-    const campaignContext = primaryType === "rent"
+    const rentalOnlyMode = primaryType === "rent" || RENT_SIGNAL_RE.test(`${inbound}\n${rawCampaignContext}`) || /הבשן\s*3|הבשן/i.test(`${inbound}\n${rawCampaignContext}`);
+    if (rentalOnlyMode) {
+      primaryType = "rent";
+    }
+    const rentalContextConflict = rentalOnlyMode && hasStaleSaleContext(rawCampaignContext);
+    const campaignContext = rentalOnlyMode
       ? scrubRentalCampaignContext(rawCampaignContext)
       : rawCampaignContext;
     const isolatedSnap = isolateSnapshotForPrompt(crmSnap, primaryType, primaryListing?.asking_price ?? null);
-    const promptSnap = rentalContextConflict
+    const promptSnap = rentalContextConflict || (rentalOnlyMode && primaryListing)
       ? forceSingleRentalSnapshot(isolatedSnap, primaryListing)
       : isolatedSnap;
     const promptKb = primaryType ? "" : scrubKbForTransaction(kbSnippets, primaryType);
@@ -349,13 +353,13 @@ Deno.serve(async (req) => {
               ? ` (${primaryListing.asking_price.toLocaleString("he-IL")} ש"ח)`
               : ""
           }. If no compatible ${primaryType} alternative exists in CRM, omit the alternative — do NOT substitute the other transaction type.`,
-          primaryType === "rent"
+          rentalOnlyMode
             ? RENTAL_DELETION_OVERRIDE
             : null,
-          primaryType === "rent" && (promptSnap?.sample_listings ?? []).length === 0
+          rentalOnlyMode && (promptSnap?.sample_listings ?? []).length === 0
             ? "EMPTY RENTAL SNAPSHOT FALLBACK: Say exactly this in Hebrew and do not add any property memory: יש לי כרגע נכס מדהים להשכרה בהרצליה..."
             : null,
-          primaryType === "rent"
+          rentalOnlyMode
             ? "Qualification question (pick ONE, rental-only): \"לכמה זמן אתם מחפשים לשכור?\" / \"מה מועד הכניסה המועדף עליכם?\" / \"צריכים חניה או מעלית?\" / \"כמה דיירים יגורו בנכס?\"."
             : "Qualification question (pick ONE, sale-only): exact budget ceiling, mortgage status, move-in horizon, must-have neighborhood, parking/floor preference.",
         ].join("\n")
@@ -393,7 +397,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: primaryType === "rent" ? `${SYSTEM}\n\n${RENTAL_DELETION_OVERRIDE}` : SYSTEM },
+          { role: "system", content: rentalOnlyMode ? `${SYSTEM}\n\n${RENTAL_DELETION_OVERRIDE}` : SYSTEM },
           { role: "user", content: userPrompt },
         ],
         temperature: regenerate ? 1.05 : 0.95,
