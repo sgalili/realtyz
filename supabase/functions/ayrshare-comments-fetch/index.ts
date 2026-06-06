@@ -360,7 +360,7 @@ Deno.serve(async (req) => {
             external_post_id: d.external_post_id,
             sender_handle: d.sender_handle,
             sender_name: d.sender_handle,
-            metadata: { parent_id: d.parent_id, source: "ayrshare_comments_fetch" },
+            metadata: { parent_id: d.parent_id, sender_id: d.sender_id, source: "ayrshare_comments_fetch" },
           }),
         }).catch((e) => console.error("[ayrshare-comments-fetch] dispatch failed", e)),
       ),
