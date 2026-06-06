@@ -16,6 +16,7 @@ import { IsraeliCityPicker } from '@/components/IsraeliCityPicker';
 import { WhatsAppGatewayCard } from '@/components/profile/WhatsAppGatewayCard';
 import { ListingPortalsCard } from '@/components/profile/ListingPortalsCard';
 import { VoiceGatewayCard } from '@/components/profile/VoiceGatewayCard';
+import { ProfileAvatarUploader } from '@/components/profile/ProfileAvatarUploader';
 import { cn } from '@/lib/utils';
 
 
@@ -333,6 +334,8 @@ function PersonalTab() {
         <CardTitle className="text-right">הפרופיל האישי שלי</CardTitle>
       </CardHeader>
       <CardContent className="space-y-5">
+        <ProfileAvatarUploader />
+
         <div className="space-y-2">
           <Label htmlFor="full-name" className="text-right text-sm">שם מלא להצגה</Label>
           <Input id="full-name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="text-right" dir="rtl" />
