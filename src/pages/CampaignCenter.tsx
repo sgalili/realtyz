@@ -289,20 +289,28 @@ const InlineComposer = ({
   const handleGenerate = async () => {
     setGenerating(true);
     try {
-      const topic = body.trim() || `קמפיין נדל"ן עבור ${brandName}`;
+      const topic = body.trim()
+        || customInstructions.trim()
+        || (selectedListing?.property_title ? `פוסט קידום: ${selectedListing.property_title}` : `פוסט שיווקי מאת אודי ויטמן`);
       const { data, error } = await supabase.functions.invoke('generate-content', {
-        body: { topic, platform: channel.id },
+        body: {
+          topic,
+          platform: channel.id,
+          customInstructions: customInstructions.trim() || undefined,
+          selectedListingId: selectedListingId || undefined,
+        },
       });
       if (error) throw error;
       const text = (data?.content || data?.text || '').toString().slice(0, MAX_CHARS);
       if (text) setBody(text);
-      else toast.info('לא התקבל טקסט מה-AI');
+      else toast.info('לא התקבל טקסט');
     } catch (e: any) {
       toast.error('יצירת טקסט נכשלה');
     } finally {
       setGenerating(false);
     }
   };
+
 
   const hasBody = body.trim().length > 0;
   const count = body.length;
