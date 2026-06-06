@@ -167,88 +167,101 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
         return;
       }
 
-      const headerMap = buildHeaderMap(Object.keys(rows[0]));
-
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) {
         toast.error('יש להתחבר כדי לייבא נכסים');
         return;
       }
 
-      const inserts: any[] = [];
-      let skipped = 0;
-      for (const row of rows) {
-        const mapped: Record<string, any> = {};
-        const extras: Record<string, string> = {};
-        for (const [origKey, val] of Object.entries(row)) {
-          const field = headerMap[origKey];
-          if (field) mapped[field] = val;
-          // Preserve EVERY original column verbatim
-          const sv = val == null ? '' : String(val).trim();
-          if (sv) extras[origKey] = sv;
+      const buildInserts = (sourceRows: Record<string, any>[]) => {
+        if (!sourceRows.length) return { inserts: [] as any[], skipped: 0 };
+        const headerMap = buildHeaderMap(Object.keys(sourceRows[0]));
+        const inserts: any[] = [];
+        let skipped = 0;
+        for (const row of sourceRows) {
+          const mapped: Record<string, any> = {};
+          const extras: Record<string, string> = {};
+          for (const [origKey, val] of Object.entries(row)) {
+            const field = headerMap[origKey];
+            if (field) mapped[field] = val;
+            const sv = val == null ? '' : String(val).trim();
+            if (sv) extras[origKey] = sv;
+          }
+
+          const price = parseNumber(mapped.price);
+          const street = mapped.street ? String(mapped.street).trim() : '';
+          const streetNo = mapped.street_no ? String(mapped.street_no).trim() : '';
+          const address = [street, streetNo].filter(Boolean).join(' ').trim();
+          const propertyType = mapped.property_type ? String(mapped.property_type).trim() : '';
+          const city = mapped.city ? String(mapped.city).trim() : '';
+          const neighborhood = mapped.neighborhood ? String(mapped.neighborhood).trim() : '';
+          const rooms = parseNumber(mapped.rooms);
+          const sqm = parseNumber(mapped.sqm);
+          const floor = parseNumber(mapped.floor);
+          const elevator = parseBool(mapped.elevator);
+          const parking = parseBool(mapped.parking);
+
+          if (!price && !address && !propertyType) {
+            skipped++;
+            continue;
+          }
+
+          const titleFromHeader = mapped.title ? String(mapped.title).trim() : '';
+          const title =
+            titleFromHeader ||
+            [propertyType || 'נכס', address && `· ${address}`, rooms && `· ${rooms} חד'`]
+              .filter(Boolean)
+              .join(' ');
+
+          const ownerName = [mapped.owner_name, mapped.owner_family]
+            .filter(Boolean).map((s) => String(s).trim()).join(' ').trim();
+
+          inserts.push({
+            user_id: auth.user.id,
+            slug: slugify(title),
+            property_title: title,
+            description: mapped.description ? String(mapped.description) : title,
+            asking_price: price ?? 0,
+            city: city || null,
+            neighborhood: neighborhood || null,
+            address: address || null,
+            rooms: rooms ?? null,
+            sqm: sqm ? Math.round(sqm) : null,
+            floor: floor != null ? Math.round(floor) : null,
+            elevator,
+            parking,
+            status: 'live',
+            source: 'import',
+            is_published: true,
+            features: [
+              ...(propertyType ? [propertyType] : []),
+              { listing_type: detectListingType(extras, mapped.listing_type, price) },
+            ],
+            source_metadata: {
+              owner_name: ownerName || null,
+              owner_phone: mapped.owner_phone ? String(mapped.owner_phone).trim() : null,
+              agent: mapped.agent ? String(mapped.agent).trim() : null,
+              serial: mapped.serial ? String(mapped.serial).trim() : null,
+              opened_at: mapped.opened_at ? String(mapped.opened_at).trim() : null,
+              updated_at_src: mapped.updated_at_src ? String(mapped.updated_at_src).trim() : null,
+              property_type: propertyType || null,
+              extras,
+            },
+          });
         }
+        return { inserts, skipped };
+      };
 
-        const price = parseNumber(mapped.price);
-        // Require only a price OR a title/street so we don't drop rows just because city is missing
-        const street = mapped.street ? String(mapped.street).trim() : '';
-        const streetNo = mapped.street_no ? String(mapped.street_no).trim() : '';
-        const address = [street, streetNo].filter(Boolean).join(' ').trim();
-        const propertyType = mapped.property_type ? String(mapped.property_type).trim() : '';
-        const city = mapped.city ? String(mapped.city).trim() : '';
-        const neighborhood = mapped.neighborhood ? String(mapped.neighborhood).trim() : '';
-        const rooms = parseNumber(mapped.rooms);
-        const sqm = parseNumber(mapped.sqm);
-        const floor = parseNumber(mapped.floor);
-        const elevator = parseBool(mapped.elevator);
-        const parking = parseBool(mapped.parking);
+      let { inserts, skipped } = buildInserts(rows);
 
-        if (!price && !address && !propertyType) {
-          skipped++;
-          continue;
+      // Second-chance OCR fallback: pdfjs returned text but mapping found
+      // zero usable rows (garbled scan, wrong column layout, etc).
+      if (isPdf && !inserts.length) {
+        const ocrRows = await runOcrFallback(file);
+        if (ocrRows.length) {
+          rows = ocrRows;
+          ({ inserts, skipped } = buildInserts(ocrRows));
         }
-
-        const titleFromHeader = mapped.title ? String(mapped.title).trim() : '';
-        const title =
-          titleFromHeader ||
-          [propertyType || 'נכס', address && `· ${address}`, rooms && `· ${rooms} חד'`]
-            .filter(Boolean)
-            .join(' ');
-
-        const ownerName = [mapped.owner_name, mapped.owner_family]
-          .filter(Boolean).map((s) => String(s).trim()).join(' ').trim();
-
-        inserts.push({
-          user_id: auth.user.id,
-          slug: slugify(title),
-          property_title: title,
-          description: mapped.description ? String(mapped.description) : title,
-          asking_price: price ?? 0,
-          city: city || null,
-          neighborhood: neighborhood || null,
-          address: address || null,
-          rooms: rooms ?? null,
-          sqm: sqm ? Math.round(sqm) : null,
-          floor: floor != null ? Math.round(floor) : null,
-          elevator,
-          parking,
-          status: 'live',
-          source: 'import',
-          is_published: true,
-          features: [
-            ...(propertyType ? [propertyType] : []),
-            { listing_type: detectListingType(extras, mapped.listing_type, price) },
-          ],
-          source_metadata: {
-            owner_name: ownerName || null,
-            owner_phone: mapped.owner_phone ? String(mapped.owner_phone).trim() : null,
-            agent: mapped.agent ? String(mapped.agent).trim() : null,
-            serial: mapped.serial ? String(mapped.serial).trim() : null,
-            opened_at: mapped.opened_at ? String(mapped.opened_at).trim() : null,
-            updated_at_src: mapped.updated_at_src ? String(mapped.updated_at_src).trim() : null,
-            property_type: propertyType || null,
-            extras,
-          },
-        });
       }
 
       if (!inserts.length) {
