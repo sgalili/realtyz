@@ -198,20 +198,27 @@ const InlineComposer = ({
   // Reset on channel change
   useEffect(() => { setBody(''); setMode('now'); setAttachments([]); setCustomInstructions(''); setSelectedListingId(null); setListingQuery(''); }, [channel.id]);
 
-  // Live property search from listings table (workspace-scoped by RLS).
+  // Live property search from listings table — explicit user scoping + neighborhood search.
   useEffect(() => {
     let cancelled = false;
     const t = setTimeout(async () => {
-      const q = listingQuery.trim();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { if (!cancelled) setListings([]); return; }
+      const q = listingQuery.trim().replace(/[(),]/g, ' ');
       let query = supabase
         .from('listings')
-        .select('id, property_title, city, address, rooms, asking_price, deal_type')
+        .select('id, property_title, city, neighborhood, address, rooms, asking_price, deal_type, status')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(30);
       if (q.length > 0) {
-        query = query.or(`property_title.ilike.%${q}%,city.ilike.%${q}%,address.ilike.%${q}%`);
+        const like = `%${q}%`;
+        query = query.or(
+          `property_title.ilike.${like},city.ilike.${like},neighborhood.ilike.${like},address.ilike.${like}`
+        );
       }
-      const { data } = await query;
+      const { data, error } = await query;
+      if (error) console.error('[CampaignCenter] listings fetch failed', error);
       if (!cancelled) setListings((data as any) || []);
     }, 200);
     return () => { cancelled = true; clearTimeout(t); };
