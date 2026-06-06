@@ -106,7 +106,7 @@ export function HeaderProfileMenu() {
               </div>
             )}
             <div className="border-b border-border/60 px-2.5 py-2 mb-1">
-              <p className="truncate text-xs font-semibold text-primary">{displayName}</p>
+              <p className="truncate text-xs font-semibold text-[#0b3982]">{displayName}</p>
               <p className="truncate text-[10px] text-muted-foreground">{user.email}</p>
             </div>
             <div className="flex flex-col">
@@ -117,9 +117,9 @@ export function HeaderProfileMenu() {
                     key={item.to}
                     type="button"
                     onClick={() => go(item.to)}
-                    className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-right text-sm text-primary transition-colors hover:bg-primary/10"
+                    className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-right text-sm text-[#0b3982] transition-colors hover:bg-[#0b3982]/10"
                   >
-                    <Icon className={cn('h-4 w-4 shrink-0', item.iconClass ?? 'text-primary')} />
+                    <Icon className={cn('h-4 w-4 shrink-0 text-[#0b3982]')} />
                     <span className="flex-1">{item.label}</span>
                   </button>
                 );
@@ -128,9 +128,9 @@ export function HeaderProfileMenu() {
                 <button
                   type="button"
                   onClick={() => go('/super-admin')}
-                  className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-right text-sm text-primary transition-colors hover:bg-primary/10"
+                  className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-right text-sm text-[#0b3982] transition-colors hover:bg-[#0b3982]/10"
                 >
-                  <Shield className="h-4 w-4 shrink-0 text-warning" />
+                  <Shield className="h-4 w-4 shrink-0 text-[#0b3982]" />
                   <span className="flex-1">ממשק ניהול על</span>
                 </button>
               )}
