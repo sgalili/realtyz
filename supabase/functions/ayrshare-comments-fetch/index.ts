@@ -171,36 +171,77 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        const { error: insErr } = await admin.from("engagement_events").insert({
+        // Sanitize: keep ONLY flat scalar fields in metadata. The raw Ayrshare
+        // payload can contain deeply nested objects (replies trees, user blobs,
+        // attachment arrays) that occasionally violate jsonb size/shape
+        // constraints and cause the insert to fail silently.
+        const safeStr = (v: unknown, max = 500): string | null => {
+          if (v === null || v === undefined) return null;
+          const s = typeof v === "string" ? v : (() => {
+            try { return JSON.stringify(v); } catch { return String(v); }
+          })();
+          const trimmed = s.trim();
+          return trimmed ? trimmed.slice(0, max) : null;
+        };
+        const cleanMetadata = {
+          source: "ayrshare_comments_fetch",
+          campaign_name: safeStr(campaignName),
+          profile_ref_id: safeStr(refId),
+          parent_id: safeStr(parentId),
+          native_created_at: safeStr(c?.created_time ?? c?.createdAt ?? c?.created_at ?? c?.timestamp),
+          like_count: typeof c?.like_count === "number" ? c.like_count : null,
+          permalink: safeStr(c?.permalink ?? c?.permalink_url ?? c?.url, 1000),
+        };
+        const cleanText = safeStr(text, 4000) ?? "";
+        const cleanSender = safeStr(sender, 200);
+
+        const payload = {
           user_id: userId,
           platform: platformHint,
-          sender_handle: sender,
-          inbound_text: text,
+          sender_handle: cleanSender,
+          inbound_text: cleanText,
           external_id: nativeId,
           external_post_id: postId,
           status: "pending",
           ai_action: "queued",
-          metadata: {
-            source: "ayrshare_comments_fetch",
-            campaign_name: campaignName,
-            profile_ref_id: refId,
-            parent_id: parentId,
-            raw: c,
-          },
-        });
-        if (insErr) {
-          console.error("[ayrshare-comments-fetch] insert failed", insErr.message);
+          metadata: cleanMetadata,
+        };
+
+        try {
+          const { error: insErr } = await admin.from("engagement_events").insert(payload);
+          if (insErr) {
+            console.error(
+              "[ayrshare-comments-fetch] insert failed",
+              JSON.stringify({
+                message: insErr.message,
+                code: (insErr as any).code,
+                details: (insErr as any).details,
+                hint: (insErr as any).hint,
+                payload,
+              }),
+            );
+            continue;
+          }
+          persisted += 1;
+        } catch (writeErr) {
+          console.error(
+            "[ayrshare-comments-fetch] insert threw",
+            JSON.stringify({
+              error: writeErr instanceof Error ? writeErr.message : String(writeErr),
+              payload,
+            }),
+          );
           continue;
         }
-        persisted += 1;
         toDispatch.push({
           external_id: nativeId,
           external_post_id: postId,
-          sender_handle: sender,
-          inbound_text: text,
+          sender_handle: cleanSender,
+          inbound_text: cleanText,
           platform: platformHint,
           parent_id: parentId,
         });
+
       }
     }
 
