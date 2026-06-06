@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   BedDouble, Ruler, MapPin, Building2, ArrowRight, Phone, Mail,
-  Calendar, Layers, Send, Home,
+  Calendar, Layers, Send, Home, User, Receipt,
 } from 'lucide-react';
 import {
   PROPERTY_TYPE_LABELS_HE,
@@ -22,16 +22,59 @@ function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
 }
 
+// Hebrew labels for the extra fields we persist in source_metadata
+const META_LABELS: Record<string, string> = {
+  monthly_rent: 'שכר דירה חודשי',
+  arnona_bimonthly: 'ארנונה (לחודשיים)',
+  arnona: 'ארנונה',
+  vaad_bayit: 'ועד בית',
+  deposit: 'פיקדון',
+  total_floors: 'סה"כ קומות בבניין',
+  year_built: 'שנת בנייה',
+  entry_date: 'תאריך כניסה',
+  furnished: 'ריהוט',
+  ac: 'מיזוג',
+  storage: 'מחסן',
+  balcony: 'מרפסת',
+  shelter: 'ממ"ד / מקלט',
+  bars: 'סורגים',
+  renovated: 'משופץ',
+  agent: 'סוכן',
+  agent_serial: 'מספר סוכן',
+  agent_phone: 'טלפון סוכן',
+  owner_name: 'בעלים',
+  owner_phone: 'טלפון בעלים',
+  source_pdf: 'מקור (קובץ)',
+  last_published: 'פרסום אחרון',
+  last_updated: 'עדכון אחרון',
+  exclusivity_until: 'בלעדיות עד',
+};
+
+const META_HIDDEN = new Set([
+  'deal_type', 'listing_type', 'property_type',
+  'city', 'address', 'rooms', 'sqm', 'size_sqm', 'floor',
+]);
+
+function formatMetaValue(key: string, value: any): string {
+  if (value == null || value === '') return '—';
+  if (typeof value === 'boolean') return value ? 'כן' : 'לא';
+  if (typeof value === 'number') {
+    if (/(rent|arnona|vaad|deposit|price)/i.test(key)) return `₪${value.toLocaleString('he-IL')}`;
+    return value.toLocaleString('he-IL');
+  }
+  return String(value);
+}
+
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const [activePhoto, setActivePhoto] = useState(0);
   const [shareOpen, setShareOpen] = useState(false);
 
-  const { data: property, isLoading } = useQuery({
+  const { data, isLoading } = useQuery({
     queryKey: ['property-detail', id],
     enabled: !!id,
-    queryFn: async (): Promise<HomelyProperty | null> => {
+    queryFn: async () => {
       const { data: row } = await supabase
         .from('listings')
         .select('id, property_title, description, asking_price, features, slug, source_metadata, city, neighborhood, address, rooms, sqm, floor, parking, elevator, status, source_url')
@@ -48,7 +91,7 @@ export default function PropertyDetail() {
       const textFeatures = (features as any[]).filter((f) => typeof f === 'string') as string[];
       if (row.parking) textFeatures.push('חניה');
       if (row.elevator) textFeatures.push('מעלית');
-      return {
+      const property = {
         id: String(row.id),
         source: 'listings',
         title: row.property_title || 'נכס',
@@ -68,9 +111,13 @@ export default function PropertyDetail() {
         url: row.slug ? `/listing/${row.slug}` : (row.source_url || null),
         features: Array.from(new Set(textFeatures)),
       } as HomelyProperty;
+      return { property, meta, neighborhood: (row as any).neighborhood as string | null };
     },
   });
 
+  const property = data?.property;
+  const meta: Record<string, any> = data?.meta || {};
+  const neighborhood = data?.neighborhood;
 
   if (isLoading) {
     return (
@@ -97,6 +144,23 @@ export default function PropertyDetail() {
   const photos = property.photos.length ? property.photos : [];
   const main = photos[activePhoto];
 
+  // Split metadata into financial vs other extras
+  const financialKeys = ['monthly_rent', 'arnona_bimonthly', 'arnona', 'vaad_bayit', 'deposit'];
+  const ownerKeys = ['owner_name', 'owner_phone', 'agent', 'agent_serial', 'agent_phone'];
+  const financialEntries = financialKeys
+    .filter((k) => meta[k] != null && meta[k] !== '')
+    .map((k) => [k, meta[k]] as const);
+  const ownerEntries = ownerKeys
+    .filter((k) => meta[k] != null && meta[k] !== '')
+    .map((k) => [k, meta[k]] as const);
+  const otherEntries = Object.entries(meta).filter(
+    ([k, v]) =>
+      v != null && v !== '' &&
+      !META_HIDDEN.has(k) &&
+      !financialKeys.includes(k) &&
+      !ownerKeys.includes(k),
+  );
+
   return (
     <div className="p-3 sm:p-6 space-y-6" dir="rtl">
       {/* Top breadcrumb / back */}
@@ -120,9 +184,10 @@ export default function PropertyDetail() {
       <header className="flex items-start justify-between gap-4 flex-wrap">
         <div className="min-w-0">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">{property.title}</h1>
-          {property.address && (
+          {(property.address || neighborhood || property.city) && (
             <p className="text-sm text-muted-foreground mt-1 inline-flex items-center gap-1.5">
-              <MapPin className="h-4 w-4" /> {property.address}
+              <MapPin className="h-4 w-4" />
+              {[property.address, neighborhood, property.city].filter(Boolean).join(', ')}
             </p>
           )}
         </div>
@@ -180,6 +245,7 @@ export default function PropertyDetail() {
               <Spec icon={Calendar} label="שנת בנייה" value={property.year_built ? `${property.year_built}` : '—'} />
               <Spec icon={Home} label="סוג נכס" value={PROPERTY_TYPE_LABELS_HE[property.property_type]} />
               <Spec icon={MapPin} label="עיר" value={property.city || '—'} />
+              <Spec icon={MapPin} label="שכונה" value={neighborhood || '—'} />
               <Spec icon={Building2} label="מצב" value={isRent ? 'להשכרה' : 'למכירה'} />
             </div>
           </Card>
@@ -189,6 +255,46 @@ export default function PropertyDetail() {
             <Card className="p-4 sm:p-5">
               <h2 className="text-base font-bold text-primary mb-2">תיאור הנכס</h2>
               <p className="text-sm leading-relaxed text-foreground/80 whitespace-pre-line">{property.description}</p>
+            </Card>
+          )}
+
+          {/* Financials */}
+          {financialEntries.length > 0 && (
+            <Card className="p-4 sm:p-5">
+              <h2 className="text-base font-bold text-primary mb-3 inline-flex items-center gap-2">
+                <Receipt className="h-4 w-4" /> פרטים פיננסיים
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {financialEntries.map(([k, v]) => (
+                  <Spec key={k} icon={Receipt} label={META_LABELS[k] || k} value={formatMetaValue(k, v)} />
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Owner / Agent */}
+          {ownerEntries.length > 0 && (
+            <Card className="p-4 sm:p-5">
+              <h2 className="text-base font-bold text-primary mb-3 inline-flex items-center gap-2">
+                <User className="h-4 w-4" /> בעלים וסוכן מטפל
+              </h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {ownerEntries.map(([k, v]) => (
+                  <Spec key={k} icon={User} label={META_LABELS[k] || k} value={formatMetaValue(k, v)} />
+                ))}
+              </div>
+            </Card>
+          )}
+
+          {/* Other metadata */}
+          {otherEntries.length > 0 && (
+            <Card className="p-4 sm:p-5">
+              <h2 className="text-base font-bold text-primary mb-3">פרטים נוספים</h2>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {otherEntries.map(([k, v]) => (
+                  <Spec key={k} icon={Building2} label={META_LABELS[k] || k} value={formatMetaValue(k, v)} />
+                ))}
+              </div>
             </Card>
           )}
 
