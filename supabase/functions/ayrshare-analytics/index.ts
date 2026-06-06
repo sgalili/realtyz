@@ -110,6 +110,9 @@ Deno.serve(async (req) => {
 
   const body = await req.json().catch(() => ({}));
   const limit = Math.min(200, Math.max(1, Number(body?.limit) || 100));
+  const cacheBust = String(body?.cache_bust ?? `${Date.now()}`);
+  const forceLive = body?.force_live !== false;
+
 
   const { profileKey } = await resolveWorkspaceProfileKey(admin);
   if (!profileKey) return json({ error: "workspace ayrshare profile key missing" }, 400);
