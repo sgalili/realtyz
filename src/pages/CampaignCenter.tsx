@@ -860,6 +860,11 @@ type CampaignRow = {
   provider_message_id: string | null;
   provider_response?: any;
   recipient_count?: number;
+  like_count?: number;
+  comment_count?: number;
+  share_count?: number;
+  view_count?: number;
+  metrics_updated_at?: string | null;
 };
 
 // Derive the live native post URL from Ayrshare provider response, or build
@@ -990,7 +995,7 @@ const PublishedFeed = () => {
     setUserId(user.id);
     const { data } = await supabase
       .from('campaign_logs')
-      .select('id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, is_archived')
+      .select('id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at')
       .eq('user_id', user.id)
       .eq('is_archived', false)
       .order('created_at', { ascending: false })
@@ -1004,6 +1009,10 @@ const PublishedFeed = () => {
         if (!existing.provider_message_id && r.provider_message_id) {
           existing.provider_message_id = r.provider_message_id;
         }
+        existing.like_count = Math.max(existing.like_count || 0, r.like_count || 0);
+        existing.comment_count = Math.max(existing.comment_count || 0, r.comment_count || 0);
+        existing.share_count = Math.max(existing.share_count || 0, r.share_count || 0);
+        existing.view_count = Math.max(existing.view_count || 0, r.view_count || 0);
       } else {
         grouped.set(key, { ...r, recipient_count: 1 });
       }
@@ -1018,12 +1027,57 @@ const PublishedFeed = () => {
     setArchivedCount(count ?? 0);
   };
 
+  // Ask the backend to refresh live Ayrshare analytics (likes/comments/shares/views)
+  // for every published post — results land back in campaign_logs and stream in via
+  // the realtime subscription below.
+  const refreshMetrics = async () => {
+    try { await supabase.functions.invoke('ayrshare-analytics', { body: {} }); } catch { /* non-fatal */ }
+  };
+
   useEffect(() => {
     load();
-    const interval = setInterval(load, 30000);
-    return () => clearInterval(interval);
+    refreshMetrics();
+    const reloadInterval = setInterval(load, 30000);
+    const metricsInterval = setInterval(refreshMetrics, 45000);
+    return () => {
+      clearInterval(reloadInterval);
+      clearInterval(metricsInterval);
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Realtime: live-patch counters into rows as soon as the edge function
+  // updates campaign_logs — no manual refresh needed.
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase
+      .channel(`campaign_logs:${userId}`)
+      .on(
+        'postgres_changes',
+        { event: 'UPDATE', schema: 'public', table: 'campaign_logs', filter: `user_id=eq.${userId}` },
+        (payload) => {
+          const updated: any = payload.new;
+          setRows((prev) => prev?.map((r) => {
+            if (r.id !== updated.id && r.provider_message_id !== updated.provider_message_id) return r;
+            return {
+              ...r,
+              like_count: updated.like_count ?? r.like_count,
+              comment_count: updated.comment_count ?? r.comment_count,
+              share_count: updated.share_count ?? r.share_count,
+              view_count: updated.view_count ?? r.view_count,
+              metrics_updated_at: updated.metrics_updated_at ?? r.metrics_updated_at,
+            };
+          }) ?? prev);
+        },
+      )
+      .on(
+        'postgres_changes',
+        { event: 'INSERT', schema: 'public', table: 'campaign_logs', filter: `user_id=eq.${userId}` },
+        () => { load(); },
+      )
+      .subscribe();
+    return () => { supabase.removeChannel(channel); };
+  }, [userId]);
 
   const archiveCampaign = async (id: string) => {
     await supabase.from('campaign_logs').update({ is_archived: true }).eq('id', id);
@@ -1109,9 +1163,9 @@ const PublishedFeed = () => {
                   {r.message_body || <span className="text-muted-foreground">אין תוכן הודעה</span>}
                 </div>
                 <div className="grid grid-cols-3 gap-2 px-4 pb-3">
-                  <Stat icon={MessageSquare} label="תגובות" value={0} />
-                  <Stat icon={Share2}         label="שיתופים" value={0} />
-                  <Stat icon={Heart}          label="לייקים"  value={0} />
+                  <Stat icon={MessageSquare} label="תגובות" value={r.comment_count ?? 0} />
+                  <Stat icon={Share2}         label="שיתופים" value={r.share_count ?? 0} />
+                  <Stat icon={Heart}          label="לייקים"  value={r.like_count ?? 0} />
                 </div>
                 <div className="flex items-center justify-between gap-2 px-4 pb-4" dir="rtl">
                   <Button variant="outline" size="sm" onClick={() => deleteCampaign(r.id)}
