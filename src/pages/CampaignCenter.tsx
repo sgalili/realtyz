@@ -231,10 +231,12 @@ const InlineComposer = ({
 }: {
   channel: ChannelCard;
   brandName: string;
-  onConfirm: (payload: { body: string; mode: 'now' | 'scheduled'; media_urls: string[] }) => void;
+  onConfirm: (payload: { body: string; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null }) => void;
 }) => {
   const [body, setBody] = useState('');
   const [mode, setMode] = useState<'now' | 'scheduled'>('now');
+  // Local datetime string in `YYYY-MM-DDTHH:mm` (input[type=datetime-local] format).
+  const [scheduledLocal, setScheduledLocal] = useState<string>('');
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [generating, setGenerating] = useState(false);
 
@@ -662,25 +664,51 @@ const InlineComposer = ({
         </div>
       )}
 
-      {/* Dispatch CTA */}
-      <button type="button"
-        onClick={() => hasBody && onConfirm({
-          body,
-          mode,
-          media_urls: attachments
-            .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
-            .map((a) => a.url as string),
-        })}
-        disabled={!hasBody}
-        className={cn(
-          'w-full rounded-xl px-4 py-3 text-sm font-bold transition flex items-center justify-center gap-2',
-          hasBody
-            ? 'bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)] shadow-md'
-            : 'bg-muted text-muted-foreground/80 cursor-not-allowed',
-        )}>
-        <Send className="h-4 w-4 -scale-x-100" />
-        שגר פוסט ציבורי עכשיו
-      </button>
+      {/* Scheduled date+time picker */}
+      {hasBody && mode === 'scheduled' && (
+        <div className="rounded-xl border border-border bg-background p-3 space-y-2">
+          <label className="block text-xs font-semibold text-foreground">תאריך ושעת פרסום</label>
+          <input
+            type="datetime-local"
+            value={scheduledLocal}
+            min={new Date(Date.now() + 60_000).toISOString().slice(0, 16)}
+            onChange={(e) => setScheduledLocal(e.target.value)}
+            className="w-full rounded-lg border border-border bg-background px-3 py-2 text-sm text-foreground"
+            dir="ltr"
+          />
+          {scheduledLocal && new Date(scheduledLocal).getTime() <= Date.now() && (
+            <p className="text-xs text-destructive">יש לבחור מועד עתידי</p>
+          )}
+        </div>
+      )}
+
+      {(() => {
+        const scheduledDate = scheduledLocal ? new Date(scheduledLocal) : null;
+        const scheduledValid = mode === 'now' || (!!scheduledDate && scheduledDate.getTime() > Date.now());
+        const canSend = hasBody && scheduledValid;
+        return (
+          /* Dispatch CTA */
+          <button type="button"
+            onClick={() => canSend && onConfirm({
+              body,
+              mode,
+              media_urls: attachments
+                .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
+                .map((a) => a.url as string),
+              scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
+            })}
+            disabled={!canSend}
+            className={cn(
+              'w-full rounded-xl px-4 py-3 text-sm font-bold transition flex items-center justify-center gap-2',
+              canSend
+                ? 'bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)] shadow-md'
+                : 'bg-muted text-muted-foreground/80 cursor-not-allowed',
+            )}>
+            <Send className="h-4 w-4 -scale-x-100" />
+            {mode === 'scheduled' ? 'תזמן פרסום' : 'שגר פוסט ציבורי עכשיו'}
+          </button>
+        );
+      })()}
     </div>
   );
 };
@@ -688,7 +716,7 @@ const InlineComposer = ({
 /* ───────────── Dispatch confirmation modal ───────────── */
 
 const ConfirmDispatchDialog = ({
-  open, onClose, channel, body, brandName, mediaUrls, onConfirmed,
+  open, onClose, channel, body, brandName, mediaUrls, scheduledAt, onConfirmed,
 }: {
   open: boolean;
   onClose: () => void;
@@ -696,6 +724,7 @@ const ConfirmDispatchDialog = ({
   body: string;
   brandName: string;
   mediaUrls: string[];
+  scheduledAt: string | null;
   onConfirmed: () => void;
 }) => {
   const { user } = useAuth();
@@ -762,6 +791,7 @@ const ConfirmDispatchDialog = ({
             channels: [channel.id],
             campaign_name: campaignName,
             media_urls: mediaUrls,
+            scheduled_at: scheduledAt,
           },
         });
         // When the edge function returns a non-2xx, supabase-js sets a generic
@@ -780,7 +810,12 @@ const ConfirmDispatchDialog = ({
           throw new Error(friendly || error.message || 'שגיאת רשת');
         }
         if ((data as any)?.error) throw new Error((data as any).error);
-        toast.success(`הקמפיין פורסם בהצלחה ב-${channel.label}!`);
+        if (scheduledAt) {
+          const when = new Date(scheduledAt).toLocaleString('he-IL');
+          toast.success(`הפוסט תוזמן ל-${when} בערוץ ${channel.label}`);
+        } else {
+          toast.success(`הקמפיין פורסם בהצלחה ב-${channel.label}!`);
+        }
       } else {
         // Direct-messaging channels (SMS / email / IVR) still broadcast to leads.
         const { data: leads, error } = await supabase
@@ -1406,7 +1441,7 @@ const CampaignCenter = () => {
   const { settings } = useWhiteLabel();
   const brandName = settings?.agency_name || 'Realtyz AI';
   const [pickedChannel, setPickedChannel] = useState<ChannelCard | null>(null);
-  const [confirmPayload, setConfirmPayload] = useState<{ body: string; mode: 'now' | 'scheduled'; media_urls: string[] } | null>(null);
+  const [confirmPayload, setConfirmPayload] = useState<{ body: string; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null } | null>(null);
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(EMPTY_CONNECTED);
   const [channelAccountNames, setChannelAccountNames] = useState<Record<string, string>>({});
 
@@ -1607,6 +1642,7 @@ const CampaignCenter = () => {
         body={confirmPayload?.body ?? ''}
         brandName={brandName}
         mediaUrls={confirmPayload?.media_urls ?? []}
+        scheduledAt={confirmPayload?.scheduled_at ?? null}
         onConfirmed={() => { setConfirmPayload(null); setPickedChannel(null); }}
       />
     </div>

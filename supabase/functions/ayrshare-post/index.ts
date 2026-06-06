@@ -42,6 +42,14 @@ Deno.serve(async (req) => {
     const campaignName: string = String(body?.campaign_name ?? "Campaign");
     const rawMediaInput: unknown[] = Array.isArray(body?.media_urls) ? body.media_urls.filter(Boolean) : [];
     const listingId: string | null = body?.listing_id ?? null;
+    const scheduledAtRaw: string | null = typeof body?.scheduled_at === "string" ? body.scheduled_at : null;
+    let scheduledIso: string | null = null;
+    if (scheduledAtRaw) {
+      const d = new Date(scheduledAtRaw);
+      if (Number.isNaN(d.getTime())) return json({ error: "invalid scheduled_at" }, 400);
+      if (d.getTime() <= Date.now() + 30_000) return json({ error: "scheduled_at must be in the future" }, 400);
+      scheduledIso = d.toISOString();
+    }
 
     if (!postText) return json({ error: "missing post text" }, 400);
     if (rawChannels.length === 0) return json({ error: "no channels selected" }, 400);
@@ -125,11 +133,13 @@ Deno.serve(async (req) => {
       profileKey,
     };
     if (resolvedMedia.length) ayrPayload.mediaUrls = resolvedMedia;
+    if (scheduledIso) ayrPayload.scheduleDate = scheduledIso;
     console.log("[ayrshare-post] outbound payload", {
       platforms,
       mediaUrls: resolvedMedia,
       mediaCountIn: rawMediaInput.length,
       listingId,
+      scheduleDate: scheduledIso,
     });
 
     const ayrRes = await fetch(AYR_POST_URL, {
@@ -202,10 +212,10 @@ Deno.serve(async (req) => {
         campaign_name: campaignName,
         channel: lc,
         message_body: postText,
-        status: match?.status === "success" || ayrRes.ok ? "sent" : "queued",
+        status: scheduledIso ? "scheduled" : (match?.status === "success" || ayrRes.ok ? "sent" : "queued"),
         provider_message_id: match?.id ?? null,
         provider_response: ayrJson ?? {},
-        sent_at: new Date().toISOString(),
+        sent_at: scheduledIso ?? new Date().toISOString(),
         source_account: "ayrshare",
       } as any;
     });
