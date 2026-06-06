@@ -79,7 +79,9 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
       .limit(500);
 
     if (postIds.length > 0) {
-      q = q.in("external_post_id", postIds);
+      // Explicit String() guards against any int/text coercion mismatch.
+      q = q.in("external_post_id", postIds.map((p) => String(p)));
+
     } else {
       const from = new Date(campaign.created_at).toISOString();
       const to = new Date(
