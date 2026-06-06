@@ -75,7 +75,8 @@ export function CreditBalancePill() {
         type="button"
         onClick={() => setOpen(true)}
         dir="rtl"
-        className="inline-flex items-center gap-1.5 rounded-full bg-primary-foreground/15 px-3 py-1.5 text-xs font-semibold text-primary-foreground ring-1 ring-primary-foreground/30 transition hover:bg-primary-foreground/25"
+        className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-semibold ring-1 ring-black/20 transition hover:brightness-95"
+        style={{ backgroundColor: '#fdf251', color: '#1b2a4f' }}
         aria-label="יתרת קרדיטים"
       >
         <Wallet className="h-3.5 w-3.5" />
