@@ -225,7 +225,7 @@ const InlineComposer = ({
   }, [listingQuery, listingPickerOpen]);
 
   const selectedListing = listings.find((l) => l.id === selectedListingId)
-    || (selectedListingId ? { id: selectedListingId, property_title: 'נכס נבחר', city: null, address: null, rooms: null, asking_price: null, deal_type: null } : null);
+    || (selectedListingId ? { id: selectedListingId, property_title: 'נכס נבחר', city: null, neighborhood: null, address: null, rooms: null, asking_price: null, deal_type: null } : null);
 
 
   const handleFiles = (files: FileList | null, kind: 'image' | 'file') => {
