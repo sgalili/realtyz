@@ -1554,6 +1554,7 @@ const CampaignCenter = () => {
         channel={pickedChannel}
         body={confirmPayload?.body ?? ''}
         brandName={brandName}
+        mediaUrls={confirmPayload?.media_urls ?? []}
         onConfirmed={() => { setConfirmPayload(null); setPickedChannel(null); }}
       />
     </div>
