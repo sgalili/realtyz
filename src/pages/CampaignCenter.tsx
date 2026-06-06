@@ -967,7 +967,7 @@ const PublishedFeed = () => {
     setUserId(user.id);
     const { data } = await supabase
       .from('campaign_logs')
-      .select('id, campaign_name, channel, message_body, created_at, provider_message_id, is_archived')
+      .select('id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, is_archived')
       .eq('user_id', user.id)
       .eq('is_archived', false)
       .order('created_at', { ascending: false })
