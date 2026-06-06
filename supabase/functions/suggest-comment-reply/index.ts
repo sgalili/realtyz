@@ -338,6 +338,9 @@ Deno.serve(async (req) => {
       listing_type: ListingType | null;
       rooms: number | null;
       sqm: number | null;
+      description: string | null;
+      address: string | null;
+      neighborhood: string | null;
     } | null = null;
     let primaryType: ListingType | null = null;
     let primaryTypeLocked = false;
@@ -351,7 +354,7 @@ Deno.serve(async (req) => {
       try {
         const { data: row } = await admin
           .from("listings")
-          .select("property_title,city,asking_price,features,rooms,sqm")
+          .select("property_title,city,address,neighborhood,asking_price,features,rooms,sqm,description")
           .eq("id", primaryListingId)
           .maybeSingle();
         if (row) {
@@ -365,6 +368,9 @@ Deno.serve(async (req) => {
               listing_type: lt,
               rooms: (row as any).rooms ?? null,
               sqm: (row as any).sqm ?? null,
+              description: (row as any).description ? String((row as any).description).slice(0, 4000) : null,
+              address: (row as any).address ?? null,
+              neighborhood: (row as any).neighborhood ?? null,
             };
             if (!primaryType && lt) primaryType = lt;
             if (lt) primaryTypeLocked = true;
@@ -373,9 +379,6 @@ Deno.serve(async (req) => {
       } catch { /* ignore */ }
     }
 
-    // Heuristic fallback: detect transaction type from inbound text + campaign
-      // context when neither primary_listing_id nor explicit listing_type was
-    // provided. Hebrew + English rental/sale keyword sniff.
     if (!primaryType) {
       const haystack = `${inbound}\n${rawCampaignContext}`.toLowerCase();
       const rentHit = RENT_SIGNAL_RE.test(haystack);
@@ -384,15 +387,11 @@ Deno.serve(async (req) => {
       else if (saleHit && !rentHit) primaryType = "sale";
     }
 
-    // Fresh live DB resolution: regeneration must not trust campaign_logs text
-    // or older generated post context as the property source of truth. Match the
-    // inbound/post text against current live listings, then re-lock type/price
-    // from the active listing row only.
     if (!primaryListing && userId) {
       try {
         const { data: liveRows } = await admin
           .from("listings")
-          .select("property_title,address,neighborhood,city,asking_price,features,rooms,sqm,status,is_published")
+          .select("property_title,address,neighborhood,city,asking_price,features,rooms,sqm,status,is_published,description")
           .eq("user_id", userId)
           .eq("status", "live")
           .eq("is_published", true)
@@ -417,6 +416,9 @@ Deno.serve(async (req) => {
             listing_type: lt,
             rooms: (row as any).rooms ?? null,
             sqm: (row as any).sqm ?? null,
+            description: (row as any).description ? String((row as any).description).slice(0, 4000) : null,
+            address: (row as any).address ?? null,
+            neighborhood: (row as any).neighborhood ?? null,
           };
           if (lt) primaryType = lt;
           if (lt) primaryTypeLocked = true;
