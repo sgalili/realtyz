@@ -110,7 +110,7 @@ export function PageHero() {
       dir="rtl"
       data-page-hero
       className="relative w-full shrink-0 overflow-hidden text-white print:hidden"
-      style={{ backgroundColor: '#fdf251' }}
+      style={{ backgroundColor: '#0b3982' }}
     >
       {/* 3-zone toolbar — title is absolutely centered to the viewport so it
           stays perfectly centered regardless of side controls' widths. */}
@@ -146,7 +146,7 @@ export function PageHero() {
         <RealtyzWave
           position="bottom"
           variant="wave-soft"
-          fill="hsl(var(--background))"
+          fill="#0b3982"
           seed={7}
         />
       </div>
