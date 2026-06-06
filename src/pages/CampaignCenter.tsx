@@ -174,6 +174,13 @@ const InlineComposer = ({
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [generating, setGenerating] = useState(false);
 
+  // Custom AI generation context (broker steering inputs)
+  const [customInstructions, setCustomInstructions] = useState('');
+  const [listingQuery, setListingQuery] = useState('');
+  const [listings, setListings] = useState<Array<{ id: string; property_title: string | null; city: string | null; address: string | null; rooms: number | null; asking_price: number | null; deal_type: string | null }>>([]);
+  const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
+  const [listingPickerOpen, setListingPickerOpen] = useState(false);
+
   // Attachment / media state
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -187,7 +194,30 @@ const InlineComposer = ({
   const audioChunksRef = useRef<BlobPart[]>([]);
 
   // Reset on channel change
-  useEffect(() => { setBody(''); setMode('now'); setAttachments([]); }, [channel.id]);
+  useEffect(() => { setBody(''); setMode('now'); setAttachments([]); setCustomInstructions(''); setSelectedListingId(null); setListingQuery(''); }, [channel.id]);
+
+  // Live property search from listings table (workspace-scoped by RLS).
+  useEffect(() => {
+    let cancelled = false;
+    const t = setTimeout(async () => {
+      const q = listingQuery.trim();
+      let query = supabase
+        .from('listings')
+        .select('id, property_title, city, address, rooms, asking_price, deal_type')
+        .order('created_at', { ascending: false })
+        .limit(20);
+      if (q.length > 0) {
+        query = query.or(`property_title.ilike.%${q}%,city.ilike.%${q}%,address.ilike.%${q}%`);
+      }
+      const { data } = await query;
+      if (!cancelled) setListings((data as any) || []);
+    }, 200);
+    return () => { cancelled = true; clearTimeout(t); };
+  }, [listingQuery, listingPickerOpen]);
+
+  const selectedListing = listings.find((l) => l.id === selectedListingId)
+    || (selectedListingId ? { id: selectedListingId, property_title: 'נכס נבחר', city: null, address: null, rooms: null, asking_price: null, deal_type: null } : null);
+
 
   const handleFiles = (files: FileList | null, kind: 'image' | 'file') => {
     if (!files) return;
