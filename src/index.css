@@ -32,7 +32,7 @@
     --secondary-foreground: 213 73% 16%;
 
     --muted: 210 17% 96%;
-    --muted-foreground: 213 30% 24%; /* darkened for stronger icon/text contrast */
+    --muted-foreground: 213 60% 16%; /* near-navy for high-contrast icons/labels on light bg */
 
     /* ACCENT — Anglo Saxon Gold (same family, used for highlights) */
     --accent: 47 100% 50%;
