@@ -84,6 +84,9 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
   const [replyOpen, setReplyOpen] = useState<EngagementRow | null>(null);
   const [replyDraft, setReplyDraft] = useState("");
   const [dmDraft, setDmDraft] = useState("");
+  // Originals returned by the AI edge function — used to detect manual edits on publish.
+  const [originalReply, setOriginalReply] = useState("");
+  const [originalDm, setOriginalDm] = useState("");
   const [drafting, setDrafting] = useState(false);
   const [sending, setSending] = useState(false);
   const postIds = useMemo(() => getCampaignPostIds(campaign), [campaign.channel, campaign.provider_message_id, campaign.provider_response]);
