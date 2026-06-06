@@ -31,10 +31,10 @@ function PropertiesHeroAddButton() {
         <Button
           size="icon"
           variant="ghost"
-          className="h-9 w-9 rounded-full text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground"
+          className="h-[72px] w-[72px] rounded-full text-white hover:bg-white/15 hover:text-white"
           aria-label="הוספת נכס"
         >
-          <Plus className="h-5 w-5" />
+          <Plus className="!h-10 !w-10" strokeWidth={2.5} />
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
