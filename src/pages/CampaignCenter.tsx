@@ -258,17 +258,12 @@ const InlineComposer = ({
   const handleGenerate = async () => {
     setGenerating(true);
     try {
+      const topic = body.trim() || `קמפיין נדל"ן עבור ${brandName}`;
       const { data, error } = await supabase.functions.invoke('generate-content', {
-        body: {
-          purpose: 'campaign',
-          channel: channel.id,
-          brand: brandName,
-          tone: 'professional',
-          language: 'he',
-        },
+        body: { topic, platform: channel.id },
       });
       if (error) throw error;
-      const text = (data?.text || data?.content || '').toString().slice(0, MAX_CHARS);
+      const text = (data?.content || data?.text || '').toString().slice(0, MAX_CHARS);
       if (text) setBody(text);
       else toast.info('לא התקבל טקסט מה-AI');
     } catch (e: any) {
