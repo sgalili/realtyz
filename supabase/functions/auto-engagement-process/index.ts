@@ -170,12 +170,29 @@ Deno.serve(async (req) => {
     const autoReplyPositive = Boolean(profileRow?.auto_reply_positive);
     const autoReplyNegative = Boolean(profileRow?.auto_reply_negative);
 
+    // Load workspace KB snippets (strict isolation via .eq user_id).
+    let kbSnippets = "";
+    try {
+      const { data: kbRows } = await admin
+        .from("knowledge_chunks")
+        .select("content")
+        .eq("user_id", user_id)
+        .limit(8);
+      kbSnippets = (kbRows ?? [])
+        .map((r: any) => String(r?.content ?? "").trim())
+        .filter(Boolean)
+        .map((c: string) => c.slice(0, 600))
+        .join("\n---\n")
+        .slice(0, 4000);
+    } catch { /* ignore */ }
+
     // 1. AI analysis
     const analysis = await analyzeWithAI({
       text: inbound_text,
       platform,
       event_type,
       sender_name,
+      kb_snippets: kbSnippets,
     });
 
     const willAutoReply =
