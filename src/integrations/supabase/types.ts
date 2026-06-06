@@ -53,6 +53,47 @@ export type Database = {
         }
         Relationships: []
       }
+      agent_learning_lexicon: {
+        Row: {
+          context: string | null
+          created_at: string
+          extracted_rule_insight: string | null
+          id: string
+          listing_id: string | null
+          original_ai_text: string
+          user_edited_text: string
+          user_id: string
+        }
+        Insert: {
+          context?: string | null
+          created_at?: string
+          extracted_rule_insight?: string | null
+          id?: string
+          listing_id?: string | null
+          original_ai_text: string
+          user_edited_text: string
+          user_id: string
+        }
+        Update: {
+          context?: string | null
+          created_at?: string
+          extracted_rule_insight?: string | null
+          id?: string
+          listing_id?: string | null
+          original_ai_text?: string
+          user_edited_text?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_learning_lexicon_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       agent_personas: {
         Row: {
           created_at: string

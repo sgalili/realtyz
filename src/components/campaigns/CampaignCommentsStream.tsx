@@ -84,6 +84,9 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
   const [replyOpen, setReplyOpen] = useState<EngagementRow | null>(null);
   const [replyDraft, setReplyDraft] = useState("");
   const [dmDraft, setDmDraft] = useState("");
+  // Originals returned by the AI edge function — used to detect manual edits on publish.
+  const [originalReply, setOriginalReply] = useState("");
+  const [originalDm, setOriginalDm] = useState("");
   const [drafting, setDrafting] = useState(false);
   const [sending, setSending] = useState(false);
   const postIds = useMemo(() => getCampaignPostIds(campaign), [campaign.channel, campaign.provider_message_id, campaign.provider_response]);
@@ -270,6 +273,8 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
     // Hard flush: never carry over draft text from a previous open.
     setReplyDraft("");
     setDmDraft("");
+    setOriginalReply("");
+    setOriginalDm("");
     setDrafting(true);
     setReplyOpen(row);
   };
@@ -281,6 +286,8 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
     if (!replyOpen) {
       setReplyDraft("");
       setDmDraft("");
+      setOriginalReply("");
+      setOriginalDm("");
       setDrafting(false);
       return;
     }
@@ -288,6 +295,8 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
     (async () => {
       setReplyDraft("");
       setDmDraft("");
+      setOriginalReply("");
+      setOriginalDm("");
       setDrafting(true);
       try {
         const { data, error } = await supabase.functions.invoke(
@@ -312,8 +321,12 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
         const pub = (data as any)?.public_comment ?? (data as any)?.draft;
         const dm = (data as any)?.private_messenger_dm ?? "";
         if (typeof pub === "string" && pub.trim()) {
-          setReplyDraft(pub.trim());
-          setDmDraft(typeof dm === "string" ? dm.trim() : "");
+          const pubTrim = pub.trim();
+          const dmTrim = typeof dm === "string" ? dm.trim() : "";
+          setReplyDraft(pubTrim);
+          setDmDraft(dmTrim);
+          setOriginalReply(pubTrim);
+          setOriginalDm(dmTrim);
         } else {
           toast.error((data as any)?.error ?? "לא התקבל ניסוח");
         }
@@ -353,8 +366,12 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
       const pub = (data as any)?.public_comment ?? (data as any)?.draft;
       const dm = (data as any)?.private_messenger_dm ?? "";
       if (typeof pub === "string" && pub.trim()) {
-        setReplyDraft(pub.trim());
-        setDmDraft(typeof dm === "string" ? dm.trim() : "");
+        const pubTrim = pub.trim();
+        const dmTrim = typeof dm === "string" ? dm.trim() : "";
+        setReplyDraft(pubTrim);
+        setDmDraft(dmTrim);
+        setOriginalReply(pubTrim);
+        setOriginalDm(dmTrim);
       } else {
         toast.error((data as any)?.error ?? "לא התקבל ניסוח");
       }
@@ -414,13 +431,14 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
     setSending(true);
     try {
       const dmText = dmDraft.trim();
+      const finalPublic = replyDraft.trim();
       const { data, error } = await supabase.functions.invoke(
         "ayrshare-comment-reply",
         {
           body: {
             event_id: replyOpen.id,
             user_id: userId,
-            comment: replyDraft.trim(),
+            comment: finalPublic,
             platform: replyOpen.platform,
             comment_id: replyOpen.external_id,
             private_dm: dmText || undefined,
@@ -437,9 +455,31 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
       } else {
         toast.success("התגובה פורסמה");
       }
+
+      // Active-learning capture: if the broker edited either draft before
+      // publishing, send the original/edited pair to learn-from-edit so the
+      // persona prompt picks up the correction on future generations.
+      const pairs: Array<{ label: string; original: string; edited: string }> = [];
+      if (originalReply && finalPublic && originalReply !== finalPublic) {
+        pairs.push({ label: "public_comment", original: originalReply, edited: finalPublic });
+      }
+      if (originalDm && dmText && originalDm !== dmText) {
+        pairs.push({ label: "private_messenger_dm", original: originalDm, edited: dmText });
+      }
+      if (pairs.length > 0) {
+        void supabase.functions.invoke("learn-from-edit", {
+          body: {
+            context: `campaign_reply:${replyOpen.platform}`,
+            pairs,
+          },
+        }).catch(() => { /* background, never block UI */ });
+      }
+
       setReplyOpen(null);
       setReplyDraft("");
       setDmDraft("");
+      setOriginalReply("");
+      setOriginalDm("");
       await load();
     } catch (e: any) {
       toast.error(e?.message ?? "פרסום נכשל");
@@ -447,6 +487,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
       setSending(false);
     }
   };
+
 
   if (loading && rows === null) {
     return (

@@ -326,11 +326,47 @@ ${forbidden}
  *   - Never cross-pipeline (Sale ↔ Rent) marketing.
  *   - No political content.
  */
-export function renderPersonaPrompt(persona: AgentPersona | null): string {
+export async function fetchLearnedOverridesBlock(
+  client: ReturnType<typeof createClient>,
+  userId: string | null | undefined,
+  limit = 15,
+): Promise<string> {
+  if (!userId) return "";
+  try {
+    const { data, error } = await client
+      .from("agent_learning_lexicon")
+      .select("extracted_rule_insight, user_edited_text, original_ai_text, created_at")
+      .eq("user_id", userId)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    if (error || !Array.isArray(data) || data.length === 0) return "";
+    const rules = data
+      .map((r: any) => (r?.extracted_rule_insight ?? "").trim())
+      .filter((s: string) => s.length > 0);
+    if (rules.length === 0) return "";
+    const numbered = rules.map((r, i) => `${i + 1}. ${r}`).join("\n");
+    return `
+=== CRITICAL USER PREFERENCE OVERRIDES (LEARNED BEHAVIORS) ===
+Rely on these exact historical editing preferences from Udi to ensure your
+vocabulary, stylistic tone, and property detail representations perfectly
+match his validated edits. These rules were extracted from prior corrections
+he made to AI drafts before publishing. They OVERRIDE generic tone guidance
+and any conflicting examples elsewhere in this prompt.
+${numbered}
+=== END LEARNED BEHAVIORS ===
+`.trim();
+  } catch {
+    return "";
+  }
+}
+
+export function renderPersonaPrompt(persona: AgentPersona | null, learnedOverrides?: string | null): string {
+  const learnedBlock = (learnedOverrides ?? "").trim();
   if (!persona) {
     // Even with no persona row we still want the universal hard rules.
-    return UNIVERSAL_RULES;
+    return learnedBlock ? `${learnedBlock}\n\n${UNIVERSAL_RULES}` : UNIVERSAL_RULES;
   }
+
 
   const toneDesc =
     persona.tone === "custom" && persona.tone_custom?.trim()
@@ -489,8 +525,10 @@ Hard rules:
 === END VIRTUAL TWIN ===
 
 ${UNIVERSAL_RULES}
+${learnedBlock ? `\n${learnedBlock}\n` : ""}
 `.trim();
 }
+
 
 const UNIVERSAL_RULES = `
 === AGENT UDI, HARD CONSTRAINTS (HIGHEST PRIORITY) ===
