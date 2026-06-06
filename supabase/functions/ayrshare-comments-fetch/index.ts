@@ -4,7 +4,7 @@
 // Strict tenant isolation: user_id is required and scopes every DB query.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { AYR_BASE, resolveWorkspaceProfileKey } from "../_shared/ayrshare-helpers.ts";
+import { AYR_BASE, resolveWorkspaceProfileKey, resolveOwnPageIdentity, isSelfAuthoredComment } from "../_shared/ayrshare-helpers.ts";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
@@ -110,6 +110,7 @@ Deno.serve(async (req) => {
     if (!profileKey) {
       return json({ error: "workspace ayrshare profile key missing" }, 400);
     }
+    const ownPage = await resolveOwnPageIdentity(admin);
 
     const pickStr = (...vals: unknown[]) => {
       for (const v of vals) if (typeof v === "string" && v.trim()) return v.trim();
@@ -208,11 +209,13 @@ Deno.serve(async (req) => {
       external_id: string;
       external_post_id: string;
       sender_handle: string | null;
+      sender_id: string | null;
       inbound_text: string;
       platform: string;
       parent_id: string | null;
     }> = [];
 
+    let blockedSelf = 0;
     for (const [postId, list] of Object.entries(results)) {
       for (const [index, c] of (list ?? []).entries()) {
         const text = pickText(c) || "";
@@ -227,6 +230,20 @@ Deno.serve(async (req) => {
           c?.sender,
           c?.author,
         );
+        const senderId = pickStr(c?.from?.id, c?.user?.id, c?.fromId, c?.sender_id, c?.userId);
+        // SENDER FIREWALL: never ingest comments authored by our own Page,
+        // by Ayrshare on our behalf, or carrying our system reply signature.
+        if (isSelfAuthoredComment({
+          fromId: senderId,
+          fromName: sender,
+          text,
+          ownPageId: ownPage.pageId,
+          ownPageName: ownPage.pageName,
+        })) {
+          blockedSelf += 1;
+          console.log("[ayrshare-comments-fetch] blocked self-authored comment", { nativeId, senderId, sender });
+          continue;
+        }
         const parentId = typeof c?.__parent_id === "string" ? c.__parent_id : null;
 
         const { data: exists } = await admin
@@ -244,6 +261,7 @@ Deno.serve(async (req) => {
               external_id: nativeId,
               external_post_id: postId,
               sender_handle: sender,
+              sender_id: senderId,
               inbound_text: text,
               platform: platformHint,
               parent_id: parentId,
@@ -318,6 +336,7 @@ Deno.serve(async (req) => {
           external_id: nativeId,
           external_post_id: postId,
           sender_handle: cleanSender,
+          sender_id: senderId,
           inbound_text: cleanText,
           platform: platformHint,
           parent_id: parentId,
@@ -341,7 +360,7 @@ Deno.serve(async (req) => {
             external_post_id: d.external_post_id,
             sender_handle: d.sender_handle,
             sender_name: d.sender_handle,
-            metadata: { parent_id: d.parent_id, source: "ayrshare_comments_fetch" },
+            metadata: { parent_id: d.parent_id, sender_id: d.sender_id, source: "ayrshare_comments_fetch" },
           }),
         }).catch((e) => console.error("[ayrshare-comments-fetch] dispatch failed", e)),
       ),
@@ -353,6 +372,7 @@ Deno.serve(async (req) => {
       errors,
       persisted,
       skipped,
+      blocked_self: blockedSelf,
       dispatched: toDispatch.length,
     });
   } catch (e) {

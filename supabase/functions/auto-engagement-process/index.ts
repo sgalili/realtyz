@@ -9,7 +9,7 @@
 // Strict tenant isolation: user_id is required and scopes every DB query.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { sanitizeOutboundText, resolveWorkspaceProfileKey, likeNativeComment } from "../_shared/ayrshare-helpers.ts";
+import { sanitizeOutboundText, resolveWorkspaceProfileKey, likeNativeComment, resolveOwnPageIdentity, isSelfAuthoredComment } from "../_shared/ayrshare-helpers.ts";
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
 const AYRSHARE_API_KEY = Deno.env.get("AYRSHARE_API_KEY") ?? "";
@@ -138,6 +138,32 @@ Deno.serve(async (req) => {
       incomingMetadata && typeof incomingMetadata === "object"
         ? (incomingMetadata as Record<string, unknown>)
         : {};
+
+    // SENDER FIREWALL: refuse to react to comments authored by our own Page,
+    // by an AI/system signature, or to events flagged is_ai_reply upstream.
+    const ownPage = await resolveOwnPageIdentity(admin);
+    const incomingSenderId =
+      (rawIncomingMetadata as any)?.sender_id ??
+      (rawIncomingMetadata as any)?.from_id ??
+      (rawIncomingMetadata as any)?.fb_from_id ??
+      null;
+    const isAiReplyFlag = Boolean((rawIncomingMetadata as any)?.is_ai_reply);
+    if (
+      isAiReplyFlag ||
+      isSelfAuthoredComment({
+        fromId: incomingSenderId,
+        fromName: sender_name ?? sender_handle ?? null,
+        text: inbound_text,
+        ownPageId: ownPage.pageId,
+        ownPageName: ownPage.pageName,
+      })
+    ) {
+      console.log("[auto-engagement-process] blocked self/ai-authored event", {
+        external_id, incomingSenderId, sender_name, isAiReplyFlag,
+      });
+      return json({ ok: true, skipped: true, reason: "self_or_ai_authored" });
+    }
+
 
     // Locate existing row (scope strictly to this user).
     let existing: any = null;

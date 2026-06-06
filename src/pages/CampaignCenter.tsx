@@ -1047,9 +1047,16 @@ const PublishedFeed = () => {
   // (b) pull fresh inbound comments into engagement_events so the per-card comments tree
   // updates without a manual refresh.
   const refreshMetrics = async () => {
+    // Force a direct live page fetch every time — bypass any cached counters
+    // so the UI mirrors the exact real-time Meta payload via Ayrshare.
+    const cacheBust = `${Date.now()}-${crypto.randomUUID()}`;
     await Promise.allSettled([
-      supabase.functions.invoke('ayrshare-analytics', { body: {} }),
-      supabase.functions.invoke('ayrshare-sync-comments', { body: {} }),
+      supabase.functions.invoke('ayrshare-analytics', {
+        body: { force_live: true, cache_bust: cacheBust },
+      }),
+      supabase.functions.invoke('ayrshare-sync-comments', {
+        body: { force_live: true, cache_bust: cacheBust },
+      }),
     ]);
   };
 
