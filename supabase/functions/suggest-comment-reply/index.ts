@@ -608,17 +608,15 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (primaryType === "rent" && (hasRentalSaleLeak(`${split.public_comment}\n${split.private_messenger_dm}`) || hasUnsupportedPropertyFact(`${split.public_comment}\n${split.private_messenger_dm}`))) {
-      const featureAnswerLine = featureAsk
-        ? `לגבי ${featureAsk.label_he} — אבדוק עבורך ואעדכן אותך כאן במסנג'ר.`
-        : "";
+    if (primaryType === "rent" && (hasRentalSaleLeak(`${split.public_comment}\n${split.private_messenger_dm}`) || hasUnsupportedPropertyFact(`${split.public_comment}\n${split.private_messenger_dm}`, primaryListing))) {
+      const featureAnswerLine = featureAsk ? featureAnswerHe : "";
       const specsLine = primaryListing
         ? `${primaryListing.title}${primaryListing.city ? ", " + primaryListing.city : ""}${primaryListing.rooms ? ", " + primaryListing.rooms + " חדרים" : ""}${primaryListing.sqm ? ", " + primaryListing.sqm + " מ\"ר" : ""}${primaryListing.asking_price ? ", שכ\"ד " + Number(primaryListing.asking_price).toLocaleString("he-IL") + " ₪/חודש" : ""}.`
         : "";
       const safeDm = ["היי, תודה שפנית.", featureAnswerLine, specsLine, "מה מועד הכניסה המועדף עליכם?"]
         .filter(Boolean).join("\n");
       const pubAnswer = featureAsk
-        ? `לגבי ${featureAsk.label_he} ב${primaryListing?.title ?? "נכס"} — אבדוק ואעדכן אותך ישירות.`
+        ? featureAnswerHe
         : (primaryListing
             ? `יש לי את הפרטים על ${primaryListing.title}${primaryListing.rooms ? `, ${primaryListing.rooms} חדרים` : ""}${primaryListing.asking_price ? `, שכ\"ד ${Number(primaryListing.asking_price).toLocaleString("he-IL")} ₪/חודש` : ""}.`
             : "יש לי את כל הפרטים הרלוונטיים עבורך.");
