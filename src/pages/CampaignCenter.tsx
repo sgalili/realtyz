@@ -1166,7 +1166,7 @@ const PublishedFeed = () => {
                         className="rounded-md p-1 text-muted-foreground hover:bg-muted">
                   {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </button>
-                <button onClick={() => archiveCampaign(r.id)}
+                <button onClick={() => archiveCampaign(r)}
                         className="rounded-md p-1 text-muted-foreground hover:bg-muted" aria-label="ארכיון">
                   <Archive className="h-4 w-4" />
                 </button>
@@ -1201,7 +1201,7 @@ const PublishedFeed = () => {
                   <Stat icon={Heart}          label="לייקים"  value={r.like_count}    hasData={!!r.metrics_updated_at} />
                 </div>
                 <div className="flex items-center justify-between gap-2 px-4 pb-4" dir="rtl">
-                  <Button variant="outline" size="sm" onClick={() => deleteCampaign(r.id)}
+                  <Button variant="outline" size="sm" onClick={() => deleteCampaign(r)}
                           className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
                     <Trash2 className="ml-1 h-4 w-4" />
                     מחיקה
