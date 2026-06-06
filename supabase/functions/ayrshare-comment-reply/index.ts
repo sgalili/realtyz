@@ -32,6 +32,7 @@ Deno.serve(async (req) => {
     const platformOverride: string | undefined = body?.platform;
     const overrideCommentId: string | undefined = body?.comment_id;
     const explicitUserId: string | undefined = body?.user_id;
+    const privateDmRaw: string | undefined = typeof body?.private_dm === "string" ? body.private_dm : undefined;
 
     if (!eventId && !overrideCommentId) return json({ error: "missing event_id or comment_id" }, 400);
 
