@@ -349,9 +349,22 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
               </div>
 
               <div className="space-y-1">
-                <p className="text-[11px] font-medium text-muted-foreground">
-                  תגובה פומבית (1-2 משפטים, ישירה לעניין)
-                </p>
+                <div className="flex items-center justify-between">
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2 text-[11px]"
+                    onClick={() => replyOpen && generateDraft(replyOpen, true)}
+                    disabled={drafting || sending}
+                    aria-label="נסח מחדש תגובה פומבית"
+                  >
+                    <RefreshCw className={cn("ml-1 h-3 w-3", drafting && "animate-spin")} />
+                    נסח מחדש
+                  </Button>
+                  <p className="text-[11px] font-medium text-muted-foreground">
+                    תגובה פומבית (1-2 משפטים, ישירה לעניין)
+                  </p>
+                </div>
                 <Textarea
                   value={replyDraft}
                   onChange={(e) => setReplyDraft(e.target.value)}
@@ -364,20 +377,33 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
 
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-6 px-2 text-[11px]"
-                    onClick={() => {
-                      if (dmDraft.trim()) {
-                        navigator.clipboard.writeText(dmDraft.trim());
-                        toast.success("ה-DM הועתק ללוח");
-                      }
-                    }}
-                    disabled={!dmDraft.trim() || drafting}
-                  >
-                    העתק DM
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-2 text-[11px]"
+                      onClick={() => replyOpen && generateDraft(replyOpen, true)}
+                      disabled={drafting || sending}
+                      aria-label="נסח מחדש DM"
+                    >
+                      <RefreshCw className={cn("ml-1 h-3 w-3", drafting && "animate-spin")} />
+                      נסח מחדש
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-2 text-[11px]"
+                      onClick={() => {
+                        if (dmDraft.trim()) {
+                          navigator.clipboard.writeText(dmDraft.trim());
+                          toast.success("ה-DM הועתק ללוח");
+                        }
+                      }}
+                      disabled={!dmDraft.trim() || drafting}
+                    >
+                      העתק DM
+                    </Button>
+                  </div>
                   <p className="text-[11px] font-medium text-muted-foreground">
                     הודעה פרטית למסנג'ר (פרטי הנכס + חלופה + שאלה אחת)
                   </p>
