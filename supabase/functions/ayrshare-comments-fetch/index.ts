@@ -214,6 +214,7 @@ Deno.serve(async (req) => {
       parent_id: string | null;
     }> = [];
 
+    let blockedSelf = 0;
     for (const [postId, list] of Object.entries(results)) {
       for (const [index, c] of (list ?? []).entries()) {
         const text = pickText(c) || "";
@@ -228,6 +229,20 @@ Deno.serve(async (req) => {
           c?.sender,
           c?.author,
         );
+        const senderId = pickStr(c?.from?.id, c?.user?.id, c?.fromId, c?.sender_id, c?.userId);
+        // SENDER FIREWALL: never ingest comments authored by our own Page,
+        // by Ayrshare on our behalf, or carrying our system reply signature.
+        if (isSelfAuthoredComment({
+          fromId: senderId,
+          fromName: sender,
+          text,
+          ownPageId: ownPage.pageId,
+          ownPageName: ownPage.pageName,
+        })) {
+          blockedSelf += 1;
+          console.log("[ayrshare-comments-fetch] blocked self-authored comment", { nativeId, senderId, sender });
+          continue;
+        }
         const parentId = typeof c?.__parent_id === "string" ? c.__parent_id : null;
 
         const { data: exists } = await admin
