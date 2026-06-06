@@ -40,7 +40,7 @@ Deno.serve(async (req) => {
     const postText: string = String(body?.post ?? body?.message ?? "").trim();
     const rawChannels: string[] = Array.isArray(body?.channels) ? body.channels : [];
     const campaignName: string = String(body?.campaign_name ?? "Campaign");
-    const mediaUrls: string[] = Array.isArray(body?.media_urls) ? body.media_urls.filter(Boolean) : [];
+    const rawMediaInput: unknown[] = Array.isArray(body?.media_urls) ? body.media_urls.filter(Boolean) : [];
     const listingId: string | null = body?.listing_id ?? null;
 
     if (!postText) return json({ error: "missing post text" }, 400);
@@ -63,12 +63,74 @@ Deno.serve(async (req) => {
     const { profileKey } = await resolveWorkspaceProfileKey(admin);
     if (!profileKey) return json({ error: "workspace ayrshare profile key missing" }, 500);
 
+    // ---- Media resolution ---------------------------------------------------
+    // Ayrshare requires PUBLIC, absolute https URLs under the top-level
+    // `mediaUrls` array. We accept several inbound shapes and transform
+    // every entry into a public link before posting:
+    //   - "https://…"                         → kept as-is
+    //   - "bucket/path/in/storage.jpg"        → storage.from(bucket).getPublicUrl
+    //   - { url: "https://…" }                → use url
+    //   - { bucket, path }                    → getPublicUrl(path)
+    //   - "blob:…" / "data:…" / other paths   → rejected (FB can't fetch)
+    const KNOWN_PUBLIC_BUCKETS = new Set(["media-library", "agency-logos"]);
+    const resolvePublicUrl = async (entry: unknown): Promise<string | null> => {
+      if (!entry) return null;
+      if (typeof entry === "object") {
+        const obj = entry as Record<string, unknown>;
+        if (typeof obj.url === "string" && /^https?:\/\//i.test(obj.url)) return obj.url;
+        const bucket = typeof obj.bucket === "string" ? obj.bucket : null;
+        const path = typeof obj.path === "string" ? obj.path : null;
+        if (bucket && path) {
+          const { data } = admin.storage.from(bucket).getPublicUrl(path);
+          return data?.publicUrl ?? null;
+        }
+        return null;
+      }
+      if (typeof entry !== "string") return null;
+      const s = entry.trim();
+      if (!s) return null;
+      if (/^https?:\/\//i.test(s)) return s;
+      // blob:/data:/file: paths are unreachable from FB — block them explicitly
+      if (/^(blob:|data:|file:)/i.test(s)) return null;
+      // bucket/path/... — first segment must be a known public bucket
+      const [maybeBucket, ...rest] = s.split("/");
+      if (maybeBucket && rest.length && KNOWN_PUBLIC_BUCKETS.has(maybeBucket)) {
+        const { data } = admin.storage.from(maybeBucket).getPublicUrl(rest.join("/"));
+        return data?.publicUrl ?? null;
+      }
+      // Pure storage path with no bucket prefix — default to media-library.
+      const { data } = admin.storage.from("media-library").getPublicUrl(s);
+      return data?.publicUrl ?? null;
+    };
+
+    const resolvedMedia = (
+      await Promise.all(rawMediaInput.map((m) => resolvePublicUrl(m)))
+    ).filter((u): u is string => typeof u === "string" && /^https?:\/\//i.test(u));
+
+    // Emergency guard: if the caller intended to attach media but every entry
+    // failed to resolve to a public URL, refuse to publish a broken text-only
+    // ad rather than silently dropping the images.
+    if (rawMediaInput.length > 0 && resolvedMedia.length === 0) {
+      console.error("[ayrshare-post] media-resolution failure", { rawMediaInput });
+      return json({
+        error: "כל התמונות שצורפו אינן זמינות ככתובת ציבורית. העלה את התמונות לספריית המדיה ונסה שוב.",
+        code: "media_resolution_failed",
+        attempted: rawMediaInput.length,
+      }, 422);
+    }
+
     const ayrPayload: Record<string, unknown> = {
       post: postText,
       platforms,
       profileKey,
     };
-    if (mediaUrls.length) ayrPayload.mediaUrls = mediaUrls;
+    if (resolvedMedia.length) ayrPayload.mediaUrls = resolvedMedia;
+    console.log("[ayrshare-post] outbound payload", {
+      platforms,
+      mediaUrls: resolvedMedia,
+      mediaCountIn: rawMediaInput.length,
+      listingId,
+    });
 
     const ayrRes = await fetch(AYR_POST_URL, {
       method: "POST",
