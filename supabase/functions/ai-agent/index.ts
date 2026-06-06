@@ -298,6 +298,20 @@ serve(async (req) => {
           (leadRow?.deal_type as string | undefined) ||
           (leadRow?.preferences as any)?.listing_type;
         if (dt === "sale" || dt === "rent") dealType = dt;
+        // Price-based fallback — the DB mixes buyers and renters. If the
+        // lead has no explicit deal_type, infer it from their budget:
+        // budget in the thousands → rent; budget ≥ ~100k (typically 1M+) → sale.
+        if (!dealType) {
+          const prefs = (leadRow?.preferences as any) ?? {};
+          const budget = Number(
+            prefs.budget_max ?? prefs.price_max ?? prefs.max_price ??
+            prefs.budget_min ?? prefs.price_min ?? 0,
+          );
+          if (Number.isFinite(budget) && budget > 0) {
+            if (budget < 50_000) dealType = "rent";
+            else if (budget >= 100_000) dealType = "sale";
+          }
+        }
         if (!resolvedLeadName) resolvedLeadName = (leadRow?.full_name as string | undefined) ?? null;
         leadStage =
           (leadRow?.lead_stage as string | undefined) ??
@@ -476,25 +490,41 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
 
           // STRICT pipeline separation: extract listing_type from features and
           // drop anything that doesn't match the lead's deal_type. A rental
-          // lead must NEVER see sale alternatives, and vice-versa.
-          const extractType = (features: any): "sale" | "rent" | null => {
-            if (Array.isArray(features)) {
-              for (const f of features) {
-                if (f && typeof f === "object" && "listing_type" in f) {
-                  const v = String((f as any).listing_type ?? "").toLowerCase();
-                  if (v === "rent" || v === "sale") return v;
-                }
+          // lead must NEVER see sale alternatives, and vice-versa. When the
+          // listing has no explicit listing_type, fall back to a price-based
+          // heuristic (price < 50k → rent, price ≥ 100k → sale) so the mixed
+          // buyer/renter DB still routes cleanly.
+          const extractType = (features: any, price?: any): "sale" | "rent" | null => {
+            const fromFeatures = (f: any): "sale" | "rent" | null => {
+              if (f && typeof f === "object" && "listing_type" in f) {
+                const v = String((f as any).listing_type ?? "").toLowerCase();
+                if (v === "rent" || v === "sale") return v;
               }
               return null;
+            };
+            if (Array.isArray(features)) {
+              for (const f of features) {
+                const v = fromFeatures(f);
+                if (v) return v;
+              }
+            } else {
+              const v = fromFeatures(features);
+              if (v) return v;
             }
-            if (features && typeof features === "object") {
-              const v = String((features as any).listing_type ?? "").toLowerCase();
-              if (v === "rent" || v === "sale") return v;
+            const n = Number(price ?? 0);
+            if (Number.isFinite(n) && n > 0) {
+              if (n < 50_000) return "rent";
+              if (n >= 100_000) return "sale";
             }
             return null;
           };
           if (dealType === "rent" || dealType === "sale") {
-            candidates = candidates.filter((l) => extractType(l.features) === dealType);
+            candidates = candidates.filter((l) => {
+              const t = extractType(l.features, l.asking_price);
+              // If we cannot classify at all, drop it from the strict pipeline
+              // rather than risk leaking the wrong side.
+              return t === dealType;
+            });
           }
 
           // Soft-score by rooms/city overlap; keep top 5.
