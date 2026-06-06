@@ -1597,7 +1597,7 @@ const CampaignCenter = () => {
     <div className="space-y-6" dir="rtl">
       {isTargetedMode && (
         <div className="relative -mx-3 sm:-mx-6 -mt-6 mb-2 overflow-hidden text-primary-foreground"
-             style={{ backgroundColor: '#0096E6' }} data-no-hero-wave>
+             style={{ backgroundColor: '#0B2545' }} data-no-hero-wave>
           <div className="relative z-10 grid items-center px-4 sm:px-6"
                style={{ minHeight: '88px', gridTemplateColumns: '1fr auto 1fr' }}>
             <div className="flex justify-start">
