@@ -31,12 +31,12 @@ Deno.serve(async (req) => {
       body = await req.json();
     } catch { /* noop */ }
 
-    const postIds: string[] = Array.isArray(body?.post_ids)
+    const requestedPostIds: string[] = Array.isArray(body?.post_ids)
       ? body.post_ids.filter((s: unknown): s is string => typeof s === "string" && s.length > 0)
       : typeof body?.post_id === "string"
       ? [body.post_id]
       : [];
-    if (postIds.length === 0) return json({ error: "post_ids required" }, 400);
+    if (requestedPostIds.length === 0) return json({ error: "post_ids required" }, 400);
 
     // Resolve tenant. Body wins; otherwise extract from caller JWT.
     let userId: string | null = typeof body?.user_id === "string" ? body.user_id : null;
@@ -58,6 +58,54 @@ Deno.serve(async (req) => {
         ? body.platform.trim().toLowerCase()
         : "facebook";
 
+    type CommentFetchTarget = { fetchPostId: string; nativePostId: string; platform: string };
+    const targets = new Map<string, CommentFetchTarget>();
+    requestedPostIds.forEach((id) => {
+      const clean = String(id).trim();
+      if (clean) targets.set(clean, { fetchPostId: clean, nativePostId: clean, platform: platformHint });
+    });
+
+    // Ayrshare's comments endpoint expects the top-level Ayrshare post id
+    // (provider_response.posts[].id), while our UI/database match comments by
+    // the native social post id (campaign_logs.provider_message_id / postIds[].id).
+    // Resolve both, strictly scoped to this workspace owner.
+    try {
+      const { data: campaigns, error: campaignErr } = await admin
+        .from("campaign_logs")
+        .select("channel, provider_message_id, provider_response")
+        .eq("user_id", userId)
+        .eq("is_archived", false)
+        .order("created_at", { ascending: false })
+        .limit(200);
+      if (campaignErr) {
+        console.error("[ayrshare-comments-fetch] campaign lookup failed", campaignErr.message);
+      }
+
+      const requested = new Set(requestedPostIds.map((id) => String(id).trim()).filter(Boolean));
+      for (const row of campaigns ?? []) {
+        const response: any = (row as any).provider_response ?? {};
+        const wrappedPosts: any[] = Array.isArray(response?.posts) ? response.posts : [];
+        const flatPosts: any[] = response?.id ? [response] : [];
+        for (const post of [...flatPosts, ...wrappedPosts]) {
+          const topId = typeof post?.id === "string" ? post.id.trim() : "";
+          const postIds = Array.isArray(post?.postIds) ? post.postIds : [];
+          const nativeForPlatform =
+            postIds.find((p: any) => String(p?.platform || "").toLowerCase() === platformHint)?.id ??
+            postIds[0]?.id ??
+            (row as any).provider_message_id ??
+            null;
+          const nativeId = typeof nativeForPlatform === "string" ? nativeForPlatform.trim() : "";
+          const aliases = [topId, nativeId, (row as any).provider_message_id].map((v) => String(v || "").trim()).filter(Boolean);
+          if (!topId || !aliases.some((alias) => requested.has(alias))) continue;
+          const platform = String((postIds.find((p: any) => String(p?.id || "") === nativeId)?.platform || (row as any).channel || platformHint)).toLowerCase();
+          const key = nativeId || topId;
+          targets.set(key, { fetchPostId: topId, nativePostId: key, platform: platform || platformHint });
+        }
+      }
+    } catch (lookupErr) {
+      console.error("[ayrshare-comments-fetch] campaign lookup threw", lookupErr instanceof Error ? lookupErr.message : String(lookupErr));
+    }
+
     const { profileKey, refId } = await resolveWorkspaceProfileKey(admin);
     if (!profileKey) {
       return json({ error: "workspace ayrshare profile key missing" }, 400);
@@ -74,10 +122,11 @@ Deno.serve(async (req) => {
     const errors: Record<string, string> = {};
 
     await Promise.all(
-      postIds.map(async (postId) => {
+      Array.from(targets.values()).map(async (target) => {
+        const { fetchPostId, nativePostId } = target;
         try {
           const r = await fetch(
-            `${AYR_BASE}/comments/${encodeURIComponent(postId)}?limit=100`,
+            `${AYR_BASE}/comments/${encodeURIComponent(fetchPostId)}?limit=100`,
             {
               headers: {
                 Authorization: `Bearer ${AYRSHARE_API_KEY}`,
@@ -91,8 +140,8 @@ Deno.serve(async (req) => {
           try { payload = text ? JSON.parse(text) : {}; } catch { payload = {}; }
 
           if (!r.ok) {
-            errors[postId] = `HTTP ${r.status}: ${payload?.message ?? payload?.error ?? text.slice(0, 200)}`;
-            results[postId] = [];
+            errors[nativePostId] = `HTTP ${r.status}: ${payload?.message ?? payload?.error ?? text.slice(0, 200)}`;
+            results[nativePostId] = [];
             return;
           }
           const arr: any[] = Array.isArray(payload)
@@ -112,10 +161,10 @@ Deno.serve(async (req) => {
             }
           };
           for (const c of arr) walk(c, null);
-          results[postId] = flat;
+          results[nativePostId] = flat;
         } catch (err) {
-          errors[postId] = err instanceof Error ? err.message : String(err);
-          results[postId] = [];
+          errors[nativePostId] = err instanceof Error ? err.message : String(err);
+          results[nativePostId] = [];
         }
       }),
     );
