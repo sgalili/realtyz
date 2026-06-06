@@ -82,6 +82,7 @@ export default function Properties() {
   // View mode for the property catalog — default to table per product spec.
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [shareTarget, setShareTarget] = useState<HomelyProperty | null>(null);
   const [addOpen, setAddOpen] = useState(false);
@@ -117,7 +118,7 @@ export default function Properties() {
         if (sourceTab === 'mine') {
           const { data, error } = await supabase
             .from('listings')
-            .select('id, property_title, description, asking_price, city, rooms, sqm, features, source_metadata, source')
+            .select('id, property_title, description, asking_price, city, address, neighborhood, rooms, sqm, features, source_metadata, source')
             .eq('status', 'live')
             .eq('is_published', true)
             .order('created_at', { ascending: false })
@@ -133,6 +134,7 @@ export default function Properties() {
               price: Number(row.asking_price ?? 0),
               currency: '₪',
               city: row.city ?? '',
+              address: row.address ?? row.neighborhood ?? '',
               rooms: Number(row.rooms ?? 0),
               size_sqm: Number(row.sqm ?? 0),
               property_type: detectPropertyType(`${row.property_title ?? ''} ${row.description ?? ''}`),
@@ -196,6 +198,7 @@ export default function Properties() {
   }, [liveResults, sourceTab]);
 
   const filtered = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
     return merged.filter((p) => {
       const pType: ListingType = (p.listing_type ?? 'sale') as ListingType;
       if (pType !== listingType) return false;
@@ -209,9 +212,14 @@ export default function Properties() {
       if (rooms !== 'any' && p.rooms < Number(rooms)) return false;
       if (p.price < priceRange[0] || p.price > priceRange[1]) return false;
       if (areaMin && p.size_sqm < Number(areaMin)) return false;
+      if (q) {
+        const hay = [p.title, p.description, p.city, (p as any).address, ...(p.features || [])]
+          .filter(Boolean).join(' ').toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
       return true;
     });
-  }, [merged, listingType, city, propertyType, rooms, priceRange, areaMin, isConfigured, serviceAreas]);
+  }, [merged, listingType, city, propertyType, rooms, priceRange, areaMin, isConfigured, serviceAreas, searchQuery]);
 
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6" dir="rtl">
@@ -279,6 +287,15 @@ export default function Properties() {
           <Badge variant="secondary" className="text-sm">
             {filtered.length} נכסים
           </Badge>
+          <div className="relative flex-1 min-w-[180px] max-w-sm">
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="חיפוש לפי כתובת, עיר, כותרת..."
+              className="h-8 text-right pr-3"
+              dir="rtl"
+            />
+          </div>
           <div className="inline-flex rounded-md border border-border bg-card/50 p-0.5" role="group" aria-label="מצב תצוגה">
             <button
               type="button"
