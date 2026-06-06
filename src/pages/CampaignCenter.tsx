@@ -644,6 +644,11 @@ const InlineComposer = ({
       </div>
 
 
+      {/* Facebook Group multi-select — only when posting to Facebook */}
+      {hasBody && channel.id === 'facebook' && (
+        <CampaignGroupSelector selectedIds={groupIds} onChange={setGroupIds} />
+      )}
+
       {/* Dispatch mode selector — only when body has content */}
       {hasBody && (
         <div className="rounded-xl border border-border bg-background p-2 grid grid-cols-2 gap-2">
