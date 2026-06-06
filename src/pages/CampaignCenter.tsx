@@ -231,7 +231,7 @@ const InlineComposer = ({
 }: {
   channel: ChannelCard;
   brandName: string;
-  onConfirm: (payload: { body: string; mode: 'now' | 'scheduled' }) => void;
+  onConfirm: (payload: { body: string; mode: 'now' | 'scheduled'; media_urls: string[] }) => void;
 }) => {
   const [body, setBody] = useState('');
   const [mode, setMode] = useState<'now' | 'scheduled'>('now');
