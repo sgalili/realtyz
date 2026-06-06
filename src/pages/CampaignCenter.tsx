@@ -699,6 +699,7 @@ const InlineComposer = ({
                 .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
                 .map((a) => a.url as string),
               scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
+              group_ids: channel.id === 'facebook' ? groupIds : [],
             })}
             disabled={!canSend}
             className={cn(
