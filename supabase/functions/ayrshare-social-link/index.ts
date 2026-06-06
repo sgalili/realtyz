@@ -1,5 +1,5 @@
-// Ayrshare Business Plan social-link generator (no JWT / no white-label domain).
-// Uses the saved profileKey to build a direct Ayrshare social-connect URL.
+// Ayrshare Business Plan social-link generator using Ayrshare's JWT SSO flow.
+// Uses the saved workspace profileKey to open the social-connect URL.
 // SAFETY: only operates on profiles whose refId starts with "realtyz-".
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
@@ -12,12 +12,37 @@ const corsHeaders = {
 
 const AYR_API = 'https://api.ayrshare.com/api';
 const REALTYZ_PREFIX = 'realtyz-';
+const AYRSHARE_INTEGRATION_DOMAIN = 'id-yPFiJ';
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
     headers: { ...corsHeaders, 'Content-Type': 'application/json' },
   });
+}
+
+function normalizePrivateKey(value: string) {
+  return value
+    .trim()
+    .replace(/^['"`]+|['"`]+$/g, '')
+    .replace(/\\n/g, '\n');
+}
+
+function normalizeDomain(value: string | undefined | null) {
+  const raw = (value || '').trim().replace(/^['"`]+|['"`]+$/g, '');
+  const fromQuery = raw.match(/[?&]domain=([^&]+)/i)?.[1];
+  const candidate = decodeURIComponent(fromQuery || raw)
+    .replace(/^https?:\/\//i, '')
+    .replace(/\.ayrshare\.com.*$/i, '')
+    .replace(/\/.*$/g, '')
+    .trim();
+
+  // If the secret was set to the public site domain by mistake, fall back to
+  // the integration-package domain uploaded for this workspace.
+  if (!candidate || candidate.includes('.') || !/^[a-z0-9-]+$/i.test(candidate)) {
+    return AYRSHARE_INTEGRATION_DOMAIN;
+  }
+  return candidate;
 }
 
 Deno.serve(async (req) => {
@@ -165,15 +190,13 @@ Deno.serve(async (req) => {
 
     // ---- Generate JWT-based social-link URL (Ayrshare's official flow) ----
     const AYRSHARE_PRIVATE_KEY = Deno.env.get('AYRSHARE_PRIVATE_KEY');
-    const AYRSHARE_DOMAIN = Deno.env.get('AYRSHARE_DOMAIN');
+    const AYRSHARE_DOMAIN = normalizeDomain(Deno.env.get('AYRSHARE_DOMAIN'));
     if (!AYRSHARE_PRIVATE_KEY) {
       return jsonResponse({ error: 'Missing AYRSHARE_PRIVATE_KEY secret.' }, 500);
     }
-    if (!AYRSHARE_DOMAIN) {
-      return jsonResponse({ error: 'Missing AYRSHARE_DOMAIN secret (Ayrshare dashboard → Profiles → Domain, e.g. "id-xxxxx").' }, 500);
-    }
 
     const cleanKey = (profileKey || '').toString().trim().replace(/^['"`]+|['"`]+$/g, '');
+    const cleanPrivateKey = normalizePrivateKey(AYRSHARE_PRIVATE_KEY);
     const cleanPlatform = platform.toLowerCase().trim();
 
     const jwtRes = await fetch(`${AYR_API}/profiles/generateJWT`, {
@@ -181,7 +204,7 @@ Deno.serve(async (req) => {
       headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         domain: AYRSHARE_DOMAIN,
-        privateKey: AYRSHARE_PRIVATE_KEY,
+        privateKey: cleanPrivateKey,
         profileKey: cleanKey,
       }),
     });
