@@ -839,54 +839,176 @@ type CampaignRow = {
   recipient_count?: number;
 };
 
+const FEED_PLATFORMS: { id: string; label: string; brand?: string; icon?: typeof Bot }[] = [
+  { id: 'facebook',  label: 'Facebook',  brand: 'facebook' },
+  { id: 'instagram', label: 'Instagram', brand: 'instagram' },
+  { id: 'x',         label: 'X',         brand: 'x' },
+  { id: 'tiktok',    label: 'TikTok',    brand: 'tiktok' },
+  { id: 'linkedin',  label: 'LinkedIn',  brand: 'linkedin' },
+  { id: 'youtube',   label: 'YouTube',   brand: 'youtube' },
+  { id: 'whatsapp',  label: 'WhatsApp',  icon: MessageSquare },
+];
+
+const GlobalSocialFeed = ({
+  rows, activeChannel, onChannelChange, archivedCount, onOpenArchive,
+}: {
+  rows: CampaignRow[];
+  activeChannel: string;
+  onChannelChange: (id: string) => void;
+  archivedCount: number;
+  onOpenArchive: () => void;
+}) => {
+  const counts = useMemo(() => {
+    const m: Record<string, number> = { all: rows.length };
+    FEED_PLATFORMS.forEach((p) => { m[p.id] = 0; });
+    rows.forEach((r) => {
+      const k = String(r.channel || '').toLowerCase();
+      if (k in m) m[k] = (m[k] || 0) + 1;
+    });
+    return m;
+  }, [rows]);
+
+  const Pill = ({ id, label, brand, icon: Icon }: { id: string; label: string; brand?: string; icon?: typeof Bot }) => {
+    const active = activeChannel === id;
+    const count = counts[id] ?? 0;
+    return (
+      <button
+        type="button"
+        onClick={() => onChannelChange(id)}
+        className={cn(
+          'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition',
+          active
+            ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+            : 'border-border bg-background text-foreground hover:border-primary/40',
+        )}
+      >
+        {brand ? (
+          <BrandIcon name={brand} className={cn('h-3.5 w-3.5', active ? 'text-primary-foreground' : (BRAND_COLOR[brand] ?? 'text-muted-foreground'))} />
+        ) : Icon ? (
+          <Icon className="h-3.5 w-3.5" />
+        ) : null}
+        <span>{label}</span>
+        <span className={cn(
+          'ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold',
+          active ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground',
+        )}>{count}</span>
+      </button>
+    );
+  };
+
+  return (
+    <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-1 px-1" dir="rtl">
+      <button
+        type="button"
+        onClick={() => onChannelChange('all')}
+        className={cn(
+          'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition',
+          activeChannel === 'all'
+            ? 'border-primary bg-primary text-primary-foreground shadow-sm'
+            : 'border-border bg-background text-foreground hover:border-primary/40',
+        )}
+      >
+        הכל
+        <span className={cn(
+          'ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold',
+          activeChannel === 'all' ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground',
+        )}>{counts.all}</span>
+      </button>
+      {FEED_PLATFORMS.map((p) => <Pill key={p.id} {...p} />)}
+      <button
+        type="button"
+        onClick={onOpenArchive}
+        className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:border-primary/40 hover:text-foreground whitespace-nowrap"
+        title="ארכיון תגובות"
+      >
+        <Archive className="h-3.5 w-3.5" />
+        ארכיון
+        <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">{archivedCount}</span>
+      </button>
+    </div>
+  );
+};
+
 const PublishedFeed = () => {
   const [rows, setRows] = useState<CampaignRow[] | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [activeChannel, setActiveChannel] = useState<string>('all');
+  const [archivedCount, setArchivedCount] = useState<number>(0);
+
+  const load = async () => {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setRows([]); return; }
+    setUserId(user.id);
+    const { data } = await supabase
+      .from('campaign_logs')
+      .select('id, campaign_name, channel, message_body, created_at, provider_message_id, is_archived')
+      .eq('user_id', user.id)
+      .eq('is_archived', false)
+      .order('created_at', { ascending: false })
+      .limit(500);
+    const grouped = new Map<string, CampaignRow>();
+    (data || []).forEach((r: any) => {
+      const key = `${r.campaign_name}|${r.channel}|${r.created_at.slice(0, 16)}`;
+      const existing = grouped.get(key);
+      if (existing) {
+        existing.recipient_count = (existing.recipient_count || 1) + 1;
+        if (!existing.provider_message_id && r.provider_message_id) {
+          existing.provider_message_id = r.provider_message_id;
+        }
+      } else {
+        grouped.set(key, { ...r, recipient_count: 1 });
+      }
+    });
+    setRows(Array.from(grouped.values()));
+
+    const { count } = await supabase
+      .from('engagement_events')
+      .select('id', { count: 'exact', head: true })
+      .eq('user_id', user.id)
+      .eq('is_archived', true);
+    setArchivedCount(count ?? 0);
+  };
 
   useEffect(() => {
-    (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { setRows([]); return; }
-      setUserId(user.id);
-      const { data } = await supabase
-        .from('campaign_logs')
-        .select('id, campaign_name, channel, message_body, created_at, provider_message_id')
-        .eq('user_id', user.id)
-        .order('created_at', { ascending: false })
-        .limit(500);
-      const grouped = new Map<string, CampaignRow>();
-      (data || []).forEach((r: any) => {
-        const key = `${r.campaign_name}|${r.channel}|${r.created_at.slice(0, 16)}`;
-        const existing = grouped.get(key);
-        if (existing) {
-          existing.recipient_count = (existing.recipient_count || 1) + 1;
-          if (!existing.provider_message_id && r.provider_message_id) {
-            existing.provider_message_id = r.provider_message_id;
-          }
-        } else {
-          grouped.set(key, { ...r, recipient_count: 1 });
-        }
-      });
-      setRows(Array.from(grouped.values()));
-    })();
+    load();
+    const interval = setInterval(load, 30000);
+    return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  const archiveCampaign = async (id: string) => {
+    await supabase.from('campaign_logs').update({ is_archived: true }).eq('id', id);
+    toast.success('הקמפיין הועבר לארכיון');
+    load();
+  };
+
+  const filteredRows = useMemo(() => {
+    if (!rows) return rows;
+    if (activeChannel === 'all') return rows;
+    return rows.filter((r) => String(r.channel || '').toLowerCase() === activeChannel);
+  }, [rows, activeChannel]);
 
   if (rows === null) {
     return <div className="rounded-2xl border border-border/60 bg-card p-10 text-center text-sm text-muted-foreground">טוען…</div>;
   }
-  if (rows.length === 0) {
-    return (
-      <div className="rounded-2xl border border-dashed border-border bg-card/60 p-10 text-center">
-        <p className="text-sm font-semibold text-foreground">עדיין אין קמפיינים שפורסמו</p>
-        <p className="mt-1 text-xs text-muted-foreground">לאחר שתפעיל קמפיין מהטאב "צור קמפיין", הוא יופיע כאן עם מעקב לייקים, שיתופים ותגובות.</p>
-      </div>
-    );
-  }
 
   return (
     <div className="space-y-3">
-      {rows.map((r) => {
+      <GlobalSocialFeed
+        rows={rows}
+        activeChannel={activeChannel}
+        onChannelChange={setActiveChannel}
+        archivedCount={archivedCount}
+        onOpenArchive={() => toast.info('ארכיון התגובות יוצג בקרוב')}
+      />
+
+      {filteredRows && filteredRows.length === 0 ? (
+        <div className="rounded-2xl border border-dashed border-border bg-card/60 p-10 text-center">
+          <p className="text-sm font-semibold text-foreground">אין קמפיינים בערוץ זה</p>
+          <p className="mt-1 text-xs text-muted-foreground">לאחר שתפעיל קמפיין מהטאב "צור קמפיין", הוא יופיע כאן עם מעקב לייקים, שיתופים ותגובות.</p>
+        </div>
+      ) : (filteredRows || []).map((r) => {
         const isOpen = expanded[r.id] ?? true;
         const dt = new Date(r.created_at);
         const dateStr = dt.toLocaleDateString('he-IL') + ', ' + dt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
@@ -898,7 +1020,8 @@ const PublishedFeed = () => {
                         className="rounded-md p-1 text-muted-foreground hover:bg-muted">
                   {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </button>
-                <button className="rounded-md p-1 text-muted-foreground hover:bg-muted" aria-label="ארכיון">
+                <button onClick={() => archiveCampaign(r.id)}
+                        className="rounded-md p-1 text-muted-foreground hover:bg-muted" aria-label="ארכיון">
                   <Archive className="h-4 w-4" />
                 </button>
               </div>
@@ -939,6 +1062,7 @@ const PublishedFeed = () => {
     </div>
   );
 };
+
 
 const Stat = ({ icon: Icon, label, value }: { icon: any; label: string; value: number }) => (
   <div className="rounded-xl border border-border bg-background px-3 py-2 flex items-center justify-between">

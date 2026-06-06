@@ -1,0 +1,2 @@
+ALTER TABLE public.campaign_logs ADD COLUMN IF NOT EXISTS is_archived boolean NOT NULL DEFAULT false;
+CREATE INDEX IF NOT EXISTS idx_campaign_logs_user_archived ON public.campaign_logs (user_id, is_archived, created_at DESC);
