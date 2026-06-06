@@ -22,7 +22,12 @@ import {
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
 
-const SALE_LEAK_RE = /(למכירה|מחיר מבוקש|משכנתא|רכישה|לקנות|for sale|asking price|mortgage|purchase|(^|[^\d])\d{1,3}[,.]?\d{3}[,.]?\d{3}([^\d]|$))/i;
+const MILLION_PRICE_RE = /(^|[^\d])\d{1,3}[,.]?\d{3}[,.]?\d{3}([^\d]|$)|מיליון|מליון/i;
+const STALE_DELETED_PROPERTY_RE = /(פורצי\s*הדרך|אבן\s*גבירול|רכיבה)/i;
+const SALE_LEAK_RE = /(למכירה|מחיר מבוקש|משכנתא|רכישה|לקנות|for sale|asking price|mortgage|purchase)/i;
+const RENT_SIGNAL_RE = /(להשכרה|שכירות|לשכור|להשכיר|שכר דירה|שכ"?ד|דמי שכירות|\brent(al|s)?\b|\bfor rent\b|\blease\b|\bto let\b)/i;
+const SALE_SIGNAL_RE = /(למכירה|לרכישה|לקנות|נמכרת|רכישה|\bfor sale\b|\bbuy(ing)?\b|\bpurchase\b|\bmortgage\b|משכנתא)/i;
+const RENTAL_DELETION_OVERRIDE = `CRITICAL WARNING: The property 'פורצי הדרך 36' is DELETED and does not exist. You are strictly forbidden from writing the words 'פורצי הדרך', 'אבן גבירול', 'רכיבה', or 'למכירה' in this turn. The current session context is 100% RENTAL ONLY (להשכרה). If you mention sales or millions, the application will crash.`;
 
 function normalizeText(value: unknown): string {
   return String(value ?? "").replace(/\s+/g, " ").trim().toLowerCase();
@@ -55,16 +60,57 @@ function isolateSnapshotForPrompt(snap: any, primaryType: ListingType | null, pr
   return { ...snap, sample_listings, total_listings: sample_listings.length };
 }
 
+function hasStaleSaleContext(text: string): boolean {
+  return STALE_DELETED_PROPERTY_RE.test(text) || MILLION_PRICE_RE.test(text) || SALE_LEAK_RE.test(text);
+}
+
+function scrubRentalCampaignContext(text: string): string {
+  if (!text) return "";
+  const scrubbed = text
+    .replace(/[^\n.!?]{0,80}(?:פורצי\s*הדרך|אבן\s*גבירול)[^\n.!?]{0,180}/gi, "")
+    .replace(/[^\n.!?]{0,60}(?:למכירה|מחיר מבוקש|משכנתא|רכישה|לקנות|for sale|asking price|mortgage|purchase)[^\n.!?]{0,140}/gi, "")
+    .replace(MILLION_PRICE_RE, "")
+    .replace(/רכיבה/gi, "")
+    .split(/\n+/)
+    .map((line) => line.replace(/\s+/g, " ").trim())
+    .filter((line) => line && !STALE_DELETED_PROPERTY_RE.test(line) && !MILLION_PRICE_RE.test(line))
+    .join("\n")
+    .trim();
+  return scrubbed || "[campaign post context omitted: stale sale wording detected; use LIVE PROPERTIES & CRM CONTEXT only]";
+}
+
+function forceSingleRentalSnapshot(snap: any, primaryListing: any) {
+  const sample = primaryListing
+    ? [{
+        title: primaryListing.title,
+        city: primaryListing.city ?? null,
+        rooms: primaryListing.rooms ?? null,
+        sqm: primaryListing.sqm ?? null,
+        asking_price: primaryListing.asking_price ?? null,
+        listing_type: "rent" as ListingType,
+      }]
+    : [];
+  return {
+    ...(snap ?? {}),
+    total_listings: sample.length,
+    cities: primaryListing?.city ? [{ city: primaryListing.city, count: 1 }] : [],
+    sample_listings: sample,
+    active_leads: snap?.active_leads ?? 0,
+    hot_leads: snap?.hot_leads ?? 0,
+    listing_type_filter: "rent" as ListingType,
+  };
+}
+
 function scrubKbForTransaction(kb: string, primaryType: ListingType | null): string {
   if (!kb || primaryType !== "rent") return kb;
   return kb
     .split(/\n---\n/g)
-    .filter((chunk) => !SALE_LEAK_RE.test(chunk) && !/(^|[^\d])\d{1,3}[,.]?\d{3}[,.]?\d{3}([^\d]|$)/.test(chunk))
+    .filter((chunk) => !hasStaleSaleContext(chunk))
     .join("\n---\n");
 }
 
 function hasRentalSaleLeak(text: string): boolean {
-  return SALE_LEAK_RE.test(text) || /(^|[^\d])\d{1,3}[,.]?\d{3}[,.]?\d{3}([^\d]|$)/.test(text);
+  return hasStaleSaleContext(text);
 }
 
 function renderStrictListingPayload(snap: any, primaryType: ListingType | null): string {
@@ -219,15 +265,13 @@ Deno.serve(async (req) => {
     }
 
     // Heuristic fallback: detect transaction type from inbound text + campaign
-    // context when neither primary_listing_id nor explicit listing_type was
+      // context when neither primary_listing_id nor explicit listing_type was
     // provided. Hebrew + English rental/sale keyword sniff.
     if (!primaryType) {
       const haystack = `${inbound}\n${rawCampaignContext}`.toLowerCase();
-      const rentSignals = /(להשכרה|שכירות|לשכור|להשכיר|שכר דירה|שכ"?ד|\brent(al|s)?\b|\bfor rent\b|\blease\b|\bto let\b)/i;
-      const saleSignals = /(למכירה|לרכישה|לקנות|נמכרת|רכישה|\bfor sale\b|\bbuy(ing)?\b|\bpurchase\b|\bmortgage\b|משכנתא)/i;
-      const rentHit = rentSignals.test(haystack);
-      const saleHit = saleSignals.test(haystack);
-      if (rentHit && !saleHit) primaryType = "rent";
+      const rentHit = RENT_SIGNAL_RE.test(haystack);
+      const saleHit = SALE_SIGNAL_RE.test(haystack);
+      if (rentHit) primaryType = "rent";
       else if (saleHit && !rentHit) primaryType = "sale";
     }
 
@@ -245,11 +289,16 @@ Deno.serve(async (req) => {
           .eq("is_published", true)
           .limit(120);
         const haystack = `${inbound}\n${rawCampaignContext}`;
-        const strictTypeForLiveMatch = primaryTypeLocked ? primaryType : null;
+        const strictTypeForLiveMatch = primaryType ?? null;
         const liveMatches = (liveRows ?? [])
           .map((row: any) => ({ ...row, listing_type: resolveListingType(row) }))
           .filter((row: any) => (!strictTypeForLiveMatch || isListingAllowedForType(row, strictTypeForLiveMatch)) && overlapsListingText(haystack, row));
-        const row = liveMatches[0] ?? null;
+        const rentalFallback = primaryType === "rent"
+          ? (liveRows ?? [])
+              .map((row: any) => ({ ...row, listing_type: resolveListingType(row) }))
+              .find((row: any) => isListingAllowedForType(row, "rent") && /הבשן\s*3|הבשן/.test(`${row.property_title ?? ""}\n${row.address ?? ""}`))
+          : null;
+        const row = liveMatches[0] ?? rentalFallback ?? null;
         if (row) {
           const lt = resolveListingType(row as any) ?? primaryType;
           primaryListing = {
@@ -272,10 +321,18 @@ Deno.serve(async (req) => {
       loadCrmSnapshot(admin, userId, { listingType: primaryType }),
     ]);
 
-    const campaignContext = primaryType === "rent" && SALE_LEAK_RE.test(rawCampaignContext)
-      ? "[campaign post context omitted: stale sale wording detected; use LIVE PROPERTIES & CRM CONTEXT only]"
+    const rentalOnlyMode = primaryType === "rent" || RENT_SIGNAL_RE.test(`${inbound}\n${rawCampaignContext}`) || /הבשן\s*3|הבשן/i.test(`${inbound}\n${rawCampaignContext}`);
+    if (rentalOnlyMode) {
+      primaryType = "rent";
+    }
+    const rentalContextConflict = rentalOnlyMode && hasStaleSaleContext(rawCampaignContext);
+    const campaignContext = rentalOnlyMode
+      ? scrubRentalCampaignContext(rawCampaignContext)
       : rawCampaignContext;
-    const promptSnap = isolateSnapshotForPrompt(crmSnap, primaryType, primaryListing?.asking_price ?? null);
+    const isolatedSnap = isolateSnapshotForPrompt(crmSnap, primaryType, primaryListing?.asking_price ?? null);
+    const promptSnap = rentalContextConflict || (rentalOnlyMode && primaryListing)
+      ? forceSingleRentalSnapshot(isolatedSnap, primaryListing)
+      : isolatedSnap;
     const promptKb = primaryType ? "" : scrubKbForTransaction(kbSnippets, primaryType);
 
     // High-entropy seed forces lexical/structural variation across calls.
@@ -296,7 +353,13 @@ Deno.serve(async (req) => {
               ? ` (${primaryListing.asking_price.toLocaleString("he-IL")} ש"ח)`
               : ""
           }. If no compatible ${primaryType} alternative exists in CRM, omit the alternative — do NOT substitute the other transaction type.`,
-          primaryType === "rent"
+          rentalOnlyMode
+            ? RENTAL_DELETION_OVERRIDE
+            : null,
+          rentalOnlyMode && (promptSnap?.sample_listings ?? []).length === 0
+            ? "EMPTY RENTAL SNAPSHOT FALLBACK: Say exactly this in Hebrew and do not add any property memory: יש לי כרגע נכס מדהים להשכרה בהרצליה..."
+            : null,
+          rentalOnlyMode
             ? "Qualification question (pick ONE, rental-only): \"לכמה זמן אתם מחפשים לשכור?\" / \"מה מועד הכניסה המועדף עליכם?\" / \"צריכים חניה או מעלית?\" / \"כמה דיירים יגורו בנכס?\"."
             : "Qualification question (pick ONE, sale-only): exact budget ceiling, mortgage status, move-in horizon, must-have neighborhood, parking/floor preference.",
         ].join("\n")
@@ -334,7 +397,7 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: SYSTEM },
+          { role: "system", content: rentalOnlyMode ? `${SYSTEM}\n\n${RENTAL_DELETION_OVERRIDE}` : SYSTEM },
           { role: "user", content: userPrompt },
         ],
         temperature: regenerate ? 1.05 : 0.95,
