@@ -66,6 +66,20 @@ function hasRentalSaleLeak(text: string): boolean {
   return SALE_LEAK_RE.test(text) || /(^|[^\d])\d{1,3}[,.]?\d{3}[,.]?\d{3}([^\d]|$)/.test(text);
 }
 
+function renderStrictListingPayload(snap: any, primaryType: ListingType | null): string {
+  const objects = (snap?.sample_listings ?? []).map((listing: any, index: number) => ({
+    object_id: `OBJECT_${index + 1}`,
+    title: listing?.title || null,
+    city: listing?.city ?? null,
+    rooms: listing?.rooms ?? null,
+    sqm: listing?.sqm ?? null,
+    price_shekel: listing?.asking_price ?? null,
+    transaction_type: listing?.listing_type ?? primaryType,
+    price_label: (listing?.listing_type ?? primaryType) === "rent" ? "שכ\"ד ₪/חודש" : "מחיר מבוקש",
+  }));
+  return `[STRICT LISTING PAYLOAD JSON]\nOnly these JSON objects may be used for property facts. If a field is null or absent, do not mention it. Do not add furnishing, parking, elevator, floor, photos, availability, street, neighborhood, or condition unless that exact value is present here.\n${JSON.stringify(objects, null, 2)}`;
+}
+
 const SYSTEM = `${UDI_PERSONA}
 
 You are replying to a single public social comment (Facebook, Instagram, etc) as the broker, personally and in first person. Your job is to SELL the relevant property, not to introduce Udi as a human.
@@ -83,6 +97,7 @@ ABSOLUTE PROHIBITIONS (zero tolerance — breaking any of these voids the reply)
 MANDATORY MULTI-SOURCE GROUNDING:
 - Every property fact (rooms, price, sqm, floor, elevator, parking, neighborhood, street) MUST come from [LIVE PROPERTIES & CRM CONTEXT]. Never invent.
 - STRICT DYNAMIC PAYLOAD ONLY: You are strictly forbidden from fabricating property addresses or prices from memory, prior outputs, examples, campaign history, or training data. Use ONLY real-estate objects dynamically injected in [LIVE PROPERTIES & CRM CONTEXT].
+- The [STRICT LISTING PAYLOAD JSON] block is the final source of truth for property facts. If a fact is missing from that JSON, do not mention it.
 - If a property is not present in the injected payload, it does not exist for this reply. Do NOT mention it, even as an example.
 - STRICT TRANSACTION TYPE FIREWALL: if the primary property is FOR RENT, alternatives and terminology MUST be RENTAL only (שכ"ד חודשי / monthly rent / lease / move-in). If FOR SALE, alternatives and terminology MUST be SALE only (מחיר מבוקש / purchase / mortgage). Crossing these is FORBIDDEN.
 - If the active context states RENT, every price must be written strictly as monthly rental: שכ"ד ₪/חודש. Never write sale price wording or million-tier prices in a rental reply.
