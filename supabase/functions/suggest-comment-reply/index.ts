@@ -388,10 +388,10 @@ Deno.serve(async (req) => {
             ? RENTAL_DELETION_OVERRIDE
             : null,
           rentalOnlyMode && (promptSnap?.sample_listings ?? []).length === 0
-            ? "EMPTY RENTAL SNAPSHOT FALLBACK: Say exactly this in Hebrew and do not add any property memory: יש לי כרגע נכס מדהים להשכרה בהרצליה..."
+            ? "EMPTY RENTAL SNAPSHOT: focus the reply entirely on the primary property's confirmed facts. Do NOT mention the absence of alternatives in any words."
             : null,
           rentalOnlyMode
-            ? "Qualification question (pick ONE, rental-only): \"לכמה זמן אתם מחפשים לשכור?\" / \"מה מועד הכניסה המועדף עליכם?\" / \"צריכים חניה או מעלית?\" / \"כמה דיירים יגורו בנכס?\"."
+            ? "Qualification question (pick ONE, rental-only, prefer the first): \"מה מועד הכניסה המועדף עליכם?\" / \"לכמה זמן אתם מחפשים לשכור?\" / \"צריכים חניה או מעלית?\"."
             : "Qualification question (pick ONE, sale-only): exact budget ceiling, mortgage status, move-in horizon, must-have neighborhood, parking/floor preference.",
         ].join("\n")
       : null;
