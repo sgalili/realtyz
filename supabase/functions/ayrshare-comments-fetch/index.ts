@@ -261,6 +261,7 @@ Deno.serve(async (req) => {
               external_id: nativeId,
               external_post_id: postId,
               sender_handle: sender,
+              sender_id: senderId,
               inbound_text: text,
               platform: platformHint,
               parent_id: parentId,
