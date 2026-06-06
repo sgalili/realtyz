@@ -28,6 +28,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { SentimentAutomationToggles } from '@/components/automation/SentimentAutomationToggles';
 import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsStream';
+import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { campaignMatchesExternalPost, normalizePostId } from '@/lib/campaignPostIds';
 
 
@@ -231,12 +232,14 @@ const InlineComposer = ({
 }: {
   channel: ChannelCard;
   brandName: string;
-  onConfirm: (payload: { body: string; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null }) => void;
+  onConfirm: (payload: { body: string; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null; group_ids: string[] }) => void;
 }) => {
   const [body, setBody] = useState('');
   const [mode, setMode] = useState<'now' | 'scheduled'>('now');
   // Local datetime string in `YYYY-MM-DDTHH:mm` (input[type=datetime-local] format).
   const [scheduledLocal, setScheduledLocal] = useState<string>('');
+  // Multi-select of connected Facebook Group IDs to fan-out a single post to.
+  const [groupIds, setGroupIds] = useState<string[]>([]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [generating, setGenerating] = useState(false);
 
@@ -641,6 +644,11 @@ const InlineComposer = ({
       </div>
 
 
+      {/* Facebook Group multi-select — only when posting to Facebook */}
+      {hasBody && channel.id === 'facebook' && (
+        <CampaignGroupSelector selectedIds={groupIds} onChange={setGroupIds} />
+      )}
+
       {/* Dispatch mode selector — only when body has content */}
       {hasBody && (
         <div className="rounded-xl border border-border bg-background p-2 grid grid-cols-2 gap-2">
@@ -696,6 +704,7 @@ const InlineComposer = ({
                 .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
                 .map((a) => a.url as string),
               scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
+              group_ids: channel.id === 'facebook' ? groupIds : [],
             })}
             disabled={!canSend}
             className={cn(
@@ -716,7 +725,7 @@ const InlineComposer = ({
 /* ───────────── Dispatch confirmation modal ───────────── */
 
 const ConfirmDispatchDialog = ({
-  open, onClose, channel, body, brandName, mediaUrls, scheduledAt, onConfirmed,
+  open, onClose, channel, body, brandName, mediaUrls, scheduledAt, groupIds, onConfirmed,
 }: {
   open: boolean;
   onClose: () => void;
@@ -725,6 +734,7 @@ const ConfirmDispatchDialog = ({
   brandName: string;
   mediaUrls: string[];
   scheduledAt: string | null;
+  groupIds: string[];
   onConfirmed: () => void;
 }) => {
   const { user } = useAuth();
@@ -792,6 +802,7 @@ const ConfirmDispatchDialog = ({
             campaign_name: campaignName,
             media_urls: mediaUrls,
             scheduled_at: scheduledAt,
+            group_ids: groupIds,
           },
         });
         // When the edge function returns a non-2xx, supabase-js sets a generic
@@ -810,9 +821,14 @@ const ConfirmDispatchDialog = ({
           throw new Error(friendly || error.message || 'שגיאת רשת');
         }
         if ((data as any)?.error) throw new Error((data as any).error);
+        const groupFailures: any[] = Array.isArray((data as any)?.group_failures) ? (data as any).group_failures : [];
         if (scheduledAt) {
           const when = new Date(scheduledAt).toLocaleString('he-IL');
           toast.success(`הפוסט תוזמן ל-${when} בערוץ ${channel.label}`);
+        } else if (groupIds.length > 0 && groupFailures.length === 0) {
+          toast.success('הפוסט שותף בהצלחה בכל הקבוצות שנבחרו!');
+        } else if (groupIds.length > 0 && groupFailures.length > 0) {
+          toast.error(`פורסם אך נכשל ב-${groupFailures.length} קבוצות`);
         } else {
           toast.success(`הקמפיין פורסם בהצלחה ב-${channel.label}!`);
         }
@@ -1441,7 +1457,7 @@ const CampaignCenter = () => {
   const { settings } = useWhiteLabel();
   const brandName = settings?.agency_name || 'Realtyz AI';
   const [pickedChannel, setPickedChannel] = useState<ChannelCard | null>(null);
-  const [confirmPayload, setConfirmPayload] = useState<{ body: string; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null } | null>(null);
+  const [confirmPayload, setConfirmPayload] = useState<{ body: string; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null; group_ids: string[] } | null>(null);
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(EMPTY_CONNECTED);
   const [channelAccountNames, setChannelAccountNames] = useState<Record<string, string>>({});
 
@@ -1643,6 +1659,7 @@ const CampaignCenter = () => {
         brandName={brandName}
         mediaUrls={confirmPayload?.media_urls ?? []}
         scheduledAt={confirmPayload?.scheduled_at ?? null}
+        groupIds={confirmPayload?.group_ids ?? []}
         onConfirmed={() => { setConfirmPayload(null); setPickedChannel(null); }}
       />
     </div>

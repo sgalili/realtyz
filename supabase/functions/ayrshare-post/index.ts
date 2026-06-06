@@ -43,6 +43,9 @@ Deno.serve(async (req) => {
     const rawMediaInput: unknown[] = Array.isArray(body?.media_urls) ? body.media_urls.filter(Boolean) : [];
     const listingId: string | null = body?.listing_id ?? null;
     const scheduledAtRaw: string | null = typeof body?.scheduled_at === "string" ? body.scheduled_at : null;
+    const groupIds: string[] = Array.isArray(body?.group_ids)
+      ? body.group_ids.map((g: unknown) => String(g ?? "").trim()).filter(Boolean)
+      : [];
     let scheduledIso: string | null = null;
     if (scheduledAtRaw) {
       const d = new Date(scheduledAtRaw);
@@ -127,36 +130,7 @@ Deno.serve(async (req) => {
       }, 422);
     }
 
-    const ayrPayload: Record<string, unknown> = {
-      post: postText,
-      platforms,
-      profileKey,
-    };
-    if (resolvedMedia.length) ayrPayload.mediaUrls = resolvedMedia;
-    if (scheduledIso) ayrPayload.scheduleDate = scheduledIso;
-    console.log("[ayrshare-post] outbound payload", {
-      platforms,
-      mediaUrls: resolvedMedia,
-      mediaCountIn: rawMediaInput.length,
-      listingId,
-      scheduleDate: scheduledIso,
-    });
-
-    const ayrRes = await fetch(AYR_POST_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-        "Profile-Key": profileKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(ayrPayload),
-    });
-    const ayrText = await ayrRes.text();
-    let ayrJson: any = null;
-    try { ayrJson = ayrText ? JSON.parse(ayrText) : null; } catch { ayrJson = { raw: ayrText }; }
-
-    // Collect per-post errors from either the flat `errors` array or the
-    // wrapped `posts[].errors[]` shape Ayrshare now returns.
+    // Shared helpers — collect Ayrshare per-post errors and friendly messages.
     const collectErrors = (j: any): any[] => {
       const flat = Array.isArray(j?.errors) ? j.errors : [];
       const wrapped = Array.isArray(j?.posts)
@@ -172,24 +146,80 @@ Deno.serve(async (req) => {
       if (c === 156 || c === 155) return 'פג תוקף החיבור לפייסבוק. חבר את הדף מחדש מהגדרות ערוצים.';
       return fallback;
     };
-    const perPostErrors = collectErrors(ayrJson);
-    const ayrFailed = !ayrRes.ok || perPostErrors.length > 0;
-    if (ayrFailed) {
-      console.error("[ayrshare-post] failed", ayrRes.status, JSON.stringify(ayrJson));
-      const first = perPostErrors[0] ?? {};
-      const rawMsg =
-        first?.message ??
-        ayrJson?.errors?.[0]?.message ??
-        ayrJson?.message ??
-        `Ayrshare ${ayrRes.status}`;
-      const code = first?.code ?? ayrJson?.code;
-      const msg = friendlyFromCode(code, rawMsg);
-      return json({ error: msg, code: code ?? null, status: ayrRes.status, details: ayrJson }, 502);
-    }
 
-    // Per-platform results from Ayrshare. The response may be either
-    //   { postIds: [...] }              (legacy/flat shape) OR
-    //   { posts: [{ postIds: [...] }] } (current shape — wrapped in `posts`)
+    // Fire a single Ayrshare /post call. Used for the main page post and for
+    // each selected Facebook Group fan-out target.
+    const firePost = async (extra: Record<string, unknown>, label: string) => {
+      const payload: Record<string, unknown> = {
+        post: postText,
+        platforms: extra.platforms ?? platforms,
+        profileKey,
+        ...extra,
+      };
+      if (resolvedMedia.length) payload.mediaUrls = resolvedMedia;
+      if (scheduledIso) payload.scheduleDate = scheduledIso;
+      console.log(`[ayrshare-post] outbound (${label})`, {
+        platforms: payload.platforms,
+        mediaCount: resolvedMedia.length,
+        scheduleDate: scheduledIso,
+        groupId: (payload as any)?.faceBookOptions?.groupId ?? null,
+      });
+      const r = await fetch(AYR_POST_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+          "Profile-Key": profileKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+      const t = await r.text();
+      let j: any = null;
+      try { j = t ? JSON.parse(t) : null; } catch { j = { raw: t }; }
+      const errs = collectErrors(j);
+      return { ok: r.ok && errs.length === 0, status: r.status, body: j, errors: errs };
+    };
+
+    // ---- Main page post (skipped only when caller targets groups exclusively
+    // by selecting facebook + at least one group AND explicitly setting
+    // skip_page=true. Default = post to the page too).
+    const skipPagePost: boolean = !!body?.skip_page && groupIds.length > 0;
+    let ayrRes = { ok: true, status: 200, body: null as any, errors: [] as any[] };
+    if (!skipPagePost) {
+      ayrRes = await firePost({}, "page");
+      if (!ayrRes.ok) {
+        const first = ayrRes.errors[0] ?? {};
+        const rawMsg = first?.message ?? ayrRes.body?.errors?.[0]?.message ?? ayrRes.body?.message ?? `Ayrshare ${ayrRes.status}`;
+        const code = first?.code ?? ayrRes.body?.code;
+        return json({ error: friendlyFromCode(code, rawMsg), code: code ?? null, status: ayrRes.status, details: ayrRes.body }, 502);
+      }
+    }
+    const ayrJson = ayrRes.body;
+
+    // ---- Facebook Group fan-out — one Ayrshare /post per selected group.
+    const groupResults: Array<{ group_id: string; ok: boolean; id: string | null; error: string | null }> = [];
+    for (const groupId of groupIds) {
+      const r = await firePost(
+        { platforms: ["facebook"], faceBookOptions: { groupId } },
+        `group:${groupId}`,
+      );
+      const rawIds: any[] = Array.isArray(r.body?.postIds)
+        ? r.body.postIds
+        : Array.isArray(r.body?.posts)
+          ? r.body.posts.flatMap((p: any) => Array.isArray(p?.postIds) ? p.postIds : [])
+          : [];
+      const firstId = rawIds[0]?.id ?? rawIds[0]?.postId ?? null;
+      const firstErr = r.errors[0] ?? null;
+      groupResults.push({
+        group_id: groupId,
+        ok: r.ok,
+        id: firstId,
+        error: firstErr ? friendlyFromCode(firstErr.code, firstErr.message ?? `Ayrshare ${r.status}`) : (r.ok ? null : `Ayrshare ${r.status}`),
+      });
+    }
+    const groupFailures = groupResults.filter((g) => !g.ok);
+
+    // Per-platform results from main page post.
     const rawPostIds: any[] = Array.isArray(ayrJson?.postIds)
       ? ayrJson.postIds
       : Array.isArray(ayrJson?.posts)
@@ -202,8 +232,9 @@ Deno.serve(async (req) => {
         status: p?.status ?? null,
       }));
 
-    // One campaign_logs row per requested internal channel
-    const rows = rawChannels.map((ch) => {
+    // One campaign_logs row per requested internal channel (page post) plus
+    // one per fanned-out Facebook Group.
+    const baseRows = skipPagePost ? [] : rawChannels.map((ch) => {
       const lc = String(ch).toLowerCase();
       const mapped = PLATFORM_MAP[lc];
       const match = postIds.find((p) => p.platform === mapped);
@@ -219,14 +250,30 @@ Deno.serve(async (req) => {
         source_account: "ayrshare",
       } as any;
     });
+    const groupRows = groupResults.map((g) => ({
+      user_id: userId,
+      campaign_name: `${campaignName} · קבוצה`,
+      channel: "facebook",
+      message_body: postText,
+      status: g.ok ? (scheduledIso ? "scheduled" : "sent") : "failed",
+      provider_message_id: g.id,
+      provider_response: { group_id: g.group_id, error: g.error },
+      sent_at: scheduledIso ?? new Date().toISOString(),
+      source_account: "ayrshare-group",
+    } as any));
 
-    const { error: insErr } = await admin.from("campaign_logs").insert(rows);
-    if (insErr) console.warn("[ayrshare-post] campaign_logs insert error", insErr.message);
+    const rows = [...baseRows, ...groupRows];
+    if (rows.length > 0) {
+      const { error: insErr } = await admin.from("campaign_logs").insert(rows);
+      if (insErr) console.warn("[ayrshare-post] campaign_logs insert error", insErr.message);
+    }
 
     return json({
-      success: true,
+      success: groupFailures.length === 0,
       published_channels: platforms,
       post_ids: postIds,
+      group_results: groupResults,
+      group_failures: groupFailures,
       ayrshare: ayrJson,
       listing_id: listingId,
     });
