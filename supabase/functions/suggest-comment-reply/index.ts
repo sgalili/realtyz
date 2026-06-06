@@ -271,7 +271,7 @@ Deno.serve(async (req) => {
       ? "[campaign post context omitted: stale sale wording detected; use LIVE PROPERTIES & CRM CONTEXT only]"
       : rawCampaignContext;
     const promptSnap = isolateSnapshotForPrompt(crmSnap, primaryType, primaryListing?.asking_price ?? null);
-    const promptKb = scrubKbForTransaction(kbSnippets, primaryType);
+    const promptKb = primaryType ? "" : scrubKbForTransaction(kbSnippets, primaryType);
 
     // High-entropy seed forces lexical/structural variation across calls.
     const entropySeed = `${crypto.randomUUID()}-${Date.now()}`;
@@ -308,6 +308,7 @@ Deno.serve(async (req) => {
       primaryBlock,
       transactionBlock,
       renderCrmBlock(promptSnap),
+      renderStrictListingPayload(promptSnap, primaryType),
       renderKbBlock(promptKb),
       `Required reply language: ${
         targetLang === "en" ? "English only" : targetLang === "he" ? "Hebrew only" : "same language as inbound"
