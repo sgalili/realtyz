@@ -106,13 +106,12 @@ Deno.serve(async (req) => {
       return json({ error: "ayrshare reply failed", status: ayrRes.status, details: ayrPayload }, 502);
     }
 
-    // Optional private Messenger / IG Direct DM tied to the same commentId.
-    let privateDmResult: any = null;
-    let privateDmStatus: number | null = null;
+    // Parallel ALGO BOOST + DM: Auto-Like the original comment and (optionally)
+    // send a private Messenger / IG Direct DM. Both run concurrently and never
+    // block or fail the public reply that just succeeded.
     const sanitizedDm = sanitizeOutboundText(privateDmRaw ?? "");
-    if (sanitizedDm) {
-      try {
-        const dmRes = await fetch(AYR_MESSAGES_URL, {
+    const dmTask = sanitizedDm
+      ? fetch(AYR_MESSAGES_URL, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${AYRSHARE_API_KEY}`,
@@ -125,18 +124,29 @@ Deno.serve(async (req) => {
             message: sanitizedDm,
             searchPlatformId: true,
           }),
-        });
-        privateDmStatus = dmRes.status;
-        const dmText = await dmRes.text();
-        try { privateDmResult = dmText ? JSON.parse(dmText) : { ok: dmRes.ok }; }
-        catch { privateDmResult = { raw: dmText, ok: dmRes.ok }; }
-      } catch (e) {
-        privateDmResult = { error: e instanceof Error ? e.message : String(e) };
-      }
-    }
+        }).then(async (r) => {
+          const t = await r.text();
+          let p: any; try { p = t ? JSON.parse(t) : { ok: r.ok }; } catch { p = { raw: t, ok: r.ok }; }
+          return { status: r.status, response: p };
+        }).catch((e) => ({ status: 0, response: { error: e instanceof Error ? e.message : String(e) } }))
+      : Promise.resolve(null);
+
+    const likeTask = likeNativeComment({
+      apiKey: AYRSHARE_API_KEY,
+      profileKey,
+      platform,
+      commentId: nativeCommentId,
+    });
+
+    const [dmOutcome, likeOutcome] = await Promise.all([dmTask, likeTask]);
+    const privateDmResult = dmOutcome?.response ?? null;
+    const privateDmStatus = dmOutcome?.status ?? null;
     const privateDmSent = sanitizedDm
       ? (privateDmStatus !== null && privateDmStatus >= 200 && privateDmStatus < 300)
       : false;
+    if (!likeOutcome.ok) {
+      console.warn("[ayrshare-comment-reply] auto-like non-fatal failure", likeOutcome);
+    }
 
     if (rowId) {
       await admin
@@ -150,11 +160,13 @@ Deno.serve(async (req) => {
             ...(sanitizedDm
               ? { private_dm: { status: privateDmStatus, response: privateDmResult, text: sanitizedDm } }
               : {}),
+            auto_like: likeOutcome,
           },
         })
         .eq("id", rowId)
         .eq("user_id", ownerUserId);
     }
+
 
     return json({
       success: true,
