@@ -6,10 +6,10 @@ import {
   loadCrmSnapshot,
   renderKbBlock,
   renderCrmBlock,
-  UDI_PERSONA,
   ANTI_SPAM_RULES,
   CTA_RULE,
 } from "../_shared/grounding.ts";
+
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
