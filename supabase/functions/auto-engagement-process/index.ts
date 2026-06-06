@@ -255,7 +255,7 @@ Deno.serve(async (req) => {
       rowId = ins.id;
     }
 
-    // 3. If auto-reply is enabled and we have a draft, dispatch via reply fn.
+    // 3. If auto-reply is enabled and we have a draft, publish public reply.
     let dispatch: any = null;
     if (willAutoReply && analysis.reply && rowId) {
       const r = await fetch(`${SUPABASE_URL}/functions/v1/ayrshare-comment-reply`, {
@@ -271,12 +271,57 @@ Deno.serve(async (req) => {
       dispatch = await r.json().catch(() => ({ ok: false }));
     }
 
+    // 4. DUAL FUNNEL: always attempt a private DM (Messenger / IG Direct) so the
+    //    commenter is moved into a 1:1 conversation loop. Public reply (above)
+    //    is gated by sentiment toggles; the DM is not.
+    let private_dm: any = null;
+    if (event_type === "comment" && external_id && analysis.reply && AYRSHARE_API_KEY) {
+      try {
+        const { profileKey } = await resolveWorkspaceProfileKey(admin);
+        if (profileKey) {
+          const dmRes = await fetch(AYR_MESSAGES_URL, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+              "Profile-Key": profileKey,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              platforms: [platform],
+              commentId: external_id,
+              message: analysis.reply,
+              searchPlatformId: true,
+            }),
+          });
+          const dmText = await dmRes.text();
+          try { private_dm = dmText ? JSON.parse(dmText) : { ok: dmRes.ok }; }
+          catch { private_dm = { raw: dmText, ok: dmRes.ok }; }
+          if (rowId) {
+            await admin
+              .from("engagement_events")
+              .update({
+                metadata: {
+                  ...mergedMetadata,
+                  private_dm: { status: dmRes.status, response: private_dm },
+                },
+              })
+              .eq("id", rowId)
+              .eq("user_id", user_id);
+          }
+        }
+      } catch (e) {
+        console.error("[auto-engagement-process] private DM failed", e);
+        private_dm = { error: e instanceof Error ? e.message : String(e) };
+      }
+    }
+
     return json({
       ok: true,
       row_id: rowId,
       sentiment: analysis.sentiment,
       auto_reply: willAutoReply,
       dispatch,
+      private_dm,
     });
   } catch (e) {
     console.error("[auto-engagement-process] error:", e);
