@@ -198,19 +198,17 @@ const InlineComposer = ({
   // Reset on channel change
   useEffect(() => { setBody(''); setMode('now'); setAttachments([]); setCustomInstructions(''); setSelectedListingId(null); setListingQuery(''); }, [channel.id]);
 
-  // Live property search from listings table — explicit user scoping + neighborhood search.
+  // Live property search from listings table. Runs on mount AND whenever the picker opens or
+  // the search query changes. Relies on RLS for workspace/user isolation (matches Properties.tsx).
   useEffect(() => {
     let cancelled = false;
     const t = setTimeout(async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { if (!cancelled) setListings([]); return; }
-      const q = listingQuery.trim().replace(/[(),]/g, ' ');
+      const q = listingQuery.trim().replace(/[(),%]/g, ' ');
       let query = supabase
         .from('listings')
         .select('id, property_title, city, neighborhood, address, rooms, asking_price, deal_type, status')
-        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(30);
+        .limit(20);
       if (q.length > 0) {
         const like = `%${q}%`;
         query = query.or(
@@ -218,9 +216,13 @@ const InlineComposer = ({
         );
       }
       const { data, error } = await query;
-      if (error) console.error('[CampaignCenter] listings fetch failed', error);
+      if (error) {
+        console.error('[CampaignCenter] listings fetch failed', error);
+        if (!cancelled) setListings([]);
+        return;
+      }
       if (!cancelled) setListings((data as any) || []);
-    }, 200);
+    }, 150);
     return () => { cancelled = true; clearTimeout(t); };
   }, [listingQuery, listingPickerOpen]);
 
