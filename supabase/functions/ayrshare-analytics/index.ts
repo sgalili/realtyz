@@ -156,6 +156,7 @@ Deno.serve(async (req) => {
           share_count: counts.shares,
           view_count: counts.views,
           metrics_updated_at: new Date().toISOString(),
+          ...(t.needsBackfill ? { provider_message_id: t.postId } : {}),
         })
         .eq("id", t.id)
         .eq("user_id", userId);
