@@ -1007,15 +1007,32 @@
   }
 
   .realtyz-premium-sidebar [data-sidebar="sidebar"] {
-    background: linear-gradient(180deg, hsl(var(--brand-silver)) 0%, hsl(var(--card)) 46%, hsl(var(--background)) 100%);
-    color: hsl(var(--primary));
-    box-shadow: inset 18px 0 34px hsl(var(--brand-blue) / 0.08), inset 0 1px 0 hsl(var(--primary-foreground) / 0.72);
+    background: linear-gradient(180deg, hsl(var(--brand-deep)) 0%, hsl(var(--brand-navy)) 100%);
+    color: hsl(0 0% 100%);
+    box-shadow: inset 18px 0 34px hsl(0 0% 0% / 0.18);
+  }
+  /* Sidebar uses --primary tokens which we've remapped to GOLD globally.
+     Inside the navy sidebar we want labels on white and only the active
+     pill / badge / icon to glow gold — override --primary locally so
+     existing `text-primary` / `bg-primary` class names render correctly. */
+  .realtyz-premium-sidebar,
+  .realtyz-sidebar-menu {
+    --primary: 0 0% 100%;
+    --primary-foreground: 213 73% 12%;
+    --primary-glow: 47 100% 50%;
+    --muted-foreground: 0 0% 100% / 0.7;
+  }
+  .realtyz-premium-sidebar [data-active="true"],
+  .realtyz-sidebar-menu [data-active="true"] {
+    background-color: hsl(47 100% 50%) !important;
+    color: hsl(213 73% 12%) !important;
+    box-shadow: 0 6px 18px -8px hsl(47 100% 50% / 0.6);
   }
 
   .realtyz-sidebar-brand {
     position: relative;
-    background: linear-gradient(180deg, hsl(var(--brand-navy)) 0%, hsl(var(--brand-deep)) 100%);
-    color: hsl(var(--primary-foreground));
+    background: linear-gradient(180deg, hsl(var(--brand-deep)) 0%, hsl(var(--brand-navy)) 100%);
+    color: hsl(0 0% 100%);
     overflow: hidden;
     min-height: 74px;
   }
@@ -1029,20 +1046,20 @@
   }
 
   .realtyz-sidebar-menu {
-    background: linear-gradient(180deg, hsl(var(--brand-silver)) 0%, hsl(var(--card)) 46%, hsl(var(--background)) 100%);
-    color: hsl(var(--primary));
-    box-shadow: inset 18px 0 34px hsl(var(--brand-blue) / 0.08), inset 0 1px 0 hsl(var(--primary-foreground) / 0.72);
+    background: linear-gradient(180deg, hsl(var(--brand-deep)) 0%, hsl(var(--brand-navy)) 100%);
+    color: hsl(0 0% 100%);
+    box-shadow: inset 18px 0 34px hsl(0 0% 0% / 0.18);
   }
 
   .realtyz-tutorial-nav-glow {
-    background: hsl(var(--primary) / 0.08);
-    box-shadow: inset -3px 0 0 hsl(var(--primary-glow)), 0 0 0 1px hsl(var(--primary) / 0.14), 0 14px 30px -18px hsl(var(--primary) / 0.7);
+    background: hsl(47 100% 50% / 0.18);
+    box-shadow: inset -3px 0 0 hsl(47 100% 50%), 0 0 0 1px hsl(47 100% 50% / 0.3), 0 14px 30px -18px hsl(47 100% 50% / 0.7);
     animation: realtyz-tutorial-glow 1.45s ease-in-out infinite;
   }
 
   @keyframes realtyz-tutorial-glow {
-    0%, 100% { filter: drop-shadow(0 0 0 hsl(var(--primary-glow) / 0)); }
-    50% { filter: drop-shadow(0 0 10px hsl(var(--primary-glow) / 0.36)); }
+    0%, 100% { filter: drop-shadow(0 0 0 hsl(47 100% 50% / 0)); }
+    50% { filter: drop-shadow(0 0 10px hsl(47 100% 50% / 0.46)); }
   }
 
   .realtyz-sidebar-wave {
@@ -1051,8 +1068,8 @@
     bottom: -1px;
     height: 44px;
     width: 100%;
-    fill: hsl(var(--brand-deep));
-    filter: drop-shadow(0 -8px 16px hsl(var(--brand-blue) / 0.18));
+    fill: hsl(var(--brand-navy));
+    filter: drop-shadow(0 -8px 16px hsl(0 0% 0% / 0.28));
   }
 
   .geo-lines-diamond {
