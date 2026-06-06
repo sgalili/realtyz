@@ -34,6 +34,17 @@ export async function loadKbSnippets(
 
 export type ListingType = "sale" | "rent";
 
+const SALE_CONTEXT_RE = /(למכירה|מכירה|לרכישה|רכישה|לקנות|לקנייה|לקניה|קנייה|קניה|מחיר מבוקש|משכנתא|for sale|asking price|purchase|buying?|mortgage)/i;
+const RENT_CONTEXT_RE = /(להשכרה|השכרה|שכירות|לשכור|להשכיר|שכר דירה|שכ"?ד|דמי שכירות|rentals?|for rent|lease|to let|monthly rent)/i;
+
+function searchableListingText(listing: Record<string, unknown>): string {
+  return [
+    listing.property_title,
+    listing.status,
+    listing.features ? JSON.stringify(listing.features) : "",
+  ].map((value) => String(value ?? "").toLowerCase()).join("\n");
+}
+
 export function extractListingTypeFromFeatures(features: unknown): ListingType | null {
   if (Array.isArray(features)) {
     for (const f of features) {
@@ -51,6 +62,24 @@ export function extractListingTypeFromFeatures(features: unknown): ListingType |
     if (v === "sale") return "sale";
   }
   return null;
+}
+
+export function isListingAllowedForType(listing: Record<string, unknown>, want: ListingType | null): boolean {
+  if (!want) return true;
+  const explicit = extractListingTypeFromFeatures(listing.features);
+  const price = Number(listing.asking_price ?? 0);
+  const text = searchableListingText(listing);
+
+  if (want === "rent") {
+    if (explicit === "sale") return false;
+    if (Number.isFinite(price) && price > 50_000) return false;
+    if (SALE_CONTEXT_RE.test(text)) return false;
+    return explicit === "rent" || RENT_CONTEXT_RE.test(text) || !price || price <= 50_000;
+  }
+
+  if (explicit === "rent") return false;
+  if (RENT_CONTEXT_RE.test(text)) return false;
+  return true;
 }
 
 export type CrmSnapshot = {
