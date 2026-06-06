@@ -12,6 +12,15 @@ const json = (b: unknown, s = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+const isUuid = (value: unknown) =>
+  typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value.trim());
+
+const safeAyrPayload = (payload: any, text = "") => ({
+  message: payload?.message ?? payload?.error ?? payload?.errors?.[0]?.message ?? text.slice(0, 500) ?? null,
+  code: payload?.code ?? payload?.errors?.[0]?.code ?? null,
+  raw: payload && Object.keys(payload).length ? payload : text.slice(0, 1000),
+});
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "method" }, 405);
@@ -121,6 +130,8 @@ Deno.serve(async (req) => {
 
     const results: Record<string, any[]> = {};
     const errors: Record<string, string> = {};
+    const apiErrors: any[] = [];
+    const mappingErrors: any[] = [];
 
     const extractComments = (payload: any, platform: string): any[] => {
       const platformNode = payload?.[platform];
@@ -161,6 +172,20 @@ Deno.serve(async (req) => {
       Array.from(targets.values()).map(async (target) => {
         const { fetchPostId, nativePostId, platform } = target;
         try {
+          if (isUuid(fetchPostId) || isUuid(nativePostId)) {
+            const mappingError = {
+              post_id: nativePostId,
+              fetch_post_id: fetchPostId,
+              platform,
+              error: "internal_uuid_was_mapped_as_external_post_id",
+            };
+            mappingErrors.push(mappingError);
+            console.error("[ayrshare-comments-fetch] invalid external id mapping", mappingError);
+            errors[nativePostId] = mappingError.error;
+            results[nativePostId] = [];
+            return;
+          }
+
           let fetched = await fetchComments(target, false);
           let arr: any[] = fetched.ok ? extractComments(fetched.payload, platform) : [];
 
@@ -176,7 +201,16 @@ Deno.serve(async (req) => {
           }
 
           if (!fetched.ok) {
-            errors[nativePostId] = `HTTP ${fetched.status}: ${fetched.payload?.message ?? fetched.payload?.error ?? fetched.text.slice(0, 200)}`;
+            const apiError = {
+              post_id: nativePostId,
+              fetch_post_id: fetchPostId,
+              platform,
+              status: fetched.status,
+              payload: safeAyrPayload(fetched.payload, fetched.text),
+            };
+            apiErrors.push(apiError);
+            console.error("[ayrshare-comments-fetch] Ayrshare API rejected request", apiError);
+            errors[nativePostId] = `HTTP ${fetched.status}: ${apiError.payload.message ?? "Ayrshare comments rejected request"}`;
             results[nativePostId] = [];
             return;
           }
@@ -366,15 +400,21 @@ Deno.serve(async (req) => {
       ),
     );
 
+    const status = persisted === 0 && skipped === 0 && (apiErrors.length || mappingErrors.length)
+      ? Number(apiErrors[0]?.status || 502)
+      : 200;
+
     return json({
       success: true,
       comments: results,
       errors,
+      api_errors: apiErrors,
+      mapping_errors: mappingErrors,
       persisted,
       skipped,
       blocked_self: blockedSelf,
       dispatched: toDispatch.length,
-    });
+    }, status);
   } catch (e) {
     console.error("[ayrshare-comments-fetch] error:", e);
     return json({ error: e instanceof Error ? e.message : "unknown" }, 500);

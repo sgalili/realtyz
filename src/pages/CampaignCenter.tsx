@@ -896,6 +896,24 @@ type CampaignRow = {
   metrics_updated_at?: string | null;
 };
 
+const extractFunctionError = async (error: any, fallback = 'שגיאת API חיצונית') => {
+  const status = error?.context?.status ?? error?.status;
+  let details: any = null;
+  try {
+    details = error?.context?.clone ? await error.context.clone().json() : null;
+  } catch { /* ignore */ }
+  const msg = details?.error || details?.api_errors?.[0]?.payload?.message || details?.mapping_errors?.[0]?.error || error?.message || fallback;
+  return `${status ? `HTTP ${status}: ` : ''}${msg}`;
+};
+
+const firstPipelineError = (data: any): string | null => {
+  const api = Array.isArray(data?.api_errors) ? data.api_errors[0] : null;
+  const mapping = Array.isArray(data?.mapping_errors) ? data.mapping_errors[0] : null;
+  if (api) return `Ayrshare ${api.status ?? ''}: ${api.payload?.message ?? api.error ?? 'API rejected request'}`;
+  if (mapping) return mapping.error ?? 'Invalid external post id mapping';
+  return null;
+};
+
 // Derive the live native post URL from Ayrshare provider response, or build
 // a best-effort fallback URL from the platform + native post id.
 const derivePostUrl = (r: CampaignRow): string | null => {
@@ -1076,8 +1094,15 @@ const PublishedFeed = () => {
         body: { force_live: true, cache_bust: cacheBust },
       });
       if (error) {
-        console.warn('[refreshMetrics] analytics invoke error', error);
+        const msg = await extractFunctionError(error, 'רענון מדדי פייסבוק נכשל');
+        console.error('[refreshMetrics] analytics invoke error', { error, message: msg });
+        toast.error(msg);
         return;
+      }
+      const surfacedError = firstPipelineError(data);
+      if (surfacedError) {
+        console.error('[refreshMetrics] analytics pipeline error', data);
+        toast.error(surfacedError);
       }
       const results: Array<{ id: string; ok: boolean; counts?: { likes: number; comments: number; shares: number; views: number }; metrics_updated_at?: string }> = Array.isArray((data as any)?.results) ? (data as any).results : [];
       if (!results.length) return;
