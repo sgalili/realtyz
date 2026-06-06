@@ -1228,7 +1228,9 @@ const PublishedFeed = () => {
           <article key={r.id} className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden" dir={dirAttr}>
             <header className={cn('flex items-start justify-between gap-3 p-4', isHe ? 'flex-row' : 'flex-row-reverse')}>
               <div className={cn('flex-1 min-w-0', alignClass)}>
-                <h3 className="font-semibold text-foreground truncate">{r.campaign_name}</h3>
+                <h3 className={cn('font-semibold text-foreground truncate', alignClass)} dir={dirAttr}>
+                  {(bodyText.trim().split('\n')[0] || r.campaign_name)}
+                </h3>
                 <div className={cn('mt-1 flex items-center gap-2 text-xs text-muted-foreground flex-wrap', isHe ? 'justify-end' : 'justify-start')}>
                   <span className="font-medium text-foreground/80">{ownerName}</span>
                   <span>·</span>
@@ -1256,12 +1258,8 @@ const PublishedFeed = () => {
                     <span className="tabular-nums">{fmt(r.share_count)}</span>
                   </span>
                 </div>
-                {!isOpen && preview && (
-                  <p className={cn('mt-1 text-xs text-muted-foreground truncate', alignClass)} dir={dirAttr}>
-                    {preview}
-                  </p>
-                )}
               </div>
+
               <button onClick={() => setExpanded((s) => ({ ...s, [r.id]: !isOpen }))}
                       className="rounded-md p-1 text-muted-foreground hover:bg-muted shrink-0"
                       aria-label={isOpen ? 'כווץ' : 'הרחב'}>
