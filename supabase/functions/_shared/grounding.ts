@@ -116,6 +116,9 @@ export type CrmSnapshot = {
     sqm: number | null;
     asking_price: number | null;
     listing_type: ListingType | null;
+    description: string | null;
+    address: string | null;
+    neighborhood: string | null;
   }[];
   active_leads: number;
   hot_leads: number;
@@ -132,7 +135,7 @@ export async function loadCrmSnapshot(
     const [listingsRes, leadsRes] = await Promise.all([
       admin
         .from("listings")
-        .select("property_title,city,rooms,sqm,asking_price,status,is_published,features")
+        .select("property_title,city,address,neighborhood,rooms,sqm,asking_price,status,is_published,features,description")
         .eq("user_id", userId)
         .eq("status", "live")
         .eq("is_published", true)
@@ -175,6 +178,9 @@ export async function loadCrmSnapshot(
       sqm: l.sqm ?? null,
       asking_price: l.asking_price ?? null,
       listing_type: l.listing_type as ListingType | null,
+      description: l.description ? String(l.description).slice(0, 1200) : null,
+      address: l.address ?? null,
+      neighborhood: l.neighborhood ?? null,
     }));
     const hot = leads.filter((l: any) =>
       ["hot", "negotiation", "closing", "qualified"].includes(String(l.lead_stage ?? "").toLowerCase()),
