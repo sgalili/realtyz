@@ -94,34 +94,49 @@ Deno.serve(async (req) => {
     .select("id, channel, provider_message_id, provider_response, created_at")
     .eq("user_id", userId)
     .eq("is_archived", false)
-    .not("provider_message_id", "is", null)
     .order("created_at", { ascending: false })
     .limit(limit);
 
   if (error) return json({ error: error.message }, 500);
 
-  const targets: { id: string; platform: string; postId: string }[] = [];
+  const targets: { id: string; platform: string; postId: string; backfillNativeId: string | null }[] = [];
   for (const r of rows ?? []) {
     const ch = String((r as any).channel || "").toLowerCase();
     const platform = PLATFORM_MAP[ch];
     if (!platform) continue;
-    // Prefer Ayrshare top-level id from provider_response.id when present,
-    // otherwise the per-platform postId we stored, otherwise the raw
-    // provider_message_id.
     const pr: any = (r as any).provider_response ?? {};
-    const ayrId =
+    // The Ayrshare /analytics/post endpoint requires the AYRSHARE top-level id
+    // (e.g. "OMQB3v213OP0hmj35qV0") returned from /post — NOT the native
+    // Facebook/Instagram post id. Response shape is either:
+    //   { id, postIds: [{ platform, id (native), postUrl }, ...] }
+    //   { posts: [{ id, postIds: [{ platform, id (native), postUrl }, ...] }] }
+    const ayrTopId: string | null =
       (typeof pr?.id === "string" && pr.id) ||
-      (Array.isArray(pr?.postIds) &&
-        (pr.postIds.find((p: any) => String(p?.platform || "").toLowerCase() === platform)?.id ||
-         pr.postIds[0]?.id)) ||
-      (r as any).provider_message_id;
-    if (!ayrId) continue;
-    targets.push({ id: (r as any).id, platform, postId: String(ayrId) });
+      (Array.isArray(pr?.posts) && typeof pr.posts[0]?.id === "string" && pr.posts[0].id) ||
+      null;
+    if (!ayrTopId) continue;
+    // Also surface the native id so we can backfill provider_message_id when missing.
+    const flatPostIds: any[] = Array.isArray(pr?.postIds) ? pr.postIds : [];
+    const wrappedPostIds: any[] = Array.isArray(pr?.posts)
+      ? pr.posts.flatMap((p: any) => Array.isArray(p?.postIds) ? p.postIds : [])
+      : [];
+    const allPostIds = [...flatPostIds, ...wrappedPostIds];
+    const platformMatch = allPostIds.find(
+      (p: any) => String(p?.platform || "").toLowerCase() === platform,
+    );
+    const nativeId = platformMatch?.id || allPostIds[0]?.id || null;
+    targets.push({
+      id: (r as any).id,
+      platform,
+      postId: ayrTopId,
+      backfillNativeId: (r as any).provider_message_id ? null : (nativeId ? String(nativeId) : null),
+    });
   }
 
   const results = await Promise.allSettled(
     targets.map(async (t) => {
-      const res = await fetch(`${AYR_BASE}/analytics/post`, {
+      // 1) Try Ayrshare's /analytics/post with the top-level Ayrshare id.
+      let res = await fetch(`${AYR_BASE}/analytics/post`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${AYRSHARE_API_KEY}`,
@@ -130,7 +145,24 @@ Deno.serve(async (req) => {
         },
         body: JSON.stringify({ id: t.postId, platforms: [t.platform] }),
       });
-      const j = await res.json().catch(() => ({}));
+      let j: any = await res.json().catch(() => ({}));
+
+      // 2) Fallback to /analytics/social with the NATIVE platform id when
+      //    /analytics/post 404s (older posts or plan restrictions).
+      if (!res.ok && t.backfillNativeId) {
+        const sres = await fetch(`${AYR_BASE}/analytics/social`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+            "Profile-Key": profileKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ id: t.backfillNativeId, platform: t.platform }),
+        });
+        const sj: any = await sres.json().catch(() => ({}));
+        if (sres.ok) { res = sres; j = sj; }
+      }
+
       if (!res.ok) {
         return { id: t.id, ok: false, status: res.status, error: j?.message || j?.error || res.statusText };
       }
@@ -143,6 +175,7 @@ Deno.serve(async (req) => {
           share_count: counts.shares,
           view_count: counts.views,
           metrics_updated_at: new Date().toISOString(),
+          ...(t.backfillNativeId ? { provider_message_id: t.backfillNativeId } : {}),
         })
         .eq("id", t.id)
         .eq("user_id", userId);

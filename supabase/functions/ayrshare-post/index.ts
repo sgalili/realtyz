@@ -89,15 +89,20 @@ Deno.serve(async (req) => {
       return json({ error: msg, status: ayrRes.status, details: ayrJson }, 502);
     }
 
-    // Per-platform results from Ayrshare
-    const postIds: Array<{ platform: string; id: string | null; status: string | null }> =
-      Array.isArray(ayrJson?.postIds)
-        ? ayrJson.postIds.map((p: any) => ({
-            platform: String(p?.platform ?? "").toLowerCase(),
-            id: p?.id ?? p?.postId ?? null,
-            status: p?.status ?? null,
-          }))
+    // Per-platform results from Ayrshare. The response may be either
+    //   { postIds: [...] }              (legacy/flat shape) OR
+    //   { posts: [{ postIds: [...] }] } (current shape — wrapped in `posts`)
+    const rawPostIds: any[] = Array.isArray(ayrJson?.postIds)
+      ? ayrJson.postIds
+      : Array.isArray(ayrJson?.posts)
+        ? ayrJson.posts.flatMap((p: any) => Array.isArray(p?.postIds) ? p.postIds : [])
         : [];
+    const postIds: Array<{ platform: string; id: string | null; status: string | null }> =
+      rawPostIds.map((p: any) => ({
+        platform: String(p?.platform ?? "").toLowerCase(),
+        id: p?.id ?? p?.postId ?? null,
+        status: p?.status ?? null,
+      }));
 
     // One campaign_logs row per requested internal channel
     const rows = rawChannels.map((ch) => {
