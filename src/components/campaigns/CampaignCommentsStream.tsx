@@ -20,6 +20,24 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { campaignMatchesExternalPost, getCampaignPostIds, platformForCampaignChannel } from "@/lib/campaignPostIds";
 
+const extractFunctionError = async (error: any, fallback = "שגיאת API חיצונית") => {
+  const status = error?.context?.status ?? error?.status;
+  let details: any = null;
+  try {
+    details = error?.context?.clone ? await error.context.clone().json() : null;
+  } catch { /* ignore */ }
+  const msg = details?.error || details?.api_errors?.[0]?.payload?.message || details?.mapping_errors?.[0]?.error || error?.message || fallback;
+  return `${status ? `HTTP ${status}: ` : ""}${msg}`;
+};
+
+const firstPipelineError = (data: any): string | null => {
+  const api = Array.isArray(data?.api_errors) ? data.api_errors[0] : null;
+  const mapping = Array.isArray(data?.mapping_errors) ? data.mapping_errors[0] : null;
+  if (api) return `Ayrshare ${api.status ?? ""}: ${api.payload?.message ?? api.error ?? "API rejected request"}`;
+  if (mapping) return mapping.error ?? "Invalid external post id mapping";
+  return null;
+};
+
 type EngagementRow = {
   id: string;
   user_id: string;
@@ -133,7 +151,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
     setLoading(true);
     try {
       const pid = postIds[0] ?? null;
-      await Promise.allSettled([
+      const settled = await Promise.allSettled([
         supabase.functions.invoke("ayrshare-analytics", {
           body: pid ? { provider_message_id: pid } : {},
         }),
@@ -143,6 +161,26 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
             })
           : supabase.functions.invoke("ayrshare-sync-comments", { body: {} }),
       ]);
+      for (const result of settled) {
+        if (result.status === "rejected") {
+          const msg = await extractFunctionError(result.reason, "רענון תגובות נכשל");
+          console.error("[CampaignCommentsStream] provider refresh rejected", result.reason);
+          toast.error(msg);
+          continue;
+        }
+        const { data, error } = result.value as any;
+        if (error) {
+          const msg = await extractFunctionError(error, "רענון תגובות נכשל");
+          console.error("[CampaignCommentsStream] provider refresh error", { error, data });
+          toast.error(msg);
+          continue;
+        }
+        const surfacedError = firstPipelineError(data);
+        if (surfacedError) {
+          console.error("[CampaignCommentsStream] provider pipeline error", data);
+          toast.error(surfacedError);
+        }
+      }
       await fetchRows();
       toast.success("הנתונים עודכנו");
     } catch (e: any) {
