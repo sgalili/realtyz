@@ -802,6 +802,7 @@ const ConfirmDispatchDialog = ({
             campaign_name: campaignName,
             media_urls: mediaUrls,
             scheduled_at: scheduledAt,
+            group_ids: groupIds,
           },
         });
         // When the edge function returns a non-2xx, supabase-js sets a generic
@@ -820,9 +821,14 @@ const ConfirmDispatchDialog = ({
           throw new Error(friendly || error.message || 'שגיאת רשת');
         }
         if ((data as any)?.error) throw new Error((data as any).error);
+        const groupFailures: any[] = Array.isArray((data as any)?.group_failures) ? (data as any).group_failures : [];
         if (scheduledAt) {
           const when = new Date(scheduledAt).toLocaleString('he-IL');
           toast.success(`הפוסט תוזמן ל-${when} בערוץ ${channel.label}`);
+        } else if (groupIds.length > 0 && groupFailures.length === 0) {
+          toast.success('הפוסט שותף בהצלחה בכל הקבוצות שנבחרו!');
+        } else if (groupIds.length > 0 && groupFailures.length > 0) {
+          toast.error(`פורסם אך נכשל ב-${groupFailures.length} קבוצות`);
         } else {
           toast.success(`הקמפיין פורסם בהצלחה ב-${channel.label}!`);
         }
