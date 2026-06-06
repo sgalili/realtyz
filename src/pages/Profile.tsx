@@ -15,6 +15,7 @@ import { useQuery } from '@tanstack/react-query';
 import { IsraeliCityPicker } from '@/components/IsraeliCityPicker';
 import { WhatsAppGatewayCard } from '@/components/profile/WhatsAppGatewayCard';
 import { ListingPortalsCard } from '@/components/profile/ListingPortalsCard';
+import { VoiceGatewayCard } from '@/components/profile/VoiceGatewayCard';
 import { cn } from '@/lib/utils';
 
 
@@ -399,6 +400,7 @@ export default function Profile() {
         <TabsContent value="workspace" className="mt-[20px]"><WorkspaceTab /></TabsContent>
         <TabsContent value="connections" className="mt-[20px] space-y-4">
           <WhatsAppGatewayCard />
+          <VoiceGatewayCard />
           <ListingPortalsCard />
         </TabsContent>
       </Tabs>
