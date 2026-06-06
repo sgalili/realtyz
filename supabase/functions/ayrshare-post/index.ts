@@ -83,10 +83,36 @@ Deno.serve(async (req) => {
     let ayrJson: any = null;
     try { ayrJson = ayrText ? JSON.parse(ayrText) : null; } catch { ayrJson = { raw: ayrText }; }
 
-    if (!ayrRes.ok) {
-      console.error("[ayrshare-post] failed", ayrRes.status, ayrJson);
-      const msg = ayrJson?.errors?.[0]?.message ?? ayrJson?.message ?? `Ayrshare ${ayrRes.status}`;
-      return json({ error: msg, status: ayrRes.status, details: ayrJson }, 502);
+    // Collect per-post errors from either the flat `errors` array or the
+    // wrapped `posts[].errors[]` shape Ayrshare now returns.
+    const collectErrors = (j: any): any[] => {
+      const flat = Array.isArray(j?.errors) ? j.errors : [];
+      const wrapped = Array.isArray(j?.posts)
+        ? j.posts.flatMap((p: any) => Array.isArray(p?.errors) ? p.errors : [])
+        : [];
+      return [...flat, ...wrapped];
+    };
+    const friendlyFromCode = (code: number | string | undefined, fallback: string): string => {
+      const c = Number(code);
+      if (c === 137) {
+        return 'פייסבוק חוסם פרסום של תוכן זהה תוך 48 שעות. שנה מעט את הכיתוב (כותרת, אימוג׳י או משפט פתיחה) ונסה שוב.';
+      }
+      if (c === 156 || c === 155) return 'פג תוקף החיבור לפייסבוק. חבר את הדף מחדש מהגדרות ערוצים.';
+      return fallback;
+    };
+    const perPostErrors = collectErrors(ayrJson);
+    const ayrFailed = !ayrRes.ok || perPostErrors.length > 0;
+    if (ayrFailed) {
+      console.error("[ayrshare-post] failed", ayrRes.status, JSON.stringify(ayrJson));
+      const first = perPostErrors[0] ?? {};
+      const rawMsg =
+        first?.message ??
+        ayrJson?.errors?.[0]?.message ??
+        ayrJson?.message ??
+        `Ayrshare ${ayrRes.status}`;
+      const code = first?.code ?? ayrJson?.code;
+      const msg = friendlyFromCode(code, rawMsg);
+      return json({ error: msg, code: code ?? null, status: ayrRes.status, details: ayrJson }, 502);
     }
 
     // Per-platform results from Ayrshare. The response may be either
