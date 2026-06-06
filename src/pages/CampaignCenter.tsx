@@ -669,10 +669,14 @@ const CampaignCenter = () => {
 
       const { data: wsp } = await supabase
         .from('workspace_social_profile')
-        .select('ayrshare_profile_key')
+        .select('ayrshare_profile_key, facebook_page_name')
         .maybeSingle();
       const hasOwnProfile = !!(wsp as any)?.ayrshare_profile_key;
       if (!hasOwnProfile) { if (!cancelled) setConnectedChannels(EMPTY_CONNECTED); return; }
+      const fbName = (wsp as any)?.facebook_page_name as string | null;
+      if (fbName && !cancelled) {
+        setChannelAccountNames((prev) => ({ ...prev, facebook: fbName }));
+      }
 
       // Auto-sync Ayrshare → social_connections so freshly linked pages appear
       // as connected without requiring a manual "Import accounts" click.
