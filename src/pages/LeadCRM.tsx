@@ -1130,7 +1130,7 @@ const LeadCRM = () => {
                             const map: Record<string, { label: string; cls: string }> = {
                               buyer:    { label: 'קונה',   cls: 'bg-blue-500/10 text-blue-700 border-blue-300' },
                               seller:   { label: 'מוכר',   cls: 'bg-emerald-500/10 text-emerald-700 border-emerald-300' },
-                              renter:   { label: 'שוכר',   cls: 'bg-amber-500/10 text-amber-700 border-amber-300' },
+                              renter:   { label: 'שוכר',   cls: 'bg-[#0b3982]/10 text-[#0b3982] border-[#0b3982]/40' },
                               landlord: { label: 'משכיר', cls: 'bg-purple-500/10 text-purple-700 border-purple-300' },
                             };
                             const m = kind ? map[kind] : null;
