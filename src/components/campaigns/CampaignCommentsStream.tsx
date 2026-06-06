@@ -273,6 +273,8 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
     // Hard flush: never carry over draft text from a previous open.
     setReplyDraft("");
     setDmDraft("");
+    setOriginalReply("");
+    setOriginalDm("");
     setDrafting(true);
     setReplyOpen(row);
   };
