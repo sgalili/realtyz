@@ -17,6 +17,8 @@ import {
   ChevronDown as ChevronDownIcon, Plug, Camera, Sparkles, Square,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+
 
 import { supabase } from '@/integrations/supabase/client';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
@@ -689,11 +691,44 @@ const ConfirmDispatchDialog = ({
 }) => {
   const { user } = useAuth();
   const [sending, setSending] = useState(false);
+  const [pages, setPages] = useState<Array<{ id: string; name: string; username: string | null; avatar: string | null }>>([]);
+  const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
+  const [pagesLoading, setPagesLoading] = useState(false);
+
+  useEffect(() => {
+    if (!open || !channel || !user) return;
+    (async () => {
+      setPagesLoading(true);
+      try {
+        const { data } = await supabase
+          .from('ayrshare_social_accounts')
+          .select('id, platform, display_name, account_username, username, avatar_url, is_active, connected')
+          .eq('user_id', user.id)
+          .eq('platform', channel.id)
+          .order('updated_at', { ascending: false });
+        const rows = (data || [])
+          .filter((r: any) => r.is_active !== false && r.connected !== false)
+          .map((r: any) => ({
+            id: r.id,
+            name: r.display_name || r.account_username || r.username || channel.label,
+            username: r.account_username || r.username || null,
+            avatar: r.avatar_url || null,
+          }));
+        setPages(rows);
+        setSelectedPageId(rows[0]?.id ?? null);
+      } finally {
+        setPagesLoading(false);
+      }
+    })();
+  }, [open, channel, user]);
 
   if (!channel) return null;
 
-  const profileLabel = `${brandName} · @${brandName.replace(/\s+/g, '')}`;
-  const initials = brandName.split(/\s+/).filter(Boolean).slice(0, 2).map((s) => s[0]).join('').toUpperCase() || 'R';
+  const selectedPage = pages.find((p) => p.id === selectedPageId) || null;
+  const profileLabel = selectedPage
+    ? `${selectedPage.name}${selectedPage.username ? ` · @${selectedPage.username}` : ''}`
+    : `${brandName} · @${brandName.replace(/\s+/g, '')}`;
+  const initials = (selectedPage?.name || brandName).split(/\s+/).filter(Boolean).slice(0, 2).map((s) => s[0]).join('').toUpperCase() || 'R';
   const summaryTitle = body.trim().slice(0, 24) || channel.label;
 
   const handleConfirm = async () => {
@@ -702,7 +737,7 @@ const ConfirmDispatchDialog = ({
     try {
       const { data: leads, error } = await supabase
         .from('leads')
-        .select('id, full_name, phone, email')
+        .select('id, full_name, lead_phone, lead_email')
         .limit(100);
       if (error) throw error;
       const rows = (leads || []).map((l: any) => ({
@@ -710,8 +745,8 @@ const ConfirmDispatchDialog = ({
         campaign_name: `${brandName} · ${channel.label}`,
         channel: channel.id,
         lead_id: l.id,
-        recipient_phone: l.phone,
-        recipient_email: l.email,
+        recipient_phone: l.lead_phone,
+        recipient_email: l.lead_email,
         recipient_name: l.full_name,
         message_body: body,
         status: 'queued' as const,
@@ -743,22 +778,41 @@ const ConfirmDispatchDialog = ({
         <div className="space-y-3">
           <div className="text-right text-sm font-semibold text-foreground">פרסום בעמוד / פרופיל</div>
           <div className="rounded-xl border border-border bg-background p-3 space-y-3">
-            <button type="button"
-              className="flex w-full items-center justify-between rounded-lg border border-border bg-card px-3 py-2.5 text-sm">
-              <ChevronDownIcon className="h-4 w-4 text-muted-foreground" />
-              <span className="truncate font-medium text-foreground">{profileLabel}</span>
-            </button>
+            {pagesLoading ? (
+              <div className="text-right text-xs text-muted-foreground py-2">טוען עמודים מחוברים…</div>
+            ) : pages.length === 0 ? (
+              <div className="text-right text-xs text-muted-foreground py-2">
+                לא נמצא עמוד {channel.label} מחובר. חבר את החשבון בהגדרות.
+              </div>
+            ) : (
+              <Select value={selectedPageId ?? undefined} onValueChange={setSelectedPageId}>
+                <SelectTrigger className="w-full text-right" dir="rtl">
+                  <SelectValue placeholder="בחר עמוד" />
+                </SelectTrigger>
+                <SelectContent dir="rtl">
+                  {pages.map((p) => (
+                    <SelectItem key={p.id} value={p.id}>
+                      {p.name}{p.username ? ` · @${p.username}` : ''}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
             <div className="flex items-center justify-end gap-3 px-1">
               <div className="text-right">
-                <div className="text-sm font-bold text-foreground">{brandName}</div>
-                <div className="text-xs text-muted-foreground" dir="ltr">@{brandName.replace(/\s+/g, '')}</div>
+                <div className="text-sm font-bold text-foreground">{selectedPage?.name || brandName}</div>
+                {(selectedPage?.username || brandName) && (
+                  <div className="text-xs text-muted-foreground" dir="ltr">@{selectedPage?.username || brandName.replace(/\s+/g, '')}</div>
+                )}
               </div>
               <Avatar className="h-9 w-9">
+                {selectedPage?.avatar ? <AvatarImage src={selectedPage.avatar} alt={selectedPage.name} /> : null}
                 <AvatarFallback className="bg-muted text-xs font-semibold">{initials}</AvatarFallback>
               </Avatar>
             </div>
           </div>
         </div>
+
 
         <DialogFooter className="!justify-between gap-2 sm:gap-2 flex-row-reverse">
           <Button onClick={handleConfirm} disabled={sending}
