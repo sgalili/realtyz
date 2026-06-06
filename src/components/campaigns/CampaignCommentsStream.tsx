@@ -63,39 +63,66 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
   const [drafting, setDrafting] = useState(false);
   const [sending, setSending] = useState(false);
 
+  const fetchRows = async () => {
+    let q = supabase
+      .from("engagement_events")
+      .select(
+        "id, user_id, platform, sender_handle, inbound_text, ai_reply_text, status, sentiment, external_id, external_post_id, metadata, created_at",
+      )
+      .eq("user_id", userId)
+      .eq("is_archived", false)
+      .order("created_at", { ascending: true })
+      .limit(500);
+
+    if (campaign.provider_message_id) {
+      q = q.eq("external_post_id", campaign.provider_message_id);
+    } else {
+      const from = new Date(campaign.created_at).toISOString();
+      const to = new Date(
+        new Date(campaign.created_at).getTime() + 30 * 86400_000,
+      ).toISOString();
+      q = q
+        .eq("platform", campaign.channel)
+        .gte("created_at", from)
+        .lte("created_at", to);
+    }
+    const { data, error } = await q;
+    if (error) throw error;
+    setRows((data ?? []) as EngagementRow[]);
+  };
+
   const load = async () => {
     setLoading(true);
     try {
-      let q = supabase
-        .from("engagement_events")
-        .select(
-          "id, user_id, platform, sender_handle, inbound_text, ai_reply_text, status, sentiment, external_id, external_post_id, metadata, created_at",
-        )
-        .eq("user_id", userId)
-        .eq("is_archived", false)
-        .order("created_at", { ascending: true })
-        .limit(500);
-
-      if (campaign.provider_message_id) {
-        q = q.eq("external_post_id", campaign.provider_message_id);
-      } else {
-        // Fallback: comments arriving up to 30 days after the campaign on the
-        // same platform (best-effort grouping when provider_message_id missing).
-        const from = new Date(campaign.created_at).toISOString();
-        const to = new Date(
-          new Date(campaign.created_at).getTime() + 30 * 86400_000,
-        ).toISOString();
-        q = q
-          .eq("platform", campaign.channel)
-          .gte("created_at", from)
-          .lte("created_at", to);
-      }
-      const { data, error } = await q;
-      if (error) throw error;
-      setRows((data ?? []) as EngagementRow[]);
+      await fetchRows();
     } catch (e: any) {
       toast.error(e?.message ?? "טעינת תגובות נכשלה");
       setRows([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Manual refresh: bypass the 45s polling loop and force an immediate
+  // server-side pull of analytics + comments scoped to THIS card's
+  // provider_message_id. The realtime subscription on campaign_logs then
+  // patches the counter UI live without a browser reload.
+  const forceRefresh = async () => {
+    setLoading(true);
+    try {
+      const pid = campaign.provider_message_id ?? null;
+      await Promise.allSettled([
+        supabase.functions.invoke("ayrshare-analytics", {
+          body: pid ? { provider_message_id: pid } : {},
+        }),
+        supabase.functions.invoke("ayrshare-sync-comments", {
+          body: pid ? { provider_message_id: pid } : {},
+        }),
+      ]);
+      await fetchRows();
+      toast.success("הנתונים עודכנו");
+    } catch (e: any) {
+      toast.error(e?.message ?? "רענון נכשל");
     } finally {
       setLoading(false);
     }
