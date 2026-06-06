@@ -162,61 +162,78 @@ Deno.serve(async (req) => {
     });
   }
 
+  // Isolated per-target fetch+upsert. Each target is fully independent so a
+  // single failure (rate limit, missing native id, malformed comment body)
+  // can never block the rest of the counter writes.
+  const liveHeaders: Record<string, string> = {
+    Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+    "Profile-Key": profileKey,
+    "Content-Type": "application/json",
+    // Force Ayrshare + any intermediate proxy to bypass cached responses and
+    // hit Meta live for the freshest like/share/comment counters.
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    Pragma: "no-cache",
+    "X-Cache-Bust": cacheBust,
+  };
+  const liveQs = forceLive ? `?cb=${encodeURIComponent(cacheBust)}` : "";
+
   const results = await Promise.allSettled(
     targets.map(async (t) => {
-      // 1) Try Ayrshare's /analytics/post with the top-level Ayrshare id.
-      let res = await fetch(`${AYR_BASE}/analytics/post`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-          "Profile-Key": profileKey,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ id: t.postId, platforms: [t.platform] }),
-      });
-      let j: any = await res.json().catch(() => ({}));
-
-      // 2) Fallback to /analytics/social with the NATIVE platform id when
-      //    /analytics/post 404s (older posts or plan restrictions).
-      if (!res.ok && t.backfillNativeId) {
-        const sres = await fetch(`${AYR_BASE}/analytics/social`, {
+      try {
+        // 1) Try Ayrshare's /analytics/post with the top-level Ayrshare id.
+        let res = await fetch(`${AYR_BASE}/analytics/post${liveQs}`, {
           method: "POST",
-          headers: {
-            Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-            "Profile-Key": profileKey,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ id: t.backfillNativeId, platform: t.platform }),
+          headers: liveHeaders,
+          body: JSON.stringify({ id: t.postId, platforms: [t.platform], cacheBust }),
         });
-        const sj: any = await sres.json().catch(() => ({}));
-        if (sres.ok) { res = sres; j = sj; }
-      }
+        let j: any = await res.json().catch(() => ({}));
 
-      if (!res.ok) {
-        console.warn("[ayrshare-analytics] fetch failed", { id: t.id, platform: t.platform, status: res.status, body: j });
-        return { id: t.id, ok: false, status: res.status, error: j?.message || j?.error || res.statusText };
+        // 2) Fallback to /analytics/social with the NATIVE platform id when
+        //    /analytics/post 404s (older posts or plan restrictions).
+        if (!res.ok && t.backfillNativeId) {
+          const sres = await fetch(`${AYR_BASE}/analytics/social${liveQs}`, {
+            method: "POST",
+            headers: liveHeaders,
+            body: JSON.stringify({ id: t.backfillNativeId, platform: t.platform, cacheBust }),
+          });
+          const sj: any = await sres.json().catch(() => ({}));
+          if (sres.ok) { res = sres; j = sj; }
+        }
+
+        if (!res.ok) {
+          console.warn("[ayrshare-analytics] fetch failed", { id: t.id, platform: t.platform, status: res.status, body: j });
+          return { id: t.id, ok: false, status: res.status, error: j?.message || j?.error || res.statusText };
+        }
+        const counts = extractCounts(j, t.platform);
+        console.log("[ayrshare-analytics] counts", { id: t.id, platform: t.platform, counts });
+
+        // Atomic, isolated counter write — runs regardless of any
+        // comment-text/tree parsing that may happen elsewhere.
+        const nowIso = new Date().toISOString();
+        const { error: updErr } = await admin
+          .from("campaign_logs")
+          .update({
+            like_count: counts.likes,
+            comment_count: counts.comments,
+            share_count: counts.shares,
+            view_count: counts.views,
+            metrics_updated_at: nowIso,
+            ...(t.backfillNativeId ? { provider_message_id: String(t.backfillNativeId) } : {}),
+          })
+          .eq("id", String(t.id))
+          .eq("user_id", userId);
+        if (updErr) {
+          console.error("[ayrshare-analytics] update failed", { id: t.id, error: updErr });
+          return { id: t.id, ok: false, error: updErr.message };
+        }
+        return { id: t.id, ok: true, counts, metrics_updated_at: nowIso };
+      } catch (err) {
+        console.error("[ayrshare-analytics] target crashed", { id: t.id, error: String(err) });
+        return { id: t.id, ok: false, error: String(err) };
       }
-      const counts = extractCounts(j, t.platform);
-      console.log("[ayrshare-analytics] counts", { id: t.id, platform: t.platform, counts });
-      const { error: updErr } = await admin
-        .from("campaign_logs")
-        .update({
-          like_count: counts.likes,
-          comment_count: counts.comments,
-          share_count: counts.shares,
-          view_count: counts.views,
-          metrics_updated_at: new Date().toISOString(),
-          ...(t.backfillNativeId ? { provider_message_id: String(t.backfillNativeId) } : {}),
-        })
-        .eq("id", String(t.id))
-        .eq("user_id", userId);
-      if (updErr) {
-        console.error("[ayrshare-analytics] update failed", { id: t.id, error: updErr });
-        return { id: t.id, ok: false, error: updErr.message };
-      }
-      return { id: t.id, ok: true, counts };
     }),
   );
+
 
   return json({
     success: true,
