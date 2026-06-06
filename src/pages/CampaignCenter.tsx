@@ -179,7 +179,7 @@ const InlineComposer = ({
   // Custom AI generation context (broker steering inputs)
   const [customInstructions, setCustomInstructions] = useState('');
   const [listingQuery, setListingQuery] = useState('');
-  const [listings, setListings] = useState<Array<{ id: string; property_title: string | null; city: string | null; address: string | null; rooms: number | null; asking_price: number | null; deal_type: string | null }>>([]);
+  const [listings, setListings] = useState<Array<{ id: string; property_title: string | null; city: string | null; neighborhood: string | null; address: string | null; rooms: number | null; asking_price: number | null; deal_type: string | null }>>([]);
   const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
   const [listingPickerOpen, setListingPickerOpen] = useState(false);
 
@@ -198,27 +198,34 @@ const InlineComposer = ({
   // Reset on channel change
   useEffect(() => { setBody(''); setMode('now'); setAttachments([]); setCustomInstructions(''); setSelectedListingId(null); setListingQuery(''); }, [channel.id]);
 
-  // Live property search from listings table (workspace-scoped by RLS).
+  // Live property search from listings table — explicit user scoping + neighborhood search.
   useEffect(() => {
     let cancelled = false;
     const t = setTimeout(async () => {
-      const q = listingQuery.trim();
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { if (!cancelled) setListings([]); return; }
+      const q = listingQuery.trim().replace(/[(),]/g, ' ');
       let query = supabase
         .from('listings')
-        .select('id, property_title, city, address, rooms, asking_price, deal_type')
+        .select('id, property_title, city, neighborhood, address, rooms, asking_price, deal_type, status')
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false })
-        .limit(20);
+        .limit(30);
       if (q.length > 0) {
-        query = query.or(`property_title.ilike.%${q}%,city.ilike.%${q}%,address.ilike.%${q}%`);
+        const like = `%${q}%`;
+        query = query.or(
+          `property_title.ilike.${like},city.ilike.${like},neighborhood.ilike.${like},address.ilike.${like}`
+        );
       }
-      const { data } = await query;
+      const { data, error } = await query;
+      if (error) console.error('[CampaignCenter] listings fetch failed', error);
       if (!cancelled) setListings((data as any) || []);
     }, 200);
     return () => { cancelled = true; clearTimeout(t); };
   }, [listingQuery, listingPickerOpen]);
 
   const selectedListing = listings.find((l) => l.id === selectedListingId)
-    || (selectedListingId ? { id: selectedListingId, property_title: 'נכס נבחר', city: null, address: null, rooms: null, asking_price: null, deal_type: null } : null);
+    || (selectedListingId ? { id: selectedListingId, property_title: 'נכס נבחר', city: null, neighborhood: null, address: null, rooms: null, asking_price: null, deal_type: null } : null);
 
 
   const handleFiles = (files: FileList | null, kind: 'image' | 'file') => {
@@ -387,7 +394,7 @@ const InlineComposer = ({
                   )}>
                   <div className="font-medium truncate">{l.property_title || 'נכס ללא כותרת'}</div>
                   <div className="text-[11px] text-muted-foreground truncate">
-                    {[l.city, l.address, l.rooms ? `${l.rooms} חד׳` : null, l.asking_price ? `${Number(l.asking_price).toLocaleString('he-IL')} ₪` : null]
+                    {[l.neighborhood, l.city, l.address, l.rooms ? `${l.rooms} חד׳` : null, l.asking_price ? `${Number(l.asking_price).toLocaleString('he-IL')} ₪` : null]
                       .filter(Boolean).join(' · ')}
                   </div>
                 </button>
