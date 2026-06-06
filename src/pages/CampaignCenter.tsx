@@ -137,7 +137,7 @@ const ChannelGrid = ({
 
             {isConnected && isSelected && (
               <span className="absolute inset-x-2 bottom-1.5 truncate text-[10px] font-semibold text-primary">
-                {brandName}
+                {accountNames[c.id] || brandName}
               </span>
             )}
 
