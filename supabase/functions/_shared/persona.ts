@@ -525,8 +525,10 @@ Hard rules:
 === END VIRTUAL TWIN ===
 
 ${UNIVERSAL_RULES}
+${learnedBlock ? `\n${learnedBlock}\n` : ""}
 `.trim();
 }
+
 
 const UNIVERSAL_RULES = `
 === AGENT UDI, HARD CONSTRAINTS (HIGHEST PRIORITY) ===
