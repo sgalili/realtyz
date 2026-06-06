@@ -531,7 +531,10 @@ Deno.serve(async (req) => {
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: rentalOnlyMode ? `${SYSTEM}\n\n${RENTAL_DELETION_OVERRIDE}` : SYSTEM },
+          { role: "system", content: [
+              rentalOnlyMode ? `${SYSTEM}\n\n${RENTAL_DELETION_OVERRIDE}` : SYSTEM,
+              await fetchLearnedOverridesBlock(admin as any, userId),
+            ].filter(Boolean).join("\n\n") },
           { role: "user", content: userPrompt },
         ],
         temperature: regenerate ? 1.05 : 0.95,
