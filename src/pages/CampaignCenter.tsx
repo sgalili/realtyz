@@ -394,7 +394,7 @@ const InlineComposer = ({
                   )}>
                   <div className="font-medium truncate">{l.property_title || 'נכס ללא כותרת'}</div>
                   <div className="text-[11px] text-muted-foreground truncate">
-                    {[l.city, l.address, l.rooms ? `${l.rooms} חד׳` : null, l.asking_price ? `${Number(l.asking_price).toLocaleString('he-IL')} ₪` : null]
+                    {[l.neighborhood, l.city, l.address, l.rooms ? `${l.rooms} חד׳` : null, l.asking_price ? `${Number(l.asking_price).toLocaleString('he-IL')} ₪` : null]
                       .filter(Boolean).join(' · ')}
                   </div>
                 </button>
