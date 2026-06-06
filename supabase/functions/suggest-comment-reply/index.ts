@@ -12,6 +12,7 @@ import {
   renderKbBlock,
   renderCrmBlock,
   extractListingTypeFromFeatures,
+  resolveListingType,
   isListingAllowedForType,
   UDI_PERSONA,
   ANTI_SPAM_RULES,
