@@ -366,8 +366,12 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
       const pub = (data as any)?.public_comment ?? (data as any)?.draft;
       const dm = (data as any)?.private_messenger_dm ?? "";
       if (typeof pub === "string" && pub.trim()) {
-        setReplyDraft(pub.trim());
-        setDmDraft(typeof dm === "string" ? dm.trim() : "");
+        const pubTrim = pub.trim();
+        const dmTrim = typeof dm === "string" ? dm.trim() : "";
+        setReplyDraft(pubTrim);
+        setDmDraft(dmTrim);
+        setOriginalReply(pubTrim);
+        setOriginalDm(dmTrim);
       } else {
         toast.error((data as any)?.error ?? "לא התקבל ניסוח");
       }
