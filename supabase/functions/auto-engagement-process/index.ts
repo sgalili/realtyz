@@ -60,11 +60,14 @@ ABSOLUTE PROHIBITIONS:
 - Hebrew gender: match grammatical gender to sender's first name; unknown defaults to masculine singular. Never slash forms.
 - entropy_seed=${variantSeed}`;
 
+  const kbBlock = input.kb_snippets && input.kb_snippets.trim()
+    ? `WORKSPACE KNOWLEDGE BASE (ground every assertion strictly here):\n"""${input.kb_snippets}"""\n\n`
+    : `WORKSPACE KNOWLEDGE BASE: (empty — if needed, ask a clarifying question or offer to follow up privately).\n\n`;
   const user = `Platform: ${input.platform}
 Event: ${input.event_type}
 Sender: ${input.sender_name ?? "unknown"}
 
-Inbound text:
+${kbBlock}Inbound text:
 """${input.text}"""`;
 
   const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
