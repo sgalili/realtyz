@@ -109,8 +109,8 @@ export function PageHero() {
     <div
       dir="rtl"
       data-page-hero
-      className="relative w-full shrink-0 overflow-hidden text-primary-foreground print:hidden"
-      style={{ backgroundColor: 'hsl(var(--header-bg))' }}
+      className="relative w-full shrink-0 overflow-hidden text-foreground print:hidden"
+      style={{ backgroundImage: 'linear-gradient(135deg, #fdf251 0%, #f7d915 100%)' }}
     >
       {/* 3-zone toolbar — title is absolutely centered to the viewport so it
           stays perfectly centered regardless of side controls' widths. */}
@@ -120,7 +120,7 @@ export function PageHero() {
       >
         {/* Visual right (RTL flex start): Burger / nav toggle */}
         <SidebarTrigger
-          className="h-10 w-10 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground [&_svg]:!h-6 [&_svg]:!w-6"
+          className="h-10 w-10 text-foreground hover:bg-foreground/10 hover:text-foreground [&_svg]:!h-6 [&_svg]:!w-6"
           aria-label="פתח תפריט"
           style={{ marginRight: '-15px' }}
         >
@@ -128,7 +128,7 @@ export function PageHero() {
         </SidebarTrigger>
 
         {/* Absolute-centered page title — locked to screen center */}
-        <h1 className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap pt-[10px] pb-[20px] text-center text-xl font-bold tracking-tight text-white sm:text-2xl">
+        <h1 className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap pt-[10px] pb-[20px] text-center text-xl font-bold tracking-tight text-foreground sm:text-2xl">
           {title}
         </h1>
 
