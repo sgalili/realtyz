@@ -867,6 +867,7 @@ export type Database = {
           created_at: string
           failure_reason: string | null
           id: string
+          is_archived: boolean
           lead_id: string | null
           message_body: string | null
           provider_message_id: string | null
@@ -886,6 +887,7 @@ export type Database = {
           created_at?: string
           failure_reason?: string | null
           id?: string
+          is_archived?: boolean
           lead_id?: string | null
           message_body?: string | null
           provider_message_id?: string | null
@@ -905,6 +907,7 @@ export type Database = {
           created_at?: string
           failure_reason?: string | null
           id?: string
+          is_archived?: boolean
           lead_id?: string | null
           message_body?: string | null
           provider_message_id?: string | null
