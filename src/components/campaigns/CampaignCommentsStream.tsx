@@ -254,6 +254,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
     if (!replyOpen || !replyDraft.trim()) return;
     setSending(true);
     try {
+      const dmText = dmDraft.trim();
       const { data, error } = await supabase.functions.invoke(
         "ayrshare-comment-reply",
         {
@@ -262,14 +263,24 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
             user_id: userId,
             comment: replyDraft.trim(),
             platform: replyOpen.platform,
+            comment_id: replyOpen.external_id,
+            private_dm: dmText || undefined,
           },
         },
       );
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
-      toast.success("התגובה פורסמה");
+      const dmSent = Boolean((data as any)?.private_dm_sent);
+      if (dmText && dmSent) {
+        toast.success("התגובה פורסמה והודעה פרטית נשלחה בהצלחה למסנג'ר!");
+      } else if (dmText && !dmSent) {
+        toast.success("התגובה פורסמה, אך שליחת ה-DM הפרטי נכשלה — בדוק חיבור Messenger.");
+      } else {
+        toast.success("התגובה פורסמה");
+      }
       setReplyOpen(null);
       setReplyDraft("");
+      setDmDraft("");
       await load();
     } catch (e: any) {
       toast.error(e?.message ?? "פרסום נכשל");
