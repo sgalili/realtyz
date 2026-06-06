@@ -15,6 +15,7 @@ import {
   ArrowRight, Plus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
   ChevronDown, ChevronUp, Archive, Send, Mic, Image as ImageIcon, Paperclip,
   ChevronDown as ChevronDownIcon, Plug, Camera, Sparkles, Square,
+  Trash2, ExternalLink,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -857,7 +858,30 @@ type CampaignRow = {
   message_body: string | null;
   created_at: string;
   provider_message_id: string | null;
+  provider_response?: any;
   recipient_count?: number;
+};
+
+// Derive the live native post URL from Ayrshare provider response, or build
+// a best-effort fallback URL from the platform + native post id.
+const derivePostUrl = (r: CampaignRow): string | null => {
+  const ids = (r.provider_response as any)?.postIds;
+  if (Array.isArray(ids)) {
+    const ch = String(r.channel || '').toLowerCase();
+    const match = ids.find((p: any) => String(p?.platform || '').toLowerCase() === (ch === 'x' ? 'twitter' : ch));
+    const url = match?.postUrl || match?.url;
+    if (typeof url === 'string' && url.startsWith('http')) return url;
+  }
+  const pid = r.provider_message_id;
+  if (!pid) return null;
+  const ch = String(r.channel || '').toLowerCase();
+  if (ch === 'facebook') return `https://www.facebook.com/${pid}`;
+  if (ch === 'instagram') return `https://www.instagram.com/p/${pid}/`;
+  if (ch === 'x' || ch === 'twitter') return `https://twitter.com/i/web/status/${pid}`;
+  if (ch === 'linkedin') return `https://www.linkedin.com/feed/update/${pid}`;
+  if (ch === 'youtube') return `https://www.youtube.com/watch?v=${pid}`;
+  if (ch === 'tiktok') return `https://www.tiktok.com/@/video/${pid}`;
+  return null;
 };
 
 const FEED_PLATFORMS: { id: string; label: string; brand?: string; icon?: typeof Bot }[] = [
@@ -951,11 +975,14 @@ const GlobalSocialFeed = ({
 };
 
 const PublishedFeed = () => {
+  const { settings } = useWhiteLabel();
+  const ownerName = settings?.agency_name || 'אודי ויטמן';
   const [rows, setRows] = useState<CampaignRow[] | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [activeChannel, setActiveChannel] = useState<string>('all');
   const [archivedCount, setArchivedCount] = useState<number>(0);
+
 
   const load = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -963,7 +990,7 @@ const PublishedFeed = () => {
     setUserId(user.id);
     const { data } = await supabase
       .from('campaign_logs')
-      .select('id, campaign_name, channel, message_body, created_at, provider_message_id, is_archived')
+      .select('id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, is_archived')
       .eq('user_id', user.id)
       .eq('is_archived', false)
       .order('created_at', { ascending: false })
@@ -1004,6 +1031,15 @@ const PublishedFeed = () => {
     load();
   };
 
+  const deleteCampaign = async (id: string) => {
+    if (!confirm('למחוק את הקמפיין הזה לצמיתות?')) return;
+    const { error } = await supabase.from('campaign_logs').delete().eq('id', id);
+    if (error) { toast.error('מחיקה נכשלה: ' + error.message); return; }
+    toast.success('הקמפיין נמחק');
+    load();
+  };
+
+
   const filteredRows = useMemo(() => {
     if (!rows) return rows;
     if (activeChannel === 'all') return rows;
@@ -1033,6 +1069,8 @@ const PublishedFeed = () => {
         const isOpen = expanded[r.id] ?? true;
         const dt = new Date(r.created_at);
         const dateStr = dt.toLocaleDateString('he-IL') + ', ' + dt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
+        const platformMeta = FEED_PLATFORMS.find((p) => p.id === String(r.channel || '').toLowerCase());
+        const postUrl = derivePostUrl(r);
         return (
           <article key={r.id} className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden">
             <header className="flex items-start justify-between gap-3 p-4">
@@ -1046,14 +1084,21 @@ const PublishedFeed = () => {
                   <Archive className="h-4 w-4" />
                 </button>
               </div>
-              <div className="flex-1 text-right">
-                <h3 className="font-semibold text-foreground">{r.campaign_name}</h3>
+              <div className="flex-1 text-right min-w-0">
+                <h3 className="font-semibold text-foreground truncate">{r.campaign_name}</h3>
                 <div className="mt-1 flex items-center justify-end gap-2 text-xs text-muted-foreground">
-                  <span>{r.recipient_count} נמענים</span>
+                  <span className="font-medium text-foreground/80">{ownerName}</span>
                   <span>·</span>
                   <span>{dateStr}</span>
-                  <span>·</span>
-                  <span className="rounded bg-muted px-1.5 py-0.5 text-[10px] font-medium">{r.channel}</span>
+                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-muted">
+                    {platformMeta?.brand ? (
+                      <BrandIcon name={platformMeta.brand} className={cn('h-3.5 w-3.5', BRAND_COLOR[platformMeta.brand] ?? 'text-muted-foreground')} />
+                    ) : platformMeta?.icon ? (
+                      <platformMeta.icon className="h-3.5 w-3.5 text-muted-foreground" />
+                    ) : (
+                      <span className="text-[9px] font-bold uppercase">{r.channel?.slice(0, 2)}</span>
+                    )}
+                  </span>
                 </div>
               </div>
             </header>
@@ -1063,10 +1108,23 @@ const PublishedFeed = () => {
                 <div className="mx-4 mb-3 rounded-xl border border-border bg-background p-4 text-sm text-foreground whitespace-pre-wrap text-right">
                   {r.message_body || <span className="text-muted-foreground">אין תוכן הודעה</span>}
                 </div>
-                <div className="grid grid-cols-3 gap-2 px-4 pb-4">
+                <div className="grid grid-cols-3 gap-2 px-4 pb-3">
                   <Stat icon={MessageSquare} label="תגובות" value={0} />
                   <Stat icon={Share2}         label="שיתופים" value={0} />
                   <Stat icon={Heart}          label="לייקים"  value={0} />
+                </div>
+                <div className="flex items-center justify-between gap-2 px-4 pb-4" dir="rtl">
+                  <Button variant="outline" size="sm" onClick={() => deleteCampaign(r.id)}
+                          className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
+                    <Trash2 className="ml-1 h-4 w-4" />
+                    מחיקה
+                  </Button>
+                  <Button variant="outline" size="sm"
+                          disabled={!postUrl}
+                          onClick={() => postUrl && window.open(postUrl, '_blank', 'noopener,noreferrer')}>
+                    <ExternalLink className="ml-1 h-4 w-4" />
+                    פתח פוסט
+                  </Button>
                 </div>
                 <div className="border-t border-border bg-muted/30 px-4 py-3">
                   {userId ? (
