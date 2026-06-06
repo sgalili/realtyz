@@ -34,7 +34,7 @@ export default function PropertyDetail() {
     queryFn: async (): Promise<HomelyProperty | null> => {
       const { data: row } = await supabase
         .from('listings')
-        .select('id, property_title, description, asking_price, features, slug, source_metadata')
+        .select('id, property_title, description, asking_price, features, slug, source_metadata, city, neighborhood, address, rooms, sqm, floor, parking, elevator, status, source_url')
         .eq('id', id!)
         .maybeSingle();
       if (!row) return null;
@@ -42,7 +42,12 @@ export default function PropertyDetail() {
       const photos: string[] = (features as any[])
         .map((f) => (typeof f === 'string' ? f : (f as any)?.photo || (f as any)?.image_url))
         .filter((s: any) => typeof s === 'string' && /^https?:\/\//.test(s));
-      const meta = (row as any).source_metadata || {};
+      const meta = ((row as any).source_metadata || {}) as Record<string, any>;
+      const dealType = String(meta.deal_type ?? meta.listing_type ?? '').toLowerCase();
+      const listingType: 'sale' | 'rent' = dealType === 'rent' ? 'rent' : 'sale';
+      const textFeatures = (features as any[]).filter((f) => typeof f === 'string') as string[];
+      if (row.parking) textFeatures.push('חניה');
+      if (row.elevator) textFeatures.push('מעלית');
       return {
         id: String(row.id),
         source: 'listings',
@@ -50,16 +55,22 @@ export default function PropertyDetail() {
         description: row.description || '',
         price: Number(row.asking_price) || 0,
         currency: '₪',
-        city: meta.city ?? '',
-        rooms: Number(meta.rooms ?? 0),
-        size_sqm: Number(meta.size_sqm ?? 0),
+        city: row.city || meta.city || '',
+        address: row.address || meta.address || (row.neighborhood ? String(row.neighborhood) : ''),
+        rooms: Number(row.rooms ?? meta.rooms ?? 0),
+        size_sqm: Number(row.sqm ?? meta.size_sqm ?? meta.sqm ?? 0),
+        floor: row.floor != null ? Number(row.floor) : (meta.floor != null ? Number(meta.floor) : undefined),
+        total_floors: meta.total_floors != null ? Number(meta.total_floors) : undefined,
+        year_built: meta.year_built != null ? Number(meta.year_built) : undefined,
         property_type: (meta.property_type as PropertyType) || 'apartment',
+        listing_type: listingType,
         photos,
-        url: row.slug ? `/listing/${row.slug}` : null,
-        features: (features as any[]).filter((f) => typeof f === 'string') as string[],
-      };
+        url: row.slug ? `/listing/${row.slug}` : (row.source_url || null),
+        features: Array.from(new Set(textFeatures)),
+      } as HomelyProperty;
     },
   });
+
 
   if (isLoading) {
     return (
