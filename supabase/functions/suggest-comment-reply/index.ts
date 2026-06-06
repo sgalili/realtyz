@@ -162,9 +162,11 @@ Deno.serve(async (req) => {
       sqm: number | null;
     } | null = null;
     let primaryType: ListingType | null = null;
+    let primaryTypeLocked = false;
     const explicitType = String(body?.listing_type ?? "").toLowerCase();
     if (explicitType === "rent" || explicitType === "sale") {
       primaryType = explicitType as ListingType;
+      primaryTypeLocked = true;
     }
     const primaryListingId = typeof body?.primary_listing_id === "string" ? body.primary_listing_id : null;
     if (primaryListingId) {
@@ -187,6 +189,7 @@ Deno.serve(async (req) => {
               sqm: (row as any).sqm ?? null,
             };
             if (!primaryType && lt) primaryType = lt;
+            if (lt) primaryTypeLocked = true;
           }
         }
       } catch { /* ignore */ }
@@ -219,9 +222,10 @@ Deno.serve(async (req) => {
           .eq("is_published", true)
           .limit(120);
         const haystack = `${inbound}\n${rawCampaignContext}`;
+        const strictTypeForLiveMatch = primaryTypeLocked ? primaryType : null;
         const liveMatches = (liveRows ?? [])
           .map((row: any) => ({ ...row, listing_type: extractListingTypeFromFeatures(row.features) }))
-          .filter((row: any) => (!primaryType || isListingAllowedForType(row, primaryType)) && overlapsListingText(haystack, row));
+          .filter((row: any) => (!strictTypeForLiveMatch || isListingAllowedForType(row, strictTypeForLiveMatch)) && overlapsListingText(haystack, row));
         const row = liveMatches[0] ?? null;
         if (row) {
           const lt = extractListingTypeFromFeatures((row as any).features) ?? primaryType;
@@ -234,6 +238,7 @@ Deno.serve(async (req) => {
             sqm: (row as any).sqm ?? null,
           };
           if (lt) primaryType = lt;
+          if (lt) primaryTypeLocked = true;
         }
       } catch { /* ignore */ }
     }
