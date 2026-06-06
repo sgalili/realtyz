@@ -70,6 +70,38 @@ interface Message {
   sources?: SourceTag[];
 }
 
+// Hebrew translations for common SQL/aggregate column names returned by ai-agent
+const COLUMN_HE: Record<string, string> = {
+  total_leads: 'סך מתעניינים',
+  new_leads_count: 'מתעניינים חדשים',
+  active_leads: 'מתעניינים פעילים',
+  active_listings: 'נכסים פעילים',
+  total_listings: 'סך נכסים',
+  published_listings: 'נכסים שפורסמו',
+  pending_listings: 'נכסים ממתינים',
+  dominant_sentiment: 'סנטימנט שולט',
+  sentiment: 'סנטימנט',
+  avg_engagement: 'מעורבות ממוצעת',
+  engagement_score: 'ציון מעורבות',
+  loyalty_tier: 'דרגת נאמנות',
+  full_name: 'שם מלא',
+  phone_number: 'טלפון',
+  city: 'עיר',
+  status: 'סטטוס',
+  lead_stage: 'שלב במשפך',
+  deal_type: 'סוג עסקה',
+  interest_tag: 'תחום עניין',
+  property_title: 'שם הנכס',
+  asking_price: 'מחיר מבוקש',
+  created_at: 'נוצר ב',
+  last_interaction_at: 'אינטראקציה אחרונה',
+  count: 'כמות',
+  total: 'סך הכל',
+};
+function translateColumn(key: string): string {
+  return COLUMN_HE[key] ?? key.replace(/_/g, ' ');
+}
+
 // Detect if data can be charted
 function isChartable(data: any[]): { type: 'bar' | 'pie'; labelKey: string; valueKey: string } | null {
   if (!data || data.length === 0 || data.length > 20) return null;
@@ -309,7 +341,7 @@ export default function AiAgentDrawer() {
                         <thead>
                           <tr className="bg-muted/50">
                             {Object.keys(msg.data[0]).slice(0, 5).map(key => (
-                              <th key={key} className="px-2 py-1.5 text-right font-medium text-muted-foreground whitespace-nowrap">{key}</th>
+                              <th key={key} className="px-2 py-1.5 text-right font-medium text-muted-foreground whitespace-nowrap">{translateColumn(key)}</th>
                             ))}
                           </tr>
                         </thead>
