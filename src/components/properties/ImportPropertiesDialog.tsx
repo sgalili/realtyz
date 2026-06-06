@@ -109,7 +109,39 @@ function slugify(s: string) {
 export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
   const [processing, setProcessing] = useState(false);
+  const [ocrRunning, setOcrRunning] = useState(false);
   const [summary, setSummary] = useState<{ imported: number; skipped: number } | null>(null);
+
+  const fileToDataUrl = (file: File): Promise<string> =>
+    new Promise((resolve, reject) => {
+      const r = new FileReader();
+      r.onload = () => resolve(String(r.result));
+      r.onerror = () => reject(r.error);
+      r.readAsDataURL(file);
+    });
+
+  const runOcrFallback = async (file: File): Promise<Record<string, any>[]> => {
+    setOcrRunning(true);
+    try {
+      const dataUrl = await fileToDataUrl(file);
+      const { data, error } = await supabase.functions.invoke('extract-pdf-properties', {
+        body: { file_data_url: dataUrl, file_name: file.name },
+      });
+      if (error) throw error;
+      return (data?.rows ?? []) as Record<string, any>[];
+    } finally {
+      setOcrRunning(false);
+    }
+  };
+
+  const rowsLookEmpty = (rows: Record<string, any>[]): boolean => {
+    if (!rows.length) return true;
+    // A row is "useful" if any value contains at least 2 word characters.
+    const useful = rows.filter((r) =>
+      Object.values(r).some((v) => v != null && String(v).trim().replace(/\s+/g, '').length >= 2),
+    );
+    return useful.length === 0;
+  };
 
   const handleFile = async (file: File) => {
     setProcessing(true);
@@ -120,20 +152,9 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
       if (isPdf) {
         const res = await parsePdfToRows(file);
         rows = res.rows;
-        // Fallback: if pdfjs returned no rows (scanned/image PDF), call AI OCR.
-        if (!rows.length) {
-          toast.info('הקובץ נראה סרוק — מפעיל זיהוי טקסט חכם...');
-          const dataUrl: string = await new Promise((resolve, reject) => {
-            const r = new FileReader();
-            r.onload = () => resolve(String(r.result));
-            r.onerror = () => reject(r.error);
-            r.readAsDataURL(file);
-          });
-          const { data, error } = await supabase.functions.invoke('extract-pdf-properties', {
-            body: { file_data_url: dataUrl, file_name: file.name },
-          });
-          if (error) throw error;
-          rows = (data?.rows ?? []) as Record<string, any>[];
+        // Fallback: pdfjs returned nothing parseable (scanned/image PDF).
+        if (rowsLookEmpty(rows)) {
+          rows = await runOcrFallback(file);
         }
       } else {
         const buf = await file.arrayBuffer();
@@ -145,6 +166,7 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
         toast.error('לא ניתן היה לחלץ נתונים מהקובץ. ודאו שה-PDF מכיל טבלה קריאה.');
         return;
       }
+
       const headerMap = buildHeaderMap(Object.keys(rows[0]));
 
       const { data: auth } = await supabase.auth.getUser();
