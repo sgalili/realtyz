@@ -1,15 +1,20 @@
 // Realtyz auto-engagement-process — for a new inbound comment/DM:
-//  1. Run sentiment + voting-style analysis via Lovable AI.
+//  1. Run sentiment + KB-grounded analysis via Lovable AI.
 //  2. Persist sentiment + draft into engagement_events (creating row if needed).
-//  3. If the workspace has auto_reply_positive/negative enabled and the
-//     sentiment matches, auto-dispatch the reply via ayrshare-comment-reply.
+//  3. ALWAYS dispatch a private Messenger DM to the commenter (dual-funnel) so
+//     the conversation moves into a private loop, regardless of toggle.
+//  4. If the workspace has auto_reply_positive/negative enabled AND sentiment
+//     matches, ALSO auto-publish the public reply via ayrshare-comment-reply.
 //     Otherwise leave the row in `pending_approval` for the human queue.
 // Strict tenant isolation: user_id is required and scopes every DB query.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { sanitizeOutboundText } from "../_shared/ayrshare-helpers.ts";
+import { resolveWorkspaceProfileKey } from "../_shared/ayrshare-helpers.ts";
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
+const AYRSHARE_API_KEY = Deno.env.get("AYRSHARE_API_KEY") ?? "";
+const AYR_MESSAGES_URL = "https://api.ayrshare.com/api/messages";
 
 type Analysis = {
   sentiment: "positive" | "neutral" | "negative";
