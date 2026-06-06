@@ -11,9 +11,11 @@ import {
   loadCrmSnapshot,
   renderKbBlock,
   renderCrmBlock,
+  extractListingTypeFromFeatures,
   UDI_PERSONA,
   ANTI_SPAM_RULES,
   CTA_RULE,
+  type ListingType,
 } from "../_shared/grounding.ts";
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
