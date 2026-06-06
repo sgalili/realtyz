@@ -673,6 +673,11 @@ const CampaignCenter = () => {
       const hasOwnProfile = !!(wsp as any)?.ayrshare_profile_key;
       if (!hasOwnProfile) { if (!cancelled) setConnectedChannels(EMPTY_CONNECTED); return; }
 
+      // Auto-sync Ayrshare → social_connections so freshly linked pages appear
+      // as connected without requiring a manual "Import accounts" click.
+      try { await supabase.functions.invoke('ayrshare-sync-accounts', { body: {} }); } catch { /* non-fatal */ }
+      if (cancelled) return;
+
       const { data: conns } = await supabase
         .from('social_connections')
         .select('platform, is_connected')
