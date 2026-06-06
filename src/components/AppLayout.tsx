@@ -629,7 +629,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <img
                 src="/__l5e/assets-v1/ef688210-357f-40bf-b80d-6fab38365e66/realtyz-logo-yellow.png"
                 alt="Realtyz AI"
-                className="h-10 w-auto object-contain"
+                className="h-[50px] w-auto object-contain"
               />
             </a>
           </header>
