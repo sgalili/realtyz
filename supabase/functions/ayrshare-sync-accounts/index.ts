@@ -187,21 +187,9 @@ Deno.serve(async (req) => {
         return json({ error: upErr.message }, 500);
       }
 
-      // Mark stale rows inactive
-      const present = new Set(accounts.map((a) => `${a.platform}|${a.account_ref}`));
-      const { data: existing } = await admin
-        .from("ayrshare_social_accounts")
-        .select("id, platform, account_ref")
-        .eq("user_id", userId);
-      const stale = (existing ?? []).filter(
-        (r: any) => !present.has(`${r.platform}|${r.account_ref}`),
-      );
-      if (stale.length) {
-        await admin
-          .from("ayrshare_social_accounts")
-          .update({ is_active: false, connected: false, last_synced_at: now })
-          .in("id", stale.map((r: any) => r.id));
-      }
+      // Never disconnect cached accounts during background sync. Ayrshare can
+      // return partial account lists after refresh/re-entry; only an explicit
+      // user disconnect action should mark a platform inactive.
     }
 
     // Mirror to workspace-wide social_connections
@@ -241,27 +229,9 @@ Deno.serve(async (req) => {
         if (scErr) console.error("[ayrshare-sync-accounts] social_connections upsert failed", scErr);
       }
 
-      const { data: existingConns } = await admin
-        .from("social_connections")
-        .select("platform, is_connected");
-      const stale = (existingConns ?? []).filter(
-        (r: any) =>
-          AYR_MANAGED.has(String(r.platform).toLowerCase()) &&
-          !linked.has(String(r.platform).toLowerCase()) &&
-          r.is_connected === true,
-      );
-      if (stale.length) {
-        await admin
-          .from("social_connections")
-          .update({
-            is_connected: false,
-            last_test_status: "disconnected",
-            last_test_message: "Not linked in Ayrshare",
-            last_test_at: now,
-            updated_at: now,
-          })
-          .in("platform", stale.map((r: any) => r.platform));
-      }
+      // Do not auto-disconnect platforms missing from this sync response.
+      // Connections must persist across exit/refresh until the user manually
+      // asks to disconnect them.
     } catch (mirrorErr) {
       console.error("[ayrshare-sync-accounts] mirror error", mirrorErr);
     }
