@@ -400,21 +400,27 @@ Deno.serve(async (req) => {
       ? `[PRIMARY PROPERTY DISCUSSED]: ${primaryListing.title}${primaryListing.city ? " · " + primaryListing.city : ""}${primaryListing.rooms ? " · " + primaryListing.rooms + " חד'" : ""}${primaryListing.sqm ? " · " + primaryListing.sqm + " מ\"ר" : ""}${primaryListing.asking_price ? " · " + Number(primaryListing.asking_price).toLocaleString("he-IL") + " ש\"ח" : ""}${primaryListing.listing_type ? " · " + (primaryListing.listing_type === "rent" ? "להשכרה" : "למכירה") : ""}.`
       : null;
 
+    const featureAsk = detectFeatureAsk(inbound);
+    const featureAskBlock = featureAsk
+      ? `[FEATURE QUESTION DETECTED]: the commenter explicitly asked about "${featureAsk.label_he}". You MUST answer this directly in the FIRST sentence of public_comment and the first content line of private_messenger_dm, using ONLY [STRICT LISTING PAYLOAD JSON]. If that exact field is null/absent in the payload, do not claim it exists or doesn't — say honestly "אבדוק עבורך ואעדכן במסנג'ר" and pivot to a confirmed attribute (rooms, sqm, monthly rent, street).`
+      : null;
+
     const userPrompt = [
       platform ? `Platform: ${platform}` : null,
       firstName ? `Sender first name: ${firstName}` : null,
       campaignContext ? `Campaign context:\n"""${campaignContext}"""` : null,
       primaryBlock,
       transactionBlock,
+      featureAskBlock,
       renderCrmBlock(promptSnap),
       renderStrictListingPayload(promptSnap, primaryType),
       renderKbBlock(promptKb),
       `Required reply language: ${
         targetLang === "en" ? "English only" : targetLang === "he" ? "Hebrew only" : "same language as inbound"
       }.`,
-      `Anti-spam entropy seed (use to vary opener, sentence shapes, vocabulary and CTA wording vs any prior reply): ${entropySeed}`,
-      `Reply MUST quote or paraphrase at least one specific detail from the inbound text below so it is provably unique to this commenter.`,
-      `CTA invites Messenger DM, WhatsApp, or office call — phrase differently every time.`,
+      `Anti-spam entropy seed (vary opener, sentence shapes, vocabulary and CTA wording): ${entropySeed}`,
+      `Reply MUST quote or paraphrase at least one specific detail from the inbound text below.`,
+      `FORBIDDEN: any "no alternatives / I don't have other listings" disclaimer. If no alternative exists, stay silent about it.`,
       `Inbound comment:\n"""${inbound}"""`,
       regenerate ? "Produce a structurally fresh angle: different opener, different sentence count, different CTA shape." : null,
     ].filter(Boolean).join("\n\n");
