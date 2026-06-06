@@ -1103,12 +1103,15 @@ const PublishedFeed = () => {
           const externalPostId = normalizePostId(changed?.external_post_id);
           if (!externalPostId) return;
 
+          // Ignore archived rows so the counter doesn't drift on archive sweeps.
+          const isArchived = !!(payload.new as any)?.is_archived;
+
           setRows((prev) => prev?.map((r) => {
             if (!campaignMatchesExternalPost(r, externalPostId)) return r;
             const current = typeof r.comment_count === 'number' ? r.comment_count : 0;
-            const nextCount = payload.eventType === 'INSERT'
+            const nextCount = payload.eventType === 'INSERT' && !isArchived
               ? current + 1
-              : payload.eventType === 'DELETE'
+              : payload.eventType === 'DELETE' || (payload.eventType === 'UPDATE' && isArchived)
                 ? Math.max(0, current - 1)
                 : current;
             return {
@@ -1118,6 +1121,7 @@ const PublishedFeed = () => {
             };
           }) ?? prev);
 
+          // Reconcile against an authoritative count, scoped to this owner.
           const { count } = await supabase
             .from('engagement_events')
             .select('id', { count: 'exact', head: true })
@@ -1133,6 +1137,7 @@ const PublishedFeed = () => {
           }
         },
       )
+
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [userId]);
