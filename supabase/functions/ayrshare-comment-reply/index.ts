@@ -106,12 +106,43 @@ Deno.serve(async (req) => {
       return json({ error: "ayrshare reply failed", status: ayrRes.status, details: ayrPayload }, 502);
     }
 
-    // Parallel ALGO BOOST + DM: Auto-Like the original comment and (optionally)
-    // send a private Messenger / IG Direct DM. Both run concurrently and never
-    // block or fail the public reply that just succeeded.
+    // STRICT SEQUENTIAL EXECUTION:
+    // 1) Public reply has already returned above — extract Ayrshare's fresh
+    //    native comment id from its payload (variable shape per platform).
+    // 2) THEN dispatch the private Messenger / IG Direct DM, binding to the
+    //    inbound commenter's original external_id as the parent routing key
+    //    (Meta requires the user's comment id, not our reply id, to authorize
+    //    the private inbox pop-up). The fresh reply id is logged for traceability.
+    const extractFreshId = (payload: any): string | null => {
+      if (!payload || typeof payload !== "object") return null;
+      const direct =
+        payload?.id ||
+        payload?.commentId ||
+        payload?.reply?.id ||
+        payload?.[platform]?.id ||
+        payload?.[platform]?.commentId ||
+        null;
+      if (typeof direct === "string" && direct.trim()) return direct.trim();
+      const arr = Array.isArray(payload?.postIds) ? payload.postIds : [];
+      const fromArr = arr.find((p: any) => typeof p?.id === "string");
+      return typeof fromArr?.id === "string" ? fromArr.id.trim() : null;
+    };
+    const freshReplyId = extractFreshId(ayrPayload);
+    // Parent routing key for the private DM: prefer the inbound user's
+    // external_id (engagement_events.external_id), fall back to the verified
+    // reply id only if the source row had none.
+    const dmParentId = nativeCommentId || freshReplyId || "";
+    console.log(
+      `[MESSENGER PIPELINE] Directing private DM for listing הבשן 3 to comment ID: ${dmParentId}` +
+      ` (fresh_reply_id=${freshReplyId ?? "none"})`,
+    );
+
     const sanitizedDm = sanitizeOutboundText(privateDmRaw ?? "");
-    const dmTask = sanitizedDm
-      ? fetch(AYR_MESSAGES_URL, {
+    let privateDmResult: any = null;
+    let privateDmStatus: number | null = null;
+    if (sanitizedDm && dmParentId) {
+      try {
+        const dmRes = await fetch(AYR_MESSAGES_URL, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${AYRSHARE_API_KEY}`,
@@ -120,30 +151,32 @@ Deno.serve(async (req) => {
           },
           body: JSON.stringify({
             platforms: [platform],
-            commentId: nativeCommentId,
+            commentId: dmParentId,
             message: sanitizedDm,
             searchPlatformId: true,
           }),
-        }).then(async (r) => {
-          const t = await r.text();
-          let p: any; try { p = t ? JSON.parse(t) : { ok: r.ok }; } catch { p = { raw: t, ok: r.ok }; }
-          return { status: r.status, response: p };
-        }).catch((e) => ({ status: 0, response: { error: e instanceof Error ? e.message : String(e) } }))
-      : Promise.resolve(null);
+        });
+        privateDmStatus = dmRes.status;
+        const dmText = await dmRes.text();
+        try { privateDmResult = dmText ? JSON.parse(dmText) : { ok: dmRes.ok }; }
+        catch { privateDmResult = { raw: dmText, ok: dmRes.ok }; }
+        console.log("[MESSENGER PIPELINE] DM dispatch result", { status: privateDmStatus, response: privateDmResult });
+      } catch (e) {
+        privateDmResult = { error: e instanceof Error ? e.message : String(e) };
+        console.error("[MESSENGER PIPELINE] DM dispatch threw", privateDmResult);
+      }
+    }
+    const privateDmSent = sanitizedDm
+      ? (privateDmStatus !== null && privateDmStatus >= 200 && privateDmStatus < 300)
+      : false;
 
-    const likeTask = likeNativeComment({
+    // Auto-Like runs after the DM completes — non-fatal regardless of outcome.
+    const likeOutcome = await likeNativeComment({
       apiKey: AYRSHARE_API_KEY,
       profileKey,
       platform,
       commentId: nativeCommentId,
     });
-
-    const [dmOutcome, likeOutcome] = await Promise.all([dmTask, likeTask]);
-    const privateDmResult = dmOutcome?.response ?? null;
-    const privateDmStatus = dmOutcome?.status ?? null;
-    const privateDmSent = sanitizedDm
-      ? (privateDmStatus !== null && privateDmStatus >= 200 && privateDmStatus < 300)
-      : false;
     if (!likeOutcome.ok) {
       console.warn("[ayrshare-comment-reply] auto-like non-fatal failure", likeOutcome);
     }
