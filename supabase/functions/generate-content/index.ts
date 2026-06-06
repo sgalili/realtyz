@@ -21,7 +21,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { topic, platform, customInstructions, selectedListingId } = await req.json();
+    const { topic, platform, customInstructions, selectedListingId, listingFocusOnly } = await req.json();
     if (!topic || !platform) {
       return new Response(JSON.stringify({ error: "topic and platform are required" }), {
         status: 400,
