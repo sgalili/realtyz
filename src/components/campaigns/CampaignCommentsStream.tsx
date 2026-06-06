@@ -18,7 +18,7 @@ import {
 import { Bot, MessageSquare, RefreshCw, Send, Sparkles } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
-import { campaignMatchesExternalPost, getCampaignPostIds } from "@/lib/campaignPostIds";
+import { campaignMatchesExternalPost, getCampaignPostIds, platformForCampaignChannel } from "@/lib/campaignPostIds";
 
 type EngagementRow = {
   id: string;
@@ -64,6 +64,8 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
   const [replyDraft, setReplyDraft] = useState("");
   const [drafting, setDrafting] = useState(false);
   const [sending, setSending] = useState(false);
+  const postIds = useMemo(() => getCampaignPostIds(campaign), [campaign.channel, campaign.provider_message_id, campaign.provider_response]);
+  const postIdsKey = postIds.join("|");
 
   const fetchRows = async () => {
     let q = supabase
@@ -76,7 +78,6 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
       .order("created_at", { ascending: true })
       .limit(500);
 
-    const postIds = getCampaignPostIds(campaign);
     if (postIds.length > 0) {
       q = q.in("external_post_id", postIds);
     } else {
@@ -113,15 +114,16 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
   const forceRefresh = async () => {
     setLoading(true);
     try {
-      const postIds = getCampaignPostIds(campaign);
       const pid = postIds[0] ?? null;
       await Promise.allSettled([
         supabase.functions.invoke("ayrshare-analytics", {
           body: pid ? { provider_message_id: pid } : {},
         }),
-        supabase.functions.invoke("ayrshare-sync-comments", {
-          body: pid ? { provider_message_id: pid, post_ids: postIds } : {},
-        }),
+        postIds.length > 0
+          ? supabase.functions.invoke("ayrshare-comments-fetch", {
+              body: { post_ids: postIds, platform: platformForCampaignChannel(campaign.channel) },
+            })
+          : supabase.functions.invoke("ayrshare-sync-comments", { body: {} }),
       ]);
       await fetchRows();
       toast.success("הנתונים עודכנו");
@@ -135,7 +137,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [campaign.id, campaign.provider_message_id]);
+  }, [campaign.id, postIdsKey, campaign.channel]);
 
   useEffect(() => {
     const channel = supabase
@@ -164,7 +166,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [userId, campaign.id, campaign.provider_message_id, campaign.provider_response, campaign.channel]);
+  }, [userId, campaign.id, postIdsKey, campaign.channel]);
 
   // Build a shallow tree by metadata.parent_id (set by ayrshare-comments-fetch).
   const tree = useMemo(() => {
