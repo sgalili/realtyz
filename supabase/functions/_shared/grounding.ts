@@ -147,24 +147,35 @@ export function renderCrmBlock(snap: CrmSnapshot | null): string {
   const samples = snap.sample_listings.length
     ? snap.sample_listings
         .map((l) => {
+          const typeHe = l.listing_type === "rent"
+            ? "להשכרה"
+            : l.listing_type === "sale"
+            ? "למכירה"
+            : null;
+          const priceLabel = l.listing_type === "rent" ? "שכ\"ד חודשי" : "מחיר מבוקש";
           const parts = [
             l.title || "ללא כותרת",
+            typeHe ? `סוג עסקה: ${typeHe}` : null,
             l.city ? `עיר: ${l.city}` : null,
             l.rooms ? `${l.rooms} חדרים` : null,
             l.sqm ? `${l.sqm} מ"ר` : null,
-            l.asking_price ? `מחיר מבוקש: ${Number(l.asking_price).toLocaleString("he-IL")} ש"ח` : null,
+            l.asking_price ? `${priceLabel}: ${Number(l.asking_price).toLocaleString("he-IL")} ש"ח` : null,
           ].filter(Boolean);
           return `- ${parts.join(" | ")}`;
         })
         .join("\n")
     : "(no live listings)";
+  const filterLine = snap.listing_type_filter
+    ? `STRICT TRANSACTION FILTER: only ${snap.listing_type_filter === "rent" ? "RENTAL (להשכרה)" : "SALE (למכירה)"} listings are listed below. NEVER cross-quote a ${snap.listing_type_filter === "rent" ? "SALE" : "RENTAL"} property.`
+    : null;
   return [
     "[LIVE PROPERTIES & CRM CONTEXT] (workspace-scoped, real DB rows — quote only these, never invent new ones):",
+    filterLine,
     `Active live listings: ${snap.total_listings}`,
     `Active regions: ${cityLine}`,
     `Pipeline: ${snap.active_leads} active leads, ${snap.hot_leads} hot/negotiation`,
     `Sample live listings:\n${samples}`,
-  ].join("\n");
+  ].filter(Boolean).join("\n");
 }
 
 export function renderKbBlock(kb: string): string {
