@@ -178,6 +178,9 @@ export async function loadCrmSnapshot(
       sqm: l.sqm ?? null,
       asking_price: l.asking_price ?? null,
       listing_type: l.listing_type as ListingType | null,
+      description: l.description ? String(l.description).slice(0, 1200) : null,
+      address: l.address ?? null,
+      neighborhood: l.neighborhood ?? null,
     }));
     const hot = leads.filter((l: any) =>
       ["hot", "negotiation", "closing", "qualified"].includes(String(l.lead_stage ?? "").toLowerCase()),
