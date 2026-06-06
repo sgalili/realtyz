@@ -594,15 +594,28 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="realtyz-app-shell h-screen overflow-hidden flex w-full bg-background">
         <AppSidebar tutorialHighlightPath={activeTutorialStep?.path} />
         <div className="flex-1 flex h-screen min-w-0 flex-col overflow-hidden">
-          <header className="h-16 text-foreground backdrop-blur-md flex items-center px-4 gap-2 shrink-0 sticky top-0 z-30" style={{ backgroundColor: '#fdf251' }} dir="rtl">
-            {/* Profile avatar on visual right */}
+          <header className="h-16 text-foreground backdrop-blur-md flex items-center px-4 gap-2 shrink-0 sticky top-0 z-30 relative" style={{ backgroundColor: '#fdf251' }} dir="rtl">
+            {/* Profile avatar on visual right (RTL start) */}
             <div className="flex items-center gap-3">
               <HeaderProfileMenu />
             </div>
 
             <div className="flex-1" />
 
-            {/* Centered action buttons */}
+            {/* Centered Realtyz AI logo — absolutely centered */}
+            <a
+              href="/"
+              aria-label="Realtyz AI - דף הבית"
+              className="realtyz-logo absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 inline-flex items-center"
+            >
+              <img
+                src="/__l5e/assets-v1/7b8296aa-d889-4a49-8ce2-c42daf3014fc/realtyz-logo-trans.png"
+                alt="Realtyz AI"
+                className="h-[63px] w-auto object-contain"
+              />
+            </a>
+
+            {/* Action buttons on visual left (RTL end) */}
             <div className="flex items-center gap-1.5">
               <HeaderCrisisAlert />
               <NotificationCenter />
@@ -617,21 +630,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
                 <Bot className="h-4 w-4" />
               </Button>
             </div>
-
-            <div className="flex-1" />
-
-            {/* Realtyz AI logo locked on visual left */}
-            <a
-              href="/"
-              aria-label="Realtyz AI - דף הבית"
-              className="realtyz-logo inline-flex items-center"
-            >
-              <img
-                src="/__l5e/assets-v1/ef688210-357f-40bf-b80d-6fab38365e66/realtyz-logo-yellow.png"
-                alt="Realtyz AI"
-                className="h-[50px] w-auto object-contain"
-              />
-            </a>
           </header>
           <PageHero />
           <main className="realtyz-main-surface flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-6 pb-6 pt-0">
