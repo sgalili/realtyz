@@ -21,7 +21,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { topic, platform, customInstructions, selectedListingId } = await req.json();
+    const { topic, platform, customInstructions, selectedListingId, listingFocusOnly } = await req.json();
     if (!topic || !platform) {
       return new Response(JSON.stringify({ error: "topic and platform are required" }), {
         status: 400,
@@ -109,12 +109,23 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
         ].filter(Boolean).join("\n")
       : "";
 
+    const focusOnly = !!listingFocusOnly && !!promotedListing;
+
+    const FOCUS_ONLY_RULE = focusOnly ? `
+LISTING-FOCUS MODE (HARD OVERRIDE — highest priority):
+- This post is a short, direct sales/rental ad for the [PROMOTED LISTING] above and NOTHING else.
+- 2-4 short sentences MAXIMUM. No personal owner story, no broker biography, no market analysis, no neighborhood essay, no testimonials, no philosophy.
+- Open with one concrete hook about the property (rooms / sqm / standout feature / location). Follow with 1-2 selling points pulled verbatim from the listing fields. End with a single short CTA to WhatsApp/Messenger Udi.
+- Do NOT mention Udi's history, achievements, elite sports, US projects, or any context unrelated to selling this specific property.
+- Pure, clean, scroll-stopping sales copy for ONE property.` : "";
+
     const systemPrompt = `${BROKER_PERSONA}
 
 פלטפורמה: ${platform}
 כללי פלטפורמה: ${rule}
 
 ${FORBIDDEN_WORDS}
+${FOCUS_ONLY_RULE}
 
 GROUNDING POLICY (אפס סובלנות לפיברוק):
 - אסור להמציא נכסים, ערים, מחירים, פיצ'רים או נתונים שלא מופיעים במפורש ב-[PROMOTED LISTING] / [LIVE PROPERTIES & CRM CONTEXT] / [WORKSPACE KNOWLEDGE BASE].
@@ -133,12 +144,16 @@ ${CTA_RULE}
 
     const userPrompt = [
       promotedBlock,
-      renderCrmBlock(snap),
-      renderKbBlock(kb),
+      focusOnly ? null : renderCrmBlock(snap),
+      focusOnly ? null : renderKbBlock(kb),
       customBlock,
-      `נושא הפוסט (כיוון כללי מהמשתמש): ${topic}`,
+      focusOnly
+        ? `מטרת הפוסט: פוסט מכירה/השכרה קצר וישיר לנכס שלמעלה בלבד — בלי שום הקשר אישי, ביוגרפיה או נושאים לא קשורים.`
+        : `נושא הפוסט (כיוון כללי מהמשתמש): ${topic}`,
       `Anti-spam entropy seed (vary opener / structure / CTA vs any prior post): ${entropySeed}`,
-      `Write Udi's post now — grounded strictly in the blocks above. Never mention software/AI/platform/Realtyz.`,
+      focusOnly
+        ? `Write a clean, short, scroll-stopping sales post for the ONE listing above. No personal history. No filler.`
+        : `Write Udi's post now — grounded strictly in the blocks above. Never mention software/AI/platform/Realtyz.`,
     ].filter(Boolean).join("\n\n");
 
 
@@ -158,7 +173,7 @@ ${CTA_RULE}
         top_p: 0.95,
         presence_penalty: 0.7,
         frequency_penalty: 0.85,
-        max_tokens: 800,
+        max_tokens: focusOnly ? 260 : 800,
       }),
     });
 
