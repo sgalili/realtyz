@@ -175,6 +175,7 @@ Deno.serve(async (req) => {
       private_dm_sent: privateDmSent,
       private_dm: privateDmResult,
       private_dm_status: privateDmStatus,
+      auto_like: likeOutcome,
     });
   } catch (e) {
     console.error("[ayrshare-comment-reply] error:", e);
