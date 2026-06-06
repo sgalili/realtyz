@@ -110,6 +110,7 @@ Deno.serve(async (req) => {
     if (!profileKey) {
       return json({ error: "workspace ayrshare profile key missing" }, 400);
     }
+    const ownPage = await resolveOwnPageIdentity(admin);
 
     const pickStr = (...vals: unknown[]) => {
       for (const v of vals) if (typeof v === "string" && v.trim()) return v.trim();
