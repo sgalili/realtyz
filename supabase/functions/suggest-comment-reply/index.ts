@@ -158,9 +158,34 @@ Deno.serve(async (req) => {
     }
 
     const j = await aiRes.json();
-    let draft = sanitizeOutboundText(j?.choices?.[0]?.message?.content ?? "");
+    const raw = String(j?.choices?.[0]?.message?.content ?? "").trim();
 
-    if (isLangMismatch(draft, targetLang)) {
+    // Strip accidental markdown code fences and extract first JSON object.
+    function parseSplit(text: string): { public_comment: string; private_messenger_dm: string } | null {
+      if (!text) return null;
+      let t = text.replace(/^```(?:json)?\s*/i, "").replace(/```\s*$/i, "").trim();
+      const start = t.indexOf("{");
+      const end = t.lastIndexOf("}");
+      if (start < 0 || end <= start) return null;
+      try {
+        const obj = JSON.parse(t.slice(start, end + 1));
+        const pub = sanitizeOutboundText(String(obj?.public_comment ?? "")).trim();
+        const dm = sanitizeOutboundText(String(obj?.private_messenger_dm ?? "")).trim();
+        if (!pub) return null;
+        return { public_comment: pub, private_messenger_dm: dm };
+      } catch {
+        return null;
+      }
+    }
+
+    let split = parseSplit(raw);
+    // Fallback: treat the whole response as the public_comment if JSON parsing failed.
+    if (!split) {
+      const pub = sanitizeOutboundText(raw);
+      split = { public_comment: pub, private_messenger_dm: "" };
+    }
+
+    if (isLangMismatch(split.public_comment, targetLang)) {
       const retry = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
         method: "POST",
         headers: {
@@ -172,38 +197,47 @@ Deno.serve(async (req) => {
           messages: [
             {
               role: "system",
-              content: `Rewrite the reply in ${
+              content: `Rewrite BOTH fields in ${
                 targetLang === "en"
                   ? "natural English only"
                   : targetLang === "he"
                   ? "natural Hebrew only"
                   : "the same language as the original inbound text only"
-              }. Same intent, concise, no language mixing, no explanation. Return only the final reply text.`,
+              }. Return STRICT JSON {"public_comment": "...", "private_messenger_dm": "..."}. No mixing, no explanation, no code fence.`,
             },
             {
               role: "user",
-              content: `Inbound:\n"""${inbound}"""\n\nCurrent draft:\n"""${draft}"""`,
+              content: `Inbound:\n"""${inbound}"""\n\nCurrent draft JSON:\n${JSON.stringify(split)}`,
             },
           ],
         }),
       });
       if (retry.ok) {
         const rj = await retry.json();
-        draft = sanitizeOutboundText(rj?.choices?.[0]?.message?.content ?? draft);
+        const retried = parseSplit(String(rj?.choices?.[0]?.message?.content ?? ""));
+        if (retried) split = retried;
       }
     }
 
-    if (!draft) {
+    if (!split.public_comment) {
       return new Response(JSON.stringify({ error: "empty AI reply" }), {
         status: 502,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    return new Response(JSON.stringify({ draft }), {
-      status: 200,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return new Response(
+      JSON.stringify({
+        // Backward compat: existing UI reads `draft` for the public comment textarea.
+        draft: split.public_comment,
+        public_comment: split.public_comment,
+        private_messenger_dm: split.private_messenger_dm,
+      }),
+      {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      },
+    );
   } catch (e) {
     return new Response(JSON.stringify({ error: (e as Error).message }), {
       status: 500,
