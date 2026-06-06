@@ -33,7 +33,9 @@ type EngagementRow = {
   external_post_id: string | null;
   metadata: Record<string, any> | null;
   created_at: string;
+  is_archived?: boolean | null;
 };
+
 
 type Props = {
   userId: string;
