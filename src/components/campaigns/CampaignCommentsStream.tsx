@@ -153,9 +153,12 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
   };
 
   useEffect(() => {
-    load();
+    // Always pull fresh comments from the provider on mount/route entry
+    // so the tree reflects the latest text instead of any cached row.
+    forceRefresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaign.id, postIdsKey, campaign.channel]);
+
 
   useEffect(() => {
     const channel = supabase
