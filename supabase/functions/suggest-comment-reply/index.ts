@@ -19,6 +19,7 @@ import {
   CTA_RULE,
   type ListingType,
 } from "../_shared/grounding.ts";
+import { fetchLearnedOverridesBlock } from "../_shared/persona.ts";
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
 
