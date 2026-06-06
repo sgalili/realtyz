@@ -172,9 +172,6 @@ Deno.serve(async (req) => {
       Array.from(targets.values()).map(async (target) => {
         const { fetchPostId, nativePostId, platform } = target;
         try {
-          let fetched = await fetchComments(target, false);
-          let arr: any[] = fetched.ok ? extractComments(fetched.payload, platform) : [];
-
           if (isUuid(fetchPostId) || isUuid(nativePostId)) {
             const mappingError = {
               post_id: nativePostId,
@@ -188,6 +185,9 @@ Deno.serve(async (req) => {
             results[nativePostId] = [];
             return;
           }
+
+          let fetched = await fetchComments(target, false);
+          let arr: any[] = fetched.ok ? extractComments(fetched.payload, platform) : [];
 
           // If Ayrshare's top-level id route is empty/unavailable, retry with
           // the native platform id. The UI still stores/matches the native id.
