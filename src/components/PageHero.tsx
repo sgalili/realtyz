@@ -10,7 +10,7 @@
  * Mounted once at the layout level to avoid per-route hero "jumps".
  */
 import { useLocation, useSearchParams } from 'react-router-dom';
-import { Menu, Plus, FileSpreadsheet } from 'lucide-react';
+import { Menu, Plus, FileSpreadsheet, User } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { RealtyzWave } from '@/components/RealtyzWave';
 import { CreditBalancePill } from '@/components/CreditBalancePill';
