@@ -319,7 +319,7 @@ export const UniversalKnowledgeInput = () => {
 
       <CardContent>
         <Tabs value={mode} onValueChange={(v) => setMode(v as InputMode)} dir="rtl">
-          <TabsList className="grid grid-cols-3 w-full max-w-md">
+          <TabsList className="grid grid-cols-4 w-full max-w-md">
             <TabsTrigger value="text" className="gap-2">
               <Type className="h-4 w-4" /> טקסט
             </TabsTrigger>
@@ -328,6 +328,9 @@ export const UniversalKnowledgeInput = () => {
             </TabsTrigger>
             <TabsTrigger value="voice" className="gap-2">
               <Mic className="h-4 w-4" /> הקלטה
+            </TabsTrigger>
+            <TabsTrigger value="link" className="gap-2">
+              <Link2 className="h-4 w-4" /> קישור
             </TabsTrigger>
           </TabsList>
 
