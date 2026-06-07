@@ -1414,8 +1414,22 @@ const PublishedFeed = () => {
         const fmt = (v: number | null | undefined) => (hasMetrics && typeof v === 'number' ? v : '–');
         const pageLabel = (String(r.channel || '').toLowerCase() === 'facebook' && fbPageName) ? fbPageName : ownerName;
         return (
-          <article key={r.id} className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden" dir={dirAttr}>
+          <article
+            key={r.id}
+            className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden cursor-pointer"
+            dir={dirAttr}
+            onClick={() => setExpanded((s) => ({ ...s, [r.id]: !isOpen }))}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setExpanded((s) => ({ ...s, [r.id]: !isOpen }));
+              }
+            }}
+          >
             <header className="p-4 space-y-2">
+
               {/* Row 1: post title */}
               <h3 className={cn('font-semibold text-foreground truncate', alignClass)} dir={dirAttr}>
                 {(bodyText.trim().split('\n')[0] || r.campaign_name)}
