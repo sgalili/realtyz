@@ -491,7 +491,6 @@ export const UniversalKnowledgeInput = () => {
               </Button>
             </div>
           </TabsContent>
-          </TabsContent>
 
           {/* LINK */}
           <TabsContent value="link" className="mt-4 space-y-3">
