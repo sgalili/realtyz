@@ -426,7 +426,10 @@ export default function Profile() {
         <TabsContent value="personal" className="mt-[20px] space-y-4">
           <PersonalTab />
         </TabsContent>
-        <TabsContent value="workspace" className="mt-[20px]"><WorkspaceTab /></TabsContent>
+        <TabsContent value="workspace" className="mt-[20px] space-y-4">
+          <WorkspaceTab />
+          <ServiceAreasPanel />
+        </TabsContent>
         <TabsContent value="connections" className="mt-[20px] space-y-4">
           <WhatsAppGatewayCard />
           <VoiceGatewayCard />
