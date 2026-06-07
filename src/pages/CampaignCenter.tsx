@@ -114,15 +114,15 @@ const ChannelGrid = ({
             className={cn(
               'group relative flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border bg-background p-3 text-center transition active:scale-[0.98]',
               !isConnected && 'border-dashed border-border bg-muted/30',
-              isConnected && !isSelected && 'border-border hover:border-primary/40 hover:shadow-md',
+              isConnected && !isSelected && 'border-[#C9A84C]/60 hover:border-[#C9A84C] hover:shadow-md',
               isSelected && 'border-primary ring-2 ring-primary/30 shadow-md',
             )}>
             {isConnected && (
               <span aria-hidden className={cn(
                 'absolute left-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full',
-                isSelected ? 'text-primary' : 'text-muted-foreground/70 group-hover:text-primary',
-              )}>
-                <Plus className="h-4 w-4" />
+                isSelected ? 'text-primary' : 'text-[#C9A84C]',
+              )} title="מחובר">
+                <CheckCircle2 className="h-4 w-4" />
               </span>
             )}
 
@@ -149,9 +149,13 @@ const ChannelGrid = ({
               </span>
             )}
 
-            {isConnected && isSelected && (
-              <span className="absolute inset-x-2 bottom-1.5 truncate text-[10px] font-semibold text-primary">
-                {accountNames[c.id] || brandName}
+            {isConnected && accountNames[c.id] && (
+              <span
+                className="mt-0.5 inline-block max-w-full truncate rounded-md border border-[#C9A84C]/40 bg-[#C9A84C]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#8a7327]"
+                dir="ltr"
+                title={accountNames[c.id]}
+              >
+                {accountNames[c.id]}
               </span>
             )}
 
