@@ -2000,6 +2000,11 @@ const CampaignCenter = () => {
         groupIds={confirmPayload?.group_ids ?? []}
         onConfirmed={() => { setConfirmPayload(null); setPickedChannel(null); }}
       />
+      <VoiceLeadPickerDialog
+        open={!!voiceDialChannel}
+        onClose={() => setVoiceDialChannel(null)}
+        channel={voiceDialChannel}
+      />
     </div>
   );
 };
