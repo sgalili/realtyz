@@ -148,6 +148,25 @@ export function WhatsAppGatewayCard() {
     }
   };
 
+  const syncAvatars = async (force = false) => {
+    setSyncingAvatars(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-wa-avatars', {
+        body: { force, limit: 500 },
+      });
+      if (error) throw error;
+      const r = data as { scanned: number; updated: number; skipped: number; failed: number };
+      toast.success(
+        `סונכרנו תמונות פרופיל מ-WhatsApp · עודכנו ${r.updated} מתוך ${r.scanned}` +
+          (r.failed > 0 ? ` · ${r.failed} כשלונות` : ''),
+      );
+    } catch (e: any) {
+      toast.error(`סנכרון תמונות נכשל: ${e?.message ?? e}`);
+    } finally {
+      setSyncingAvatars(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
