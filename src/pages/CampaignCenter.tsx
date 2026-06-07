@@ -33,6 +33,7 @@ import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsS
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { campaignMatchesExternalPost, normalizePostId } from '@/lib/campaignPostIds';
 import { IvrBroadcastDialog } from '@/components/campaigns/IvrBroadcastDialog';
+import { EmailAliasSetupDialog } from '@/components/campaigns/EmailAliasSetupDialog';
 
 
 type TabValue = 'create' | 'published';
