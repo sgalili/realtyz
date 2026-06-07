@@ -1721,10 +1721,13 @@ const VoiceLeadPickerDialog = ({
     setClonedVoices((data ?? []) as ClonedVoice[]);
   };
 
+  const hasLoadedRef = useRef(false);
   useEffect(() => {
     if (!open) return;
-    setListGroup(''); setAgentId(''); setInstructions('');
-    setSearch(''); setSelectedLeadIds(new Set());
+    // Persist user selections (list group, selected leads, voice, instructions)
+    // across re-opens and sub-dialog flows. Only load data once per session.
+    if (hasLoadedRef.current) { loadClonedVoices(); return; }
+    hasLoadedRef.current = true;
     (async () => {
       setLoading(true);
       const [{ data: leadRows }] = await Promise.all([
@@ -1792,6 +1795,10 @@ const VoiceLeadPickerDialog = ({
       toast.dismiss('voice-dial');
       if (ok > 0) toast.success(`נשלחו ${ok} שיחות מ-${formatPhoneDisplay(VOICE_DIAL_NUMBER)}${failed ? ` · ${failed} נכשלו` : ''}`);
       else toast.error('כל השיחות נכשלו');
+      if (ok > 0) {
+        setListGroup(''); setAgentId(''); setInstructions('');
+        setSearch(''); setSelectedLeadIds(new Set());
+      }
       onClose();
     } finally {
       setDialing(false);
