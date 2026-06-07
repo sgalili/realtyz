@@ -2442,6 +2442,7 @@ const CampaignCenter = () => {
         onClose={() => setVoiceDialChannel(null)}
         channel={voiceDialChannel}
       />
+      <IvrBroadcastDialog open={ivrOpen} onClose={() => setIvrOpen(false)} />
     </div>
   );
 };
