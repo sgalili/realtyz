@@ -1578,7 +1578,7 @@ const PublishedFeed = () => {
                   <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
                           className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
                     <Trash2 className="ml-1 h-4 w-4" />
-                    מחיקה
+                    מחק פוסט
                   </Button>
                   <Button variant="outline" size="sm"
                           disabled={!postUrl}
