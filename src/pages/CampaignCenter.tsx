@@ -847,7 +847,7 @@ const ConfirmDispatchDialog = ({
           toast.success(`הקמפיין פורסם בהצלחה ב-${channel.label}!`);
         }
       } else {
-        // Direct-messaging channels (SMS / email / IVR) still broadcast to leads.
+        // Direct-messaging channels (SMS / email / IVR / AI Voice) broadcast to leads.
         const { data: leads, error } = await supabase
           .from('leads')
           .select('id, full_name, phone_number, email')
@@ -869,7 +869,38 @@ const ConfirmDispatchDialog = ({
           const { error: insErr } = await supabase.from('campaign_logs').insert(rows);
           if (insErr) throw insErr;
         }
-        toast.success(`שודר ל-${rows.length} מתעניינים בערוץ ${channel.label}`);
+
+        // Fan-out live sends for direct channels.
+        let dispatched = 0; let failed = 0;
+        if (channel.id === 'ivr' || channel.id === 'ai-call') {
+          for (const l of leads || []) {
+            if (!l.phone_number) continue;
+            const { error: callErr } = await supabase.functions.invoke('vapi-outbound-call', {
+              body: { phone_number: l.phone_number, lead_id: l.id },
+            });
+            if (callErr) failed++; else dispatched++;
+          }
+        } else if (channel.id === 'email') {
+          for (const l of leads || []) {
+            if (!l.email) continue;
+            const { error: mailErr } = await supabase.functions.invoke('resend-email-sender', {
+              body: {
+                recipient_email: l.email,
+                recipient_name: l.full_name,
+                subject: `${brandName} · עדכון אישי עבורך`,
+                intro: body || 'מצורפים הפרטים העדכניים שביקשת.',
+                cta_question: 'מתי נוח לך לקפוץ לראות?',
+              },
+            });
+            if (mailErr) failed++; else dispatched++;
+          }
+        }
+
+        if (channel.id === 'ivr' || channel.id === 'ai-call' || channel.id === 'email') {
+          toast.success(`נשלחו ${dispatched} מתוך ${rows.length} בערוץ ${channel.label}${failed ? ` · ${failed} כשלונות` : ''}`);
+        } else {
+          toast.success(`שודר ל-${rows.length} מתעניינים בערוץ ${channel.label}`);
+        }
       }
       onConfirmed();
       onClose();
