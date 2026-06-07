@@ -693,22 +693,19 @@ function CommentBubble({
         isReply && "bg-muted/30",
       )}
     >
-      <div className="mb-1 flex items-center justify-end gap-2 text-[11px] text-muted-foreground">
-        <span>{when}</span>
-        <span>·</span>
+      <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
         <span
-          className={cn(
-            "rounded px-1.5 py-0.5 text-[10px] font-medium",
-            sentimentClass(row.sentiment),
-          )}
+          aria-label={sentimentLabel(row.sentiment)}
+          title={sentimentLabel(row.sentiment)}
+          className="text-base leading-none"
         >
-          {sentimentLabel(row.sentiment)}
+          {row.sentiment === "positive"
+            ? "😊"
+            : row.sentiment === "negative"
+            ? "☹️"
+            : "😐"}
         </span>
-        <span className="font-medium text-foreground">{senderName}</span>
-        <Avatar className="h-6 w-6">
-          {avatarUrl && <AvatarImage src={avatarUrl} alt={senderName} />}
-          <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
-        </Avatar>
+        <span>{when}</span>
       </div>
       <p className="whitespace-pre-wrap text-sm text-foreground">
         {row.inbound_text}
@@ -717,15 +714,15 @@ function CommentBubble({
         <button
           type="button"
           onClick={() => onToggleEditor(row)}
-          className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+          className="inline-flex items-center gap-1 text-[14px] font-medium text-[hsl(220,70%,25%)] hover:underline"
           aria-expanded={expanded}
         >
-          <Bot className="h-3 w-3" />
+          <Bot className="h-3.5 w-3.5" />
           {toggleLabel}
           {expanded ? (
-            <ChevronUp className="h-3 w-3" />
+            <ChevronUp className="h-3.5 w-3.5" />
           ) : (
-            <ChevronDown className="h-3 w-3" />
+            <ChevronDown className="h-3.5 w-3.5" />
           )}
         </button>
         {expanded && (
