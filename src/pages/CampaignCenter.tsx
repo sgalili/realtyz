@@ -1708,6 +1708,7 @@ const CampaignCenter = () => {
   const { settings } = useWhiteLabel();
   const brandName = settings?.agency_name || 'Realtyz AI';
   const [pickedChannel, setPickedChannel] = useState<ChannelCard | null>(null);
+  const [voiceDialChannel, setVoiceDialChannel] = useState<ChannelCard | null>(null);
   const [confirmPayload, setConfirmPayload] = useState<{ body: string; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null; group_ids: string[] } | null>(null);
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(EMPTY_CONNECTED);
   const [channelAccountNames, setChannelAccountNames] = useState<Record<string, string>>({});
