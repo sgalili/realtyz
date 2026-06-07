@@ -1693,7 +1693,7 @@ const CampaignCenter = () => {
         const { error: upErr } = await supabase.from('profiles').update({ direct_channels: next }).eq('id', user.id);
         if (upErr) throw upErr;
         setConnectedChannels((prev) => new Set([...prev, c.id]));
-        setChannelAccountNames((prev) => ({ ...prev, [c.id]: c.id === 'ivr' ? 'Vapi · Twilio' : 'Vapi · AI Voice' }));
+        setChannelAccountNames((prev) => ({ ...prev, [c.id]: VOICE_DIAL_NUMBER }));
         toast.success(`${c.label} מחובר ופעיל`);
       } catch (e: any) {
         toast.dismiss('voice-verify');
