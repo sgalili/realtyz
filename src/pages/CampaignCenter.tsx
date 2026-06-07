@@ -1394,7 +1394,7 @@ const PublishedFeed = () => {
           <p className="mt-1 text-xs text-muted-foreground">לאחר שתפעיל קמפיין מהטאב "צור קמפיין", הוא יופיע כאן עם מעקב לייקים, שיתופים ותגובות.</p>
         </div>
       ) : (filteredRows || []).map((r) => {
-        const isOpen = expanded[r.id] ?? true;
+        const isOpen = expanded[r.id] ?? false;
         const dt = new Date(r.created_at);
         const dateStr = dt.toLocaleDateString('he-IL') + ', ' + dt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
         const platformMeta = FEED_PLATFORMS.find((p) => p.id === String(r.channel || '').toLowerCase());
@@ -1406,37 +1406,39 @@ const PublishedFeed = () => {
         const preview = bodyText.trim().slice(0, 100) + (bodyText.trim().length > 100 ? '…' : '');
         const hasMetrics = !!r.metrics_updated_at;
         const fmt = (v: number | null | undefined) => (hasMetrics && typeof v === 'number' ? v : '–');
+        const pageLabel = (String(r.channel || '').toLowerCase() === 'facebook' && fbPageName) ? fbPageName : ownerName;
         return (
           <article key={r.id} className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden" dir={dirAttr}>
             <header className={cn('flex items-start justify-between gap-3 p-4', isHe ? 'flex-row' : 'flex-row-reverse')}>
               <div className={cn('flex-1 min-w-0', alignClass)}>
+                <div className={cn('flex items-center gap-2 mb-1', isHe ? 'justify-start flex-row-reverse' : 'justify-start flex-row')}>
+                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-muted shrink-0">
+                    {platformMeta?.brand ? (
+                      <BrandIcon name={platformMeta.brand} className={cn('h-5 w-5', BRAND_COLOR[platformMeta.brand] ?? 'text-muted-foreground')} />
+                    ) : platformMeta?.icon ? (
+                      <platformMeta.icon className="h-5 w-5 text-muted-foreground" />
+                    ) : (
+                      <span className="text-[10px] font-bold uppercase">{r.channel?.slice(0, 2)}</span>
+                    )}
+                  </span>
+                  <span className="text-sm font-semibold text-foreground truncate">{pageLabel}</span>
+                  <span className="text-xs text-muted-foreground">·</span>
+                  <span className="text-xs text-muted-foreground whitespace-nowrap">{dateStr}</span>
+                </div>
                 <h3 className={cn('font-semibold text-foreground truncate', alignClass)} dir={dirAttr}>
                   {(bodyText.trim().split('\n')[0] || r.campaign_name)}
                 </h3>
-                <div className={cn('mt-1 flex items-center gap-2 text-xs text-muted-foreground flex-wrap', isHe ? 'justify-end' : 'justify-start')}>
-                  <span className="font-medium text-foreground/80">{ownerName}</span>
-                  <span>·</span>
-                  <span>{dateStr}</span>
-                  <span className="inline-flex h-5 w-5 items-center justify-center rounded-full bg-muted">
-                    {platformMeta?.brand ? (
-                      <BrandIcon name={platformMeta.brand} className={cn('h-3.5 w-3.5', BRAND_COLOR[platformMeta.brand] ?? 'text-muted-foreground')} />
-                    ) : platformMeta?.icon ? (
-                      <platformMeta.icon className="h-3.5 w-3.5 text-muted-foreground" />
-                    ) : (
-                      <span className="text-[9px] font-bold uppercase">{r.channel?.slice(0, 2)}</span>
-                    )}
-                  </span>
-                  <span className="text-border">·</span>
+                <div className={cn('mt-1 flex items-center gap-3 text-xs text-muted-foreground flex-wrap', isHe ? 'justify-end' : 'justify-start')}>
                   <span className="inline-flex items-center gap-1" title="לייקים">
-                    <Heart className="h-3.5 w-3.5" />
+                    <Heart className="h-3.5 w-3.5 text-red-500" />
                     <span className="tabular-nums">{fmt(r.like_count)}</span>
                   </span>
                   <span className="inline-flex items-center gap-1" title="תגובות">
-                    <MessageSquare className="h-3.5 w-3.5" />
+                    <MessageSquare className="h-3.5 w-3.5 text-purple-600" />
                     <span className="tabular-nums">{fmt(r.comment_count)}</span>
                   </span>
                   <span className="inline-flex items-center gap-1" title="שיתופים">
-                    <Share2 className="h-3.5 w-3.5" />
+                    <Share2 className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
                     <span className="tabular-nums">{fmt(r.share_count)}</span>
                   </span>
                 </div>
@@ -1448,6 +1450,7 @@ const PublishedFeed = () => {
                 {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
               </button>
             </header>
+
 
             {isOpen && (
               <>
