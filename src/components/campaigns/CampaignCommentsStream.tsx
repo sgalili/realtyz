@@ -316,6 +316,18 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
       setDrafting(false);
       return;
     }
+    // If we already have a cached draft for this row, hydrate from it and
+    // skip the AI call entirely. The user can hit the per-card refresh to
+    // regenerate.
+    const cached = draftCache[replyOpen.id];
+    if (cached) {
+      setReplyDraft(cached.pub);
+      setDmDraft(cached.dm);
+      setOriginalReply(cached.pub);
+      setOriginalDm(cached.dm);
+      setDrafting(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       setReplyDraft("");
@@ -336,8 +348,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
                 `Campaign: ${campaign.campaign_name}`,
                 campaign.message_body ? `Published post:\n${campaign.message_body}` : null,
               ].filter(Boolean).join("\n\n"),
-              regenerate: true,
-              cache_bust: `${Date.now()}-${crypto.randomUUID()}`,
+              regenerate: false,
             },
           },
         );
@@ -352,6 +363,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
           setDmDraft(dmTrim);
           setOriginalReply(pubTrim);
           setOriginalDm(dmTrim);
+          setDraftCache((prev) => ({ ...prev, [replyOpen.id]: { pub: pubTrim, dm: dmTrim } }));
         } else {
           toast.error((data as any)?.error ?? "לא התקבל ניסוח");
         }
