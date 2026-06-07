@@ -105,6 +105,9 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
   const [originalDm, setOriginalDm] = useState("");
   const [drafting, setDrafting] = useState(false);
   const [sending, setSending] = useState(false);
+  // Per-row cached AI drafts so closing/re-opening the editor does NOT
+  // re-invoke the AI — only an explicit refresh-per-card regenerates.
+  const [draftCache, setDraftCache] = useState<Record<string, { pub: string; dm: string }>>({});
   const postIds = useMemo(() => getCampaignPostIds(campaign), [campaign.channel, campaign.provider_message_id, campaign.provider_response]);
   const postIdsKey = postIds.join("|");
 
