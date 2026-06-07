@@ -15,7 +15,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from "@/components/ui/dialog";
-import { Bot, MessageSquare, RefreshCw, Send, Sparkles } from "lucide-react";
+import { Bot, ChevronDown, ChevronUp, MessageSquare, RefreshCw, Send, Sparkles } from "lucide-react";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { campaignMatchesExternalPost, getCampaignPostIds, platformForCampaignChannel } from "@/lib/campaignPostIds";
