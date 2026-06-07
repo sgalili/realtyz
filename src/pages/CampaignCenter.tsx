@@ -1626,12 +1626,53 @@ const Stat = ({ icon: Icon, label, value, hasData = true }: { icon: any; label: 
 
 /* ───────────── Voice Lead Picker ("למי מחייגים?") ───────────── */
 
-type VoiceLead = { id: string; full_name: string | null; phone: string | null };
-const mapVoiceLead = (r: any): VoiceLead => ({
-  id: r.id,
-  full_name: r.full_name ?? null,
-  phone: r.phone_number ?? r.phone ?? null,
-});
+type VoiceLead = {
+  id: string;
+  full_name: string | null;
+  phone: string | null;
+  city: string | null;
+  role: string | null; // מוכר / קונה / שוכר / משכיר
+  budget: string | null;
+};
+
+const ROLE_LABEL: Record<string, string> = {
+  seller: 'מוכר',
+  buyer: 'קונה',
+  renter: 'שוכר',
+  landlord: 'משכיר',
+};
+
+const cleanName = (raw: string | null | undefined): string => {
+  if (!raw) return '';
+  const parts = raw.split(/[\/|]/).map((p) => p.trim()).filter(Boolean);
+  const seen = new Set<string>();
+  const unique = parts.filter((p) => { if (seen.has(p)) return false; seen.add(p); return true; });
+  return unique.join(' ').replace(/\s+/g, ' ').trim();
+};
+
+const formatBudget = (raw: any): string | null => {
+  if (raw == null || raw === '') return null;
+  const n = Number(String(raw).replace(/[^\d.]/g, ''));
+  if (!Number.isFinite(n) || n <= 0) return null;
+  if (n >= 1_000_000) return `₪${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M`;
+  if (n >= 1_000) return `₪${n.toLocaleString('he-IL')}`;
+  return `₪${n}`;
+};
+
+const mapVoiceLead = (r: any): VoiceLead => {
+  const prefs = r.preferences ?? {};
+  const extra = prefs.extra_fields ?? {};
+  const cleaned = cleanName(r.full_name);
+  const prefName = cleanName(extra['שם מלא']);
+  return {
+    id: r.id,
+    full_name: prefName || cleaned || null,
+    phone: r.phone_number ?? r.phone ?? null,
+    city: r.city || extra['עיר'] || null,
+    role: ROLE_LABEL[prefs.lead_kind] || (r.deal_type === 'rent' ? 'שוכר' : r.deal_type === 'sale' ? 'קונה' : null),
+    budget: formatBudget(extra['מחיר']) || formatBudget(prefs.budget_max) || formatBudget(prefs.budget),
+  };
+};
 
 const PRESET_VOICE_AGENTS: { id: string; label: string; voice_id: string }[] = [
   { id: 'sarah',    label: 'שרה (אישה)',     voice_id: 'EXAVITQu4vr4xnSDxMaL' },
