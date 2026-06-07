@@ -229,8 +229,9 @@ export default function Properties() {
       features: Array.isArray(r.features) ? r.features as string[] : [],
       listing_type: (r.listing_type ?? 'sale') as ListingType,
       extras: (r.extras ?? {}) as Record<string, string>,
+      created_at: (r as any).created_at ?? null,
     }));
-    return live as Array<HomelyProperty & { extras?: Record<string, string> }>;
+    return live as Array<HomelyProperty & { extras?: Record<string, string>; created_at?: string | null }>;
   }, [liveResults, sourceTab]);
 
   const filtered = useMemo(() => {
