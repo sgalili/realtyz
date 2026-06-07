@@ -1725,6 +1725,11 @@ const VoiceLeadPickerDialog = ({
               </SelectContent>
             </Select>
           </div>
+
+          {/* Step 2 — AI Agent Voice (revealed after Step 1) */}
+          {listGroup && (
+            <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+              <label className="text-xs font-semibold text-[#0f1b3d] text-right block">בחירת נציג/ת AI טלפונית</label>
               <Select value={agentId} onValueChange={setAgentId} dir="rtl">
                 <SelectTrigger className="w-full text-right border-[#0f1b3d]/30 focus:ring-[#C9A84C]">
                   <SelectValue placeholder="בחר/י קול…" />
