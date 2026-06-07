@@ -84,7 +84,7 @@ export default function KnowledgeBase() {
     queryFn: async () => {
       const { data, error } = await supabase
         .from('knowledge_documents')
-        .select('id, title, source_type, chunk_count, created_at, raw_text')
+        .select('id, title, source_type, chunk_count, created_at, raw_text, source_metadata')
         .eq('user_id', user!.id)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
