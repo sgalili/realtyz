@@ -1635,23 +1635,35 @@ const CampaignCenter = () => {
         else if (p.startsWith('tiktok')) set.add('tiktok');
       });
 
-      // Direct (non-social) channels: IVR / AI-Call / Email live on profiles.
-      const { data: prof } = await supabase
-        .from('profiles')
-        .select('direct_channels, email_alias, full_name')
-        .eq('id', user.id)
-        .maybeSingle();
-      const direct = ((prof as any)?.direct_channels ?? {}) as Record<string, boolean>;
-      if (direct.ivr) set.add('ivr');
-      if (direct['ai-call']) set.add('ai-call');
-      if (direct.email && (prof as any)?.email_alias) set.add('email');
+      // Direct (non-social) channels: IVR / AI-Call / Email live on profiles
+      // AND are auto-derived from api_configs (Vapi/Twilio/Resend) so brokers
+      // who configured credentials see them as connected without an extra click.
+      const [{ data: prof }, { data: cfgs }] = await Promise.all([
+        supabase.from('profiles').select('direct_channels, email_alias, full_name').eq('id', user.id).maybeSingle(),
+        supabase.from('api_configs').select('service_name, is_active'),
+      ]);
+      if (cancelled) return;
 
-      if (!cancelled && (prof as any)?.email_alias) {
+      const direct = ((prof as any)?.direct_channels ?? {}) as Record<string, boolean>;
+      const alias = (prof as any)?.email_alias as string | null;
+      const activeServices = new Set(
+        (cfgs || []).filter((r: any) => r.is_active).map((r: any) => String(r.service_name || '').toLowerCase()),
+      );
+      const hasVapi = activeServices.has('vapi');
+      const hasTwilio = activeServices.has('twilio');
+      const hasResend = activeServices.has('resend');
+      const voiceReady = hasVapi && hasTwilio;
+
+      if (direct.ivr || voiceReady) set.add('ivr');
+      if (direct['ai-call'] || hasVapi) set.add('ai-call');
+      if ((direct.email && alias) || alias || hasResend) set.add('email');
+
+      if (!cancelled) {
         setChannelAccountNames((prev) => ({
           ...prev,
-          email: `${(prof as any).email_alias}@realtyz.co.il`,
-          ivr: 'Vapi · Twilio',
-          'ai-call': 'Vapi · AI Voice',
+          ...(alias ? { email: `${alias}@realtyz.co.il` } : hasResend ? { email: 'Resend · אימייל מותג' } : {}),
+          ...(voiceReady || direct.ivr ? { ivr: 'Vapi · Twilio' } : {}),
+          ...(hasVapi || direct['ai-call'] ? { 'ai-call': 'Vapi · AI Voice' } : {}),
         }));
       }
 
