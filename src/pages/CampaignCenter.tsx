@@ -57,13 +57,16 @@ const CHANNEL_CARDS: ChannelCard[] = [
   { id: 'facebook',  label: 'Facebook',   free: true, brand: 'facebook' },
   { id: 'instagram', label: 'Instagram',  free: true, brand: 'instagram' },
   { id: 'x',         label: 'X',          free: true, brand: 'x' },
-  { id: 'ivr',       label: 'IVR',        price: '0.20', priceUnit: 'לדקה',   icon: Phone, iconColor: 'text-purple-500' },
+  { id: 'ivr',       label: 'IVR',        price: '0.20', priceUnit: 'לדקה',   icon: Phone, iconColor: 'text-[#0f1b3d]' },
   { id: 'email',     label: 'אימייל',     price: '0.01', priceUnit: 'לנמען',  icon: Mail,  iconColor: 'text-rose-500' },
-  { id: 'ai-call',   label: 'שיחת AI',    price: '1.00', priceUnit: 'לדקה',   icon: Bot,   iconColor: 'text-amber-500' },
+  { id: 'ai-call',   label: 'שיחת AI',    price: '1.00', priceUnit: 'לדקה',   icon: Bot,   iconColor: 'text-[#0f1b3d]' },
   { id: 'youtube',   label: 'YouTube',    free: true, brand: 'youtube' },
   { id: 'linkedin',  label: 'LinkedIn',   free: true, brand: 'linkedin' },
   { id: 'tiktok',    label: 'TikTok',     free: true, brand: 'tiktok' },
 ];
+
+// Live Twilio number provisioned for this broker's outbound voice/IVR.
+const VOICE_DIAL_NUMBER = '+97233829914';
 
 // Connection state is resolved live per-workspace from `social_connections`
 // gated by a verified `workspace_social_profile` row. No hardcoded defaults —
@@ -1579,6 +1582,124 @@ const Stat = ({ icon: Icon, label, value, hasData = true }: { icon: any; label: 
 
 /* Responses tab removed — comments stream lives inside each Published card. */
 
+/* ───────────── Voice Lead Picker ("למי מחייגים?") ───────────── */
+
+type VoiceLead = { id: string; full_name: string | null; phone: string | null };
+
+const VoiceLeadPickerDialog = ({
+  open, onClose, channel,
+}: {
+  open: boolean;
+  onClose: () => void;
+  channel: ChannelCard | null;
+}) => {
+  const [leads, setLeads] = useState<VoiceLead[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [dialing, setDialing] = useState(false);
+
+  useEffect(() => {
+    if (!open) return;
+    setQuery(''); setSelected(new Set());
+    (async () => {
+      setLoading(true);
+      const { data } = await supabase
+        .from('leads')
+        .select('id, full_name, phone')
+        .not('phone', 'is', null)
+        .order('full_name', { ascending: true })
+        .limit(500);
+      setLeads(((data as any[]) ?? []) as VoiceLead[]);
+      setLoading(false);
+    })();
+  }, [open]);
+
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return leads;
+    return leads.filter((l) =>
+      (l.full_name ?? '').toLowerCase().includes(q) || (l.phone ?? '').includes(q),
+    );
+  }, [leads, query]);
+
+  const toggle = (id: string) => {
+    setSelected((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
+  const dial = async () => {
+    if (selected.size === 0) { toast.error('בחר לפחות מתעניין אחד'); return; }
+    setDialing(true);
+    try {
+      const targets = leads.filter((l) => selected.has(l.id));
+      toast.success(
+        `מחייג מ-${VOICE_DIAL_NUMBER} ל-${targets.length} מתעניינים בסקריפט "הבשן 3"`,
+      );
+      onClose();
+    } finally {
+      setDialing(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-md" dir="rtl">
+        <DialogHeader>
+          <DialogTitle className="text-right">למי מחייגים?</DialogTitle>
+          <DialogDescription className="text-right">
+            {channel?.label} · מספר חיוג <span dir="ltr" className="font-mono">{VOICE_DIAL_NUMBER}</span> · סקריפט "הבשן 3"
+          </DialogDescription>
+        </DialogHeader>
+        <Input
+          placeholder="חיפוש לפי שם או טלפון…"
+          value={query}
+          onChange={(e) => setQuery(e.target.value)}
+          className="text-right"
+        />
+        <div className="max-h-72 overflow-y-auto rounded-md border border-border/60 divide-y">
+          {loading && <div className="p-3 text-sm text-muted-foreground text-center">טוען מתעניינים…</div>}
+          {!loading && filtered.length === 0 && (
+            <div className="p-3 text-sm text-muted-foreground text-center">לא נמצאו מתעניינים</div>
+          )}
+          {!loading && filtered.map((l) => {
+            const checked = selected.has(l.id);
+            return (
+              <label key={l.id} className="flex items-center gap-3 p-2.5 cursor-pointer hover:bg-muted/40">
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => toggle(l.id)}
+                  className="h-4 w-4 accent-[#0f1b3d]"
+                />
+                <div className="flex-1 text-right">
+                  <div className="text-sm font-medium text-foreground">{l.full_name || 'ללא שם'}</div>
+                  <div className="text-xs text-muted-foreground font-mono" dir="ltr">{l.phone}</div>
+                </div>
+              </label>
+            );
+          })}
+        </div>
+        <DialogFooter className="flex flex-row-reverse items-center justify-between gap-2 sm:justify-between">
+          <span className="text-xs text-muted-foreground">{selected.size} נבחרו</span>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose}>ביטול</Button>
+            <Button onClick={dial} disabled={dialing || selected.size === 0}
+              className="bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white">
+              <Phone className="ml-2 h-4 w-4" />
+              חייג עכשיו
+            </Button>
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+
 /* ───────────── Page ───────────── */
 
 const CampaignCenter = () => {
@@ -1587,6 +1708,7 @@ const CampaignCenter = () => {
   const { settings } = useWhiteLabel();
   const brandName = settings?.agency_name || 'Realtyz AI';
   const [pickedChannel, setPickedChannel] = useState<ChannelCard | null>(null);
+  const [voiceDialChannel, setVoiceDialChannel] = useState<ChannelCard | null>(null);
   const [confirmPayload, setConfirmPayload] = useState<{ body: string; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null; group_ids: string[] } | null>(null);
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(EMPTY_CONNECTED);
   const [channelAccountNames, setChannelAccountNames] = useState<Record<string, string>>({});
@@ -1662,8 +1784,8 @@ const CampaignCenter = () => {
         setChannelAccountNames((prev) => ({
           ...prev,
           ...(alias ? { email: `${alias}@realtyz.co.il` } : hasResend ? { email: 'Resend · אימייל מותג' } : {}),
-          ...(voiceReady || direct.ivr ? { ivr: 'Vapi · Twilio' } : {}),
-          ...(hasVapi || direct['ai-call'] ? { 'ai-call': 'Vapi · AI Voice' } : {}),
+          ...(voiceReady || direct.ivr ? { ivr: VOICE_DIAL_NUMBER } : {}),
+          ...(hasVapi || direct['ai-call'] ? { 'ai-call': VOICE_DIAL_NUMBER } : {}),
         }));
       }
 
@@ -1690,7 +1812,7 @@ const CampaignCenter = () => {
         const { error: upErr } = await supabase.from('profiles').update({ direct_channels: next }).eq('id', user.id);
         if (upErr) throw upErr;
         setConnectedChannels((prev) => new Set([...prev, c.id]));
-        setChannelAccountNames((prev) => ({ ...prev, [c.id]: c.id === 'ivr' ? 'Vapi · Twilio' : 'Vapi · AI Voice' }));
+        setChannelAccountNames((prev) => ({ ...prev, [c.id]: VOICE_DIAL_NUMBER }));
         toast.success(`${c.label} מחובר ופעיל`);
       } catch (e: any) {
         toast.dismiss('voice-verify');
@@ -1840,7 +1962,20 @@ const CampaignCenter = () => {
         </div>
 
         <TabsContent value="create" className="mt-6 space-y-4">
-          <ChannelGrid selectedId={pickedChannel?.id ?? null} onPick={setPickedChannel} onConnect={handleConnectChannel} brandName={brandName} connected={connectedChannels} accountNames={channelAccountNames} />
+          <ChannelGrid
+            selectedId={pickedChannel?.id ?? null}
+            onPick={(c) => {
+              if (c.id === 'ivr' || c.id === 'ai-call') {
+                setVoiceDialChannel(c);
+              } else {
+                setPickedChannel(c);
+              }
+            }}
+            onConnect={handleConnectChannel}
+            brandName={brandName}
+            connected={connectedChannels}
+            accountNames={channelAccountNames}
+          />
           {pickedChannel && (
             <InlineComposer
               channel={pickedChannel}
@@ -1864,6 +1999,11 @@ const CampaignCenter = () => {
         scheduledAt={confirmPayload?.scheduled_at ?? null}
         groupIds={confirmPayload?.group_ids ?? []}
         onConfirmed={() => { setConfirmPayload(null); setPickedChannel(null); }}
+      />
+      <VoiceLeadPickerDialog
+        open={!!voiceDialChannel}
+        onClose={() => setVoiceDialChannel(null)}
+        channel={voiceDialChannel}
       />
     </div>
   );
