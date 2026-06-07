@@ -3241,7 +3241,9 @@ export type Database = {
           ayrshare_ref_id: string | null
           created_at: string
           created_by_super_admin: boolean
+          direct_channels: Json
           email: string | null
+          email_alias: string | null
           full_name: string | null
           id: string
           is_suspended: boolean
@@ -3263,7 +3265,9 @@ export type Database = {
           ayrshare_ref_id?: string | null
           created_at?: string
           created_by_super_admin?: boolean
+          direct_channels?: Json
           email?: string | null
+          email_alias?: string | null
           full_name?: string | null
           id: string
           is_suspended?: boolean
@@ -3285,7 +3289,9 @@ export type Database = {
           ayrshare_ref_id?: string | null
           created_at?: string
           created_by_super_admin?: boolean
+          direct_channels?: Json
           email?: string | null
+          email_alias?: string | null
           full_name?: string | null
           id?: string
           is_suspended?: boolean
