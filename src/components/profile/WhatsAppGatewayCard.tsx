@@ -210,7 +210,7 @@ export function WhatsAppGatewayCard() {
           />
         </div>
 
-        <div className="flex items-center gap-2 justify-end pt-1 flex-wrap">
+        <div className="flex items-center gap-2 justify-end pt-1 flex-nowrap">
           <Button
             variant="outline"
             size="sm"
