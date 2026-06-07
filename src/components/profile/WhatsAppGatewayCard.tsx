@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { MessageCircle, Save, Loader2, CheckCircle2 } from 'lucide-react';
+import { MessageCircle, Save, Loader2, CheckCircle2, ImageDown } from 'lucide-react';
 
 /**
  * Quick-update card for Green API WhatsApp gateway credentials.
@@ -27,6 +27,7 @@ export function WhatsAppGatewayCard() {
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
   const [status, setStatus] = useState<'unknown' | 'ok' | 'err'>('unknown');
+  const [syncingAvatars, setSyncingAvatars] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -147,6 +148,25 @@ export function WhatsAppGatewayCard() {
     }
   };
 
+  const syncAvatars = async (force = false) => {
+    setSyncingAvatars(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-wa-avatars', {
+        body: { force, limit: 500 },
+      });
+      if (error) throw error;
+      const r = data as { scanned: number; updated: number; skipped: number; failed: number };
+      toast.success(
+        `סונכרנו תמונות פרופיל מ-WhatsApp · עודכנו ${r.updated} מתוך ${r.scanned}` +
+          (r.failed > 0 ? ` · ${r.failed} כשלונות` : ''),
+      );
+    } catch (e: any) {
+      toast.error(`סנכרון תמונות נכשל: ${e?.message ?? e}`);
+    } finally {
+      setSyncingAvatars(false);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -190,7 +210,21 @@ export function WhatsAppGatewayCard() {
           />
         </div>
 
-        <div className="flex items-center gap-2 justify-end pt-1">
+        <div className="flex items-center gap-2 justify-end pt-1 flex-wrap">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => syncAvatars(false)}
+            disabled={syncingAvatars || loading}
+            title="משוך תמונות פרופיל מ-WhatsApp לכל המתעניינים החסרים תמונה"
+          >
+            {syncingAvatars ? (
+              <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+            ) : (
+              <ImageDown className="ml-2 h-4 w-4" />
+            )}
+            סנכרון תמונות פרופיל
+          </Button>
           <Button variant="outline" size="sm" onClick={test} disabled={testing || loading}>
             {testing ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
             בדיקת חיבור
