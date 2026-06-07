@@ -1626,6 +1626,11 @@ const Stat = ({ icon: Icon, label, value, hasData = true }: { icon: any; label: 
 /* ───────────── Voice Lead Picker ("למי מחייגים?") ───────────── */
 
 type VoiceLead = { id: string; full_name: string | null; phone: string | null };
+const mapVoiceLead = (r: any): VoiceLead => ({
+  id: r.id,
+  full_name: r.full_name ?? null,
+  phone: r.phone_number ?? r.phone ?? null,
+});
 
 const VOICE_AGENTS: { id: string; label: string; voice_id: string }[] = [
   { id: 'sarah',    label: 'שרה (אישה)',     voice_id: 'EXAVITQu4vr4xnSDxMaL' },
