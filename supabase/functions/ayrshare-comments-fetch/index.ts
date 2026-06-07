@@ -328,6 +328,28 @@ Deno.serve(async (req) => {
           const trimmed = s.trim();
           return trimmed ? trimmed.slice(0, max) : null;
         };
+        // Try to capture an author profile image from the various shapes
+        // Ayrshare/FB/IG return. FB Graph nests it under from.picture.data.url;
+        // IG returns user.profile_picture_url; some channels expose a flat
+        // profile_image/avatar. As a last-resort for Facebook we fall back to
+        // the public graph picture redirect using the author id.
+        const pictureFromPayload =
+          c?.from?.picture?.data?.url ??
+          c?.from?.picture_url ??
+          c?.from?.profile_picture_url ??
+          c?.user?.profile_picture_url ??
+          c?.user?.picture?.data?.url ??
+          c?.author?.profile_image ??
+          c?.profile_image ??
+          c?.profile_picture_url ??
+          c?.avatar ??
+          null;
+        const fbFallbackPicture =
+          !pictureFromPayload && senderId && /facebook/i.test(platformHint)
+            ? `https://graph.facebook.com/${senderId}/picture?type=square`
+            : null;
+        const authorPicture = pictureFromPayload ?? fbFallbackPicture;
+
         const cleanMetadata = {
           source: "ayrshare_comments_fetch",
           campaign_name: safeStr(campaignName),
@@ -336,6 +358,11 @@ Deno.serve(async (req) => {
           native_created_at: safeStr(c?.created_time ?? c?.createdAt ?? c?.created_at ?? c?.timestamp),
           like_count: typeof c?.like_count === "number" ? c.like_count : null,
           permalink: safeStr(c?.permalink ?? c?.permalink_url ?? c?.url, 1000),
+          sender_id: safeStr(senderId),
+          author: {
+            name: safeStr(sender, 200),
+            profile_image: safeStr(authorPicture, 1000),
+          },
         };
         const cleanText = safeStr(text, 4000) ?? "";
         const cleanSender = safeStr(sender, 200);
