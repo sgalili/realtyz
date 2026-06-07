@@ -73,13 +73,19 @@ const EMPTY_CONNECTED = new Set<string>();
 
 // Official brand colors applied only when the channel is connected.
 const BRAND_COLOR: Record<string, string> = {
-  facebook:  'text-[#1877F2]',
-  instagram: 'text-[#E1306C]',
-  x:         'text-foreground',
-  youtube:   'text-[#FF0000]',
-  linkedin:  'text-[#0A66C2]',
-  tiktok:    'text-foreground',
+  facebook:          'text-[#1877F2]',
+  instagram:         'text-[#E1306C]',
+  x:                 'text-foreground',
+  youtube:           'text-[#FF0000]',
+  linkedin:          'text-[#0A66C2]',
+  tiktok:            'text-foreground',
+  whatsapp:          'text-[#25D366]',
+  telegram:          'text-[#26A5E4]',
+  messenger:         'text-[#0084FF]',
+  facebook_messenger:'text-[#0084FF]',
+  signal:            'text-[#3A76F0]',
 };
+
 
 /* ───────────── Channel grid ───────────── */
 
@@ -1408,8 +1414,22 @@ const PublishedFeed = () => {
         const fmt = (v: number | null | undefined) => (hasMetrics && typeof v === 'number' ? v : '–');
         const pageLabel = (String(r.channel || '').toLowerCase() === 'facebook' && fbPageName) ? fbPageName : ownerName;
         return (
-          <article key={r.id} className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden" dir={dirAttr}>
+          <article
+            key={r.id}
+            className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden cursor-pointer"
+            dir={dirAttr}
+            onClick={() => setExpanded((s) => ({ ...s, [r.id]: !isOpen }))}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setExpanded((s) => ({ ...s, [r.id]: !isOpen }));
+              }
+            }}
+          >
             <header className="p-4 space-y-2">
+
               {/* Row 1: post title */}
               <h3 className={cn('font-semibold text-foreground truncate', alignClass)} dir={dirAttr}>
                 {(bodyText.trim().split('\n')[0] || r.campaign_name)}
@@ -1447,7 +1467,7 @@ const PublishedFeed = () => {
                     <span className="tabular-nums">{fmt(r.share_count)}</span>
                   </span>
                 </div>
-                <button onClick={() => setExpanded((s) => ({ ...s, [r.id]: !isOpen }))}
+                <button onClick={(e) => { e.stopPropagation(); setExpanded((s) => ({ ...s, [r.id]: !isOpen })); }}
                         className="rounded-md p-1 text-muted-foreground hover:bg-muted shrink-0"
                         aria-label={isOpen ? 'כווץ' : 'הרחב'}>
                   {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
@@ -1466,20 +1486,20 @@ const PublishedFeed = () => {
                   <Stat icon={Share2}         label="שיתופים" value={r.share_count}   hasData={hasMetrics} />
                   <Stat icon={Heart}          label="לייקים"  value={r.like_count}    hasData={hasMetrics} />
                 </div>
-                <div className="flex items-center justify-between gap-2 px-4 pb-4" dir="rtl">
-                  <Button variant="outline" size="sm" onClick={() => deleteCampaign(r)}
+                <div className="flex items-center justify-between gap-2 px-4 pb-4" dir="rtl" onClick={(e) => e.stopPropagation()}>
+                  <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
                           className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
                     <Trash2 className="ml-1 h-4 w-4" />
                     מחיקה
                   </Button>
                   <Button variant="outline" size="sm"
                           disabled={!postUrl}
-                          onClick={() => postUrl && window.open(postUrl, '_blank', 'noopener,noreferrer')}>
+                          onClick={(e) => { e.stopPropagation(); postUrl && window.open(postUrl, '_blank', 'noopener,noreferrer'); }}>
                     <ExternalLink className="ml-1 h-4 w-4" />
                     פתח פוסט
                   </Button>
                 </div>
-                <div className="border-t border-border bg-muted/30 px-4 py-3">
+                <div className="border-t border-border bg-muted/30 px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   {userId ? (
                     <CampaignCommentsStream userId={userId} campaign={r} />
                   ) : (
