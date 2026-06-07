@@ -106,9 +106,9 @@ Deno.serve(async (req) => {
       agent: {
         prompt: { prompt: systemPrompt },
         first_message: firstMessage,
-        language: language === "he" ? "he" : "en",
+        language: "he",
       },
-      tts: { voice_id: voiceId },
+      tts: { voice_id: voiceId, model_id: "eleven_multilingual_v3" },
     };
 
     let agentId = voiceCfg?.elevenlabs_agent_id || null;
