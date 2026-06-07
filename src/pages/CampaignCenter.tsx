@@ -1486,20 +1486,20 @@ const PublishedFeed = () => {
                   <Stat icon={Share2}         label="שיתופים" value={r.share_count}   hasData={hasMetrics} />
                   <Stat icon={Heart}          label="לייקים"  value={r.like_count}    hasData={hasMetrics} />
                 </div>
-                <div className="flex items-center justify-between gap-2 px-4 pb-4" dir="rtl">
-                  <Button variant="outline" size="sm" onClick={() => deleteCampaign(r)}
+                <div className="flex items-center justify-between gap-2 px-4 pb-4" dir="rtl" onClick={(e) => e.stopPropagation()}>
+                  <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
                           className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
                     <Trash2 className="ml-1 h-4 w-4" />
                     מחיקה
                   </Button>
                   <Button variant="outline" size="sm"
                           disabled={!postUrl}
-                          onClick={() => postUrl && window.open(postUrl, '_blank', 'noopener,noreferrer')}>
+                          onClick={(e) => { e.stopPropagation(); postUrl && window.open(postUrl, '_blank', 'noopener,noreferrer'); }}>
                     <ExternalLink className="ml-1 h-4 w-4" />
                     פתח פוסט
                   </Button>
                 </div>
-                <div className="border-t border-border bg-muted/30 px-4 py-3">
+                <div className="border-t border-border bg-muted/30 px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   {userId ? (
                     <CampaignCommentsStream userId={userId} campaign={r} />
                   ) : (
