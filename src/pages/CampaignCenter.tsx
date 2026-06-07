@@ -1642,14 +1642,14 @@ const VoiceLeadPickerDialog = ({
 }) => {
   const [leads, setLeads] = useState<VoiceLead[]>([]);
   const [loading, setLoading] = useState(false);
-  const [listGroup, setListGroup] = useState<string>('all');
-  const [agentId, setAgentId] = useState<string>('sarah');
+  const [listGroup, setListGroup] = useState<string>('');
+  const [agentId, setAgentId] = useState<string>('');
   const [instructions, setInstructions] = useState('');
   const [dialing, setDialing] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setListGroup('all'); setAgentId('sarah'); setInstructions('');
+    setListGroup(''); setAgentId(''); setInstructions('');
     (async () => {
       setLoading(true);
       const { data } = await supabase
