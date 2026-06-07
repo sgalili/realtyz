@@ -235,6 +235,17 @@ const LeadCRM = () => {
     return () => clearTimeout(searchTimerRef.current);
   }, [search]);
 
+  // Listen for hero-emitted add events (the '+' button lives in PageHero now).
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const action = (e as CustomEvent<{ action: 'manual' | 'import' }>).detail?.action;
+      if (action === 'manual') setAddVoterOpen(true);
+      else if (action === 'import') fileInputRef.current?.click();
+    };
+    window.addEventListener('leads:add', handler);
+    return () => window.removeEventListener('leads:add', handler);
+  }, []);
+
   useRealtimeSubscription('messages', [['lead-messages', selectedVoterId ?? '']]);
 
   // Server-side paginated + filtered query
