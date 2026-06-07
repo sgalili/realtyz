@@ -1588,10 +1588,28 @@ const CampaignCenter = () => {
         else if (p.startsWith('youtube')) set.add('youtube');
         else if (p.startsWith('linkedin')) set.add('linkedin');
         else if (p.startsWith('tiktok')) set.add('tiktok');
-        else if (p === 'email') set.add('email');
-        else if (p === 'ivr') set.add('ivr');
-        else if (p === 'ai-call' || p === 'ai_call') set.add('ai-call');
       });
+
+      // Direct (non-social) channels: IVR / AI-Call / Email live on profiles.
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('direct_channels, email_alias, full_name')
+        .eq('id', user.id)
+        .maybeSingle();
+      const direct = ((prof as any)?.direct_channels ?? {}) as Record<string, boolean>;
+      if (direct.ivr) set.add('ivr');
+      if (direct['ai-call']) set.add('ai-call');
+      if (direct.email && (prof as any)?.email_alias) set.add('email');
+
+      if (!cancelled && (prof as any)?.email_alias) {
+        setChannelAccountNames((prev) => ({
+          ...prev,
+          email: `${(prof as any).email_alias}@realtyz.co.il`,
+          ivr: 'Vapi · Twilio',
+          'ai-call': 'Vapi · AI Voice',
+        }));
+      }
+
       setConnectedChannels(set);
     })();
     return () => { cancelled = true; };
