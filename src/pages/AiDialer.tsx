@@ -6,13 +6,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Phone, Loader2 } from "lucide-react";
+import { Phone, Loader2, PlugZap } from "lucide-react";
 import { toast } from "sonner";
 
 export default function AiDialer() {
   const [leadId, setLeadId] = useState<string>("");
+  const [listingId, setListingId] = useState<string>("");
   const [phone, setPhone] = useState<string>("");
   const [loading, setLoading] = useState(false);
+  const [testing, setTesting] = useState(false);
 
   const { data: leads = [] } = useQuery({
     queryKey: ["dialer-leads"],
@@ -27,10 +29,39 @@ export default function AiDialer() {
     },
   });
 
+  const { data: listings = [] } = useQuery({
+    queryKey: ["dialer-listings"],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from("listings")
+        .select("id, property_title, city, asking_price")
+        .eq("status", "live")
+        .order("created_at", { ascending: false })
+        .limit(50);
+      if (error) throw error;
+      return data ?? [];
+    },
+  });
+
   const onSelectLead = (id: string) => {
     setLeadId(id);
     const lead = leads.find((l) => l.id === id);
     setPhone(lead?.phone_number ?? "");
+  };
+
+  const verify = async () => {
+    setTesting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("vapi-verify-credentials", { method: "POST" });
+      if (error) throw error;
+      const v: any = (data as any)?.vapi ?? {};
+      if (v.ok) toast.success(`Vapi: ${v.message}`);
+      else toast.error(v.message || "שגיאת התחברות - בדוק את מפתחות ה-API שלך");
+    } catch {
+      toast.error("שגיאת התחברות - בדוק את מפתחות ה-API שלך");
+    } finally {
+      setTesting(false);
+    }
   };
 
   const startCall = async () => {
@@ -41,7 +72,11 @@ export default function AiDialer() {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("vapi-outbound-call", {
-        body: { phone_number: phone, lead_id: leadId || undefined },
+        body: {
+          phone_number: phone,
+          lead_id: leadId || undefined,
+          listing_id: listingId || undefined,
+        },
       });
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
@@ -63,7 +98,13 @@ export default function AiDialer() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>הפעלת חיוג</CardTitle>
+          <CardTitle className="flex items-center justify-between">
+            <span>הפעלת חיוג</span>
+            <Button size="sm" variant="outline" onClick={verify} disabled={testing}>
+              {testing ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <PlugZap className="ml-2 h-4 w-4" />}
+              בדוק חיבור Vapi
+            </Button>
+          </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -79,6 +120,21 @@ export default function AiDialer() {
               </SelectContent>
             </Select>
           </div>
+
+          <div className="space-y-2">
+            <Label>נכס לדיון (Context IVR)</Label>
+            <Select value={listingId} onValueChange={setListingId}>
+              <SelectTrigger><SelectValue placeholder="בחר נכס שיוטען לסוכן" /></SelectTrigger>
+              <SelectContent>
+                {listings.map((l: any) => (
+                  <SelectItem key={l.id} value={l.id}>
+                    {l.property_title ?? "ללא כותרת"} · {l.city ?? ""} · ₪{l.asking_price ?? "?"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="phone">מספר טלפון</Label>
             <Input
