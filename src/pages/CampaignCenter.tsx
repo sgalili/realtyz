@@ -1795,6 +1795,10 @@ const VoiceLeadPickerDialog = ({
       toast.dismiss('voice-dial');
       if (ok > 0) toast.success(`נשלחו ${ok} שיחות מ-${formatPhoneDisplay(VOICE_DIAL_NUMBER)}${failed ? ` · ${failed} נכשלו` : ''}`);
       else toast.error('כל השיחות נכשלו');
+      if (ok > 0) {
+        setListGroup(''); setAgentId(''); setInstructions('');
+        setSearch(''); setSelectedLeadIds(new Set());
+      }
       onClose();
     } finally {
       setDialing(false);
