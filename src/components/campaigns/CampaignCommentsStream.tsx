@@ -560,6 +560,19 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
         {tree.map((root) => {
           const renderEditor = (r: EngagementRow) => (
             <div className="space-y-3 text-right">
+              <div className="flex items-center justify-start">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => generateDraft(r, true)}
+                  disabled={drafting || sending}
+                  aria-label="נסח מחדש"
+                  title="נסח מחדש"
+                  className="h-7 w-7"
+                >
+                  <RefreshCw className={cn("h-3.5 w-3.5", drafting && "animate-spin")} />
+                </Button>
+              </div>
               <div className="space-y-1">
                 <Textarea
                   value={drafting ? "" : replyDraft}
@@ -601,17 +614,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
                   className="text-right bg-muted/30"
                 />
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => generateDraft(r, true)}
-                  disabled={drafting || sending}
-                  aria-label="נסח מחדש"
-                  title="נסח מחדש"
-                >
-                  <RefreshCw className={cn("h-4 w-4", drafting && "animate-spin")} />
-                </Button>
+              <div className="flex items-center justify-end">
                 <Button
                   size="sm"
                   onClick={sendReply}
