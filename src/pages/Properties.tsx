@@ -315,21 +315,12 @@ export default function Properties() {
         </Card>
       )}
 
-      {/* Count + view mode + filter trigger — single row, right-aligned */}
+      {/* Count + view mode + search (with inline filter) — centered row */}
       <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <div className="flex items-center justify-start gap-2 flex-wrap" dir="rtl">
+        <div className="flex items-center justify-center gap-2 flex-wrap" dir="rtl">
           <Badge variant="secondary" className="text-sm">
             {filtered.length} נכסים
           </Badge>
-          <div className="relative flex-1 min-w-[180px] max-w-sm">
-            <Input
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="חיפוש לפי כתובת, עיר, כותרת..."
-              className="h-8 text-right pr-3"
-              dir="rtl"
-            />
-          </div>
           <div className="inline-flex rounded-md border border-border bg-card/50 p-0.5" role="group" aria-label="מצב תצוגה">
             <button
               type="button"
@@ -350,18 +341,27 @@ export default function Properties() {
               <FileSpreadsheet className="h-3.5 w-3.5" /> טבלה
             </button>
           </div>
-          <CollapsibleTrigger asChild>
-            <Button
-              size="icon"
-              variant="outline"
-              className="h-8 w-8"
-              aria-label="סינון"
-              title="סינון"
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-            </Button>
-          </CollapsibleTrigger>
+          <div className="relative flex-1 min-w-[180px] max-w-sm">
+            <Input
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              placeholder="חיפוש לפי כתובת, עיר, כותרת..."
+              className="h-8 text-right pr-3 pl-9"
+              dir="rtl"
+            />
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                className="absolute left-1 top-1/2 -translate-y-1/2 inline-flex h-6 w-6 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+                aria-label="סינון"
+                title="סינון"
+              >
+                <SlidersHorizontal className="h-4 w-4" />
+              </button>
+            </CollapsibleTrigger>
+          </div>
         </div>
+
 
         <CollapsibleContent>
           <Card className="p-4 sm:p-5 mt-3">
