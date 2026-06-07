@@ -12,16 +12,17 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Type, Files as FilesIcon, Mic, Loader2, Save, Upload, Square, Trash2, Sparkles,
+  Type, Files as FilesIcon, Mic, Loader2, Save, Upload, Square, Trash2, Sparkles, Link2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type InputMode = 'text' | 'files' | 'voice';
+type InputMode = 'text' | 'files' | 'voice' | 'link';
 
 const TAG_BY_MODE: Record<InputMode, string> = {
   text: '#Text',
   files: '#Document',
   voice: '#VoiceNote',
+  link: '#MediaLink',
 };
 
 const fileToDataUrl = (file: Blob) => new Promise<string>((resolve, reject) => {
@@ -73,6 +74,34 @@ export const UniversalKnowledgeInput = () => {
   const [transcribing, setTranscribing] = useState(false);
   const [transcript, setTranscript] = useState('');
   const [voiceTitle, setVoiceTitle] = useState('');
+
+  // Link (YouTube / article)
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkIngesting, setLinkIngesting] = useState(false);
+
+  const handleSaveLink = async () => {
+    if (blockDemoAction('add-knowledge-link')) return;
+    const url = linkUrl.trim();
+    if (!/^https?:\/\//i.test(url)) { toast.error('הדבק כתובת תקינה (https://...)'); return; }
+    if (!user) { toast.error('יש להתחבר תחילה'); return; }
+    setLinkIngesting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('kb-ingest-link', {
+        body: { url },
+      });
+      if (error) throw error;
+      const payload = data as { title?: string; error?: string } | null;
+      if (payload?.error) throw new Error(payload.error);
+      toast.success(`נוסף למאגר: ${payload?.title ?? url}`);
+      setLinkUrl('');
+      qc.invalidateQueries({ queryKey: ['kb-documents'] });
+      qc.invalidateQueries({ queryKey: ['media-library'] });
+    } catch (e) {
+      toast.error(`הוספת קישור נכשלה: ${(e as Error).message}`);
+    } finally {
+      setLinkIngesting(false);
+    }
+  };
 
   useEffect(() => () => {
     if (recordedUrl) URL.revokeObjectURL(recordedUrl);
@@ -290,7 +319,7 @@ export const UniversalKnowledgeInput = () => {
 
       <CardContent>
         <Tabs value={mode} onValueChange={(v) => setMode(v as InputMode)} dir="rtl">
-          <TabsList className="grid grid-cols-3 w-full max-w-md">
+          <TabsList className="grid grid-cols-4 w-full max-w-md">
             <TabsTrigger value="text" className="gap-2">
               <Type className="h-4 w-4" /> טקסט
             </TabsTrigger>
@@ -299,6 +328,9 @@ export const UniversalKnowledgeInput = () => {
             </TabsTrigger>
             <TabsTrigger value="voice" className="gap-2">
               <Mic className="h-4 w-4" /> הקלטה
+            </TabsTrigger>
+            <TabsTrigger value="link" className="gap-2">
+              <Link2 className="h-4 w-4" /> קישור
             </TabsTrigger>
           </TabsList>
 
@@ -456,6 +488,31 @@ export const UniversalKnowledgeInput = () => {
               >
                 {ingest.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                 שמור למאגר
+              </Button>
+            </div>
+          </TabsContent>
+
+          {/* LINK */}
+          <TabsContent value="link" className="mt-4 space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="link-url" className="text-xs">קישור למדיה (YouTube, מאמר, פודקאסט)</Label>
+              <Input
+                id="link-url"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                placeholder="https://youtu.be/..."
+                dir="ltr"
+              />
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                המערכת תזקק את התוכן לעקרונות, טכניקות וניסוחים עבור פרסונת Udi —
+                ותשמור את הקישור בספריית המדיה. המקור לעולם לא ייחשף ללקוחות.
+              </p>
+            </div>
+            <div className="flex items-center justify-between">
+              <Badge variant="secondary" className="text-[10px] font-mono">{TAG_BY_MODE.link}</Badge>
+              <Button onClick={handleSaveLink} disabled={linkIngesting || !linkUrl.trim()} className="gap-2">
+                {linkIngesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                זקק ושמור
               </Button>
             </div>
           </TabsContent>
