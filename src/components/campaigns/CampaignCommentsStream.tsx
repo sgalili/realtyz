@@ -409,6 +409,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
         setDmDraft(dmTrim);
         setOriginalReply(pubTrim);
         setOriginalDm(dmTrim);
+        setDraftCache((prev) => ({ ...prev, [row.id]: { pub: pubTrim, dm: dmTrim } }));
       } else {
         toast.error((data as any)?.error ?? "לא התקבל ניסוח");
       }
