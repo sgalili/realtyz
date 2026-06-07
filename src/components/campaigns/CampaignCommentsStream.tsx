@@ -541,80 +541,13 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
       )}
 
       <ul className="space-y-2">
-        {tree.map((root) => (
-          <li key={root.id}>
-            <CommentBubble
-              row={root}
-              onReply={openReply}
-              onRegenerate={regenerateInline}
-              regenerating={regeneratingId === root.id}
-            />
-            {root.children.length > 0 && (
-              <ul className="mt-2 space-y-2 border-r-2 border-border/60 pr-3 mr-2">
-                {root.children.map((child) => (
-                  <li key={child.id}>
-                    <CommentBubble
-                      row={child}
-                      onReply={openReply}
-                      onRegenerate={regenerateInline}
-                      regenerating={regeneratingId === child.id}
-                      isReply
-                    />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </li>
-        ))}
-      </ul>
-
-
-      <Dialog open={!!replyOpen} onOpenChange={(o) => !o && setReplyOpen(null)}>
-        <DialogContent dir="rtl" className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="text-right">תגובת AI</DialogTitle>
-            <DialogDescription className="text-right">
-              ערוך את הניסוח לפני פרסום בערוץ {replyOpen?.platform}.
-            </DialogDescription>
-          </DialogHeader>
-          {replyOpen && (
+        {tree.map((root) => {
+          const renderEditor = (r: EngagementRow) => (
             <div className="space-y-3 text-right">
-              <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm">
-                <div className="mb-1 flex items-center justify-end gap-2 text-xs text-muted-foreground">
-                  <span
-                    className={cn(
-                      "rounded px-1.5 py-0.5 text-[10px] font-medium",
-                      sentimentClass(replyOpen.sentiment),
-                    )}
-                  >
-                    {sentimentLabel(replyOpen.sentiment)}
-                  </span>
-                  <span className="font-medium text-foreground">
-                    {replyOpen.sender_handle ?? "אנונימי"}
-                  </span>
-                </div>
-                <p className="whitespace-pre-wrap text-foreground">
-                  {replyOpen.inbound_text}
-                </p>
-              </div>
-
               <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-6 px-2 text-[11px]"
-                    onClick={() => replyOpen && generateDraft(replyOpen, true)}
-                    disabled={drafting || sending}
-                    aria-label="נסח מחדש תגובה פומבית"
-                  >
-                    <RefreshCw className={cn("ml-1 h-3 w-3", drafting && "animate-spin")} />
-                    נסח מחדש
-                  </Button>
-                  <p className="text-[11px] font-medium text-muted-foreground">
-                    תגובה פומבית (1-2 משפטים, ישירה לעניין)
-                  </p>
-                </div>
+                <p className="text-[11px] font-medium text-muted-foreground">
+                  תגובה פומבית (1-2 משפטים, ישירה לעניין)
+                </p>
                 <Textarea
                   value={drafting ? "" : replyDraft}
                   onChange={(e) => setReplyDraft(e.target.value)}
@@ -625,36 +558,22 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
                   className="text-right"
                 />
               </div>
-
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 px-2 text-[11px]"
-                      onClick={() => replyOpen && generateDraft(replyOpen, true)}
-                      disabled={drafting || sending}
-                      aria-label="נסח מחדש DM"
-                    >
-                      <RefreshCw className={cn("ml-1 h-3 w-3", drafting && "animate-spin")} />
-                      נסח מחדש
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 px-2 text-[11px]"
-                      onClick={() => {
-                        if (dmDraft.trim()) {
-                          navigator.clipboard.writeText(dmDraft.trim());
-                          toast.success("ה-DM הועתק ללוח");
-                        }
-                      }}
-                      disabled={!dmDraft.trim() || drafting}
-                    >
-                      העתק DM
-                    </Button>
-                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2 text-[11px]"
+                    onClick={() => {
+                      if (dmDraft.trim()) {
+                        navigator.clipboard.writeText(dmDraft.trim());
+                        toast.success("ה-DM הועתק ללוח");
+                      }
+                    }}
+                    disabled={!dmDraft.trim() || drafting}
+                  >
+                    העתק DM
+                  </Button>
                   <p className="text-[11px] font-medium text-muted-foreground">
                     הודעה פרטית למסנג'ר (פרטי הנכס + חלופה + שאלה אחת)
                   </p>
@@ -669,29 +588,58 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
                   className="text-right bg-muted/30"
                 />
               </div>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => generateDraft(r, true)}
+                  disabled={drafting || sending}
+                >
+                  <Sparkles className="ml-1 h-4 w-4" />
+                  נסח מחדש
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={sendReply}
+                  disabled={sending || !replyDraft.trim()}
+                >
+                  <Send className="ml-1 h-4 w-4" />
+                  {sending ? "מפרסם..." : "פרסם תגובה"}
+                </Button>
+              </div>
             </div>
-          )}
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => replyOpen && generateDraft(replyOpen, true)}
-              disabled={drafting || sending}
-            >
-              <Sparkles className="ml-1 h-4 w-4" />
-              נסח מחדש
-            </Button>
-            <Button
-              size="sm"
-              onClick={sendReply}
-              disabled={sending || !replyDraft.trim()}
-            >
-              <Send className="ml-1 h-4 w-4" />
-              {sending ? "מפרסם..." : "פרסם תגובה"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          );
+          return (
+            <li key={root.id}>
+              <CommentBubble
+                row={root}
+                onToggleEditor={(r) => setReplyOpen(replyOpen?.id === r.id ? null : r)}
+                expanded={replyOpen?.id === root.id}
+                editor={replyOpen?.id === root.id ? renderEditor(root) : null}
+                onRegenerate={regenerateInline}
+                regenerating={regeneratingId === root.id}
+              />
+              {root.children.length > 0 && (
+                <ul className="mt-2 space-y-2 border-r-2 border-border/60 pr-3 mr-2">
+                  {root.children.map((child) => (
+                    <li key={child.id}>
+                      <CommentBubble
+                        row={child}
+                        onToggleEditor={(r) => setReplyOpen(replyOpen?.id === r.id ? null : r)}
+                        expanded={replyOpen?.id === child.id}
+                        editor={replyOpen?.id === child.id ? renderEditor(child) : null}
+                        onRegenerate={regenerateInline}
+                        regenerating={regeneratingId === child.id}
+                        isReply
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
