@@ -700,7 +700,14 @@ function CommentBubble({
             ? "☹️"
             : "😐"}
         </span>
-        <span>{when}</span>
+        <div className="flex flex-1 items-center justify-center gap-2 min-w-0">
+          <Avatar className="h-6 w-6 shrink-0">
+            {avatarUrl && <AvatarImage src={avatarUrl} alt={senderName} />}
+            <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
+          </Avatar>
+          <span className="truncate font-medium text-foreground">{senderName}</span>
+        </div>
+        <span className="shrink-0">{when}</span>
       </div>
       <p className="whitespace-pre-wrap text-sm text-foreground">
         {row.inbound_text}
