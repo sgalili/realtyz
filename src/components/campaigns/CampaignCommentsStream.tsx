@@ -78,8 +78,31 @@ const sentimentClass = (s: string | null) =>
 const sentimentLabel = (s: string | null) =>
   s === "positive" ? "חיובי" : s === "negative" ? "שלילי" : s ? "ניטרלי" : "—";
 
+// In-memory + sessionStorage cache for engagement_event rows keyed by
+// campaign id. Lets the comments panel render instantly on re-open while a
+// background delta-refresh pulls fresh rows from Ayrshare without flashing
+// the "טוען תגובות חיות…" loader.
+const COMMENT_CACHE = new Map<string, EngagementRow[]>();
+const cacheKey = (campaignId: string) => `realtyz.comments.${campaignId}`;
+const readCache = (campaignId: string): EngagementRow[] | null => {
+  if (COMMENT_CACHE.has(campaignId)) return COMMENT_CACHE.get(campaignId)!;
+  try {
+    const raw = sessionStorage.getItem(cacheKey(campaignId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as EngagementRow[];
+    if (!Array.isArray(parsed)) return null;
+    COMMENT_CACHE.set(campaignId, parsed);
+    return parsed;
+  } catch { return null; }
+};
+const writeCache = (campaignId: string, rows: EngagementRow[]) => {
+  COMMENT_CACHE.set(campaignId, rows);
+  try { sessionStorage.setItem(cacheKey(campaignId), JSON.stringify(rows)); } catch { /* quota */ }
+};
+
 export function CampaignCommentsStream({ userId, campaign }: Props) {
-  const [rows, setRows] = useState<EngagementRow[] | null>(null);
+  const cached = readCache(campaign.id);
+  const [rows, setRows] = useState<EngagementRow[] | null>(cached);
   const [loading, setLoading] = useState(false);
   const [replyOpen, setReplyOpen] = useState<EngagementRow | null>(null);
   const [replyDraft, setReplyDraft] = useState("");
