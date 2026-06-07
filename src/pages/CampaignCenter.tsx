@@ -15,7 +15,7 @@ import {
   ArrowRight, Plus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
   ChevronDown, ChevronUp, Archive, Send, Mic, Image as ImageIcon, Paperclip,
   ChevronDown as ChevronDownIcon, Plug, Camera, Sparkles, Square,
-  Trash2, ExternalLink, CheckCircle2,
+  Trash2, ExternalLink, CheckCircle2, Play,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -1626,6 +1626,12 @@ const Stat = ({ icon: Icon, label, value, hasData = true }: { icon: any; label: 
 
 type VoiceLead = { id: string; full_name: string | null; phone: string | null };
 
+const VOICE_AGENTS: { id: string; label: string; voice_id: string }[] = [
+  { id: 'sarah',    label: 'שרה (אישה)',     voice_id: 'EXAVITQu4vr4xnSDxMaL' },
+  { id: 'matilda',  label: 'מטילדה (אישה)', voice_id: 'XrExE9yKIg1WjnnlVkGX' },
+  { id: 'charlie',  label: 'צ׳רלי (גבר)',    voice_id: 'IKne3meq5aSn9XLyUdCD' },
+];
+
 const VoiceLeadPickerDialog = ({
   open, onClose, channel,
 }: {
@@ -1635,13 +1641,14 @@ const VoiceLeadPickerDialog = ({
 }) => {
   const [leads, setLeads] = useState<VoiceLead[]>([]);
   const [loading, setLoading] = useState(false);
-  const [query, setQuery] = useState('');
-  const [selected, setSelected] = useState<Set<string>>(new Set());
+  const [listGroup, setListGroup] = useState<string>('all');
+  const [agentId, setAgentId] = useState<string>('sarah');
+  const [instructions, setInstructions] = useState('');
   const [dialing, setDialing] = useState(false);
 
   useEffect(() => {
     if (!open) return;
-    setQuery(''); setSelected(new Set());
+    setListGroup('all'); setAgentId('sarah'); setInstructions('');
     (async () => {
       setLoading(true);
       const { data } = await supabase
@@ -1655,30 +1662,30 @@ const VoiceLeadPickerDialog = ({
     })();
   }, [open]);
 
-  const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase();
-    if (!q) return leads;
-    return leads.filter((l) =>
-      (l.full_name ?? '').toLowerCase().includes(q) || (l.phone ?? '').includes(q),
-    );
-  }, [leads, query]);
-
-  const toggle = (id: string) => {
-    setSelected((prev) => {
-      const next = new Set(prev);
-      next.has(id) ? next.delete(id) : next.add(id);
-      return next;
-    });
-  };
-
   const dial = async () => {
-    if (selected.size === 0) { toast.error('בחר לפחות מתעניין אחד'); return; }
+    const targets = leads;
+    if (targets.length === 0) { toast.error('אין מתעניינים זמינים לחיוג'); return; }
+    const agent = VOICE_AGENTS.find((a) => a.id === agentId)!;
     setDialing(true);
+    toast.loading(`מחייג ל-${targets.length} מתעניינים בקול ${agent.label}…`, { id: 'voice-dial' });
+    let ok = 0; let failed = 0;
     try {
-      const targets = leads.filter((l) => selected.has(l.id));
-      toast.success(
-        `מחייג מ-${VOICE_DIAL_NUMBER} ל-${targets.length} מתעניינים בסקריפט "הבשן 3"`,
-      );
+      for (const l of targets) {
+        if (!l.phone) continue;
+        const { error } = await supabase.functions.invoke('vapi-outbound-call', {
+          body: {
+            phone_number: l.phone,
+            lead_id: l.id,
+            voice_id: agent.voice_id,
+            agent_label: agent.label,
+            instructions: instructions.trim() || null,
+          },
+        });
+        if (error) failed++; else ok++;
+      }
+      toast.dismiss('voice-dial');
+      if (ok > 0) toast.success(`נשלחו ${ok} שיחות מ-${VOICE_DIAL_NUMBER}${failed ? ` · ${failed} נכשלו` : ''}`);
+      else toast.error('כל השיחות נכשלו');
       onClose();
     } finally {
       setDialing(false);
@@ -1687,52 +1694,78 @@ const VoiceLeadPickerDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-md" dir="rtl">
+      <DialogContent className="max-w-lg" dir="rtl">
         <DialogHeader>
-          <DialogTitle className="text-right">למי מחייגים?</DialogTitle>
+          <DialogTitle className="text-right text-[#0f1b3d]">למי מחייגים?</DialogTitle>
           <DialogDescription className="text-right">
-            {channel?.label} · מספר חיוג <span dir="ltr" className="font-mono">{VOICE_DIAL_NUMBER}</span> · סקריפט "הבשן 3"
+            {channel?.label} · מספר חיוג <span dir="ltr" className="font-mono">{VOICE_DIAL_NUMBER}</span>
           </DialogDescription>
         </DialogHeader>
-        <Input
-          placeholder="חיפוש לפי שם או טלפון…"
-          value={query}
-          onChange={(e) => setQuery(e.target.value)}
-          className="text-right"
-        />
-        <div className="max-h-72 overflow-y-auto rounded-md border border-border/60 divide-y">
-          {loading && <div className="p-3 text-sm text-muted-foreground text-center">טוען מתעניינים…</div>}
-          {!loading && filtered.length === 0 && (
-            <div className="p-3 text-sm text-muted-foreground text-center">לא נמצאו מתעניינים</div>
-          )}
-          {!loading && filtered.map((l) => {
-            const checked = selected.has(l.id);
-            return (
-              <label key={l.id} className="flex items-center gap-3 p-2.5 cursor-pointer hover:bg-muted/40">
-                <input
-                  type="checkbox"
-                  checked={checked}
-                  onChange={() => toggle(l.id)}
-                  className="h-4 w-4 accent-[#0f1b3d]"
-                />
-                <div className="flex-1 text-right">
-                  <div className="text-sm font-medium text-foreground">{l.full_name || 'ללא שם'}</div>
-                  <div className="text-xs text-muted-foreground font-mono" dir="ltr">{l.phone}</div>
-                </div>
-              </label>
-            );
-          })}
-        </div>
-        <DialogFooter className="flex flex-row-reverse items-center justify-between gap-2 sm:justify-between">
-          <span className="text-xs text-muted-foreground">{selected.size} נבחרו</span>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={onClose}>ביטול</Button>
-            <Button onClick={dial} disabled={dialing || selected.size === 0}
-              className="bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white">
-              <Phone className="ml-2 h-4 w-4" />
-              חייג עכשיו
-            </Button>
+
+        <div className="space-y-4">
+          {/* Step 1 — Target List */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-[#0f1b3d] text-right block">בחירת רשימת מתעניינים</label>
+            <Select value={listGroup} onValueChange={setListGroup} dir="rtl">
+              <SelectTrigger className="w-full text-right border-[#0f1b3d]/30 focus:ring-[#C9A84C]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent dir="rtl">
+                <SelectItem value="all">
+                  כל הרשימה ({loading ? '…' : leads.length})
+                </SelectItem>
+              </SelectContent>
+            </Select>
           </div>
+
+          {/* Step 2 — AI Agent Voice */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-[#0f1b3d] text-right block">בחירת נציג/ת AI טלפונית</label>
+            <Select value={agentId} onValueChange={setAgentId} dir="rtl">
+              <SelectTrigger className="w-full text-right border-[#0f1b3d]/30 focus:ring-[#C9A84C]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent dir="rtl">
+                {VOICE_AGENTS.map((a) => (
+                  <SelectItem key={a.id} value={a.id}>
+                    <span className="inline-flex items-center gap-2">
+                      <Play className="h-3 w-3 text-[#C9A84C]" />
+                      {a.label}
+                    </span>
+                  </SelectItem>
+                ))}
+                <SelectItem value="__clone" disabled>+ הוסף קול חדש (שיבוט מהיר / HD)</SelectItem>
+                <SelectItem value="__elevenlabs" disabled>+ הוסף קול לפי Voice ID של ElevenLabs</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* Step 3 — Optional script */}
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-[#0f1b3d] text-right block">
+              הוראות, נושא או תסריט מותאם לשיחה (אופציונלי)
+            </label>
+            <Textarea
+              value={instructions}
+              onChange={(e) => setInstructions(e.target.value)}
+              placeholder='לדוגמה: "בדקי האם המתעניין עדיין מחפש דירת 4 חדרים ברמת אביב, ועדכני אותו על דירה חדשה שיצאה ברחוב איינשטיין"'
+              className="text-right min-h-[88px] border-[#0f1b3d]/30 focus-visible:ring-[#C9A84C]"
+            />
+            <p className="text-[11px] text-muted-foreground text-right leading-snug">
+              אם תשאירי ריק, המערכת תשתמש באסטרטגיה האוטונומית הרגילה שלה המבוססת על הפרסונה של הסוכן, על מאגר הידע ועל היסטוריית השיחות עם המתעניין.
+            </p>
+          </div>
+        </div>
+
+        <DialogFooter className="mt-2">
+          <Button
+            onClick={dial}
+            disabled={dialing || loading || leads.length === 0}
+            className="w-full bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-11 text-base font-semibold shadow-md"
+          >
+            <Phone className="ml-2 h-5 w-5" />
+            {dialing ? 'מפעיל שיחות…' : 'הפעלת שיחה'}
+          </Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
