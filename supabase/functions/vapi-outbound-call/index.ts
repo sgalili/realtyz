@@ -155,12 +155,25 @@ Deno.serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const VAPI_API_KEY = Deno.env.get("VAPI_API_KEY") ?? "";
-    const VAPI_PHONE_NUMBER_ID = Deno.env.get("VAPI_PHONE_NUMBER_ID") ?? "";
+    let VAPI_API_KEY = Deno.env.get("VAPI_API_KEY") ?? "";
+    let VAPI_PHONE_NUMBER_ID = Deno.env.get("VAPI_PHONE_NUMBER_ID") ?? "";
+    let VAPI_ASSISTANT_ID = Deno.env.get("VAPI_ASSISTANT_ID") ?? "";
     const ELEVENLABS_VOICE_ID = Deno.env.get("ELEVENLABS_VOICE_ID") || "xeyWdsOOLrNAAaGf4Y8m";
 
+    // Fallback: read user-saved credentials from api_configs
+    if (!VAPI_API_KEY || !VAPI_PHONE_NUMBER_ID) {
+      const sbCfg = createClient(SUPABASE_URL, SERVICE_ROLE);
+      const { data: cfg } = await sbCfg.from("api_configs").select("api_key").eq("service_name", "Vapi").maybeSingle();
+      if (cfg?.api_key) {
+        const [k, p, a] = String(cfg.api_key).split(":");
+        VAPI_API_KEY = VAPI_API_KEY || (k ?? "");
+        VAPI_PHONE_NUMBER_ID = VAPI_PHONE_NUMBER_ID || (p ?? "");
+        VAPI_ASSISTANT_ID = VAPI_ASSISTANT_ID || (a ?? "");
+      }
+    }
+
     if (!VAPI_API_KEY) {
-      return new Response(JSON.stringify({ error: "VAPI_API_KEY חסר" }), {
+      return new Response(JSON.stringify({ error: "שגיאת התחברות — בדוק את מפתחות ה-API שלך" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
