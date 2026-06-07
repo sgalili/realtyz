@@ -19,7 +19,7 @@ export function SentimentAutomationToggles({ className }: Props) {
   return (
     <div
       dir="rtl"
-      className={cn('grid grid-cols-1 md:grid-cols-2 gap-3 w-full', className)}
+      className={cn('grid grid-cols-2 gap-3 w-full', className)}
     >
       <label
         className={cn(
@@ -30,9 +30,7 @@ export function SentimentAutomationToggles({ className }: Props) {
         )}
       >
         <p className="text-sm font-semibold text-slate-800 leading-tight min-w-0">
-          {aiPositiveOn
-            ? 'לתגובות חיוביות: מענה AI אוטומטי'
-            : 'לתגובות חיוביות: המתנה לנציג'}
+          {aiPositiveOn ? 'חיוביות: AI' : 'חיוביות: נציג'}
         </p>
         <Switch
           checked={aiPositiveOn}
@@ -48,9 +46,7 @@ export function SentimentAutomationToggles({ className }: Props) {
         )}
       >
         <p className="text-sm font-semibold text-slate-800 leading-tight min-w-0">
-          {aiNegativeOn
-            ? 'לתגובות שליליות: מענה AI אוטומטי'
-            : 'לתגובות שליליות: המתנה לנציג'}
+          {aiNegativeOn ? 'שליליות: AI' : 'שליליות: נציג'}
         </p>
         <Switch
           checked={aiNegativeOn}
