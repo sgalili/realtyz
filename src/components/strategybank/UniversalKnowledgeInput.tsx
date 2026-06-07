@@ -12,16 +12,17 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
-  Type, Files as FilesIcon, Mic, Loader2, Save, Upload, Square, Trash2, Sparkles,
+  Type, Files as FilesIcon, Mic, Loader2, Save, Upload, Square, Trash2, Sparkles, Link2,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
-type InputMode = 'text' | 'files' | 'voice';
+type InputMode = 'text' | 'files' | 'voice' | 'link';
 
 const TAG_BY_MODE: Record<InputMode, string> = {
   text: '#Text',
   files: '#Document',
   voice: '#VoiceNote',
+  link: '#MediaLink',
 };
 
 const fileToDataUrl = (file: Blob) => new Promise<string>((resolve, reject) => {
