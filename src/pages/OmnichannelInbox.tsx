@@ -391,7 +391,7 @@ const OmnichannelInbox = () => {
 
       {/* Filter pills + bookmark */}
       <div className="flex items-center gap-2">
-        <div className="flex flex-1 items-center gap-2 overflow-x-auto">
+        <div className="flex flex-1 flex-row-reverse items-center gap-2 overflow-x-auto">
           <button
             type="button"
             onClick={() => setActiveTab('handling')}
