@@ -33,6 +33,7 @@ import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsS
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { campaignMatchesExternalPost, normalizePostId } from '@/lib/campaignPostIds';
 import { IvrBroadcastDialog } from '@/components/campaigns/IvrBroadcastDialog';
+import { EmailAliasSetupDialog } from '@/components/campaigns/EmailAliasSetupDialog';
 
 
 type TabValue = 'create' | 'published';
@@ -2144,6 +2145,7 @@ const CampaignCenter = () => {
   const [pickedChannel, setPickedChannel] = useState<ChannelCard | null>(null);
   const [voiceDialChannel, setVoiceDialChannel] = useState<ChannelCard | null>(null);
   const [ivrOpen, setIvrOpen] = useState(false);
+  const [emailSetupOpen, setEmailSetupOpen] = useState(false);
   const [confirmPayload, setConfirmPayload] = useState<{ body: string; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null; group_ids: string[] } | null>(null);
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(EMPTY_CONNECTED);
   const [channelAccountNames, setChannelAccountNames] = useState<Record<string, string>>({});
@@ -2260,16 +2262,18 @@ const CampaignCenter = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { toast.error('יש להתחבר'); return; }
       const { data: prof } = await supabase.from('profiles').select('email_alias, direct_channels').eq('id', user.id).maybeSingle();
-      if (!(prof as any)?.email_alias) {
-        toast.error('הגדר prefix לאימייל המותג בפרופיל לפני הפעלת הערוץ');
+      const existingAlias = ((prof as any)?.email_alias ?? '').trim();
+      if (!existingAlias) {
+        // No alias yet — open inline provisioning modal
+        setEmailSetupOpen(true);
         return;
       }
       const next = { ...(((prof as any)?.direct_channels ?? {}) as Record<string, boolean>), email: true };
       const { error: upErr } = await supabase.from('profiles').update({ direct_channels: next }).eq('id', user.id);
       if (upErr) { toast.error(upErr.message); return; }
       setConnectedChannels((prev) => new Set([...prev, 'email']));
-      setChannelAccountNames((prev) => ({ ...prev, email: `${(prof as any).email_alias}@realtyz.co.il` }));
-      toast.success(`אימייל מותג מחובר: ${(prof as any).email_alias}@realtyz.co.il`);
+      setChannelAccountNames((prev) => ({ ...prev, email: `${existingAlias}@realtyz.co.il` }));
+      toast.success(`אימייל מותג מחובר: ${existingAlias}@realtyz.co.il`);
       return;
     }
 
@@ -2443,6 +2447,14 @@ const CampaignCenter = () => {
         channel={voiceDialChannel}
       />
       <IvrBroadcastDialog open={ivrOpen} onClose={() => setIvrOpen(false)} />
+      <EmailAliasSetupDialog
+        open={emailSetupOpen}
+        onClose={() => setEmailSetupOpen(false)}
+        onConnected={(alias) => {
+          setConnectedChannels((prev) => new Set([...prev, 'email']));
+          setChannelAccountNames((prev) => ({ ...prev, email: `${alias}@realtyz.co.il` }));
+        }}
+      />
     </div>
   );
 };

@@ -2149,6 +2149,59 @@ export type Database = {
           },
         ]
       }
+      inbound_emails_log: {
+        Row: {
+          body_text: string | null
+          created_at: string
+          from_email: string
+          id: string
+          matched_broker_user_id: string | null
+          matched_lead_id: string | null
+          provider: string
+          provider_message_id: string | null
+          raw_payload: Json | null
+          status: string
+          subject: string | null
+          to_email: string | null
+        }
+        Insert: {
+          body_text?: string | null
+          created_at?: string
+          from_email: string
+          id?: string
+          matched_broker_user_id?: string | null
+          matched_lead_id?: string | null
+          provider?: string
+          provider_message_id?: string | null
+          raw_payload?: Json | null
+          status?: string
+          subject?: string | null
+          to_email?: string | null
+        }
+        Update: {
+          body_text?: string | null
+          created_at?: string
+          from_email?: string
+          id?: string
+          matched_broker_user_id?: string | null
+          matched_lead_id?: string | null
+          provider?: string
+          provider_message_id?: string | null
+          raw_payload?: Json | null
+          status?: string
+          subject?: string | null
+          to_email?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "inbound_emails_log_matched_lead_id_fkey"
+            columns: ["matched_lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       integration_alert_state: {
         Row: {
           integration: string

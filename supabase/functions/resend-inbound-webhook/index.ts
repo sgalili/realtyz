@@ -129,6 +129,17 @@ Deno.serve(async (req) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  // Resolve broker by the recipient mailbox prefix: <prefix>@realtyz.co.il
+  let matchedBrokerUserId: string | null = null;
+  if (toEmail) {
+    const prefix = toEmail.split("@")[0]?.toLowerCase() ?? "";
+    if (prefix) {
+      const { data: brokerRow } = await supabase
+        .from("profiles").select("id").eq("email_alias", prefix).maybeSingle();
+      matchedBrokerUserId = (brokerRow as any)?.id ?? null;
+    }
+  }
+
   // Workspace-wide lead resolution by email
   const { data: leadRow } = await supabase
     .from("leads")
@@ -137,11 +148,26 @@ Deno.serve(async (req) => {
     .limit(1)
     .maybeSingle();
 
-  if (!leadRow?.id) {
+  const leadId = (leadRow as any)?.id ?? null;
+
+  // Always log to inbound_emails_log for traceability
+  await supabase.from("inbound_emails_log").insert({
+    from_email: fromEmail,
+    to_email: toEmail || null,
+    subject: subject || null,
+    body_text: bodyText || null,
+    provider: "resend",
+    provider_message_id: messageId || null,
+    matched_lead_id: leadId,
+    matched_broker_user_id: matchedBrokerUserId,
+    status: leadId ? "matched" : "unmatched",
+    raw_payload: data ?? null,
+  });
+
+  if (!leadId) {
     console.warn(`[resend-inbound] no lead matches sender ${fromEmail}`);
     return json({ ok: true, skipped: "no_lead_match", from: fromEmail }, 202);
   }
-  const leadId = leadRow.id as string;
 
   const content = (subject ? `[${subject}]\n\n` : "") + (bodyText || "(הודעת מייל ריקה)");
 
