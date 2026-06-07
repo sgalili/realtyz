@@ -238,15 +238,19 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
 
           setRows((prev) => {
             const current = prev ?? [];
+            let next: EngagementRow[];
             if (payload.eventType === "DELETE" || (payload.new as any)?.is_archived) {
-              return current.filter((row) => row.id !== changed.id);
+              next = current.filter((row) => row.id !== changed.id);
+            } else {
+              const nextRow = payload.new as EngagementRow;
+              const exists = current.some((row) => row.id === nextRow.id);
+              next = exists
+                ? current.map((row) => (row.id === nextRow.id ? nextRow : row))
+                : [...current, nextRow];
+              next = next.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
             }
-            const nextRow = payload.new as EngagementRow;
-            const exists = current.some((row) => row.id === nextRow.id);
-            const next = exists
-              ? current.map((row) => (row.id === nextRow.id ? nextRow : row))
-              : [...current, nextRow];
-            return next.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+            writeCache(campaign.id, next);
+            return next;
           });
         },
       )
