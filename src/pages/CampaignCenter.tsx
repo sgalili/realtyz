@@ -157,9 +157,9 @@ const ChannelGrid = ({
               <span
                 className="mt-0.5 inline-block max-w-full truncate rounded-md border border-[#C9A84C]/40 bg-[#C9A84C]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#8a7327]"
                 dir="ltr"
-                title={accountNames[c.id]}
+                title={formatPhoneDisplay(accountNames[c.id]) || accountNames[c.id]}
               >
-                {accountNames[c.id]}
+                {formatPhoneDisplay(accountNames[c.id]) || accountNames[c.id]}
               </span>
             )}
 
