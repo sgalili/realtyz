@@ -1710,24 +1710,21 @@ const VoiceLeadPickerDialog = ({
 
         <div className="space-y-4">
           {/* Step 1 — Target List (always visible) */}
-          <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-            <label className="text-xs font-semibold text-[#0f1b3d] text-right block">בחירת רשימת מתעניינים</label>
+          <div className="animate-in fade-in slide-in-from-top-1 duration-200">
             <Select value={listGroup} onValueChange={setListGroup} dir="rtl">
-              <SelectTrigger className="w-full text-right border-[#0f1b3d]/30 focus:ring-[#C9A84C]">
-                <SelectValue placeholder="בחר/י רשימת יעד…" />
+              <SelectTrigger className="w-full h-11 text-right text-[15px] text-muted-foreground/80 border-[#0f1b3d]/20 focus:ring-[#C9A84C] data-[placeholder]:text-muted-foreground/70">
+                <SelectValue placeholder="למי מחייגים?" />
               </SelectTrigger>
               <SelectContent dir="rtl">
                 <SelectItem value="all">
                   כל הרשימה ({loading ? '…' : leads.length})
                 </SelectItem>
+                <SelectItem value="manual">בחירה מהרשימה</SelectItem>
+                <SelectItem value="upload">העלאת רשימה (CSV / Excel)</SelectItem>
+                <SelectItem value="paste">הדבקת טקסט</SelectItem>
               </SelectContent>
             </Select>
           </div>
-
-          {/* Step 2 — AI Agent Voice (revealed after Step 1) */}
-          {listGroup && (
-            <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-              <label className="text-xs font-semibold text-[#0f1b3d] text-right block">בחירת נציג/ת AI טלפונית</label>
               <Select value={agentId} onValueChange={setAgentId} dir="rtl">
                 <SelectTrigger className="w-full text-right border-[#0f1b3d]/30 focus:ring-[#C9A84C]">
                   <SelectValue placeholder="בחר/י קול…" />
