@@ -220,17 +220,24 @@ Deno.serve(async (req) => {
             return;
           }
 
-          // Flatten one level of replies.
+          // Flatten N levels of nested replies. Ayrshare/Meta nest child nodes
+          // under any of: replies / children / comments / thread / data, so we
+          // walk every known shape and tag each node with its parent id.
           const flat: any[] = [];
-          const walk = (node: any, parent: string | null) => {
-            if (!node || typeof node !== "object") return;
+          const walk = (node: any, parent: string | null, depth = 0) => {
+            if (!node || typeof node !== "object" || depth > 6) return;
             (node as any).__parent_id = parent;
             flat.push(node);
-            const kids = node.replies || node.children || [];
-            if (Array.isArray(kids)) {
-              const myId = pickStr(node.id, node.commentId, node.comment_id);
-              for (const k of kids) walk(k, myId || parent);
-            }
+            const kids = [
+              ...(Array.isArray(node.replies) ? node.replies : []),
+              ...(Array.isArray(node.children) ? node.children : []),
+              ...(Array.isArray(node.comments) ? node.comments : []),
+              ...(Array.isArray(node.thread) ? node.thread : []),
+              ...(Array.isArray(node?.replies?.data) ? node.replies.data : []),
+              ...(Array.isArray(node?.comments?.data) ? node.comments.data : []),
+            ];
+            const myId = pickStr(node.id, node.commentId, node.comment_id);
+            for (const k of kids) walk(k, myId || parent, depth + 1);
           };
           for (const c of arr) walk(c, null);
           results[nativePostId] = flat;
