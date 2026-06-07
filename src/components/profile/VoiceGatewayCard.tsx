@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Phone, Save, Loader2 } from 'lucide-react';
+import { Phone, Save, Loader2, PlugZap } from 'lucide-react';
 
 /**
  * Voice & IVR gateway credentials (Vapi + Twilio).
