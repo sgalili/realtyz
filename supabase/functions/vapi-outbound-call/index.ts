@@ -117,7 +117,8 @@ function buildAssistant(opts: {
     voice: {
       provider: "11labs", // Vapi requires "11labs", not "elevenlabs".
       voiceId: opts.voiceId,
-      model: "eleven_multilingual_v2",
+      model: "eleven_multilingual_v3",
+      language: "he",
       stability: 0.5,
       similarityBoost: 0.85,
     },
