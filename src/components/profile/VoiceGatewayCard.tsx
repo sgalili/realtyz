@@ -120,7 +120,7 @@ export function VoiceGatewayCard() {
     <Card>
       <CardHeader>
         <CardTitle className="text-right flex items-center gap-2 justify-end">
-          <span>שיחות קוליות ו-IVR (Vapi + Twilio)</span>
+          <span>שיחות טלפון</span>
           <Phone className="h-5 w-5 text-primary" />
         </CardTitle>
       </CardHeader>
@@ -131,7 +131,7 @@ export function VoiceGatewayCard() {
             בדוק חיבור
           </Button>
           <p className="text-xs text-muted-foreground text-right flex-1">
-            הזינו את פרטי Vapi (AI Voice) ו-Twilio (מספרי טלפון / IVR). ניתן לעדכן בכל עת — הפרטים נשמרים מוצפנים ונשלפים בעת שליחת שיחה.
+            {"\n"}
           </p>
         </div>
 
