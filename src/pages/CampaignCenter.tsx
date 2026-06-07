@@ -57,13 +57,16 @@ const CHANNEL_CARDS: ChannelCard[] = [
   { id: 'facebook',  label: 'Facebook',   free: true, brand: 'facebook' },
   { id: 'instagram', label: 'Instagram',  free: true, brand: 'instagram' },
   { id: 'x',         label: 'X',          free: true, brand: 'x' },
-  { id: 'ivr',       label: 'IVR',        price: '0.20', priceUnit: 'לדקה',   icon: Phone, iconColor: 'text-purple-500' },
+  { id: 'ivr',       label: 'IVR',        price: '0.20', priceUnit: 'לדקה',   icon: Phone, iconColor: 'text-[#0f1b3d]' },
   { id: 'email',     label: 'אימייל',     price: '0.01', priceUnit: 'לנמען',  icon: Mail,  iconColor: 'text-rose-500' },
-  { id: 'ai-call',   label: 'שיחת AI',    price: '1.00', priceUnit: 'לדקה',   icon: Bot,   iconColor: 'text-amber-500' },
+  { id: 'ai-call',   label: 'שיחת AI',    price: '1.00', priceUnit: 'לדקה',   icon: Bot,   iconColor: 'text-[#0f1b3d]' },
   { id: 'youtube',   label: 'YouTube',    free: true, brand: 'youtube' },
   { id: 'linkedin',  label: 'LinkedIn',   free: true, brand: 'linkedin' },
   { id: 'tiktok',    label: 'TikTok',     free: true, brand: 'tiktok' },
 ];
+
+// Live Twilio number provisioned for this broker's outbound voice/IVR.
+const VOICE_DIAL_NUMBER = '+97233829914';
 
 // Connection state is resolved live per-workspace from `social_connections`
 // gated by a verified `workspace_social_profile` row. No hardcoded defaults —
