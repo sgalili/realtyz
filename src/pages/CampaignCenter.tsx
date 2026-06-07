@@ -1699,7 +1699,7 @@ const VoiceLeadPickerDialog = ({
         <DialogHeader>
           <DialogTitle className="text-right text-[#0f1b3d]">למי מחייגים?</DialogTitle>
           <DialogDescription className="text-right">
-            {channel?.label} · מספר חיוג <span dir="ltr" className="font-mono">{VOICE_DIAL_NUMBER}</span>
+            {channel?.label} · מספר חיוג <span dir="ltr" className="font-mono">{formatPhoneDisplay(VOICE_DIAL_NUMBER)}</span>
           </DialogDescription>
         </DialogHeader>
 
