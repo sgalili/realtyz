@@ -2400,7 +2400,9 @@ const CampaignCenter = () => {
           <ChannelGrid
             selectedId={pickedChannel?.id ?? null}
             onPick={(c) => {
-              if (c.id === 'ivr' || c.id === 'ai-call') {
+              if (c.id === 'ivr') {
+                setIvrOpen(true);
+              } else if (c.id === 'ai-call') {
                 setVoiceDialChannel(c);
               } else {
                 setPickedChannel(c);
