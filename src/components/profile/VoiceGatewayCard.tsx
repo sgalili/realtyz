@@ -125,9 +125,16 @@ export function VoiceGatewayCard() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <p className="text-xs text-muted-foreground text-right">
-          הזינו את פרטי Vapi (AI Voice) ו-Twilio (מספרי טלפון / IVR). ניתן לעדכן בכל עת — הפרטים נשמרים מוצפנים ונשלפים בעת שליחת שיחה.
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <Button size="sm" variant="outline" onClick={testConnection} disabled={testing || loading}>
+            {testing ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <PlugZap className="ml-2 h-4 w-4" />}
+            בדוק חיבור
+          </Button>
+          <p className="text-xs text-muted-foreground text-right flex-1">
+            הזינו את פרטי Vapi (AI Voice) ו-Twilio (מספרי טלפון / IVR). ניתן לעדכן בכל עת — הפרטים נשמרים מוצפנים ונשלפים בעת שליחת שיחה.
+          </p>
+        </div>
+
 
         {/* Vapi block */}
         <div className="space-y-3 rounded-md border border-border p-3">
