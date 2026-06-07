@@ -1665,8 +1665,8 @@ const CampaignCenter = () => {
         setChannelAccountNames((prev) => ({
           ...prev,
           ...(alias ? { email: `${alias}@realtyz.co.il` } : hasResend ? { email: 'Resend · אימייל מותג' } : {}),
-          ...(voiceReady || direct.ivr ? { ivr: 'Vapi · Twilio' } : {}),
-          ...(hasVapi || direct['ai-call'] ? { 'ai-call': 'Vapi · AI Voice' } : {}),
+          ...(voiceReady || direct.ivr ? { ivr: VOICE_DIAL_NUMBER } : {}),
+          ...(hasVapi || direct['ai-call'] ? { 'ai-call': VOICE_DIAL_NUMBER } : {}),
         }));
       }
 
