@@ -177,6 +177,7 @@ export default function Properties() {
               features: Array.isArray(row.features) ? row.features.filter((f: any) => typeof f === 'string') : [],
               listing_type: extractListingType(row.features),
               extras: (row.source_metadata && typeof row.source_metadata === 'object' ? (row.source_metadata.extras ?? {}) : {}) as Record<string, string>,
+              created_at: row.created_at ?? null,
             }))),
           };
         }
@@ -228,8 +229,9 @@ export default function Properties() {
       features: Array.isArray(r.features) ? r.features as string[] : [],
       listing_type: (r.listing_type ?? 'sale') as ListingType,
       extras: (r.extras ?? {}) as Record<string, string>,
+      created_at: (r as any).created_at ?? null,
     }));
-    return live as Array<HomelyProperty & { extras?: Record<string, string> }>;
+    return live as Array<HomelyProperty & { extras?: Record<string, string>; created_at?: string | null }>;
   }, [liveResults, sourceTab]);
 
   const filtered = useMemo(() => {
@@ -592,7 +594,7 @@ function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare
 
 // Full table view — shows every column that was uploaded for each property,
 // plus a Share action per row (merged from the former list view).
-function PropertyTable({ properties }: { properties: Array<HomelyProperty & { extras?: Record<string, string> }> }) {
+function PropertyTable({ properties }: { properties: Array<HomelyProperty & { extras?: Record<string, string>; created_at?: string | null }> }) {
   const [shareTarget, setShareTarget] = useState<HomelyProperty | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<HomelyProperty | null>(null);
   const [deleting, setDeleting] = useState(false);
@@ -609,11 +611,12 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
     return order;
   }, [properties]);
 
-  type SortKey = 'listing_type' | 'title' | 'price' | 'city' | 'rooms' | 'size_sqm' | `extra:${string}`;
-  const { sort, toggle } = useTableSort<SortKey>();
+  type SortKey = 'created_at' | 'listing_type' | 'title' | 'price' | 'city' | 'rooms' | 'size_sqm' | `extra:${string}`;
+  const { sort, toggle } = useTableSort<SortKey>({ key: 'created_at', dir: 'desc' });
   const sorted = useMemo(() => sortRows(properties, sort, (row, key) => {
     if (key.startsWith('extra:')) return row.extras?.[key.slice(6)] ?? '';
     switch (key) {
+      case 'created_at': return row.created_at ? new Date(row.created_at) : null;
       case 'listing_type': return LISTING_TYPE_LABELS_HE[row.listing_type ?? 'sale'];
       case 'title': return row.title;
       case 'price': return Number(row.price ?? 0);
@@ -623,6 +626,7 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
       default: return '';
     }
   }), [properties, sort]);
+
 
 
   const handleDelete = async () => {
