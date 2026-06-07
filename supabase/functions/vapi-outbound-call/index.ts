@@ -195,7 +195,9 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { phone_number, lead_id } = body as { phone_number?: string; lead_id?: string };
+    const { phone_number, lead_id, listing_id } = body as {
+      phone_number?: string; lead_id?: string; listing_id?: string;
+    };
     if (!phone_number) {
       return new Response(JSON.stringify({ error: "חסר מספר טלפון" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -221,21 +223,42 @@ Deno.serve(async (req) => {
       preferences = lead?.preferences ? JSON.stringify(lead.preferences).slice(0, 600) : "";
     }
 
-    // Pull a short listings blurb
+    // Pull either a specific listing (IVR context) or a short top-listings blurb
     let listingsBlurb = "";
+    let focusListing = "";
     try {
-      const { data: listings } = await supabase
-        .from("listings")
-        .select("property_title, city, asking_price")
-        .eq("status", "live")
-        .order("created_at", { ascending: false })
-        .limit(5);
-      listingsBlurb = (listings ?? [])
-        .map((l: any) => `• ${l.property_title ?? ""} (${l.city ?? ""}) - ₪${l.asking_price ?? "?"}`)
-        .join("\n");
+      if (listing_id) {
+        const { data: l } = await supabase
+          .from("listings")
+          .select("property_title, description, features, city, asking_price")
+          .eq("id", listing_id)
+          .maybeSingle();
+        if (l) {
+          focusListing = [
+            `נכס מוקד השיחה: ${l.property_title ?? ""} ב${l.city ?? ""}`,
+            l.asking_price ? `מחיר מבוקש: ₪${l.asking_price}` : "",
+            l.description ? `תיאור: ${String(l.description).slice(0, 500)}` : "",
+            l.features ? `מאפיינים: ${JSON.stringify(l.features).slice(0, 400)}` : "",
+            "אם הלקוח מעלה התנגדות (למשל 'אין מעלית'), השב במסגרת ה-Playbook של מתווך בכיר: הכר בהתנגדות, מסגר מחדש את היתרון, וחזור לשאלת איתור צרכים.",
+          ].filter(Boolean).join("\n");
+        }
+      } else {
+        const { data: listings } = await supabase
+          .from("listings")
+          .select("property_title, city, asking_price")
+          .eq("status", "live")
+          .order("created_at", { ascending: false })
+          .limit(5);
+        listingsBlurb = (listings ?? [])
+          .map((l: any) => `• ${l.property_title ?? ""} (${l.city ?? ""}) - ₪${l.asking_price ?? "?"}`)
+          .join("\n");
+      }
     } catch (_) { /* best effort */ }
 
-    const systemPrompt = buildSystemPrompt({ leadName, city, preferences, listingsBlurb });
+    const systemPrompt = buildSystemPrompt({
+      leadName, city, preferences,
+      listingsBlurb: focusListing || listingsBlurb,
+    });
     const firstMessage = leadName
       ? `שלום ${leadName}, מדבר הסוכן הדיגיטלי של המתווך. יש לי שתי שאלות קצרות לגבי החיפוש שלך, אפשר?`
       : "שלום, מדבר הסוכן הדיגיטלי של המתווך. יש לי שתי שאלות קצרות לגבי החיפוש שלך, אפשר?";
