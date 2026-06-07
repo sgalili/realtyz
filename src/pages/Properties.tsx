@@ -177,6 +177,7 @@ export default function Properties() {
               features: Array.isArray(row.features) ? row.features.filter((f: any) => typeof f === 'string') : [],
               listing_type: extractListingType(row.features),
               extras: (row.source_metadata && typeof row.source_metadata === 'object' ? (row.source_metadata.extras ?? {}) : {}) as Record<string, string>,
+              created_at: row.created_at ?? null,
             }))),
           };
         }
