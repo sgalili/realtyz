@@ -49,6 +49,33 @@ function PropertiesHeroAddButton() {
   );
 }
 
+function LeadsHeroAddButton() {
+  const dispatch = (action: 'manual' | 'import') =>
+    window.dispatchEvent(new CustomEvent('leads:add', { detail: { action } }));
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white"
+          aria-label="הוספת מתעניין"
+        >
+          <Plus className="!h-5 !w-5" strokeWidth={2.5} />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => dispatch('manual')} className="gap-2">
+          <User className="h-4 w-4" /> הוספת מתעניין
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => dispatch('import')} className="gap-2">
+          <FileSpreadsheet className="h-4 w-4" /> ייבוא מתעניינים
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/(dashboard)?$/, title: 'לוח בקרה' },
   { match: /^\/lead-crm/, title: 'ניהול מתעניינים' },
