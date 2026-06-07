@@ -545,9 +545,6 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
           const renderEditor = (r: EngagementRow) => (
             <div className="space-y-3 text-right">
               <div className="space-y-1">
-                <p className="text-[11px] font-medium text-muted-foreground">
-                  תגובה פומבית (1-2 משפטים, ישירה לעניין)
-                </p>
                 <Textarea
                   value={drafting ? "" : replyDraft}
                   onChange={(e) => setReplyDraft(e.target.value)}
@@ -588,15 +585,16 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
                   className="text-right bg-muted/30"
                 />
               </div>
-              <div className="flex flex-wrap items-center justify-end gap-2">
+              <div className="flex flex-wrap items-center justify-between gap-2">
                 <Button
                   variant="outline"
-                  size="sm"
+                  size="icon"
                   onClick={() => generateDraft(r, true)}
                   disabled={drafting || sending}
+                  aria-label="נסח מחדש"
+                  title="נסח מחדש"
                 >
-                  <Sparkles className="ml-1 h-4 w-4" />
-                  נסח מחדש
+                  <RefreshCw className={cn("h-4 w-4", drafting && "animate-spin")} />
                 </Button>
                 <Button
                   size="sm"
