@@ -847,7 +847,7 @@ const ConfirmDispatchDialog = ({
           toast.success(`הקמפיין פורסם בהצלחה ב-${channel.label}!`);
         }
       } else {
-        // Direct-messaging channels (SMS / email / IVR) still broadcast to leads.
+        // Direct-messaging channels (SMS / email / IVR / AI Voice) broadcast to leads.
         const { data: leads, error } = await supabase
           .from('leads')
           .select('id, full_name, phone_number, email')
@@ -869,7 +869,38 @@ const ConfirmDispatchDialog = ({
           const { error: insErr } = await supabase.from('campaign_logs').insert(rows);
           if (insErr) throw insErr;
         }
-        toast.success(`שודר ל-${rows.length} מתעניינים בערוץ ${channel.label}`);
+
+        // Fan-out live sends for direct channels.
+        let dispatched = 0; let failed = 0;
+        if (channel.id === 'ivr' || channel.id === 'ai-call') {
+          for (const l of leads || []) {
+            if (!l.phone_number) continue;
+            const { error: callErr } = await supabase.functions.invoke('vapi-outbound-call', {
+              body: { phone_number: l.phone_number, lead_id: l.id },
+            });
+            if (callErr) failed++; else dispatched++;
+          }
+        } else if (channel.id === 'email') {
+          for (const l of leads || []) {
+            if (!l.email) continue;
+            const { error: mailErr } = await supabase.functions.invoke('resend-email-sender', {
+              body: {
+                recipient_email: l.email,
+                recipient_name: l.full_name,
+                subject: `${brandName} · עדכון אישי עבורך`,
+                intro: body || 'מצורפים הפרטים העדכניים שביקשת.',
+                cta_question: 'מתי נוח לך לקפוץ לראות?',
+              },
+            });
+            if (mailErr) failed++; else dispatched++;
+          }
+        }
+
+        if (channel.id === 'ivr' || channel.id === 'ai-call' || channel.id === 'email') {
+          toast.success(`נשלחו ${dispatched} מתוך ${rows.length} בערוץ ${channel.label}${failed ? ` · ${failed} כשלונות` : ''}`);
+        } else {
+          toast.success(`שודר ל-${rows.length} מתעניינים בערוץ ${channel.label}`);
+        }
       }
       onConfirmed();
       onClose();
@@ -1588,16 +1619,77 @@ const CampaignCenter = () => {
         else if (p.startsWith('youtube')) set.add('youtube');
         else if (p.startsWith('linkedin')) set.add('linkedin');
         else if (p.startsWith('tiktok')) set.add('tiktok');
-        else if (p === 'email') set.add('email');
-        else if (p === 'ivr') set.add('ivr');
-        else if (p === 'ai-call' || p === 'ai_call') set.add('ai-call');
       });
+
+      // Direct (non-social) channels: IVR / AI-Call / Email live on profiles.
+      const { data: prof } = await supabase
+        .from('profiles')
+        .select('direct_channels, email_alias, full_name')
+        .eq('id', user.id)
+        .maybeSingle();
+      const direct = ((prof as any)?.direct_channels ?? {}) as Record<string, boolean>;
+      if (direct.ivr) set.add('ivr');
+      if (direct['ai-call']) set.add('ai-call');
+      if (direct.email && (prof as any)?.email_alias) set.add('email');
+
+      if (!cancelled && (prof as any)?.email_alias) {
+        setChannelAccountNames((prev) => ({
+          ...prev,
+          email: `${(prof as any).email_alias}@realtyz.co.il`,
+          ivr: 'Vapi · Twilio',
+          'ai-call': 'Vapi · AI Voice',
+        }));
+      }
+
       setConnectedChannels(set);
     })();
     return () => { cancelled = true; };
   }, []);
 
   const handleConnectChannel = async (c: ChannelCard) => {
+    // Direct (non-social) outbound channels — verify creds, then flip
+    // the per-broker flag stored on profiles.direct_channels.
+    if (c.id === 'ivr' || c.id === 'ai-call') {
+      try {
+        toast.loading('בודק חיבור Vapi / Twilio…', { id: 'voice-verify' });
+        const { data, error } = await supabase.functions.invoke('vapi-verify-credentials', { method: 'POST' });
+        toast.dismiss('voice-verify');
+        if (error) throw error;
+        const v: any = (data as any)?.vapi ?? {};
+        if (!v.ok) { toast.error(v.message || 'שגיאת התחברות - בדוק את מפתחות ה-API שלך'); return; }
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { toast.error('יש להתחבר'); return; }
+        const { data: prof } = await supabase.from('profiles').select('direct_channels').eq('id', user.id).maybeSingle();
+        const next = { ...(((prof as any)?.direct_channels ?? {}) as Record<string, boolean>), [c.id]: true };
+        const { error: upErr } = await supabase.from('profiles').update({ direct_channels: next }).eq('id', user.id);
+        if (upErr) throw upErr;
+        setConnectedChannels((prev) => new Set([...prev, c.id]));
+        setChannelAccountNames((prev) => ({ ...prev, [c.id]: c.id === 'ivr' ? 'Vapi · Twilio' : 'Vapi · AI Voice' }));
+        toast.success(`${c.label} מחובר ופעיל`);
+      } catch (e: any) {
+        toast.dismiss('voice-verify');
+        toast.error(e?.message || 'שגיאת התחברות - בדוק את מפתחות ה-API שלך');
+      }
+      return;
+    }
+
+    if (c.id === 'email') {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { toast.error('יש להתחבר'); return; }
+      const { data: prof } = await supabase.from('profiles').select('email_alias, direct_channels').eq('id', user.id).maybeSingle();
+      if (!(prof as any)?.email_alias) {
+        toast.error('הגדר prefix לאימייל המותג בפרופיל לפני הפעלת הערוץ');
+        return;
+      }
+      const next = { ...(((prof as any)?.direct_channels ?? {}) as Record<string, boolean>), email: true };
+      const { error: upErr } = await supabase.from('profiles').update({ direct_channels: next }).eq('id', user.id);
+      if (upErr) { toast.error(upErr.message); return; }
+      setConnectedChannels((prev) => new Set([...prev, 'email']));
+      setChannelAccountNames((prev) => ({ ...prev, email: `${(prof as any).email_alias}@realtyz.co.il` }));
+      toast.success(`אימייל מותג מחובר: ${(prof as any).email_alias}@realtyz.co.il`);
+      return;
+    }
+
     const platformMap: Record<string, string> = {
       facebook: 'facebook', instagram: 'instagram', x: 'twitter', twitter: 'twitter',
       youtube: 'youtube', linkedin: 'linkedin', tiktok: 'tiktok',
