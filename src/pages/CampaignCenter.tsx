@@ -1616,6 +1616,49 @@ const CampaignCenter = () => {
   }, []);
 
   const handleConnectChannel = async (c: ChannelCard) => {
+    // Direct (non-social) outbound channels — verify creds, then flip
+    // the per-broker flag stored on profiles.direct_channels.
+    if (c.id === 'ivr' || c.id === 'ai-call') {
+      try {
+        toast.loading('בודק חיבור Vapi / Twilio…', { id: 'voice-verify' });
+        const { data, error } = await supabase.functions.invoke('vapi-verify-credentials', { method: 'POST' });
+        toast.dismiss('voice-verify');
+        if (error) throw error;
+        const v: any = (data as any)?.vapi ?? {};
+        if (!v.ok) { toast.error(v.message || 'שגיאת התחברות - בדוק את מפתחות ה-API שלך'); return; }
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) { toast.error('יש להתחבר'); return; }
+        const { data: prof } = await supabase.from('profiles').select('direct_channels').eq('id', user.id).maybeSingle();
+        const next = { ...(((prof as any)?.direct_channels ?? {}) as Record<string, boolean>), [c.id]: true };
+        const { error: upErr } = await supabase.from('profiles').update({ direct_channels: next }).eq('id', user.id);
+        if (upErr) throw upErr;
+        setConnectedChannels((prev) => new Set([...prev, c.id]));
+        setChannelAccountNames((prev) => ({ ...prev, [c.id]: c.id === 'ivr' ? 'Vapi · Twilio' : 'Vapi · AI Voice' }));
+        toast.success(`${c.label} מחובר ופעיל`);
+      } catch (e: any) {
+        toast.dismiss('voice-verify');
+        toast.error(e?.message || 'שגיאת התחברות - בדוק את מפתחות ה-API שלך');
+      }
+      return;
+    }
+
+    if (c.id === 'email') {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { toast.error('יש להתחבר'); return; }
+      const { data: prof } = await supabase.from('profiles').select('email_alias, direct_channels').eq('id', user.id).maybeSingle();
+      if (!(prof as any)?.email_alias) {
+        toast.error('הגדר prefix לאימייל המותג בפרופיל לפני הפעלת הערוץ');
+        return;
+      }
+      const next = { ...(((prof as any)?.direct_channels ?? {}) as Record<string, boolean>), email: true };
+      const { error: upErr } = await supabase.from('profiles').update({ direct_channels: next }).eq('id', user.id);
+      if (upErr) { toast.error(upErr.message); return; }
+      setConnectedChannels((prev) => new Set([...prev, 'email']));
+      setChannelAccountNames((prev) => ({ ...prev, email: `${(prof as any).email_alias}@realtyz.co.il` }));
+      toast.success(`אימייל מותג מחובר: ${(prof as any).email_alias}@realtyz.co.il`);
+      return;
+    }
+
     const platformMap: Record<string, string> = {
       facebook: 'facebook', instagram: 'instagram', x: 'twitter', twitter: 'twitter',
       youtube: 'youtube', linkedin: 'linkedin', tiktok: 'tiktok',
