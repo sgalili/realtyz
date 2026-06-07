@@ -28,6 +28,8 @@ export function WhatsAppGatewayCard() {
   const [testing, setTesting] = useState(false);
   const [status, setStatus] = useState<'unknown' | 'ok' | 'err'>('unknown');
   const [syncingAvatars, setSyncingAvatars] = useState(false);
+
+  useEffect(() => {
     (async () => {
       try {
         const { data, error } = await supabase.functions.invoke('manage-api-configs', { method: 'GET' });
