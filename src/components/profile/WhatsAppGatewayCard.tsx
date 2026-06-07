@@ -182,7 +182,7 @@ export function WhatsAppGatewayCard() {
       </CardHeader>
       <CardContent className="space-y-4">
         <p className="text-xs text-muted-foreground text-right">
-          עדכון מהיר של אישורי ה-Instance של WhatsApp לחשבון זה. שמירת הפרטים מפעילה את שליחת ה-WhatsApp בכל הרכיבים במערכת (דשבורד, חדר עסקאות, קמפיינים, תיבה משולבת).
+          {"\n"}
         </p>
 
         <div className="space-y-1.5">
