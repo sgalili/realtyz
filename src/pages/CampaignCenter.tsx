@@ -1409,26 +1409,31 @@ const PublishedFeed = () => {
         const pageLabel = (String(r.channel || '').toLowerCase() === 'facebook' && fbPageName) ? fbPageName : ownerName;
         return (
           <article key={r.id} className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden" dir={dirAttr}>
-            <header className={cn('flex items-start justify-between gap-3 p-4', isHe ? 'flex-row' : 'flex-row-reverse')}>
-              <div className={cn('flex-1 min-w-0', alignClass)}>
-                <div className={cn('flex items-center gap-2 mb-1', isHe ? 'justify-start flex-row-reverse' : 'justify-start flex-row')}>
-                  <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-muted shrink-0">
-                    {platformMeta?.brand ? (
-                      <BrandIcon name={platformMeta.brand} className={cn('h-5 w-5', BRAND_COLOR[platformMeta.brand] ?? 'text-muted-foreground')} />
-                    ) : platformMeta?.icon ? (
-                      <platformMeta.icon className="h-5 w-5 text-muted-foreground" />
-                    ) : (
-                      <span className="text-[10px] font-bold uppercase">{r.channel?.slice(0, 2)}</span>
-                    )}
-                  </span>
-                  <span className="text-sm font-semibold text-foreground truncate">{pageLabel}</span>
-                  <span className="text-xs text-muted-foreground">·</span>
-                  <span className="text-xs text-muted-foreground whitespace-nowrap">{dateStr}</span>
-                </div>
-                <h3 className={cn('font-semibold text-foreground truncate', alignClass)} dir={dirAttr}>
-                  {(bodyText.trim().split('\n')[0] || r.campaign_name)}
-                </h3>
-                <div className={cn('mt-1 flex items-center gap-3 text-xs text-muted-foreground flex-wrap', isHe ? 'justify-end' : 'justify-start')}>
+            <header className="p-4 space-y-2">
+              {/* Row 1: post title */}
+              <h3 className={cn('font-semibold text-foreground truncate', alignClass)} dir={dirAttr}>
+                {(bodyText.trim().split('\n')[0] || r.campaign_name)}
+              </h3>
+
+              {/* Row 2: date · page name · platform logo (logo & date swapped) */}
+              <div className={cn('flex items-center gap-2', isHe ? 'flex-row-reverse justify-start' : 'flex-row justify-start')}>
+                <span className="text-xs text-muted-foreground whitespace-nowrap">{dateStr}</span>
+                <span className="text-xs text-muted-foreground">·</span>
+                <span className="text-sm font-semibold text-foreground truncate">{pageLabel}</span>
+                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-muted shrink-0">
+                  {platformMeta?.brand ? (
+                    <BrandIcon name={platformMeta.brand} className={cn('h-5 w-5', BRAND_COLOR[platformMeta.brand] ?? 'text-muted-foreground')} />
+                  ) : platformMeta?.icon ? (
+                    <platformMeta.icon className="h-5 w-5 text-muted-foreground" />
+                  ) : (
+                    <span className="text-[10px] font-bold uppercase">{r.channel?.slice(0, 2)}</span>
+                  )}
+                </span>
+              </div>
+
+              {/* Row 3: counters + expand/collapse chevron */}
+              <div className={cn('flex items-center justify-between gap-3', isHe ? 'flex-row' : 'flex-row-reverse')}>
+                <div className={cn('flex items-center gap-3 text-xs text-muted-foreground flex-wrap', isHe ? 'flex-row-reverse' : 'flex-row')}>
                   <span className="inline-flex items-center gap-1" title="לייקים">
                     <Heart className="h-3.5 w-3.5 text-red-500" />
                     <span className="tabular-nums">{fmt(r.like_count)}</span>
@@ -1442,13 +1447,12 @@ const PublishedFeed = () => {
                     <span className="tabular-nums">{fmt(r.share_count)}</span>
                   </span>
                 </div>
+                <button onClick={() => setExpanded((s) => ({ ...s, [r.id]: !isOpen }))}
+                        className="rounded-md p-1 text-muted-foreground hover:bg-muted shrink-0"
+                        aria-label={isOpen ? 'כווץ' : 'הרחב'}>
+                  {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                </button>
               </div>
-
-              <button onClick={() => setExpanded((s) => ({ ...s, [r.id]: !isOpen }))}
-                      className="rounded-md p-1 text-muted-foreground hover:bg-muted shrink-0"
-                      aria-label={isOpen ? 'כווץ' : 'הרחב'}>
-                {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-              </button>
             </header>
 
 
