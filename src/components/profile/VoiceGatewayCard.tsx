@@ -29,6 +29,23 @@ export function VoiceGatewayCard() {
   const [loading, setLoading] = useState(true);
   const [savingVapi, setSavingVapi] = useState(false);
   const [savingTwilio, setSavingTwilio] = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  const testConnection = async () => {
+    setTesting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('vapi-verify-credentials', { method: 'POST' });
+      if (error) throw error;
+      const v: any = (data as any)?.vapi ?? {};
+      const t: any = (data as any)?.twilio ?? {};
+      if (v.ok) toast.success(`Vapi: ${v.message}`); else toast.error(`Vapi: ${v.message || 'שגיאת התחברות - בדוק את מפתחות ה-API שלך'}`);
+      if (t.ok) toast.success(`Twilio: ${t.message}`); else toast.error(`Twilio: ${t.message || 'שגיאת התחברות - בדוק את מפתחות ה-API שלך'}`);
+    } catch (e: any) {
+      toast.error(`שגיאת התחברות - בדוק את מפתחות ה-API שלך`);
+    } finally {
+      setTesting(false);
+    }
+  };
 
   useEffect(() => {
     (async () => {
