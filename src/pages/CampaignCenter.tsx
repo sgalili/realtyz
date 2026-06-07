@@ -2447,6 +2447,14 @@ const CampaignCenter = () => {
         channel={voiceDialChannel}
       />
       <IvrBroadcastDialog open={ivrOpen} onClose={() => setIvrOpen(false)} />
+      <EmailAliasSetupDialog
+        open={emailSetupOpen}
+        onClose={() => setEmailSetupOpen(false)}
+        onConnected={(alias) => {
+          setConnectedChannels((prev) => new Set([...prev, 'email']));
+          setChannelAccountNames((prev) => ({ ...prev, email: `${alias}@realtyz.co.il` }));
+        }}
+      />
     </div>
   );
 };
