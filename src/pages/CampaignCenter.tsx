@@ -2262,16 +2262,18 @@ const CampaignCenter = () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { toast.error('יש להתחבר'); return; }
       const { data: prof } = await supabase.from('profiles').select('email_alias, direct_channels').eq('id', user.id).maybeSingle();
-      if (!(prof as any)?.email_alias) {
-        toast.error('הגדר prefix לאימייל המותג בפרופיל לפני הפעלת הערוץ');
+      const existingAlias = ((prof as any)?.email_alias ?? '').trim();
+      if (!existingAlias) {
+        // No alias yet — open inline provisioning modal
+        setEmailSetupOpen(true);
         return;
       }
       const next = { ...(((prof as any)?.direct_channels ?? {}) as Record<string, boolean>), email: true };
       const { error: upErr } = await supabase.from('profiles').update({ direct_channels: next }).eq('id', user.id);
       if (upErr) { toast.error(upErr.message); return; }
       setConnectedChannels((prev) => new Set([...prev, 'email']));
-      setChannelAccountNames((prev) => ({ ...prev, email: `${(prof as any).email_alias}@realtyz.co.il` }));
-      toast.success(`אימייל מותג מחובר: ${(prof as any).email_alias}@realtyz.co.il`);
+      setChannelAccountNames((prev) => ({ ...prev, email: `${existingAlias}@realtyz.co.il` }));
+      toast.success(`אימייל מותג מחובר: ${existingAlias}@realtyz.co.il`);
       return;
     }
 
