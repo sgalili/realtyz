@@ -1728,7 +1728,7 @@ const VoiceLeadPickerDialog = ({
     (async () => {
       setLoading(true);
       const [{ data: leadRows }] = await Promise.all([
-        supabase.from('leads').select('id, full_name, phone_number')
+        supabase.from('leads').select('id, full_name, phone_number, city, deal_type, preferences')
           .not('phone_number', 'is', null).order('full_name', { ascending: true }).limit(1000),
         loadClonedVoices(),
       ]);
