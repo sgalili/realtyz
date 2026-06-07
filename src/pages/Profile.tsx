@@ -16,6 +16,7 @@ import { IsraeliCityPicker } from '@/components/IsraeliCityPicker';
 import { WhatsAppGatewayCard } from '@/components/profile/WhatsAppGatewayCard';
 import { ListingPortalsCard } from '@/components/profile/ListingPortalsCard';
 import { VoiceGatewayCard } from '@/components/profile/VoiceGatewayCard';
+import { EmailAliasCard } from '@/components/profile/EmailAliasCard';
 import { ProfileAvatarUploader } from '@/components/profile/ProfileAvatarUploader';
 import { ServiceAreasPanel } from '@/components/settings/ServiceAreasPanel';
 import { cn } from '@/lib/utils';
