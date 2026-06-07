@@ -1467,7 +1467,7 @@ const PublishedFeed = () => {
                     <span className="tabular-nums">{fmt(r.share_count)}</span>
                   </span>
                 </div>
-                <button onClick={() => setExpanded((s) => ({ ...s, [r.id]: !isOpen }))}
+                <button onClick={(e) => { e.stopPropagation(); setExpanded((s) => ({ ...s, [r.id]: !isOpen })); }}
                         className="rounded-md p-1 text-muted-foreground hover:bg-muted shrink-0"
                         aria-label={isOpen ? 'כווץ' : 'הרחב'}>
                   {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
