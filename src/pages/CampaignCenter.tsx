@@ -2085,7 +2085,7 @@ const AddVoiceByIdDialog = ({
         toast.error(`הוספה נכשלה: ${(data as any)?.error ?? error?.message ?? 'שגיאה'}`);
         return;
       }
-      toast.success(`הקול "${name}" נוסף`);
+      toast.success('הקול התווסף בהצלחה למערכת!');
       onCreated((data as any).voice);
     } finally {
       setBusy(false);
