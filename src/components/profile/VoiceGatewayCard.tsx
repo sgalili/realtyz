@@ -125,17 +125,6 @@ export function VoiceGatewayCard() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <div className="flex items-center justify-between gap-3">
-          <Button size="sm" variant="outline" onClick={testConnection} disabled={testing || loading}>
-            {testing ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <PlugZap className="ml-2 h-4 w-4" />}
-            בדוק חיבור
-          </Button>
-          <p className="text-xs text-muted-foreground text-right flex-1">
-            {"\n"}
-          </p>
-        </div>
-
-
         {/* Vapi block */}
         <div className="space-y-3 rounded-md border border-border p-3">
           <div className="text-sm font-semibold text-right">Vapi · AI Voice</div>
@@ -159,7 +148,11 @@ export function VoiceGatewayCard() {
             </div>
           </div>
 
-          <div className="flex justify-end">
+          <div className="flex items-center justify-between gap-3">
+            <Button size="sm" variant="outline" onClick={testConnection} disabled={testing || loading}>
+              {testing ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <PlugZap className="ml-2 h-4 w-4" />}
+              בדוק חיבור
+            </Button>
             <Button size="sm" onClick={saveVapi} disabled={savingVapi || loading}>
               {savingVapi ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Save className="ml-2 h-4 w-4" />}
               שמור Vapi
