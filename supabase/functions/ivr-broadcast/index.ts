@@ -23,14 +23,25 @@ function normE164(raw: string): string {
   return t.startsWith("+") ? t : "+" + d;
 }
 
-async function generateTts(text: string, voiceId: string): Promise<Uint8Array> {
-  const key = Deno.env.get("ELEVENLABS_API_KEY");
-  if (!key) throw new Error("missing_elevenlabs_api_key");
+async function resolveElevenLabsKey(admin: ReturnType<typeof createClient>): Promise<string | null> {
+  const envKey = Deno.env.get("ELEVENLABS_API_KEY");
+  if (envKey && envKey.trim()) return envKey.trim();
+  // DB fallback: api_configs row stored by the broker (Settings → API).
+  // We accept any common spelling variant so the lookup is resilient.
+  const { data } = await admin
+    .from("api_configs")
+    .select("service_name, api_key, is_active")
+    .ilike("service_name", "%eleven%");
+  const row = (data ?? []).find((r: any) => r.api_key && String(r.api_key).trim().length > 0);
+  return row?.api_key?.trim() ?? null;
+}
+
+async function generateTts(text: string, voiceId: string, apiKey: string): Promise<Uint8Array> {
   const r = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
     {
       method: "POST",
-      headers: { "xi-api-key": key, "Content-Type": "application/json" },
+      headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
       body: JSON.stringify({
         text,
         model_id: "eleven_multilingual_v3",
