@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
@@ -156,9 +157,9 @@ const ChannelGrid = ({
               <span
                 className="mt-0.5 inline-block max-w-full truncate rounded-md border border-[#C9A84C]/40 bg-[#C9A84C]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#8a7327]"
                 dir="ltr"
-                title={accountNames[c.id]}
+                title={formatPhoneDisplay(accountNames[c.id]) || accountNames[c.id]}
               >
-                {accountNames[c.id]}
+                {formatPhoneDisplay(accountNames[c.id]) || accountNames[c.id]}
               </span>
             )}
 
@@ -1684,7 +1685,7 @@ const VoiceLeadPickerDialog = ({
         if (error) failed++; else ok++;
       }
       toast.dismiss('voice-dial');
-      if (ok > 0) toast.success(`נשלחו ${ok} שיחות מ-${VOICE_DIAL_NUMBER}${failed ? ` · ${failed} נכשלו` : ''}`);
+      if (ok > 0) toast.success(`נשלחו ${ok} שיחות מ-${formatPhoneDisplay(VOICE_DIAL_NUMBER)}${failed ? ` · ${failed} נכשלו` : ''}`);
       else toast.error('כל השיחות נכשלו');
       onClose();
     } finally {
@@ -1698,7 +1699,7 @@ const VoiceLeadPickerDialog = ({
         <DialogHeader>
           <DialogTitle className="text-right text-[#0f1b3d]">למי מחייגים?</DialogTitle>
           <DialogDescription className="text-right">
-            {channel?.label} · מספר חיוג <span dir="ltr" className="font-mono">{VOICE_DIAL_NUMBER}</span>
+            {channel?.label} · מספר חיוג <span dir="ltr" className="font-mono">{formatPhoneDisplay(VOICE_DIAL_NUMBER)}</span>
           </DialogDescription>
         </DialogHeader>
 
