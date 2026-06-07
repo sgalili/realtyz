@@ -1740,9 +1740,11 @@ const VoiceLeadPickerDialog = ({
   const filteredLeads = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return leads;
+    const digits = q.replace(/\D/g, '');
     return leads.filter((l) =>
       (l.full_name ?? '').toLowerCase().includes(q) ||
-      (l.phone ?? '').replace(/\D/g, '').includes(q.replace(/\D/g, '')),
+      (l.city ?? '').toLowerCase().includes(q) ||
+      (digits.length > 0 && (l.phone ?? '').replace(/\D/g, '').includes(digits)),
     );
   }, [leads, search]);
 
