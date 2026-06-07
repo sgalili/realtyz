@@ -1150,6 +1150,42 @@ export type Database = {
           },
         ]
       }
+      cloned_voices: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+          preview_url: string | null
+          provider: string
+          source: string
+          updated_at: string
+          user_id: string
+          voice_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+          preview_url?: string | null
+          provider?: string
+          source?: string
+          updated_at?: string
+          user_id: string
+          voice_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+          preview_url?: string | null
+          provider?: string
+          source?: string
+          updated_at?: string
+          user_id?: string
+          voice_id?: string
+        }
+        Relationships: []
+      }
       closing_documents: {
         Row: {
           created_at: string

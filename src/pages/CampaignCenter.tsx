@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
+import { Checkbox } from '@/components/ui/checkbox';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 import { Switch } from '@/components/ui/switch';
@@ -1632,11 +1633,13 @@ const mapVoiceLead = (r: any): VoiceLead => ({
   phone: r.phone_number ?? r.phone ?? null,
 });
 
-const VOICE_AGENTS: { id: string; label: string; voice_id: string }[] = [
+const PRESET_VOICE_AGENTS: { id: string; label: string; voice_id: string }[] = [
   { id: 'sarah',    label: 'שרה (אישה)',     voice_id: 'EXAVITQu4vr4xnSDxMaL' },
   { id: 'matilda',  label: 'מטילדה (אישה)', voice_id: 'XrExE9yKIg1WjnnlVkGX' },
   { id: 'charlie',  label: 'צ׳רלי (גבר)',    voice_id: 'IKne3meq5aSn9XLyUdCD' },
 ];
+
+type ClonedVoice = { id: string; name: string; voice_id: string; preview_url?: string | null };
 
 const VoiceLeadPickerDialog = ({
   open, onClose, channel,
@@ -1652,26 +1655,80 @@ const VoiceLeadPickerDialog = ({
   const [instructions, setInstructions] = useState('');
   const [dialing, setDialing] = useState(false);
 
+  // Manual-select state
+  const [search, setSearch] = useState('');
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
+
+  // Cloned voices + sub-dialogs
+  const [clonedVoices, setClonedVoices] = useState<ClonedVoice[]>([]);
+  const [uploadOpen, setUploadOpen] = useState(false);
+  const [voiceIdOpen, setVoiceIdOpen] = useState(false);
+
+  const allAgents = useMemo(
+    () => [
+      ...PRESET_VOICE_AGENTS,
+      ...clonedVoices.map((v) => ({ id: `cv:${v.id}`, label: `${v.name} (קול מותאם)`, voice_id: v.voice_id })),
+    ],
+    [clonedVoices],
+  );
+
+  const loadClonedVoices = async () => {
+    const { data } = await supabase
+      .from('cloned_voices')
+      .select('id, name, voice_id, preview_url')
+      .order('created_at', { ascending: false });
+    setClonedVoices((data ?? []) as ClonedVoice[]);
+  };
+
   useEffect(() => {
     if (!open) return;
     setListGroup(''); setAgentId(''); setInstructions('');
+    setSearch(''); setSelectedLeadIds(new Set());
     (async () => {
       setLoading(true);
-      const { data } = await supabase
-        .from('leads')
-        .select('id, full_name, phone_number')
-        .not('phone_number', 'is', null)
-        .order('full_name', { ascending: true })
-        .limit(500);
-      setLeads(((data as any[]) ?? []).map(mapVoiceLead));
+      const [{ data: leadRows }] = await Promise.all([
+        supabase.from('leads').select('id, full_name, phone_number')
+          .not('phone_number', 'is', null).order('full_name', { ascending: true }).limit(1000),
+        loadClonedVoices(),
+      ]);
+      setLeads(((leadRows as any[]) ?? []).map(mapVoiceLead));
       setLoading(false);
     })();
   }, [open]);
 
+  const filteredLeads = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return leads;
+    return leads.filter((l) =>
+      (l.full_name ?? '').toLowerCase().includes(q) ||
+      (l.phone ?? '').replace(/\D/g, '').includes(q.replace(/\D/g, '')),
+    );
+  }, [leads, search]);
+
+  const allFilteredSelected = filteredLeads.length > 0 && filteredLeads.every((l) => selectedLeadIds.has(l.id));
+  const toggleAllFiltered = () => {
+    setSelectedLeadIds((prev) => {
+      const next = new Set(prev);
+      if (allFilteredSelected) filteredLeads.forEach((l) => next.delete(l.id));
+      else filteredLeads.forEach((l) => next.add(l.id));
+      return next;
+    });
+  };
+  const toggleLead = (id: string) => {
+    setSelectedLeadIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
+
   const dial = async () => {
-    const targets = leads;
+    const targets = listGroup === 'manual'
+      ? leads.filter((l) => selectedLeadIds.has(l.id))
+      : leads;
     if (targets.length === 0) { toast.error('אין מתעניינים זמינים לחיוג'); return; }
-    const agent = VOICE_AGENTS.find((a) => a.id === agentId)!;
+    const agent = allAgents.find((a) => a.id === agentId);
+    if (!agent) { toast.error('בחר/י קול לפני החיוג'); return; }
     setDialing(true);
     toast.loading(`מחייג ל-${targets.length} מתעניינים בקול ${agent.label}…`, { id: 'voice-dial' });
     let ok = 0; let failed = 0;
@@ -1698,89 +1755,312 @@ const VoiceLeadPickerDialog = ({
     }
   };
 
+  const onAgentChange = (val: string) => {
+    if (val === '__clone') { setUploadOpen(true); return; }
+    if (val === '__elevenlabs') { setVoiceIdOpen(true); return; }
+    setAgentId(val);
+  };
+
+  const playPreview = (url?: string | null) => {
+    if (!url) return;
+    try { new Audio(url).play(); } catch { /* ignore */ }
+  };
+
+  const canDial =
+    !dialing &&
+    !loading &&
+    !!agentId &&
+    (listGroup === 'manual' ? selectedLeadIds.size > 0 : leads.length > 0);
+
   return (
-    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-lg" dir="rtl">
-        <DialogHeader>
-          <DialogTitle className="text-right text-[#0f1b3d]">למי מחייגים?</DialogTitle>
-          <DialogDescription className="text-right">
-            {channel?.label} · מספר חיוג <span dir="ltr" className="font-mono">{formatPhoneDisplay(VOICE_DIAL_NUMBER)}</span>
-          </DialogDescription>
-        </DialogHeader>
+    <>
+      <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+        <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" dir="rtl">
+          <DialogHeader>
+            <DialogTitle className="text-right text-[#0f1b3d]">למי מחייגים?</DialogTitle>
+            <DialogDescription className="text-right">
+              {channel?.label} · מספר חיוג <span dir="ltr" className="font-mono">{formatPhoneDisplay(VOICE_DIAL_NUMBER)}</span>
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Step 1 — Target List (always visible) */}
-          <div className="animate-in fade-in slide-in-from-top-1 duration-200">
-            <Select value={listGroup} onValueChange={setListGroup} dir="rtl">
-              <SelectTrigger className="w-full h-11 text-right text-[15px] text-muted-foreground/80 border-[#0f1b3d]/20 focus:ring-[#C9A84C] data-[placeholder]:text-muted-foreground/70">
-                <SelectValue placeholder="למי מחייגים?" />
-              </SelectTrigger>
-              <SelectContent dir="rtl">
-                <SelectItem value="all">
-                  כל הרשימה ({loading ? '…' : leads.length})
-                </SelectItem>
-                <SelectItem value="manual">בחירה מהרשימה</SelectItem>
-                <SelectItem value="upload">העלאת רשימה (CSV / Excel)</SelectItem>
-                <SelectItem value="paste">הדבקת טקסט</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          {/* Step 2 — AI Agent Voice (revealed after Step 1) */}
-          {listGroup && (
-            <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-              <label className="text-xs font-semibold text-[#0f1b3d] text-right block">בחירת נציג/ת AI טלפונית</label>
-              <Select value={agentId} onValueChange={setAgentId} dir="rtl">
-                <SelectTrigger className="w-full text-right border-[#0f1b3d]/30 focus:ring-[#C9A84C]">
-                  <SelectValue placeholder="בחר/י קול…" />
+          <div className="space-y-4">
+            {/* Step 1 — Target List */}
+            <div className="animate-in fade-in slide-in-from-top-1 duration-200">
+              <Select value={listGroup} onValueChange={setListGroup} dir="rtl">
+                <SelectTrigger className="w-full h-11 text-right text-[15px] text-muted-foreground/80 border-[#0f1b3d]/20 focus:ring-[#C9A84C] data-[placeholder]:text-muted-foreground/70">
+                  <SelectValue placeholder="למי מחייגים?" />
                 </SelectTrigger>
                 <SelectContent dir="rtl">
-                  {VOICE_AGENTS.map((a) => (
-                    <SelectItem key={a.id} value={a.id}>
-                      <span className="inline-flex items-center gap-2">
-                        <Play className="h-3 w-3 text-[#C9A84C]" />
-                        {a.label}
-                      </span>
-                    </SelectItem>
-                  ))}
-                  <SelectItem value="__clone" disabled>+ הוסף קול חדש (שיבוט מהיר / HD)</SelectItem>
-                  <SelectItem value="__elevenlabs" disabled>+ הוסף קול לפי Voice ID של ElevenLabs</SelectItem>
+                  <SelectItem value="all">כל הרשימה ({loading ? '…' : leads.length})</SelectItem>
+                  <SelectItem value="manual">בחירה מהרשימה</SelectItem>
+                  <SelectItem value="upload">העלאת רשימה (CSV / Excel)</SelectItem>
+                  <SelectItem value="paste">הדבקת טקסט</SelectItem>
                 </SelectContent>
               </Select>
             </div>
-          )}
 
-          {/* Step 3 — Optional script + CTA (revealed after Step 2) */}
-          {listGroup && agentId && (
-            <>
-              <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                <label className="text-xs font-semibold text-[#0f1b3d] text-right block">
-                  הוראות, נושא או תסריט מותאם לשיחה (אופציונלי)
+            {/* Step 1b — Multi-select lead grid (when manual) */}
+            {listGroup === 'manual' && (
+              <div className="rounded-lg border border-[#0f1b3d]/15 bg-background animate-in fade-in slide-in-from-top-1 duration-200">
+                <div className="p-2 border-b border-[#0f1b3d]/10">
+                  <Input
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="חיפוש לפי שם או טלפון..."
+                    className="text-right h-9 border-[#0f1b3d]/20 focus-visible:ring-[#C9A84C]"
+                  />
+                </div>
+                <label className="flex items-center justify-between gap-2 px-3 py-2 border-b border-[#0f1b3d]/10 bg-muted/40 cursor-pointer">
+                  <span className="text-xs font-semibold text-[#0f1b3d]">
+                    בחר הכל ({filteredLeads.length})
+                  </span>
+                  <Checkbox
+                    checked={allFilteredSelected}
+                    onCheckedChange={toggleAllFiltered}
+                    className="data-[state=checked]:bg-[#0f1b3d] data-[state=checked]:border-[#0f1b3d]"
+                  />
                 </label>
-                <Textarea
-                  value={instructions}
-                  onChange={(e) => setInstructions(e.target.value)}
-                  placeholder='לדוגמה: "בדקי האם המתעניין עדיין מחפש דירת 4 חדרים ברמת אביב, ועדכני אותו על דירה חדשה שיצאה ברחוב איינשטיין"'
-                  className="text-right min-h-[88px] border-[#0f1b3d]/30 focus-visible:ring-[#C9A84C]"
-                />
-                <p className="text-[11px] text-muted-foreground text-right leading-snug">
-                  אם תשאירי ריק, המערכת תשתמש באסטרטגיה האוטונומית הרגילה שלה המבוססת על הפרסונה של הסוכן, על מאגר הידע ועל היסטוריית השיחות עם המתעניין.
-                </p>
+                <div className="max-h-60 overflow-y-auto divide-y divide-border/50">
+                  {loading && <div className="p-3 text-center text-xs text-muted-foreground">טוען…</div>}
+                  {!loading && filteredLeads.length === 0 && (
+                    <div className="p-3 text-center text-xs text-muted-foreground">לא נמצאו מתעניינים</div>
+                  )}
+                  {!loading && filteredLeads.map((l) => {
+                    const checked = selectedLeadIds.has(l.id);
+                    return (
+                      <label key={l.id}
+                        className="flex items-center justify-between gap-3 px-3 py-2 cursor-pointer hover:bg-muted/40">
+                        <div className="flex-1 min-w-0 text-right">
+                          <div className="text-sm font-medium text-foreground truncate">{l.full_name || 'ללא שם'}</div>
+                          <div className="text-[11px] text-muted-foreground font-mono" dir="ltr">
+                            {formatPhoneDisplay(l.phone)}
+                          </div>
+                        </div>
+                        <Checkbox
+                          checked={checked}
+                          onCheckedChange={() => toggleLead(l.id)}
+                          className="rounded-full data-[state=checked]:bg-[#0f1b3d] data-[state=checked]:border-[#0f1b3d]"
+                        />
+                      </label>
+                    );
+                  })}
+                </div>
+                <div className="px-3 py-1.5 text-[11px] text-muted-foreground text-right border-t border-[#0f1b3d]/10">
+                  נבחרו {selectedLeadIds.size}
+                </div>
               </div>
+            )}
 
-              <DialogFooter className="mt-2 animate-in fade-in slide-in-from-bottom-1 duration-200">
-                <Button
-                  onClick={dial}
-                  disabled={dialing || loading || leads.length === 0}
-                  className="w-full bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-11 text-base font-semibold shadow-md"
-                >
-                  <Phone className="ml-2 h-5 w-5" />
-                  {dialing ? 'מפעיל שיחות…' : 'הפעלת שיחה'}
-                </Button>
-              </DialogFooter>
-            </>
-          )}
+            {/* Step 2 — AI Agent Voice */}
+            {listGroup && (
+              <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                <label className="text-xs font-semibold text-[#0f1b3d] text-right block">בחירת נציג/ת AI טלפונית</label>
+                <Select value={agentId} onValueChange={onAgentChange} dir="rtl">
+                  <SelectTrigger className="w-full text-right border-[#0f1b3d]/30 focus:ring-[#C9A84C]">
+                    <SelectValue placeholder="בחר/י קול…" />
+                  </SelectTrigger>
+                  <SelectContent dir="rtl">
+                    {allAgents.map((a) => {
+                      const preview = clonedVoices.find((v) => `cv:${v.id}` === a.id)?.preview_url ?? null;
+                      return (
+                        <SelectItem key={a.id} value={a.id}>
+                          <span className="inline-flex items-center gap-2">
+                            <button type="button" onClick={(e) => { e.stopPropagation(); playPreview(preview); }}
+                              className="text-[#C9A84C] hover:text-[#8a7327]">
+                              <Play className="h-3 w-3" />
+                            </button>
+                            {a.label}
+                          </span>
+                        </SelectItem>
+                      );
+                    })}
+                    <SelectItem value="__clone">+ הוסף קול חדש (שיבוט מהיר / HD)</SelectItem>
+                    <SelectItem value="__elevenlabs">+ הוסף קול לפי Voice ID של ElevenLabs</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            {/* Step 3 — Optional script + CTA */}
+            {listGroup && agentId && (
+              <>
+                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <label className="text-xs font-semibold text-[#0f1b3d] text-right block">
+                    הוראות, נושא או תסריט מותאם לשיחה (אופציונלי)
+                  </label>
+                  <Textarea
+                    value={instructions}
+                    onChange={(e) => setInstructions(e.target.value)}
+                    placeholder='לדוגמה: "בדקי האם המתעניין עדיין מחפש דירת 4 חדרים ברמת אביב, ועדכני אותו על דירה חדשה שיצאה ברחוב איינשטיין"'
+                    className="text-right min-h-[88px] border-[#0f1b3d]/30 focus-visible:ring-[#C9A84C]"
+                  />
+                  <p className="text-[11px] text-muted-foreground text-right leading-snug">
+                    אם תשאירי ריק, המערכת תשתמש באסטרטגיה האוטונומית הרגילה שלה המבוססת על הפרסונה של הסוכן, על מאגר הידע ועל היסטוריית השיחות עם המתעניין.
+                  </p>
+                </div>
+
+                <DialogFooter className="mt-2 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                  <Button
+                    onClick={dial}
+                    disabled={!canDial}
+                    className="w-full bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-11 text-base font-semibold shadow-md"
+                  >
+                    <Phone className="ml-2 h-5 w-5" />
+                    {dialing ? 'מפעיל שיחות…' : 'הפעלת שיחה'}
+                  </Button>
+                </DialogFooter>
+              </>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      <AddVoiceUploadDialog
+        open={uploadOpen}
+        onClose={() => setUploadOpen(false)}
+        onCreated={async (v) => { await loadClonedVoices(); setAgentId(`cv:${v.id}`); setUploadOpen(false); }}
+      />
+      <AddVoiceByIdDialog
+        open={voiceIdOpen}
+        onClose={() => setVoiceIdOpen(false)}
+        onCreated={async (v) => { await loadClonedVoices(); setAgentId(`cv:${v.id}`); setVoiceIdOpen(false); }}
+      />
+    </>
+  );
+};
+
+/* ───────────── Voice cloning sub-dialogs ───────────── */
+
+const AddVoiceUploadDialog = ({
+  open, onClose, onCreated,
+}: { open: boolean; onClose: () => void; onCreated: (v: ClonedVoice) => void }) => {
+  const [name, setName] = useState('');
+  const [file, setFile] = useState<File | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => { if (!open) { setName(''); setFile(null); setBusy(false); } }, [open]);
+
+  const submit = async () => {
+    if (!name.trim()) { toast.error('הקלידי שם לקול'); return; }
+    if (!file) { toast.error('בחרי קובץ אודיו (MP3 / WAV)'); return; }
+    setBusy(true);
+    try {
+      const buf = await file.arrayBuffer();
+      let bin = '';
+      const bytes = new Uint8Array(buf);
+      for (let i = 0; i < bytes.length; i += 0x8000) {
+        bin += String.fromCharCode.apply(null, Array.from(bytes.subarray(i, i + 0x8000)) as any);
+      }
+      const audio_base64 = btoa(bin);
+      const { data, error } = await supabase.functions.invoke('elevenlabs-voice-manage', {
+        body: { action: 'clone_from_upload', name: name.trim(), audio_base64, mime: file.type || 'audio/mpeg', filename: file.name },
+      });
+      if (error || (data as any)?.error) {
+        toast.error(`שיבוט הקול נכשל: ${(data as any)?.error ?? error?.message ?? 'שגיאה'}`);
+        return;
+      }
+      toast.success(`הקול "${name}" נוסף בהצלחה`);
+      onCreated((data as any).voice);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-md" dir="rtl">
+        <DialogHeader>
+          <DialogTitle className="text-right text-[#0f1b3d]">הוספת קול חדש (שיבוט מהיר / HD)</DialogTitle>
+          <DialogDescription className="text-right">
+            העלי דגימת אודיו נקייה של 30-60 שניות (MP3 / WAV) לשיבוט הקול דרך ElevenLabs.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-[#0f1b3d] text-right block">שם הקול</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="לדוגמה: אודי הקליט"
+              className="text-right border-[#0f1b3d]/30 focus-visible:ring-[#C9A84C]" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-[#0f1b3d] text-right block">קובץ אודיו</label>
+            <Input type="file" accept="audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/mp4,audio/m4a"
+              onChange={(e) => setFile(e.target.files?.[0] ?? null)}
+              className="text-right border-[#0f1b3d]/30 focus-visible:ring-[#C9A84C]" />
+            {file && (
+              <p className="text-[11px] text-muted-foreground text-right">
+                {file.name} · {(file.size / 1024 / 1024).toFixed(2)} MB
+              </p>
+            )}
+          </div>
         </div>
+        <DialogFooter className="mt-2 gap-2 sm:gap-2">
+          <Button variant="outline" onClick={onClose} disabled={busy}>ביטול</Button>
+          <Button onClick={submit} disabled={busy}
+            className="bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white">
+            {busy ? 'משבט…' : 'שיבוט והוספה'}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const AddVoiceByIdDialog = ({
+  open, onClose, onCreated,
+}: { open: boolean; onClose: () => void; onCreated: (v: ClonedVoice) => void }) => {
+  const [name, setName] = useState('');
+  const [voiceId, setVoiceId] = useState('');
+  const [busy, setBusy] = useState(false);
+
+  useEffect(() => { if (!open) { setName(''); setVoiceId(''); setBusy(false); } }, [open]);
+
+  const submit = async () => {
+    if (!name.trim()) { toast.error('הקלידי שם לקול'); return; }
+    if (!voiceId.trim()) { toast.error('הדביקי Voice ID של ElevenLabs'); return; }
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('elevenlabs-voice-manage', {
+        body: { action: 'register_voice_id', name: name.trim(), voice_id: voiceId.trim() },
+      });
+      if (error || (data as any)?.error) {
+        toast.error(`הוספה נכשלה: ${(data as any)?.error ?? error?.message ?? 'שגיאה'}`);
+        return;
+      }
+      toast.success(`הקול "${name}" נוסף`);
+      onCreated((data as any).voice);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
+      <DialogContent className="max-w-md" dir="rtl">
+        <DialogHeader>
+          <DialogTitle className="text-right text-[#0f1b3d]">הוספת קול לפי Voice ID</DialogTitle>
+          <DialogDescription className="text-right">
+            הזיני את ה-Voice ID מ-ElevenLabs כדי לחבר קול קיים לחשבון.
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3">
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-[#0f1b3d] text-right block">שם הקול</label>
+            <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="לדוגמה: אודי HD"
+              className="text-right border-[#0f1b3d]/30 focus-visible:ring-[#C9A84C]" />
+          </div>
+          <div className="space-y-1.5">
+            <label className="text-xs font-semibold text-[#0f1b3d] text-right block">Voice ID</label>
+            <Input value={voiceId} onChange={(e) => setVoiceId(e.target.value)} placeholder="EXAVITQu4vr4xnSDxMaL"
+              dir="ltr" className="font-mono border-[#0f1b3d]/30 focus-visible:ring-[#C9A84C]" />
+          </div>
+        </div>
+        <DialogFooter className="mt-2 gap-2 sm:gap-2">
+          <Button variant="outline" onClick={onClose} disabled={busy}>ביטול</Button>
+          <Button onClick={submit} disabled={busy}
+            className="bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white">
+            {busy ? 'שומר…' : 'שמירה'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
