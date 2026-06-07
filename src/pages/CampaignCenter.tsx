@@ -73,13 +73,19 @@ const EMPTY_CONNECTED = new Set<string>();
 
 // Official brand colors applied only when the channel is connected.
 const BRAND_COLOR: Record<string, string> = {
-  facebook:  'text-[#1877F2]',
-  instagram: 'text-[#E1306C]',
-  x:         'text-foreground',
-  youtube:   'text-[#FF0000]',
-  linkedin:  'text-[#0A66C2]',
-  tiktok:    'text-foreground',
+  facebook:          'text-[#1877F2]',
+  instagram:         'text-[#E1306C]',
+  x:                 'text-foreground',
+  youtube:           'text-[#FF0000]',
+  linkedin:          'text-[#0A66C2]',
+  tiktok:            'text-foreground',
+  whatsapp:          'text-[#25D366]',
+  telegram:          'text-[#26A5E4]',
+  messenger:         'text-[#0084FF]',
+  facebook_messenger:'text-[#0084FF]',
+  signal:            'text-[#3A76F0]',
 };
+
 
 /* ───────────── Channel grid ───────────── */
 
