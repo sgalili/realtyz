@@ -1776,11 +1776,8 @@ const VoiceLeadPickerDialog = ({
     <>
       <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" dir="rtl">
-          <DialogHeader>
-            <DialogTitle className="text-right text-[#0f1b3d]">למי מחייגים?</DialogTitle>
-            <DialogDescription className="text-right">
-              {channel?.label} · מספר חיוג <span dir="ltr" className="font-mono">{formatPhoneDisplay(VOICE_DIAL_NUMBER)}</span>
-            </DialogDescription>
+          <DialogHeader className="sr-only">
+            <DialogTitle>למי מחייגים?</DialogTitle>
           </DialogHeader>
 
           <div className="space-y-4">
