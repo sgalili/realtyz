@@ -167,13 +167,22 @@ export default function KnowledgeBase() {
   const saveLink = useMutation({
     mutationFn: async () => {
       if (blockDemoAction('add-knowledge-link')) throw new Error('demo-blocked');
-      if (!linkUrl.trim()) throw new Error('יש להזין קישור');
-      const { error } = await supabase.functions.invoke('kb-ingest', {
-        body: { title: linkUrl, raw_text: linkUrl, source_type: 'text', source_metadata: { url: linkUrl } },
+      const url = linkUrl.trim();
+      if (!url) throw new Error('יש להזין קישור');
+      const { data, error } = await supabase.functions.invoke('kb-ingest-link', {
+        body: { url },
       });
       if (error) throw error;
+      const payload = data as { title?: string; error?: string } | null;
+      if (payload?.error) throw new Error(payload.error);
+      return payload?.title ?? url;
     },
-    onSuccess: () => { toast.success('הקישור נוסף'); setLinkUrl(''); qc.invalidateQueries({ queryKey: ['kb-documents'] }); },
+    onSuccess: (title) => {
+      toast.success(`נוסף למאגר: ${title}`);
+      setLinkUrl('');
+      qc.invalidateQueries({ queryKey: ['kb-documents'] });
+      qc.invalidateQueries({ queryKey: ['media-library'] });
+    },
     onError: (e: Error) => { if (e.message !== 'demo-blocked') toast.error(e.message); },
   });
 
