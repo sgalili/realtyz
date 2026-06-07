@@ -144,7 +144,9 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
     }
     const { data, error } = await q;
     if (error) throw error;
-    setRows((data ?? []) as EngagementRow[]);
+    const next = (data ?? []) as EngagementRow[];
+    setRows(next);
+    writeCache(campaign.id, next);
   };
 
 
