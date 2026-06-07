@@ -32,6 +32,7 @@ import { SentimentAutomationToggles } from '@/components/automation/SentimentAut
 import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsStream';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { campaignMatchesExternalPost, normalizePostId } from '@/lib/campaignPostIds';
+import { IvrBroadcastDialog } from '@/components/campaigns/IvrBroadcastDialog';
 
 
 type TabValue = 'create' | 'published';
