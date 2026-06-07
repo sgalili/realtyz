@@ -1659,11 +1659,11 @@ const VoiceLeadPickerDialog = ({
       setLoading(true);
       const { data } = await supabase
         .from('leads')
-        .select('id, full_name, phone')
-        .not('phone', 'is', null)
+        .select('id, full_name, phone_number')
+        .not('phone_number', 'is', null)
         .order('full_name', { ascending: true })
         .limit(500);
-      setLeads(((data as any[]) ?? []) as VoiceLead[]);
+      setLeads(((data as any[]) ?? []).map(mapVoiceLead));
       setLoading(false);
     })();
   }, [open]);
