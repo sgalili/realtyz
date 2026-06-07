@@ -1420,7 +1420,7 @@ const PublishedFeed = () => {
                 <span className="text-xs text-muted-foreground whitespace-nowrap">{dateStr}</span>
                 <span className="text-xs text-muted-foreground">·</span>
                 <span className="text-sm font-semibold text-foreground truncate">{pageLabel}</span>
-                <span className="inline-flex h-8 w-8 items-center justify-center rounded-full bg-muted shrink-0">
+                <span className="inline-flex items-center justify-center shrink-0">
                   {platformMeta?.brand ? (
                     <BrandIcon name={platformMeta.brand} className={cn('h-5 w-5', BRAND_COLOR[platformMeta.brand] ?? 'text-muted-foreground')} />
                   ) : platformMeta?.icon ? (
@@ -1432,18 +1432,18 @@ const PublishedFeed = () => {
               </div>
 
               {/* Row 3: counters + expand/collapse chevron */}
-              <div className={cn('flex items-center justify-between gap-3', isHe ? 'flex-row' : 'flex-row-reverse')}>
-                <div className={cn('flex items-center gap-3 text-xs text-muted-foreground flex-wrap', isHe ? 'flex-row-reverse' : 'flex-row')}>
+              <div className={cn('flex items-center justify-between gap-3', isHe ? 'flex-row-reverse' : 'flex-row')}>
+                <div className={cn('flex items-center gap-3 text-xs text-muted-foreground flex-wrap', isHe ? 'flex-row' : 'flex-row-reverse')}>
                   <span className="inline-flex items-center gap-1" title="לייקים">
-                    <Heart className="h-3.5 w-3.5 text-red-500" />
+                    <Heart className="h-3.5 w-3.5 text-amber-400" />
                     <span className="tabular-nums">{fmt(r.like_count)}</span>
                   </span>
                   <span className="inline-flex items-center gap-1" title="תגובות">
-                    <MessageSquare className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
+                    <MessageSquare className="h-3.5 w-3.5 text-[hsl(220_70%_25%)] fill-[hsl(220_70%_25%)]" />
                     <span className="tabular-nums">{fmt(r.comment_count)}</span>
                   </span>
                   <span className="inline-flex items-center gap-1" title="שיתופים">
-                    <Share2 className="h-3.5 w-3.5 text-purple-600" />
+                    <Share2 className="h-3.5 w-3.5 text-amber-400" />
                     <span className="tabular-nums">{fmt(r.share_count)}</span>
                   </span>
                 </div>
