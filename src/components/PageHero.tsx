@@ -10,7 +10,7 @@
  * Mounted once at the layout level to avoid per-route hero "jumps".
  */
 import { useLocation, useSearchParams } from 'react-router-dom';
-import { Menu, Plus, FileSpreadsheet } from 'lucide-react';
+import { Menu, Plus, FileSpreadsheet, User } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { RealtyzWave } from '@/components/RealtyzWave';
 import { CreditBalancePill } from '@/components/CreditBalancePill';
@@ -43,6 +43,33 @@ function PropertiesHeroAddButton() {
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => dispatch('import')} className="gap-2">
           <FileSpreadsheet className="h-4 w-4" /> יבוא נכסים מאקסל
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+function LeadsHeroAddButton() {
+  const dispatch = (action: 'manual' | 'import') =>
+    window.dispatchEvent(new CustomEvent('leads:add', { detail: { action } }));
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button
+          size="icon"
+          variant="ghost"
+          className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white"
+          aria-label="הוספת מתעניין"
+        >
+          <Plus className="!h-5 !w-5" strokeWidth={2.5} />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem onClick={() => dispatch('manual')} className="gap-2">
+          <User className="h-4 w-4" /> הוספת מתעניין
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => dispatch('import')} className="gap-2">
+          <FileSpreadsheet className="h-4 w-4" /> ייבוא מתעניינים
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
@@ -135,6 +162,7 @@ export function PageHero() {
         {/* Visual left (RTL flex end): page-specific action button */}
         <div className="flex items-center justify-end gap-2" style={{ marginLeft: '-5px' }}>
           {location.pathname === '/properties' && <PropertiesHeroAddButton />}
+          {location.pathname.startsWith('/lead-crm') && <LeadsHeroAddButton />}
           {location.pathname.startsWith('/campaigns') && <CreditBalancePill />}
         </div>
       </div>

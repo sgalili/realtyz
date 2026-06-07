@@ -235,6 +235,17 @@ const LeadCRM = () => {
     return () => clearTimeout(searchTimerRef.current);
   }, [search]);
 
+  // Listen for hero-emitted add events (the '+' button lives in PageHero now).
+  useEffect(() => {
+    const handler = (e: Event) => {
+      const action = (e as CustomEvent<{ action: 'manual' | 'import' }>).detail?.action;
+      if (action === 'manual') setAddVoterOpen(true);
+      else if (action === 'import') fileInputRef.current?.click();
+    };
+    window.addEventListener('leads:add', handler);
+    return () => window.removeEventListener('leads:add', handler);
+  }, []);
+
   useRealtimeSubscription('messages', [['lead-messages', selectedVoterId ?? '']]);
 
   // Server-side paginated + filtered query
@@ -843,38 +854,16 @@ const LeadCRM = () => {
         </div>
       </div>
 
-      <div className="flex w-full gap-2 sm:w-auto sm:items-center sm:justify-end">
-        <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
-        {freemium.isTrial && (
-          <div className="hidden sm:flex items-center gap-3 me-2 rounded-md border border-border/60 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground">
-            <span>נותרו <span className="font-semibold text-foreground tabular-nums">{freemium.daysLeft}</span> ימי התנסות</span>
-            <span className="text-border">·</span>
-            <span><span className="font-semibold text-foreground tabular-nums">{freemium.contactsUsed}</span> / {freemium.contactsCap} אנשי קשר</span>
-            <span className="text-border">·</span>
-            <span>יתרה <PriceTag value={freemium.walletILS} fractionDigits={2} /></span>
-          </div>
-        )}
-        <Button
-          onClick={() => setAddVoterOpen(true)}
-          variant="outline"
-          size="sm"
-          className="flex-1 gap-2 sm:flex-none"
-          disabled={freemium.isBlocked}
-          title={freemium.isBlocked ? (freemium.blockReason === 'time' ? 'תקופת ההתנסות הסתיימה' : 'הגעת ל-100 אנשי קשר. שדרג כדי להמשיך') : undefined}
-        >
-          <User className="h-4 w-4" /> הוספת מתעניין
-        </Button>
-        <Button
-          onClick={() => fileInputRef.current?.click()}
-          variant="outline"
-          size="sm"
-          className="flex-1 gap-2 sm:flex-none"
-          disabled={freemium.isBlocked}
-          title={freemium.isBlocked ? (freemium.blockReason === 'time' ? 'תקופת ההתנסות הסתיימה' : 'הגעת ל-100 אנשי קשר. שדרג כדי להמשיך') : undefined}
-        >
-          <Upload className="h-4 w-4" /> ייבוא מתעניינים
-        </Button>
-      </div>
+      <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
+      {freemium.isTrial && (
+        <div className="hidden sm:flex items-center gap-3 rounded-md border border-border/60 bg-muted/30 px-3 py-1.5 text-xs text-muted-foreground w-fit ms-auto">
+          <span>נותרו <span className="font-semibold text-foreground tabular-nums">{freemium.daysLeft}</span> ימי התנסות</span>
+          <span className="text-border">·</span>
+          <span><span className="font-semibold text-foreground tabular-nums">{freemium.contactsUsed}</span> / {freemium.contactsCap} אנשי קשר</span>
+          <span className="text-border">·</span>
+          <span>יתרה <PriceTag value={freemium.walletILS} fractionDigits={2} /></span>
+        </div>
+      )}
 
       {/* Data Table */}
       <Card className="border-border/50 shadow-sm">
