@@ -1434,11 +1434,11 @@ const PublishedFeed = () => {
                     <span className="tabular-nums">{fmt(r.like_count)}</span>
                   </span>
                   <span className="inline-flex items-center gap-1" title="תגובות">
-                    <MessageSquare className="h-3.5 w-3.5 text-purple-600" />
+                    <MessageSquare className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
                     <span className="tabular-nums">{fmt(r.comment_count)}</span>
                   </span>
                   <span className="inline-flex items-center gap-1" title="שיתופים">
-                    <Share2 className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
+                    <Share2 className="h-3.5 w-3.5 text-purple-600" />
                     <span className="tabular-nums">{fmt(r.share_count)}</span>
                   </span>
                 </div>
