@@ -681,11 +681,8 @@ function CommentBubble({
     .slice(0, 2)
     .map((s) => s.charAt(0).toUpperCase())
     .join("") || "?";
-  const toggleLabel = expanded
-    ? "סגור"
-    : row.ai_reply_text
-    ? "הצג תגובת AI"
-    : "צור תגובת AI";
+  const alreadyReplied = row.status === "sent" || row.status === "replied";
+  const toggleLabel = expanded ? "סגור" : "צור תגובת AI";
   return (
     <div
       className={cn(
@@ -711,51 +708,33 @@ function CommentBubble({
         {row.inbound_text}
       </p>
       <div className="mt-2">
-        <button
-          type="button"
-          onClick={() => onToggleEditor(row)}
-          className="inline-flex items-center gap-1 text-[14px] font-medium text-[hsl(220,70%,25%)] hover:underline"
-          aria-expanded={expanded}
-        >
-          <Bot className="h-3.5 w-3.5" />
-          {toggleLabel}
-          {expanded ? (
-            <ChevronUp className="h-3.5 w-3.5" />
-          ) : (
-            <ChevronDown className="h-3.5 w-3.5" />
-          )}
-        </button>
-        {expanded && (
-          <div className="mt-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
-            {row.ai_reply_text && (
-              <div className="mb-3 rounded-md border border-primary/20 bg-background/60 p-2 text-sm">
-                <div className="mb-1 flex items-center justify-between gap-1 text-[10px] text-primary">
-                  {onRegenerate && row.inbound_text && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 px-2 text-[10px] text-primary hover:text-primary"
-                      onClick={() => onRegenerate(row)}
-                      disabled={regenerating}
-                      aria-label="צור טקסט מחדש"
-                    >
-                      <RefreshCw className={cn("ml-1 h-3 w-3", regenerating && "animate-spin")} />
-                      צור מחדש
-                    </Button>
-                  )}
-                  <div className="flex items-center gap-1">
-                    <span className="font-semibold">תגובת AI אחרונה</span>
-                    <Bot className="h-3 w-3" />
-                  </div>
-                </div>
-                <p className="whitespace-pre-wrap text-foreground">{row.ai_reply_text}</p>
-                <div className="mt-1 text-[10px] text-muted-foreground">
-                  סטטוס: {row.status}
-                </div>
+        {alreadyReplied ? (
+          <span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
+            <Bot className="h-3.5 w-3.5" />
+            הגבת לתגובה זו
+          </span>
+        ) : (
+          <>
+            <button
+              type="button"
+              onClick={() => onToggleEditor(row)}
+              className="inline-flex items-center gap-1 text-[14px] font-medium text-[hsl(220,70%,25%)] hover:underline"
+              aria-expanded={expanded}
+            >
+              <Bot className="h-3.5 w-3.5" />
+              {toggleLabel}
+              {expanded ? (
+                <ChevronUp className="h-3.5 w-3.5" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5" />
+              )}
+            </button>
+            {expanded && (
+              <div className="mt-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+                {editor}
               </div>
             )}
-            {editor}
-          </div>
+          </>
         )}
       </div>
     </div>
