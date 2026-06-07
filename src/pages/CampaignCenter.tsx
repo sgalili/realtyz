@@ -1626,12 +1626,53 @@ const Stat = ({ icon: Icon, label, value, hasData = true }: { icon: any; label: 
 
 /* ───────────── Voice Lead Picker ("למי מחייגים?") ───────────── */
 
-type VoiceLead = { id: string; full_name: string | null; phone: string | null };
-const mapVoiceLead = (r: any): VoiceLead => ({
-  id: r.id,
-  full_name: r.full_name ?? null,
-  phone: r.phone_number ?? r.phone ?? null,
-});
+type VoiceLead = {
+  id: string;
+  full_name: string | null;
+  phone: string | null;
+  city: string | null;
+  role: string | null; // מוכר / קונה / שוכר / משכיר
+  budget: string | null;
+};
+
+const ROLE_LABEL: Record<string, string> = {
+  seller: 'מוכר',
+  buyer: 'קונה',
+  renter: 'שוכר',
+  landlord: 'משכיר',
+};
+
+const cleanName = (raw: string | null | undefined): string => {
+  if (!raw) return '';
+  const parts = raw.split(/[\/|]/).map((p) => p.trim()).filter(Boolean);
+  const seen = new Set<string>();
+  const unique = parts.filter((p) => { if (seen.has(p)) return false; seen.add(p); return true; });
+  return unique.join(' ').replace(/\s+/g, ' ').trim();
+};
+
+const formatBudget = (raw: any): string | null => {
+  if (raw == null || raw === '') return null;
+  const n = Number(String(raw).replace(/[^\d.]/g, ''));
+  if (!Number.isFinite(n) || n <= 0) return null;
+  if (n >= 1_000_000) return `₪${(n / 1_000_000).toFixed(n % 1_000_000 === 0 ? 0 : 1)}M`;
+  if (n >= 1_000) return `₪${n.toLocaleString('he-IL')}`;
+  return `₪${n}`;
+};
+
+const mapVoiceLead = (r: any): VoiceLead => {
+  const prefs = r.preferences ?? {};
+  const extra = prefs.extra_fields ?? {};
+  const cleaned = cleanName(r.full_name);
+  const prefName = cleanName(extra['שם מלא']);
+  return {
+    id: r.id,
+    full_name: prefName || cleaned || null,
+    phone: r.phone_number ?? r.phone ?? null,
+    city: r.city || extra['עיר'] || null,
+    role: ROLE_LABEL[prefs.lead_kind] || (r.deal_type === 'rent' ? 'שוכר' : r.deal_type === 'sale' ? 'קונה' : null),
+    budget: formatBudget(extra['מחיר']) || formatBudget(prefs.budget_max) || formatBudget(prefs.budget),
+  };
+};
 
 const PRESET_VOICE_AGENTS: { id: string; label: string; voice_id: string }[] = [
   { id: 'sarah',    label: 'שרה (אישה)',     voice_id: 'EXAVITQu4vr4xnSDxMaL' },
@@ -1687,7 +1728,7 @@ const VoiceLeadPickerDialog = ({
     (async () => {
       setLoading(true);
       const [{ data: leadRows }] = await Promise.all([
-        supabase.from('leads').select('id, full_name, phone_number')
+        supabase.from('leads').select('id, full_name, phone_number, city, deal_type, preferences')
           .not('phone_number', 'is', null).order('full_name', { ascending: true }).limit(1000),
         loadClonedVoices(),
       ]);
@@ -1699,9 +1740,11 @@ const VoiceLeadPickerDialog = ({
   const filteredLeads = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return leads;
+    const digits = q.replace(/\D/g, '');
     return leads.filter((l) =>
       (l.full_name ?? '').toLowerCase().includes(q) ||
-      (l.phone ?? '').replace(/\D/g, '').includes(q.replace(/\D/g, '')),
+      (l.city ?? '').toLowerCase().includes(q) ||
+      (digits.length > 0 && (l.phone ?? '').replace(/\D/g, '').includes(digits)),
     );
   }, [leads, search]);
 
@@ -1832,6 +1875,25 @@ const VoiceLeadPickerDialog = ({
                           <div className="text-[11px] text-muted-foreground font-mono" dir="ltr">
                             {formatPhoneDisplay(l.phone)}
                           </div>
+                          {(l.role || l.budget || l.city) && (
+                            <div className="flex flex-wrap items-center gap-1 mt-1.5 justify-end">
+                              {l.role && (
+                                <span className="inline-flex items-center rounded-md bg-[#0f1b3d]/8 text-[#0f1b3d] border border-[#0f1b3d]/15 px-1.5 py-0.5 text-[10px] font-semibold">
+                                  {l.role}
+                                </span>
+                              )}
+                              {l.budget && (
+                                <span className="inline-flex items-center rounded-md bg-white text-[#0f1b3d] border border-[#C9A84C]/60 px-1.5 py-0.5 text-[10px] font-mono" dir="ltr">
+                                  {l.budget}
+                                </span>
+                              )}
+                              {l.city && (
+                                <span className="inline-flex items-center rounded-md bg-muted/60 text-[#0f1b3d]/80 border border-[#0f1b3d]/10 px-1.5 py-0.5 text-[10px]">
+                                  {l.city}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <Checkbox
                           checked={checked}
