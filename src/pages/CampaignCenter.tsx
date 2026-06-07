@@ -1704,12 +1704,12 @@ const VoiceLeadPickerDialog = ({
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Step 1 — Target List */}
-          <div className="space-y-1.5">
+          {/* Step 1 — Target List (always visible) */}
+          <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
             <label className="text-xs font-semibold text-[#0f1b3d] text-right block">בחירת רשימת מתעניינים</label>
             <Select value={listGroup} onValueChange={setListGroup} dir="rtl">
               <SelectTrigger className="w-full text-right border-[#0f1b3d]/30 focus:ring-[#C9A84C]">
-                <SelectValue />
+                <SelectValue placeholder="בחר/י רשימת יעד…" />
               </SelectTrigger>
               <SelectContent dir="rtl">
                 <SelectItem value="all">
@@ -1719,55 +1719,61 @@ const VoiceLeadPickerDialog = ({
             </Select>
           </div>
 
-          {/* Step 2 — AI Agent Voice */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[#0f1b3d] text-right block">בחירת נציג/ת AI טלפונית</label>
-            <Select value={agentId} onValueChange={setAgentId} dir="rtl">
-              <SelectTrigger className="w-full text-right border-[#0f1b3d]/30 focus:ring-[#C9A84C]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent dir="rtl">
-                {VOICE_AGENTS.map((a) => (
-                  <SelectItem key={a.id} value={a.id}>
-                    <span className="inline-flex items-center gap-2">
-                      <Play className="h-3 w-3 text-[#C9A84C]" />
-                      {a.label}
-                    </span>
-                  </SelectItem>
-                ))}
-                <SelectItem value="__clone" disabled>+ הוסף קול חדש (שיבוט מהיר / HD)</SelectItem>
-                <SelectItem value="__elevenlabs" disabled>+ הוסף קול לפי Voice ID של ElevenLabs</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Step 2 — AI Agent Voice (revealed after Step 1) */}
+          {listGroup && (
+            <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+              <label className="text-xs font-semibold text-[#0f1b3d] text-right block">בחירת נציג/ת AI טלפונית</label>
+              <Select value={agentId} onValueChange={setAgentId} dir="rtl">
+                <SelectTrigger className="w-full text-right border-[#0f1b3d]/30 focus:ring-[#C9A84C]">
+                  <SelectValue placeholder="בחר/י קול…" />
+                </SelectTrigger>
+                <SelectContent dir="rtl">
+                  {VOICE_AGENTS.map((a) => (
+                    <SelectItem key={a.id} value={a.id}>
+                      <span className="inline-flex items-center gap-2">
+                        <Play className="h-3 w-3 text-[#C9A84C]" />
+                        {a.label}
+                      </span>
+                    </SelectItem>
+                  ))}
+                  <SelectItem value="__clone" disabled>+ הוסף קול חדש (שיבוט מהיר / HD)</SelectItem>
+                  <SelectItem value="__elevenlabs" disabled>+ הוסף קול לפי Voice ID של ElevenLabs</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
-          {/* Step 3 — Optional script */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-[#0f1b3d] text-right block">
-              הוראות, נושא או תסריט מותאם לשיחה (אופציונלי)
-            </label>
-            <Textarea
-              value={instructions}
-              onChange={(e) => setInstructions(e.target.value)}
-              placeholder='לדוגמה: "בדקי האם המתעניין עדיין מחפש דירת 4 חדרים ברמת אביב, ועדכני אותו על דירה חדשה שיצאה ברחוב איינשטיין"'
-              className="text-right min-h-[88px] border-[#0f1b3d]/30 focus-visible:ring-[#C9A84C]"
-            />
-            <p className="text-[11px] text-muted-foreground text-right leading-snug">
-              אם תשאירי ריק, המערכת תשתמש באסטרטגיה האוטונומית הרגילה שלה המבוססת על הפרסונה של הסוכן, על מאגר הידע ועל היסטוריית השיחות עם המתעניין.
-            </p>
-          </div>
+          {/* Step 3 — Optional script + CTA (revealed after Step 2) */}
+          {listGroup && agentId && (
+            <>
+              <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                <label className="text-xs font-semibold text-[#0f1b3d] text-right block">
+                  הוראות, נושא או תסריט מותאם לשיחה (אופציונלי)
+                </label>
+                <Textarea
+                  value={instructions}
+                  onChange={(e) => setInstructions(e.target.value)}
+                  placeholder='לדוגמה: "בדקי האם המתעניין עדיין מחפש דירת 4 חדרים ברמת אביב, ועדכני אותו על דירה חדשה שיצאה ברחוב איינשטיין"'
+                  className="text-right min-h-[88px] border-[#0f1b3d]/30 focus-visible:ring-[#C9A84C]"
+                />
+                <p className="text-[11px] text-muted-foreground text-right leading-snug">
+                  אם תשאירי ריק, המערכת תשתמש באסטרטגיה האוטונומית הרגילה שלה המבוססת על הפרסונה של הסוכן, על מאגר הידע ועל היסטוריית השיחות עם המתעניין.
+                </p>
+              </div>
+
+              <DialogFooter className="mt-2 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                <Button
+                  onClick={dial}
+                  disabled={dialing || loading || leads.length === 0}
+                  className="w-full bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-11 text-base font-semibold shadow-md"
+                >
+                  <Phone className="ml-2 h-5 w-5" />
+                  {dialing ? 'מפעיל שיחות…' : 'הפעלת שיחה'}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </div>
-
-        <DialogFooter className="mt-2">
-          <Button
-            onClick={dial}
-            disabled={dialing || loading || leads.length === 0}
-            className="w-full bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-11 text-base font-semibold shadow-md"
-          >
-            <Phone className="ml-2 h-5 w-5" />
-            {dialing ? 'מפעיל שיחות…' : 'הפעלת שיחה'}
-          </Button>
-        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
