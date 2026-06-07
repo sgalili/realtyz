@@ -1416,7 +1416,7 @@ const PublishedFeed = () => {
               </h3>
 
               {/* Row 2: date · page name · platform logo (logo & date swapped) */}
-              <div className={cn('flex items-center gap-2', isHe ? 'flex-row-reverse justify-start' : 'flex-row justify-start')}>
+              <div className={cn('flex items-center gap-2', isHe ? 'flex-row-reverse justify-end' : 'flex-row justify-end')}>
                 <span className="text-xs text-muted-foreground whitespace-nowrap">{dateStr}</span>
                 <span className="text-xs text-muted-foreground">·</span>
                 <span className="text-sm font-semibold text-foreground truncate">{pageLabel}</span>
@@ -1431,19 +1431,19 @@ const PublishedFeed = () => {
                 </span>
               </div>
 
-              {/* Row 3: counters + expand/collapse chevron */}
-              <div className={cn('flex items-center justify-between gap-3', isHe ? 'flex-row-reverse' : 'flex-row')}>
-                <div className={cn('flex items-center gap-3 text-xs text-muted-foreground flex-wrap', isHe ? 'flex-row' : 'flex-row-reverse')}>
+              {/* Row 3: counters + expand/collapse chevron (chevron moved to opposite side) */}
+              <div className={cn('flex items-center justify-between gap-3', isHe ? 'flex-row' : 'flex-row-reverse')}>
+                <div className={cn('flex items-center gap-3 text-xs text-muted-foreground flex-wrap', isHe ? 'flex-row-reverse' : 'flex-row')}>
                   <span className="inline-flex items-center gap-1" title="לייקים">
-                    <Heart className="h-3.5 w-3.5 text-amber-400" />
+                    <Heart className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
                     <span className="tabular-nums">{fmt(r.like_count)}</span>
                   </span>
                   <span className="inline-flex items-center gap-1" title="תגובות">
-                    <MessageSquare className="h-3.5 w-3.5 text-[hsl(220_70%_25%)] fill-[hsl(220_70%_25%)]" />
+                    <MessageSquare className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
                     <span className="tabular-nums">{fmt(r.comment_count)}</span>
                   </span>
                   <span className="inline-flex items-center gap-1" title="שיתופים">
-                    <Share2 className="h-3.5 w-3.5 text-amber-400" />
+                    <Share2 className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
                     <span className="tabular-nums">{fmt(r.share_count)}</span>
                   </span>
                 </div>
