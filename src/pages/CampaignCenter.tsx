@@ -1683,7 +1683,7 @@ const CampaignCenter = () => {
         </div>
       )}
 
-      <SentimentAutomationToggles className="mb-4" />
+      <SentimentAutomationToggles className="mt-[15px] mb-4" />
 
       <Tabs value={active} onValueChange={handleChange} className="w-full">
         <div className="sticky top-0 z-30 -mx-6 px-6 py-2 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border/60">
