@@ -32,6 +32,7 @@ import { SentimentAutomationToggles } from '@/components/automation/SentimentAut
 import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsStream';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { campaignMatchesExternalPost, normalizePostId } from '@/lib/campaignPostIds';
+import { IvrBroadcastDialog } from '@/components/campaigns/IvrBroadcastDialog';
 
 
 type TabValue = 'create' | 'published';
@@ -2142,6 +2143,7 @@ const CampaignCenter = () => {
   const brandName = settings?.agency_name || 'Realtyz AI';
   const [pickedChannel, setPickedChannel] = useState<ChannelCard | null>(null);
   const [voiceDialChannel, setVoiceDialChannel] = useState<ChannelCard | null>(null);
+  const [ivrOpen, setIvrOpen] = useState(false);
   const [confirmPayload, setConfirmPayload] = useState<{ body: string; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null; group_ids: string[] } | null>(null);
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(EMPTY_CONNECTED);
   const [channelAccountNames, setChannelAccountNames] = useState<Record<string, string>>({});
@@ -2398,7 +2400,9 @@ const CampaignCenter = () => {
           <ChannelGrid
             selectedId={pickedChannel?.id ?? null}
             onPick={(c) => {
-              if (c.id === 'ivr' || c.id === 'ai-call') {
+              if (c.id === 'ivr') {
+                setIvrOpen(true);
+              } else if (c.id === 'ai-call') {
                 setVoiceDialChannel(c);
               } else {
                 setPickedChannel(c);
@@ -2438,6 +2442,7 @@ const CampaignCenter = () => {
         onClose={() => setVoiceDialChannel(null)}
         channel={voiceDialChannel}
       />
+      <IvrBroadcastDialog open={ivrOpen} onClose={() => setIvrOpen(false)} />
     </div>
   );
 };
