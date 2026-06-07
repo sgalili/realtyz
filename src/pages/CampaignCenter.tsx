@@ -1873,6 +1873,25 @@ const VoiceLeadPickerDialog = ({
                           <div className="text-[11px] text-muted-foreground font-mono" dir="ltr">
                             {formatPhoneDisplay(l.phone)}
                           </div>
+                          {(l.role || l.budget || l.city) && (
+                            <div className="flex flex-wrap items-center gap-1 mt-1.5 justify-end">
+                              {l.role && (
+                                <span className="inline-flex items-center rounded-md bg-[#0f1b3d]/8 text-[#0f1b3d] border border-[#0f1b3d]/15 px-1.5 py-0.5 text-[10px] font-semibold">
+                                  {l.role}
+                                </span>
+                              )}
+                              {l.budget && (
+                                <span className="inline-flex items-center rounded-md bg-white text-[#0f1b3d] border border-[#C9A84C]/60 px-1.5 py-0.5 text-[10px] font-mono" dir="ltr">
+                                  {l.budget}
+                                </span>
+                              )}
+                              {l.city && (
+                                <span className="inline-flex items-center rounded-md bg-muted/60 text-[#0f1b3d]/80 border border-[#0f1b3d]/10 px-1.5 py-0.5 text-[10px]">
+                                  {l.city}
+                                </span>
+                              )}
+                            </div>
+                          )}
                         </div>
                         <Checkbox
                           checked={checked}
