@@ -608,6 +608,22 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
     return order;
   }, [properties]);
 
+  type SortKey = 'listing_type' | 'title' | 'price' | 'city' | 'rooms' | 'size_sqm' | `extra:${string}`;
+  const { sort, toggle } = useTableSort<SortKey>();
+  const sorted = useMemo(() => sortRows(properties, sort, (row, key) => {
+    if (key.startsWith('extra:')) return row.extras?.[key.slice(6)] ?? '';
+    switch (key) {
+      case 'listing_type': return LISTING_TYPE_LABELS_HE[row.listing_type ?? 'sale'];
+      case 'title': return row.title;
+      case 'price': return Number(row.price ?? 0);
+      case 'city': return row.city ?? '';
+      case 'rooms': return Number(row.rooms ?? 0);
+      case 'size_sqm': return Number(row.size_sqm ?? 0);
+      default: return '';
+    }
+  }), [properties, sort]);
+
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
