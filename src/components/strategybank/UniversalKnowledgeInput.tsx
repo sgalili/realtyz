@@ -75,6 +75,34 @@ export const UniversalKnowledgeInput = () => {
   const [transcript, setTranscript] = useState('');
   const [voiceTitle, setVoiceTitle] = useState('');
 
+  // Link (YouTube / article)
+  const [linkUrl, setLinkUrl] = useState('');
+  const [linkIngesting, setLinkIngesting] = useState(false);
+
+  const handleSaveLink = async () => {
+    if (blockDemoAction('add-knowledge-link')) return;
+    const url = linkUrl.trim();
+    if (!/^https?:\/\//i.test(url)) { toast.error('הדבק כתובת תקינה (https://...)'); return; }
+    if (!user) { toast.error('יש להתחבר תחילה'); return; }
+    setLinkIngesting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('kb-ingest-link', {
+        body: { url },
+      });
+      if (error) throw error;
+      const payload = data as { title?: string; error?: string } | null;
+      if (payload?.error) throw new Error(payload.error);
+      toast.success(`נוסף למאגר: ${payload?.title ?? url}`);
+      setLinkUrl('');
+      qc.invalidateQueries({ queryKey: ['kb-documents'] });
+      qc.invalidateQueries({ queryKey: ['media-library'] });
+    } catch (e) {
+      toast.error(`הוספת קישור נכשלה: ${(e as Error).message}`);
+    } finally {
+      setLinkIngesting(false);
+    }
+  };
+
   useEffect(() => () => {
     if (recordedUrl) URL.revokeObjectURL(recordedUrl);
     if (tickRef.current) window.clearInterval(tickRef.current);
