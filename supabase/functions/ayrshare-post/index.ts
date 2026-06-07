@@ -26,6 +26,54 @@ const PLATFORM_MAP: Record<string, string> = {
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+
+  // ── DELETE: remove a previously published post from the native social
+  //     network via Ayrshare, then optionally purge the local campaign_logs
+  //     row. Body: { external_post_id: string, platform?: string }.
+  if (req.method === "DELETE") {
+    try {
+      const AYRSHARE_API_KEY = Deno.env.get("AYRSHARE_API_KEY");
+      if (!AYRSHARE_API_KEY) return json({ error: "AYRSHARE_API_KEY not configured" }, 500);
+      const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
+      const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const admin = createClient(SUPABASE_URL, SERVICE, { auth: { persistSession: false } });
+
+      const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
+      if (!token) return json({ error: "unauthorized" }, 401);
+      const { data: authData } = await admin.auth.getUser(token);
+      const userId = authData?.user?.id;
+      if (!userId) return json({ error: "unauthorized" }, 401);
+
+      const body = await req.json().catch(() => ({}));
+      const externalPostId: string = String(body?.external_post_id ?? body?.id ?? "").trim();
+      if (!externalPostId) return json({ error: "missing external_post_id" }, 400);
+
+      const { profileKey } = await resolveWorkspaceProfileKey(admin);
+      if (!profileKey) return json({ error: "workspace ayrshare profile key missing" }, 500);
+
+      const r = await fetch(`${AYR_POST_URL}/${encodeURIComponent(externalPostId)}`, {
+        method: "DELETE",
+        headers: {
+          Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+          "Profile-Key": profileKey,
+          "Content-Type": "application/json",
+        },
+      });
+      const t = await r.text();
+      let j: any = null;
+      try { j = t ? JSON.parse(t) : null; } catch { j = { raw: t }; }
+      // Treat a 404 from Ayrshare as already-deleted (idempotent success).
+      const idempotent404 = r.status === 404;
+      if (!r.ok && !idempotent404) {
+        return json({ error: j?.message ?? `Ayrshare ${r.status}`, details: j }, 502);
+      }
+      return json({ success: true, ayrshare: j, idempotent: idempotent404 });
+    } catch (e) {
+      console.error("[ayrshare-post DELETE] error:", e);
+      return json({ error: e instanceof Error ? e.message : "unknown" }, 500);
+    }
+  }
+
   if (req.method !== "POST") return json({ error: "method" }, 405);
 
   try {

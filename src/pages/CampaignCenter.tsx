@@ -1405,7 +1405,43 @@ const PublishedFeed = () => {
   };
 
   const deleteCampaign = async (r: CampaignRow) => {
-    if (!confirm('למחוק את הקמפיין הזה לצמיתות?')) return;
+    if (!confirm('למחוק את הפוסט הזה לצמיתות (כולל מחיקה מפייסבוק)?')) return;
+
+    // 1. Wipe the post off the native social network via Ayrshare first.
+    //    If that fails, abort so we don't end up with a local-only delete
+    //    that leaves a phantom post live on the broker's Facebook Page.
+    const externalIds = Array.from(new Set([
+      r.provider_message_id,
+      ...((r as any).provider_response?.postIds || []).map((p: any) => p?.id ?? p?.postId).filter(Boolean),
+    ].filter(Boolean) as string[]));
+    if (externalIds.length > 0) {
+      const { data: sess } = await supabase.auth.getSession();
+      const accessToken = sess?.session?.access_token;
+      const fnUrl = `${import.meta.env.VITE_SUPABASE_URL ?? ''}/functions/v1/ayrshare-post`;
+      for (const pid of externalIds) {
+        try {
+          const resp = await fetch(fnUrl, {
+            method: 'DELETE',
+            headers: {
+              Authorization: `Bearer ${accessToken ?? ''}`,
+              apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '',
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ external_post_id: pid }),
+          });
+          if (!resp.ok) {
+            const body = await resp.json().catch(() => ({}));
+            toast.error(`מחיקה מפייסבוק נכשלה: ${body?.error ?? resp.status}`);
+            return;
+          }
+        } catch (e: any) {
+          toast.error(`מחיקה מפייסבוק נכשלה: ${e?.message ?? e}`);
+          return;
+        }
+      }
+    }
+
+    // 2. Local cleanup of the campaign_logs group rows.
     const { from, to } = groupFilter(r);
     const { error, count } = await supabase
       .from('campaign_logs')
@@ -1416,7 +1452,11 @@ const PublishedFeed = () => {
       .lt('created_at', to);
     if (error) { toast.error('מחיקה נכשלה: ' + error.message); return; }
     setRows((prev) => prev?.filter((x) => x.id !== r.id) ?? prev);
-    toast.success(`הקמפיין נמחק${typeof count === 'number' ? ` (${count} רשומות)` : ''}`);
+    toast.success(
+      externalIds.length > 0
+        ? `הפוסט נמחק בהצלחה מפייסבוק ומהמערכת${typeof count === 'number' ? ` (${count} רשומות)` : ''}`
+        : `הפוסט נמחק מהמערכת${typeof count === 'number' ? ` (${count} רשומות)` : ''}`,
+    );
     load();
   };
 
@@ -1538,7 +1578,7 @@ const PublishedFeed = () => {
                   <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
                           className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
                     <Trash2 className="ml-1 h-4 w-4" />
-                    מחיקה
+                    מחק פוסט
                   </Button>
                   <Button variant="outline" size="sm"
                           disabled={!postUrl}
