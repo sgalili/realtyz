@@ -681,11 +681,8 @@ function CommentBubble({
     .slice(0, 2)
     .map((s) => s.charAt(0).toUpperCase())
     .join("") || "?";
-  const toggleLabel = expanded
-    ? "סגור"
-    : row.ai_reply_text
-    ? "הצג תגובת AI"
-    : "צור תגובת AI";
+  const alreadyReplied = row.status === "sent" || row.status === "replied";
+  const toggleLabel = expanded ? "סגור" : "צור תגובת AI";
   return (
     <div
       className={cn(
