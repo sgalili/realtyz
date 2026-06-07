@@ -111,7 +111,7 @@ Deno.serve(async (req) => {
             name,
             voice_id: voiceId,
             source: "voice_id",
-            preview_url: meta?.preview_url ?? null,
+            preview_url: previewUrl,
           },
           { onConflict: "user_id,voice_id" },
         )
