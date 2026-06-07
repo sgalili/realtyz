@@ -45,6 +45,7 @@ import { ReferralButton } from '@/components/referrals/ReferralButton';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
 import { isInServiceArea } from '@/lib/serviceAreas';
+import { SortableTh, useTableSort, sortRows } from '@/components/ui/sortable-th';
 
 const PRICE_MIN = 0;
 const PRICE_MAX = 10_000_000;
@@ -608,6 +609,22 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
     return order;
   }, [properties]);
 
+  type SortKey = 'listing_type' | 'title' | 'price' | 'city' | 'rooms' | 'size_sqm' | `extra:${string}`;
+  const { sort, toggle } = useTableSort<SortKey>();
+  const sorted = useMemo(() => sortRows(properties, sort, (row, key) => {
+    if (key.startsWith('extra:')) return row.extras?.[key.slice(6)] ?? '';
+    switch (key) {
+      case 'listing_type': return LISTING_TYPE_LABELS_HE[row.listing_type ?? 'sale'];
+      case 'title': return row.title;
+      case 'price': return Number(row.price ?? 0);
+      case 'city': return row.city ?? '';
+      case 'rooms': return Number(row.rooms ?? 0);
+      case 'size_sqm': return Number(row.size_sqm ?? 0);
+      default: return '';
+    }
+  }), [properties, sort]);
+
+
   const handleDelete = async () => {
     if (!deleteTarget) return;
     setDeleting(true);
@@ -628,20 +645,20 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
         <table className="w-full text-xs" dir="rtl">
           <thead className="bg-muted/50 sticky top-0">
             <tr className="text-right">
-              <th className="px-2 py-2 font-semibold whitespace-nowrap">סוג עסקה</th>
-              <th className="px-2 py-2 font-semibold whitespace-nowrap">כותרת</th>
-              <th className="px-2 py-2 font-semibold whitespace-nowrap">מחיר</th>
-              <th className="px-2 py-2 font-semibold whitespace-nowrap">עיר</th>
-              <th className="px-2 py-2 font-semibold whitespace-nowrap">חדרים</th>
-              <th className="px-2 py-2 font-semibold whitespace-nowrap">מ"ר</th>
+              <SortableTh sortKey="listing_type" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">סוג עסקה</SortableTh>
+              <SortableTh sortKey="title" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">כותרת</SortableTh>
+              <SortableTh sortKey="price" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">מחיר</SortableTh>
+              <SortableTh sortKey="city" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">עיר</SortableTh>
+              <SortableTh sortKey="rooms" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">חדרים</SortableTh>
+              <SortableTh sortKey="size_sqm" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">מ"ר</SortableTh>
               {extraKeys.map((k) => (
-                <th key={k} className="px-2 py-2 font-semibold whitespace-nowrap text-muted-foreground">{k}</th>
+                <SortableTh key={k} sortKey={`extra:${k}` as const} sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap text-muted-foreground">{k}</SortableTh>
               ))}
               <th className="px-2 py-2 font-semibold whitespace-nowrap text-left">פעולות</th>
             </tr>
           </thead>
           <tbody>
-            {properties.map((p) => {
+            {sorted.map((p) => {
               const isRent = p.listing_type === 'rent';
               const isMine = p.source === 'mine';
               return (
