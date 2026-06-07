@@ -724,6 +724,20 @@ function CommentBubble({
     hour: "2-digit",
     minute: "2-digit",
   });
+  const [showAiReply, setShowAiReply] = useState(false);
+  const senderName = row.sender_handle ?? "אנונימי";
+  const avatarUrl =
+    (row.metadata as any)?.author?.profile_image ||
+    (row.metadata as any)?.author?.picture ||
+    (row.metadata as any)?.profile_image ||
+    null;
+  const initials = senderName
+    .replace(/^@/, "")
+    .split(/[\s._-]+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((s) => s.charAt(0).toUpperCase())
+    .join("") || "?";
   return (
     <div
       className={cn(
@@ -742,38 +756,58 @@ function CommentBubble({
         >
           {sentimentLabel(row.sentiment)}
         </span>
-        <span className="font-medium text-foreground">
-          {row.sender_handle ?? "אנונימי"}
-        </span>
+        <span className="font-medium text-foreground">{senderName}</span>
+        <Avatar className="h-6 w-6">
+          {avatarUrl && <AvatarImage src={avatarUrl} alt={senderName} />}
+          <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
+        </Avatar>
       </div>
       <p className="whitespace-pre-wrap text-sm text-foreground">
         {row.inbound_text}
       </p>
       {row.ai_reply_text && (
-        <div className="mt-2 rounded-lg border border-primary/30 bg-primary/5 p-2 text-sm">
-          <div className="mb-1 flex items-center justify-between gap-1 text-[10px] text-primary">
-            {onRegenerate && row.inbound_text && (
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-6 px-2 text-[10px] text-primary hover:text-primary"
-                onClick={() => onRegenerate(row)}
-                disabled={regenerating}
-                aria-label="צור טקסט מחדש"
-              >
-                <RefreshCw className={cn("ml-1 h-3 w-3", regenerating && "animate-spin")} />
-                צור מחדש
-              </Button>
+        <div className="mt-2">
+          <button
+            type="button"
+            onClick={() => setShowAiReply((v) => !v)}
+            className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+            aria-expanded={showAiReply}
+          >
+            <Bot className="h-3 w-3" />
+            {showAiReply ? "הסתר תגובת AI" : "הצג תגובת AI"}
+            {showAiReply ? (
+              <ChevronUp className="h-3 w-3" />
+            ) : (
+              <ChevronDown className="h-3 w-3" />
             )}
-            <div className="flex items-center gap-1">
-              <span className="font-semibold">תגובת AI</span>
-              <Bot className="h-3 w-3" />
+          </button>
+          {showAiReply && (
+            <div className="mt-2 rounded-lg border border-primary/30 bg-primary/5 p-2 text-sm">
+              <div className="mb-1 flex items-center justify-between gap-1 text-[10px] text-primary">
+                {onRegenerate && row.inbound_text && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2 text-[10px] text-primary hover:text-primary"
+                    onClick={() => onRegenerate(row)}
+                    disabled={regenerating}
+                    aria-label="צור טקסט מחדש"
+                  >
+                    <RefreshCw className={cn("ml-1 h-3 w-3", regenerating && "animate-spin")} />
+                    צור מחדש
+                  </Button>
+                )}
+                <div className="flex items-center gap-1">
+                  <span className="font-semibold">תגובת AI</span>
+                  <Bot className="h-3 w-3" />
+                </div>
+              </div>
+              <p className="whitespace-pre-wrap text-foreground">{row.ai_reply_text}</p>
+              <div className="mt-1 text-[10px] text-muted-foreground">
+                סטטוס: {row.status}
+              </div>
             </div>
-          </div>
-          <p className="whitespace-pre-wrap text-foreground">{row.ai_reply_text}</p>
-          <div className="mt-1 text-[10px] text-muted-foreground">
-            סטטוס: {row.status}
-          </div>
+          )}
         </div>
       )}
       <div className="mt-2 flex justify-start">
