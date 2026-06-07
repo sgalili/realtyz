@@ -686,11 +686,18 @@ function CommentBubble({
     minute: "2-digit",
   });
   const senderName = row.sender_handle ?? "אנונימי";
-  const avatarUrl =
-    (row.metadata as any)?.author?.profile_image ||
-    (row.metadata as any)?.author?.picture ||
-    (row.metadata as any)?.profile_image ||
-    null;
+  const meta = (row.metadata as any) ?? {};
+  const senderId: string | null =
+    meta?.sender_id ?? meta?.author?.id ?? meta?.from?.id ?? null;
+  const avatarUrl: string | null =
+    meta?.author?.profile_image ||
+    meta?.author?.picture ||
+    meta?.profile_image ||
+    meta?.profile_picture_url ||
+    meta?.from?.picture?.data?.url ||
+    (senderId && /facebook/i.test(row.platform)
+      ? `https://graph.facebook.com/${senderId}/picture?type=square`
+      : null);
   const initials = senderName
     .replace(/^@/, "")
     .split(/[\s._-]+/)
