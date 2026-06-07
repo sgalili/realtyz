@@ -7,14 +7,6 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
 import { Bot, ChevronDown, ChevronUp, MessageSquare, RefreshCw, Send, Sparkles } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
@@ -549,80 +541,13 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
       )}
 
       <ul className="space-y-2">
-        {tree.map((root) => (
-          <li key={root.id}>
-            <CommentBubble
-              row={root}
-              onReply={openReply}
-              onRegenerate={regenerateInline}
-              regenerating={regeneratingId === root.id}
-            />
-            {root.children.length > 0 && (
-              <ul className="mt-2 space-y-2 border-r-2 border-border/60 pr-3 mr-2">
-                {root.children.map((child) => (
-                  <li key={child.id}>
-                    <CommentBubble
-                      row={child}
-                      onReply={openReply}
-                      onRegenerate={regenerateInline}
-                      regenerating={regeneratingId === child.id}
-                      isReply
-                    />
-                  </li>
-                ))}
-              </ul>
-            )}
-          </li>
-        ))}
-      </ul>
-
-
-      <Dialog open={!!replyOpen} onOpenChange={(o) => !o && setReplyOpen(null)}>
-        <DialogContent dir="rtl" className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="text-right">תגובת AI</DialogTitle>
-            <DialogDescription className="text-right">
-              ערוך את הניסוח לפני פרסום בערוץ {replyOpen?.platform}.
-            </DialogDescription>
-          </DialogHeader>
-          {replyOpen && (
+        {tree.map((root) => {
+          const renderEditor = (r: EngagementRow) => (
             <div className="space-y-3 text-right">
-              <div className="rounded-lg border border-border bg-muted/40 p-3 text-sm">
-                <div className="mb-1 flex items-center justify-end gap-2 text-xs text-muted-foreground">
-                  <span
-                    className={cn(
-                      "rounded px-1.5 py-0.5 text-[10px] font-medium",
-                      sentimentClass(replyOpen.sentiment),
-                    )}
-                  >
-                    {sentimentLabel(replyOpen.sentiment)}
-                  </span>
-                  <span className="font-medium text-foreground">
-                    {replyOpen.sender_handle ?? "אנונימי"}
-                  </span>
-                </div>
-                <p className="whitespace-pre-wrap text-foreground">
-                  {replyOpen.inbound_text}
-                </p>
-              </div>
-
               <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-6 px-2 text-[11px]"
-                    onClick={() => replyOpen && generateDraft(replyOpen, true)}
-                    disabled={drafting || sending}
-                    aria-label="נסח מחדש תגובה פומבית"
-                  >
-                    <RefreshCw className={cn("ml-1 h-3 w-3", drafting && "animate-spin")} />
-                    נסח מחדש
-                  </Button>
-                  <p className="text-[11px] font-medium text-muted-foreground">
-                    תגובה פומבית (1-2 משפטים, ישירה לעניין)
-                  </p>
-                </div>
+                <p className="text-[11px] font-medium text-muted-foreground">
+                  תגובה פומבית (1-2 משפטים, ישירה לעניין)
+                </p>
                 <Textarea
                   value={drafting ? "" : replyDraft}
                   onChange={(e) => setReplyDraft(e.target.value)}
@@ -633,36 +558,22 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
                   className="text-right"
                 />
               </div>
-
               <div className="space-y-1">
                 <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-1">
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 px-2 text-[11px]"
-                      onClick={() => replyOpen && generateDraft(replyOpen, true)}
-                      disabled={drafting || sending}
-                      aria-label="נסח מחדש DM"
-                    >
-                      <RefreshCw className={cn("ml-1 h-3 w-3", drafting && "animate-spin")} />
-                      נסח מחדש
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 px-2 text-[11px]"
-                      onClick={() => {
-                        if (dmDraft.trim()) {
-                          navigator.clipboard.writeText(dmDraft.trim());
-                          toast.success("ה-DM הועתק ללוח");
-                        }
-                      }}
-                      disabled={!dmDraft.trim() || drafting}
-                    >
-                      העתק DM
-                    </Button>
-                  </div>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-2 text-[11px]"
+                    onClick={() => {
+                      if (dmDraft.trim()) {
+                        navigator.clipboard.writeText(dmDraft.trim());
+                        toast.success("ה-DM הועתק ללוח");
+                      }
+                    }}
+                    disabled={!dmDraft.trim() || drafting}
+                  >
+                    העתק DM
+                  </Button>
                   <p className="text-[11px] font-medium text-muted-foreground">
                     הודעה פרטית למסנג'ר (פרטי הנכס + חלופה + שאלה אחת)
                   </p>
@@ -677,42 +588,75 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
                   className="text-right bg-muted/30"
                 />
               </div>
+              <div className="flex flex-wrap items-center justify-end gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => generateDraft(r, true)}
+                  disabled={drafting || sending}
+                >
+                  <Sparkles className="ml-1 h-4 w-4" />
+                  נסח מחדש
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={sendReply}
+                  disabled={sending || !replyDraft.trim()}
+                >
+                  <Send className="ml-1 h-4 w-4" />
+                  {sending ? "מפרסם..." : "פרסם תגובה"}
+                </Button>
+              </div>
             </div>
-          )}
-          <DialogFooter className="gap-2 sm:gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => replyOpen && generateDraft(replyOpen, true)}
-              disabled={drafting || sending}
-            >
-              <Sparkles className="ml-1 h-4 w-4" />
-              נסח מחדש
-            </Button>
-            <Button
-              size="sm"
-              onClick={sendReply}
-              disabled={sending || !replyDraft.trim()}
-            >
-              <Send className="ml-1 h-4 w-4" />
-              {sending ? "מפרסם..." : "פרסם תגובה"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          );
+          return (
+            <li key={root.id}>
+              <CommentBubble
+                row={root}
+                onToggleEditor={(r) => setReplyOpen(replyOpen?.id === r.id ? null : r)}
+                expanded={replyOpen?.id === root.id}
+                editor={replyOpen?.id === root.id ? renderEditor(root) : null}
+                onRegenerate={regenerateInline}
+                regenerating={regeneratingId === root.id}
+              />
+              {root.children.length > 0 && (
+                <ul className="mt-2 space-y-2 border-r-2 border-border/60 pr-3 mr-2">
+                  {root.children.map((child) => (
+                    <li key={child.id}>
+                      <CommentBubble
+                        row={child}
+                        onToggleEditor={(r) => setReplyOpen(replyOpen?.id === r.id ? null : r)}
+                        expanded={replyOpen?.id === child.id}
+                        editor={replyOpen?.id === child.id ? renderEditor(child) : null}
+                        onRegenerate={regenerateInline}
+                        regenerating={regeneratingId === child.id}
+                        isReply
+                      />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }
 
 function CommentBubble({
   row,
-  onReply,
+  onToggleEditor,
+  expanded,
+  editor,
   onRegenerate,
   regenerating,
   isReply,
 }: {
   row: EngagementRow;
-  onReply: (r: EngagementRow) => void;
+  onToggleEditor: (r: EngagementRow) => void;
+  expanded: boolean;
+  editor?: React.ReactNode;
   onRegenerate?: (r: EngagementRow) => void;
   regenerating?: boolean;
   isReply?: boolean;
@@ -724,7 +668,6 @@ function CommentBubble({
     hour: "2-digit",
     minute: "2-digit",
   });
-  const [showAiReply, setShowAiReply] = useState(false);
   const senderName = row.sender_handle ?? "אנונימי";
   const avatarUrl =
     (row.metadata as any)?.author?.profile_image ||
@@ -738,6 +681,11 @@ function CommentBubble({
     .slice(0, 2)
     .map((s) => s.charAt(0).toUpperCase())
     .join("") || "?";
+  const toggleLabel = expanded
+    ? "סגור"
+    : row.ai_reply_text
+    ? "הצג תגובת AI"
+    : "צור תגובת AI";
   return (
     <div
       className={cn(
@@ -765,61 +713,53 @@ function CommentBubble({
       <p className="whitespace-pre-wrap text-sm text-foreground">
         {row.inbound_text}
       </p>
-      {row.ai_reply_text && (
-        <div className="mt-2">
-          <button
-            type="button"
-            onClick={() => setShowAiReply((v) => !v)}
-            className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
-            aria-expanded={showAiReply}
-          >
-            <Bot className="h-3 w-3" />
-            {showAiReply ? "הסתר תגובת AI" : "הצג תגובת AI"}
-            {showAiReply ? (
-              <ChevronUp className="h-3 w-3" />
-            ) : (
-              <ChevronDown className="h-3 w-3" />
-            )}
-          </button>
-          {showAiReply && (
-            <div className="mt-2 rounded-lg border border-primary/30 bg-primary/5 p-2 text-sm">
-              <div className="mb-1 flex items-center justify-between gap-1 text-[10px] text-primary">
-                {onRegenerate && row.inbound_text && (
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-6 px-2 text-[10px] text-primary hover:text-primary"
-                    onClick={() => onRegenerate(row)}
-                    disabled={regenerating}
-                    aria-label="צור טקסט מחדש"
-                  >
-                    <RefreshCw className={cn("ml-1 h-3 w-3", regenerating && "animate-spin")} />
-                    צור מחדש
-                  </Button>
-                )}
-                <div className="flex items-center gap-1">
-                  <span className="font-semibold">תגובת AI</span>
-                  <Bot className="h-3 w-3" />
+      <div className="mt-2">
+        <button
+          type="button"
+          onClick={() => onToggleEditor(row)}
+          className="inline-flex items-center gap-1 text-[11px] font-medium text-primary hover:underline"
+          aria-expanded={expanded}
+        >
+          <Bot className="h-3 w-3" />
+          {toggleLabel}
+          {expanded ? (
+            <ChevronUp className="h-3 w-3" />
+          ) : (
+            <ChevronDown className="h-3 w-3" />
+          )}
+        </button>
+        {expanded && (
+          <div className="mt-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
+            {row.ai_reply_text && (
+              <div className="mb-3 rounded-md border border-primary/20 bg-background/60 p-2 text-sm">
+                <div className="mb-1 flex items-center justify-between gap-1 text-[10px] text-primary">
+                  {onRegenerate && row.inbound_text && (
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      className="h-6 px-2 text-[10px] text-primary hover:text-primary"
+                      onClick={() => onRegenerate(row)}
+                      disabled={regenerating}
+                      aria-label="צור טקסט מחדש"
+                    >
+                      <RefreshCw className={cn("ml-1 h-3 w-3", regenerating && "animate-spin")} />
+                      צור מחדש
+                    </Button>
+                  )}
+                  <div className="flex items-center gap-1">
+                    <span className="font-semibold">תגובת AI אחרונה</span>
+                    <Bot className="h-3 w-3" />
+                  </div>
+                </div>
+                <p className="whitespace-pre-wrap text-foreground">{row.ai_reply_text}</p>
+                <div className="mt-1 text-[10px] text-muted-foreground">
+                  סטטוס: {row.status}
                 </div>
               </div>
-              <p className="whitespace-pre-wrap text-foreground">{row.ai_reply_text}</p>
-              <div className="mt-1 text-[10px] text-muted-foreground">
-                סטטוס: {row.status}
-              </div>
-            </div>
-          )}
-        </div>
-      )}
-      <div className="mt-2 flex justify-start">
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-7 px-2 text-xs"
-          onClick={() => onReply(row)}
-        >
-          <MessageSquare className="ml-1 h-3.5 w-3.5" />
-          {row.ai_reply_text ? "ערוך והגב" : "צור תגובת AI"}
-        </Button>
+            )}
+            {editor}
+          </div>
+        )}
       </div>
     </div>
   );
