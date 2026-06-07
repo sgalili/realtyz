@@ -367,6 +367,13 @@ export default function KnowledgeBase() {
                   <div className="space-y-1.5 max-h-[320px] overflow-y-auto pr-1">
                     {filtered.map((d: any) => {
                       const Icon = iconFor(d.source_type);
+                      const meta = (d.source_metadata ?? {}) as {
+                        thumbnail?: string;
+                        source_author?: string;
+                        source_url?: string;
+                      };
+                      const isVideo = d.source_type === 'video';
+                      const snippet = (d.raw_text ?? '').replace(/\s+/g, ' ').slice(0, 110);
                       return (
                         <div
                           key={d.id}
@@ -374,12 +381,31 @@ export default function KnowledgeBase() {
                           tabIndex={0}
                           onClick={() => setViewDoc(d)}
                           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setViewDoc(d); } }}
-                          className="flex items-center gap-2 p-2 rounded-md border bg-background hover:bg-muted/30 transition-colors cursor-pointer"
+                          className="flex items-start gap-2 p-2 rounded-md border bg-background hover:bg-muted/30 transition-colors cursor-pointer"
                         >
-                          <Icon className="h-4 w-4 text-primary shrink-0" />
+                          {isVideo && meta.thumbnail ? (
+                            <img
+                              src={meta.thumbnail}
+                              alt=""
+                              loading="lazy"
+                              className="h-14 w-20 rounded object-cover shrink-0 bg-muted"
+                            />
+                          ) : (
+                            <Icon className="h-4 w-4 text-primary shrink-0 mt-1" />
+                          )}
                           <div className="flex-1 min-w-0">
                             <div className="text-sm font-medium truncate">{d.title}</div>
-                            <div className="text-[10px] text-muted-foreground">
+                            {isVideo && meta.source_author && (
+                              <div className="text-[11px] text-muted-foreground truncate">
+                                {meta.source_author}
+                              </div>
+                            )}
+                            {snippet && (
+                              <div className="text-[11px] text-muted-foreground line-clamp-2">
+                                {snippet}
+                              </div>
+                            )}
+                            <div className="text-[10px] text-muted-foreground mt-0.5">
                               {new Date(d.created_at).toLocaleString('he-IL')} · {d.chunk_count ?? 0} מקטעים
                             </div>
                           </div>
