@@ -29,7 +29,6 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method_not_allowed" }, 405);
 
   const apiKey = Deno.env.get("ELEVENLABS_API_KEY");
-  if (!apiKey) return json({ error: "missing_elevenlabs_api_key" }, 500);
 
   const authHeader = req.headers.get("Authorization") ?? "";
   const supabase = createClient(
@@ -49,6 +48,7 @@ Deno.serve(async (req) => {
 
   try {
     if (action === "clone_from_upload") {
+      if (!apiKey) return json({ error: "missing_elevenlabs_api_key" }, 500);
       const audioB64 = String(body?.audio_base64 ?? "");
       const mime = String(body?.mime ?? "audio/mpeg");
       const filename = String(body?.filename ?? "sample.mp3");
@@ -85,16 +85,23 @@ Deno.serve(async (req) => {
     if (action === "register_voice_id") {
       const voiceId = String(body?.voice_id ?? "").trim();
       if (!voiceId) return json({ error: "voice_id_required" }, 400);
-
-      const r = await fetch(
-        `https://api.elevenlabs.io/v1/voices/${encodeURIComponent(voiceId)}`,
-        { headers: { "xi-api-key": apiKey } },
-      );
-      if (!r.ok) {
-        const detail = await r.text();
-        return json({ error: "voice_id_not_found", status: r.status, detail }, 404);
+      if (!/^[A-Za-z0-9_-]{10,64}$/.test(voiceId)) {
+        return json({ error: "invalid_voice_id_format" }, 400);
       }
-      const meta = await r.json();
+
+      let previewUrl: string | null = null;
+      if (apiKey) {
+        try {
+          const r = await fetch(
+            `https://api.elevenlabs.io/v1/voices/${encodeURIComponent(voiceId)}`,
+            { headers: { "xi-api-key": apiKey } },
+          );
+          if (r.ok) {
+            const meta = await r.json();
+            previewUrl = meta?.preview_url ?? null;
+          }
+        } catch { /* non-fatal — still save the voice id */ }
+      }
 
       const { data: row, error: insErr } = await supabase
         .from("cloned_voices")
