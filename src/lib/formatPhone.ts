@@ -1,21 +1,43 @@
 /**
- * Formats an international phone number (9725XXXXXXXX) to local Israeli display format (05X-XXXXXXX).
- * If the number doesn't match the expected pattern, returns it as-is.
+ * Formats Israeli phone numbers for display.
+ *  - Mobiles (05X): "05X-XXXXXXX"  (10 digits, dash after 3)
+ *  - Landlines (02/03/04/08/09 and 07X non-mobile): "0X-XXXXXXX"
+ *      - 2-digit area codes (02/03/04/08/09): "0X-XXXXXXX" (9 digits, dash after 2)
+ *      - 3-digit prefixes (07X like 072/073/074/076/077/079): "0XX-XXXXXXX" (10 digits, dash after 3)
+ *  - Accepts inputs in 9725XXXXXXXX / +9725XXXXXXXX / 05XXXXXXXX / 0XXXXXXXX form.
+ *  - Returns "-" for null/empty. Returns the original string if it does not look Israeli.
  */
 export function formatPhoneDisplay(phone: string | null | undefined): string {
   if (!phone) return '-';
-  const cleaned = phone.replace(/\D/g, '');
+  const raw = String(phone).trim();
+  if (!raw) return '-';
+  const digits = raw.replace(/\D/g, '');
+  if (!digits) return raw;
 
-  // 9725XXXXXXXX → 05X-XXXXXXX
-  if (cleaned.startsWith('972') && cleaned.length >= 12) {
-    const local = '0' + cleaned.slice(3); // e.g. 9725XXXXXXXX → 05XXXXXXXX
+  // Normalize to a local form starting with "0".
+  let local = digits;
+  if (local.startsWith('972')) local = '0' + local.slice(3);
+  else if (!local.startsWith('0')) local = '0' + local;
+
+  // Mobile: 05X-XXXXXXX (10 digits)
+  if (/^05\d{8}$/.test(local)) {
     return local.slice(0, 3) + '-' + local.slice(3);
   }
 
-  // Already local format 05XXXXXXXX
-  if (cleaned.startsWith('05') && cleaned.length === 10) {
-    return cleaned.slice(0, 3) + '-' + cleaned.slice(3);
+  // 07X virtual / VoIP prefixes: 10 digits, dash after 3
+  if (/^07\d{8}$/.test(local)) {
+    return local.slice(0, 3) + '-' + local.slice(3);
   }
 
-  return phone;
+  // Landlines with 2-digit area code (02/03/04/08/09): 9 digits, dash after 2
+  if (/^0[2-489]\d{7}$/.test(local)) {
+    return local.slice(0, 2) + '-' + local.slice(2);
+  }
+
+  // Short landline (8 digits, area + 6) — still "0X-XXXXXX"
+  if (/^0[2-489]\d{6}$/.test(local)) {
+    return local.slice(0, 2) + '-' + local.slice(2);
+  }
+
+  return raw;
 }
