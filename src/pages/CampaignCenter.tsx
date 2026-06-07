@@ -1721,10 +1721,13 @@ const VoiceLeadPickerDialog = ({
     setClonedVoices((data ?? []) as ClonedVoice[]);
   };
 
+  const hasLoadedRef = useRef(false);
   useEffect(() => {
     if (!open) return;
-    setListGroup(''); setAgentId(''); setInstructions('');
-    setSearch(''); setSelectedLeadIds(new Set());
+    // Persist user selections (list group, selected leads, voice, instructions)
+    // across re-opens and sub-dialog flows. Only load data once per session.
+    if (hasLoadedRef.current) { loadClonedVoices(); return; }
+    hasLoadedRef.current = true;
     (async () => {
       setLoading(true);
       const [{ data: leadRows }] = await Promise.all([
