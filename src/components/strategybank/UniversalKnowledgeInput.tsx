@@ -491,6 +491,32 @@ export const UniversalKnowledgeInput = () => {
               </Button>
             </div>
           </TabsContent>
+          </TabsContent>
+
+          {/* LINK */}
+          <TabsContent value="link" className="mt-4 space-y-3">
+            <div className="space-y-1.5">
+              <Label htmlFor="link-url" className="text-xs">קישור למדיה (YouTube, מאמר, פודקאסט)</Label>
+              <Input
+                id="link-url"
+                value={linkUrl}
+                onChange={(e) => setLinkUrl(e.target.value)}
+                placeholder="https://youtu.be/..."
+                dir="ltr"
+              />
+              <p className="text-[11px] text-muted-foreground leading-relaxed">
+                המערכת תזקק את התוכן לעקרונות, טכניקות וניסוחים עבור פרסונת Udi —
+                ותשמור את הקישור בספריית המדיה. המקור לעולם לא ייחשף ללקוחות.
+              </p>
+            </div>
+            <div className="flex items-center justify-between">
+              <Badge variant="secondary" className="text-[10px] font-mono">{TAG_BY_MODE.link}</Badge>
+              <Button onClick={handleSaveLink} disabled={linkIngesting || !linkUrl.trim()} className="gap-2">
+                {linkIngesting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+                זקק ושמור
+              </Button>
+            </div>
+          </TabsContent>
         </Tabs>
       </CardContent>
     </Card>
