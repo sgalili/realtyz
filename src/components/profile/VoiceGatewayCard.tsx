@@ -5,7 +5,7 @@ import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
-import { Phone, Save, Loader2 } from 'lucide-react';
+import { Phone, Save, Loader2, PlugZap } from 'lucide-react';
 
 /**
  * Voice & IVR gateway credentials (Vapi + Twilio).
@@ -29,6 +29,23 @@ export function VoiceGatewayCard() {
   const [loading, setLoading] = useState(true);
   const [savingVapi, setSavingVapi] = useState(false);
   const [savingTwilio, setSavingTwilio] = useState(false);
+  const [testing, setTesting] = useState(false);
+
+  const testConnection = async () => {
+    setTesting(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('vapi-verify-credentials', { method: 'POST' });
+      if (error) throw error;
+      const v: any = (data as any)?.vapi ?? {};
+      const t: any = (data as any)?.twilio ?? {};
+      if (v.ok) toast.success(`Vapi: ${v.message}`); else toast.error(`Vapi: ${v.message || 'שגיאת התחברות - בדוק את מפתחות ה-API שלך'}`);
+      if (t.ok) toast.success(`Twilio: ${t.message}`); else toast.error(`Twilio: ${t.message || 'שגיאת התחברות - בדוק את מפתחות ה-API שלך'}`);
+    } catch (e: any) {
+      toast.error(`שגיאת התחברות - בדוק את מפתחות ה-API שלך`);
+    } finally {
+      setTesting(false);
+    }
+  };
 
   useEffect(() => {
     (async () => {
@@ -108,9 +125,16 @@ export function VoiceGatewayCard() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-6">
-        <p className="text-xs text-muted-foreground text-right">
-          הזינו את פרטי Vapi (AI Voice) ו-Twilio (מספרי טלפון / IVR). ניתן לעדכן בכל עת — הפרטים נשמרים מוצפנים ונשלפים בעת שליחת שיחה.
-        </p>
+        <div className="flex items-center justify-between gap-3">
+          <Button size="sm" variant="outline" onClick={testConnection} disabled={testing || loading}>
+            {testing ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <PlugZap className="ml-2 h-4 w-4" />}
+            בדוק חיבור
+          </Button>
+          <p className="text-xs text-muted-foreground text-right flex-1">
+            הזינו את פרטי Vapi (AI Voice) ו-Twilio (מספרי טלפון / IVR). ניתן לעדכן בכל עת — הפרטים נשמרים מוצפנים ונשלפים בעת שליחת שיחה.
+          </p>
+        </div>
+
 
         {/* Vapi block */}
         <div className="space-y-3 rounded-md border border-border p-3">

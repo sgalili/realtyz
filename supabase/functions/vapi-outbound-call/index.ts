@@ -155,12 +155,25 @@ Deno.serve(async (req) => {
   try {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    const VAPI_API_KEY = Deno.env.get("VAPI_API_KEY") ?? "";
-    const VAPI_PHONE_NUMBER_ID = Deno.env.get("VAPI_PHONE_NUMBER_ID") ?? "";
+    let VAPI_API_KEY = Deno.env.get("VAPI_API_KEY") ?? "";
+    let VAPI_PHONE_NUMBER_ID = Deno.env.get("VAPI_PHONE_NUMBER_ID") ?? "";
+    let VAPI_ASSISTANT_ID = Deno.env.get("VAPI_ASSISTANT_ID") ?? "";
     const ELEVENLABS_VOICE_ID = Deno.env.get("ELEVENLABS_VOICE_ID") || "xeyWdsOOLrNAAaGf4Y8m";
 
+    // Fallback: read user-saved credentials from api_configs
+    if (!VAPI_API_KEY || !VAPI_PHONE_NUMBER_ID) {
+      const sbCfg = createClient(SUPABASE_URL, SERVICE_ROLE);
+      const { data: cfg } = await sbCfg.from("api_configs").select("api_key").eq("service_name", "Vapi").maybeSingle();
+      if (cfg?.api_key) {
+        const [k, p, a] = String(cfg.api_key).split(":");
+        VAPI_API_KEY = VAPI_API_KEY || (k ?? "");
+        VAPI_PHONE_NUMBER_ID = VAPI_PHONE_NUMBER_ID || (p ?? "");
+        VAPI_ASSISTANT_ID = VAPI_ASSISTANT_ID || (a ?? "");
+      }
+    }
+
     if (!VAPI_API_KEY) {
-      return new Response(JSON.stringify({ error: "VAPI_API_KEY חסר" }), {
+      return new Response(JSON.stringify({ error: "שגיאת התחברות — בדוק את מפתחות ה-API שלך" }), {
         status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -182,7 +195,9 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { phone_number, lead_id } = body as { phone_number?: string; lead_id?: string };
+    const { phone_number, lead_id, listing_id } = body as {
+      phone_number?: string; lead_id?: string; listing_id?: string;
+    };
     if (!phone_number) {
       return new Response(JSON.stringify({ error: "חסר מספר טלפון" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -208,21 +223,42 @@ Deno.serve(async (req) => {
       preferences = lead?.preferences ? JSON.stringify(lead.preferences).slice(0, 600) : "";
     }
 
-    // Pull a short listings blurb
+    // Pull either a specific listing (IVR context) or a short top-listings blurb
     let listingsBlurb = "";
+    let focusListing = "";
     try {
-      const { data: listings } = await supabase
-        .from("listings")
-        .select("property_title, city, asking_price")
-        .eq("status", "live")
-        .order("created_at", { ascending: false })
-        .limit(5);
-      listingsBlurb = (listings ?? [])
-        .map((l: any) => `• ${l.property_title ?? ""} (${l.city ?? ""}) - ₪${l.asking_price ?? "?"}`)
-        .join("\n");
+      if (listing_id) {
+        const { data: l } = await supabase
+          .from("listings")
+          .select("property_title, description, features, city, asking_price")
+          .eq("id", listing_id)
+          .maybeSingle();
+        if (l) {
+          focusListing = [
+            `נכס מוקד השיחה: ${l.property_title ?? ""} ב${l.city ?? ""}`,
+            l.asking_price ? `מחיר מבוקש: ₪${l.asking_price}` : "",
+            l.description ? `תיאור: ${String(l.description).slice(0, 500)}` : "",
+            l.features ? `מאפיינים: ${JSON.stringify(l.features).slice(0, 400)}` : "",
+            "אם הלקוח מעלה התנגדות (למשל 'אין מעלית'), השב במסגרת ה-Playbook של מתווך בכיר: הכר בהתנגדות, מסגר מחדש את היתרון, וחזור לשאלת איתור צרכים.",
+          ].filter(Boolean).join("\n");
+        }
+      } else {
+        const { data: listings } = await supabase
+          .from("listings")
+          .select("property_title, city, asking_price")
+          .eq("status", "live")
+          .order("created_at", { ascending: false })
+          .limit(5);
+        listingsBlurb = (listings ?? [])
+          .map((l: any) => `• ${l.property_title ?? ""} (${l.city ?? ""}) - ₪${l.asking_price ?? "?"}`)
+          .join("\n");
+      }
     } catch (_) { /* best effort */ }
 
-    const systemPrompt = buildSystemPrompt({ leadName, city, preferences, listingsBlurb });
+    const systemPrompt = buildSystemPrompt({
+      leadName, city, preferences,
+      listingsBlurb: focusListing || listingsBlurb,
+    });
     const firstMessage = leadName
       ? `שלום ${leadName}, מדבר הסוכן הדיגיטלי של המתווך. יש לי שתי שאלות קצרות לגבי החיפוש שלך, אפשר?`
       : "שלום, מדבר הסוכן הדיגיטלי של המתווך. יש לי שתי שאלות קצרות לגבי החיפוש שלך, אפשר?";
