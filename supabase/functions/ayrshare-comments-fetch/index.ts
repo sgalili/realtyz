@@ -152,9 +152,14 @@ Deno.serve(async (req) => {
 
     const fetchComments = async (target: CommentFetchTarget, useSocialId: boolean) => {
       const id = useSocialId ? target.nativePostId : target.fetchPostId;
+      // Ask Ayrshare to inline reply threads so nested child nodes (e.g. Shi
+      // Galili replying to Udi) come back in the same payload. Different
+      // Ayrshare plans honor different flag names — we send all known
+      // aliases; ignored params are harmless.
+      const base = `limit=100&includeReplies=true&include_replies=true&replies=true&expandReplies=true&depth=5`;
       const qs = useSocialId
-        ? `limit=100&platform=${encodeURIComponent(target.platform)}&searchPlatformId=true`
-        : "limit=100";
+        ? `${base}&platform=${encodeURIComponent(target.platform)}&searchPlatformId=true`
+        : base;
       const r = await fetch(`${AYR_BASE}/comments/${encodeURIComponent(id)}?${qs}`, {
         headers: {
           Authorization: `Bearer ${AYRSHARE_API_KEY}`,
