@@ -1141,17 +1141,19 @@ const PublishedFeed = () => {
     // Force a direct live page fetch every time — bypass any cached counters
     // so the UI mirrors the exact real-time Meta payload via Ayrshare.
     const cacheBust = `${Date.now()}-${crypto.randomUUID()}`;
-    // Fire the comments sync in parallel but DO NOT let its result (or its
-    // failure) gate the counter UI update — metrics must repaint instantly
-    // off the analytics response even if comment parsing trips somewhere.
-    supabase.functions.invoke('ayrshare-sync-comments', {
+    // Run the comments sync (nested replies + Like reactions) and the
+    // headline analytics in parallel — neither blocks the other.
+    const syncPromise = supabase.functions.invoke('ayrshare-sync-comments', {
       body: { force_live: true, cache_bust: cacheBust },
-    }).catch((err) => console.warn('[refreshMetrics] sync-comments failed (non-fatal)', err));
+    }).catch((err) => { console.warn('[refreshMetrics] sync-comments failed (non-fatal)', err); return null; });
 
     try {
-      const { data, error } = await supabase.functions.invoke('ayrshare-analytics', {
-        body: { force_live: true, cache_bust: cacheBust },
-      });
+      const [{ data, error }] = await Promise.all([
+        supabase.functions.invoke('ayrshare-analytics', {
+          body: { force_live: true, cache_bust: cacheBust },
+        }),
+        syncPromise,
+      ]);
       if (error) {
         const msg = await extractFunctionError(error, 'רענון מדדי פייסבוק נכשל');
         console.error('[refreshMetrics] analytics invoke error', { error, message: msg });
@@ -1163,17 +1165,53 @@ const PublishedFeed = () => {
         console.error('[refreshMetrics] analytics pipeline error', data);
         toast.error(surfacedError);
       }
-      const results: Array<{ id: string; ok: boolean; counts?: { likes: number; comments: number; shares: number; views: number }; metrics_updated_at?: string }> = Array.isArray((data as any)?.results) ? (data as any).results : [];
-      if (!results.length) return;
+      const results: Array<{ id: string; ok: boolean; counts?: { likes: number; comments: number; shares: number; views: number }; metrics_updated_at?: string; native_post_id?: string | null }> = Array.isArray((data as any)?.results) ? (data as any).results : [];
       const byId = new Map(results.filter((r) => r.ok && r.counts).map((r) => [r.id, r]));
-      if (byId.size === 0) return;
+
+      // Authoritative nested-comment count: every comment ingested by
+      // ayrshare-comments-fetch (parent + every recursive child) lives in
+      // engagement_events keyed by external_post_id. Use that count as the
+      // floor so the headline never under-reports vs the live FB thread.
+      const nativeIds = Array.from(
+        new Set(
+          results
+            .map((r) => (r?.native_post_id ? String(r.native_post_id) : null))
+            .filter((v): v is string => !!v),
+        ),
+      );
+      const commentCountByPostId = new Map<string, number>();
+      if (nativeIds.length) {
+        try {
+          const { data: ev } = await supabase
+            .from('engagement_events')
+            .select('external_post_id')
+            .in('external_post_id', nativeIds);
+          for (const row of ev ?? []) {
+            const pid = String((row as any).external_post_id || '');
+            if (!pid) continue;
+            commentCountByPostId.set(pid, (commentCountByPostId.get(pid) ?? 0) + 1);
+          }
+        } catch (err) {
+          console.warn('[refreshMetrics] engagement_events count failed', err);
+        }
+      }
+
+      if (byId.size === 0 && commentCountByPostId.size === 0) return;
       setRows((prev) => prev?.map((r) => {
         const hit = byId.get(r.id);
-        if (!hit || !hit.counts) return r;
+        const nativeId = hit?.native_post_id ? String(hit.native_post_id) : (r.provider_message_id ?? null);
+        const nestedComments = nativeId ? (commentCountByPostId.get(nativeId) ?? 0) : 0;
+        if (!hit || !hit.counts) {
+          // Even without a fresh analytics row, repaint nested comment count.
+          if (nestedComments > (r.comment_count ?? 0)) {
+            return { ...r, comment_count: nestedComments, metrics_updated_at: new Date().toISOString() };
+          }
+          return r;
+        }
         return {
           ...r,
           like_count: hit.counts.likes,
-          comment_count: hit.counts.comments,
+          comment_count: Math.max(hit.counts.comments, nestedComments),
           share_count: hit.counts.shares,
           view_count: hit.counts.views,
           metrics_updated_at: hit.metrics_updated_at ?? new Date().toISOString(),
