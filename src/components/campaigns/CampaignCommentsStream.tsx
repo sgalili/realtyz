@@ -105,6 +105,9 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
   const [originalDm, setOriginalDm] = useState("");
   const [drafting, setDrafting] = useState(false);
   const [sending, setSending] = useState(false);
+  // Per-row cached AI drafts so closing/re-opening the editor does NOT
+  // re-invoke the AI — only an explicit refresh-per-card regenerates.
+  const [draftCache, setDraftCache] = useState<Record<string, { pub: string; dm: string }>>({});
   const postIds = useMemo(() => getCampaignPostIds(campaign), [campaign.channel, campaign.provider_message_id, campaign.provider_response]);
   const postIdsKey = postIds.join("|");
 
@@ -313,6 +316,18 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
       setDrafting(false);
       return;
     }
+    // If we already have a cached draft for this row, hydrate from it and
+    // skip the AI call entirely. The user can hit the per-card refresh to
+    // regenerate.
+    const cached = draftCache[replyOpen.id];
+    if (cached) {
+      setReplyDraft(cached.pub);
+      setDmDraft(cached.dm);
+      setOriginalReply(cached.pub);
+      setOriginalDm(cached.dm);
+      setDrafting(false);
+      return;
+    }
     let cancelled = false;
     (async () => {
       setReplyDraft("");
@@ -333,8 +348,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
                 `Campaign: ${campaign.campaign_name}`,
                 campaign.message_body ? `Published post:\n${campaign.message_body}` : null,
               ].filter(Boolean).join("\n\n"),
-              regenerate: true,
-              cache_bust: `${Date.now()}-${crypto.randomUUID()}`,
+              regenerate: false,
             },
           },
         );
@@ -349,6 +363,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
           setDmDraft(dmTrim);
           setOriginalReply(pubTrim);
           setOriginalDm(dmTrim);
+          setDraftCache((prev) => ({ ...prev, [replyOpen.id]: { pub: pubTrim, dm: dmTrim } }));
         } else {
           toast.error((data as any)?.error ?? "לא התקבל ניסוח");
         }
@@ -394,6 +409,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
         setDmDraft(dmTrim);
         setOriginalReply(pubTrim);
         setOriginalDm(dmTrim);
+        setDraftCache((prev) => ({ ...prev, [row.id]: { pub: pubTrim, dm: dmTrim } }));
       } else {
         toast.error((data as any)?.error ?? "לא התקבל ניסוח");
       }
@@ -544,6 +560,19 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
         {tree.map((root) => {
           const renderEditor = (r: EngagementRow) => (
             <div className="space-y-3 text-right">
+              <div className="flex items-center justify-start">
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => generateDraft(r, true)}
+                  disabled={drafting || sending}
+                  aria-label="נסח מחדש"
+                  title="נסח מחדש"
+                  className="h-7 w-7"
+                >
+                  <RefreshCw className={cn("h-3.5 w-3.5", drafting && "animate-spin")} />
+                </Button>
+              </div>
               <div className="space-y-1">
                 <Textarea
                   value={drafting ? "" : replyDraft}
@@ -585,17 +614,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
                   className="text-right bg-muted/30"
                 />
               </div>
-              <div className="flex flex-wrap items-center justify-between gap-2">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => generateDraft(r, true)}
-                  disabled={drafting || sending}
-                  aria-label="נסח מחדש"
-                  title="נסח מחדש"
-                >
-                  <RefreshCw className={cn("h-4 w-4", drafting && "animate-spin")} />
-                </Button>
+              <div className="flex items-center justify-end">
                 <Button
                   size="sm"
                   onClick={sendReply}
