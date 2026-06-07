@@ -45,6 +45,7 @@ import { ReferralButton } from '@/components/referrals/ReferralButton';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
 import { isInServiceArea } from '@/lib/serviceAreas';
+import { SortableTh, useTableSort, sortRows } from '@/components/ui/sortable-th';
 
 const PRICE_MIN = 0;
 const PRICE_MAX = 10_000_000;
