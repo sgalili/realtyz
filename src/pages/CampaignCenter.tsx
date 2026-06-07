@@ -901,7 +901,17 @@ const ConfirmDispatchDialog = ({
         }
 
         if (channel.id === 'ivr' || channel.id === 'ai-call' || channel.id === 'email') {
-          toast.success(`נשלחו ${dispatched} מתוך ${rows.length} בערוץ ${channel.label}${failed ? ` · ${failed} כשלונות` : ''}`);
+          const total = rows.length;
+          toast.success(
+            <span dir="rtl" className="inline-flex items-center gap-2">
+              <span>נשלחו <span className="font-bold tabular-nums">{dispatched}</span> מתוך <span className="font-bold tabular-nums">{total}</span> בערוץ {channel.label}</span>
+              {failed > 0 && (
+                <span className="inline-flex items-center rounded-md bg-destructive px-2 py-0.5 text-[11px] font-bold text-destructive-foreground">
+                  {failed} כשלונות
+                </span>
+              )}
+            </span>
+          );
         } else {
           toast.success(`שודר ל-${rows.length} מתעניינים בערוץ ${channel.label}`);
         }
