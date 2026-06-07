@@ -1962,7 +1962,20 @@ const CampaignCenter = () => {
         </div>
 
         <TabsContent value="create" className="mt-6 space-y-4">
-          <ChannelGrid selectedId={pickedChannel?.id ?? null} onPick={setPickedChannel} onConnect={handleConnectChannel} brandName={brandName} connected={connectedChannels} accountNames={channelAccountNames} />
+          <ChannelGrid
+            selectedId={pickedChannel?.id ?? null}
+            onPick={(c) => {
+              if (c.id === 'ivr' || c.id === 'ai-call') {
+                setVoiceDialChannel(c);
+              } else {
+                setPickedChannel(c);
+              }
+            }}
+            onConnect={handleConnectChannel}
+            brandName={brandName}
+            connected={connectedChannels}
+            accountNames={channelAccountNames}
+          />
           {pickedChannel && (
             <InlineComposer
               channel={pickedChannel}
