@@ -1093,6 +1093,18 @@ const PublishedFeed = () => {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [activeChannel, setActiveChannel] = useState<string>('all');
   const [archivedCount, setArchivedCount] = useState<number>(0);
+  const [fbPageName, setFbPageName] = useState<string | null>(null);
+
+  useEffect(() => {
+    (async () => {
+      const { data } = await supabase
+        .from('workspace_social_profile')
+        .select('facebook_page_name')
+        .maybeSingle();
+      setFbPageName((data as any)?.facebook_page_name ?? null);
+    })();
+  }, []);
+
 
 
   const load = async () => {
