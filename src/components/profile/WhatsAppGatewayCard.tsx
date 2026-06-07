@@ -210,27 +210,30 @@ export function WhatsAppGatewayCard() {
           />
         </div>
 
-        <div className="flex items-center gap-2 justify-end pt-1 flex-nowrap">
+        <div className="flex items-center gap-1.5 justify-end pt-1 flex-nowrap">
           <Button
             variant="outline"
             size="sm"
             onClick={() => syncAvatars(false)}
             disabled={syncingAvatars || loading}
             title="משוך תמונות פרופיל מ-WhatsApp לכל המתעניינים החסרים תמונה"
+            className="px-2 text-xs whitespace-nowrap"
           >
             {syncingAvatars ? (
-              <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+              <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" />
             ) : (
-              <ImageDown className="ml-2 h-4 w-4" />
+              <ImageDown className="ml-1 h-3.5 w-3.5" />
             )}
-            סנכרון תמונות פרופיל
+            סנכרון תמונות
           </Button>
-          <Button variant="outline" size="sm" onClick={test} disabled={testing || loading}>
-            {testing ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : null}
+          <Button variant="outline" size="sm" onClick={test} disabled={testing || loading}
+            className="px-2 text-xs whitespace-nowrap">
+            {testing ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" /> : null}
             בדיקת חיבור
           </Button>
-          <Button size="sm" onClick={save} disabled={saving || loading}>
-            {saving ? <Loader2 className="ml-2 h-4 w-4 animate-spin" /> : <Save className="ml-2 h-4 w-4" />}
+          <Button size="sm" onClick={save} disabled={saving || loading}
+            className="px-2 text-xs whitespace-nowrap">
+            {saving ? <Loader2 className="ml-1 h-3.5 w-3.5 animate-spin" /> : <Save className="ml-1 h-3.5 w-3.5" />}
             שמירה
           </Button>
         </div>
