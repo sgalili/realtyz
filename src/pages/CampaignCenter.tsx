@@ -1685,7 +1685,7 @@ const VoiceLeadPickerDialog = ({
         if (error) failed++; else ok++;
       }
       toast.dismiss('voice-dial');
-      if (ok > 0) toast.success(`נשלחו ${ok} שיחות מ-${VOICE_DIAL_NUMBER}${failed ? ` · ${failed} נכשלו` : ''}`);
+      if (ok > 0) toast.success(`נשלחו ${ok} שיחות מ-${formatPhoneDisplay(VOICE_DIAL_NUMBER)}${failed ? ` · ${failed} נכשלו` : ''}`);
       else toast.error('כל השיחות נכשלו');
       onClose();
     } finally {
