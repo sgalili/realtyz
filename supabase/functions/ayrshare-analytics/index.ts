@@ -49,6 +49,32 @@ function pickNum(...vals: unknown[]): number {
   return 0;
 }
 
+function sumReactionsObject(obj: any): number {
+  // Meta returns reactions either as a flat number or as a per-type breakdown
+  // ({ like: 3, love: 1, wow: 0, ... } or { summary: { total_count: N } } or
+  // [{ type: 'LIKE', count: 3 }, ...]). Sum every numeric leaf we can find so
+  // a Love or Wow on the post is never dropped from the headline counter.
+  if (!obj) return 0;
+  if (typeof obj === "number") return Math.max(0, Math.trunc(obj));
+  if (typeof obj === "string") return pickNum(obj);
+  if (Array.isArray(obj)) {
+    return obj.reduce((acc, item) => acc + pickNum(item?.count, item?.total, item?.value, item), 0);
+  }
+  if (typeof obj === "object") {
+    const summary = obj.summary?.total_count ?? obj.total_count ?? obj.total ?? obj.count;
+    if (typeof summary === "number") return Math.max(0, Math.trunc(summary));
+    let total = 0;
+    for (const [k, v] of Object.entries(obj)) {
+      if (k === "summary" || k === "viewer_reaction") continue;
+      if (typeof v === "number") total += Math.max(0, Math.trunc(v));
+      else if (typeof v === "string") total += pickNum(v);
+      else if (v && typeof v === "object") total += sumReactionsObject(v);
+    }
+    return total;
+  }
+  return 0;
+}
+
 function extractCounts(analytics: any, platform: string): Counts {
   // Ayrshare returns several shapes depending on endpoint/plan:
   //   { [platform]: { analytics: {...} } }
@@ -83,11 +109,18 @@ function extractCounts(analytics: any, platform: string): Counts {
     }
     return 0;
   };
-  const likes = pickFrom([
+  // Likes = scalar like/reaction counter OR the SUM of the per-type
+  // reactions breakdown (Like + Love + Wow + Haha + Sad + Angry) so that
+  // Loves and Wows are no longer silently dropped from the headline.
+  let likes = pickFrom([
     "likeCount", "likes", "reactionsCount", "reactions",
     "favoriteCount", "favorites", "heartCount", "likeAndReactionCount",
     "likesCount",
   ]);
+  for (const c of candidates) {
+    const r = sumReactionsObject(c?.reactions ?? c?.reactionsByType ?? c?.reactionTypes);
+    if (r > likes) likes = r;
+  }
   const comments = pickFrom([
     "commentsCount", "commentCount", "comments", "replyCount", "repliesCount",
   ]);
