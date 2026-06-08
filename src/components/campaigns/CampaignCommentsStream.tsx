@@ -608,6 +608,9 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
           const renderEditor = (r: EngagementRow) => (
             <div className="space-y-3 text-right">
               <div className="space-y-1">
+                <p className="text-[11px] font-medium text-muted-foreground text-right">
+                  תגובה פומבית
+                </p>
                 <Textarea
                   value={drafting ? "" : replyDraft}
                   onChange={(e) => setReplyDraft(e.target.value)}
@@ -619,25 +622,9 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
                 />
               </div>
               <div className="space-y-1">
-                <div className="flex items-center justify-between">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    className="h-6 px-2 text-[11px]"
-                    onClick={() => {
-                      if (dmDraft.trim()) {
-                        navigator.clipboard.writeText(dmDraft.trim());
-                        toast.success("ה-DM הועתק ללוח");
-                      }
-                    }}
-                    disabled={!dmDraft.trim() || drafting}
-                  >
-                    העתק DM
-                  </Button>
-                  <p className="text-[11px] font-medium text-muted-foreground">
-                    הודעה פרטית למסנג'ר (פרטי הנכס + חלופה + שאלה אחת)
-                  </p>
-                </div>
+                <p className="text-[11px] font-medium text-muted-foreground text-right">
+                  הודעה פרטית למסנג'ר
+                </p>
                 <Textarea
                   value={drafting ? "" : dmDraft}
                   onChange={(e) => setDmDraft(e.target.value)}
