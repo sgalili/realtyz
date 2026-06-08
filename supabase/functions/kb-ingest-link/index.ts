@@ -112,8 +112,12 @@ async function fetchGenericPage(url: string): Promise<{ title: string; text: str
 async function distillForUdi(
   rawContent: string,
   contextTitle: string,
+  intent: string,
 ): Promise<string> {
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+  const intentLine = intent.trim()
+    ? `USER FOCUS — extract specifically: ${intent.trim()}. Prioritize this lens above all else.`
+    : "";
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -128,10 +132,11 @@ async function distillForUdi(
           content: [
             "You are training the 'Udi' real-estate sales AI persona.",
             "From the supplied content, distill PRINCIPLES, FRAMEWORKS, OBJECTION HANDLERS, SCRIPTS, and ACTIONABLE SALES METHODOLOGIES that improve closing rate and prosperity.",
+            intentLine,
             "Output in Hebrew. Use clear sections: עקרונות מנחים / טכניקות מכירה / ניסוחים מומלצים / טיפול בהתנגדויות / צעדים אופרטיביים.",
             "CRITICAL PRIVACY RULE: NEVER mention or hint at the original source — no URLs, no author names, no platform names (YouTube, podcast, book, course), no 'according to'. Present the wisdom as Udi's internal playbook.",
             "Do NOT use em-dash, en-dash, or '--'. Plain prose only.",
-          ].join(" "),
+          ].filter(Boolean).join(" "),
         },
         {
           role: "user",
@@ -163,8 +168,9 @@ Deno.serve(async (req) => {
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) return json({ error: "unauthorized" }, 401);
 
-    const body = await req.json().catch(() => null) as { url?: string } | null;
+    const body = await req.json().catch(() => null) as { url?: string; intent?: string } | null;
     const url = body?.url?.trim();
+    const intent = (body?.intent ?? "").toString().slice(0, 500);
     if (!url || !/^https?:\/\//i.test(url)) {
       return json({ error: "url required" }, 400);
     }
@@ -207,7 +213,7 @@ Deno.serve(async (req) => {
     }
 
     // Distill into Udi-persona-ready knowledge (no source leakage).
-    const distilled = await distillForUdi(rawContent, title);
+    const distilled = await distillForUdi(rawContent, title, intent);
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
@@ -230,6 +236,7 @@ Deno.serve(async (req) => {
           description: ytId ? (rawContent.split("\n\n").find((s) => s && !s.startsWith("By ") && s !== title) ?? "").slice(0, 400) : null,
           video_id: ytId,
           distilled_for_persona: "udi",
+          learning_intent: intent || null,
           captured_at: new Date().toISOString(),
         },
         is_active: true,

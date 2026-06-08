@@ -76,6 +76,7 @@ export default function KnowledgeBase() {
   const [textTitle, setTextTitle] = useState('');
   const [textBody, setTextBody] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
+  const [linkIntent, setLinkIntent] = useState('');
 
   /* ── Documents list ── */
   const { data: documents = [], isLoading: docsLoading } = useQuery({
@@ -170,7 +171,7 @@ export default function KnowledgeBase() {
       const url = linkUrl.trim();
       if (!url) throw new Error('יש להזין קישור');
       const { data, error } = await supabase.functions.invoke('kb-ingest-link', {
-        body: { url },
+        body: { url, intent: linkIntent.trim() || undefined },
       });
       if (error) throw error;
       const payload = data as { title?: string; error?: string } | null;
@@ -180,6 +181,7 @@ export default function KnowledgeBase() {
     onSuccess: (title) => {
       toast.success(`נוסף למאגר: ${title}`);
       setLinkUrl('');
+      setLinkIntent('');
       qc.invalidateQueries({ queryKey: ['kb-documents'] });
       qc.invalidateQueries({ queryKey: ['media-library'] });
     },
@@ -285,6 +287,12 @@ export default function KnowledgeBase() {
                   onChange={(e) => setLinkUrl(e.target.value)}
                   placeholder="https://..."
                   dir="ltr"
+                />
+                <Textarea
+                  value={linkIntent}
+                  onChange={(e) => setLinkIntent(e.target.value)}
+                  placeholder="מה ללמוד מהמקור הזה? (לדוגמה: טכניקות סגירה, התמודדות עם התנגדויות מחיר...)"
+                  className="min-h-[80px]"
                 />
                 <div className="flex justify-end">
                   <Button onClick={() => saveLink.mutate()} disabled={saveLink.isPending}>
