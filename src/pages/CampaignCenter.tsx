@@ -125,11 +125,8 @@ const ChannelGrid = ({
               isConnected && !isSelected && 'border-[#C9A84C]/60 hover:border-[#C9A84C] hover:shadow-md',
               isSelected && 'border-primary ring-2 ring-primary/30 shadow-md',
             )}>
-            {isConnected && (
-              <span aria-hidden className={cn(
-                'absolute left-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full',
-                isSelected ? 'text-primary' : 'text-[#C9A84C]',
-              )} title="מחובר">
+            {isConnected && isSelected && (
+              <span aria-hidden className="absolute left-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full text-primary" title="נבחר">
                 <CheckCircle2 className="h-4 w-4" />
               </span>
             )}
@@ -157,15 +154,32 @@ const ChannelGrid = ({
               </span>
             )}
 
-            {isConnected && accountNames[c.id] && (
-              <span
-                className="mt-0.5 inline-block max-w-full truncate rounded-md border border-[#C9A84C]/40 bg-[#C9A84C]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#8a7327]"
-                dir="ltr"
-                title={formatPhoneDisplay(accountNames[c.id]) || accountNames[c.id]}
-              >
-                {formatPhoneDisplay(accountNames[c.id]) || accountNames[c.id]}
-              </span>
-            )}
+            {isConnected && accountNames[c.id] && (() => {
+              const raw = accountNames[c.id];
+              const display = formatPhoneDisplay(raw) || raw;
+              const url = buildAccountUrl(c.id, raw);
+              const handleOpen = (e: React.MouseEvent) => {
+                e.stopPropagation();
+                if (url) window.open(url, '_blank', 'noopener,noreferrer');
+              };
+              return (
+                <span
+                  role={url ? 'link' : undefined}
+                  tabIndex={url ? 0 : undefined}
+                  onClick={url ? handleOpen : undefined}
+                  onKeyDown={url ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleOpen(e as unknown as React.MouseEvent); } : undefined}
+                  className={cn(
+                    'mt-0.5 inline-block max-w-full truncate rounded-md border border-[#C9A84C]/40 bg-[#C9A84C]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#8a7327]',
+                    url && 'cursor-pointer hover:bg-[#C9A84C]/20 hover:underline',
+                  )}
+                  dir="ltr"
+                  title={url ? `פתח: ${display}` : display}
+                >
+                  {display}
+                </span>
+              );
+            })()}
+
 
             {!isConnected && (
               <span className="mt-1 inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
