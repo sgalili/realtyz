@@ -145,6 +145,11 @@ Deno.serve(async (req) => {
     const profileCandidates = [
       workspaceProfile.profileKey ? { profileKey: workspaceProfile.profileKey, refId: workspaceProfile.refId, source: "workspace" } : null,
       envProfileKey && envProfileKey !== workspaceProfile.profileKey ? { profileKey: envProfileKey, refId: "env-fallback", source: "env" } : null,
+      // Rescue path: older posts may have been published on the primary Ayrshare
+      // profile. In that case sending the currently saved (suspended) Profile-Key
+      // makes every comment request fail with 403, while the primary API key can
+      // still read the post comments without any Profile-Key header.
+      { profileKey: "", refId: "primary", source: "primary" },
     ].filter(Boolean) as Array<{ profileKey: string; refId: string | null; source: string }>;
     if (profileCandidates.length === 0) {
       return json({ error: "workspace ayrshare profile key missing" }, 400);
@@ -232,12 +237,13 @@ Deno.serve(async (req) => {
       const qs = useSocialId
         ? `${base}&platform=${encodeURIComponent(target.platform)}&searchPlatformId=true`
         : base;
-      const r = await fetch(`${AYR_BASE}/comments/${encodeURIComponent(id)}?${qs}`, {
-        headers: {
+      const headers: Record<string, string> = {
           Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-          "Profile-Key": candidateProfileKey,
           "Content-Type": "application/json",
-        },
+      };
+      if (candidateProfileKey) headers["Profile-Key"] = candidateProfileKey;
+      const r = await fetch(`${AYR_BASE}/comments/${encodeURIComponent(id)}?${qs}`, {
+        headers,
       });
       const text = await r.text();
       let payload: any = {};
@@ -444,12 +450,13 @@ Deno.serve(async (req) => {
               if (!commentId) return;
               try {
                 const detailQs = `platform=${encodeURIComponent(platform)}&searchPlatformId=true&commentId=true&limit=100&includeReplies=true&include_replies=true&replies=true&expandReplies=true&depth=5`;
-                const detailRes = await fetch(`${AYR_BASE}/comments/${encodeURIComponent(commentId)}?${detailQs}`, {
-                  headers: {
+                const detailHeaders: Record<string, string> = {
                     Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-                    "Profile-Key": activeProfileKey,
                     "Content-Type": "application/json",
-                  },
+                };
+                if (activeProfileKey) detailHeaders["Profile-Key"] = activeProfileKey;
+                const detailRes = await fetch(`${AYR_BASE}/comments/${encodeURIComponent(commentId)}?${detailQs}`, {
+                  headers: detailHeaders,
                 });
                 if (!detailRes.ok) return;
                 const detailPayload = await detailRes.json().catch(() => ({}));
