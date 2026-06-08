@@ -4,6 +4,7 @@
 export const AYR_BASE = "https://api.ayrshare.com/api";
 export const MISSING_TENANT_KEY = "MISSING_TENANT_KEY";
 export const MISSING_TENANT_KEY_MESSAGE = "נא לחבר מחדש את פרופיל המדיה החברתית בהגדרות המשרד";
+const ACTIVE_WORKSPACE_REF_ID = "66743d525e0cd68404f38e954f3d016ee1a509c4";
 
 export function cleanProfileKey(value: unknown): string {
   return typeof value === "string" ? value.trim().replace(/^[`'\"]+|[`'\"]+$/g, "") : "";
@@ -35,7 +36,8 @@ export async function clearStaleAyrshareConnection(admin: any, reason = "stale_a
       facebook_page_name: null,
       updated_at: now,
     })
-    .eq("id", "00000000-0000-0000-0000-000000000001");
+    .eq("id", "00000000-0000-0000-0000-000000000001")
+    .neq("ayrshare_ref_id", ACTIVE_WORKSPACE_REF_ID);
   await admin
     .from("ayrshare_social_accounts")
     .update({ connected: false, is_active: false, updated_at: now })
