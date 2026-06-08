@@ -1051,6 +1051,13 @@ const ConfirmDispatchDialog = ({
           toast.success(`שודר ל-${rows.length} מתעניינים בערוץ ${channel.label}`);
         }
       }
+      // Active-learning capture for manual edits to the AI-drafted post body.
+      learnFromEdit({
+        context: `campaign_post:${channel.id}`,
+        listing_id: selectedListingId || null,
+        pairs: [{ label: 'post_body', original: originalAiBody, edited: body }],
+      });
+      setOriginalAiBody('');
       onConfirmed();
       onClose();
     } catch (e: any) {
