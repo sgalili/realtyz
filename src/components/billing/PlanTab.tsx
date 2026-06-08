@@ -3,6 +3,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { CreditBalancePill } from '@/components/CreditBalancePill';
+
 
 const SEAT_PRICE = 350;
 const SEAT_WALLET_CREDIT = 200;
