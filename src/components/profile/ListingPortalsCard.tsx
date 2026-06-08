@@ -59,6 +59,8 @@ export function ListingPortalsCard() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
+  const [yad2Verifying, setYad2Verifying] = useState(false);
+  const [yad2Status, setYad2Status] = useState<'idle' | 'pending' | 'verified' | 'failed'>('idle');
   const [homelyHasPassword, setHomelyHasPassword] = useState(false);
   const [homelyStatus, setHomelyStatus] = useState<string>('not_configured');
   const [shown, setShown] = useState<Record<string, boolean>>({});
@@ -168,6 +170,36 @@ export function ListingPortalsCard() {
     }
   };
 
+  const verifyYad2 = async () => {
+    const email = (values.yad2_username ?? '').trim();
+    const token = (values.yad2_api_key ?? '').trim();
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!emailOk) { toast.error('יש להזין כתובת Email תקינה של Yad2'); return; }
+    if (!token) { toast.error('יש להזין API Token של Yad2'); return; }
+    setYad2Verifying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('yad2-verify-login', { body: {} });
+      if (error) throw error;
+      const status = (data as any)?.status;
+      if (status === 'verified') {
+        setYad2Status('verified');
+        toast.success('החיבור ל-Yad2 בוצע בהצלחה!');
+      } else if (status === 'pending' || token === 'test_pending') {
+        setYad2Status('pending');
+        toast.warning('החיבור בהמתנה לאישור יד2. נתוני הרצליה ורמת השרון יימשכו אוטומטית עם הזנת הטוקן הרשמי.');
+      } else {
+        setYad2Status('failed');
+        toast.error((data as any)?.note ?? 'שגיאה באימות מול יד2');
+      }
+    } catch (e: any) {
+      setYad2Status('failed');
+      toast.error(e?.message ?? 'שגיאה באימות מול יד2');
+    } finally {
+      setYad2Verifying(false);
+    }
+  };
+
+
 
   const savePortal = async (p: Portal) => {
     if (p.id === 'homely') return saveHomely();
@@ -214,6 +246,12 @@ export function ListingPortalsCard() {
                   <div className="flex items-center gap-2 justify-end">
                     {isHomely && homelyStatus === 'ok' && (
                       <Badge variant="outline" className="text-emerald-700 border-emerald-300">מאומת</Badge>
+                    )}
+                    {p.id === 'yad2' && yad2Status === 'verified' && (
+                      <Badge variant="outline" className="text-emerald-700 border-emerald-300">מאומת</Badge>
+                    )}
+                    {p.id === 'yad2' && yad2Status === 'pending' && (
+                      <Badge variant="outline" className="text-amber-700 border-amber-300">ממתין לטוקן</Badge>
                     )}
                     {configured && <Badge variant="outline" className="text-emerald-700 border-emerald-300">מחובר</Badge>}
                     <span className="font-semibold">{p.label}</span>
@@ -273,6 +311,22 @@ export function ListingPortalsCard() {
                   <Button size="sm" variant="outline" onClick={verifyHomely} disabled={verifying || !(values.homely_agency ?? '').trim()} className="gap-2">
                     {verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
                     {verifying ? 'בודק חיבור…' : 'בדיקת התחברות'}
+                  </Button>
+                )}
+                {p.id === 'yad2' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={verifyYad2}
+                    disabled={
+                      yad2Verifying ||
+                      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((values.yad2_username ?? '').trim()) ||
+                      !(values.yad2_api_key ?? '').trim()
+                    }
+                    className="gap-2"
+                  >
+                    {yad2Verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                    {yad2Verifying ? 'בודק חיבור…' : 'בדיקת התחברות'}
                   </Button>
                 )}
 
