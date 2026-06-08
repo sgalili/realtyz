@@ -156,9 +156,9 @@ const buildAccountUrl = (channelId: string, value: string): string | null => {
 
 
 const ChannelGrid = ({
-  selectedId, onPick, onConnect, brandName, connected = EMPTY_CONNECTED, accountNames = {}, socialProfiles = [], onAddFacebookPage,
+  selectedIds, onPick, onConnect, brandName, connected = EMPTY_CONNECTED, accountNames = {}, socialProfiles = [], onAddFacebookPage,
 }: {
-  selectedId: string | null;
+  selectedIds: Set<string>;
   onPick: (c: ChannelCard) => void;
   onConnect: (c: ChannelCard) => void;
   brandName: string;
@@ -167,6 +167,7 @@ const ChannelGrid = ({
   socialProfiles?: SocialAccountProfile[];
   onAddFacebookPage?: () => void;
 }) => (
+
   <div className="w-full rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
     <div className="grid grid-cols-3 md:grid-cols-9 gap-2" dir="rtl">
       {CHANNEL_CARDS.map((c) => {
