@@ -172,7 +172,8 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
   // provider_message_id. The realtime subscription on campaign_logs then
   // patches the counter UI live without a browser reload.
   const forceRefresh = async () => {
-    setLoading(true);
+    // Silent: never toggle `loading` so the UI doesn't flash a spinner /
+    // "טוען תגובות חיות…" placeholder while the background pull runs.
     try {
       const pid = postIds[0] ?? null;
       const settled = await Promise.allSettled([
@@ -187,32 +188,25 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
       ]);
       for (const result of settled) {
         if (result.status === "rejected") {
-          const msg = await extractFunctionError(result.reason, "רענון תגובות נכשל");
           console.error("[CampaignCommentsStream] provider refresh rejected", result.reason);
-          toast.error(msg);
           continue;
         }
         const { data, error } = result.value as any;
         if (error) {
-          const msg = await extractFunctionError(error, "רענון תגובות נכשל");
           console.error("[CampaignCommentsStream] provider refresh error", { error, data });
-          toast.error(msg);
           continue;
         }
         const surfacedError = firstPipelineError(data);
         if (surfacedError) {
           console.error("[CampaignCommentsStream] provider pipeline error", data);
-          toast.error(surfacedError);
         }
       }
       await fetchRows();
-      toast.success("הנתונים עודכנו");
     } catch (e: any) {
-      toast.error(e?.message ?? "רענון נכשל");
-    } finally {
-      setLoading(false);
+      console.error("[CampaignCommentsStream] silent refresh failed", e);
     }
   };
+
 
   useEffect(() => {
     // Always pull fresh comments from the provider on mount/route entry
