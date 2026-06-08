@@ -23,10 +23,10 @@
     --popover: 0 0% 100%;
     --popover-foreground: 213 73% 12%;
 
-    /* PRIMARY — Anglo Saxon Gold #FFC800 (action accent) */
-    --primary: 47 100% 50%;
-    --primary-foreground: 213 73% 12%; /* navy text on gold */
-    --primary-glow: 44 100% 48%;       /* deeper gold on hover */
+    /* PRIMARY — Anglo Saxon Navy #0B2545 (action accent) */
+    --primary: 213 73% 16%;
+    --primary-foreground: 0 0% 100%; /* white text on navy */
+    --primary-glow: 213 73% 22%;     /* slightly lighter navy on hover */
 
     --secondary: 210 17% 98%;          /* #F8F9FA canvas */
     --secondary-foreground: 213 73% 16%;
@@ -34,16 +34,17 @@
     --muted: 210 17% 96%;
     --muted-foreground: 213 60% 16%; /* near-navy for high-contrast icons/labels on light bg */
 
-    /* ACCENT — Anglo Saxon Gold (same family, used for highlights) */
-    --accent: 47 100% 50%;
-    --accent-foreground: 213 73% 12%;
+    /* ACCENT — Navy (same family, used for highlights) */
+    --accent: 213 73% 16%;
+    --accent-foreground: 0 0% 100%;
 
     --destructive: 0 72% 48%;
     --destructive-foreground: 0 0% 100%;
 
     --border: 213 25% 88%;
     --input: 213 25% 88%;
-    --ring: 47 100% 50%;
+    --ring: 213 73% 16%;
+
 
     --radius: 0.75rem;
 
