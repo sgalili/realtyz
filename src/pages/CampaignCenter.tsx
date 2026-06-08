@@ -192,17 +192,18 @@ const ChannelGrid = ({
               </span>
             )}
 
-            {c.id === 'facebook' && isConnected && (
+            {c.id === 'facebook' && (
               <span
                 role="button"
                 tabIndex={0}
                 onClick={(e) => { e.stopPropagation(); onAddFacebookPage?.(); }}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onAddFacebookPage?.(); } }}
-                className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-primary/40 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+                className="absolute right-1 top-1 z-10 inline-flex max-w-[calc(100%-0.5rem)] items-center gap-0.5 rounded-full border border-primary/40 bg-primary px-1.5 py-0.5 text-[9px] font-bold leading-none text-primary-foreground shadow-sm hover:bg-primary/90"
                 title="+ הוסף עמוד נוסף"
                 aria-label="+ הוסף עמוד נוסף"
               >
-                <Plus className="h-3.5 w-3.5" />
+                <Plus className="h-3 w-3 shrink-0" />
+                <span className="truncate">הוסף עמוד נוסף</span>
               </span>
             )}
 
