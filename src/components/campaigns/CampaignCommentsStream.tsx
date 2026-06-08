@@ -94,6 +94,28 @@ const writeCache = (campaignId: string, rows: EngagementRow[]) => {
   try { sessionStorage.setItem(cacheKey(campaignId), JSON.stringify(rows)); } catch { /* quota */ }
 };
 
+// Per-campaign draft cache (suggested + user-edited public/DM text), keyed by
+// engagement row id. Persisted to sessionStorage so collapse/expand of the
+// card and any background refresh re-hydrate the exact last text the broker
+// saw — including manual edits — for the entire browser session.
+type DraftMap = Record<string, { pub: string; dm: string }>;
+const DRAFT_CACHE = new Map<string, DraftMap>();
+const draftKey = (campaignId: string) => `realtyz.drafts.${campaignId}`;
+const readDraftCache = (campaignId: string): DraftMap => {
+  if (DRAFT_CACHE.has(campaignId)) return DRAFT_CACHE.get(campaignId)!;
+  try {
+    const raw = sessionStorage.getItem(draftKey(campaignId));
+    const parsed = raw ? JSON.parse(raw) : {};
+    const map: DraftMap = parsed && typeof parsed === "object" ? parsed : {};
+    DRAFT_CACHE.set(campaignId, map);
+    return map;
+  } catch { return {}; }
+};
+const writeDraftCache = (campaignId: string, map: DraftMap) => {
+  DRAFT_CACHE.set(campaignId, map);
+  try { sessionStorage.setItem(draftKey(campaignId), JSON.stringify(map)); } catch { /* quota */ }
+};
+
 export function CampaignCommentsStream({ userId, campaign, commentCount }: Props) {
   const cached = readCache(campaign.id);
   const [rows, setRows] = useState<EngagementRow[] | null>(cached);
@@ -109,7 +131,24 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
   const [sending, setSending] = useState(false);
   // Per-row cached AI drafts so closing/re-opening the editor does NOT
   // re-invoke the AI — only an explicit refresh-per-card regenerates.
-  const [draftCache, setDraftCache] = useState<Record<string, { pub: string; dm: string }>>({});
+  const [draftCache, setDraftCache] = useState<Record<string, { pub: string; dm: string }>>(() => readDraftCache(campaign.id));
+
+  // Write-through draft cache to sessionStorage so the suggested + edited
+  // text survives card collapse/expand and background refreshes.
+  useEffect(() => {
+    writeDraftCache(campaign.id, draftCache);
+  }, [campaign.id, draftCache]);
+
+  // Capture live edits to the open row's drafts (after the AI has produced
+  // an initial pair) so manual changes are remembered too.
+  useEffect(() => {
+    if (!replyOpen) return;
+    const existing = draftCache[replyOpen.id];
+    if (!existing) return; // wait until AI has seeded the pair
+    if (existing.pub === replyDraft && existing.dm === dmDraft) return;
+    setDraftCache((prev) => ({ ...prev, [replyOpen.id]: { pub: replyDraft, dm: dmDraft } }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replyDraft, dmDraft, replyOpen?.id]);
   const postIds = useMemo(() => getCampaignPostIds(campaign), [campaign.channel, campaign.provider_message_id, campaign.provider_response]);
   const postIdsKey = postIds.join("|");
 
