@@ -27,7 +27,7 @@ const extractFunctionError = async (error: any, fallback = "שגיאת API חי�
 const firstPipelineError = (data: any): string | null => {
   const api = Array.isArray(data?.api_errors) ? data.api_errors[0] : null;
   const mapping = Array.isArray(data?.mapping_errors) ? data.mapping_errors[0] : null;
-  if (api) return `Ayrshare ${api.status ?? ""}: ${api.payload?.message ?? api.error ?? "API rejected request"}`;
+  if (api) return `Meta ${api.status ?? ""}: ${api.payload?.message ?? api.error ?? "API rejected request"}`;
   if (mapping) return mapping.error ?? "Invalid external post id mapping";
   return null;
 };
@@ -279,10 +279,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
           continue;
         }
         const surfacedError = firstPipelineError(data);
-        if (surfacedError) {
-          console.warn("[CampaignCommentsStream] provider pipeline warning", surfacedError);
-          if (manual) setProviderWarning(surfacedError);
-        }
+        if (surfacedError) console.warn("[CampaignCommentsStream] provider pipeline warning", surfacedError);
       }
       await fetchRows();
     } catch (e: any) {
@@ -693,8 +690,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
         {replies.length > 0 && (
           <div
             className={cn(
-              "mt-4 mr-10 pr-4 border-r-2 border-slate-200 flex flex-col gap-3 rounded-xl p-3",
-              depth === 0 ? "bg-slate-50/80" : "bg-white/70",
+              "mt-4 mr-10 pr-4 border-r-2 border-slate-200 bg-slate-50 p-3 rounded-lg flex flex-col gap-3",
             )}
           >
             {replies.map((reply) => renderCommentNode(reply, depth + 1))}
