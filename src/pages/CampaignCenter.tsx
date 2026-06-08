@@ -1796,13 +1796,22 @@ const mapVoiceLead = (r: any): VoiceLead => {
   };
 };
 
-const PRESET_VOICE_AGENTS: { id: string; label: string; voice_id: string }[] = [
-  { id: 'sarah',    label: 'שרה (אישה)',     voice_id: 'EXAVITQu4vr4xnSDxMaL' },
-  { id: 'matilda',  label: 'מטילדה (אישה)', voice_id: 'XrExE9yKIg1WjnnlVkGX' },
-  { id: 'charlie',  label: 'צ׳רלי (גבר)',    voice_id: 'IKne3meq5aSn9XLyUdCD' },
+type Gender = 'male' | 'female';
+
+const PRESET_VOICE_AGENTS: { id: string; label: string; voice_id: string; gender: Gender }[] = [
+  { id: 'sarah',    label: 'שרה (אישה)',     voice_id: 'EXAVITQu4vr4xnSDxMaL', gender: 'female' },
+  { id: 'matilda',  label: 'מטילדה (אישה)', voice_id: 'XrExE9yKIg1WjnnlVkGX', gender: 'female' },
+  { id: 'charlie',  label: 'צ׳רלי (גבר)',    voice_id: 'IKne3meq5aSn9XLyUdCD', gender: 'male' },
 ];
 
-type ClonedVoice = { id: string; name: string; voice_id: string; preview_url?: string | null };
+type ClonedVoice = { id: string; name: string; voice_id: string; preview_url?: string | null; voice_gender?: Gender | null };
+
+// Hebrew gender helpers — render verbs/adjectives in the correct grammatical
+// gender of the addressee (the broker). Defaults to neutral male-form when
+// gender is unknown so we never silently address a male user as female.
+const heVerb = (g: Gender | null | undefined, male: string, female: string) =>
+  g === 'female' ? female : male;
+
 
 const VoiceLeadPickerDialog = ({
   open, onClose, channel,
