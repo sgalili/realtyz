@@ -1274,8 +1274,8 @@ const GlobalSocialFeed = ({
       >
         <span>הכל</span>
         <span className={cn(
-          'text-xs font-bold tabular-nums',
-          activeChannel === 'all' ? 'text-white/80' : 'text-slate-400',
+          'text-sm font-bold tabular-nums',
+          activeChannel === 'all' ? 'text-white/90' : 'text-slate-500',
         )} dir="ltr">{counts.all}</span>
       </button>
       {FEED_PLATFORMS.map((p) => <Pill key={p.id} {...p} />)}
@@ -1284,10 +1284,10 @@ const GlobalSocialFeed = ({
         onClick={onOpenArchive}
         className="ms-auto inline-flex shrink-0 items-center gap-2 rounded-full bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 whitespace-nowrap"
         title="ארכיון תגובות"
+        aria-label="ארכיון תגובות"
       >
         <Archive className="h-4 w-4 text-slate-500" />
-        <span>ארכיון</span>
-        <span className="text-xs font-bold tabular-nums text-slate-400" dir="ltr">{archivedCount}</span>
+        <span className="text-sm font-bold tabular-nums text-slate-500" dir="ltr">{archivedCount}</span>
       </button>
     </div>
   );
