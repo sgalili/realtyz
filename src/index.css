@@ -321,7 +321,7 @@
   .bg-card .text-warning > svg.lucide,
   .card-glass .text-amber-500 > svg.lucide,
   .card-glass .text-yellow-500 > svg.lucide {
-    color: #b8860b !important;
+    color: #0b3982 !important;
   }
   .card-glass .text-destructive > svg.lucide,
   [data-card="true"] .text-destructive > svg.lucide,
@@ -342,7 +342,7 @@
   .bg-primary\/20 > svg.lucide { color: #0b3982 !important; }
   .bg-warning\/10 > svg.lucide,
   .bg-amber-500\/10 > svg.lucide,
-  .bg-yellow-500\/10 > svg.lucide { color: #b8860b !important; }
+  .bg-yellow-500\/10 > svg.lucide { color: #0b3982 !important; }
   .bg-destructive\/10 > svg.lucide,
   .bg-red-500\/10 > svg.lucide,
   .bg-rose-500\/10 > svg.lucide { color: #c8102e !important; }
