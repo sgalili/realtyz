@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -115,26 +115,28 @@ export default function Properties() {
   const [shareTarget, setShareTarget] = useState<HomelyProperty | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [homelyRefreshing, setHomelyRefreshing] = useState(false);
   const queryClient = useQueryClient();
   const refreshListings = () => {
     setSourceTab('mine');
     queryClient.invalidateQueries({ queryKey: ['properties'] });
   };
 
-  const homelyRefreshMutation = useMutation({
-    mutationFn: async () => {
+  const refreshHomelyProperties = async () => {
+    if (homelyRefreshing) return;
+    setHomelyRefreshing(true);
+    try {
       const { error } = await supabase.functions.invoke('homely-search', { body: { hydrate: true } });
       if (error) throw error;
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['properties'] });
+      await queryClient.invalidateQueries({ queryKey: ['properties'] });
       toast.success('הנכסים מ-Homely רוענו');
-    },
-    onError: (e: any) => {
+    } catch (e: any) {
       console.warn('[properties] homely hydrate failed', e);
       toast.error(e?.message ?? 'רענון נכסי Homely נכשל');
-    },
-  });
+    } finally {
+      setHomelyRefreshing(false);
+    }
+  };
 
   // Listen for hero-emitted add events (the '+' button lives in PageHero now).
   useEffect(() => {
@@ -332,13 +334,13 @@ export default function Properties() {
           {sourceTab === 'homely' && (
             <button
               type="button"
-              onClick={() => homelyRefreshMutation.mutate()}
-              disabled={isLoading || homelyRefreshMutation.isPending}
+              onClick={refreshHomelyProperties}
+              disabled={isLoading || homelyRefreshing}
               className="ml-1 inline-flex items-center gap-1 px-2.5 py-2 text-xs font-semibold rounded-lg text-muted-foreground hover:text-foreground hover:bg-primary/5 transition-colors disabled:opacity-50"
               title="רענון נכסים מ-Homely"
               aria-label="רענון נכסים מ-Homely"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${homelyRefreshMutation.isPending ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-3.5 w-3.5 ${homelyRefreshing ? 'animate-spin' : ''}`} />
               רענן
             </button>
           )}
