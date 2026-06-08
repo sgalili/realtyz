@@ -15,6 +15,7 @@ import { format } from 'date-fns';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
+import { learnFromEdit } from '@/lib/learnFromEdit';
 
 const SignalLogo = (props: SVGProps<SVGSVGElement>) => (
   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true" {...props} className={`scale-120 ${props.className ?? ''}`}>
