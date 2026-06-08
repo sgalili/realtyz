@@ -435,6 +435,7 @@ Deno.serve(async (req) => {
           c?.author,
         );
         const senderId = pickStr(c?.from?.id, c?.user?.id, c?.fromId, c?.sender_id, c?.userId);
+        const parentId = typeof c?.__parent_id === "string" ? c.__parent_id : null;
         // SENDER FIREWALL: comments authored by our own Page must still be
         // stored so the UI can render the physical Facebook reply tree, but
         // they are marked display-only and never dispatched back to the AI.
@@ -450,8 +451,6 @@ Deno.serve(async (req) => {
           console.log("[ayrshare-comments-fetch] blocked root self-authored comment", { nativeId, senderId, sender });
           continue;
         }
-        const parentId = typeof c?.__parent_id === "string" ? c.__parent_id : null;
-
         const safeStr = (v: unknown, max = 500): string | null => {
           if (v === null || v === undefined) return null;
           const s = typeof v === "string" ? v : (() => {
