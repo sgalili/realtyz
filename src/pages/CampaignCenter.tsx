@@ -2527,16 +2527,14 @@ const CampaignCenter = () => {
       <SentimentAutomationToggles className="mt-[15px] mb-4" />
 
       <Tabs value={active} onValueChange={handleChange} className="w-full">
-        <div className="sticky top-0 z-30 -mx-6 px-6 py-2 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border/60">
-          <TabsList className="flex w-full h-auto gap-1 overflow-x-auto rounded-xl bg-muted/60 p-1">
-            {TABS.map((tab) => (
-              <TabsTrigger key={tab.value} value={tab.value}
-                className="flex-1 min-w-fit whitespace-nowrap px-3 py-2 text-base sm:text-lg font-medium rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
-                {tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
+        {/* Sub-tabs intentionally hidden — primary view is the published feed,
+            and the "+" button in the page hero toggles the composer panel. */}
+        <TabsList className="sr-only" aria-hidden>
+          {TABS.map((tab) => (
+            <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
+          ))}
+        </TabsList>
+
 
         <TabsContent value="create" className="mt-6 space-y-4">
           <ChannelGrid
