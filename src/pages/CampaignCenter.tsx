@@ -795,28 +795,6 @@ const InlineComposer = ({
         <CampaignGroupSelector selectedIds={groupIds} onChange={setGroupIds} />
       )}
 
-      {/* Dispatch mode selector — only when body has content */}
-      {hasBody && (
-        <div className="rounded-xl border border-border bg-background p-2 grid grid-cols-2 gap-2">
-          {([
-            { id: 'now',       label: 'שליחה מיידית' },
-            { id: 'scheduled', label: 'תזמון עתידי' },
-          ] as const).map((opt) => {
-            const active = mode === opt.id;
-            return (
-              <button key={opt.id} type="button" onClick={() => setMode(opt.id)}
-                className={cn(
-                  'rounded-lg px-3 py-2.5 text-sm font-semibold transition',
-                  active
-                    ? 'border border-foreground/80 bg-background text-foreground shadow-sm'
-                    : 'border border-transparent text-muted-foreground hover:text-foreground',
-                )}>
-                {opt.label}
-              </button>
-            );
-          })}
-        </div>
-      )}
 
       {/* Scheduled date+time picker */}
       {hasBody && mode === 'scheduled' && (() => {
