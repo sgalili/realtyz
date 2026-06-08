@@ -779,15 +779,28 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
         </p>
       </div>
 
-      {(!rows || rows.length === 0) && (
+      {fbSessionExpired && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2.5 text-xs text-amber-700 dark:text-amber-400 flex items-start gap-2">
+          <span aria-hidden className="mt-0.5">⚠️</span>
+          <div className="space-y-1 flex-1">
+            <div className="font-semibold">חיבור פייסבוק זמני פקע</div>
+            <div className="text-amber-700/90 dark:text-amber-300/90">
+              יש לחדש את החיבור דרך הגדרות הערוצים. תגובות שכבר נטענו מוצגות מהזיכרון המקומי.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(!rows || rows.length === 0) && !fbSessionExpired && (
         <p className="text-xs text-muted-foreground">אין תגובות עדיין לקמפיין זה</p>
       )}
 
-      {providerWarning && (
+      {providerWarning && !fbSessionExpired && (
         <p className="rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs text-destructive">
           החיבור לפייסבוק חסום כרגע: {providerWarning}
         </p>
       )}
+
 
       <div className="space-y-4">
         {rootComments.map((parent) => renderCommentNode(parent))}
