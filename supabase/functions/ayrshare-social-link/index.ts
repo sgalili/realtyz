@@ -14,6 +14,8 @@ const corsHeaders = {
 const AYR_API = 'https://api.ayrshare.com/api';
 const REALTYZ_PREFIX = 'realtyz-';
 const AYRSHARE_INTEGRATION_DOMAIN = 'id-yPFiJ';
+const ACTIVE_WORKSPACE_TITLE = 'Realtyz Workspace - אודי ויטמן - 6200';
+const ACTIVE_WORKSPACE_REF_ID = '66743d525e0cd68404f38e954f3d016ee1a509c4';
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -113,6 +115,18 @@ Deno.serve(async (req) => {
 
     let profileKey = cleanProfileKey(ws?.ayrshare_profile_key) || null;
     let refId = cleanProfileKey(ws?.ayrshare_ref_id) || null;
+    if (refId && refId !== ACTIVE_WORKSPACE_REF_ID) {
+      return jsonResponse({ error: 'Workspace is not bound to Ayrshare Profile 6200. Rebind the active workspace profile before connecting pages.' }, 409);
+    }
+    if (!profileKey || refId !== ACTIVE_WORKSPACE_REF_ID) {
+      return jsonResponse({ error: 'Missing active Ayrshare Profile 6200 binding. The workspace must use the approved active profile only.' }, 409);
+    }
+    if (profileKey && refId === ACTIVE_WORKSPACE_REF_ID) {
+      await admin
+        .from('workspace_social_profile')
+        .update({ facebook_page_name: ACTIVE_WORKSPACE_TITLE, updated_at: new Date().toISOString() })
+        .eq('id', WORKSPACE_ID);
+    }
 
     if (profileKey) {
       const verifyRes = await fetch(`${AYR_API}/user`, {
@@ -126,13 +140,12 @@ Deno.serve(async (req) => {
           code: verifyPayload?.code,
           message: verifyPayload?.message ?? verifyPayload?.error,
         });
-        profileKey = null;
-        refId = null;
+        return jsonResponse({ error: 'Active Ayrshare workspace profile 6200 was rejected by Ayrshare. Re-check the profile key before connecting pages.' }, 403);
       }
     }
 
     // ---- SAFETY GUARD: only touch realtyz- prefixed profiles ----
-    if (refId && !refId.startsWith(REALTYZ_PREFIX)) {
+    if (refId && refId !== ACTIVE_WORKSPACE_REF_ID && !refId.startsWith(REALTYZ_PREFIX)) {
       console.warn('[ayrshare-social-link] refusing to act on non-realtyz refId', { refId });
       return jsonResponse({
         error: `Safety guard: workspace is linked to an Ayrshare profile (refId="${refId}") that is not managed by Realtyz.`,
@@ -264,7 +277,7 @@ Deno.serve(async (req) => {
     }
 
     // ---- Re-check guard after potential creation ----
-    if (!refId || !refId.startsWith(REALTYZ_PREFIX)) {
+    if (!refId || (refId !== ACTIVE_WORKSPACE_REF_ID && !refId.startsWith(REALTYZ_PREFIX))) {
       return jsonResponse({ error: 'Safety guard: missing realtyz- refId after profile resolution.' }, 403);
     }
 

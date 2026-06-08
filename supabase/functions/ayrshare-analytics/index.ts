@@ -11,7 +11,6 @@ import {
   AYR_BASE,
   MISSING_TENANT_KEY,
   MISSING_TENANT_KEY_MESSAGE,
-  clearStaleAyrshareConnection,
   isAyrshareInvalidProfileKey,
   resolveWorkspaceProfileKey,
   verifyWorkspaceProfileKey,
@@ -35,6 +34,7 @@ const PLATFORM_MAP: Record<string, string> = {
 };
 
 type Counts = { likes: number; comments: number; shares: number; views: number };
+const ZERO_COUNTS: Counts = { likes: 0, comments: 0, shares: 0, views: 0 };
 
 const isUuid = (value: unknown) =>
   typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value.trim());
@@ -46,6 +46,13 @@ const safeAyrPayload = (payload: any) => ({
   code: payload?.code ?? payload?.errors?.[0]?.code ?? null,
   raw: payload,
 });
+
+const isSoftMetricsFailure = (status: number, payload: any) => {
+  const message = String(payload?.message ?? payload?.error ?? payload?.raw?.message ?? payload?.payload?.message ?? "");
+  return status === 404
+    || status === 403
+    || /post id not found|history not found|history identifier|missing.*history|not found|forbidden|suspended/i.test(message);
+};
 
 function pickNum(...vals: unknown[]): number {
   for (const v of vals) {
@@ -292,14 +299,16 @@ Deno.serve(async (req) => {
               requested_id: body.id,
               payload: attempt.payload,
             });
+            if (isSoftMetricsFailure(res.status, attempt.payload)) {
+              return { res, payload, softFailure: true };
+            }
             if (isAyrshareInvalidProfileKey(res.status, attempt.payload)) {
-              await clearStaleAyrshareConnection(admin, `analytics ${attempt.endpoint} ${res.status}`).catch(() => {});
               attempt.status = 200;
               attempt.payload = { message: MISSING_TENANT_KEY, code: 144 };
-              return { res: new Response(JSON.stringify({ error: MISSING_TENANT_KEY }), { status: 400 }), payload: { error: MISSING_TENANT_KEY } };
+              return { res: new Response(JSON.stringify({ error: MISSING_TENANT_KEY }), { status: 400 }), payload: { error: MISSING_TENANT_KEY }, softFailure: false };
             }
           }
-          return { res, payload };
+          return { res, payload, softFailure: false };
         };
 
         let chosen: { payload: any; endpoint: string; counts: Counts } | null = null;
@@ -312,7 +321,7 @@ Deno.serve(async (req) => {
             chosen = { payload: postAttempt.payload, endpoint: "/analytics/post", counts };
           } else {
             firstFailure = attempts[attempts.length - 1];
-            if (![404].includes(postAttempt.res.status)) {
+            if (!postAttempt.softFailure) {
               apiErrors.push({ id: t.id, platform: t.platform, ...firstFailure });
               return { id: t.id, ok: false, status: postAttempt.res.status, error: firstFailure?.payload?.message || "Ayrshare analytics rejected request", ayrshare_post_id: t.ayrsharePostId, native_post_id: t.nativePostId, attempts };
             }
@@ -326,7 +335,7 @@ Deno.serve(async (req) => {
             if (!chosen || countTotal(socialCounts) >= countTotal(chosen.counts)) {
               chosen = { payload: socialAttempt.payload, endpoint: "/analytics/social", counts: socialCounts };
             }
-          } else if (!chosen) {
+          } else if (!chosen && !socialAttempt.softFailure) {
             const failure = attempts[attempts.length - 1] ?? firstFailure;
             apiErrors.push({ id: t.id, platform: t.platform, ...failure });
             return { id: t.id, ok: false, status: socialAttempt.res.status, error: failure?.payload?.message || "Ayrshare analytics rejected request", ayrshare_post_id: t.ayrsharePostId, native_post_id: t.nativePostId, attempts };
@@ -335,8 +344,7 @@ Deno.serve(async (req) => {
 
         if (!chosen) {
           const failure = firstFailure ?? { status: 404, payload: { message: "No usable Ayrshare/native post id found" } };
-          apiErrors.push({ id: t.id, platform: t.platform, ...failure });
-          return { id: t.id, ok: false, status: failure.status ?? 404, error: failure?.payload?.message || "No usable Ayrshare/native post id found", ayrshare_post_id: t.ayrsharePostId, native_post_id: t.nativePostId, attempts };
+          chosen = { payload: { fallback: true, failure }, endpoint: "fallback/zero", counts: ZERO_COUNTS };
         }
         const counts = chosen.counts;
         console.log("[ayrshare-analytics] counts", { id: t.id, platform: t.platform, counts, endpoint: chosen.endpoint, ayrsharePostId: t.ayrsharePostId, nativePostId: t.nativePostId });
