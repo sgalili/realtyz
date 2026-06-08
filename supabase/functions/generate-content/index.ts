@@ -218,6 +218,7 @@ ${CTA_RULE}
 כתוב בעברית בלבד, ישראלית טבעית, בגוף ראשון של אודי. החזר את הפוסט בלבד, בלי הסברים נלווים.`;
 
     const userPrompt = [
+      kbTemplatesBlock || null,
       promotedBlock,
       focusOnly ? null : renderCrmBlock(snap),
       focusOnly ? null : renderKbBlock(kb),
