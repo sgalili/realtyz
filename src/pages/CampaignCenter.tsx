@@ -2566,6 +2566,7 @@ const CampaignCenter = () => {
   const [ivrOpen, setIvrOpen] = useState(false);
   const [emailSetupOpen, setEmailSetupOpen] = useState(false);
   const [confirmPayload, setConfirmPayload] = useState<ConfirmPayload | null>(null);
+  const [alsoEmail, setAlsoEmail] = useState(false);
   // Hydrate connection state from sessionStorage so a page refresh doesn't
   // visually "disconnect" channels while the async verification re-runs.
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(() => {
