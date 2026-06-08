@@ -1990,7 +1990,38 @@ const VoiceLeadPickerDialog = ({
           </DialogHeader>
 
           <div className="space-y-4">
+            {/* Broker gender — controls Hebrew grammar across the dialog and is
+                persisted to profiles so future sessions don't need to ask. */}
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-[#0f1b3d]/15 bg-muted/30 px-3 py-2">
+              <span className="text-[11px] font-semibold text-[#0f1b3d]">אני מתווך/ת:</span>
+              <div className="flex gap-1">
+                {([
+                  { v: 'male' as const, label: 'גבר' },
+                  { v: 'female' as const, label: 'אישה' },
+                ]).map((o) => (
+                  <button
+                    key={o.v}
+                    type="button"
+                    onClick={async () => {
+                      setUserGender(o.v);
+                      const { data: { user } } = await supabase.auth.getUser();
+                      if (user) await supabase.from('profiles').update({ gender: o.v }).eq('id', user.id);
+                    }}
+                    className={cn(
+                      'rounded-md border px-2 py-0.5 text-[11px] font-semibold transition',
+                      userGender === o.v
+                        ? 'border-[#0f1b3d] bg-[#0f1b3d] text-white'
+                        : 'border-[#0f1b3d]/30 text-[#0f1b3d] hover:bg-[#0f1b3d]/5',
+                    )}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Step 1 — Target List */}
+
             <div className="animate-in fade-in slide-in-from-top-1 duration-200">
               <Select value={listGroup} onValueChange={setListGroup} dir="rtl">
                 <SelectTrigger className="w-full h-11 text-right text-[15px] text-muted-foreground/80 border-[#0f1b3d]/20 focus:ring-[#C9A84C] data-[placeholder]:text-muted-foreground/70">
