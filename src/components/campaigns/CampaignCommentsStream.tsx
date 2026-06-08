@@ -185,6 +185,8 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
   const [loading, setLoading] = useState(false);
   const [manualRefreshing, setManualRefreshing] = useState(false);
   const [providerWarning, setProviderWarning] = useState<string | null>(null);
+  const [fbSessionExpired, setFbSessionExpired] = useState(false);
+
   const [replyOpen, setReplyOpen] = useState<EngagementRow | null>(null);
   const [replyDraft, setReplyDraft] = useState("");
   const [dmDraft, setDmDraft] = useState("");
