@@ -525,6 +525,7 @@ Deno.serve(async (req) => {
           permalink: safeStr(c?.permalink ?? c?.permalink_url ?? c?.url, 1000),
           sender_id: safeStr(senderId),
           profile_image: safeStr(authorPicture, 1000),
+          sender_avatar_url: safeStr(authorPicture, 1000),
           author: {
             name: safeStr(sender, 200),
             profile_image: safeStr(authorPicture, 1000),
