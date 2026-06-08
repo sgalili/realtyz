@@ -31,6 +31,7 @@ type NavItem = {
   url: string;
   icon: typeof Activity;
   iconColor: string;
+  badgeClass: string;
   aliases?: string[];
   badge?: string;
 };
@@ -40,49 +41,56 @@ const NAV_ITEMS: NavItem[] = [
     title: 'לוח בקרה',
     url: '/',
     icon: Activity,
-    iconColor: 'text-primary',
+    iconColor: 'text-indigo-600',
+    badgeClass: 'bg-indigo-50 text-indigo-700 ring-indigo-200',
     aliases: ['/dashboard'],
   },
   {
     title: 'לקוחות',
     url: '/lead-crm',
     icon: Users,
-    iconColor: 'text-primary',
+    iconColor: 'text-emerald-600',
+    badgeClass: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
     aliases: ['/crm', '/leads'],
   },
   {
     title: 'נכסים',
     url: '/properties',
     icon: Building2,
-    iconColor: 'text-primary',
+    iconColor: 'text-amber-500',
+    badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
     aliases: ['/property', '/listings'],
   },
   {
     title: 'צ׳אטים',
     url: '/inbox',
     icon: MessageCircle,
-    iconColor: 'text-emerald-600',
+    iconColor: 'text-cyan-600',
+    badgeClass: 'bg-cyan-50 text-cyan-700 ring-cyan-200',
     aliases: ['/communication'],
   },
   {
     title: 'עסקאות',
     url: '/deal-room',
     icon: Handshake,
-    iconColor: 'text-amber-600',
+    iconColor: 'text-rose-600',
+    badgeClass: 'bg-rose-50 text-rose-700 ring-rose-200',
     aliases: ['/deals'],
   },
   {
     title: 'קמפיינים',
     url: '/campaigns',
     icon: Megaphone,
-    iconColor: 'text-destructive',
+    iconColor: 'text-orange-500',
+    badgeClass: 'bg-orange-50 text-orange-700 ring-orange-200',
     aliases: ['/broadcast', '/automations', '/campaign-strategy', '/approval-queue', '/calendar', '/sms-blast', '/ads'],
   },
   {
     title: 'מוח AI',
     url: '/knowledge',
     icon: Brain,
-    iconColor: 'text-primary',
+    iconColor: 'text-purple-600',
+    badgeClass: 'bg-purple-50 text-purple-700 ring-purple-200',
     aliases: ['/live-conversations', '/ai-content', '/sentiment', '/conversation-analytics', '/insights'],
   },
 ];
@@ -151,13 +159,13 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                         to={item.url}
                         end={item.url === '/'}
                         onClick={handleNavClick}
-                        className={`group flex items-center gap-3 px-3 py-2.5 rounded-full text-primary hover:bg-slate-100 hover:text-primary hover:ring-1 hover:ring-primary/15 hover:shadow-sm transition-all ${tutorialActive ? 'realtyz-tutorial-nav-glow' : ''}`}
-                        activeClassName="!bg-white !text-primary font-semibold ring-1 ring-primary/40 shadow-sm"
+                        className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-900 hover:bg-slate-50 transition-all ${tutorialActive ? 'realtyz-tutorial-nav-glow' : ''}`}
+                        activeClassName="!bg-slate-100 !text-slate-900 font-semibold ring-1 ring-slate-200"
                       >
                         <item.icon className={`h-4 w-4 shrink-0 ${item.iconColor}`} />
-                        {!collapsed && <span className="text-sm">{item.title}</span>}
+                        {!collapsed && <span className="text-sm font-medium">{item.title}</span>}
                         {!collapsed && item.badge && (
-                          <span className="ms-auto rounded-full bg-[hsl(var(--brand-gold))] px-2.5 py-0.5 text-xs font-bold leading-none text-[#0b3982] shadow ring-1 ring-black/10">
+                          <span className={`ms-auto rounded-full px-2.5 py-0.5 text-xs font-bold leading-none ring-1 ${item.badgeClass}`}>
                             {item.badge}
                           </span>
                         )}
@@ -165,7 +173,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                           const c = countFor(item.url);
                           if (c === undefined || c === 0) return null;
                           return (
-                            <span className="ms-auto rounded-full bg-white px-2 py-0.5 text-[11px] font-bold leading-none text-[#0b3982] shadow-sm ring-1 ring-black/10">
+                            <span className={`ms-auto rounded-full px-2 py-0.5 text-[11px] font-bold leading-none ring-1 ${item.badgeClass}`}>
                               {formatCount(c)}
                             </span>
                           );
@@ -182,15 +190,15 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
 
         {!collapsed && (
           <div className="mt-auto">
-            <SidebarGroup className="p-0">
+            <SidebarGroup className="p-0 border-t border-slate-200">
               <SidebarGroupContent className="px-3 py-3">
                 <div className="flex items-center gap-3">
                   <button
                     type="button"
                     onClick={() => navigate('/profile')}
-                    className="flex flex-1 items-center gap-3 rounded-md px-1 py-1 text-right transition-colors hover:bg-primary/10 min-w-0"
+                    className="flex flex-1 items-center gap-3 rounded-md px-1 py-1 text-right transition-colors hover:bg-slate-50 min-w-0"
                   >
-                    <div className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-lg overflow-hidden shrink-0 ring-1 ring-primary/10">
+                    <div className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-lg overflow-hidden shrink-0 ring-1 ring-slate-200">
                       {avatarUrl ? (
                         <img
                           src={avatarUrl}
@@ -198,19 +206,18 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                           className="w-10 h-10 rounded-lg object-cover block"
                         />
                       ) : (
-                        <div className="flex h-full w-full items-center justify-center rounded-lg bg-primary text-xs font-bold text-primary-foreground">
+                        <div className="flex h-full w-full items-center justify-center rounded-lg bg-slate-900 text-xs font-bold text-white">
                           {initial}
                         </div>
                       )}
                     </div>
                     <div className="min-w-0 flex-1 text-right">
-                      <div className="truncate text-sm font-bold text-primary">{brokerName}</div>
-                      <div className="truncate text-[11px] text-muted-foreground">
+                      <div className="truncate text-sm font-bold text-slate-900">{brokerName}</div>
+                      <div className="truncate text-[11px] text-slate-500">
                         חשבון המתווך · ניהול נכסים, משרד ובו...
                       </div>
                     </div>
                   </button>
-                  {/* Workspace switcher hidden — single workspace per account. */}
                 </div>
               </SidebarGroupContent>
             </SidebarGroup>
