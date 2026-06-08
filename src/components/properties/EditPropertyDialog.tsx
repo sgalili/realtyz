@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { RefreshCw } from 'lucide-react';
 import {
   PROPERTY_TYPE_LABELS_HE,
   type PropertyType,
@@ -46,7 +47,9 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
   const [sqm, setSqm] = useState('');
   const [floor, setFloor] = useState('');
   const [yearBuilt, setYearBuilt] = useState('');
+  const [photos, setPhotos] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     if (!property) return;
