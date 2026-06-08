@@ -1827,6 +1827,13 @@ const VoiceLeadPickerDialog = ({
   const [instructions, setInstructions] = useState('');
   const [dialing, setDialing] = useState(false);
 
+  // Broker (caller) gender — used to address the user in correct Hebrew grammar.
+  const [userGender, setUserGender] = useState<Gender | null>(null);
+
+  // Property promotion picker — optional focus listing for the call.
+  const [voiceListings, setVoiceListings] = useState<{ id: string; title: string; city: string | null; asking_price: number | null }[]>([]);
+  const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
+
   // Manual-select state
   const [search, setSearch] = useState('');
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
@@ -1839,15 +1846,22 @@ const VoiceLeadPickerDialog = ({
   const allAgents = useMemo(
     () => [
       ...PRESET_VOICE_AGENTS,
-      ...clonedVoices.map((v) => ({ id: `cv:${v.id}`, label: `${v.name} (קול מותאם)`, voice_id: v.voice_id })),
+      ...clonedVoices.map((v) => ({
+        id: `cv:${v.id}`,
+        label: `${v.name} (קול מותאם${v.voice_gender === 'female' ? ' · אישה' : v.voice_gender === 'male' ? ' · גבר' : ''})`,
+        voice_id: v.voice_id,
+        gender: (v.voice_gender ?? null) as Gender | null,
+      })),
     ],
     [clonedVoices],
   );
+  const selectedAgent = allAgents.find((a) => a.id === agentId) ?? null;
+  const selectedListing = voiceListings.find((l) => l.id === selectedListingId) ?? null;
 
   const loadClonedVoices = async () => {
     const { data } = await supabase
       .from('cloned_voices')
-      .select('id, name, voice_id, preview_url')
+      .select('id, name, voice_id, preview_url, voice_gender')
       .order('created_at', { ascending: false });
     setClonedVoices((data ?? []) as ClonedVoice[]);
   };
@@ -1861,13 +1875,22 @@ const VoiceLeadPickerDialog = ({
     hasLoadedRef.current = true;
     (async () => {
       setLoading(true);
-      const [{ data: leadRows }] = await Promise.all([
+      const { data: { user } } = await supabase.auth.getUser();
+      const [{ data: leadRows }, { data: listingRows }, { data: profile }] = await Promise.all([
         supabase.from('leads').select('id, full_name, phone_number, city, deal_type, preferences')
           .not('phone_number', 'is', null).order('full_name', { ascending: true }).limit(1000),
+        supabase.from('listings').select('id, property_title, city, asking_price, status')
+          .eq('status', 'live').order('created_at', { ascending: false }).limit(200),
+        user ? supabase.from('profiles').select('gender').eq('id', user.id).maybeSingle() : Promise.resolve({ data: null } as any),
         loadClonedVoices(),
       ]);
       setLeads(((leadRows as any[]) ?? []).map(mapVoiceLead));
+      setVoiceListings(((listingRows as any[]) ?? []).map((l) => ({
+        id: l.id, title: l.property_title || 'נכס ללא כותרת', city: l.city ?? null, asking_price: l.asking_price ?? null,
+      })));
+      setUserGender(((profile as any)?.gender ?? null) as Gender | null);
       setLoading(false);
+
     })();
   }, [open]);
 
