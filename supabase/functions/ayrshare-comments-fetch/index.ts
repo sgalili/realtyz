@@ -425,7 +425,9 @@ Deno.serve(async (req) => {
           null;
         const fbFallbackPicture =
           !pictureFromPayload && senderId && /facebook/i.test(platformHint)
-            ? `https://graph.facebook.com/${senderId}/picture?type=square`
+            ? (FB_PAGE_TOKEN
+              ? `https://graph.facebook.com/v20.0/${senderId}/picture?type=square&access_token=${encodeURIComponent(FB_PAGE_TOKEN)}`
+              : `https://graph.facebook.com/v20.0/${senderId}/picture?type=square`)
             : null;
         const authorPicture = pictureFromPayload ?? fbFallbackPicture;
 
