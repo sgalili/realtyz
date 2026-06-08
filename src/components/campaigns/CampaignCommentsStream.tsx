@@ -850,24 +850,24 @@ function CommentBubble({
             <button
               type="button"
               onClick={onToggleThread}
-              className="inline-flex max-w-full items-center gap-1 text-right text-[12px] text-muted-foreground hover:text-foreground"
+              className="flex w-full items-start gap-1 text-right text-[12px] text-muted-foreground hover:text-foreground"
               aria-expanded={threadExpanded}
             >
-              <Bot className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">
+              <Bot className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              <span className="flex-1 whitespace-pre-wrap break-words">
                 {cleanReplyPreview ?? row.ai_reply_text ?? row.inbound_text}
               </span>
-              <span className="shrink-0">({replyCount} {replyCount === 1 ? "תגובה" : "תגובות"})</span>
+              <span className="shrink-0 mt-0.5">({replyCount} {replyCount === 1 ? "תגובה" : "תגובות"})</span>
               {threadExpanded ? (
-                <ChevronUp className="h-3.5 w-3.5 shrink-0" />
+                <ChevronUp className="h-3.5 w-3.5 shrink-0 mt-0.5" />
               ) : (
-                <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+                <ChevronDown className="h-3.5 w-3.5 shrink-0 mt-0.5" />
               )}
             </button>
           ) : (
-            <div className="inline-flex max-w-full items-center gap-1 text-right text-[12px] text-muted-foreground">
-              <Bot className="h-3.5 w-3.5 shrink-0" />
-              <span className="truncate">
+            <div className="flex w-full items-start gap-1 text-right text-[12px] text-muted-foreground">
+              <Bot className="h-3.5 w-3.5 shrink-0 mt-0.5" />
+              <span className="flex-1 whitespace-pre-wrap break-words">
                 {cleanReplyPreview ?? row.ai_reply_text ?? row.inbound_text}
               </span>
             </div>
