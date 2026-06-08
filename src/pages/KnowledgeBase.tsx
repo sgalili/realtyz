@@ -561,18 +561,58 @@ export default function KnowledgeBase() {
 
 
 
-      <Dialog open={!!viewDoc} onOpenChange={(o) => !o && setViewDoc(null)}>
+      <Dialog open={!!viewDoc} onOpenChange={(o) => { if (!o) { setViewDoc(null); setIsEditing(false); } }}>
         <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="text-right">{viewDoc?.title}</DialogTitle>
+            {isEditing ? (
+              <Input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="כותרת"
+                className="text-right font-semibold"
+              />
+            ) : (
+              <DialogTitle className="text-right pe-8">{viewDoc?.title}</DialogTitle>
+            )}
             <p className="text-xs text-muted-foreground text-right">
               {viewDoc && new Date(viewDoc.created_at).toLocaleString('he-IL')} · {viewDoc?.chunk_count ?? 0} מקטעים
             </p>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto rounded-md border bg-muted/20 p-3 text-sm whitespace-pre-wrap leading-relaxed">
-            {viewDoc?.raw_text?.trim()
-              ? viewDoc.raw_text
-              : <span className="text-muted-foreground">אין תוכן טקסטואלי זמין לתצוגה.</span>}
+          {isEditing ? (
+            <Textarea
+              value={editBody}
+              onChange={(e) => setEditBody(e.target.value)}
+              className="flex-1 min-h-[260px] text-sm leading-relaxed"
+              placeholder="תוכן..."
+            />
+          ) : (
+            <div className="flex-1 overflow-y-auto rounded-md border bg-muted/20 p-3 text-sm whitespace-pre-wrap leading-relaxed">
+              {viewDoc?.raw_text?.trim()
+                ? viewDoc.raw_text
+                : <span className="text-muted-foreground">אין תוכן טקסטואלי זמין לתצוגה.</span>}
+            </div>
+          )}
+          <div className="flex justify-start gap-2 pt-2">
+            {isEditing ? (
+              <>
+                <Button onClick={saveEdit} disabled={savingEdit} size="sm" className="gap-1.5">
+                  {savingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  שמור
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setIsEditing(false); setEditTitle(viewDoc?.title ?? ''); setEditBody(viewDoc?.raw_text ?? ''); }}
+                  className="gap-1.5"
+                >
+                  <X className="h-4 w-4" /> ביטול
+                </Button>
+              </>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="gap-1.5">
+                <Pencil className="h-4 w-4" /> עריכה
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
