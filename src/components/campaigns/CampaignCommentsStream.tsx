@@ -521,25 +521,9 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
   };
 
 
-  if (loading && rows === null) {
-    return (
-      <div className="flex items-center justify-between gap-2" dir="rtl">
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={forceRefresh}
-          disabled={loading}
-          className="h-7 px-2 text-xs"
-          aria-label="רענן תגובות"
-          title="רענן תגובות"
-        >
-          <RefreshCw className={cn("ml-1 h-3.5 w-3.5", loading && "animate-spin")} />
-          רענן תגובות
-        </Button>
-        <p className="px-1 text-xs text-muted-foreground">טוען תגובות חיות…</p>
-      </div>
-    );
-  }
+  // No initial loading block — comments always render in-place. The
+  // background refresh keeps the list fresh without flashing a spinner.
+
 
   return (
     <div className="space-y-2 text-right">
