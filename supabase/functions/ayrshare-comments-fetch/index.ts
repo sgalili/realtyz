@@ -128,6 +128,18 @@ Deno.serve(async (req) => {
     };
     const pickText = (item: any): string | null =>
       pickStr(item?.comment, item?.text, item?.message, item?.commentString, item?.textContent, item?.body);
+    const resolveFacebookAvatar = async (senderId: string | null, platform: string): Promise<string | null> => {
+      if (!senderId || !FB_PAGE_TOKEN || !/facebook/i.test(platform)) return null;
+      try {
+        const tokenParam = `access_token=${encodeURIComponent(FB_PAGE_TOKEN)}`;
+        const res = await fetch(`https://graph.facebook.com/v20.0/${encodeURIComponent(senderId)}/picture?type=square&redirect=false&${tokenParam}`);
+        const json = await res.json().catch(() => ({}));
+        return res.ok && typeof json?.data?.url === "string" ? json.data.url : null;
+      } catch (avatarErr) {
+        console.warn("[ayrshare-comments-fetch] facebook avatar resolve failed", senderId, avatarErr instanceof Error ? avatarErr.message : String(avatarErr));
+        return null;
+      }
+    };
 
     const results: Record<string, any[]> = {};
     const errors: Record<string, string> = {};
@@ -220,7 +232,8 @@ Deno.serve(async (req) => {
             }
 
             const tryFetch = async (postId: string): Promise<any[] | null> => {
-              const gUrl = `https://graph.facebook.com/v20.0/${encodeURIComponent(postId)}/comments?fields=id,message,created_time,from{id,name,picture{url}},parent,like_count&limit=100&${tokenParam}`;
+              const fields = "id,message,created_time,from{id,name,picture{url}},parent,like_count,comments.limit(100){id,message,created_time,from{id,name,picture{url}},parent,like_count,comments.limit(100){id,message,created_time,from{id,name,picture{url}},parent,like_count}}";
+              const gUrl = `https://graph.facebook.com/v20.0/${encodeURIComponent(postId)}/comments?fields=${encodeURIComponent(fields)}&limit=100&filter=stream&${tokenParam}`;
               const gRes = await fetch(gUrl);
               const gJson = await gRes.json().catch(() => ({}));
               if (gRes.ok && Array.isArray(gJson?.data)) return gJson.data;
@@ -228,14 +241,16 @@ Deno.serve(async (req) => {
               return null;
             };
 
-            const normalize = (data: any[]) => data.map((c: any) => ({
+            const normalizeOne = (c: any): any => ({
               id: c.id,
               message: c.message ?? "",
               created_time: c.created_time,
               like_count: c.like_count ?? 0,
               from: c.from ?? { name: "משתמש פייסבוק" },
               __parent_id: c.parent?.id ?? null,
-            }));
+              comments: Array.isArray(c?.comments?.data) ? c.comments.data.map(normalizeOne) : [],
+            });
+            const normalize = (data: any[]) => data.map(normalizeOne);
 
             for (const cand of candidates) {
               const data = await tryFetch(cand);
@@ -371,15 +386,60 @@ Deno.serve(async (req) => {
         }
         const parentId = typeof c?.__parent_id === "string" ? c.__parent_id : null;
 
+        const safeStr = (v: unknown, max = 500): string | null => {
+          if (v === null || v === undefined) return null;
+          const s = typeof v === "string" ? v : (() => {
+            try { return JSON.stringify(v); } catch { return String(v); }
+          })();
+          const trimmed = s.trim();
+          return trimmed ? trimmed.slice(0, max) : null;
+        };
+        // Try to capture an author profile image from the various shapes
+        // Ayrshare/FB/IG return. FB Graph nests it under from.picture.data.url;
+        // IG returns user.profile_picture_url; some channels expose a flat
+        // profile_image/avatar. As a last-resort for Facebook we fall back to
+        // Graph picture with the Page token because unauthenticated app-scoped
+        // profile images are blocked by Meta.
+        const pictureFromPayload =
+          c?.from?.picture?.data?.url ??
+          c?.from?.picture_url ??
+          c?.from?.profile_picture_url ??
+          c?.user?.profile_picture_url ??
+          c?.user?.picture?.data?.url ??
+          c?.author?.profile_image ??
+          c?.profile_image ??
+          c?.profile_picture_url ??
+          c?.avatar ??
+          null;
+        const fbFallbackPicture =
+          !pictureFromPayload && senderId && /facebook/i.test(platformHint)
+            ? await resolveFacebookAvatar(senderId, platformHint)
+            : null;
+        const authorPicture = pictureFromPayload ?? fbFallbackPicture;
+
         const { data: exists } = await admin
           .from("engagement_events")
-          .select("id, status, ai_reply_text")
+          .select("id, status, ai_reply_text, metadata")
           .eq("user_id", userId)
           .eq("external_id", nativeId)
           .maybeSingle();
 
         if (exists?.id) {
           skipped += 1;
+          const currentMeta = ((exists as any).metadata && typeof (exists as any).metadata === "object") ? (exists as any).metadata : {};
+          const nextMetadata = {
+            ...currentMeta,
+            parent_id: safeStr(parentId) ?? currentMeta.parent_id ?? null,
+            sender_id: safeStr(senderId) ?? currentMeta.sender_id ?? null,
+            author: {
+              ...(currentMeta.author && typeof currentMeta.author === "object" ? currentMeta.author : {}),
+              name: safeStr(sender, 200) ?? currentMeta.author?.name ?? null,
+              profile_image: safeStr(authorPicture, 1000) ?? currentMeta.author?.profile_image ?? null,
+            },
+          };
+          if (JSON.stringify(nextMetadata) !== JSON.stringify(currentMeta)) {
+            await admin.from("engagement_events").update({ metadata: nextMetadata }).eq("id", exists.id).eq("user_id", userId);
+          }
           // Re-dispatch only if still pending and no reply yet.
           if (!exists.ai_reply_text && exists.status !== "sent" && exists.status !== "pending_approval") {
             toDispatch.push({
@@ -399,38 +459,6 @@ Deno.serve(async (req) => {
         // payload can contain deeply nested objects (replies trees, user blobs,
         // attachment arrays) that occasionally violate jsonb size/shape
         // constraints and cause the insert to fail silently.
-        const safeStr = (v: unknown, max = 500): string | null => {
-          if (v === null || v === undefined) return null;
-          const s = typeof v === "string" ? v : (() => {
-            try { return JSON.stringify(v); } catch { return String(v); }
-          })();
-          const trimmed = s.trim();
-          return trimmed ? trimmed.slice(0, max) : null;
-        };
-        // Try to capture an author profile image from the various shapes
-        // Ayrshare/FB/IG return. FB Graph nests it under from.picture.data.url;
-        // IG returns user.profile_picture_url; some channels expose a flat
-        // profile_image/avatar. As a last-resort for Facebook we fall back to
-        // the public graph picture redirect using the author id.
-        const pictureFromPayload =
-          c?.from?.picture?.data?.url ??
-          c?.from?.picture_url ??
-          c?.from?.profile_picture_url ??
-          c?.user?.profile_picture_url ??
-          c?.user?.picture?.data?.url ??
-          c?.author?.profile_image ??
-          c?.profile_image ??
-          c?.profile_picture_url ??
-          c?.avatar ??
-          null;
-        const fbFallbackPicture =
-          !pictureFromPayload && senderId && /facebook/i.test(platformHint)
-            ? (FB_PAGE_TOKEN
-              ? `https://graph.facebook.com/v20.0/${senderId}/picture?type=square&access_token=${encodeURIComponent(FB_PAGE_TOKEN)}`
-              : `https://graph.facebook.com/v20.0/${senderId}/picture?type=square`)
-            : null;
-        const authorPicture = pictureFromPayload ?? fbFallbackPicture;
-
         const cleanMetadata = {
           source: "ayrshare_comments_fetch",
           campaign_name: safeStr(campaignName),

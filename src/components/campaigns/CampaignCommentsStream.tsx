@@ -3,7 +3,7 @@
 // user_id (RLS also enforces it). Matches on external_post_id when the
 // campaign log has a provider_message_id, otherwise falls back to a time-
 // windowed lookup around the campaign's created_at.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -129,6 +129,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
   const [originalDm, setOriginalDm] = useState("");
   const [drafting, setDrafting] = useState(false);
   const [sending, setSending] = useState(false);
+  const [expandedThreadIds, setExpandedThreadIds] = useState<Set<string>>(() => new Set());
   // Per-row cached AI drafts so closing/re-opening the editor does NOT
   // re-invoke the AI — only an explicit refresh-per-card regenerates.
   const [draftCache, setDraftCache] = useState<Record<string, { pub: string; dm: string }>>(() => readDraftCache(campaign.id));
@@ -308,8 +309,12 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
   const tree = useMemo<TreeNode[]>(() => {
     const all = rows ?? [];
     try {
-      const byExt = new Map<string, EngagementRow>();
-      all.forEach((r) => { if (r?.external_id) byExt.set(r.external_id, r); });
+      const byParentKey = new Map<string, EngagementRow>();
+      all.forEach((r) => {
+        if (!r) return;
+        byParentKey.set(r.id, r);
+        if (r.external_id) byParentKey.set(r.external_id, r);
+      });
       const nodes = new Map<string, TreeNode>();
       all.forEach((r) => {
         if (!r) return;
@@ -319,7 +324,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
       nodes.forEach((node) => {
         let parent = (node.metadata as any)?.parent_id as string | undefined;
         if (parent && node.external_id && parent === node.external_id) parent = undefined;
-        const parentRow = parent ? byExt.get(parent) : null;
+        const parentRow = parent ? byParentKey.get(parent) : null;
         const parentNode = parentRow ? nodes.get(parentRow.id) : null;
         if (parentNode && parentNode.id !== node.id) {
           parentNode.children.push(node);
@@ -343,6 +348,29 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
       return all.map((r) => ({ ...r, children: [], depth: 0 }));
     }
   }, [rows]);
+
+  const nodeById = useMemo(() => {
+    const map = new Map<string, TreeNode>();
+    const visit = (node: TreeNode) => {
+      map.set(node.id, node);
+      if (node.external_id) map.set(node.external_id, node);
+      node.children.forEach(visit);
+    };
+    tree.forEach(visit);
+    return map;
+  }, [tree]);
+
+  const replyCountById = useMemo(() => {
+    const map = new Map<string, number>();
+    const count = (node: TreeNode): number => {
+      const total = node.children.reduce((sum, child) => sum + 1 + count(child), 0);
+      map.set(node.id, total);
+      if (node.external_id) map.set(node.external_id, total);
+      return total;
+    };
+    tree.forEach(count);
+    return map;
+  }, [tree]);
 
 
   const openReply = (row: EngagementRow) => {
@@ -664,7 +692,12 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
             </div>
           );
           // Recursively render a node + all its descendants inside the same card.
-          const renderNode = (node: typeof root): React.ReactNode => (
+          const renderNode = (node: TreeNode): ReactNode => {
+            const parentId = (node.metadata as any)?.parent_id as string | undefined;
+            const repliedTo = parentId ? nodeById.get(parentId) : undefined;
+            const replyCount = replyCountById.get(node.id) ?? 0;
+            const threadExpanded = expandedThreadIds.has(node.id);
+            return (
             <li key={node.id}>
               <CommentBubble
                 row={node}
@@ -674,14 +707,35 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
                 onRegenerate={regenerateInline}
                 regenerating={regeneratingId === node.id}
                 isReply={node.depth > 0}
+                repliedToText={repliedTo?.inbound_text ?? null}
+                replyPreviewText={node.children[0]?.inbound_text ?? node.ai_reply_text ?? null}
+                replyCount={replyCount}
+                threadExpanded={threadExpanded}
+                onToggleThread={() => {
+                  setExpandedThreadIds((prev) => {
+                    const next = new Set(prev);
+                    const ids = [node.id];
+                    const collect = (n: TreeNode) => {
+                      n.children.forEach((child) => {
+                        ids.push(child.id);
+                        collect(child);
+                      });
+                    };
+                    collect(node);
+                    if (next.has(node.id)) ids.forEach((id) => next.delete(id));
+                    else ids.forEach((id) => next.add(id));
+                    return next;
+                  });
+                }}
               />
-              {node.children.length > 0 && (
+              {node.children.length > 0 && threadExpanded && (
                 <ul className="mt-2 space-y-2 border-r-2 border-border/60 pr-3 mr-2">
-                  {node.children.map((child) => renderNode(child as typeof root))}
+                  {node.children.map((child) => renderNode(child))}
                 </ul>
               )}
             </li>
           );
+          };
           return renderNode(root);
         })}
       </ul>
@@ -697,6 +751,11 @@ function CommentBubble({
   onRegenerate,
   regenerating,
   isReply,
+  repliedToText,
+  replyPreviewText,
+  replyCount,
+  threadExpanded,
+  onToggleThread,
 }: {
   row: EngagementRow;
   onToggleEditor: (r: EngagementRow) => void;
@@ -705,6 +764,11 @@ function CommentBubble({
   onRegenerate?: (r: EngagementRow) => void;
   regenerating?: boolean;
   isReply?: boolean;
+  repliedToText?: string | null;
+  replyPreviewText?: string | null;
+  replyCount?: number;
+  threadExpanded?: boolean;
+  onToggleThread?: () => void;
 }) {
   const dt = new Date(row.created_at);
   const when = dt.toLocaleString("he-IL", {
@@ -735,6 +799,8 @@ function CommentBubble({
     .join("") || "?";
   const alreadyReplied = row.status === "sent" || row.status === "replied";
   const toggleLabel = expanded ? "סגור" : "צור תגובת AI";
+  const cleanRepliedTo = repliedToText?.trim() || null;
+  const cleanReplyPreview = replyPreviewText?.trim() || null;
   return (
     <div
       className={cn(
@@ -768,12 +834,37 @@ function CommentBubble({
       <p className="whitespace-pre-wrap text-sm text-foreground">
         {row.inbound_text}
       </p>
+      {cleanRepliedTo && (
+        <button
+          type="button"
+          onClick={onToggleThread}
+          className="mt-2 block w-full rounded-md border border-border/70 bg-muted/35 px-2 py-1.5 text-right text-[12px] text-muted-foreground hover:bg-muted/60"
+          aria-expanded={threadExpanded}
+        >
+          <span className="line-clamp-2">↳ {cleanRepliedTo}</span>
+        </button>
+      )}
       <div className="mt-2">
         {alreadyReplied ? (
-          <span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
-            <Bot className="h-3.5 w-3.5" />
-            הגבת לתגובה זו
-          </span>
+          <button
+            type="button"
+            onClick={onToggleThread}
+            className="inline-flex max-w-full items-center gap-1 text-right text-[12px] text-muted-foreground hover:text-foreground"
+            aria-expanded={threadExpanded}
+          >
+            <Bot className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">
+              {cleanReplyPreview ?? row.ai_reply_text ?? row.inbound_text}
+            </span>
+            {(replyCount ?? 0) > 0 && (
+              <span className="shrink-0">({replyCount})</span>
+            )}
+            {threadExpanded ? (
+              <ChevronUp className="h-3.5 w-3.5 shrink-0" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+            )}
+          </button>
         ) : (
           <>
             <button
