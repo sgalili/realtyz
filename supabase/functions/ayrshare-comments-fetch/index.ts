@@ -220,7 +220,7 @@ Deno.serve(async (req) => {
             }
 
             const tryFetch = async (postId: string): Promise<any[] | null> => {
-              const gUrl = `https://graph.facebook.com/v20.0/${encodeURIComponent(postId)}/comments?fields=id,message,created_time,from,parent,like_count&limit=100&${tokenParam}`;
+              const gUrl = `https://graph.facebook.com/v20.0/${encodeURIComponent(postId)}/comments?fields=id,message,created_time,from{id,name,picture{url}},parent,like_count&limit=100&${tokenParam}`;
               const gRes = await fetch(gUrl);
               const gJson = await gRes.json().catch(() => ({}));
               if (gRes.ok && Array.isArray(gJson?.data)) return gJson.data;
@@ -425,7 +425,9 @@ Deno.serve(async (req) => {
           null;
         const fbFallbackPicture =
           !pictureFromPayload && senderId && /facebook/i.test(platformHint)
-            ? `https://graph.facebook.com/${senderId}/picture?type=square`
+            ? (FB_PAGE_TOKEN
+              ? `https://graph.facebook.com/v20.0/${senderId}/picture?type=square&access_token=${encodeURIComponent(FB_PAGE_TOKEN)}`
+              : `https://graph.facebook.com/v20.0/${senderId}/picture?type=square`)
             : null;
         const authorPicture = pictureFromPayload ?? fbFallbackPicture;
 
