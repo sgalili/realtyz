@@ -305,10 +305,10 @@ Deno.serve(async (req) => {
             if (isAyrshareInvalidProfileKey(res.status, attempt.payload)) {
               attempt.status = 200;
               attempt.payload = { message: MISSING_TENANT_KEY, code: 144 };
-              return { res: new Response(JSON.stringify({ error: MISSING_TENANT_KEY }), { status: 400 }), payload: { error: MISSING_TENANT_KEY } };
+              return { res: new Response(JSON.stringify({ error: MISSING_TENANT_KEY }), { status: 400 }), payload: { error: MISSING_TENANT_KEY }, softFailure: false };
             }
           }
-          return { res, payload };
+          return { res, payload, softFailure: false };
         };
 
         let chosen: { payload: any; endpoint: string; counts: Counts } | null = null;
