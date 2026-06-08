@@ -2934,16 +2934,34 @@ const CampaignCenter = () => {
 
         <TabsContent value="create" className="mt-6 space-y-4">
           <ChannelGrid
-            selectedId={pickedChannel?.id ?? null}
+            selectedIds={pickedChannelIds}
             onPick={(c) => {
               if (c.id === 'ivr') {
                 setIvrOpen(true);
-              } else if (c.id === 'ai-call') {
-                setVoiceDialChannel(c);
-              } else {
-                setPickedChannel(c);
+                return;
               }
+              if (c.id === 'ai-call') {
+                setVoiceDialChannel(c);
+                return;
+              }
+              // Toggle multi-select; clicking an already-selected channel deselects it.
+              setPickedChannelIds((prev) => {
+                const next = new Set(prev);
+                if (next.has(c.id)) {
+                  next.delete(c.id);
+                  if (pickedChannel?.id === c.id) {
+                    const remainingId = [...next][next.size - 1];
+                    const remaining = remainingId ? CHANNEL_CARDS.find((x) => x.id === remainingId) ?? null : null;
+                    setPickedChannel(remaining);
+                  }
+                } else {
+                  next.add(c.id);
+                  setPickedChannel(c);
+                }
+                return next;
+              });
             }}
+
             onConnect={handleConnectChannel}
             brandName={brandName}
             connected={connectedChannels}
