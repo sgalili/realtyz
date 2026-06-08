@@ -2572,6 +2572,8 @@ const CampaignCenter = () => {
   const { settings } = useWhiteLabel();
   const brandName = settings?.agency_name || 'Realtyz AI';
   const [pickedChannel, setPickedChannel] = useState<ChannelCard | null>(null);
+  const [pickedChannelIds, setPickedChannelIds] = useState<Set<string>>(new Set());
+
   const [voiceDialChannel, setVoiceDialChannel] = useState<ChannelCard | null>(null);
   const [ivrOpen, setIvrOpen] = useState(false);
   const [emailSetupOpen, setEmailSetupOpen] = useState(false);
