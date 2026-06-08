@@ -752,6 +752,7 @@ function CommentBubble({
   replyCount,
   threadExpanded,
   onToggleThread,
+  embedded,
 }: {
   row: EngagementRow;
   onToggleEditor: (r: EngagementRow) => void;
@@ -765,6 +766,7 @@ function CommentBubble({
   replyCount?: number;
   threadExpanded?: boolean;
   onToggleThread?: () => void;
+  embedded?: boolean;
 }) {
   const dt = new Date(row.created_at);
   const when = dt.toLocaleString("he-IL", {
@@ -778,6 +780,7 @@ function CommentBubble({
   const senderId: string | null =
     meta?.sender_id ?? meta?.author?.id ?? meta?.from?.id ?? null;
   const avatarUrl: string | null =
+    (row as any).sender_avatar_url ||
     meta?.sender_avatar_url ||
     meta?.profile_image ||
     meta?.author?.profile_image ||
@@ -799,8 +802,8 @@ function CommentBubble({
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-background p-3 text-right",
-        isReply && "bg-slate-50 border-slate-200",
+        embedded ? "text-right" : "rounded-xl border border-border bg-background p-3 text-right",
+        !embedded && isReply && "bg-slate-50 border-slate-200",
       )}
     >
       <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
