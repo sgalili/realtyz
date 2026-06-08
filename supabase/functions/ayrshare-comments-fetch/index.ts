@@ -167,23 +167,6 @@ Deno.serve(async (req) => {
     const apiErrors: any[] = [];
     const mappingErrors: any[] = [];
 
-    const extractComments = (payload: any, platform: string): any[] => {
-      const platformNode = payload?.[platform];
-      const candidates = [
-        payload,
-        payload?.comments,
-        payload?.data?.comments,
-        payload?.data,
-        platformNode,
-        platformNode?.comments,
-        platformNode?.data,
-      ];
-      for (const candidate of candidates) {
-        if (Array.isArray(candidate)) return candidate;
-      }
-      return [];
-    };
-
     const extractChildComments = (node: any): any[] => {
       if (!node || typeof node !== "object") return [];
       return [
@@ -194,19 +177,6 @@ Deno.serve(async (req) => {
         ...(Array.isArray(node?.replies?.data) ? node.replies.data : []),
         ...(Array.isArray(node?.comments?.data) ? node.comments.data : []),
       ];
-    };
-
-    const mergeChildComments = (targetNode: any, children: any[]) => {
-      if (!targetNode || !Array.isArray(children) || children.length === 0) return;
-      const existing = new Set(extractChildComments(targetNode).map((child: any) => pickStr(child?.id, child?.commentId, child?.comment_id)).filter(Boolean));
-      const merged = [...(Array.isArray(targetNode.comments) ? targetNode.comments : [])];
-      for (const child of children) {
-        const id = pickStr(child?.id, child?.commentId, child?.comment_id);
-        if (id && existing.has(id)) continue;
-        merged.push(child);
-        if (id) existing.add(id);
-      }
-      targetNode.comments = merged;
     };
 
     const normalizeMetaPostCandidates = (nativePostId: string, fetchPostId: string) => {
