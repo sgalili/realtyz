@@ -283,7 +283,7 @@ const InlineComposer = ({
   // Generation history (now also tracks edits + attachments per row)
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyRefresh, setHistoryRefresh] = useState(0);
-  const [history, setHistory] = useState<Array<{ id: string; topic: string | null; generated_text: string | null; platform: string | null; created_at: string; updated_at: string | null; media_urls: any }>>([]);
+  const [history, setHistory] = useState<Array<{ id: string; topic: string | null; generated_text: string | null; platform: string | null; created_at: string; updated_at: string | null; media_urls: any; listing_id: string | null }>>([]);
   // ID of the currently active history row — edits flow back into the same row.
   const [logId, setLogId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -295,7 +295,7 @@ const InlineComposer = ({
       if (!user) return;
       const { data } = await supabase
         .from('ai_content_logs')
-        .select('id, topic, generated_text, platform, created_at, updated_at, media_urls')
+        .select('id, topic, generated_text, platform, created_at, updated_at, media_urls, listing_id')
         .eq('created_by', user.id)
         .eq('platform', channel.id)
         .order('updated_at', { ascending: false })
@@ -308,7 +308,7 @@ const InlineComposer = ({
   // Reset on channel change
   useEffect(() => { setBody(''); setMode('now'); setAttachments([]); setCustomInstructions(''); setSelectedListingId(null); setListingQuery(''); setLogId(null); setSaveState('idle'); }, [channel.id]);
 
-  // Auto-save: persist edits + attachments to ai_content_logs (debounced).
+  // Auto-save: persist edits + attachments + selected property to ai_content_logs (debounced).
   // Creates a new row on first edit if no logId yet; otherwise updates the active row.
   useEffect(() => {
     if (!body.trim() && attachments.length === 0) return;
@@ -320,6 +320,7 @@ const InlineComposer = ({
         const payload = {
           generated_text: body.slice(0, MAX_CHARS),
           media_urls: attachments.map((a) => ({ name: a.name, kind: a.kind, url: a.url || null })),
+          listing_id: selectedListingId,
           updated_at: new Date().toISOString(),
         };
         if (logId) {
@@ -346,7 +347,7 @@ const InlineComposer = ({
       }
     }, 1200);
     return () => clearTimeout(t);
-  }, [body, attachments, logId, channel.id]);
+  }, [body, attachments, selectedListingId, logId, channel.id]);
 
   // Load the full live property list on mount and refresh when the picker opens.
   // Search is client-side so the dropdown always shows every listing by default.
@@ -487,6 +488,7 @@ const InlineComposer = ({
             platform: channel.id,
             created_by: user?.id ?? null,
             media_urls: attachments.map((a) => ({ name: a.name, kind: a.kind, url: a.url || null })),
+            listing_id: selectedListingId,
           }).select('id').single();
           if (inserted?.id) setLogId(inserted.id);
           setHistoryRefresh((n) => n + 1);
@@ -528,11 +530,13 @@ const InlineComposer = ({
                 const media = Array.isArray(h.media_urls) ? h.media_urls : [];
                 const stamp = h.updated_at || h.created_at;
                 const edited = h.updated_at && h.updated_at !== h.created_at;
+                const linkedListing = h.listing_id ? listings.find((l) => l.id === h.listing_id) : null;
                 return (
                   <button key={h.id} type="button"
                     onClick={() => {
                       setBody((h.generated_text || '').slice(0, MAX_CHARS));
                       setAttachments(media.map((m: any) => ({ name: m?.name || 'קובץ', kind: m?.kind || 'file', url: m?.url || undefined })));
+                      setSelectedListingId(h.listing_id || null);
                       setLogId(h.id);
                       setHistoryOpen(false);
                       toast.success('הטיוטה נטענה לעורך');
@@ -545,6 +549,14 @@ const InlineComposer = ({
                         {media.length > 0 && <span className="inline-flex items-center gap-0.5"><Paperclip className="h-3 w-3" />{media.length}</span>}
                       </span>
                     </div>
+                    {linkedListing && (
+                      <div className="mt-1 inline-flex max-w-full items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                        <span className="truncate">🏠 {listingOptionLabel(linkedListing as CampaignListing)}</span>
+                      </div>
+                    )}
+                    {!linkedListing && h.listing_id && (
+                      <div className="mt-1 text-[10px] text-muted-foreground">🏠 נכס מקושר</div>
+                    )}
                     <div className="mt-1 text-xs text-foreground line-clamp-3 whitespace-pre-wrap">
                       {h.generated_text || h.topic || '—'}
                     </div>
