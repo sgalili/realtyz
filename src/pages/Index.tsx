@@ -492,7 +492,7 @@ function KpiCard({
   value: number;
   loading?: boolean;
   tooltip: string;
-  accent?: 'primary' | 'success' | 'warning';
+  accent?: 'primary' | 'success' | 'warning' | 'danger';
   suffix?: string;
   to?: string;
 }) {
@@ -501,11 +501,13 @@ function KpiCard({
     primary: 'text-primary',
     success: 'text-success',
     warning: 'text-warning',
+    danger: 'text-red-500',
   }[accent];
   const accentBg = {
     primary: 'bg-primary/10',
     success: 'bg-success/10',
     warning: 'bg-warning/10',
+    danger: 'bg-red-100',
   }[accent];
 
   return (
