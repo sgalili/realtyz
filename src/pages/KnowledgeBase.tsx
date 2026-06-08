@@ -371,9 +371,18 @@ export default function KnowledgeBase() {
                         thumbnail?: string;
                         source_author?: string;
                         source_url?: string;
+                        description?: string;
+                        video_id?: string;
                       };
                       const isVideo = d.source_type === 'video';
-                      const snippet = (d.raw_text ?? '').replace(/\s+/g, ' ').slice(0, 110);
+                      const thumb = meta.thumbnail || (meta.video_id ? `https://i.ytimg.com/vi/${meta.video_id}/hqdefault.jpg` : '');
+                      const isUrlTitle = /^https?:\/\//i.test(d.title ?? '');
+                      const displayTitle = isVideo && isUrlTitle && meta.source_author
+                        ? meta.source_author
+                        : (d.title ?? '');
+                      const snippet = isVideo
+                        ? (meta.description ?? '').replace(/\s+/g, ' ').slice(0, 140)
+                        : (d.raw_text ?? '').replace(/\s+/g, ' ').slice(0, 110);
                       return (
                         <div
                           key={d.id}
@@ -383,9 +392,9 @@ export default function KnowledgeBase() {
                           onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setViewDoc(d); } }}
                           className="flex items-start gap-2 p-2 rounded-md border bg-background hover:bg-muted/30 transition-colors cursor-pointer"
                         >
-                          {isVideo && meta.thumbnail ? (
+                          {isVideo && thumb ? (
                             <img
-                              src={meta.thumbnail}
+                              src={thumb}
                               alt=""
                               loading="lazy"
                               className="h-14 w-20 rounded object-cover shrink-0 bg-muted"
@@ -394,8 +403,8 @@ export default function KnowledgeBase() {
                             <Icon className="h-4 w-4 text-primary shrink-0 mt-1" />
                           )}
                           <div className="flex-1 min-w-0">
-                            <div className="text-sm font-medium truncate">{d.title}</div>
-                            {isVideo && meta.source_author && (
+                            <div className="text-sm font-medium truncate">{displayTitle}</div>
+                            {isVideo && meta.source_author && displayTitle !== meta.source_author && (
                               <div className="text-[11px] text-muted-foreground truncate">
                                 {meta.source_author}
                               </div>
