@@ -3,7 +3,7 @@
 // user_id (RLS also enforces it). Matches on external_post_id when the
 // campaign log has a provider_message_id, otherwise falls back to a time-
 // windowed lookup around the campaign's created_at.
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -129,6 +129,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
   const [originalDm, setOriginalDm] = useState("");
   const [drafting, setDrafting] = useState(false);
   const [sending, setSending] = useState(false);
+  const [expandedThreadIds, setExpandedThreadIds] = useState<Set<string>>(() => new Set());
   // Per-row cached AI drafts so closing/re-opening the editor does NOT
   // re-invoke the AI — only an explicit refresh-per-card regenerates.
   const [draftCache, setDraftCache] = useState<Record<string, { pub: string; dm: string }>>(() => readDraftCache(campaign.id));
@@ -308,8 +309,12 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
   const tree = useMemo<TreeNode[]>(() => {
     const all = rows ?? [];
     try {
-      const byExt = new Map<string, EngagementRow>();
-      all.forEach((r) => { if (r?.external_id) byExt.set(r.external_id, r); });
+      const byParentKey = new Map<string, EngagementRow>();
+      all.forEach((r) => {
+        if (!r) return;
+        byParentKey.set(r.id, r);
+        if (r.external_id) byParentKey.set(r.external_id, r);
+      });
       const nodes = new Map<string, TreeNode>();
       all.forEach((r) => {
         if (!r) return;
@@ -319,7 +324,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
       nodes.forEach((node) => {
         let parent = (node.metadata as any)?.parent_id as string | undefined;
         if (parent && node.external_id && parent === node.external_id) parent = undefined;
-        const parentRow = parent ? byExt.get(parent) : null;
+        const parentRow = parent ? byParentKey.get(parent) : null;
         const parentNode = parentRow ? nodes.get(parentRow.id) : null;
         if (parentNode && parentNode.id !== node.id) {
           parentNode.children.push(node);
