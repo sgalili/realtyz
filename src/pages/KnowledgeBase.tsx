@@ -171,7 +171,7 @@ export default function KnowledgeBase() {
       const url = linkUrl.trim();
       if (!url) throw new Error('יש להזין קישור');
       const { data, error } = await supabase.functions.invoke('kb-ingest-link', {
-        body: { url },
+        body: { url, intent: linkIntent.trim() || undefined },
       });
       if (error) throw error;
       const payload = data as { title?: string; error?: string } | null;
@@ -181,6 +181,7 @@ export default function KnowledgeBase() {
     onSuccess: (title) => {
       toast.success(`נוסף למאגר: ${title}`);
       setLinkUrl('');
+      setLinkIntent('');
       qc.invalidateQueries({ queryKey: ['kb-documents'] });
       qc.invalidateQueries({ queryKey: ['media-library'] });
     },
