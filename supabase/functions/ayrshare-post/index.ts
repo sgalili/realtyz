@@ -258,6 +258,9 @@ Deno.serve(async (req) => {
         const first = ayrRes.errors[0] ?? {};
         const rawMsg = first?.message ?? ayrRes.body?.errors?.[0]?.message ?? ayrRes.body?.message ?? `Ayrshare ${ayrRes.status}`;
         const code = first?.code ?? ayrRes.body?.code;
+        if (isAyrshareInvalidProfileKey(ayrRes.status, { ...ayrRes.body, code, message: rawMsg })) {
+          return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE }, 200);
+        }
         return json({ error: friendlyFromCode(code, rawMsg), code: code ?? null, status: ayrRes.status, details: ayrRes.body }, 502);
       }
     }
