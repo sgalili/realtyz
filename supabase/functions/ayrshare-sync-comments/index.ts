@@ -1,19 +1,8 @@
-// Realtyz sync-comments — broad-spectrum poll across the connected Ayrshare
-// workspace profile: pulls the native feed + publish history for each platform,
-// then collects every post id and fans out to ayrshare-comments-fetch.
-// Strict tenant isolation: caller must be authenticated; workspace is the
-// singleton workspace_social_profile.
+// Realtyz sync-comments — no Ayrshare read calls. Collects saved campaign
+// native Facebook post ids from campaign_logs and fans out to the direct Meta
+// Graph comments fetcher.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import {
-  AYR_BASE,
-  MISSING_TENANT_KEY,
-  MISSING_TENANT_KEY_MESSAGE,
-  clearStaleAyrshareConnection,
-  isAyrshareInvalidProfileKey,
-  resolveWorkspaceProfileKey,
-  verifyWorkspaceProfileKey,
-} from "../_shared/ayrshare-helpers.ts";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
@@ -25,14 +14,10 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "method" }, 405);
 
-  const AYRSHARE_API_KEY = Deno.env.get("AYRSHARE_API_KEY");
-  if (!AYRSHARE_API_KEY) return json({ error: "AYRSHARE_API_KEY not configured" }, 500);
-
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-  const admin = createClient(SUPABASE_URL, SERVICE);
+  const admin = createClient(SUPABASE_URL, SERVICE, { auth: { persistSession: false } });
 
-  // Resolve tenant
   let userId: string | null = null;
   const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
   if (token) {
@@ -46,134 +31,45 @@ Deno.serve(async (req) => {
   if (!userId && body?.user_id) userId = String(body.user_id);
   if (!userId) return json({ error: "user_id required" }, 401);
 
-  const { profileKey, refId } = await resolveWorkspaceProfileKey(admin);
-  if (!profileKey) {
-    return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE, targets: 0, api_errors: [], fanouts: [] }, 200);
-  }
-  const profileCheck = await verifyWorkspaceProfileKey({ apiKey: AYRSHARE_API_KEY, profileKey });
-  if (profileCheck.missingTenantKey) {
-    console.error("[ayrshare-sync-comments] invalid workspace profile key", {
-      refId,
-      status: profileCheck.status,
-      code: profileCheck.payload?.code,
-      message: profileCheck.payload?.message ?? profileCheck.payload?.error,
-    });
-    return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE, targets: 0, api_errors: [], fanouts: [] }, 200);
-  }
+  const { data: rows, error } = await admin
+    .from("campaign_logs")
+    .select("channel, provider_message_id, provider_response")
+    .eq("user_id", userId)
+    .eq("is_archived", false)
+    .order("created_at", { ascending: false })
+    .limit(200);
 
-  const targets = new Map<string, { platform: string; postId: string }>();
-  const apiErrors: any[] = [];
+  if (error) return json({ success: false, error: error.message, targets: 0, dispatched: [] }, 200);
 
-  const parseAyrError = async (res: Response) => {
-    const text = await res.text();
-    let payload: any = {};
-    try { payload = text ? JSON.parse(text) : {}; } catch { payload = { rawText: text }; }
-    return {
-      status: res.status,
-      payload: {
-        message: payload?.message ?? payload?.error ?? payload?.errors?.[0]?.message ?? text.slice(0, 500),
-        code: payload?.code ?? payload?.errors?.[0]?.code ?? null,
-        raw: payload,
-      },
-    };
+  const ids = new Set<string>();
+  const add = (value: unknown) => {
+    const id = typeof value === "string" ? value.trim() : "";
+    if (id && !/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{12}$/i.test(id)) ids.add(id);
   };
 
-  const ingest = (posts: unknown, platform: string) => {
-    if (!Array.isArray(posts)) return;
-    for (const p of posts as any[]) {
-      if (!p || typeof p !== "object") continue;
-      const postId =
-        p?.id ||
-        p?.postId ||
-        p?.post_id ||
-        p?.postIds?.[0]?.id ||
-        p?.posts?.[0]?.postIds?.[0]?.id ||
-        p?.fbPostId ||
-        p?.igPostId ||
-        null;
-      if (!postId) continue;
-      const key = `${platform}:${postId}`;
-      if (!targets.has(key)) targets.set(key, { platform, postId: String(postId) });
-    }
-  };
-
-  for (const platform of ["facebook", "instagram"]) {
-    // 1. Native feed
-    try {
-      const fRes = await fetch(`${AYR_BASE}/feed?platforms=${platform}&limit=100`, {
-        headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}`, "Profile-Key": profileKey },
-      });
-      if (!fRes.ok) {
-        const err = { endpoint: "/feed", platform, ...(await parseAyrError(fRes)) };
-        if (isAyrshareInvalidProfileKey(err.status, err.payload)) {
-          await clearStaleAyrshareConnection(admin, `sync-comments feed ${err.status}`);
-          return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE, targets: 0, api_errors: [err], fanouts: [] }, 200);
-        }
-        apiErrors.push(err);
-        console.error("[ayrshare-sync-comments] Ayrshare API rejected feed", err);
-        continue;
-      }
-      const fj = await fRes.json().catch(() => ({}));
-      const arr =
-        (Array.isArray(fj) ? fj : null) ||
-        fj?.[platform]?.posts ||
-        fj?.posts ||
-        fj?.feed ||
-        fj?.data ||
-        [];
-      ingest(arr, platform);
-    } catch (e) {
-      console.error("[ayrshare-sync-comments] feed failed", platform, e);
-    }
-    // 2. History
-    try {
-      const hRes = await fetch(
-        `${AYR_BASE}/history?platform=${platform}&lastDays=365&limit=200`,
-        { headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}`, "Profile-Key": profileKey } },
-      );
-      if (!hRes.ok) {
-        const err = { endpoint: "/history", platform, ...(await parseAyrError(hRes)) };
-        if (isAyrshareInvalidProfileKey(err.status, err.payload)) {
-          await clearStaleAyrshareConnection(admin, `sync-comments history ${err.status}`);
-          return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE, targets: 0, api_errors: [err], fanouts: [] }, 200);
-        }
-        apiErrors.push(err);
-        console.error("[ayrshare-sync-comments] Ayrshare API rejected history", err);
-        continue;
-      }
-      const hj = await hRes.json().catch(() => ({}));
-      const arr = (Array.isArray(hj) ? hj : null) || hj?.posts || hj?.history || [];
-      ingest(arr, platform);
-    } catch (e) {
-      console.error("[ayrshare-sync-comments] history failed", platform, e);
-    }
+  for (const row of rows ?? []) {
+    if (String((row as any).channel || "").toLowerCase() !== "facebook") continue;
+    add((row as any).provider_message_id);
+    const response: any = (row as any).provider_response ?? {};
+    const flatPostIds: any[] = Array.isArray(response?.postIds) ? response.postIds : [];
+    const wrappedPostIds: any[] = Array.isArray(response?.posts)
+      ? response.posts.flatMap((post: any) => (Array.isArray(post?.postIds) ? post.postIds : []))
+      : [];
+    [...flatPostIds, ...wrappedPostIds]
+      .filter((post: any) => String(post?.platform || "").toLowerCase() === "facebook")
+      .forEach((post: any) => add(post?.id ?? post?.postId ?? post?.post_id));
   }
 
-  // Fan out per platform to comments-fetch.
-  const byPlatform = new Map<string, string[]>();
-  for (const t of targets.values()) {
-    const list = byPlatform.get(t.platform) ?? [];
-    list.push(t.postId);
-    byPlatform.set(t.platform, list);
-  }
-
-  // Fire-and-forget per-platform fanout. Each call to ayrshare-comments-fetch
-  // iterates every post and can itself take many seconds, so awaiting them all
-  // here easily blows the 150s edge-function idle timeout. We dispatch them in
-  // the background and return immediately; results stream into the DB and the
-  // client picks them up via its polling/realtime loop.
-  const dispatched = Array.from(byPlatform.entries()).map(([platform, ids]) => ({ platform, count: ids.length }));
-  for (const [platform, ids] of byPlatform.entries()) {
-    // Cap each batch so a single post storm doesn't keep the child function alive forever.
-    const capped = ids.slice(0, 50);
+  const postIds = Array.from(ids).slice(0, 50);
+  if (postIds.length > 0) {
     const p = fetch(`${SUPABASE_URL}/functions/v1/ayrshare-comments-fetch`, {
       method: "POST",
       headers: { Authorization: `Bearer ${SERVICE}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ user_id: userId, post_ids: capped, platform }),
-    }).catch((e) => console.error("[ayrshare-sync-comments] fanout failed", platform, e));
-    // @ts-ignore Deno-specific background task API; falls back to a fire-and-forget promise.
+      body: JSON.stringify({ user_id: userId, post_ids: postIds, platform: "facebook" }),
+    }).catch((e) => console.error("[ayrshare-sync-comments] direct Meta fanout failed", e));
+    // @ts-ignore Deno-specific background task API.
     if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) EdgeRuntime.waitUntil(p);
   }
 
-  return json({ success: true, targets: targets.size, api_errors: apiErrors, dispatched, queued: true }, 200);
+  return json({ success: true, targets: postIds.length, api_errors: [], dispatched: [{ platform: "facebook", count: postIds.length }], queued: postIds.length > 0 }, 200);
 });
