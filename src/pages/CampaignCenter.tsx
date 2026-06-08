@@ -97,6 +97,40 @@ const BRAND_COLOR: Record<string, string> = {
 
 /* ───────────── Channel grid ───────────── */
 
+// Build a public URL to open a connected account/page in a new tab.
+// `value` is whatever was stored in accountNames (handle, page name, page id,
+// phone, or email depending on the channel).
+const buildAccountUrl = (channelId: string, value: string): string | null => {
+  const v = (value || '').trim();
+  if (!v) return null;
+  const handle = v.replace(/^@+/, '');
+  const isAllDigits = /^\d+$/.test(handle);
+  switch (channelId) {
+    case 'facebook':
+      return `https://www.facebook.com/${encodeURIComponent(handle)}`;
+    case 'instagram':
+      return `https://www.instagram.com/${encodeURIComponent(handle)}`;
+    case 'x':
+      return `https://x.com/${encodeURIComponent(handle)}`;
+    case 'tiktok':
+      return `https://www.tiktok.com/@${encodeURIComponent(handle)}`;
+    case 'youtube':
+      return handle.startsWith('UC')
+        ? `https://www.youtube.com/channel/${encodeURIComponent(handle)}`
+        : `https://www.youtube.com/@${encodeURIComponent(handle)}`;
+    case 'linkedin':
+      return isAllDigits
+        ? `https://www.linkedin.com/company/${encodeURIComponent(handle)}`
+        : `https://www.linkedin.com/in/${encodeURIComponent(handle)}`;
+    case 'email':
+      return v.includes('@') ? `mailto:${v}` : null;
+    default:
+      return null;
+  }
+};
+
+
+
 const ChannelGrid = ({
   selectedId, onPick, onConnect, brandName, connected = EMPTY_CONNECTED, accountNames = {},
 }: {
