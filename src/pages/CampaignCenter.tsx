@@ -745,8 +745,7 @@ const InlineComposer = ({
           disabled={generating}
           className={cn(
             'inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold shadow-md transition',
-            'bg-gradient-to-l from-[hsl(217,80%,18%)] via-[hsl(217,80%,22%)] to-[#C9A84C]',
-            'text-white hover:brightness-110 hover:shadow-lg',
+            'bg-[#FFD600] text-[#E11D2A] hover:bg-[#FFC400] hover:shadow-lg',
             'disabled:opacity-60 disabled:cursor-not-allowed',
           )}
         >
