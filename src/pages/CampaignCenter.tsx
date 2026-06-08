@@ -612,17 +612,15 @@ const InlineComposer = ({
       {/* Broker steering: custom instructions + property promotion picker */}
 
       <div className="space-y-2 rounded-xl border border-primary/15 bg-primary/[0.03] p-3">
-        <Label htmlFor="custom-instructions" className="text-xs font-semibold text-foreground">
-          הנחיות ודגשים מיוחדים לפוסט
-        </Label>
         <Input
           id="custom-instructions"
           value={customInstructions}
           onChange={(e) => setCustomInstructions(e.target.value)}
-          placeholder='למשל: "תתמקד באווירה המשפחתית בשכונה", "דגש על משקיעים", "טון קצר ואגרסיבי"'
-          className="text-right"
+          placeholder="הנחיות ודגשים מיוחדים לפוסט"
+          className="text-right placeholder:text-muted-foreground/70"
           maxLength={300}
         />
+
 
         <div className="pt-1">
           <Label className="text-xs font-semibold text-foreground">קדם נכס ספציפי מהמאגר</Label>
