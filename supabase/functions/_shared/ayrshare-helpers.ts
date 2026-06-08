@@ -12,7 +12,34 @@ export function cleanProfileKey(value: unknown): string {
 export function isAyrshareInvalidProfileKey(status: number, payload: any): boolean {
   const code = payload?.code ?? payload?.raw?.code ?? payload?.errors?.[0]?.code;
   const message = String(payload?.message ?? payload?.error ?? payload?.raw?.message ?? payload?.errors?.[0]?.message ?? "");
-  return status === 403 && (Number(code) === 144 || /profile key is invalid/i.test(message));
+  return status === 403 && (Number(code) === 144 || Number(code) === 276 || /profile key is invalid|account has been suspended/i.test(message));
+}
+
+export async function clearStaleAyrshareConnection(admin: any, reason = "stale_ayrshare_profile") {
+  const now = new Date().toISOString();
+  await admin
+    .from("workspace_social_profile")
+    .update({
+      ayrshare_profile_key: null,
+      ayrshare_ref_id: null,
+      facebook_page_id: null,
+      facebook_page_name: null,
+      updated_at: now,
+    })
+    .eq("id", "00000000-0000-0000-0000-000000000001");
+  await admin
+    .from("ayrshare_social_accounts")
+    .update({ connected: false, is_active: false, updated_at: now })
+    .eq("platform", "facebook");
+  await admin
+    .from("social_connections")
+    .update({
+      is_connected: false,
+      last_test_status: "failed",
+      last_test_message: reason,
+      updated_at: now,
+    })
+    .ilike("platform", "facebook%");
 }
 
 export async function verifyWorkspaceProfileKey(params: {
