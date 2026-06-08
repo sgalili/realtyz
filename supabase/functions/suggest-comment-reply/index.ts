@@ -403,7 +403,7 @@ Deno.serve(async (req) => {
       try {
         const { data: liveRows } = await admin
           .from("listings")
-          .select("property_title,address,neighborhood,city,asking_price,features,rooms,sqm,status,is_published,description")
+          .select("id,property_title,address,neighborhood,city,asking_price,features,rooms,sqm,status,is_published,description,area_perks")
           .eq("user_id", userId)
           .eq("status", "live")
           .eq("is_published", true)
@@ -443,7 +443,9 @@ Deno.serve(async (req) => {
             description: (row as any).description ? String((row as any).description).slice(0, 4000) : null,
             address: (row as any).address ?? null,
             neighborhood: (row as any).neighborhood ?? null,
-          };
+            area_perks: (row as any).area_perks ?? null,
+            id: (row as any).id ?? null,
+          } as any;
           // The matched listing's own type wins over weak inbound-text heuristics.
           primaryType = lt ?? primaryType;
           primaryTypeLocked = true;
