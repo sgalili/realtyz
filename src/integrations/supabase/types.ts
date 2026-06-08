@@ -145,24 +145,30 @@ export type Database = {
           created_by: string | null
           generated_text: string | null
           id: string
+          media_urls: Json
           platform: string | null
           topic: string | null
+          updated_at: string
         }
         Insert: {
           created_at?: string | null
           created_by?: string | null
           generated_text?: string | null
           id?: string
+          media_urls?: Json
           platform?: string | null
           topic?: string | null
+          updated_at?: string
         }
         Update: {
           created_at?: string | null
           created_by?: string | null
           generated_text?: string | null
           id?: string
+          media_urls?: Json
           platform?: string | null
           topic?: string | null
+          updated_at?: string
         }
         Relationships: []
       }

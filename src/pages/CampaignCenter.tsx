@@ -280,10 +280,13 @@ const InlineComposer = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<BlobPart[]>([]);
 
-  // Generation history
+  // Generation history (now also tracks edits + attachments per row)
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyRefresh, setHistoryRefresh] = useState(0);
-  const [history, setHistory] = useState<Array<{ id: string; topic: string | null; generated_text: string | null; platform: string | null; created_at: string }>>([]);
+  const [history, setHistory] = useState<Array<{ id: string; topic: string | null; generated_text: string | null; platform: string | null; created_at: string; updated_at: string | null; media_urls: any }>>([]);
+  // ID of the currently active history row — edits flow back into the same row.
+  const [logId, setLogId] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
   useEffect(() => {
     if (!historyOpen) return;
     let cancelled = false;
@@ -292,18 +295,58 @@ const InlineComposer = ({
       if (!user) return;
       const { data } = await supabase
         .from('ai_content_logs')
-        .select('id, topic, generated_text, platform, created_at')
+        .select('id, topic, generated_text, platform, created_at, updated_at, media_urls')
         .eq('created_by', user.id)
         .eq('platform', channel.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
+        .order('updated_at', { ascending: false })
+        .limit(30);
       if (!cancelled) setHistory((data as any) || []);
     })();
     return () => { cancelled = true; };
   }, [historyOpen, historyRefresh, channel.id]);
 
   // Reset on channel change
-  useEffect(() => { setBody(''); setMode('now'); setAttachments([]); setCustomInstructions(''); setSelectedListingId(null); setListingQuery(''); }, [channel.id]);
+  useEffect(() => { setBody(''); setMode('now'); setAttachments([]); setCustomInstructions(''); setSelectedListingId(null); setListingQuery(''); setLogId(null); setSaveState('idle'); }, [channel.id]);
+
+  // Auto-save: persist edits + attachments to ai_content_logs (debounced).
+  // Creates a new row on first edit if no logId yet; otherwise updates the active row.
+  useEffect(() => {
+    if (!body.trim() && attachments.length === 0) return;
+    setSaveState('saving');
+    const t = setTimeout(async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const payload = {
+          generated_text: body.slice(0, MAX_CHARS),
+          media_urls: attachments.map((a) => ({ name: a.name, kind: a.kind, url: a.url || null })),
+          updated_at: new Date().toISOString(),
+        };
+        if (logId) {
+          await supabase.from('ai_content_logs').update(payload).eq('id', logId);
+        } else {
+          const { data, error } = await supabase
+            .from('ai_content_logs')
+            .insert({
+              topic: (body.trim().slice(0, 80) || 'טיוטה').slice(0, 500),
+              platform: channel.id,
+              created_by: user.id,
+              ...payload,
+            })
+            .select('id')
+            .single();
+          if (error) throw error;
+          if (data?.id) setLogId(data.id);
+        }
+        setSaveState('saved');
+        setHistoryRefresh((n) => n + 1);
+      } catch (e) {
+        console.warn('[CampaignCenter] autosave failed', e);
+        setSaveState('idle');
+      }
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [body, attachments, logId, channel.id]);
 
   // Load the full live property list on mount and refresh when the picker opens.
   // Search is client-side so the dropdown always shows every listing by default.
@@ -434,15 +477,18 @@ const InlineComposer = ({
       const text = (data?.content || data?.text || '').toString().slice(0, MAX_CHARS);
       if (text) {
         setBody(text);
-        // Persist to ai_content_logs so the broker can revisit past generations.
+        // Persist a fresh history row for this generation and make it the active row,
+        // so subsequent manual edits + media updates flow into the same record.
         try {
           const { data: { user } } = await supabase.auth.getUser();
-          await supabase.from('ai_content_logs').insert({
+          const { data: inserted } = await supabase.from('ai_content_logs').insert({
             topic: topic.slice(0, 500),
             generated_text: text,
             platform: channel.id,
             created_by: user?.id ?? null,
-          });
+            media_urls: attachments.map((a) => ({ name: a.name, kind: a.kind, url: a.url || null })),
+          }).select('id').single();
+          if (inserted?.id) setLogId(inserted.id);
           setHistoryRefresh((n) => n + 1);
         } catch (logErr) {
           console.warn('[CampaignCenter] history log failed', logErr);
@@ -465,6 +511,9 @@ const InlineComposer = ({
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-semibold text-foreground">תוכן ההודעה</h3>
         <div className="flex items-center gap-2">
+          <span className="text-[11px] text-muted-foreground" aria-live="polite">
+            {saveState === 'saving' ? 'שומר…' : saveState === 'saved' ? 'נשמר אוטומטית' : ''}
+          </span>
           <Popover open={historyOpen} onOpenChange={setHistoryOpen}>
             <PopoverTrigger asChild>
               <button type="button"
@@ -472,21 +521,36 @@ const InlineComposer = ({
                 היסטוריה
               </button>
             </PopoverTrigger>
-            <PopoverContent align="start" className="w-[340px] p-2 max-h-96 overflow-auto" dir="rtl">
+            <PopoverContent align="start" className="w-[360px] p-2 max-h-96 overflow-auto" dir="rtl">
               {history.length === 0 ? (
                 <p className="px-3 py-6 text-center text-xs text-muted-foreground">אין יצירות שמורות עדיין עבור {channel.label}</p>
-              ) : history.map((h) => (
-                <button key={h.id} type="button"
-                  onClick={() => { setBody((h.generated_text || '').slice(0, MAX_CHARS)); setHistoryOpen(false); toast.success('הטקסט הועתק לעורך'); }}
-                  className="mb-1 w-full rounded-md border border-border/60 bg-background px-3 py-2 text-right hover:bg-muted">
-                  <div className="text-[11px] text-muted-foreground">
-                    {new Date(h.created_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
-                  </div>
-                  <div className="mt-1 text-xs text-foreground line-clamp-3 whitespace-pre-wrap">
-                    {h.generated_text || h.topic || '—'}
-                  </div>
-                </button>
-              ))}
+              ) : history.map((h) => {
+                const media = Array.isArray(h.media_urls) ? h.media_urls : [];
+                const stamp = h.updated_at || h.created_at;
+                const edited = h.updated_at && h.updated_at !== h.created_at;
+                return (
+                  <button key={h.id} type="button"
+                    onClick={() => {
+                      setBody((h.generated_text || '').slice(0, MAX_CHARS));
+                      setAttachments(media.map((m: any) => ({ name: m?.name || 'קובץ', kind: m?.kind || 'file', url: m?.url || undefined })));
+                      setLogId(h.id);
+                      setHistoryOpen(false);
+                      toast.success('הטיוטה נטענה לעורך');
+                    }}
+                    className={cn('mb-1 w-full rounded-md border border-border/60 bg-background px-3 py-2 text-right hover:bg-muted', logId === h.id && 'border-primary/60 bg-primary/5')}>
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>{new Date(stamp).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                      <span className="flex items-center gap-2">
+                        {edited && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-800">נערך</span>}
+                        {media.length > 0 && <span className="inline-flex items-center gap-0.5"><Paperclip className="h-3 w-3" />{media.length}</span>}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-foreground line-clamp-3 whitespace-pre-wrap">
+                      {h.generated_text || h.topic || '—'}
+                    </div>
+                  </button>
+                );
+              })}
             </PopoverContent>
           </Popover>
           <button type="button" onClick={handleGenerate} disabled={generating}
