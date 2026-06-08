@@ -247,7 +247,11 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
   // against engagement_events. The realtime subscription only delivers NEW
   // rows — existing comments must come from this fetch.
   const load = async () => {
-    setLoading(true);
+    // Only show the spinner on a true cold-start. If we already have a cached
+    // tree in state/sessionStorage, render it instantly and let the refresh
+    // happen silently in the background.
+    const hasCached = Array.isArray(rows) && rows.length > 0;
+    if (!hasCached) setLoading(true);
     try {
       await fetchRows();
     } catch (e: any) {
@@ -256,12 +260,17 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
         postIds,
         error: e?.message ?? String(e),
       });
-      toast.error(e?.message ?? "טעינת תגובות נכשלה");
-      setRows([]);
+      // Never blow away an existing cached tree on a transient fetch failure —
+      // only seed an empty list when there was nothing to render in the first place.
+      if (!hasCached) {
+        toast.error(e?.message ?? "טעינת תגובות נכשלה");
+        setRows([]);
+      }
     } finally {
-      setLoading(false);
+      if (!hasCached) setLoading(false);
     }
   };
+
 
 
   // Manual refresh: bypass the 45s polling loop and force an immediate
