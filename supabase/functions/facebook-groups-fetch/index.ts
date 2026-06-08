@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
 
   try {
     const FB_PAGE_ACCESS_TOKEN = Deno.env.get("FB_PAGE_ACCESS_TOKEN");
-    if (!FB_PAGE_ACCESS_TOKEN) return json({ success: false, message: "FB_PAGE_ACCESS_TOKEN not configured", groups: [] }, 200);
+    if (!FB_PAGE_ACCESS_TOKEN) return json({ groups: [] }, 200);
 
     const url = `${META_GROUPS_URL}?access_token=${encodeURIComponent(FB_PAGE_ACCESS_TOKEN)}`;
     const res = await fetch(url);
@@ -43,7 +43,7 @@ Deno.serve(async (req) => {
     try { body = text ? JSON.parse(text) : null; } catch { body = { raw: text }; }
     if (!res.ok) {
       console.error("[facebook-groups-fetch] Meta /me/groups failed", res.status, text);
-      return json({ success: false, status: res.status, message: body?.error?.message ?? `Meta ${res.status}`, groups: [] }, 200);
+      return json({ groups: [] }, 200);
     }
 
     const groups = mapMetaGroups(body);
@@ -51,6 +51,6 @@ Deno.serve(async (req) => {
     return json({ success: true, groups });
   } catch (e) {
     console.error("[facebook-groups-fetch] error", e);
-    return json({ success: false, message: e instanceof Error ? e.message : "unknown", groups: [] }, 200);
+    return json({ groups: [] }, 200);
   }
 });
