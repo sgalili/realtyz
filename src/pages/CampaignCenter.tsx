@@ -814,29 +814,45 @@ const InlineComposer = ({
         const scheduledValid = mode === 'now' || (!!scheduledDate && scheduledDate.getTime() > Date.now());
         const canSend = hasBody && scheduledValid;
         return (
-          /* Dispatch CTA */
-          <button type="button"
-            onClick={() => canSend && onConfirm({
-              body,
-              mode,
-              media_urls: attachments
-                .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
-                .map((a) => a.url as string),
-              scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
-              group_ids: channel.id === 'facebook' ? groupIds : [],
-            })}
-            disabled={!canSend}
-            className={cn(
-              'w-full rounded-xl px-4 py-3 text-sm font-bold transition flex items-center justify-center gap-2',
-              canSend
-                ? 'bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)] shadow-md'
-                : 'bg-muted text-muted-foreground/80 cursor-not-allowed',
-            )}>
-            <Send className="h-4 w-4 -scale-x-100" />
-            {mode === 'scheduled' ? 'תזמן פרסום' : 'שגר פוסט ציבורי עכשיו'}
-          </button>
+          /* Dispatch CTA + inline schedule toggle */
+          <div className="flex items-stretch gap-2">
+            <button type="button"
+              onClick={() => canSend && onConfirm({
+                body,
+                mode,
+                media_urls: attachments
+                  .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
+                  .map((a) => a.url as string),
+                scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
+                group_ids: channel.id === 'facebook' ? groupIds : [],
+              })}
+              disabled={!canSend}
+              className={cn(
+                'flex-1 rounded-xl px-4 py-3 text-sm font-bold transition flex items-center justify-center gap-2',
+                canSend
+                  ? 'bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)] shadow-md'
+                  : 'bg-muted text-muted-foreground/80 cursor-not-allowed',
+              )}>
+              <Send className="h-4 w-4 -scale-x-100" />
+              {mode === 'scheduled' ? 'תזמן פרסום' : 'פרסם קמפיין'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode((m) => (m === 'scheduled' ? 'now' : 'scheduled'))}
+              title={mode === 'scheduled' ? 'בטל תזמון — פרסם עכשיו' : 'תזמן פרסום עתידי'}
+              aria-label="תזמן פרסום"
+              className={cn(
+                'inline-flex items-center justify-center rounded-xl border px-3 transition',
+                mode === 'scheduled'
+                  ? 'border-[#C9A84C] bg-[#C9A84C]/15 text-[#7a6210] hover:bg-[#C9A84C]/25'
+                  : 'border-border bg-background text-muted-foreground hover:text-foreground hover:border-primary/40',
+              )}>
+              <CalendarIcon className="h-5 w-5" />
+            </button>
+          </div>
         );
       })()}
+
     </div>
   );
 };
