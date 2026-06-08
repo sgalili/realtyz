@@ -352,8 +352,8 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
     });
   }, [rows]);
 
-  const parentComments = comments.filter((item) => !item.parent_id);
-  const replyComments = comments.filter((item) => item.parent_id);
+  const rootComments = comments.filter((c) => !c.parent_id || c.parent_id === null);
+  const childReplies = comments.filter((c) => c.parent_id && c.parent_id !== null);
 
   // Whenever the modal mounts on a new comment, force a fresh live invocation
   // of suggest-comment-reply with a cache-bust token. Closing the modal wipes
@@ -653,7 +653,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
       )}
 
       <div className="space-y-4">
-        {parentComments.map((parent) => (
+        {rootComments.map((parent) => (
           <div key={parent.id} className="border border-border p-4 rounded-xl mb-4 bg-white relative text-right">
             <CommentBubble
               row={parent}
@@ -665,8 +665,8 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
               embedded
             />
 
-            <div className="mt-4 mr-10 pr-4 border-r-2 border-slate-200 flex flex-col gap-3">
-              {replyComments
+            <div className="mt-4 mr-10 pr-4 border-r-2 border-slate-200 flex flex-col gap-3 bg-slate-50/80 rounded-xl p-3">
+              {childReplies
                 .filter((reply) => reply.parent_id === parent.id)
                 .map((reply) => (
                   <div key={reply.id} className="p-3 bg-slate-50 rounded-lg text-sm">
