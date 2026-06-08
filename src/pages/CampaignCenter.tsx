@@ -773,7 +773,7 @@ const InlineComposer = ({
             'disabled:opacity-60 disabled:cursor-not-allowed',
           )}
         >
-          <Sparkles className="h-4 w-4" />
+          <RefreshCw className={cn('h-4 w-4', generating && 'animate-spin')} />
           {generating ? 'מחולל תוכן…' : 'חולל תוכן עם AI'}
         </button>
       </div>
