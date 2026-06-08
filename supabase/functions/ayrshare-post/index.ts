@@ -50,8 +50,11 @@ Deno.serve(async (req) => {
       const userId = authData?.user?.id;
       if (!userId) return json({ error: "unauthorized" }, 401);
 
+      const url = new URL(req.url);
       const body = await req.json().catch(() => ({}));
-      const externalPostId: string = String(body?.external_post_id ?? body?.id ?? "").trim();
+      const externalPostId: string = String(
+        body?.external_post_id ?? body?.id ?? url.searchParams.get("external_post_id") ?? url.searchParams.get("id") ?? "",
+      ).trim();
       if (!externalPostId) return json({ error: "missing external_post_id" }, 400);
 
       const { profileKey } = await resolveWorkspaceProfileKey(admin);
