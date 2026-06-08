@@ -110,6 +110,9 @@ const OmnichannelInbox = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'waiting' | 'handling'>('all');
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [newMessage, setNewMessage] = useState('');
+  // Tracks the last AI-generated draft (e.g. from Undo & Regenerate) so manual
+  // edits before send can be shipped to learn-from-edit. Cleared on send/switch.
+  const [originalAiDraft, setOriginalAiDraft] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
   const [sendChannel, setSendChannel] = useState<string>('whatsapp');
   const [dripEnabled, setDripEnabled] = useState(false);
