@@ -2258,8 +2258,33 @@ const CampaignCenter = () => {
   const [ivrOpen, setIvrOpen] = useState(false);
   const [emailSetupOpen, setEmailSetupOpen] = useState(false);
   const [confirmPayload, setConfirmPayload] = useState<{ body: string; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null; group_ids: string[] } | null>(null);
-  const [connectedChannels, setConnectedChannels] = useState<Set<string>>(EMPTY_CONNECTED);
-  const [channelAccountNames, setChannelAccountNames] = useState<Record<string, string>>({});
+  // Hydrate connection state from sessionStorage so a page refresh doesn't
+  // visually "disconnect" channels while the async verification re-runs.
+  const [connectedChannels, setConnectedChannels] = useState<Set<string>>(() => {
+    try {
+      const raw = sessionStorage.getItem('rz-connected-channels');
+      if (raw) return new Set<string>(JSON.parse(raw));
+    } catch { /* ignore */ }
+    return EMPTY_CONNECTED;
+  });
+  const [channelAccountNames, setChannelAccountNames] = useState<Record<string, string>>(() => {
+    try {
+      const raw = sessionStorage.getItem('rz-connected-channel-names');
+      if (raw) return JSON.parse(raw);
+    } catch { /* ignore */ }
+    return {};
+  });
+
+  // Persist whenever the resolved connection state changes — keeps the grid
+  // "remembered" for the whole browser session, including hard reloads.
+  useEffect(() => {
+    try { sessionStorage.setItem('rz-connected-channels', JSON.stringify([...connectedChannels])); } catch { /* ignore */ }
+  }, [connectedChannels]);
+  useEffect(() => {
+    try { sessionStorage.setItem('rz-connected-channel-names', JSON.stringify(channelAccountNames)); } catch { /* ignore */ }
+  }, [channelAccountNames]);
+
+
 
   // STRICT WORKSPACE ISOLATION: only show a channel as connected when
   // (1) this workspace owns a verified `workspace_social_profile` with its
