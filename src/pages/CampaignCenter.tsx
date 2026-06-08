@@ -477,15 +477,18 @@ const InlineComposer = ({
       const text = (data?.content || data?.text || '').toString().slice(0, MAX_CHARS);
       if (text) {
         setBody(text);
-        // Persist to ai_content_logs so the broker can revisit past generations.
+        // Persist a fresh history row for this generation and make it the active row,
+        // so subsequent manual edits + media updates flow into the same record.
         try {
           const { data: { user } } = await supabase.auth.getUser();
-          await supabase.from('ai_content_logs').insert({
+          const { data: inserted } = await supabase.from('ai_content_logs').insert({
             topic: topic.slice(0, 500),
             generated_text: text,
             platform: channel.id,
             created_by: user?.id ?? null,
-          });
+            media_urls: attachments.map((a) => ({ name: a.name, kind: a.kind, url: a.url || null })),
+          }).select('id').single();
+          if (inserted?.id) setLogId(inserted.id);
           setHistoryRefresh((n) => n + 1);
         } catch (logErr) {
           console.warn('[CampaignCenter] history log failed', logErr);
