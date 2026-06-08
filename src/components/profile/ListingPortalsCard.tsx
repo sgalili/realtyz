@@ -270,11 +270,12 @@ export function ListingPortalsCard() {
                   שמירת {p.label}
                 </Button>
                 {isHomely && (
-                  <Button size="sm" variant="outline" onClick={verifyHomely} disabled={verifying || !homelyHasPassword} className="gap-2">
+                  <Button size="sm" variant="outline" onClick={verifyHomely} disabled={verifying || !(values.homely_agency ?? '').trim()} className="gap-2">
                     {verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                    בדיקת התחברות
+                    {verifying ? 'בודק חיבור…' : 'בדיקת התחברות'}
                   </Button>
                 )}
+
               </div>
             </div>
           );
