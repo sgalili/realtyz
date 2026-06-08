@@ -744,6 +744,7 @@ function CommentBubble({
   regenerating,
   isReply,
   repliedToText,
+  replyPreviewText,
   replyCount,
   threadExpanded,
   onToggleThread,
@@ -756,6 +757,7 @@ function CommentBubble({
   regenerating?: boolean;
   isReply?: boolean;
   repliedToText?: string | null;
+  replyPreviewText?: string | null;
   replyCount?: number;
   threadExpanded?: boolean;
   onToggleThread?: () => void;
@@ -790,6 +792,7 @@ function CommentBubble({
   const alreadyReplied = row.status === "sent" || row.status === "replied";
   const toggleLabel = expanded ? "סגור" : "צור תגובת AI";
   const cleanRepliedTo = repliedToText?.trim() || null;
+  const cleanReplyPreview = replyPreviewText?.trim() || null;
   return (
     <div
       className={cn(
