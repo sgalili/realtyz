@@ -551,9 +551,8 @@ const InlineComposer = ({
     <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-sm space-y-4" dir="rtl">
       {/* Header row — title moved into the textarea placeholder for a cleaner card */}
       <div className="flex items-center justify-between gap-3">
-        <span className="text-[11px] text-muted-foreground" aria-live="polite">
-          {saveState === 'saving' ? 'שומר…' : saveState === 'saved' ? 'נשמר אוטומטית' : ''}
-        </span>
+        <h2 className="text-sm font-semibold text-foreground">פרסום פוסט חדש</h2>
+
         <div className="flex items-center gap-2">
           <Popover open={historyOpen} onOpenChange={setHistoryOpen}>
             <PopoverTrigger asChild>
