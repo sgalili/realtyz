@@ -119,14 +119,6 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
         </div>
       )}
 
-      {/* Empty state */}
-      {!loading && !error && groups.length === 0 && (
-        <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-center">
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            לא נמצאו קבוצות פייסבוק מחוברות. ודא שסימנת אותן ב-V בחלונית החיבור של פייסבוק.
-          </p>
-        </div>
-      )}
 
       {/* Checkbox list */}
       {groups.length > 0 && (
