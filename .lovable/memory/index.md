@@ -11,6 +11,7 @@
 - **UI strings**: Hebrew copy still uses political terms ("בוחרים", "מועמד", "מנדטים"). Realtyz Hebrew copy ("לידים", "נכסים", "מחיר") is a pending UX pass.
 - **Demo Mode**: SCOPED. Off everywhere except `src/pages/SmsBlastSimulator.tsx` which may branch on `useDemoMode`/`useDemoGuard` to short-circuit dispatch POSTs and show a "מצב הדגמה" banner. Keep `is_demo=false` filters in queries.
 - **Freemium**: 30-day trial · 100 contacts cap · ₪50 wallet (profiles.trial_end_date + wallet_balance_agorot). `useFreemiumStatus()` gates Add/Import buttons in CRM. `enforce_trial_lead_cap` trigger blocks inserts when expired (TRIAL_TIME_EXPIRED / TRIAL_RECORD_LIMIT). Currency always rendered via `<PriceTag>` (₪ left of digits).
+- **Gender (HARD)**: `profiles.gender` + `cloned_voices.voice_gender` ('male'|'female'). UI Hebrew must match broker gender (use `heVerb` helper in CampaignCenter). Voice AI MUST self-refer in the voice clone's gender (Udi Whitman=MALE) and address the lead in their gender for the ENTIRE call — never switch mid-call, never assume. vapi-outbound-call injects genderRules() into the system prompt.
 
 ## Memories
 - [Visual Identity](mem://style/visual-identity) — Realtyz branding: minimalist, no icons/emojis in headers.
