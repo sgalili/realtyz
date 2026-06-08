@@ -288,6 +288,12 @@ export default function KnowledgeBase() {
                   placeholder="https://..."
                   dir="ltr"
                 />
+                <Textarea
+                  value={linkIntent}
+                  onChange={(e) => setLinkIntent(e.target.value)}
+                  placeholder="מה ללמוד מהמקור הזה? (לדוגמה: טכניקות סגירה, התמודדות עם התנגדויות מחיר...)"
+                  className="min-h-[80px]"
+                />
                 <div className="flex justify-end">
                   <Button onClick={() => saveLink.mutate()} disabled={saveLink.isPending}>
                     {saveLink.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'הוסף קישור'}
