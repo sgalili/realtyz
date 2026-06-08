@@ -28,6 +28,7 @@ Deno.serve(async (req) => {
   try {
     const AYRSHARE_API_KEY = Deno.env.get("AYRSHARE_API_KEY");
     if (!AYRSHARE_API_KEY) return json({ error: "AYRSHARE_API_KEY not configured" }, 500);
+    const FB_PAGE_TOKEN = Deno.env.get("FB_PAGE_ACCESS_TOKEN")?.trim() || null;
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
