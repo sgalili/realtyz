@@ -4,6 +4,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import {
+  clearStaleAyrshareConnection,
   isAyrshareInvalidProfileKey,
   MISSING_TENANT_KEY,
   MISSING_TENANT_KEY_MESSAGE,
@@ -74,6 +75,7 @@ Deno.serve(async (req) => {
       // Treat a 404 from Ayrshare as already-deleted (idempotent success).
       const idempotent404 = r.status === 404;
       if (isAyrshareInvalidProfileKey(r.status, j)) {
+        await clearStaleAyrshareConnection(admin, "Ayrshare profile rejected during post delete");
         return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE }, 200);
       }
       if (!r.ok && !idempotent404) {
@@ -141,6 +143,7 @@ Deno.serve(async (req) => {
         code: verified.payload?.code ?? verified.payload?.raw?.code,
         message: verified.payload?.message ?? verified.payload?.error ?? verified.payload?.raw?.message,
       });
+      await clearStaleAyrshareConnection(admin, "Ayrshare profile rejected during post verification");
       return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE }, 200);
     }
 
@@ -262,6 +265,7 @@ Deno.serve(async (req) => {
         const rawMsg = first?.message ?? ayrRes.body?.errors?.[0]?.message ?? ayrRes.body?.message ?? `Ayrshare ${ayrRes.status}`;
         const code = first?.code ?? ayrRes.body?.code;
         if (isAyrshareInvalidProfileKey(ayrRes.status, { ...ayrRes.body, code, message: rawMsg })) {
+          await clearStaleAyrshareConnection(admin, "Ayrshare profile rejected during post publish");
           return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE }, 200);
         }
         return json({ error: friendlyFromCode(code, rawMsg), code: code ?? null, status: ayrRes.status, details: ayrRes.body }, 502);
