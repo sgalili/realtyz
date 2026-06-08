@@ -2611,14 +2611,25 @@ const CampaignCenter = () => {
     let cancelled = false;
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { if (!cancelled) setConnectedChannels(EMPTY_CONNECTED); return; }
+      if (!user) { if (!cancelled) { setConnectedChannels(EMPTY_CONNECTED); setSocialAccountProfiles([]); } return; }
 
       const { data: wsp } = await supabase
         .from('workspace_social_profile')
         .select('ayrshare_profile_key, facebook_page_name')
         .maybeSingle();
       const hasOwnProfile = !!(wsp as any)?.ayrshare_profile_key;
-      if (!hasOwnProfile) { if (!cancelled) setConnectedChannels(EMPTY_CONNECTED); return; }
+      if (!hasOwnProfile) {
+        if (!cancelled) {
+          setConnectedChannels(EMPTY_CONNECTED);
+          setSocialAccountProfiles([]);
+          setChannelAccountNames((prev) => {
+            const { facebook, ...rest } = prev;
+            return rest;
+          });
+          try { sessionStorage.removeItem('rz-connected-channels'); sessionStorage.removeItem('rz-connected-channel-names'); } catch { /* ignore */ }
+        }
+        return;
+      }
       const fbName = (wsp as any)?.facebook_page_name as string | null;
       if (fbName && !cancelled) {
         setChannelAccountNames((prev) => ({ ...prev, facebook: fbName }));
@@ -2634,8 +2645,28 @@ const CampaignCenter = () => {
         .select('platform, is_connected')
         .eq('created_by', user.id)
         .eq('is_connected', true);
+      const { data: accountRows } = await supabase
+        .from('ayrshare_social_accounts')
+        .select('id, platform, account_ref, profile_key, display_name, account_username, username, avatar_url, profile_url, connected, is_active')
+        .eq('user_id', user.id)
+        .eq('connected', true)
+        .eq('is_active', true);
       if (cancelled) return;
       const set = new Set<string>();
+      const profiles = ((accountRows as any[]) || []).map((r) => ({
+        id: r.id,
+        platform: String(r.platform || '').toLowerCase(),
+        accountRef: r.account_ref || '',
+        profileKey: r.profile_key || null,
+        name: r.display_name || r.account_username || r.username || r.account_ref || 'Facebook',
+        username: r.account_username || r.username || null,
+        avatar: r.avatar_url || null,
+        profileUrl: r.profile_url || (r.account_ref ? buildAccountUrl(String(r.platform || '').toLowerCase(), r.account_ref) : null),
+      }));
+      profiles.forEach((p) => {
+        if (p.platform.startsWith('facebook')) set.add('facebook');
+      });
+      setSocialAccountProfiles(profiles);
       (conns || []).forEach((c: any) => {
         const p = String(c.platform || '').toLowerCase();
         if (p.startsWith('facebook')) set.add('facebook');
@@ -2868,11 +2899,14 @@ const CampaignCenter = () => {
             brandName={brandName}
             connected={connectedChannels}
             accountNames={channelAccountNames}
+            socialProfiles={socialAccountProfiles}
+            onAddFacebookPage={() => handleConnectChannel(CHANNEL_CARDS.find((c) => c.id === 'facebook')!)}
           />
           {pickedChannel && (
             <InlineComposer
               channel={pickedChannel}
               brandName={brandName}
+              socialProfiles={socialAccountProfiles}
               onConfirm={(p) => setConfirmPayload(p)}
             />
           )}
@@ -2893,6 +2927,7 @@ const CampaignCenter = () => {
         mediaUrls={confirmPayload?.media_urls ?? []}
         scheduledAt={confirmPayload?.scheduled_at ?? null}
         groupIds={confirmPayload?.group_ids ?? []}
+        selectedProfileIds={confirmPayload?.selected_profile_ids ?? []}
         onConfirmed={() => { setConfirmPayload(null); setPickedChannel(null); }}
       />
       <VoiceLeadPickerDialog
