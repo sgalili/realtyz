@@ -225,17 +225,33 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
     }
     const { data, error } = await q;
     if (error) throw error;
-    const next = (data ?? []) as EngagementRow[];
-    setRows(next);
-    writeCache(campaign.id, next);
+    const incoming = (data ?? []) as EngagementRow[];
+    // Append-only delta merge: keep every cached/existing row, overlay updates
+    // by id, and append brand-new ids. The tree never flickers, collapses, or
+    // resets to an empty state mid-refresh — only NEW comments slide in.
+    setRows((prev) => {
+      const byId = new Map<string, EngagementRow>();
+      for (const r of prev ?? []) byId.set(r.id, r);
+      for (const r of incoming) byId.set(r.id, { ...(byId.get(r.id) ?? {} as EngagementRow), ...r });
+      const merged = Array.from(byId.values()).sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      );
+      writeCache(campaign.id, merged);
+      return merged;
+    });
   };
+
 
 
   // On mount / when the active post id resolves, run an explicit query
   // against engagement_events. The realtime subscription only delivers NEW
   // rows — existing comments must come from this fetch.
   const load = async () => {
-    setLoading(true);
+    // Only show the spinner on a true cold-start. If we already have a cached
+    // tree in state/sessionStorage, render it instantly and let the refresh
+    // happen silently in the background.
+    const hasCached = Array.isArray(rows) && rows.length > 0;
+    if (!hasCached) setLoading(true);
     try {
       await fetchRows();
     } catch (e: any) {
@@ -244,12 +260,17 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
         postIds,
         error: e?.message ?? String(e),
       });
-      toast.error(e?.message ?? "טעינת תגובות נכשלה");
-      setRows([]);
+      // Never blow away an existing cached tree on a transient fetch failure —
+      // only seed an empty list when there was nothing to render in the first place.
+      if (!hasCached) {
+        toast.error(e?.message ?? "טעינת תגובות נכשלה");
+        setRows([]);
+      }
     } finally {
-      setLoading(false);
+      if (!hasCached) setLoading(false);
     }
   };
+
 
 
   // Manual refresh: bypass the 45s polling loop and force an immediate
