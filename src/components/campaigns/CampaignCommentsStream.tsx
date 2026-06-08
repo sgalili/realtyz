@@ -59,6 +59,7 @@ type Props = {
     provider_message_id?: string | null;
     provider_response?: any;
   };
+  commentCount?: number;
 };
 
 const sentimentClass = (s: string | null) =>
