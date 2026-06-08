@@ -510,6 +510,24 @@ Deno.serve(async (req) => {
         ].join("\n")
       : null;
 
+    // Nearby-area perks (cached in listings.area_perks). If missing on a
+    // resolved primary listing, fire-and-forget the enrichment so the NEXT
+    // call has them. Never block the reply on it.
+    const perksList: string[] = Array.isArray((primaryListing as any)?.area_perks?.perks)
+      ? (primaryListing as any).area_perks.perks.slice(0, 6)
+      : [];
+    const perksOneLiner: string = String((primaryListing as any)?.area_perks?.one_liner_he ?? "").trim();
+    if (primaryListing && (primaryListing as any).id && perksList.length === 0) {
+      try {
+        admin.functions.invoke("neighborhood-perks", {
+          body: { listing_id: (primaryListing as any).id },
+        }).catch(() => { /* background */ });
+      } catch { /* background */ }
+    }
+    const perksBlock = perksList.length > 0
+      ? `[AREA PERKS — nearby-area benefits the broker may mention briefly]:\n- ${perksList.join("\n- ")}${perksOneLiner ? `\nOne-line summary: ${perksOneLiner}` : ""}\nUSAGE: weave AT MOST ONE perk into the public_comment OR the private DM (not both), only if it fits naturally. Keep it short (max ~7 words). Never list multiple perks. Never invent perks not in this list.`
+      : null;
+
     const primaryBlock = primaryListing
       ? `[PRIMARY PROPERTY DISCUSSED — LOCKED]: ${primaryListing.title}${primaryListing.address ? " · " + primaryListing.address : ""}${primaryListing.city ? " · " + primaryListing.city : ""}${primaryListing.rooms ? " · " + primaryListing.rooms + " חד'" : ""}${primaryListing.sqm ? " · " + primaryListing.sqm + " מ\"ר" : ""}${primaryListing.asking_price ? " · " + Number(primaryListing.asking_price).toLocaleString("he-IL") + " ש\"ח" : ""}${primaryListing.listing_type ? " · " + (primaryListing.listing_type === "rent" ? "להשכרה" : "למכירה") : ""}.\nHARD RULE: this is the ONE property this comment is about. NEVER name, hint at, or compare to any other property, street, or address in either public_comment or private_messenger_dm. Do not reference פורצי הדרך, הבשן, or any address other than the one above. If [STRICT LISTING PAYLOAD JSON] contains other listings, IGNORE them for this reply — they are NOT the subject of this post.`
       : `[PRIMARY PROPERTY DISCUSSED — UNRESOLVED]: no listing was matched from the published post body. Reply generically about the post WITHOUT naming any specific street, address, or listing. NEVER invent a property name.`;
