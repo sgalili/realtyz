@@ -171,9 +171,10 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
   // server-side pull of analytics + comments scoped to THIS card's
   // provider_message_id. The realtime subscription on campaign_logs then
   // patches the counter UI live without a browser reload.
-  const forceRefresh = async () => {
-    // Silent: never toggle `loading` so the UI doesn't flash a spinner /
-    // "טוען תגובות חיות…" placeholder while the background pull runs.
+  const forceRefresh = async ({ manual = false }: { manual?: boolean } = {}) => {
+    // Only show the spinner when the user clicked the refresh button.
+    // Background/mount refreshes stay silent.
+    if (manual) setManualRefreshing(true);
     try {
       const pid = postIds[0] ?? null;
       const settled = await Promise.allSettled([
@@ -204,6 +205,8 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
       await fetchRows();
     } catch (e: any) {
       console.error("[CampaignCommentsStream] silent refresh failed", e);
+    } finally {
+      if (manual) setManualRefreshing(false);
     }
   };
 
