@@ -742,6 +742,10 @@ function CommentBubble({
   onRegenerate,
   regenerating,
   isReply,
+  repliedToText,
+  replyCount,
+  threadExpanded,
+  onToggleThread,
 }: {
   row: EngagementRow;
   onToggleEditor: (r: EngagementRow) => void;
@@ -750,6 +754,10 @@ function CommentBubble({
   onRegenerate?: (r: EngagementRow) => void;
   regenerating?: boolean;
   isReply?: boolean;
+  repliedToText?: string | null;
+  replyCount?: number;
+  threadExpanded?: boolean;
+  onToggleThread?: () => void;
 }) {
   const dt = new Date(row.created_at);
   const when = dt.toLocaleString("he-IL", {
@@ -780,6 +788,7 @@ function CommentBubble({
     .join("") || "?";
   const alreadyReplied = row.status === "sent" || row.status === "replied";
   const toggleLabel = expanded ? "סגור" : "צור תגובת AI";
+  const cleanRepliedTo = repliedToText?.trim() || null;
   return (
     <div
       className={cn(
