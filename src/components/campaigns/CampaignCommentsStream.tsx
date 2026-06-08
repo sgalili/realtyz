@@ -329,77 +329,48 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
     return () => { supabase.removeChannel(channel); };
   }, [userId, campaign.id, postIdsKey, campaign.channel]);
 
-  // Build a FULL recursive tree by metadata.parent_id (set by ayrshare-comments-fetch).
-  // Shows every comment and nested reply for the campaign inside the same card.
-  // Defensive: guards against self-referencing rows, cycles, and missing parents.
-  type TreeNode = EngagementRow & { children: TreeNode[]; depth: number };
-  const tree = useMemo<TreeNode[]>(() => {
+  const comments = useMemo<CommentRow[]>(() => {
     const all = rows ?? [];
-    try {
-      const byParentKey = new Map<string, EngagementRow>();
-      all.forEach((r) => {
-        if (!r) return;
-        byParentKey.set(r.id, r);
-        if (r.external_id) byParentKey.set(r.external_id, r);
-      });
-      const nodes = new Map<string, TreeNode>();
-      all.forEach((r) => {
-        if (!r) return;
-        nodes.set(r.id, { ...r, children: [], depth: 0 });
-      });
-      const roots: TreeNode[] = [];
-      nodes.forEach((node) => {
-        let parent = (node.metadata as any)?.parent_id as string | undefined;
-        if (parent && node.external_id && parent === node.external_id) parent = undefined;
-        const parentRow = parent ? byParentKey.get(parent) : null;
-        const parentNode = parentRow ? nodes.get(parentRow.id) : null;
-        if (parentNode && parentNode.id !== node.id) {
-          parentNode.children.push(node);
-        } else {
-          roots.push(node);
-        }
-      });
-      // Cycle-safe depth assignment + sort siblings by created_at asc (thread order).
-      const assignDepth = (n: TreeNode, depth: number, seen: Set<string>) => {
-        if (seen.has(n.id)) return;
-        seen.add(n.id);
-        n.depth = depth;
-        n.children.sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
-        n.children.forEach((c) => assignDepth(c, depth + 1, seen));
+    const byRelationId = new Map<string, EngagementRow>();
+    all.forEach((row) => {
+      byRelationId.set(row.id, row);
+      const externalId = cleanRelationId(row.external_id);
+      if (externalId) byRelationId.set(externalId, row);
+    });
+
+    return all.map((row) => {
+      const meta = (row.metadata as any) ?? {};
+      const rawParentId = cleanRelationId((row as any).parent_id) ?? cleanRelationId(meta.parent_id);
+      const parentRow = rawParentId ? byRelationId.get(rawParentId) : null;
+      const parentId = parentRow?.id === row.id ? null : parentRow?.id ?? rawParentId;
+
+      return {
+        ...row,
+        parent_id: parentId,
+        sender_avatar_url: (row as any).sender_avatar_url ?? avatarFromRow(row),
+        message: row.inbound_text ?? "",
       };
-      // Roots sorted oldest-first so the thread mirrors Facebook's chronological
-      // order (matches how children/replies are already sorted below).
-      roots.sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
-      roots.forEach((r) => assignDepth(r, 0, new Set()));
-      return roots;
-    } catch (err) {
-      console.error("[CampaignCommentsStream] tree build failed, falling back to flat rows", err);
-      return all.map((r) => ({ ...r, children: [], depth: 0 }));
-    }
+    });
   }, [rows]);
 
-  const nodeById = useMemo(() => {
-    const map = new Map<string, TreeNode>();
-    const visit = (node: TreeNode) => {
-      map.set(node.id, node);
-      if (node.external_id) map.set(node.external_id, node);
-      node.children.forEach(visit);
-    };
-    tree.forEach(visit);
-    return map;
-  }, [tree]);
+  const rootComments = useMemo(
+    () => comments.filter((c) => !c.parent_id || c.parent_id === null || c.parent_id === ""),
+    [comments],
+  );
+
+  const childReplies = useMemo(
+    () => comments.filter((c) => c.parent_id && c.parent_id !== null),
+    [comments],
+  );
 
   const replyCountById = useMemo(() => {
     const map = new Map<string, number>();
-    const count = (node: TreeNode): number => {
-      const total = node.children.reduce((sum, child) => sum + 1 + count(child), 0);
-      map.set(node.id, total);
-      if (node.external_id) map.set(node.external_id, total);
-      return total;
-    };
-    tree.forEach(count);
+    childReplies.forEach((reply) => {
+      if (!reply.parent_id) return;
+      map.set(reply.parent_id, (map.get(reply.parent_id) ?? 0) + 1);
+    });
     return map;
-  }, [tree]);
+  }, [childReplies]);
 
 
   const openReply = (row: EngagementRow) => {
