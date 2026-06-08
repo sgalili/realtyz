@@ -294,9 +294,17 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
 
 
   useEffect(() => {
-    // Load saved rows on mount. Provider pulls are manual to avoid exhausting
-    // the social profile rate limit and suspending the comments API.
-    load();
+    // Load saved rows on mount, then fire a single direct-FB-Graph pull so the
+    // tree reflects all live comments + nested replies on first paint. No
+    // background interval — only this hard-mount call and explicit manual
+    // refresh ever hit the provider, to avoid Ayrshare suspension flags.
+    (async () => {
+      await load();
+      if (postIds.length > 0) {
+        await forceRefresh({ manual: false });
+        await fetchRows();
+      }
+    })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaign.id, postIdsKey, campaign.channel]);
 
