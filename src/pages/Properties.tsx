@@ -697,6 +697,18 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
                         <Button
                           size="sm"
                           variant="ghost"
+                          onClick={() => setEditTarget(p)}
+                          className="gap-1.5"
+                          title="ערוך נכס"
+                          aria-label="ערוך נכס"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {isMine && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
                           onClick={() => setDeleteTarget(p)}
                           className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
                           title="מחק נכס"
