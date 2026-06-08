@@ -113,10 +113,6 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
               </button>
             </>
           )}
-          <button type="button" onClick={load} aria-label="רענן"
-            className="rounded-md border border-border p-1.5 text-muted-foreground hover:text-foreground">
-            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCcw className="h-3.5 w-3.5" />}
-          </button>
         </div>
       </div>
 
