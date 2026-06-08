@@ -1273,6 +1273,7 @@ const GlobalSocialFeed = ({
         )}
       >
         <span>הכל</span>
+
         <span className={cn(
           'text-sm font-bold tabular-nums',
           activeChannel === 'all' ? 'text-white/90' : 'text-slate-500',
