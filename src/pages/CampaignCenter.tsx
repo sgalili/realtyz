@@ -511,6 +511,9 @@ const InlineComposer = ({
       <div className="flex items-center justify-between gap-3">
         <h3 className="text-sm font-semibold text-foreground">תוכן ההודעה</h3>
         <div className="flex items-center gap-2">
+          <span className="text-[11px] text-muted-foreground" aria-live="polite">
+            {saveState === 'saving' ? 'שומר…' : saveState === 'saved' ? 'נשמר אוטומטית' : ''}
+          </span>
           <Popover open={historyOpen} onOpenChange={setHistoryOpen}>
             <PopoverTrigger asChild>
               <button type="button"
