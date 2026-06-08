@@ -139,7 +139,14 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
 
     const focusOnly = !!listingFocusOnly && !!promotedListing;
 
-    const FOCUS_ONLY_RULE = focusOnly ? `
+    const FOCUS_ONLY_RULE = focusOnly ? (hasKbTemplate ? `
+LISTING-FOCUS MODE (HARD OVERRIDE — highest priority):
+- This post is a direct sales/rental ad for the [PROMOTED LISTING] above and NOTHING else.
+- No personal owner story, no broker biography, no market analysis, no neighborhood essay, no testimonials, no philosophy.
+- Follow the structure, rhythm, line breaks, sectioning, emoji usage and tone of the [OWNER-AUTHORED POST TEMPLATES FROM KNOWLEDGE BASE] block exactly. Those templates OVERRIDE any built-in default.
+- Replace any slot/placeholder with the real listing fields. Skip any line whose data is missing — never invent.
+- End with Udi's signature line and 2-3 relevant hashtags only if the KB template uses them.
+` : `
 LISTING-FOCUS MODE (HARD OVERRIDE — highest priority):
 - This post is a direct sales/rental ad for the [PROMOTED LISTING] above and NOTHING else.
 - No personal owner story, no broker biography, no market analysis, no neighborhood essay, no testimonials, no philosophy.
@@ -178,7 +185,7 @@ REFERENCE TEMPLATE (match this rhythm and tone exactly — adapt wording per lis
 רישיון תיווך 3251767
 
 #[האשטג1] #[האשטג2] #[האשטג3]
-"""` : "";
+"""`) : "";
 
 
     const systemPrompt = `${BROKER_PERSONA}
