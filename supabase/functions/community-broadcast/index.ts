@@ -312,6 +312,7 @@ async function draftPersonalized(args: {
   ].filter(Boolean).join("\n");
 
   const user = [
+    kbInstructionsBlock || null,
     "AGENT'S CORE DRAFT (the human-written update):",
     draft.trim(),
     "",
@@ -321,8 +322,9 @@ async function draftPersonalized(args: {
     "THIS LEAD'S CONTEXT:",
     leadContext,
     "",
-    `Now write the personalised ${channelLabel} message.`,
-  ].join("\n");
+    `Now write the personalised ${channelLabel} message — and apply any OWNER INSTRUCTIONS from the knowledge base above.`,
+  ].filter(Boolean).join("\n");
+
 
   const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
