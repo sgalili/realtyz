@@ -558,6 +558,7 @@ Deno.serve(async (req) => {
       firstName ? `Sender first name: ${firstName}` : null,
       campaignContext ? `Campaign context:\n"""${campaignContext}"""` : null,
       primaryBlock,
+      perksBlock,
       transactionBlock,
       featureAskBlock,
       renderCrmBlock(promptSnap),
