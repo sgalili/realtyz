@@ -97,6 +97,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
   const cached = readCache(campaign.id);
   const [rows, setRows] = useState<EngagementRow[] | null>(cached);
   const [loading, setLoading] = useState(false);
+  const [manualRefreshing, setManualRefreshing] = useState(false);
   const [replyOpen, setReplyOpen] = useState<EngagementRow | null>(null);
   const [replyDraft, setReplyDraft] = useState("");
   const [dmDraft, setDmDraft] = useState("");
