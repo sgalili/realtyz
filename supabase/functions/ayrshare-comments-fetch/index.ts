@@ -128,6 +128,18 @@ Deno.serve(async (req) => {
     };
     const pickText = (item: any): string | null =>
       pickStr(item?.comment, item?.text, item?.message, item?.commentString, item?.textContent, item?.body);
+    const resolveFacebookAvatar = async (senderId: string | null, platform: string): Promise<string | null> => {
+      if (!senderId || !FB_PAGE_TOKEN || !/facebook/i.test(platform)) return null;
+      try {
+        const tokenParam = `access_token=${encodeURIComponent(FB_PAGE_TOKEN)}`;
+        const res = await fetch(`https://graph.facebook.com/v20.0/${encodeURIComponent(senderId)}/picture?type=square&redirect=false&${tokenParam}`);
+        const json = await res.json().catch(() => ({}));
+        return res.ok && typeof json?.data?.url === "string" ? json.data.url : null;
+      } catch (avatarErr) {
+        console.warn("[ayrshare-comments-fetch] facebook avatar resolve failed", senderId, avatarErr instanceof Error ? avatarErr.message : String(avatarErr));
+        return null;
+      }
+    };
 
     const results: Record<string, any[]> = {};
     const errors: Record<string, string> = {};
