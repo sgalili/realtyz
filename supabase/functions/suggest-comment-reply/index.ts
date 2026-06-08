@@ -508,8 +508,8 @@ Deno.serve(async (req) => {
       : null;
 
     const primaryBlock = primaryListing
-      ? `[PRIMARY PROPERTY DISCUSSED]: ${primaryListing.title}${primaryListing.city ? " · " + primaryListing.city : ""}${primaryListing.rooms ? " · " + primaryListing.rooms + " חד'" : ""}${primaryListing.sqm ? " · " + primaryListing.sqm + " מ\"ר" : ""}${primaryListing.asking_price ? " · " + Number(primaryListing.asking_price).toLocaleString("he-IL") + " ש\"ח" : ""}${primaryListing.listing_type ? " · " + (primaryListing.listing_type === "rent" ? "להשכרה" : "למכירה") : ""}.`
-      : null;
+      ? `[PRIMARY PROPERTY DISCUSSED — LOCKED]: ${primaryListing.title}${primaryListing.address ? " · " + primaryListing.address : ""}${primaryListing.city ? " · " + primaryListing.city : ""}${primaryListing.rooms ? " · " + primaryListing.rooms + " חד'" : ""}${primaryListing.sqm ? " · " + primaryListing.sqm + " מ\"ר" : ""}${primaryListing.asking_price ? " · " + Number(primaryListing.asking_price).toLocaleString("he-IL") + " ש\"ח" : ""}${primaryListing.listing_type ? " · " + (primaryListing.listing_type === "rent" ? "להשכרה" : "למכירה") : ""}.\nHARD RULE: this is the ONE property this comment is about. NEVER name, hint at, or compare to any other property, street, or address in either public_comment or private_messenger_dm. Do not reference פורצי הדרך, הבשן, or any address other than the one above. If [STRICT LISTING PAYLOAD JSON] contains other listings, IGNORE them for this reply — they are NOT the subject of this post.`
+      : `[PRIMARY PROPERTY DISCUSSED — UNRESOLVED]: no listing was matched from the published post body. Reply generically about the post WITHOUT naming any specific street, address, or listing. NEVER invent a property name.`;
 
     const featureAsk = detectFeatureAsk(inbound);
     const featureFact: FeatureFact = featureAsk ? extractFeatureFact(featureAsk, primaryListing) : "unknown";
