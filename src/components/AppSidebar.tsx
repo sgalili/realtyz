@@ -159,13 +159,13 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                         to={item.url}
                         end={item.url === '/'}
                         onClick={handleNavClick}
-                        className={`group flex items-center gap-3 px-3 py-2.5 rounded-full text-primary hover:bg-slate-100 hover:text-primary hover:ring-1 hover:ring-primary/15 hover:shadow-sm transition-all ${tutorialActive ? 'realtyz-tutorial-nav-glow' : ''}`}
-                        activeClassName="!bg-white !text-primary font-semibold ring-1 ring-primary/40 shadow-sm"
+                        className={`group flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-900 hover:bg-slate-50 transition-all ${tutorialActive ? 'realtyz-tutorial-nav-glow' : ''}`}
+                        activeClassName="!bg-slate-100 !text-slate-900 font-semibold ring-1 ring-slate-200"
                       >
                         <item.icon className={`h-4 w-4 shrink-0 ${item.iconColor}`} />
-                        {!collapsed && <span className="text-sm">{item.title}</span>}
+                        {!collapsed && <span className="text-sm font-medium">{item.title}</span>}
                         {!collapsed && item.badge && (
-                          <span className="ms-auto rounded-full bg-[hsl(var(--brand-gold))] px-2.5 py-0.5 text-xs font-bold leading-none text-[#0b3982] shadow ring-1 ring-black/10">
+                          <span className={`ms-auto rounded-full px-2.5 py-0.5 text-xs font-bold leading-none ring-1 ${item.badgeClass}`}>
                             {item.badge}
                           </span>
                         )}
@@ -173,7 +173,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                           const c = countFor(item.url);
                           if (c === undefined || c === 0) return null;
                           return (
-                            <span className="ms-auto rounded-full bg-white px-2 py-0.5 text-[11px] font-bold leading-none text-[#0b3982] shadow-sm ring-1 ring-black/10">
+                            <span className={`ms-auto rounded-full px-2 py-0.5 text-[11px] font-bold leading-none ring-1 ${item.badgeClass}`}>
                               {formatCount(c)}
                             </span>
                           );
