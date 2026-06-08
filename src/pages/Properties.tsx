@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Send, BedDouble, Ruler, MapPin, Building2, FileSpreadsheet, LayoutGrid, SlidersHorizontal, Trash2, Pencil } from 'lucide-react';
+import { Send, BedDouble, Ruler, MapPin, Building2, FileSpreadsheet, LayoutGrid, SlidersHorizontal, Trash2, Pencil, RefreshCw } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -300,7 +300,7 @@ export default function Properties() {
 
       {/* Source tabs: Mine / Homely / Yad2 / Madlan */}
       <div className="flex justify-center">
-        <div className="inline-flex items-center rounded-xl border border-primary/20 bg-card/40 p-1 backdrop-blur-md flex-wrap" dir="rtl">
+        <div className="inline-flex items-center rounded-xl border border-primary/20 bg-card/40 p-1 backdrop-blur-md flex-wrap gap-1" dir="rtl">
           {(Object.keys(SOURCE_LABELS) as SourceTab[]).map((t) => (
             <button
               key={t}
@@ -315,6 +315,28 @@ export default function Properties() {
               {SOURCE_LABELS[t]}
             </button>
           ))}
+          {sourceTab === 'homely' && (
+            <button
+              type="button"
+              onClick={async () => {
+                await queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+                try {
+                  await supabase.functions.invoke('homely-search', { body: { hydrate: true } });
+                } catch (e) {
+                  console.warn('[properties] homely hydrate failed', e);
+                }
+                await queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+                toast.success('הנכסים מ-Homely רוענו');
+              }}
+              disabled={isLoading}
+              className="ml-1 inline-flex items-center gap-1 px-2.5 py-2 text-xs font-semibold rounded-lg text-muted-foreground hover:text-foreground hover:bg-primary/5 transition-colors disabled:opacity-50"
+              title="רענון נכסים מ-Homely"
+              aria-label="רענון נכסים מ-Homely"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+              רענן
+            </button>
+          )}
         </div>
       </div>
 
