@@ -238,11 +238,14 @@ Deno.serve(async (req) => {
                 : payload?.results || payload?.data || payload?.properties || payload?.Items || payload?.nechasim || [];
               console.log(`[homely-search] ${path} -> ${items.length} items`);
               if (items.length > 0) {
+                const results = items.slice(0, limit).map((it, i) => normalize(it, i));
+                const importStats = body?.hydrate ? await importHomelyListings(admin, user.id, results) : null;
                 return json({
                   source: "homely",
                   connected: true,
                   endpoint: path,
-                  results: items.slice(0, limit).map((it, i) => normalize(it, i)),
+                  results,
+                  import_stats: importStats,
                 });
               }
             } catch (e) {
