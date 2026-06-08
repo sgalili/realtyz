@@ -59,6 +59,8 @@ export function ListingPortalsCard() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState<string | null>(null);
   const [verifying, setVerifying] = useState(false);
+  const [yad2Verifying, setYad2Verifying] = useState(false);
+  const [yad2Status, setYad2Status] = useState<'idle' | 'pending' | 'verified' | 'failed'>('idle');
   const [homelyHasPassword, setHomelyHasPassword] = useState(false);
   const [homelyStatus, setHomelyStatus] = useState<string>('not_configured');
   const [shown, setShown] = useState<Record<string, boolean>>({});
