@@ -652,15 +652,17 @@ const InlineComposer = ({
         </div>
       </div>
 
-      {/* Textarea */}
+      {/* Textarea — header text moved into the placeholder */}
       <Textarea
         ref={textareaRef}
         rows={6}
         value={body}
         maxLength={MAX_CHARS}
         onChange={(e) => setBody(e.target.value)}
-        className="resize-y text-right"
+        placeholder="תוכן ההודעה — כתוב כאן או חולל באמצעות AI"
+        className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium"
       />
+
 
       {/* Hidden inputs */}
       <input ref={galleryInputRef} type="file" accept="image/*" multiple className="hidden"
