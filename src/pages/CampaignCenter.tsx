@@ -628,12 +628,12 @@ const InlineComposer = ({
             <PopoverTrigger asChild>
               <button type="button"
                 className="mt-1 flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm text-right hover:border-primary/40">
-                <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
                 <span className={cn('truncate', selectedListing ? 'text-foreground font-medium' : 'text-muted-foreground')}>
                   {selectedListing
                     ? listingOptionLabel(selectedListing as CampaignListing)
                     : 'ללא קידום נכס ספציפי (פוסט כללי של אודי)'}
                 </span>
+                <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
               </button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-[--radix-popover-trigger-width] p-2 max-h-80 overflow-auto" dir="rtl">
