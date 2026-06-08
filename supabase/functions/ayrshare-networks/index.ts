@@ -228,10 +228,32 @@ Deno.serve(async (req) => {
       setupNote: n.setupNote ?? null,
     }));
 
+    // Per-Page rows for the FB card multi-page selector. Fetched from the
+    // local cache so the UI can render each connected Page as its own row
+    // with its own avatar + display name even when several Pages live under
+    // a single Ayrshare profile.
+    let facebookPages: Array<{ id: string; pageId: string; name: string | null; avatarUrl: string | null }> = [];
+    if (!profileInvalidated) {
+      const { data: fbRows } = await supabase
+        .from("ayrshare_social_accounts")
+        .select("id, account_ref, display_name, avatar_url, is_active")
+        .eq("platform", "facebook")
+        .eq("is_active", true);
+      facebookPages = (fbRows ?? [])
+        .filter((r: any) => r?.account_ref)
+        .map((r: any) => ({
+          id: r.id,
+          pageId: String(r.account_ref),
+          name: r.display_name ?? null,
+          avatarUrl: r.avatar_url ?? null,
+        }));
+    }
+
     return json({
       networks,
       profileKey: profileKey || null,
-      provisioned: !!profileKey,
+      provisioned: !!profileKey && !profileInvalidated,
+      facebookPages,
     });
   } catch (e) {
     console.error("[ayrshare-networks] unexpected", e);
