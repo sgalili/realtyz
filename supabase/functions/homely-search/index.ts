@@ -213,29 +213,31 @@ Deno.serve(async (req) => {
       .eq("is_published", true)
       .limit(limit);
 
+    const mapped = (rows || []).map((row: any) => {
+      const features = Array.isArray(row.features) ? row.features : [];
+      const photos = features
+        .map((f: any) => (typeof f === "string" ? f : f?.photo || f?.image_url))
+        .filter((s: any) => typeof s === "string" && /^https?:\/\//.test(s));
+      return {
+        id: String(row.id),
+        source: "listings",
+        title: row.property_title || "נכס",
+        description: row.description || "",
+        price: Number(row.asking_price) || null,
+        currency: "₪",
+        city: row?.source_metadata?.city || null,
+        rooms: row?.source_metadata?.rooms || null,
+        size_sqm: row?.source_metadata?.size_sqm || null,
+        photos,
+        url: row.slug ? `/listing/${row.slug}` : null,
+        features: features.filter((f: any) => typeof f === "string"),
+      };
+    });
+
     return json({
-      source: "listings",
+      source: mapped.length > 0 ? "listings" : "homely",
       connected: !!cred?.homely_agency,
-      results: (rows || []).map((row: any) => {
-        const features = Array.isArray(row.features) ? row.features : [];
-        const photos = features
-          .map((f: any) => (typeof f === "string" ? f : f?.photo || f?.image_url))
-          .filter((s: any) => typeof s === "string" && /^https?:\/\//.test(s));
-        return {
-          id: String(row.id),
-          source: "listings",
-          title: row.property_title || "נכס",
-          description: row.description || "",
-          price: Number(row.asking_price) || null,
-          currency: "₪",
-          city: row?.source_metadata?.city || null,
-          rooms: row?.source_metadata?.rooms || null,
-          size_sqm: row?.source_metadata?.size_sqm || null,
-          photos,
-          url: row.slug ? `/listing/${row.slug}` : null,
-          features: features.filter((f: any) => typeof f === "string"),
-        };
-      }),
+      results: withFallback(mapped),
       last_error: lastError,
     });
   } catch (e) {
