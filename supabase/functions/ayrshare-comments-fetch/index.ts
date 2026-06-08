@@ -455,8 +455,16 @@ Deno.serve(async (req) => {
           c?.profile_picture_url ??
           c?.avatar ??
           null;
-        // Prefer the clean CDN URL on Facebook; otherwise use payload-provided.
-        const authorPicture = fbResolved ?? pictureFromPayload ?? null;
+        // Token-free public fallback — Facebook's /picture endpoint resolves
+        // for any public user/page without auth when called with redirect=true
+        // (default). Browsers can hit it directly. Used only when no resolved
+        // CDN URL and no payload-provided URL exists.
+        const fbPublicFallback = isFb && senderId
+          ? `https://graph.facebook.com/v20.0/${encodeURIComponent(senderId)}/picture?type=square`
+          : null;
+        // Prefer the clean CDN URL on Facebook; otherwise use payload-provided;
+        // last-resort = public unauthenticated graph picture URL.
+        const authorPicture = fbResolved ?? pictureFromPayload ?? fbPublicFallback ?? null;
 
 
         const { data: exists } = await admin
