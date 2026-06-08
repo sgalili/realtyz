@@ -121,6 +121,10 @@ const writeCache = (campaignId: string, rows: EngagementRow[]) => {
   try { sessionStorage.setItem(cacheKey(campaignId), JSON.stringify(rows)); } catch { /* quota */ }
 };
 
+// Per-campaign throttle for provider refresh — Ayrshare caps at 300 calls
+// per 5min, so silent re-mounts must not spam the API.
+const REFRESH_LOCK = new Map<string, number>();
+
 // Per-campaign draft cache (suggested + user-edited public/DM text), keyed by
 // engagement row id. Persisted to sessionStorage so collapse/expand of the
 // card and any background refresh re-hydrate the exact last text the broker
