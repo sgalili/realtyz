@@ -2646,13 +2646,7 @@ const CampaignCenter = () => {
       const hasOwnProfile = !!(wsp as any)?.ayrshare_profile_key;
       if (!hasOwnProfile) {
         if (!cancelled) {
-          setConnectedChannels(EMPTY_CONNECTED);
-          setSocialAccountProfiles([]);
-          setChannelAccountNames((prev) => {
-            const { facebook, ...rest } = prev;
-            return rest;
-          });
-          try { sessionStorage.removeItem('rz-connected-channels'); sessionStorage.removeItem('rz-connected-channel-names'); } catch { /* ignore */ }
+          clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
         }
         return;
       }
@@ -2663,21 +2657,38 @@ const CampaignCenter = () => {
 
       // Auto-sync Ayrshare → social_connections so freshly linked pages appear
       // as connected without requiring a manual "Import accounts" click.
-      try { await supabase.functions.invoke('ayrshare-sync-accounts', { body: {} }); } catch { /* non-fatal */ }
+      try {
+        const { data: syncData, error: syncError } = await supabase.functions.invoke('ayrshare-sync-accounts', { body: {} });
+        const rejected = !!syncError || ['ayrshare_rejected', 'no_workspace_profile_key'].includes(String((syncData as any)?.reason || ''));
+        const details = (syncData as any)?.details ?? {};
+        const status = Number((syncError as any)?.context?.status ?? details?.status ?? details?.code ?? 0);
+        const message = String((syncError as any)?.message ?? details?.message ?? details?.error ?? '');
+        if (rejected && (status === 401 || status === 403 || /unauthor|forbidden|suspended|profile key/i.test(message) || (syncData as any)?.reason === 'no_workspace_profile_key')) {
+          if (!cancelled) clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
+          return;
+        }
+      } catch {
+        if (!cancelled) clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
+        return;
+      }
       if (cancelled) return;
 
-      const { data: conns } = await supabase
+      const { data: conns, error: connsErr } = await supabase
         .from('social_connections')
         .select('platform, is_connected')
         .eq('created_by', user.id)
         .eq('is_connected', true);
-      const { data: accountRows } = await supabase
+      const { data: accountRows, error: accountRowsErr } = await supabase
         .from('ayrshare_social_accounts')
         .select('id, platform, account_ref, profile_key, display_name, account_username, username, avatar_url, profile_url, connected, is_active')
         .eq('user_id', user.id)
         .eq('connected', true)
         .eq('is_active', true);
       if (cancelled) return;
+      if (connsErr || accountRowsErr) {
+        clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
+        return;
+      }
       const set = new Set<string>();
       const profiles = ((accountRows as any[]) || []).map((r) => ({
         id: r.id,
