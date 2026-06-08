@@ -302,6 +302,7 @@ Deno.serve(async (req) => {
     const systemPrompt = buildSystemPrompt({
       leadName, city, preferences,
       listingsBlurb: focusListing || listingsBlurb,
+      voiceGender, userGender, brokerInstructions,
     });
     const firstMessage = leadName
       ? `שלום ${leadName}, מדבר הסוכן הדיגיטלי של המתווך. יש לי שתי שאלות קצרות לגבי החיפוש שלך, אפשר?`
@@ -311,8 +312,10 @@ Deno.serve(async (req) => {
     const assistant = buildAssistant({
       systemPrompt,
       firstMessage,
-      voiceId: ELEVENLABS_VOICE_ID,
+      // Prefer the voice the broker picked in the dialog; fall back to env default.
+      voiceId: bodyVoiceId || ELEVENLABS_VOICE_ID,
       toolsServerUrl,
+
       leadId: lead_id ?? null,
       userId: user.id,
     });
