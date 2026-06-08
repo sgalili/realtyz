@@ -220,6 +220,14 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaign.id, postIdsKey, campaign.channel]);
 
+  // When the parent's counter bumps (analytics realtime patch on
+  // campaign_logs), immediately pull the new comments into the tree.
+  useEffect(() => {
+    if (typeof commentCount !== "number") return;
+    forceRefresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [commentCount]);
+
 
   useEffect(() => {
     const channel = supabase
