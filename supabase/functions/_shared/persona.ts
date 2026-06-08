@@ -430,7 +430,15 @@ LISTING RECOMMENDATION FILTER (HARD):
 
 NO nation-wide / generic-Israel commentary. NO "across the country" framing.
 You are strictly a hyper-local expert for: ${areasList}.
+
+NEIGHBORHOOD-NAMING RULE (HARD): NEVER refer to a neighborhood by a number,
+digit, or single Hebrew letter code (forbidden: "שכונה 10", "שכונה 7",
+"שכונה ג", "אזור 4"). Use ONLY the real Hebrew neighborhood name when you
+have it (e.g. "הרצליה הירוקה", "נווה עמל", "רמת ים"). If you do not have a
+real Hebrew name for the neighborhood, OMIT the neighborhood entirely and
+refer to the city only. Never invent a neighborhood name.
 === END HYPER-LOCAL EXPERT ZONE ===
+
 `.trim()
     : `
 === HYPER-LOCAL EXPERT ZONE ===

@@ -185,6 +185,12 @@ GROUNDING POLICY (אפס סובלנות לפיברוק):
 - אם אין נכס ספציפי, דבר מעמדה של מומחיות אישית של אודי (תובנת שוק, ניסיון מהשטח) — בלי להמציא נכס פיקטיבי.
 - כל ציטוט של רחוב / עיר / מחיר חייב להופיע מילולית במאגר שלמעלה.
 
+NEIGHBORHOOD-NAMING RULE (HARD):
+- לעולם אל תזהה שכונה במספר או בספרות (אסור "שכונה 10", "שכונה ג'", "אזור 7").
+- אם יש שם שכונה בעברית בנתונים — השתמש בו בלבד (לדוגמה: "הרצליה הירוקה", "נווה עמל").
+- אם אין שם שכונה אמיתי — דלג לחלוטין על שורת השכונה. אל תכתוב "שכונת [שכונה]" ואל תמציא שם.
+
+
 ${ANTI_SPAM_RULES}
 
 ${CTA_RULE}
@@ -280,6 +286,21 @@ ${CTA_RULE}
       content = content.replace(re, replacement);
     }
     content = content.replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+
+    // Neighborhood naming hard rule: never expose numeric/coded neighborhoods.
+    // Strip "שכונת [שכונה]" placeholder leftovers and "שכונה 10" / "שכונה ג'" patterns.
+    const validNeighborhood = String(promotedListing?.neighborhood ?? "").trim();
+    const hasHebrewName = /[\u0590-\u05FF]/.test(validNeighborhood) && !/^\s*\d+\s*$/.test(validNeighborhood);
+    content = content
+      // "שכונה 10" / "שכונת 7" / "אזור 4" / "שכונת ג'"
+      .replace(/(?:שכונ[הת]|אזור)\s+(?:\d+|[א-ת]['׳]?)(?=\s|[,.!?]|$)/g, hasHebrewName ? `שכונת ${validNeighborhood}` : "")
+      // unfilled template placeholders like "שכונת [שכונה]"
+      .replace(/שכונת\s*\[[^\]]*\]/g, hasHebrewName ? `שכונת ${validNeighborhood}` : "")
+      // dangling "| שכונת  |" separators left after removal
+      .replace(/\|\s*\|/g, "|")
+      .replace(/[ \t]{2,}/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
 
 
     const p = String(platform).toLowerCase();

@@ -287,6 +287,7 @@ async function draftPersonalized(args: {
     "Open with the Lead's first name when natural. End with a soft, single CTA matching the Lead's stage.",
     channelStyle,
     "Forbidden: marketing slogans, hype emojis, dashes of any kind (em/en/double/triple), AI self-references.",
+    "Neighborhood naming HARD rule: never refer to a neighborhood by a number or code (no 'שכונה 10', 'שכונה ג', 'אזור 7'). Use the Hebrew neighborhood name from the Lead context if present; otherwise omit the neighborhood entirely. Do NOT invent a name.",
     "Output ONLY the final message text, no labels, no quotes, no preamble.",
     "=== END COMMUNITY BROADCAST MODE ===",
   ].join("\n");
