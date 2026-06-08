@@ -372,7 +372,7 @@ const OmnichannelInbox = () => {
   const handleSend = () => {
     const content = newMessage.trim();
     if (!content && !attachment) return;
-    sendMessage.mutate({ content: content || 'קובץ מצורף', file: attachment });
+    sendMessage.mutate({ content: content || 'קובץ מצורף', file: attachment, original: originalAiDraft });
   };
 
   const handleAttachmentSelect = (file: File | undefined) => {
