@@ -365,7 +365,7 @@ Deno.serve(async (req) => {
       try {
         const { data: row } = await admin
           .from("listings")
-          .select("property_title,city,address,neighborhood,asking_price,features,rooms,sqm,description")
+          .select("property_title,city,address,neighborhood,asking_price,features,rooms,sqm,description,area_perks")
           .eq("id", primaryListingId)
           .maybeSingle();
         if (row) {
@@ -382,7 +382,8 @@ Deno.serve(async (req) => {
               description: (row as any).description ? String((row as any).description).slice(0, 4000) : null,
               address: (row as any).address ?? null,
               neighborhood: (row as any).neighborhood ?? null,
-            };
+              area_perks: (row as any).area_perks ?? null,
+            } as any;
             if (!primaryType && lt) primaryType = lt;
             if (lt) primaryTypeLocked = true;
           }
