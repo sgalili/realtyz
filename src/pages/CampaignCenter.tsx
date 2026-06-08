@@ -187,7 +187,7 @@ const ChannelGrid = ({
               isSelected && 'border-primary ring-2 ring-primary/30 shadow-md',
             )}>
             {isConnected && isSelected && (
-              <span aria-hidden className="absolute left-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full text-primary" title="נבחר">
+              <span aria-hidden className="absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full text-primary" title="נבחר">
                 <CheckCircle2 className="h-4 w-4" />
               </span>
             )}
