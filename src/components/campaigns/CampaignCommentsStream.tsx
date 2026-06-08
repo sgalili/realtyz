@@ -816,7 +816,7 @@ function CommentBubble({
     <div
       className={cn(
         "rounded-xl border border-border bg-background p-3 text-right",
-        isReply && "bg-muted/30",
+        isReply && "bg-slate-50 border-slate-200",
       )}
     >
       <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
