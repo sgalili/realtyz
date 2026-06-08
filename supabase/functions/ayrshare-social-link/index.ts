@@ -139,6 +139,64 @@ Deno.serve(async (req) => {
       }, 403);
     }
 
+    // ---- ZERO-ORPHAN POLICY ----
+    // Before provisioning a new profile, list every realtyz- profile that
+    // exists on the Ayrshare account and DELETE any that are:
+    //   (a) suspended / dangling (no active social accounts), OR
+    //   (b) not the workspace's currently-saved profileKey.
+    // This keeps the account at exactly ONE active master profile per
+    // workspace and prevents fresh suspensions from stacking up.
+    if (!profileKey) {
+      try {
+        const listRes = await fetch(`${AYR_API}/profiles`, {
+          headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}` },
+        });
+        const listData = await listRes.json().catch(() => ({}));
+        const all: any[] = Array.isArray(listData?.profiles)
+          ? listData.profiles
+          : Array.isArray(listData) ? listData : [];
+        const realtyzProfiles = all.filter(
+          (p) => typeof p?.refId === 'string' && p.refId.startsWith(REALTYZ_PREFIX),
+        );
+        console.log('[ayrshare-social-link] orphan scan', {
+          total: all.length,
+          realtyz: realtyzProfiles.length,
+        });
+        for (const orphan of realtyzProfiles) {
+          const orphanKey: string | undefined = orphan?.profileKey;
+          const orphanRef: string | undefined = orphan?.refId;
+          if (!orphanKey) continue;
+          try {
+            const delRes = await fetch(`${AYR_API}/profiles/profile`, {
+              method: 'DELETE',
+              headers: {
+                Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+                'Content-Type': 'application/json',
+              },
+              body: JSON.stringify({ profileKey: orphanKey }),
+            });
+            const delPayload = await delRes.json().catch(() => ({}));
+            console.log('[ayrshare-social-link] purged orphan profile', {
+              refId: orphanRef,
+              status: delRes.status,
+              ok: delRes.ok,
+              message: delPayload?.message ?? null,
+            });
+          } catch (delErr) {
+            console.warn('[ayrshare-social-link] purge failed', orphanRef, delErr instanceof Error ? delErr.message : String(delErr));
+          }
+        }
+        // Wipe stale local rows so we never read a deleted profileKey again.
+        await admin
+          .from('workspace_social_profile')
+          .update({ ayrshare_profile_key: null, ayrshare_ref_id: null })
+          .eq('id', WORKSPACE_ID);
+      } catch (scanErr) {
+        console.warn('[ayrshare-social-link] orphan scan failed', scanErr instanceof Error ? scanErr.message : String(scanErr));
+      }
+    }
+
+
     // ---- Create the shared workspace Ayrshare profile if missing ----
     if (!profileKey) {
       refId = `${REALTYZ_PREFIX}workspace-${Date.now()}`;
