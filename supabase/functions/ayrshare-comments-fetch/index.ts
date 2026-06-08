@@ -574,10 +574,15 @@ Deno.serve(async (req) => {
         };
 
         try {
-          const { error: insErr } = await admin.from("engagement_events").insert(payload);
+          // Upsert on (user_id, external_id) — partial unique index guards
+          // against the duplicate-insert loop that previously created hundreds
+          // of copies of the same FB reply when maybeSingle() silently failed.
+          const { error: insErr } = await admin
+            .from("engagement_events")
+            .upsert(payload, { onConflict: "user_id,external_id", ignoreDuplicates: true });
           if (insErr) {
             console.error(
-              "[ayrshare-comments-fetch] insert failed",
+              "[ayrshare-comments-fetch] upsert failed",
               JSON.stringify({
                 message: insErr.message,
                 code: (insErr as any).code,
@@ -591,7 +596,7 @@ Deno.serve(async (req) => {
           persisted += 1;
         } catch (writeErr) {
           console.error(
-            "[ayrshare-comments-fetch] insert threw",
+            "[ayrshare-comments-fetch] upsert threw",
             JSON.stringify({
               error: writeErr instanceof Error ? writeErr.message : String(writeErr),
               payload,
