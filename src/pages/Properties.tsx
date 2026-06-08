@@ -730,6 +730,12 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
         open={!!shareTarget}
         onOpenChange={(open) => { if (!open) setShareTarget(null); }}
       />
+      <EditPropertyDialog
+        property={editTarget}
+        open={!!editTarget}
+        onOpenChange={(open) => { if (!open) setEditTarget(null); }}
+        onSaved={() => queryClient.invalidateQueries({ queryKey: ['properties-search'] })}
+      />
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
         <AlertDialogContent dir="rtl">
           <AlertDialogHeader>
