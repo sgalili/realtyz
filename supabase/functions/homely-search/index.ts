@@ -249,6 +249,6 @@ Deno.serve(async (req) => {
         errorMessage: (e as Error).message,
       });
     } catch { /* */ }
-    return json({ source: "listings", connected: false, results: [], error: (e as Error).message });
+    return json({ source: "homely", connected: false, results: withFallback([]), error: (e as Error).message });
   }
 });
