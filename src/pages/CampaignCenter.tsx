@@ -929,6 +929,35 @@ const InlineComposer = ({
         <CampaignGroupSelector selectedIds={groupIds} onChange={setGroupIds} />
       )}
 
+      {hasBody && channel.id === 'facebook' && platformProfiles.length > 1 && (
+        <div className="rounded-xl border-2 border-primary bg-primary/5 p-3 space-y-2" dir="rtl">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-bold text-foreground">בחירת עמודי Facebook לפרסום</span>
+            <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-primary-foreground" dir="ltr">
+              {selectedProfileIds.length}/{platformProfiles.length}
+            </span>
+          </div>
+          <div className="divide-y divide-primary/15 overflow-hidden rounded-lg border border-primary/25 bg-background">
+            {platformProfiles.map((profile) => {
+              const checked = selectedProfileIds.includes(profile.id);
+              return (
+                <label key={profile.id} className={cn('flex cursor-pointer items-center justify-between gap-3 px-3 py-2 transition', checked ? 'bg-primary/10' : 'hover:bg-muted/40')}>
+                  <div className="min-w-0 flex-1 text-right">
+                    <div className="truncate text-sm font-bold text-foreground">{profile.name}</div>
+                    <div className="truncate font-mono text-[10px] text-muted-foreground" dir="ltr">{profile.profileKey || profile.accountRef}</div>
+                  </div>
+                  <Checkbox
+                    checked={checked}
+                    onCheckedChange={() => setSelectedProfileIds((prev) => checked ? prev.filter((id) => id !== profile.id) : [...prev, profile.id])}
+                    className="h-5 w-5 border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                  />
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
 
       {/* Scheduled date+time picker */}
       {hasBody && mode === 'scheduled' && (() => {
@@ -959,7 +988,8 @@ const InlineComposer = ({
       {(() => {
         const scheduledDate = scheduledLocal ? new Date(scheduledLocal) : null;
         const scheduledValid = mode === 'now' || (!!scheduledDate && scheduledDate.getTime() > Date.now());
-        const canSend = hasBody && scheduledValid;
+        const hasSelectedPages = channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
+        const canSend = hasBody && scheduledValid && hasSelectedPages;
         return (
           /* Dispatch CTA + inline schedule toggle */
           <div className="flex items-stretch gap-2">
@@ -974,6 +1004,7 @@ const InlineComposer = ({
                   .map((a) => a.url as string),
                 scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
                 group_ids: channel.id === 'facebook' ? groupIds : [],
+                selected_profile_ids: channel.id === 'facebook' ? selectedProfileIds : [],
               })}
               disabled={!canSend}
               className={cn(
