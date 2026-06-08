@@ -4,12 +4,23 @@
 //
 // Spec: https://webtiv.co.il/welcome/OpenCardApi.html
 // Endpoint: POST https://webtivapi.webtiv.co.il/api/WebtivLid/WebtivLidPost
+// Headers:  Content-Type: application/json
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/cors.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 
 const HOMELY_URL = "https://webtivapi.webtiv.co.il/api/WebtivLid/WebtivLidPost";
+const PROVIDER = "RealtyZ";
+
+// Allowed Webtiv category values (exact, case-sensitive Hebrew strings).
+const ALLOWED_CATEGORIES = new Set([
+  "מוכר",
+  "קונה",
+  "שוכר",
+  "מסחרי היצע",
+  "מסחרי ביקוש",
+]);
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -23,37 +34,46 @@ function json(body: unknown, status = 200) {
 }
 
 // Map deal_type + interest_tag to one of Homely's required category values.
-function inferCategory(lead: Record<string, any>, override?: string | null): {
-  category: string;
-  ambiguous: boolean;
-} {
-  if (override && override.trim()) return { category: override.trim(), ambiguous: false };
+function inferCategory(lead: Record<string, any>, override?: string | null): string {
+  if (override && ALLOWED_CATEGORIES.has(override.trim())) return override.trim();
   const tag = String(lead.interest_tag || "").toLowerCase();
-  const stage = String(lead.lead_stage || "").toLowerCase();
   const deal = String(lead.deal_type || "sale").toLowerCase();
 
-  // Explicit signals from interest_tag (Hebrew or English)
-  if (/(seller|מוכר|למכירה.*בעלים)/.test(tag)) return { category: "מוכר", ambiguous: false };
-  if (/(invest|השקע)/.test(tag)) return { category: "קונה", ambiguous: true }; // investors usually buy
+  if (/(seller|מוכר|למכירה.*בעלים)/.test(tag)) return "מוכר";
   if (/(commercial|מסחר)/.test(tag)) {
-    return { category: deal === "rent" ? "מסחרי ביקוש" : "מסחרי היצע", ambiguous: true };
+    return deal === "rent" ? "מסחרי ביקוש" : "מסחרי היצע";
   }
-  if (/(plot|מגרש|קרקע)/.test(tag)) {
-    return { category: deal === "rent" ? "מגרשים ביקוש" : "מגרשים היצע", ambiguous: true };
-  }
-  if (/(rent|שוכר|להשכרה|שכירות)/.test(tag)) return { category: "שוכר", ambiguous: false };
-  if (/(buyer|קונה|לקנות)/.test(tag)) return { category: "קונה", ambiguous: false };
+  if (/(rent|שוכר|להשכרה|שכירות)/.test(tag)) return "שוכר";
+  if (/(buyer|קונה|לקנות|invest|השקע)/.test(tag)) return "קונה";
 
-  // Fallback: deal_type
-  return { category: deal === "rent" ? "שוכר" : "קונה", ambiguous: false };
+  return deal === "rent" ? "שוכר" : "קונה";
 }
 
-// Convert Realtyz internal phone (9725XXXXXXXX) back to a friendly local format
-// Homely's docs show "03-1234567" — they accept various formats. We'll send 0XX-XXXXXXX.
+// Split "First Last" into { name, family }. Webtiv expects them separately.
+function splitName(full: string): { name: string; family: string } {
+  const parts = String(full || "").trim().split(/\s+/);
+  if (parts.length === 0 || !parts[0]) return { name: "—", family: "" };
+  if (parts.length === 1) return { name: parts[0], family: "" };
+  return { name: parts[0], family: parts.slice(1).join(" ") };
+}
+
+// Convert Realtyz internal phone (9725XXXXXXXX) to local 0XXXXXXXXX format.
 function denormalizePhone(p: string): string {
   const d = String(p || "").replace(/\D/g, "");
   if (d.startsWith("972")) return "0" + d.slice(3);
   return d;
+}
+
+function strOrUndef(v: unknown): string | undefined {
+  if (v === null || v === undefined || v === "") return undefined;
+  return String(v);
+}
+
+function boolOrUndef(v: unknown): boolean | undefined {
+  if (v === true || v === false) return v;
+  if (v === "true" || v === 1 || v === "1") return true;
+  if (v === "false" || v === 0 || v === "0") return false;
+  return undefined;
 }
 
 async function pushLead(params: {
@@ -61,17 +81,18 @@ async function pushLead(params: {
   leadId: string;
   ownerId: string;
   categoryOverride?: string | null;
-}): Promise<{ ok: boolean; status: number; body: unknown; error?: string; category?: string }> {
+}): Promise<{ ok: boolean; status: number; body: unknown; error?: string; category?: string; payload?: unknown }> {
   const { admin, leadId, ownerId, categoryOverride } = params;
 
   // Load credentials
   const { data: cred } = await admin
     .from("user_api_keys")
-    .select("homely_client_code, homely_provider, homely_default_agent")
+    .select("homely_client_code, homely_default_agent")
     .eq("user_id", ownerId)
     .maybeSingle();
 
-  if (!cred?.homely_client_code) {
+  const client = (cred as any)?.homely_client_code;
+  if (!client) {
     return { ok: false, status: 0, body: null, error: "missing_homely_client_code" };
   }
 
@@ -83,34 +104,58 @@ async function pushLead(params: {
     .maybeSingle();
   if (leadErr || !lead) return { ok: false, status: 0, body: null, error: "lead_not_found" };
 
-  const { category } = inferCategory(lead as any, categoryOverride);
-  const prefs = (lead as any).preferences || {};
+  const category = inferCategory(lead as any, categoryOverride);
+  if (!ALLOWED_CATEGORIES.has(category)) {
+    return { ok: false, status: 0, body: null, error: `invalid_category:${category}` };
+  }
 
+  const prefs = ((lead as any).preferences || {}) as Record<string, any>;
+  const { name, family } = splitName((lead as any).full_name || "");
+  const phone = denormalizePhone((lead as any).phone_number);
+  const email = strOrUndef((lead as any).email);
+
+  // Required: phone OR email
+  if (!phone && !email) {
+    return { ok: false, status: 0, body: null, error: "missing_phone_and_email" };
+  }
+
+  const price =
+    prefs.max_price ?? prefs.budget_max ?? prefs.budget ?? prefs.price ?? prefs.asking_price;
+
+  // Street/number only relevant for sellers (category "מוכר")
+  const isSeller = category === "מוכר";
+
+  // Exact Webtiv key mapping (case-sensitive, no spaces).
   const payload: Record<string, unknown> = {
-    client: cred.homely_client_code,
-    provider: cred.homely_provider || "Realtyz",
+    client,
+    provider: PROVIDER,
     category,
-    name: lead.full_name || "—",
-    phone: denormalizePhone(lead.phone_number),
-    email: lead.email || undefined,
-    city: lead.city || prefs.city || undefined,
-    neighborhood: lead.neighborhood || prefs.neighborhood || undefined,
-    rooms: prefs.rooms ? String(prefs.rooms) : undefined,
-    price: prefs.max_price || prefs.budget_max || prefs.budget
-      ? String(prefs.max_price || prefs.budget_max || prefs.budget)
-      : undefined,
-    propertyType: prefs.property_type || undefined,
-    floor: prefs.floor ? String(prefs.floor) : undefined,
-    builtsqmr: prefs.sqm || prefs.built_sqm ? String(prefs.sqm || prefs.built_sqm) : undefined,
-    remark: lead.interest_tag || undefined,
-    agent: cred.homely_default_agent || undefined,
+    name,
+    family,
+    phone: phone || undefined,
+    email,
+    price: strOrUndef(price),
+    city: strOrUndef((lead as any).city ?? prefs.city),
+    neighborhood: strOrUndef((lead as any).neighborhood ?? prefs.neighborhood),
+    street: isSeller ? strOrUndef(prefs.street) : undefined,
+    number: isSeller ? strOrUndef(prefs.street_number ?? prefs.number) : undefined,
+    propertyType: strOrUndef(prefs.property_type ?? prefs.propertyType),
+    rooms: strOrUndef(prefs.rooms),
+    floor: strOrUndef(prefs.floor),
+    builtsqmr: strOrUndef(prefs.sqm ?? prefs.built_sqm ?? prefs.builtsqmr),
+    remark: strOrUndef((lead as any).interest_tag),
+    agent: strOrUndef((cred as any)?.homely_default_agent),
+    publishID: strOrUndef(prefs.publishID ?? prefs.publish_id),
+    cardID: strOrUndef(prefs.cardID ?? prefs.card_id ?? (lead as any).id),
+    mirpesetShemeshYN: boolOrUndef(prefs.mirpesetShemeshYN ?? prefs.sun_balcony),
+    mamadYN: boolOrUndef(prefs.mamadYN ?? prefs.secure_room ?? prefs.mamad),
   };
   // Strip undefined
   for (const k of Object.keys(payload)) if (payload[k] === undefined) delete payload[k];
 
   const upstream = await fetch(HOMELY_URL, {
     method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(payload),
   });
 
@@ -118,7 +163,6 @@ async function pushLead(params: {
   const text = await upstream.text();
   try { parsed = JSON.parse(text); } catch { parsed = text; }
 
-  // Log result
   await admin.from("homely_push_log").insert({
     lead_id: leadId,
     user_id: ownerId,
@@ -140,7 +184,7 @@ async function pushLead(params: {
     });
   }
 
-  return { ok: upstream.ok, status: upstream.status, body: parsed, category };
+  return { ok: upstream.ok, status: upstream.status, body: parsed, category, payload };
 }
 
 Deno.serve(async (req) => {
@@ -155,7 +199,6 @@ Deno.serve(async (req) => {
 
     if (!leadId) return json({ error: "lead_id required" }, 400);
 
-    // If no owner_id in body (manual invoke from frontend), derive from JWT.
     if (!ownerId) {
       const auth = req.headers.get("Authorization") || "";
       if (auth.startsWith("Bearer ")) {
@@ -167,7 +210,6 @@ Deno.serve(async (req) => {
       }
     }
     if (!ownerId) {
-      // Last resort: pull lead.assigned_to
       const { data: l } = await admin.from("leads").select("assigned_to").eq("id", leadId).maybeSingle();
       ownerId = (l as any)?.assigned_to;
     }
