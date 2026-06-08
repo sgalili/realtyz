@@ -186,13 +186,24 @@ REFERENCE TEMPLATE (match this rhythm and tone exactly — adapt wording per lis
 """`) : "";
 
 
+    const EMOJI_RULES = `EMOJI PALETTE (MINIMAL BUT REQUIRED — restore Udi's signature emoji rhythm):
+- Use a SMALL, tasteful set of emojis. Never stack, never spam, never decorate every line.
+- ALLOWED ONLY: ✅ (start of each feature/bullet line), 📍 (once before the address/location line), 💰 (once before the price line), 📞 (once before the contact CTA), 🏡 or 🔑 (at most ONCE total, only if it naturally fits an opener about a property).
+- For ANY post that lists property features or bullet points: EACH bullet line MUST start with "✅ " (green check + space). Do not use "-", "•", "*", or numbers as bullets.
+- For ANY post mentioning a specific address: prefix that one line with "📍 ".
+- For ANY post mentioning a price/rent: prefix that one line with "💰 ".
+- For the closing CTA line that invites WhatsApp / phone / message: prefix with "📞 ".
+- FORBIDDEN emojis everywhere: 💎 🔥 🎉 💯 ✨ 🌟 ❤️ 💪 👇 🙌 🤩 ⭐ and any hype/decorative emoji. Never use more than one emoji per line. Never end the post with an emoji string.`;
+
     const systemPrompt = `${BROKER_PERSONA}
 
 פלטפורמה: ${platform}
 כללי פלטפורמה: ${rule}
 
 ${FORBIDDEN_WORDS}
+${EMOJI_RULES}
 ${FOCUS_ONLY_RULE}
+
 
 GROUNDING POLICY (אפס סובלנות לפיברוק):
 - אסור להמציא נכסים, ערים, מחירים, פיצ'רים או נתונים שלא מופיעים במפורש ב-[PROMOTED LISTING] / [LIVE PROPERTIES & CRM CONTEXT] / [WORKSPACE KNOWLEDGE BASE].
