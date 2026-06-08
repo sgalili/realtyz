@@ -1040,7 +1040,7 @@ const InlineComposer = ({
 /* ───────────── Dispatch confirmation modal ───────────── */
 
 const ConfirmDispatchDialog = ({
-  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds, onConfirmed,
+  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds, selectedProfileIds, onConfirmed,
 }: {
   open: boolean;
   onClose: () => void;
@@ -1052,12 +1052,12 @@ const ConfirmDispatchDialog = ({
   mediaUrls: string[];
   scheduledAt: string | null;
   groupIds: string[];
+  selectedProfileIds: string[];
   onConfirmed: () => void;
 }) => {
   const { user } = useAuth();
   const [sending, setSending] = useState(false);
-  const [pages, setPages] = useState<Array<{ id: string; name: string; username: string | null; avatar: string | null }>>([]);
-  const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
+  const [pages, setPages] = useState<SocialAccountProfile[]>([]);
   const [pagesLoading, setPagesLoading] = useState(false);
 
   useEffect(() => {
@@ -1067,7 +1067,7 @@ const ConfirmDispatchDialog = ({
       try {
         const { data } = await supabase
           .from('ayrshare_social_accounts')
-          .select('id, platform, display_name, account_username, username, avatar_url, is_active, connected')
+          .select('id, platform, account_ref, profile_key, display_name, account_username, username, avatar_url, profile_url, is_active, connected')
           .eq('user_id', user.id)
           .eq('platform', channel.id)
           .order('updated_at', { ascending: false });
@@ -1075,12 +1075,15 @@ const ConfirmDispatchDialog = ({
           .filter((r: any) => r.is_active !== false && r.connected !== false)
           .map((r: any) => ({
             id: r.id,
+            platform: r.platform,
+            accountRef: r.account_ref || '',
+            profileKey: r.profile_key || null,
             name: r.display_name || r.account_username || r.username || channel.label,
             username: r.account_username || r.username || null,
             avatar: r.avatar_url || null,
+            profileUrl: r.profile_url || (r.account_ref ? buildAccountUrl(channel.id, r.account_ref) : null),
           }));
         setPages(rows);
-        setSelectedPageId(rows[0]?.id ?? null);
       } finally {
         setPagesLoading(false);
       }
@@ -1089,7 +1092,9 @@ const ConfirmDispatchDialog = ({
 
   if (!channel) return null;
 
-  const selectedPage = pages.find((p) => p.id === selectedPageId) || null;
+  const selectedPages = pages.filter((p) => selectedProfileIds.includes(p.id));
+  const publishTargets = selectedPages.length > 0 ? selectedPages : pages.slice(0, 1);
+  const selectedPage = publishTargets[0] || null;
   const profileLabel = selectedPage
     ? `${selectedPage.name}${selectedPage.username ? ` · @${selectedPage.username}` : ''}`
     : `${brandName} · @${brandName.replace(/\s+/g, '')}`;
