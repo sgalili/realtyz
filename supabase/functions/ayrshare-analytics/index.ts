@@ -11,6 +11,7 @@ import {
   AYR_BASE,
   MISSING_TENANT_KEY,
   MISSING_TENANT_KEY_MESSAGE,
+  clearStaleAyrshareConnection,
   isAyrshareInvalidProfileKey,
   resolveWorkspaceProfileKey,
   verifyWorkspaceProfileKey,
@@ -292,6 +293,7 @@ Deno.serve(async (req) => {
               payload: attempt.payload,
             });
             if (isAyrshareInvalidProfileKey(res.status, attempt.payload)) {
+              await clearStaleAyrshareConnection(admin, `analytics ${attempt.endpoint} ${res.status}`).catch(() => {});
               attempt.status = 200;
               attempt.payload = { message: MISSING_TENANT_KEY, code: 144 };
               return { res: new Response(JSON.stringify({ error: MISSING_TENANT_KEY }), { status: 400 }), payload: { error: MISSING_TENANT_KEY } };

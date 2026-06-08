@@ -9,6 +9,7 @@ import {
   AYR_BASE,
   MISSING_TENANT_KEY,
   MISSING_TENANT_KEY_MESSAGE,
+  clearStaleAyrshareConnection,
   isAyrshareInvalidProfileKey,
   resolveWorkspaceProfileKey,
   verifyWorkspaceProfileKey,
@@ -105,6 +106,7 @@ Deno.serve(async (req) => {
       if (!fRes.ok) {
         const err = { endpoint: "/feed", platform, ...(await parseAyrError(fRes)) };
         if (isAyrshareInvalidProfileKey(err.status, err.payload)) {
+          await clearStaleAyrshareConnection(admin, `sync-comments feed ${err.status}`);
           return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE, targets: 0, api_errors: [err], fanouts: [] }, 200);
         }
         apiErrors.push(err);
@@ -132,6 +134,7 @@ Deno.serve(async (req) => {
       if (!hRes.ok) {
         const err = { endpoint: "/history", platform, ...(await parseAyrError(hRes)) };
         if (isAyrshareInvalidProfileKey(err.status, err.payload)) {
+          await clearStaleAyrshareConnection(admin, `sync-comments history ${err.status}`);
           return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE, targets: 0, api_errors: [err], fanouts: [] }, 200);
         }
         apiErrors.push(err);

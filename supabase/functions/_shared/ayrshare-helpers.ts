@@ -12,7 +12,16 @@ export function cleanProfileKey(value: unknown): string {
 export function isAyrshareInvalidProfileKey(status: number, payload: any): boolean {
   const code = payload?.code ?? payload?.raw?.code ?? payload?.errors?.[0]?.code;
   const message = String(payload?.message ?? payload?.error ?? payload?.raw?.message ?? payload?.errors?.[0]?.message ?? "");
-  return status === 403 && (Number(code) === 144 || Number(code) === 276 || /profile key is invalid|account has been suspended/i.test(message));
+  // Self-heal on ANY 401 (unauthorized) or 403 (suspended/forbidden) — auto-clear
+  // the stale workspace profile so the UI immediately flips to a disconnected
+  // state instead of looping on a zombie connection.
+  if (status === 401) return true;
+  if (status === 403) {
+    if (Number(code) === 144 || Number(code) === 276) return true;
+    if (/profile key is invalid|account has been suspended|unauthor|forbidden|suspended/i.test(message)) return true;
+    return true; // any 403 from Ayrshare → treat as invalid profile and self-heal
+  }
+  return false;
 }
 
 export async function clearStaleAyrshareConnection(admin: any, reason = "stale_ayrshare_profile") {
