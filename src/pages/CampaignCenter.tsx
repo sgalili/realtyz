@@ -2979,7 +2979,35 @@ const CampaignCenter = () => {
         scheduledAt={confirmPayload?.scheduled_at ?? null}
         groupIds={confirmPayload?.group_ids ?? []}
         selectedProfileIds={confirmPayload?.selected_profile_ids ?? []}
-        onConfirmed={() => { setConfirmPayload(null); setPickedChannel(null); }}
+        onConfirmed={async () => {
+          const body = confirmPayload?.body ?? '';
+          const shouldEmail = alsoEmail && pickedChannel?.id !== 'email' && connectedChannels.has('email') && body.trim().length > 0;
+          setConfirmPayload(null);
+          setPickedChannel(null);
+          setAlsoEmail(false);
+          if (shouldEmail) {
+            try {
+              const { data: leads } = await supabase.from('leads').select('id, full_name, email').limit(100);
+              let sent = 0;
+              for (const l of (leads || []) as any[]) {
+                if (!l.email) continue;
+                const { error } = await supabase.functions.invoke('resend-email-sender', {
+                  body: {
+                    recipient_email: l.email,
+                    recipient_name: l.full_name,
+                    subject: `${brandName} · עדכון אישי עבורך`,
+                    intro: body,
+                    cta_question: 'מתי נוח לך לקפוץ לראות?',
+                  },
+                });
+                if (!error) sent++;
+              }
+              if (sent > 0) toast.success(`נשלחו גם ${sent} מיילים`);
+            } catch (err: any) {
+              toast.error(`כשל בשליחת מיילים: ${err?.message || 'שגיאה'}`);
+            }
+          }
+        }}
       />
       <VoiceLeadPickerDialog
         open={!!voiceDialChannel}
