@@ -11,6 +11,7 @@ import {
   AYR_BASE,
   MISSING_TENANT_KEY,
   MISSING_TENANT_KEY_MESSAGE,
+  clearStaleAyrshareConnection,
   isAyrshareInvalidProfileKey,
   resolveWorkspaceProfileKey,
   verifyWorkspaceProfileKey,
