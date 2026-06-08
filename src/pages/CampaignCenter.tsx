@@ -187,7 +187,7 @@ const ChannelGrid = ({
               isSelected && 'border-primary ring-2 ring-primary/30 shadow-md',
             )}>
             {isConnected && isSelected && (
-              <span aria-hidden className="absolute left-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full text-primary" title="נבחר">
+              <span aria-hidden className="absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full text-primary" title="נבחר">
                 <CheckCircle2 className="h-4 w-4" />
               </span>
             )}
@@ -198,12 +198,11 @@ const ChannelGrid = ({
                 tabIndex={0}
                 onClick={(e) => { e.stopPropagation(); onAddFacebookPage?.(); }}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onAddFacebookPage?.(); } }}
-                className="absolute right-1 top-1 z-10 inline-flex max-w-[calc(100%-0.5rem)] items-center gap-0.5 rounded-full border border-primary/40 bg-primary px-1.5 py-0.5 text-[9px] font-bold leading-none text-primary-foreground shadow-sm hover:bg-primary/90"
-                title="+ הוסף עמוד נוסף"
-                aria-label="+ הוסף עמוד נוסף"
+                className="absolute left-1 top-1 z-10 inline-flex h-5 w-5 items-center justify-center rounded-full border border-primary/40 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+                title="הוסף עמוד נוסף"
+                aria-label="הוסף עמוד נוסף"
               >
-                <Plus className="h-3 w-3 shrink-0" />
-                <span className="truncate">הוסף עמוד נוסף</span>
+                <Plus className="h-3 w-3" />
               </span>
             )}
 
@@ -230,11 +229,6 @@ const ChannelGrid = ({
               </span>
             )}
 
-            {c.id === 'facebook' && isConnected && (
-              <span className="block max-w-full truncate text-[8px] font-semibold text-muted-foreground" dir="ltr" title="Ayrshare Profile: 6200">
-                Ayrshare Profile: 6200
-              </span>
-            )}
 
             {isConnected && profiles.length > 0 ? (
               <span className="mt-0.5 flex w-full flex-col gap-1 overflow-hidden">
@@ -246,9 +240,6 @@ const ChannelGrid = ({
                   };
                   return (
                     <span key={profile.id} className="block max-w-full text-center">
-                      <span className="block truncate text-[8px] font-mono text-muted-foreground" dir="ltr" title={profile.profileKey || profile.id}>
-                        {profile.profileKey || profile.id}
-                      </span>
                       <span
                         role={url ? 'link' : undefined}
                         tabIndex={url ? 0 : undefined}
@@ -2575,6 +2566,7 @@ const CampaignCenter = () => {
   const [ivrOpen, setIvrOpen] = useState(false);
   const [emailSetupOpen, setEmailSetupOpen] = useState(false);
   const [confirmPayload, setConfirmPayload] = useState<ConfirmPayload | null>(null);
+  const [alsoEmail, setAlsoEmail] = useState(false);
   // Hydrate connection state from sessionStorage so a page refresh doesn't
   // visually "disconnect" channels while the async verification re-runs.
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(() => {
@@ -2948,12 +2940,26 @@ const CampaignCenter = () => {
             onAddFacebookPage={() => handleConnectChannel(CHANNEL_CARDS.find((c) => c.id === 'facebook')!)}
           />
           {pickedChannel && (
-            <InlineComposer
-              channel={pickedChannel}
-              brandName={brandName}
-              socialProfiles={socialAccountProfiles}
-              onConfirm={(p) => setConfirmPayload(p)}
-            />
+            <>
+              <InlineComposer
+                channel={pickedChannel}
+                brandName={brandName}
+                socialProfiles={socialAccountProfiles}
+                onConfirm={(p) => setConfirmPayload(p)}
+              />
+              {pickedChannel.id !== 'email' && connectedChannels.has('email') && (
+                <label className="flex items-center gap-2 rounded-lg border border-border/60 bg-card px-3 py-2 text-sm" dir="rtl">
+                  <input
+                    type="checkbox"
+                    checked={alsoEmail}
+                    onChange={(e) => setAlsoEmail(e.target.checked)}
+                    className="h-4 w-4 accent-primary"
+                  />
+                  <Mail className="h-4 w-4 text-rose-500" />
+                  <span>שלח גם באימייל למתעניינים עם כתובת מייל</span>
+                </label>
+              )}
+            </>
           )}
         </TabsContent>
         <TabsContent value="published" className="mt-6">
@@ -2973,7 +2979,35 @@ const CampaignCenter = () => {
         scheduledAt={confirmPayload?.scheduled_at ?? null}
         groupIds={confirmPayload?.group_ids ?? []}
         selectedProfileIds={confirmPayload?.selected_profile_ids ?? []}
-        onConfirmed={() => { setConfirmPayload(null); setPickedChannel(null); }}
+        onConfirmed={async () => {
+          const body = confirmPayload?.body ?? '';
+          const shouldEmail = alsoEmail && pickedChannel?.id !== 'email' && connectedChannels.has('email') && body.trim().length > 0;
+          setConfirmPayload(null);
+          setPickedChannel(null);
+          setAlsoEmail(false);
+          if (shouldEmail) {
+            try {
+              const { data: leads } = await supabase.from('leads').select('id, full_name, email').limit(100);
+              let sent = 0;
+              for (const l of (leads || []) as any[]) {
+                if (!l.email) continue;
+                const { error } = await supabase.functions.invoke('resend-email-sender', {
+                  body: {
+                    recipient_email: l.email,
+                    recipient_name: l.full_name,
+                    subject: `${brandName} · עדכון אישי עבורך`,
+                    intro: body,
+                    cta_question: 'מתי נוח לך לקפוץ לראות?',
+                  },
+                });
+                if (!error) sent++;
+              }
+              if (sent > 0) toast.success(`נשלחו גם ${sent} מיילים`);
+            } catch (err: any) {
+              toast.error(`כשל בשליחת מיילים: ${err?.message || 'שגיאה'}`);
+            }
+          }
+        }}
       />
       <VoiceLeadPickerDialog
         open={!!voiceDialChannel}
