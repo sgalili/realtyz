@@ -76,6 +76,33 @@ function LeadsHeroAddButton() {
   );
 }
 
+function CampaignsHeroAddButton() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const active = (searchParams.get('tab') ?? 'published') === 'create';
+  const toggle = () => {
+    const next = new URLSearchParams(searchParams);
+    next.set('tab', active ? 'published' : 'create');
+    next.delete('sub');
+    setSearchParams(next, { replace: true });
+  };
+  return (
+    <Button
+      size="icon"
+      variant="ghost"
+      onClick={toggle}
+      aria-label={active ? 'סגירת יצירת קמפיין' : 'יצירת קמפיין חדש'}
+      title={active ? 'סגירת יצירת קמפיין' : 'יצירת קמפיין חדש'}
+      className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white"
+    >
+      <Plus
+        className={cn('!h-5 !w-5 transition-transform duration-200', active && 'rotate-45')}
+        strokeWidth={2.5}
+      />
+    </Button>
+  );
+}
+
+
 const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/(dashboard)?$/, title: 'לוח בקרה' },
   { match: /^\/lead-crm/, title: 'ניהול מתעניינים' },
