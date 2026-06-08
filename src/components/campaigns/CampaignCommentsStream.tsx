@@ -700,11 +700,11 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
             const replyCount = replyCountById.get(node.id) ?? 0;
             const threadExpanded = expandedThreadIds.has(node.id);
             return (
-            <li key={node.id} className={cn("relative", node.depth > 0 && "pr-5")}>
+            <li key={node.id} className="relative">
               {node.depth > 0 && (
                 <span
                   aria-hidden
-                  className="absolute right-0 top-5 h-px w-4 bg-border"
+                  className="absolute right-4 top-6 h-[2px] w-4 bg-slate-200 rounded-full"
                 />
               )}
               <CommentBubble
@@ -737,10 +737,10 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
                 }}
               />
               {node.children.length > 0 && threadExpanded && (
-                <ul className="relative mt-2 space-y-2 mr-3">
+                <ul className="relative mt-2 space-y-2 pr-8">
                   <span
                     aria-hidden
-                    className="absolute right-0 top-0 bottom-4 w-px bg-border"
+                    className="absolute right-4 top-0 bottom-4 w-[2px] bg-slate-200 rounded-full"
                   />
                   {node.children.map((child) => renderNode(child))}
                 </ul>
@@ -816,7 +816,7 @@ function CommentBubble({
     <div
       className={cn(
         "rounded-xl border border-border bg-background p-3 text-right",
-        isReply && "bg-muted/30",
+        isReply && "bg-slate-50 border-slate-200",
       )}
     >
       <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
