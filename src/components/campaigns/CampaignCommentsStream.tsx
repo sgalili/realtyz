@@ -362,16 +362,6 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
     [comments],
   );
 
-  const replyCountById = useMemo(() => {
-    const map = new Map<string, number>();
-    childReplies.forEach((reply) => {
-      if (!reply.parent_id) return;
-      map.set(reply.parent_id, (map.get(reply.parent_id) ?? 0) + 1);
-    });
-    return map;
-  }, [childReplies]);
-
-
   const openReply = (row: EngagementRow) => {
     // Hard flush: never carry over draft text from a previous open.
     setReplyDraft("");
@@ -702,10 +692,6 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
                 editor={replyOpen?.id === parent.id ? renderEditor(parent) : null}
                 onRegenerate={regenerateInline}
                 regenerating={regeneratingId === parent.id}
-                replyPreviewText={replyPreviewText}
-                replyCount={replies.length}
-                threadExpanded
-                onToggleThread={() => undefined}
                 embedded
               />
 
