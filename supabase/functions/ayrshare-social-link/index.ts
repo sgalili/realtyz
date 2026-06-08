@@ -16,7 +16,6 @@ const REALTYZ_PREFIX = 'realtyz-';
 const AYRSHARE_INTEGRATION_DOMAIN = 'id-yPFiJ';
 const ACTIVE_WORKSPACE_TITLE = 'Realtyz Workspace - אודי ויטמן - 6200';
 const ACTIVE_WORKSPACE_REF_ID = '66743d525e0cd68404f38e954f3d016ee1a509c4';
-const ACTIVE_WORKSPACE_PROFILE_KEY = '0301F291-A667462F-8E7681E3-1E3EE466';
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -114,18 +113,17 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: `Failed to load workspace social profile: ${wsErr.message}` }, 500);
     }
 
-    let profileKey = ACTIVE_WORKSPACE_PROFILE_KEY;
-    let refId = ACTIVE_WORKSPACE_REF_ID;
-    await admin
-      .from('workspace_social_profile')
-      .upsert({
-        id: WORKSPACE_ID,
-        ayrshare_profile_key: ACTIVE_WORKSPACE_PROFILE_KEY,
-        ayrshare_ref_id: ACTIVE_WORKSPACE_REF_ID,
-        facebook_page_name: ACTIVE_WORKSPACE_TITLE,
-        facebook_page_id: null,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: 'id' });
+    let profileKey = cleanProfileKey(ws?.ayrshare_profile_key) || null;
+    let refId = cleanProfileKey(ws?.ayrshare_ref_id) || null;
+    if (refId && refId !== ACTIVE_WORKSPACE_REF_ID) {
+      return jsonResponse({ error: 'Workspace is not bound to Ayrshare Profile 6200. Rebind the active workspace profile before connecting pages.' }, 409);
+    }
+    if (profileKey && refId === ACTIVE_WORKSPACE_REF_ID) {
+      await admin
+        .from('workspace_social_profile')
+        .update({ facebook_page_name: ACTIVE_WORKSPACE_TITLE, updated_at: new Date().toISOString() })
+        .eq('id', WORKSPACE_ID);
+    }
 
     if (profileKey) {
       const verifyRes = await fetch(`${AYR_API}/user`, {
