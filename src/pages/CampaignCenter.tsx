@@ -837,6 +837,8 @@ const InlineComposer = ({
             <button type="button"
               onClick={() => canSend && onConfirm({
                 body,
+                original_ai_body: originalAiBody,
+                listing_id: selectedListingId || null,
                 mode,
                 media_urls: attachments
                   .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
