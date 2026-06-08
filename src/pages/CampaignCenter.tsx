@@ -1849,7 +1849,20 @@ const PublishedFeed = () => {
         const liveCount = liveCommentCounts[r.id];
         const commentDisplay = typeof liveCount === 'number' ? liveCount : fmt(r.comment_count);
 
-        const pageLabel = (String(r.channel || '').toLowerCase() === 'facebook' && fbPageName) ? fbPageName : ownerName;
+        // Strip Ayrshare workspace decorations ("Realtyz Workspace - … - 6200",
+        // refIds, and profile keys) so the header shows only the human FB page name.
+        const cleanFbPageName = (() => {
+          if (!fbPageName) return null;
+          const cleaned = String(fbPageName)
+            .replace(/^Realtyz Workspace\s*[-–]\s*/i, '')
+            .replace(/\s*[-–]\s*\d{2,}$/, '')
+            .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '')
+            .replace(/\b[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}\b/g, '')
+            .trim();
+          return cleaned || null;
+        })();
+        const pageLabel = (String(r.channel || '').toLowerCase() === 'facebook' && cleanFbPageName) ? cleanFbPageName : ownerName;
+
         return (
           <article
             key={r.id}
