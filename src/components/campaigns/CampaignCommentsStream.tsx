@@ -716,7 +716,18 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
                 regenerating={regeneratingId === node.id}
                 isReply={node.depth > 0}
                 repliedToText={repliedTo?.inbound_text ?? null}
-                replyPreviewText={node.children[0]?.inbound_text ?? node.ai_reply_text ?? null}
+                replyPreviewText={(() => {
+                  const first = node.children[0];
+                  const raw = first?.inbound_text ?? node.ai_reply_text ?? null;
+                  if (!raw) return null;
+                  // Strip a leading page-name prefix (FB often prepends the
+                  // replying Page's display name to the reply text).
+                  const handle = (first?.sender_handle ?? "").trim();
+                  if (handle && raw.trim().startsWith(handle)) {
+                    return raw.trim().slice(handle.length).replace(/^[\s:،,،\-–—]+/, "").trim();
+                  }
+                  return raw;
+                })()}
                 replyCount={replyCount}
                 threadExpanded={threadExpanded}
                 onToggleThread={() => {
