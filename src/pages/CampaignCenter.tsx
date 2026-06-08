@@ -1954,8 +1954,9 @@ const VoiceLeadPickerDialog = ({
       if (ok > 0) toast.success(`נשלחו ${ok} שיחות מ-${formatPhoneDisplay(VOICE_DIAL_NUMBER)}${failed ? ` · ${failed} נכשלו` : ''}`);
       else toast.error('כל השיחות נכשלו');
       if (ok > 0) {
-        setListGroup(''); setAgentId(''); setInstructions('');
+        setListGroup(''); setAgentId(''); setInstructions(''); setSelectedListingId(null);
         setSearch(''); setSelectedLeadIds(new Set());
+
       }
       onClose();
     } finally {
