@@ -121,6 +121,10 @@ const writeCache = (campaignId: string, rows: EngagementRow[]) => {
   try { sessionStorage.setItem(cacheKey(campaignId), JSON.stringify(rows)); } catch { /* quota */ }
 };
 
+// Per-campaign throttle for provider refresh — Ayrshare caps at 300 calls
+// per 5min, so silent re-mounts must not spam the API.
+const REFRESH_LOCK = new Map<string, number>();
+
 // Per-campaign draft cache (suggested + user-edited public/DM text), keyed by
 // engagement row id. Persisted to sessionStorage so collapse/expand of the
 // card and any background refresh re-hydrate the exact last text the broker
@@ -240,8 +244,15 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
   // provider_message_id. The realtime subscription on campaign_logs then
   // patches the counter UI live without a browser reload.
   const forceRefresh = async ({ manual = false }: { manual?: boolean } = {}) => {
-    // Only show the spinner when the user clicked the refresh button.
-    // Background/mount refreshes stay silent.
+    // Throttle per-campaign: Ayrshare caps at 300 calls / 5min per profile.
+    // Skip background refreshes that fire within 90s of the previous one.
+    const now = Date.now();
+    const last = REFRESH_LOCK.get(campaign.id) ?? 0;
+    if (!manual && now - last < 90_000) {
+      return;
+    }
+    REFRESH_LOCK.set(campaign.id, now);
+
     if (manual) setManualRefreshing(true);
     try {
       const pid = postIds[0] ?? null;
@@ -257,22 +268,22 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
       ]);
       for (const result of settled) {
         if (result.status === "rejected") {
-          console.error("[CampaignCommentsStream] provider refresh rejected", result.reason);
+          console.warn("[CampaignCommentsStream] provider refresh rejected", result.reason);
           continue;
         }
         const { data, error } = result.value as any;
         if (error) {
-          console.error("[CampaignCommentsStream] provider refresh error", { error, data });
+          console.warn("[CampaignCommentsStream] provider refresh error", { error, data });
           continue;
         }
         const surfacedError = firstPipelineError(data);
         if (surfacedError) {
-          console.error("[CampaignCommentsStream] provider pipeline error", data);
+          console.warn("[CampaignCommentsStream] provider pipeline warning", surfacedError);
         }
       }
       await fetchRows();
     } catch (e: any) {
-      console.error("[CampaignCommentsStream] silent refresh failed", e);
+      console.warn("[CampaignCommentsStream] silent refresh failed", e);
     } finally {
       if (manual) setManualRefreshing(false);
     }

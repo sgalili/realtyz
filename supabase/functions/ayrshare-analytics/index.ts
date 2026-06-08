@@ -369,10 +369,9 @@ Deno.serve(async (req) => {
 
   const flattenedResults = results.map((r) => (r.status === "fulfilled" ? r.value : { ok: false, error: String((r as any).reason) }));
   const updated = flattenedResults.filter((r: any) => r?.ok).length;
-  const status = updated === 0 && (apiErrors.length || mappingErrors.length)
-    ? Number(apiErrors[0]?.status || 502)
-    : 200;
-
+  // Always return 200 — provider rate-limit/auth failures are surfaced in
+  // `api_errors` so the client can show a soft warning instead of triggering
+  // a blank-screen runtime error overlay.
   return json({
     success: true,
     targets: targets.length,
@@ -380,5 +379,5 @@ Deno.serve(async (req) => {
     api_errors: apiErrors,
     mapping_errors: mappingErrors,
     results: flattenedResults,
-  }, status);
+  }, 200);
 });
