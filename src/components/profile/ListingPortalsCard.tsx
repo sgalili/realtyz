@@ -247,6 +247,12 @@ export function ListingPortalsCard() {
                     {isHomely && homelyStatus === 'ok' && (
                       <Badge variant="outline" className="text-emerald-700 border-emerald-300">מאומת</Badge>
                     )}
+                    {p.id === 'yad2' && yad2Status === 'verified' && (
+                      <Badge variant="outline" className="text-emerald-700 border-emerald-300">מאומת</Badge>
+                    )}
+                    {p.id === 'yad2' && yad2Status === 'pending' && (
+                      <Badge variant="outline" className="text-amber-700 border-amber-300">ממתין לטוקן</Badge>
+                    )}
                     {configured && <Badge variant="outline" className="text-emerald-700 border-emerald-300">מחובר</Badge>}
                     <span className="font-semibold">{p.label}</span>
                   </div>
