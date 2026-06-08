@@ -427,9 +427,61 @@ export default function KnowledgeBase() {
             )}
 
             {tab === 'voice' && (
-              <div className="border rounded-lg p-8 text-center bg-muted/30">
-                <Mic className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">הקלטה קולית — בקרוב</p>
+              <div className="space-y-3">
+                <div className="border rounded-lg p-5 text-center bg-muted/30 space-y-3">
+                  <div className="flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={recording ? stopRecording : startRecording}
+                      disabled={transcribing}
+                      className={`h-16 w-16 rounded-full flex items-center justify-center transition-all ${
+                        recording
+                          ? 'bg-destructive text-destructive-foreground animate-pulse'
+                          : 'bg-primary text-primary-foreground hover:opacity-90'
+                      } disabled:opacity-50`}
+                      aria-label={recording ? 'עצור הקלטה' : 'התחל הקלטה'}
+                    >
+                      {transcribing ? <Loader2 className="h-7 w-7 animate-spin" /> : <Mic className="h-7 w-7" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {transcribing
+                      ? 'מתמלל...'
+                      : recording
+                        ? `מקליט · ${Math.floor(recElapsed / 60)}:${String(recElapsed % 60).padStart(2, '0')} — לחץ לעצירה`
+                        : 'לחץ כדי להתחיל הקלטה קולית'}
+                  </p>
+                </div>
+
+                {voiceText && (
+                  <div className="space-y-2">
+                    <Input
+                      value={voiceTitle}
+                      onChange={(e) => setVoiceTitle(e.target.value)}
+                      placeholder="כותרת (אופציונלי)"
+                    />
+                    <Textarea
+                      value={voiceText}
+                      onChange={(e) => setVoiceText(e.target.value)}
+                      placeholder="התמלול יופיע כאן — ניתן לערוך"
+                      className="min-h-[140px]"
+                    />
+                    <Textarea
+                      value={voiceIntent}
+                      onChange={(e) => setVoiceIntent(e.target.value)}
+                      placeholder="מה ללמוד מההקלטה הזו? (אופציונלי)"
+                      className="min-h-[60px]"
+                    />
+                    <div className="flex justify-between gap-2">
+                      <Button variant="ghost" onClick={() => { setVoiceText(''); setVoiceTitle(''); setVoiceIntent(''); }}>
+                        ביטול
+                      </Button>
+                      <Button onClick={() => saveVoice.mutate()} disabled={saveVoice.isPending}>
+                        {saveVoice.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'שמור למאגר'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
