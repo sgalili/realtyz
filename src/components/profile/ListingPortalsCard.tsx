@@ -313,6 +313,22 @@ export function ListingPortalsCard() {
                     {verifying ? 'בודק חיבור…' : 'בדיקת התחברות'}
                   </Button>
                 )}
+                {p.id === 'yad2' && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={verifyYad2}
+                    disabled={
+                      yad2Verifying ||
+                      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test((values.yad2_username ?? '').trim()) ||
+                      !(values.yad2_api_key ?? '').trim()
+                    }
+                    className="gap-2"
+                  >
+                    {yad2Verifying ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
+                    {yad2Verifying ? 'בודק חיבור…' : 'בדיקת התחברות'}
+                  </Button>
+                )}
 
               </div>
             </div>
