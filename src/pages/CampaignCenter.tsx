@@ -141,8 +141,8 @@ const ChannelGrid = ({
   connected?: Set<string>;
   accountNames?: Record<string, string>;
 }) => (
-  <div className="mx-auto w-full max-w-md rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
-    <div className="grid grid-cols-3 gap-3" dir="rtl">
+  <div className="w-full rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
+    <div className="grid grid-cols-9 gap-2" dir="rtl">
       {CHANNEL_CARDS.map((c) => {
         const Icon = c.icon;
         const isSelected = selectedId === c.id;
