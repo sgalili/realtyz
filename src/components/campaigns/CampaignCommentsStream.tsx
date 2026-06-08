@@ -780,7 +780,15 @@ function CommentBubble({
     .slice(0, 2)
     .map((s) => s.charAt(0).toUpperCase())
     .join("") || "?";
-  const isSelfAuthored = meta?.self_authored === true || meta?.author_type === "workspace_page";
+  // Treat any Page-entity author (the workspace's own FB Page or any other Page)
+  // as "self/page authored" so its name is never rendered in the tree.
+  const isPageAuthored =
+    meta?.self_authored === true ||
+    meta?.author_type === "workspace_page" ||
+    String(meta?.from?.category ?? "").toLowerCase() === "page" ||
+    String(meta?.author?.category ?? "").toLowerCase() === "page" ||
+    meta?.author?.is_page === true;
+  const isSelfAuthored = isPageAuthored;
   const alreadyReplied = !isSelfAuthored && (row.status === "sent" || row.status === "replied");
   const toggleLabel = expanded ? "סגור" : "צור תגובת AI";
   const cleanRepliedTo = repliedToText?.trim() || null;
@@ -795,10 +803,10 @@ function CommentBubble({
       <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
         <div className="flex flex-1 items-center gap-2 min-w-0">
           <Avatar className="h-6 w-6 shrink-0">
-            {avatarUrl && <AvatarImage src={avatarUrl} alt={senderName} />}
-            <AvatarFallback className="bg-primary/15 text-primary text-[10px] font-semibold">{initials}</AvatarFallback>
+            {avatarUrl && !isPageAuthored && <AvatarImage src={avatarUrl} alt={senderName} />}
+            <AvatarFallback className="bg-primary/15 text-primary text-[10px] font-semibold">{isPageAuthored ? "★" : initials}</AvatarFallback>
           </Avatar>
-          <span className="truncate font-medium text-foreground">{isSelfAuthored ? "התגובה שלך" : senderName}</span>
+          <span className="truncate font-medium text-foreground">{isPageAuthored ? "התגובה שלך" : senderName}</span>
           <span
             aria-label={sentimentLabel(row.sentiment)}
             title={sentimentLabel(row.sentiment)}
