@@ -680,128 +680,58 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
         <p className="text-xs text-muted-foreground">אין תגובות עדיין לקמפיין זה</p>
       )}
 
-      <ul className="space-y-2">
-        {tree.map((root) => {
-          const renderEditor = (r: EngagementRow) => (
-            <div className="space-y-3 text-right">
-              <div className="space-y-1">
-                <p className="text-[11px] font-medium text-muted-foreground text-right">
-                  תגובה פומבית
-                </p>
-                <Textarea
-                  value={drafting ? "" : replyDraft}
-                  onChange={(e) => setReplyDraft(e.target.value)}
-                  dir="auto"
-                  rows={4}
-                  placeholder={drafting ? "מנסח תגובה מקצועית..." : "הזן תגובה..."}
-                  disabled={drafting}
-                  className="text-right"
-                />
-              </div>
-              <div className="space-y-1">
-                <p className="text-[11px] font-medium text-muted-foreground text-right">
-                  הודעה פרטית למסנג'ר
-                </p>
-                <Textarea
-                  value={drafting ? "" : dmDraft}
-                  onChange={(e) => setDmDraft(e.target.value)}
-                  dir="auto"
-                  rows={6}
-                  placeholder={drafting ? "מנסח DM מקצועי..." : "טיוטת DM פרטי"}
-                  disabled={drafting}
-                  className="text-right bg-muted/30"
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => generateDraft(r, true)}
-                  disabled={drafting || sending}
-                  aria-label="נסח מחדש"
-                  title="נסח מחדש"
-                  className="h-7 w-7"
-                >
-                  <RefreshCw className={cn("h-3.5 w-3.5", drafting && "animate-spin")} />
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={sendReply}
-                  disabled={sending || !replyDraft.trim()}
-                >
-                  <Send className="ml-1 h-4 w-4" />
-                  {sending ? "מפרסם..." : "פרסם תגובה"}
-                </Button>
-              </div>
-            </div>
-          );
-          // Recursively render a node + all its descendants inside the same card.
-          const renderNode = (node: TreeNode): ReactNode => {
-            const parentId = (node.metadata as any)?.parent_id as string | undefined;
-            const repliedTo = parentId ? nodeById.get(parentId) : undefined;
-            const replyCount = replyCountById.get(node.id) ?? 0;
-            const threadExpanded = expandedThreadIds.has(node.id);
-            return (
-            <li key={node.id} className="relative">
-              {node.depth > 0 && (
-                <span
-                  aria-hidden
-                  className="absolute right-4 top-6 h-[2px] w-4 bg-slate-200 rounded-full"
-                />
-              )}
+      <ul className="space-y-4">
+        {rootComments.map((parent) => {
+          const replies = childReplies.filter((reply) => reply.parent_id === parent.id);
+          const firstReply = replies[0];
+          const replyPreviewText = (() => {
+            const raw = firstReply?.message ?? parent.ai_reply_text ?? null;
+            if (!raw) return null;
+            const handle = (firstReply?.sender_handle ?? "").trim();
+            if (handle && raw.trim().startsWith(handle)) {
+              return raw.trim().slice(handle.length).replace(/^[\s:،,،\-–—]+/, "").trim();
+            }
+            return raw;
+          })();
+
+          return (
+            <li key={parent.id} className="w-full rounded-xl border border-border bg-background p-4 text-right relative">
               <CommentBubble
-                row={node}
+                row={parent}
                 onToggleEditor={(r) => setReplyOpen(replyOpen?.id === r.id ? null : r)}
-                expanded={replyOpen?.id === node.id}
-                editor={replyOpen?.id === node.id ? renderEditor(node) : null}
+                expanded={replyOpen?.id === parent.id}
+                editor={replyOpen?.id === parent.id ? renderEditor(parent) : null}
                 onRegenerate={regenerateInline}
-                regenerating={regeneratingId === node.id}
-                isReply={node.depth > 0}
-                repliedToText={repliedTo?.inbound_text ?? null}
-                replyPreviewText={(() => {
-                  const first = node.children[0];
-                  const raw = first?.inbound_text ?? node.ai_reply_text ?? null;
-                  if (!raw) return null;
-                  // Strip a leading page-name prefix (FB often prepends the
-                  // replying Page's display name to the reply text).
-                  const handle = (first?.sender_handle ?? "").trim();
-                  if (handle && raw.trim().startsWith(handle)) {
-                    return raw.trim().slice(handle.length).replace(/^[\s:،,،\-–—]+/, "").trim();
-                  }
-                  return raw;
-                })()}
-                replyCount={replyCount}
-                threadExpanded={threadExpanded}
-                onToggleThread={() => {
-                  setExpandedThreadIds((prev) => {
-                    const next = new Set(prev);
-                    const ids = [node.id];
-                    const collect = (n: TreeNode) => {
-                      n.children.forEach((child) => {
-                        ids.push(child.id);
-                        collect(child);
-                      });
-                    };
-                    collect(node);
-                    if (next.has(node.id)) ids.forEach((id) => next.delete(id));
-                    else ids.forEach((id) => next.add(id));
-                    return next;
-                  });
-                }}
+                regenerating={regeneratingId === parent.id}
+                replyPreviewText={replyPreviewText}
+                replyCount={replies.length}
+                threadExpanded
+                onToggleThread={() => undefined}
               />
-              {node.children.length > 0 && threadExpanded && (
-                <ul className="relative mt-2 space-y-2 pr-8">
-                  <span
-                    aria-hidden
-                    className="absolute right-4 top-0 bottom-4 w-[2px] bg-slate-200 rounded-full"
-                  />
-                  {node.children.map((child) => renderNode(child))}
-                </ul>
+
+              {replies.length > 0 && (
+                <div className="mt-4 mr-10 pr-6 border-r-2 border-slate-200 flex flex-col gap-3 relative">
+                  {replies.map((reply) => (
+                    <div key={reply.id} className="p-3 bg-slate-50 rounded-lg text-sm relative border border-slate-200/70">
+                      <span
+                        aria-hidden
+                        className="absolute right-[-1.5rem] top-6 h-[2px] w-4 bg-slate-200 rounded-full"
+                      />
+                      <CommentBubble
+                        row={reply}
+                        onToggleEditor={(r) => setReplyOpen(replyOpen?.id === r.id ? null : r)}
+                        expanded={replyOpen?.id === reply.id}
+                        editor={replyOpen?.id === reply.id ? renderEditor(reply) : null}
+                        onRegenerate={regenerateInline}
+                        regenerating={regeneratingId === reply.id}
+                        isReply
+                      />
+                    </div>
+                  ))}
+                </div>
               )}
             </li>
           );
-          };
-          return renderNode(root);
         })}
       </ul>
     </div>
