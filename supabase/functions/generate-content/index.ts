@@ -115,6 +115,17 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
 
     const promotedFeatures = promotedListing ? featureLabels(promotedListing.features) : [];
     const promotedListingType = promotedListing ? listingTypeFromFeatures(promotedListing.features) : null;
+    const promotedAreaPerks: string[] = Array.isArray(promotedListing?.area_perks?.perks)
+      ? promotedListing.area_perks.perks.slice(0, 6)
+      : [];
+    // Fire-and-forget enrichment when missing so next post has nearby-area perks.
+    if (promotedListing?.id && promotedAreaPerks.length === 0) {
+      try {
+        admin.functions.invoke("neighborhood-perks", {
+          body: { listing_id: promotedListing.id },
+        }).catch(() => { /* background */ });
+      } catch { /* background */ }
+    }
 
     const promotedBlock = promotedListing
       ? [
@@ -132,6 +143,9 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
           promotedListing.elevator ? `מעלית: כן` : null,
           promotedFeatures.length
             ? `מאפיינים בולטים: ${promotedFeatures.slice(0, 8).join(", ")}`
+            : null,
+          promotedAreaPerks.length
+            ? `יתרונות סביבה קרובה (השתמש בקצרה, מקסימום 2 פריטים בשורה אחת): ${promotedAreaPerks.join(" · ")}`
             : null,
           promotedListing.description ? `תיאור מקצועי קצר: ${String(promotedListing.description).slice(0, 600)}` : null,
         ].filter(Boolean).join("\n")
