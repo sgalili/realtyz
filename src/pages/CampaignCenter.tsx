@@ -2106,36 +2106,69 @@ const VoiceLeadPickerDialog = ({
               </div>
             )}
 
-            {/* Step 3 — Optional script + CTA */}
-            {listGroup && agentId && (
-              <>
-                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                  <label className="text-xs font-semibold text-[#0f1b3d] text-right block">
-                    הוראות, נושא או תסריט מותאם לשיחה (אופציונלי)
-                  </label>
-                  <Textarea
-                    value={instructions}
-                    onChange={(e) => setInstructions(e.target.value)}
-                    placeholder='לדוגמה: "בדקי האם המתעניין עדיין מחפש דירת 4 חדרים ברמת אביב, ועדכני אותו על דירה חדשה שיצאה ברחוב איינשטיין"'
-                    className="text-right min-h-[88px] border-[#0f1b3d]/30 focus-visible:ring-[#C9A84C]"
-                  />
-                  <p className="text-[11px] text-muted-foreground text-right leading-snug">
-                    אם תשאירי ריק, המערכת תשתמש באסטרטגיה האוטונומית הרגילה שלה המבוססת על הפרסונה של הסוכן, על מאגר הידע ועל היסטוריית השיחות עם המתעניין.
-                  </p>
-                </div>
+            {/* Step 3 — Optional property focus + script + CTA */}
+            {listGroup && agentId && (() => {
+              // Build a dynamic placeholder from a real listing so the broker
+              // sees a concrete example instead of a hard-coded street.
+              const example = voiceListings[0];
+              const examplePlaceholder = example
+                ? `לדוגמה: "בדוק האם המתעניין עדיין מחפש נכס דומה ל-${example.title}${example.city ? ` ב${example.city}` : ''}, ועדכן אותו על האפשרות החדשה הזאת"`
+                : 'לדוגמה: "בדוק האם המתעניין עדיין מחפש דירה לפי ההעדפות שלו, ועדכן אותו על נכס חדש שמתאים"';
+              return (
+                <>
+                  {/* Property promotion picker — mirrors the FB post flow */}
+                  <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="text-xs font-semibold text-[#0f1b3d] text-right block">
+                      קדם נכס ספציפי בשיחה (אופציונלי)
+                    </label>
+                    <Select
+                      value={selectedListingId ?? '__none'}
+                      onValueChange={(v) => setSelectedListingId(v === '__none' ? null : v)}
+                      dir="rtl"
+                    >
+                      <SelectTrigger className="w-full text-right border-[#0f1b3d]/30 focus:ring-[#C9A84C]">
+                        <SelectValue placeholder="בחר נכס מהמאגר…" />
+                      </SelectTrigger>
+                      <SelectContent dir="rtl" className="max-h-72">
+                        <SelectItem value="__none">ללא קידום נכס ספציפי (שיחה כללית)</SelectItem>
+                        {voiceListings.map((l) => (
+                          <SelectItem key={l.id} value={l.id}>
+                            {l.title}{l.city ? ` · ${l.city}` : ''}{l.asking_price ? ` · ₪${Number(l.asking_price).toLocaleString('he-IL')}` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <DialogFooter className="mt-2 animate-in fade-in slide-in-from-bottom-1 duration-200">
-                  <Button
-                    onClick={dial}
-                    disabled={!canDial}
-                    className="w-full bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-11 text-base font-semibold shadow-md"
-                  >
-                    <Phone className="ml-2 h-5 w-5" />
-                    {dialing ? 'מפעיל שיחות…' : 'הפעלת שיחה'}
-                  </Button>
-                </DialogFooter>
-              </>
-            )}
+                  <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="text-xs font-semibold text-[#0f1b3d] text-right block">
+                      הוראות, נושא או תסריט מותאם לשיחה (אופציונלי)
+                    </label>
+                    <Textarea
+                      value={instructions}
+                      onChange={(e) => setInstructions(e.target.value)}
+                      placeholder={examplePlaceholder}
+                      className="text-right min-h-[88px] border-[#0f1b3d]/30 focus-visible:ring-[#C9A84C]"
+                    />
+                    <p className="text-[11px] text-muted-foreground text-right leading-snug">
+                      אם {heVerb(userGender, 'תשאיר', 'תשאירי')} ריק, המערכת {heVerb(userGender, 'תשתמש', 'תשתמש')} באסטרטגיה האוטונומית הרגילה שלה המבוססת על הפרסונה של הסוכן, על מאגר הידע ועל היסטוריית השיחות עם המתעניין.
+                    </p>
+                  </div>
+
+                  <DialogFooter className="mt-2 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                    <Button
+                      onClick={dial}
+                      disabled={!canDial}
+                      className="w-full bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-11 text-base font-semibold shadow-md"
+                    >
+                      <Phone className="ml-2 h-5 w-5" />
+                      {dialing ? 'מפעיל שיחות…' : 'הפעלת שיחה'}
+                    </Button>
+                  </DialogFooter>
+                </>
+              );
+            })()}
+
           </div>
         </DialogContent>
       </Dialog>
