@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -29,7 +29,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
-import { useQueryClient } from '@tanstack/react-query';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
 import { EditPropertyDialog } from '@/components/properties/EditPropertyDialog';
 import { ImportPropertiesDialog } from '@/components/properties/ImportPropertiesDialog';
@@ -119,8 +118,23 @@ export default function Properties() {
   const queryClient = useQueryClient();
   const refreshListings = () => {
     setSourceTab('mine');
-    queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+    queryClient.invalidateQueries({ queryKey: ['properties'] });
   };
+
+  const homelyRefreshMutation = useMutation({
+    mutationFn: async () => {
+      const { error } = await supabase.functions.invoke('homely-search', { body: { hydrate: true } });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['properties'] });
+      toast.success('הנכסים מ-Homely רוענו');
+    },
+    onError: (e: any) => {
+      console.warn('[properties] homely hydrate failed', e);
+      toast.error(e?.message ?? 'רענון נכסי Homely נכשל');
+    },
+  });
 
   // Listen for hero-emitted add events (the '+' button lives in PageHero now).
   useEffect(() => {
@@ -141,7 +155,7 @@ export default function Properties() {
 
 
   const { data: liveResponse, isLoading } = useQuery({
-    queryKey: ['properties-search', sourceTab, { city, rooms, propertyType, priceRange, areaMin }],
+    queryKey: ['properties', sourceTab, { city, rooms, propertyType, priceRange, areaMin }],
     queryFn: async () => {
       try {
         if (sourceTab === 'mine') {
@@ -318,22 +332,13 @@ export default function Properties() {
           {sourceTab === 'homely' && (
             <button
               type="button"
-              onClick={async () => {
-                await queryClient.invalidateQueries({ queryKey: ['properties-search'] });
-                try {
-                  await supabase.functions.invoke('homely-search', { body: { hydrate: true } });
-                } catch (e) {
-                  console.warn('[properties] homely hydrate failed', e);
-                }
-                await queryClient.invalidateQueries({ queryKey: ['properties-search'] });
-                toast.success('הנכסים מ-Homely רוענו');
-              }}
-              disabled={isLoading}
+              onClick={() => homelyRefreshMutation.mutate()}
+              disabled={isLoading || homelyRefreshMutation.isPending}
               className="ml-1 inline-flex items-center gap-1 px-2.5 py-2 text-xs font-semibold rounded-lg text-muted-foreground hover:text-foreground hover:bg-primary/5 transition-colors disabled:opacity-50"
               title="רענון נכסים מ-Homely"
               aria-label="רענון נכסים מ-Homely"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`h-3.5 w-3.5 ${homelyRefreshMutation.isPending ? 'animate-spin' : ''}`} />
               רענן
             </button>
           )}
