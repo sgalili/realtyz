@@ -315,8 +315,7 @@ const Dashboard = () => {
           value={closedDeals ?? 0}
           loading={loadingDeals}
           tooltip={`התקדמות לעבר יעד חודשי של ${MONTHLY_DEAL_GOAL} עסקאות.`}
-          accent="success"
-          suffix={` / ${MONTHLY_DEAL_GOAL} (${dealProgressPct}%)`}
+          accent="danger"
           to="/deal-room"
         />
       </div>
