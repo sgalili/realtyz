@@ -1712,7 +1712,7 @@ const PublishedFeed = () => {
                 </div>
                 <div className="border-t border-border bg-muted/30 px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   {userId ? (
-                    <CampaignCommentsStream userId={userId} campaign={r} />
+                    <CampaignCommentsStream userId={userId} campaign={r} commentCount={r.comment_count ?? 0} />
                   ) : (
                     <p className="text-xs text-muted-foreground text-right">נדרשת התחברות לצפייה בתגובות</p>
                   )}
