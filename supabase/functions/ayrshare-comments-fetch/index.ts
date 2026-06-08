@@ -61,6 +61,28 @@ Deno.serve(async (req) => {
     }
     if (!userId) return json({ error: "user_id required" }, 401);
 
+    // Force-refresh: null out cached avatar URLs on existing rows for the
+    // requested posts so the next ingest pass re-resolves a fresh CDN URL.
+    const forceRefresh: boolean = !!body?.force_refresh;
+    if (forceRefresh) {
+      const { data: stale } = await admin
+        .from("engagement_events")
+        .select("id, metadata")
+        .eq("user_id", userId)
+        .in("external_post_id", requestedPostIds);
+      for (const row of stale ?? []) {
+        const meta: any = (row as any).metadata && typeof (row as any).metadata === "object" ? (row as any).metadata : {};
+        const author = meta.author && typeof meta.author === "object" ? meta.author : {};
+        const next = {
+          ...meta,
+          profile_image: null,
+          sender_avatar_url: null,
+          author: { ...author, profile_image: null },
+        };
+        await admin.from("engagement_events").update({ metadata: next }).eq("id", (row as any).id).eq("user_id", userId);
+      }
+    }
+
     const campaignName: string | null =
       typeof body?.campaign_name === "string" ? body.campaign_name : null;
     const platformHint =
@@ -455,8 +477,16 @@ Deno.serve(async (req) => {
           c?.profile_picture_url ??
           c?.avatar ??
           null;
-        // Prefer the clean CDN URL on Facebook; otherwise use payload-provided.
-        const authorPicture = fbResolved ?? pictureFromPayload ?? null;
+        // Token-free public fallback — Facebook's /picture endpoint resolves
+        // for any public user/page without auth when called with redirect=true
+        // (default). Browsers can hit it directly. Used only when no resolved
+        // CDN URL and no payload-provided URL exists.
+        const fbPublicFallback = isFb && senderId
+          ? `https://graph.facebook.com/v20.0/${encodeURIComponent(senderId)}/picture?type=square`
+          : null;
+        // Prefer the clean CDN URL on Facebook; otherwise use payload-provided;
+        // last-resort = public unauthenticated graph picture URL.
+        const authorPicture = fbResolved ?? pictureFromPayload ?? fbPublicFallback ?? null;
 
 
         const { data: exists } = await admin
@@ -478,6 +508,7 @@ Deno.serve(async (req) => {
             parent_id: safeStr(parentId) ?? currentMeta.parent_id ?? null,
             sender_id: safeStr(senderId) ?? currentMeta.sender_id ?? null,
             profile_image: nextProfileImage,
+            sender_avatar_url: nextProfileImage,
             author: {
               ...currentAuthor,
               name: safeStr(sender, 200) ?? currentAuthor.name ?? null,
@@ -516,6 +547,7 @@ Deno.serve(async (req) => {
           permalink: safeStr(c?.permalink ?? c?.permalink_url ?? c?.url, 1000),
           sender_id: safeStr(senderId),
           profile_image: safeStr(authorPicture, 1000),
+          sender_avatar_url: safeStr(authorPicture, 1000),
           author: {
             name: safeStr(sender, 200),
             profile_image: safeStr(authorPicture, 1000),
