@@ -251,7 +251,15 @@ const InlineComposer = ({
   brandName: string;
   onConfirm: (payload: { body: string; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null; group_ids: string[] }) => void;
 }) => {
-  const [body, setBody] = useState('');
+  // Session-persistence key — keeps unfinished drafts alive across collapse / expand / tab switch
+  const draftKey = `rz-composer-draft:${channel.id}`;
+  const readDraft = (): any => {
+    if (typeof window === 'undefined') return null;
+    try { return JSON.parse(sessionStorage.getItem(draftKey) || 'null'); } catch { return null; }
+  };
+  const initial = readDraft() || {};
+
+  const [body, setBody] = useState<string>(initial.body || '');
   const [mode, setMode] = useState<'now' | 'scheduled'>('now');
   // Local datetime string in `YYYY-MM-DDTHH:mm` (input[type=datetime-local] format).
   const [scheduledLocal, setScheduledLocal] = useState<string>('');
@@ -261,19 +269,20 @@ const InlineComposer = ({
   const [generating, setGenerating] = useState(false);
 
   // Custom AI generation context (broker steering inputs)
-  const [customInstructions, setCustomInstructions] = useState('');
+  const [customInstructions, setCustomInstructions] = useState<string>(initial.customInstructions || '');
   const [listingQuery, setListingQuery] = useState('');
   const [listings, setListings] = useState<CampaignListing[]>([]);
   const [listingsLoading, setListingsLoading] = useState(false);
-  const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
+  const [selectedListingId, setSelectedListingId] = useState<string | null>(initial.selectedListingId ?? null);
   const [listingPickerOpen, setListingPickerOpen] = useState(false);
 
   // Attachment / media state
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [attachments, setAttachments] = useState<{ name: string; kind: 'image' | 'file' | 'audio'; url?: string }[]>([]);
+  const [attachments, setAttachments] = useState<{ name: string; kind: 'image' | 'file' | 'audio'; url?: string }[]>(initial.attachments || []);
   const [generatingImage, setGeneratingImage] = useState(false);
+
 
   // Audio recording
   const [recording, setRecording] = useState(false);
@@ -285,8 +294,23 @@ const InlineComposer = ({
   const [historyRefresh, setHistoryRefresh] = useState(0);
   const [history, setHistory] = useState<Array<{ id: string; topic: string | null; generated_text: string | null; platform: string | null; created_at: string; updated_at: string | null; media_urls: any; listing_id: string | null }>>([]);
   // ID of the currently active history row — edits flow back into the same row.
-  const [logId, setLogId] = useState<string | null>(null);
+  const [logId, setLogId] = useState<string | null>(initial.logId ?? null);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
+
+  // Persist composer draft to sessionStorage so collapsing or switching tabs never loses unfinished work.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      sessionStorage.setItem(draftKey, JSON.stringify({
+        body,
+        customInstructions,
+        selectedListingId,
+        attachments,
+        logId,
+      }));
+    } catch {}
+  }, [draftKey, body, customInstructions, selectedListingId, attachments, logId]);
+
   useEffect(() => {
     if (!historyOpen) return;
     let cancelled = false;
@@ -305,8 +329,20 @@ const InlineComposer = ({
     return () => { cancelled = true; };
   }, [historyOpen, historyRefresh, channel.id]);
 
-  // Reset on channel change
-  useEffect(() => { setBody(''); setMode('now'); setAttachments([]); setCustomInstructions(''); setSelectedListingId(null); setListingQuery(''); setLogId(null); setSaveState('idle'); }, [channel.id]);
+  // On channel change: rehydrate from saved draft for that channel (keeps unfinished work alive per platform)
+  useEffect(() => {
+    const saved = readDraft() || {};
+    setBody(saved.body || '');
+    setCustomInstructions(saved.customInstructions || '');
+    setSelectedListingId(saved.selectedListingId ?? null);
+    setAttachments(saved.attachments || []);
+    setLogId(saved.logId ?? null);
+    setMode('now');
+    setListingQuery('');
+    setSaveState('idle');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel.id]);
+
 
   // Auto-save: persist edits + attachments + selected property to ai_content_logs (debounced).
   // Creates a new row on first edit if no logId yet; otherwise updates the active row.
@@ -576,17 +612,15 @@ const InlineComposer = ({
       {/* Broker steering: custom instructions + property promotion picker */}
 
       <div className="space-y-2 rounded-xl border border-primary/15 bg-primary/[0.03] p-3">
-        <Label htmlFor="custom-instructions" className="text-xs font-semibold text-foreground">
-          הנחיות ודגשים מיוחדים לפוסט
-        </Label>
         <Input
           id="custom-instructions"
           value={customInstructions}
           onChange={(e) => setCustomInstructions(e.target.value)}
-          placeholder='למשל: "תתמקד באווירה המשפחתית בשכונה", "דגש על משקיעים", "טון קצר ואגרסיבי"'
-          className="text-right"
+          placeholder="הנחיות ודגשים מיוחדים לפוסט"
+          className="text-right placeholder:text-muted-foreground/70"
           maxLength={300}
         />
+
 
         <div className="pt-1">
           <Label className="text-xs font-semibold text-foreground">קדם נכס ספציפי מהמאגר</Label>
@@ -594,12 +628,12 @@ const InlineComposer = ({
             <PopoverTrigger asChild>
               <button type="button"
                 className="mt-1 flex w-full items-center justify-between rounded-md border border-input bg-background px-3 py-2 text-sm text-right hover:border-primary/40">
-                <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
                 <span className={cn('truncate', selectedListing ? 'text-foreground font-medium' : 'text-muted-foreground')}>
                   {selectedListing
                     ? listingOptionLabel(selectedListing as CampaignListing)
                     : 'ללא קידום נכס ספציפי (פוסט כללי של אודי)'}
                 </span>
+                <ChevronDown className="h-4 w-4 text-muted-foreground shrink-0" />
               </button>
             </PopoverTrigger>
             <PopoverContent align="start" className="w-[--radix-popover-trigger-width] p-2 max-h-80 overflow-auto" dir="rtl">
