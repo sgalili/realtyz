@@ -529,7 +529,21 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
 
   if (loading && rows === null) {
     return (
-      <p className="px-1 text-xs text-muted-foreground">טוען תגובות חיות…</p>
+      <div className="flex items-center justify-between gap-2" dir="rtl">
+        <Button
+          size="sm"
+          variant="ghost"
+          onClick={forceRefresh}
+          disabled={loading}
+          className="h-7 px-2 text-xs"
+          aria-label="רענן תגובות"
+          title="רענן תגובות"
+        >
+          <RefreshCw className={cn("ml-1 h-3.5 w-3.5", loading && "animate-spin")} />
+          רענן תגובות
+        </Button>
+        <p className="px-1 text-xs text-muted-foreground">טוען תגובות חיות…</p>
+      </div>
     );
   }
 
