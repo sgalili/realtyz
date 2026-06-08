@@ -427,14 +427,19 @@ Deno.serve(async (req) => {
         if (exists?.id) {
           skipped += 1;
           const currentMeta = ((exists as any).metadata && typeof (exists as any).metadata === "object") ? (exists as any).metadata : {};
+          const currentAuthor = (currentMeta.author && typeof currentMeta.author === "object") ? currentMeta.author : {};
+          const currentProfileImage = typeof currentAuthor.profile_image === "string" ? currentAuthor.profile_image : null;
+          // If we resolved a fresh CDN URL, overwrite stale token-bearing URLs.
+          const nextProfileImage = safeStr(authorPicture, 1000) ?? currentProfileImage ?? null;
           const nextMetadata = {
             ...currentMeta,
             parent_id: safeStr(parentId) ?? currentMeta.parent_id ?? null,
             sender_id: safeStr(senderId) ?? currentMeta.sender_id ?? null,
+            profile_image: nextProfileImage,
             author: {
-              ...(currentMeta.author && typeof currentMeta.author === "object" ? currentMeta.author : {}),
-              name: safeStr(sender, 200) ?? currentMeta.author?.name ?? null,
-              profile_image: safeStr(authorPicture, 1000) ?? currentMeta.author?.profile_image ?? null,
+              ...currentAuthor,
+              name: safeStr(sender, 200) ?? currentAuthor.name ?? null,
+              profile_image: nextProfileImage,
             },
           };
           if (JSON.stringify(nextMetadata) !== JSON.stringify(currentMeta)) {
