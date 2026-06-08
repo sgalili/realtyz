@@ -450,12 +450,13 @@ Deno.serve(async (req) => {
               if (!commentId) return;
               try {
                 const detailQs = `platform=${encodeURIComponent(platform)}&searchPlatformId=true&commentId=true&limit=100&includeReplies=true&include_replies=true&replies=true&expandReplies=true&depth=5`;
-                const detailRes = await fetch(`${AYR_BASE}/comments/${encodeURIComponent(commentId)}?${detailQs}`, {
-                  headers: {
+                const detailHeaders: Record<string, string> = {
                     Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-                    "Profile-Key": activeProfileKey,
                     "Content-Type": "application/json",
-                  },
+                };
+                if (activeProfileKey) detailHeaders["Profile-Key"] = activeProfileKey;
+                const detailRes = await fetch(`${AYR_BASE}/comments/${encodeURIComponent(commentId)}?${detailQs}`, {
+                  headers: detailHeaders,
                 });
                 if (!detailRes.ok) return;
                 const detailPayload = await detailRes.json().catch(() => ({}));
