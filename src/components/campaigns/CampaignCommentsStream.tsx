@@ -607,19 +607,6 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
         {tree.map((root) => {
           const renderEditor = (r: EngagementRow) => (
             <div className="space-y-3 text-right">
-              <div className="flex items-center justify-start">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => generateDraft(r, true)}
-                  disabled={drafting || sending}
-                  aria-label="נסח מחדש"
-                  title="נסח מחדש"
-                  className="h-7 w-7"
-                >
-                  <RefreshCw className={cn("h-3.5 w-3.5", drafting && "animate-spin")} />
-                </Button>
-              </div>
               <div className="space-y-1">
                 <Textarea
                   value={drafting ? "" : replyDraft}
@@ -661,7 +648,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
                   className="text-right bg-muted/30"
                 />
               </div>
-              <div className="flex items-center justify-end">
+              <div className="flex items-center justify-between">
                 <Button
                   size="sm"
                   onClick={sendReply}
@@ -669,6 +656,17 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
                 >
                   <Send className="ml-1 h-4 w-4" />
                   {sending ? "מפרסם..." : "פרסם תגובה"}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  onClick={() => generateDraft(r, true)}
+                  disabled={drafting || sending}
+                  aria-label="נסח מחדש"
+                  title="נסח מחדש"
+                  className="h-7 w-7"
+                >
+                  <RefreshCw className={cn("h-3.5 w-3.5", drafting && "animate-spin")} />
                 </Button>
               </div>
             </div>
