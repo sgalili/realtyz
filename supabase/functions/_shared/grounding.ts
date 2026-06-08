@@ -78,6 +78,59 @@ export function renderKbInstructionsBlock(items: { title: string; intent: string
   return `[OWNER INSTRUCTIONS FROM KNOWLEDGE BASE] (HARD — these are the broker's own notes on what to LEARN and APPLY from each source. Treat as direct orders from Udi. Internalize the techniques, framings, and rules they describe when writing this post):\n${lines}`;
 }
 
+/**
+ * Load full raw_text of KB documents the owner explicitly marked as
+ * post templates / example posts. Detected by title or learning_intent
+ * containing template keywords. These take priority over any built-in
+ * reference template.
+ */
+export async function loadKbPostTemplates(
+  admin: SupabaseClient,
+  userId: string | null,
+  limit = 6,
+  perDoc = 1500,
+  totalCap = 6000,
+): Promise<{ title: string; body: string }[]> {
+  if (!userId) return [];
+  try {
+    const { data } = await admin
+      .from("knowledge_documents")
+      .select("title, raw_text, source_metadata")
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(40);
+    const KW = /(תבנית|תבניות|template|דוגמת\s*פוסט|פוסט\s*לדוגמ|post\s*template|reference\s*post)/i;
+    const items: { title: string; body: string }[] = [];
+    let used = 0;
+    for (const row of data ?? []) {
+      const title = String((row as any)?.title ?? "");
+      const meta = (row as any)?.source_metadata ?? {};
+      const intent = String(meta?.learning_intent ?? "");
+      const isTemplate = KW.test(title) || KW.test(intent) || String(meta?.kind ?? "") === "post_template";
+      if (!isTemplate) continue;
+      const body = String((row as any)?.raw_text ?? "").trim();
+      if (!body) continue;
+      const clipped = body.slice(0, perDoc);
+      if (used + clipped.length > totalCap) break;
+      items.push({ title: title || "תבנית", body: clipped });
+      used += clipped.length;
+      if (items.length >= limit) break;
+    }
+    return items;
+  } catch {
+    return [];
+  }
+}
+
+export function renderKbTemplatesBlock(items: { title: string; body: string }[]): string {
+  if (!items.length) return "";
+  const blocks = items
+    .map((it, i) => `--- תבנית ${i + 1}: "${it.title}" ---\n${it.body}`)
+    .join("\n\n");
+  return `[OWNER-AUTHORED POST TEMPLATES FROM KNOWLEDGE BASE] (ABSOLUTE HIGHEST PRIORITY — these are templates/example posts Udi himself saved. The new post MUST follow the structure, rhythm, line breaks, emoji placement, sectioning, and tone of these templates. If a built-in reference template conflicts with these, THESE WIN. Adapt the wording to the specific listing — never copy verbatim, never invent fields.):\n${blocks}`;
+}
+
 
 export type ListingType = "sale" | "rent";
 
