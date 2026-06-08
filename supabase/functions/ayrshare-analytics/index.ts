@@ -7,7 +7,14 @@
 // queried/updated. Workspace Profile-Key comes from workspace_social_profile.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { AYR_BASE, resolveWorkspaceProfileKey } from "../_shared/ayrshare-helpers.ts";
+import {
+  AYR_BASE,
+  MISSING_TENANT_KEY,
+  MISSING_TENANT_KEY_MESSAGE,
+  isAyrshareInvalidProfileKey,
+  resolveWorkspaceProfileKey,
+  verifyWorkspaceProfileKey,
+} from "../_shared/ayrshare-helpers.ts";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
@@ -164,8 +171,20 @@ Deno.serve(async (req) => {
   ].filter((v): v is string => typeof v === "string" && v.trim()).map((v) => v.trim()));
 
 
-  const { profileKey } = await resolveWorkspaceProfileKey(admin);
-  if (!profileKey) return json({ error: "workspace ayrshare profile key missing" }, 400);
+  const { profileKey, refId } = await resolveWorkspaceProfileKey(admin);
+  if (!profileKey) {
+    return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE }, 200);
+  }
+  const profileCheck = await verifyWorkspaceProfileKey({ apiKey: AYRSHARE_API_KEY, profileKey });
+  if (profileCheck.missingTenantKey) {
+    console.error("[ayrshare-analytics] invalid workspace profile key", {
+      refId,
+      status: profileCheck.status,
+      code: profileCheck.payload?.code,
+      message: profileCheck.payload?.message ?? profileCheck.payload?.error,
+    });
+    return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE }, 200);
+  }
 
   // Pull caller's recent social campaign logs that have a native post id.
   const { data: rows, error } = await admin
@@ -272,6 +291,11 @@ Deno.serve(async (req) => {
               requested_id: body.id,
               payload: attempt.payload,
             });
+            if (isAyrshareInvalidProfileKey(res.status, attempt.payload)) {
+              attempt.status = 200;
+              attempt.payload = { message: MISSING_TENANT_KEY, code: 144 };
+              return { res: new Response(JSON.stringify({ error: MISSING_TENANT_KEY }), { status: 400 }), payload: { error: MISSING_TENANT_KEY } };
+            }
           }
           return { res, payload };
         };

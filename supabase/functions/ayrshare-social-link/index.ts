@@ -3,6 +3,7 @@
 // SAFETY: only operates on profiles whose refId starts with "realtyz-".
 
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { cleanProfileKey, isAyrshareInvalidProfileKey } from '../_shared/ayrshare-helpers.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -110,8 +111,25 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: `Failed to load workspace social profile: ${wsErr.message}` }, 500);
     }
 
-    let profileKey = (ws?.ayrshare_profile_key as string | null) || null;
-    let refId = (ws?.ayrshare_ref_id as string | null) || null;
+    let profileKey = cleanProfileKey(ws?.ayrshare_profile_key) || null;
+    let refId = cleanProfileKey(ws?.ayrshare_ref_id) || null;
+
+    if (profileKey) {
+      const verifyRes = await fetch(`${AYR_API}/user`, {
+        headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}`, 'Profile-Key': profileKey },
+      });
+      const verifyPayload = await verifyRes.json().catch(() => ({}));
+      if (isAyrshareInvalidProfileKey(verifyRes.status, verifyPayload)) {
+        console.error('[ayrshare-social-link] stored workspace profile key rejected; provisioning replacement', {
+          refId,
+          status: verifyRes.status,
+          code: verifyPayload?.code,
+          message: verifyPayload?.message ?? verifyPayload?.error,
+        });
+        profileKey = null;
+        refId = null;
+      }
+    }
 
     // Manual override: workspace owner pastes an existing User Profile Key from
     // the Ayrshare dashboard via the AYRSHARE_PROFILE_KEY secret. Used when the

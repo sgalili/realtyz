@@ -5,7 +5,14 @@
 // singleton workspace_social_profile.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { AYR_BASE, resolveWorkspaceProfileKey } from "../_shared/ayrshare-helpers.ts";
+import {
+  AYR_BASE,
+  MISSING_TENANT_KEY,
+  MISSING_TENANT_KEY_MESSAGE,
+  isAyrshareInvalidProfileKey,
+  resolveWorkspaceProfileKey,
+  verifyWorkspaceProfileKey,
+} from "../_shared/ayrshare-helpers.ts";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
@@ -38,8 +45,20 @@ Deno.serve(async (req) => {
   if (!userId && body?.user_id) userId = String(body.user_id);
   if (!userId) return json({ error: "user_id required" }, 401);
 
-  const { profileKey } = await resolveWorkspaceProfileKey(admin);
-  if (!profileKey) return json({ error: "workspace ayrshare profile key missing" }, 400);
+  const { profileKey, refId } = await resolveWorkspaceProfileKey(admin);
+  if (!profileKey) {
+    return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE, targets: 0, api_errors: [], fanouts: [] }, 200);
+  }
+  const profileCheck = await verifyWorkspaceProfileKey({ apiKey: AYRSHARE_API_KEY, profileKey });
+  if (profileCheck.missingTenantKey) {
+    console.error("[ayrshare-sync-comments] invalid workspace profile key", {
+      refId,
+      status: profileCheck.status,
+      code: profileCheck.payload?.code,
+      message: profileCheck.payload?.message ?? profileCheck.payload?.error,
+    });
+    return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE, targets: 0, api_errors: [], fanouts: [] }, 200);
+  }
 
   const targets = new Map<string, { platform: string; postId: string }>();
   const apiErrors: any[] = [];
@@ -85,6 +104,9 @@ Deno.serve(async (req) => {
       });
       if (!fRes.ok) {
         const err = { endpoint: "/feed", platform, ...(await parseAyrError(fRes)) };
+        if (isAyrshareInvalidProfileKey(err.status, err.payload)) {
+          return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE, targets: 0, api_errors: [err], fanouts: [] }, 200);
+        }
         apiErrors.push(err);
         console.error("[ayrshare-sync-comments] Ayrshare API rejected feed", err);
         continue;
@@ -109,6 +131,9 @@ Deno.serve(async (req) => {
       );
       if (!hRes.ok) {
         const err = { endpoint: "/history", platform, ...(await parseAyrError(hRes)) };
+        if (isAyrshareInvalidProfileKey(err.status, err.payload)) {
+          return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE, targets: 0, api_errors: [err], fanouts: [] }, 200);
+        }
         apiErrors.push(err);
         console.error("[ayrshare-sync-comments] Ayrshare API rejected history", err);
         continue;
@@ -141,6 +166,5 @@ Deno.serve(async (req) => {
     ),
   );
 
-  const status = targets.size === 0 && apiErrors.length ? Number(apiErrors[0]?.status || 502) : 200;
-  return json({ success: true, targets: targets.size, api_errors: apiErrors, fanouts }, status);
+  return json({ success: true, targets: targets.size, api_errors: apiErrors, fanouts }, 200);
 });

@@ -2,6 +2,42 @@
 // Strict workspace isolation via singleton workspace_social_profile.
 
 export const AYR_BASE = "https://api.ayrshare.com/api";
+export const MISSING_TENANT_KEY = "MISSING_TENANT_KEY";
+export const MISSING_TENANT_KEY_MESSAGE = "נא לחבר מחדש את פרופיל המדיה החברתית בהגדרות המשרד";
+
+export function cleanProfileKey(value: unknown): string {
+  return typeof value === "string" ? value.trim().replace(/^[`'\"]+|[`'\"]+$/g, "") : "";
+}
+
+export function isAyrshareInvalidProfileKey(status: number, payload: any): boolean {
+  const code = payload?.code ?? payload?.raw?.code ?? payload?.errors?.[0]?.code;
+  const message = String(payload?.message ?? payload?.error ?? payload?.raw?.message ?? payload?.errors?.[0]?.message ?? "");
+  return status === 403 && (Number(code) === 144 || /profile key is invalid/i.test(message));
+}
+
+export async function verifyWorkspaceProfileKey(params: {
+  apiKey: string;
+  profileKey: string;
+}): Promise<{ ok: boolean; missingTenantKey: boolean; status?: number; payload?: any }> {
+  const profileKey = cleanProfileKey(params.profileKey);
+  if (!profileKey) return { ok: false, missingTenantKey: true };
+  try {
+    const res = await fetch(`${AYR_BASE}/user`, {
+      headers: { Authorization: `Bearer ${params.apiKey}`, "Profile-Key": profileKey },
+    });
+    const text = await res.text();
+    let payload: any = {};
+    try { payload = text ? JSON.parse(text) : {}; } catch { payload = { rawText: text }; }
+    return {
+      ok: res.ok,
+      missingTenantKey: isAyrshareInvalidProfileKey(res.status, payload),
+      status: res.status,
+      payload,
+    };
+  } catch (e) {
+    return { ok: false, missingTenantKey: false, payload: { message: e instanceof Error ? e.message : String(e) } };
+  }
+}
 
 export async function resolveWorkspaceProfileKey(
   admin: any,
@@ -12,8 +48,8 @@ export async function resolveWorkspaceProfileKey(
     .eq("id", "00000000-0000-0000-0000-000000000001")
     .maybeSingle();
   return {
-    profileKey: typeof data?.ayrshare_profile_key === "string" ? data.ayrshare_profile_key.trim() : "",
-    refId: typeof data?.ayrshare_ref_id === "string" ? data.ayrshare_ref_id.trim() : null,
+    profileKey: cleanProfileKey(data?.ayrshare_profile_key),
+    refId: cleanProfileKey(data?.ayrshare_ref_id) || null,
   };
 }
 

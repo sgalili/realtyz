@@ -1019,11 +1019,12 @@ const extractFunctionError = async (error: any, fallback = 'שגיאת API חי�
   try {
     details = error?.context?.clone ? await error.context.clone().json() : null;
   } catch { /* ignore */ }
-  const msg = details?.error || details?.api_errors?.[0]?.payload?.message || details?.mapping_errors?.[0]?.error || error?.message || fallback;
+  const msg = details?.message || details?.error || details?.api_errors?.[0]?.payload?.message || details?.mapping_errors?.[0]?.error || error?.message || fallback;
   return `${status ? `HTTP ${status}: ` : ''}${msg}`;
 };
 
 const firstPipelineError = (data: any): string | null => {
+  if (data?.error === 'MISSING_TENANT_KEY') return data?.message || 'נא לחבר מחדש את פרופיל המדיה החברתית בהגדרות המשרד';
   const api = Array.isArray(data?.api_errors) ? data.api_errors[0] : null;
   const mapping = Array.isArray(data?.mapping_errors) ? data.mapping_errors[0] : null;
   if (api) return `Ayrshare ${api.status ?? ''}: ${api.payload?.message ?? api.error ?? 'API rejected request'}`;
