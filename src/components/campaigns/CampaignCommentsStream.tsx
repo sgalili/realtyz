@@ -349,6 +349,29 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
     }
   }, [rows]);
 
+  const nodeById = useMemo(() => {
+    const map = new Map<string, TreeNode>();
+    const visit = (node: TreeNode) => {
+      map.set(node.id, node);
+      if (node.external_id) map.set(node.external_id, node);
+      node.children.forEach(visit);
+    };
+    tree.forEach(visit);
+    return map;
+  }, [tree]);
+
+  const replyCountById = useMemo(() => {
+    const map = new Map<string, number>();
+    const count = (node: TreeNode): number => {
+      const total = node.children.reduce((sum, child) => sum + 1 + count(child), 0);
+      map.set(node.id, total);
+      if (node.external_id) map.set(node.external_id, total);
+      return total;
+    };
+    tree.forEach(count);
+    return map;
+  }, [tree]);
+
 
   const openReply = (row: EngagementRow) => {
     // Hard flush: never carry over draft text from a previous open.
