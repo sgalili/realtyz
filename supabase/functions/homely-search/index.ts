@@ -84,6 +84,66 @@ function normalize(item: any, idx: number) {
   };
 }
 
+function slugPart(value: unknown) {
+  return String(value ?? "")
+    .trim()
+    .replace(/[^\p{L}\p{N}]+/gu, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "property";
+}
+
+async function importHomelyListings(admin: any, userId: string, properties: any[]) {
+  let imported = 0;
+  let updated = 0;
+
+  for (const property of properties) {
+    const externalId = String(property.id);
+    const sourceMetadata = {
+      provider: "homely",
+      photos: property.photos ?? [],
+      url: property.url ?? null,
+      raw_imported_at: new Date().toISOString(),
+    };
+    const payload = {
+      user_id: userId,
+      property_title: property.title || "נכס Homely",
+      description: property.description || "",
+      asking_price: Number(property.price ?? 0) || 0,
+      city: property.city ?? null,
+      address: property.address ?? null,
+      rooms: property.rooms ?? null,
+      sqm: property.size_sqm ? Math.round(Number(property.size_sqm)) : null,
+      features: [...(property.features ?? []), { listing_type: property.listing_type ?? "sale" }],
+      status: "live",
+      is_published: true,
+      source: "homely",
+      external_id: externalId,
+      source_url: property.url ?? null,
+      source_metadata: sourceMetadata,
+    };
+
+    const { data: existing } = await admin
+      .from("listings")
+      .select("id")
+      .eq("user_id", userId)
+      .eq("source", "homely")
+      .eq("external_id", externalId)
+      .maybeSingle();
+
+    if (existing?.id) {
+      const { error } = await admin.from("listings").update(payload).eq("id", existing.id);
+      if (!error) updated += 1;
+      continue;
+    }
+
+    const slug = `homely-${userId.slice(0, 8)}-${slugPart(externalId)}`;
+    const { error } = await admin.from("listings").insert({ ...payload, slug });
+    if (!error) imported += 1;
+  }
+
+  return { imported, updated };
+}
+
 // Guaranteed seed listing returned whenever a connected broker has no live
 // inventory (or when no other source produced rows). Mirrors the demo property
 // the owner expects to always see under the "הומלי" tab.
