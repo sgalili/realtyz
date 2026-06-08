@@ -2705,6 +2705,8 @@ const CampaignCenter = () => {
         onClose={() => setConfirmPayload(null)}
         channel={pickedChannel}
         body={confirmPayload?.body ?? ''}
+        originalAiBody={confirmPayload?.original_ai_body ?? ''}
+        listingId={confirmPayload?.listing_id ?? null}
         brandName={brandName}
         mediaUrls={confirmPayload?.media_urls ?? []}
         scheduledAt={confirmPayload?.scheduled_at ?? null}
