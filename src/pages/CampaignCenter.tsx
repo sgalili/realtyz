@@ -250,7 +250,7 @@ const InlineComposer = ({
 }: {
   channel: ChannelCard;
   brandName: string;
-  onConfirm: (payload: { body: string; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null; group_ids: string[] }) => void;
+  onConfirm: (payload: { body: string; original_ai_body: string; listing_id: string | null; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null; group_ids: string[] }) => void;
 }) => {
   // Session-persistence key — keeps unfinished drafts alive across collapse / expand / tab switch
   const draftKey = `rz-composer-draft:${channel.id}`;
