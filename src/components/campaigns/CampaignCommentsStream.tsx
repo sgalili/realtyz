@@ -131,7 +131,24 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
   const [sending, setSending] = useState(false);
   // Per-row cached AI drafts so closing/re-opening the editor does NOT
   // re-invoke the AI — only an explicit refresh-per-card regenerates.
-  const [draftCache, setDraftCache] = useState<Record<string, { pub: string; dm: string }>>({});
+  const [draftCache, setDraftCache] = useState<Record<string, { pub: string; dm: string }>>(() => readDraftCache(campaign.id));
+
+  // Write-through draft cache to sessionStorage so the suggested + edited
+  // text survives card collapse/expand and background refreshes.
+  useEffect(() => {
+    writeDraftCache(campaign.id, draftCache);
+  }, [campaign.id, draftCache]);
+
+  // Capture live edits to the open row's drafts (after the AI has produced
+  // an initial pair) so manual changes are remembered too.
+  useEffect(() => {
+    if (!replyOpen) return;
+    const existing = draftCache[replyOpen.id];
+    if (!existing) return; // wait until AI has seeded the pair
+    if (existing.pub === replyDraft && existing.dm === dmDraft) return;
+    setDraftCache((prev) => ({ ...prev, [replyOpen.id]: { pub: replyDraft, dm: dmDraft } }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [replyDraft, dmDraft, replyOpen?.id]);
   const postIds = useMemo(() => getCampaignPostIds(campaign), [campaign.channel, campaign.provider_message_id, campaign.provider_response]);
   const postIdsKey = postIds.join("|");
 
