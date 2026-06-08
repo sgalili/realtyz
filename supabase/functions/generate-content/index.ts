@@ -4,9 +4,11 @@ import {
   adminClient,
   loadKbSnippets,
   loadKbInstructions,
+  loadKbPostTemplates,
   loadCrmSnapshot,
   renderKbBlock,
   renderKbInstructionsBlock,
+  renderKbTemplatesBlock,
   renderCrmBlock,
   ANTI_SPAM_RULES,
   CTA_RULE,
@@ -45,12 +47,15 @@ serve(async (req) => {
 
     // Mandatory grounding: workspace KB + live CRM/listings snapshot.
     const admin = adminClient();
-    const [kb, kbInstructions, snap] = await Promise.all([
+    const [kb, kbInstructions, kbTemplates, snap] = await Promise.all([
       loadKbSnippets(admin, userId),
       loadKbInstructions(admin, userId),
+      loadKbPostTemplates(admin, userId),
       loadCrmSnapshot(admin, userId),
     ]);
     const kbInstructionsBlock = renderKbInstructionsBlock(kbInstructions);
+    const kbTemplatesBlock = renderKbTemplatesBlock(kbTemplates);
+    const hasKbTemplate = kbTemplates.length > 0;
 
 
     const featureLabels = (features: unknown) => Array.isArray(features)
@@ -134,7 +139,14 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
 
     const focusOnly = !!listingFocusOnly && !!promotedListing;
 
-    const FOCUS_ONLY_RULE = focusOnly ? `
+    const FOCUS_ONLY_RULE = focusOnly ? (hasKbTemplate ? `
+LISTING-FOCUS MODE (HARD OVERRIDE — highest priority):
+- This post is a direct sales/rental ad for the [PROMOTED LISTING] above and NOTHING else.
+- No personal owner story, no broker biography, no market analysis, no neighborhood essay, no testimonials, no philosophy.
+- Follow the structure, rhythm, line breaks, sectioning, emoji usage and tone of the [OWNER-AUTHORED POST TEMPLATES FROM KNOWLEDGE BASE] block exactly. Those templates OVERRIDE any built-in default.
+- Replace any slot/placeholder with the real listing fields. Skip any line whose data is missing — never invent.
+- End with Udi's signature line and 2-3 relevant hashtags only if the KB template uses them.
+` : `
 LISTING-FOCUS MODE (HARD OVERRIDE — highest priority):
 - This post is a direct sales/rental ad for the [PROMOTED LISTING] above and NOTHING else.
 - No personal owner story, no broker biography, no market analysis, no neighborhood essay, no testimonials, no philosophy.
@@ -173,7 +185,7 @@ REFERENCE TEMPLATE (match this rhythm and tone exactly — adapt wording per lis
 רישיון תיווך 3251767
 
 #[האשטג1] #[האשטג2] #[האשטג3]
-"""` : "";
+"""`) : "";
 
 
     const systemPrompt = `${BROKER_PERSONA}
@@ -206,6 +218,7 @@ ${CTA_RULE}
 כתוב בעברית בלבד, ישראלית טבעית, בגוף ראשון של אודי. החזר את הפוסט בלבד, בלי הסברים נלווים.`;
 
     const userPrompt = [
+      kbTemplatesBlock || null,
       promotedBlock,
       focusOnly ? null : renderCrmBlock(snap),
       focusOnly ? null : renderKbBlock(kb),
