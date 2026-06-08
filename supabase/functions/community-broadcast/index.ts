@@ -196,6 +196,7 @@ Deno.serve(async (req) => {
               channel: body.channel,
               personaPrompt,
               recentBlock,
+              kbInstructionsBlock,
             });
             drafted++;
             return { lead, message };
