@@ -257,7 +257,10 @@ Deno.serve(async (req) => {
           const flat: any[] = [];
           const walk = (node: any, parent: string | null, depth = 0) => {
             if (!node || typeof node !== "object" || depth > 6) return;
-            (node as any).__parent_id = parent;
+            // Preserve any parent id already set by an upstream source (e.g.
+            // Meta Graph fast path) so we don't flatten Graph replies to roots.
+            const existingParent = typeof (node as any).__parent_id === "string" ? (node as any).__parent_id : null;
+            (node as any).__parent_id = parent ?? existingParent;
             flat.push(node);
             const kids = [
               ...(Array.isArray(node.replies) ? node.replies : []),
@@ -270,7 +273,7 @@ Deno.serve(async (req) => {
             const myId = pickStr(node.id, node.commentId, node.comment_id);
             for (const k of kids) walk(k, myId || parent, depth + 1);
           };
-          for (const c of arr) walk(c, null);
+          for (const c of arr) walk(c, (c as any)?.__parent_id ?? null);
           results[nativePostId] = flat;
         } catch (err) {
           errors[nativePostId] = err instanceof Error ? err.message : String(err);
