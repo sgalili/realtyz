@@ -132,24 +132,52 @@ function buildAssistant(opts: {
   };
 }
 
+function genderRules(voiceGender: string | null, userGender: string | null): string {
+  const lines: string[] = [];
+  if (voiceGender === 'male' || voiceGender === 'female') {
+    lines.push(
+      voiceGender === 'male'
+        ? 'מגדר הקול שלך: זכר. דבר תמיד בלשון זכר כשאתה מתאר את עצמך (אני בדקתי, אני אשלח, אני אחזור). לעולם אל תשתמש בצורת נקבה לעצמך.'
+        : 'מגדר הקול שלך: נקבה. דברי תמיד בלשון נקבה כשאת מתארת את עצמך (אני בדקתי, אני אשלח, אני אחזור). לעולם אל תשתמשי בצורת זכר לעצמך.'
+    );
+  }
+  if (userGender === 'male' || userGender === 'female') {
+    lines.push(
+      userGender === 'male'
+        ? 'מגדר המתעניין שאליו אתה מתקשר: זכר. פנה אליו בלשון זכר (אתה מחפש, רצית, נוח לך).'
+        : 'מגדר המתעניין שאליו את/ה מתקשר/ת: נקבה. פני אליה בלשון נקבה (את מחפשת, רצית, נוח לך).'
+    );
+  }
+  if (!lines.length) {
+    lines.push('זהה את מגדר המתעניין מהשם והקול בתחילת השיחה, ופנה אליו באותו מגדר עד סוף השיחה. אל תחליף מגדר באמצע השיחה.');
+  }
+  return lines.join('\n');
+}
+
 function buildSystemPrompt(p: {
   leadName: string;
   city: string;
   preferences: string;
   listingsBlurb: string;
+  voiceGender: string | null;
+  userGender: string | null;
+  brokerInstructions: string | null;
 }) {
   return [
-    "אתה הסוכן הדיגיטלי של מתווך נדל\"ן בישראל.",
-    "דבר עברית טבעית, קצר ולעניין. משפט אחד בכל תור.",
-    p.leadName ? `שם הלקוח: ${p.leadName}.` : "",
-    p.city ? `אזור עניין: ${p.city}.` : "",
-    p.preferences ? `העדפות לקוח: ${p.preferences}` : "",
-    p.listingsBlurb ? `נכסים זמינים רלוונטיים:\n${p.listingsBlurb}` : "",
-    "אל תמציא נכסים שלא הופיעו ברשימה. אם הלקוח מבקש קישור או פרטים בכתב, השתמש מיד בכלי send_whatsapp; אם הוא מבקש SMS, השתמש ב-send_sms_019. כאשר הלקוח מבקש לתאם פגישה או חיוג חוזר השתמש ב-schedule_followup.",
-    "מטרת השיחה: לאשר עניין, להבין צרכים, ולתאם המשך (פגישה / שליחת חומר / חיוג חוזר).",
-    "כללי איסור: אל תשתמש ב-em dash, en dash, או רצף --. אל תאמר ביטויים גנריים של AI.",
-  ].filter(Boolean).join("\n");
+    'אתה הסוכן הדיגיטלי של מתווך נדל"ן בישראל.',
+    'דבר עברית טבעית, קצר ולעניין. משפט אחד בכל תור.',
+    genderRules(p.voiceGender, p.userGender),
+    p.leadName ? `שם הלקוח: ${p.leadName}.` : '',
+    p.city ? `אזור עניין: ${p.city}.` : '',
+    p.preferences ? `העדפות לקוח: ${p.preferences}` : '',
+    p.listingsBlurb ? `נכסים זמינים רלוונטיים:\n${p.listingsBlurb}` : '',
+    p.brokerInstructions ? `הנחיות ספציפיות מהמתווך לשיחה זו (קדימות עליונה, אל תסטה מהן):\n${p.brokerInstructions}` : '',
+    'אל תמציא נכסים שלא הופיעו ברשימה. אם הלקוח מבקש קישור או פרטים בכתב, השתמש מיד בכלי send_whatsapp; אם הוא מבקש SMS, השתמש ב-send_sms_019. כאשר הלקוח מבקש לתאם פגישה או חיוג חוזר השתמש ב-schedule_followup.',
+    'מטרת השיחה: לאשר עניין, להבין צרכים, ולתאם המשך (פגישה / שליחת חומר / חיוג חוזר).',
+    'כללי איסור: אל תשתמש ב-em dash, en dash, או רצף --. אל תאמר ביטויים גנריים של AI.',
+  ].filter(Boolean).join('\n');
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -196,9 +224,24 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { phone_number, lead_id, listing_id } = body as {
+    const {
+      phone_number, lead_id, listing_id, voice_id: bodyVoiceId,
+      voice_gender: bodyVoiceGender, user_gender: bodyUserGender,
+      instructions: brokerInstructionsRaw,
+    } = body as {
       phone_number?: string; lead_id?: string; listing_id?: string;
+      voice_id?: string; voice_gender?: string | null; user_gender?: string | null;
+      instructions?: string | null;
     };
+    const brokerInstructions = (brokerInstructionsRaw || '').toString().trim() || null;
+    const voiceGender = bodyVoiceGender === 'male' || bodyVoiceGender === 'female' ? bodyVoiceGender : null;
+    let userGender = bodyUserGender === 'male' || bodyUserGender === 'female' ? bodyUserGender : null;
+    // Fallback: look up the caller's gender from profiles if the client didn't pass it.
+    if (!userGender) {
+      const { data: p } = await supabase.from('profiles').select('gender').eq('id', user.id).maybeSingle();
+      if (p?.gender === 'male' || p?.gender === 'female') userGender = p.gender;
+    }
+
     if (!phone_number) {
       return new Response(JSON.stringify({ error: "חסר מספר טלפון" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -259,6 +302,7 @@ Deno.serve(async (req) => {
     const systemPrompt = buildSystemPrompt({
       leadName, city, preferences,
       listingsBlurb: focusListing || listingsBlurb,
+      voiceGender, userGender, brokerInstructions,
     });
     const firstMessage = leadName
       ? `שלום ${leadName}, מדבר הסוכן הדיגיטלי של המתווך. יש לי שתי שאלות קצרות לגבי החיפוש שלך, אפשר?`
@@ -268,8 +312,10 @@ Deno.serve(async (req) => {
     const assistant = buildAssistant({
       systemPrompt,
       firstMessage,
-      voiceId: ELEVENLABS_VOICE_ID,
+      // Prefer the voice the broker picked in the dialog; fall back to env default.
+      voiceId: bodyVoiceId || ELEVENLABS_VOICE_ID,
       toolsServerUrl,
+
       leadId: lead_id ?? null,
       userId: user.id,
     });

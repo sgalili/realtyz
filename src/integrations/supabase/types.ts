@@ -1177,6 +1177,7 @@ export type Database = {
           source: string
           updated_at: string
           user_id: string
+          voice_gender: string | null
           voice_id: string
         }
         Insert: {
@@ -1188,6 +1189,7 @@ export type Database = {
           source?: string
           updated_at?: string
           user_id: string
+          voice_gender?: string | null
           voice_id: string
         }
         Update: {
@@ -1199,6 +1201,7 @@ export type Database = {
           source?: string
           updated_at?: string
           user_id?: string
+          voice_gender?: string | null
           voice_id?: string
         }
         Relationships: []
@@ -3351,6 +3354,7 @@ export type Database = {
           email: string | null
           email_alias: string | null
           full_name: string | null
+          gender: string | null
           id: string
           is_suspended: boolean
           is_unlimited: boolean
@@ -3375,6 +3379,7 @@ export type Database = {
           email?: string | null
           email_alias?: string | null
           full_name?: string | null
+          gender?: string | null
           id: string
           is_suspended?: boolean
           is_unlimited?: boolean
@@ -3399,6 +3404,7 @@ export type Database = {
           email?: string | null
           email_alias?: string | null
           full_name?: string | null
+          gender?: string | null
           id?: string
           is_suspended?: boolean
           is_unlimited?: boolean

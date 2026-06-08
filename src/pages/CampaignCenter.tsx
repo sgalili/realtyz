@@ -1796,13 +1796,22 @@ const mapVoiceLead = (r: any): VoiceLead => {
   };
 };
 
-const PRESET_VOICE_AGENTS: { id: string; label: string; voice_id: string }[] = [
-  { id: 'sarah',    label: 'שרה (אישה)',     voice_id: 'EXAVITQu4vr4xnSDxMaL' },
-  { id: 'matilda',  label: 'מטילדה (אישה)', voice_id: 'XrExE9yKIg1WjnnlVkGX' },
-  { id: 'charlie',  label: 'צ׳רלי (גבר)',    voice_id: 'IKne3meq5aSn9XLyUdCD' },
+type Gender = 'male' | 'female';
+
+const PRESET_VOICE_AGENTS: { id: string; label: string; voice_id: string; gender: Gender }[] = [
+  { id: 'sarah',    label: 'שרה (אישה)',     voice_id: 'EXAVITQu4vr4xnSDxMaL', gender: 'female' },
+  { id: 'matilda',  label: 'מטילדה (אישה)', voice_id: 'XrExE9yKIg1WjnnlVkGX', gender: 'female' },
+  { id: 'charlie',  label: 'צ׳רלי (גבר)',    voice_id: 'IKne3meq5aSn9XLyUdCD', gender: 'male' },
 ];
 
-type ClonedVoice = { id: string; name: string; voice_id: string; preview_url?: string | null };
+type ClonedVoice = { id: string; name: string; voice_id: string; preview_url?: string | null; voice_gender?: Gender | null };
+
+// Hebrew gender helpers — render verbs/adjectives in the correct grammatical
+// gender of the addressee (the broker). Defaults to neutral male-form when
+// gender is unknown so we never silently address a male user as female.
+const heVerb = (g: Gender | null | undefined, male: string, female: string) =>
+  g === 'female' ? female : male;
+
 
 const VoiceLeadPickerDialog = ({
   open, onClose, channel,
@@ -1818,6 +1827,13 @@ const VoiceLeadPickerDialog = ({
   const [instructions, setInstructions] = useState('');
   const [dialing, setDialing] = useState(false);
 
+  // Broker (caller) gender — used to address the user in correct Hebrew grammar.
+  const [userGender, setUserGender] = useState<Gender | null>(null);
+
+  // Property promotion picker — optional focus listing for the call.
+  const [voiceListings, setVoiceListings] = useState<{ id: string; title: string; city: string | null; asking_price: number | null }[]>([]);
+  const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
+
   // Manual-select state
   const [search, setSearch] = useState('');
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
@@ -1830,15 +1846,22 @@ const VoiceLeadPickerDialog = ({
   const allAgents = useMemo(
     () => [
       ...PRESET_VOICE_AGENTS,
-      ...clonedVoices.map((v) => ({ id: `cv:${v.id}`, label: `${v.name} (קול מותאם)`, voice_id: v.voice_id })),
+      ...clonedVoices.map((v) => ({
+        id: `cv:${v.id}`,
+        label: `${v.name} (קול מותאם${v.voice_gender === 'female' ? ' · אישה' : v.voice_gender === 'male' ? ' · גבר' : ''})`,
+        voice_id: v.voice_id,
+        gender: (v.voice_gender ?? null) as Gender | null,
+      })),
     ],
     [clonedVoices],
   );
+  const selectedAgent = allAgents.find((a) => a.id === agentId) ?? null;
+  const selectedListing = voiceListings.find((l) => l.id === selectedListingId) ?? null;
 
   const loadClonedVoices = async () => {
     const { data } = await supabase
       .from('cloned_voices')
-      .select('id, name, voice_id, preview_url')
+      .select('id, name, voice_id, preview_url, voice_gender')
       .order('created_at', { ascending: false });
     setClonedVoices((data ?? []) as ClonedVoice[]);
   };
@@ -1852,13 +1875,22 @@ const VoiceLeadPickerDialog = ({
     hasLoadedRef.current = true;
     (async () => {
       setLoading(true);
-      const [{ data: leadRows }] = await Promise.all([
+      const { data: { user } } = await supabase.auth.getUser();
+      const [{ data: leadRows }, { data: listingRows }, { data: profile }] = await Promise.all([
         supabase.from('leads').select('id, full_name, phone_number, city, deal_type, preferences')
           .not('phone_number', 'is', null).order('full_name', { ascending: true }).limit(1000),
+        supabase.from('listings').select('id, property_title, city, asking_price, status')
+          .eq('status', 'live').order('created_at', { ascending: false }).limit(200),
+        user ? supabase.from('profiles').select('gender').eq('id', user.id).maybeSingle() : Promise.resolve({ data: null } as any),
         loadClonedVoices(),
       ]);
       setLeads(((leadRows as any[]) ?? []).map(mapVoiceLead));
+      setVoiceListings(((listingRows as any[]) ?? []).map((l) => ({
+        id: l.id, title: l.property_title || 'נכס ללא כותרת', city: l.city ?? null, asking_price: l.asking_price ?? null,
+      })));
+      setUserGender(((profile as any)?.gender ?? null) as Gender | null);
       setLoading(false);
+
     })();
   }, [open]);
 
@@ -1909,17 +1941,22 @@ const VoiceLeadPickerDialog = ({
             lead_id: l.id,
             voice_id: agent.voice_id,
             agent_label: agent.label,
+            voice_gender: (agent as any).gender ?? null,
+            user_gender: userGender,
+            listing_id: selectedListingId ?? null,
             instructions: instructions.trim() || null,
           },
         });
+
         if (error) failed++; else ok++;
       }
       toast.dismiss('voice-dial');
       if (ok > 0) toast.success(`נשלחו ${ok} שיחות מ-${formatPhoneDisplay(VOICE_DIAL_NUMBER)}${failed ? ` · ${failed} נכשלו` : ''}`);
       else toast.error('כל השיחות נכשלו');
       if (ok > 0) {
-        setListGroup(''); setAgentId(''); setInstructions('');
+        setListGroup(''); setAgentId(''); setInstructions(''); setSelectedListingId(null);
         setSearch(''); setSelectedLeadIds(new Set());
+
       }
       onClose();
     } finally {
@@ -1953,7 +1990,38 @@ const VoiceLeadPickerDialog = ({
           </DialogHeader>
 
           <div className="space-y-4">
+            {/* Broker gender — controls Hebrew grammar across the dialog and is
+                persisted to profiles so future sessions don't need to ask. */}
+            <div className="flex items-center justify-between gap-2 rounded-lg border border-[#0f1b3d]/15 bg-muted/30 px-3 py-2">
+              <span className="text-[11px] font-semibold text-[#0f1b3d]">אני מתווך/ת:</span>
+              <div className="flex gap-1">
+                {([
+                  { v: 'male' as const, label: 'גבר' },
+                  { v: 'female' as const, label: 'אישה' },
+                ]).map((o) => (
+                  <button
+                    key={o.v}
+                    type="button"
+                    onClick={async () => {
+                      setUserGender(o.v);
+                      const { data: { user } } = await supabase.auth.getUser();
+                      if (user) await supabase.from('profiles').update({ gender: o.v }).eq('id', user.id);
+                    }}
+                    className={cn(
+                      'rounded-md border px-2 py-0.5 text-[11px] font-semibold transition',
+                      userGender === o.v
+                        ? 'border-[#0f1b3d] bg-[#0f1b3d] text-white'
+                        : 'border-[#0f1b3d]/30 text-[#0f1b3d] hover:bg-[#0f1b3d]/5',
+                    )}
+                  >
+                    {o.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Step 1 — Target List */}
+
             <div className="animate-in fade-in slide-in-from-top-1 duration-200">
               <Select value={listGroup} onValueChange={setListGroup} dir="rtl">
                 <SelectTrigger className="w-full h-11 text-right text-[15px] text-muted-foreground/80 border-[#0f1b3d]/20 focus:ring-[#C9A84C] data-[placeholder]:text-muted-foreground/70">
@@ -2069,36 +2137,69 @@ const VoiceLeadPickerDialog = ({
               </div>
             )}
 
-            {/* Step 3 — Optional script + CTA */}
-            {listGroup && agentId && (
-              <>
-                <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
-                  <label className="text-xs font-semibold text-[#0f1b3d] text-right block">
-                    הוראות, נושא או תסריט מותאם לשיחה (אופציונלי)
-                  </label>
-                  <Textarea
-                    value={instructions}
-                    onChange={(e) => setInstructions(e.target.value)}
-                    placeholder='לדוגמה: "בדקי האם המתעניין עדיין מחפש דירת 4 חדרים ברמת אביב, ועדכני אותו על דירה חדשה שיצאה ברחוב איינשטיין"'
-                    className="text-right min-h-[88px] border-[#0f1b3d]/30 focus-visible:ring-[#C9A84C]"
-                  />
-                  <p className="text-[11px] text-muted-foreground text-right leading-snug">
-                    אם תשאירי ריק, המערכת תשתמש באסטרטגיה האוטונומית הרגילה שלה המבוססת על הפרסונה של הסוכן, על מאגר הידע ועל היסטוריית השיחות עם המתעניין.
-                  </p>
-                </div>
+            {/* Step 3 — Optional property focus + script + CTA */}
+            {listGroup && agentId && (() => {
+              // Build a dynamic placeholder from a real listing so the broker
+              // sees a concrete example instead of a hard-coded street.
+              const example = voiceListings[0];
+              const examplePlaceholder = example
+                ? `לדוגמה: "בדוק האם המתעניין עדיין מחפש נכס דומה ל-${example.title}${example.city ? ` ב${example.city}` : ''}, ועדכן אותו על האפשרות החדשה הזאת"`
+                : 'לדוגמה: "בדוק האם המתעניין עדיין מחפש דירה לפי ההעדפות שלו, ועדכן אותו על נכס חדש שמתאים"';
+              return (
+                <>
+                  {/* Property promotion picker — mirrors the FB post flow */}
+                  <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="text-xs font-semibold text-[#0f1b3d] text-right block">
+                      קדם נכס ספציפי בשיחה (אופציונלי)
+                    </label>
+                    <Select
+                      value={selectedListingId ?? '__none'}
+                      onValueChange={(v) => setSelectedListingId(v === '__none' ? null : v)}
+                      dir="rtl"
+                    >
+                      <SelectTrigger className="w-full text-right border-[#0f1b3d]/30 focus:ring-[#C9A84C]">
+                        <SelectValue placeholder="בחר נכס מהמאגר…" />
+                      </SelectTrigger>
+                      <SelectContent dir="rtl" className="max-h-72">
+                        <SelectItem value="__none">ללא קידום נכס ספציפי (שיחה כללית)</SelectItem>
+                        {voiceListings.map((l) => (
+                          <SelectItem key={l.id} value={l.id}>
+                            {l.title}{l.city ? ` · ${l.city}` : ''}{l.asking_price ? ` · ₪${Number(l.asking_price).toLocaleString('he-IL')}` : ''}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
 
-                <DialogFooter className="mt-2 animate-in fade-in slide-in-from-bottom-1 duration-200">
-                  <Button
-                    onClick={dial}
-                    disabled={!canDial}
-                    className="w-full bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-11 text-base font-semibold shadow-md"
-                  >
-                    <Phone className="ml-2 h-5 w-5" />
-                    {dialing ? 'מפעיל שיחות…' : 'הפעלת שיחה'}
-                  </Button>
-                </DialogFooter>
-              </>
-            )}
+                  <div className="space-y-1.5 animate-in fade-in slide-in-from-top-1 duration-200">
+                    <label className="text-xs font-semibold text-[#0f1b3d] text-right block">
+                      הוראות, נושא או תסריט מותאם לשיחה (אופציונלי)
+                    </label>
+                    <Textarea
+                      value={instructions}
+                      onChange={(e) => setInstructions(e.target.value)}
+                      placeholder={examplePlaceholder}
+                      className="text-right min-h-[88px] border-[#0f1b3d]/30 focus-visible:ring-[#C9A84C]"
+                    />
+                    <p className="text-[11px] text-muted-foreground text-right leading-snug">
+                      אם {heVerb(userGender, 'תשאיר', 'תשאירי')} ריק, המערכת {heVerb(userGender, 'תשתמש', 'תשתמש')} באסטרטגיה האוטונומית הרגילה שלה המבוססת על הפרסונה של הסוכן, על מאגר הידע ועל היסטוריית השיחות עם המתעניין.
+                    </p>
+                  </div>
+
+                  <DialogFooter className="mt-2 animate-in fade-in slide-in-from-bottom-1 duration-200">
+                    <Button
+                      onClick={dial}
+                      disabled={!canDial}
+                      className="w-full bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-11 text-base font-semibold shadow-md"
+                    >
+                      <Phone className="ml-2 h-5 w-5" />
+                      {dialing ? 'מפעיל שיחות…' : 'הפעלת שיחה'}
+                    </Button>
+                  </DialogFooter>
+                </>
+              );
+            })()}
+
           </div>
         </DialogContent>
       </Dialog>
