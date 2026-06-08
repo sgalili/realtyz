@@ -121,6 +121,11 @@ Deno.serve(async (req) => {
     const persona = await loadAgentPersona(SUPABASE_URL, SUPABASE_ANON, authHeader);
     const personaPrompt = renderPersonaPrompt(persona);
 
+    // Owner-written KB learning instructions ("what to learn from this source").
+    const kbInstructionsBlock = renderKbInstructionsBlock(
+      await loadKbInstructions(adminClient(), userId),
+    );
+
     // Recent activity grounding for the AI: last 5 leads the Agent worked on.
     const { data: recentActivity } = await supa
       .from("interaction_activity_log")
