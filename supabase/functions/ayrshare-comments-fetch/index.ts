@@ -248,6 +248,8 @@ Deno.serve(async (req) => {
     await Promise.all(
       Array.from(targets.values()).map(async (target) => {
         const { fetchPostId, nativePostId, platform } = target;
+        let activeProfileKey = defaultProfileKey;
+        let activeRefId = refId;
         try {
           if (isUuid(fetchPostId) || isUuid(nativePostId)) {
             const mappingError = {
@@ -380,18 +382,38 @@ Deno.serve(async (req) => {
             }
           }
 
-          let fetched = graphArr ? { ok: true, status: 200, payload: { data: graphArr }, text: "" } : await fetchComments(target, false);
-          let arr: any[] = graphArr ?? (fetched.ok ? extractComments(fetched.payload, platform) : []);
+          let fetched = graphArr ? { ok: true, status: 200, payload: { data: graphArr }, text: "" } : null;
+          let arr: any[] = graphArr ?? [];
 
-          // If Ayrshare's top-level id route is empty/unavailable, retry with
-          // the native platform id. The UI still stores/matches the native id.
-          if (!graphArr && (arr.length === 0 || !fetched.ok) && fetchPostId !== nativePostId) {
-            const socialFetched = await fetchComments(target, true);
-            const socialArr = socialFetched.ok ? extractComments(socialFetched.payload, platform) : [];
-            if (socialFetched.ok || socialArr.length > 0) {
-              fetched = socialFetched;
-              arr = socialArr;
+          // Try the saved workspace profile first, then the legacy env profile
+          // key as a rescue path. This prevents a suspended replacement profile
+          // from blanking comments for posts created under the original profile.
+          if (!graphArr) {
+            let best: { fetched: any; arr: any[]; profileKey: string; refId: string | null } | null = null;
+            for (const candidate of profileCandidates) {
+              let candidateFetched = await fetchComments(target, false, candidate.profileKey);
+              let candidateArr = candidateFetched.ok ? extractComments(candidateFetched.payload, platform) : [];
+
+              // If Ayrshare's top-level id route is empty/unavailable, retry with
+              // the native platform id. The UI still stores/matches the native id.
+              if ((candidateArr.length === 0 || !candidateFetched.ok) && fetchPostId !== nativePostId) {
+                const socialFetched = await fetchComments(target, true, candidate.profileKey);
+                const socialArr = socialFetched.ok ? extractComments(socialFetched.payload, platform) : [];
+                if (socialFetched.ok || socialArr.length > 0) {
+                  candidateFetched = socialFetched;
+                  candidateArr = socialArr;
+                }
+              }
+
+              if (!best || candidateArr.length > best.arr.length || (candidateFetched.ok && !best.fetched.ok)) {
+                best = { fetched: candidateFetched, arr: candidateArr, profileKey: candidate.profileKey, refId: candidate.refId };
+              }
+              if (candidateArr.length > 0) break;
             }
+            fetched = best?.fetched ?? { ok: false, status: 500, payload: { message: "No Ayrshare profile attempted" }, text: "" };
+            arr = best?.arr ?? [];
+            activeProfileKey = best?.profileKey ?? defaultProfileKey;
+            activeRefId = best?.refId ?? refId;
           }
 
           if (!fetched.ok) {
@@ -425,7 +447,7 @@ Deno.serve(async (req) => {
                 const detailRes = await fetch(`${AYR_BASE}/comments/${encodeURIComponent(commentId)}?${detailQs}`, {
                   headers: {
                     Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-                    "Profile-Key": profileKey,
+                    "Profile-Key": activeProfileKey,
                     "Content-Type": "application/json",
                   },
                 });
@@ -454,6 +476,7 @@ Deno.serve(async (req) => {
             // Meta Graph fast path) so we don't flatten Graph replies to roots.
             const existingParent = typeof (node as any).__parent_id === "string" ? (node as any).__parent_id : null;
             (node as any).__parent_id = parent ?? existingParent;
+            (node as any).__profile_ref_id = activeRefId;
             flat.push(node);
             const kids = [
               ...extractChildComments(node),
