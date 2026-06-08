@@ -287,6 +287,21 @@ ${CTA_RULE}
     }
     content = content.replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
 
+    // Neighborhood naming hard rule: never expose numeric/coded neighborhoods.
+    // Strip "שכונת [שכונה]" placeholder leftovers and "שכונה 10" / "שכונה ג'" patterns.
+    const validNeighborhood = String(promotedListing?.neighborhood ?? "").trim();
+    const hasHebrewName = /[\u0590-\u05FF]/.test(validNeighborhood) && !/^\s*\d+\s*$/.test(validNeighborhood);
+    content = content
+      // "שכונה 10" / "שכונת 7" / "אזור 4" / "שכונת ג'"
+      .replace(/(?:שכונ[הת]|אזור)\s+(?:\d+|[א-ת]['׳]?)(?=\s|[,.!?]|$)/g, hasHebrewName ? `שכונת ${validNeighborhood}` : "")
+      // unfilled template placeholders like "שכונת [שכונה]"
+      .replace(/שכונת\s*\[[^\]]*\]/g, hasHebrewName ? `שכונת ${validNeighborhood}` : "")
+      // dangling "| שכונת  |" separators left after removal
+      .replace(/\|\s*\|/g, "|")
+      .replace(/[ \t]{2,}/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
 
     const p = String(platform).toLowerCase();
     if ((p === "twitter" || p === "x") && content.length > 280) {
