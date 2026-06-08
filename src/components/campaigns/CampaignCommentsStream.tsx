@@ -747,23 +747,25 @@ function CommentBubble({
       )}
     >
       <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-        <span
-          aria-label={sentimentLabel(row.sentiment)}
-          title={sentimentLabel(row.sentiment)}
-          className="text-base leading-none"
-        >
-          {row.sentiment === "positive"
-            ? "😊"
-            : row.sentiment === "negative"
-            ? "☹️"
-            : "😐"}
-        </span>
-        <div className="flex flex-1 items-center justify-center gap-2 min-w-0">
+        <div className="flex flex-1 items-center gap-2 min-w-0">
           <Avatar className="h-6 w-6 shrink-0">
             {avatarUrl && <AvatarImage src={avatarUrl} alt={senderName} />}
             <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
           </Avatar>
           <span className="truncate font-medium text-foreground">{senderName}</span>
+          <span
+            aria-label={sentimentLabel(row.sentiment)}
+            title={sentimentLabel(row.sentiment)}
+            className="shrink-0 inline-flex items-center"
+          >
+            {row.sentiment === "positive" ? (
+              <Smile className="h-4 w-4 text-emerald-500" />
+            ) : row.sentiment === "negative" ? (
+              <Frown className="h-4 w-4 text-red-500" />
+            ) : (
+              <Meh className="h-4 w-4 text-amber-500" />
+            )}
+          </span>
         </div>
         <span className="shrink-0">{when}</span>
       </div>
