@@ -1477,6 +1477,21 @@ const PublishedFeed = () => {
   const [rows, setRows] = useState<CampaignRow[] | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [liveCommentCounts, setLiveCommentCounts] = useState<Record<string, number>>(() => {
+    try {
+      const raw = sessionStorage.getItem('realtyz.live_comment_counts');
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  });
+  const updateLiveCount = (campaignId: string, count: number) => {
+    setLiveCommentCounts((prev) => {
+      if (prev[campaignId] === count) return prev;
+      const next = { ...prev, [campaignId]: count };
+      try { sessionStorage.setItem('realtyz.live_comment_counts', JSON.stringify(next)); } catch { /* quota */ }
+      return next;
+    });
+  };
+
   const [activeChannel, setActiveChannel] = useState<string>('all');
   const [archivedCount, setArchivedCount] = useState<number>(0);
   const [fbPageName, setFbPageName] = useState<string | null>(null);
