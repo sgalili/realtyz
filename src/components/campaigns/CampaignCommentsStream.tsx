@@ -301,41 +301,46 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
     return () => { supabase.removeChannel(channel); };
   }, [userId, campaign.id, postIdsKey, campaign.channel]);
 
-  // Build a shallow tree by metadata.parent_id (set by ayrshare-comments-fetch).
-  // Defensive: guards against self-referencing rows, missing parents, and any
-  // unexpected data shape that previously froze the panel on the loader.
-  const tree = useMemo<Array<EngagementRow & { children: EngagementRow[] }>>(() => {
+  // Build a FULL recursive tree by metadata.parent_id (set by ayrshare-comments-fetch).
+  // Shows every comment and nested reply for the campaign inside the same card.
+  // Defensive: guards against self-referencing rows, cycles, and missing parents.
+  type TreeNode = EngagementRow & { children: TreeNode[]; depth: number };
+  const tree = useMemo<TreeNode[]>(() => {
     const all = rows ?? [];
     try {
       const byExt = new Map<string, EngagementRow>();
-      all.forEach((r) => {
-        if (r?.external_id) byExt.set(r.external_id, r);
-      });
-      const roots: Array<EngagementRow & { children: EngagementRow[] }> = [];
-      const childMap = new Map<string, EngagementRow[]>();
+      all.forEach((r) => { if (r?.external_id) byExt.set(r.external_id, r); });
+      const nodes = new Map<string, TreeNode>();
       all.forEach((r) => {
         if (!r) return;
-        let parent = (r.metadata as any)?.parent_id as string | undefined;
-        // Guard: a row pointing to itself would loop forever — flatten it.
-        if (parent && r.external_id && parent === r.external_id) {
-          parent = undefined;
-        }
-        if (parent && byExt.has(parent) && parent !== r.external_id) {
-          const arr = childMap.get(parent) ?? [];
-          arr.push(r);
-          childMap.set(parent, arr);
+        nodes.set(r.id, { ...r, children: [], depth: 0 });
+      });
+      const roots: TreeNode[] = [];
+      nodes.forEach((node) => {
+        let parent = (node.metadata as any)?.parent_id as string | undefined;
+        if (parent && node.external_id && parent === node.external_id) parent = undefined;
+        const parentRow = parent ? byExt.get(parent) : null;
+        const parentNode = parentRow ? nodes.get(parentRow.id) : null;
+        if (parentNode && parentNode.id !== node.id) {
+          parentNode.children.push(node);
         } else {
-          // Unknown/missing parent → render as a top-level node instead of dropping.
-          roots.push({ ...r, children: [] });
+          roots.push(node);
         }
       });
-      roots.forEach((r) => {
-        r.children = r.external_id ? childMap.get(r.external_id) ?? [] : [];
-      });
+      // Cycle-safe depth assignment + sort siblings by created_at asc (thread order).
+      const assignDepth = (n: TreeNode, depth: number, seen: Set<string>) => {
+        if (seen.has(n.id)) return;
+        seen.add(n.id);
+        n.depth = depth;
+        n.children.sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
+        n.children.forEach((c) => assignDepth(c, depth + 1, seen));
+      };
+      roots.sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+      roots.forEach((r) => assignDepth(r, 0, new Set()));
       return roots;
     } catch (err) {
       console.error("[CampaignCommentsStream] tree build failed, falling back to flat rows", err);
-      return all.map((r) => ({ ...r, children: [] }));
+      return all.map((r) => ({ ...r, children: [], depth: 0 }));
     }
   }, [rows]);
 
