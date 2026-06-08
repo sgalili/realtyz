@@ -427,8 +427,8 @@ export default function KnowledgeBase() {
                           key={d.id}
                           role="button"
                           tabIndex={0}
-                          onClick={() => setViewDoc(d)}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setViewDoc(d); } }}
+                          onClick={() => openDoc(d)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDoc(d); } }}
                           className="flex items-start gap-2 p-2 rounded-md border bg-background hover:bg-muted/30 transition-colors cursor-pointer"
                         >
                           {isVideo && thumb ? (
