@@ -143,23 +143,31 @@ export function ListingPortalsCard() {
   };
 
   const verifyHomely = async () => {
+    const agency = (values.homely_agency ?? '').trim();
+    if (!agency) { toast.error('יש להזין קוד משרד Homely לפני בדיקת התחברות'); return; }
     setVerifying(true);
     try {
       const { data, error } = await supabase.functions.invoke('homely-verify-login', { body: {} });
       if (error) throw error;
       if ((data as any)?.ok) {
         setHomelyStatus('ok');
-        toast.success('✅ ההתחברות ל‑Homely הצליחה');
+        toast.success('החיבור ל-Homely בוצע בהצלחה! המערכת מוכנה למשיכת נתונים.');
+        // Kick off the property hydration pipeline; do not block the UI.
+        supabase.functions
+          .invoke('homely-search', { body: { hydrate: true } })
+          .catch((e) => console.warn('[homely] hydrate after verify failed', e));
       } else {
         setHomelyStatus('failed');
-        toast.error('ההתחברות נכשלה: ' + ((data as any)?.note ?? 'unknown'));
+        toast.error(`שגיאה באימות מול הומלי: אנא ודא כי קוד המשרד (${agency}) ומפתח ה-API תקינים.`);
       }
     } catch (e: any) {
-      toast.error(e?.message ?? 'אימות נכשל');
+      setHomelyStatus('failed');
+      toast.error(e?.message ?? `שגיאה באימות מול הומלי: אנא ודא כי קוד המשרד (${agency}) ומפתח ה-API תקינים.`);
     } finally {
       setVerifying(false);
     }
   };
+
 
   const savePortal = async (p: Portal) => {
     if (p.id === 'homely') return saveHomely();
