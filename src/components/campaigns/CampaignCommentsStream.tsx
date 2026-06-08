@@ -578,24 +578,14 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
         toast.success("התגובה פורסמה");
       }
 
-      // Active-learning capture: if the broker edited either draft before
-      // publishing, send the original/edited pair to learn-from-edit so the
-      // persona prompt picks up the correction on future generations.
-      const pairs: Array<{ label: string; original: string; edited: string }> = [];
-      if (originalReply && finalPublic && originalReply !== finalPublic) {
-        pairs.push({ label: "public_comment", original: originalReply, edited: finalPublic });
-      }
-      if (originalDm && dmText && originalDm !== dmText) {
-        pairs.push({ label: "private_messenger_dm", original: originalDm, edited: dmText });
-      }
-      if (pairs.length > 0) {
-        void supabase.functions.invoke("learn-from-edit", {
-          body: {
-            context: `campaign_reply:${replyOpen.platform}`,
-            pairs,
-          },
-        }).catch(() => { /* background, never block UI */ });
-      }
+      // Active-learning capture (shared helper — see src/lib/learnFromEdit.ts).
+      learnFromEdit({
+        context: `campaign_reply:${replyOpen.platform}`,
+        pairs: [
+          { label: "public_comment", original: originalReply, edited: finalPublic },
+          { label: "private_messenger_dm", original: originalDm, edited: dmText },
+        ],
+      });
 
       setReplyOpen(null);
       setReplyDraft("");
