@@ -3018,6 +3018,8 @@ const CampaignCenter = () => {
           const shouldEmail = alsoEmail && pickedChannel?.id !== 'email' && connectedChannels.has('email') && body.trim().length > 0;
           setConfirmPayload(null);
           setPickedChannel(null);
+          setPickedChannelIds(new Set());
+
           setAlsoEmail(false);
           if (shouldEmail) {
             try {
