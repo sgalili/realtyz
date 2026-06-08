@@ -2635,8 +2635,12 @@ const CampaignCenter = () => {
     if (pickedChannel) return;
     if (!connectedChannels.has('facebook')) return;
     const fb = CHANNEL_CARDS.find((c) => c.id === 'facebook');
-    if (fb) setPickedChannel(fb);
+    if (fb) {
+      setPickedChannel(fb);
+      setPickedChannelIds((prev) => (prev.has('facebook') ? prev : new Set(prev).add('facebook')));
+    }
   }, [connectedChannels, pickedChannel]);
+
 
 
 
