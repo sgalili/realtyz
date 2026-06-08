@@ -713,7 +713,7 @@ const InlineComposer = ({
                 <ImageIcon className="h-4 w-4" />
               </button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-44 p-1" dir="rtl">
+            <PopoverContent align="start" className="w-44 p-1" dir="rtl">
               <button type="button" onClick={() => galleryInputRef.current?.click()}
                 className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
                 <span>גלריה</span>
