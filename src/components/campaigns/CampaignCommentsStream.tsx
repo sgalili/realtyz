@@ -768,7 +768,8 @@ function CommentBubble({
     .slice(0, 2)
     .map((s) => s.charAt(0).toUpperCase())
     .join("") || "?";
-  const alreadyReplied = row.status === "sent" || row.status === "replied";
+  const isSelfAuthored = meta?.self_authored === true || meta?.author_type === "workspace_page";
+  const alreadyReplied = !isSelfAuthored && (row.status === "sent" || row.status === "replied");
   const toggleLabel = expanded ? "סגור" : "צור תגובת AI";
   const cleanRepliedTo = repliedToText?.trim() || null;
   const cleanReplyPreview = replyPreviewText?.trim() || null;
@@ -844,7 +845,7 @@ function CommentBubble({
               </span>
             </div>
           )
-        ) : (
+        ) : isSelfAuthored ? null : (
           <>
             <button
               type="button"
