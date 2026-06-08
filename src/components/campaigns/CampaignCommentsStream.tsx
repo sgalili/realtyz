@@ -32,6 +32,26 @@ const firstPipelineError = (data: any): string | null => {
   return null;
 };
 
+// Detect Meta OAuthException 190 / subcode 467 ("session invalid - user logged out")
+// anywhere in the pipeline payload so we can render a friendly "renew connection"
+// panel instead of a raw API error string.
+const isFbSessionExpired = (data: any): boolean => {
+  const apis = Array.isArray(data?.api_errors) ? data.api_errors : [];
+  for (const a of apis) {
+    const p = a?.payload ?? a?.error ?? {};
+    const err = p?.error ?? p;
+    const code = Number(err?.code);
+    const sub = Number(err?.error_subcode ?? err?.subcode);
+    const type = String(err?.type ?? "");
+    const msg = String(err?.message ?? "");
+    if (code === 190 || sub === 467 || type === "OAuthException" || /session.*invalid|logged out/i.test(msg)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+
 type EngagementRow = {
   id: string;
   user_id: string;
