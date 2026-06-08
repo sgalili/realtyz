@@ -251,7 +251,15 @@ const InlineComposer = ({
   brandName: string;
   onConfirm: (payload: { body: string; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null; group_ids: string[] }) => void;
 }) => {
-  const [body, setBody] = useState('');
+  // Session-persistence key — keeps unfinished drafts alive across collapse / expand / tab switch
+  const draftKey = `rz-composer-draft:${channel.id}`;
+  const readDraft = (): any => {
+    if (typeof window === 'undefined') return null;
+    try { return JSON.parse(sessionStorage.getItem(draftKey) || 'null'); } catch { return null; }
+  };
+  const initial = readDraft() || {};
+
+  const [body, setBody] = useState<string>(initial.body || '');
   const [mode, setMode] = useState<'now' | 'scheduled'>('now');
   // Local datetime string in `YYYY-MM-DDTHH:mm` (input[type=datetime-local] format).
   const [scheduledLocal, setScheduledLocal] = useState<string>('');
@@ -261,19 +269,20 @@ const InlineComposer = ({
   const [generating, setGenerating] = useState(false);
 
   // Custom AI generation context (broker steering inputs)
-  const [customInstructions, setCustomInstructions] = useState('');
+  const [customInstructions, setCustomInstructions] = useState<string>(initial.customInstructions || '');
   const [listingQuery, setListingQuery] = useState('');
   const [listings, setListings] = useState<CampaignListing[]>([]);
   const [listingsLoading, setListingsLoading] = useState(false);
-  const [selectedListingId, setSelectedListingId] = useState<string | null>(null);
+  const [selectedListingId, setSelectedListingId] = useState<string | null>(initial.selectedListingId ?? null);
   const [listingPickerOpen, setListingPickerOpen] = useState(false);
 
   // Attachment / media state
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [attachments, setAttachments] = useState<{ name: string; kind: 'image' | 'file' | 'audio'; url?: string }[]>([]);
+  const [attachments, setAttachments] = useState<{ name: string; kind: 'image' | 'file' | 'audio'; url?: string }[]>(initial.attachments || []);
   const [generatingImage, setGeneratingImage] = useState(false);
+
 
   // Audio recording
   const [recording, setRecording] = useState(false);
