@@ -28,6 +28,7 @@ Deno.serve(async (req) => {
   try {
     const AYRSHARE_API_KEY = Deno.env.get("AYRSHARE_API_KEY");
     if (!AYRSHARE_API_KEY) return json({ error: "AYRSHARE_API_KEY not configured" }, 500);
+    const FB_PAGE_TOKEN = Deno.env.get("FB_PAGE_ACCESS_TOKEN")?.trim() || null;
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -191,12 +192,42 @@ Deno.serve(async (req) => {
             return;
           }
 
-          let fetched = await fetchComments(target, false);
-          let arr: any[] = fetched.ok ? extractComments(fetched.payload, platform) : [];
+          // FAST PATH: Meta Graph API direct fetch for Facebook posts shaped
+          // as `{pageId}_{postId}`. Bypasses Ayrshare's stale tracker so the
+          // "רענן תגובות" button reflects the live FB comment tree instantly.
+          let graphArr: any[] | null = null;
+          if (
+            FB_PAGE_TOKEN &&
+            /^facebook$/i.test(platform) &&
+            /^\d+_\d+$/.test(nativePostId)
+          ) {
+            try {
+              const gUrl = `https://graph.facebook.com/v20.0/${encodeURIComponent(nativePostId)}/comments?fields=id,message,created_time,from,parent,like_count&limit=100&access_token=${encodeURIComponent(FB_PAGE_TOKEN)}`;
+              const gRes = await fetch(gUrl);
+              const gJson = await gRes.json().catch(() => ({}));
+              if (gRes.ok && Array.isArray(gJson?.data)) {
+                graphArr = gJson.data.map((c: any) => ({
+                  id: c.id,
+                  message: c.message ?? "",
+                  created_time: c.created_time,
+                  like_count: c.like_count ?? 0,
+                  from: c.from ?? { name: "משתמש פייסבוק" },
+                  __parent_id: c.parent?.id ?? null,
+                }));
+              } else {
+                console.warn("[ayrshare-comments-fetch] graph fallback", gRes.status, JSON.stringify(gJson).slice(0, 300));
+              }
+            } catch (gErr) {
+              console.warn("[ayrshare-comments-fetch] graph error", gErr instanceof Error ? gErr.message : String(gErr));
+            }
+          }
+
+          let fetched = graphArr ? { ok: true, status: 200, payload: { data: graphArr }, text: "" } : await fetchComments(target, false);
+          let arr: any[] = graphArr ?? (fetched.ok ? extractComments(fetched.payload, platform) : []);
 
           // If Ayrshare's top-level id route is empty/unavailable, retry with
           // the native platform id. The UI still stores/matches the native id.
-          if ((arr.length === 0 || !fetched.ok) && fetchPostId !== nativePostId) {
+          if (!graphArr && (arr.length === 0 || !fetched.ok) && fetchPostId !== nativePostId) {
             const socialFetched = await fetchComments(target, true);
             const socialArr = socialFetched.ok ? extractComments(socialFetched.payload, platform) : [];
             if (socialFetched.ok || socialArr.length > 0) {
@@ -226,7 +257,10 @@ Deno.serve(async (req) => {
           const flat: any[] = [];
           const walk = (node: any, parent: string | null, depth = 0) => {
             if (!node || typeof node !== "object" || depth > 6) return;
-            (node as any).__parent_id = parent;
+            // Preserve any parent id already set by an upstream source (e.g.
+            // Meta Graph fast path) so we don't flatten Graph replies to roots.
+            const existingParent = typeof (node as any).__parent_id === "string" ? (node as any).__parent_id : null;
+            (node as any).__parent_id = parent ?? existingParent;
             flat.push(node);
             const kids = [
               ...(Array.isArray(node.replies) ? node.replies : []),
@@ -239,7 +273,7 @@ Deno.serve(async (req) => {
             const myId = pickStr(node.id, node.commentId, node.comment_id);
             for (const k of kids) walk(k, myId || parent, depth + 1);
           };
-          for (const c of arr) walk(c, null);
+          for (const c of arr) walk(c, (c as any)?.__parent_id ?? null);
           results[nativePostId] = flat;
         } catch (err) {
           errors[nativePostId] = err instanceof Error ? err.message : String(err);
