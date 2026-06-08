@@ -142,7 +142,7 @@ const ChannelGrid = ({
   accountNames?: Record<string, string>;
 }) => (
   <div className="w-full rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
-    <div className="grid grid-cols-9 gap-2" dir="rtl">
+    <div className="grid grid-cols-3 md:grid-cols-9 gap-2" dir="rtl">
       {CHANNEL_CARDS.map((c) => {
         const Icon = c.icon;
         const isSelected = selectedId === c.id;
