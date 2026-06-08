@@ -66,6 +66,17 @@ type SocialAccountProfile = {
   profileUrl: string | null;
 };
 
+type ConfirmPayload = {
+  body: string;
+  original_ai_body: string;
+  listing_id: string | null;
+  mode: 'now' | 'scheduled';
+  media_urls: string[];
+  scheduled_at: string | null;
+  group_ids: string[];
+  selected_profile_ids: string[];
+};
+
 // Top row (RTL): Facebook → Instagram → X
 // Middle row (RTL): IVR → Email → AI Voice
 // Bottom row (RTL): YouTube → LinkedIn → TikTok
