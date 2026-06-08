@@ -83,9 +83,7 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
           rooms: rooms ? Number(rooms) : null,
           sqm: sqm ? Number(sqm) : null,
           floor: floor ? Number(floor) : null,
-          year_built: yearBuilt ? Number(yearBuilt) : null,
-          property_type: propertyType,
-          features: [{ listing_type: listingType }],
+          features: [{ listing_type: listingType, property_type: propertyType, year_built: yearBuilt ? Number(yearBuilt) : null }],
         })
         .eq('id', property.id);
       if (error) throw error;
