@@ -526,7 +526,7 @@ const InlineComposer = ({
                 היסטוריה
               </button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-[360px] p-2 max-h-96 overflow-auto" dir="rtl">
+            <PopoverContent align="start" className="w-[360px] p-2 max-h-96 overflow-auto" dir="rtl">
               {history.length === 0 ? (
                 <p className="px-3 py-6 text-center text-xs text-muted-foreground">אין יצירות שמורות עדיין עבור {channel.label}</p>
               ) : history.map((h) => {
