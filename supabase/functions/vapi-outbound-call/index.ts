@@ -132,24 +132,52 @@ function buildAssistant(opts: {
   };
 }
 
+function genderRules(voiceGender: string | null, userGender: string | null): string {
+  const lines: string[] = [];
+  if (voiceGender === 'male' || voiceGender === 'female') {
+    lines.push(
+      voiceGender === 'male'
+        ? 'מגדר הקול שלך: זכר. דבר תמיד בלשון זכר כשאתה מתאר את עצמך (אני בדקתי, אני אשלח, אני אחזור). לעולם אל תשתמש בצורת נקבה לעצמך.'
+        : 'מגדר הקול שלך: נקבה. דברי תמיד בלשון נקבה כשאת מתארת את עצמך (אני בדקתי, אני אשלח, אני אחזור). לעולם אל תשתמשי בצורת זכר לעצמך.'
+    );
+  }
+  if (userGender === 'male' || userGender === 'female') {
+    lines.push(
+      userGender === 'male'
+        ? 'מגדר המתעניין שאליו אתה מתקשר: זכר. פנה אליו בלשון זכר (אתה מחפש, רצית, נוח לך).'
+        : 'מגדר המתעניין שאליו את/ה מתקשר/ת: נקבה. פני אליה בלשון נקבה (את מחפשת, רצית, נוח לך).'
+    );
+  }
+  if (!lines.length) {
+    lines.push('זהה את מגדר המתעניין מהשם והקול בתחילת השיחה, ופנה אליו באותו מגדר עד סוף השיחה. אל תחליף מגדר באמצע השיחה.');
+  }
+  return lines.join('\n');
+}
+
 function buildSystemPrompt(p: {
   leadName: string;
   city: string;
   preferences: string;
   listingsBlurb: string;
+  voiceGender: string | null;
+  userGender: string | null;
+  brokerInstructions: string | null;
 }) {
   return [
-    "אתה הסוכן הדיגיטלי של מתווך נדל\"ן בישראל.",
-    "דבר עברית טבעית, קצר ולעניין. משפט אחד בכל תור.",
-    p.leadName ? `שם הלקוח: ${p.leadName}.` : "",
-    p.city ? `אזור עניין: ${p.city}.` : "",
-    p.preferences ? `העדפות לקוח: ${p.preferences}` : "",
-    p.listingsBlurb ? `נכסים זמינים רלוונטיים:\n${p.listingsBlurb}` : "",
-    "אל תמציא נכסים שלא הופיעו ברשימה. אם הלקוח מבקש קישור או פרטים בכתב, השתמש מיד בכלי send_whatsapp; אם הוא מבקש SMS, השתמש ב-send_sms_019. כאשר הלקוח מבקש לתאם פגישה או חיוג חוזר השתמש ב-schedule_followup.",
-    "מטרת השיחה: לאשר עניין, להבין צרכים, ולתאם המשך (פגישה / שליחת חומר / חיוג חוזר).",
-    "כללי איסור: אל תשתמש ב-em dash, en dash, או רצף --. אל תאמר ביטויים גנריים של AI.",
-  ].filter(Boolean).join("\n");
+    'אתה הסוכן הדיגיטלי של מתווך נדל"ן בישראל.',
+    'דבר עברית טבעית, קצר ולעניין. משפט אחד בכל תור.',
+    genderRules(p.voiceGender, p.userGender),
+    p.leadName ? `שם הלקוח: ${p.leadName}.` : '',
+    p.city ? `אזור עניין: ${p.city}.` : '',
+    p.preferences ? `העדפות לקוח: ${p.preferences}` : '',
+    p.listingsBlurb ? `נכסים זמינים רלוונטיים:\n${p.listingsBlurb}` : '',
+    p.brokerInstructions ? `הנחיות ספציפיות מהמתווך לשיחה זו (קדימות עליונה, אל תסטה מהן):\n${p.brokerInstructions}` : '',
+    'אל תמציא נכסים שלא הופיעו ברשימה. אם הלקוח מבקש קישור או פרטים בכתב, השתמש מיד בכלי send_whatsapp; אם הוא מבקש SMS, השתמש ב-send_sms_019. כאשר הלקוח מבקש לתאם פגישה או חיוג חוזר השתמש ב-schedule_followup.',
+    'מטרת השיחה: לאשר עניין, להבין צרכים, ולתאם המשך (פגישה / שליחת חומר / חיוג חוזר).',
+    'כללי איסור: אל תשתמש ב-em dash, en dash, או רצף --. אל תאמר ביטויים גנריים של AI.',
+  ].filter(Boolean).join('\n');
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
