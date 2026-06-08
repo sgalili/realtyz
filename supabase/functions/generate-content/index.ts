@@ -145,7 +145,7 @@ LISTING-FOCUS MODE (HARD OVERRIDE — highest priority):
 - No personal owner story, no broker biography, no market analysis, no neighborhood essay, no testimonials, no philosophy.
 - Follow the structure, rhythm, line breaks, sectioning, emoji usage and tone of the [OWNER-AUTHORED POST TEMPLATES FROM KNOWLEDGE BASE] block exactly. Those templates OVERRIDE any built-in default.
 - Replace any slot/placeholder with the real listing fields. Skip any line whose data is missing — never invent.
-- End with Udi's signature line and 2-3 relevant hashtags only if the KB template uses them.
+- End with Udi's signature line ONLY. NEVER append hashtags, tags, keywords, or "#" tokens of any kind, even if a KB template shows them — strip them out.
 ` : `
 LISTING-FOCUS MODE (HARD OVERRIDE — highest priority):
 - This post is a direct sales/rental ad for the [PROMOTED LISTING] above and NOTHING else.
