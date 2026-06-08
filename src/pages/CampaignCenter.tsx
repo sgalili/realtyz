@@ -156,9 +156,9 @@ const buildAccountUrl = (channelId: string, value: string): string | null => {
 
 
 const ChannelGrid = ({
-  selectedId, onPick, onConnect, brandName, connected = EMPTY_CONNECTED, accountNames = {}, socialProfiles = [], onAddFacebookPage,
+  selectedIds, onPick, onConnect, brandName, connected = EMPTY_CONNECTED, accountNames = {}, socialProfiles = [], onAddFacebookPage,
 }: {
-  selectedId: string | null;
+  selectedIds: Set<string>;
   onPick: (c: ChannelCard) => void;
   onConnect: (c: ChannelCard) => void;
   brandName: string;
@@ -167,11 +167,12 @@ const ChannelGrid = ({
   socialProfiles?: SocialAccountProfile[];
   onAddFacebookPage?: () => void;
 }) => (
+
   <div className="w-full rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
     <div className="grid grid-cols-3 md:grid-cols-9 gap-2" dir="rtl">
       {CHANNEL_CARDS.map((c) => {
         const Icon = c.icon;
-        const isSelected = selectedId === c.id;
+        const isSelected = selectedIds.has(c.id);
         const isConnected = connected.has(c.id);
         const brandColor = isConnected ? (BRAND_COLOR[c.id] ?? c.iconColor ?? 'text-foreground') : 'text-muted-foreground/60';
         const profiles = socialProfiles.filter((p) => p.platform === c.id || (c.id === 'x' && p.platform === 'twitter'));
@@ -198,13 +199,14 @@ const ChannelGrid = ({
                 tabIndex={0}
                 onClick={(e) => { e.stopPropagation(); onAddFacebookPage?.(); }}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onAddFacebookPage?.(); } }}
-                className="absolute left-1 top-1 z-10 inline-flex h-5 w-5 items-center justify-center rounded-full border border-primary/40 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+                className="absolute left-1 top-1 z-10 inline-flex h-5 w-5 items-center justify-center rounded-full text-[#0a2540] hover:text-[#0a2540]/80"
                 title="הוסף עמוד נוסף"
                 aria-label="הוסף עמוד נוסף"
               >
-                <Plus className="h-3 w-3" />
+                <Plus className="h-4 w-4" strokeWidth={2.75} />
               </span>
             )}
+
 
             <span className="flex h-7 w-7 items-center justify-center">
               {c.brand
@@ -257,7 +259,16 @@ const ChannelGrid = ({
               </span>
             ) : isConnected && accountNames[c.id] && (() => {
               const raw = accountNames[c.id];
-              const display = formatPhoneDisplay(raw) || raw;
+              // Strip any "Realtyz Workspace - " prefix, trailing "- 1234" numeric ids,
+              // and profile-key / refId tokens so only the human page name remains.
+              const cleaned = String(raw)
+                .replace(/^Realtyz Workspace\s*[-–]\s*/i, '')
+                .replace(/\s*[-–]\s*\d{2,}$/, '')
+                .replace(/\b[0-9a-f]{8}-[0-9a-f]{4,}\b/gi, '')
+                .replace(/\b[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}\b/g, '')
+                .trim();
+              const display = formatPhoneDisplay(cleaned) || cleaned || raw;
+
               const url = buildAccountUrl(c.id, raw);
               const handleOpen = (e: React.MouseEvent) => {
                 e.stopPropagation();
@@ -2561,6 +2572,8 @@ const CampaignCenter = () => {
   const { settings } = useWhiteLabel();
   const brandName = settings?.agency_name || 'Realtyz AI';
   const [pickedChannel, setPickedChannel] = useState<ChannelCard | null>(null);
+  const [pickedChannelIds, setPickedChannelIds] = useState<Set<string>>(new Set());
+
   const [voiceDialChannel, setVoiceDialChannel] = useState<ChannelCard | null>(null);
   const [ivrOpen, setIvrOpen] = useState(false);
   const [emailSetupOpen, setEmailSetupOpen] = useState(false);
@@ -2622,8 +2635,12 @@ const CampaignCenter = () => {
     if (pickedChannel) return;
     if (!connectedChannels.has('facebook')) return;
     const fb = CHANNEL_CARDS.find((c) => c.id === 'facebook');
-    if (fb) setPickedChannel(fb);
+    if (fb) {
+      setPickedChannel(fb);
+      setPickedChannelIds((prev) => (prev.has('facebook') ? prev : new Set(prev).add('facebook')));
+    }
   }, [connectedChannels, pickedChannel]);
+
 
 
 
@@ -2921,16 +2938,34 @@ const CampaignCenter = () => {
 
         <TabsContent value="create" className="mt-6 space-y-4">
           <ChannelGrid
-            selectedId={pickedChannel?.id ?? null}
+            selectedIds={pickedChannelIds}
             onPick={(c) => {
               if (c.id === 'ivr') {
                 setIvrOpen(true);
-              } else if (c.id === 'ai-call') {
-                setVoiceDialChannel(c);
-              } else {
-                setPickedChannel(c);
+                return;
               }
+              if (c.id === 'ai-call') {
+                setVoiceDialChannel(c);
+                return;
+              }
+              // Toggle multi-select; clicking an already-selected channel deselects it.
+              setPickedChannelIds((prev) => {
+                const next = new Set(prev);
+                if (next.has(c.id)) {
+                  next.delete(c.id);
+                  if (pickedChannel?.id === c.id) {
+                    const remainingId = [...next][next.size - 1];
+                    const remaining = remainingId ? CHANNEL_CARDS.find((x) => x.id === remainingId) ?? null : null;
+                    setPickedChannel(remaining);
+                  }
+                } else {
+                  next.add(c.id);
+                  setPickedChannel(c);
+                }
+                return next;
+              });
             }}
+
             onConnect={handleConnectChannel}
             brandName={brandName}
             connected={connectedChannels}
@@ -2983,6 +3018,8 @@ const CampaignCenter = () => {
           const shouldEmail = alsoEmail && pickedChannel?.id !== 'email' && connectedChannels.has('email') && body.trim().length > 0;
           setConfirmPayload(null);
           setPickedChannel(null);
+          setPickedChannelIds(new Set());
+
           setAlsoEmail(false);
           if (shouldEmail) {
             try {
