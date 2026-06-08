@@ -586,7 +586,9 @@ const InlineComposer = ({
                 return (
                   <button key={h.id} type="button"
                     onClick={() => {
-                      setBody((h.generated_text || '').slice(0, MAX_CHARS));
+                      const loaded = (h.generated_text || '').slice(0, MAX_CHARS);
+                      setBody(loaded);
+                      setOriginalAiBody(loaded);
                       setAttachments(media.map((m: any) => ({ name: m?.name || 'קובץ', kind: m?.kind || 'file', url: m?.url || undefined })));
                       setSelectedListingId(h.listing_id || null);
                       setLogId(h.id);
