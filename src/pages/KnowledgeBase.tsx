@@ -33,6 +33,37 @@ export default function KnowledgeBase() {
   const [chatLoading, setChatLoading] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const [viewDoc, setViewDoc] = useState<any | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editBody, setEditBody] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const openDoc = (d: any) => {
+    setViewDoc(d);
+    setIsEditing(false);
+    setEditTitle(d?.title ?? '');
+    setEditBody(d?.raw_text ?? '');
+  };
+
+  const saveEdit = async () => {
+    if (!viewDoc) return;
+    setSavingEdit(true);
+    try {
+      const { error } = await supabase
+        .from('knowledge_documents')
+        .update({ title: editTitle.trim() || viewDoc.title, raw_text: editBody })
+        .eq('id', viewDoc.id);
+      if (error) throw error;
+      toast.success('עודכן');
+      setViewDoc({ ...viewDoc, title: editTitle.trim() || viewDoc.title, raw_text: editBody });
+      setIsEditing(false);
+      qc.invalidateQueries({ queryKey: ['kb-documents'] });
+    } catch (e: any) {
+      toast.error(e?.message ?? 'שגיאה בשמירה');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   useEffect(() => {
     chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: 'smooth' });
