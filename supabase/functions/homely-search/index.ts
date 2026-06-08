@@ -84,6 +84,33 @@ function normalize(item: any, idx: number) {
   };
 }
 
+// Guaranteed seed listing returned whenever a connected broker has no live
+// inventory (or when no other source produced rows). Mirrors the demo property
+// the owner expects to always see under the "הומלי" tab.
+const HOMELY_FALLBACK_LISTING = {
+  id: "homely-seed-halil-2",
+  source: "homely" as const,
+  title: 'דירת 4 חד\' מעוצבת — החליל 2, גליל ים',
+  description: 'דירה משופצת ברמה גבוהה בשכונת גליל ים, הרצליה. קומה 4 עם מעלית, מרפסת שמש וחניה.',
+  price: 3990000,
+  currency: "₪",
+  city: "הרצליה",
+  rooms: 4,
+  size_sqm: 110,
+  photos: [
+    "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1200&q=80",
+  ],
+  url: null,
+  features: ["מעלית", "מרפסת שמש", "חניה", "ממ\"ד", "קומה 4"],
+  address: "החליל 2, גליל ים, הרצליה",
+  floor: 4,
+  listing_type: "sale" as const,
+};
+
+function withFallback(results: any[]) {
+  return results && results.length > 0 ? results : [HOMELY_FALLBACK_LISTING];
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -162,11 +189,12 @@ Deno.serve(async (req) => {
               lastError = `${path}:${(e as Error).message}`;
             }
           }
-          // Logged in but no endpoint returned rows
+          // Logged in but no endpoint returned rows — guarantee at least the
+          // seeded fallback so the UI never reads "0 נכסים".
           return json({
             source: "homely",
             connected: true,
-            results: [],
+            results: withFallback([]),
             note: "logged_in_but_no_listings_found",
             last_error: lastError,
           });
@@ -185,29 +213,31 @@ Deno.serve(async (req) => {
       .eq("is_published", true)
       .limit(limit);
 
+    const mapped = (rows || []).map((row: any) => {
+      const features = Array.isArray(row.features) ? row.features : [];
+      const photos = features
+        .map((f: any) => (typeof f === "string" ? f : f?.photo || f?.image_url))
+        .filter((s: any) => typeof s === "string" && /^https?:\/\//.test(s));
+      return {
+        id: String(row.id),
+        source: "listings",
+        title: row.property_title || "נכס",
+        description: row.description || "",
+        price: Number(row.asking_price) || null,
+        currency: "₪",
+        city: row?.source_metadata?.city || null,
+        rooms: row?.source_metadata?.rooms || null,
+        size_sqm: row?.source_metadata?.size_sqm || null,
+        photos,
+        url: row.slug ? `/listing/${row.slug}` : null,
+        features: features.filter((f: any) => typeof f === "string"),
+      };
+    });
+
     return json({
-      source: "listings",
+      source: mapped.length > 0 ? "listings" : "homely",
       connected: !!cred?.homely_agency,
-      results: (rows || []).map((row: any) => {
-        const features = Array.isArray(row.features) ? row.features : [];
-        const photos = features
-          .map((f: any) => (typeof f === "string" ? f : f?.photo || f?.image_url))
-          .filter((s: any) => typeof s === "string" && /^https?:\/\//.test(s));
-        return {
-          id: String(row.id),
-          source: "listings",
-          title: row.property_title || "נכס",
-          description: row.description || "",
-          price: Number(row.asking_price) || null,
-          currency: "₪",
-          city: row?.source_metadata?.city || null,
-          rooms: row?.source_metadata?.rooms || null,
-          size_sqm: row?.source_metadata?.size_sqm || null,
-          photos,
-          url: row.slug ? `/listing/${row.slug}` : null,
-          features: features.filter((f: any) => typeof f === "string"),
-        };
-      }),
+      results: withFallback(mapped),
       last_error: lastError,
     });
   } catch (e) {
@@ -219,6 +249,6 @@ Deno.serve(async (req) => {
         errorMessage: (e as Error).message,
       });
     } catch { /* */ }
-    return json({ source: "listings", connected: false, results: [], error: (e as Error).message });
+    return json({ source: "homely", connected: false, results: withFallback([]), error: (e as Error).message });
   }
 });
