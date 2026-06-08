@@ -188,6 +188,31 @@ Deno.serve(async (req) => {
       return [];
     };
 
+    const extractChildComments = (node: any): any[] => {
+      if (!node || typeof node !== "object") return [];
+      return [
+        ...(Array.isArray(node.replies) ? node.replies : []),
+        ...(Array.isArray(node.children) ? node.children : []),
+        ...(Array.isArray(node.comments) ? node.comments : []),
+        ...(Array.isArray(node.thread) ? node.thread : []),
+        ...(Array.isArray(node?.replies?.data) ? node.replies.data : []),
+        ...(Array.isArray(node?.comments?.data) ? node.comments.data : []),
+      ];
+    };
+
+    const mergeChildComments = (targetNode: any, children: any[]) => {
+      if (!targetNode || !Array.isArray(children) || children.length === 0) return;
+      const existing = new Set(extractChildComments(targetNode).map((child: any) => pickStr(child?.id, child?.commentId, child?.comment_id)).filter(Boolean));
+      const merged = [...(Array.isArray(targetNode.comments) ? targetNode.comments : [])];
+      for (const child of children) {
+        const id = pickStr(child?.id, child?.commentId, child?.comment_id);
+        if (id && existing.has(id)) continue;
+        merged.push(child);
+        if (id) existing.add(id);
+      }
+      targetNode.comments = merged;
+    };
+
     const fetchComments = async (target: CommentFetchTarget, useSocialId: boolean) => {
       const id = useSocialId ? target.nativePostId : target.fetchPostId;
       // Ask Ayrshare to inline reply threads so nested child nodes (e.g. Shi
@@ -375,6 +400,41 @@ Deno.serve(async (req) => {
             return;
           }
 
+          // Ayrshare's post comments endpoint often returns only the first
+          // visible layer. For Facebook comment threads, hydrate each returned
+          // social comment via `commentId=true` so native replies such as
+          // "Shay replied under Udi's reply" are physically attached to their
+          // parent before flattening/persisting. Keep this scoped to a single
+          // card-level fetch to avoid provider rate-limit storms from cron sync.
+          if (!graphArr && arr.length > 0 && requestedPostIds.length <= 5) {
+            const rootsToHydrate = arr.slice(0, 50);
+            await Promise.all(rootsToHydrate.map(async (root) => {
+              const commentId = pickStr(root?.id, root?.commentId, root?.comment_id, root?.platformCommentId);
+              if (!commentId) return;
+              try {
+                const detailQs = `platform=${encodeURIComponent(platform)}&searchPlatformId=true&commentId=true&limit=100&includeReplies=true&include_replies=true&replies=true&expandReplies=true&depth=5`;
+                const detailRes = await fetch(`${AYR_BASE}/comments/${encodeURIComponent(commentId)}?${detailQs}`, {
+                  headers: {
+                    Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+                    "Profile-Key": profileKey,
+                    "Content-Type": "application/json",
+                  },
+                });
+                if (!detailRes.ok) return;
+                const detailPayload = await detailRes.json().catch(() => ({}));
+                const platformNode = detailPayload?.[platform];
+                const detailNode = Array.isArray(platformNode)
+                  ? platformNode[0]
+                  : Array.isArray(detailPayload?.data)
+                  ? detailPayload.data[0]
+                  : detailPayload?.data ?? platformNode ?? detailPayload;
+                mergeChildComments(root, extractChildComments(detailNode));
+              } catch (detailErr) {
+                console.warn("[ayrshare-comments-fetch] comment detail hydration failed", commentId, detailErr instanceof Error ? detailErr.message : String(detailErr));
+              }
+            }));
+          }
+
           // Flatten N levels of nested replies. Ayrshare/Meta nest child nodes
           // under any of: replies / children / comments / thread / data, so we
           // walk every known shape and tag each node with its parent id.
@@ -387,12 +447,7 @@ Deno.serve(async (req) => {
             (node as any).__parent_id = parent ?? existingParent;
             flat.push(node);
             const kids = [
-              ...(Array.isArray(node.replies) ? node.replies : []),
-              ...(Array.isArray(node.children) ? node.children : []),
-              ...(Array.isArray(node.comments) ? node.comments : []),
-              ...(Array.isArray(node.thread) ? node.thread : []),
-              ...(Array.isArray(node?.replies?.data) ? node.replies.data : []),
-              ...(Array.isArray(node?.comments?.data) ? node.comments.data : []),
+              ...extractChildComments(node),
             ];
             const myId = pickStr(node.id, node.commentId, node.comment_id);
             for (const k of kids) walk(k, myId || parent, depth + 1);
