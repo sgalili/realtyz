@@ -526,7 +526,7 @@ const InlineComposer = ({
                 היסטוריה
               </button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-[360px] p-2 max-h-96 overflow-auto" dir="rtl">
+            <PopoverContent align="start" className="w-[360px] p-2 max-h-96 overflow-auto" dir="rtl">
               {history.length === 0 ? (
                 <p className="px-3 py-6 text-center text-xs text-muted-foreground">אין יצירות שמורות עדיין עבור {channel.label}</p>
               ) : history.map((h) => {
@@ -615,7 +615,7 @@ const InlineComposer = ({
                 </span>
               </button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-[--radix-popover-trigger-width] p-2 max-h-80 overflow-auto" dir="rtl">
+            <PopoverContent align="start" className="w-[--radix-popover-trigger-width] p-2 max-h-80 overflow-auto" dir="rtl">
               <Input
                 value={listingQuery}
                 onChange={(e) => setListingQuery(e.target.value)}
@@ -713,7 +713,7 @@ const InlineComposer = ({
                 <ImageIcon className="h-4 w-4" />
               </button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-44 p-1" dir="rtl">
+            <PopoverContent align="start" className="w-44 p-1" dir="rtl">
               <button type="button" onClick={() => galleryInputRef.current?.click()}
                 className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
                 <span>גלריה</span>
@@ -2454,14 +2454,16 @@ const CampaignCenter = () => {
 
 
 
-  const initial = (searchParams.get('tab') as string) ?? 'create';
+  // Default landing view = sent campaigns feed. The composer panel is now
+  // opened on demand via the "+" button in the page hero (see PageHero).
+  const initial = (searchParams.get('tab') as string) ?? 'published';
   const remapped: TabValue =
     initial === 'campaigns' || initial === 'strategy' || initial === 'send' || initial === 'broadcast'
       ? 'create'
       : initial === 'calendar'
       ? 'published'
       : (initial as TabValue);
-  const active: TabValue = TABS.some((t) => t.value === remapped) ? remapped : 'create';
+  const active: TabValue = TABS.some((t) => t.value === remapped) ? remapped : 'published';
 
   const handleChange = (value: string) => {
     const next = new URLSearchParams(searchParams);
@@ -2525,16 +2527,14 @@ const CampaignCenter = () => {
       <SentimentAutomationToggles className="mt-[15px] mb-4" />
 
       <Tabs value={active} onValueChange={handleChange} className="w-full">
-        <div className="sticky top-0 z-30 -mx-6 px-6 py-2 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80 border-b border-border/60">
-          <TabsList className="flex w-full h-auto gap-1 overflow-x-auto rounded-xl bg-muted/60 p-1">
-            {TABS.map((tab) => (
-              <TabsTrigger key={tab.value} value={tab.value}
-                className="flex-1 min-w-fit whitespace-nowrap px-3 py-2 text-base sm:text-lg font-medium rounded-lg data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-sm">
-                {tab.label}
-              </TabsTrigger>
-            ))}
-          </TabsList>
-        </div>
+        {/* Sub-tabs intentionally hidden — primary view is the published feed,
+            and the "+" button in the page hero toggles the composer panel. */}
+        <TabsList className="sr-only" aria-hidden>
+          {TABS.map((tab) => (
+            <TabsTrigger key={tab.value} value={tab.value}>{tab.label}</TabsTrigger>
+          ))}
+        </TabsList>
+
 
         <TabsContent value="create" className="mt-6 space-y-4">
           <ChannelGrid
