@@ -340,7 +340,9 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
         n.children.sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
         n.children.forEach((c) => assignDepth(c, depth + 1, seen));
       };
-      roots.sort((a, b) => +new Date(b.created_at) - +new Date(a.created_at));
+      // Roots sorted oldest-first so the thread mirrors Facebook's chronological
+      // order (matches how children/replies are already sorted below).
+      roots.sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
       roots.forEach((r) => assignDepth(r, 0, new Set()));
       return roots;
     } catch (err) {
