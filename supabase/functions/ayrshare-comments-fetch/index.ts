@@ -244,20 +244,59 @@ Deno.serve(async (req) => {
               return null;
             };
 
-            const normalizeOne = (c: any): any => ({
+            // Explicit per-comment replies fetch. FB Graph's nested field
+            // expansion is unreliable past depth 1 — some replies only
+            // surface via the comment's own /COMMENT_ID/comments edge.
+            const fetchRepliesFor = async (commentId: string): Promise<any[]> => {
+              try {
+                const replyFields = "id,message,created_time,from{id,name,picture{url}},parent,like_count";
+                const rUrl = `https://graph.facebook.com/v20.0/${encodeURIComponent(commentId)}/comments?fields=${encodeURIComponent(replyFields)}&limit=100&filter=stream&${tokenParam}`;
+                const rRes = await fetch(rUrl);
+                const rJson = await rRes.json().catch(() => ({}));
+                if (rRes.ok && Array.isArray(rJson?.data)) return rJson.data;
+              } catch (e) {
+                console.warn("[ayrshare-comments-fetch] replies fetch failed", commentId, e instanceof Error ? e.message : String(e));
+              }
+              return [];
+            };
+
+            const normalizeOne = (c: any, parentIdFallback: string | null = null): any => ({
               id: c.id,
               message: c.message ?? "",
               created_time: c.created_time,
               like_count: c.like_count ?? 0,
               from: c.from ?? { name: "משתמש פייסבוק" },
-              __parent_id: c.parent?.id ?? null,
-              comments: Array.isArray(c?.comments?.data) ? c.comments.data.map(normalizeOne) : [],
+              __parent_id: c.parent?.id ?? parentIdFallback,
+              comments: Array.isArray(c?.comments?.data) ? c.comments.data.map((k: any) => normalizeOne(k, c.id)) : [],
             });
-            const normalize = (data: any[]) => data.map(normalizeOne);
+            const normalize = (data: any[]) => data.map((c) => normalizeOne(c, null));
 
             for (const cand of candidates) {
               const data = await tryFetch(cand);
               if (data) { resolvedGraphPostId = cand; graphArr = normalize(data); break; }
+            }
+
+            // For every root comment, explicitly hydrate its replies edge
+            // and merge any reply not already present under .comments.
+            if (graphArr) {
+              await Promise.all(graphArr.map(async (root: any) => {
+                const fetched = await fetchRepliesFor(root.id);
+                if (!fetched.length) return;
+                const existingIds = new Set((root.comments || []).map((k: any) => k.id));
+                const merged = [...(root.comments || [])];
+                for (const reply of fetched) {
+                  if (existingIds.has(reply.id)) continue;
+                  const normalized = normalizeOne(reply, root.id);
+                  // Hydrate one more level (replies-of-reply) for depth 2 threads.
+                  const grand = await fetchRepliesFor(reply.id);
+                  if (grand.length) {
+                    normalized.comments = grand.map((g: any) => normalizeOne(g, reply.id));
+                  }
+                  merged.push(normalized);
+                  existingIds.add(reply.id);
+                }
+                root.comments = merged;
+              }));
             }
 
             // Last-resort: enumerate the Page feed and match by suffix or body.
