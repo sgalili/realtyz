@@ -2605,6 +2605,7 @@ const CampaignCenter = () => {
         sessionStorage.setItem('rz-connected-channel-names', JSON.stringify(parsed));
       }
     } catch { /* ignore */ }
+    queryClient.invalidateQueries();
     queryClient.invalidateQueries({ queryKey: ['social-connections'] });
     queryClient.invalidateQueries({ queryKey: ['workspace-social-profile'] });
     queryClient.invalidateQueries({ queryKey: ['ayrshare-social-accounts'] });
@@ -2664,7 +2665,7 @@ const CampaignCenter = () => {
         const details = (syncData as any)?.details ?? {};
         const status = Number((syncError as any)?.context?.status ?? details?.status ?? details?.code ?? 0);
         const message = String((syncError as any)?.message ?? details?.message ?? details?.error ?? '');
-        if (rejected && (status === 401 || status === 403 || /unauthor|forbidden|suspended|profile key/i.test(message) || (syncData as any)?.reason === 'no_workspace_profile_key')) {
+        if (rejected || status === 401 || status === 403 || /unauthor|forbidden|suspended|profile key/i.test(message)) {
           if (!cancelled) clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
           return;
         }
