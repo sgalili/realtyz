@@ -3,7 +3,7 @@
 // user_id (RLS also enforces it). Matches on external_post_id when the
 // campaign log has a provider_message_id, otherwise falls back to a time-
 // windowed lookup around the campaign's created_at.
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -46,6 +46,32 @@ type EngagementRow = {
   metadata: Record<string, any> | null;
   created_at: string;
   is_archived?: boolean | null;
+};
+
+type CommentRow = EngagementRow & {
+  parent_id: string | null;
+  sender_avatar_url: string | null;
+  message: string | null;
+};
+
+const cleanRelationId = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === "null" || trimmed === "undefined") return null;
+  return trimmed;
+};
+
+const avatarFromRow = (row: EngagementRow): string | null => {
+  const meta = (row.metadata as any) ?? {};
+  return (
+    meta?.sender_avatar_url ||
+    meta?.profile_image ||
+    meta?.author?.profile_image ||
+    meta?.author?.picture ||
+    meta?.profile_picture_url ||
+    meta?.from?.picture?.data?.url ||
+    null
+  );
 };
 
 
