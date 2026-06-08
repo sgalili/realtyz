@@ -119,20 +119,23 @@ export default function Properties() {
   const queryClient = useQueryClient();
   const refreshListings = () => {
     setSourceTab('mine');
-    queryClient.invalidateQueries({ queryKey: ['properties'] });
+    queryClient.invalidateQueries({ queryKey: ['properties-search'] });
   };
 
-  const refreshHomelyProperties = async () => {
-    if (homelyRefreshing) return;
+  const triggerWebtivApiFetch = async () => {
+    const { error } = await supabase.functions.invoke('homely-search', { body: { hydrate: true } });
+    if (error) throw error;
+  };
+
+  const handleHomelyRefresh = async () => {
     setHomelyRefreshing(true);
     try {
-      const { error } = await supabase.functions.invoke('homely-search', { body: { hydrate: true } });
-      if (error) throw error;
-      await queryClient.invalidateQueries({ queryKey: ['properties'] });
+      await triggerWebtivApiFetch();
+      await queryClient.invalidateQueries({ queryKey: ['properties-search'] });
       toast.success('הנכסים מ-Homely רוענו');
-    } catch (e: any) {
-      console.warn('[properties] homely hydrate failed', e);
-      toast.error(e?.message ?? 'רענון נכסי Homely נכשל');
+    } catch (err: any) {
+      console.error(err);
+      toast.error(err?.message ?? 'רענון נכסי Homely נכשל');
     } finally {
       setHomelyRefreshing(false);
     }
@@ -157,20 +160,22 @@ export default function Properties() {
 
 
   const { data: liveResponse, isLoading } = useQuery({
-    queryKey: ['properties', sourceTab, { city, rooms, propertyType, priceRange, areaMin }],
+    queryKey: ['properties-search', sourceTab, { city, rooms, propertyType, priceRange, areaMin }],
     queryFn: async () => {
       try {
-        if (sourceTab === 'mine') {
+        if (sourceTab === 'mine' || sourceTab === 'homely') {
           const rows: any[] = [];
           const pageSize = 1000;
           for (let from = 0; ; from += pageSize) {
-            const { data, error } = await supabase
+            let query = supabase
               .from('listings')
               .select('id, property_title, description, asking_price, city, address, neighborhood, rooms, sqm, features, source_metadata, source, created_at')
               .eq('status', 'live')
               .eq('is_published', true)
               .order('created_at', { ascending: false })
               .range(from, from + pageSize - 1);
+            query = sourceTab === 'homely' ? query.eq('source', 'homely') : query.neq('source', 'homely');
+            const { data, error } = await query;
             if (error) throw error;
             rows.push(...(data ?? []));
             if ((data ?? []).length < pageSize) break;
@@ -184,7 +189,7 @@ export default function Properties() {
                 : [];
               return {
                 id: row.id,
-                source: 'mine',
+                source: sourceTab === 'homely' ? 'homely' : 'mine',
                 title: row.property_title || 'נכס',
                 description: row.description || '',
                 price: Number(row.asking_price ?? 0),
@@ -334,7 +339,7 @@ export default function Properties() {
           {sourceTab === 'homely' && (
             <button
               type="button"
-              onClick={refreshHomelyProperties}
+              onClick={handleHomelyRefresh}
               disabled={isLoading || homelyRefreshing}
               className="ml-1 inline-flex items-center gap-1 px-2.5 py-2 text-xs font-semibold rounded-lg text-muted-foreground hover:text-foreground hover:bg-primary/5 transition-colors disabled:opacity-50"
               title="רענון נכסים מ-Homely"
