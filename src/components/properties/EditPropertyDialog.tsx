@@ -64,7 +64,38 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
     setSqm(property.size_sqm ? String(property.size_sqm) : '');
     setFloor(property.floor != null ? String(property.floor) : '');
     setYearBuilt(property.year_built != null ? String(property.year_built) : '');
+    const existingPhotos = (property as any).photos;
+    setPhotos(Array.isArray(existingPhotos) ? existingPhotos.filter((p: any) => typeof p === 'string') : []);
   }, [property]);
+
+  const handleSyncFromHomely = async () => {
+    if (!property) return;
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('homely-fetch-property', {
+        body: { listing_id: property.id },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const u = (data as any)?.updated ?? {};
+      if (u.property_title) setTitle(u.property_title);
+      if (u.description) setDescription(u.description);
+      if (u.asking_price) setPrice(String(u.asking_price));
+      if (u.city) setCity(u.city);
+      if (u.address) setAddress(u.address);
+      if (u.rooms) setRooms(String(u.rooms));
+      if (u.sqm) setSqm(String(u.sqm));
+      if (u.floor != null) setFloor(String(u.floor));
+      const newPhotos = u?.source_metadata?.photos;
+      if (Array.isArray(newPhotos)) setPhotos(newPhotos);
+      toast.success(`נטענו ${(data as any)?.photo_count ?? 0} תמונות מ-Homely`);
+      onSaved?.();
+    } catch (e: any) {
+      toast.error(`סנכרון נכשל: ${e.message ?? e}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!property) return;
