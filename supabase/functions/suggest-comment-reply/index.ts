@@ -495,13 +495,13 @@ Deno.serve(async (req) => {
     const featureFact: FeatureFact = featureAsk ? extractFeatureFact(featureAsk, primaryListing) : "unknown";
     const featureAnswerHe = featureAsk
       ? (featureFact === "yes"
-          ? `כן, יש ${featureAsk.label_he} בנכס (מאושר בתיאור הנכס).`
+          ? `כן, יש ${featureAsk.label_he} בנכס.`
           : featureFact === "no"
-          ? `אין ${featureAsk.label_he} בנכס (לפי תיאור הנכס).`
-          : `לגבי ${featureAsk.label_he} — אבדוק בתיאור הנכס ואעדכן אותך במסנג'ר.`)
+          ? `אין ${featureAsk.label_he} בנכס.`
+          : `${featureAsk.label_he} לא מצוין במפרט הנכס.`)
       : "";
     const featureAskBlock = featureAsk
-      ? `[FEATURE QUESTION DETECTED]: the commenter explicitly asked about "${featureAsk.label_he}".\nGROUND-TRUTH ANSWER (derived from the active listing's structured fields + PDF description_excerpt): ${featureFact.toUpperCase()}.\nYou MUST open public_comment AND private_messenger_dm with this exact factual answer in the matched language. Suggested Hebrew phrasing: "${featureAnswerHe}". If GROUND-TRUTH = UNKNOWN, do NOT claim it exists or doesn't — say honestly you'll verify in DM and pivot to a confirmed attribute (rooms, sqm, monthly rent, street).\nIMPORTANT: also scan description_excerpt inside [STRICT LISTING PAYLOAD JSON] for any additional facts the broker wrote there (PDF-extracted), and you may quote those facts when relevant.`
+      ? `[FEATURE QUESTION DETECTED]: the commenter explicitly asked about "${featureAsk.label_he}".\nGROUND-TRUTH ANSWER from listing data: ${featureFact.toUpperCase()}.\nOpen public_comment AND private_messenger_dm with this factual answer in the matched language. Suggested Hebrew phrasing: "${featureAnswerHe}". If GROUND-TRUTH = UNKNOWN: state plainly that this attribute is not specified in the listing spec ("${featureAsk.label_he} לא מצוין במפרט") and pivot to a confirmed attribute (rooms, sqm, monthly rent, street). NEVER write "אבדוק", "אני אבדוק", "אעדכן אותך", "I'll check", "let me verify", "I need to find out", or any equivalent — the broker already owns the listing and answers from data, not from future research.\nALSO scan description_excerpt inside [STRICT LISTING PAYLOAD JSON] for any additional facts (PDF-extracted) and quote them when relevant.`
       : null;
 
     const userPrompt = [
