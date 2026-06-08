@@ -637,10 +637,9 @@ Deno.serve(async (req) => {
       ),
     );
 
-    const status = persisted === 0 && skipped === 0 && (apiErrors.length || mappingErrors.length)
-      ? Number(apiErrors[0]?.status || 502)
-      : 200;
-
+    // Always return 200 — provider rate-limit (429) / suspended (403) details
+    // are surfaced in `api_errors` so the client can render them as soft
+    // warnings instead of throwing a runtime error overlay.
     return json({
       success: true,
       comments: results,
@@ -651,7 +650,7 @@ Deno.serve(async (req) => {
       skipped,
       blocked_self: blockedSelf,
       dispatched: toDispatch.length,
-    }, status);
+    }, 200);
   } catch (e) {
     console.error("[ayrshare-comments-fetch] error:", e);
     return json({ error: e instanceof Error ? e.message : "unknown" }, 500);
