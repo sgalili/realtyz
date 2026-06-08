@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { Users, Check, Loader2, RefreshCcw, Plus } from "lucide-react";
+import { Users, Check, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 export type FacebookGroup = {
@@ -18,15 +18,10 @@ type Props = {
 };
 
 /**
- * CampaignGroupSelector — multi-select grid of Facebook Groups linked to the
- * workspace's Ayrshare profile. Lets the broker fan-out a single post to many
- * groups at once. Includes an inline "Connect Groups" CTA that opens the
- * Ayrshare OAuth flow scoped to Facebook Groups (network=fbg), and auto-
- * refreshes the list when the user returns to the tab.
- *
- * NOTE: Meta deprecated the public Groups Graph API, so groups cannot be
- * enumerated automatically from a connected Page. Each group must be linked
- * once through Ayrshare's OAuth flow, after which it auto-syncs.
+ * CampaignGroupSelector — pulls Facebook Groups linked to the workspace's
+ * Ayrshare profile and renders them as a scrollable checkbox list with a
+ * "Select All" master checkbox at the top. Auto-refreshes on tab focus so
+ * groups added in the Ayrshare OAuth window appear without a manual reload.
  */
 export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Props) => {
   const [groups, setGroups] = useState<FacebookGroup[]>([]);
@@ -51,9 +46,6 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
-
-  // Auto-refresh when the user returns to the tab — after linking a group on
-  // Ayrshare in another window, the user comes back and the list refreshes.
   useEffect(() => {
     const onFocus = () => { load(); };
     window.addEventListener("focus", onFocus);
@@ -86,10 +78,12 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     onChange(selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id]);
   };
   const allSelected = groups.length > 0 && selectedIds.length === groups.length;
+  const someSelected = selectedIds.length > 0 && !allSelected;
   const toggleAll = () => onChange(allSelected ? [] : groups.map((g) => g.group_id));
 
   return (
     <div className={cn("rounded-xl border border-border bg-background p-3 space-y-3", className)} dir="rtl">
+      {/* Header */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4 text-primary" />
@@ -98,83 +92,109 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
             <span className="text-xs text-muted-foreground">({selectedIds.length}/{groups.length})</span>
           )}
         </div>
-        <div className="flex items-center gap-1">
-          {groups.length > 0 && (
-            <>
-              <button type="button" onClick={toggleAll}
-                className="rounded-md border border-border px-2 py-1 text-xs font-semibold text-foreground hover:bg-muted">
-                {allSelected ? "נקה הכל" : "בחר הכל"}
-              </button>
-              <button type="button" onClick={connectGroups} disabled={connecting}
-                title="חבר קבוצות פייסבוק נוספות"
-                className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/5 px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-60">
-                {connecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-                הוסף קבוצות
-              </button>
-            </>
-          )}
-        </div>
+        <button
+          type="button"
+          onClick={connectGroups}
+          disabled={connecting}
+          title="חבר קבוצות פייסבוק נוספות"
+          className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/5 px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-60"
+        >
+          {connecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+          {groups.length > 0 ? "הוסף קבוצות" : "חבר קבוצות"}
+        </button>
       </div>
 
+      {/* Error */}
       {error && (
         <div className="rounded-lg border border-destructive/40 bg-destructive/5 p-2 text-xs text-destructive">
           {error}
         </div>
       )}
 
-      {!loading && !error && groups.length === 0 && (
-        <div className="rounded-lg border border-dashed border-primary/30 bg-primary/[0.03] p-4 text-center space-y-3">
-          <p className="text-sm font-semibold text-foreground">עדיין לא חוברו קבוצות פייסבוק</p>
-          <p className="text-xs text-muted-foreground leading-relaxed">
-            פייסבוק לא מאפשרת לשלוף אוטומטית את כל הקבוצות של הדף המקושר.
-            לחץ על הכפתור למטה כדי לחבר את הקבוצות שאתה מנהל — בסיום, חזור לכאן והרשימה תתעדכן.
-          </p>
-          <button type="button" onClick={connectGroups} disabled={connecting}
-            className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-md hover:bg-primary/90 disabled:opacity-60">
-            {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            חבר קבוצות פייסבוק
-          </button>
+      {/* Loading */}
+      {loading && groups.length === 0 && !error && (
+        <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          טוען קבוצות מחוברות…
         </div>
       )}
 
+      {/* Empty state */}
+      {!loading && !error && groups.length === 0 && (
+        <div className="rounded-lg border border-dashed border-border bg-muted/20 p-4 text-center">
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            לא נמצאו קבוצות פייסבוק מחוברות. ודא שסימנת אותן ב-V בחלונית החיבור של פייסבוק.
+          </p>
+        </div>
+      )}
+
+      {/* Checkbox list */}
       {groups.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {groups.map((g) => {
-            const active = selectedIds.includes(g.group_id);
-            return (
-              <button
-                key={g.group_id}
-                type="button"
-                onClick={() => toggle(g.group_id)}
-                className={cn(
-                  "flex items-center gap-2 rounded-lg border p-2 text-right transition",
-                  active
-                    ? "border-primary bg-primary/5"
-                    : "border-border bg-background hover:border-primary/40",
-                )}>
-                <div className={cn(
-                  "h-4 w-4 rounded border flex items-center justify-center shrink-0",
-                  active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background",
-                )}>
-                  {active && <Check className="h-3 w-3" />}
-                </div>
-                {g.group_icon ? (
-                  <img src={g.group_icon} alt="" className="h-7 w-7 rounded-full object-cover" />
-                ) : (
-                  <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center">
-                    <Users className="h-3.5 w-3.5 text-muted-foreground" />
+        <div className="rounded-lg border border-border overflow-hidden">
+          {/* Select All master row */}
+          <label className="flex items-center gap-3 bg-muted/40 px-3 py-2 cursor-pointer border-b border-border">
+            <div
+              className={cn(
+                "h-4 w-4 rounded border flex items-center justify-center shrink-0 transition",
+                allSelected
+                  ? "border-primary bg-primary text-primary-foreground"
+                  : someSelected
+                    ? "border-primary bg-primary/30 text-primary-foreground"
+                    : "border-border bg-background",
+              )}
+            >
+              {allSelected && <Check className="h-3 w-3" />}
+              {someSelected && <div className="h-0.5 w-2 bg-primary-foreground rounded" />}
+            </div>
+            <input type="checkbox" className="sr-only" checked={allSelected} onChange={toggleAll} />
+            <span className="text-sm font-semibold text-foreground flex-1">בחר הכל</span>
+            <span className="text-xs text-muted-foreground tabular-nums">{selectedIds.length}/{groups.length}</span>
+          </label>
+
+          {/* Group rows */}
+          <div className="max-h-72 overflow-y-auto divide-y divide-border">
+            {groups.map((g) => {
+              const active = selectedIds.includes(g.group_id);
+              return (
+                <label
+                  key={g.group_id}
+                  className={cn(
+                    "flex items-center gap-3 px-3 py-2 cursor-pointer transition",
+                    active ? "bg-primary/5" : "bg-background hover:bg-muted/30",
+                  )}
+                >
+                  <div
+                    className={cn(
+                      "h-4 w-4 rounded border flex items-center justify-center shrink-0",
+                      active ? "border-primary bg-primary text-primary-foreground" : "border-border bg-background",
+                    )}
+                  >
+                    {active && <Check className="h-3 w-3" />}
                   </div>
-                )}
-                <div className="min-w-0 flex-1">
-                  <div className="truncate text-sm font-medium text-foreground">{g.group_name}</div>
-                  <div className="flex items-center gap-1">
-                    <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
-                    <span className="text-[10px] text-muted-foreground">מחובר ומאומת</span>
+                  <input
+                    type="checkbox"
+                    className="sr-only"
+                    checked={active}
+                    onChange={() => toggle(g.group_id)}
+                  />
+                  {g.group_icon ? (
+                    <img src={g.group_icon} alt="" className="h-7 w-7 rounded-full object-cover" />
+                  ) : (
+                    <div className="h-7 w-7 rounded-full bg-muted flex items-center justify-center">
+                      <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                    </div>
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <div className="truncate text-sm font-medium text-foreground">{g.group_name}</div>
+                    <div className="flex items-center gap-1">
+                      <span className="inline-block h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                      <span className="text-[10px] text-muted-foreground">מחובר</span>
+                    </div>
                   </div>
-                </div>
-              </button>
-            );
-          })}
+                </label>
+              );
+            })}
+          </div>
         </div>
       )}
     </div>
