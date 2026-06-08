@@ -294,8 +294,23 @@ const InlineComposer = ({
   const [historyRefresh, setHistoryRefresh] = useState(0);
   const [history, setHistory] = useState<Array<{ id: string; topic: string | null; generated_text: string | null; platform: string | null; created_at: string; updated_at: string | null; media_urls: any; listing_id: string | null }>>([]);
   // ID of the currently active history row — edits flow back into the same row.
-  const [logId, setLogId] = useState<string | null>(null);
+  const [logId, setLogId] = useState<string | null>(initial.logId ?? null);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
+
+  // Persist composer draft to sessionStorage so collapsing or switching tabs never loses unfinished work.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      sessionStorage.setItem(draftKey, JSON.stringify({
+        body,
+        customInstructions,
+        selectedListingId,
+        attachments,
+        logId,
+      }));
+    } catch {}
+  }, [draftKey, body, customInstructions, selectedListingId, attachments, logId]);
+
   useEffect(() => {
     if (!historyOpen) return;
     let cancelled = false;
