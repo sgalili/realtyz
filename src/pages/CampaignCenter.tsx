@@ -2981,18 +2981,6 @@ const CampaignCenter = () => {
                 socialProfiles={socialAccountProfiles}
                 onConfirm={(p) => setConfirmPayload(p)}
               />
-              {pickedChannel.id !== 'email' && connectedChannels.has('email') && (
-                <label className="flex items-center gap-2 rounded-lg border border-border/60 bg-card px-3 py-2 text-sm" dir="rtl">
-                  <input
-                    type="checkbox"
-                    checked={alsoEmail}
-                    onChange={(e) => setAlsoEmail(e.target.checked)}
-                    className="h-4 w-4 accent-primary"
-                  />
-                  <Mail className="h-4 w-4 text-rose-500" />
-                  <span>שלח גם באימייל למתעניינים עם כתובת מייל</span>
-                </label>
-              )}
             </>
           )}
         </TabsContent>
