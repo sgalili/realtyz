@@ -14,6 +14,7 @@
  */
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { loadAgentPersona, renderPersonaPrompt } from "../_shared/persona.ts";
+import { adminClient, loadKbInstructions, renderKbInstructionsBlock } from "../_shared/grounding.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -120,6 +121,11 @@ Deno.serve(async (req) => {
     const persona = await loadAgentPersona(SUPABASE_URL, SUPABASE_ANON, authHeader);
     const personaPrompt = renderPersonaPrompt(persona);
 
+    // Owner-written KB learning instructions ("what to learn from this source").
+    const kbInstructionsBlock = renderKbInstructionsBlock(
+      await loadKbInstructions(adminClient(), userId),
+    );
+
     // Recent activity grounding for the AI: last 5 leads the Agent worked on.
     const { data: recentActivity } = await supa
       .from("interaction_activity_log")
@@ -142,6 +148,7 @@ Deno.serve(async (req) => {
           channel: body.channel,
           personaPrompt,
           recentBlock,
+          kbInstructionsBlock,
         });
         sampleDraft = { lead_name: sample[0].full_name ?? null, message: text };
       }
@@ -189,6 +196,7 @@ Deno.serve(async (req) => {
               channel: body.channel,
               personaPrompt,
               recentBlock,
+              kbInstructionsBlock,
             });
             drafted++;
             return { lead, message };
@@ -261,8 +269,9 @@ async function draftPersonalized(args: {
   channel: Channel;
   personaPrompt: string;
   recentBlock: string;
+  kbInstructionsBlock?: string;
 }): Promise<string> {
-  const { lead, draft, updateType, channel, personaPrompt, recentBlock } = args;
+  const { lead, draft, updateType, channel, personaPrompt, recentBlock, kbInstructionsBlock } = args;
   const firstName = String(lead.full_name ?? "").trim().split(/\s+/)[0] || "";
   const channelLabel = channel === "whatsapp" ? "WhatsApp" : "SMS";
   const updateLabels: Record<UpdateType, string> = {
@@ -303,6 +312,7 @@ async function draftPersonalized(args: {
   ].filter(Boolean).join("\n");
 
   const user = [
+    kbInstructionsBlock || null,
     "AGENT'S CORE DRAFT (the human-written update):",
     draft.trim(),
     "",
@@ -312,8 +322,9 @@ async function draftPersonalized(args: {
     "THIS LEAD'S CONTEXT:",
     leadContext,
     "",
-    `Now write the personalised ${channelLabel} message.`,
-  ].join("\n");
+    `Now write the personalised ${channelLabel} message — and apply any OWNER INSTRUCTIONS from the knowledge base above.`,
+  ].filter(Boolean).join("\n");
+
 
   const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",

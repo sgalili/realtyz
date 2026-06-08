@@ -32,6 +32,53 @@ export async function loadKbSnippets(
   }
 }
 
+/**
+ * Load owner-written "what to learn from this source" instructions saved on
+ * knowledge_documents.source_metadata.learning_intent. These are higher-signal
+ * than the raw chunks — they tell the model HOW to apply the KB when writing.
+ */
+export async function loadKbInstructions(
+  admin: SupabaseClient,
+  userId: string | null,
+  limit = 20,
+  perItem = 400,
+  totalCap = 3000,
+): Promise<{ title: string; intent: string }[]> {
+  if (!userId) return [];
+  try {
+    const { data } = await admin
+      .from("knowledge_documents")
+      .select("title, source_metadata")
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .order("created_at", { ascending: false })
+      .limit(limit);
+    const items: { title: string; intent: string }[] = [];
+    let used = 0;
+    for (const row of data ?? []) {
+      const meta = (row as any)?.source_metadata ?? {};
+      const intent = String(meta?.learning_intent ?? "").trim();
+      if (!intent) continue;
+      const clipped = intent.slice(0, perItem);
+      if (used + clipped.length > totalCap) break;
+      items.push({ title: String((row as any).title ?? "מקור"), intent: clipped });
+      used += clipped.length;
+    }
+    return items;
+  } catch {
+    return [];
+  }
+}
+
+export function renderKbInstructionsBlock(items: { title: string; intent: string }[]): string {
+  if (!items.length) return "";
+  const lines = items
+    .map((it, i) => `${i + 1}. "${it.title}" → ${it.intent}`)
+    .join("\n");
+  return `[OWNER INSTRUCTIONS FROM KNOWLEDGE BASE] (HARD — these are the broker's own notes on what to LEARN and APPLY from each source. Treat as direct orders from Udi. Internalize the techniques, framings, and rules they describe when writing this post):\n${lines}`;
+}
+
+
 export type ListingType = "sale" | "rent";
 
 const SALE_CONTEXT_RE = /(למכירה|מכירה|לרכישה|רכישה|לקנות|לקנייה|לקניה|קנייה|קניה|מחיר מבוקש|משכנתא|for sale|asking price|purchase|buying?|mortgage)/i;

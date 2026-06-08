@@ -3,8 +3,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import {
   adminClient,
   loadKbSnippets,
+  loadKbInstructions,
   loadCrmSnapshot,
   renderKbBlock,
+  renderKbInstructionsBlock,
   renderCrmBlock,
   ANTI_SPAM_RULES,
   CTA_RULE,
@@ -43,10 +45,13 @@ serve(async (req) => {
 
     // Mandatory grounding: workspace KB + live CRM/listings snapshot.
     const admin = adminClient();
-    const [kb, snap] = await Promise.all([
+    const [kb, kbInstructions, snap] = await Promise.all([
       loadKbSnippets(admin, userId),
+      loadKbInstructions(admin, userId),
       loadCrmSnapshot(admin, userId),
     ]);
+    const kbInstructionsBlock = renderKbInstructionsBlock(kbInstructions);
+
 
     const featureLabels = (features: unknown) => Array.isArray(features)
       ? features
@@ -204,6 +209,7 @@ ${CTA_RULE}
       promotedBlock,
       focusOnly ? null : renderCrmBlock(snap),
       focusOnly ? null : renderKbBlock(kb),
+      kbInstructionsBlock || null,
       customBlock,
       focusOnly
         ? `מטרת הפוסט: פוסט מכירה/השכרה קצר וישיר לנכס שלמעלה בלבד — בלי שום הקשר אישי, ביוגרפיה או נושאים לא קשורים.`
