@@ -76,6 +76,7 @@ export default function KnowledgeBase() {
   const [textTitle, setTextTitle] = useState('');
   const [textBody, setTextBody] = useState('');
   const [linkUrl, setLinkUrl] = useState('');
+  const [linkIntent, setLinkIntent] = useState('');
 
   /* ── Documents list ── */
   const { data: documents = [], isLoading: docsLoading } = useQuery({
