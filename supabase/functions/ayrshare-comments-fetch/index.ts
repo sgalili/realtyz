@@ -435,21 +435,22 @@ Deno.serve(async (req) => {
           c?.author,
         );
         const senderId = pickStr(c?.from?.id, c?.user?.id, c?.fromId, c?.sender_id, c?.userId);
-        // SENDER FIREWALL: never ingest comments authored by our own Page,
-        // by Ayrshare on our behalf, or carrying our system reply signature.
-        if (isSelfAuthoredComment({
+        const parentId = typeof c?.__parent_id === "string" ? c.__parent_id : null;
+        // SENDER FIREWALL: comments authored by our own Page must still be
+        // stored so the UI can render the physical Facebook reply tree, but
+        // they are marked display-only and never dispatched back to the AI.
+        const selfAuthored = isSelfAuthoredComment({
           fromId: senderId,
           fromName: sender,
           text,
           ownPageId: ownPage.pageId,
           ownPageName: ownPage.pageName,
-        })) {
+        });
+        if (selfAuthored && !parentId) {
           blockedSelf += 1;
-          console.log("[ayrshare-comments-fetch] blocked self-authored comment", { nativeId, senderId, sender });
+          console.log("[ayrshare-comments-fetch] blocked root self-authored comment", { nativeId, senderId, sender });
           continue;
         }
-        const parentId = typeof c?.__parent_id === "string" ? c.__parent_id : null;
-
         const safeStr = (v: unknown, max = 500): string | null => {
           if (v === null || v === undefined) return null;
           const s = typeof v === "string" ? v : (() => {
@@ -506,6 +507,8 @@ Deno.serve(async (req) => {
           const nextMetadata = {
             ...currentMeta,
             parent_id: safeStr(parentId) ?? currentMeta.parent_id ?? null,
+            self_authored: selfAuthored || currentMeta.self_authored === true,
+            author_type: selfAuthored ? "workspace_page" : currentMeta.author_type ?? "audience",
             sender_id: safeStr(senderId) ?? currentMeta.sender_id ?? null,
             profile_image: nextProfileImage,
             sender_avatar_url: nextProfileImage,
@@ -519,7 +522,7 @@ Deno.serve(async (req) => {
             await admin.from("engagement_events").update({ metadata: nextMetadata }).eq("id", exists.id).eq("user_id", userId);
           }
           // Re-dispatch only if still pending and no reply yet.
-          if (!exists.ai_reply_text && exists.status !== "sent" && exists.status !== "pending_approval") {
+          if (!selfAuthored && !exists.ai_reply_text && exists.status !== "sent" && exists.status !== "pending_approval") {
             toDispatch.push({
               external_id: nativeId,
               external_post_id: postId,
@@ -542,6 +545,8 @@ Deno.serve(async (req) => {
           campaign_name: safeStr(campaignName),
           profile_ref_id: safeStr(refId),
           parent_id: safeStr(parentId),
+          self_authored: selfAuthored,
+          author_type: selfAuthored ? "workspace_page" : "audience",
           native_created_at: safeStr(c?.created_time ?? c?.createdAt ?? c?.created_at ?? c?.timestamp),
           like_count: typeof c?.like_count === "number" ? c.like_count : null,
           permalink: safeStr(c?.permalink ?? c?.permalink_url ?? c?.url, 1000),
@@ -563,8 +568,8 @@ Deno.serve(async (req) => {
           inbound_text: cleanText,
           external_id: nativeId,
           external_post_id: postId,
-          status: "pending",
-          ai_action: "queued",
+          status: selfAuthored ? "sent" : "pending",
+          ai_action: selfAuthored ? "display_only" : "queued",
           metadata: cleanMetadata,
         };
 
@@ -594,15 +599,19 @@ Deno.serve(async (req) => {
           );
           continue;
         }
-        toDispatch.push({
-          external_id: nativeId,
-          external_post_id: postId,
-          sender_handle: cleanSender,
-          sender_id: senderId,
-          inbound_text: cleanText,
-          platform: platformHint,
-          parent_id: parentId,
-        });
+        if (!selfAuthored) {
+          toDispatch.push({
+            external_id: nativeId,
+            external_post_id: postId,
+            sender_handle: cleanSender,
+            sender_id: senderId,
+            inbound_text: cleanText,
+            platform: platformHint,
+            parent_id: parentId,
+          });
+        } else {
+          blockedSelf += 1;
+        }
 
       }
     }
