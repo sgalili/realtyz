@@ -1897,7 +1897,7 @@ const PublishedFeed = () => {
                   </span>
                   <span className="inline-flex items-center gap-1" title="תגובות">
                     <MessageSquare className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
-                    <span className="tabular-nums">{fmt(r.comment_count)}</span>
+                    <span className="tabular-nums">{commentDisplay}</span>
                   </span>
                   <span className="inline-flex items-center gap-1" title="שיתופים">
                     <Share2 className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
