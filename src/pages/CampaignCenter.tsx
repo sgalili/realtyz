@@ -1337,7 +1337,7 @@ const firstPipelineError = (data: any): string | null => {
   if (data?.error === 'MISSING_TENANT_KEY') return data?.message || 'נא לחבר מחדש את פרופיל המדיה החברתית בהגדרות המשרד';
   const api = Array.isArray(data?.api_errors) ? data.api_errors[0] : null;
   const mapping = Array.isArray(data?.mapping_errors) ? data.mapping_errors[0] : null;
-  if (api) return `Ayrshare ${api.status ?? ''}: ${api.payload?.message ?? api.error ?? 'API rejected request'}`;
+  if (api) return `Provider ${api.status ?? ''}: ${api.payload?.message ?? api.error ?? 'API rejected request'}`;
   if (mapping) return mapping.error ?? 'Invalid external post id mapping';
   return null;
 };
@@ -1549,8 +1549,7 @@ const PublishedFeed = () => {
       }
       const surfacedError = firstPipelineError(data);
       if (surfacedError) {
-        console.error('[refreshMetrics] analytics pipeline error', data);
-        toast.error(surfacedError);
+        console.warn('[refreshMetrics] analytics pipeline warning (non-fatal)', data);
       }
       const results: Array<{ id: string; ok: boolean; counts?: { likes: number; comments: number; shares: number; views: number }; metrics_updated_at?: string; native_post_id?: string | null }> = Array.isArray((data as any)?.results) ? (data as any).results : [];
       const byId = new Map(results.filter((r) => r.ok && r.counts).map((r) => [r.id, r]));
