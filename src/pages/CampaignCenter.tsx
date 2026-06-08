@@ -1846,6 +1846,9 @@ const PublishedFeed = () => {
         const preview = bodyText.trim().slice(0, 100) + (bodyText.trim().length > 100 ? '…' : '');
         const hasMetrics = !!r.metrics_updated_at;
         const fmt = (v: number | null | undefined) => (hasMetrics && typeof v === 'number' ? v : '–');
+        const liveCount = liveCommentCounts[r.id];
+        const commentDisplay = typeof liveCount === 'number' ? liveCount : fmt(r.comment_count);
+
         const pageLabel = (String(r.channel || '').toLowerCase() === 'facebook' && fbPageName) ? fbPageName : ownerName;
         return (
           <article
