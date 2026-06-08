@@ -413,9 +413,7 @@ Deno.serve(async (req) => {
           null;
         const fbFallbackPicture =
           !pictureFromPayload && senderId && /facebook/i.test(platformHint)
-            ? (FB_PAGE_TOKEN
-              ? `https://graph.facebook.com/v20.0/${senderId}/picture?type=square&access_token=${encodeURIComponent(FB_PAGE_TOKEN)}`
-              : null)
+            ? await resolveFacebookAvatar(senderId, platformHint)
             : null;
         const authorPicture = pictureFromPayload ?? fbFallbackPicture;
 
