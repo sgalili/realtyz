@@ -7,7 +7,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Bot, ChevronDown, ChevronUp, MessageSquare, RefreshCw, Send, Sparkles, Smile, Meh, Frown } from "lucide-react";
+import { Bot, ChevronDown, ChevronUp, RefreshCw, Send, Smile, Meh, Frown } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -361,16 +361,6 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
     () => comments.filter((c) => c.parent_id && c.parent_id !== null),
     [comments],
   );
-
-  const openReply = (row: EngagementRow) => {
-    // Hard flush: never carry over draft text from a previous open.
-    setReplyDraft("");
-    setDmDraft("");
-    setOriginalReply("");
-    setOriginalDm("");
-    setDrafting(true);
-    setReplyOpen(row);
-  };
 
   // Whenever the modal mounts on a new comment, force a fresh live invocation
   // of suggest-comment-reply with a cache-bust token. Closing the modal wipes
