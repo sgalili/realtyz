@@ -183,8 +183,6 @@ REFERENCE TEMPLATE (match this rhythm and tone exactly — adapt wording per lis
 אודי ויטמן | אנגלו סכסון הרצליה/רמ"ש
 052-2973500
 רישיון תיווך 3251767
-
-#[האשטג1] #[האשטג2] #[האשטג3]
 """`) : "";
 
 
