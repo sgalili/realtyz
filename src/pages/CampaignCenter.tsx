@@ -240,9 +240,6 @@ const ChannelGrid = ({
                   };
                   return (
                     <span key={profile.id} className="block max-w-full text-center">
-                      <span className="block truncate text-[8px] font-mono text-muted-foreground" dir="ltr" title={profile.profileKey || profile.id}>
-                        {profile.profileKey || profile.id}
-                      </span>
                       <span
                         role={url ? 'link' : undefined}
                         tabIndex={url ? 0 : undefined}
