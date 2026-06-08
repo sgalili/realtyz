@@ -700,7 +700,13 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
             const replyCount = replyCountById.get(node.id) ?? 0;
             const threadExpanded = expandedThreadIds.has(node.id);
             return (
-            <li key={node.id}>
+            <li key={node.id} className={cn("relative", node.depth > 0 && "pr-5")}>
+              {node.depth > 0 && (
+                <span
+                  aria-hidden
+                  className="absolute right-0 top-5 h-px w-4 bg-border"
+                />
+              )}
               <CommentBubble
                 row={node}
                 onToggleEditor={(r) => setReplyOpen(replyOpen?.id === r.id ? null : r)}
@@ -731,7 +737,11 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
                 }}
               />
               {node.children.length > 0 && threadExpanded && (
-                <ul className="mt-2 space-y-2 border-r-2 border-border/60 pr-3 mr-2">
+                <ul className="relative mt-2 space-y-2 mr-3">
+                  <span
+                    aria-hidden
+                    className="absolute right-0 top-0 bottom-4 w-px bg-border"
+                  />
                   {node.children.map((child) => renderNode(child))}
                 </ul>
               )}
