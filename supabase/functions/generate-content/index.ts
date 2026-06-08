@@ -85,7 +85,7 @@ serve(async (req) => {
     }
 
     const platformRules: Record<string, string> = {
-      instagram: "3-4 משפטים חדים. פתח בהוק קונקרטי על נכס/אזור מתוך ההקשר. 0-1 האשטגים רלוונטיים בלבד.",
+      instagram: "3-4 משפטים חדים. פתח בהוק קונקרטי על נכס/אזור מתוך ההקשר. בלי האשטגים, בלי תגיות, בלי מילות מפתח.",
       facebook: "3-5 משפטים. פתיחה ספציפית מתוך הנתונים החיים. שפה מקצועית-נגישה.",
       twitter: "מקסימום 280 תווים. ישיר, ממוקד, בלי הקדמות.",
       x: "מקסימום 280 תווים. ישיר, ממוקד, בלי הקדמות.",
@@ -145,14 +145,14 @@ LISTING-FOCUS MODE (HARD OVERRIDE — highest priority):
 - No personal owner story, no broker biography, no market analysis, no neighborhood essay, no testimonials, no philosophy.
 - Follow the structure, rhythm, line breaks, sectioning, emoji usage and tone of the [OWNER-AUTHORED POST TEMPLATES FROM KNOWLEDGE BASE] block exactly. Those templates OVERRIDE any built-in default.
 - Replace any slot/placeholder with the real listing fields. Skip any line whose data is missing — never invent.
-- End with Udi's signature line and 2-3 relevant hashtags only if the KB template uses them.
+- End with Udi's signature line ONLY. NEVER append hashtags, tags, keywords, or "#" tokens of any kind, even if a KB template shows them — strip them out.
 ` : `
 LISTING-FOCUS MODE (HARD OVERRIDE — highest priority):
 - This post is a direct sales/rental ad for the [PROMOTED LISTING] above and NOTHING else.
 - No personal owner story, no broker biography, no market analysis, no neighborhood essay, no testimonials, no philosophy.
 - Use the EXACT template structure below (Hebrew, RTL, short lines, blank line between blocks). Each feature line MUST start with a green checkmark emoji "✅ " followed by the text. Replace bracketed slots with the real listing fields. Skip any line whose data is missing — never invent.
 - Emojis are allowed ONLY where the template shows them: ✅ for each feature bullet, 📍 once before the address line, 💰 once before the price line, 📞 once before the CTA. Do NOT add other emojis (no 🏠, 🔑, 🌟, ✨, fire, hearts) and never stack multiples.
-- End with a CTA inviting WhatsApp/phone, followed by Udi's signature line and 2-3 relevant hashtags.
+- End with a CTA inviting WhatsApp/phone, followed by Udi's signature line ONLY. Do NOT add any hashtags, tags, or keywords.
 
 REFERENCE TEMPLATE (match this rhythm and tone exactly — adapt wording per listing, never copy verbatim):
 """
@@ -183,8 +183,6 @@ REFERENCE TEMPLATE (match this rhythm and tone exactly — adapt wording per lis
 אודי ויטמן | אנגלו סכסון הרצליה/רמ"ש
 052-2973500
 רישיון תיווך 3251767
-
-#[האשטג1] #[האשטג2] #[האשטג3]
 """`) : "";
 
 
@@ -212,6 +210,11 @@ ${ANTI_SPAM_RULES}
 
 ${CTA_RULE}
 - ה-CTA תמיד מזמין פנייה ישירה לאודי ב-WhatsApp או Messenger (או טלפון למשרד) — מנוסח אחרת בכל פוסט, בלי לציין שום כלי תוכנה.
+
+NO-HASHTAGS RULE (HARD — ZERO TOLERANCE):
+- אסור להוסיף שום האשטגים, תגיות, מילות מפתח או טוקנים שמתחילים ב-"#" בסוף הפוסט או בתוכו.
+- אסור לכתוב שורת tags/keywords/האשטגים/תגיות גם בעברית וגם באנגלית, בלי תלות בתבנית.
+- הפוסט מסתיים בחתימה של אודי בלבד.
 
 איסור מוחלט: פוליטיקה, מפלגות, בחירות, וכל הקשר לא-נדל"ני.
 
@@ -305,6 +308,18 @@ ${CTA_RULE}
       content = content.replace(re, replacement);
     }
     content = content.replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+
+    // NO-HASHTAGS scrub: remove any hashtag tokens and any trailing
+    // "tags / keywords / האשטגים / תגיות" lines, regardless of what the
+    // model produced or what a KB template suggested.
+    content = content
+      .split("\n")
+      .filter((line) => !/^\s*(?:tags|keywords|hashtags|האשטגים|תגיות|מילות\s*מפתח)\s*[:：-].*/i.test(line))
+      .join("\n")
+      .replace(/(^|\s)#[^\s#]+/g, "$1")
+      .replace(/[ \t]{2,}/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
 
     // Neighborhood naming hard rule: never expose numeric/coded neighborhoods.
     // Strip "שכונת [שכונה]" placeholder leftovers and "שכונה 10" / "שכונה ג'" patterns.
