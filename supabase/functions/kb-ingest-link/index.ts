@@ -236,6 +236,7 @@ Deno.serve(async (req) => {
           description: ytId ? (rawContent.split("\n\n").find((s) => s && !s.startsWith("By ") && s !== title) ?? "").slice(0, 400) : null,
           video_id: ytId,
           distilled_for_persona: "udi",
+          learning_intent: intent || null,
           captured_at: new Date().toISOString(),
         },
         is_active: true,
