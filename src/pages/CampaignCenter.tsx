@@ -17,7 +17,7 @@ import {
   ArrowRight, Plus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
   ChevronDown, ChevronUp, Archive, Send, Mic, Image as ImageIcon, Paperclip,
   ChevronDown as ChevronDownIcon, Plug, Camera, Sparkles, Square,
-  Trash2, ExternalLink, CheckCircle2, Play,
+  Trash2, ExternalLink, CheckCircle2, Play, RefreshCw,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -459,17 +459,21 @@ const InlineComposer = ({
     });
   };
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (opts?: { rotateTemplate?: boolean }) => {
     setGenerating(true);
     try {
       const topic = body.trim()
         || customInstructions.trim()
         || (selectedListing?.property_title ? `פוסט קידום: ${selectedListing.property_title}` : `פוסט שיווקי מאת אודי ויטמן`);
+      const rotateNote = opts?.rotateTemplate
+        ? 'בחר תבנית שונה לחלוטין מהפעם הקודמת מתוך מאגר הידע (KB) של תבניות הפוסטים. גוון בין תבניות גלובליות לבין תבניות מקוריות של אודי. שמור על דיוק עובדתי מלא לפי נתוני הנכס, טון מקצועי בכיר וקריאה לפעולה חדה לוואטסאפ/טלפון. אל תחזור על אותו פתיח, אותה מבנה או אותו ניסוח CTA כמו בגרסה הקודמת.'
+        : '';
+      const mergedInstructions = [customInstructions.trim(), rotateNote].filter(Boolean).join('\n\n');
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: {
           topic,
           platform: channel.id,
-          customInstructions: customInstructions.trim() || undefined,
+          customInstructions: mergedInstructions || undefined,
           selectedListingId: selectedListingId || undefined,
           listingFocusOnly: !!selectedListingId,
         },
@@ -565,7 +569,7 @@ const InlineComposer = ({
               })}
             </PopoverContent>
           </Popover>
-          <button type="button" onClick={handleGenerate} disabled={generating}
+          <button type="button" onClick={() => handleGenerate()} disabled={generating}
             className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-60">
             <Bot className="h-3.5 w-3.5" />
             {generating ? 'מחולל…' : 'חולל טקסט עם AI'}
@@ -573,8 +577,19 @@ const InlineComposer = ({
           <span className="text-[11px] tabular-nums text-muted-foreground" dir="ltr">
             {count}/{MAX_CHARS}
           </span>
+          <button
+            type="button"
+            onClick={() => handleGenerate({ rotateTemplate: true })}
+            disabled={generating}
+            title="החלף תבנית — צור פוסט מכירה/השכרה מתבנית אחרת מתוך מאגר הידע"
+            aria-label="החלף תבנית פוסט"
+            className="inline-flex items-center justify-center rounded-full border border-border bg-background p-1.5 text-muted-foreground hover:text-primary hover:border-primary/40 disabled:opacity-60"
+          >
+            <RefreshCw className={cn('h-3.5 w-3.5', generating && 'animate-spin')} />
+          </button>
         </div>
       </div>
+
 
       {/* Broker steering: custom instructions + property promotion picker */}
 
