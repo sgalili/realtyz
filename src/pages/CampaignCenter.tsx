@@ -172,7 +172,7 @@ const ChannelGrid = ({
     <div className="grid grid-cols-3 md:grid-cols-9 gap-2" dir="rtl">
       {CHANNEL_CARDS.map((c) => {
         const Icon = c.icon;
-        const isSelected = selectedId === c.id;
+        const isSelected = selectedIds.has(c.id);
         const isConnected = connected.has(c.id);
         const brandColor = isConnected ? (BRAND_COLOR[c.id] ?? c.iconColor ?? 'text-foreground') : 'text-muted-foreground/60';
         const profiles = socialProfiles.filter((p) => p.platform === c.id || (c.id === 'x' && p.platform === 'twitter'));
