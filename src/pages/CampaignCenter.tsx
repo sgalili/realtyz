@@ -615,7 +615,7 @@ const InlineComposer = ({
                 </span>
               </button>
             </PopoverTrigger>
-            <PopoverContent align="end" className="w-[--radix-popover-trigger-width] p-2 max-h-80 overflow-auto" dir="rtl">
+            <PopoverContent align="start" className="w-[--radix-popover-trigger-width] p-2 max-h-80 overflow-auto" dir="rtl">
               <Input
                 value={listingQuery}
                 onChange={(e) => setListingQuery(e.target.value)}
