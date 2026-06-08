@@ -118,6 +118,9 @@ Deno.serve(async (req) => {
     if (refId && refId !== ACTIVE_WORKSPACE_REF_ID) {
       return jsonResponse({ error: 'Workspace is not bound to Ayrshare Profile 6200. Rebind the active workspace profile before connecting pages.' }, 409);
     }
+    if (!profileKey || refId !== ACTIVE_WORKSPACE_REF_ID) {
+      return jsonResponse({ error: 'Missing active Ayrshare Profile 6200 binding. The workspace must use the approved active profile only.' }, 409);
+    }
     if (profileKey && refId === ACTIVE_WORKSPACE_REF_ID) {
       await admin
         .from('workspace_social_profile')
