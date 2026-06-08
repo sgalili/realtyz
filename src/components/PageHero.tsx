@@ -13,7 +13,7 @@ import { useLocation, useSearchParams } from 'react-router-dom';
 import { Menu, Plus, FileSpreadsheet, User } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { RealtyzWave } from '@/components/RealtyzWave';
-import { CreditBalancePill } from '@/components/CreditBalancePill';
+// CreditBalancePill moved to /billing (Packages & Payments page).
 import { Button } from '@/components/ui/button';
 import {
   DropdownMenu,
@@ -163,8 +163,8 @@ export function PageHero() {
         <div className="flex items-center justify-end gap-2" style={{ marginLeft: '-5px' }}>
           {location.pathname === '/properties' && <PropertiesHeroAddButton />}
           {location.pathname.startsWith('/lead-crm') && <LeadsHeroAddButton />}
-          {location.pathname.startsWith('/campaigns') && <CreditBalancePill />}
         </div>
+
       </div>
 
 

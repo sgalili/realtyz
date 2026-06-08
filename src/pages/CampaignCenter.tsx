@@ -17,7 +17,7 @@ import {
   ArrowRight, Plus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
   ChevronDown, ChevronUp, Archive, Send, Mic, Image as ImageIcon, Paperclip,
   ChevronDown as ChevronDownIcon, Plug, Camera, Sparkles, Square,
-  Trash2, ExternalLink, CheckCircle2, Play, RefreshCw,
+  Trash2, ExternalLink, CheckCircle2, Play, RefreshCw, Calendar as CalendarIcon,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -513,13 +513,12 @@ const InlineComposer = ({
 
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-sm space-y-4" dir="rtl">
-      {/* Header row */}
+      {/* Header row — title moved into the textarea placeholder for a cleaner card */}
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-foreground">תוכן ההודעה</h3>
+        <span className="text-[11px] text-muted-foreground" aria-live="polite">
+          {saveState === 'saving' ? 'שומר…' : saveState === 'saved' ? 'נשמר אוטומטית' : ''}
+        </span>
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-muted-foreground" aria-live="polite">
-            {saveState === 'saving' ? 'שומר…' : saveState === 'saved' ? 'נשמר אוטומטית' : ''}
-          </span>
           <Popover open={historyOpen} onOpenChange={setHistoryOpen}>
             <PopoverTrigger asChild>
               <button type="button"
@@ -527,7 +526,7 @@ const InlineComposer = ({
                 היסטוריה
               </button>
             </PopoverTrigger>
-            <PopoverContent align="start" className="w-[360px] p-2 max-h-96 overflow-auto" dir="rtl">
+            <PopoverContent align="end" className="w-[360px] p-2 max-h-96 overflow-auto" dir="rtl">
               {history.length === 0 ? (
                 <p className="px-3 py-6 text-center text-xs text-muted-foreground">אין יצירות שמורות עדיין עבור {channel.label}</p>
               ) : history.map((h) => {
@@ -569,11 +568,6 @@ const InlineComposer = ({
               })}
             </PopoverContent>
           </Popover>
-          <button type="button" onClick={() => handleGenerate()} disabled={generating}
-            className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-60">
-            <Bot className="h-3.5 w-3.5" />
-            {generating ? 'מחולל…' : 'חולל טקסט עם AI'}
-          </button>
           <span className="text-[11px] tabular-nums text-muted-foreground" dir="ltr">
             {count}/{MAX_CHARS}
           </span>
@@ -589,6 +583,7 @@ const InlineComposer = ({
           </button>
         </div>
       </div>
+
 
 
       {/* Broker steering: custom instructions + property promotion picker */}
@@ -657,15 +652,17 @@ const InlineComposer = ({
         </div>
       </div>
 
-      {/* Textarea */}
+      {/* Textarea — header text moved into the placeholder */}
       <Textarea
         ref={textareaRef}
         rows={6}
         value={body}
         maxLength={MAX_CHARS}
         onChange={(e) => setBody(e.target.value)}
-        className="resize-y text-right"
+        placeholder="תוכן ההודעה — כתוב כאן או חולל באמצעות AI"
+        className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium"
       />
+
 
       {/* Hidden inputs */}
       <input ref={galleryInputRef} type="file" accept="image/*" multiple className="hidden"
@@ -740,16 +737,22 @@ const InlineComposer = ({
             <Paperclip className="h-4 w-4" />
           </button>
         </div>
-        <div className="flex items-center gap-2">
-          {TAG_CHIPS.map((tag) => (
-            <button key={tag} type="button" onClick={() => insertTag(tag)}
-              className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-foreground hover:border-primary/40 hover:text-primary">
-              {tag}
-            </button>
-          ))}
-          <span className="text-xs text-muted-foreground">תגיות:</span>
-        </div>
+        <button
+          type="button"
+          onClick={() => handleGenerate()}
+          disabled={generating}
+          className={cn(
+            'inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold shadow-md transition',
+            'bg-gradient-to-l from-[hsl(217,80%,18%)] via-[hsl(217,80%,22%)] to-[#C9A84C]',
+            'text-white hover:brightness-110 hover:shadow-lg',
+            'disabled:opacity-60 disabled:cursor-not-allowed',
+          )}
+        >
+          <Sparkles className="h-4 w-4" />
+          {generating ? 'מחולל תוכן…' : 'חולל תוכן עם AI'}
+        </button>
       </div>
+
 
 
       {/* Facebook Group multi-select — only when posting to Facebook */}
@@ -811,29 +814,45 @@ const InlineComposer = ({
         const scheduledValid = mode === 'now' || (!!scheduledDate && scheduledDate.getTime() > Date.now());
         const canSend = hasBody && scheduledValid;
         return (
-          /* Dispatch CTA */
-          <button type="button"
-            onClick={() => canSend && onConfirm({
-              body,
-              mode,
-              media_urls: attachments
-                .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
-                .map((a) => a.url as string),
-              scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
-              group_ids: channel.id === 'facebook' ? groupIds : [],
-            })}
-            disabled={!canSend}
-            className={cn(
-              'w-full rounded-xl px-4 py-3 text-sm font-bold transition flex items-center justify-center gap-2',
-              canSend
-                ? 'bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)] shadow-md'
-                : 'bg-muted text-muted-foreground/80 cursor-not-allowed',
-            )}>
-            <Send className="h-4 w-4 -scale-x-100" />
-            {mode === 'scheduled' ? 'תזמן פרסום' : 'שגר פוסט ציבורי עכשיו'}
-          </button>
+          /* Dispatch CTA + inline schedule toggle */
+          <div className="flex items-stretch gap-2">
+            <button type="button"
+              onClick={() => canSend && onConfirm({
+                body,
+                mode,
+                media_urls: attachments
+                  .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
+                  .map((a) => a.url as string),
+                scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
+                group_ids: channel.id === 'facebook' ? groupIds : [],
+              })}
+              disabled={!canSend}
+              className={cn(
+                'flex-1 rounded-xl px-4 py-3 text-sm font-bold transition flex items-center justify-center gap-2',
+                canSend
+                  ? 'bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)] shadow-md'
+                  : 'bg-muted text-muted-foreground/80 cursor-not-allowed',
+              )}>
+              <Send className="h-4 w-4 -scale-x-100" />
+              {mode === 'scheduled' ? 'תזמן פרסום' : 'פרסם קמפיין'}
+            </button>
+            <button
+              type="button"
+              onClick={() => setMode((m) => (m === 'scheduled' ? 'now' : 'scheduled'))}
+              title={mode === 'scheduled' ? 'בטל תזמון — פרסם עכשיו' : 'תזמן פרסום עתידי'}
+              aria-label="תזמן פרסום"
+              className={cn(
+                'inline-flex items-center justify-center rounded-xl border px-3 transition',
+                mode === 'scheduled'
+                  ? 'border-[#C9A84C] bg-[#C9A84C]/15 text-[#7a6210] hover:bg-[#C9A84C]/25'
+                  : 'border-border bg-background text-muted-foreground hover:text-foreground hover:border-primary/40',
+              )}>
+              <CalendarIcon className="h-5 w-5" />
+            </button>
+          </div>
         );
       })()}
+
     </div>
   );
 };
@@ -2239,8 +2258,33 @@ const CampaignCenter = () => {
   const [ivrOpen, setIvrOpen] = useState(false);
   const [emailSetupOpen, setEmailSetupOpen] = useState(false);
   const [confirmPayload, setConfirmPayload] = useState<{ body: string; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null; group_ids: string[] } | null>(null);
-  const [connectedChannels, setConnectedChannels] = useState<Set<string>>(EMPTY_CONNECTED);
-  const [channelAccountNames, setChannelAccountNames] = useState<Record<string, string>>({});
+  // Hydrate connection state from sessionStorage so a page refresh doesn't
+  // visually "disconnect" channels while the async verification re-runs.
+  const [connectedChannels, setConnectedChannels] = useState<Set<string>>(() => {
+    try {
+      const raw = sessionStorage.getItem('rz-connected-channels');
+      if (raw) return new Set<string>(JSON.parse(raw));
+    } catch { /* ignore */ }
+    return EMPTY_CONNECTED;
+  });
+  const [channelAccountNames, setChannelAccountNames] = useState<Record<string, string>>(() => {
+    try {
+      const raw = sessionStorage.getItem('rz-connected-channel-names');
+      if (raw) return JSON.parse(raw);
+    } catch { /* ignore */ }
+    return {};
+  });
+
+  // Persist whenever the resolved connection state changes — keeps the grid
+  // "remembered" for the whole browser session, including hard reloads.
+  useEffect(() => {
+    try { sessionStorage.setItem('rz-connected-channels', JSON.stringify([...connectedChannels])); } catch { /* ignore */ }
+  }, [connectedChannels]);
+  useEffect(() => {
+    try { sessionStorage.setItem('rz-connected-channel-names', JSON.stringify(channelAccountNames)); } catch { /* ignore */ }
+  }, [channelAccountNames]);
+
+
 
   // STRICT WORKSPACE ISOLATION: only show a channel as connected when
   // (1) this workspace owns a verified `workspace_social_profile` with its

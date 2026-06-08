@@ -3,6 +3,8 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
+import { CreditBalancePill } from '@/components/CreditBalancePill';
+
 
 const SEAT_PRICE = 350;
 const SEAT_WALLET_CREDIT = 200;
@@ -25,7 +27,15 @@ export default function PlanTab() {
 
   return (
     <div className="space-y-4 mt-5">
+      <div dir="rtl" className="flex items-center justify-between gap-3 rounded-xl border border-border bg-card px-4 py-3 shadow-sm">
+        <div className="text-right">
+          <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">ארנק קמפיינים</p>
+          <p className="text-sm text-foreground">יתרת קרדיטים לשירותי פרימיום (SMS, WhatsApp, AI Calls)</p>
+        </div>
+        <CreditBalancePill />
+      </div>
       <Card>
+
         <CardContent className="space-y-5">
           <div className="rounded-xl border-2 border-primary/30 bg-gradient-to-br from-primary/5 to-transparent p-5 text-center">
             <div className="flex flex-col items-center gap-1">
