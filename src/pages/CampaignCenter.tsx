@@ -1116,17 +1116,28 @@ const ConfirmDispatchDialog = ({
         if (!mediaUrls) {
           // defensive: should never happen since prop is typed string[]
         }
-        // Publish via Ayrshare to the workspace-connected social page.
-        const { data, error } = await supabase.functions.invoke('ayrshare-post', {
-          body: {
-            post: body,
-            channels: [channel.id],
-            campaign_name: campaignName,
-            media_urls: mediaUrls,
-            scheduled_at: scheduledAt,
-            group_ids: groupIds,
-          },
-        });
+        // Fan-out one distinct publish payload per selected Facebook page/profile.
+        const targets = channel.id === 'facebook' && publishTargets.length > 0 ? publishTargets : [null];
+        const results = [] as any[];
+        for (const target of targets) {
+          const { data, error } = await supabase.functions.invoke('ayrshare-post', {
+            body: {
+              post: body,
+              channels: [channel.id],
+              campaign_name: target ? `${campaignName} · ${target.name}` : campaignName,
+              media_urls: mediaUrls,
+              scheduled_at: scheduledAt,
+              group_ids: groupIds,
+              target_profile_id: target?.id ?? null,
+              target_account_ref: target?.accountRef ?? null,
+              target_profile_key: target?.profileKey ?? null,
+            },
+          });
+          results.push({ data, error, target });
+        }
+        const firstFailure = results.find((r) => r.error || (r.data as any)?.error);
+        const data = results[0]?.data;
+        const error = firstFailure?.error;
         // When the edge function returns a non-2xx, supabase-js sets a generic
         // "non-2xx status code" message and stuffs the real body into
         // error.context.response — read it so the user sees our Hebrew message
@@ -1142,17 +1153,17 @@ const ConfirmDispatchDialog = ({
           } catch { /* ignore */ }
           throw new Error(friendly || error.message || 'שגיאת רשת');
         }
-        if ((data as any)?.error) throw new Error((data as any)?.message || (data as any).error);
-        const groupFailures: any[] = Array.isArray((data as any)?.group_failures) ? (data as any).group_failures : [];
+        if ((firstFailure?.data as any)?.error) throw new Error((firstFailure.data as any)?.message || (firstFailure.data as any).error);
+        const groupFailures: any[] = results.flatMap((r) => Array.isArray((r.data as any)?.group_failures) ? (r.data as any).group_failures : []);
         if (scheduledAt) {
           const when = new Date(scheduledAt).toLocaleString('he-IL');
-          toast.success(`הפוסט תוזמן ל-${when} בערוץ ${channel.label}`);
+          toast.success(`הפוסט תוזמן ל-${when} ב-${targets.length} יעד(ים)`);
         } else if (groupIds.length > 0 && groupFailures.length === 0) {
           toast.success('הפוסט שותף בהצלחה בכל הקבוצות שנבחרו!');
         } else if (groupIds.length > 0 && groupFailures.length > 0) {
           toast.error(`פורסם אך נכשל ב-${groupFailures.length} קבוצות`);
         } else {
-          toast.success(`הקמפיין פורסם בהצלחה ב-${channel.label}!`);
+          toast.success(`הקמפיין פורסם בהצלחה ב-${targets.length} יעד(ים)!`);
         }
       } else {
         // Direct-messaging channels (SMS / email / IVR / AI Voice) broadcast to leads.
@@ -1256,18 +1267,14 @@ const ConfirmDispatchDialog = ({
                 לא נמצא עמוד {channel.label} מחובר. חבר את החשבון בהגדרות.
               </div>
             ) : (
-              <Select value={selectedPageId ?? undefined} onValueChange={setSelectedPageId}>
-                <SelectTrigger className="w-full text-right" dir="rtl">
-                  <SelectValue placeholder="בחר עמוד" />
-                </SelectTrigger>
-                <SelectContent dir="rtl">
-                  {pages.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}{p.username ? ` · @${p.username}` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-1">
+                {publishTargets.map((p) => (
+                  <div key={p.id} className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-right">
+                    <div className="truncate text-sm font-bold text-foreground">{p.name}</div>
+                    <div className="truncate font-mono text-[10px] text-muted-foreground" dir="ltr">{p.profileKey || p.accountRef}</div>
+                  </div>
+                ))}
+              </div>
             )}
             <div className="flex items-center justify-end gap-3 px-1">
               <div className="text-right">
