@@ -637,14 +637,6 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
               </div>
               <div className="flex items-center justify-between">
                 <Button
-                  size="sm"
-                  onClick={sendReply}
-                  disabled={sending || !replyDraft.trim()}
-                >
-                  <Send className="ml-1 h-4 w-4" />
-                  {sending ? "מפרסם..." : "פרסם תגובה"}
-                </Button>
-                <Button
                   variant="outline"
                   size="icon"
                   onClick={() => generateDraft(r, true)}
@@ -654,6 +646,14 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
                   className="h-7 w-7"
                 >
                   <RefreshCw className={cn("h-3.5 w-3.5", drafting && "animate-spin")} />
+                </Button>
+                <Button
+                  size="sm"
+                  onClick={sendReply}
+                  disabled={sending || !replyDraft.trim()}
+                >
+                  <Send className="ml-1 h-4 w-4" />
+                  {sending ? "מפרסם..." : "פרסם תגובה"}
                 </Button>
               </div>
             </div>
