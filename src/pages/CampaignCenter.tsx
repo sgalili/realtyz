@@ -264,7 +264,17 @@ const InlineComposer = ({
   // Local datetime string in `YYYY-MM-DDTHH:mm` (input[type=datetime-local] format).
   const [scheduledLocal, setScheduledLocal] = useState<string>('');
   // Multi-select of connected Facebook Group IDs to fan-out a single post to.
-  const [groupIds, setGroupIds] = useState<string[]>([]);
+  // Persisted to localStorage so a reload / background refresh doesn't wipe the selection.
+  const [groupIds, setGroupIds] = useState<string[]>(() => {
+    try {
+      const raw = localStorage.getItem('campaign:groupIds');
+      const parsed = raw ? JSON.parse(raw) : null;
+      return Array.isArray(parsed) ? parsed.filter((x) => typeof x === 'string') : [];
+    } catch { return []; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem('campaign:groupIds', JSON.stringify(groupIds)); } catch {}
+  }, [groupIds]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [generating, setGenerating] = useState(false);
 
