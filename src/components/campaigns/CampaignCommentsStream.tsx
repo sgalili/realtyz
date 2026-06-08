@@ -786,10 +786,9 @@ function CommentBubble({
     meta?.author?.picture ||
     meta?.profile_image ||
     meta?.profile_picture_url ||
+    meta?.sender_avatar_url ||
     meta?.from?.picture?.data?.url ||
-    (senderId && /facebook/i.test(row.platform)
-      ? `https://graph.facebook.com/${senderId}/picture?type=square`
-      : null);
+    null;
   const initials = senderName
     .replace(/^@/, "")
     .split(/[\s._-]+/)
