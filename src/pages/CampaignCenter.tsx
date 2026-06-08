@@ -55,6 +55,28 @@ type ChannelCard = {
   iconColor?: string;
 };
 
+type SocialAccountProfile = {
+  id: string;
+  platform: string;
+  accountRef: string;
+  profileKey: string | null;
+  name: string;
+  username: string | null;
+  avatar: string | null;
+  profileUrl: string | null;
+};
+
+type ConfirmPayload = {
+  body: string;
+  original_ai_body: string;
+  listing_id: string | null;
+  mode: 'now' | 'scheduled';
+  media_urls: string[];
+  scheduled_at: string | null;
+  group_ids: string[];
+  selected_profile_ids: string[];
+};
+
 // Top row (RTL): Facebook → Instagram → X
 // Middle row (RTL): IVR → Email → AI Voice
 // Bottom row (RTL): YouTube → LinkedIn → TikTok
@@ -132,7 +154,7 @@ const buildAccountUrl = (channelId: string, value: string): string | null => {
 
 
 const ChannelGrid = ({
-  selectedId, onPick, onConnect, brandName, connected = EMPTY_CONNECTED, accountNames = {},
+  selectedId, onPick, onConnect, brandName, connected = EMPTY_CONNECTED, accountNames = {}, socialProfiles = [], onAddFacebookPage,
 }: {
   selectedId: string | null;
   onPick: (c: ChannelCard) => void;
@@ -140,6 +162,8 @@ const ChannelGrid = ({
   brandName: string;
   connected?: Set<string>;
   accountNames?: Record<string, string>;
+  socialProfiles?: SocialAccountProfile[];
+  onAddFacebookPage?: () => void;
 }) => (
   <div className="w-full rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
     <div className="grid grid-cols-3 md:grid-cols-9 gap-2" dir="rtl">
@@ -148,6 +172,7 @@ const ChannelGrid = ({
         const isSelected = selectedId === c.id;
         const isConnected = connected.has(c.id);
         const brandColor = isConnected ? (BRAND_COLOR[c.id] ?? c.iconColor ?? 'text-foreground') : 'text-muted-foreground/60';
+        const profiles = socialProfiles.filter((p) => p.platform === c.id || (c.id === 'x' && p.platform === 'twitter'));
         return (
           <button key={c.id} type="button"
             onClick={() => isConnected ? onPick(c) : onConnect(c)}
@@ -162,6 +187,20 @@ const ChannelGrid = ({
             {isConnected && isSelected && (
               <span aria-hidden className="absolute left-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full text-primary" title="נבחר">
                 <CheckCircle2 className="h-4 w-4" />
+              </span>
+            )}
+
+            {c.id === 'facebook' && isConnected && (
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={(e) => { e.stopPropagation(); onAddFacebookPage?.(); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onAddFacebookPage?.(); } }}
+                className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-primary/40 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+                title="+ הוסף עמוד נוסף"
+                aria-label="+ הוסף עמוד נוסף"
+              >
+                <Plus className="h-3.5 w-3.5" />
               </span>
             )}
 
@@ -188,7 +227,35 @@ const ChannelGrid = ({
               </span>
             )}
 
-            {isConnected && accountNames[c.id] && (() => {
+            {isConnected && profiles.length > 0 ? (
+              <span className="mt-0.5 flex w-full flex-col gap-1 overflow-hidden">
+                {profiles.slice(0, 2).map((profile) => {
+                  const url = profile.profileUrl || buildAccountUrl(c.id, profile.accountRef || profile.name);
+                  const handleOpen = (e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+                  };
+                  return (
+                    <span key={profile.id} className="block max-w-full text-center">
+                      <span className="block truncate text-[8px] font-mono text-muted-foreground" dir="ltr" title={profile.profileKey || profile.id}>
+                        {profile.profileKey || profile.id}
+                      </span>
+                      <span
+                        role={url ? 'link' : undefined}
+                        tabIndex={url ? 0 : undefined}
+                        onClick={url ? handleOpen : undefined}
+                        onKeyDown={url ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleOpen(e as unknown as React.MouseEvent); } : undefined}
+                        className={cn('block truncate text-[10px] font-bold text-[#8a7327]', url && 'cursor-pointer hover:underline')}
+                        title={profile.name}
+                      >
+                        {profile.name}
+                      </span>
+                    </span>
+                  );
+                })}
+                {profiles.length > 2 && <span className="text-[9px] font-semibold text-muted-foreground">+{profiles.length - 2}</span>}
+              </span>
+            ) : isConnected && accountNames[c.id] && (() => {
               const raw = accountNames[c.id];
               const display = formatPhoneDisplay(raw) || raw;
               const url = buildAccountUrl(c.id, raw);
@@ -294,11 +361,12 @@ const listingOptionLabel = (listing: CampaignListing) => {
 };
 
 const InlineComposer = ({
-  channel, brandName, onConfirm,
+  channel, brandName, socialProfiles = [], onConfirm,
 }: {
   channel: ChannelCard;
   brandName: string;
-  onConfirm: (payload: { body: string; original_ai_body: string; listing_id: string | null; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null; group_ids: string[] }) => void;
+  socialProfiles?: SocialAccountProfile[];
+  onConfirm: (payload: ConfirmPayload) => void;
 }) => {
   // Session-persistence key — keeps unfinished drafts alive across collapse / expand / tab switch
   const draftKey = `rz-composer-draft:${channel.id}`;
@@ -327,6 +395,19 @@ const InlineComposer = ({
   useEffect(() => {
     try { localStorage.setItem('campaign:groupIds', JSON.stringify(groupIds)); } catch {}
   }, [groupIds]);
+  const platformProfiles = useMemo(
+    () => socialProfiles.filter((p) => p.platform === channel.id || (channel.id === 'x' && p.platform === 'twitter')),
+    [socialProfiles, channel.id],
+  );
+  const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>([]);
+  useEffect(() => {
+    if (channel.id !== 'facebook') { setSelectedProfileIds([]); return; }
+    const activeIds = platformProfiles.map((p) => p.id);
+    setSelectedProfileIds((prev) => {
+      const kept = prev.filter((id) => activeIds.includes(id));
+      return kept.length > 0 ? kept : activeIds;
+    });
+  }, [channel.id, platformProfiles]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [generating, setGenerating] = useState(false);
 
@@ -848,6 +929,35 @@ const InlineComposer = ({
         <CampaignGroupSelector selectedIds={groupIds} onChange={setGroupIds} />
       )}
 
+      {hasBody && channel.id === 'facebook' && platformProfiles.length > 1 && (
+        <div className="rounded-xl border-2 border-primary bg-primary/5 p-3 space-y-2" dir="rtl">
+          <div className="flex items-center justify-between gap-2">
+            <span className="text-sm font-bold text-foreground">בחירת עמודי Facebook לפרסום</span>
+            <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-primary-foreground" dir="ltr">
+              {selectedProfileIds.length}/{platformProfiles.length}
+            </span>
+          </div>
+          <div className="divide-y divide-primary/15 overflow-hidden rounded-lg border border-primary/25 bg-background">
+            {platformProfiles.map((profile) => {
+              const checked = selectedProfileIds.includes(profile.id);
+              return (
+                <label key={profile.id} className={cn('flex cursor-pointer items-center justify-between gap-3 px-3 py-2 transition', checked ? 'bg-primary/10' : 'hover:bg-muted/40')}>
+                  <div className="min-w-0 flex-1 text-right">
+                    <div className="truncate text-sm font-bold text-foreground">{profile.name}</div>
+                    <div className="truncate font-mono text-[10px] text-muted-foreground" dir="ltr">{profile.profileKey || profile.accountRef}</div>
+                  </div>
+                  <Checkbox
+                    checked={checked}
+                    onCheckedChange={() => setSelectedProfileIds((prev) => checked ? prev.filter((id) => id !== profile.id) : [...prev, profile.id])}
+                    className="h-5 w-5 border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+                  />
+                </label>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
 
       {/* Scheduled date+time picker */}
       {hasBody && mode === 'scheduled' && (() => {
@@ -878,7 +988,8 @@ const InlineComposer = ({
       {(() => {
         const scheduledDate = scheduledLocal ? new Date(scheduledLocal) : null;
         const scheduledValid = mode === 'now' || (!!scheduledDate && scheduledDate.getTime() > Date.now());
-        const canSend = hasBody && scheduledValid;
+        const hasSelectedPages = channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
+        const canSend = hasBody && scheduledValid && hasSelectedPages;
         return (
           /* Dispatch CTA + inline schedule toggle */
           <div className="flex items-stretch gap-2">
@@ -893,6 +1004,7 @@ const InlineComposer = ({
                   .map((a) => a.url as string),
                 scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
                 group_ids: channel.id === 'facebook' ? groupIds : [],
+                selected_profile_ids: channel.id === 'facebook' ? selectedProfileIds : [],
               })}
               disabled={!canSend}
               className={cn(
@@ -928,7 +1040,7 @@ const InlineComposer = ({
 /* ───────────── Dispatch confirmation modal ───────────── */
 
 const ConfirmDispatchDialog = ({
-  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds, onConfirmed,
+  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds, selectedProfileIds, onConfirmed,
 }: {
   open: boolean;
   onClose: () => void;
@@ -940,12 +1052,12 @@ const ConfirmDispatchDialog = ({
   mediaUrls: string[];
   scheduledAt: string | null;
   groupIds: string[];
+  selectedProfileIds: string[];
   onConfirmed: () => void;
 }) => {
   const { user } = useAuth();
   const [sending, setSending] = useState(false);
-  const [pages, setPages] = useState<Array<{ id: string; name: string; username: string | null; avatar: string | null }>>([]);
-  const [selectedPageId, setSelectedPageId] = useState<string | null>(null);
+  const [pages, setPages] = useState<SocialAccountProfile[]>([]);
   const [pagesLoading, setPagesLoading] = useState(false);
 
   useEffect(() => {
@@ -955,7 +1067,7 @@ const ConfirmDispatchDialog = ({
       try {
         const { data } = await supabase
           .from('ayrshare_social_accounts')
-          .select('id, platform, display_name, account_username, username, avatar_url, is_active, connected')
+          .select('id, platform, account_ref, profile_key, display_name, account_username, username, avatar_url, profile_url, is_active, connected')
           .eq('user_id', user.id)
           .eq('platform', channel.id)
           .order('updated_at', { ascending: false });
@@ -963,12 +1075,15 @@ const ConfirmDispatchDialog = ({
           .filter((r: any) => r.is_active !== false && r.connected !== false)
           .map((r: any) => ({
             id: r.id,
+            platform: r.platform,
+            accountRef: r.account_ref || '',
+            profileKey: r.profile_key || null,
             name: r.display_name || r.account_username || r.username || channel.label,
             username: r.account_username || r.username || null,
             avatar: r.avatar_url || null,
+            profileUrl: r.profile_url || (r.account_ref ? buildAccountUrl(channel.id, r.account_ref) : null),
           }));
         setPages(rows);
-        setSelectedPageId(rows[0]?.id ?? null);
       } finally {
         setPagesLoading(false);
       }
@@ -977,7 +1092,9 @@ const ConfirmDispatchDialog = ({
 
   if (!channel) return null;
 
-  const selectedPage = pages.find((p) => p.id === selectedPageId) || null;
+  const selectedPages = pages.filter((p) => selectedProfileIds.includes(p.id));
+  const publishTargets = selectedPages.length > 0 ? selectedPages : pages.slice(0, 1);
+  const selectedPage = publishTargets[0] || null;
   const profileLabel = selectedPage
     ? `${selectedPage.name}${selectedPage.username ? ` · @${selectedPage.username}` : ''}`
     : `${brandName} · @${brandName.replace(/\s+/g, '')}`;
@@ -999,17 +1116,28 @@ const ConfirmDispatchDialog = ({
         if (!mediaUrls) {
           // defensive: should never happen since prop is typed string[]
         }
-        // Publish via Ayrshare to the workspace-connected social page.
-        const { data, error } = await supabase.functions.invoke('ayrshare-post', {
-          body: {
-            post: body,
-            channels: [channel.id],
-            campaign_name: campaignName,
-            media_urls: mediaUrls,
-            scheduled_at: scheduledAt,
-            group_ids: groupIds,
-          },
-        });
+        // Fan-out one distinct publish payload per selected Facebook page/profile.
+        const targets = channel.id === 'facebook' && publishTargets.length > 0 ? publishTargets : [null];
+        const results = [] as any[];
+        for (const target of targets) {
+          const { data, error } = await supabase.functions.invoke('ayrshare-post', {
+            body: {
+              post: body,
+              channels: [channel.id],
+              campaign_name: target ? `${campaignName} · ${target.name}` : campaignName,
+              media_urls: mediaUrls,
+              scheduled_at: scheduledAt,
+              group_ids: groupIds,
+              target_profile_id: target?.id ?? null,
+              target_account_ref: target?.accountRef ?? null,
+              target_profile_key: target?.profileKey ?? null,
+            },
+          });
+          results.push({ data, error, target });
+        }
+        const firstFailure = results.find((r) => r.error || (r.data as any)?.error);
+        const data = results[0]?.data;
+        const error = firstFailure?.error;
         // When the edge function returns a non-2xx, supabase-js sets a generic
         // "non-2xx status code" message and stuffs the real body into
         // error.context.response — read it so the user sees our Hebrew message
@@ -1025,17 +1153,17 @@ const ConfirmDispatchDialog = ({
           } catch { /* ignore */ }
           throw new Error(friendly || error.message || 'שגיאת רשת');
         }
-        if ((data as any)?.error) throw new Error((data as any)?.message || (data as any).error);
-        const groupFailures: any[] = Array.isArray((data as any)?.group_failures) ? (data as any).group_failures : [];
+        if ((firstFailure?.data as any)?.error) throw new Error((firstFailure.data as any)?.message || (firstFailure.data as any).error);
+        const groupFailures: any[] = results.flatMap((r) => Array.isArray((r.data as any)?.group_failures) ? (r.data as any).group_failures : []);
         if (scheduledAt) {
           const when = new Date(scheduledAt).toLocaleString('he-IL');
-          toast.success(`הפוסט תוזמן ל-${when} בערוץ ${channel.label}`);
+          toast.success(`הפוסט תוזמן ל-${when} ב-${targets.length} יעד(ים)`);
         } else if (groupIds.length > 0 && groupFailures.length === 0) {
           toast.success('הפוסט שותף בהצלחה בכל הקבוצות שנבחרו!');
         } else if (groupIds.length > 0 && groupFailures.length > 0) {
           toast.error(`פורסם אך נכשל ב-${groupFailures.length} קבוצות`);
         } else {
-          toast.success(`הקמפיין פורסם בהצלחה ב-${channel.label}!`);
+          toast.success(`הקמפיין פורסם בהצלחה ב-${targets.length} יעד(ים)!`);
         }
       } else {
         // Direct-messaging channels (SMS / email / IVR / AI Voice) broadcast to leads.
@@ -1139,18 +1267,14 @@ const ConfirmDispatchDialog = ({
                 לא נמצא עמוד {channel.label} מחובר. חבר את החשבון בהגדרות.
               </div>
             ) : (
-              <Select value={selectedPageId ?? undefined} onValueChange={setSelectedPageId}>
-                <SelectTrigger className="w-full text-right" dir="rtl">
-                  <SelectValue placeholder="בחר עמוד" />
-                </SelectTrigger>
-                <SelectContent dir="rtl">
-                  {pages.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.name}{p.username ? ` · @${p.username}` : ''}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-1">
+                {publishTargets.map((p) => (
+                  <div key={p.id} className="rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-right">
+                    <div className="truncate text-sm font-bold text-foreground">{p.name}</div>
+                    <div className="truncate font-mono text-[10px] text-muted-foreground" dir="ltr">{p.profileKey || p.accountRef}</div>
+                  </div>
+                ))}
+              </div>
             )}
             <div className="flex items-center justify-end gap-3 px-1">
               <div className="text-right">
@@ -2440,7 +2564,7 @@ const CampaignCenter = () => {
   const [voiceDialChannel, setVoiceDialChannel] = useState<ChannelCard | null>(null);
   const [ivrOpen, setIvrOpen] = useState(false);
   const [emailSetupOpen, setEmailSetupOpen] = useState(false);
-  const [confirmPayload, setConfirmPayload] = useState<{ body: string; original_ai_body: string; listing_id: string | null; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null; group_ids: string[] } | null>(null);
+  const [confirmPayload, setConfirmPayload] = useState<ConfirmPayload | null>(null);
   // Hydrate connection state from sessionStorage so a page refresh doesn't
   // visually "disconnect" channels while the async verification re-runs.
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(() => {
@@ -2457,6 +2581,7 @@ const CampaignCenter = () => {
     } catch { /* ignore */ }
     return {};
   });
+  const [socialAccountProfiles, setSocialAccountProfiles] = useState<SocialAccountProfile[]>([]);
 
   // Persist whenever the resolved connection state changes — keeps the grid
   // "remembered" for the whole browser session, including hard reloads.
@@ -2486,14 +2611,25 @@ const CampaignCenter = () => {
     let cancelled = false;
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { if (!cancelled) setConnectedChannels(EMPTY_CONNECTED); return; }
+      if (!user) { if (!cancelled) { setConnectedChannels(EMPTY_CONNECTED); setSocialAccountProfiles([]); } return; }
 
       const { data: wsp } = await supabase
         .from('workspace_social_profile')
         .select('ayrshare_profile_key, facebook_page_name')
         .maybeSingle();
       const hasOwnProfile = !!(wsp as any)?.ayrshare_profile_key;
-      if (!hasOwnProfile) { if (!cancelled) setConnectedChannels(EMPTY_CONNECTED); return; }
+      if (!hasOwnProfile) {
+        if (!cancelled) {
+          setConnectedChannels(EMPTY_CONNECTED);
+          setSocialAccountProfiles([]);
+          setChannelAccountNames((prev) => {
+            const { facebook, ...rest } = prev;
+            return rest;
+          });
+          try { sessionStorage.removeItem('rz-connected-channels'); sessionStorage.removeItem('rz-connected-channel-names'); } catch { /* ignore */ }
+        }
+        return;
+      }
       const fbName = (wsp as any)?.facebook_page_name as string | null;
       if (fbName && !cancelled) {
         setChannelAccountNames((prev) => ({ ...prev, facebook: fbName }));
@@ -2509,8 +2645,28 @@ const CampaignCenter = () => {
         .select('platform, is_connected')
         .eq('created_by', user.id)
         .eq('is_connected', true);
+      const { data: accountRows } = await supabase
+        .from('ayrshare_social_accounts')
+        .select('id, platform, account_ref, profile_key, display_name, account_username, username, avatar_url, profile_url, connected, is_active')
+        .eq('user_id', user.id)
+        .eq('connected', true)
+        .eq('is_active', true);
       if (cancelled) return;
       const set = new Set<string>();
+      const profiles = ((accountRows as any[]) || []).map((r) => ({
+        id: r.id,
+        platform: String(r.platform || '').toLowerCase(),
+        accountRef: r.account_ref || '',
+        profileKey: r.profile_key || null,
+        name: r.display_name || r.account_username || r.username || r.account_ref || 'Facebook',
+        username: r.account_username || r.username || null,
+        avatar: r.avatar_url || null,
+        profileUrl: r.profile_url || (r.account_ref ? buildAccountUrl(String(r.platform || '').toLowerCase(), r.account_ref) : null),
+      }));
+      profiles.forEach((p) => {
+        if (p.platform.startsWith('facebook')) set.add('facebook');
+      });
+      setSocialAccountProfiles(profiles);
       (conns || []).forEach((c: any) => {
         const p = String(c.platform || '').toLowerCase();
         if (p.startsWith('facebook')) set.add('facebook');
@@ -2743,11 +2899,14 @@ const CampaignCenter = () => {
             brandName={brandName}
             connected={connectedChannels}
             accountNames={channelAccountNames}
+            socialProfiles={socialAccountProfiles}
+            onAddFacebookPage={() => handleConnectChannel(CHANNEL_CARDS.find((c) => c.id === 'facebook')!)}
           />
           {pickedChannel && (
             <InlineComposer
               channel={pickedChannel}
               brandName={brandName}
+              socialProfiles={socialAccountProfiles}
               onConfirm={(p) => setConfirmPayload(p)}
             />
           )}
@@ -2768,6 +2927,7 @@ const CampaignCenter = () => {
         mediaUrls={confirmPayload?.media_urls ?? []}
         scheduledAt={confirmPayload?.scheduled_at ?? null}
         groupIds={confirmPayload?.group_ids ?? []}
+        selectedProfileIds={confirmPayload?.selected_profile_ids ?? []}
         onConfirmed={() => { setConfirmPayload(null); setPickedChannel(null); }}
       />
       <VoiceLeadPickerDialog

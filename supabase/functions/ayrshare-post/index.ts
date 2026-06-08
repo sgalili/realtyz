@@ -4,6 +4,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import {
+  clearStaleAyrshareConnection,
   isAyrshareInvalidProfileKey,
   MISSING_TENANT_KEY,
   MISSING_TENANT_KEY_MESSAGE,
@@ -74,6 +75,7 @@ Deno.serve(async (req) => {
       // Treat a 404 from Ayrshare as already-deleted (idempotent success).
       const idempotent404 = r.status === 404;
       if (isAyrshareInvalidProfileKey(r.status, j)) {
+        await clearStaleAyrshareConnection(admin, "Ayrshare profile rejected during post delete");
         return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE }, 200);
       }
       if (!r.ok && !idempotent404) {
@@ -103,6 +105,8 @@ Deno.serve(async (req) => {
     const rawMediaInput: unknown[] = Array.isArray(body?.media_urls) ? body.media_urls.filter(Boolean) : [];
     const listingId: string | null = body?.listing_id ?? null;
     const scheduledAtRaw: string | null = typeof body?.scheduled_at === "string" ? body.scheduled_at : null;
+    const targetProfileKey: string = typeof body?.target_profile_key === "string" ? body.target_profile_key.trim() : "";
+    const targetAccountRef: string | null = typeof body?.target_account_ref === "string" ? body.target_account_ref.trim() || null : null;
     const groupIds: string[] = Array.isArray(body?.group_ids)
       ? body.group_ids.map((g: unknown) => String(g ?? "").trim()).filter(Boolean)
       : [];
@@ -131,7 +135,8 @@ Deno.serve(async (req) => {
       return json({ error: "no supported social channels in selection" }, 400);
     }
 
-    const { profileKey, refId } = await resolveWorkspaceProfileKey(admin);
+    const { profileKey: workspaceProfileKey, refId } = await resolveWorkspaceProfileKey(admin);
+    const profileKey = targetProfileKey || workspaceProfileKey;
     if (!profileKey) return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE }, 200);
     const verified = await verifyWorkspaceProfileKey({ apiKey: AYRSHARE_API_KEY, profileKey });
     if (verified.missingTenantKey) {
@@ -141,6 +146,7 @@ Deno.serve(async (req) => {
         code: verified.payload?.code ?? verified.payload?.raw?.code,
         message: verified.payload?.message ?? verified.payload?.error ?? verified.payload?.raw?.message,
       });
+      await clearStaleAyrshareConnection(admin, "Ayrshare profile rejected during post verification");
       return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE }, 200);
     }
 
@@ -224,6 +230,7 @@ Deno.serve(async (req) => {
         post: postText,
         platforms: extra.platforms ?? platforms,
         profileKey,
+        ...(targetAccountRef ? { facebookOptions: { pageId: targetAccountRef } } : {}),
         ...extra,
       };
       if (resolvedMedia.length) payload.mediaUrls = resolvedMedia;
@@ -262,6 +269,7 @@ Deno.serve(async (req) => {
         const rawMsg = first?.message ?? ayrRes.body?.errors?.[0]?.message ?? ayrRes.body?.message ?? `Ayrshare ${ayrRes.status}`;
         const code = first?.code ?? ayrRes.body?.code;
         if (isAyrshareInvalidProfileKey(ayrRes.status, { ...ayrRes.body, code, message: rawMsg })) {
+          await clearStaleAyrshareConnection(admin, "Ayrshare profile rejected during post publish");
           return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE }, 200);
         }
         return json({ error: friendlyFromCode(code, rawMsg), code: code ?? null, status: ayrRes.status, details: ayrRes.body }, 502);
