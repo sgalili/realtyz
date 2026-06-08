@@ -12,6 +12,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { campaignMatchesExternalPost, getCampaignPostIds, platformForCampaignChannel } from "@/lib/campaignPostIds";
+import { learnFromEdit } from "@/lib/learnFromEdit";
 
 const extractFunctionError = async (error: any, fallback = "שגיאת API חיצונית") => {
   const status = error?.context?.status ?? error?.status;
