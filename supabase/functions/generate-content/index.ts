@@ -209,6 +209,7 @@ ${CTA_RULE}
       promotedBlock,
       focusOnly ? null : renderCrmBlock(snap),
       focusOnly ? null : renderKbBlock(kb),
+      kbInstructionsBlock || null,
       customBlock,
       focusOnly
         ? `מטרת הפוסט: פוסט מכירה/השכרה קצר וישיר לנכס שלמעלה בלבד — בלי שום הקשר אישי, ביוגרפיה או נושאים לא קשורים.`
