@@ -559,8 +559,10 @@ Deno.serve(async (req) => {
       console.warn("[ayrshare-comments-fetch] comment_count sync failed", countErr);
     }
 
+    // Always return 200 — provider rate-limit (429) / suspended (403) details
     // are surfaced in `api_errors` so the client can render them as soft
     // warnings instead of throwing a runtime error overlay.
+
     return json({
       success: true,
       comments: results,
