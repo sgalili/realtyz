@@ -269,8 +269,9 @@ async function draftPersonalized(args: {
   channel: Channel;
   personaPrompt: string;
   recentBlock: string;
+  kbInstructionsBlock?: string;
 }): Promise<string> {
-  const { lead, draft, updateType, channel, personaPrompt, recentBlock } = args;
+  const { lead, draft, updateType, channel, personaPrompt, recentBlock, kbInstructionsBlock } = args;
   const firstName = String(lead.full_name ?? "").trim().split(/\s+/)[0] || "";
   const channelLabel = channel === "whatsapp" ? "WhatsApp" : "SMS";
   const updateLabels: Record<UpdateType, string> = {
