@@ -602,6 +602,60 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
   // No initial loading block — comments always render in-place. The
   // background refresh keeps the list fresh without flashing a spinner.
 
+  const renderEditor = (r: EngagementRow) => (
+    <div className="space-y-3 text-right">
+      <div className="space-y-1">
+        <p className="text-[11px] font-medium text-muted-foreground text-right">
+          תגובה פומבית
+        </p>
+        <Textarea
+          value={drafting ? "" : replyDraft}
+          onChange={(e) => setReplyDraft(e.target.value)}
+          dir="auto"
+          rows={4}
+          placeholder={drafting ? "מנסח תגובה מקצועית..." : "הזן תגובה..."}
+          disabled={drafting}
+          className="text-right"
+        />
+      </div>
+      <div className="space-y-1">
+        <p className="text-[11px] font-medium text-muted-foreground text-right">
+          הודעה פרטית למסנג'ר
+        </p>
+        <Textarea
+          value={drafting ? "" : dmDraft}
+          onChange={(e) => setDmDraft(e.target.value)}
+          dir="auto"
+          rows={6}
+          placeholder={drafting ? "מנסח DM מקצועי..." : "טיוטת DM פרטי"}
+          disabled={drafting}
+          className="text-right bg-muted/30"
+        />
+      </div>
+      <div className="flex items-center justify-between">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => generateDraft(r, true)}
+          disabled={drafting || sending}
+          aria-label="נסח מחדש"
+          title="נסח מחדש"
+          className="h-7 w-7"
+        >
+          <RefreshCw className={cn("h-3.5 w-3.5", drafting && "animate-spin")} />
+        </Button>
+        <Button
+          size="sm"
+          onClick={sendReply}
+          disabled={sending || !replyDraft.trim()}
+        >
+          <Send className="ml-1 h-4 w-4" />
+          {sending ? "מפרסם..." : "פרסם תגובה"}
+        </Button>
+      </div>
+    </div>
+  );
+
 
   return (
     <div className="space-y-2 text-right">
