@@ -196,10 +196,17 @@ export const SocialChannelsGrid = () => {
                                 loading="lazy"
                               />
                             ) : null}
-                            <span className="truncate flex-1 text-foreground" title={p.name ?? p.pageId}>
+                            <a
+                              href={`https://www.facebook.com/${p.pageId}`}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="truncate flex-1 text-foreground hover:underline"
+                              title={p.name ?? p.pageId}
+                            >
                               {p.name ?? p.pageId}
-                            </span>
+                            </a>
                             <span className="text-[10px] text-muted-foreground tabular-nums">{p.pageId}</span>
+
                           </div>
                         ))}
                       </div>
