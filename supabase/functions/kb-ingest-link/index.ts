@@ -168,8 +168,9 @@ Deno.serve(async (req) => {
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) return json({ error: "unauthorized" }, 401);
 
-    const body = await req.json().catch(() => null) as { url?: string } | null;
+    const body = await req.json().catch(() => null) as { url?: string; intent?: string } | null;
     const url = body?.url?.trim();
+    const intent = (body?.intent ?? "").toString().slice(0, 500);
     if (!url || !/^https?:\/\//i.test(url)) {
       return json({ error: "url required" }, 400);
     }
