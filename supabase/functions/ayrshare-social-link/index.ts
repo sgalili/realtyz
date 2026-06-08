@@ -131,19 +131,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Manual override: workspace owner pastes an existing User Profile Key from
-    // the Ayrshare dashboard via the AYRSHARE_PROFILE_KEY secret. Used when the
-    // Ayrshare account is over its profile-creation quota.
-    const AYRSHARE_PROFILE_KEY_OVERRIDE = (Deno.env.get('AYRSHARE_PROFILE_KEY') || '').trim();
-    if (!profileKey && AYRSHARE_PROFILE_KEY_OVERRIDE) {
-      profileKey = AYRSHARE_PROFILE_KEY_OVERRIDE;
-      if (!refId) refId = `${REALTYZ_PREFIX}workspace-manual`;
-      const { error: seedErr } = await admin
-        .from('workspace_social_profile')
-        .upsert({ id: WORKSPACE_ID, ayrshare_profile_key: profileKey, ayrshare_ref_id: refId }, { onConflict: 'id' });
-      if (seedErr) console.error('[ayrshare-social-link] seed manual profileKey failed', seedErr);
-    }
-
     // ---- SAFETY GUARD: only touch realtyz- prefixed profiles ----
     if (refId && !refId.startsWith(REALTYZ_PREFIX)) {
       console.warn('[ayrshare-social-link] refusing to act on non-realtyz refId', { refId });
