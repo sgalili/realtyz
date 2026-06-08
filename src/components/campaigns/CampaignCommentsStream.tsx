@@ -352,8 +352,25 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
     });
   }, [rows]);
 
-  const rootComments = comments.filter((c) => !c.parent_id || c.parent_id === null);
-  const childReplies = comments.filter((c) => c.parent_id && c.parent_id !== null);
+  const commentIdSet = useMemo(() => new Set(comments.map((c) => c.id)), [comments]);
+  const rootComments = useMemo(
+    () => comments.filter((c) => !c.parent_id || !commentIdSet.has(c.parent_id)),
+    [comments, commentIdSet],
+  );
+  const childReplies = useMemo(
+    () => comments.filter((c) => c.parent_id && commentIdSet.has(c.parent_id)),
+    [comments, commentIdSet],
+  );
+  const childrenByParent = useMemo(() => {
+    const map = new Map<string, CommentRow[]>();
+    childReplies.forEach((reply) => {
+      if (!reply.parent_id) return;
+      const current = map.get(reply.parent_id) ?? [];
+      current.push(reply);
+      map.set(reply.parent_id, current);
+    });
+    return map;
+  }, [childReplies]);
 
   // Whenever the modal mounts on a new comment, force a fresh live invocation
   // of suggest-comment-reply with a cache-bust token. Closing the modal wipes
@@ -628,6 +645,42 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
     </div>
   );
 
+  const renderCommentNode = (node: CommentRow, depth = 0): React.ReactNode => {
+    const replies = childrenByParent.get(node.id) ?? [];
+    return (
+      <div
+        key={node.id}
+        className={cn(
+          depth === 0
+            ? "border border-border p-4 rounded-xl mb-4 bg-white relative text-right"
+            : "p-3 bg-slate-50 rounded-lg text-sm",
+        )}
+      >
+        <CommentBubble
+          row={node}
+          onToggleEditor={(r) => setReplyOpen(replyOpen?.id === r.id ? null : r)}
+          expanded={replyOpen?.id === node.id}
+          editor={replyOpen?.id === node.id ? renderEditor(node) : null}
+          onRegenerate={regenerateInline}
+          regenerating={regeneratingId === node.id}
+          isReply={depth > 0}
+          embedded
+        />
+
+        {replies.length > 0 && (
+          <div
+            className={cn(
+              "mt-4 mr-10 pr-4 border-r-2 border-slate-200 flex flex-col gap-3 rounded-xl p-3",
+              depth === 0 ? "bg-slate-50/80" : "bg-white/70",
+            )}
+          >
+            {replies.map((reply) => renderCommentNode(reply, depth + 1))}
+          </div>
+        )}
+      </div>
+    );
+  };
+
 
   return (
     <div className="space-y-2 text-right">
@@ -653,38 +706,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
       )}
 
       <div className="space-y-4">
-        {rootComments.map((parent) => (
-          <div key={parent.id} className="border border-border p-4 rounded-xl mb-4 bg-white relative text-right">
-            <CommentBubble
-              row={parent}
-              onToggleEditor={(r) => setReplyOpen(replyOpen?.id === r.id ? null : r)}
-              expanded={replyOpen?.id === parent.id}
-              editor={replyOpen?.id === parent.id ? renderEditor(parent) : null}
-              onRegenerate={regenerateInline}
-              regenerating={regeneratingId === parent.id}
-              embedded
-            />
-
-            <div className="mt-4 mr-10 pr-4 border-r-2 border-slate-200 flex flex-col gap-3 bg-slate-50/80 rounded-xl p-3">
-              {childReplies
-                .filter((reply) => reply.parent_id === parent.id)
-                .map((reply) => (
-                  <div key={reply.id} className="p-3 bg-slate-50 rounded-lg text-sm">
-                    <CommentBubble
-                      row={reply}
-                      onToggleEditor={(r) => setReplyOpen(replyOpen?.id === r.id ? null : r)}
-                      expanded={replyOpen?.id === reply.id}
-                      editor={replyOpen?.id === reply.id ? renderEditor(reply) : null}
-                      onRegenerate={regenerateInline}
-                      regenerating={regeneratingId === reply.id}
-                      isReply
-                      embedded
-                    />
-                  </div>
-                ))}
-            </div>
-          </div>
-        ))}
+        {rootComments.map((parent) => renderCommentNode(parent))}
       </div>
     </div>
   );
