@@ -1477,6 +1477,21 @@ const PublishedFeed = () => {
   const [rows, setRows] = useState<CampaignRow[] | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
+  const [liveCommentCounts, setLiveCommentCounts] = useState<Record<string, number>>(() => {
+    try {
+      const raw = sessionStorage.getItem('realtyz.live_comment_counts');
+      return raw ? JSON.parse(raw) : {};
+    } catch { return {}; }
+  });
+  const updateLiveCount = (campaignId: string, count: number) => {
+    setLiveCommentCounts((prev) => {
+      if (prev[campaignId] === count) return prev;
+      const next = { ...prev, [campaignId]: count };
+      try { sessionStorage.setItem('realtyz.live_comment_counts', JSON.stringify(next)); } catch { /* quota */ }
+      return next;
+    });
+  };
+
   const [activeChannel, setActiveChannel] = useState<string>('all');
   const [archivedCount, setArchivedCount] = useState<number>(0);
   const [fbPageName, setFbPageName] = useState<string | null>(null);
@@ -1831,6 +1846,9 @@ const PublishedFeed = () => {
         const preview = bodyText.trim().slice(0, 100) + (bodyText.trim().length > 100 ? '…' : '');
         const hasMetrics = !!r.metrics_updated_at;
         const fmt = (v: number | null | undefined) => (hasMetrics && typeof v === 'number' ? v : '–');
+        const liveCount = liveCommentCounts[r.id];
+        const commentDisplay = typeof liveCount === 'number' ? liveCount : fmt(r.comment_count);
+
         const pageLabel = (String(r.channel || '').toLowerCase() === 'facebook' && fbPageName) ? fbPageName : ownerName;
         return (
           <article
@@ -1879,7 +1897,7 @@ const PublishedFeed = () => {
                   </span>
                   <span className="inline-flex items-center gap-1" title="תגובות">
                     <MessageSquare className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
-                    <span className="tabular-nums">{fmt(r.comment_count)}</span>
+                    <span className="tabular-nums">{commentDisplay}</span>
                   </span>
                   <span className="inline-flex items-center gap-1" title="שיתופים">
                     <Share2 className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
@@ -1920,7 +1938,7 @@ const PublishedFeed = () => {
                 </div>
                 <div className="border-t border-border bg-muted/30 px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   {userId ? (
-                    <CampaignCommentsStream userId={userId} campaign={r} commentCount={r.comment_count ?? 0} />
+                    <CampaignCommentsStream userId={userId} campaign={r} commentCount={liveCount ?? (r.comment_count ?? 0)} onLiveCountResolved={updateLiveCount} />
                   ) : (
                     <p className="text-xs text-muted-foreground text-right">נדרשת התחברות לצפייה בתגובות</p>
                   )}

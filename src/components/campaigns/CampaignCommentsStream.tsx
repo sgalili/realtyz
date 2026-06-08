@@ -87,7 +87,9 @@ type Props = {
     provider_response?: any;
   };
   commentCount?: number;
+  onLiveCountResolved?: (campaignId: string, count: number) => void;
 };
+
 
 const sentimentClass = (s: string | null) =>
   s === "positive"
@@ -147,9 +149,19 @@ const writeDraftCache = (campaignId: string, map: DraftMap) => {
   try { sessionStorage.setItem(draftKey(campaignId), JSON.stringify(map)); } catch { /* quota */ }
 };
 
-export function CampaignCommentsStream({ userId, campaign, commentCount }: Props) {
+export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveCountResolved }: Props) {
   const cached = readCache(campaign.id);
   const [rows, setRows] = useState<EngagementRow[] | null>(cached);
+
+  // Surface live row count to the parent so the post-card header counter
+  // reflects what the comment tree actually loaded (and matches Meta Graph
+  // reality, not a stale Ayrshare analytics number).
+  useEffect(() => {
+    if (!onLiveCountResolved) return;
+    if (!Array.isArray(rows)) return;
+    onLiveCountResolved(campaign.id, rows.length);
+  }, [rows, campaign.id, onLiveCountResolved]);
+
   const [loading, setLoading] = useState(false);
   const [manualRefreshing, setManualRefreshing] = useState(false);
   const [providerWarning, setProviderWarning] = useState<string | null>(null);

@@ -543,9 +543,26 @@ Deno.serve(async (req) => {
       ),
     );
 
+    // Sync campaign_logs.comment_count with the live Meta count per post so
+    // the post-card header counter immediately reflects reality (e.g. "15"
+    // instead of a stale "5"). Best-effort — failures are non-fatal.
+    try {
+      for (const [nativePostId, list] of Object.entries(results)) {
+        const liveCount = Array.isArray(list) ? (list as any[]).length : 0;
+        await admin
+          .from("campaign_logs")
+          .update({ comment_count: liveCount, metrics_updated_at: new Date().toISOString() })
+          .eq("user_id", userId)
+          .eq("provider_message_id", nativePostId);
+      }
+    } catch (countErr) {
+      console.warn("[ayrshare-comments-fetch] comment_count sync failed", countErr);
+    }
+
     // Always return 200 — provider rate-limit (429) / suspended (403) details
     // are surfaced in `api_errors` so the client can render them as soft
     // warnings instead of throwing a runtime error overlay.
+
     return json({
       success: true,
       comments: results,
