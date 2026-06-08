@@ -329,8 +329,20 @@ const InlineComposer = ({
     return () => { cancelled = true; };
   }, [historyOpen, historyRefresh, channel.id]);
 
-  // Reset on channel change
-  useEffect(() => { setBody(''); setMode('now'); setAttachments([]); setCustomInstructions(''); setSelectedListingId(null); setListingQuery(''); setLogId(null); setSaveState('idle'); }, [channel.id]);
+  // On channel change: rehydrate from saved draft for that channel (keeps unfinished work alive per platform)
+  useEffect(() => {
+    const saved = readDraft() || {};
+    setBody(saved.body || '');
+    setCustomInstructions(saved.customInstructions || '');
+    setSelectedListingId(saved.selectedListingId ?? null);
+    setAttachments(saved.attachments || []);
+    setLogId(saved.logId ?? null);
+    setMode('now');
+    setListingQuery('');
+    setSaveState('idle');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [channel.id]);
+
 
   // Auto-save: persist edits + attachments + selected property to ai_content_logs (debounced).
   // Creates a new row on first edit if no logId yet; otherwise updates the active row.
