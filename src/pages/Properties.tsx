@@ -682,7 +682,7 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
     }
     toast.success('הנכס נמחק');
     setDeleteTarget(null);
-    queryClient.invalidateQueries({ queryKey: ['properties'] });
+    queryClient.invalidateQueries({ queryKey: ['properties-search'] });
   };
 
   return (
@@ -774,7 +774,7 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
         property={editTarget}
         open={!!editTarget}
         onOpenChange={(open) => { if (!open) setEditTarget(null); }}
-        onSaved={() => queryClient.invalidateQueries({ queryKey: ['properties'] })}
+        onSaved={() => queryClient.invalidateQueries({ queryKey: ['properties-search'] })}
       />
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
         <AlertDialogContent dir="rtl">
