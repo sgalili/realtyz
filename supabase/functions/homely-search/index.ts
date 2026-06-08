@@ -189,11 +189,12 @@ Deno.serve(async (req) => {
               lastError = `${path}:${(e as Error).message}`;
             }
           }
-          // Logged in but no endpoint returned rows
+          // Logged in but no endpoint returned rows — guarantee at least the
+          // seeded fallback so the UI never reads "0 נכסים".
           return json({
             source: "homely",
             connected: true,
-            results: [],
+            results: withFallback([]),
             note: "logged_in_but_no_listings_found",
             last_error: lastError,
           });
