@@ -45,10 +45,13 @@ serve(async (req) => {
 
     // Mandatory grounding: workspace KB + live CRM/listings snapshot.
     const admin = adminClient();
-    const [kb, snap] = await Promise.all([
+    const [kb, kbInstructions, snap] = await Promise.all([
       loadKbSnippets(admin, userId),
+      loadKbInstructions(admin, userId),
       loadCrmSnapshot(admin, userId),
     ]);
+    const kbInstructionsBlock = renderKbInstructionsBlock(kbInstructions);
+
 
     const featureLabels = (features: unknown) => Array.isArray(features)
       ? features
