@@ -596,6 +596,7 @@ function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare
 // plus a Share action per row (merged from the former list view).
 function PropertyTable({ properties }: { properties: Array<HomelyProperty & { extras?: Record<string, string>; created_at?: string | null }> }) {
   const [shareTarget, setShareTarget] = useState<HomelyProperty | null>(null);
+  const [editTarget, setEditTarget] = useState<HomelyProperty | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<HomelyProperty | null>(null);
   const [deleting, setDeleting] = useState(false);
   const queryClient = useQueryClient();
