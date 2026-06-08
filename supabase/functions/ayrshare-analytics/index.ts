@@ -292,7 +292,9 @@ Deno.serve(async (req) => {
               payload: attempt.payload,
             });
             if (isAyrshareInvalidProfileKey(res.status, attempt.payload)) {
-              return { res: new Response(JSON.stringify({ error: MISSING_TENANT_KEY }), { status: 200 }), payload: { error: MISSING_TENANT_KEY } };
+              attempt.status = 200;
+              attempt.payload = { message: MISSING_TENANT_KEY, code: 144 };
+              return { res: new Response(JSON.stringify({ error: MISSING_TENANT_KEY }), { status: 400 }), payload: { error: MISSING_TENANT_KEY } };
             }
           }
           return { res, payload };
