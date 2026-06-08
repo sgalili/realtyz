@@ -826,12 +826,37 @@ function CommentBubble({
       <p className="whitespace-pre-wrap text-sm text-foreground">
         {row.inbound_text}
       </p>
+      {cleanRepliedTo && (
+        <button
+          type="button"
+          onClick={onToggleThread}
+          className="mt-2 block w-full rounded-md border border-border/70 bg-muted/35 px-2 py-1.5 text-right text-[12px] text-muted-foreground hover:bg-muted/60"
+          aria-expanded={threadExpanded}
+        >
+          <span className="line-clamp-2">↳ {cleanRepliedTo}</span>
+        </button>
+      )}
       <div className="mt-2">
         {alreadyReplied ? (
-          <span className="inline-flex items-center gap-1 text-[12px] text-muted-foreground">
-            <Bot className="h-3.5 w-3.5" />
-            הגבת לתגובה זו
-          </span>
+          <button
+            type="button"
+            onClick={onToggleThread}
+            className="inline-flex max-w-full items-center gap-1 text-right text-[12px] text-muted-foreground hover:text-foreground"
+            aria-expanded={threadExpanded}
+          >
+            <Bot className="h-3.5 w-3.5 shrink-0" />
+            <span className="truncate">
+              {cleanReplyPreview ?? row.ai_reply_text ?? row.inbound_text}
+            </span>
+            {(replyCount ?? 0) > 0 && (
+              <span className="shrink-0">({replyCount})</span>
+            )}
+            {threadExpanded ? (
+              <ChevronUp className="h-3.5 w-3.5 shrink-0" />
+            ) : (
+              <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+            )}
+          </button>
         ) : (
           <>
             <button
