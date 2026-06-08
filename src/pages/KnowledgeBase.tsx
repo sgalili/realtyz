@@ -11,7 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Badge } from '@/components/ui/badge';
 import {
-  Brain, Send, Loader2, Upload, Search, FileText, Link as LinkIcon, Mic, Type, Trash2, Image as ImageIcon, Video as VideoIcon,
+  Brain, Send, Loader2, Upload, Search, FileText, Link as LinkIcon, Mic, Type, Trash2, Image as ImageIcon, Video as VideoIcon, Pencil, X, Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
 
@@ -33,6 +33,37 @@ export default function KnowledgeBase() {
   const [chatLoading, setChatLoading] = useState(false);
   const chatScrollRef = useRef<HTMLDivElement>(null);
   const [viewDoc, setViewDoc] = useState<any | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState('');
+  const [editBody, setEditBody] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+
+  const openDoc = (d: any) => {
+    setViewDoc(d);
+    setIsEditing(false);
+    setEditTitle(d?.title ?? '');
+    setEditBody(d?.raw_text ?? '');
+  };
+
+  const saveEdit = async () => {
+    if (!viewDoc) return;
+    setSavingEdit(true);
+    try {
+      const { error } = await supabase
+        .from('knowledge_documents')
+        .update({ title: editTitle.trim() || viewDoc.title, raw_text: editBody })
+        .eq('id', viewDoc.id);
+      if (error) throw error;
+      toast.success('עודכן');
+      setViewDoc({ ...viewDoc, title: editTitle.trim() || viewDoc.title, raw_text: editBody });
+      setIsEditing(false);
+      qc.invalidateQueries({ queryKey: ['kb-documents'] });
+    } catch (e: any) {
+      toast.error(e?.message ?? 'שגיאה בשמירה');
+    } finally {
+      setSavingEdit(false);
+    }
+  };
 
   useEffect(() => {
     chatScrollRef.current?.scrollTo({ top: chatScrollRef.current.scrollHeight, behavior: 'smooth' });
@@ -396,8 +427,8 @@ export default function KnowledgeBase() {
                           key={d.id}
                           role="button"
                           tabIndex={0}
-                          onClick={() => setViewDoc(d)}
-                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); setViewDoc(d); } }}
+                          onClick={() => openDoc(d)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); openDoc(d); } }}
                           className="flex items-start gap-2 p-2 rounded-md border bg-background hover:bg-muted/30 transition-colors cursor-pointer"
                         >
                           {isVideo && thumb ? (
@@ -530,18 +561,58 @@ export default function KnowledgeBase() {
 
 
 
-      <Dialog open={!!viewDoc} onOpenChange={(o) => !o && setViewDoc(null)}>
+      <Dialog open={!!viewDoc} onOpenChange={(o) => { if (!o) { setViewDoc(null); setIsEditing(false); } }}>
         <DialogContent className="max-w-2xl max-h-[80vh] flex flex-col" dir="rtl">
           <DialogHeader>
-            <DialogTitle className="text-right">{viewDoc?.title}</DialogTitle>
+            {isEditing ? (
+              <Input
+                value={editTitle}
+                onChange={(e) => setEditTitle(e.target.value)}
+                placeholder="כותרת"
+                className="text-right font-semibold"
+              />
+            ) : (
+              <DialogTitle className="text-right pe-8">{viewDoc?.title}</DialogTitle>
+            )}
             <p className="text-xs text-muted-foreground text-right">
               {viewDoc && new Date(viewDoc.created_at).toLocaleString('he-IL')} · {viewDoc?.chunk_count ?? 0} מקטעים
             </p>
           </DialogHeader>
-          <div className="flex-1 overflow-y-auto rounded-md border bg-muted/20 p-3 text-sm whitespace-pre-wrap leading-relaxed">
-            {viewDoc?.raw_text?.trim()
-              ? viewDoc.raw_text
-              : <span className="text-muted-foreground">אין תוכן טקסטואלי זמין לתצוגה.</span>}
+          {isEditing ? (
+            <Textarea
+              value={editBody}
+              onChange={(e) => setEditBody(e.target.value)}
+              className="flex-1 min-h-[260px] text-sm leading-relaxed"
+              placeholder="תוכן..."
+            />
+          ) : (
+            <div className="flex-1 overflow-y-auto rounded-md border bg-muted/20 p-3 text-sm whitespace-pre-wrap leading-relaxed">
+              {viewDoc?.raw_text?.trim()
+                ? viewDoc.raw_text
+                : <span className="text-muted-foreground">אין תוכן טקסטואלי זמין לתצוגה.</span>}
+            </div>
+          )}
+          <div className="flex justify-start gap-2 pt-2">
+            {isEditing ? (
+              <>
+                <Button onClick={saveEdit} disabled={savingEdit} size="sm" className="gap-1.5">
+                  {savingEdit ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+                  שמור
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => { setIsEditing(false); setEditTitle(viewDoc?.title ?? ''); setEditBody(viewDoc?.raw_text ?? ''); }}
+                  className="gap-1.5"
+                >
+                  <X className="h-4 w-4" /> ביטול
+                </Button>
+              </>
+            ) : (
+              <Button variant="outline" size="sm" onClick={() => setIsEditing(true)} className="gap-1.5">
+                <Pencil className="h-4 w-4" /> עריכה
+              </Button>
+            )}
           </div>
         </DialogContent>
       </Dialog>
