@@ -19,6 +19,7 @@ import { z } from 'zod';
 import { useAuth } from '@/hooks/useAuth';
 import VoterProfileSidebar from '@/components/inbox/VoterProfileSidebar';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
+import { learnFromEdit } from '@/lib/learnFromEdit';
 import VoterAvatar from '@/components/VoterAvatar';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { getDemoCandidateMessages, getDemoCandidateVoters } from '@/lib/demoData';
@@ -109,6 +110,9 @@ const OmnichannelInbox = () => {
   const [activeTab, setActiveTab] = useState<'all' | 'waiting' | 'handling'>('all');
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [newMessage, setNewMessage] = useState('');
+  // Tracks the last AI-generated draft (e.g. from Undo & Regenerate) so manual
+  // edits before send can be shipped to learn-from-edit. Cleared on send/switch.
+  const [originalAiDraft, setOriginalAiDraft] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
   const [sendChannel, setSendChannel] = useState<string>('whatsapp');
   const [dripEnabled, setDripEnabled] = useState(false);
@@ -282,7 +286,7 @@ const OmnichannelInbox = () => {
   }, [chatMessages]);
 
   const sendMessage = useMutation({
-    mutationFn: async ({ content, file }: { content: string; file: File | null }) => {
+    mutationFn: async ({ content, file, original }: { content: string; file: File | null; original: string }) => {
       if (blockDemoAction('send-message')) throw new Error('demo-blocked');
       const safeContent = content.trim().slice(0, 2000);
       const attachmentText = file ? `\n\n📎 ${file.name} (${Math.round(file.size / 1024)}KB)` : '';
@@ -304,10 +308,16 @@ const OmnichannelInbox = () => {
         },
       });
       if (error) throw error;
+      // Active-learning capture: when the broker edited an AI-seeded draft.
+      learnFromEdit({
+        context: `inbox_reply:${sendChannel}`,
+        pairs: [{ label: 'inbox_message', original, edited: safeContent }],
+      });
       return data;
     },
     onSuccess: async (data) => {
       setNewMessage('');
+      setOriginalAiDraft('');
       setAttachment(null);
       if (attachmentInputRef.current) attachmentInputRef.current.value = '';
       queryClient.invalidateQueries({ queryKey: ['chat-messages', selectedVoterId] });
@@ -362,7 +372,7 @@ const OmnichannelInbox = () => {
   const handleSend = () => {
     const content = newMessage.trim();
     if (!content && !attachment) return;
-    sendMessage.mutate({ content: content || 'קובץ מצורף', file: attachment });
+    sendMessage.mutate({ content: content || 'קובץ מצורף', file: attachment, original: originalAiDraft });
   };
 
   const handleAttachmentSelect = (file: File | undefined) => {
@@ -585,7 +595,7 @@ const OmnichannelInbox = () => {
                                 leadName={selectedVoter?.full_name ?? null}
                                 leadCity={(selectedVoter as any)?.city ?? null}
                                 leadStage={(selectedVoter as any)?.lead_stage ?? null}
-                                onRegenerated={(draft) => setNewMessage(draft)}
+                                onRegenerated={(draft) => { setNewMessage(draft); setOriginalAiDraft(draft); }}
                                 onDeleted={() => {
                                   queryClient.invalidateQueries({ queryKey: ['chat-messages', selectedVoterId] });
                                   queryClient.invalidateQueries({ queryKey: ['last-messages'] });

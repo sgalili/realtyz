@@ -32,6 +32,7 @@ import { SentimentAutomationToggles } from '@/components/automation/SentimentAut
 import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsStream';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { campaignMatchesExternalPost, normalizePostId } from '@/lib/campaignPostIds';
+import { learnFromEdit } from '@/lib/learnFromEdit';
 import { IvrBroadcastDialog } from '@/components/campaigns/IvrBroadcastDialog';
 import { EmailAliasSetupDialog } from '@/components/campaigns/EmailAliasSetupDialog';
 
@@ -249,7 +250,7 @@ const InlineComposer = ({
 }: {
   channel: ChannelCard;
   brandName: string;
-  onConfirm: (payload: { body: string; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null; group_ids: string[] }) => void;
+  onConfirm: (payload: { body: string; original_ai_body: string; listing_id: string | null; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null; group_ids: string[] }) => void;
 }) => {
   // Session-persistence key — keeps unfinished drafts alive across collapse / expand / tab switch
   const draftKey = `rz-composer-draft:${channel.id}`;
@@ -260,6 +261,9 @@ const InlineComposer = ({
   const initial = readDraft() || {};
 
   const [body, setBody] = useState<string>(initial.body || '');
+  // Tracks the last AI-generated body so manual edits before publish can be
+  // shipped to learn-from-edit on success. Reset on send.
+  const [originalAiBody, setOriginalAiBody] = useState<string>('');
   const [mode, setMode] = useState<'now' | 'scheduled'>('now');
   // Local datetime string in `YYYY-MM-DDTHH:mm` (input[type=datetime-local] format).
   const [scheduledLocal, setScheduledLocal] = useState<string>('');
@@ -528,7 +532,7 @@ const InlineComposer = ({
       const text = (data?.content || data?.text || '').toString().slice(0, MAX_CHARS);
       if (text) {
         setBody(text);
-        // Persist a fresh history row for this generation and make it the active row,
+        setOriginalAiBody(text);
         // so subsequent manual edits + media updates flow into the same record.
         try {
           const { data: { user } } = await supabase.auth.getUser();
@@ -582,7 +586,9 @@ const InlineComposer = ({
                 return (
                   <button key={h.id} type="button"
                     onClick={() => {
-                      setBody((h.generated_text || '').slice(0, MAX_CHARS));
+                      const loaded = (h.generated_text || '').slice(0, MAX_CHARS);
+                      setBody(loaded);
+                      setOriginalAiBody(loaded);
                       setAttachments(media.map((m: any) => ({ name: m?.name || 'קובץ', kind: m?.kind || 'file', url: m?.url || undefined })));
                       setSelectedListingId(h.listing_id || null);
                       setLogId(h.id);
@@ -831,6 +837,8 @@ const InlineComposer = ({
             <button type="button"
               onClick={() => canSend && onConfirm({
                 body,
+                original_ai_body: originalAiBody,
+                listing_id: selectedListingId || null,
                 mode,
                 media_urls: attachments
                   .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
@@ -872,12 +880,14 @@ const InlineComposer = ({
 /* ───────────── Dispatch confirmation modal ───────────── */
 
 const ConfirmDispatchDialog = ({
-  open, onClose, channel, body, brandName, mediaUrls, scheduledAt, groupIds, onConfirmed,
+  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds, onConfirmed,
 }: {
   open: boolean;
   onClose: () => void;
   channel: ChannelCard | null;
   body: string;
+  originalAiBody: string;
+  listingId: string | null;
   brandName: string;
   mediaUrls: string[];
   scheduledAt: string | null;
@@ -1045,6 +1055,12 @@ const ConfirmDispatchDialog = ({
           toast.success(`שודר ל-${rows.length} מתעניינים בערוץ ${channel.label}`);
         }
       }
+      // Active-learning capture for manual edits to the AI-drafted post body.
+      learnFromEdit({
+        context: `campaign_post:${channel.id}`,
+        listing_id: listingId,
+        pairs: [{ label: 'post_body', original: originalAiBody, edited: body }],
+      });
       onConfirmed();
       onClose();
     } catch (e: any) {
@@ -2376,7 +2392,7 @@ const CampaignCenter = () => {
   const [voiceDialChannel, setVoiceDialChannel] = useState<ChannelCard | null>(null);
   const [ivrOpen, setIvrOpen] = useState(false);
   const [emailSetupOpen, setEmailSetupOpen] = useState(false);
-  const [confirmPayload, setConfirmPayload] = useState<{ body: string; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null; group_ids: string[] } | null>(null);
+  const [confirmPayload, setConfirmPayload] = useState<{ body: string; original_ai_body: string; listing_id: string | null; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null; group_ids: string[] } | null>(null);
   // Hydrate connection state from sessionStorage so a page refresh doesn't
   // visually "disconnect" channels while the async verification re-runs.
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(() => {
@@ -2690,6 +2706,8 @@ const CampaignCenter = () => {
         onClose={() => setConfirmPayload(null)}
         channel={pickedChannel}
         body={confirmPayload?.body ?? ''}
+        originalAiBody={confirmPayload?.original_ai_body ?? ''}
+        listingId={confirmPayload?.listing_id ?? null}
         brandName={brandName}
         mediaUrls={confirmPayload?.media_urls ?? []}
         scheduledAt={confirmPayload?.scheduled_at ?? null}
