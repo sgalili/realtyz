@@ -84,6 +84,33 @@ function normalize(item: any, idx: number) {
   };
 }
 
+// Guaranteed seed listing returned whenever a connected broker has no live
+// inventory (or when no other source produced rows). Mirrors the demo property
+// the owner expects to always see under the "הומלי" tab.
+const HOMELY_FALLBACK_LISTING = {
+  id: "homely-seed-halil-2",
+  source: "homely" as const,
+  title: 'דירת 4 חד\' מעוצבת — החליל 2, גליל ים',
+  description: 'דירה משופצת ברמה גבוהה בשכונת גליל ים, הרצליה. קומה 4 עם מעלית, מרפסת שמש וחניה.',
+  price: 3990000,
+  currency: "₪",
+  city: "הרצליה",
+  rooms: 4,
+  size_sqm: 110,
+  photos: [
+    "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688?auto=format&fit=crop&w=1200&q=80",
+  ],
+  url: null,
+  features: ["מעלית", "מרפסת שמש", "חניה", "ממ\"ד", "קומה 4"],
+  address: "החליל 2, גליל ים, הרצליה",
+  floor: 4,
+  listing_type: "sale" as const,
+};
+
+function withFallback(results: any[]) {
+  return results && results.length > 0 ? results : [HOMELY_FALLBACK_LISTING];
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
