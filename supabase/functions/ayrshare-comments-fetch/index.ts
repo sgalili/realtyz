@@ -138,24 +138,6 @@ Deno.serve(async (req) => {
       console.error("[ayrshare-comments-fetch] campaign lookup threw", lookupErr instanceof Error ? lookupErr.message : String(lookupErr));
     }
 
-    const workspaceProfile = await resolveWorkspaceProfileKey(admin);
-    const envProfileKey = typeof Deno.env.get("AYRSHARE_PROFILE_KEY") === "string"
-      ? Deno.env.get("AYRSHARE_PROFILE_KEY")!.trim().replace(/^[`'\"]+|[`'\"]+$/g, "")
-      : "";
-    const profileCandidates = [
-      workspaceProfile.profileKey ? { profileKey: workspaceProfile.profileKey, refId: workspaceProfile.refId, source: "workspace" } : null,
-      envProfileKey && envProfileKey !== workspaceProfile.profileKey ? { profileKey: envProfileKey, refId: "env-fallback", source: "env" } : null,
-      // Rescue path: older posts may have been published on the primary Ayrshare
-      // profile. In that case sending the currently saved (suspended) Profile-Key
-      // makes every comment request fail with 403, while the primary API key can
-      // still read the post comments without any Profile-Key header.
-      { profileKey: "", refId: "primary", source: "primary" },
-    ].filter(Boolean) as Array<{ profileKey: string; refId: string | null; source: string }>;
-    if (profileCandidates.length === 0) {
-      return json({ error: "workspace ayrshare profile key missing" }, 400);
-    }
-    const defaultProfileKey = profileCandidates[0].profileKey;
-    let refId = profileCandidates[0].refId;
     const ownPage = await resolveOwnPageIdentity(admin);
 
     const pickStr = (...vals: unknown[]) => {
@@ -227,28 +209,63 @@ Deno.serve(async (req) => {
       targetNode.comments = merged;
     };
 
-    const fetchComments = async (target: CommentFetchTarget, useSocialId: boolean, candidateProfileKey = defaultProfileKey) => {
-      const id = useSocialId ? target.nativePostId : target.fetchPostId;
-      // Ask Ayrshare to inline reply threads so nested child nodes (e.g. Shi
-      // Galili replying to Udi) come back in the same payload. Different
-      // Ayrshare plans honor different flag names — we send all known
-      // aliases; ignored params are harmless.
-      const base = `limit=100&includeReplies=true&include_replies=true&replies=true&expandReplies=true&depth=5`;
-      const qs = useSocialId
-        ? `${base}&platform=${encodeURIComponent(target.platform)}&searchPlatformId=true`
-        : base;
-      const headers: Record<string, string> = {
-          Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-          "Content-Type": "application/json",
+    const normalizeMetaPostCandidates = (nativePostId: string, fetchPostId: string) => {
+      const ids: string[] = [];
+      const push = (value: unknown) => {
+        const id = typeof value === "string" ? value.trim() : "";
+        if (id && !ids.includes(id)) ids.push(id);
       };
-      if (candidateProfileKey) headers["Profile-Key"] = candidateProfileKey;
-      const r = await fetch(`${AYR_BASE}/comments/${encodeURIComponent(id)}?${qs}`, {
-        headers,
-      });
-      const text = await r.text();
+      push(nativePostId);
+      push(fetchPostId);
+      const suffix = nativePostId.includes("_") ? nativePostId.split("_").pop()! : nativePostId;
+      if (/^\d+$/.test(suffix)) {
+        push(suffix);
+        if (ownPage.pageId) push(`${ownPage.pageId}_${suffix}`);
+      }
+      return ids;
+    };
+
+    const fetchMetaComments = async (postId: string) => {
+      const fields = "id,message,created_time,from{id,name,picture{url}},parent,replies{id,message,created_time,from{id,name,picture{url}}}";
+      const url = `https://graph.facebook.com/v20.0/${encodeURIComponent(postId)}/comments?fields=${encodeURIComponent(fields)}&limit=100&access_token=${encodeURIComponent(FB_PAGE_TOKEN)}`;
+      const res = await fetch(url, { headers: { "Cache-Control": "no-cache" } });
+      const text = await res.text();
       let payload: any = {};
-      try { payload = text ? JSON.parse(text) : {}; } catch { payload = {}; }
-      return { ok: r.ok, status: r.status, payload, text };
+      try { payload = text ? JSON.parse(text) : {}; } catch { payload = { rawText: text }; }
+      return { ok: res.ok, status: res.status, payload, text };
+    };
+
+    const normalizeGraphNode = (node: any, parentId: string | null = null): any => {
+      const from = node?.from
+        ? { ...node.from, picture: node.from?.picture?.url ? { data: { url: node.from.picture.url } } : node.from?.picture }
+        : { name: "משתמש פייסבוק" };
+      const replies = Array.isArray(node?.replies?.data) ? node.replies.data : [];
+      return {
+        id: node?.id,
+        message: node?.message ?? "",
+        created_time: node?.created_time,
+        from,
+        __parent_id: node?.parent?.id ?? parentId,
+        comments: replies.map((reply: any) => normalizeGraphNode(reply, node?.id ?? parentId)),
+      };
+    };
+
+    const fetchDirectMetaTree = async (target: CommentFetchTarget) => {
+      const attempts: any[] = [];
+      for (const candidate of normalizeMetaPostCandidates(target.nativePostId, target.fetchPostId)) {
+        const fetched = await fetchMetaComments(candidate);
+        if (fetched.ok && Array.isArray(fetched.payload?.data)) {
+          return {
+            ok: true,
+            status: fetched.status,
+            resolvedPostId: candidate,
+            comments: fetched.payload.data.map((node: any) => normalizeGraphNode(node, null)),
+            attempts,
+          };
+        }
+        attempts.push({ post_id: candidate, status: fetched.status, payload: safeMetaPayload(fetched.payload, fetched.text) });
+      }
+      return { ok: false, status: attempts[attempts.length - 1]?.status ?? 500, resolvedPostId: null, comments: [], attempts };
     };
 
     await Promise.all(
