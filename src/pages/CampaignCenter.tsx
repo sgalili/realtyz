@@ -1941,9 +1941,13 @@ const VoiceLeadPickerDialog = ({
             lead_id: l.id,
             voice_id: agent.voice_id,
             agent_label: agent.label,
+            voice_gender: (agent as any).gender ?? null,
+            user_gender: userGender,
+            listing_id: selectedListingId ?? null,
             instructions: instructions.trim() || null,
           },
         });
+
         if (error) failed++; else ok++;
       }
       toast.dismiss('voice-dial');
