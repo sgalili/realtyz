@@ -230,6 +230,12 @@ const ChannelGrid = ({
               </span>
             )}
 
+            {c.id === 'facebook' && isConnected && (
+              <span className="block max-w-full truncate text-[8px] font-semibold text-muted-foreground" dir="ltr" title="Ayrshare Profile: 6200">
+                Ayrshare Profile: 6200
+              </span>
+            )}
+
             {isConnected && profiles.length > 0 ? (
               <span className="mt-0.5 flex w-full flex-col gap-1 overflow-hidden">
                 {profiles.slice(0, 2).map((profile) => {
