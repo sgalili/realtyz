@@ -708,7 +708,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
                 regenerating={regeneratingId === node.id}
                 isReply={node.depth > 0}
                 repliedToText={repliedTo?.inbound_text ?? null}
-                replyPreviewText={node.ai_reply_text ?? node.children[0]?.inbound_text ?? null}
+                replyPreviewText={node.children[0]?.inbound_text ?? node.ai_reply_text ?? null}
                 replyCount={replyCount}
                 threadExpanded={threadExpanded}
                 onToggleThread={() => {
