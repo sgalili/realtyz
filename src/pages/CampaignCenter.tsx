@@ -283,7 +283,7 @@ const InlineComposer = ({
   // Generation history (now also tracks edits + attachments per row)
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyRefresh, setHistoryRefresh] = useState(0);
-  const [history, setHistory] = useState<Array<{ id: string; topic: string | null; generated_text: string | null; platform: string | null; created_at: string; updated_at: string | null; media_urls: any }>>([]);
+  const [history, setHistory] = useState<Array<{ id: string; topic: string | null; generated_text: string | null; platform: string | null; created_at: string; updated_at: string | null; media_urls: any; listing_id: string | null }>>([]);
   // ID of the currently active history row — edits flow back into the same row.
   const [logId, setLogId] = useState<string | null>(null);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
@@ -295,7 +295,7 @@ const InlineComposer = ({
       if (!user) return;
       const { data } = await supabase
         .from('ai_content_logs')
-        .select('id, topic, generated_text, platform, created_at, updated_at, media_urls')
+        .select('id, topic, generated_text, platform, created_at, updated_at, media_urls, listing_id')
         .eq('created_by', user.id)
         .eq('platform', channel.id)
         .order('updated_at', { ascending: false })
@@ -308,7 +308,7 @@ const InlineComposer = ({
   // Reset on channel change
   useEffect(() => { setBody(''); setMode('now'); setAttachments([]); setCustomInstructions(''); setSelectedListingId(null); setListingQuery(''); setLogId(null); setSaveState('idle'); }, [channel.id]);
 
-  // Auto-save: persist edits + attachments to ai_content_logs (debounced).
+  // Auto-save: persist edits + attachments + selected property to ai_content_logs (debounced).
   // Creates a new row on first edit if no logId yet; otherwise updates the active row.
   useEffect(() => {
     if (!body.trim() && attachments.length === 0) return;
@@ -320,6 +320,7 @@ const InlineComposer = ({
         const payload = {
           generated_text: body.slice(0, MAX_CHARS),
           media_urls: attachments.map((a) => ({ name: a.name, kind: a.kind, url: a.url || null })),
+          listing_id: selectedListingId,
           updated_at: new Date().toISOString(),
         };
         if (logId) {
@@ -346,7 +347,7 @@ const InlineComposer = ({
       }
     }, 1200);
     return () => clearTimeout(t);
-  }, [body, attachments, logId, channel.id]);
+  }, [body, attachments, selectedListingId, logId, channel.id]);
 
   // Load the full live property list on mount and refresh when the picker opens.
   // Search is client-side so the dropdown always shows every listing by default.
