@@ -2419,6 +2419,14 @@ const CampaignCenter = () => {
     try { sessionStorage.setItem('rz-connected-channel-names', JSON.stringify(channelAccountNames)); } catch { /* ignore */ }
   }, [channelAccountNames]);
 
+  // Default-select Facebook when it's connected and nothing is picked yet.
+  useEffect(() => {
+    if (pickedChannel) return;
+    if (!connectedChannels.has('facebook')) return;
+    const fb = CHANNEL_CARDS.find((c) => c.id === 'facebook');
+    if (fb) setPickedChannel(fb);
+  }, [connectedChannels, pickedChannel]);
+
 
 
   // STRICT WORKSPACE ISOLATION: only show a channel as connected when
