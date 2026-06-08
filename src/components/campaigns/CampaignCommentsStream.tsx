@@ -559,7 +559,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
           aria-label="רענן נתונים חיים"
         >
           <RefreshCw className={cn("ml-1 h-3.5 w-3.5", loading && "animate-spin")} />
-          רענון
+          רענן תגובות
         </Button>
         <p className="text-xs font-semibold text-foreground">
           תגובות לקמפיין ({rows?.length ?? 0})
