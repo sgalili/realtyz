@@ -192,33 +192,78 @@ Deno.serve(async (req) => {
             return;
           }
 
-          // FAST PATH: Meta Graph API direct fetch for Facebook posts shaped
-          // as `{pageId}_{postId}`. Bypasses Ayrshare's stale tracker so the
-          // "רענן תגובות" button reflects the live FB comment tree instantly.
+          // FAST PATH: Meta Graph API direct fetch for Facebook posts.
+          // Ayrshare may store a composite id whose page-prefix doesn't match
+          // the page bound to FB_PAGE_TOKEN (the original failure mode that
+          // returned "Object does not exist"). We try several id shapes plus a
+          // feed-enumeration fallback so live comments always surface.
           let graphArr: any[] | null = null;
-          if (
-            FB_PAGE_TOKEN &&
-            /^facebook$/i.test(platform) &&
-            /^\d+_\d+$/.test(nativePostId)
-          ) {
+          let resolvedGraphPostId: string | null = null;
+          if (FB_PAGE_TOKEN && /^facebook$/i.test(platform)) {
+            const tokenParam = `access_token=${encodeURIComponent(FB_PAGE_TOKEN)}`;
+            const suffix = nativePostId.includes("_") ? nativePostId.split("_").pop()! : nativePostId;
+            const candidates: string[] = [];
+            const pushUnique = (v: string) => { if (v && !candidates.includes(v)) candidates.push(v); };
+            if (/^\d+_\d+$/.test(nativePostId)) pushUnique(nativePostId);
+            if (/^\d+$/.test(suffix)) pushUnique(suffix);
+
+            let realPageId: string | null = null;
             try {
-              const gUrl = `https://graph.facebook.com/v20.0/${encodeURIComponent(nativePostId)}/comments?fields=id,message,created_time,from,parent,like_count&limit=100&access_token=${encodeURIComponent(FB_PAGE_TOKEN)}`;
+              const meRes = await fetch(`https://graph.facebook.com/v20.0/me?fields=id,name&${tokenParam}`);
+              const meJson = await meRes.json().catch(() => ({}));
+              if (meRes.ok && meJson?.id) {
+                realPageId = String(meJson.id);
+                if (/^\d+$/.test(suffix)) pushUnique(`${realPageId}_${suffix}`);
+              }
+            } catch (meErr) {
+              console.warn("[ayrshare-comments-fetch] graph /me failed", meErr instanceof Error ? meErr.message : String(meErr));
+            }
+
+            const tryFetch = async (postId: string): Promise<any[] | null> => {
+              const gUrl = `https://graph.facebook.com/v20.0/${encodeURIComponent(postId)}/comments?fields=id,message,created_time,from,parent,like_count&limit=100&${tokenParam}`;
               const gRes = await fetch(gUrl);
               const gJson = await gRes.json().catch(() => ({}));
-              if (gRes.ok && Array.isArray(gJson?.data)) {
-                graphArr = gJson.data.map((c: any) => ({
-                  id: c.id,
-                  message: c.message ?? "",
-                  created_time: c.created_time,
-                  like_count: c.like_count ?? 0,
-                  from: c.from ?? { name: "משתמש פייסבוק" },
-                  __parent_id: c.parent?.id ?? null,
-                }));
-              } else {
-                console.warn("[ayrshare-comments-fetch] graph fallback", gRes.status, JSON.stringify(gJson).slice(0, 300));
+              if (gRes.ok && Array.isArray(gJson?.data)) return gJson.data;
+              console.warn("[ayrshare-comments-fetch] graph candidate failed", postId, gRes.status, JSON.stringify(gJson).slice(0, 200));
+              return null;
+            };
+
+            const normalize = (data: any[]) => data.map((c: any) => ({
+              id: c.id,
+              message: c.message ?? "",
+              created_time: c.created_time,
+              like_count: c.like_count ?? 0,
+              from: c.from ?? { name: "משתמש פייסבוק" },
+              __parent_id: c.parent?.id ?? null,
+            }));
+
+            for (const cand of candidates) {
+              const data = await tryFetch(cand);
+              if (data) { resolvedGraphPostId = cand; graphArr = normalize(data); break; }
+            }
+
+            // Last-resort: enumerate the Page feed and match by suffix or body.
+            if (!graphArr && realPageId) {
+              try {
+                const feedRes = await fetch(`https://graph.facebook.com/v20.0/${realPageId}/posts?fields=id,message,created_time&limit=25&${tokenParam}`);
+                const feedJson = await feedRes.json().catch(() => ({}));
+                const feedArr: any[] = Array.isArray(feedJson?.data) ? feedJson.data : [];
+                let match = feedArr.find((p) => String(p?.id || "").endsWith(`_${suffix}`));
+                if (!match) {
+                  const probe = String(body?.campaign_body || "").trim().slice(0, 50);
+                  if (probe) match = feedArr.find((p) => String(p?.message || "").includes(probe));
+                }
+                if (match?.id) {
+                  const data = await tryFetch(match.id);
+                  if (data) { resolvedGraphPostId = match.id; graphArr = normalize(data); }
+                }
+              } catch (feedErr) {
+                console.warn("[ayrshare-comments-fetch] graph feed enum failed", feedErr instanceof Error ? feedErr.message : String(feedErr));
               }
-            } catch (gErr) {
-              console.warn("[ayrshare-comments-fetch] graph error", gErr instanceof Error ? gErr.message : String(gErr));
+            }
+
+            if (graphArr) {
+              console.log("[ayrshare-comments-fetch] graph fast-path success", { stored: nativePostId, resolved: resolvedGraphPostId, count: graphArr.length });
             }
           }
 

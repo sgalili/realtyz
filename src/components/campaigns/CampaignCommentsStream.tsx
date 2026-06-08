@@ -181,7 +181,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
         }),
         postIds.length > 0
           ? supabase.functions.invoke("ayrshare-comments-fetch", {
-              body: { post_ids: postIds, platform: platformForCampaignChannel(campaign.channel) },
+              body: { post_ids: postIds, platform: platformForCampaignChannel(campaign.channel), campaign_body: campaign.message_body ?? null },
             })
           : supabase.functions.invoke("ayrshare-sync-comments", { body: {} }),
       ]);
