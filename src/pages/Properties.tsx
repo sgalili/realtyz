@@ -17,7 +17,7 @@ import {
 } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Send, BedDouble, Ruler, MapPin, Building2, FileSpreadsheet, LayoutGrid, SlidersHorizontal, Trash2 } from 'lucide-react';
+import { Send, BedDouble, Ruler, MapPin, Building2, FileSpreadsheet, LayoutGrid, SlidersHorizontal, Trash2, Pencil } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -31,6 +31,7 @@ import {
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
+import { EditPropertyDialog } from '@/components/properties/EditPropertyDialog';
 import { ImportPropertiesDialog } from '@/components/properties/ImportPropertiesDialog';
 import {
   PROPERTY_TYPE_LABELS_HE,
@@ -596,6 +597,7 @@ function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare
 // plus a Share action per row (merged from the former list view).
 function PropertyTable({ properties }: { properties: Array<HomelyProperty & { extras?: Record<string, string>; created_at?: string | null }> }) {
   const [shareTarget, setShareTarget] = useState<HomelyProperty | null>(null);
+  const [editTarget, setEditTarget] = useState<HomelyProperty | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<HomelyProperty | null>(null);
   const [deleting, setDeleting] = useState(false);
   const queryClient = useQueryClient();
@@ -695,6 +697,18 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
                         <Button
                           size="sm"
                           variant="ghost"
+                          onClick={() => setEditTarget(p)}
+                          className="gap-1.5"
+                          title="ערוך נכס"
+                          aria-label="ערוך נכס"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                      {isMine && (
+                        <Button
+                          size="sm"
+                          variant="ghost"
                           onClick={() => setDeleteTarget(p)}
                           className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
                           title="מחק נכס"
@@ -715,6 +729,12 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
         property={shareTarget}
         open={!!shareTarget}
         onOpenChange={(open) => { if (!open) setShareTarget(null); }}
+      />
+      <EditPropertyDialog
+        property={editTarget}
+        open={!!editTarget}
+        onOpenChange={(open) => { if (!open) setEditTarget(null); }}
+        onSaved={() => queryClient.invalidateQueries({ queryKey: ['properties-search'] })}
       />
       <AlertDialog open={!!deleteTarget} onOpenChange={(open) => { if (!open) setDeleteTarget(null); }}>
         <AlertDialogContent dir="rtl">
