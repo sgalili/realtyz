@@ -486,6 +486,7 @@ Deno.serve(async (req) => {
             parent_id: safeStr(parentId) ?? currentMeta.parent_id ?? null,
             sender_id: safeStr(senderId) ?? currentMeta.sender_id ?? null,
             profile_image: nextProfileImage,
+            sender_avatar_url: nextProfileImage,
             author: {
               ...currentAuthor,
               name: safeStr(sender, 200) ?? currentAuthor.name ?? null,
