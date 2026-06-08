@@ -407,19 +407,31 @@ Deno.serve(async (req) => {
           .eq("status", "live")
           .eq("is_published", true)
           .limit(120);
-        const haystack = `${inbound}\n${rawCampaignContext}`;
-        const strictTypeForLiveMatch = primaryType ?? null;
-        const liveMatches = (liveRows ?? [])
-          .map((row: any) => ({ ...row, listing_type: resolveListingType(row) }))
-          .filter((row: any) => (!strictTypeForLiveMatch || isListingAllowedForType(row, strictTypeForLiveMatch)) && overlapsListingText(haystack, row));
-        const rentalFallback = primaryType === "rent"
-          ? (liveRows ?? [])
-              .map((row: any) => ({ ...row, listing_type: resolveListingType(row) }))
-              .find((row: any) => isListingAllowedForType(row, "rent") && /הבשן\s*3|הבשן/.test(`${row.property_title ?? ""}\n${row.address ?? ""}`))
-          : null;
-        const row = liveMatches[0] ?? rentalFallback ?? null;
+        // STRICT POST-SCOPED MATCH: the source of truth for "which property is
+        // this comment about" is the published post body of THIS campaign,
+        // NOT the inbound comment text and NOT a generic CRM fallback. Score
+        // every listing by how strongly its identifiers appear in the post
+        // body. Address > property_title > neighborhood; bare city is too
+        // weak to count alone and was leaking cross-listing replies.
+        const postBody = String(body?.campaign_post_body ?? "").toLowerCase();
+        const score = (row: any): number => {
+          if (!postBody) return 0;
+          const addr = normalizeText(row?.address);
+          const title = normalizeText(row?.property_title);
+          const hood = normalizeText(row?.neighborhood);
+          let s = 0;
+          if (addr && addr.length >= 4 && postBody.includes(addr)) s += 100;
+          if (title && title.length >= 4 && postBody.includes(title)) s += 60;
+          if (hood && hood.length >= 4 && postBody.includes(hood)) s += 20;
+          return s;
+        };
+        const scored = (liveRows ?? [])
+          .map((row: any) => ({ row, listing_type: resolveListingType(row), s: score(row) }))
+          .filter((entry) => entry.s > 0)
+          .sort((a, b) => b.s - a.s);
+        const row = scored[0]?.row ?? null;
         if (row) {
-          const lt = resolveListingType(row as any) ?? primaryType;
+          const lt = scored[0].listing_type ?? primaryType;
           primaryListing = {
             title: String((row as any).property_title ?? (row as any).address ?? ""),
             city: (row as any).city ?? null,
@@ -431,10 +443,18 @@ Deno.serve(async (req) => {
             address: (row as any).address ?? null,
             neighborhood: (row as any).neighborhood ?? null,
           };
-          if (lt) primaryType = lt;
-          if (lt) primaryTypeLocked = true;
+          // The matched listing's own type wins over weak inbound-text heuristics.
+          primaryType = lt ?? primaryType;
+          primaryTypeLocked = true;
+          console.log("[suggest-comment-reply] primary listing locked by post-body match", {
+            title: primaryListing.title,
+            score: scored[0].s,
+            listing_type: lt,
+          });
+        } else {
+          console.warn("[suggest-comment-reply] no listing matched the post body — skipping primary listing to avoid cross-leak");
         }
-      } catch { /* ignore */ }
+      } catch (e) { console.error("[suggest-comment-reply] primary resolution failed", e); }
     }
 
 
@@ -443,10 +463,10 @@ Deno.serve(async (req) => {
       loadCrmSnapshot(admin, userId, { listingType: primaryType }),
     ]);
 
-    const rentalOnlyMode = primaryType === "rent" || RENT_SIGNAL_RE.test(`${inbound}\n${rawCampaignContext}`) || /הבשן\s*3|הבשן/i.test(`${inbound}\n${rawCampaignContext}`);
-    if (rentalOnlyMode) {
-      primaryType = "rent";
-    }
+    // Only force rental-mode when the primary listing itself is a rental.
+    // Previously this fired on any RENT_SIGNAL in inbound/campaign text and
+    // even hardcoded הבשן 3 as a fallback, which leaked the wrong property.
+    const rentalOnlyMode = primaryType === "rent";
     const rentalContextConflict = rentalOnlyMode && hasStaleSaleContext(rawCampaignContext);
     const campaignContext = rentalOnlyMode
       ? scrubRentalCampaignContext(rawCampaignContext)
@@ -488,8 +508,8 @@ Deno.serve(async (req) => {
       : null;
 
     const primaryBlock = primaryListing
-      ? `[PRIMARY PROPERTY DISCUSSED]: ${primaryListing.title}${primaryListing.city ? " · " + primaryListing.city : ""}${primaryListing.rooms ? " · " + primaryListing.rooms + " חד'" : ""}${primaryListing.sqm ? " · " + primaryListing.sqm + " מ\"ר" : ""}${primaryListing.asking_price ? " · " + Number(primaryListing.asking_price).toLocaleString("he-IL") + " ש\"ח" : ""}${primaryListing.listing_type ? " · " + (primaryListing.listing_type === "rent" ? "להשכרה" : "למכירה") : ""}.`
-      : null;
+      ? `[PRIMARY PROPERTY DISCUSSED — LOCKED]: ${primaryListing.title}${primaryListing.address ? " · " + primaryListing.address : ""}${primaryListing.city ? " · " + primaryListing.city : ""}${primaryListing.rooms ? " · " + primaryListing.rooms + " חד'" : ""}${primaryListing.sqm ? " · " + primaryListing.sqm + " מ\"ר" : ""}${primaryListing.asking_price ? " · " + Number(primaryListing.asking_price).toLocaleString("he-IL") + " ש\"ח" : ""}${primaryListing.listing_type ? " · " + (primaryListing.listing_type === "rent" ? "להשכרה" : "למכירה") : ""}.\nHARD RULE: this is the ONE property this comment is about. NEVER name, hint at, or compare to any other property, street, or address in either public_comment or private_messenger_dm. Do not reference פורצי הדרך, הבשן, or any address other than the one above. If [STRICT LISTING PAYLOAD JSON] contains other listings, IGNORE them for this reply — they are NOT the subject of this post.`
+      : `[PRIMARY PROPERTY DISCUSSED — UNRESOLVED]: no listing was matched from the published post body. Reply generically about the post WITHOUT naming any specific street, address, or listing. NEVER invent a property name.`;
 
     const featureAsk = detectFeatureAsk(inbound);
     const featureFact: FeatureFact = featureAsk ? extractFeatureFact(featureAsk, primaryListing) : "unknown";
