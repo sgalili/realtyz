@@ -3,7 +3,13 @@
 // channel into campaign_logs scoped to the owning user_id.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { resolveWorkspaceProfileKey } from "../_shared/ayrshare-helpers.ts";
+import {
+  isAyrshareInvalidProfileKey,
+  MISSING_TENANT_KEY,
+  MISSING_TENANT_KEY_MESSAGE,
+  resolveWorkspaceProfileKey,
+  verifyWorkspaceProfileKey,
+} from "../_shared/ayrshare-helpers.ts";
 
 const AYR_POST_URL = "https://api.ayrshare.com/api/post";
 
@@ -44,12 +50,15 @@ Deno.serve(async (req) => {
       const userId = authData?.user?.id;
       if (!userId) return json({ error: "unauthorized" }, 401);
 
+      const url = new URL(req.url);
       const body = await req.json().catch(() => ({}));
-      const externalPostId: string = String(body?.external_post_id ?? body?.id ?? "").trim();
+      const externalPostId: string = String(
+        body?.external_post_id ?? body?.id ?? url.searchParams.get("external_post_id") ?? url.searchParams.get("id") ?? "",
+      ).trim();
       if (!externalPostId) return json({ error: "missing external_post_id" }, 400);
 
       const { profileKey } = await resolveWorkspaceProfileKey(admin);
-      if (!profileKey) return json({ error: "workspace ayrshare profile key missing" }, 500);
+      if (!profileKey) return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE }, 200);
 
       const r = await fetch(`${AYR_POST_URL}/${encodeURIComponent(externalPostId)}`, {
         method: "DELETE",
@@ -64,6 +73,9 @@ Deno.serve(async (req) => {
       try { j = t ? JSON.parse(t) : null; } catch { j = { raw: t }; }
       // Treat a 404 from Ayrshare as already-deleted (idempotent success).
       const idempotent404 = r.status === 404;
+      if (isAyrshareInvalidProfileKey(r.status, j)) {
+        return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE }, 200);
+      }
       if (!r.ok && !idempotent404) {
         return json({ error: j?.message ?? `Ayrshare ${r.status}`, details: j }, 502);
       }
@@ -119,8 +131,18 @@ Deno.serve(async (req) => {
       return json({ error: "no supported social channels in selection" }, 400);
     }
 
-    const { profileKey } = await resolveWorkspaceProfileKey(admin);
-    if (!profileKey) return json({ error: "workspace ayrshare profile key missing" }, 500);
+    const { profileKey, refId } = await resolveWorkspaceProfileKey(admin);
+    if (!profileKey) return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE }, 200);
+    const verified = await verifyWorkspaceProfileKey({ apiKey: AYRSHARE_API_KEY, profileKey });
+    if (verified.missingTenantKey) {
+      console.error("[ayrshare-post] invalid workspace profile key", {
+        refId,
+        status: verified.status,
+        code: verified.payload?.code ?? verified.payload?.raw?.code,
+        message: verified.payload?.message ?? verified.payload?.error ?? verified.payload?.raw?.message,
+      });
+      return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE }, 200);
+    }
 
     // ---- Media resolution ---------------------------------------------------
     // Ayrshare requires PUBLIC, absolute https URLs under the top-level
@@ -239,6 +261,9 @@ Deno.serve(async (req) => {
         const first = ayrRes.errors[0] ?? {};
         const rawMsg = first?.message ?? ayrRes.body?.errors?.[0]?.message ?? ayrRes.body?.message ?? `Ayrshare ${ayrRes.status}`;
         const code = first?.code ?? ayrRes.body?.code;
+        if (isAyrshareInvalidProfileKey(ayrRes.status, { ...ayrRes.body, code, message: rawMsg })) {
+          return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE }, 200);
+        }
         return json({ error: friendlyFromCode(code, rawMsg), code: code ?? null, status: ayrRes.status, details: ayrRes.body }, 502);
       }
     }
