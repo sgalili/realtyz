@@ -220,7 +220,8 @@ Deno.serve(async (req) => {
             }
 
             const tryFetch = async (postId: string): Promise<any[] | null> => {
-              const gUrl = `https://graph.facebook.com/v20.0/${encodeURIComponent(postId)}/comments?fields=id,message,created_time,from{id,name,picture{url}},parent,like_count&limit=100&${tokenParam}`;
+              const fields = "id,message,created_time,from{id,name,picture{url}},parent,like_count,comments.limit(100){id,message,created_time,from{id,name,picture{url}},parent,like_count,comments.limit(100){id,message,created_time,from{id,name,picture{url}},parent,like_count}}";
+              const gUrl = `https://graph.facebook.com/v20.0/${encodeURIComponent(postId)}/comments?fields=${encodeURIComponent(fields)}&limit=100&filter=stream&${tokenParam}`;
               const gRes = await fetch(gUrl);
               const gJson = await gRes.json().catch(() => ({}));
               if (gRes.ok && Array.isArray(gJson?.data)) return gJson.data;
@@ -228,14 +229,16 @@ Deno.serve(async (req) => {
               return null;
             };
 
-            const normalize = (data: any[]) => data.map((c: any) => ({
+            const normalizeOne = (c: any): any => ({
               id: c.id,
               message: c.message ?? "",
               created_time: c.created_time,
               like_count: c.like_count ?? 0,
               from: c.from ?? { name: "משתמש פייסבוק" },
               __parent_id: c.parent?.id ?? null,
-            }));
+              comments: Array.isArray(c?.comments?.data) ? c.comments.data.map(normalizeOne) : [],
+            });
+            const normalize = (data: any[]) => data.map(normalizeOne);
 
             for (const cand of candidates) {
               const data = await tryFetch(cand);
