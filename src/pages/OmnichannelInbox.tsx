@@ -19,6 +19,7 @@ import { z } from 'zod';
 import { useAuth } from '@/hooks/useAuth';
 import VoterProfileSidebar from '@/components/inbox/VoterProfileSidebar';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
+import { learnFromEdit } from '@/lib/learnFromEdit';
 import VoterAvatar from '@/components/VoterAvatar';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { getDemoCandidateMessages, getDemoCandidateVoters } from '@/lib/demoData';
