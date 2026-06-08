@@ -2560,6 +2560,7 @@ const AddVoiceByIdDialog = ({
 const CampaignCenter = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { settings } = useWhiteLabel();
   const brandName = settings?.agency_name || 'Realtyz AI';
   const [pickedChannel, setPickedChannel] = useState<ChannelCard | null>(null);
@@ -2584,6 +2585,29 @@ const CampaignCenter = () => {
     return {};
   });
   const [socialAccountProfiles, setSocialAccountProfiles] = useState<SocialAccountProfile[]>([]);
+
+  const clearSocialConnectionState = (channels: string[] = ['facebook']) => {
+    setConnectedChannels((prev) => new Set([...prev].filter((id) => !channels.includes(id))));
+    setSocialAccountProfiles((prev) => prev.filter((p) => !channels.includes(p.platform) && !(channels.includes('facebook') && p.platform.startsWith('facebook'))));
+    setChannelAccountNames((prev) => {
+      const next = { ...prev };
+      channels.forEach((id) => { delete next[id]; });
+      return next;
+    });
+    try {
+      const cached = sessionStorage.getItem('rz-connected-channels');
+      if (cached) sessionStorage.setItem('rz-connected-channels', JSON.stringify((JSON.parse(cached) as string[]).filter((id) => !channels.includes(id))));
+      const names = sessionStorage.getItem('rz-connected-channel-names');
+      if (names) {
+        const parsed = JSON.parse(names) as Record<string, string>;
+        channels.forEach((id) => { delete parsed[id]; });
+        sessionStorage.setItem('rz-connected-channel-names', JSON.stringify(parsed));
+      }
+    } catch { /* ignore */ }
+    queryClient.invalidateQueries({ queryKey: ['social-connections'] });
+    queryClient.invalidateQueries({ queryKey: ['workspace-social-profile'] });
+    queryClient.invalidateQueries({ queryKey: ['ayrshare-social-accounts'] });
+  };
 
   // Persist whenever the resolved connection state changes — keeps the grid
   // "remembered" for the whole browser session, including hard reloads.
