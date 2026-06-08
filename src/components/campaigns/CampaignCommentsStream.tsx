@@ -87,7 +87,9 @@ type Props = {
     provider_response?: any;
   };
   commentCount?: number;
+  onLiveCountResolved?: (campaignId: string, count: number) => void;
 };
+
 
 const sentimentClass = (s: string | null) =>
   s === "positive"
