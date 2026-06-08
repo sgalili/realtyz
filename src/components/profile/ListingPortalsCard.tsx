@@ -170,6 +170,36 @@ export function ListingPortalsCard() {
     }
   };
 
+  const verifyYad2 = async () => {
+    const email = (values.yad2_username ?? '').trim();
+    const token = (values.yad2_api_key ?? '').trim();
+    const emailOk = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    if (!emailOk) { toast.error('יש להזין כתובת Email תקינה של Yad2'); return; }
+    if (!token) { toast.error('יש להזין API Token של Yad2'); return; }
+    setYad2Verifying(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('yad2-verify-login', { body: {} });
+      if (error) throw error;
+      const status = (data as any)?.status;
+      if (status === 'verified') {
+        setYad2Status('verified');
+        toast.success('החיבור ל-Yad2 בוצע בהצלחה!');
+      } else if (status === 'pending' || token === 'test_pending') {
+        setYad2Status('pending');
+        toast.warning('החיבור בהמתנה לאישור יד2. נתוני הרצליה ורמת השרון יימשכו אוטומטית עם הזנת הטוקן הרשמי.');
+      } else {
+        setYad2Status('failed');
+        toast.error((data as any)?.note ?? 'שגיאה באימות מול יד2');
+      }
+    } catch (e: any) {
+      setYad2Status('failed');
+      toast.error(e?.message ?? 'שגיאה באימות מול יד2');
+    } finally {
+      setYad2Verifying(false);
+    }
+  };
+
+
 
   const savePortal = async (p: Portal) => {
     if (p.id === 'homely') return saveHomely();
