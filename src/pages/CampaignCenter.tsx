@@ -569,7 +569,7 @@ const InlineComposer = ({
               })}
             </PopoverContent>
           </Popover>
-          <button type="button" onClick={handleGenerate} disabled={generating}
+          <button type="button" onClick={() => handleGenerate()} disabled={generating}
             className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-60">
             <Bot className="h-3.5 w-3.5" />
             {generating ? 'מחולל…' : 'חולל טקסט עם AI'}
