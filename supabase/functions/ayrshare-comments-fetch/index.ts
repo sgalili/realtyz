@@ -17,8 +17,8 @@ const isUuid = (value: unknown) =>
   typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value.trim());
 
 const safeMetaPayload = (payload: any, text = "") => ({
-  message: payload?.message ?? payload?.error ?? payload?.errors?.[0]?.message ?? text.slice(0, 500) ?? null,
-  code: payload?.code ?? payload?.errors?.[0]?.code ?? null,
+  message: payload?.message ?? payload?.error?.message ?? payload?.error ?? payload?.errors?.[0]?.message ?? text.slice(0, 500) ?? null,
+  code: payload?.code ?? payload?.error?.code ?? payload?.errors?.[0]?.code ?? null,
   raw: payload && Object.keys(payload).length ? payload : text.slice(0, 1000),
 });
 
