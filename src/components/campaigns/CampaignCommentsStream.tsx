@@ -152,6 +152,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
   const [rows, setRows] = useState<EngagementRow[] | null>(cached);
   const [loading, setLoading] = useState(false);
   const [manualRefreshing, setManualRefreshing] = useState(false);
+  const [providerWarning, setProviderWarning] = useState<string | null>(null);
   const [replyOpen, setReplyOpen] = useState<EngagementRow | null>(null);
   const [replyDraft, setReplyDraft] = useState("");
   const [dmDraft, setDmDraft] = useState("");
@@ -255,6 +256,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
 
     if (manual) setManualRefreshing(true);
     try {
+      setProviderWarning(null);
       const pid = postIds[0] ?? null;
       const settled = await Promise.allSettled([
         supabase.functions.invoke("ayrshare-analytics", {
@@ -279,6 +281,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
         const surfacedError = firstPipelineError(data);
         if (surfacedError) {
           console.warn("[CampaignCommentsStream] provider pipeline warning", surfacedError);
+          if (manual) setProviderWarning(surfacedError);
         }
       }
       await fetchRows();
@@ -291,9 +294,9 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
 
 
   useEffect(() => {
-    // Always pull fresh comments from the provider on mount/route entry
-    // so the tree reflects the latest text instead of any cached row.
-    forceRefresh();
+    // Load saved rows on mount. Provider pulls are manual to avoid exhausting
+    // the social profile rate limit and suspending the comments API.
+    load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaign.id, postIdsKey, campaign.channel]);
 
@@ -301,7 +304,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
   // campaign_logs), immediately pull the new comments into the tree.
   useEffect(() => {
     if (typeof commentCount !== "number") return;
-    forceRefresh();
+    load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [commentCount]);
 
@@ -715,6 +718,12 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
 
       {(!rows || rows.length === 0) && (
         <p className="text-xs text-muted-foreground">אין תגובות עדיין לקמפיין זה</p>
+      )}
+
+      {providerWarning && (
+        <p className="rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs text-destructive">
+          החיבור לפייסבוק חסום כרגע: {providerWarning}
+        </p>
       )}
 
       <div className="space-y-4">
