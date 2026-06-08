@@ -2564,7 +2564,7 @@ const CampaignCenter = () => {
   const [voiceDialChannel, setVoiceDialChannel] = useState<ChannelCard | null>(null);
   const [ivrOpen, setIvrOpen] = useState(false);
   const [emailSetupOpen, setEmailSetupOpen] = useState(false);
-  const [confirmPayload, setConfirmPayload] = useState<{ body: string; original_ai_body: string; listing_id: string | null; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null; group_ids: string[] } | null>(null);
+  const [confirmPayload, setConfirmPayload] = useState<ConfirmPayload | null>(null);
   // Hydrate connection state from sessionStorage so a page refresh doesn't
   // visually "disconnect" channels while the async verification re-runs.
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(() => {
@@ -2581,6 +2581,7 @@ const CampaignCenter = () => {
     } catch { /* ignore */ }
     return {};
   });
+  const [socialAccountProfiles, setSocialAccountProfiles] = useState<SocialAccountProfile[]>([]);
 
   // Persist whenever the resolved connection state changes — keeps the grid
   // "remembered" for the whole browser session, including hard reloads.
