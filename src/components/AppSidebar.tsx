@@ -31,6 +31,7 @@ type NavItem = {
   url: string;
   icon: typeof Activity;
   iconColor: string;
+  badgeClass: string;
   aliases?: string[];
   badge?: string;
 };
@@ -40,49 +41,56 @@ const NAV_ITEMS: NavItem[] = [
     title: 'לוח בקרה',
     url: '/',
     icon: Activity,
-    iconColor: 'text-primary',
+    iconColor: 'text-indigo-600',
+    badgeClass: 'bg-indigo-50 text-indigo-700 ring-indigo-200',
     aliases: ['/dashboard'],
   },
   {
     title: 'לקוחות',
     url: '/lead-crm',
     icon: Users,
-    iconColor: 'text-primary',
+    iconColor: 'text-emerald-600',
+    badgeClass: 'bg-emerald-50 text-emerald-700 ring-emerald-200',
     aliases: ['/crm', '/leads'],
   },
   {
     title: 'נכסים',
     url: '/properties',
     icon: Building2,
-    iconColor: 'text-primary',
+    iconColor: 'text-amber-500',
+    badgeClass: 'bg-amber-50 text-amber-700 ring-amber-200',
     aliases: ['/property', '/listings'],
   },
   {
     title: 'צ׳אטים',
     url: '/inbox',
     icon: MessageCircle,
-    iconColor: 'text-emerald-600',
+    iconColor: 'text-cyan-600',
+    badgeClass: 'bg-cyan-50 text-cyan-700 ring-cyan-200',
     aliases: ['/communication'],
   },
   {
     title: 'עסקאות',
     url: '/deal-room',
     icon: Handshake,
-    iconColor: 'text-amber-600',
+    iconColor: 'text-rose-600',
+    badgeClass: 'bg-rose-50 text-rose-700 ring-rose-200',
     aliases: ['/deals'],
   },
   {
     title: 'קמפיינים',
     url: '/campaigns',
     icon: Megaphone,
-    iconColor: 'text-destructive',
+    iconColor: 'text-orange-500',
+    badgeClass: 'bg-orange-50 text-orange-700 ring-orange-200',
     aliases: ['/broadcast', '/automations', '/campaign-strategy', '/approval-queue', '/calendar', '/sms-blast', '/ads'],
   },
   {
     title: 'מוח AI',
     url: '/knowledge',
     icon: Brain,
-    iconColor: 'text-primary',
+    iconColor: 'text-purple-600',
+    badgeClass: 'bg-purple-50 text-purple-700 ring-purple-200',
     aliases: ['/live-conversations', '/ai-content', '/sentiment', '/conversation-analytics', '/insights'],
   },
 ];
