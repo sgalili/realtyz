@@ -692,7 +692,12 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
             </div>
           );
           // Recursively render a node + all its descendants inside the same card.
-          const renderNode = (node: typeof root): React.ReactNode => (
+          const renderNode = (node: TreeNode): ReactNode => {
+            const parentId = (node.metadata as any)?.parent_id as string | undefined;
+            const repliedTo = parentId ? nodeById.get(parentId) : undefined;
+            const replyCount = replyCountById.get(node.id) ?? 0;
+            const threadExpanded = expandedThreadIds.has(node.id);
+            return (
             <li key={node.id}>
               <CommentBubble
                 row={node}
@@ -702,14 +707,26 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
                 onRegenerate={regenerateInline}
                 regenerating={regeneratingId === node.id}
                 isReply={node.depth > 0}
+                repliedToText={repliedTo?.inbound_text ?? null}
+                replyCount={replyCount}
+                threadExpanded={threadExpanded}
+                onToggleThread={() => {
+                  setExpandedThreadIds((prev) => {
+                    const next = new Set(prev);
+                    if (next.has(node.id)) next.delete(node.id);
+                    else next.add(node.id);
+                    return next;
+                  });
+                }}
               />
-              {node.children.length > 0 && (
+              {node.children.length > 0 && threadExpanded && (
                 <ul className="mt-2 space-y-2 border-r-2 border-border/60 pr-3 mr-2">
-                  {node.children.map((child) => renderNode(child as typeof root))}
+                  {node.children.map((child) => renderNode(child))}
                 </ul>
               )}
             </li>
           );
+          };
           return renderNode(root);
         })}
       </ul>
