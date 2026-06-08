@@ -513,13 +513,12 @@ const InlineComposer = ({
 
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-sm space-y-4" dir="rtl">
-      {/* Header row */}
+      {/* Header row — title moved into the textarea placeholder for a cleaner card */}
       <div className="flex items-center justify-between gap-3">
-        <h3 className="text-sm font-semibold text-foreground">תוכן ההודעה</h3>
+        <span className="text-[11px] text-muted-foreground" aria-live="polite">
+          {saveState === 'saving' ? 'שומר…' : saveState === 'saved' ? 'נשמר אוטומטית' : ''}
+        </span>
         <div className="flex items-center gap-2">
-          <span className="text-[11px] text-muted-foreground" aria-live="polite">
-            {saveState === 'saving' ? 'שומר…' : saveState === 'saved' ? 'נשמר אוטומטית' : ''}
-          </span>
           <Popover open={historyOpen} onOpenChange={setHistoryOpen}>
             <PopoverTrigger asChild>
               <button type="button"
@@ -527,7 +526,7 @@ const InlineComposer = ({
                 היסטוריה
               </button>
             </PopoverTrigger>
-            <PopoverContent align="start" className="w-[360px] p-2 max-h-96 overflow-auto" dir="rtl">
+            <PopoverContent align="end" className="w-[360px] p-2 max-h-96 overflow-auto" dir="rtl">
               {history.length === 0 ? (
                 <p className="px-3 py-6 text-center text-xs text-muted-foreground">אין יצירות שמורות עדיין עבור {channel.label}</p>
               ) : history.map((h) => {
@@ -569,11 +568,6 @@ const InlineComposer = ({
               })}
             </PopoverContent>
           </Popover>
-          <button type="button" onClick={() => handleGenerate()} disabled={generating}
-            className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/5 px-3 py-1.5 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-60">
-            <Bot className="h-3.5 w-3.5" />
-            {generating ? 'מחולל…' : 'חולל טקסט עם AI'}
-          </button>
           <span className="text-[11px] tabular-nums text-muted-foreground" dir="ltr">
             {count}/{MAX_CHARS}
           </span>
@@ -589,6 +583,7 @@ const InlineComposer = ({
           </button>
         </div>
       </div>
+
 
 
       {/* Broker steering: custom instructions + property promotion picker */}
