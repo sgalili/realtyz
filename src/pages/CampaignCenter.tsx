@@ -1202,58 +1202,62 @@ const GlobalSocialFeed = ({
         type="button"
         onClick={() => onChannelChange(id)}
         className={cn(
-          'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition',
+          'inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap transition-all',
           active
-            ? 'border-primary bg-primary text-primary-foreground shadow-sm'
-            : 'border-border bg-background text-foreground hover:border-primary/40',
+            ? 'bg-slate-900 text-white shadow-md'
+            : 'bg-slate-50 text-slate-700 hover:bg-slate-100',
         )}
       >
         {brand ? (
-          <BrandIcon name={brand} className={cn('h-3.5 w-3.5', active ? 'text-primary-foreground' : (BRAND_COLOR[brand] ?? 'text-muted-foreground'))} />
+          <BrandIcon
+            name={brand}
+            className={cn('h-4 w-4', active ? 'text-white' : (BRAND_COLOR[brand] ?? 'text-slate-500'))}
+          />
         ) : Icon ? (
-          <Icon className="h-3.5 w-3.5" />
+          <Icon className={cn('h-4 w-4', active ? 'text-white' : 'text-slate-500')} />
         ) : null}
         <span>{label}</span>
         <span className={cn(
-          'ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold',
-          active ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground',
-        )}>{count}</span>
+          'text-xs font-bold tabular-nums',
+          active ? 'text-white/80' : 'text-slate-400',
+        )} dir="ltr">{count}</span>
       </button>
     );
   };
 
   return (
-    <div className="flex items-center gap-2 overflow-x-auto pb-2 -mx-1 px-1" dir="rtl">
+    <div className="flex items-center gap-3 overflow-x-auto scrollbar-none -mx-1 px-1 pb-1" dir="rtl">
       <button
         type="button"
         onClick={() => onChannelChange('all')}
         className={cn(
-          'inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition',
+          'inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap transition-all',
           activeChannel === 'all'
-            ? 'border-primary bg-primary text-primary-foreground shadow-sm'
-            : 'border-border bg-background text-foreground hover:border-primary/40',
+            ? 'bg-slate-900 text-white shadow-md'
+            : 'bg-slate-50 text-slate-700 hover:bg-slate-100',
         )}
       >
-        הכל
+        <span>הכל</span>
         <span className={cn(
-          'ml-1 rounded-full px-1.5 py-0.5 text-[10px] font-bold',
-          activeChannel === 'all' ? 'bg-primary-foreground/20 text-primary-foreground' : 'bg-muted text-muted-foreground',
-        )}>{counts.all}</span>
+          'text-xs font-bold tabular-nums',
+          activeChannel === 'all' ? 'text-white/80' : 'text-slate-400',
+        )} dir="ltr">{counts.all}</span>
       </button>
       {FEED_PLATFORMS.map((p) => <Pill key={p.id} {...p} />)}
       <button
         type="button"
         onClick={onOpenArchive}
-        className="ml-auto inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:border-primary/40 hover:text-foreground whitespace-nowrap"
+        className="ms-auto inline-flex shrink-0 items-center gap-2 rounded-full bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 whitespace-nowrap"
         title="ארכיון תגובות"
       >
-        <Archive className="h-3.5 w-3.5" />
-        ארכיון
-        <span className="ml-1 rounded-full bg-muted px-1.5 py-0.5 text-[10px] font-bold text-muted-foreground">{archivedCount}</span>
+        <Archive className="h-4 w-4 text-slate-500" />
+        <span>ארכיון</span>
+        <span className="text-xs font-bold tabular-nums text-slate-400" dir="ltr">{archivedCount}</span>
       </button>
     </div>
   );
 };
+
 
 const PublishedFeed = () => {
   const { settings } = useWhiteLabel();
