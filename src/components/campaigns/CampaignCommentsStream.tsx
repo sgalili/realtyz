@@ -352,15 +352,8 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
     });
   }, [rows]);
 
-  const rootComments = useMemo(
-    () => comments.filter((c) => !c.parent_id || c.parent_id === null || c.parent_id === ""),
-    [comments],
-  );
-
-  const childReplies = useMemo(
-    () => comments.filter((c) => c.parent_id && c.parent_id !== null),
-    [comments],
-  );
+  const parentComments = comments.filter((item) => !item.parent_id);
+  const replyComments = comments.filter((item) => item.parent_id);
 
   // Whenever the modal mounts on a new comment, force a fresh live invocation
   // of suggest-comment-reply with a cache-bust token. Closing the modal wipes
@@ -659,48 +652,40 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
         <p className="text-xs text-muted-foreground">אין תגובות עדיין לקמפיין זה</p>
       )}
 
-      <ul className="space-y-4">
-        {rootComments.map((parent) => {
-          const replies = childReplies.filter((reply) => reply.parent_id === parent.id);
+      <div className="space-y-4">
+        {parentComments.map((parent) => (
+          <div key={parent.id} className="border border-border p-4 rounded-xl mb-4 bg-white relative text-right">
+            <CommentBubble
+              row={parent}
+              onToggleEditor={(r) => setReplyOpen(replyOpen?.id === r.id ? null : r)}
+              expanded={replyOpen?.id === parent.id}
+              editor={replyOpen?.id === parent.id ? renderEditor(parent) : null}
+              onRegenerate={regenerateInline}
+              regenerating={regeneratingId === parent.id}
+              embedded
+            />
 
-          return (
-            <li key={parent.id} className="w-full rounded-xl border border-border bg-background p-4 text-right relative">
-              <CommentBubble
-                row={parent}
-                onToggleEditor={(r) => setReplyOpen(replyOpen?.id === r.id ? null : r)}
-                expanded={replyOpen?.id === parent.id}
-                editor={replyOpen?.id === parent.id ? renderEditor(parent) : null}
-                onRegenerate={regenerateInline}
-                regenerating={regeneratingId === parent.id}
-                embedded
-              />
-
-              {replies.length > 0 && (
-                <div className="mt-4 mr-10 pr-6 border-r-2 border-slate-200 flex flex-col gap-3 relative">
-                  {replies.map((reply) => (
-                    <div key={reply.id} className="p-3 bg-slate-50 rounded-lg text-sm relative border border-slate-200/70">
-                      <span
-                        aria-hidden
-                        className="absolute right-[-1.5rem] top-6 h-[2px] w-4 bg-slate-200 rounded-full"
-                      />
-                      <CommentBubble
-                        row={reply}
-                        onToggleEditor={(r) => setReplyOpen(replyOpen?.id === r.id ? null : r)}
-                        expanded={replyOpen?.id === reply.id}
-                        editor={replyOpen?.id === reply.id ? renderEditor(reply) : null}
-                        onRegenerate={regenerateInline}
-                        regenerating={regeneratingId === reply.id}
-                        isReply
-                        embedded
-                      />
-                    </div>
-                  ))}
-                </div>
-              )}
-            </li>
-          );
-        })}
-      </ul>
+            <div className="mt-4 mr-10 pr-4 border-r-2 border-slate-200 flex flex-col gap-3">
+              {replyComments
+                .filter((reply) => reply.parent_id === parent.id)
+                .map((reply) => (
+                  <div key={reply.id} className="p-3 bg-slate-50 rounded-lg text-sm">
+                    <CommentBubble
+                      row={reply}
+                      onToggleEditor={(r) => setReplyOpen(replyOpen?.id === r.id ? null : r)}
+                      expanded={replyOpen?.id === reply.id}
+                      editor={replyOpen?.id === reply.id ? renderEditor(reply) : null}
+                      onRegenerate={regenerateInline}
+                      regenerating={regeneratingId === reply.id}
+                      isReply
+                      embedded
+                    />
+                  </div>
+                ))}
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }
