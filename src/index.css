@@ -1278,6 +1278,11 @@
     background: hsl(var(--primary) / 0.5);
   }
 
+  .scrollbar-none { scrollbar-width: none; -ms-overflow-style: none; }
+  .scrollbar-none::-webkit-scrollbar { display: none; width: 0; height: 0; }
+
+
+
   /* Legacy gold utility shims → primary */
   .text-gold { color: hsl(var(--brand-gold)); }
   .text-gold-deep { color: hsl(var(--brand-gold)); }
