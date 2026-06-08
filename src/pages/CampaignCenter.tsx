@@ -530,11 +530,13 @@ const InlineComposer = ({
                 const media = Array.isArray(h.media_urls) ? h.media_urls : [];
                 const stamp = h.updated_at || h.created_at;
                 const edited = h.updated_at && h.updated_at !== h.created_at;
+                const linkedListing = h.listing_id ? listings.find((l) => l.id === h.listing_id) : null;
                 return (
                   <button key={h.id} type="button"
                     onClick={() => {
                       setBody((h.generated_text || '').slice(0, MAX_CHARS));
                       setAttachments(media.map((m: any) => ({ name: m?.name || 'קובץ', kind: m?.kind || 'file', url: m?.url || undefined })));
+                      setSelectedListingId(h.listing_id || null);
                       setLogId(h.id);
                       setHistoryOpen(false);
                       toast.success('הטיוטה נטענה לעורך');
@@ -547,6 +549,14 @@ const InlineComposer = ({
                         {media.length > 0 && <span className="inline-flex items-center gap-0.5"><Paperclip className="h-3 w-3" />{media.length}</span>}
                       </span>
                     </div>
+                    {linkedListing && (
+                      <div className="mt-1 inline-flex max-w-full items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                        <span className="truncate">🏠 {listingOptionLabel(linkedListing as CampaignListing)}</span>
+                      </div>
+                    )}
+                    {!linkedListing && h.listing_id && (
+                      <div className="mt-1 text-[10px] text-muted-foreground">🏠 נכס מקושר</div>
+                    )}
                     <div className="mt-1 text-xs text-foreground line-clamp-3 whitespace-pre-wrap">
                       {h.generated_text || h.topic || '—'}
                     </div>
