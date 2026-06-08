@@ -323,6 +323,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
             })
           : supabase.functions.invoke("ayrshare-sync-comments", { body: {} }),
       ]);
+      let sawSessionExpired = false;
       for (const result of settled) {
         if (result.status === "rejected") {
           console.warn("[CampaignCommentsStream] provider refresh rejected", result.reason);
@@ -333,9 +334,12 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
           console.warn("[CampaignCommentsStream] provider refresh error", { error, data });
           continue;
         }
+        if (isFbSessionExpired(data)) sawSessionExpired = true;
         const surfacedError = firstPipelineError(data);
         if (surfacedError) console.warn("[CampaignCommentsStream] provider pipeline warning", surfacedError);
       }
+      setFbSessionExpired(sawSessionExpired);
+
       await fetchRows();
     } catch (e: any) {
       console.warn("[CampaignCommentsStream] silent refresh failed", e);
