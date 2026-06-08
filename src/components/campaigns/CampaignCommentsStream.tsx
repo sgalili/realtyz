@@ -389,6 +389,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
               `Campaign: ${campaign.campaign_name}`,
               campaign.message_body ? `Published post:\n${campaign.message_body}` : null,
             ].filter(Boolean).join("\n\n"),
+            campaign_post_body: campaign.message_body ?? null,
             regenerate,
             cache_bust: regenerate ? `${Date.now()}-${crypto.randomUUID()}` : undefined,
           },
