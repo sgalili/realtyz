@@ -2580,6 +2580,7 @@ export type Database = {
       listings: {
         Row: {
           address: string | null
+          area_perks: Json | null
           asking_price: number
           city: string | null
           created_at: string
@@ -2614,6 +2615,7 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          area_perks?: Json | null
           asking_price?: number
           city?: string | null
           created_at?: string
@@ -2648,6 +2650,7 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          area_perks?: Json | null
           asking_price?: number
           city?: string | null
           created_at?: string
