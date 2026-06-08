@@ -109,6 +109,99 @@ export default function KnowledgeBase() {
   const [linkUrl, setLinkUrl] = useState('');
   const [linkIntent, setLinkIntent] = useState('');
 
+  /* ── Voice recorder ── */
+  const [recording, setRecording] = useState(false);
+  const [transcribing, setTranscribing] = useState(false);
+  const [voiceText, setVoiceText] = useState('');
+  const [voiceTitle, setVoiceTitle] = useState('');
+  const [voiceIntent, setVoiceIntent] = useState('');
+  const [recElapsed, setRecElapsed] = useState(0);
+  const mediaRecRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
+  const recTimerRef = useRef<number | null>(null);
+
+  const stopTimer = () => {
+    if (recTimerRef.current) { window.clearInterval(recTimerRef.current); recTimerRef.current = null; }
+  };
+
+  const startRecording = async () => {
+    if (blockDemoAction('record-knowledge-audio')) return;
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mime = MediaRecorder.isTypeSupported('audio/webm;codecs=opus') ? 'audio/webm;codecs=opus' : 'audio/webm';
+      const mr = new MediaRecorder(stream, { mimeType: mime });
+      audioChunksRef.current = [];
+      mr.ondataavailable = (e) => { if (e.data.size > 0) audioChunksRef.current.push(e.data); };
+      mr.onstop = async () => {
+        stream.getTracks().forEach((t) => t.stop());
+        const blob = new Blob(audioChunksRef.current, { type: mime });
+        await transcribeBlob(blob);
+      };
+      mr.start();
+      mediaRecRef.current = mr;
+      setRecording(true);
+      setRecElapsed(0);
+      recTimerRef.current = window.setInterval(() => setRecElapsed((s) => s + 1), 1000);
+    } catch (e: any) {
+      toast.error(`לא ניתן לגשת למיקרופון: ${e?.message ?? ''}`);
+    }
+  };
+
+  const stopRecording = () => {
+    stopTimer();
+    setRecording(false);
+    mediaRecRef.current?.stop();
+  };
+
+  const transcribeBlob = async (blob: Blob) => {
+    setTranscribing(true);
+    try {
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        const r = new FileReader();
+        r.onload = () => resolve(String(r.result));
+        r.onerror = () => reject(r.error);
+        r.readAsDataURL(blob);
+      });
+      const { data, error } = await supabase.functions.invoke('transcribe-audio', {
+        body: { audio_data_url: dataUrl, mime_type: blob.type, language: 'he' },
+      });
+      if (error) throw error;
+      const txt = (data as any)?.text?.trim?.() ?? '';
+      if (!txt) throw new Error('לא זוהה דיבור בהקלטה');
+      setVoiceText(txt);
+      toast.success('התמלול הושלם — ניתן לערוך ולשמור');
+    } catch (e: any) {
+      toast.error(`כשל בתמלול: ${e?.message ?? 'שגיאה'}`);
+    } finally {
+      setTranscribing(false);
+    }
+  };
+
+  const saveVoice = useMutation({
+    mutationFn: async () => {
+      if (blockDemoAction('save-knowledge-audio')) throw new Error('demo-blocked');
+      const body = voiceText.trim();
+      if (!body) throw new Error('אין טקסט לשמירה');
+      const { error } = await supabase.functions.invoke('kb-ingest', {
+        body: {
+          title: voiceTitle.trim() || `הקלטה · ${new Date().toLocaleString('he-IL')}`,
+          raw_text: body,
+          source_type: 'audio',
+          source_metadata: { learning_intent: voiceIntent.trim() || null, captured_via: 'voice-record' },
+        },
+      });
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      toast.success('נשמר למאגר');
+      setVoiceText(''); setVoiceTitle(''); setVoiceIntent(''); setRecElapsed(0);
+      qc.invalidateQueries({ queryKey: ['kb-documents'] });
+    },
+    onError: (e: Error) => { if (e.message !== 'demo-blocked') toast.error(e.message); },
+  });
+
+  useEffect(() => () => { stopTimer(); mediaRecRef.current?.stream?.getTracks().forEach((t) => t.stop()); }, []);
+
   /* ── Documents list ── */
   const { data: documents = [], isLoading: docsLoading } = useQuery({
     queryKey: ['kb-documents', user?.id],
@@ -334,9 +427,61 @@ export default function KnowledgeBase() {
             )}
 
             {tab === 'voice' && (
-              <div className="border rounded-lg p-8 text-center bg-muted/30">
-                <Mic className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-                <p className="text-sm text-muted-foreground">הקלטה קולית — בקרוב</p>
+              <div className="space-y-3">
+                <div className="border rounded-lg p-5 text-center bg-muted/30 space-y-3">
+                  <div className="flex items-center justify-center">
+                    <button
+                      type="button"
+                      onClick={recording ? stopRecording : startRecording}
+                      disabled={transcribing}
+                      className={`h-16 w-16 rounded-full flex items-center justify-center transition-all ${
+                        recording
+                          ? 'bg-destructive text-destructive-foreground animate-pulse'
+                          : 'bg-primary text-primary-foreground hover:opacity-90'
+                      } disabled:opacity-50`}
+                      aria-label={recording ? 'עצור הקלטה' : 'התחל הקלטה'}
+                    >
+                      {transcribing ? <Loader2 className="h-7 w-7 animate-spin" /> : <Mic className="h-7 w-7" />}
+                    </button>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    {transcribing
+                      ? 'מתמלל...'
+                      : recording
+                        ? `מקליט · ${Math.floor(recElapsed / 60)}:${String(recElapsed % 60).padStart(2, '0')} — לחץ לעצירה`
+                        : 'לחץ כדי להתחיל הקלטה קולית'}
+                  </p>
+                </div>
+
+                {voiceText && (
+                  <div className="space-y-2">
+                    <Input
+                      value={voiceTitle}
+                      onChange={(e) => setVoiceTitle(e.target.value)}
+                      placeholder="כותרת (אופציונלי)"
+                    />
+                    <Textarea
+                      value={voiceText}
+                      onChange={(e) => setVoiceText(e.target.value)}
+                      placeholder="התמלול יופיע כאן — ניתן לערוך"
+                      className="min-h-[140px]"
+                    />
+                    <Textarea
+                      value={voiceIntent}
+                      onChange={(e) => setVoiceIntent(e.target.value)}
+                      placeholder="מה ללמוד מההקלטה הזו? (אופציונלי)"
+                      className="min-h-[60px]"
+                    />
+                    <div className="flex justify-between gap-2">
+                      <Button variant="ghost" onClick={() => { setVoiceText(''); setVoiceTitle(''); setVoiceIntent(''); }}>
+                        ביטול
+                      </Button>
+                      <Button onClick={() => saveVoice.mutate()} disabled={saveVoice.isPending}>
+                        {saveVoice.isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : 'שמור למאגר'}
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
