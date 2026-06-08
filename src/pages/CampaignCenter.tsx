@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useQueryClient } from '@tanstack/react-query';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -100,6 +101,7 @@ const VOICE_DIAL_NUMBER = '+97233829914';
 // each workspace must own its own Ayrshare profile key before any channel can
 // appear connected, preventing cross-tenant leak from shared/global keys.
 const EMPTY_CONNECTED = new Set<string>();
+const SOCIAL_CHANNEL_IDS = new Set(['facebook', 'instagram', 'x', 'youtube', 'linkedin', 'tiktok']);
 
 // Official brand colors applied only when the channel is connected.
 const BRAND_COLOR: Record<string, string> = {
@@ -190,17 +192,18 @@ const ChannelGrid = ({
               </span>
             )}
 
-            {c.id === 'facebook' && isConnected && (
+            {c.id === 'facebook' && (
               <span
                 role="button"
                 tabIndex={0}
                 onClick={(e) => { e.stopPropagation(); onAddFacebookPage?.(); }}
                 onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onAddFacebookPage?.(); } }}
-                className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-primary/40 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+                className="absolute right-1 top-1 z-10 inline-flex max-w-[calc(100%-0.5rem)] items-center gap-0.5 rounded-full border border-primary/40 bg-primary px-1.5 py-0.5 text-[9px] font-bold leading-none text-primary-foreground shadow-sm hover:bg-primary/90"
                 title="+ הוסף עמוד נוסף"
                 aria-label="+ הוסף עמוד נוסף"
               >
-                <Plus className="h-3.5 w-3.5" />
+                <Plus className="h-3 w-3 shrink-0" />
+                <span className="truncate">הוסף עמוד נוסף</span>
               </span>
             )}
 
@@ -2558,6 +2561,7 @@ const AddVoiceByIdDialog = ({
 const CampaignCenter = () => {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
+  const queryClient = useQueryClient();
   const { settings } = useWhiteLabel();
   const brandName = settings?.agency_name || 'Realtyz AI';
   const [pickedChannel, setPickedChannel] = useState<ChannelCard | null>(null);
@@ -2582,6 +2586,30 @@ const CampaignCenter = () => {
     return {};
   });
   const [socialAccountProfiles, setSocialAccountProfiles] = useState<SocialAccountProfile[]>([]);
+
+  const clearSocialConnectionState = (channels: string[] = ['facebook']) => {
+    setConnectedChannels((prev) => new Set([...prev].filter((id) => !channels.includes(id))));
+    setSocialAccountProfiles((prev) => prev.filter((p) => !channels.includes(p.platform) && !(channels.includes('facebook') && p.platform.startsWith('facebook'))));
+    setChannelAccountNames((prev) => {
+      const next = { ...prev };
+      channels.forEach((id) => { delete next[id]; });
+      return next;
+    });
+    try {
+      const cached = sessionStorage.getItem('rz-connected-channels');
+      if (cached) sessionStorage.setItem('rz-connected-channels', JSON.stringify((JSON.parse(cached) as string[]).filter((id) => !channels.includes(id))));
+      const names = sessionStorage.getItem('rz-connected-channel-names');
+      if (names) {
+        const parsed = JSON.parse(names) as Record<string, string>;
+        channels.forEach((id) => { delete parsed[id]; });
+        sessionStorage.setItem('rz-connected-channel-names', JSON.stringify(parsed));
+      }
+    } catch { /* ignore */ }
+    queryClient.invalidateQueries();
+    queryClient.invalidateQueries({ queryKey: ['social-connections'] });
+    queryClient.invalidateQueries({ queryKey: ['workspace-social-profile'] });
+    queryClient.invalidateQueries({ queryKey: ['ayrshare-social-accounts'] });
+  };
 
   // Persist whenever the resolved connection state changes — keeps the grid
   // "remembered" for the whole browser session, including hard reloads.
@@ -2620,13 +2648,7 @@ const CampaignCenter = () => {
       const hasOwnProfile = !!(wsp as any)?.ayrshare_profile_key;
       if (!hasOwnProfile) {
         if (!cancelled) {
-          setConnectedChannels(EMPTY_CONNECTED);
-          setSocialAccountProfiles([]);
-          setChannelAccountNames((prev) => {
-            const { facebook, ...rest } = prev;
-            return rest;
-          });
-          try { sessionStorage.removeItem('rz-connected-channels'); sessionStorage.removeItem('rz-connected-channel-names'); } catch { /* ignore */ }
+          clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
         }
         return;
       }
@@ -2637,21 +2659,38 @@ const CampaignCenter = () => {
 
       // Auto-sync Ayrshare → social_connections so freshly linked pages appear
       // as connected without requiring a manual "Import accounts" click.
-      try { await supabase.functions.invoke('ayrshare-sync-accounts', { body: {} }); } catch { /* non-fatal */ }
+      try {
+        const { data: syncData, error: syncError } = await supabase.functions.invoke('ayrshare-sync-accounts', { body: {} });
+        const rejected = !!syncError || ['ayrshare_rejected', 'no_workspace_profile_key'].includes(String((syncData as any)?.reason || ''));
+        const details = (syncData as any)?.details ?? {};
+        const status = Number((syncError as any)?.context?.status ?? details?.status ?? details?.code ?? 0);
+        const message = String((syncError as any)?.message ?? details?.message ?? details?.error ?? '');
+        if (rejected || status === 401 || status === 403 || /unauthor|forbidden|suspended|profile key/i.test(message)) {
+          if (!cancelled) clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
+          return;
+        }
+      } catch {
+        if (!cancelled) clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
+        return;
+      }
       if (cancelled) return;
 
-      const { data: conns } = await supabase
+      const { data: conns, error: connsErr } = await supabase
         .from('social_connections')
         .select('platform, is_connected')
         .eq('created_by', user.id)
         .eq('is_connected', true);
-      const { data: accountRows } = await supabase
+      const { data: accountRows, error: accountRowsErr } = await supabase
         .from('ayrshare_social_accounts')
         .select('id, platform, account_ref, profile_key, display_name, account_username, username, avatar_url, profile_url, connected, is_active')
         .eq('user_id', user.id)
         .eq('connected', true)
         .eq('is_active', true);
       if (cancelled) return;
+      if (connsErr || accountRowsErr) {
+        clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
+        return;
+      }
       const set = new Set<string>();
       const profiles = ((accountRows as any[]) || []).map((r) => ({
         id: r.id,

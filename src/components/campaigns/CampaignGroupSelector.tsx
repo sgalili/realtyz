@@ -18,10 +18,8 @@ type Props = {
 };
 
 /**
- * CampaignGroupSelector — pulls Facebook Groups linked to the workspace's
- * Ayrshare profile and renders them as a scrollable checkbox list with a
- * "Select All" master checkbox at the top. Auto-refreshes on tab focus so
- * groups added in the Ayrshare OAuth window appear without a manual reload.
+ * CampaignGroupSelector — pulls Facebook Groups via the safe backend bypass and
+ * never blocks the composer if the provider rejects the request.
  */
 export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Props) => {
   const [groups, setGroups] = useState<FacebookGroup[]>([]);
@@ -34,12 +32,17 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     setError(null);
     try {
       const { data, error } = await supabase.functions.invoke("facebook-groups-fetch", { body: {} });
-      if (error) throw new Error(error.message || "שגיאת רשת");
-      if ((data as any)?.error) throw new Error((data as any).error);
+      if (error || (data as any)?.error) {
+        setGroups([]);
+        onChange([]);
+        return;
+      }
       const list: FacebookGroup[] = Array.isArray((data as any)?.groups) ? (data as any).groups : [];
       setGroups(list);
     } catch (e: any) {
-      setError(e?.message ?? "שגיאה בטעינת הקבוצות");
+      setGroups([]);
+      onChange([]);
+      setError(null);
     } finally {
       setLoading(false);
     }
