@@ -737,16 +737,22 @@ const InlineComposer = ({
             <Paperclip className="h-4 w-4" />
           </button>
         </div>
-        <div className="flex items-center gap-2">
-          {TAG_CHIPS.map((tag) => (
-            <button key={tag} type="button" onClick={() => insertTag(tag)}
-              className="rounded-full border border-border bg-background px-2.5 py-1 text-xs text-foreground hover:border-primary/40 hover:text-primary">
-              {tag}
-            </button>
-          ))}
-          <span className="text-xs text-muted-foreground">תגיות:</span>
-        </div>
+        <button
+          type="button"
+          onClick={() => handleGenerate()}
+          disabled={generating}
+          className={cn(
+            'inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold shadow-md transition',
+            'bg-gradient-to-l from-[hsl(217,80%,18%)] via-[hsl(217,80%,22%)] to-[#C9A84C]',
+            'text-white hover:brightness-110 hover:shadow-lg',
+            'disabled:opacity-60 disabled:cursor-not-allowed',
+          )}
+        >
+          <Sparkles className="h-4 w-4" />
+          {generating ? 'מחולל תוכן…' : 'חולל תוכן עם AI'}
+        </button>
       </div>
+
 
 
       {/* Facebook Group multi-select — only when posting to Facebook */}
