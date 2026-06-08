@@ -279,26 +279,73 @@ Deno.serve(async (req) => {
           let graphArr: any[] | null = null;
           let resolvedGraphPostId: string | null = null;
           if (FB_PAGE_TOKEN && /^facebook$/i.test(platform)) {
-            const tokenParam = `access_token=${encodeURIComponent(FB_PAGE_TOKEN)}`;
             const suffix = nativePostId.includes("_") ? nativePostId.split("_").pop()! : nativePostId;
+            const pageIds = new Set<string>();
             const candidates: string[] = [];
+            const graphTokens = new Map<string, { token: string; label: string; pageId?: string }>();
             const pushUnique = (v: string) => { if (v && !candidates.includes(v)) candidates.push(v); };
-            if (/^\d+_\d+$/.test(nativePostId)) pushUnique(nativePostId);
+            const pushPageId = (v: unknown) => {
+              const id = typeof v === "string" ? v.trim() : "";
+              if (/^\d+$/.test(id)) pageIds.add(id);
+            };
+            const addGraphToken = (token: unknown, label: string, pageId?: string) => {
+              const clean = typeof token === "string" ? token.trim() : "";
+              if (!clean || graphTokens.has(clean)) return;
+              graphTokens.set(clean, { token: clean, label, pageId });
+            };
+            if (/^\d+_\d+$/.test(nativePostId)) {
+              pushUnique(nativePostId);
+              pushPageId(nativePostId.split("_")[0]);
+            }
             if (/^\d+$/.test(suffix)) pushUnique(suffix);
+            pushPageId(ownPage.pageId);
+            addGraphToken(FB_PAGE_TOKEN, "configured");
 
-            let realPageId: string | null = null;
+            // The saved secret is sometimes a user token rather than the Page
+            // token. In that case /me/accounts exposes the actual Page access
+            // token that can read the post's comments.
             try {
-              const meRes = await fetch(`https://graph.facebook.com/v20.0/me?fields=id,name&${tokenParam}`);
+              const tokenParam = `access_token=${encodeURIComponent(FB_PAGE_TOKEN)}`;
+              const meRes = await fetch(`https://graph.facebook.com/v20.0/me?fields=id,name,accounts.limit(100){id,name,access_token}&${tokenParam}`);
               const meJson = await meRes.json().catch(() => ({}));
-              if (meRes.ok && meJson?.id) {
-                realPageId = String(meJson.id);
-                if (/^\d+$/.test(suffix)) pushUnique(`${realPageId}_${suffix}`);
+              if (meRes.ok && meJson?.id) pushPageId(String(meJson.id));
+              const accounts = Array.isArray(meJson?.accounts?.data) ? meJson.accounts.data : [];
+              for (const account of accounts) {
+                const accountId = typeof account?.id === "string" ? account.id.trim() : "";
+                pushPageId(accountId);
+                addGraphToken(account?.access_token, `page:${accountId}`, accountId);
               }
             } catch (meErr) {
-              console.warn("[ayrshare-comments-fetch] graph /me failed", meErr instanceof Error ? meErr.message : String(meErr));
+              console.warn("[ayrshare-comments-fetch] graph /me/accounts failed", meErr instanceof Error ? meErr.message : String(meErr));
             }
 
-            const tryFetch = async (postId: string): Promise<any[] | null> => {
+            // Public Facebook URLs can redirect to a canonical Page id that is
+            // different from the originally stored id. Discover it and add it
+            // as another candidate before giving up.
+            if (/^\d+$/.test(suffix)) {
+              try {
+                const sourcePage = nativePostId.includes("_") ? nativePostId.split("_")[0] : ownPage.pageId;
+                const publicUrl = sourcePage
+                  ? `https://www.facebook.com/${encodeURIComponent(sourcePage)}/posts/${encodeURIComponent(suffix)}`
+                  : `https://www.facebook.com/${encodeURIComponent(suffix)}`;
+                const publicRes = await fetch(publicUrl, {
+                  headers: { "User-Agent": "Mozilla/5.0", "Accept-Language": "he-IL,he;q=0.9,en;q=0.8" },
+                  redirect: "follow",
+                });
+                const publicText = await publicRes.text().catch(() => "");
+                const haystack = `${publicRes.url}\n${publicText.slice(0, 20000)}`;
+                const escapedSuffix = suffix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                const canonical = haystack.match(new RegExp(`facebook\\.com/(\\d+)/posts/[^\"]*?/${escapedSuffix}/?`, "i"))
+                  ?? haystack.match(new RegExp(`facebook\\.com/(\\d+)/posts/${escapedSuffix}/?`, "i"));
+                if (canonical?.[1]) pushPageId(canonical[1]);
+              } catch (publicErr) {
+                console.warn("[ayrshare-comments-fetch] graph canonical page discovery failed", publicErr instanceof Error ? publicErr.message : String(publicErr));
+              }
+            }
+            for (const pageId of pageIds) if (/^\d+$/.test(suffix)) pushUnique(`${pageId}_${suffix}`);
+
+            const tryFetch = async (postId: string, token: string): Promise<any[] | null> => {
+              const tokenParam = `access_token=${encodeURIComponent(token)}`;
               const fields = "id,message,created_time,from{id,name,picture{url}},parent,like_count,comments.limit(100){id,message,created_time,from{id,name,picture{url}},parent,like_count,comments.limit(100){id,message,created_time,from{id,name,picture{url}},parent,like_count}}";
               const gUrl = `https://graph.facebook.com/v20.0/${encodeURIComponent(postId)}/comments?fields=${encodeURIComponent(fields)}&limit=100&filter=stream&${tokenParam}`;
               const gRes = await fetch(gUrl);
@@ -311,8 +358,9 @@ Deno.serve(async (req) => {
             // Explicit per-comment replies fetch. FB Graph's nested field
             // expansion is unreliable past depth 1 — some replies only
             // surface via the comment's own /COMMENT_ID/comments edge.
-            const fetchRepliesFor = async (commentId: string): Promise<any[]> => {
+            const fetchRepliesFor = async (commentId: string, token: string): Promise<any[]> => {
               try {
+                const tokenParam = `access_token=${encodeURIComponent(token)}`;
                 const replyFields = "id,message,created_time,from{id,name,picture{url}},parent,like_count";
                 const rUrl = `https://graph.facebook.com/v20.0/${encodeURIComponent(commentId)}/comments?fields=${encodeURIComponent(replyFields)}&limit=100&filter=stream&${tokenParam}`;
                 const rRes = await fetch(rUrl);
@@ -324,27 +372,47 @@ Deno.serve(async (req) => {
               return [];
             };
 
-            const normalizeOne = (c: any, parentIdFallback: string | null = null): any => ({
-              id: c.id,
-              message: c.message ?? "",
-              created_time: c.created_time,
-              like_count: c.like_count ?? 0,
-              from: c.from ?? { name: "משתמש פייסבוק" },
-              __parent_id: c.parent?.id ?? parentIdFallback,
-              comments: Array.isArray(c?.comments?.data) ? c.comments.data.map((k: any) => normalizeOne(k, c.id)) : [],
-            });
+            const normalizeOne = (c: any, parentIdFallback: string | null = null): any => {
+              const from = c.from
+                ? { ...c.from, picture: c.from?.picture?.url ? { data: { url: c.from.picture.url } } : c.from?.picture }
+                : { name: "משתמש פייסבוק" };
+              return {
+                id: c.id,
+                message: c.message ?? "",
+                created_time: c.created_time,
+                like_count: c.like_count ?? 0,
+                from,
+                __parent_id: c.parent?.id ?? parentIdFallback,
+                comments: Array.isArray(c?.comments?.data) ? c.comments.data.map((k: any) => normalizeOne(k, c.id)) : [],
+              };
+            };
             const normalize = (data: any[]) => data.map((c) => normalizeOne(c, null));
 
-            for (const cand of candidates) {
-              const data = await tryFetch(cand);
-              if (data) { resolvedGraphPostId = cand; graphArr = normalize(data); break; }
+            let activeGraphToken = FB_PAGE_TOKEN;
+            const tokenCandidates = Array.from(graphTokens.values()).sort((a, b) => {
+              const aPageMatch = a.pageId && pageIds.has(a.pageId) ? 0 : 1;
+              const bPageMatch = b.pageId && pageIds.has(b.pageId) ? 0 : 1;
+              if (aPageMatch !== bPageMatch) return aPageMatch - bPageMatch;
+              return a.label === "configured" ? 1 : b.label === "configured" ? -1 : 0;
+            });
+            for (const tokenCandidate of tokenCandidates) {
+              for (const cand of candidates) {
+                const data = await tryFetch(cand, tokenCandidate.token);
+                if (data) {
+                  activeGraphToken = tokenCandidate.token;
+                  resolvedGraphPostId = cand;
+                  graphArr = normalize(data);
+                  break;
+                }
+              }
+              if (graphArr) break;
             }
 
             // For every root comment, explicitly hydrate its replies edge
             // and merge any reply not already present under .comments.
             if (graphArr) {
               await Promise.all(graphArr.map(async (root: any) => {
-                const fetched = await fetchRepliesFor(root.id);
+                const fetched = await fetchRepliesFor(root.id, activeGraphToken);
                 if (!fetched.length) return;
                 const existingIds = new Set((root.comments || []).map((k: any) => k.id));
                 const merged = [...(root.comments || [])];
@@ -352,7 +420,7 @@ Deno.serve(async (req) => {
                   if (existingIds.has(reply.id)) continue;
                   const normalized = normalizeOne(reply, root.id);
                   // Hydrate one more level (replies-of-reply) for depth 2 threads.
-                  const grand = await fetchRepliesFor(reply.id);
+                  const grand = await fetchRepliesFor(reply.id, activeGraphToken);
                   if (grand.length) {
                     normalized.comments = grand.map((g: any) => normalizeOne(g, reply.id));
                   }
@@ -363,23 +431,31 @@ Deno.serve(async (req) => {
               }));
             }
 
-            // Last-resort: enumerate the Page feed and match by suffix or body.
-            if (!graphArr && realPageId) {
-              try {
-                const feedRes = await fetch(`https://graph.facebook.com/v20.0/${realPageId}/posts?fields=id,message,created_time&limit=25&${tokenParam}`);
-                const feedJson = await feedRes.json().catch(() => ({}));
-                const feedArr: any[] = Array.isArray(feedJson?.data) ? feedJson.data : [];
-                let match = feedArr.find((p) => String(p?.id || "").endsWith(`_${suffix}`));
-                if (!match) {
-                  const probe = String(body?.campaign_body || "").trim().slice(0, 50);
-                  if (probe) match = feedArr.find((p) => String(p?.message || "").includes(probe));
+            // Last-resort: enumerate discovered Page feeds and match by suffix or body.
+            if (!graphArr) {
+              const probe = String(body?.campaign_body || "").trim().slice(0, 50);
+              outer: for (const tokenCandidate of tokenCandidates) {
+                for (const pageId of pageIds) {
+                  try {
+                    const tokenParam = `access_token=${encodeURIComponent(tokenCandidate.token)}`;
+                    const feedRes = await fetch(`https://graph.facebook.com/v20.0/${pageId}/posts?fields=id,message,created_time&limit=25&${tokenParam}`);
+                    const feedJson = await feedRes.json().catch(() => ({}));
+                    const feedArr: any[] = Array.isArray(feedJson?.data) ? feedJson.data : [];
+                    let match = feedArr.find((p) => String(p?.id || "").endsWith(`_${suffix}`));
+                    if (!match && probe) match = feedArr.find((p) => String(p?.message || "").includes(probe));
+                    if (match?.id) {
+                      const data = await tryFetch(match.id, tokenCandidate.token);
+                      if (data) {
+                        activeGraphToken = tokenCandidate.token;
+                        resolvedGraphPostId = match.id;
+                        graphArr = normalize(data);
+                        break outer;
+                      }
+                    }
+                  } catch (feedErr) {
+                    console.warn("[ayrshare-comments-fetch] graph feed enum failed", pageId, feedErr instanceof Error ? feedErr.message : String(feedErr));
+                  }
                 }
-                if (match?.id) {
-                  const data = await tryFetch(match.id);
-                  if (data) { resolvedGraphPostId = match.id; graphArr = normalize(data); }
-                }
-              } catch (feedErr) {
-                console.warn("[ayrshare-comments-fetch] graph feed enum failed", feedErr instanceof Error ? feedErr.message : String(feedErr));
               }
             }
 
