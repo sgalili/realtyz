@@ -97,6 +97,7 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
   const cached = readCache(campaign.id);
   const [rows, setRows] = useState<EngagementRow[] | null>(cached);
   const [loading, setLoading] = useState(false);
+  const [manualRefreshing, setManualRefreshing] = useState(false);
   const [replyOpen, setReplyOpen] = useState<EngagementRow | null>(null);
   const [replyDraft, setReplyDraft] = useState("");
   const [dmDraft, setDmDraft] = useState("");
@@ -171,9 +172,10 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
   // server-side pull of analytics + comments scoped to THIS card's
   // provider_message_id. The realtime subscription on campaign_logs then
   // patches the counter UI live without a browser reload.
-  const forceRefresh = async () => {
-    // Silent: never toggle `loading` so the UI doesn't flash a spinner /
-    // "טוען תגובות חיות…" placeholder while the background pull runs.
+  const forceRefresh = async ({ manual = false }: { manual?: boolean } = {}) => {
+    // Only show the spinner when the user clicked the refresh button.
+    // Background/mount refreshes stay silent.
+    if (manual) setManualRefreshing(true);
     try {
       const pid = postIds[0] ?? null;
       const settled = await Promise.allSettled([
@@ -204,6 +206,8 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
       await fetchRows();
     } catch (e: any) {
       console.error("[CampaignCommentsStream] silent refresh failed", e);
+    } finally {
+      if (manual) setManualRefreshing(false);
     }
   };
 
@@ -534,12 +538,12 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
         <Button
           size="sm"
           variant="ghost"
-          onClick={forceRefresh}
-          disabled={loading}
+          onClick={() => forceRefresh({ manual: true })}
+          disabled={loading || manualRefreshing}
           className="h-7 px-2 text-xs"
           aria-label="רענן נתונים חיים"
         >
-          <RefreshCw className={cn("ml-1 h-3.5 w-3.5", loading && "animate-spin")} />
+          <RefreshCw className={cn("ml-1 h-3.5 w-3.5", manualRefreshing && "animate-spin")} />
           רענן תגובות
         </Button>
         <p className="text-xs font-semibold text-foreground">
