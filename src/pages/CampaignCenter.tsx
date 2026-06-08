@@ -488,6 +488,7 @@ const InlineComposer = ({
             platform: channel.id,
             created_by: user?.id ?? null,
             media_urls: attachments.map((a) => ({ name: a.name, kind: a.kind, url: a.url || null })),
+            listing_id: selectedListingId,
           }).select('id').single();
           if (inserted?.id) setLogId(inserted.id);
           setHistoryRefresh((n) => n + 1);
