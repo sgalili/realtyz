@@ -592,36 +592,36 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
   // background refresh keeps the list fresh without flashing a spinner.
 
   const renderEditor = (r: EngagementRow) => (
-    <div className="space-y-3 text-right">
-      <div className="space-y-1">
-        <p className="text-[11px] font-medium text-muted-foreground text-right">
+    <div className="w-full space-y-4 text-right">
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold text-muted-foreground text-right">
           תגובה פומבית
         </p>
         <Textarea
           value={drafting ? "" : replyDraft}
           onChange={(e) => setReplyDraft(e.target.value)}
           dir="auto"
-          rows={4}
+          rows={5}
           placeholder={drafting ? "מנסח תגובה מקצועית..." : "הזן תגובה..."}
           disabled={drafting}
-          className="text-right"
+          className="w-full min-h-[120px] text-right text-sm leading-relaxed"
         />
       </div>
-      <div className="space-y-1">
-        <p className="text-[11px] font-medium text-muted-foreground text-right">
+      <div className="space-y-1.5">
+        <p className="text-xs font-semibold text-muted-foreground text-right">
           הודעה פרטית למסנג'ר
         </p>
         <Textarea
           value={drafting ? "" : dmDraft}
           onChange={(e) => setDmDraft(e.target.value)}
           dir="auto"
-          rows={6}
+          rows={7}
           placeholder={drafting ? "מנסח DM מקצועי..." : "טיוטת DM פרטי"}
           disabled={drafting}
-          className="text-right bg-muted/30"
+          className="w-full min-h-[160px] text-right text-sm leading-relaxed bg-muted/30"
         />
       </div>
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <Button
           variant="outline"
           size="icon"
@@ -629,14 +629,15 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
           disabled={drafting || sending}
           aria-label="נסח מחדש"
           title="נסח מחדש"
-          className="h-7 w-7"
+          className="h-9 w-9 shrink-0"
         >
-          <RefreshCw className={cn("h-3.5 w-3.5", drafting && "animate-spin")} />
+          <RefreshCw className={cn("h-4 w-4", drafting && "animate-spin")} />
         </Button>
         <Button
           size="sm"
           onClick={sendReply}
           disabled={sending || !replyDraft.trim()}
+          className="flex-1 h-9"
         >
           <Send className="ml-1 h-4 w-4" />
           {sending ? "מפרסם..." : "פרסם תגובה"}
