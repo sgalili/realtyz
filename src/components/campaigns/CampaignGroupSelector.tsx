@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
-import { Users, Check, Loader2, RefreshCcw } from "lucide-react";
+import { Users, Check, Loader2, RefreshCcw, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 export type FacebookGroup = {
@@ -19,13 +19,19 @@ type Props = {
 
 /**
  * CampaignGroupSelector — multi-select grid of Facebook Groups linked to the
- * workspace's Ayrshare profile. Used inside the campaign composer so the
- * broker can fan-out a single post (with shared text + media) to many groups
- * at once.
+ * workspace's Ayrshare profile. Lets the broker fan-out a single post to many
+ * groups at once. Includes an inline "Connect Groups" CTA that opens the
+ * Ayrshare OAuth flow scoped to Facebook Groups (network=fbg), and auto-
+ * refreshes the list when the user returns to the tab.
+ *
+ * NOTE: Meta deprecated the public Groups Graph API, so groups cannot be
+ * enumerated automatically from a connected Page. Each group must be linked
+ * once through Ayrshare's OAuth flow, after which it auto-syncs.
  */
 export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Props) => {
   const [groups, setGroups] = useState<FacebookGroup[]>([]);
   const [loading, setLoading] = useState(false);
+  const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const load = async () => {
@@ -46,6 +52,36 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
 
+  // Auto-refresh when the user returns to the tab — after linking a group on
+  // Ayrshare in another window, the user comes back and the list refreshes.
+  useEffect(() => {
+    const onFocus = () => { load(); };
+    window.addEventListener("focus", onFocus);
+    return () => window.removeEventListener("focus", onFocus);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const connectGroups = async () => {
+    setConnecting(true);
+    try {
+      toast.loading("פותח חיבור קבוצות פייסבוק…", { id: "fbg-connect" });
+      const { data, error } = await supabase.functions.invoke("ayrshare-social-link", {
+        body: { platform: "fbg" },
+      });
+      toast.dismiss("fbg-connect");
+      if (error) throw new Error(error.message || "יצירת חיבור נכשלה");
+      const url = (data as any)?.url;
+      if (!url) throw new Error((data as any)?.error || "לא התקבל קישור חיבור מ-Ayrshare");
+      window.open(url, "_blank", "noopener,noreferrer");
+      toast.success("חבר את הקבוצות בחלון שנפתח, ואז חזור לכאן — הרשימה תתעדכן אוטומטית");
+    } catch (e: any) {
+      toast.dismiss("fbg-connect");
+      toast.error(e?.message ?? "פתיחת חיבור נכשלה");
+    } finally {
+      setConnecting(false);
+    }
+  };
+
   const toggle = (id: string) => {
     onChange(selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id]);
   };
@@ -64,10 +100,18 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
         </div>
         <div className="flex items-center gap-1">
           {groups.length > 0 && (
-            <button type="button" onClick={toggleAll}
-              className="rounded-md border border-border px-2 py-1 text-xs text-foreground hover:bg-muted">
-              {allSelected ? "נקה הכל" : "בחר הכל"}
-            </button>
+            <>
+              <button type="button" onClick={toggleAll}
+                className="rounded-md border border-border px-2 py-1 text-xs font-semibold text-foreground hover:bg-muted">
+                {allSelected ? "נקה הכל" : "בחר הכל"}
+              </button>
+              <button type="button" onClick={connectGroups} disabled={connecting}
+                title="חבר קבוצות פייסבוק נוספות"
+                className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/5 px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-60">
+                {connecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                הוסף קבוצות
+              </button>
+            </>
           )}
           <button type="button" onClick={load} aria-label="רענן"
             className="rounded-md border border-border p-1.5 text-muted-foreground hover:text-foreground">
@@ -83,9 +127,18 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
       )}
 
       {!loading && !error && groups.length === 0 && (
-        <p className="text-xs text-muted-foreground">
-          לא נמצאו קבוצות פייסבוק מקושרות. חבר קבוצות דרך הגדרות הערוצים החברתיים.
-        </p>
+        <div className="rounded-lg border border-dashed border-primary/30 bg-primary/[0.03] p-4 text-center space-y-3">
+          <p className="text-sm font-semibold text-foreground">עדיין לא חוברו קבוצות פייסבוק</p>
+          <p className="text-xs text-muted-foreground leading-relaxed">
+            פייסבוק לא מאפשרת לשלוף אוטומטית את כל הקבוצות של הדף המקושר.
+            לחץ על הכפתור למטה כדי לחבר את הקבוצות שאתה מנהל — בסיום, חזור לכאן והרשימה תתעדכן.
+          </p>
+          <button type="button" onClick={connectGroups} disabled={connecting}
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow-md hover:bg-primary/90 disabled:opacity-60">
+            {connecting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            חבר קבוצות פייסבוק
+          </button>
+        </div>
       )}
 
       {groups.length > 0 && (
