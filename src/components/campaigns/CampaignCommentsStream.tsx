@@ -172,7 +172,8 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
   // provider_message_id. The realtime subscription on campaign_logs then
   // patches the counter UI live without a browser reload.
   const forceRefresh = async () => {
-    setLoading(true);
+    // Silent: never toggle `loading` so the UI doesn't flash a spinner /
+    // "טוען תגובות חיות…" placeholder while the background pull runs.
     try {
       const pid = postIds[0] ?? null;
       const settled = await Promise.allSettled([
@@ -187,32 +188,25 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
       ]);
       for (const result of settled) {
         if (result.status === "rejected") {
-          const msg = await extractFunctionError(result.reason, "רענון תגובות נכשל");
           console.error("[CampaignCommentsStream] provider refresh rejected", result.reason);
-          toast.error(msg);
           continue;
         }
         const { data, error } = result.value as any;
         if (error) {
-          const msg = await extractFunctionError(error, "רענון תגובות נכשל");
           console.error("[CampaignCommentsStream] provider refresh error", { error, data });
-          toast.error(msg);
           continue;
         }
         const surfacedError = firstPipelineError(data);
         if (surfacedError) {
           console.error("[CampaignCommentsStream] provider pipeline error", data);
-          toast.error(surfacedError);
         }
       }
       await fetchRows();
-      toast.success("הנתונים עודכנו");
     } catch (e: any) {
-      toast.error(e?.message ?? "רענון נכשל");
-    } finally {
-      setLoading(false);
+      console.error("[CampaignCommentsStream] silent refresh failed", e);
     }
   };
+
 
   useEffect(() => {
     // Always pull fresh comments from the provider on mount/route entry
@@ -527,25 +521,9 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
   };
 
 
-  if (loading && rows === null) {
-    return (
-      <div className="flex items-center justify-between gap-2" dir="rtl">
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={forceRefresh}
-          disabled={loading}
-          className="h-7 px-2 text-xs"
-          aria-label="רענן תגובות"
-          title="רענן תגובות"
-        >
-          <RefreshCw className={cn("ml-1 h-3.5 w-3.5", loading && "animate-spin")} />
-          רענן תגובות
-        </Button>
-        <p className="px-1 text-xs text-muted-foreground">טוען תגובות חיות…</p>
-      </div>
-    );
-  }
+  // No initial loading block — comments always render in-place. The
+  // background refresh keeps the list fresh without flashing a spinner.
+
 
   return (
     <div className="space-y-2 text-right">
