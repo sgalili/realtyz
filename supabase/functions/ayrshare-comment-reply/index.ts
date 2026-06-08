@@ -141,26 +141,50 @@ Deno.serve(async (req) => {
     let privateDmResult: any = null;
     let privateDmStatus: number | null = null;
     if (sanitizedDm && dmParentId) {
+      // Facebook "Private Reply to Comment" — Meta's official Graph API:
+      // POST /me/messages with recipient={comment_id} authorizes a single DM
+      // bound to the inbound comment. Ayrshare does not expose this endpoint,
+      // so we call Graph directly with the Page Access Token. Other platforms
+      // (Instagram/X) fall back to the Ayrshare messages API.
+      const FB_PAGE_TOKEN = Deno.env.get("FB_PAGE_ACCESS_TOKEN")?.trim() || "";
+      const isFacebook = /^facebook$/i.test(platform);
       try {
-        const dmRes = await fetch(AYR_MESSAGES_URL, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-            "Profile-Key": profileKey,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            platforms: [platform],
-            commentId: dmParentId,
-            message: sanitizedDm,
-            searchPlatformId: true,
-          }),
-        });
-        privateDmStatus = dmRes.status;
-        const dmText = await dmRes.text();
-        try { privateDmResult = dmText ? JSON.parse(dmText) : { ok: dmRes.ok }; }
-        catch { privateDmResult = { raw: dmText, ok: dmRes.ok }; }
-        console.log("[MESSENGER PIPELINE] DM dispatch result", { status: privateDmStatus, response: privateDmResult });
+        if (isFacebook && FB_PAGE_TOKEN) {
+          const fbUrl = `https://graph.facebook.com/v20.0/me/messages?access_token=${encodeURIComponent(FB_PAGE_TOKEN)}`;
+          const dmRes = await fetch(fbUrl, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              recipient: { comment_id: dmParentId },
+              message: { text: sanitizedDm },
+              messaging_type: "RESPONSE",
+            }),
+          });
+          privateDmStatus = dmRes.status;
+          const dmText = await dmRes.text();
+          try { privateDmResult = dmText ? JSON.parse(dmText) : { ok: dmRes.ok }; }
+          catch { privateDmResult = { raw: dmText, ok: dmRes.ok }; }
+          console.log("[MESSENGER PIPELINE] FB Graph private_reply result", { status: privateDmStatus, comment_id: dmParentId, response: privateDmResult });
+        } else {
+          const ayrPath = `https://api.ayrshare.com/api/messages/${encodeURIComponent(platform)}`;
+          const dmRes = await fetch(ayrPath, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+              "Profile-Key": profileKey,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              recipientId: dmParentId,
+              message: sanitizedDm,
+            }),
+          });
+          privateDmStatus = dmRes.status;
+          const dmText = await dmRes.text();
+          try { privateDmResult = dmText ? JSON.parse(dmText) : { ok: dmRes.ok }; }
+          catch { privateDmResult = { raw: dmText, ok: dmRes.ok }; }
+          console.log("[MESSENGER PIPELINE] Ayrshare DM result", { status: privateDmStatus, platform, response: privateDmResult });
+        }
       } catch (e) {
         privateDmResult = { error: e instanceof Error ? e.message : String(e) };
         console.error("[MESSENGER PIPELINE] DM dispatch threw", privateDmResult);
