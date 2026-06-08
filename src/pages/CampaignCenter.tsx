@@ -1058,10 +1058,9 @@ const ConfirmDispatchDialog = ({
       // Active-learning capture for manual edits to the AI-drafted post body.
       learnFromEdit({
         context: `campaign_post:${channel.id}`,
-        listing_id: selectedListingId || null,
+        listing_id: listingId,
         pairs: [{ label: 'post_body', original: originalAiBody, edited: body }],
       });
-      setOriginalAiBody('');
       onConfirmed();
       onClose();
     } catch (e: any) {
