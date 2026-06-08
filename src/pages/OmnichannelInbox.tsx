@@ -595,7 +595,7 @@ const OmnichannelInbox = () => {
                                 leadName={selectedVoter?.full_name ?? null}
                                 leadCity={(selectedVoter as any)?.city ?? null}
                                 leadStage={(selectedVoter as any)?.lead_stage ?? null}
-                                onRegenerated={(draft) => setNewMessage(draft)}
+                                onRegenerated={(draft) => { setNewMessage(draft); setOriginalAiDraft(draft); }}
                                 onDeleted={() => {
                                   queryClient.invalidateQueries({ queryKey: ['chat-messages', selectedVoterId] });
                                   queryClient.invalidateQueries({ queryKey: ['last-messages'] });
