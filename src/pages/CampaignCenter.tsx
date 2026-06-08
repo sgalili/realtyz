@@ -258,7 +258,16 @@ const ChannelGrid = ({
               </span>
             ) : isConnected && accountNames[c.id] && (() => {
               const raw = accountNames[c.id];
-              const display = formatPhoneDisplay(raw) || raw;
+              // Strip any "Realtyz Workspace - " prefix, trailing "- 1234" numeric ids,
+              // and profile-key / refId tokens so only the human page name remains.
+              const cleaned = String(raw)
+                .replace(/^Realtyz Workspace\s*[-–]\s*/i, '')
+                .replace(/\s*[-–]\s*\d{2,}$/, '')
+                .replace(/\b[0-9a-f]{8}-[0-9a-f]{4,}\b/gi, '')
+                .replace(/\b[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}\b/g, '')
+                .trim();
+              const display = formatPhoneDisplay(cleaned) || cleaned || raw;
+
               const url = buildAccountUrl(c.id, raw);
               const handleOpen = (e: React.MouseEvent) => {
                 e.stopPropagation();
