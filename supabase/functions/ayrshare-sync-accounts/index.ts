@@ -7,6 +7,7 @@
 // is dynamically provisioned via ayrshare-social-link). NEVER falls back to
 // a hardcoded/external key.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { clearStaleAyrshareConnection, isAyrshareInvalidProfileKey } from "../_shared/ayrshare-helpers.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -155,6 +156,9 @@ Deno.serve(async (req) => {
       console.warn("[ayrshare-sync-accounts] /user network error", e);
     }
     if (!ayrOk) {
+      if (isAyrshareInvalidProfileKey(Number((ayrBody as any)?.status ?? 0) || 403, ayrBody)) {
+        await clearStaleAyrshareConnection(admin, "ayrshare_profile_rejected_during_sync");
+      }
       return json({ accounts: [], synced: 0, reason: "ayrshare_rejected", details: ayrBody });
     }
 
