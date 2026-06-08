@@ -492,18 +492,9 @@ Deno.serve(async (req) => {
           primaryType === "rent"
             ? "Use rental terminology ONLY and quote every price as monthly rent: שכ\"ד ₪/חודש / דמי שכירות חודשיים / שכר דירה / פנויה לכניסה / חוזה / פיקדון / move-in date / monthly rent. NEVER say מחיר מבוקש, משכנתא, רכישה, mortgage, purchase, buyers, ROI on purchase."
             : "Use sale terminology ONLY: מחיר מבוקש / רכישה / משכנתא / בעלות / mortgage / purchase / buyers. NEVER say שכ\"ד / דמי שכירות / שכירות חודשית / monthly rent / lease / tenants.",
-          `Alternative listings MUST be ${primaryType.toUpperCase()} ONLY and within ±15% of the primary ${
-            primaryType === "rent" ? "monthly rent" : "asking price"
-          }${
-            primaryListing?.asking_price
-              ? ` (${primaryListing.asking_price.toLocaleString("he-IL")} ש"ח)`
-              : ""
-          }. If no compatible ${primaryType} alternative exists in CRM, omit the alternative — do NOT substitute the other transaction type.`,
+          `HARD RULE: NEVER offer, suggest, name, hint at, or compare with any alternative property, peer listing, other street, or other address. The reply must be 100% about the PRIMARY property only. Ignore every other listing in [STRICT LISTING PAYLOAD JSON] for this reply.`,
           rentalOnlyMode
             ? RENTAL_DELETION_OVERRIDE
-            : null,
-          rentalOnlyMode && (promptSnap?.sample_listings ?? []).length === 0
-            ? "EMPTY RENTAL SNAPSHOT: focus the reply entirely on the primary property's confirmed facts. Do NOT mention the absence of alternatives in any words."
             : null,
           rentalOnlyMode
             ? "Qualification question (pick ONE, rental-only, prefer the first): \"מה מועד הכניסה המועדף עליכם?\" / \"לכמה זמן אתם מחפשים לשכור?\" / \"צריכים חניה או מעלית?\"."
