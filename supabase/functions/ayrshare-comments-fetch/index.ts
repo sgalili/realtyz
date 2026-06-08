@@ -431,23 +431,31 @@ Deno.serve(async (req) => {
               }));
             }
 
-            // Last-resort: enumerate the Page feed and match by suffix or body.
-            if (!graphArr && realPageId) {
-              try {
-                const feedRes = await fetch(`https://graph.facebook.com/v20.0/${realPageId}/posts?fields=id,message,created_time&limit=25&${tokenParam}`);
-                const feedJson = await feedRes.json().catch(() => ({}));
-                const feedArr: any[] = Array.isArray(feedJson?.data) ? feedJson.data : [];
-                let match = feedArr.find((p) => String(p?.id || "").endsWith(`_${suffix}`));
-                if (!match) {
-                  const probe = String(body?.campaign_body || "").trim().slice(0, 50);
-                  if (probe) match = feedArr.find((p) => String(p?.message || "").includes(probe));
+            // Last-resort: enumerate discovered Page feeds and match by suffix or body.
+            if (!graphArr) {
+              const probe = String(body?.campaign_body || "").trim().slice(0, 50);
+              outer: for (const tokenCandidate of tokenCandidates) {
+                for (const pageId of pageIds) {
+                  try {
+                    const tokenParam = `access_token=${encodeURIComponent(tokenCandidate.token)}`;
+                    const feedRes = await fetch(`https://graph.facebook.com/v20.0/${pageId}/posts?fields=id,message,created_time&limit=25&${tokenParam}`);
+                    const feedJson = await feedRes.json().catch(() => ({}));
+                    const feedArr: any[] = Array.isArray(feedJson?.data) ? feedJson.data : [];
+                    let match = feedArr.find((p) => String(p?.id || "").endsWith(`_${suffix}`));
+                    if (!match && probe) match = feedArr.find((p) => String(p?.message || "").includes(probe));
+                    if (match?.id) {
+                      const data = await tryFetch(match.id, tokenCandidate.token);
+                      if (data) {
+                        activeGraphToken = tokenCandidate.token;
+                        resolvedGraphPostId = match.id;
+                        graphArr = normalize(data);
+                        break outer;
+                      }
+                    }
+                  } catch (feedErr) {
+                    console.warn("[ayrshare-comments-fetch] graph feed enum failed", pageId, feedErr instanceof Error ? feedErr.message : String(feedErr));
+                  }
                 }
-                if (match?.id) {
-                  const data = await tryFetch(match.id, activeGraphToken);
-                  if (data) { resolvedGraphPostId = match.id; graphArr = normalize(data); }
-                }
-              } catch (feedErr) {
-                console.warn("[ayrshare-comments-fetch] graph feed enum failed", feedErr instanceof Error ? feedErr.message : String(feedErr));
               }
             }
 
