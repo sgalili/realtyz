@@ -880,12 +880,14 @@ const InlineComposer = ({
 /* ───────────── Dispatch confirmation modal ───────────── */
 
 const ConfirmDispatchDialog = ({
-  open, onClose, channel, body, brandName, mediaUrls, scheduledAt, groupIds, onConfirmed,
+  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds, onConfirmed,
 }: {
   open: boolean;
   onClose: () => void;
   channel: ChannelCard | null;
   body: string;
+  originalAiBody: string;
+  listingId: string | null;
   brandName: string;
   mediaUrls: string[];
   scheduledAt: string | null;
