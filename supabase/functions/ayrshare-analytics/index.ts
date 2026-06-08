@@ -35,6 +35,7 @@ const PLATFORM_MAP: Record<string, string> = {
 };
 
 type Counts = { likes: number; comments: number; shares: number; views: number };
+const ZERO_COUNTS: Counts = { likes: 0, comments: 0, shares: 0, views: 0 };
 
 const isUuid = (value: unknown) =>
   typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value.trim());
@@ -46,6 +47,13 @@ const safeAyrPayload = (payload: any) => ({
   code: payload?.code ?? payload?.errors?.[0]?.code ?? null,
   raw: payload,
 });
+
+const isSoftMetricsFailure = (status: number, payload: any) => {
+  const message = String(payload?.message ?? payload?.error ?? payload?.raw?.message ?? payload?.payload?.message ?? "");
+  return status === 404
+    || status === 403
+    || /post id not found|history not found|history identifier|missing.*history|not found|forbidden|suspended/i.test(message);
+};
 
 function pickNum(...vals: unknown[]): number {
   for (const v of vals) {
