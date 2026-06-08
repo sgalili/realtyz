@@ -684,16 +684,6 @@ const InlineComposer = ({
           placeholder="תוכן ההודעה — כתוב כאן או חולל באמצעות AI"
           className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-10 pb-7"
         />
-        <button
-          type="button"
-          onClick={() => handleGenerate({ rotateTemplate: true })}
-          disabled={generating}
-          title="החלף תבנית — צור פוסט מכירה/השכרה מתבנית אחרת מתוך מאגר הידע"
-          aria-label="החלף תבנית פוסט"
-          className="absolute left-2 top-2 inline-flex items-center justify-center rounded-full border border-border bg-background/90 backdrop-blur p-1.5 text-muted-foreground hover:text-primary hover:border-primary/40 disabled:opacity-60 shadow-sm"
-        >
-          <RefreshCw className={cn('h-3.5 w-3.5', generating && 'animate-spin')} />
-        </button>
         <span className="pointer-events-none absolute left-2 bottom-2 text-[11px] tabular-nums text-muted-foreground/80" dir="ltr">
           {count}/{MAX_CHARS}
         </span>
