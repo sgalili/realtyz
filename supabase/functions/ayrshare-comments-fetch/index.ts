@@ -138,10 +138,19 @@ Deno.serve(async (req) => {
       console.error("[ayrshare-comments-fetch] campaign lookup threw", lookupErr instanceof Error ? lookupErr.message : String(lookupErr));
     }
 
-    const { profileKey, refId } = await resolveWorkspaceProfileKey(admin);
-    if (!profileKey) {
+    const workspaceProfile = await resolveWorkspaceProfileKey(admin);
+    const envProfileKey = typeof Deno.env.get("AYRSHARE_PROFILE_KEY") === "string"
+      ? Deno.env.get("AYRSHARE_PROFILE_KEY")!.trim().replace(/^[`'\"]+|[`'\"]+$/g, "")
+      : "";
+    const profileCandidates = [
+      workspaceProfile.profileKey ? { profileKey: workspaceProfile.profileKey, refId: workspaceProfile.refId, source: "workspace" } : null,
+      envProfileKey && envProfileKey !== workspaceProfile.profileKey ? { profileKey: envProfileKey, refId: "env-fallback", source: "env" } : null,
+    ].filter(Boolean) as Array<{ profileKey: string; refId: string | null; source: string }>;
+    if (profileCandidates.length === 0) {
       return json({ error: "workspace ayrshare profile key missing" }, 400);
     }
+    const defaultProfileKey = profileCandidates[0].profileKey;
+    let refId = profileCandidates[0].refId;
     const ownPage = await resolveOwnPageIdentity(admin);
 
     const pickStr = (...vals: unknown[]) => {
@@ -213,7 +222,7 @@ Deno.serve(async (req) => {
       targetNode.comments = merged;
     };
 
-    const fetchComments = async (target: CommentFetchTarget, useSocialId: boolean) => {
+    const fetchComments = async (target: CommentFetchTarget, useSocialId: boolean, candidateProfileKey = defaultProfileKey) => {
       const id = useSocialId ? target.nativePostId : target.fetchPostId;
       // Ask Ayrshare to inline reply threads so nested child nodes (e.g. Shi
       // Galili replying to Udi) come back in the same payload. Different
@@ -226,7 +235,7 @@ Deno.serve(async (req) => {
       const r = await fetch(`${AYR_BASE}/comments/${encodeURIComponent(id)}?${qs}`, {
         headers: {
           Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-          "Profile-Key": profileKey,
+          "Profile-Key": candidateProfileKey,
           "Content-Type": "application/json",
         },
       });
@@ -239,6 +248,8 @@ Deno.serve(async (req) => {
     await Promise.all(
       Array.from(targets.values()).map(async (target) => {
         const { fetchPostId, nativePostId, platform } = target;
+        let activeProfileKey = defaultProfileKey;
+        let activeRefId = refId;
         try {
           if (isUuid(fetchPostId) || isUuid(nativePostId)) {
             const mappingError = {
@@ -371,18 +382,38 @@ Deno.serve(async (req) => {
             }
           }
 
-          let fetched = graphArr ? { ok: true, status: 200, payload: { data: graphArr }, text: "" } : await fetchComments(target, false);
-          let arr: any[] = graphArr ?? (fetched.ok ? extractComments(fetched.payload, platform) : []);
+          let fetched: any = graphArr ? { ok: true, status: 200, payload: { data: graphArr }, text: "" } : null;
+          let arr: any[] = graphArr ?? [];
 
-          // If Ayrshare's top-level id route is empty/unavailable, retry with
-          // the native platform id. The UI still stores/matches the native id.
-          if (!graphArr && (arr.length === 0 || !fetched.ok) && fetchPostId !== nativePostId) {
-            const socialFetched = await fetchComments(target, true);
-            const socialArr = socialFetched.ok ? extractComments(socialFetched.payload, platform) : [];
-            if (socialFetched.ok || socialArr.length > 0) {
-              fetched = socialFetched;
-              arr = socialArr;
+          // Try the saved workspace profile first, then the legacy env profile
+          // key as a rescue path. This prevents a suspended replacement profile
+          // from blanking comments for posts created under the original profile.
+          if (!graphArr) {
+            let best: { fetched: any; arr: any[]; profileKey: string; refId: string | null } | null = null;
+            for (const candidate of profileCandidates) {
+              let candidateFetched = await fetchComments(target, false, candidate.profileKey);
+              let candidateArr = candidateFetched.ok ? extractComments(candidateFetched.payload, platform) : [];
+
+              // If Ayrshare's top-level id route is empty/unavailable, retry with
+              // the native platform id. The UI still stores/matches the native id.
+              if ((candidateArr.length === 0 || !candidateFetched.ok) && fetchPostId !== nativePostId) {
+                const socialFetched = await fetchComments(target, true, candidate.profileKey);
+                const socialArr = socialFetched.ok ? extractComments(socialFetched.payload, platform) : [];
+                if (socialFetched.ok || socialArr.length > 0) {
+                  candidateFetched = socialFetched;
+                  candidateArr = socialArr;
+                }
+              }
+
+              if (!best || candidateArr.length > best.arr.length || (candidateFetched.ok && !best.fetched.ok)) {
+                best = { fetched: candidateFetched, arr: candidateArr, profileKey: candidate.profileKey, refId: candidate.refId };
+              }
+              if (candidateArr.length > 0) break;
             }
+            fetched = best?.fetched ?? { ok: false, status: 500, payload: { message: "No Ayrshare profile attempted" }, text: "" };
+            arr = best?.arr ?? [];
+            activeProfileKey = best?.profileKey ?? defaultProfileKey;
+            activeRefId = best?.refId ?? refId;
           }
 
           if (!fetched.ok) {
@@ -416,7 +447,7 @@ Deno.serve(async (req) => {
                 const detailRes = await fetch(`${AYR_BASE}/comments/${encodeURIComponent(commentId)}?${detailQs}`, {
                   headers: {
                     Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-                    "Profile-Key": profileKey,
+                    "Profile-Key": activeProfileKey,
                     "Content-Type": "application/json",
                   },
                 });
@@ -445,6 +476,7 @@ Deno.serve(async (req) => {
             // Meta Graph fast path) so we don't flatten Graph replies to roots.
             const existingParent = typeof (node as any).__parent_id === "string" ? (node as any).__parent_id : null;
             (node as any).__parent_id = parent ?? existingParent;
+            (node as any).__profile_ref_id = activeRefId;
             flat.push(node);
             const kids = [
               ...extractChildComments(node),
@@ -598,7 +630,7 @@ Deno.serve(async (req) => {
         const cleanMetadata = {
           source: "ayrshare_comments_fetch",
           campaign_name: safeStr(campaignName),
-          profile_ref_id: safeStr(refId),
+          profile_ref_id: safeStr(c?.__profile_ref_id ?? refId),
           parent_id: safeStr(parentId),
           self_authored: selfAuthored,
           author_type: selfAuthored ? "workspace_page" : "audience",
