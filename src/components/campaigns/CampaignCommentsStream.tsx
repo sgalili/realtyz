@@ -786,10 +786,9 @@ function CommentBubble({
     meta?.author?.picture ||
     meta?.profile_image ||
     meta?.profile_picture_url ||
+    meta?.sender_avatar_url ||
     meta?.from?.picture?.data?.url ||
-    (senderId && /facebook/i.test(row.platform)
-      ? `https://graph.facebook.com/${senderId}/picture?type=square`
-      : null);
+    null;
   const initials = senderName
     .replace(/^@/, "")
     .split(/[\s._-]+/)
@@ -812,7 +811,7 @@ function CommentBubble({
         <div className="flex flex-1 items-center gap-2 min-w-0">
           <Avatar className="h-6 w-6 shrink-0">
             {avatarUrl && <AvatarImage src={avatarUrl} alt={senderName} />}
-            <AvatarFallback className="text-[10px]">{initials}</AvatarFallback>
+            <AvatarFallback className="bg-primary/15 text-primary text-[10px] font-semibold">{initials}</AvatarFallback>
           </Avatar>
           <span className="truncate font-medium text-foreground">{senderName}</span>
           <span

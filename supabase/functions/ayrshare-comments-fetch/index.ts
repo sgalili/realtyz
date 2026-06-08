@@ -132,9 +132,12 @@ Deno.serve(async (req) => {
       if (!senderId || !FB_PAGE_TOKEN || !/facebook/i.test(platform)) return null;
       try {
         const tokenParam = `access_token=${encodeURIComponent(FB_PAGE_TOKEN)}`;
-        const res = await fetch(`https://graph.facebook.com/v20.0/${encodeURIComponent(senderId)}/picture?type=square&redirect=false&${tokenParam}`);
+        const url = `https://graph.facebook.com/v20.0/${encodeURIComponent(senderId)}/picture?type=square&redirect=false&${tokenParam}`;
+        const res = await fetch(url);
         const json = await res.json().catch(() => ({}));
-        return res.ok && typeof json?.data?.url === "string" ? json.data.url : null;
+        const cdnUrl = res.ok && typeof json?.data?.url === "string" ? json.data.url : null;
+        console.log("[ayrshare-comments-fetch] avatar resolve", { senderId, status: res.status, ok: !!cdnUrl, host: cdnUrl ? new URL(cdnUrl).host : null });
+        return cdnUrl;
       } catch (avatarErr) {
         console.warn("[ayrshare-comments-fetch] facebook avatar resolve failed", senderId, avatarErr instanceof Error ? avatarErr.message : String(avatarErr));
         return null;
@@ -395,11 +398,13 @@ Deno.serve(async (req) => {
           return trimmed ? trimmed.slice(0, max) : null;
         };
         // Try to capture an author profile image from the various shapes
-        // Ayrshare/FB/IG return. FB Graph nests it under from.picture.data.url;
-        // IG returns user.profile_picture_url; some channels expose a flat
-        // profile_image/avatar. As a last-resort for Facebook we fall back to
-        // Graph picture with the Page token because unauthenticated app-scoped
-        // profile images are blocked by Meta.
+        // Ayrshare/FB/IG return. For Facebook we ALWAYS prefer the resolved
+        // CDN URL from the Page-token /picture?redirect=false call — the raw
+        // from.picture.data.url returned by FB Graph embeds an access_token
+        // that is short-lived and frequently blocked from the browser. Other
+        // platforms fall back to whatever the payload exposes.
+        const isFb = /facebook/i.test(platformHint);
+        const fbResolved = isFb ? await resolveFacebookAvatar(senderId, platformHint) : null;
         const pictureFromPayload =
           c?.from?.picture?.data?.url ??
           c?.from?.picture_url ??
@@ -411,11 +416,9 @@ Deno.serve(async (req) => {
           c?.profile_picture_url ??
           c?.avatar ??
           null;
-        const fbFallbackPicture =
-          !pictureFromPayload && senderId && /facebook/i.test(platformHint)
-            ? await resolveFacebookAvatar(senderId, platformHint)
-            : null;
-        const authorPicture = pictureFromPayload ?? fbFallbackPicture;
+        // Prefer the clean CDN URL on Facebook; otherwise use payload-provided.
+        const authorPicture = fbResolved ?? pictureFromPayload ?? null;
+
 
         const { data: exists } = await admin
           .from("engagement_events")
@@ -427,14 +430,19 @@ Deno.serve(async (req) => {
         if (exists?.id) {
           skipped += 1;
           const currentMeta = ((exists as any).metadata && typeof (exists as any).metadata === "object") ? (exists as any).metadata : {};
+          const currentAuthor = (currentMeta.author && typeof currentMeta.author === "object") ? currentMeta.author : {};
+          const currentProfileImage = typeof currentAuthor.profile_image === "string" ? currentAuthor.profile_image : null;
+          // If we resolved a fresh CDN URL, overwrite stale token-bearing URLs.
+          const nextProfileImage = safeStr(authorPicture, 1000) ?? currentProfileImage ?? null;
           const nextMetadata = {
             ...currentMeta,
             parent_id: safeStr(parentId) ?? currentMeta.parent_id ?? null,
             sender_id: safeStr(senderId) ?? currentMeta.sender_id ?? null,
+            profile_image: nextProfileImage,
             author: {
-              ...(currentMeta.author && typeof currentMeta.author === "object" ? currentMeta.author : {}),
-              name: safeStr(sender, 200) ?? currentMeta.author?.name ?? null,
-              profile_image: safeStr(authorPicture, 1000) ?? currentMeta.author?.profile_image ?? null,
+              ...currentAuthor,
+              name: safeStr(sender, 200) ?? currentAuthor.name ?? null,
+              profile_image: nextProfileImage,
             },
           };
           if (JSON.stringify(nextMetadata) !== JSON.stringify(currentMeta)) {
@@ -468,6 +476,7 @@ Deno.serve(async (req) => {
           like_count: typeof c?.like_count === "number" ? c.like_count : null,
           permalink: safeStr(c?.permalink ?? c?.permalink_url ?? c?.url, 1000),
           sender_id: safeStr(senderId),
+          profile_image: safeStr(authorPicture, 1000),
           author: {
             name: safeStr(sender, 200),
             profile_image: safeStr(authorPicture, 1000),
