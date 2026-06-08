@@ -714,8 +714,16 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
                 onToggleThread={() => {
                   setExpandedThreadIds((prev) => {
                     const next = new Set(prev);
-                    if (next.has(node.id)) next.delete(node.id);
-                    else next.add(node.id);
+                    const ids = [node.id];
+                    const collect = (n: TreeNode) => {
+                      n.children.forEach((child) => {
+                        ids.push(child.id);
+                        collect(child);
+                      });
+                    };
+                    collect(node);
+                    if (next.has(node.id)) ids.forEach((id) => next.delete(id));
+                    else ids.forEach((id) => next.add(id));
                     return next;
                   });
                 }}
