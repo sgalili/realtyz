@@ -42,14 +42,31 @@ async function attemptOpenCard(agency: string): Promise<{ ok: boolean; status: n
       }),
     });
     const text = await res.text();
+    let data: any = null;
+    try { data = JSON.parse(text); } catch { /* not json */ }
     if (!res.ok) {
       return { ok: false, status: res.status, note: text.slice(0, 300) || `http_${res.status}` };
     }
+    // Webtiv returns 200 even for invalid clients. Authoritative signal is
+    // the body: `{ success: true, serial: <positive int> }` on success;
+    // `{ success: false, errorMessage: "לקוח לא קיים", serial: -1 }` on
+    // bad agency code.
+    if (data && typeof data === "object") {
+      const success = data.success === true || data.success === "true";
+      const serial = Number(data.serial);
+      if (!success || !Number.isFinite(serial) || serial <= 0) {
+        const reason = String(data.errorMessage || data.message || "לקוח לא קיים");
+        return { ok: false, status: 401, note: reason };
+      }
+      return { ok: true, status: 200, note: `serial:${serial}` };
+    }
+    // Non-JSON 200 — treat as a soft success (some Webtiv installs return plain text).
     return { ok: true, status: res.status, note: text.slice(0, 200) || "ok" };
   } catch (e) {
     return { ok: false, status: 0, note: `network_error:${(e as Error).message}` };
   }
 }
+
 
 async function attemptHomelyLogin(agency: string, username: string, password: string): Promise<{ ok: boolean; status: number; note: string; }> {
   try {
