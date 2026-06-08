@@ -787,7 +787,7 @@ function CommentBubble({
             {avatarUrl && <AvatarImage src={avatarUrl} alt={senderName} />}
             <AvatarFallback className="bg-primary/15 text-primary text-[10px] font-semibold">{initials}</AvatarFallback>
           </Avatar>
-          <span className="truncate font-medium text-foreground">{senderName}</span>
+          <span className="truncate font-medium text-foreground">{isSelfAuthored ? "התגובה שלך" : senderName}</span>
           <span
             aria-label={sentimentLabel(row.sentiment)}
             title={sentimentLabel(row.sentiment)}
