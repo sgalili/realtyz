@@ -3,8 +3,10 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import {
   adminClient,
   loadKbSnippets,
+  loadKbInstructions,
   loadCrmSnapshot,
   renderKbBlock,
+  renderKbInstructionsBlock,
   renderCrmBlock,
   ANTI_SPAM_RULES,
   CTA_RULE,
