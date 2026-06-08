@@ -1,10 +1,11 @@
-// Realtyz comments-fetch — pulls live comments per post_id from Ayrshare,
+// Realtyz comments-fetch — pulls live comments per native Facebook post id
+// directly from Meta Graph API, bypassing Ayrshare entirely for read paths,
 // persists them into engagement_events (dedup by user_id + external_id), and
 // dispatches each new comment into auto-engagement-process.
 // Strict tenant isolation: user_id is required and scopes every DB query.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { AYR_BASE, resolveWorkspaceProfileKey, resolveOwnPageIdentity, isSelfAuthoredComment } from "../_shared/ayrshare-helpers.ts";
+import { resolveOwnPageIdentity, isSelfAuthoredComment } from "../_shared/ayrshare-helpers.ts";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
@@ -15,7 +16,7 @@ const json = (b: unknown, s = 200) =>
 const isUuid = (value: unknown) =>
   typeof value === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value.trim());
 
-const safeAyrPayload = (payload: any, text = "") => ({
+const safeMetaPayload = (payload: any, text = "") => ({
   message: payload?.message ?? payload?.error ?? payload?.errors?.[0]?.message ?? text.slice(0, 500) ?? null,
   code: payload?.code ?? payload?.errors?.[0]?.code ?? null,
   raw: payload && Object.keys(payload).length ? payload : text.slice(0, 1000),
@@ -26,9 +27,8 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method" }, 405);
 
   try {
-    const AYRSHARE_API_KEY = Deno.env.get("AYRSHARE_API_KEY");
-    if (!AYRSHARE_API_KEY) return json({ error: "AYRSHARE_API_KEY not configured" }, 500);
     const FB_PAGE_TOKEN = Deno.env.get("FB_PAGE_ACCESS_TOKEN")?.trim() || null;
+    if (!FB_PAGE_TOKEN) return json({ error: "FB_PAGE_ACCESS_TOKEN not configured" }, 500);
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
