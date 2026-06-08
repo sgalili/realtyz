@@ -156,7 +156,6 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
   const [originalDm, setOriginalDm] = useState("");
   const [drafting, setDrafting] = useState(false);
   const [sending, setSending] = useState(false);
-  const [expandedThreadIds, setExpandedThreadIds] = useState<Set<string>>(() => new Set());
   // Per-row cached AI drafts so closing/re-opening the editor does NOT
   // re-invoke the AI — only an explicit refresh-per-card regenerates.
   const [draftCache, setDraftCache] = useState<Record<string, { pub: string; dm: string }>>(() => readDraftCache(campaign.id));
@@ -707,6 +706,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
                 replyCount={replies.length}
                 threadExpanded
                 onToggleThread={() => undefined}
+                embedded
               />
 
               {replies.length > 0 && (
@@ -725,6 +725,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
                         onRegenerate={regenerateInline}
                         regenerating={regeneratingId === reply.id}
                         isReply
+                        embedded
                       />
                     </div>
                   ))}
