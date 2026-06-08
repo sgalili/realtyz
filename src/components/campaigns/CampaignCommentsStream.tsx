@@ -672,16 +672,6 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
       <ul className="space-y-4">
         {rootComments.map((parent) => {
           const replies = childReplies.filter((reply) => reply.parent_id === parent.id);
-          const firstReply = replies[0];
-          const replyPreviewText = (() => {
-            const raw = firstReply?.message ?? parent.ai_reply_text ?? null;
-            if (!raw) return null;
-            const handle = (firstReply?.sender_handle ?? "").trim();
-            if (handle && raw.trim().startsWith(handle)) {
-              return raw.trim().slice(handle.length).replace(/^[\s:،,،\-–—]+/, "").trim();
-            }
-            return raw;
-          })();
 
           return (
             <li key={parent.id} className="w-full rounded-xl border border-border bg-background p-4 text-right relative">
