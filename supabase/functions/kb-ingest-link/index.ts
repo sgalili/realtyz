@@ -213,7 +213,7 @@ Deno.serve(async (req) => {
     }
 
     // Distill into Udi-persona-ready knowledge (no source leakage).
-    const distilled = await distillForUdi(rawContent, title);
+    const distilled = await distillForUdi(rawContent, title, intent);
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
