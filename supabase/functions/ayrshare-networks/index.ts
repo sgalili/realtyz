@@ -150,6 +150,7 @@ Deno.serve(async (req) => {
     // 2) Live connection state for the workspace profile (if provisioned)
     let activeAccounts: string[] = [];
     const displayNames: Record<string, string> = {};
+    let profileInvalidated = false;
 
     if (profileKey) {
       try {
@@ -176,11 +177,35 @@ Deno.serve(async (req) => {
           }
         } else {
           console.warn("[ayrshare-networks] /user non-ok", userRes.status);
+          // 401/403/404 from /user means the saved profileKey was deleted or
+          // suspended server-side. Wipe stale local rows so the UI flips to
+          // "disconnected" and the next click runs the orphan-purge +
+          // fresh-profile creation flow in ayrshare-social-link.
+          if ([401, 403, 404].includes(userRes.status)) {
+            profileInvalidated = true;
+          }
         }
       } catch (e) {
         console.warn("[ayrshare-networks] /user fetch error", e);
       }
     }
+
+    if (profileInvalidated) {
+      console.log("[ayrshare-networks] purging stale local social rows after invalid profileKey");
+      await supabase
+        .from("workspace_social_profile")
+        .update({
+          ayrshare_profile_key: null,
+          ayrshare_ref_id: null,
+          facebook_page_id: null,
+          facebook_page_name: null,
+        })
+        .neq("id", "00000000-0000-0000-0000-000000000000");
+      await supabase.from("ayrshare_social_accounts").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      await supabase.from("social_connections").delete().neq("id", "00000000-0000-0000-0000-000000000000");
+      activeAccounts = [];
+    }
+
 
     const isConnected = (id: string) => {
       if (id === "x") return activeAccounts.includes("twitter") || activeAccounts.includes("x");
