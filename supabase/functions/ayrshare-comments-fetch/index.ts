@@ -334,8 +334,9 @@ Deno.serve(async (req) => {
                 });
                 const publicText = await publicRes.text().catch(() => "");
                 const haystack = `${publicRes.url}\n${publicText.slice(0, 20000)}`;
-                const canonical = haystack.match(/facebook\.com\/(\d+)\/posts\/[^"]*?\/${suffix}\/?/i)
-                  ?? haystack.match(/facebook\.com\/(\d+)\/posts\/${suffix}\/?/i);
+                const escapedSuffix = suffix.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+                const canonical = haystack.match(new RegExp(`facebook\\.com/(\\d+)/posts/[^\"]*?/${escapedSuffix}/?`, "i"))
+                  ?? haystack.match(new RegExp(`facebook\\.com/(\\d+)/posts/${escapedSuffix}/?`, "i"));
                 if (canonical?.[1]) pushPageId(canonical[1]);
               } catch (publicErr) {
                 console.warn("[ayrshare-comments-fetch] graph canonical page discovery failed", publicErr instanceof Error ? publicErr.message : String(publicErr));
