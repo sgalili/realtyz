@@ -32,6 +32,26 @@ const firstPipelineError = (data: any): string | null => {
   return null;
 };
 
+// Detect Meta OAuthException 190 / subcode 467 ("session invalid - user logged out")
+// anywhere in the pipeline payload so we can render a friendly "renew connection"
+// panel instead of a raw API error string.
+const isFbSessionExpired = (data: any): boolean => {
+  const apis = Array.isArray(data?.api_errors) ? data.api_errors : [];
+  for (const a of apis) {
+    const p = a?.payload ?? a?.error ?? {};
+    const err = p?.error ?? p;
+    const code = Number(err?.code);
+    const sub = Number(err?.error_subcode ?? err?.subcode);
+    const type = String(err?.type ?? "");
+    const msg = String(err?.message ?? "");
+    if (code === 190 || sub === 467 || type === "OAuthException" || /session.*invalid|logged out/i.test(msg)) {
+      return true;
+    }
+  }
+  return false;
+};
+
+
 type EngagementRow = {
   id: string;
   user_id: string;
@@ -165,6 +185,8 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
   const [loading, setLoading] = useState(false);
   const [manualRefreshing, setManualRefreshing] = useState(false);
   const [providerWarning, setProviderWarning] = useState<string | null>(null);
+  const [fbSessionExpired, setFbSessionExpired] = useState(false);
+
   const [replyOpen, setReplyOpen] = useState<EngagementRow | null>(null);
   const [replyDraft, setReplyDraft] = useState("");
   const [dmDraft, setDmDraft] = useState("");
@@ -301,6 +323,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
             })
           : supabase.functions.invoke("ayrshare-sync-comments", { body: {} }),
       ]);
+      let sawSessionExpired = false;
       for (const result of settled) {
         if (result.status === "rejected") {
           console.warn("[CampaignCommentsStream] provider refresh rejected", result.reason);
@@ -311,9 +334,12 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
           console.warn("[CampaignCommentsStream] provider refresh error", { error, data });
           continue;
         }
+        if (isFbSessionExpired(data)) sawSessionExpired = true;
         const surfacedError = firstPipelineError(data);
         if (surfacedError) console.warn("[CampaignCommentsStream] provider pipeline warning", surfacedError);
       }
+      setFbSessionExpired(sawSessionExpired);
+
       await fetchRows();
     } catch (e: any) {
       console.warn("[CampaignCommentsStream] silent refresh failed", e);
@@ -753,15 +779,28 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
         </p>
       </div>
 
-      {(!rows || rows.length === 0) && (
+      {fbSessionExpired && (
+        <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2.5 text-xs text-amber-700 dark:text-amber-400 flex items-start gap-2">
+          <span aria-hidden className="mt-0.5">⚠️</span>
+          <div className="space-y-1 flex-1">
+            <div className="font-semibold">חיבור פייסבוק זמני פקע</div>
+            <div className="text-amber-700/90 dark:text-amber-300/90">
+              יש לחדש את החיבור דרך הגדרות הערוצים. תגובות שכבר נטענו מוצגות מהזיכרון המקומי.
+            </div>
+          </div>
+        </div>
+      )}
+
+      {(!rows || rows.length === 0) && !fbSessionExpired && (
         <p className="text-xs text-muted-foreground">אין תגובות עדיין לקמפיין זה</p>
       )}
 
-      {providerWarning && (
+      {providerWarning && !fbSessionExpired && (
         <p className="rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs text-destructive">
           החיבור לפייסבוק חסום כרגע: {providerWarning}
         </p>
       )}
+
 
       <div className="space-y-4">
         {rootComments.map((parent) => renderCommentNode(parent))}
