@@ -577,8 +577,19 @@ const InlineComposer = ({
           <span className="text-[11px] tabular-nums text-muted-foreground" dir="ltr">
             {count}/{MAX_CHARS}
           </span>
+          <button
+            type="button"
+            onClick={() => handleGenerate({ rotateTemplate: true })}
+            disabled={generating}
+            title="החלף תבנית — צור פוסט מכירה/השכרה מתבנית אחרת מתוך מאגר הידע"
+            aria-label="החלף תבנית פוסט"
+            className="inline-flex items-center justify-center rounded-full border border-border bg-background p-1.5 text-muted-foreground hover:text-primary hover:border-primary/40 disabled:opacity-60"
+          >
+            <RefreshCw className={cn('h-3.5 w-3.5', generating && 'animate-spin')} />
+          </button>
         </div>
       </div>
+
 
       {/* Broker steering: custom instructions + property promotion picker */}
 
