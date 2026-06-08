@@ -260,6 +260,9 @@ const InlineComposer = ({
   const initial = readDraft() || {};
 
   const [body, setBody] = useState<string>(initial.body || '');
+  // Tracks the last AI-generated body so manual edits before publish can be
+  // shipped to learn-from-edit on success. Reset on send.
+  const [originalAiBody, setOriginalAiBody] = useState<string>('');
   const [mode, setMode] = useState<'now' | 'scheduled'>('now');
   // Local datetime string in `YYYY-MM-DDTHH:mm` (input[type=datetime-local] format).
   const [scheduledLocal, setScheduledLocal] = useState<string>('');
