@@ -3,11 +3,11 @@
 // user_id (RLS also enforces it). Matches on external_post_id when the
 // campaign log has a provider_message_id, otherwise falls back to a time-
 // windowed lookup around the campaign's created_at.
-import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Bot, ChevronDown, ChevronUp, MessageSquare, RefreshCw, Send, Sparkles, Smile, Meh, Frown } from "lucide-react";
+import { Bot, ChevronDown, ChevronUp, RefreshCw, Send, Smile, Meh, Frown } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -46,6 +46,32 @@ type EngagementRow = {
   metadata: Record<string, any> | null;
   created_at: string;
   is_archived?: boolean | null;
+};
+
+type CommentRow = EngagementRow & {
+  parent_id: string | null;
+  sender_avatar_url: string | null;
+  message: string | null;
+};
+
+const cleanRelationId = (value: unknown): string | null => {
+  if (typeof value !== "string") return null;
+  const trimmed = value.trim();
+  if (!trimmed || trimmed === "null" || trimmed === "undefined") return null;
+  return trimmed;
+};
+
+const avatarFromRow = (row: EngagementRow): string | null => {
+  const meta = (row.metadata as any) ?? {};
+  return (
+    meta?.sender_avatar_url ||
+    meta?.profile_image ||
+    meta?.author?.profile_image ||
+    meta?.author?.picture ||
+    meta?.profile_picture_url ||
+    meta?.from?.picture?.data?.url ||
+    null
+  );
 };
 
 
@@ -130,7 +156,6 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
   const [originalDm, setOriginalDm] = useState("");
   const [drafting, setDrafting] = useState(false);
   const [sending, setSending] = useState(false);
-  const [expandedThreadIds, setExpandedThreadIds] = useState<Set<string>>(() => new Set());
   // Per-row cached AI drafts so closing/re-opening the editor does NOT
   // re-invoke the AI — only an explicit refresh-per-card regenerates.
   const [draftCache, setDraftCache] = useState<Record<string, { pub: string; dm: string }>>(() => readDraftCache(campaign.id));
@@ -303,88 +328,39 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
     return () => { supabase.removeChannel(channel); };
   }, [userId, campaign.id, postIdsKey, campaign.channel]);
 
-  // Build a FULL recursive tree by metadata.parent_id (set by ayrshare-comments-fetch).
-  // Shows every comment and nested reply for the campaign inside the same card.
-  // Defensive: guards against self-referencing rows, cycles, and missing parents.
-  type TreeNode = EngagementRow & { children: TreeNode[]; depth: number };
-  const tree = useMemo<TreeNode[]>(() => {
+  const comments = useMemo<CommentRow[]>(() => {
     const all = rows ?? [];
-    try {
-      const byParentKey = new Map<string, EngagementRow>();
-      all.forEach((r) => {
-        if (!r) return;
-        byParentKey.set(r.id, r);
-        if (r.external_id) byParentKey.set(r.external_id, r);
-      });
-      const nodes = new Map<string, TreeNode>();
-      all.forEach((r) => {
-        if (!r) return;
-        nodes.set(r.id, { ...r, children: [], depth: 0 });
-      });
-      const roots: TreeNode[] = [];
-      nodes.forEach((node) => {
-        let parent = (node.metadata as any)?.parent_id as string | undefined;
-        if (parent && node.external_id && parent === node.external_id) parent = undefined;
-        const parentRow = parent ? byParentKey.get(parent) : null;
-        const parentNode = parentRow ? nodes.get(parentRow.id) : null;
-        if (parentNode && parentNode.id !== node.id) {
-          parentNode.children.push(node);
-        } else {
-          roots.push(node);
-        }
-      });
-      // Cycle-safe depth assignment + sort siblings by created_at asc (thread order).
-      const assignDepth = (n: TreeNode, depth: number, seen: Set<string>) => {
-        if (seen.has(n.id)) return;
-        seen.add(n.id);
-        n.depth = depth;
-        n.children.sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
-        n.children.forEach((c) => assignDepth(c, depth + 1, seen));
+    const byRelationId = new Map<string, EngagementRow>();
+    all.forEach((row) => {
+      byRelationId.set(row.id, row);
+      const externalId = cleanRelationId(row.external_id);
+      if (externalId) byRelationId.set(externalId, row);
+    });
+
+    return all.map((row) => {
+      const meta = (row.metadata as any) ?? {};
+      const rawParentId = cleanRelationId((row as any).parent_id) ?? cleanRelationId(meta.parent_id);
+      const parentRow = rawParentId ? byRelationId.get(rawParentId) : null;
+      const parentId = parentRow?.id === row.id ? null : parentRow?.id ?? rawParentId;
+
+      return {
+        ...row,
+        parent_id: parentId,
+        sender_avatar_url: (row as any).sender_avatar_url ?? avatarFromRow(row),
+        message: row.inbound_text ?? "",
       };
-      // Roots sorted oldest-first so the thread mirrors Facebook's chronological
-      // order (matches how children/replies are already sorted below).
-      roots.sort((a, b) => +new Date(a.created_at) - +new Date(b.created_at));
-      roots.forEach((r) => assignDepth(r, 0, new Set()));
-      return roots;
-    } catch (err) {
-      console.error("[CampaignCommentsStream] tree build failed, falling back to flat rows", err);
-      return all.map((r) => ({ ...r, children: [], depth: 0 }));
-    }
+    });
   }, [rows]);
 
-  const nodeById = useMemo(() => {
-    const map = new Map<string, TreeNode>();
-    const visit = (node: TreeNode) => {
-      map.set(node.id, node);
-      if (node.external_id) map.set(node.external_id, node);
-      node.children.forEach(visit);
-    };
-    tree.forEach(visit);
-    return map;
-  }, [tree]);
+  const rootComments = useMemo(
+    () => comments.filter((c) => !c.parent_id || c.parent_id === null || c.parent_id === ""),
+    [comments],
+  );
 
-  const replyCountById = useMemo(() => {
-    const map = new Map<string, number>();
-    const count = (node: TreeNode): number => {
-      const total = node.children.reduce((sum, child) => sum + 1 + count(child), 0);
-      map.set(node.id, total);
-      if (node.external_id) map.set(node.external_id, total);
-      return total;
-    };
-    tree.forEach(count);
-    return map;
-  }, [tree]);
-
-
-  const openReply = (row: EngagementRow) => {
-    // Hard flush: never carry over draft text from a previous open.
-    setReplyDraft("");
-    setDmDraft("");
-    setOriginalReply("");
-    setOriginalDm("");
-    setDrafting(true);
-    setReplyOpen(row);
-  };
+  const childReplies = useMemo(
+    () => comments.filter((c) => c.parent_id && c.parent_id !== null),
+    [comments],
+  );
 
   // Whenever the modal mounts on a new comment, force a fresh live invocation
   // of suggest-comment-reply with a cache-bust token. Closing the modal wipes
@@ -605,6 +581,60 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
   // No initial loading block — comments always render in-place. The
   // background refresh keeps the list fresh without flashing a spinner.
 
+  const renderEditor = (r: EngagementRow) => (
+    <div className="space-y-3 text-right">
+      <div className="space-y-1">
+        <p className="text-[11px] font-medium text-muted-foreground text-right">
+          תגובה פומבית
+        </p>
+        <Textarea
+          value={drafting ? "" : replyDraft}
+          onChange={(e) => setReplyDraft(e.target.value)}
+          dir="auto"
+          rows={4}
+          placeholder={drafting ? "מנסח תגובה מקצועית..." : "הזן תגובה..."}
+          disabled={drafting}
+          className="text-right"
+        />
+      </div>
+      <div className="space-y-1">
+        <p className="text-[11px] font-medium text-muted-foreground text-right">
+          הודעה פרטית למסנג'ר
+        </p>
+        <Textarea
+          value={drafting ? "" : dmDraft}
+          onChange={(e) => setDmDraft(e.target.value)}
+          dir="auto"
+          rows={6}
+          placeholder={drafting ? "מנסח DM מקצועי..." : "טיוטת DM פרטי"}
+          disabled={drafting}
+          className="text-right bg-muted/30"
+        />
+      </div>
+      <div className="flex items-center justify-between">
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => generateDraft(r, true)}
+          disabled={drafting || sending}
+          aria-label="נסח מחדש"
+          title="נסח מחדש"
+          className="h-7 w-7"
+        >
+          <RefreshCw className={cn("h-3.5 w-3.5", drafting && "animate-spin")} />
+        </Button>
+        <Button
+          size="sm"
+          onClick={sendReply}
+          disabled={sending || !replyDraft.trim()}
+        >
+          <Send className="ml-1 h-4 w-4" />
+          {sending ? "מפרסם..." : "פרסם תגובה"}
+        </Button>
+      </div>
+    </div>
+  );
+
 
   return (
     <div className="space-y-2 text-right">
@@ -629,128 +659,46 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
         <p className="text-xs text-muted-foreground">אין תגובות עדיין לקמפיין זה</p>
       )}
 
-      <ul className="space-y-2">
-        {tree.map((root) => {
-          const renderEditor = (r: EngagementRow) => (
-            <div className="space-y-3 text-right">
-              <div className="space-y-1">
-                <p className="text-[11px] font-medium text-muted-foreground text-right">
-                  תגובה פומבית
-                </p>
-                <Textarea
-                  value={drafting ? "" : replyDraft}
-                  onChange={(e) => setReplyDraft(e.target.value)}
-                  dir="auto"
-                  rows={4}
-                  placeholder={drafting ? "מנסח תגובה מקצועית..." : "הזן תגובה..."}
-                  disabled={drafting}
-                  className="text-right"
-                />
-              </div>
-              <div className="space-y-1">
-                <p className="text-[11px] font-medium text-muted-foreground text-right">
-                  הודעה פרטית למסנג'ר
-                </p>
-                <Textarea
-                  value={drafting ? "" : dmDraft}
-                  onChange={(e) => setDmDraft(e.target.value)}
-                  dir="auto"
-                  rows={6}
-                  placeholder={drafting ? "מנסח DM מקצועי..." : "טיוטת DM פרטי"}
-                  disabled={drafting}
-                  className="text-right bg-muted/30"
-                />
-              </div>
-              <div className="flex items-center justify-between">
-                <Button
-                  variant="outline"
-                  size="icon"
-                  onClick={() => generateDraft(r, true)}
-                  disabled={drafting || sending}
-                  aria-label="נסח מחדש"
-                  title="נסח מחדש"
-                  className="h-7 w-7"
-                >
-                  <RefreshCw className={cn("h-3.5 w-3.5", drafting && "animate-spin")} />
-                </Button>
-                <Button
-                  size="sm"
-                  onClick={sendReply}
-                  disabled={sending || !replyDraft.trim()}
-                >
-                  <Send className="ml-1 h-4 w-4" />
-                  {sending ? "מפרסם..." : "פרסם תגובה"}
-                </Button>
-              </div>
-            </div>
-          );
-          // Recursively render a node + all its descendants inside the same card.
-          const renderNode = (node: TreeNode): ReactNode => {
-            const parentId = (node.metadata as any)?.parent_id as string | undefined;
-            const repliedTo = parentId ? nodeById.get(parentId) : undefined;
-            const replyCount = replyCountById.get(node.id) ?? 0;
-            const threadExpanded = expandedThreadIds.has(node.id);
-            return (
-            <li key={node.id} className="relative">
-              {node.depth > 0 && (
-                <span
-                  aria-hidden
-                  className="absolute right-4 top-6 h-[2px] w-4 bg-slate-200 rounded-full"
-                />
-              )}
+      <ul className="space-y-4">
+        {rootComments.map((parent) => {
+          const replies = childReplies.filter((reply) => reply.parent_id === parent.id);
+
+          return (
+            <li key={parent.id} className="w-full rounded-xl border border-border bg-background p-4 text-right relative">
               <CommentBubble
-                row={node}
+                row={parent}
                 onToggleEditor={(r) => setReplyOpen(replyOpen?.id === r.id ? null : r)}
-                expanded={replyOpen?.id === node.id}
-                editor={replyOpen?.id === node.id ? renderEditor(node) : null}
+                expanded={replyOpen?.id === parent.id}
+                editor={replyOpen?.id === parent.id ? renderEditor(parent) : null}
                 onRegenerate={regenerateInline}
-                regenerating={regeneratingId === node.id}
-                isReply={node.depth > 0}
-                repliedToText={repliedTo?.inbound_text ?? null}
-                replyPreviewText={(() => {
-                  const first = node.children[0];
-                  const raw = first?.inbound_text ?? node.ai_reply_text ?? null;
-                  if (!raw) return null;
-                  // Strip a leading page-name prefix (FB often prepends the
-                  // replying Page's display name to the reply text).
-                  const handle = (first?.sender_handle ?? "").trim();
-                  if (handle && raw.trim().startsWith(handle)) {
-                    return raw.trim().slice(handle.length).replace(/^[\s:،,،\-–—]+/, "").trim();
-                  }
-                  return raw;
-                })()}
-                replyCount={replyCount}
-                threadExpanded={threadExpanded}
-                onToggleThread={() => {
-                  setExpandedThreadIds((prev) => {
-                    const next = new Set(prev);
-                    const ids = [node.id];
-                    const collect = (n: TreeNode) => {
-                      n.children.forEach((child) => {
-                        ids.push(child.id);
-                        collect(child);
-                      });
-                    };
-                    collect(node);
-                    if (next.has(node.id)) ids.forEach((id) => next.delete(id));
-                    else ids.forEach((id) => next.add(id));
-                    return next;
-                  });
-                }}
+                regenerating={regeneratingId === parent.id}
+                embedded
               />
-              {node.children.length > 0 && threadExpanded && (
-                <ul className="relative mt-2 space-y-2 pr-8">
-                  <span
-                    aria-hidden
-                    className="absolute right-4 top-0 bottom-4 w-[2px] bg-slate-200 rounded-full"
-                  />
-                  {node.children.map((child) => renderNode(child))}
-                </ul>
+
+              {replies.length > 0 && (
+                <div className="mt-4 mr-10 pr-6 border-r-2 border-slate-200 flex flex-col gap-3 relative">
+                  {replies.map((reply) => (
+                    <div key={reply.id} className="p-3 bg-slate-50 rounded-lg text-sm relative border border-slate-200/70">
+                      <span
+                        aria-hidden
+                        className="absolute right-[-1.5rem] top-6 h-[2px] w-4 bg-slate-200 rounded-full"
+                      />
+                      <CommentBubble
+                        row={reply}
+                        onToggleEditor={(r) => setReplyOpen(replyOpen?.id === r.id ? null : r)}
+                        expanded={replyOpen?.id === reply.id}
+                        editor={replyOpen?.id === reply.id ? renderEditor(reply) : null}
+                        onRegenerate={regenerateInline}
+                        regenerating={regeneratingId === reply.id}
+                        isReply
+                        embedded
+                      />
+                    </div>
+                  ))}
+                </div>
               )}
             </li>
           );
-          };
-          return renderNode(root);
         })}
       </ul>
     </div>
@@ -770,6 +718,7 @@ function CommentBubble({
   replyCount,
   threadExpanded,
   onToggleThread,
+  embedded,
 }: {
   row: EngagementRow;
   onToggleEditor: (r: EngagementRow) => void;
@@ -783,6 +732,7 @@ function CommentBubble({
   replyCount?: number;
   threadExpanded?: boolean;
   onToggleThread?: () => void;
+  embedded?: boolean;
 }) {
   const dt = new Date(row.created_at);
   const when = dt.toLocaleString("he-IL", {
@@ -796,6 +746,7 @@ function CommentBubble({
   const senderId: string | null =
     meta?.sender_id ?? meta?.author?.id ?? meta?.from?.id ?? null;
   const avatarUrl: string | null =
+    (row as any).sender_avatar_url ||
     meta?.sender_avatar_url ||
     meta?.profile_image ||
     meta?.author?.profile_image ||
@@ -817,8 +768,8 @@ function CommentBubble({
   return (
     <div
       className={cn(
-        "rounded-xl border border-border bg-background p-3 text-right",
-        isReply && "bg-slate-50 border-slate-200",
+        embedded ? "text-right" : "rounded-xl border border-border bg-background p-3 text-right",
+        !embedded && isReply && "bg-slate-50 border-slate-200",
       )}
     >
       <div className="mb-1 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
