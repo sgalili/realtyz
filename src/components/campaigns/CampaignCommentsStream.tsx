@@ -94,7 +94,7 @@ const writeCache = (campaignId: string, rows: EngagementRow[]) => {
   try { sessionStorage.setItem(cacheKey(campaignId), JSON.stringify(rows)); } catch { /* quota */ }
 };
 
-export function CampaignCommentsStream({ userId, campaign }: Props) {
+export function CampaignCommentsStream({ userId, campaign, commentCount }: Props) {
   const cached = readCache(campaign.id);
   const [rows, setRows] = useState<EngagementRow[] | null>(cached);
   const [loading, setLoading] = useState(false);
