@@ -225,10 +225,22 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
     }
     const { data, error } = await q;
     if (error) throw error;
-    const next = (data ?? []) as EngagementRow[];
-    setRows(next);
-    writeCache(campaign.id, next);
+    const incoming = (data ?? []) as EngagementRow[];
+    // Append-only delta merge: keep every cached/existing row, overlay updates
+    // by id, and append brand-new ids. The tree never flickers, collapses, or
+    // resets to an empty state mid-refresh — only NEW comments slide in.
+    setRows((prev) => {
+      const byId = new Map<string, EngagementRow>();
+      for (const r of prev ?? []) byId.set(r.id, r);
+      for (const r of incoming) byId.set(r.id, { ...(byId.get(r.id) ?? {} as EngagementRow), ...r });
+      const merged = Array.from(byId.values()).sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      );
+      writeCache(campaign.id, merged);
+      return merged;
+    });
   };
+
 
 
   // On mount / when the active post id resolves, run an explicit query
