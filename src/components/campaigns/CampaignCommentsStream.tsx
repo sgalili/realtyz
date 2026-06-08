@@ -794,11 +794,11 @@ function CommentBubble({
   const senderId: string | null =
     meta?.sender_id ?? meta?.author?.id ?? meta?.from?.id ?? null;
   const avatarUrl: string | null =
+    meta?.sender_avatar_url ||
+    meta?.profile_image ||
     meta?.author?.profile_image ||
     meta?.author?.picture ||
-    meta?.profile_image ||
     meta?.profile_picture_url ||
-    meta?.sender_avatar_url ||
     meta?.from?.picture?.data?.url ||
     null;
   const initials = senderName
