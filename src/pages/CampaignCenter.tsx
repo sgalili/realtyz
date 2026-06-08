@@ -361,11 +361,12 @@ const listingOptionLabel = (listing: CampaignListing) => {
 };
 
 const InlineComposer = ({
-  channel, brandName, onConfirm,
+  channel, brandName, socialProfiles = [], onConfirm,
 }: {
   channel: ChannelCard;
   brandName: string;
-  onConfirm: (payload: { body: string; original_ai_body: string; listing_id: string | null; mode: 'now' | 'scheduled'; media_urls: string[]; scheduled_at: string | null; group_ids: string[] }) => void;
+  socialProfiles?: SocialAccountProfile[];
+  onConfirm: (payload: ConfirmPayload) => void;
 }) => {
   // Session-persistence key — keeps unfinished drafts alive across collapse / expand / tab switch
   const draftKey = `rz-composer-draft:${channel.id}`;
@@ -394,6 +395,19 @@ const InlineComposer = ({
   useEffect(() => {
     try { localStorage.setItem('campaign:groupIds', JSON.stringify(groupIds)); } catch {}
   }, [groupIds]);
+  const platformProfiles = useMemo(
+    () => socialProfiles.filter((p) => p.platform === channel.id || (channel.id === 'x' && p.platform === 'twitter')),
+    [socialProfiles, channel.id],
+  );
+  const [selectedProfileIds, setSelectedProfileIds] = useState<string[]>([]);
+  useEffect(() => {
+    if (channel.id !== 'facebook') { setSelectedProfileIds([]); return; }
+    const activeIds = platformProfiles.map((p) => p.id);
+    setSelectedProfileIds((prev) => {
+      const kept = prev.filter((id) => activeIds.includes(id));
+      return kept.length > 0 ? kept : activeIds;
+    });
+  }, [channel.id, platformProfiles]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [generating, setGenerating] = useState(false);
 
