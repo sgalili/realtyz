@@ -132,9 +132,12 @@ Deno.serve(async (req) => {
       if (!senderId || !FB_PAGE_TOKEN || !/facebook/i.test(platform)) return null;
       try {
         const tokenParam = `access_token=${encodeURIComponent(FB_PAGE_TOKEN)}`;
-        const res = await fetch(`https://graph.facebook.com/v20.0/${encodeURIComponent(senderId)}/picture?type=square&redirect=false&${tokenParam}`);
+        const url = `https://graph.facebook.com/v20.0/${encodeURIComponent(senderId)}/picture?type=square&redirect=false&${tokenParam}`;
+        const res = await fetch(url);
         const json = await res.json().catch(() => ({}));
-        return res.ok && typeof json?.data?.url === "string" ? json.data.url : null;
+        const cdnUrl = res.ok && typeof json?.data?.url === "string" ? json.data.url : null;
+        console.log("[ayrshare-comments-fetch] avatar resolve", { senderId, status: res.status, ok: !!cdnUrl, host: cdnUrl ? new URL(cdnUrl).host : null });
+        return cdnUrl;
       } catch (avatarErr) {
         console.warn("[ayrshare-comments-fetch] facebook avatar resolve failed", senderId, avatarErr instanceof Error ? avatarErr.message : String(avatarErr));
         return null;
