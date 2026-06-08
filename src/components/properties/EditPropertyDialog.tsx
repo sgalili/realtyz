@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { RefreshCw } from 'lucide-react';
 import {
   PROPERTY_TYPE_LABELS_HE,
   type PropertyType,
@@ -46,7 +47,9 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
   const [sqm, setSqm] = useState('');
   const [floor, setFloor] = useState('');
   const [yearBuilt, setYearBuilt] = useState('');
+  const [photos, setPhotos] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     if (!property) return;
@@ -61,7 +64,38 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
     setSqm(property.size_sqm ? String(property.size_sqm) : '');
     setFloor(property.floor != null ? String(property.floor) : '');
     setYearBuilt(property.year_built != null ? String(property.year_built) : '');
+    const existingPhotos = (property as any).photos;
+    setPhotos(Array.isArray(existingPhotos) ? existingPhotos.filter((p: any) => typeof p === 'string') : []);
   }, [property]);
+
+  const handleSyncFromHomely = async () => {
+    if (!property) return;
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('homely-fetch-property', {
+        body: { listing_id: property.id },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+      const u = (data as any)?.updated ?? {};
+      if (u.property_title) setTitle(u.property_title);
+      if (u.description) setDescription(u.description);
+      if (u.asking_price) setPrice(String(u.asking_price));
+      if (u.city) setCity(u.city);
+      if (u.address) setAddress(u.address);
+      if (u.rooms) setRooms(String(u.rooms));
+      if (u.sqm) setSqm(String(u.sqm));
+      if (u.floor != null) setFloor(String(u.floor));
+      const newPhotos = u?.source_metadata?.photos;
+      if (Array.isArray(newPhotos)) setPhotos(newPhotos);
+      toast.success(`נטענו ${(data as any)?.photo_count ?? 0} תמונות מ-Homely`);
+      onSaved?.();
+    } catch (e: any) {
+      toast.error(`סנכרון נכשל: ${e.message ?? e}`);
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!property) return;
@@ -124,6 +158,33 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
               ))}
             </div>
           </div>
+
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-primary/15 bg-primary/5 p-2.5">
+            <div className="text-xs text-muted-foreground">
+              משוך את כל הנתונים והתמונות העדכניות מ-Homely
+            </div>
+            <Button type="button" size="sm" variant="outline" onClick={handleSyncFromHomely} disabled={syncing} className="gap-1.5">
+              <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
+              {syncing ? 'מסנכרן…' : 'סנכרן מ-Homely'}
+            </Button>
+          </div>
+
+          {photos.length > 0 && (
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">תמונות ({photos.length})</Label>
+              <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto">
+                {photos.map((url, i) => (
+                  <img
+                    key={`${url}-${i}`}
+                    src={url}
+                    alt={`photo-${i}`}
+                    className="aspect-square object-cover rounded-md border"
+                    loading="lazy"
+                  />
+                ))}
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5 col-span-2">

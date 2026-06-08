@@ -161,25 +161,31 @@ export default function Properties() {
           }
           return {
             connected: true,
-            results: dedupeProperties(rows.map((row: any) => ({
-              id: row.id,
-              source: 'mine',
-              title: row.property_title || 'נכס',
-              description: row.description || '',
-              price: Number(row.asking_price ?? 0),
-              currency: '₪',
-              city: row.city ?? '',
-              address: row.address ?? row.neighborhood ?? '',
-              rooms: Number(row.rooms ?? 0),
-              size_sqm: Number(row.sqm ?? 0),
-              property_type: detectPropertyType(`${row.property_title ?? ''} ${row.description ?? ''}`),
-              photos: [],
-              url: null,
-              features: Array.isArray(row.features) ? row.features.filter((f: any) => typeof f === 'string') : [],
-              listing_type: extractListingType(row.features),
-              extras: (row.source_metadata && typeof row.source_metadata === 'object' ? (row.source_metadata.extras ?? {}) : {}) as Record<string, string>,
-              created_at: row.created_at ?? null,
-            }))),
+            results: dedupeProperties(rows.map((row: any) => {
+              const meta = row.source_metadata && typeof row.source_metadata === 'object' ? row.source_metadata : {};
+              const metaPhotos = Array.isArray(meta.photos)
+                ? meta.photos.filter((p: any) => typeof p === 'string')
+                : [];
+              return {
+                id: row.id,
+                source: 'mine',
+                title: row.property_title || 'נכס',
+                description: row.description || '',
+                price: Number(row.asking_price ?? 0),
+                currency: '₪',
+                city: row.city ?? '',
+                address: row.address ?? row.neighborhood ?? '',
+                rooms: Number(row.rooms ?? 0),
+                size_sqm: Number(row.sqm ?? 0),
+                property_type: detectPropertyType(`${row.property_title ?? ''} ${row.description ?? ''}`),
+                photos: metaPhotos,
+                url: null,
+                features: Array.isArray(row.features) ? row.features.filter((f: any) => typeof f === 'string') : [],
+                listing_type: extractListingType(row.features),
+                extras: (meta.extras ?? {}) as Record<string, string>,
+                created_at: row.created_at ?? null,
+              };
+            })),
           };
         }
 
