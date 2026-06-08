@@ -280,10 +280,13 @@ const InlineComposer = ({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<BlobPart[]>([]);
 
-  // Generation history
+  // Generation history (now also tracks edits + attachments per row)
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyRefresh, setHistoryRefresh] = useState(0);
-  const [history, setHistory] = useState<Array<{ id: string; topic: string | null; generated_text: string | null; platform: string | null; created_at: string }>>([]);
+  const [history, setHistory] = useState<Array<{ id: string; topic: string | null; generated_text: string | null; platform: string | null; created_at: string; updated_at: string | null; media_urls: any }>>([]);
+  // ID of the currently active history row — edits flow back into the same row.
+  const [logId, setLogId] = useState<string | null>(null);
+  const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
   useEffect(() => {
     if (!historyOpen) return;
     let cancelled = false;
@@ -292,18 +295,58 @@ const InlineComposer = ({
       if (!user) return;
       const { data } = await supabase
         .from('ai_content_logs')
-        .select('id, topic, generated_text, platform, created_at')
+        .select('id, topic, generated_text, platform, created_at, updated_at, media_urls')
         .eq('created_by', user.id)
         .eq('platform', channel.id)
-        .order('created_at', { ascending: false })
-        .limit(20);
+        .order('updated_at', { ascending: false })
+        .limit(30);
       if (!cancelled) setHistory((data as any) || []);
     })();
     return () => { cancelled = true; };
   }, [historyOpen, historyRefresh, channel.id]);
 
   // Reset on channel change
-  useEffect(() => { setBody(''); setMode('now'); setAttachments([]); setCustomInstructions(''); setSelectedListingId(null); setListingQuery(''); }, [channel.id]);
+  useEffect(() => { setBody(''); setMode('now'); setAttachments([]); setCustomInstructions(''); setSelectedListingId(null); setListingQuery(''); setLogId(null); setSaveState('idle'); }, [channel.id]);
+
+  // Auto-save: persist edits + attachments to ai_content_logs (debounced).
+  // Creates a new row on first edit if no logId yet; otherwise updates the active row.
+  useEffect(() => {
+    if (!body.trim() && attachments.length === 0) return;
+    setSaveState('saving');
+    const t = setTimeout(async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+        const payload = {
+          generated_text: body.slice(0, MAX_CHARS),
+          media_urls: attachments.map((a) => ({ name: a.name, kind: a.kind, url: a.url || null })),
+          updated_at: new Date().toISOString(),
+        };
+        if (logId) {
+          await supabase.from('ai_content_logs').update(payload).eq('id', logId);
+        } else {
+          const { data, error } = await supabase
+            .from('ai_content_logs')
+            .insert({
+              topic: (body.trim().slice(0, 80) || 'טיוטה').slice(0, 500),
+              platform: channel.id,
+              created_by: user.id,
+              ...payload,
+            })
+            .select('id')
+            .single();
+          if (error) throw error;
+          if (data?.id) setLogId(data.id);
+        }
+        setSaveState('saved');
+        setHistoryRefresh((n) => n + 1);
+      } catch (e) {
+        console.warn('[CampaignCenter] autosave failed', e);
+        setSaveState('idle');
+      }
+    }, 1200);
+    return () => clearTimeout(t);
+  }, [body, attachments, logId, channel.id]);
 
   // Load the full live property list on mount and refresh when the picker opens.
   // Search is client-side so the dropdown always shows every listing by default.
