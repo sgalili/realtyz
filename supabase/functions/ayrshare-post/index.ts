@@ -105,6 +105,8 @@ Deno.serve(async (req) => {
     const rawMediaInput: unknown[] = Array.isArray(body?.media_urls) ? body.media_urls.filter(Boolean) : [];
     const listingId: string | null = body?.listing_id ?? null;
     const scheduledAtRaw: string | null = typeof body?.scheduled_at === "string" ? body.scheduled_at : null;
+    const targetProfileKey: string = typeof body?.target_profile_key === "string" ? body.target_profile_key.trim() : "";
+    const targetAccountRef: string | null = typeof body?.target_account_ref === "string" ? body.target_account_ref.trim() || null : null;
     const groupIds: string[] = Array.isArray(body?.group_ids)
       ? body.group_ids.map((g: unknown) => String(g ?? "").trim()).filter(Boolean)
       : [];
@@ -133,7 +135,8 @@ Deno.serve(async (req) => {
       return json({ error: "no supported social channels in selection" }, 400);
     }
 
-    const { profileKey, refId } = await resolveWorkspaceProfileKey(admin);
+    const { profileKey: workspaceProfileKey, refId } = await resolveWorkspaceProfileKey(admin);
+    const profileKey = targetProfileKey || workspaceProfileKey;
     if (!profileKey) return json({ success: false, error: MISSING_TENANT_KEY, message: MISSING_TENANT_KEY_MESSAGE }, 200);
     const verified = await verifyWorkspaceProfileKey({ apiKey: AYRSHARE_API_KEY, profileKey });
     if (verified.missingTenantKey) {
@@ -227,6 +230,7 @@ Deno.serve(async (req) => {
         post: postText,
         platforms: extra.platforms ?? platforms,
         profileKey,
+        ...(targetAccountRef ? { facebookOptions: { pageId: targetAccountRef } } : {}),
         ...extra,
       };
       if (resolvedMedia.length) payload.mediaUrls = resolvedMedia;
