@@ -845,7 +845,7 @@ const ConfirmDispatchDialog = ({
           } catch { /* ignore */ }
           throw new Error(friendly || error.message || 'שגיאת רשת');
         }
-        if ((data as any)?.error) throw new Error((data as any).error);
+        if ((data as any)?.error) throw new Error((data as any)?.message || (data as any).error);
         const groupFailures: any[] = Array.isArray((data as any)?.group_failures) ? (data as any).group_failures : [];
         if (scheduledAt) {
           const when = new Date(scheduledAt).toLocaleString('he-IL');
