@@ -107,8 +107,8 @@ const ChannelGrid = ({
   connected?: Set<string>;
   accountNames?: Record<string, string>;
 }) => (
-  <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-sm">
-    <div className="grid grid-cols-3 gap-3 sm:gap-4" dir="rtl">
+  <div className="mx-auto w-full max-w-md rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
+    <div className="grid grid-cols-3 gap-3" dir="rtl">
       {CHANNEL_CARDS.map((c) => {
         const Icon = c.icon;
         const isSelected = selectedId === c.id;
@@ -2418,6 +2418,14 @@ const CampaignCenter = () => {
   useEffect(() => {
     try { sessionStorage.setItem('rz-connected-channel-names', JSON.stringify(channelAccountNames)); } catch { /* ignore */ }
   }, [channelAccountNames]);
+
+  // Default-select Facebook when it's connected and nothing is picked yet.
+  useEffect(() => {
+    if (pickedChannel) return;
+    if (!connectedChannels.has('facebook')) return;
+    const fb = CHANNEL_CARDS.find((c) => c.id === 'facebook');
+    if (fb) setPickedChannel(fb);
+  }, [connectedChannels, pickedChannel]);
 
 
 
