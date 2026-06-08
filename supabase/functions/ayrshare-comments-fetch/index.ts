@@ -138,10 +138,19 @@ Deno.serve(async (req) => {
       console.error("[ayrshare-comments-fetch] campaign lookup threw", lookupErr instanceof Error ? lookupErr.message : String(lookupErr));
     }
 
-    const { profileKey, refId } = await resolveWorkspaceProfileKey(admin);
-    if (!profileKey) {
+    const workspaceProfile = await resolveWorkspaceProfileKey(admin);
+    const envProfileKey = typeof Deno.env.get("AYRSHARE_PROFILE_KEY") === "string"
+      ? Deno.env.get("AYRSHARE_PROFILE_KEY")!.trim().replace(/^[`'\"]+|[`'\"]+$/g, "")
+      : "";
+    const profileCandidates = [
+      workspaceProfile.profileKey ? { profileKey: workspaceProfile.profileKey, refId: workspaceProfile.refId, source: "workspace" } : null,
+      envProfileKey && envProfileKey !== workspaceProfile.profileKey ? { profileKey: envProfileKey, refId: "env-fallback", source: "env" } : null,
+    ].filter(Boolean) as Array<{ profileKey: string; refId: string | null; source: string }>;
+    if (profileCandidates.length === 0) {
       return json({ error: "workspace ayrshare profile key missing" }, 400);
     }
+    const defaultProfileKey = profileCandidates[0].profileKey;
+    let refId = profileCandidates[0].refId;
     const ownPage = await resolveOwnPageIdentity(admin);
 
     const pickStr = (...vals: unknown[]) => {
@@ -213,7 +222,7 @@ Deno.serve(async (req) => {
       targetNode.comments = merged;
     };
 
-    const fetchComments = async (target: CommentFetchTarget, useSocialId: boolean) => {
+    const fetchComments = async (target: CommentFetchTarget, useSocialId: boolean, candidateProfileKey = defaultProfileKey) => {
       const id = useSocialId ? target.nativePostId : target.fetchPostId;
       // Ask Ayrshare to inline reply threads so nested child nodes (e.g. Shi
       // Galili replying to Udi) come back in the same payload. Different
@@ -226,7 +235,7 @@ Deno.serve(async (req) => {
       const r = await fetch(`${AYR_BASE}/comments/${encodeURIComponent(id)}?${qs}`, {
         headers: {
           Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-          "Profile-Key": profileKey,
+          "Profile-Key": candidateProfileKey,
           "Content-Type": "application/json",
         },
       });
