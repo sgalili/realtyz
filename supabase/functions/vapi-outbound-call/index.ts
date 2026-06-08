@@ -224,9 +224,24 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json().catch(() => ({}));
-    const { phone_number, lead_id, listing_id } = body as {
+    const {
+      phone_number, lead_id, listing_id, voice_id: bodyVoiceId,
+      voice_gender: bodyVoiceGender, user_gender: bodyUserGender,
+      instructions: brokerInstructionsRaw,
+    } = body as {
       phone_number?: string; lead_id?: string; listing_id?: string;
+      voice_id?: string; voice_gender?: string | null; user_gender?: string | null;
+      instructions?: string | null;
     };
+    const brokerInstructions = (brokerInstructionsRaw || '').toString().trim() || null;
+    const voiceGender = bodyVoiceGender === 'male' || bodyVoiceGender === 'female' ? bodyVoiceGender : null;
+    let userGender = bodyUserGender === 'male' || bodyUserGender === 'female' ? bodyUserGender : null;
+    // Fallback: look up the caller's gender from profiles if the client didn't pass it.
+    if (!userGender) {
+      const { data: p } = await supabase.from('profiles').select('gender').eq('id', user.id).maybeSingle();
+      if (p?.gender === 'male' || p?.gender === 'female') userGender = p.gender;
+    }
+
     if (!phone_number) {
       return new Response(JSON.stringify({ error: "חסר מספר טלפון" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
