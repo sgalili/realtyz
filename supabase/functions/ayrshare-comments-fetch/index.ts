@@ -395,11 +395,13 @@ Deno.serve(async (req) => {
           return trimmed ? trimmed.slice(0, max) : null;
         };
         // Try to capture an author profile image from the various shapes
-        // Ayrshare/FB/IG return. FB Graph nests it under from.picture.data.url;
-        // IG returns user.profile_picture_url; some channels expose a flat
-        // profile_image/avatar. As a last-resort for Facebook we fall back to
-        // Graph picture with the Page token because unauthenticated app-scoped
-        // profile images are blocked by Meta.
+        // Ayrshare/FB/IG return. For Facebook we ALWAYS prefer the resolved
+        // CDN URL from the Page-token /picture?redirect=false call — the raw
+        // from.picture.data.url returned by FB Graph embeds an access_token
+        // that is short-lived and frequently blocked from the browser. Other
+        // platforms fall back to whatever the payload exposes.
+        const isFb = /facebook/i.test(platformHint);
+        const fbResolved = isFb ? await resolveFacebookAvatar(senderId, platformHint) : null;
         const pictureFromPayload =
           c?.from?.picture?.data?.url ??
           c?.from?.picture_url ??
@@ -411,11 +413,9 @@ Deno.serve(async (req) => {
           c?.profile_picture_url ??
           c?.avatar ??
           null;
-        const fbFallbackPicture =
-          !pictureFromPayload && senderId && /facebook/i.test(platformHint)
-            ? await resolveFacebookAvatar(senderId, platformHint)
-            : null;
-        const authorPicture = pictureFromPayload ?? fbFallbackPicture;
+        // Prefer the clean CDN URL on Facebook; otherwise use payload-provided.
+        const authorPicture = fbResolved ?? pictureFromPayload ?? null;
+
 
         const { data: exists } = await admin
           .from("engagement_events")
