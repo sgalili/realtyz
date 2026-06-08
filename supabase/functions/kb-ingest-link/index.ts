@@ -112,8 +112,12 @@ async function fetchGenericPage(url: string): Promise<{ title: string; text: str
 async function distillForUdi(
   rawContent: string,
   contextTitle: string,
+  intent: string,
 ): Promise<string> {
   if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
+  const intentLine = intent.trim()
+    ? `USER FOCUS — extract specifically: ${intent.trim()}. Prioritize this lens above all else.`
+    : "";
   const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -128,10 +132,11 @@ async function distillForUdi(
           content: [
             "You are training the 'Udi' real-estate sales AI persona.",
             "From the supplied content, distill PRINCIPLES, FRAMEWORKS, OBJECTION HANDLERS, SCRIPTS, and ACTIONABLE SALES METHODOLOGIES that improve closing rate and prosperity.",
+            intentLine,
             "Output in Hebrew. Use clear sections: עקרונות מנחים / טכניקות מכירה / ניסוחים מומלצים / טיפול בהתנגדויות / צעדים אופרטיביים.",
             "CRITICAL PRIVACY RULE: NEVER mention or hint at the original source — no URLs, no author names, no platform names (YouTube, podcast, book, course), no 'according to'. Present the wisdom as Udi's internal playbook.",
             "Do NOT use em-dash, en-dash, or '--'. Plain prose only.",
-          ].join(" "),
+          ].filter(Boolean).join(" "),
         },
         {
           role: "user",
