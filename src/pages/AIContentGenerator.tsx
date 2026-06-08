@@ -141,11 +141,17 @@ const AIContentGenerator = () => {
   const updateLogMutation = useMutation({
     mutationFn: async () => {
       if (!editingLog) throw new Error('לא נבחר פריט לעריכה');
+      const originalText = editingLog.generated_text || '';
       const { error } = await supabase
         .from('ai_content_logs')
         .update({ topic: editTopic, platform: editPlatform, generated_text: editContent } as any)
         .eq('id', editingLog.id);
       if (error) throw error;
+      // Active-learning capture: train future generations on this manual edit.
+      learnFromEdit({
+        context: `ai_content_log:${editPlatform || 'unknown'}`,
+        pairs: [{ label: 'generated_text', original: originalText, edited: editContent }],
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ai-content-logs'] });
