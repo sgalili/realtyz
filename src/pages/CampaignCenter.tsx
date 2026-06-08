@@ -532,7 +532,7 @@ const InlineComposer = ({
       const text = (data?.content || data?.text || '').toString().slice(0, MAX_CHARS);
       if (text) {
         setBody(text);
-        // Persist a fresh history row for this generation and make it the active row,
+        setOriginalAiBody(text);
         // so subsequent manual edits + media updates flow into the same record.
         try {
           const { data: { user } } = await supabase.auth.getUser();
