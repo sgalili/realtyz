@@ -55,6 +55,17 @@ type ChannelCard = {
   iconColor?: string;
 };
 
+type SocialAccountProfile = {
+  id: string;
+  platform: string;
+  accountRef: string;
+  profileKey: string | null;
+  name: string;
+  username: string | null;
+  avatar: string | null;
+  profileUrl: string | null;
+};
+
 // Top row (RTL): Facebook → Instagram → X
 // Middle row (RTL): IVR → Email → AI Voice
 // Bottom row (RTL): YouTube → LinkedIn → TikTok
@@ -132,7 +143,7 @@ const buildAccountUrl = (channelId: string, value: string): string | null => {
 
 
 const ChannelGrid = ({
-  selectedId, onPick, onConnect, brandName, connected = EMPTY_CONNECTED, accountNames = {},
+  selectedId, onPick, onConnect, brandName, connected = EMPTY_CONNECTED, accountNames = {}, socialProfiles = [], onAddFacebookPage,
 }: {
   selectedId: string | null;
   onPick: (c: ChannelCard) => void;
@@ -140,6 +151,8 @@ const ChannelGrid = ({
   brandName: string;
   connected?: Set<string>;
   accountNames?: Record<string, string>;
+  socialProfiles?: SocialAccountProfile[];
+  onAddFacebookPage?: () => void;
 }) => (
   <div className="w-full rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
     <div className="grid grid-cols-3 md:grid-cols-9 gap-2" dir="rtl">
@@ -148,6 +161,7 @@ const ChannelGrid = ({
         const isSelected = selectedId === c.id;
         const isConnected = connected.has(c.id);
         const brandColor = isConnected ? (BRAND_COLOR[c.id] ?? c.iconColor ?? 'text-foreground') : 'text-muted-foreground/60';
+        const profiles = socialProfiles.filter((p) => p.platform === c.id || (c.id === 'x' && p.platform === 'twitter'));
         return (
           <button key={c.id} type="button"
             onClick={() => isConnected ? onPick(c) : onConnect(c)}
@@ -162,6 +176,20 @@ const ChannelGrid = ({
             {isConnected && isSelected && (
               <span aria-hidden className="absolute left-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full text-primary" title="נבחר">
                 <CheckCircle2 className="h-4 w-4" />
+              </span>
+            )}
+
+            {c.id === 'facebook' && isConnected && (
+              <span
+                role="button"
+                tabIndex={0}
+                onClick={(e) => { e.stopPropagation(); onAddFacebookPage?.(); }}
+                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onAddFacebookPage?.(); } }}
+                className="absolute right-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-full border border-primary/40 bg-primary text-primary-foreground shadow-sm hover:bg-primary/90"
+                title="+ הוסף עמוד נוסף"
+                aria-label="+ הוסף עמוד נוסף"
+              >
+                <Plus className="h-3.5 w-3.5" />
               </span>
             )}
 
@@ -188,7 +216,35 @@ const ChannelGrid = ({
               </span>
             )}
 
-            {isConnected && accountNames[c.id] && (() => {
+            {isConnected && profiles.length > 0 ? (
+              <span className="mt-0.5 flex w-full flex-col gap-1 overflow-hidden">
+                {profiles.slice(0, 2).map((profile) => {
+                  const url = profile.profileUrl || buildAccountUrl(c.id, profile.accountRef || profile.name);
+                  const handleOpen = (e: React.MouseEvent) => {
+                    e.stopPropagation();
+                    if (url) window.open(url, '_blank', 'noopener,noreferrer');
+                  };
+                  return (
+                    <span key={profile.id} className="block max-w-full text-center">
+                      <span className="block truncate text-[8px] font-mono text-muted-foreground" dir="ltr" title={profile.profileKey || profile.id}>
+                        {profile.profileKey || profile.id}
+                      </span>
+                      <span
+                        role={url ? 'link' : undefined}
+                        tabIndex={url ? 0 : undefined}
+                        onClick={url ? handleOpen : undefined}
+                        onKeyDown={url ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleOpen(e as unknown as React.MouseEvent); } : undefined}
+                        className={cn('block truncate text-[10px] font-bold text-[#8a7327]', url && 'cursor-pointer hover:underline')}
+                        title={profile.name}
+                      >
+                        {profile.name}
+                      </span>
+                    </span>
+                  );
+                })}
+                {profiles.length > 2 && <span className="text-[9px] font-semibold text-muted-foreground">+{profiles.length - 2}</span>}
+              </span>
+            ) : isConnected && accountNames[c.id] && (() => {
               const raw = accountNames[c.id];
               const display = formatPhoneDisplay(raw) || raw;
               const url = buildAccountUrl(c.id, raw);
