@@ -145,6 +145,7 @@ export type Database = {
           created_by: string | null
           generated_text: string | null
           id: string
+          listing_id: string | null
           media_urls: Json
           platform: string | null
           topic: string | null
@@ -155,6 +156,7 @@ export type Database = {
           created_by?: string | null
           generated_text?: string | null
           id?: string
+          listing_id?: string | null
           media_urls?: Json
           platform?: string | null
           topic?: string | null
@@ -165,12 +167,21 @@ export type Database = {
           created_by?: string | null
           generated_text?: string | null
           id?: string
+          listing_id?: string | null
           media_urls?: Json
           platform?: string | null
           topic?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "ai_content_logs_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       ai_drawer_history: {
         Row: {
