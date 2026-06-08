@@ -512,7 +512,15 @@ Deno.serve(async (req) => {
       : `[PRIMARY PROPERTY DISCUSSED — UNRESOLVED]: no listing was matched from the published post body. Reply generically about the post WITHOUT naming any specific street, address, or listing. NEVER invent a property name.`;
 
     const featureAsk = detectFeatureAsk(inbound);
-    const featureFact: FeatureFact = featureAsk ? extractFeatureFact(featureAsk, primaryListing) : "unknown";
+    const rawFeatureFact: FeatureFact = featureAsk ? extractFeatureFact(featureAsk, primaryListing) : "unknown";
+    // Binary amenity features: if the listing doesn't mention it, treat as NO
+    // (the broker owns the listing — silence means the feature is absent).
+    // Non-binary keys like "floor" must keep "unknown" so we don't fabricate.
+    const BINARY_FEATURE_KEYS = new Set(["elevator", "parking", "balcony", "furnished", "pets", "ac", "mamad", "storage"]);
+    const featureFact: FeatureFact =
+      featureAsk && rawFeatureFact === "unknown" && BINARY_FEATURE_KEYS.has(featureAsk.key)
+        ? "no"
+        : rawFeatureFact;
     const featureAnswerHe = featureAsk
       ? (featureFact === "yes"
           ? `כן, יש ${featureAsk.label_he} בנכס.`
@@ -521,7 +529,7 @@ Deno.serve(async (req) => {
           : `${featureAsk.label_he} לא מצוין במפרט הנכס.`)
       : "";
     const featureAskBlock = featureAsk
-      ? `[FEATURE QUESTION DETECTED]: the commenter explicitly asked about "${featureAsk.label_he}".\nGROUND-TRUTH ANSWER from listing data: ${featureFact.toUpperCase()}.\nOpen public_comment AND private_messenger_dm with this factual answer in the matched language. Suggested Hebrew phrasing: "${featureAnswerHe}". If GROUND-TRUTH = UNKNOWN: state plainly that this attribute is not specified in the listing spec ("${featureAsk.label_he} לא מצוין במפרט") and pivot to a confirmed attribute (rooms, sqm, monthly rent, street). NEVER write "אבדוק", "אני אבדוק", "אעדכן אותך", "I'll check", "let me verify", "I need to find out", or any equivalent — the broker already owns the listing and answers from data, not from future research.\nALSO scan description_excerpt inside [STRICT LISTING PAYLOAD JSON] for any additional facts (PDF-extracted) and quote them when relevant.`
+      ? `[FEATURE QUESTION DETECTED]: the commenter explicitly asked about "${featureAsk.label_he}".\nGROUND-TRUTH ANSWER from listing data: ${featureFact.toUpperCase()}.\nOpen public_comment AND private_messenger_dm with this factual answer in the matched language. Suggested Hebrew phrasing: "${featureAnswerHe}".\nHARD RULE: if a binary amenity (elevator/מעלית, parking/חניה, balcony/מרפסת, furnished/ריהוט, pets, AC, ממ"ד, storage) is NOT explicitly mentioned in the listing, answer "NO" — never say "לא מצוין", "not specified", "אין לי מידע", "I don't see it in the listing", or similar. The broker owns the listing; silence = the feature is absent. Answer plainly "אין X בנכס" and pivot to a confirmed attribute (rooms, sqm, monthly rent, street).\nNEVER write "אבדוק", "אני אבדוק", "אעדכן אותך", "I'll check", "let me verify", "I need to find out", or any equivalent — the broker already owns the listing and answers from data, not from future research.\nALSO scan description_excerpt inside [STRICT LISTING PAYLOAD JSON] for any additional facts (PDF-extracted) and quote them when relevant.`
       : null;
 
     const userPrompt = [
