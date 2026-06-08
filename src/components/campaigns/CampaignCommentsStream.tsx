@@ -59,6 +59,7 @@ type Props = {
     provider_message_id?: string | null;
     provider_response?: any;
   };
+  commentCount?: number;
 };
 
 const sentimentClass = (s: string | null) =>
@@ -93,7 +94,7 @@ const writeCache = (campaignId: string, rows: EngagementRow[]) => {
   try { sessionStorage.setItem(cacheKey(campaignId), JSON.stringify(rows)); } catch { /* quota */ }
 };
 
-export function CampaignCommentsStream({ userId, campaign }: Props) {
+export function CampaignCommentsStream({ userId, campaign, commentCount }: Props) {
   const cached = readCache(campaign.id);
   const [rows, setRows] = useState<EngagementRow[] | null>(cached);
   const [loading, setLoading] = useState(false);
@@ -218,6 +219,14 @@ export function CampaignCommentsStream({ userId, campaign }: Props) {
     forceRefresh();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaign.id, postIdsKey, campaign.channel]);
+
+  // When the parent's counter bumps (analytics realtime patch on
+  // campaign_logs), immediately pull the new comments into the tree.
+  useEffect(() => {
+    if (typeof commentCount !== "number") return;
+    forceRefresh();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [commentCount]);
 
 
   useEffect(() => {
