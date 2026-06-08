@@ -518,21 +518,36 @@ const InlineComposer = ({
                 היסטוריה
               </button>
             </PopoverTrigger>
-            <PopoverContent align="start" className="w-[340px] p-2 max-h-96 overflow-auto" dir="rtl">
+            <PopoverContent align="start" className="w-[360px] p-2 max-h-96 overflow-auto" dir="rtl">
               {history.length === 0 ? (
                 <p className="px-3 py-6 text-center text-xs text-muted-foreground">אין יצירות שמורות עדיין עבור {channel.label}</p>
-              ) : history.map((h) => (
-                <button key={h.id} type="button"
-                  onClick={() => { setBody((h.generated_text || '').slice(0, MAX_CHARS)); setHistoryOpen(false); toast.success('הטקסט הועתק לעורך'); }}
-                  className="mb-1 w-full rounded-md border border-border/60 bg-background px-3 py-2 text-right hover:bg-muted">
-                  <div className="text-[11px] text-muted-foreground">
-                    {new Date(h.created_at).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
-                  </div>
-                  <div className="mt-1 text-xs text-foreground line-clamp-3 whitespace-pre-wrap">
-                    {h.generated_text || h.topic || '—'}
-                  </div>
-                </button>
-              ))}
+              ) : history.map((h) => {
+                const media = Array.isArray(h.media_urls) ? h.media_urls : [];
+                const stamp = h.updated_at || h.created_at;
+                const edited = h.updated_at && h.updated_at !== h.created_at;
+                return (
+                  <button key={h.id} type="button"
+                    onClick={() => {
+                      setBody((h.generated_text || '').slice(0, MAX_CHARS));
+                      setAttachments(media.map((m: any) => ({ name: m?.name || 'קובץ', kind: m?.kind || 'file', url: m?.url || undefined })));
+                      setLogId(h.id);
+                      setHistoryOpen(false);
+                      toast.success('הטיוטה נטענה לעורך');
+                    }}
+                    className={cn('mb-1 w-full rounded-md border border-border/60 bg-background px-3 py-2 text-right hover:bg-muted', logId === h.id && 'border-primary/60 bg-primary/5')}>
+                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>{new Date(stamp).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}</span>
+                      <span className="flex items-center gap-2">
+                        {edited && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-800">נערך</span>}
+                        {media.length > 0 && <span className="inline-flex items-center gap-0.5"><Paperclip className="h-3 w-3" />{media.length}</span>}
+                      </span>
+                    </div>
+                    <div className="mt-1 text-xs text-foreground line-clamp-3 whitespace-pre-wrap">
+                      {h.generated_text || h.topic || '—'}
+                    </div>
+                  </button>
+                );
+              })}
             </PopoverContent>
           </Popover>
           <button type="button" onClick={handleGenerate} disabled={generating}
