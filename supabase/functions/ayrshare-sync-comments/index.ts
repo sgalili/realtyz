@@ -154,17 +154,23 @@ Deno.serve(async (req) => {
     byPlatform.set(t.platform, list);
   }
 
-  const fanouts = await Promise.allSettled(
-    Array.from(byPlatform.entries()).map(([platform, ids]) =>
-      fetch(`${SUPABASE_URL}/functions/v1/ayrshare-comments-fetch`, {
-        method: "POST",
-        headers: { Authorization: `Bearer ${SERVICE}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ user_id: userId, post_ids: ids, platform }),
-      })
-        .then((r) => r.json())
-        .catch((e) => ({ ok: false, error: String(e) })),
-    ),
-  );
+  // Fire-and-forget per-platform fanout. Each call to ayrshare-comments-fetch
+  // iterates every post and can itself take many seconds, so awaiting them all
+  // here easily blows the 150s edge-function idle timeout. We dispatch them in
+  // the background and return immediately; results stream into the DB and the
+  // client picks them up via its polling/realtime loop.
+  const dispatched = Array.from(byPlatform.entries()).map(([platform, ids]) => ({ platform, count: ids.length }));
+  for (const [platform, ids] of byPlatform.entries()) {
+    // Cap each batch so a single post storm doesn't keep the child function alive forever.
+    const capped = ids.slice(0, 50);
+    const p = fetch(`${SUPABASE_URL}/functions/v1/ayrshare-comments-fetch`, {
+      method: "POST",
+      headers: { Authorization: `Bearer ${SERVICE}`, "Content-Type": "application/json" },
+      body: JSON.stringify({ user_id: userId, post_ids: capped, platform }),
+    }).catch((e) => console.error("[ayrshare-sync-comments] fanout failed", platform, e));
+    // @ts-ignore Deno-specific background task API; falls back to a fire-and-forget promise.
+    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) EdgeRuntime.waitUntil(p);
+  }
 
-  return json({ success: true, targets: targets.size, api_errors: apiErrors, fanouts }, 200);
+  return json({ success: true, targets: targets.size, api_errors: apiErrors, dispatched, queued: true }, 200);
 });
