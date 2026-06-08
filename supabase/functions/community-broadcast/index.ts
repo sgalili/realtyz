@@ -148,6 +148,7 @@ Deno.serve(async (req) => {
           channel: body.channel,
           personaPrompt,
           recentBlock,
+          kbInstructionsBlock,
         });
         sampleDraft = { lead_name: sample[0].full_name ?? null, message: text };
       }
