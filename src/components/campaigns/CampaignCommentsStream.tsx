@@ -846,25 +846,32 @@ function CommentBubble({
       )}
       <div className="mt-2">
         {alreadyReplied ? (
-          <button
-            type="button"
-            onClick={onToggleThread}
-            className="inline-flex max-w-full items-center gap-1 text-right text-[12px] text-muted-foreground hover:text-foreground"
-            aria-expanded={threadExpanded}
-          >
-            <Bot className="h-3.5 w-3.5 shrink-0" />
-            <span className="truncate">
-              {cleanReplyPreview ?? row.ai_reply_text ?? row.inbound_text}
-            </span>
-            {(replyCount ?? 0) > 0 && (
-              <span className="shrink-0">({replyCount})</span>
-            )}
-            {threadExpanded ? (
-              <ChevronUp className="h-3.5 w-3.5 shrink-0" />
-            ) : (
-              <ChevronDown className="h-3.5 w-3.5 shrink-0" />
-            )}
-          </button>
+          (replyCount ?? 0) > 0 ? (
+            <button
+              type="button"
+              onClick={onToggleThread}
+              className="inline-flex max-w-full items-center gap-1 text-right text-[12px] text-muted-foreground hover:text-foreground"
+              aria-expanded={threadExpanded}
+            >
+              <Bot className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">
+                {cleanReplyPreview ?? row.ai_reply_text ?? row.inbound_text}
+              </span>
+              <span className="shrink-0">({replyCount} {replyCount === 1 ? "תגובה" : "תגובות"})</span>
+              {threadExpanded ? (
+                <ChevronUp className="h-3.5 w-3.5 shrink-0" />
+              ) : (
+                <ChevronDown className="h-3.5 w-3.5 shrink-0" />
+              )}
+            </button>
+          ) : (
+            <div className="inline-flex max-w-full items-center gap-1 text-right text-[12px] text-muted-foreground">
+              <Bot className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">
+                {cleanReplyPreview ?? row.ai_reply_text ?? row.inbound_text}
+              </span>
+            </div>
+          )
         ) : (
           <>
             <button
