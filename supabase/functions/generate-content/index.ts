@@ -309,6 +309,18 @@ NO-HASHTAGS RULE (HARD — ZERO TOLERANCE):
     }
     content = content.replace(/[ \t]{2,}/g, " ").replace(/\n{3,}/g, "\n\n").trim();
 
+    // NO-HASHTAGS scrub: remove any hashtag tokens and any trailing
+    // "tags / keywords / האשטגים / תגיות" lines, regardless of what the
+    // model produced or what a KB template suggested.
+    content = content
+      .split("\n")
+      .filter((line) => !/^\s*(?:tags|keywords|hashtags|האשטגים|תגיות|מילות\s*מפתח)\s*[:：-].*/i.test(line))
+      .join("\n")
+      .replace(/(^|\s)#[^\s#]+/g, "$1")
+      .replace(/[ \t]{2,}/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+
     // Neighborhood naming hard rule: never expose numeric/coded neighborhoods.
     // Strip "שכונת [שכונה]" placeholder leftovers and "שכונה 10" / "שכונה ג'" patterns.
     const validNeighborhood = String(promotedListing?.neighborhood ?? "").trim();
