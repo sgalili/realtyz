@@ -663,35 +663,26 @@ export function CampaignCommentsStream({ userId, campaign, commentCount }: Props
               </div>
             </div>
           );
-          return (
-            <li key={root.id}>
+          // Recursively render a node + all its descendants inside the same card.
+          const renderNode = (node: typeof root): React.ReactNode => (
+            <li key={node.id}>
               <CommentBubble
-                row={root}
+                row={node}
                 onToggleEditor={(r) => setReplyOpen(replyOpen?.id === r.id ? null : r)}
-                expanded={replyOpen?.id === root.id}
-                editor={replyOpen?.id === root.id ? renderEditor(root) : null}
+                expanded={replyOpen?.id === node.id}
+                editor={replyOpen?.id === node.id ? renderEditor(node) : null}
                 onRegenerate={regenerateInline}
-                regenerating={regeneratingId === root.id}
+                regenerating={regeneratingId === node.id}
+                isReply={node.depth > 0}
               />
-              {root.children.length > 0 && (
+              {node.children.length > 0 && (
                 <ul className="mt-2 space-y-2 border-r-2 border-border/60 pr-3 mr-2">
-                  {root.children.map((child) => (
-                    <li key={child.id}>
-                      <CommentBubble
-                        row={child}
-                        onToggleEditor={(r) => setReplyOpen(replyOpen?.id === r.id ? null : r)}
-                        expanded={replyOpen?.id === child.id}
-                        editor={replyOpen?.id === child.id ? renderEditor(child) : null}
-                        onRegenerate={regenerateInline}
-                        regenerating={regeneratingId === child.id}
-                        isReply
-                      />
-                    </li>
-                  ))}
+                  {node.children.map((child) => renderNode(child as typeof root))}
                 </ul>
               )}
             </li>
           );
+          return renderNode(root);
         })}
       </ul>
     </div>
