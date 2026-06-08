@@ -382,7 +382,7 @@ Deno.serve(async (req) => {
             }
           }
 
-          let fetched = graphArr ? { ok: true, status: 200, payload: { data: graphArr }, text: "" } : null;
+          let fetched: any = graphArr ? { ok: true, status: 200, payload: { data: graphArr }, text: "" } : null;
           let arr: any[] = graphArr ?? [];
 
           // Try the saved workspace profile first, then the legacy env profile
@@ -630,7 +630,7 @@ Deno.serve(async (req) => {
         const cleanMetadata = {
           source: "ayrshare_comments_fetch",
           campaign_name: safeStr(campaignName),
-          profile_ref_id: safeStr(refId),
+          profile_ref_id: safeStr(c?.__profile_ref_id ?? refId),
           parent_id: safeStr(parentId),
           self_authored: selfAuthored,
           author_type: selfAuthored ? "workspace_page" : "audience",
