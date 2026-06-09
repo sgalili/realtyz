@@ -355,8 +355,16 @@ export function renderCrmBlock(snap: CrmSnapshot | null): string {
             l.title || "ללא כותרת",
             typeHe ? `סוג עסקה: ${typeHe}` : null,
             l.city ? `עיר: ${l.city}` : null,
+            l.neighborhood ? `שכונה: ${l.neighborhood}` : null,
+            l.address ? `כתובת: ${l.address}` : null,
             l.rooms ? `${l.rooms} חדרים` : null,
             l.sqm ? `${l.sqm} מ"ר` : null,
+            l.balcony_sqm ? `מרפסת ${l.balcony_sqm} מ"ר` : null,
+            l.floor != null ? (l.total_floors ? `קומה ${l.floor}/${l.total_floors}` : `קומה ${l.floor}`) : null,
+            l.year_built ? `שנת בנייה ${l.year_built}` : null,
+            l.condition ? `מצב: ${l.condition}` : null,
+            l.directions ? `כיווני אוויר: ${l.directions}` : null,
+            l.amenities?.length ? `מאפיינים: ${l.amenities.join(", ")}` : null,
             l.asking_price ? `${priceLabel}: ${Number(l.asking_price).toLocaleString("he-IL")} ש"ח` : null,
           ].filter(Boolean);
           return `OBJECT_${index + 1}: ${parts.join(" | ")}`;
