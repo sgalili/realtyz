@@ -595,9 +595,10 @@ export function AppLayout({ children }: { children: ReactNode }) {
         <AppSidebar tutorialHighlightPath={activeTutorialStep?.path} />
         <div className="flex-1 flex h-screen min-w-0 flex-col overflow-hidden">
           <header className="h-16 text-foreground backdrop-blur-md flex items-center px-4 gap-2 shrink-0 sticky top-0 z-30 relative" style={{ backgroundColor: '#fdf251' }} dir="rtl">
-            {/* Profile avatar on visual right (RTL start) */}
-            <div className="flex items-center gap-3">
+            {/* Profile avatar on visual right (RTL start) — bell sits right next to it */}
+            <div className="flex items-center gap-2">
               <HeaderProfileMenu />
+              <NotificationCenter />
             </div>
 
             <div className="flex-1" />
