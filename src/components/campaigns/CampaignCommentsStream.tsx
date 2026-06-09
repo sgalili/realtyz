@@ -108,6 +108,7 @@ type Props = {
   };
   commentCount?: number;
   onLiveCountResolved?: (campaignId: string, count: number) => void;
+  onCountersResolved?: (campaignId: string, counters: { like_count?: number; share_count?: number; comment_count?: number }) => void;
 };
 
 
@@ -269,7 +270,7 @@ const writeDraftCache = (campaignId: string, map: DraftMap) => {
   try { sessionStorage.setItem(draftKey(campaignId), JSON.stringify(map)); } catch { /* quota */ }
 };
 
-export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveCountResolved }: Props) {
+export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveCountResolved, onCountersResolved }: Props) {
   const cached = readCache(campaign.id);
   const [rows, setRows] = useState<EngagementRow[] | null>(cached);
 
@@ -475,6 +476,29 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
       }
 
       await fetchRows();
+
+      // Re-read the freshly overwritten counters from campaign_logs and bubble
+      // them up so the outer card badges (likes / shares / comments) repaint
+      // immediately — independent of the realtime UPDATE channel, which can
+      // silently drop frames if publication is disabled for the table.
+      if (onCountersResolved && postIds.length > 0) {
+        try {
+          const { data: rows } = await supabase
+            .from("campaign_logs")
+            .select("like_count, share_count, comment_count, provider_message_id")
+            .eq("user_id", userId)
+            .in("provider_message_id", postIds);
+          const max = (key: "like_count" | "share_count" | "comment_count") =>
+            (rows ?? []).reduce((acc, r: any) => Math.max(acc, Number(r?.[key] ?? 0) || 0), 0);
+          onCountersResolved(campaign.id, {
+            like_count: max("like_count"),
+            share_count: max("share_count"),
+            comment_count: max("comment_count"),
+          });
+        } catch (counterErr) {
+          console.warn("[CampaignCommentsStream] counter bubble-up failed", counterErr);
+        }
+      }
     } catch (e: any) {
       console.warn("[CampaignCommentsStream] manual refresh failed", e);
     } finally {
