@@ -138,9 +138,19 @@ const readCache = (campaignId: string): EngagementRow[] | null => {
     return parsed;
   } catch { return null; }
 };
-const writeCache = (campaignId: string, rows: EngagementRow[]) => {
+const writeCache = (campaignId: string, rows: EngagementRow[], postIds: string[] = []) => {
   COMMENT_CACHE.set(campaignId, rows);
   try { sessionStorage.setItem(cacheKey(campaignId), JSON.stringify(rows)); } catch { /* quota */ }
+  // Mirror into the postId-keyed slot so re-animated legacy posts (fetched via
+  // the native FB id fallback) stay visible across card collapse/expand cycles
+  // even when the campaign id changes or the cache key is looked up by post.
+  for (const pid of postIds) {
+    if (!pid) continue;
+    try {
+      const perPost = rows.filter((r) => r.external_post_id === pid);
+      sessionStorage.setItem(`realtyz_fb_comments_cache_${pid}`, JSON.stringify(perPost));
+    } catch { /* quota */ }
+  }
 };
 
 // Per-campaign throttle for provider refresh — Ayrshare caps at 300 calls
