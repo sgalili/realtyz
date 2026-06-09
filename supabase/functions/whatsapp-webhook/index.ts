@@ -328,7 +328,7 @@ async function handleLeadInboxInbound(
     platform: "whatsapp",
     content: inboundText,
     direction: "inbound",
-    sender_type: "lead",
+    sender_type: "voter",
     metadata,
   });
   if (insertErr) throw new Error(`inbound message insert failed: ${insertErr.message}`);
