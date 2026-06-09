@@ -25,6 +25,30 @@ export const platformForCampaignChannel = (channel?: string | null): string => {
   return PLATFORM_MAP[key] || key;
 };
 
+const collectFacebookPermalinkAliases = (root: any): string[] => {
+  const aliases = new Set<string>();
+  const seen = new Set<any>();
+  const pfbidRe = /pfbid[0-9A-Za-z]+/g;
+  const shareTokenRe = /facebook\.com\/share\/p\/([^/?#\s"'<]+)/gi;
+  const fromString = (value: string) => {
+    for (const m of value.matchAll(pfbidRe)) if (m[0]) aliases.add(m[0]);
+    for (const m of value.matchAll(shareTokenRe)) {
+      const token = decodeURIComponent(String(m[1] || "")).replace(/\/+$/, "").trim();
+      if (/^[0-9A-Za-z_-]{5,}$/.test(token)) aliases.add(token);
+    }
+  };
+  const visit = (node: any) => {
+    if (node == null) return;
+    if (typeof node === "string") { fromString(node); return; }
+    if (typeof node !== "object" || seen.has(node)) return;
+    seen.add(node);
+    if (Array.isArray(node)) node.forEach(visit);
+    else Object.values(node).forEach(visit);
+  };
+  visit(root);
+  return Array.from(aliases);
+};
+
 export const getCampaignPostIds = (campaign: CampaignPostIdentity): string[] => {
   const ids = new Set<string>();
   const add = (value: unknown) => {
@@ -35,6 +59,7 @@ export const getCampaignPostIds = (campaign: CampaignPostIdentity): string[] => 
   add(campaign.provider_message_id);
 
   const response = campaign.provider_response || {};
+  collectFacebookPermalinkAliases(response).forEach(add);
   const flatPostIds = Array.isArray(response?.postIds) ? response.postIds : [];
   const wrappedPostIds = Array.isArray(response?.posts)
     ? response.posts.flatMap((post: any) => (Array.isArray(post?.postIds) ? post.postIds : []))
