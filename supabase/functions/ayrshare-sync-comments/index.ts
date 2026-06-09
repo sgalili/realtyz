@@ -49,12 +49,21 @@ Deno.serve(async (req) => {
 
   for (const row of rows ?? []) {
     if (String((row as any).channel || "").toLowerCase() !== "facebook") continue;
-    add((row as any).provider_message_id);
     const response: any = (row as any).provider_response ?? {};
+    // 1. PRIORITY: Ayrshare top-level post id (provider_response.posts[].id).
+    //    This is the id Ayrshare's /comments endpoint actually accepts.
+    const wrappedPosts: any[] = Array.isArray(response?.posts) ? response.posts : [];
+    const flatPostFromResponse = response?.id ? [response] : [];
+    for (const post of [...flatPostFromResponse, ...wrappedPosts]) {
+      add(post?.id);
+    }
+    // 2. Fallbacks: native FB composite id (so ayrshare-comments-fetch can
+    //    still resolve targets via its campaign_logs alias map).
+    add((row as any).provider_message_id);
     const flatPostIds: any[] = Array.isArray(response?.postIds) ? response.postIds : [];
-    const wrappedPostIds: any[] = Array.isArray(response?.posts)
-      ? response.posts.flatMap((post: any) => (Array.isArray(post?.postIds) ? post.postIds : []))
-      : [];
+    const wrappedPostIds: any[] = wrappedPosts.flatMap((post: any) =>
+      Array.isArray(post?.postIds) ? post.postIds : [],
+    );
     [...flatPostIds, ...wrappedPostIds]
       .filter((post: any) => String(post?.platform || "").toLowerCase() === "facebook")
       .forEach((post: any) => add(post?.id ?? post?.postId ?? post?.post_id));
