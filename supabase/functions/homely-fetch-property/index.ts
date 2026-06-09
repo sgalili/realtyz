@@ -140,7 +140,64 @@ Deno.serve(async (req) => {
       if (detail) break;
     }
 
-    if (!detail) return json({ error: "property_not_found_on_homely", last_error: lastError, serial }, 404);
+    // 404 fallback: Homely's per-id endpoints don't recognize the serial we
+    // stored locally. Pivot to the broker-wide active-listings payload and
+    // locate the matching record there instead of crashing the dashboard.
+    if (!detail) {
+      const FALLBACK_PATHS = [
+        "/api/Properties/GetActiveByBroker",
+        "/api/Nechasim/GetActiveByBroker",
+        "/api/Nechasim/GetAll",
+      ];
+      let broaderList: any[] = [];
+      let fallbackEndpoint: string | null = null;
+      for (const path of FALLBACK_PATHS) {
+        try {
+          const r = await fetch(`${WEBTIV_BASE}${path}`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ db, token, agency: cred.homely_agency }),
+          });
+          if (!r.ok) { lastError = `${path}:HTTP ${r.status}`; continue; }
+          const data = await r.json().catch(() => null);
+          const arr = Array.isArray(data) ? data : (data?.result || data?.data || data?.items || data?.nechasim || []);
+          if (Array.isArray(arr) && arr.length) {
+            broaderList = arr;
+            fallbackEndpoint = path;
+            break;
+          }
+        } catch (e) {
+          lastError = `${path}:${(e as Error).message}`;
+        }
+      }
+      const serialStr = String(serial);
+      const match = broaderList.find((it: any) => {
+        const candidates = [it?.id, it?.Id, it?.nechesId, it?.NechesId, it?.sidur, it?.Sidur, it?.serial, it?.Serial]
+          .filter((v) => v !== undefined && v !== null)
+          .map(String);
+        return candidates.includes(serialStr);
+      });
+      if (match) {
+        detail = match;
+        usedEndpoint = `${fallbackEndpoint}#match`;
+      } else if (broaderList.length) {
+        return json({
+          error: "property_not_found_in_broker_list",
+          fallback: true,
+          fallback_endpoint: fallbackEndpoint,
+          broker_active_count: broaderList.length,
+          serial,
+          last_error: lastError,
+        }, 200);
+      } else {
+        return json({
+          error: "property_not_found_on_homely",
+          fallback: true,
+          last_error: lastError,
+          serial,
+        }, 200);
+      }
+    }
 
     const photos = extractPhotos(detail);
     const price = Number(detail?.price ?? detail?.Price ?? detail?.mehir ?? listing.asking_price) || Number(listing.asking_price);
