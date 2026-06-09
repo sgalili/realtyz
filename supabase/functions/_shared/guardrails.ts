@@ -140,14 +140,41 @@ export function factCheckDraft(
  */
 export function renderListingFacts(listings: ListingFact[]): string {
   if (!listings.length) return "(no verified listings available, do NOT mention specific prices or addresses)";
+  const AMENITY_LABELS: Record<string, string> = {
+    balcony: 'מרפסת', safe_room: 'ממ"ד', storage: "מחסן",
+    air_conditioning: "מיזוג אוויר", accessible: "גישה לנכים",
+    renovated: "משופץ", furnished: "מרוהט", bars: "סורגים",
+  };
+  const CONDITION_LABELS: Record<string, string> = {
+    new: "חדש מקבלן", renovated: "משופץ", good: "שמור", needs_renovation: "דורש שיפוץ",
+  };
   return listings
     .slice(0, 20)
-    .map(
-      (l) =>
-        `• "${l.property_title}", ${
-          l.asking_price != null ? `${Math.round(Number(l.asking_price)).toLocaleString()} ₪` : "price unavailable"
-        }`,
-    )
+    .map((l) => {
+      const featObj = Array.isArray(l.features) ? (l.features[0] ?? {}) : (l.features ?? {});
+      const extras = (featObj && typeof featObj === "object" ? featObj.extras : null) ?? {};
+      const amenities: string[] = [];
+      if (l.parking ?? extras.parking) amenities.push("חניה");
+      if (l.elevator ?? extras.elevator) amenities.push("מעלית");
+      for (const [k, label] of Object.entries(AMENITY_LABELS)) {
+        if (extras[k]) amenities.push(label);
+      }
+      const bits = [
+        l.city ? `${l.city}` : null,
+        l.neighborhood ? `שכ' ${l.neighborhood}` : null,
+        l.address ? l.address : null,
+        l.rooms ? `${l.rooms} חד'` : null,
+        l.sqm ? `${l.sqm} מ"ר` : null,
+        l.floor != null ? `קומה ${l.floor}${extras.total_floors ? `/${extras.total_floors}` : ""}` : null,
+        extras.balcony_sqm ? `מרפסת ${extras.balcony_sqm} מ"ר` : null,
+        featObj?.year_built ? `שנת ${featObj.year_built}` : null,
+        extras.condition ? `מצב: ${CONDITION_LABELS[extras.condition] ?? extras.condition}` : null,
+        extras.directions ? `כיווני אוויר: ${extras.directions}` : null,
+        amenities.length ? amenities.join(", ") : null,
+      ].filter(Boolean).join(" | ");
+      const price = l.asking_price != null ? `${Math.round(Number(l.asking_price)).toLocaleString()} ₪` : "price unavailable";
+      return `• "${l.property_title}" — ${price}${bits ? ` | ${bits}` : ""}`;
+    })
     .join("\n");
 }
 
