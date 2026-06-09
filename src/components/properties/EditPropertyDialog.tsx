@@ -27,6 +27,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+
+const CONDITION_OPTIONS: { value: string; label: string }[] = [
+  { value: 'new', label: 'חדש מקבלן' },
+  { value: 'renovated', label: 'משופץ' },
+  { value: 'good', label: 'שמור' },
+  { value: 'needs_renovation', label: 'דורש שיפוץ' },
+];
 
 interface Props {
   property: HomelyProperty | null;
