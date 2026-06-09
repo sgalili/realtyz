@@ -284,6 +284,106 @@ function extractGreenApiMessage(payload: any):
   return null;
 }
 
+function isKnowledgeCommand(text: string): boolean {
+  return /^(\/kb|#knowledge)\b/i.test(text.trim());
+}
+
+async function handleLeadInboxInbound(
+  admin: ReturnType<typeof createClient>,
+  supabaseUrl: string,
+  serviceKey: string,
+  senderPhone: string,
+  messageId: string | undefined,
+  inboundText: string,
+) {
+  const { data: lead, error: leadErr } = await admin
+    .from("leads")
+    .select("id, full_name, ai_autopilot, phone_number")
+    .eq("phone_number", senderPhone)
+    .maybeSingle();
+
+  if (leadErr) throw new Error(`lead lookup failed: ${leadErr.message}`);
+  if (!lead?.id) {
+    console.warn("whatsapp-webhook no matching lead", { senderPhone, messageId });
+    return { ok: true, ignored: "lead_not_found", phone: senderPhone };
+  }
+
+  if (messageId) {
+    const { data: existing } = await admin
+      .from("messages")
+      .select("id")
+      .eq("lead_id", lead.id)
+      .eq("direction", "inbound")
+      .contains("metadata", { message_id: messageId })
+      .maybeSingle();
+    if (existing?.id) return { ok: true, duplicate: true, lead_id: lead.id };
+  }
+
+  const now = new Date().toISOString();
+  const metadata = { provider: "GreenAPI", message_id: messageId ?? null, inbound_via: "whatsapp-webhook" };
+
+  const { error: insertErr } = await admin.from("messages").insert({
+    lead_id: lead.id,
+    channel: "whatsapp",
+    platform: "whatsapp",
+    content: inboundText,
+    direction: "inbound",
+    sender_type: "voter",
+    metadata,
+  });
+  if (insertErr) throw new Error(`inbound message insert failed: ${insertErr.message}`);
+
+  await Promise.all([
+    admin.from("chat_history").insert({ lead_id: lead.id, role: "user", content: inboundText, is_demo: false }),
+    admin.from("leads").update({ last_interaction_at: now, status: "contacted" }).eq("id", lead.id),
+  ]);
+
+  if (lead.ai_autopilot === false) {
+    return { ok: true, lead_id: lead.id, stored: true, auto_reply: "disabled" };
+  }
+
+  const { data: hist } = await admin
+    .from("chat_history")
+    .select("role, content, created_at")
+    .eq("lead_id", lead.id)
+    .order("created_at", { ascending: false })
+    .limit(12);
+  const aiMessages = (hist ?? [])
+    .reverse()
+    .map((m: any) => ({ role: m.role === "assistant" ? "assistant" : "user", content: String(m.content ?? "") }))
+    .filter((m: any) => m.content.trim());
+
+  const aiRes = await fetch(`${supabaseUrl}/functions/v1/ai-agent`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
+    body: JSON.stringify({
+      lead_id: lead.id,
+      lead_name: lead.full_name,
+      mode: "deal_room_reply",
+      context: `Inbound WhatsApp reply from ${lead.full_name ?? "the lead"}: ${inboundText}`,
+      messages: aiMessages.length ? aiMessages : [{ role: "user", content: inboundText }],
+    }),
+  });
+  const aiJson = await aiRes.json().catch(() => ({}));
+  if (!aiRes.ok) throw new Error(`ai-agent failed ${aiRes.status}: ${JSON.stringify(aiJson).slice(0, 300)}`);
+
+  const reply = String(aiJson?.content ?? aiJson?.message ?? "").trim();
+  if (!reply) return { ok: true, lead_id: lead.id, stored: true, auto_reply: "empty_ai_reply" };
+
+  const sendRes = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
+    body: JSON.stringify({ lead_id: lead.id, message: reply, ai_assisted: true, disclosure_language: "he" }),
+  });
+  const sendJson = await sendRes.json().catch(() => ({}));
+  if (!sendRes.ok || sendJson?.success === false) {
+    throw new Error(`send-whatsapp failed ${sendRes.status}: ${JSON.stringify(sendJson).slice(0, 300)}`);
+  }
+
+  await admin.from("chat_history").insert({ lead_id: lead.id, role: "assistant", content: reply, is_demo: false });
+  return { ok: true, lead_id: lead.id, stored: true, auto_reply: "sent", message_id: sendJson?.message_id ?? null };
+}
+
 // ---------- main handler ----------
 
 Deno.serve(async (req) => {
@@ -312,6 +412,29 @@ Deno.serve(async (req) => {
 
   const { senderPhone, messageId, extracted: msg } = extracted;
   const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+
+  if (msg.kind === "text" && !isKnowledgeCommand(msg.text)) {
+    try {
+      const result = await handleLeadInboxInbound(
+        admin,
+        SUPABASE_URL,
+        SERVICE_KEY,
+        senderPhone,
+        messageId,
+        msg.text,
+      );
+      return jsonResponse(result);
+    } catch (e) {
+      const message = e instanceof Error ? e.message : "unknown";
+      console.error("whatsapp-webhook inbox pipeline error:", message);
+      await logIntegrationError({
+        integration: "whatsapp",
+        functionName: "whatsapp-webhook",
+        errorMessage: message,
+      });
+      return jsonResponse({ ok: false, error: message }, 500);
+    }
+  }
 
   // 1. Whitelist check — only authorized Agents can feed the Strategy Bank.
   const { data: wl } = await admin
