@@ -98,8 +98,35 @@ Deno.serve(async (req) => {
         ? body.platform.trim().toLowerCase()
         : "facebook";
 
-    type CommentFetchTarget = { fetchPostId: string; nativePostId: string; platform: string };
+    type CommentFetchTarget = { fetchPostId: string; nativePostId: string; platform: string; pfbidAlias?: string | null };
     const targets = new Map<string, CommentFetchTarget>();
+
+    // Recursively walk a provider_response blob and pull out any Facebook
+    // "story_fbid" / "pfbid…" identifier. Meta exposes these as the canonical
+    // permalink alias for a post (e.g. permalink_url, share URLs, embedded
+    // story refs) and Ayrshare resolves them when queried with
+    // searchPlatformId=true even if the original profile that posted them is
+    // suspended or rotated.
+    const extractPfbid = (root: any): string | null => {
+      const seen = new Set<any>();
+      const re = /pfbid[0-9A-Za-z]+/;
+      const visit = (node: any): string | null => {
+        if (node == null) return null;
+        if (typeof node === "string") {
+          const m = node.match(re);
+          return m ? m[0] : null;
+        }
+        if (typeof node !== "object" || seen.has(node)) return null;
+        seen.add(node);
+        if (Array.isArray(node)) {
+          for (const item of node) { const hit = visit(item); if (hit) return hit; }
+          return null;
+        }
+        for (const v of Object.values(node)) { const hit = visit(v); if (hit) return hit; }
+        return null;
+      };
+      return visit(root);
+    };
     const requested = new Set(requestedPostIds.map((id) => String(id).trim()).filter(Boolean));
 
     // Resolve to one canonical target per campaign: fetch with Ayrshare's top-level
