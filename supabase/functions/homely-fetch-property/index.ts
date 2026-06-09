@@ -72,7 +72,85 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
     const body = await req.json().catch(() => ({}));
+    const action = (body as any)?.action as string | undefined;
     const listing_id = (body as any)?.listing_id;
+
+    // ------------- Bulk actions (manual-trigger only — gated by the
+    // dialog's "סנכרון מלא מהומלי" button on the Properties page) -------------
+    if (action === "fetchAllProperties" || action === "fetchAllContacts") {
+      const { data: cred } = await admin
+        .from("homely_broker_credentials")
+        .select("homely_agency, homely_username")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      if (!cred?.homely_agency || !cred?.homely_username) {
+        return json({ error: "no_homely_credentials" }, 400);
+      }
+      const { data: pw } = await admin.rpc("get_homely_password", { _user_id: user.id });
+      if (!pw) return json({ error: "no_homely_password" }, 400);
+      const login = await webtivLogin(String(cred.homely_agency), String(cred.homely_username), pw as unknown as string);
+      if (!login.ok) return json({ error: `login_failed:${login.status}`, note: login.note }, 502);
+      const session = login.session as any;
+      const token = session?.token || session?.Token || session?.accessToken;
+      const db = session?.db ?? session?.Db;
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      };
+      if (token) headers["Authorization"] = `Bearer ${token}`;
+
+      const PATHS = action === "fetchAllProperties"
+        ? ["/api/Properties/GetActiveByBroker", "/api/Nechasim/GetActiveByBroker", "/api/Nechasim/GetAll", "/api/Properties/GetAll"]
+        : ["/api/Contacts/Get", "/api/Leads/GetActive", "/api/Anashim/GetAll", "/api/Contacts/GetAll"];
+
+      let items: any[] = [];
+      let usedEndpoint: string | null = null;
+      let lastError = "";
+      for (const path of PATHS) {
+        try {
+          const r = await fetch(`${WEBTIV_BASE}${path}`, {
+            method: "POST",
+            headers,
+            body: JSON.stringify({ db, token, agency: cred.homely_agency }),
+          });
+          if (!r.ok) { lastError = `${path}:HTTP ${r.status}`; continue; }
+          const data = await r.json().catch(() => null);
+          const arr = Array.isArray(data) ? data : (data?.result || data?.data || data?.items || data?.nechasim || data?.contacts || []);
+          if (Array.isArray(arr)) { items = arr; usedEndpoint = path; break; }
+        } catch (e) {
+          lastError = `${path}:${(e as Error).message}`;
+        }
+      }
+
+      if (action === "fetchAllProperties") {
+        const properties = items.map((it: any) => ({
+          homely_id: String(it?.id ?? it?.Id ?? it?.nechesId ?? it?.NechesId ?? it?.sidur ?? it?.Sidur ?? it?.serial ?? ""),
+          title: it?.title || it?.Title || it?.kotert || it?.Kotert || "",
+          description: it?.description || it?.Description || it?.tiur || "",
+          price: Number(it?.price ?? it?.Price ?? it?.mehir ?? 0) || 0,
+          city: it?.city || it?.City || it?.ir || "",
+          address: it?.address || it?.Address || it?.ktovet || "",
+          rooms: Number(it?.rooms ?? it?.Rooms ?? it?.hadarim ?? 0) || 0,
+          sqm: Number(it?.size_sqm ?? it?.area ?? it?.shetach ?? 0) || 0,
+          floor: Number(it?.floor ?? it?.Floor ?? it?.koma ?? 0) || 0,
+          photo: extractPhotos(it)[0] ?? null,
+          raw: it,
+        })).filter((p) => p.homely_id);
+        return json({ ok: true, endpoint: usedEndpoint, count: properties.length, properties, last_error: lastError });
+      } else {
+        const contacts = items.map((it: any) => ({
+          homely_id: String(it?.id ?? it?.Id ?? it?.contactId ?? it?.ContactId ?? ""),
+          full_name: it?.full_name || it?.FullName || it?.name || it?.Name || it?.shem || "",
+          phone: it?.phone || it?.Phone || it?.mobile || it?.Mobile || it?.telefon || "",
+          email: it?.email || it?.Email || "",
+          city: it?.city || it?.City || it?.ir || "",
+          notes: it?.notes || it?.Notes || it?.heara || "",
+          raw: it,
+        })).filter((c) => c.phone || c.email);
+        return json({ ok: true, endpoint: usedEndpoint, count: contacts.length, contacts, last_error: lastError });
+      }
+    }
+
     if (!listing_id) return json({ error: "listing_id required" }, 400);
 
     const { data: listing } = await admin
