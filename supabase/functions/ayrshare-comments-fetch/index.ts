@@ -217,19 +217,12 @@ Deno.serve(async (req) => {
       return { ok: res.ok, status: res.status, payload, text };
     };
 
-    const normalizeAyrshareNode = (node: any): any => {
-      const fromObj = node?.from && typeof node.from === "object" ? node.from : { name: node?.from || "משתמש פייסבוק" };
-      return {
-        id: node?.commentId ?? node?.id ?? null,
-        message: node?.comment ?? node?.message ?? node?.text ?? "",
-        created_time: node?.created ?? node?.createdAt ?? null,
-        from: fromObj,
-        like_count: typeof node?.likeCount === "number" ? node.likeCount : null,
-        permalink: node?.commentUrl ?? null,
-        __parent_id: node?.parentId ?? node?.parent?.id ?? null,
-        comments: [],
-      };
-    };
+    // NOTE: we intentionally do NOT normalize Ayrshare nodes into a stripped
+    // shape before walking — doing so would discard the nested `replies` /
+    // `children` arrays and we'd only flatten the top level. The walker
+    // (which uses extractChildComments) handles every known nesting shape,
+    // and pickStr / pickText downstream already accept the raw Ayrshare keys
+    // (comment / commentId / from / createdAt / etc.).
 
     const extractCommentsArray = (payload: any, platformKey: string): any[] =>
       Array.isArray(payload?.[platformKey])
