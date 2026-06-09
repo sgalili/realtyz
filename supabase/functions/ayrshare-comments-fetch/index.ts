@@ -425,7 +425,8 @@ Deno.serve(async (req) => {
             results[nativePostId] = [];
             return;
           }
-          console.log("[ayrshare-comments-fetch] ayrshare comments success", { stored: nativePostId, resolved: fetched.resolvedPostId, count: arr.length });
+          console.log("[ayrshare-comments-fetch] ayrshare comments success", { stored: nativePostId, resolved: fetched.resolvedPostId, count: arr.length, metrics: fetched.outerMetrics });
+          if (fetched.outerMetrics) metricsByPostId.set(nativePostId, fetched.outerMetrics);
 
           // Flatten N levels of nested replies. Ayrshare/Meta nest child nodes
           // under any of: replies / children / comments / thread / data, so we
