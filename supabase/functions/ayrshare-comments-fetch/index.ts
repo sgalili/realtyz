@@ -98,8 +98,35 @@ Deno.serve(async (req) => {
         ? body.platform.trim().toLowerCase()
         : "facebook";
 
-    type CommentFetchTarget = { fetchPostId: string; nativePostId: string; platform: string };
+    type CommentFetchTarget = { fetchPostId: string; nativePostId: string; platform: string; pfbidAlias?: string | null };
     const targets = new Map<string, CommentFetchTarget>();
+
+    // Recursively walk a provider_response blob and pull out any Facebook
+    // "story_fbid" / "pfbid…" identifier. Meta exposes these as the canonical
+    // permalink alias for a post (e.g. permalink_url, share URLs, embedded
+    // story refs) and Ayrshare resolves them when queried with
+    // searchPlatformId=true even if the original profile that posted them is
+    // suspended or rotated.
+    const extractPfbid = (root: any): string | null => {
+      const seen = new Set<any>();
+      const re = /pfbid[0-9A-Za-z]+/;
+      const visit = (node: any): string | null => {
+        if (node == null) return null;
+        if (typeof node === "string") {
+          const m = node.match(re);
+          return m ? m[0] : null;
+        }
+        if (typeof node !== "object" || seen.has(node)) return null;
+        seen.add(node);
+        if (Array.isArray(node)) {
+          for (const item of node) { const hit = visit(item); if (hit) return hit; }
+          return null;
+        }
+        for (const v of Object.values(node)) { const hit = visit(v); if (hit) return hit; }
+        return null;
+      };
+      return visit(root);
+    };
     const requested = new Set(requestedPostIds.map((id) => String(id).trim()).filter(Boolean));
 
     // Resolve to one canonical target per campaign: fetch with Ayrshare's top-level
@@ -122,6 +149,7 @@ Deno.serve(async (req) => {
         const flatPosts: any[] = response?.id ? [response] : [];
         const providerMsgId = typeof (row as any).provider_message_id === "string" ? (row as any).provider_message_id.trim() : "";
         const rowChannel = String((row as any).channel || platformHint).toLowerCase();
+        const pfbidAlias = extractPfbid(response);
 
         // Path A: rows that include Ayrshare-minted top-level ids.
         let matchedFromPosts = false;
@@ -140,21 +168,17 @@ Deno.serve(async (req) => {
             postIds.find((p: any) => String(p?.id || "") === nativeId)?.platform ||
             rowChannel,
           ).toLowerCase();
-          // fetchPostId = Ayrshare top id (preferred); fallback layer inside
-          // fetchAyrshareTree will pivot to nativePostId via searchPlatformId
-          // when the top id query fails (legacy / suspended-profile posts).
-          targets.set(nativeId, { fetchPostId: topId, nativePostId: nativeId, platform: platform || platformHint });
+          targets.set(nativeId, { fetchPostId: topId, nativePostId: nativeId, platform: platform || platformHint, pfbidAlias });
           matchedFromPosts = true;
         }
 
-        // Path B: legacy rows with NO Ayrshare top id (provider_response was
-        // never captured or came from the prior profile). Match by the native
-        // FB composite id and force the native-id fetch path directly.
+        // Path B: legacy rows with NO Ayrshare top id.
         if (!matchedFromPosts && providerMsgId && requested.has(providerMsgId)) {
           targets.set(providerMsgId, {
             fetchPostId: providerMsgId,
             nativePostId: providerMsgId,
             platform: rowChannel || platformHint,
+            pfbidAlias,
           });
         }
       }
@@ -260,10 +284,14 @@ Deno.serve(async (req) => {
       // with searchPlatformId=true. Re-animates legacy posts that were
       // published under a prior (now-suspended) Ayrshare profile but live on
       // the same Facebook Page connected to the active profile.
+      let bestEmptyOk: { status: number; resolvedPostId: string } | null = null;
+      if (primary.ok && primary.payload?.status !== "error") {
+        bestEmptyOk = { status: primary.status, resolvedPostId: target.fetchPostId };
+      }
       if (target.nativePostId && target.nativePostId !== target.fetchPostId) {
         const fallback = await fetchAyrshareComments(target.nativePostId, target.platform, true);
         const fallbackArr = extractCommentsArray(fallback.payload, platformKey);
-        if (fallback.ok && fallback.payload?.status !== "error") {
+        if (fallback.ok && fallback.payload?.status !== "error" && fallbackArr.length > 0) {
           console.log("[ayrshare-comments-fetch] native FB id fallback hit", { native: target.nativePostId, count: fallbackArr.length });
           return {
             ok: true,
@@ -273,13 +301,36 @@ Deno.serve(async (req) => {
             attempts: [...attempts, { post_id: target.nativePostId, mode: "native_fb_searchPlatformId", status: fallback.status, count: fallbackArr.length }],
           };
         }
-        attempts.push({ post_id: target.nativePostId, mode: "native_fb_searchPlatformId", status: fallback.status, payload: safeMetaPayload(fallback.payload, fallback.text) });
+        if (fallback.ok && fallback.payload?.status !== "error" && !bestEmptyOk) {
+          bestEmptyOk = { status: fallback.status, resolvedPostId: target.nativePostId };
+        }
+        attempts.push({ post_id: target.nativePostId, mode: "native_fb_searchPlatformId", status: fallback.status, count: fallbackArr.length, payload: fallbackArr.length === 0 ? safeMetaPayload(fallback.payload, fallback.text) : undefined });
       }
 
-      // Primary returned ok+empty and native fallback unavailable/empty: report
-      // success with zero comments rather than a hard error.
-      if (primary.ok && primary.payload?.status !== "error") {
-        return { ok: true, status: primary.status, resolvedPostId: target.fetchPostId, comments: [], attempts };
+      // Attempt 3: pfbid story alias extracted from the campaign permalink.
+      // Meta exposes "pfbid…" as a canonical alias for every post; querying
+      // Ayrshare with searchPlatformId=true on this alias resolves against
+      // Meta's live servers even when the Ayrshare top-id and native composite
+      // id both return empty arrays (rotated profile, alt permalink, etc.).
+      if (target.pfbidAlias && target.pfbidAlias !== target.fetchPostId && target.pfbidAlias !== target.nativePostId) {
+        const pfbid = await fetchAyrshareComments(target.pfbidAlias, target.platform, true);
+        const pfbidArr = extractCommentsArray(pfbid.payload, platformKey);
+        if (pfbid.ok && pfbid.payload?.status !== "error" && pfbidArr.length > 0) {
+          console.log("[ayrshare-comments-fetch] pfbid alias hit", { pfbid: target.pfbidAlias, count: pfbidArr.length });
+          return {
+            ok: true,
+            status: pfbid.status,
+            resolvedPostId: target.nativePostId,
+            comments: pfbidArr,
+            attempts: [...attempts, { post_id: target.pfbidAlias, mode: "pfbid_searchPlatformId", status: pfbid.status, count: pfbidArr.length }],
+          };
+        }
+        attempts.push({ post_id: target.pfbidAlias, mode: "pfbid_searchPlatformId", status: pfbid.status, count: pfbidArr.length, payload: pfbidArr.length === 0 ? safeMetaPayload(pfbid.payload, pfbid.text) : undefined });
+      }
+
+      // All attempts returned ok+empty: surface as zero-state success.
+      if (bestEmptyOk) {
+        return { ok: true, status: bestEmptyOk.status, resolvedPostId: bestEmptyOk.resolvedPostId, comments: [], attempts };
       }
       return { ok: false, status: primary.status || 500, resolvedPostId: null, comments: [], attempts };
     };

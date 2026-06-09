@@ -141,14 +141,32 @@ const readCache = (campaignId: string): EngagementRow[] | null => {
 const writeCache = (campaignId: string, rows: EngagementRow[], postIds: string[] = []) => {
   COMMENT_CACHE.set(campaignId, rows);
   try { sessionStorage.setItem(cacheKey(campaignId), JSON.stringify(rows)); } catch { /* quota */ }
-  // Mirror into the postId-keyed slot so re-animated legacy posts (fetched via
-  // the native FB id fallback) stay visible across card collapse/expand cycles
-  // even when the campaign id changes or the cache key is looked up by post.
+  // Mirror into the postId-keyed slot using ETERNAL storage (localStorage)
+  // so loaded comment trees survive page refresh, tab close/reopen, and
+  // route re-entry. A subsequent silent refresh only ever merges/increments
+  // — see the union below — and never wipes the cached array to zero.
   for (const pid of postIds) {
     if (!pid) continue;
     try {
-      const perPost = rows.filter((r) => r.external_post_id === pid);
-      sessionStorage.setItem(`realtyz_fb_comments_cache_${pid}`, JSON.stringify(perPost));
+      const perPostKey = `realtyz_fb_comments_cache_${pid}`;
+      let existing: EngagementRow[] = [];
+      try {
+        const raw = localStorage.getItem(perPostKey);
+        existing = raw ? (JSON.parse(raw) as EngagementRow[]) : [];
+        if (!Array.isArray(existing)) existing = [];
+      } catch { existing = []; }
+      const incoming = rows.filter((r) => r.external_post_id === pid);
+      const byId = new Map<string, EngagementRow>();
+      for (const r of existing) byId.set(r.id, r);
+      for (const r of incoming) byId.set(r.id, { ...(byId.get(r.id) ?? r), ...r });
+      const merged = Array.from(byId.values()).sort(
+        (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
+      );
+      // Only write if the merged set is non-empty OR the slot was empty.
+      // This guarantees a transient empty fetch never wipes a populated cache.
+      if (merged.length > 0 || existing.length === 0) {
+        localStorage.setItem(perPostKey, JSON.stringify(merged));
+      }
     } catch { /* quota */ }
   }
 };
@@ -169,7 +187,7 @@ const isProviderFetchLocked = (pids: string[], { manual = false }: { manual?: bo
     // Locked only when EVERY post id has a fresh lock — if any one is stale
     // or missing, allow the refresh (it scopes to all ids in one call).
     return pids.every((pid) => {
-      const raw = sessionStorage.getItem(providerLockKey(pid));
+      const raw = localStorage.getItem(providerLockKey(pid));
       if (!raw) return false;
       const ts = Number(raw);
       return Number.isFinite(ts) && now - ts < PROVIDER_FETCH_LOCK_MS;
@@ -180,7 +198,7 @@ const stampProviderFetch = (pids: string[]) => {
   const now = String(Date.now());
   for (const pid of pids) {
     if (!pid) continue;
-    try { sessionStorage.setItem(providerLockKey(pid), now); } catch { /* quota */ }
+    try { localStorage.setItem(providerLockKey(pid), now); } catch { /* quota */ }
   }
 };
 

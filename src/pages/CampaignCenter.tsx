@@ -32,7 +32,7 @@ import { cn } from '@/lib/utils';
 import { SentimentAutomationToggles } from '@/components/automation/SentimentAutomationToggles';
 import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsStream';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
-import { campaignMatchesExternalPost, normalizePostId } from '@/lib/campaignPostIds';
+import { campaignMatchesExternalPost, normalizePostId, getCampaignPostIds, platformForCampaignChannel } from '@/lib/campaignPostIds';
 import { learnFromEdit } from '@/lib/learnFromEdit';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import { IvrBroadcastDialog } from '@/components/campaigns/IvrBroadcastDialog';
@@ -1679,6 +1679,46 @@ const PublishedFeed = () => {
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // One-shot background hydration: as soon as the published rows land,
+  // batch-call ayrshare-comments-fetch per platform for every visible card.
+  // This pre-warms the per-post comment tree (incl. pfbid alias fallback) and
+  // refreshes campaign_logs.comment_count so the top counters reflect the
+  // live Meta thread even when the broker never expands the card. Throttled
+  // by the localStorage 15-min lock that the comments-stream component sets,
+  // and silent / non-fatal on failure.
+  const HYDRATED_RUNS = useRef(new Set<string>());
+  useEffect(() => {
+    if (!rows || rows.length === 0) return;
+    const byPlatform = new Map<string, string[]>();
+    for (const r of rows) {
+      const ids = getCampaignPostIds(r);
+      if (!ids.length) continue;
+      const platform = platformForCampaignChannel(r.channel);
+      const list = byPlatform.get(platform) ?? [];
+      for (const id of ids) if (!list.includes(id)) list.push(id);
+      byPlatform.set(platform, list);
+    }
+    if (byPlatform.size === 0) return;
+    const runKey = Array.from(byPlatform.entries())
+      .map(([p, ids]) => `${p}:${ids.slice().sort().join(',')}`)
+      .sort()
+      .join('|');
+    if (HYDRATED_RUNS.current.has(runKey)) return;
+    HYDRATED_RUNS.current.add(runKey);
+    (async () => {
+      for (const [platform, post_ids] of byPlatform.entries()) {
+        try {
+          await supabase.functions.invoke('ayrshare-comments-fetch', {
+            body: { post_ids, platform, force_refresh: false },
+          });
+        } catch (err) {
+          console.warn('[CampaignCenter] background comments hydration failed', { platform, err });
+        }
+      }
+    })();
+  }, [rows]);
+
 
   // Realtime: live-patch counters into rows as soon as the edge function
   // updates campaign_logs — no manual refresh needed.
