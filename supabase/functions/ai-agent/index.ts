@@ -259,7 +259,7 @@ serve(async (req) => {
         });
         const { data: lst } = await userClient
           .from("listings")
-          .select("id, property_title, asking_price, slug")
+          .select("id, property_title, asking_price, slug, city, neighborhood, address, rooms, sqm, floor, parking, elevator, features")
           .eq("is_published", true)
           .limit(50);
         listingFacts = (lst || []) as ListingFact[];

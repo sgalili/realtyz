@@ -219,6 +219,15 @@ export type CrmSnapshot = {
     description: string | null;
     address: string | null;
     neighborhood: string | null;
+    floor: number | null;
+    parking: boolean | null;
+    elevator: boolean | null;
+    year_built: number | null;
+    total_floors: number | null;
+    balcony_sqm: number | null;
+    condition: string | null;
+    directions: string | null;
+    amenities: string[];
   }[];
   active_leads: number;
   hot_leads: number;
@@ -235,7 +244,7 @@ export async function loadCrmSnapshot(
     const [listingsRes, leadsRes] = await Promise.all([
       admin
         .from("listings")
-        .select("property_title,city,address,neighborhood,rooms,sqm,asking_price,status,is_published,features,description")
+        .select("property_title,city,address,neighborhood,rooms,sqm,floor,parking,elevator,asking_price,status,is_published,features,description")
         .eq("user_id", userId)
         .eq("status", "live")
         .eq("is_published", true)
@@ -271,17 +280,45 @@ export async function loadCrmSnapshot(
       .sort((a, b) => b[1] - a[1])
       .slice(0, 8)
       .map(([city, count]) => ({ city, count }));
-    const sample = listings.slice(0, 8).map((l: any) => ({
-      title: String(l.property_title ?? "").slice(0, 80),
-      city: l.city ?? null,
-      rooms: l.rooms ?? null,
-      sqm: l.sqm ?? null,
-      asking_price: l.asking_price ?? null,
-      listing_type: l.listing_type as ListingType | null,
-      description: l.description ? String(l.description).slice(0, 1200) : null,
-      address: l.address ?? null,
-      neighborhood: l.neighborhood ?? null,
-    }));
+    const AMENITY_LABELS: Record<string, string> = {
+      balcony: 'מרפסת', safe_room: 'ממ"ד', storage: "מחסן",
+      air_conditioning: "מיזוג אוויר", accessible: "גישה לנכים",
+      renovated: "משופץ", furnished: "מרוהט", bars: "סורגים",
+    };
+    const CONDITION_LABELS: Record<string, string> = {
+      new: "חדש מקבלן", renovated: "משופץ", good: "שמור", needs_renovation: "דורש שיפוץ",
+    };
+    const sample = listings.slice(0, 8).map((l: any) => {
+      const featObj = Array.isArray(l.features) ? (l.features[0] ?? {}) : (l.features ?? {});
+      const extras = (featObj && typeof featObj === "object" ? featObj.extras : null) ?? {};
+      const amenities: string[] = [];
+      if (l.parking ?? extras.parking) amenities.push("חניה");
+      if (l.elevator ?? extras.elevator) amenities.push("מעלית");
+      for (const [k, label] of Object.entries(AMENITY_LABELS)) {
+        if (extras[k]) amenities.push(label);
+      }
+      const year = featObj?.year_built ?? null;
+      return {
+        title: String(l.property_title ?? "").slice(0, 80),
+        city: l.city ?? null,
+        rooms: l.rooms ?? null,
+        sqm: l.sqm ?? null,
+        asking_price: l.asking_price ?? null,
+        listing_type: l.listing_type as ListingType | null,
+        description: l.description ? String(l.description).slice(0, 1200) : null,
+        address: l.address ?? null,
+        neighborhood: l.neighborhood ?? null,
+        floor: l.floor ?? null,
+        parking: l.parking ?? extras.parking ?? null,
+        elevator: l.elevator ?? extras.elevator ?? null,
+        year_built: year != null ? Number(year) : null,
+        total_floors: extras.total_floors ?? null,
+        balcony_sqm: extras.balcony_sqm ?? null,
+        condition: extras.condition ? (CONDITION_LABELS[extras.condition] ?? extras.condition) : null,
+        directions: extras.directions ?? null,
+        amenities: Array.from(new Set(amenities)),
+      };
+    });
     const hot = leads.filter((l: any) =>
       ["hot", "negotiation", "closing", "qualified"].includes(String(l.lead_stage ?? "").toLowerCase()),
     ).length;
@@ -318,8 +355,16 @@ export function renderCrmBlock(snap: CrmSnapshot | null): string {
             l.title || "ללא כותרת",
             typeHe ? `סוג עסקה: ${typeHe}` : null,
             l.city ? `עיר: ${l.city}` : null,
+            l.neighborhood ? `שכונה: ${l.neighborhood}` : null,
+            l.address ? `כתובת: ${l.address}` : null,
             l.rooms ? `${l.rooms} חדרים` : null,
             l.sqm ? `${l.sqm} מ"ר` : null,
+            l.balcony_sqm ? `מרפסת ${l.balcony_sqm} מ"ר` : null,
+            l.floor != null ? (l.total_floors ? `קומה ${l.floor}/${l.total_floors}` : `קומה ${l.floor}`) : null,
+            l.year_built ? `שנת בנייה ${l.year_built}` : null,
+            l.condition ? `מצב: ${l.condition}` : null,
+            l.directions ? `כיווני אוויר: ${l.directions}` : null,
+            l.amenities?.length ? `מאפיינים: ${l.amenities.join(", ")}` : null,
             l.asking_price ? `${priceLabel}: ${Number(l.asking_price).toLocaleString("he-IL")} ש"ח` : null,
           ].filter(Boolean);
           return `OBJECT_${index + 1}: ${parts.join(" | ")}`;
