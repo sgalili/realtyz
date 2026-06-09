@@ -1957,7 +1957,7 @@ const PublishedFeed = () => {
                   {bodyText || <span className="text-muted-foreground">אין תוכן הודעה</span>}
                 </div>
                 <div className="grid grid-cols-3 gap-2 px-4 pb-3">
-                  <Stat icon={MessageSquare} label="תגובות" value={r.comment_count} hasData={hasMetrics} />
+                  <Stat icon={MessageSquare} label="תגובות" value={typeof liveCount === 'number' ? liveCount : r.comment_count} hasData={hasMetrics || typeof liveCount === 'number'} />
                   <Stat icon={Share2}         label="שיתופים" value={r.share_count}   hasData={hasMetrics} />
                   <Stat icon={Heart}          label="לייקים"  value={r.like_count}    hasData={hasMetrics} />
                 </div>
