@@ -170,7 +170,7 @@ Deno.serve(async (req) => {
             providerMsgId ??
             null;
           const nativeId = typeof nativeForPlatform === "string" ? nativeForPlatform.trim() : "";
-          const aliases = [topId, nativeId, providerMsgId].map((v) => String(v || "").trim()).filter(Boolean);
+          const aliases = [topId, nativeId, providerMsgId, ...permalinkAliases].map((v) => String(v || "").trim()).filter(Boolean);
           if (!topId || !nativeId || !aliases.some((alias) => requested.has(alias))) continue;
           const platform = String(
             postIds.find((p: any) => String(p?.id || "") === nativeId)?.platform ||
@@ -181,7 +181,7 @@ Deno.serve(async (req) => {
         }
 
         // Path B: legacy rows with NO Ayrshare top id.
-        if (!matchedFromPosts && providerMsgId && requested.has(providerMsgId)) {
+        if (!matchedFromPosts && providerMsgId && (requested.has(providerMsgId) || permalinkAliases.some((alias) => requested.has(alias)))) {
           targets.set(providerMsgId, {
             fetchPostId: providerMsgId,
             nativePostId: providerMsgId,
@@ -313,6 +313,25 @@ Deno.serve(async (req) => {
           bestEmptyOk = { status: fallback.status, resolvedPostId: target.nativePostId };
         }
         attempts.push({ post_id: target.nativePostId, mode: "native_fb_searchPlatformId", status: fallback.status, count: fallbackArr.length, payload: fallbackArr.length === 0 ? safeMetaPayload(fallback.payload, fallback.text) : undefined });
+      }
+
+      // Direct short-token diagnostic path: if the caller passed
+      // facebook.com/share/p/{token}'s trailing token (e.g. 1DgxUSqUMz) and no
+      // campaign row matched, retry the SAME id with searchPlatformId=true.
+      if (target.nativePostId === target.fetchPostId && !/_/.test(target.fetchPostId)) {
+        const directAlias = await fetchAyrshareComments(target.fetchPostId, target.platform, true);
+        const directAliasArr = extractCommentsArray(directAlias.payload, platformKey);
+        if (directAlias.ok && directAlias.payload?.status !== "error" && directAliasArr.length > 0) {
+          console.log("[ayrshare-comments-fetch] direct share-token fallback hit", { token: target.fetchPostId, count: directAliasArr.length });
+          return {
+            ok: true,
+            status: directAlias.status,
+            resolvedPostId: target.nativePostId,
+            comments: directAliasArr,
+            attempts: [...attempts, { post_id: target.fetchPostId, mode: "direct_share_token_searchPlatformId", status: directAlias.status, count: directAliasArr.length }],
+          };
+        }
+        attempts.push({ post_id: target.fetchPostId, mode: "direct_share_token_searchPlatformId", status: directAlias.status, count: directAliasArr.length, payload: directAliasArr.length === 0 ? safeMetaPayload(directAlias.payload, directAlias.text) : undefined });
       }
 
       // Attempt 3+: permalink aliases extracted from the campaign URL.
