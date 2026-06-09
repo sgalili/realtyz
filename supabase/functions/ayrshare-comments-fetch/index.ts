@@ -315,25 +315,25 @@ Deno.serve(async (req) => {
         attempts.push({ post_id: target.nativePostId, mode: "native_fb_searchPlatformId", status: fallback.status, count: fallbackArr.length, payload: fallbackArr.length === 0 ? safeMetaPayload(fallback.payload, fallback.text) : undefined });
       }
 
-      // Attempt 3: pfbid story alias extracted from the campaign permalink.
-      // Meta exposes "pfbid…" as a canonical alias for every post; querying
-      // Ayrshare with searchPlatformId=true on this alias resolves against
-      // Meta's live servers even when the Ayrshare top-id and native composite
-      // id both return empty arrays (rotated profile, alt permalink, etc.).
-      if (target.pfbidAlias && target.pfbidAlias !== target.fetchPostId && target.pfbidAlias !== target.nativePostId) {
-        const pfbid = await fetchAyrshareComments(target.pfbidAlias, target.platform, true);
-        const pfbidArr = extractCommentsArray(pfbid.payload, platformKey);
-        if (pfbid.ok && pfbid.payload?.status !== "error" && pfbidArr.length > 0) {
-          console.log("[ayrshare-comments-fetch] pfbid alias hit", { pfbid: target.pfbidAlias, count: pfbidArr.length });
+      // Attempt 3+: permalink aliases extracted from the campaign URL.
+      // Supports both long pfbid story ids and short /share/p/{token} ids like
+      // 1DgxUSqUMz, queried directly with searchPlatformId=true.
+      for (const alias of target.permalinkAliases ?? []) {
+        if (!alias || alias === target.fetchPostId || alias === target.nativePostId) continue;
+        const aliasFetch = await fetchAyrshareComments(alias, target.platform, true);
+        const aliasArr = extractCommentsArray(aliasFetch.payload, platformKey);
+        const aliasMode = alias.startsWith("pfbid") ? "pfbid_searchPlatformId" : "share_token_searchPlatformId";
+        if (aliasFetch.ok && aliasFetch.payload?.status !== "error" && aliasArr.length > 0) {
+          console.log("[ayrshare-comments-fetch] permalink alias hit", { alias, mode: aliasMode, count: aliasArr.length });
           return {
             ok: true,
-            status: pfbid.status,
+            status: aliasFetch.status,
             resolvedPostId: target.nativePostId,
-            comments: pfbidArr,
-            attempts: [...attempts, { post_id: target.pfbidAlias, mode: "pfbid_searchPlatformId", status: pfbid.status, count: pfbidArr.length }],
+            comments: aliasArr,
+            attempts: [...attempts, { post_id: alias, mode: aliasMode, status: aliasFetch.status, count: aliasArr.length }],
           };
         }
-        attempts.push({ post_id: target.pfbidAlias, mode: "pfbid_searchPlatformId", status: pfbid.status, count: pfbidArr.length, payload: pfbidArr.length === 0 ? safeMetaPayload(pfbid.payload, pfbid.text) : undefined });
+        attempts.push({ post_id: alias, mode: aliasMode, status: aliasFetch.status, count: aliasArr.length, payload: aliasArr.length === 0 ? safeMetaPayload(aliasFetch.payload, aliasFetch.text) : undefined });
       }
 
       // All attempts returned ok+empty: surface as zero-state success.
