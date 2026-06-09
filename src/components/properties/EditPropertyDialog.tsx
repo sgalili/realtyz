@@ -125,8 +125,19 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [property, open]);
 
+  // 60s client-side debounce on the manual Homely sync — prevents accidental
+  // burst clicks from spamming the Homely API (Udi's Ayrshare profile was
+  // permanently locked for monthly-unsuspension overuse from a similar storm).
+  const lastHomelySyncAtRef = useRef<number>(0);
   const handleSyncFromHomely = async () => {
     if (!property) return;
+    const now = Date.now();
+    const elapsed = now - lastHomelySyncAtRef.current;
+    if (lastHomelySyncAtRef.current > 0 && elapsed < 60_000) {
+      const wait = Math.ceil((60_000 - elapsed) / 1000);
+      toast.message(`סנכרון זמין שוב בעוד ${wait} שניות`);
+      return;
+    }
     setSyncing(true);
     try {
       const { data, error } = await supabase.functions.invoke('homely-fetch-property', {
