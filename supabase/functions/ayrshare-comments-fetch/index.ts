@@ -300,6 +300,7 @@ Deno.serve(async (req) => {
       const looksNative = /_/.test(target.fetchPostId);
       const primary = await fetchAyrshareComments(target.fetchPostId, target.platform, looksNative);
       const primaryArr = extractCommentsArray(primary.payload, platformKey);
+      const primaryMetrics = extractOuterMetrics(primary.payload, platformKey);
       const primaryOk = primary.ok && primary.payload?.status !== "error" && primaryArr.length > 0;
       if (primaryOk) {
         return {
@@ -307,22 +308,20 @@ Deno.serve(async (req) => {
           status: primary.status,
           resolvedPostId: target.fetchPostId,
           comments: primaryArr,
+          outerMetrics: primaryMetrics,
           attempts,
         };
       }
       attempts.push({ post_id: target.fetchPostId, mode: "ayrshare_top_level", status: primary.status, payload: safeMetaPayload(primary.payload, primary.text) });
 
-      // Attempt 2: pivot to the NATIVE Facebook composite id (pageId_postId)
-      // with searchPlatformId=true. Re-animates legacy posts that were
-      // published under a prior (now-suspended) Ayrshare profile but live on
-      // the same Facebook Page connected to the active profile.
-      let bestEmptyOk: { status: number; resolvedPostId: string } | null = null;
+      let bestEmptyOk: { status: number; resolvedPostId: string; outerMetrics: ReturnType<typeof extractOuterMetrics> } | null = null;
       if (primary.ok && primary.payload?.status !== "error") {
-        bestEmptyOk = { status: primary.status, resolvedPostId: target.fetchPostId };
+        bestEmptyOk = { status: primary.status, resolvedPostId: target.fetchPostId, outerMetrics: primaryMetrics };
       }
       if (target.nativePostId && target.nativePostId !== target.fetchPostId) {
         const fallback = await fetchAyrshareComments(target.nativePostId, target.platform, true);
         const fallbackArr = extractCommentsArray(fallback.payload, platformKey);
+        const fallbackMetrics = extractOuterMetrics(fallback.payload, platformKey);
         if (fallback.ok && fallback.payload?.status !== "error" && fallbackArr.length > 0) {
           console.log("[ayrshare-comments-fetch] native FB id fallback hit", { native: target.nativePostId, count: fallbackArr.length });
           return {
@@ -330,21 +329,20 @@ Deno.serve(async (req) => {
             status: fallback.status,
             resolvedPostId: target.nativePostId,
             comments: fallbackArr,
+            outerMetrics: fallbackMetrics,
             attempts: [...attempts, { post_id: target.nativePostId, mode: "native_fb_searchPlatformId", status: fallback.status, count: fallbackArr.length }],
           };
         }
         if (fallback.ok && fallback.payload?.status !== "error" && !bestEmptyOk) {
-          bestEmptyOk = { status: fallback.status, resolvedPostId: target.nativePostId };
+          bestEmptyOk = { status: fallback.status, resolvedPostId: target.nativePostId, outerMetrics: fallbackMetrics };
         }
         attempts.push({ post_id: target.nativePostId, mode: "native_fb_searchPlatformId", status: fallback.status, count: fallbackArr.length, payload: fallbackArr.length === 0 ? safeMetaPayload(fallback.payload, fallback.text) : undefined });
       }
 
-      // Direct short-token diagnostic path: if the caller passed
-      // facebook.com/share/p/{token}'s trailing token (e.g. 1DgxUSqUMz) and no
-      // campaign row matched, retry the SAME id with searchPlatformId=true.
       if (target.nativePostId === target.fetchPostId && !/_/.test(target.fetchPostId)) {
         const directAlias = await fetchAyrshareComments(target.fetchPostId, target.platform, true);
         const directAliasArr = extractCommentsArray(directAlias.payload, platformKey);
+        const directAliasMetrics = extractOuterMetrics(directAlias.payload, platformKey);
         if (directAlias.ok && directAlias.payload?.status !== "error" && directAliasArr.length > 0) {
           console.log("[ayrshare-comments-fetch] direct share-token fallback hit", { token: target.fetchPostId, count: directAliasArr.length });
           return {
@@ -352,19 +350,18 @@ Deno.serve(async (req) => {
             status: directAlias.status,
             resolvedPostId: target.nativePostId,
             comments: directAliasArr,
+            outerMetrics: directAliasMetrics,
             attempts: [...attempts, { post_id: target.fetchPostId, mode: "direct_share_token_searchPlatformId", status: directAlias.status, count: directAliasArr.length }],
           };
         }
         attempts.push({ post_id: target.fetchPostId, mode: "direct_share_token_searchPlatformId", status: directAlias.status, count: directAliasArr.length, payload: directAliasArr.length === 0 ? safeMetaPayload(directAlias.payload, directAlias.text) : undefined });
       }
 
-      // Attempt 3+: permalink aliases extracted from the campaign URL.
-      // Supports both long pfbid story ids and short /share/p/{token} ids like
-      // 1DgxUSqUMz, queried directly with searchPlatformId=true.
       for (const alias of target.permalinkAliases ?? []) {
         if (!alias || alias === target.fetchPostId || alias === target.nativePostId) continue;
         const aliasFetch = await fetchAyrshareComments(alias, target.platform, true);
         const aliasArr = extractCommentsArray(aliasFetch.payload, platformKey);
+        const aliasMetrics = extractOuterMetrics(aliasFetch.payload, platformKey);
         const aliasMode = alias.startsWith("pfbid") ? "pfbid_searchPlatformId" : "share_token_searchPlatformId";
         if (aliasFetch.ok && aliasFetch.payload?.status !== "error" && aliasArr.length > 0) {
           console.log("[ayrshare-comments-fetch] permalink alias hit", { alias, mode: aliasMode, count: aliasArr.length });
@@ -373,17 +370,17 @@ Deno.serve(async (req) => {
             status: aliasFetch.status,
             resolvedPostId: target.nativePostId,
             comments: aliasArr,
+            outerMetrics: aliasMetrics,
             attempts: [...attempts, { post_id: alias, mode: aliasMode, status: aliasFetch.status, count: aliasArr.length }],
           };
         }
         attempts.push({ post_id: alias, mode: aliasMode, status: aliasFetch.status, count: aliasArr.length, payload: aliasArr.length === 0 ? safeMetaPayload(aliasFetch.payload, aliasFetch.text) : undefined });
       }
 
-      // All attempts returned ok+empty: surface as zero-state success.
       if (bestEmptyOk) {
-        return { ok: true, status: bestEmptyOk.status, resolvedPostId: bestEmptyOk.resolvedPostId, comments: [], attempts };
+        return { ok: true, status: bestEmptyOk.status, resolvedPostId: bestEmptyOk.resolvedPostId, comments: [], outerMetrics: bestEmptyOk.outerMetrics, attempts };
       }
-      return { ok: false, status: primary.status || 500, resolvedPostId: null, comments: [], attempts };
+      return { ok: false, status: primary.status || 500, resolvedPostId: null, comments: [], outerMetrics: { likes: null, shares: null, comments: null }, attempts };
     };
 
     await Promise.all(
