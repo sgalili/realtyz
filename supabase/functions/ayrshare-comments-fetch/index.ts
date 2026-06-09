@@ -35,9 +35,6 @@ Deno.serve(async (req) => {
   try {
     const AYR_KEY = Deno.env.get("AYRSHARE_API_KEY")?.trim().replace(/^["']|["']$/g, "") || null;
     if (!AYR_KEY) return json({ error: "AYRSHARE_API_KEY not configured" }, 500);
-    // Optional: used only for higher-quality Facebook avatar resolution.
-    const FB_PAGE_TOKEN = Deno.env.get("FB_PAGE_ACCESS_TOKEN")?.trim() || null;
-
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(SUPABASE_URL, SERVICE, {
@@ -103,15 +100,10 @@ Deno.serve(async (req) => {
 
     type CommentFetchTarget = { fetchPostId: string; nativePostId: string; platform: string };
     const targets = new Map<string, CommentFetchTarget>();
-    requestedPostIds.forEach((id) => {
-      const clean = String(id).trim();
-      if (clean) targets.set(clean, { fetchPostId: clean, nativePostId: clean, platform: platformHint });
-    });
+    const requested = new Set(requestedPostIds.map((id) => String(id).trim()).filter(Boolean));
 
-    // Ayrshare's comments endpoint expects the top-level Ayrshare post id
-    // (provider_response.posts[].id), while our UI/database match comments by
-    // the native social post id (campaign_logs.provider_message_id / postIds[].id).
-    // Resolve both, strictly scoped to this workspace owner.
+    // Resolve to one canonical target per campaign: fetch with Ayrshare's top-level
+    // id, store under the native Facebook composite id used by the UI.
     try {
       const { data: campaigns, error: campaignErr } = await admin
         .from("campaign_logs")
@@ -124,7 +116,6 @@ Deno.serve(async (req) => {
         console.error("[ayrshare-comments-fetch] campaign lookup failed", campaignErr.message);
       }
 
-      const requested = new Set(requestedPostIds.map((id) => String(id).trim()).filter(Boolean));
       for (const row of campaigns ?? []) {
         const response: any = (row as any).provider_response ?? {};
         const wrappedPosts: any[] = Array.isArray(response?.posts) ? response.posts : [];
@@ -138,20 +129,29 @@ Deno.serve(async (req) => {
             (row as any).provider_message_id ??
             null;
           const nativeId = typeof nativeForPlatform === "string" ? nativeForPlatform.trim() : "";
-          const aliases = [topId, nativeId, (row as any).provider_message_id].map((v) => String(v || "").trim()).filter(Boolean);
-          if (!topId || !aliases.some((alias) => requested.has(alias))) continue;
-          // We MUST key by the native social post id so the UI (which filters
-          // engagement_events on external_post_id = the native FB id) can find
-          // the rows. Skip when the campaign has no native id yet — falling
-          // back to the Ayrshare top id would store rows under an id the UI
-          // never queries and visually drop the comments.
-          if (!nativeId) continue;
-          const platform = String((postIds.find((p: any) => String(p?.id || "") === nativeId)?.platform || (row as any).channel || platformHint)).toLowerCase();
+          const aliases = [topId, nativeId, (row as any).provider_message_id]
+            .map((v) => String(v || "").trim())
+            .filter(Boolean);
+          if (!topId || !nativeId || !aliases.some((alias) => requested.has(alias))) continue;
+          const platform = String(
+            postIds.find((p: any) => String(p?.id || "") === nativeId)?.platform ||
+            (row as any).channel ||
+            platformHint,
+          ).toLowerCase();
           targets.set(nativeId, { fetchPostId: topId, nativePostId: nativeId, platform: platform || platformHint });
         }
       }
     } catch (lookupErr) {
       console.error("[ayrshare-comments-fetch] campaign lookup threw", lookupErr instanceof Error ? lookupErr.message : String(lookupErr));
+    }
+
+    // Fallback for manual diagnostic calls with a direct Ayrshare id. Store under
+    // the provided id only when no campaign mapping exists.
+    if (targets.size === 0) {
+      requestedPostIds.forEach((id) => {
+        const clean = String(id).trim();
+        if (clean) targets.set(clean, { fetchPostId: clean, nativePostId: clean, platform: platformHint });
+      });
     }
 
     const ownPage = await resolveOwnPageIdentity(admin);
@@ -162,21 +162,8 @@ Deno.serve(async (req) => {
     };
     const pickText = (item: any): string | null =>
       pickStr(item?.comment, item?.text, item?.message, item?.commentString, item?.textContent, item?.body);
-    const resolveFacebookAvatar = async (senderId: string | null, platform: string): Promise<string | null> => {
-      if (!senderId || !FB_PAGE_TOKEN || !/facebook/i.test(platform)) return null;
-      try {
-        const tokenParam = `access_token=${encodeURIComponent(FB_PAGE_TOKEN)}`;
-        const url = `https://graph.facebook.com/v20.0/${encodeURIComponent(senderId)}/picture?type=square&redirect=false&${tokenParam}`;
-        const res = await fetch(url);
-        const json = await res.json().catch(() => ({}));
-        const cdnUrl = res.ok && typeof json?.data?.url === "string" ? json.data.url : null;
-        console.log("[ayrshare-comments-fetch] avatar resolve", { senderId, status: res.status, ok: !!cdnUrl, host: cdnUrl ? new URL(cdnUrl).host : null });
-        return cdnUrl;
-      } catch (avatarErr) {
-        console.warn("[ayrshare-comments-fetch] facebook avatar resolve failed", senderId, avatarErr instanceof Error ? avatarErr.message : String(avatarErr));
-        return null;
-      }
-    };
+    const resolveAuthorPicture = (_comment: any): string | null => null;
+
 
     const results: Record<string, any[]> = {};
     const errors: Record<string, string> = {};
@@ -387,36 +374,9 @@ Deno.serve(async (req) => {
           const trimmed = s.trim();
           return trimmed ? trimmed.slice(0, max) : null;
         };
-        // Try to capture an author profile image from the various shapes
-        // Ayrshare/FB/IG return. For Facebook we ALWAYS prefer the resolved
-        // CDN URL from the Page-token /picture?redirect=false call — the raw
-        // from.picture.data.url returned by FB Graph embeds an access_token
-        // that is short-lived and frequently blocked from the browser. Other
-        // platforms fall back to whatever the payload exposes.
-        const isFb = /facebook/i.test(platformHint);
-        const fbResolved = isFb ? await resolveFacebookAvatar(senderId, platformHint) : null;
-        const pictureFromPayload =
-          c?.from?.picture?.data?.url ??
-          c?.from?.picture_url ??
-          c?.from?.profile_picture_url ??
-          c?.user?.profile_picture_url ??
-          c?.user?.picture?.data?.url ??
-          c?.author?.profile_image ??
-          c?.profile_image ??
-          c?.profile_picture_url ??
-          c?.avatar ??
-          null;
-        // Token-free public fallback — Facebook's /picture endpoint resolves
-        // for any public user/page without auth when called with redirect=true
-        // (default). Browsers can hit it directly. Used only when no resolved
-        // CDN URL and no payload-provided URL exists.
-        const fbPublicFallback = isFb && senderId
-          ? `https://graph.facebook.com/v20.0/${encodeURIComponent(senderId)}/picture?type=square`
-          : null;
-        // Prefer the clean CDN URL on Facebook; otherwise use payload-provided;
-        // last-resort = public unauthenticated graph picture URL.
-        const authorPicture = fbResolved ?? pictureFromPayload ?? fbPublicFallback ?? null;
-
+        // No secondary avatar/profile HTTP calls. Keep avatars null so the edge
+        // function performs only the single Ayrshare comments request per target.
+        const authorPicture = resolveAuthorPicture(c);
 
         const { data: exists } = await admin
           .from("engagement_events")
@@ -429,26 +389,31 @@ Deno.serve(async (req) => {
           skipped += 1;
           const currentMeta = ((exists as any).metadata && typeof (exists as any).metadata === "object") ? (exists as any).metadata : {};
           const currentAuthor = (currentMeta.author && typeof currentMeta.author === "object") ? currentMeta.author : {};
-          const currentProfileImage = typeof currentAuthor.profile_image === "string" ? currentAuthor.profile_image : null;
-          // If we resolved a fresh CDN URL, overwrite stale token-bearing URLs.
-          const nextProfileImage = safeStr(authorPicture, 1000) ?? currentProfileImage ?? null;
           const nextMetadata = {
             ...currentMeta,
             parent_id: safeStr(parentId) ?? currentMeta.parent_id ?? null,
             self_authored: selfAuthored || currentMeta.self_authored === true,
             author_type: selfAuthored ? "workspace_page" : currentMeta.author_type ?? "audience",
             sender_id: safeStr(senderId) ?? currentMeta.sender_id ?? null,
-            profile_image: nextProfileImage,
-            sender_avatar_url: nextProfileImage,
+            profile_image: null,
+            sender_avatar_url: null,
             author: {
               ...currentAuthor,
               name: safeStr(sender, 200) ?? currentAuthor.name ?? null,
-              profile_image: nextProfileImage,
+              profile_image: null,
             },
           };
-          if (JSON.stringify(nextMetadata) !== JSON.stringify(currentMeta)) {
-            await admin.from("engagement_events").update({ metadata: nextMetadata }).eq("id", exists.id).eq("user_id", userId);
-          }
+          await admin
+            .from("engagement_events")
+            .update({
+              external_post_id: postId,
+              sender_handle: safeStr(sender, 200),
+              inbound_text: safeStr(text, 4000) ?? "",
+              platform: platformHint,
+              metadata: nextMetadata,
+            })
+            .eq("id", exists.id)
+            .eq("user_id", userId);
           // Re-dispatch only if still pending and no reply yet.
           if (!selfAuthored && !exists.ai_reply_text && exists.status !== "sent" && exists.status !== "pending_approval") {
             toDispatch.push({
@@ -525,7 +490,7 @@ Deno.serve(async (req) => {
           persisted += 1;
         } catch (writeErr) {
           console.error(
-            "[ayrshare-comments-fetch] upsert threw",
+            "[ayrshare-comments-fetch] insert threw",
             JSON.stringify({
               error: writeErr instanceof Error ? writeErr.message : String(writeErr),
               payload,
