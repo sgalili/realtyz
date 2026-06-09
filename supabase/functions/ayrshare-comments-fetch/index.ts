@@ -206,47 +206,57 @@ Deno.serve(async (req) => {
       return ids;
     };
 
-    const fetchMetaComments = async (postId: string) => {
-      const fields = "id,message,created_time,from{id,name,picture{url}},parent,replies{id,message,created_time,from{id,name,picture{url}}}";
-      const url = `https://graph.facebook.com/v20.0/${encodeURIComponent(postId)}/comments?fields=${encodeURIComponent(fields)}&limit=100&access_token=${encodeURIComponent(FB_PAGE_TOKEN)}`;
-      const res = await fetch(url, { headers: { "Cache-Control": "no-cache" } });
+    const fetchAyrshareComments = async (ayrshareTopLevelId: string, platform: string) => {
+      const url = `${AYR_BASE}/comments/${encodeURIComponent(ayrshareTopLevelId)}?platforms=${encodeURIComponent(platform)}`;
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${AYR_KEY}`,
+          "Profile-Key": profileKey,
+          "Cache-Control": "no-cache",
+        },
+      });
       const text = await res.text();
       let payload: any = {};
       try { payload = text ? JSON.parse(text) : {}; } catch { payload = { rawText: text }; }
       return { ok: res.ok, status: res.status, payload, text };
     };
 
-    const normalizeGraphNode = (node: any, parentId: string | null = null): any => {
-      const from = node?.from
-        ? { ...node.from, picture: node.from?.picture?.url ? { data: { url: node.from.picture.url } } : node.from?.picture }
-        : { name: "משתמש פייסבוק" };
-      const replies = Array.isArray(node?.replies?.data) ? node.replies.data : [];
+    const normalizeAyrshareNode = (node: any): any => {
+      const fromObj = node?.from && typeof node.from === "object" ? node.from : { name: node?.from || "משתמש פייסבוק" };
       return {
-        id: node?.id,
-        message: node?.message ?? "",
-        created_time: node?.created_time,
-        from,
-        __parent_id: node?.parent?.id ?? parentId,
-        comments: replies.map((reply: any) => normalizeGraphNode(reply, node?.id ?? parentId)),
+        id: node?.commentId ?? node?.id ?? null,
+        message: node?.comment ?? node?.message ?? node?.text ?? "",
+        created_time: node?.created ?? node?.createdAt ?? null,
+        from: fromObj,
+        like_count: typeof node?.likeCount === "number" ? node.likeCount : null,
+        permalink: node?.commentUrl ?? null,
+        __parent_id: node?.parentId ?? node?.parent?.id ?? null,
+        comments: [],
       };
     };
 
-    const fetchDirectMetaTree = async (target: CommentFetchTarget) => {
+    const fetchAyrshareTree = async (target: CommentFetchTarget) => {
       const attempts: any[] = [];
-      for (const candidate of normalizeMetaPostCandidates(target.nativePostId, target.fetchPostId)) {
-        const fetched = await fetchMetaComments(candidate);
-        if (fetched.ok && Array.isArray(fetched.payload?.data)) {
-          return {
-            ok: true,
-            status: fetched.status,
-            resolvedPostId: candidate,
-            comments: fetched.payload.data.map((node: any) => normalizeGraphNode(node, null)),
-            attempts,
-          };
-        }
-        attempts.push({ post_id: candidate, status: fetched.status, payload: safeMetaPayload(fetched.payload, fetched.text) });
+      const fetched = await fetchAyrshareComments(target.fetchPostId, target.platform);
+      const platformKey = target.platform.toLowerCase();
+      const arr: any[] = Array.isArray(fetched.payload?.[platformKey])
+        ? fetched.payload[platformKey]
+        : Array.isArray(fetched.payload?.comments)
+        ? fetched.payload.comments
+        : Array.isArray(fetched.payload)
+        ? fetched.payload
+        : [];
+      if (fetched.ok && fetched.payload?.status !== "error") {
+        return {
+          ok: true,
+          status: fetched.status,
+          resolvedPostId: target.fetchPostId,
+          comments: arr.map((node: any) => normalizeAyrshareNode(node)),
+          attempts,
+        };
       }
-      return { ok: false, status: attempts[attempts.length - 1]?.status ?? 500, resolvedPostId: null, comments: [], attempts };
+      attempts.push({ post_id: target.fetchPostId, status: fetched.status, payload: safeMetaPayload(fetched.payload, fetched.text) });
+      return { ok: false, status: fetched.status || 500, resolvedPostId: null, comments: [], attempts };
     };
 
     await Promise.all(
