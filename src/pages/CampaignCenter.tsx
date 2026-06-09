@@ -1918,16 +1918,8 @@ const PublishedFeed = () => {
                 {(bodyText.trim().split('\n')[0] || r.campaign_name)}
               </h3>
 
-              {/* Row 2 (single combined row): comment count · date · page · logo · chevron */}
+              {/* Row 2 (single combined row): logo · page · date  ........  comments · shares · likes · chevron */}
               <div className={cn('flex items-center gap-2', isHe ? 'flex-row-reverse' : 'flex-row')}>
-                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="תגובות">
-                  <MessageSquare className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
-                  <span className="tabular-nums">{commentDisplay}</span>
-                </span>
-                <span className="flex-1" />
-                <span className="text-xs text-muted-foreground whitespace-nowrap">{dateStr}</span>
-                <span className="text-xs text-muted-foreground">·</span>
-                <span className="text-sm font-semibold text-foreground truncate">{pageLabel}</span>
                 <span className="inline-flex items-center justify-center shrink-0">
                   {platformMeta?.brand ? (
                     <BrandIcon name={platformMeta.brand} className={cn('h-5 w-5', BRAND_COLOR[platformMeta.brand] ?? 'text-muted-foreground')} />
@@ -1936,6 +1928,22 @@ const PublishedFeed = () => {
                   ) : (
                     <span className="text-[10px] font-bold uppercase">{r.channel?.slice(0, 2)}</span>
                   )}
+                </span>
+                <span className="text-sm font-semibold text-foreground truncate">{pageLabel}</span>
+                <span className="text-xs text-muted-foreground">·</span>
+                <span className="text-xs text-muted-foreground whitespace-nowrap">{dateStr}</span>
+                <span className="flex-1" />
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="תגובות">
+                  <MessageSquare className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
+                  <span className="tabular-nums">{commentDisplay}</span>
+                </span>
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="שיתופים">
+                  <Share2 className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
+                  <span className="tabular-nums">{r.share_count ?? 0}</span>
+                </span>
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="לייקים">
+                  <Heart className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
+                  <span className="tabular-nums">{r.like_count ?? 0}</span>
                 </span>
                 <button onClick={(e) => { e.stopPropagation(); setExpanded((s) => ({ ...s, [r.id]: !isOpen })); }}
                         className="rounded-md p-1 text-muted-foreground hover:bg-muted shrink-0"
