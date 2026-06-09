@@ -54,13 +54,32 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
   const [rooms, setRooms] = useState('');
   const [sqm, setSqm] = useState('');
   const [floor, setFloor] = useState('');
+  const [totalFloors, setTotalFloors] = useState('');
   const [yearBuilt, setYearBuilt] = useState('');
+  const [neighborhood, setNeighborhood] = useState('');
+  const [balconySqm, setBalconySqm] = useState('');
+  const [condition, setCondition] = useState<string>('');
+  const [directions, setDirections] = useState('');
+  const [parking, setParking] = useState(false);
+  const [elevator, setElevator] = useState(false);
+  const [balcony, setBalcony] = useState(false);
+  const [safeRoom, setSafeRoom] = useState(false);
+  const [storage, setStorage] = useState(false);
+  const [airConditioning, setAirConditioning] = useState(false);
+  const [accessible, setAccessible] = useState(false);
+  const [renovated, setRenovated] = useState(false);
+  const [furnished, setFurnished] = useState(false);
+  const [bars, setBars] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     if (!property) return;
+    const p: any = property;
+    const meta = p.source_metadata ?? {};
+    const featObj = Array.isArray(p.features) ? (p.features[0] ?? {}) : (p.features ?? {});
+    const extras = featObj?.extras ?? {};
     setListingType(property.listing_type === 'rent' ? 'rent' : 'sale');
     setTitle(property.title ?? '');
     setDescription(property.description ?? '');
@@ -71,9 +90,24 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
     setRooms(property.rooms ? String(property.rooms) : '');
     setSqm(property.size_sqm ? String(property.size_sqm) : '');
     setFloor(property.floor != null ? String(property.floor) : '');
+    setTotalFloors(property.total_floors != null ? String(property.total_floors) : '');
     setYearBuilt(property.year_built != null ? String(property.year_built) : '');
-    const existingPhotos = (property as any).photos;
-    setPhotos(Array.isArray(existingPhotos) ? existingPhotos.filter((p: any) => typeof p === 'string') : []);
+    setNeighborhood(p.neighborhood ?? '');
+    setBalconySqm(extras.balcony_sqm != null ? String(extras.balcony_sqm) : '');
+    setCondition(extras.condition ?? '');
+    setDirections(extras.directions ?? '');
+    setParking(Boolean(p.parking ?? extras.parking));
+    setElevator(Boolean(p.elevator ?? extras.elevator));
+    setBalcony(Boolean(extras.balcony));
+    setSafeRoom(Boolean(extras.safe_room));
+    setStorage(Boolean(extras.storage));
+    setAirConditioning(Boolean(extras.air_conditioning));
+    setAccessible(Boolean(extras.accessible));
+    setRenovated(Boolean(extras.renovated));
+    setFurnished(Boolean(extras.furnished));
+    setBars(Boolean(extras.bars));
+    const existingPhotos = p.photos ?? meta.photos;
+    setPhotos(Array.isArray(existingPhotos) ? existingPhotos.filter((x: any) => typeof x === 'string') : []);
   }, [property]);
 
   const handleSyncFromHomely = async () => {
