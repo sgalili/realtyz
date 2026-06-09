@@ -1,11 +1,17 @@
-// Realtyz comments-fetch — pulls live comments per native Facebook post id
-// directly from Meta Graph API, bypassing Ayrshare entirely for read paths,
-// persists them into engagement_events (dedup by user_id + external_id), and
-// dispatches each new comment into auto-engagement-process.
+// Realtyz comments-fetch — pulls live comments via Ayrshare's native
+// /api/comments/{ayrshareTopLevelId}?platforms=facebook endpoint using the
+// healthy workspace profile key. Direct Meta Graph queries were retired
+// because the stored FB user access token expires constantly (code 190 /
+// subcode 467). Ayrshare keeps a server-side Page token alive for us.
 // Strict tenant isolation: user_id is required and scopes every DB query.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { resolveOwnPageIdentity, isSelfAuthoredComment } from "../_shared/ayrshare-helpers.ts";
+import {
+  resolveOwnPageIdentity,
+  resolveWorkspaceProfileKey,
+  isSelfAuthoredComment,
+  AYR_BASE,
+} from "../_shared/ayrshare-helpers.ts";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
@@ -27,14 +33,19 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method" }, 405);
 
   try {
+    const AYR_KEY = Deno.env.get("AYRSHARE_API_KEY")?.trim().replace(/^["']|["']$/g, "") || null;
+    if (!AYR_KEY) return json({ error: "AYRSHARE_API_KEY not configured" }, 500);
+    // Optional: used only for higher-quality Facebook avatar resolution.
     const FB_PAGE_TOKEN = Deno.env.get("FB_PAGE_ACCESS_TOKEN")?.trim() || null;
-    if (!FB_PAGE_TOKEN) return json({ error: "FB_PAGE_ACCESS_TOKEN not configured" }, 500);
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(SUPABASE_URL, SERVICE, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+
+    const { profileKey } = await resolveWorkspaceProfileKey(admin);
+    if (!profileKey) return json({ error: "workspace_ayrshare_profile_not_linked" }, 200);
 
     let body: any = {};
     try {
@@ -195,53 +206,63 @@ Deno.serve(async (req) => {
       return ids;
     };
 
-    const fetchMetaComments = async (postId: string) => {
-      const fields = "id,message,created_time,from{id,name,picture{url}},parent,replies{id,message,created_time,from{id,name,picture{url}}}";
-      const url = `https://graph.facebook.com/v20.0/${encodeURIComponent(postId)}/comments?fields=${encodeURIComponent(fields)}&limit=100&access_token=${encodeURIComponent(FB_PAGE_TOKEN)}`;
-      const res = await fetch(url, { headers: { "Cache-Control": "no-cache" } });
+    const fetchAyrshareComments = async (ayrshareTopLevelId: string, platform: string) => {
+      const url = `${AYR_BASE}/comments/${encodeURIComponent(ayrshareTopLevelId)}?platforms=${encodeURIComponent(platform)}`;
+      const res = await fetch(url, {
+        headers: {
+          Authorization: `Bearer ${AYR_KEY}`,
+          "Profile-Key": profileKey,
+          "Cache-Control": "no-cache",
+        },
+      });
       const text = await res.text();
       let payload: any = {};
       try { payload = text ? JSON.parse(text) : {}; } catch { payload = { rawText: text }; }
       return { ok: res.ok, status: res.status, payload, text };
     };
 
-    const normalizeGraphNode = (node: any, parentId: string | null = null): any => {
-      const from = node?.from
-        ? { ...node.from, picture: node.from?.picture?.url ? { data: { url: node.from.picture.url } } : node.from?.picture }
-        : { name: "משתמש פייסבוק" };
-      const replies = Array.isArray(node?.replies?.data) ? node.replies.data : [];
+    const normalizeAyrshareNode = (node: any): any => {
+      const fromObj = node?.from && typeof node.from === "object" ? node.from : { name: node?.from || "משתמש פייסבוק" };
       return {
-        id: node?.id,
-        message: node?.message ?? "",
-        created_time: node?.created_time,
-        from,
-        __parent_id: node?.parent?.id ?? parentId,
-        comments: replies.map((reply: any) => normalizeGraphNode(reply, node?.id ?? parentId)),
+        id: node?.commentId ?? node?.id ?? null,
+        message: node?.comment ?? node?.message ?? node?.text ?? "",
+        created_time: node?.created ?? node?.createdAt ?? null,
+        from: fromObj,
+        like_count: typeof node?.likeCount === "number" ? node.likeCount : null,
+        permalink: node?.commentUrl ?? null,
+        __parent_id: node?.parentId ?? node?.parent?.id ?? null,
+        comments: [],
       };
     };
 
-    const fetchDirectMetaTree = async (target: CommentFetchTarget) => {
+    const fetchAyrshareTree = async (target: CommentFetchTarget) => {
       const attempts: any[] = [];
-      for (const candidate of normalizeMetaPostCandidates(target.nativePostId, target.fetchPostId)) {
-        const fetched = await fetchMetaComments(candidate);
-        if (fetched.ok && Array.isArray(fetched.payload?.data)) {
-          return {
-            ok: true,
-            status: fetched.status,
-            resolvedPostId: candidate,
-            comments: fetched.payload.data.map((node: any) => normalizeGraphNode(node, null)),
-            attempts,
-          };
-        }
-        attempts.push({ post_id: candidate, status: fetched.status, payload: safeMetaPayload(fetched.payload, fetched.text) });
+      const fetched = await fetchAyrshareComments(target.fetchPostId, target.platform);
+      const platformKey = target.platform.toLowerCase();
+      const arr: any[] = Array.isArray(fetched.payload?.[platformKey])
+        ? fetched.payload[platformKey]
+        : Array.isArray(fetched.payload?.comments)
+        ? fetched.payload.comments
+        : Array.isArray(fetched.payload)
+        ? fetched.payload
+        : [];
+      if (fetched.ok && fetched.payload?.status !== "error") {
+        return {
+          ok: true,
+          status: fetched.status,
+          resolvedPostId: target.fetchPostId,
+          comments: arr.map((node: any) => normalizeAyrshareNode(node)),
+          attempts,
+        };
       }
-      return { ok: false, status: attempts[attempts.length - 1]?.status ?? 500, resolvedPostId: null, comments: [], attempts };
+      attempts.push({ post_id: target.fetchPostId, status: fetched.status, payload: safeMetaPayload(fetched.payload, fetched.text) });
+      return { ok: false, status: fetched.status || 500, resolvedPostId: null, comments: [], attempts };
     };
 
     await Promise.all(
       Array.from(targets.values()).map(async (target) => {
         const { fetchPostId, nativePostId, platform } = target;
-        const activeRefId = "meta_graph_direct";
+        const activeRefId = "ayrshare_comments_native";
         try {
           if (isUuid(fetchPostId) || isUuid(nativePostId)) {
             const mappingError = {
@@ -257,12 +278,12 @@ Deno.serve(async (req) => {
             return;
           }
           if (!/^facebook$/i.test(platform)) {
-            errors[nativePostId] = "direct_meta_comments_only_supports_facebook";
+            errors[nativePostId] = "ayrshare_comments_only_supports_facebook_in_this_function";
             results[nativePostId] = [];
             return;
           }
 
-          const fetched = await fetchDirectMetaTree(target);
+          const fetched = await fetchAyrshareTree(target);
           const arr: any[] = fetched.comments;
           if (!fetched.ok) {
             const apiError = {
@@ -270,16 +291,16 @@ Deno.serve(async (req) => {
               fetch_post_id: fetchPostId,
               platform,
               status: fetched.status,
-              payload: fetched.attempts[fetched.attempts.length - 1]?.payload ?? { message: "Meta Graph comments rejected request" },
+              payload: fetched.attempts[fetched.attempts.length - 1]?.payload ?? { message: "Ayrshare /comments rejected request" },
               attempts: fetched.attempts,
             };
             apiErrors.push(apiError);
-            console.error("[ayrshare-comments-fetch] Meta Graph rejected request", apiError);
-            errors[nativePostId] = `HTTP ${fetched.status}: ${apiError.payload.message ?? "Meta Graph comments rejected request"}`;
+            console.error("[ayrshare-comments-fetch] Ayrshare rejected request", apiError);
+            errors[nativePostId] = `HTTP ${fetched.status}: ${apiError.payload.message ?? "Ayrshare /comments rejected request"}`;
             results[nativePostId] = [];
             return;
           }
-          console.log("[ayrshare-comments-fetch] direct Meta comments success", { stored: nativePostId, resolved: fetched.resolvedPostId, count: arr.length });
+          console.log("[ayrshare-comments-fetch] ayrshare comments success", { stored: nativePostId, resolved: fetched.resolvedPostId, count: arr.length });
 
           // Flatten N levels of nested replies. Ayrshare/Meta nest child nodes
           // under any of: replies / children / comments / thread / data, so we
@@ -442,9 +463,9 @@ Deno.serve(async (req) => {
         // payload can contain nested reply/user blobs that may violate jsonb
         // size/shape constraints and cause the insert to fail silently.
         const cleanMetadata = {
-          source: "meta_graph_comments_fetch",
+          source: "ayrshare_comments_fetch",
           campaign_name: safeStr(campaignName),
-          profile_ref_id: safeStr(c?.__profile_ref_id ?? "meta_graph_direct"),
+          profile_ref_id: safeStr(c?.__profile_ref_id ?? "ayrshare_comments_native"),
           parent_id: safeStr(parentId),
           self_authored: selfAuthored,
           author_type: selfAuthored ? "workspace_page" : "audience",
@@ -537,7 +558,7 @@ Deno.serve(async (req) => {
             external_post_id: d.external_post_id,
             sender_handle: d.sender_handle,
             sender_name: d.sender_handle,
-            metadata: { parent_id: d.parent_id, sender_id: d.sender_id, source: "meta_graph_comments_fetch" },
+            metadata: { parent_id: d.parent_id, sender_id: d.sender_id, source: "ayrshare_comments_fetch" },
           }),
         }).catch((e) => console.error("[ayrshare-comments-fetch] dispatch failed", e)),
       ),
