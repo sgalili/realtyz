@@ -1,11 +1,17 @@
-// Realtyz comments-fetch — pulls live comments per native Facebook post id
-// directly from Meta Graph API, bypassing Ayrshare entirely for read paths,
-// persists them into engagement_events (dedup by user_id + external_id), and
-// dispatches each new comment into auto-engagement-process.
+// Realtyz comments-fetch — pulls live comments via Ayrshare's native
+// /api/comments/{ayrshareTopLevelId}?platforms=facebook endpoint using the
+// healthy workspace profile key. Direct Meta Graph queries were retired
+// because the stored FB user access token expires constantly (code 190 /
+// subcode 467). Ayrshare keeps a server-side Page token alive for us.
 // Strict tenant isolation: user_id is required and scopes every DB query.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
-import { resolveOwnPageIdentity, isSelfAuthoredComment } from "../_shared/ayrshare-helpers.ts";
+import {
+  resolveOwnPageIdentity,
+  resolveWorkspaceProfileKey,
+  isSelfAuthoredComment,
+  AYR_BASE,
+} from "../_shared/ayrshare-helpers.ts";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
