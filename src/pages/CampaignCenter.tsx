@@ -583,15 +583,43 @@ const InlineComposer = ({
   }, [listings, listingQuery]);
 
 
-  const handleFiles = (files: FileList | null, kind: 'image' | 'file') => {
+  const handleFiles = async (files: FileList | null, kind: 'image' | 'file') => {
     if (!files) return;
     const max = 25 * 1024 * 1024;
-    const added: typeof attachments = [];
-    Array.from(files).forEach((f) => {
-      if (f.size > max) { toast.error(`${f.name}: גודל מעל 25MB`); return; }
-      added.push({ name: f.name, kind, url: URL.createObjectURL(f) });
-    });
-    if (added.length) setAttachments((a) => [...a, ...added]);
+    const list = Array.from(files);
+    // Show instant local previews so the UI feels snappy; we'll swap in the
+    // persistent https URL once the upload finishes.
+    const placeholders = list
+      .filter((f) => f.size <= max)
+      .map((f) => ({ name: f.name, kind, url: URL.createObjectURL(f), _pending: true as const }));
+    list.forEach((f) => { if (f.size > max) toast.error(`${f.name}: גודל מעל 25MB`); });
+    if (!placeholders.length) return;
+    setAttachments((a) => [...a, ...placeholders]);
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { toast.error('יש להתחבר כדי להעלות קבצים'); return; }
+      const uploaded = await Promise.all(
+        placeholders.map(async (p, idx) => {
+          const file = list.filter((f) => f.size <= max)[idx];
+          const row = await uploadMediaToLibrary({
+            userId: user.id,
+            fileName: file.name,
+            data: file,
+            mimeType: file.type,
+            source: 'campaign_composer',
+          });
+          return { placeholder: p, url: row.public_url };
+        }),
+      );
+      setAttachments((curr) => curr.map((att) => {
+        const hit = uploaded.find((u) => u.placeholder.url === att.url);
+        return hit ? { name: att.name, kind: att.kind, url: hit.url } : att;
+      }));
+    } catch (err: any) {
+      console.error('[CampaignCenter] media upload failed', err);
+      toast.error('העלאת הקובץ נכשלה — לא יישמר בטיוטה');
+    }
   };
 
   const handleAIImage = async () => {
