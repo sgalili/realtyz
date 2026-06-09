@@ -406,7 +406,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
                 : [...current, nextRow];
               next = next.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
             }
-            writeCache(campaign.id, next);
+            writeCache(campaign.id, next, postIds);
             return next;
           });
         },
