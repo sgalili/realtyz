@@ -165,7 +165,7 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
           }));
         const { error } = await supabase
           .from('listings')
-          .upsert(rows, { onConflict: 'source,external_id' });
+          .upsert(rows as any, { onConflict: 'source,external_id' });
         if (error) throw error;
         propsCount = rows.length;
       }
@@ -183,7 +183,7 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
         // Upsert by phone_number — leads.phone_number is the natural key.
         const { error } = await supabase
           .from('leads')
-          .upsert(rows, { onConflict: 'phone_number' });
+          .upsert(rows as any, { onConflict: 'phone_number' });
         if (error) throw error;
         contactsCount = rows.length;
       }
