@@ -229,7 +229,7 @@ const stampProviderFetch = (pids: string[]) => {
 // cache and provider-fetch lock so the new healthy connection starts from a
 // completely clean slate (Udi's previous profile was permanently locked for
 // monthly-unsuspension overuse). Bump the sentinel to run another wipe.
-const WIPE_SENTINEL_KEY = "realtyz_fb_cache_wipe_v2";
+const WIPE_SENTINEL_KEY = "realtyz_fb_cache_wipe_v3_new_profile";
 (function purgeLegacyAyrshareCaches() {
   try {
     if (typeof window === "undefined") return;
@@ -238,7 +238,7 @@ const WIPE_SENTINEL_KEY = "realtyz_fb_cache_wipe_v2";
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (!k) continue;
-      if (k.startsWith("realtyz_fb_comments_cache_") || k.startsWith("realtyz_fb_comments_lock_")) {
+      if (k.startsWith("realtyz_fb_")) {
         drop.push(k);
       }
     }
