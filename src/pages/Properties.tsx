@@ -32,6 +32,7 @@ import { toast } from 'sonner';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
 import { EditPropertyDialog } from '@/components/properties/EditPropertyDialog';
 import { ImportPropertiesDialog } from '@/components/properties/ImportPropertiesDialog';
+import { HomelyBulkSyncDialog } from '@/components/properties/HomelyBulkSyncDialog';
 import {
   PROPERTY_TYPE_LABELS_HE,
   CITY_OPTIONS,
@@ -115,6 +116,7 @@ export default function Properties() {
   const [shareTarget, setShareTarget] = useState<HomelyProperty | null>(null);
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
+  const [homelyBulkOpen, setHomelyBulkOpen] = useState(false);
   const [homelyRefreshing, setHomelyRefreshing] = useState(false);
   const queryClient = useQueryClient();
   const refreshListings = () => {
@@ -337,17 +339,27 @@ export default function Properties() {
             </button>
           ))}
           {sourceTab === 'homely' && (
-            <button
-              type="button"
-              onClick={handleHomelyRefresh}
-              disabled={isLoading || homelyRefreshing}
-              className="ml-1 inline-flex items-center gap-1 px-2.5 py-2 text-xs font-semibold rounded-lg text-muted-foreground hover:text-foreground hover:bg-primary/5 transition-colors disabled:opacity-50"
-              title="רענון נכסים מ-Homely"
-              aria-label="רענון נכסים מ-Homely"
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${homelyRefreshing ? 'animate-spin' : ''}`} />
-              רענן
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={handleHomelyRefresh}
+                disabled={isLoading || homelyRefreshing}
+                className="ml-1 inline-flex items-center gap-1 px-2.5 py-2 text-xs font-semibold rounded-lg text-muted-foreground hover:text-foreground hover:bg-primary/5 transition-colors disabled:opacity-50"
+                title="רענון נכסים מ-Homely"
+                aria-label="רענון נכסים מ-Homely"
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${homelyRefreshing ? 'animate-spin' : ''}`} />
+                רענן
+              </button>
+              <button
+                type="button"
+                onClick={() => setHomelyBulkOpen(true)}
+                className="ml-1 inline-flex items-center gap-1 px-2.5 py-2 text-xs font-semibold rounded-lg text-primary hover:bg-primary/10 transition-colors"
+                title="סנכרון מלא מהומלי — נכסים ואנשי קשר"
+              >
+                סנכרון מלא מהומלי
+              </button>
+            </>
           )}
         </div>
       </div>
@@ -551,6 +563,7 @@ export default function Properties() {
 
       <AddPropertyDialog open={addOpen} onOpenChange={setAddOpen} onCreated={refreshListings} />
       <ImportPropertiesDialog open={importOpen} onOpenChange={setImportOpen} onImported={refreshListings} />
+      <HomelyBulkSyncDialog open={homelyBulkOpen} onOpenChange={setHomelyBulkOpen} onImported={refreshListings} />
     </div>
   );
 }
