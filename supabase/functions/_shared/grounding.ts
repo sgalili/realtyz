@@ -244,7 +244,7 @@ export async function loadCrmSnapshot(
     const [listingsRes, leadsRes] = await Promise.all([
       admin
         .from("listings")
-        .select("property_title,city,address,neighborhood,rooms,sqm,asking_price,status,is_published,features,description")
+        .select("property_title,city,address,neighborhood,rooms,sqm,floor,parking,elevator,asking_price,status,is_published,features,description")
         .eq("user_id", userId)
         .eq("status", "live")
         .eq("is_published", true)
