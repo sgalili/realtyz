@@ -156,6 +156,11 @@ const writeCache = (campaignId: string, rows: EngagementRow[], postIds: string[]
         if (!Array.isArray(existing)) existing = [];
       } catch { existing = []; }
       const incoming = rows.filter((r) => r.external_post_id === pid);
+      const existingLooksPlaceholder = existing.length === 0 || existing.every((r: any) => !r?.id && !r?.external_id && !r?.inbound_text);
+      if (incoming.length > 0 && existingLooksPlaceholder) {
+        localStorage.setItem(perPostKey, JSON.stringify(incoming));
+        continue;
+      }
       const byId = new Map<string, EngagementRow>();
       for (const r of existing) byId.set(r.id, r);
       for (const r of incoming) byId.set(r.id, { ...(byId.get(r.id) ?? r), ...r });
