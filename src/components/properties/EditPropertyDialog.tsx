@@ -325,8 +325,65 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
             </div>
 
             <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">קומות בבניין</Label>
+              <Input type="number" value={totalFloors} onChange={(e) => setTotalFloors(e.target.value)} />
+            </div>
+
+            <div className="space-y-1.5">
               <Label className="text-xs font-semibold">שנת בנייה</Label>
               <Input type="number" value={yearBuilt} onChange={(e) => setYearBuilt(e.target.value)} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">שכונה</Label>
+              <Input value={neighborhood} onChange={(e) => setNeighborhood(e.target.value)} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">שטח מרפסת (מ"ר)</Label>
+              <Input type="number" value={balconySqm} onChange={(e) => setBalconySqm(e.target.value)} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">מצב הנכס</Label>
+              <Select value={condition || undefined} onValueChange={(v) => setCondition(v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="בחר" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CONDITION_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">כיווני אוויר</Label>
+              <Input value={directions} onChange={(e) => setDirections(e.target.value)} placeholder="צפון, מזרח..." />
+            </div>
+
+            <div className="col-span-2 space-y-2 pt-2 border-t">
+              <Label className="text-xs font-semibold">מאפיינים נוספים</Label>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                {([
+                  ['מרפסת', balcony, setBalcony],
+                  ['ממ"ד', safeRoom, setSafeRoom],
+                  ['חניה', parking, setParking],
+                  ['מעלית', elevator, setElevator],
+                  ['מחסן', storage, setStorage],
+                  ['מיזוג אוויר', airConditioning, setAirConditioning],
+                  ['גישה לנכים', accessible, setAccessible],
+                  ['משופץ', renovated, setRenovated],
+                  ['מרוהט', furnished, setFurnished],
+                  ['סורגים', bars, setBars],
+                ] as const).map(([label, val, setter]) => (
+                  <label key={label} className="flex items-center gap-2 cursor-pointer text-sm">
+                    <Checkbox checked={val} onCheckedChange={(v) => (setter as any)(Boolean(v))} />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
         </div>
