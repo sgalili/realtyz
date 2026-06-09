@@ -372,20 +372,31 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
 
 
 
-  // Manual refresh: bypass the 45s polling loop and force an immediate
-  // server-side pull of analytics + comments scoped to THIS card's
-  // provider_message_id. The realtime subscription on campaign_logs then
-  // patches the counter UI live without a browser reload.
+  // Manual refresh ONLY. Background/auto invocations were removed after Udi's
+  // Ayrshare profile got suspended for rate-limit burst. A 60-second hard
+  // throttle (in addition to the 15-min localStorage lock) blocks rapid
+  // re-clicks even when manual=true.
+  const lastManualRefreshAtRef = useRef<number>(0);
   const forceRefresh = async ({ manual = false }: { manual?: boolean } = {}) => {
-    // 15-minute cache lock per postId — protects Udi's Ayrshare profile
-    // from suspension if the user spam-toggles cards or the page re-mounts.
-    // Manual refreshes always bypass.
+    if (manual) {
+      const now = Date.now();
+      const elapsed = now - lastManualRefreshAtRef.current;
+      if (elapsed < 60_000) {
+        const wait = Math.ceil((60_000 - elapsed) / 1000);
+        toast.message(`רענון ידני זמין שוב בעוד ${wait} שניות`);
+        return;
+      }
+      lastManualRefreshAtRef.current = now;
+    } else {
+      // Non-manual callers are no longer permitted to hit the provider.
+      return;
+    }
     if (isProviderFetchLocked(postIds, { manual })) {
       return;
     }
     stampProviderFetch(postIds);
 
-    if (manual) setManualRefreshing(true);
+    setManualRefreshing(true);
     try {
       setProviderWarning(null);
       const pid = postIds[0] ?? null;
@@ -418,18 +429,16 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
 
       await fetchRows();
     } catch (e: any) {
-      console.warn("[CampaignCommentsStream] silent refresh failed", e);
+      console.warn("[CampaignCommentsStream] manual refresh failed", e);
     } finally {
-      if (manual) setManualRefreshing(false);
+      setManualRefreshing(false);
     }
   };
 
 
   useEffect(() => {
-    // Load saved rows on mount, then fire a single direct-FB-Graph pull so the
-    // tree reflects all live comments + nested replies on first paint. No
-    // background interval — only this hard-mount call and explicit manual
-    // refresh ever hit the provider, to avoid Ayrshare suspension flags.
+    // SAFETY: load cached DB rows only — NEVER auto-hit Ayrshare on mount.
+    // The broker must click "רענן" to pull fresh provider data.
     (async () => {
       const hadEmptyPerPostCache = purgeEmptyPerPostCacheBlocks(postIds);
       if (hadEmptyPerPostCache) {
@@ -438,13 +447,10 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
         setRows(null);
       }
       await load();
-      if (postIds.length > 0) {
-        await forceRefresh({ manual: hadEmptyPerPostCache });
-        await fetchRows();
-      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaign.id, postIdsKey, campaign.channel]);
+
 
   // When the parent's counter bumps (analytics realtime patch on
   // campaign_logs), immediately pull the new comments into the tree.
