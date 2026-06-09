@@ -1948,6 +1948,8 @@ const PublishedFeed = () => {
         onChannelChange={setActiveChannel}
         archivedCount={archivedCount}
         onOpenArchive={() => toast.info('ארכיון התגובות יוצג בקרוב')}
+        connectedChannels={connectedChannels}
+        onConnectChannel={handleFeedConnect}
       />
 
       {filteredRows && filteredRows.length === 0 ? (
