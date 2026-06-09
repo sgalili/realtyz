@@ -149,6 +149,7 @@ Deno.serve(async (req) => {
         const flatPosts: any[] = response?.id ? [response] : [];
         const providerMsgId = typeof (row as any).provider_message_id === "string" ? (row as any).provider_message_id.trim() : "";
         const rowChannel = String((row as any).channel || platformHint).toLowerCase();
+        const pfbidAlias = extractPfbid(response);
 
         // Path A: rows that include Ayrshare-minted top-level ids.
         let matchedFromPosts = false;
@@ -167,21 +168,17 @@ Deno.serve(async (req) => {
             postIds.find((p: any) => String(p?.id || "") === nativeId)?.platform ||
             rowChannel,
           ).toLowerCase();
-          // fetchPostId = Ayrshare top id (preferred); fallback layer inside
-          // fetchAyrshareTree will pivot to nativePostId via searchPlatformId
-          // when the top id query fails (legacy / suspended-profile posts).
-          targets.set(nativeId, { fetchPostId: topId, nativePostId: nativeId, platform: platform || platformHint });
+          targets.set(nativeId, { fetchPostId: topId, nativePostId: nativeId, platform: platform || platformHint, pfbidAlias });
           matchedFromPosts = true;
         }
 
-        // Path B: legacy rows with NO Ayrshare top id (provider_response was
-        // never captured or came from the prior profile). Match by the native
-        // FB composite id and force the native-id fetch path directly.
+        // Path B: legacy rows with NO Ayrshare top id.
         if (!matchedFromPosts && providerMsgId && requested.has(providerMsgId)) {
           targets.set(providerMsgId, {
             fetchPostId: providerMsgId,
             nativePostId: providerMsgId,
             platform: rowChannel || platformHint,
+            pfbidAlias,
           });
         }
       }
