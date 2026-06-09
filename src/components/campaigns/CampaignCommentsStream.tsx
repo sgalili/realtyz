@@ -224,6 +224,29 @@ const stampProviderFetch = (pids: string[]) => {
   }
 };
 
+// ONE-SHOT GLOBAL WIPE — runs exactly once per browser after the workspace
+// migrated to a fresh Ayrshare profile. Removes every stale per-post comment
+// cache and provider-fetch lock so the new healthy connection starts from a
+// completely clean slate (Udi's previous profile was permanently locked for
+// monthly-unsuspension overuse). Bump the sentinel to run another wipe.
+const WIPE_SENTINEL_KEY = "realtyz_fb_cache_wipe_v2";
+(function purgeLegacyAyrshareCaches() {
+  try {
+    if (typeof window === "undefined") return;
+    if (localStorage.getItem(WIPE_SENTINEL_KEY) === "1") return;
+    const drop: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      if (k.startsWith("realtyz_fb_comments_cache_") || k.startsWith("realtyz_fb_comments_lock_")) {
+        drop.push(k);
+      }
+    }
+    for (const k of drop) localStorage.removeItem(k);
+    localStorage.setItem(WIPE_SENTINEL_KEY, "1");
+  } catch { /* quota / private mode */ }
+})();
+
 // Per-campaign draft cache (suggested + user-edited public/DM text), keyed by
 // engagement row id. Persisted to sessionStorage so collapse/expand of the
 // card and any background refresh re-hydrate the exact last text the broker
@@ -378,17 +401,16 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
   // re-clicks even when manual=true.
   const lastManualRefreshAtRef = useRef<number>(0);
   const forceRefresh = async ({ manual = false }: { manual?: boolean } = {}) => {
-    if (manual) {
-      const now = Date.now();
-      const elapsed = now - lastManualRefreshAtRef.current;
-      if (elapsed < 60_000) {
-        const wait = Math.ceil((60_000 - elapsed) / 1000);
-        toast.message(`רענון ידני זמין שוב בעוד ${wait} שניות`);
-        return;
-      }
-      lastManualRefreshAtRef.current = now;
-    } else {
-      // Non-manual callers are no longer permitted to hit the provider.
+    if (!manual) {
+      // HARD RULE (post-suspension): non-manual callers are NEVER allowed to
+      // hit Ayrshare. Provider data only loads on an explicit user click.
+      return;
+    }
+    const now = Date.now();
+    const elapsed = now - lastManualRefreshAtRef.current;
+    if (lastManualRefreshAtRef.current > 0 && elapsed < 60_000) {
+      const wait = Math.ceil((60_000 - elapsed) / 1000);
+      toast.message(`רענון ידני זמין שוב בעוד ${wait} שניות`);
       return;
     }
     if (isProviderFetchLocked(postIds, { manual })) {
@@ -431,6 +453,9 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
     } catch (e: any) {
       console.warn("[CampaignCommentsStream] manual refresh failed", e);
     } finally {
+      // Debounce window starts when the request COMPLETES (success or fail),
+      // not when the user clicked — prevents rapid retries during slow calls.
+      lastManualRefreshAtRef.current = Date.now();
       setManualRefreshing(false);
     }
   };
