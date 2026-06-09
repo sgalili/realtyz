@@ -1758,9 +1758,26 @@ const PublishedFeed = () => {
     (async () => {
       for (const [platform, post_ids] of byPlatform.entries()) {
         try {
-          await supabase.functions.invoke('ayrshare-comments-fetch', {
+          const { data } = await supabase.functions.invoke('ayrshare-comments-fetch', {
             body: { post_ids, platform, force_refresh: false },
           });
+          const commentsByPost = ((data as any)?.comments && typeof (data as any).comments === 'object') ? (data as any).comments : {};
+          const positiveCounts = new Map<string, number>();
+          for (const [postId, list] of Object.entries(commentsByPost)) {
+            if (!Array.isArray(list) || list.length === 0) continue;
+            positiveCounts.set(String(postId), list.length);
+            try { localStorage.removeItem(`realtyz_fb_comments_cache_${postId}`); } catch { /* quota */ }
+          }
+          if (positiveCounts.size > 0) {
+            setRows((prev) => prev?.map((r) => {
+              const match = Array.from(positiveCounts.entries()).find(([postId]) => campaignMatchesExternalPost(r, postId));
+              if (!match) return r;
+              const [, count] = match;
+              try { sessionStorage.removeItem(`realtyz.comments.${r.id}`); } catch { /* quota */ }
+              updateLiveCount(r.id, count);
+              return { ...r, comment_count: Math.max(r.comment_count ?? 0, count), metrics_updated_at: new Date().toISOString() };
+            }) ?? prev);
+          }
         } catch (err) {
           console.warn('[CampaignCenter] background comments hydration failed', { platform, err });
         }
