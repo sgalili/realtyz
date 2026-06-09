@@ -284,10 +284,14 @@ Deno.serve(async (req) => {
       // with searchPlatformId=true. Re-animates legacy posts that were
       // published under a prior (now-suspended) Ayrshare profile but live on
       // the same Facebook Page connected to the active profile.
+      let bestEmptyOk: { status: number; resolvedPostId: string } | null = null;
+      if (primary.ok && primary.payload?.status !== "error") {
+        bestEmptyOk = { status: primary.status, resolvedPostId: target.fetchPostId };
+      }
       if (target.nativePostId && target.nativePostId !== target.fetchPostId) {
         const fallback = await fetchAyrshareComments(target.nativePostId, target.platform, true);
         const fallbackArr = extractCommentsArray(fallback.payload, platformKey);
-        if (fallback.ok && fallback.payload?.status !== "error") {
+        if (fallback.ok && fallback.payload?.status !== "error" && fallbackArr.length > 0) {
           console.log("[ayrshare-comments-fetch] native FB id fallback hit", { native: target.nativePostId, count: fallbackArr.length });
           return {
             ok: true,
@@ -297,13 +301,36 @@ Deno.serve(async (req) => {
             attempts: [...attempts, { post_id: target.nativePostId, mode: "native_fb_searchPlatformId", status: fallback.status, count: fallbackArr.length }],
           };
         }
-        attempts.push({ post_id: target.nativePostId, mode: "native_fb_searchPlatformId", status: fallback.status, payload: safeMetaPayload(fallback.payload, fallback.text) });
+        if (fallback.ok && fallback.payload?.status !== "error" && !bestEmptyOk) {
+          bestEmptyOk = { status: fallback.status, resolvedPostId: target.nativePostId };
+        }
+        attempts.push({ post_id: target.nativePostId, mode: "native_fb_searchPlatformId", status: fallback.status, count: fallbackArr.length, payload: fallbackArr.length === 0 ? safeMetaPayload(fallback.payload, fallback.text) : undefined });
       }
 
-      // Primary returned ok+empty and native fallback unavailable/empty: report
-      // success with zero comments rather than a hard error.
-      if (primary.ok && primary.payload?.status !== "error") {
-        return { ok: true, status: primary.status, resolvedPostId: target.fetchPostId, comments: [], attempts };
+      // Attempt 3: pfbid story alias extracted from the campaign permalink.
+      // Meta exposes "pfbid…" as a canonical alias for every post; querying
+      // Ayrshare with searchPlatformId=true on this alias resolves against
+      // Meta's live servers even when the Ayrshare top-id and native composite
+      // id both return empty arrays (rotated profile, alt permalink, etc.).
+      if (target.pfbidAlias && target.pfbidAlias !== target.fetchPostId && target.pfbidAlias !== target.nativePostId) {
+        const pfbid = await fetchAyrshareComments(target.pfbidAlias, target.platform, true);
+        const pfbidArr = extractCommentsArray(pfbid.payload, platformKey);
+        if (pfbid.ok && pfbid.payload?.status !== "error" && pfbidArr.length > 0) {
+          console.log("[ayrshare-comments-fetch] pfbid alias hit", { pfbid: target.pfbidAlias, count: pfbidArr.length });
+          return {
+            ok: true,
+            status: pfbid.status,
+            resolvedPostId: target.nativePostId,
+            comments: pfbidArr,
+            attempts: [...attempts, { post_id: target.pfbidAlias, mode: "pfbid_searchPlatformId", status: pfbid.status, count: pfbidArr.length }],
+          };
+        }
+        attempts.push({ post_id: target.pfbidAlias, mode: "pfbid_searchPlatformId", status: pfbid.status, count: pfbidArr.length, payload: pfbidArr.length === 0 ? safeMetaPayload(pfbid.payload, pfbid.text) : undefined });
+      }
+
+      // All attempts returned ok+empty: surface as zero-state success.
+      if (bestEmptyOk) {
+        return { ok: true, status: bestEmptyOk.status, resolvedPostId: bestEmptyOk.resolvedPostId, comments: [], attempts };
       }
       return { ok: false, status: primary.status || 500, resolvedPostId: null, comments: [], attempts };
     };
