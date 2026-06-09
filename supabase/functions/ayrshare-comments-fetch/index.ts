@@ -98,34 +98,42 @@ Deno.serve(async (req) => {
         ? body.platform.trim().toLowerCase()
         : "facebook";
 
-    type CommentFetchTarget = { fetchPostId: string; nativePostId: string; platform: string; pfbidAlias?: string | null };
+    type CommentFetchTarget = { fetchPostId: string; nativePostId: string; platform: string; permalinkAliases?: string[] };
     const targets = new Map<string, CommentFetchTarget>();
 
-    // Recursively walk a provider_response blob and pull out any Facebook
-    // "story_fbid" / "pfbid…" identifier. Meta exposes these as the canonical
-    // permalink alias for a post (e.g. permalink_url, share URLs, embedded
-    // story refs) and Ayrshare resolves them when queried with
-    // searchPlatformId=true even if the original profile that posted them is
-    // suspended or rotated.
-    const extractPfbid = (root: any): string | null => {
+    // Recursively walk a provider_response blob and pull out every Facebook
+    // permalink alias Ayrshare can resolve with searchPlatformId=true:
+    // - long story ids: pfbid...
+    // - short share permalink tokens: facebook.com/share/p/{token}
+    const extractFacebookPermalinkAliases = (root: any): string[] => {
       const seen = new Set<any>();
-      const re = /pfbid[0-9A-Za-z]+/;
-      const visit = (node: any): string | null => {
+      const aliases = new Set<string>();
+      const pfbidRe = /pfbid[0-9A-Za-z]+/g;
+      const shareTokenRe = /facebook\.com\/share\/p\/([^/?#\s"'<]+)/gi;
+      const addFromString = (value: string) => {
+        for (const m of value.matchAll(pfbidRe)) if (m[0]) aliases.add(m[0]);
+        for (const m of value.matchAll(shareTokenRe)) {
+          const token = decodeURIComponent(String(m[1] || "")).replace(/\/+$/, "").trim();
+          if (/^[0-9A-Za-z_-]{5,}$/.test(token)) aliases.add(token);
+        }
+      };
+      const visit = (node: any) => {
         if (node == null) return null;
         if (typeof node === "string") {
-          const m = node.match(re);
-          return m ? m[0] : null;
+          addFromString(node);
+          return null;
         }
         if (typeof node !== "object" || seen.has(node)) return null;
         seen.add(node);
         if (Array.isArray(node)) {
-          for (const item of node) { const hit = visit(item); if (hit) return hit; }
+          for (const item of node) visit(item);
           return null;
         }
-        for (const v of Object.values(node)) { const hit = visit(v); if (hit) return hit; }
+        for (const v of Object.values(node)) visit(v);
         return null;
       };
-      return visit(root);
+      visit(root);
+      return Array.from(aliases);
     };
     const requested = new Set(requestedPostIds.map((id) => String(id).trim()).filter(Boolean));
 
@@ -149,7 +157,7 @@ Deno.serve(async (req) => {
         const flatPosts: any[] = response?.id ? [response] : [];
         const providerMsgId = typeof (row as any).provider_message_id === "string" ? (row as any).provider_message_id.trim() : "";
         const rowChannel = String((row as any).channel || platformHint).toLowerCase();
-        const pfbidAlias = extractPfbid(response);
+        const permalinkAliases = extractFacebookPermalinkAliases(response);
 
         // Path A: rows that include Ayrshare-minted top-level ids.
         let matchedFromPosts = false;
@@ -168,7 +176,7 @@ Deno.serve(async (req) => {
             postIds.find((p: any) => String(p?.id || "") === nativeId)?.platform ||
             rowChannel,
           ).toLowerCase();
-          targets.set(nativeId, { fetchPostId: topId, nativePostId: nativeId, platform: platform || platformHint, pfbidAlias });
+          targets.set(nativeId, { fetchPostId: topId, nativePostId: nativeId, platform: platform || platformHint, permalinkAliases });
           matchedFromPosts = true;
         }
 
@@ -178,7 +186,7 @@ Deno.serve(async (req) => {
             fetchPostId: providerMsgId,
             nativePostId: providerMsgId,
             platform: rowChannel || platformHint,
-            pfbidAlias,
+            permalinkAliases,
           });
         }
       }
