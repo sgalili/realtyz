@@ -295,6 +295,8 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
   const [originalDm, setOriginalDm] = useState("");
   const [drafting, setDrafting] = useState(false);
   const [sending, setSending] = useState(false);
+  const [sendPublic, setSendPublic] = useState(true);
+  const [sendDm, setSendDm] = useState(true);
   // Per-row cached AI drafts so closing/re-opening the editor does NOT
   // re-invoke the AI — only an explicit refresh-per-card regenerates.
   const [draftCache, setDraftCache] = useState<Record<string, { pub: string; dm: string }>>(() => readDraftCache(campaign.id));
@@ -727,31 +729,46 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
 
 
   const sendReply = async () => {
-    if (!replyOpen || !replyDraft.trim()) return;
+    if (!replyOpen) return;
+    if (!sendPublic && !sendDm) {
+      toast.error("בחר לפחות ערוץ אחד: תגובה פומבית או הודעה פרטית");
+      return;
+    }
+    if (sendPublic && !replyDraft.trim()) {
+      toast.error("חסר טקסט לתגובה הפומבית");
+      return;
+    }
+    if (sendDm && !dmDraft.trim()) {
+      toast.error("חסר טקסט להודעה הפרטית");
+      return;
+    }
     setSending(true);
     try {
-      const dmText = dmDraft.trim();
-      const finalPublic = replyDraft.trim();
+      const dmText = sendDm ? dmDraft.trim() : "";
+      const finalPublic = sendPublic ? replyDraft.trim() : "";
       const { data, error } = await supabase.functions.invoke(
         "ayrshare-comment-reply",
         {
           body: {
             event_id: replyOpen.id,
             user_id: userId,
-            comment: finalPublic,
+            comment: finalPublic || undefined,
             platform: replyOpen.platform,
             comment_id: replyOpen.external_id,
             private_dm: dmText || undefined,
+            skip_public_reply: !sendPublic,
           },
         },
       );
       if (error) throw error;
       if ((data as any)?.error) throw new Error((data as any).error);
       const dmSent = Boolean((data as any)?.private_dm_sent);
-      if (dmText && dmSent) {
+      if (sendPublic && dmText && dmSent) {
         toast.success("התגובה פורסמה והודעה פרטית נשלחה בהצלחה למסנג'ר!");
-      } else if (dmText && !dmSent) {
+      } else if (sendPublic && dmText && !dmSent) {
         toast.success("התגובה פורסמה, אך שליחת ה-DM הפרטי נכשלה — בדוק חיבור Messenger.");
+      } else if (!sendPublic && dmText) {
+        toast.success(dmSent ? "ההודעה הפרטית נשלחה למסנג'ר" : "שליחת ה-DM הפרטי נכשלה — בדוק חיבור Messenger.");
       } else {
         toast.success("התגובה פורסמה");
       }
@@ -784,7 +801,27 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
 
   const renderEditor = (r: EngagementRow) => (
     <div className="w-full space-y-4 text-right">
-      <div className="space-y-1.5">
+      <div className="flex items-center gap-4 justify-end text-xs font-medium">
+        <label className="inline-flex items-center gap-1.5 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={sendPublic}
+            onChange={(e) => setSendPublic(e.target.checked)}
+            className="h-4 w-4 rounded border-input accent-primary"
+          />
+          פרסם תגובה פומבית
+        </label>
+        <label className="inline-flex items-center gap-1.5 cursor-pointer select-none">
+          <input
+            type="checkbox"
+            checked={sendDm}
+            onChange={(e) => setSendDm(e.target.checked)}
+            className="h-4 w-4 rounded border-input accent-primary"
+          />
+          שלח הודעה פרטית
+        </label>
+      </div>
+      <div className={cn("space-y-1.5", !sendPublic && "opacity-50")}>
         <p className="text-xs font-semibold text-muted-foreground text-right">
           תגובה פומבית
         </p>
@@ -794,11 +831,11 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
           dir="auto"
           rows={5}
           placeholder={drafting ? "מנסח תגובה מקצועית..." : "הזן תגובה..."}
-          disabled={drafting}
+          disabled={drafting || !sendPublic}
           className="w-full min-h-[120px] text-right text-sm leading-relaxed"
         />
       </div>
-      <div className="space-y-1.5">
+      <div className={cn("space-y-1.5", !sendDm && "opacity-50")}>
         <p className="text-xs font-semibold text-muted-foreground text-right">
           הודעה פרטית למסנג'ר
         </p>
@@ -808,7 +845,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
           dir="auto"
           rows={7}
           placeholder={drafting ? "מנסח DM מקצועי..." : "טיוטת DM פרטי"}
-          disabled={drafting}
+          disabled={drafting || !sendDm}
           className="w-full min-h-[160px] text-right text-sm leading-relaxed bg-muted/30"
         />
       </div>
@@ -827,11 +864,22 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
         <Button
           size="sm"
           onClick={sendReply}
-          disabled={sending || !replyDraft.trim()}
+          disabled={
+            sending ||
+            (!sendPublic && !sendDm) ||
+            (sendPublic && !replyDraft.trim()) ||
+            (sendDm && !dmDraft.trim())
+          }
           className="flex-1 h-9"
         >
           <Send className="ml-1 h-4 w-4" />
-          {sending ? "מפרסם..." : "פרסם תגובה"}
+          {sending
+            ? "שולח..."
+            : sendPublic && sendDm
+              ? "פרסם תגובה ושלח DM"
+              : sendPublic
+                ? "פרסם תגובה"
+                : "שלח הודעה פרטית"}
         </Button>
       </div>
     </div>
