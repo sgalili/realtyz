@@ -2002,7 +2002,21 @@ const PublishedFeed = () => {
                 </div>
                 <div className="border-t border-border bg-muted/30 px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   {userId ? (
-                    <CampaignCommentsStream userId={userId} campaign={r} commentCount={liveCount ?? (r.comment_count ?? 0)} onLiveCountResolved={updateLiveCount} />
+                    <CampaignCommentsStream
+                      userId={userId}
+                      campaign={r}
+                      commentCount={liveCount ?? (r.comment_count ?? 0)}
+                      onLiveCountResolved={updateLiveCount}
+                      onCountersResolved={(campaignId, counters) => {
+                        setRows((prev) => prev?.map((row) => row.id === campaignId ? {
+                          ...row,
+                          like_count: counters.like_count ?? row.like_count,
+                          share_count: counters.share_count ?? row.share_count,
+                          comment_count: counters.comment_count ?? row.comment_count,
+                          metrics_updated_at: new Date().toISOString(),
+                        } : row) ?? prev);
+                      }}
+                    />
                   ) : (
                     <p className="text-xs text-muted-foreground text-right">נדרשת התחברות לצפייה בתגובות</p>
                   )}
