@@ -673,20 +673,29 @@ Deno.serve(async (req) => {
       ),
     );
 
-    // Sync campaign_logs.comment_count with the live Meta count per post so
-    // the post-card header counter immediately reflects reality (e.g. "15"
-    // instead of a stale "5"). Best-effort — failures are non-fatal.
+    // Sync campaign_logs counters (comment_count + like_count + share_count)
+    // with live Meta numbers. Force-overwrites — even when the live value is
+    // lower than what's currently stored — so a stale "0" gets replaced the
+    // moment the broker manually refreshes.
     try {
       for (const [nativePostId, list] of Object.entries(results)) {
-        const liveCount = Array.isArray(list) ? (list as any[]).length : 0;
+        const treeCount = Array.isArray(list) ? (list as any[]).length : 0;
+        const outer = metricsByPostId.get(nativePostId) ?? { likes: null, shares: null, comments: null };
+        const liveComments = typeof outer.comments === "number" ? Math.max(outer.comments, treeCount) : treeCount;
+        const patch: Record<string, unknown> = {
+          comment_count: liveComments,
+          metrics_updated_at: new Date().toISOString(),
+        };
+        if (typeof outer.likes === "number") patch.like_count = outer.likes;
+        if (typeof outer.shares === "number") patch.share_count = outer.shares;
         await admin
           .from("campaign_logs")
-          .update({ comment_count: liveCount, metrics_updated_at: new Date().toISOString() })
+          .update(patch)
           .eq("user_id", userId)
           .eq("provider_message_id", nativePostId);
       }
     } catch (countErr) {
-      console.warn("[ayrshare-comments-fetch] comment_count sync failed", countErr);
+      console.warn("[ayrshare-comments-fetch] counters sync failed", countErr);
     }
 
     // Always return 200 — provider rate-limit (429) / suspended (403) details
