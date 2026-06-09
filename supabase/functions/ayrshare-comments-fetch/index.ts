@@ -33,14 +33,19 @@ Deno.serve(async (req) => {
   if (req.method !== "POST") return json({ error: "method" }, 405);
 
   try {
+    const AYR_KEY = Deno.env.get("AYRSHARE_API_KEY")?.trim().replace(/^["']|["']$/g, "") || null;
+    if (!AYR_KEY) return json({ error: "AYRSHARE_API_KEY not configured" }, 500);
+    // Optional: used only for higher-quality Facebook avatar resolution.
     const FB_PAGE_TOKEN = Deno.env.get("FB_PAGE_ACCESS_TOKEN")?.trim() || null;
-    if (!FB_PAGE_TOKEN) return json({ error: "FB_PAGE_ACCESS_TOKEN not configured" }, 500);
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(SUPABASE_URL, SERVICE, {
       auth: { persistSession: false, autoRefreshToken: false },
     });
+
+    const { profileKey } = await resolveWorkspaceProfileKey(admin);
+    if (!profileKey) return json({ error: "workspace_ayrshare_profile_not_linked" }, 200);
 
     let body: any = {};
     try {
