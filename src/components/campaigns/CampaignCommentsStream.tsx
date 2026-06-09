@@ -198,7 +198,7 @@ const stampProviderFetch = (pids: string[]) => {
   const now = String(Date.now());
   for (const pid of pids) {
     if (!pid) continue;
-    try { sessionStorage.setItem(providerLockKey(pid), now); } catch { /* quota */ }
+    try { localStorage.setItem(providerLockKey(pid), now); } catch { /* quota */ }
   }
 };
 
