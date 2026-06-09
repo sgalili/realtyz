@@ -219,6 +219,15 @@ export type CrmSnapshot = {
     description: string | null;
     address: string | null;
     neighborhood: string | null;
+    floor: number | null;
+    parking: boolean | null;
+    elevator: boolean | null;
+    year_built: number | null;
+    total_floors: number | null;
+    balcony_sqm: number | null;
+    condition: string | null;
+    directions: string | null;
+    amenities: string[];
   }[];
   active_leads: number;
   hot_leads: number;
