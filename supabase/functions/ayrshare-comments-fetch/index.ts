@@ -217,19 +217,12 @@ Deno.serve(async (req) => {
       return { ok: res.ok, status: res.status, payload, text };
     };
 
-    const normalizeAyrshareNode = (node: any): any => {
-      const fromObj = node?.from && typeof node.from === "object" ? node.from : { name: node?.from || "משתמש פייסבוק" };
-      return {
-        id: node?.commentId ?? node?.id ?? null,
-        message: node?.comment ?? node?.message ?? node?.text ?? "",
-        created_time: node?.created ?? node?.createdAt ?? null,
-        from: fromObj,
-        like_count: typeof node?.likeCount === "number" ? node.likeCount : null,
-        permalink: node?.commentUrl ?? null,
-        __parent_id: node?.parentId ?? node?.parent?.id ?? null,
-        comments: [],
-      };
-    };
+    // NOTE: we intentionally do NOT normalize Ayrshare nodes into a stripped
+    // shape before walking — doing so would discard the nested `replies` /
+    // `children` arrays and we'd only flatten the top level. The walker
+    // (which uses extractChildComments) handles every known nesting shape,
+    // and pickStr / pickText downstream already accept the raw Ayrshare keys
+    // (comment / commentId / from / createdAt / etc.).
 
     const extractCommentsArray = (payload: any, platformKey: string): any[] =>
       Array.isArray(payload?.[platformKey])
@@ -257,7 +250,7 @@ Deno.serve(async (req) => {
           ok: true,
           status: primary.status,
           resolvedPostId: target.fetchPostId,
-          comments: primaryArr.map((node: any) => normalizeAyrshareNode(node)),
+          comments: primaryArr,
           attempts,
         };
       }
@@ -276,7 +269,7 @@ Deno.serve(async (req) => {
             ok: true,
             status: fallback.status,
             resolvedPostId: target.nativePostId,
-            comments: fallbackArr.map((node: any) => normalizeAyrshareNode(node)),
+            comments: fallbackArr,
             attempts: [...attempts, { post_id: target.nativePostId, mode: "native_fb_searchPlatformId", status: fallback.status, count: fallbackArr.length }],
           };
         }
@@ -352,7 +345,10 @@ Deno.serve(async (req) => {
             const myId = pickStr(node.id, node.commentId, node.comment_id);
             for (const k of kids) walk(k, myId || parent, depth + 1);
           };
-          for (const c of arr) walk(c, (c as any)?.__parent_id ?? null);
+          for (const c of arr) {
+            const rawParent = pickStr((c as any)?.__parent_id, (c as any)?.parentId, (c as any)?.parent?.id);
+            walk(c, rawParent);
+          }
           results[nativePostId] = flat;
         } catch (err) {
           errors[nativePostId] = err instanceof Error ? err.message : String(err);
