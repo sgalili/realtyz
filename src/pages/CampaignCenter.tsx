@@ -1919,7 +1919,7 @@ const PublishedFeed = () => {
               </h3>
 
               {/* Row 2 (single combined row): logo · page · date  ........  comments · shares · likes · chevron */}
-              <div className={cn('flex items-center gap-2', isHe ? 'flex-row-reverse' : 'flex-row')}>
+              <div className={cn('flex items-center gap-2', isHe ? 'flex-row' : 'flex-row-reverse')}>
                 <span className="inline-flex items-center justify-center shrink-0">
                   {platformMeta?.brand ? (
                     <BrandIcon name={platformMeta.brand} className={cn('h-5 w-5', BRAND_COLOR[platformMeta.brand] ?? 'text-muted-foreground')} />
