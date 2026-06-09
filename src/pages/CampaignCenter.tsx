@@ -1539,6 +1539,7 @@ const PublishedFeed = () => {
   const [activeChannel, setActiveChannel] = useState<string>('all');
   const [archivedCount, setArchivedCount] = useState<number>(0);
   const [fbPageName, setFbPageName] = useState<string | null>(null);
+  const [connectedChannels, setConnectedChannels] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     (async () => {
@@ -1548,7 +1549,44 @@ const PublishedFeed = () => {
         .maybeSingle();
       setFbPageName((data as any)?.facebook_page_name ?? null);
     })();
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('social_connections')
+        .select('platform, is_connected')
+        .eq('created_by', user.id);
+      const next = new Set<string>();
+      (data || []).forEach((r: any) => {
+        if (!r?.is_connected) return;
+        const p = String(r.platform || '').toLowerCase();
+        if (p === 'twitter') next.add('x');
+        else next.add(p);
+      });
+      setConnectedChannels(next);
+    })();
   }, []);
+
+  const handleFeedConnect = async (id: string) => {
+    const platformMap: Record<string, string> = {
+      facebook: 'facebook', instagram: 'instagram', x: 'twitter',
+      youtube: 'youtube', linkedin: 'linkedin', tiktok: 'tiktok',
+    };
+    const platform = platformMap[id];
+    if (!platform) { toast.error('הערוץ הזה לא נתמך כרגע דרך Ayrshare'); return; }
+    try {
+      toast.loading('פותח חיבור Ayrshare…', { id: 'ayr-connect-feed' });
+      const { data, error } = await supabase.functions.invoke('ayrshare-social-link', { body: { platform } });
+      toast.dismiss('ayr-connect-feed');
+      if (error) throw new Error((error as any)?.message || 'יצירת חיבור נכשלה');
+      const url = (data as any)?.url;
+      if (!url) { toast.error((data as any)?.error || 'לא התקבל קישור חיבור מ-Ayrshare'); return; }
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (e: any) {
+      toast.dismiss('ayr-connect-feed');
+      toast.error(e?.message ?? 'יצירת חיבור נכשלה');
+    }
+  };
 
 
 
