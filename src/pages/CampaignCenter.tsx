@@ -1959,11 +1959,6 @@ const PublishedFeed = () => {
                 <div className={cn('mx-4 mb-3 rounded-xl border border-border bg-background p-4 text-sm text-foreground whitespace-pre-wrap', alignClass)} dir={dirAttr}>
                   {bodyText || <span className="text-muted-foreground">אין תוכן הודעה</span>}
                 </div>
-                <div className="grid grid-cols-3 gap-2 px-4 pb-3">
-                  <Stat icon={MessageSquare} label="תגובות" value={typeof liveCount === 'number' ? liveCount : r.comment_count} hasData={hasMetrics || typeof liveCount === 'number'} />
-                  <Stat icon={Share2}         label="שיתופים" value={r.share_count}   hasData={hasMetrics} />
-                  <Stat icon={Heart}          label="לייקים"  value={r.like_count}    hasData={hasMetrics} />
-                </div>
                 <div className="flex items-center justify-between gap-2 px-4 pb-4" dir="rtl" onClick={(e) => e.stopPropagation()}>
                   <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
                           className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
