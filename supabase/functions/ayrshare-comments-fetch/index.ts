@@ -120,25 +120,42 @@ Deno.serve(async (req) => {
         const response: any = (row as any).provider_response ?? {};
         const wrappedPosts: any[] = Array.isArray(response?.posts) ? response.posts : [];
         const flatPosts: any[] = response?.id ? [response] : [];
+        const providerMsgId = typeof (row as any).provider_message_id === "string" ? (row as any).provider_message_id.trim() : "";
+        const rowChannel = String((row as any).channel || platformHint).toLowerCase();
+
+        // Path A: rows that include Ayrshare-minted top-level ids.
+        let matchedFromPosts = false;
         for (const post of [...flatPosts, ...wrappedPosts]) {
           const topId = typeof post?.id === "string" ? post.id.trim() : "";
           const postIds = Array.isArray(post?.postIds) ? post.postIds : [];
           const nativeForPlatform =
             postIds.find((p: any) => String(p?.platform || "").toLowerCase() === platformHint)?.id ??
             postIds[0]?.id ??
-            (row as any).provider_message_id ??
+            providerMsgId ??
             null;
           const nativeId = typeof nativeForPlatform === "string" ? nativeForPlatform.trim() : "";
-          const aliases = [topId, nativeId, (row as any).provider_message_id]
-            .map((v) => String(v || "").trim())
-            .filter(Boolean);
+          const aliases = [topId, nativeId, providerMsgId].map((v) => String(v || "").trim()).filter(Boolean);
           if (!topId || !nativeId || !aliases.some((alias) => requested.has(alias))) continue;
           const platform = String(
             postIds.find((p: any) => String(p?.id || "") === nativeId)?.platform ||
-            (row as any).channel ||
-            platformHint,
+            rowChannel,
           ).toLowerCase();
+          // fetchPostId = Ayrshare top id (preferred); fallback layer inside
+          // fetchAyrshareTree will pivot to nativePostId via searchPlatformId
+          // when the top id query fails (legacy / suspended-profile posts).
           targets.set(nativeId, { fetchPostId: topId, nativePostId: nativeId, platform: platform || platformHint });
+          matchedFromPosts = true;
+        }
+
+        // Path B: legacy rows with NO Ayrshare top id (provider_response was
+        // never captured or came from the prior profile). Match by the native
+        // FB composite id and force the native-id fetch path directly.
+        if (!matchedFromPosts && providerMsgId && requested.has(providerMsgId)) {
+          targets.set(providerMsgId, {
+            fetchPostId: providerMsgId,
+            nativePostId: providerMsgId,
+            platform: rowChannel || platformHint,
+          });
         }
       }
     } catch (lookupErr) {
