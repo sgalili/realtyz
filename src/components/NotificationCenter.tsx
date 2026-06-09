@@ -133,6 +133,10 @@ export default function NotificationCenter() {
   const getMatchedKeyword = (content: string) =>
     ALERT_KEYWORDS.find(kw => content.includes(kw)) || '';
 
+  // Only render the bell when there's something to notify about — keeps the
+  // header clean when the user is fully caught up.
+  if (badgeCount === 0) return null;
+
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
@@ -143,11 +147,9 @@ export default function NotificationCenter() {
           className="relative h-9 w-9 p-0"
         >
           <Bell className="h-4 w-4" />
-          {badgeCount > 0 && (
-            <span className="absolute right-0 top-0 h-4 min-w-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
-              {badgeCount > 9 ? '9+' : badgeCount}
-            </span>
-          )}
+          <span className="absolute right-0 top-0 h-4 min-w-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+            {badgeCount > 9 ? '9+' : badgeCount}
+          </span>
         </Button>
       </PopoverTrigger>
 
