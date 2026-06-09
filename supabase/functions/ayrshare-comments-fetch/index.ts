@@ -218,6 +218,7 @@ Deno.serve(async (req) => {
     const errors: Record<string, string> = {};
     const apiErrors: any[] = [];
     const mappingErrors: any[] = [];
+    const metricsByPostId = new Map<string, { likes: number | null; shares: number | null; comments: number | null }>();
 
     const extractChildComments = (node: any): any[] => {
       if (!node || typeof node !== "object") return [];
