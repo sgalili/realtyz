@@ -265,6 +265,30 @@ Deno.serve(async (req) => {
         ? payload
         : [];
 
+    // Outer network metrics from the /comments payload. Ayrshare/Meta shapes
+    // vary — accept top-level numbers, `analytics`, `metrics`, or platform-
+    // nested blocks. Used to overwrite campaign_logs like/share/comment counts
+    // (force-refresh — even zeros are overwritten).
+    const extractOuterMetrics = (payload: any, platformKey: string) => {
+      const sources: any[] = [
+        payload, payload?.analytics, payload?.metrics, payload?.summary, payload?.post,
+        payload?.[platformKey], payload?.[platformKey]?.analytics, payload?.[platformKey]?.metrics,
+      ].filter(Boolean);
+      const pickNum = (...keys: string[]): number | null => {
+        for (const src of sources) for (const k of keys) {
+          const v = (src as any)?.[k];
+          if (typeof v === "number" && Number.isFinite(v)) return v;
+          if (typeof v === "string" && v.trim() && !Number.isNaN(Number(v))) return Number(v);
+        }
+        return null;
+      };
+      return {
+        likes: pickNum("likeCount", "likes", "like_count", "reactions", "reactionsCount", "reactions_count"),
+        shares: pickNum("shareCount", "shares", "share_count", "sharesCount", "shares_count"),
+        comments: pickNum("commentsCount", "comments_count", "commentCount", "comment_count", "totalComments"),
+      };
+    };
+
     const fetchAyrshareTree = async (target: CommentFetchTarget) => {
       const attempts: any[] = [];
       const platformKey = target.platform.toLowerCase();
