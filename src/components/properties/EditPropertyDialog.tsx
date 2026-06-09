@@ -27,6 +27,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Checkbox } from '@/components/ui/checkbox';
+
+const CONDITION_OPTIONS: { value: string; label: string }[] = [
+  { value: 'new', label: 'חדש מקבלן' },
+  { value: 'renovated', label: 'משופץ' },
+  { value: 'good', label: 'שמור' },
+  { value: 'needs_renovation', label: 'דורש שיפוץ' },
+];
 
 interface Props {
   property: HomelyProperty | null;
@@ -46,13 +54,32 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
   const [rooms, setRooms] = useState('');
   const [sqm, setSqm] = useState('');
   const [floor, setFloor] = useState('');
+  const [totalFloors, setTotalFloors] = useState('');
   const [yearBuilt, setYearBuilt] = useState('');
+  const [neighborhood, setNeighborhood] = useState('');
+  const [balconySqm, setBalconySqm] = useState('');
+  const [condition, setCondition] = useState<string>('');
+  const [directions, setDirections] = useState('');
+  const [parking, setParking] = useState(false);
+  const [elevator, setElevator] = useState(false);
+  const [balcony, setBalcony] = useState(false);
+  const [safeRoom, setSafeRoom] = useState(false);
+  const [storage, setStorage] = useState(false);
+  const [airConditioning, setAirConditioning] = useState(false);
+  const [accessible, setAccessible] = useState(false);
+  const [renovated, setRenovated] = useState(false);
+  const [furnished, setFurnished] = useState(false);
+  const [bars, setBars] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
   useEffect(() => {
     if (!property) return;
+    const p: any = property;
+    const meta = p.source_metadata ?? {};
+    const featObj = Array.isArray(p.features) ? (p.features[0] ?? {}) : (p.features ?? {});
+    const extras = featObj?.extras ?? {};
     setListingType(property.listing_type === 'rent' ? 'rent' : 'sale');
     setTitle(property.title ?? '');
     setDescription(property.description ?? '');
@@ -63,9 +90,24 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
     setRooms(property.rooms ? String(property.rooms) : '');
     setSqm(property.size_sqm ? String(property.size_sqm) : '');
     setFloor(property.floor != null ? String(property.floor) : '');
+    setTotalFloors(property.total_floors != null ? String(property.total_floors) : '');
     setYearBuilt(property.year_built != null ? String(property.year_built) : '');
-    const existingPhotos = (property as any).photos;
-    setPhotos(Array.isArray(existingPhotos) ? existingPhotos.filter((p: any) => typeof p === 'string') : []);
+    setNeighborhood(p.neighborhood ?? '');
+    setBalconySqm(extras.balcony_sqm != null ? String(extras.balcony_sqm) : '');
+    setCondition(extras.condition ?? '');
+    setDirections(extras.directions ?? '');
+    setParking(Boolean(p.parking ?? extras.parking));
+    setElevator(Boolean(p.elevator ?? extras.elevator));
+    setBalcony(Boolean(extras.balcony));
+    setSafeRoom(Boolean(extras.safe_room));
+    setStorage(Boolean(extras.storage));
+    setAirConditioning(Boolean(extras.air_conditioning));
+    setAccessible(Boolean(extras.accessible));
+    setRenovated(Boolean(extras.renovated));
+    setFurnished(Boolean(extras.furnished));
+    setBars(Boolean(extras.bars));
+    const existingPhotos = p.photos ?? meta.photos;
+    setPhotos(Array.isArray(existingPhotos) ? existingPhotos.filter((x: any) => typeof x === 'string') : []);
   }, [property]);
 
   const handleSyncFromHomely = async () => {
@@ -106,6 +148,22 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
     setSubmitting(true);
     try {
       const numericPrice = Number(price) || 0;
+      const extras = {
+        balcony,
+        balcony_sqm: balconySqm ? Number(balconySqm) : null,
+        safe_room: safeRoom,
+        storage,
+        air_conditioning: airConditioning,
+        accessible,
+        renovated,
+        furnished,
+        bars,
+        parking,
+        elevator,
+        condition: condition || null,
+        directions: directions.trim() || null,
+        total_floors: totalFloors ? Number(totalFloors) : null,
+      };
       const { error } = await supabase
         .from('listings')
         .update({
@@ -113,11 +171,19 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
           description: description.trim() || title.trim(),
           asking_price: numericPrice,
           city: city.trim(),
+          neighborhood: neighborhood.trim() || null,
           address: address.trim() || null,
           rooms: rooms ? Number(rooms) : null,
           sqm: sqm ? Number(sqm) : null,
           floor: floor ? Number(floor) : null,
-          features: [{ listing_type: listingType, property_type: propertyType, year_built: yearBuilt ? Number(yearBuilt) : null }],
+          parking,
+          elevator,
+          features: [{
+            listing_type: listingType,
+            property_type: propertyType,
+            year_built: yearBuilt ? Number(yearBuilt) : null,
+            extras,
+          }],
         })
         .eq('id', property.id);
       if (error) throw error;
@@ -259,8 +325,65 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
             </div>
 
             <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">קומות בבניין</Label>
+              <Input type="number" value={totalFloors} onChange={(e) => setTotalFloors(e.target.value)} />
+            </div>
+
+            <div className="space-y-1.5">
               <Label className="text-xs font-semibold">שנת בנייה</Label>
               <Input type="number" value={yearBuilt} onChange={(e) => setYearBuilt(e.target.value)} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">שכונה</Label>
+              <Input value={neighborhood} onChange={(e) => setNeighborhood(e.target.value)} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">שטח מרפסת (מ"ר)</Label>
+              <Input type="number" value={balconySqm} onChange={(e) => setBalconySqm(e.target.value)} />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">מצב הנכס</Label>
+              <Select value={condition || undefined} onValueChange={(v) => setCondition(v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="בחר" />
+                </SelectTrigger>
+                <SelectContent>
+                  {CONDITION_OPTIONS.map((o) => (
+                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">כיווני אוויר</Label>
+              <Input value={directions} onChange={(e) => setDirections(e.target.value)} placeholder="צפון, מזרח..." />
+            </div>
+
+            <div className="col-span-2 space-y-2 pt-2 border-t">
+              <Label className="text-xs font-semibold">מאפיינים נוספים</Label>
+              <div className="grid grid-cols-2 gap-x-3 gap-y-2">
+                {([
+                  ['מרפסת', balcony, setBalcony],
+                  ['ממ"ד', safeRoom, setSafeRoom],
+                  ['חניה', parking, setParking],
+                  ['מעלית', elevator, setElevator],
+                  ['מחסן', storage, setStorage],
+                  ['מיזוג אוויר', airConditioning, setAirConditioning],
+                  ['גישה לנכים', accessible, setAccessible],
+                  ['משופץ', renovated, setRenovated],
+                  ['מרוהט', furnished, setFurnished],
+                  ['סורגים', bars, setBars],
+                ] as const).map(([label, val, setter]) => (
+                  <label key={label} className="flex items-center gap-2 cursor-pointer text-sm">
+                    <Checkbox checked={val} onCheckedChange={(v) => (setter as any)(Boolean(v))} />
+                    <span>{label}</span>
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
         </div>
