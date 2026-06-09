@@ -33,6 +33,7 @@ Deno.serve(async (req) => {
     const overrideCommentId: string | undefined = body?.comment_id;
     const explicitUserId: string | undefined = body?.user_id;
     const privateDmRaw: string | undefined = typeof body?.private_dm === "string" ? body.private_dm : undefined;
+    const skipPublicReply: boolean = body?.skip_public_reply === true;
 
     if (!eventId && !overrideCommentId) return json({ error: "missing event_id or comment_id" }, 400);
 
@@ -69,41 +70,46 @@ Deno.serve(async (req) => {
     }
     if (!ownerUserId) return json({ error: "user_id required" }, 401);
     if (!nativeCommentId) return json({ error: "missing native commentId" }, 400);
-    const sanitized = sanitizeOutboundText(replyText);
-    if (!sanitized) return json({ error: "missing reply text" }, 400);
+    const sanitized = skipPublicReply ? "" : sanitizeOutboundText(replyText);
+    if (!skipPublicReply && !sanitized) return json({ error: "missing reply text" }, 400);
+    if (skipPublicReply && !(privateDmRaw && privateDmRaw.trim())) {
+      return json({ error: "skip_public_reply requires private_dm text" }, 400);
+    }
 
     const { profileKey } = await resolveWorkspaceProfileKey(admin);
     if (!profileKey) return json({ error: "workspace ayrshare profile key missing" }, 500);
 
-    const ayrRes = await fetch(AYR_REPLY_URL, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-        "Profile-Key": profileKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        platforms: [platform],
-        commentId: nativeCommentId,
-        comment: sanitized,
-        reply: sanitized,
-        profileKey,
-        searchPlatformId: true,
-      }),
-    });
-    const ayrText = await ayrRes.text();
     let ayrPayload: any = null;
-    try { ayrPayload = ayrText ? JSON.parse(ayrText) : null; } catch { ayrPayload = { raw: ayrText }; }
+    if (!skipPublicReply) {
+      const ayrRes = await fetch(AYR_REPLY_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+          "Profile-Key": profileKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          platforms: [platform],
+          commentId: nativeCommentId,
+          comment: sanitized,
+          reply: sanitized,
+          profileKey,
+          searchPlatformId: true,
+        }),
+      });
+      const ayrText = await ayrRes.text();
+      try { ayrPayload = ayrText ? JSON.parse(ayrText) : null; } catch { ayrPayload = { raw: ayrText }; }
 
-    if (!ayrRes.ok) {
-      if (rowId) {
-        await admin
-          .from("engagement_events")
-          .update({ status: "failed", metadata: { ...rowMetadata, reply_error: ayrPayload } })
-          .eq("id", rowId)
-          .eq("user_id", ownerUserId);
+      if (!ayrRes.ok) {
+        if (rowId) {
+          await admin
+            .from("engagement_events")
+            .update({ status: "failed", metadata: { ...rowMetadata, reply_error: ayrPayload } })
+            .eq("id", rowId)
+            .eq("user_id", ownerUserId);
+        }
+        return json({ error: "ayrshare reply failed", status: ayrRes.status, details: ayrPayload }, 502);
       }
-      return json({ error: "ayrshare reply failed", status: ayrRes.status, details: ayrPayload }, 502);
     }
 
     // STRICT SEQUENTIAL EXECUTION:
