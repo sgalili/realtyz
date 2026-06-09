@@ -262,7 +262,7 @@ Deno.serve(async (req) => {
     await Promise.all(
       Array.from(targets.values()).map(async (target) => {
         const { fetchPostId, nativePostId, platform } = target;
-        const activeRefId = "meta_graph_direct";
+        const activeRefId = "ayrshare_comments_native";
         try {
           if (isUuid(fetchPostId) || isUuid(nativePostId)) {
             const mappingError = {
@@ -278,12 +278,12 @@ Deno.serve(async (req) => {
             return;
           }
           if (!/^facebook$/i.test(platform)) {
-            errors[nativePostId] = "direct_meta_comments_only_supports_facebook";
+            errors[nativePostId] = "ayrshare_comments_only_supports_facebook_in_this_function";
             results[nativePostId] = [];
             return;
           }
 
-          const fetched = await fetchDirectMetaTree(target);
+          const fetched = await fetchAyrshareTree(target);
           const arr: any[] = fetched.comments;
           if (!fetched.ok) {
             const apiError = {
@@ -291,16 +291,16 @@ Deno.serve(async (req) => {
               fetch_post_id: fetchPostId,
               platform,
               status: fetched.status,
-              payload: fetched.attempts[fetched.attempts.length - 1]?.payload ?? { message: "Meta Graph comments rejected request" },
+              payload: fetched.attempts[fetched.attempts.length - 1]?.payload ?? { message: "Ayrshare /comments rejected request" },
               attempts: fetched.attempts,
             };
             apiErrors.push(apiError);
-            console.error("[ayrshare-comments-fetch] Meta Graph rejected request", apiError);
-            errors[nativePostId] = `HTTP ${fetched.status}: ${apiError.payload.message ?? "Meta Graph comments rejected request"}`;
+            console.error("[ayrshare-comments-fetch] Ayrshare rejected request", apiError);
+            errors[nativePostId] = `HTTP ${fetched.status}: ${apiError.payload.message ?? "Ayrshare /comments rejected request"}`;
             results[nativePostId] = [];
             return;
           }
-          console.log("[ayrshare-comments-fetch] direct Meta comments success", { stored: nativePostId, resolved: fetched.resolvedPostId, count: arr.length });
+          console.log("[ayrshare-comments-fetch] ayrshare comments success", { stored: nativePostId, resolved: fetched.resolvedPostId, count: arr.length });
 
           // Flatten N levels of nested replies. Ayrshare/Meta nest child nodes
           // under any of: replies / children / comments / thread / data, so we
