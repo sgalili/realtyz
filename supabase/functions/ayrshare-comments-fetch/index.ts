@@ -140,9 +140,14 @@ Deno.serve(async (req) => {
           const nativeId = typeof nativeForPlatform === "string" ? nativeForPlatform.trim() : "";
           const aliases = [topId, nativeId, (row as any).provider_message_id].map((v) => String(v || "").trim()).filter(Boolean);
           if (!topId || !aliases.some((alias) => requested.has(alias))) continue;
+          // We MUST key by the native social post id so the UI (which filters
+          // engagement_events on external_post_id = the native FB id) can find
+          // the rows. Skip when the campaign has no native id yet — falling
+          // back to the Ayrshare top id would store rows under an id the UI
+          // never queries and visually drop the comments.
+          if (!nativeId) continue;
           const platform = String((postIds.find((p: any) => String(p?.id || "") === nativeId)?.platform || (row as any).channel || platformHint)).toLowerCase();
-          const key = nativeId || topId;
-          targets.set(key, { fetchPostId: topId, nativePostId: key, platform: platform || platformHint });
+          targets.set(nativeId, { fetchPostId: topId, nativePostId: nativeId, platform: platform || platformHint });
         }
       }
     } catch (lookupErr) {
