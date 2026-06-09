@@ -133,8 +133,21 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
         body: { listing_id: property.id },
       });
       if (error) throw error;
-      if ((data as any)?.error) throw new Error((data as any).error);
-      const u = (data as any)?.updated ?? {};
+      const payload = (data as any) ?? {};
+      // Graceful zero-state: edge fn returns { fallback: true } with HTTP 200
+      // when the broker has no active properties / serial isn't on Homely.
+      if (payload.fallback) {
+        if (payload.error === "property_not_found_in_broker_list" || payload.broker_active_count === 0) {
+          toast.message("אין נכסים פעילים בחשבון הומלי המחובר", {
+            description: "ודא שהנכס פעיל ב-Homely ולחץ שוב על סנכרון.",
+          });
+        } else {
+          toast.message("הנכס לא נמצא ב-Homely", { description: "נסה לסנכרן שוב מאוחר יותר." });
+        }
+        return;
+      }
+      if (payload.error) throw new Error(payload.error);
+      const u = payload.updated ?? {};
       if (u.property_title) setTitle(u.property_title);
       if (u.description) setDescription(u.description);
       if (u.asking_price) setPrice(String(u.asking_price));
@@ -145,7 +158,7 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
       if (u.floor != null) setFloor(String(u.floor));
       const newPhotos = u?.source_metadata?.photos;
       if (Array.isArray(newPhotos)) setPhotos(newPhotos);
-      toast.success(`נטענו ${(data as any)?.photo_count ?? 0} תמונות מ-Homely`);
+      toast.success(`נטענו ${payload.photo_count ?? 0} תמונות מ-Homely`);
       onSaved?.();
     } catch (e: any) {
       toast.error(`סנכרון נכשל: ${e.message ?? e}`);
