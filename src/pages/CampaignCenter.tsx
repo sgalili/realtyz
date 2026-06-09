@@ -34,6 +34,7 @@ import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsS
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { campaignMatchesExternalPost, normalizePostId } from '@/lib/campaignPostIds';
 import { learnFromEdit } from '@/lib/learnFromEdit';
+import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import { IvrBroadcastDialog } from '@/components/campaigns/IvrBroadcastDialog';
 import { EmailAliasSetupDialog } from '@/components/campaigns/EmailAliasSetupDialog';
 
