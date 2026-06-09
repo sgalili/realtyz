@@ -771,6 +771,10 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
         },
       );
       if (error) throw error;
+      if ((data as any)?.halt === true || (data as any)?.rate_limited === true) {
+        toast.error("מערכת הסנכרון בהפסקה זמנית להגנת החשבון");
+        return;
+      }
       if ((data as any)?.error) throw new Error((data as any).error);
       const dmSent = Boolean((data as any)?.private_dm_sent);
       if (sendPublic && dmText && dmSent) {
