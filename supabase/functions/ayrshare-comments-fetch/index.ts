@@ -670,6 +670,13 @@ Deno.serve(async (req) => {
     // are surfaced in `api_errors` so the client can render them as soft
     // warnings instead of throwing a runtime error overlay.
 
+    // Hard-stop signal: if Ayrshare returned 429 (rate limited) or 403
+    // (suspended profile) on ANY post, surface a top-level `halt` flag so the
+    // client can immediately freeze further provider calls. Per Ayrshare
+    // support, repeated 429s caused our profile suspensions — never retry.
+    const rateLimited = apiErrors.some((e: any) => Number(e?.status) === 429);
+    const suspended = apiErrors.some((e: any) => Number(e?.status) === 403);
+
     return json({
       success: true,
       comments: results,
@@ -680,6 +687,9 @@ Deno.serve(async (req) => {
       skipped,
       blocked_self: blockedSelf,
       dispatched: toDispatch.length,
+      rate_limited: rateLimited,
+      suspended,
+      halt: rateLimited || suspended,
     }, 200);
   } catch (e) {
     console.error("[ayrshare-comments-fetch] error:", e);

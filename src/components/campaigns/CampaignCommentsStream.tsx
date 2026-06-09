@@ -435,6 +435,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
           : supabase.functions.invoke("ayrshare-sync-comments", { body: {} }),
       ]);
       let sawSessionExpired = false;
+      let sawHalt = false;
       for (const result of settled) {
         if (result.status === "rejected") {
           console.warn("[CampaignCommentsStream] provider refresh rejected", result.reason);
@@ -446,10 +447,19 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
           continue;
         }
         if (isFbSessionExpired(data)) sawSessionExpired = true;
+        if (data?.halt === true || data?.rate_limited === true || data?.suspended === true) {
+          sawHalt = true;
+        }
         const surfacedError = firstPipelineError(data);
         if (surfacedError) console.warn("[CampaignCommentsStream] provider pipeline warning", surfacedError);
       }
       setFbSessionExpired(sawSessionExpired);
+      if (sawHalt) {
+        // Ayrshare returned 429/403 — freeze further provider hits for 5
+        // minutes by setting the manual debounce stamp way into the future.
+        lastManualRefreshAtRef.current = Date.now() + 5 * 60_000 - 60_000;
+        toast.error("מערכת הסנכרון בהפסקה זמנית להגנת החשבון");
+      }
 
       await fetchRows();
     } catch (e: any) {
@@ -761,6 +771,10 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
         },
       );
       if (error) throw error;
+      if ((data as any)?.halt === true || (data as any)?.rate_limited === true) {
+        toast.error("מערכת הסנכרון בהפסקה זמנית להגנת החשבון");
+        return;
+      }
       if ((data as any)?.error) throw new Error((data as any).error);
       const dmSent = Boolean((data as any)?.private_dm_sent);
       if (sendPublic && dmText && dmSent) {

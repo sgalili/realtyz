@@ -30,6 +30,7 @@ import NotificationPreferencesPanel from '@/components/NotificationPreferencesPa
 import { AgentPersonaPanel } from '@/components/AgentPersonaPanel';
 import { PersonaCalibrationPanel } from '@/components/PersonaCalibrationPanel';
 import { ProductionPrepPanel } from '@/components/ProductionPrepPanel';
+import { AyrshareProfilePurgeCard } from '@/components/admin/AyrshareProfilePurgeCard';
 import { VoiceAgentPanel } from '@/components/calendar/VoiceAgentPanel';
 import { UsageMeterPanel } from '@/components/UsageMeterPanel';
 import { ServiceAreasPanel } from '@/components/settings/ServiceAreasPanel';
@@ -1097,6 +1098,7 @@ const ApiSettings = () => {
           <p className="text-xs text-muted-foreground">דומיין מותאם, סביבת דמו, ייצוא נתונים ומחיקת פרטים אישיים — הכל במקום אחד.</p>
         </div>
         <ProductionPrepPanel />
+        {isSuperAdmin && <AyrshareProfilePurgeCard />}
       </div>
 
       {/* ── Section A.0b: Social Channels (Ayrshare dynamic grid) ── */}
