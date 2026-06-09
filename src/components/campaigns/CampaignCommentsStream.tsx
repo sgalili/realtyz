@@ -270,7 +270,7 @@ const writeDraftCache = (campaignId: string, map: DraftMap) => {
   try { sessionStorage.setItem(draftKey(campaignId), JSON.stringify(map)); } catch { /* quota */ }
 };
 
-export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveCountResolved }: Props) {
+export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveCountResolved, onCountersResolved }: Props) {
   const cached = readCache(campaign.id);
   const [rows, setRows] = useState<EngagementRow[] | null>(cached);
 
