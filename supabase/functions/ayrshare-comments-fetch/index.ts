@@ -345,7 +345,10 @@ Deno.serve(async (req) => {
             const myId = pickStr(node.id, node.commentId, node.comment_id);
             for (const k of kids) walk(k, myId || parent, depth + 1);
           };
-          for (const c of arr) walk(c, (c as any)?.__parent_id ?? null);
+          for (const c of arr) {
+            const rawParent = pickStr((c as any)?.__parent_id, (c as any)?.parentId, (c as any)?.parent?.id);
+            walk(c, rawParent);
+          }
           results[nativePostId] = flat;
         } catch (err) {
           errors[nativePostId] = err instanceof Error ? err.message : String(err);
