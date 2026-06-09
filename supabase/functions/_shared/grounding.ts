@@ -280,17 +280,45 @@ export async function loadCrmSnapshot(
       .sort((a, b) => b[1] - a[1])
       .slice(0, 8)
       .map(([city, count]) => ({ city, count }));
-    const sample = listings.slice(0, 8).map((l: any) => ({
-      title: String(l.property_title ?? "").slice(0, 80),
-      city: l.city ?? null,
-      rooms: l.rooms ?? null,
-      sqm: l.sqm ?? null,
-      asking_price: l.asking_price ?? null,
-      listing_type: l.listing_type as ListingType | null,
-      description: l.description ? String(l.description).slice(0, 1200) : null,
-      address: l.address ?? null,
-      neighborhood: l.neighborhood ?? null,
-    }));
+    const AMENITY_LABELS: Record<string, string> = {
+      balcony: 'מרפסת', safe_room: 'ממ"ד', storage: "מחסן",
+      air_conditioning: "מיזוג אוויר", accessible: "גישה לנכים",
+      renovated: "משופץ", furnished: "מרוהט", bars: "סורגים",
+    };
+    const CONDITION_LABELS: Record<string, string> = {
+      new: "חדש מקבלן", renovated: "משופץ", good: "שמור", needs_renovation: "דורש שיפוץ",
+    };
+    const sample = listings.slice(0, 8).map((l: any) => {
+      const featObj = Array.isArray(l.features) ? (l.features[0] ?? {}) : (l.features ?? {});
+      const extras = (featObj && typeof featObj === "object" ? featObj.extras : null) ?? {};
+      const amenities: string[] = [];
+      if (l.parking ?? extras.parking) amenities.push("חניה");
+      if (l.elevator ?? extras.elevator) amenities.push("מעלית");
+      for (const [k, label] of Object.entries(AMENITY_LABELS)) {
+        if (extras[k]) amenities.push(label);
+      }
+      const year = featObj?.year_built ?? null;
+      return {
+        title: String(l.property_title ?? "").slice(0, 80),
+        city: l.city ?? null,
+        rooms: l.rooms ?? null,
+        sqm: l.sqm ?? null,
+        asking_price: l.asking_price ?? null,
+        listing_type: l.listing_type as ListingType | null,
+        description: l.description ? String(l.description).slice(0, 1200) : null,
+        address: l.address ?? null,
+        neighborhood: l.neighborhood ?? null,
+        floor: l.floor ?? null,
+        parking: l.parking ?? extras.parking ?? null,
+        elevator: l.elevator ?? extras.elevator ?? null,
+        year_built: year != null ? Number(year) : null,
+        total_floors: extras.total_floors ?? null,
+        balcony_sqm: extras.balcony_sqm ?? null,
+        condition: extras.condition ? (CONDITION_LABELS[extras.condition] ?? extras.condition) : null,
+        directions: extras.directions ?? null,
+        amenities: Array.from(new Set(amenities)),
+      };
+    });
     const hot = leads.filter((l: any) =>
       ["hot", "negotiation", "closing", "qualified"].includes(String(l.lead_stage ?? "").toLowerCase()),
     ).length;
