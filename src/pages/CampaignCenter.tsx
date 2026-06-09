@@ -1415,7 +1415,7 @@ const FEED_PLATFORMS: { id: string; label: string; brand?: string; icon?: typeof
   { id: 'tiktok',    label: 'TikTok',    brand: 'tiktok' },
   { id: 'linkedin',  label: 'LinkedIn',  brand: 'linkedin' },
   { id: 'youtube',   label: 'YouTube',   brand: 'youtube' },
-  { id: 'whatsapp',  label: 'WhatsApp',  icon: MessageSquare },
+  
 ];
 
 const GlobalSocialFeed = ({
