@@ -619,7 +619,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
             {/* Action buttons on visual left (RTL end) */}
             <div className="flex items-center gap-1.5">
               <HeaderCrisisAlert />
-              <NotificationCenter />
               <SearchExpandable />
               <Button
                 variant="ghost"
