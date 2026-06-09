@@ -148,6 +148,22 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
     setSubmitting(true);
     try {
       const numericPrice = Number(price) || 0;
+      const extras = {
+        balcony,
+        balcony_sqm: balconySqm ? Number(balconySqm) : null,
+        safe_room: safeRoom,
+        storage,
+        air_conditioning: airConditioning,
+        accessible,
+        renovated,
+        furnished,
+        bars,
+        parking,
+        elevator,
+        condition: condition || null,
+        directions: directions.trim() || null,
+        total_floors: totalFloors ? Number(totalFloors) : null,
+      };
       const { error } = await supabase
         .from('listings')
         .update({
@@ -155,11 +171,19 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
           description: description.trim() || title.trim(),
           asking_price: numericPrice,
           city: city.trim(),
+          neighborhood: neighborhood.trim() || null,
           address: address.trim() || null,
           rooms: rooms ? Number(rooms) : null,
           sqm: sqm ? Number(sqm) : null,
           floor: floor ? Number(floor) : null,
-          features: [{ listing_type: listingType, property_type: propertyType, year_built: yearBuilt ? Number(yearBuilt) : null }],
+          parking,
+          elevator,
+          features: [{
+            listing_type: listingType,
+            property_type: propertyType,
+            year_built: yearBuilt ? Number(yearBuilt) : null,
+            extras,
+          }],
         })
         .eq('id', property.id);
       if (error) throw error;
