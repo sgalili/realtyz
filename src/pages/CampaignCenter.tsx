@@ -510,7 +510,11 @@ const InlineComposer = ({
         if (!user) return;
         const payload = {
           generated_text: body.slice(0, MAX_CHARS),
-          media_urls: attachments.map((a) => ({ name: a.name, kind: a.kind, url: a.url || null })),
+          // Persist only durable https URLs — local blob: previews die on reload
+          // and would render as empty file chips after restoring from history.
+          media_urls: attachments
+            .filter((a) => a.url && !a.url.startsWith('blob:'))
+            .map((a) => ({ name: a.name, kind: a.kind, url: a.url })),
           listing_id: selectedListingId,
           updated_at: new Date().toISOString(),
         };
