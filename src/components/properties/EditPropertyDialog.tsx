@@ -174,6 +174,8 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
     } catch (e: any) {
       toast.error(`סנכרון נכשל: ${e.message ?? e}`);
     } finally {
+      // Cool-down starts at completion (success or fail), not at click time.
+      lastHomelySyncAtRef.current = Date.now();
       setSyncing(false);
     }
   };
