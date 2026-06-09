@@ -76,7 +76,7 @@ serve(async (req) => {
     if (listing_source === "internal") {
       const { data: l, error: lErr } = await supabase
         .from("listings")
-        .select("property_title, description, asking_price, features, slug")
+        .select("property_title, description, asking_price, features, slug, city, neighborhood, address, rooms, sqm, floor, parking, elevator")
         .eq("id", listing_id)
         .maybeSingle();
       if (lErr || !l) {
@@ -89,7 +89,7 @@ serve(async (req) => {
         title: l.property_title,
         description: l.description,
         price: l.asking_price,
-        features: l.features,
+        features: { ...(Array.isArray(l.features) ? (l.features[0] ?? {}) : (l.features ?? {})), city: l.city, neighborhood: l.neighborhood, address: l.address, rooms: l.rooms, sqm: l.sqm, floor: l.floor, parking: l.parking, elevator: l.elevator },
         url: l.slug ? `/p/${l.slug}` : null,
       };
     } else {
