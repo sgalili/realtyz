@@ -1420,12 +1420,15 @@ const FEED_PLATFORMS: { id: string; label: string; brand?: string; icon?: typeof
 
 const GlobalSocialFeed = ({
   rows, activeChannel, onChannelChange, archivedCount, onOpenArchive,
+  connectedChannels, onConnectChannel,
 }: {
   rows: CampaignRow[];
   activeChannel: string;
   onChannelChange: (id: string) => void;
   archivedCount: number;
   onOpenArchive: () => void;
+  connectedChannels: Set<string>;
+  onConnectChannel: (id: string) => void;
 }) => {
   const counts = useMemo(() => {
     const m: Record<string, number> = { all: rows.length };
@@ -1440,63 +1443,71 @@ const GlobalSocialFeed = ({
   const Pill = ({ id, label, brand, icon: Icon }: { id: string; label: string; brand?: string; icon?: typeof Bot }) => {
     const active = activeChannel === id;
     const count = counts[id] ?? 0;
+    const isConnected = connectedChannels.has(id) || id === 'whatsapp';
+    const handleClick = () => {
+      if (!isConnected) { onConnectChannel(id); return; }
+      onChannelChange(id);
+    };
     return (
       <button
         type="button"
-        onClick={() => onChannelChange(id)}
+        onClick={handleClick}
+        title={isConnected ? label : `${label} — לחץ לחיבור`}
+        aria-label={isConnected ? label : `חבר ${label}`}
         className={cn(
-          'inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap transition-all',
-          active
-            ? 'bg-slate-900 text-white shadow-md'
-            : 'bg-slate-50 text-slate-700 hover:bg-slate-100',
+          'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-opacity',
+          !isConnected && 'opacity-40 hover:opacity-70 grayscale',
+          active && 'opacity-100',
         )}
       >
         {brand ? (
           <BrandIcon
             name={brand}
             aria-label={label}
-            className={cn('h-4 w-4', active ? 'text-white' : (BRAND_COLOR[brand] ?? 'text-slate-500'))}
+            className={cn('h-5 w-5', isConnected ? (BRAND_COLOR[brand] ?? 'text-slate-600') : 'text-slate-500')}
           />
         ) : Icon ? (
-          <Icon aria-label={label} className={cn('h-4 w-4', active ? 'text-white' : 'text-slate-500')} />
+          <Icon aria-label={label} className="h-5 w-5 text-slate-600" />
         ) : null}
-        <span className={cn(
-          'text-sm font-bold tabular-nums',
-          active ? 'text-white/90' : 'text-slate-500',
-        )} dir="ltr">{count}</span>
+        <span
+          className={cn(
+            'text-sm font-bold tabular-nums',
+            active ? 'text-slate-900' : 'text-slate-500',
+          )}
+          dir="ltr"
+        >
+          {count}
+        </span>
       </button>
     );
   };
 
 
   return (
-    <div className="flex items-center gap-3 overflow-x-auto scrollbar-none -mx-1 px-1 pb-1" dir="rtl">
+    <div className="flex items-center gap-4 overflow-x-auto scrollbar-none -mx-1 px-1 pb-1" dir="rtl">
       <button
         type="button"
         onClick={() => onChannelChange('all')}
         className={cn(
-          'inline-flex shrink-0 items-center gap-2 rounded-full px-4 py-2 text-sm font-semibold whitespace-nowrap transition-all',
-          activeChannel === 'all'
-            ? 'bg-slate-900 text-white shadow-md'
-            : 'bg-slate-50 text-slate-700 hover:bg-slate-100',
+          'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-opacity',
+          activeChannel === 'all' ? 'opacity-100' : 'opacity-70 hover:opacity-100',
         )}
       >
-        <span>הכל</span>
-
+        <span className={cn('text-sm font-semibold', activeChannel === 'all' ? 'text-slate-900' : 'text-slate-600')}>הכל</span>
         <span className={cn(
           'text-sm font-bold tabular-nums',
-          activeChannel === 'all' ? 'text-white/90' : 'text-slate-500',
+          activeChannel === 'all' ? 'text-slate-900' : 'text-slate-500',
         )} dir="ltr">{counts.all}</span>
       </button>
       {FEED_PLATFORMS.map((p) => <Pill key={p.id} {...p} />)}
       <button
         type="button"
         onClick={onOpenArchive}
-        className="ms-auto inline-flex shrink-0 items-center gap-2 rounded-full bg-slate-50 px-4 py-2 text-sm font-semibold text-slate-700 hover:bg-slate-100 whitespace-nowrap"
+        className="ms-auto inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap opacity-70 hover:opacity-100"
         title="ארכיון תגובות"
         aria-label="ארכיון תגובות"
       >
-        <Archive className="h-4 w-4 text-slate-500" />
+        <Archive className="h-5 w-5 text-slate-500" />
         <span className="text-sm font-bold tabular-nums text-slate-500" dir="ltr">{archivedCount}</span>
       </button>
     </div>
@@ -1528,6 +1539,7 @@ const PublishedFeed = () => {
   const [activeChannel, setActiveChannel] = useState<string>('all');
   const [archivedCount, setArchivedCount] = useState<number>(0);
   const [fbPageName, setFbPageName] = useState<string | null>(null);
+  const [connectedChannels, setConnectedChannels] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     (async () => {
@@ -1537,7 +1549,44 @@ const PublishedFeed = () => {
         .maybeSingle();
       setFbPageName((data as any)?.facebook_page_name ?? null);
     })();
+    (async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from('social_connections')
+        .select('platform, is_connected')
+        .eq('created_by', user.id);
+      const next = new Set<string>();
+      (data || []).forEach((r: any) => {
+        if (!r?.is_connected) return;
+        const p = String(r.platform || '').toLowerCase();
+        if (p === 'twitter') next.add('x');
+        else next.add(p);
+      });
+      setConnectedChannels(next);
+    })();
   }, []);
+
+  const handleFeedConnect = async (id: string) => {
+    const platformMap: Record<string, string> = {
+      facebook: 'facebook', instagram: 'instagram', x: 'twitter',
+      youtube: 'youtube', linkedin: 'linkedin', tiktok: 'tiktok',
+    };
+    const platform = platformMap[id];
+    if (!platform) { toast.error('הערוץ הזה לא נתמך כרגע דרך Ayrshare'); return; }
+    try {
+      toast.loading('פותח חיבור Ayrshare…', { id: 'ayr-connect-feed' });
+      const { data, error } = await supabase.functions.invoke('ayrshare-social-link', { body: { platform } });
+      toast.dismiss('ayr-connect-feed');
+      if (error) throw new Error((error as any)?.message || 'יצירת חיבור נכשלה');
+      const url = (data as any)?.url;
+      if (!url) { toast.error((data as any)?.error || 'לא התקבל קישור חיבור מ-Ayrshare'); return; }
+      window.open(url, '_blank', 'noopener,noreferrer');
+    } catch (e: any) {
+      toast.dismiss('ayr-connect-feed');
+      toast.error(e?.message ?? 'יצירת חיבור נכשלה');
+    }
+  };
 
 
 
@@ -1899,6 +1948,8 @@ const PublishedFeed = () => {
         onChannelChange={setActiveChannel}
         archivedCount={archivedCount}
         onOpenArchive={() => toast.info('ארכיון התגובות יוצג בקרוב')}
+        connectedChannels={connectedChannels}
+        onConnectChannel={handleFeedConnect}
       />
 
       {filteredRows && filteredRows.length === 0 ? (
