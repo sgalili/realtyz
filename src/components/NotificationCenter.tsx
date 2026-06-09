@@ -1,17 +1,14 @@
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
-import { useDemoMode } from '@/hooks/useDemoMode';
-import { DEMO_CANDIDATES } from '@/lib/demoData';
-import { Bell, AlertTriangle, CalendarClock, ExternalLink, Home, LineChart, Megaphone, Target, TrendingUp, User, Wallet } from 'lucide-react';
+import { Bell, AlertTriangle, ExternalLink, Wallet } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
-import { toast } from 'sonner';
 
 const ALERT_KEYWORDS = ['עצבני', 'שקר', 'תפסיקו', 'כועס', 'מתנגד', 'עזבו', 'נמאס'];
 
@@ -23,63 +20,13 @@ const SERVICE_LABELS: Record<string, string> = {
   ai_touchpoint: 'נקודת מגע AI',
 };
 
-type DemoNotification = {
-  id: string;
-  title: string;
-  subtext: string;
-  message: string;
-  cta: string;
-  path: string;
-  createdAt: string;
-};
-
-const DEMO_EVENT_TEMPLATES = [
-  { title: 'הזדמנות חמה בבשן', message: 'זוהה נכס בבשן 4 חדרים במחיר של 2. ה-AI יצר טיוטת מודעה ל-Meta.', cta: 'צפה בנכס', path: '/properties' },
-  { title: 'סגירת עסקה קרובה', message: 'ליד חם (אלון) סיים שיחת WhatsApp עם ה-AI וביקש לתאם פגישה בבשן.', cta: 'פתח חדר עסקה', path: '/deal-room' },
-  { title: 'אופטימיזציית מודעות', message: 'הקמפיין לדירת הבשן עבר אופטימיזציה: העלות לליד ירדה ב-12%.', cta: 'צפה בביצועים', path: '/campaigns' },
-  { title: 'ליד חדש מהשוק', message: 'ה-AI זיהה נכס חדש ב-Yad2 התואם את פרופיל ההשבחה שלך (דירות 2 חדרים גדולות).', cta: 'צפה בנכס', path: '/properties' },
-  { title: 'סיכום יום', message: '5 לידים חדשים תואמו היום לסיור בנכסים בהרצליה. ה-AI שלח תזכורות אוטומטיות.', cta: 'צפה בלידים', path: '/leads' },
-  { title: 'אבן דרך לעסקה', message: 'התקרבת ליעד המכירות החודשי. נדרשת עוד עסקה אחת לסגירת המכסה.', cta: 'צפה בביצועים', path: '/business-performance' },
-  { title: 'ניתוח שוק', message: 'עלייה של 5% בביקושים לשכירויות בשכונת הבשן בהרצליה. מומלץ לעדכן מחיר.', cta: 'צפה בניתוח', path: '/insights' },
-];
-
-const resolveToastPath = (notification: Pick<DemoNotification, 'title' | 'message' | 'path'>) => {
-  const text = `${notification.title} ${notification.message}`;
-  if (/Meta|מודעות|Ads|קמפיין|אופטימיזצי/i.test(text)) return '/campaigns';
-  if (/נכס|Yad2|בשן|שכירויות|נדל"ן|דירת|דירות/i.test(text)) return '/properties';
-  if (/ליד|לידים|WhatsApp|פגישה/i.test(text)) return '/leads';
-  if (/עסקה|מכירות|מכסה|יעד/i.test(text)) return '/business-performance';
-  if (/ניתוח|שוק|ביקוש/i.test(text)) return '/insights';
-  return notification.path;
-};
-
-const isHighPriorityToast = (notification: Pick<DemoNotification, 'title' | 'message'>) =>
-  /הזדמנות חמה|סגירת עסקה|אבן דרך/i.test(`${notification.title} ${notification.message}`);
-
-const getDemoNotificationIcon = (notification: DemoNotification) => {
-  const text = `${notification.title} ${notification.message} ${notification.path}`;
-  if (/אופטימיזצי|מודעות|Meta|Ads|campaigns/i.test(text)) return Megaphone;
-  if (/ניתוח|שוק|ביקוש|insights/i.test(text)) return LineChart;
-  if (/ליד|לידים|WhatsApp|פגישה|leads/i.test(text)) return User;
-  if (/אבן דרך|מכירות|מכסה|יעד|performance/i.test(text)) return Target;
-  if (/סיכום יום|תזכורת|calendar/i.test(text)) return CalendarClock;
-  if (/נכס|Yad2|בשן|שכירויות|דירת|דירות|properties/i.test(text)) return Home;
-  return Bell;
-};
+// One-time cleanup of stale demo notifications stored on the device.
+try { localStorage.removeItem('realtyz_demo_notifications'); } catch { /* noop */ }
 
 export default function NotificationCenter() {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { isDemoMode, demoCandidateId } = useDemoMode();
-  const activeCandidate = DEMO_CANDIDATES.find((candidate) => candidate.id === demoCandidateId) ?? DEMO_CANDIDATES[0];
   const [open, setOpen] = useState(false);
-  const [bellPulse, setBellPulse] = useState(false);
-  const [demoNotifications, setDemoNotifications] = useState<DemoNotification[]>(() => {
-    try {
-      const stored = localStorage.getItem('realtyz_demo_notifications');
-      return stored ? JSON.parse(stored) : [];
-    } catch { return []; }
-  });
   const [viewedIds, setViewedIds] = useState<Set<string>>(() => {
     try {
       const stored = localStorage.getItem('realtyz_viewed_notifs');
@@ -92,67 +39,6 @@ export default function NotificationCenter() {
       return new Set(stored ? JSON.parse(stored) : []);
     } catch { return new Set(); }
   });
-
-  const showSmartToast = (notification: DemoNotification) => {
-    const toastId = notification.id;
-    const path = resolveToastPath(notification);
-    const highPriority = isHighPriorityToast(notification);
-    let dismissTimer = window.setTimeout(() => toast.dismiss(toastId), 6000);
-    let releaseTimer: number | undefined;
-
-    const pauseDismiss = () => {
-      window.clearTimeout(dismissTimer);
-      if (releaseTimer) window.clearTimeout(releaseTimer);
-    };
-
-    const releaseDismiss = () => {
-      releaseTimer = window.setTimeout(() => toast.dismiss(toastId), 2000);
-    };
-
-    const openNotification = () => {
-      window.clearTimeout(dismissTimer);
-      if (releaseTimer) window.clearTimeout(releaseTimer);
-      toast.dismiss(toastId);
-      navigate(path);
-    };
-
-    const dismissToast = () => {
-      window.clearTimeout(dismissTimer);
-      if (releaseTimer) window.clearTimeout(releaseTimer);
-      toast.dismiss(toastId);
-    };
-
-    toast.custom(() => (
-      <div
-        dir="rtl"
-        role="button"
-        tabIndex={0}
-        onMouseEnter={pauseDismiss}
-        onMouseLeave={releaseDismiss}
-        onMouseDown={pauseDismiss}
-        onTouchStart={pauseDismiss}
-        onTouchEnd={releaseDismiss}
-        onTouchCancel={releaseDismiss}
-        onClick={dismissToast}
-        onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') dismissToast(); }}
-        className={`flex w-full min-w-[18rem] translate-z-0 cursor-pointer items-center justify-between gap-3 rounded-lg border px-4 py-3 text-right shadow-lg transition-[border-color,transform] duration-150 will-change-transform hover:scale-[1.01] ${
-          highPriority
-            ? 'border-primary/25 bg-primary text-primary-foreground hover:border-primary/45'
-            : 'border-primary/20 bg-background text-foreground hover:border-primary/35'
-        }`}
-      >
-        <span className="min-w-0 flex-1 text-sm font-semibold leading-snug">{notification.message}</span>
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); openNotification(); }}
-          onMouseEnter={pauseDismiss}
-          className={`shrink-0 rounded-md px-3 py-1.5 text-xs font-bold transition-opacity hover:opacity-90 ${highPriority ? 'bg-primary-foreground text-primary' : 'bg-primary text-primary-foreground'}`}
-        >
-          {notification.cta}
-        </button>
-      </div>
-    ), { id: toastId, duration: Infinity });
-  };
 
   // Budget threshold alerts: ≥80% of monthly limit per service
   const { data: budgetAlerts = [] } = useQuery({
@@ -183,37 +69,7 @@ export default function NotificationCenter() {
     refetchInterval: 120_000,
   });
 
-  useEffect(() => {
-    if (!isDemoMode) return;
-    let timeoutId: ReturnType<typeof setTimeout>;
-    const schedule = () => {
-      timeoutId = setTimeout(() => {
-        const template = DEMO_EVENT_TEMPLATES[Math.floor(Math.random() * DEMO_EVENT_TEMPLATES.length)];
-        const notification: DemoNotification = {
-          id: `demo-${Date.now()}`,
-          title: template.title,
-          subtext: 'Realtyz AI · הרצליה',
-          message: template.message,
-          cta: template.cta,
-          path: template.path,
-          createdAt: new Date().toISOString(),
-        };
-        setDemoNotifications((current) => {
-          const next = [notification, ...current].slice(0, 20);
-          localStorage.setItem('realtyz_demo_notifications', JSON.stringify(next));
-          return next;
-        });
-        setBellPulse(true);
-        window.setTimeout(() => setBellPulse(false), 2400);
-        showSmartToast(notification);
-        schedule();
-      }, 45_000);
-    };
-    schedule();
-    return () => clearTimeout(timeoutId);
-  }, [activeCandidate, isDemoMode, navigate]);
-
-  // Fetch flagged messages
+  // Flagged inbound messages (negative-sentiment keywords)
   const { data: alerts = [] } = useQuery({
     queryKey: ['notification-alerts'],
     queryFn: async () => {
@@ -224,7 +80,6 @@ export default function NotificationCenter() {
         .order('created_at', { ascending: false })
         .limit(200);
       if (error) throw error;
-
       const flagged = (data ?? []).filter(m =>
         m.content && ALERT_KEYWORDS.some(kw => m.content!.includes(kw))
       );
@@ -233,7 +88,6 @@ export default function NotificationCenter() {
     refetchInterval: 60_000,
   });
 
-  // Fetch lead names for flagged messages
   const voterIds = [...new Set(alerts.map(a => a.lead_id).filter(Boolean))];
   const { data: voterMap = {} } = useQuery({
     queryKey: ['notif-leads', voterIds.join(',')],
@@ -248,25 +102,9 @@ export default function NotificationCenter() {
     enabled: voterIds.length > 0,
   });
 
-  // Unread = recent messages from leads not yet viewed in inbox
-  const { data: unreadCount = 0 } = useQuery({
-    queryKey: ['unread-inbox-count'],
-    queryFn: async () => {
-      const { count, error } = await supabase
-        .from('chat_history')
-        .select('id', { count: 'exact', head: true })
-        .eq('role', 'user')
-        .gte('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
-      if (error) return 0;
-      return count ?? 0;
-    },
-    refetchInterval: 30_000,
-  });
-
   const unviewedAlerts = alerts.filter(a => !viewedIds.has(a.id));
-  const unviewedDemoAlerts = demoNotifications.filter(n => !viewedIds.has(n.id));
   const activeBudgetAlerts = budgetAlerts.filter(b => !dismissedBudgets.has(`${b.service}-${new Date().getMonth()}`));
-  const badgeCount = unviewedDemoAlerts.length + unviewedAlerts.length + activeBudgetAlerts.length || (unreadCount > 0 ? unreadCount : 0);
+  const badgeCount = unviewedAlerts.length + activeBudgetAlerts.length;
 
   const dismissBudget = (service: string) => {
     const key = `${service}-${new Date().getMonth()}`;
@@ -287,33 +125,29 @@ export default function NotificationCenter() {
   };
 
   const markAllRead = () => {
-    const next = new Set([...viewedIds, ...alerts.map(a => a.id), ...demoNotifications.map(n => n.id)]);
+    const next = new Set([...viewedIds, ...alerts.map(a => a.id)]);
     setViewedIds(next);
     localStorage.setItem('realtyz_viewed_notifs', JSON.stringify([...next]));
-  };
-
-  const openDemoNotification = (notification: DemoNotification) => {
-    const next = new Set(viewedIds);
-    next.add(notification.id);
-    setViewedIds(next);
-    localStorage.setItem('realtyz_viewed_notifs', JSON.stringify([...next]));
-    setOpen(false);
-    navigate(notification.path);
   };
 
   const getMatchedKeyword = (content: string) =>
     ALERT_KEYWORDS.find(kw => content.includes(kw)) || '';
 
-  if (badgeCount <= 0) return null;
-
   return (
     <Popover open={open} onOpenChange={setOpen}>
       <PopoverTrigger asChild>
-        <Button variant="ghost" size="icon" aria-label="מרכז התראות" className={`relative h-9 w-9 p-0 text-primary-foreground hover:bg-primary-foreground/10 hover:text-primary-foreground ${bellPulse ? 'realtyz-notification-pulse' : ''}`}>
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="מרכז התראות"
+          className="relative h-9 w-9 p-0"
+        >
           <Bell className="h-4 w-4" />
-          <span className="absolute right-0 top-0 h-4 min-w-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
-            {badgeCount > 9 ? '9+' : badgeCount}
-          </span>
+          {badgeCount > 0 && (
+            <span className="absolute right-0 top-0 h-4 min-w-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">
+              {badgeCount > 9 ? '9+' : badgeCount}
+            </span>
+          )}
         </Button>
       </PopoverTrigger>
 
@@ -321,40 +155,14 @@ export default function NotificationCenter() {
         <div className="flex items-center justify-between px-4 py-3 border-b border-primary/15">
           <h4 className="text-sm font-semibold text-primary">מרכז התראות</h4>
           <div className="flex items-center gap-1">
-          {unviewedDemoAlerts.length + unviewedAlerts.length > 0 && (
-            <Button variant="ghost" size="sm" className="text-xs h-6 px-2" onClick={markAllRead}>
-              סמן הכל כנקרא
-            </Button>
-          )}
+            {unviewedAlerts.length > 0 && (
+              <Button variant="ghost" size="sm" className="text-xs h-6 px-2" onClick={markAllRead}>
+                סמן הכל כנקרא
+              </Button>
+            )}
           </div>
         </div>
         <ScrollArea className="h-[min(70vh,28rem)] max-h-[calc(100vh-8rem)]">
-          {/* Budget alerts on top */}
-          {demoNotifications.map((notification) => {
-            const isUnread = !viewedIds.has(notification.id);
-            const NotificationIcon = getDemoNotificationIcon(notification);
-            return (
-              <div key={notification.id} className={`realtyz-notification-item px-4 py-3 border-b ${isUnread ? 'ring-1 ring-primary/20' : ''}`}>
-                <div className="flex gap-3 items-start">
-                  <NotificationIcon className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center justify-between gap-2">
-                      <span className="text-sm font-semibold text-primary">{notification.title}</span>
-                      <span className="text-[10px] text-muted-foreground/70">
-                        {formatDistanceToNow(new Date(notification.createdAt), { addSuffix: true, locale: he })}
-                      </span>
-                    </div>
-                    <p className="text-[11px] font-medium text-primary/70 mt-0.5">{notification.subtext}</p>
-                    <p className="text-xs text-foreground mt-1 leading-relaxed">{notification.message}</p>
-                    <Button size="sm" variant="outline" className="mt-2 h-7 text-[11px]" onClick={() => openDemoNotification(notification)}>
-                      {notification.cta}
-                    </Button>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
           {activeBudgetAlerts.map(b => (
             <div
               key={b.service}
@@ -399,7 +207,7 @@ export default function NotificationCenter() {
             </div>
           ))}
 
-          {alerts.length === 0 && activeBudgetAlerts.length === 0 && demoNotifications.length === 0 ? (
+          {alerts.length === 0 && activeBudgetAlerts.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-8">אין התראות</p>
           ) : (
             alerts.map(a => {
