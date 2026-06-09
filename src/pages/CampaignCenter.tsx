@@ -1934,20 +1934,12 @@ const PublishedFeed = () => {
                 </span>
               </div>
 
-              {/* Row 3: counters + expand/collapse chevron (chevron moved to opposite side) */}
+              {/* Row 3: comment counter only (likes/shares pills removed) + expand chevron */}
               <div className={cn('flex items-center justify-between gap-3', isHe ? 'flex-row' : 'flex-row-reverse')}>
                 <div className={cn('flex items-center gap-3 text-xs text-muted-foreground flex-wrap', isHe ? 'flex-row-reverse' : 'flex-row')}>
-                  <span className="inline-flex items-center gap-1" title="לייקים">
-                    <Heart className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
-                    <span className="tabular-nums">{fmt(r.like_count)}</span>
-                  </span>
                   <span className="inline-flex items-center gap-1" title="תגובות">
                     <MessageSquare className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
                     <span className="tabular-nums">{commentDisplay}</span>
-                  </span>
-                  <span className="inline-flex items-center gap-1" title="שיתופים">
-                    <Share2 className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
-                    <span className="tabular-nums">{fmt(r.share_count)}</span>
                   </span>
                 </div>
                 <button onClick={(e) => { e.stopPropagation(); setExpanded((s) => ({ ...s, [r.id]: !isOpen })); }}
