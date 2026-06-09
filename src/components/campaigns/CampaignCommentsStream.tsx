@@ -153,9 +153,36 @@ const writeCache = (campaignId: string, rows: EngagementRow[], postIds: string[]
   }
 };
 
-// Per-campaign throttle for provider refresh — Ayrshare caps at 300 calls
-// per 5min, so silent re-mounts must not spam the API.
-const REFRESH_LOCK = new Map<string, number>();
+// Per-postId provider-fetch throttle. Ayrshare caps at 300 calls / 5min per
+// profile and Udi's account was previously flagged for repeated bursts —
+// silent re-mounts (collapse/expand of the card, route revisits, background
+// refreshes) must NOT spam the API. We persist the last provider-fetch
+// timestamp per post id in sessionStorage so it survives across cards and
+// across page reloads inside the same browser session.
+const PROVIDER_FETCH_LOCK_MS = 15 * 60 * 1000; // 15 minutes
+const providerLockKey = (pid: string) => `realtyz_fb_comments_lock_${pid}`;
+const isProviderFetchLocked = (pids: string[], { manual = false }: { manual?: boolean } = {}): boolean => {
+  if (manual) return false; // explicit user refresh always bypasses the lock
+  if (!pids.length) return false;
+  const now = Date.now();
+  try {
+    // Locked only when EVERY post id has a fresh lock — if any one is stale
+    // or missing, allow the refresh (it scopes to all ids in one call).
+    return pids.every((pid) => {
+      const raw = sessionStorage.getItem(providerLockKey(pid));
+      if (!raw) return false;
+      const ts = Number(raw);
+      return Number.isFinite(ts) && now - ts < PROVIDER_FETCH_LOCK_MS;
+    });
+  } catch { return false; }
+};
+const stampProviderFetch = (pids: string[]) => {
+  const now = String(Date.now());
+  for (const pid of pids) {
+    if (!pid) continue;
+    try { sessionStorage.setItem(providerLockKey(pid), now); } catch { /* quota */ }
+  }
+};
 
 // Per-campaign draft cache (suggested + user-edited public/DM text), keyed by
 // engagement row id. Persisted to sessionStorage so collapse/expand of the
