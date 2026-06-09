@@ -108,7 +108,17 @@ Deno.serve(async (req) => {
             .eq("id", rowId)
             .eq("user_id", ownerUserId);
         }
-        return json({ error: "ayrshare reply failed", status: ayrRes.status, details: ayrPayload }, 502);
+        // Hard-stop: 429 / 403 means Ayrshare wants us to back off NOW.
+        // Surface `halt` so the client immediately freezes — no retries.
+        const halt = ayrRes.status === 429 || ayrRes.status === 403;
+        return json({
+          error: ayrRes.status === 429 ? "RATE_LIMIT_EXCEEDED" : "ayrshare reply failed",
+          status: ayrRes.status,
+          details: ayrPayload,
+          halt,
+          rate_limited: ayrRes.status === 429,
+          suspended: ayrRes.status === 403,
+        }, 200);
       }
     }
 
