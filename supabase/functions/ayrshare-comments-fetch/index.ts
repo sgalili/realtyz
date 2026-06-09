@@ -501,15 +501,17 @@ Deno.serve(async (req) => {
         };
 
         try {
-          // Upsert on (user_id, external_id) — partial unique index guards
-          // against the duplicate-insert loop that previously created hundreds
-          // of copies of the same FB reply when maybeSingle() silently failed.
+          // Plain insert — the duplicate-guard above (select by user_id +
+          // external_id) already handles dedup. We can't use upsert with
+          // onConflict because the unique index on (user_id, external_id) is
+          // partial (WHERE external_id IS NOT NULL), which PostgREST's
+          // ON CONFLICT clause cannot match (error 42P10).
           const { error: insErr } = await admin
             .from("engagement_events")
-            .upsert(payload, { onConflict: "user_id,external_id", ignoreDuplicates: true });
+            .insert(payload);
           if (insErr) {
             console.error(
-              "[ayrshare-comments-fetch] upsert failed",
+              "[ayrshare-comments-fetch] insert failed",
               JSON.stringify({
                 message: insErr.message,
                 code: (insErr as any).code,
