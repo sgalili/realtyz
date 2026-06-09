@@ -418,6 +418,19 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
     if (isProviderFetchLocked(postIds, { manual })) {
       return;
     }
+    // HARD RESET on manual click: evict every per-post cache + lock entry so
+    // the next provider hit bypasses every stale-failure cached state from
+    // the previously suspended Ayrshare token.
+    if (manual) {
+      for (const pid of postIds) {
+        try {
+          localStorage.removeItem(`realtyz_fb_comments_cache_${pid}`);
+          localStorage.removeItem(providerLockKey(pid));
+        } catch { /* quota */ }
+      }
+      COMMENT_CACHE.delete(campaign.id);
+      try { sessionStorage.removeItem(cacheKey(campaign.id)); } catch { /* quota */ }
+    }
     stampProviderFetch(postIds);
 
     setManualRefreshing(true);

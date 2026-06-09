@@ -218,6 +218,7 @@ Deno.serve(async (req) => {
     const errors: Record<string, string> = {};
     const apiErrors: any[] = [];
     const mappingErrors: any[] = [];
+    const metricsByPostId = new Map<string, { likes: number | null; shares: number | null; comments: number | null }>();
 
     const extractChildComments = (node: any): any[] => {
       if (!node || typeof node !== "object") return [];
@@ -265,6 +266,30 @@ Deno.serve(async (req) => {
         ? payload
         : [];
 
+    // Outer network metrics from the /comments payload. Ayrshare/Meta shapes
+    // vary — accept top-level numbers, `analytics`, `metrics`, or platform-
+    // nested blocks. Used to overwrite campaign_logs like/share/comment counts
+    // (force-refresh — even zeros are overwritten).
+    const extractOuterMetrics = (payload: any, platformKey: string) => {
+      const sources: any[] = [
+        payload, payload?.analytics, payload?.metrics, payload?.summary, payload?.post,
+        payload?.[platformKey], payload?.[platformKey]?.analytics, payload?.[platformKey]?.metrics,
+      ].filter(Boolean);
+      const pickNum = (...keys: string[]): number | null => {
+        for (const src of sources) for (const k of keys) {
+          const v = (src as any)?.[k];
+          if (typeof v === "number" && Number.isFinite(v)) return v;
+          if (typeof v === "string" && v.trim() && !Number.isNaN(Number(v))) return Number(v);
+        }
+        return null;
+      };
+      return {
+        likes: pickNum("likeCount", "likes", "like_count", "reactions", "reactionsCount", "reactions_count"),
+        shares: pickNum("shareCount", "shares", "share_count", "sharesCount", "shares_count"),
+        comments: pickNum("commentsCount", "comments_count", "commentCount", "comment_count", "totalComments"),
+      };
+    };
+
     const fetchAyrshareTree = async (target: CommentFetchTarget) => {
       const attempts: any[] = [];
       const platformKey = target.platform.toLowerCase();
@@ -276,6 +301,7 @@ Deno.serve(async (req) => {
       const looksNative = /_/.test(target.fetchPostId);
       const primary = await fetchAyrshareComments(target.fetchPostId, target.platform, looksNative);
       const primaryArr = extractCommentsArray(primary.payload, platformKey);
+      const primaryMetrics = extractOuterMetrics(primary.payload, platformKey);
       const primaryOk = primary.ok && primary.payload?.status !== "error" && primaryArr.length > 0;
       if (primaryOk) {
         return {
@@ -283,22 +309,20 @@ Deno.serve(async (req) => {
           status: primary.status,
           resolvedPostId: target.fetchPostId,
           comments: primaryArr,
+          outerMetrics: primaryMetrics,
           attempts,
         };
       }
       attempts.push({ post_id: target.fetchPostId, mode: "ayrshare_top_level", status: primary.status, payload: safeMetaPayload(primary.payload, primary.text) });
 
-      // Attempt 2: pivot to the NATIVE Facebook composite id (pageId_postId)
-      // with searchPlatformId=true. Re-animates legacy posts that were
-      // published under a prior (now-suspended) Ayrshare profile but live on
-      // the same Facebook Page connected to the active profile.
-      let bestEmptyOk: { status: number; resolvedPostId: string } | null = null;
+      let bestEmptyOk: { status: number; resolvedPostId: string; outerMetrics: ReturnType<typeof extractOuterMetrics> } | null = null;
       if (primary.ok && primary.payload?.status !== "error") {
-        bestEmptyOk = { status: primary.status, resolvedPostId: target.fetchPostId };
+        bestEmptyOk = { status: primary.status, resolvedPostId: target.fetchPostId, outerMetrics: primaryMetrics };
       }
       if (target.nativePostId && target.nativePostId !== target.fetchPostId) {
         const fallback = await fetchAyrshareComments(target.nativePostId, target.platform, true);
         const fallbackArr = extractCommentsArray(fallback.payload, platformKey);
+        const fallbackMetrics = extractOuterMetrics(fallback.payload, platformKey);
         if (fallback.ok && fallback.payload?.status !== "error" && fallbackArr.length > 0) {
           console.log("[ayrshare-comments-fetch] native FB id fallback hit", { native: target.nativePostId, count: fallbackArr.length });
           return {
@@ -306,21 +330,20 @@ Deno.serve(async (req) => {
             status: fallback.status,
             resolvedPostId: target.nativePostId,
             comments: fallbackArr,
+            outerMetrics: fallbackMetrics,
             attempts: [...attempts, { post_id: target.nativePostId, mode: "native_fb_searchPlatformId", status: fallback.status, count: fallbackArr.length }],
           };
         }
         if (fallback.ok && fallback.payload?.status !== "error" && !bestEmptyOk) {
-          bestEmptyOk = { status: fallback.status, resolvedPostId: target.nativePostId };
+          bestEmptyOk = { status: fallback.status, resolvedPostId: target.nativePostId, outerMetrics: fallbackMetrics };
         }
         attempts.push({ post_id: target.nativePostId, mode: "native_fb_searchPlatformId", status: fallback.status, count: fallbackArr.length, payload: fallbackArr.length === 0 ? safeMetaPayload(fallback.payload, fallback.text) : undefined });
       }
 
-      // Direct short-token diagnostic path: if the caller passed
-      // facebook.com/share/p/{token}'s trailing token (e.g. 1DgxUSqUMz) and no
-      // campaign row matched, retry the SAME id with searchPlatformId=true.
       if (target.nativePostId === target.fetchPostId && !/_/.test(target.fetchPostId)) {
         const directAlias = await fetchAyrshareComments(target.fetchPostId, target.platform, true);
         const directAliasArr = extractCommentsArray(directAlias.payload, platformKey);
+        const directAliasMetrics = extractOuterMetrics(directAlias.payload, platformKey);
         if (directAlias.ok && directAlias.payload?.status !== "error" && directAliasArr.length > 0) {
           console.log("[ayrshare-comments-fetch] direct share-token fallback hit", { token: target.fetchPostId, count: directAliasArr.length });
           return {
@@ -328,19 +351,18 @@ Deno.serve(async (req) => {
             status: directAlias.status,
             resolvedPostId: target.nativePostId,
             comments: directAliasArr,
+            outerMetrics: directAliasMetrics,
             attempts: [...attempts, { post_id: target.fetchPostId, mode: "direct_share_token_searchPlatformId", status: directAlias.status, count: directAliasArr.length }],
           };
         }
         attempts.push({ post_id: target.fetchPostId, mode: "direct_share_token_searchPlatformId", status: directAlias.status, count: directAliasArr.length, payload: directAliasArr.length === 0 ? safeMetaPayload(directAlias.payload, directAlias.text) : undefined });
       }
 
-      // Attempt 3+: permalink aliases extracted from the campaign URL.
-      // Supports both long pfbid story ids and short /share/p/{token} ids like
-      // 1DgxUSqUMz, queried directly with searchPlatformId=true.
       for (const alias of target.permalinkAliases ?? []) {
         if (!alias || alias === target.fetchPostId || alias === target.nativePostId) continue;
         const aliasFetch = await fetchAyrshareComments(alias, target.platform, true);
         const aliasArr = extractCommentsArray(aliasFetch.payload, platformKey);
+        const aliasMetrics = extractOuterMetrics(aliasFetch.payload, platformKey);
         const aliasMode = alias.startsWith("pfbid") ? "pfbid_searchPlatformId" : "share_token_searchPlatformId";
         if (aliasFetch.ok && aliasFetch.payload?.status !== "error" && aliasArr.length > 0) {
           console.log("[ayrshare-comments-fetch] permalink alias hit", { alias, mode: aliasMode, count: aliasArr.length });
@@ -349,17 +371,17 @@ Deno.serve(async (req) => {
             status: aliasFetch.status,
             resolvedPostId: target.nativePostId,
             comments: aliasArr,
+            outerMetrics: aliasMetrics,
             attempts: [...attempts, { post_id: alias, mode: aliasMode, status: aliasFetch.status, count: aliasArr.length }],
           };
         }
         attempts.push({ post_id: alias, mode: aliasMode, status: aliasFetch.status, count: aliasArr.length, payload: aliasArr.length === 0 ? safeMetaPayload(aliasFetch.payload, aliasFetch.text) : undefined });
       }
 
-      // All attempts returned ok+empty: surface as zero-state success.
       if (bestEmptyOk) {
-        return { ok: true, status: bestEmptyOk.status, resolvedPostId: bestEmptyOk.resolvedPostId, comments: [], attempts };
+        return { ok: true, status: bestEmptyOk.status, resolvedPostId: bestEmptyOk.resolvedPostId, comments: [], outerMetrics: bestEmptyOk.outerMetrics, attempts };
       }
-      return { ok: false, status: primary.status || 500, resolvedPostId: null, comments: [], attempts };
+      return { ok: false, status: primary.status || 500, resolvedPostId: null, comments: [], outerMetrics: { likes: null, shares: null, comments: null }, attempts };
     };
 
     await Promise.all(
@@ -403,7 +425,8 @@ Deno.serve(async (req) => {
             results[nativePostId] = [];
             return;
           }
-          console.log("[ayrshare-comments-fetch] ayrshare comments success", { stored: nativePostId, resolved: fetched.resolvedPostId, count: arr.length });
+          console.log("[ayrshare-comments-fetch] ayrshare comments success", { stored: nativePostId, resolved: fetched.resolvedPostId, count: arr.length, metrics: fetched.outerMetrics });
+          if (fetched.outerMetrics) metricsByPostId.set(nativePostId, fetched.outerMetrics);
 
           // Flatten N levels of nested replies. Ayrshare/Meta nest child nodes
           // under any of: replies / children / comments / thread / data, so we
@@ -650,20 +673,29 @@ Deno.serve(async (req) => {
       ),
     );
 
-    // Sync campaign_logs.comment_count with the live Meta count per post so
-    // the post-card header counter immediately reflects reality (e.g. "15"
-    // instead of a stale "5"). Best-effort — failures are non-fatal.
+    // Sync campaign_logs counters (comment_count + like_count + share_count)
+    // with live Meta numbers. Force-overwrites — even when the live value is
+    // lower than what's currently stored — so a stale "0" gets replaced the
+    // moment the broker manually refreshes.
     try {
       for (const [nativePostId, list] of Object.entries(results)) {
-        const liveCount = Array.isArray(list) ? (list as any[]).length : 0;
+        const treeCount = Array.isArray(list) ? (list as any[]).length : 0;
+        const outer = metricsByPostId.get(nativePostId) ?? { likes: null, shares: null, comments: null };
+        const liveComments = typeof outer.comments === "number" ? Math.max(outer.comments, treeCount) : treeCount;
+        const patch: Record<string, unknown> = {
+          comment_count: liveComments,
+          metrics_updated_at: new Date().toISOString(),
+        };
+        if (typeof outer.likes === "number") patch.like_count = outer.likes;
+        if (typeof outer.shares === "number") patch.share_count = outer.shares;
         await admin
           .from("campaign_logs")
-          .update({ comment_count: liveCount, metrics_updated_at: new Date().toISOString() })
+          .update(patch)
           .eq("user_id", userId)
           .eq("provider_message_id", nativePostId);
       }
     } catch (countErr) {
-      console.warn("[ayrshare-comments-fetch] comment_count sync failed", countErr);
+      console.warn("[ayrshare-comments-fetch] counters sync failed", countErr);
     }
 
     // Always return 200 — provider rate-limit (429) / suspended (403) details
