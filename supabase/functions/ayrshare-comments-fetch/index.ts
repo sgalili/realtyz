@@ -182,8 +182,11 @@ Deno.serve(async (req) => {
       ];
     };
 
-    const fetchAyrshareComments = async (ayrshareTopLevelId: string, platform: string) => {
-      const url = `${AYR_BASE}/comments/${encodeURIComponent(ayrshareTopLevelId)}?platforms=${encodeURIComponent(platform)}`;
+    const fetchAyrshareComments = async (id: string, platform: string, useSearchPlatformId = false) => {
+      const qs = useSearchPlatformId
+        ? `platforms=${encodeURIComponent(platform)}&searchPlatformId=true`
+        : `platforms=${encodeURIComponent(platform)}`;
+      const url = `${AYR_BASE}/comments/${encodeURIComponent(id)}?${qs}`;
       const res = await fetch(url, {
         headers: {
           Authorization: `Bearer ${AYR_KEY}`,
@@ -211,28 +214,61 @@ Deno.serve(async (req) => {
       };
     };
 
+    const extractCommentsArray = (payload: any, platformKey: string): any[] =>
+      Array.isArray(payload?.[platformKey])
+        ? payload[platformKey]
+        : Array.isArray(payload?.comments)
+        ? payload.comments
+        : Array.isArray(payload)
+        ? payload
+        : [];
+
     const fetchAyrshareTree = async (target: CommentFetchTarget) => {
       const attempts: any[] = [];
-      const fetched = await fetchAyrshareComments(target.fetchPostId, target.platform);
       const platformKey = target.platform.toLowerCase();
-      const arr: any[] = Array.isArray(fetched.payload?.[platformKey])
-        ? fetched.payload[platformKey]
-        : Array.isArray(fetched.payload?.comments)
-        ? fetched.payload.comments
-        : Array.isArray(fetched.payload)
-        ? fetched.payload
-        : [];
-      if (fetched.ok && fetched.payload?.status !== "error") {
+
+      // Attempt 1: query by Ayrshare's own top-level id (works for posts
+      // published under the currently-active workspace profile).
+      const primary = await fetchAyrshareComments(target.fetchPostId, target.platform, false);
+      const primaryArr = extractCommentsArray(primary.payload, platformKey);
+      const primaryOk = primary.ok && primary.payload?.status !== "error" && primaryArr.length > 0;
+      if (primaryOk) {
         return {
           ok: true,
-          status: fetched.status,
+          status: primary.status,
           resolvedPostId: target.fetchPostId,
-          comments: arr.map((node: any) => normalizeAyrshareNode(node)),
+          comments: primaryArr.map((node: any) => normalizeAyrshareNode(node)),
           attempts,
         };
       }
-      attempts.push({ post_id: target.fetchPostId, status: fetched.status, payload: safeMetaPayload(fetched.payload, fetched.text) });
-      return { ok: false, status: fetched.status || 500, resolvedPostId: null, comments: [], attempts };
+      attempts.push({ post_id: target.fetchPostId, mode: "ayrshare_top_level", status: primary.status, payload: safeMetaPayload(primary.payload, primary.text) });
+
+      // Attempt 2: pivot to the NATIVE Facebook composite id (pageId_postId)
+      // with searchPlatformId=true. Re-animates legacy posts that were
+      // published under a prior (now-suspended) Ayrshare profile but live on
+      // the same Facebook Page connected to the active profile.
+      if (target.nativePostId && target.nativePostId !== target.fetchPostId) {
+        const fallback = await fetchAyrshareComments(target.nativePostId, target.platform, true);
+        const fallbackArr = extractCommentsArray(fallback.payload, platformKey);
+        if (fallback.ok && fallback.payload?.status !== "error") {
+          console.log("[ayrshare-comments-fetch] native FB id fallback hit", { native: target.nativePostId, count: fallbackArr.length });
+          return {
+            ok: true,
+            status: fallback.status,
+            resolvedPostId: target.nativePostId,
+            comments: fallbackArr.map((node: any) => normalizeAyrshareNode(node)),
+            attempts: [...attempts, { post_id: target.nativePostId, mode: "native_fb_searchPlatformId", status: fallback.status, count: fallbackArr.length }],
+          };
+        }
+        attempts.push({ post_id: target.nativePostId, mode: "native_fb_searchPlatformId", status: fallback.status, payload: safeMetaPayload(fallback.payload, fallback.text) });
+      }
+
+      // Primary returned ok+empty and native fallback unavailable/empty: report
+      // success with zero comments rather than a hard error.
+      if (primary.ok && primary.payload?.status !== "error") {
+        return { ok: true, status: primary.status, resolvedPostId: target.fetchPostId, comments: [], attempts };
+      }
+      return { ok: false, status: primary.status || 500, resolvedPostId: null, comments: [], attempts };
     };
 
     await Promise.all(
