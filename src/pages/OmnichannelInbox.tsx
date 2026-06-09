@@ -142,6 +142,7 @@ const OmnichannelInbox = () => {
   const { data: dbVoters } = useQuery({
     queryKey: ['inbox-leads'],
     enabled: !isDemoMode,
+    refetchInterval: 3000,
     queryFn: async () => {
       const { data } = await supabase.from('leads').select('*').order('last_interaction_at', { ascending: false });
       return data ?? [];
@@ -151,6 +152,7 @@ const OmnichannelInbox = () => {
   const { data: dbLastMessages } = useQuery({
     queryKey: ['last-messages'],
     enabled: !isDemoMode,
+    refetchInterval: 3000,
     queryFn: async () => {
       const { data } = await supabase.from('messages').select('*').order('created_at', { ascending: false });
       const map = new Map<string, typeof data[0]>();
@@ -164,6 +166,7 @@ const OmnichannelInbox = () => {
   const { data: dbChatMessages } = useQuery({
     queryKey: ['chat-messages', selectedVoterId],
     enabled: !!selectedVoterId && !isDemoMode,
+    refetchInterval: 3000,
     queryFn: async () => {
       const { data } = await supabase.from('messages').select('*').eq('lead_id', selectedVoterId!).order('created_at', { ascending: true });
       return data ?? [];
