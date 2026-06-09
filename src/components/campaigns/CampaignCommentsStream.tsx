@@ -268,7 +268,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
       const merged = Array.from(byId.values()).sort(
         (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
       );
-      writeCache(campaign.id, merged);
+      writeCache(campaign.id, merged, postIds);
       return merged;
     });
   };
