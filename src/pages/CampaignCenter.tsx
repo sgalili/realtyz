@@ -16,7 +16,7 @@ import { RealtyzWave } from '@/components/RealtyzWave';
 import { BrandIcon } from '@/components/BrandIcon';
 import {
   ArrowRight, Plus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
-  ChevronDown, ChevronUp, Archive, Send, Mic, Image as ImageIcon, Paperclip,
+  ChevronDown, ChevronUp, Send, Mic, Image as ImageIcon, Paperclip,
   ChevronDown as ChevronDownIcon, Plug, Camera, Sparkles, Square,
   Trash2, ExternalLink, CheckCircle2, Play, RefreshCw, Calendar as CalendarIcon,
 } from 'lucide-react';
@@ -1419,14 +1419,12 @@ const FEED_PLATFORMS: { id: string; label: string; brand?: string; icon?: typeof
 ];
 
 const GlobalSocialFeed = ({
-  rows, activeChannel, onChannelChange, archivedCount, onOpenArchive,
+  rows, activeChannel, onChannelChange,
   connectedChannels, onConnectChannel,
 }: {
   rows: CampaignRow[];
   activeChannel: string;
   onChannelChange: (id: string) => void;
-  archivedCount: number;
-  onOpenArchive: () => void;
   connectedChannels: Set<string>;
   onConnectChannel: (id: string) => void;
 }) => {
@@ -1500,16 +1498,6 @@ const GlobalSocialFeed = ({
         )} dir="ltr">{counts.all}</span>
       </button>
       {FEED_PLATFORMS.map((p) => <Pill key={p.id} {...p} />)}
-      <button
-        type="button"
-        onClick={onOpenArchive}
-        className="ms-auto inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap opacity-70 hover:opacity-100"
-        title="ארכיון תגובות"
-        aria-label="ארכיון תגובות"
-      >
-        <Archive className="h-5 w-5 text-slate-500" />
-        <span className="text-sm font-bold tabular-nums text-slate-500" dir="ltr">{archivedCount}</span>
-      </button>
     </div>
   );
 };
@@ -1537,7 +1525,6 @@ const PublishedFeed = () => {
   };
 
   const [activeChannel, setActiveChannel] = useState<string>('all');
-  const [archivedCount, setArchivedCount] = useState<number>(0);
   const [fbPageName, setFbPageName] = useState<string | null>(null);
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(new Set());
 
@@ -1619,13 +1606,6 @@ const PublishedFeed = () => {
       }
     });
     setRows(Array.from(grouped.values()));
-
-    const { count } = await supabase
-      .from('engagement_events')
-      .select('id', { count: 'exact', head: true })
-      .eq('user_id', user.id)
-      .eq('is_archived', true);
-    setArchivedCount(count ?? 0);
   };
 
   // Ask the backend to (a) refresh live Ayrshare analytics — likes/comments/shares/views
@@ -1963,8 +1943,6 @@ const PublishedFeed = () => {
         rows={rows}
         activeChannel={activeChannel}
         onChannelChange={setActiveChannel}
-        archivedCount={archivedCount}
-        onOpenArchive={() => toast.info('ארכיון התגובות יוצג בקרוב')}
         connectedChannels={connectedChannels}
         onConnectChannel={handleFeedConnect}
       />
