@@ -187,7 +187,7 @@ const isProviderFetchLocked = (pids: string[], { manual = false }: { manual?: bo
     // Locked only when EVERY post id has a fresh lock — if any one is stale
     // or missing, allow the refresh (it scopes to all ids in one call).
     return pids.every((pid) => {
-      const raw = sessionStorage.getItem(providerLockKey(pid));
+      const raw = localStorage.getItem(providerLockKey(pid));
       if (!raw) return false;
       const ts = Number(raw);
       return Number.isFinite(ts) && now - ts < PROVIDER_FETCH_LOCK_MS;
