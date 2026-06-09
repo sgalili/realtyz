@@ -74,24 +74,23 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
   const [submitting, setSubmitting] = useState(false);
   const [syncing, setSyncing] = useState(false);
 
-  useEffect(() => {
-    if (!property) return;
-    const p: any = property;
+  const hydrateFromRow = (p: any) => {
     const meta = p.source_metadata ?? {};
     const featObj = Array.isArray(p.features) ? (p.features[0] ?? {}) : (p.features ?? {});
-    const extras = featObj?.extras ?? {};
-    setListingType(property.listing_type === 'rent' ? 'rent' : 'sale');
-    setTitle(property.title ?? '');
-    setDescription(property.description ?? '');
-    setPrice(property.price ? String(property.price) : '');
-    setCity(property.city ?? '');
-    setAddress(property.address ?? '');
-    setPropertyType(property.property_type ?? 'apartment');
-    setRooms(property.rooms ? String(property.rooms) : '');
-    setSqm(property.size_sqm ? String(property.size_sqm) : '');
-    setFloor(property.floor != null ? String(property.floor) : '');
-    setTotalFloors(property.total_floors != null ? String(property.total_floors) : '');
-    setYearBuilt(property.year_built != null ? String(property.year_built) : '');
+    const extras = (featObj && typeof featObj === 'object' ? featObj.extras : null) ?? {};
+    setListingType((p.listing_type ?? featObj?.listing_type) === 'rent' ? 'rent' : 'sale');
+    setTitle(p.title ?? p.property_title ?? '');
+    setDescription(p.description ?? '');
+    setPrice((p.price ?? p.asking_price) ? String(p.price ?? p.asking_price) : '');
+    setCity(p.city ?? '');
+    setAddress(p.address ?? '');
+    setPropertyType((p.property_type ?? featObj?.property_type) ?? 'apartment');
+    setRooms((p.rooms ?? null) != null ? String(p.rooms) : '');
+    setSqm((p.size_sqm ?? p.sqm) != null ? String(p.size_sqm ?? p.sqm) : '');
+    setFloor(p.floor != null ? String(p.floor) : '');
+    setTotalFloors(p.total_floors != null ? String(p.total_floors) : (extras.total_floors != null ? String(extras.total_floors) : ''));
+    const yb = p.year_built ?? featObj?.year_built;
+    setYearBuilt(yb != null ? String(yb) : '');
     setNeighborhood(p.neighborhood ?? '');
     setBalconySqm(extras.balcony_sqm != null ? String(extras.balcony_sqm) : '');
     setCondition(extras.condition ?? '');
@@ -108,7 +107,23 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
     setBars(Boolean(extras.bars));
     const existingPhotos = p.photos ?? meta.photos;
     setPhotos(Array.isArray(existingPhotos) ? existingPhotos.filter((x: any) => typeof x === 'string') : []);
-  }, [property]);
+  };
+
+  useEffect(() => {
+    if (!property || !open) return;
+    hydrateFromRow(property);
+    // Fetch fresh full row from DB so extras / parking / elevator / features
+    // round-trip correctly even when the list view stripped them.
+    (async () => {
+      const { data } = await supabase
+        .from('listings')
+        .select('property_title, description, asking_price, city, address, neighborhood, rooms, sqm, floor, parking, elevator, features, source_metadata')
+        .eq('id', property.id)
+        .maybeSingle();
+      if (data) hydrateFromRow({ ...property, ...data });
+    })();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [property, open]);
 
   const handleSyncFromHomely = async () => {
     if (!property) return;
