@@ -245,8 +245,11 @@ Deno.serve(async (req) => {
       const platformKey = target.platform.toLowerCase();
 
       // Attempt 1: query by Ayrshare's own top-level id (works for posts
-      // published under the currently-active workspace profile).
-      const primary = await fetchAyrshareComments(target.fetchPostId, target.platform, false);
+      // published under the currently-active workspace profile). For legacy
+      // rows where we only know the native FB composite id (pageId_postId),
+      // use searchPlatformId=true on the primary attempt.
+      const looksNative = /_/.test(target.fetchPostId);
+      const primary = await fetchAyrshareComments(target.fetchPostId, target.platform, looksNative);
       const primaryArr = extractCommentsArray(primary.payload, platformKey);
       const primaryOk = primary.ok && primary.payload?.status !== "error" && primaryArr.length > 0;
       if (primaryOk) {
