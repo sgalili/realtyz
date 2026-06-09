@@ -238,7 +238,7 @@ const WIPE_SENTINEL_KEY = "realtyz_fb_cache_wipe_v3_new_profile";
     for (let i = 0; i < localStorage.length; i++) {
       const k = localStorage.key(i);
       if (!k) continue;
-      if (k.startsWith("realtyz_fb_comments_cache_") || k.startsWith("realtyz_fb_comments_lock_")) {
+      if (k.startsWith("realtyz_fb_")) {
         drop.push(k);
       }
     }
