@@ -463,9 +463,9 @@ Deno.serve(async (req) => {
         // payload can contain nested reply/user blobs that may violate jsonb
         // size/shape constraints and cause the insert to fail silently.
         const cleanMetadata = {
-          source: "meta_graph_comments_fetch",
+          source: "ayrshare_comments_fetch",
           campaign_name: safeStr(campaignName),
-          profile_ref_id: safeStr(c?.__profile_ref_id ?? "meta_graph_direct"),
+          profile_ref_id: safeStr(c?.__profile_ref_id ?? "ayrshare_comments_native"),
           parent_id: safeStr(parentId),
           self_authored: selfAuthored,
           author_type: selfAuthored ? "workspace_page" : "audience",
@@ -558,7 +558,7 @@ Deno.serve(async (req) => {
             external_post_id: d.external_post_id,
             sender_handle: d.sender_handle,
             sender_name: d.sender_handle,
-            metadata: { parent_id: d.parent_id, sender_id: d.sender_id, source: "meta_graph_comments_fetch" },
+            metadata: { parent_id: d.parent_id, sender_id: d.sender_id, source: "ayrshare_comments_fetch" },
           }),
         }).catch((e) => console.error("[ayrshare-comments-fetch] dispatch failed", e)),
       ),
