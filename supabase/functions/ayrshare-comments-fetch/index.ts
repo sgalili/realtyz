@@ -269,7 +269,7 @@ Deno.serve(async (req) => {
             ok: true,
             status: fallback.status,
             resolvedPostId: target.nativePostId,
-            comments: fallbackArr.map((node: any) => normalizeAyrshareNode(node)),
+            comments: fallbackArr,
             attempts: [...attempts, { post_id: target.nativePostId, mode: "native_fb_searchPlatformId", status: fallback.status, count: fallbackArr.length }],
           };
         }
