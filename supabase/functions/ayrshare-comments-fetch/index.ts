@@ -182,22 +182,6 @@ Deno.serve(async (req) => {
       ];
     };
 
-    const normalizeMetaPostCandidates = (nativePostId: string, fetchPostId: string) => {
-      const ids: string[] = [];
-      const push = (value: unknown) => {
-        const id = typeof value === "string" ? value.trim() : "";
-        if (id && !ids.includes(id)) ids.push(id);
-      };
-      push(nativePostId);
-      push(fetchPostId);
-      const suffix = nativePostId.includes("_") ? nativePostId.split("_").pop()! : nativePostId;
-      if (/^\d+$/.test(suffix)) {
-        push(suffix);
-        if (ownPage.pageId) push(`${ownPage.pageId}_${suffix}`);
-      }
-      return ids;
-    };
-
     const fetchAyrshareComments = async (ayrshareTopLevelId: string, platform: string) => {
       const url = `${AYR_BASE}/comments/${encodeURIComponent(ayrshareTopLevelId)}?platforms=${encodeURIComponent(platform)}`;
       const res = await fetch(url, {
