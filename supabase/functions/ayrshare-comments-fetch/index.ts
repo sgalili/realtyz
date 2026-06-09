@@ -250,7 +250,7 @@ Deno.serve(async (req) => {
           ok: true,
           status: primary.status,
           resolvedPostId: target.fetchPostId,
-          comments: primaryArr.map((node: any) => normalizeAyrshareNode(node)),
+          comments: primaryArr,
           attempts,
         };
       }
