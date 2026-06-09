@@ -1918,8 +1918,13 @@ const PublishedFeed = () => {
                 {(bodyText.trim().split('\n')[0] || r.campaign_name)}
               </h3>
 
-              {/* Row 2: date · page name · platform logo (logo & date swapped) */}
-              <div className={cn('flex items-center gap-2', isHe ? 'flex-row-reverse justify-end' : 'flex-row justify-end')}>
+              {/* Row 2 (single combined row): comment count · date · page · logo · chevron */}
+              <div className={cn('flex items-center gap-2', isHe ? 'flex-row-reverse' : 'flex-row')}>
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="תגובות">
+                  <MessageSquare className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
+                  <span className="tabular-nums">{commentDisplay}</span>
+                </span>
+                <span className="flex-1" />
                 <span className="text-xs text-muted-foreground whitespace-nowrap">{dateStr}</span>
                 <span className="text-xs text-muted-foreground">·</span>
                 <span className="text-sm font-semibold text-foreground truncate">{pageLabel}</span>
@@ -1932,16 +1937,6 @@ const PublishedFeed = () => {
                     <span className="text-[10px] font-bold uppercase">{r.channel?.slice(0, 2)}</span>
                   )}
                 </span>
-              </div>
-
-              {/* Row 3: comment counter only (likes/shares pills removed) + expand chevron */}
-              <div className={cn('flex items-center justify-between gap-3', isHe ? 'flex-row' : 'flex-row-reverse')}>
-                <div className={cn('flex items-center gap-3 text-xs text-muted-foreground flex-wrap', isHe ? 'flex-row-reverse' : 'flex-row')}>
-                  <span className="inline-flex items-center gap-1" title="תגובות">
-                    <MessageSquare className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
-                    <span className="tabular-nums">{commentDisplay}</span>
-                  </span>
-                </div>
                 <button onClick={(e) => { e.stopPropagation(); setExpanded((s) => ({ ...s, [r.id]: !isOpen })); }}
                         className="rounded-md p-1 text-muted-foreground hover:bg-muted shrink-0"
                         aria-label={isOpen ? 'כווץ' : 'הרחב'}>
