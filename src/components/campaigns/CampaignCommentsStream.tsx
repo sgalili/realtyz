@@ -337,14 +337,13 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
   // provider_message_id. The realtime subscription on campaign_logs then
   // patches the counter UI live without a browser reload.
   const forceRefresh = async ({ manual = false }: { manual?: boolean } = {}) => {
-    // Throttle per-campaign: Ayrshare caps at 300 calls / 5min per profile.
-    // Skip background refreshes that fire within 90s of the previous one.
-    const now = Date.now();
-    const last = REFRESH_LOCK.get(campaign.id) ?? 0;
-    if (!manual && now - last < 90_000) {
+    // 15-minute cache lock per postId — protects Udi's Ayrshare profile
+    // from suspension if the user spam-toggles cards or the page re-mounts.
+    // Manual refreshes always bypass.
+    if (isProviderFetchLocked(postIds, { manual })) {
       return;
     }
-    REFRESH_LOCK.set(campaign.id, now);
+    stampProviderFetch(postIds);
 
     if (manual) setManualRefreshing(true);
     try {
