@@ -55,6 +55,15 @@ export type ListingFact = {
   property_title: string;
   asking_price: number | null;
   slug?: string | null;
+  city?: string | null;
+  neighborhood?: string | null;
+  address?: string | null;
+  rooms?: number | null;
+  sqm?: number | null;
+  floor?: number | null;
+  parking?: boolean | null;
+  elevator?: boolean | null;
+  features?: any;
 };
 
 export type FactViolation = {
