@@ -108,6 +108,7 @@ type Props = {
   };
   commentCount?: number;
   onLiveCountResolved?: (campaignId: string, count: number) => void;
+  onCountersResolved?: (campaignId: string, counters: { like_count?: number; share_count?: number; comment_count?: number }) => void;
 };
 
 
