@@ -184,6 +184,23 @@ const writeCache = (campaignId: string, rows: EngagementRow[], postIds: string[]
 // across page reloads inside the same browser session.
 const PROVIDER_FETCH_LOCK_MS = 15 * 60 * 1000; // 15 minutes
 const providerLockKey = (pid: string) => `realtyz_fb_comments_lock_${pid}`;
+const purgeEmptyPerPostCacheBlocks = (pids: string[]): boolean => {
+  let purged = false;
+  for (const pid of pids) {
+    if (!pid) continue;
+    try {
+      const perPostKey = `realtyz_fb_comments_cache_${pid}`;
+      const raw = localStorage.getItem(perPostKey);
+      if (!raw) continue;
+      const parsed = JSON.parse(raw);
+      if (!Array.isArray(parsed) || parsed.length !== 0) continue;
+      localStorage.removeItem(perPostKey);
+      localStorage.removeItem(providerLockKey(pid));
+      purged = true;
+    } catch { /* ignore malformed cache */ }
+  }
+  return purged;
+};
 const isProviderFetchLocked = (pids: string[], { manual = false }: { manual?: boolean } = {}): boolean => {
   if (manual) return false; // explicit user refresh always bypasses the lock
   if (!pids.length) return false;
@@ -414,9 +431,15 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
     // background interval — only this hard-mount call and explicit manual
     // refresh ever hit the provider, to avoid Ayrshare suspension flags.
     (async () => {
+      const hadEmptyPerPostCache = purgeEmptyPerPostCacheBlocks(postIds);
+      if (hadEmptyPerPostCache) {
+        COMMENT_CACHE.delete(campaign.id);
+        try { sessionStorage.removeItem(cacheKey(campaign.id)); } catch { /* quota */ }
+        setRows(null);
+      }
       await load();
       if (postIds.length > 0) {
-        await forceRefresh({ manual: false });
+        await forceRefresh({ manual: hadEmptyPerPostCache });
         await fetchRows();
       }
     })();
