@@ -108,7 +108,11 @@ type Props = {
   };
   commentCount?: number;
   onLiveCountResolved?: (campaignId: string, count: number) => void;
-  onCountersResolved?: (campaignId: string, counters: { like_count?: number; share_count?: number; comment_count?: number }) => void;
+  onCountersResolved?: (campaignId: string, counters: { like_count?: number; share_count?: number; comment_count?: number; force?: boolean }) => void;
+  /** Bump to trigger a manual refresh from a parent-owned button. */
+  refreshSignal?: number;
+  /** Hide the internal header (button + title) — used when parent renders its own controls. */
+  hideHeader?: boolean;
 };
 
 
@@ -270,7 +274,7 @@ const writeDraftCache = (campaignId: string, map: DraftMap) => {
   try { sessionStorage.setItem(draftKey(campaignId), JSON.stringify(map)); } catch { /* quota */ }
 };
 
-export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveCountResolved, onCountersResolved }: Props) {
+export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveCountResolved, onCountersResolved, refreshSignal, hideHeader }: Props) {
   const cached = readCache(campaign.id);
   const [rows, setRows] = useState<EngagementRow[] | null>(cached);
 
@@ -494,6 +498,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
             like_count: max("like_count"),
             share_count: max("share_count"),
             comment_count: max("comment_count"),
+            force: true,
           });
         } catch (counterErr) {
           console.warn("[CampaignCommentsStream] counter bubble-up failed", counterErr);
@@ -508,6 +513,19 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
       setManualRefreshing(false);
     }
   };
+
+  // Parent-driven manual refresh: bump refreshSignal to trigger the same
+  // forceRefresh path used by the (now hidden) internal button.
+  const lastHandledSignalRef = useRef<number | undefined>(refreshSignal);
+  useEffect(() => {
+    if (refreshSignal === undefined) return;
+    if (lastHandledSignalRef.current === refreshSignal) return;
+    lastHandledSignalRef.current = refreshSignal;
+    void forceRefresh({ manual: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshSignal]);
+
+
 
 
   useEffect(() => {
@@ -973,23 +991,14 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
 
 
   return (
-    <div className="space-y-2 text-right">
-      <div className="flex items-center justify-between">
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => forceRefresh({ manual: true })}
-          disabled={loading || manualRefreshing}
-          className="h-7 px-2 text-xs"
-          aria-label="רענן נתונים חיים"
-        >
-          <RefreshCw className={cn("ml-1 h-3.5 w-3.5", manualRefreshing && "animate-spin")} />
-          רענן תגובות
-        </Button>
-        <p className="text-xs font-semibold text-foreground">
-          תגובות לקמפיין ({rows?.length ?? 0})
-        </p>
-      </div>
+    <div className="space-y-2 text-right" dir="rtl">
+      {!hideHeader && (
+        <div className="flex items-center justify-start">
+          <p className="text-xs font-semibold text-foreground">
+            תגובות לקמפיין ({rows?.length ?? 0})
+          </p>
+        </div>
+      )}
 
       {fbSessionExpired && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2.5 text-xs text-amber-700 dark:text-amber-400 flex items-start gap-2">

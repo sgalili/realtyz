@@ -693,17 +693,27 @@ Deno.serve(async (req) => {
             .eq("external_post_id", nativePostId);
           if (typeof count === "number") dbCommentCount = count;
         } catch { /* non-fatal */ }
-        const liveComments = Math.max(
-          typeof outer.comments === "number" ? outer.comments : 0,
-          treeCount,
-          dbCommentCount,
-        );
+        // On manual force-refresh, bypass the Math.max floor and overwrite
+        // directly with the freshest provider integers — this breaks the
+        // deadlock where a previously-stored value blocked the new healthy
+        // profile context from replacing legacy cached rows.
+        const liveComments = forceRefresh
+          ? (typeof outer.comments === "number"
+              ? outer.comments
+              : Math.max(treeCount, dbCommentCount))
+          : Math.max(
+              typeof outer.comments === "number" ? outer.comments : 0,
+              treeCount,
+              dbCommentCount,
+            );
         const patch: Record<string, unknown> = {
           comment_count: liveComments,
           metrics_updated_at: new Date().toISOString(),
         };
         if (typeof outer.likes === "number") patch.like_count = outer.likes;
+        else if (forceRefresh) patch.like_count = 0;
         if (typeof outer.shares === "number") patch.share_count = outer.shares;
+        else if (forceRefresh) patch.share_count = 0;
         await admin
           .from("campaign_logs")
           .update(patch)
