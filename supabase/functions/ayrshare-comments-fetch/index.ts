@@ -681,7 +681,23 @@ Deno.serve(async (req) => {
       for (const [nativePostId, list] of Object.entries(results)) {
         const treeCount = Array.isArray(list) ? (list as any[]).length : 0;
         const outer = metricsByPostId.get(nativePostId) ?? { likes: null, shares: null, comments: null };
-        const liveComments = typeof outer.comments === "number" ? Math.max(outer.comments, treeCount) : treeCount;
+        // Floor with the locally-persisted engagement_events count so a
+        // transient empty Ayrshare payload can never collapse a real count to 0.
+        let dbCommentCount = 0;
+        try {
+          const { count } = await admin
+            .from("engagement_events")
+            .select("id", { count: "exact", head: true })
+            .eq("user_id", userId)
+            .eq("is_archived", false)
+            .eq("external_post_id", nativePostId);
+          if (typeof count === "number") dbCommentCount = count;
+        } catch { /* non-fatal */ }
+        const liveComments = Math.max(
+          typeof outer.comments === "number" ? outer.comments : 0,
+          treeCount,
+          dbCommentCount,
+        );
         const patch: Record<string, unknown> = {
           comment_count: liveComments,
           metrics_updated_at: new Date().toISOString(),

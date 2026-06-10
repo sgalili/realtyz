@@ -1908,7 +1908,13 @@ const PublishedFeed = () => {
         const hasMetrics = !!r.metrics_updated_at;
         const fmt = (v: number | null | undefined) => (hasMetrics && typeof v === 'number' ? v : '–');
         const liveCount = liveCommentCounts[r.id];
-        const commentDisplay = typeof liveCount === 'number' ? liveCount : fmt(r.comment_count);
+        // Badge maps directly to the reactive DB row (like_count/share_count/
+        // comment_count); the session live-count only ever raises it — a stale
+        // cached 0 can never mask a fresh DB value.
+        const dbComments = typeof r.comment_count === 'number' ? r.comment_count : 0;
+        const commentDisplay = typeof liveCount === 'number'
+          ? Math.max(liveCount, dbComments)
+          : fmt(r.comment_count);
 
         // Strip Ayrshare workspace decorations ("Realtyz Workspace - … - 6200",
         // refIds, and profile keys) so the header shows only the human FB page name.
@@ -2005,7 +2011,7 @@ const PublishedFeed = () => {
                     <CampaignCommentsStream
                       userId={userId}
                       campaign={r}
-                      commentCount={liveCount ?? (r.comment_count ?? 0)}
+                      commentCount={typeof liveCount === 'number' ? Math.max(liveCount, dbComments) : dbComments}
                       onLiveCountResolved={updateLiveCount}
                       onCountersResolved={(campaignId, counters) => {
                         setRows((prev) => prev?.map((row) => row.id === campaignId ? {
