@@ -1524,6 +1524,21 @@ const PublishedFeed = () => {
     });
   };
 
+  // Per-card refresh-signal counter. Bumping triggers a manual refresh inside
+  // CampaignCommentsStream via its refreshSignal prop.
+  const [refreshSignals, setRefreshSignals] = useState<Record<string, number>>({});
+  const bumpRefresh = (campaignId: string) => {
+    // Purge any stale per-campaign cache blocks before the child fires its
+    // network cycle, so the new Ayrshare integers can land without contention.
+    try {
+      sessionStorage.removeItem(`realtyz.comments.${campaignId}`);
+      sessionStorage.removeItem(`realtyz.live_comment_counts`);
+    } catch { /* quota */ }
+    setRefreshSignals((prev) => ({ ...prev, [campaignId]: (prev[campaignId] ?? 0) + 1 }));
+  };
+
+
+
   const [activeChannel, setActiveChannel] = useState<string>('all');
   const [fbPageName, setFbPageName] = useState<string | null>(null);
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(new Set());
