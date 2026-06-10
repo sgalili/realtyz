@@ -514,6 +514,19 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
     }
   };
 
+  // Parent-driven manual refresh: bump refreshSignal to trigger the same
+  // forceRefresh path used by the (now hidden) internal button.
+  const lastHandledSignalRef = useRef<number | undefined>(refreshSignal);
+  useEffect(() => {
+    if (refreshSignal === undefined) return;
+    if (lastHandledSignalRef.current === refreshSignal) return;
+    lastHandledSignalRef.current = refreshSignal;
+    void forceRefresh({ manual: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [refreshSignal]);
+
+
+
 
   useEffect(() => {
     // SAFETY: load cached DB rows only — NEVER auto-hit Ayrshare on mount.
