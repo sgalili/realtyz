@@ -2017,16 +2017,21 @@ const PublishedFeed = () => {
                   {bodyText || <span className="text-muted-foreground">אין תוכן הודעה</span>}
                 </div>
                 <div className="flex items-center justify-between gap-2 px-4 pb-4" dir="rtl" onClick={(e) => e.stopPropagation()}>
-                  <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
-                          className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
-                    <Trash2 className="ml-1 h-4 w-4" />
-                    מחק פוסט
-                  </Button>
                   <Button variant="outline" size="sm"
                           disabled={!postUrl}
                           onClick={(e) => { e.stopPropagation(); postUrl && window.open(postUrl, '_blank', 'noopener,noreferrer'); }}>
                     <ExternalLink className="ml-1 h-4 w-4" />
                     פתח פוסט
+                  </Button>
+                  <Button variant="outline" size="sm"
+                          onClick={(e) => { e.stopPropagation(); bumpRefresh(r.id); }}>
+                    <RefreshCw className="ml-1 h-4 w-4" />
+                    רענן תגובות
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
+                          className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
+                    <Trash2 className="ml-1 h-4 w-4" />
+                    מחק פוסט
                   </Button>
                 </div>
                 <div className="border-t border-border bg-muted/30 px-4 py-3" onClick={(e) => e.stopPropagation()}>
@@ -2036,18 +2041,21 @@ const PublishedFeed = () => {
                       campaign={r}
                       commentCount={typeof liveCount === 'number' ? Math.max(liveCount, dbComments) : dbComments}
                       onLiveCountResolved={updateLiveCount}
+                      refreshSignal={refreshSignals[r.id] ?? 0}
+                      hideHeader
                       onCountersResolved={(campaignId, counters) => {
-                        // Never let a transient 0 from the refresh payload
-                        // overwrite a stored >0 counter. Always take max.
-                        const max = (a: unknown, b: unknown) => Math.max(
-                          typeof a === 'number' ? a : 0,
-                          typeof b === 'number' ? b : 0,
-                        );
+                        // Force-overwrite when the child explicitly signals a
+                        // manual refresh — that breaks the deadlock where a
+                        // previously stored >0 counter masked the fresh
+                        // healthy-profile integers. Otherwise keep the max so a
+                        // transient 0 can't collapse a real count.
+                        const pickNum = (v: unknown) => (typeof v === 'number' ? v : 0);
+                        const max = (a: unknown, b: unknown) => Math.max(pickNum(a), pickNum(b));
                         setRows((prev) => prev?.map((row) => row.id === campaignId ? {
                           ...row,
-                          like_count: max(counters.like_count, row.like_count),
-                          share_count: max(counters.share_count, row.share_count),
-                          comment_count: max(counters.comment_count, row.comment_count),
+                          like_count: counters.force ? pickNum(counters.like_count) : max(counters.like_count, row.like_count),
+                          share_count: counters.force ? pickNum(counters.share_count) : max(counters.share_count, row.share_count),
+                          comment_count: counters.force ? pickNum(counters.comment_count) : max(counters.comment_count, row.comment_count),
                           metrics_updated_at: new Date().toISOString(),
                         } : row) ?? prev);
                       }}
