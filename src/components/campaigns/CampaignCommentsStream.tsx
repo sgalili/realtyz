@@ -498,6 +498,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
             like_count: max("like_count"),
             share_count: max("share_count"),
             comment_count: max("comment_count"),
+            force: true,
           });
         } catch (counterErr) {
           console.warn("[CampaignCommentsStream] counter bubble-up failed", counterErr);
