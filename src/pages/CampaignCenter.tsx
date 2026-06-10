@@ -2022,11 +2022,17 @@ const PublishedFeed = () => {
                       commentCount={typeof liveCount === 'number' ? Math.max(liveCount, dbComments) : dbComments}
                       onLiveCountResolved={updateLiveCount}
                       onCountersResolved={(campaignId, counters) => {
+                        // Never let a transient 0 from the refresh payload
+                        // overwrite a stored >0 counter. Always take max.
+                        const max = (a: unknown, b: unknown) => Math.max(
+                          typeof a === 'number' ? a : 0,
+                          typeof b === 'number' ? b : 0,
+                        );
                         setRows((prev) => prev?.map((row) => row.id === campaignId ? {
                           ...row,
-                          like_count: counters.like_count ?? row.like_count,
-                          share_count: counters.share_count ?? row.share_count,
-                          comment_count: counters.comment_count ?? row.comment_count,
+                          like_count: max(counters.like_count, row.like_count),
+                          share_count: max(counters.share_count, row.share_count),
+                          comment_count: max(counters.comment_count, row.comment_count),
                           metrics_updated_at: new Date().toISOString(),
                         } : row) ?? prev);
                       }}
