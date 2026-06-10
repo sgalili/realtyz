@@ -2011,7 +2011,7 @@ const PublishedFeed = () => {
                     <CampaignCommentsStream
                       userId={userId}
                       campaign={r}
-                      commentCount={liveCount ?? (r.comment_count ?? 0)}
+                      commentCount={typeof liveCount === 'number' ? Math.max(liveCount, dbComments) : dbComments}
                       onLiveCountResolved={updateLiveCount}
                       onCountersResolved={(campaignId, counters) => {
                         setRows((prev) => prev?.map((row) => row.id === campaignId ? {
