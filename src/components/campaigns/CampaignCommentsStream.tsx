@@ -991,23 +991,14 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
 
 
   return (
-    <div className="space-y-2 text-right">
-      <div className="flex items-center justify-between">
-        <Button
-          size="sm"
-          variant="ghost"
-          onClick={() => forceRefresh({ manual: true })}
-          disabled={loading || manualRefreshing}
-          className="h-7 px-2 text-xs"
-          aria-label="רענן נתונים חיים"
-        >
-          <RefreshCw className={cn("ml-1 h-3.5 w-3.5", manualRefreshing && "animate-spin")} />
-          רענן תגובות
-        </Button>
-        <p className="text-xs font-semibold text-foreground">
-          תגובות לקמפיין ({rows?.length ?? 0})
-        </p>
-      </div>
+    <div className="space-y-2 text-right" dir="rtl">
+      {!hideHeader && (
+        <div className="flex items-center justify-start">
+          <p className="text-xs font-semibold text-foreground">
+            תגובות לקמפיין ({rows?.length ?? 0})
+          </p>
+        </div>
+      )}
 
       {fbSessionExpired && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2.5 text-xs text-amber-700 dark:text-amber-400 flex items-start gap-2">
