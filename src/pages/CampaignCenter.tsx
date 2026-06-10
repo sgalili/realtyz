@@ -1721,13 +1721,21 @@ const PublishedFeed = () => {
           const updated: any = payload.new;
           setRows((prev) => prev?.map((r) => {
             if (r.id !== updated.id && !campaignMatchesExternalPost(r, updated.provider_message_id)) return r;
+            // Protect-from-zero: a transient 0 from the provider must never
+            // mask a previously stored >0 counter. Always keep the max of
+            // (incoming, existing) for the 3 root engagement fields.
+            const keepMax = (incoming: unknown, existing: unknown) => {
+              const a = typeof incoming === 'number' ? incoming : 0;
+              const b = typeof existing === 'number' ? existing : 0;
+              return Math.max(a, b);
+            };
             return {
               ...r,
               provider_message_id: r.provider_message_id || updated.provider_message_id,
-              like_count: updated.like_count ?? r.like_count,
-              comment_count: updated.comment_count ?? r.comment_count,
-              share_count: updated.share_count ?? r.share_count,
-              view_count: updated.view_count ?? r.view_count,
+              like_count: keepMax(updated.like_count, r.like_count),
+              comment_count: keepMax(updated.comment_count, r.comment_count),
+              share_count: keepMax(updated.share_count, r.share_count),
+              view_count: keepMax(updated.view_count, r.view_count),
               metrics_updated_at: updated.metrics_updated_at ?? r.metrics_updated_at,
             };
           }) ?? prev);
