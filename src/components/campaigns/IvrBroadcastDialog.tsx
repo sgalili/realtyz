@@ -14,11 +14,8 @@ import { formatPhoneDisplay } from '@/lib/formatPhone';
 type IvrLead = { id: string; full_name: string | null; phone: string | null; city?: string | null };
 type ClonedVoice = { id: string; name: string; voice_id: string; preview_url?: string | null };
 
-const PRESET_VOICES: { id: string; label: string; voice_id: string }[] = [
-  { id: 'matilda', label: 'נציגת מכירות דיגיטלית', voice_id: 'XrExE9yKIg1WjnnlVkGX' },
-  { id: 'sarah',   label: 'שירות דיירים',         voice_id: 'EXAVITQu4vr4xnSDxMaL' },
-  { id: 'charlie', label: 'נציג מתווך (גבר)',    voice_id: 'IKne3meq5aSn9XLyUdCD' },
-];
+const UDI_VOICE = { id: 'udi', label: 'אודי ויטמן', voice_id: '4eohDAy1kTS18Cnf0HiN' };
+const PRESET_VOICES: { id: string; label: string; voice_id: string }[] = [UDI_VOICE];
 
 type SourceType = 'tts' | 'recording' | 'upload';
 type AudienceMode = 'all' | 'manual' | 'csv' | 'paste';
