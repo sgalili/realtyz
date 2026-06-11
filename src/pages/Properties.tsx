@@ -654,6 +654,9 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
   const [editTarget, setEditTarget] = useState<HomelyProperty | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<HomelyProperty | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const queryClient = useQueryClient();
   const extraKeys = useMemo(() => {
     const seen = new Set<string>();
@@ -683,7 +686,21 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
     }
   }), [properties, sort]);
 
+  const mineRows = useMemo(() => sorted.filter((p) => p.source === 'mine'), [sorted]);
+  const allMineSelected = mineRows.length > 0 && mineRows.every((p) => selectedIds.has(p.id));
+  const someMineSelected = mineRows.some((p) => selectedIds.has(p.id));
 
+  const toggleAll = () => {
+    if (allMineSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(mineRows.map((p) => p.id)));
+  };
+  const toggleOne = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -696,6 +713,22 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
     }
     toast.success('הנכס נמחק');
     setDeleteTarget(null);
+    queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+  };
+
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setBulkDeleting(true);
+    const { error } = await supabase.from('listings').delete().in('id', ids);
+    setBulkDeleting(false);
+    if (error) {
+      toast.error('מחיקה מרובה נכשלה: ' + error.message);
+      return;
+    }
+    toast.success(`${ids.length} נכסים נמחקו`);
+    setSelectedIds(new Set());
+    setBulkDeleteOpen(false);
     queryClient.invalidateQueries({ queryKey: ['properties-search'] });
   };
 
