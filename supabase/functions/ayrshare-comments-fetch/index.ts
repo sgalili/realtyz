@@ -539,6 +539,9 @@ Deno.serve(async (req) => {
                 root?.analytics?.[platformKey] ?? root?.[platformKey]?.analytics ?? root?.[platformKey] ?? null;
               const arrayPick = (val: any) => Array.isArray(val) && val.length ? val[0] : val;
               const block = arrayPick(platformBlock) || {};
+              try {
+                console.log("[ayrshare-comments-fetch] analytics block dump", JSON.stringify(block).slice(0, 1500));
+              } catch { /* noop */ }
               const robustExtract = extractAnalyticsMetrics(analytics.payload, platformKey);
               // TOTAL REACTIONS, not just "Like": Facebook's UI like badge
               // counts every reaction type (like + love + wow + ...). Sum the
