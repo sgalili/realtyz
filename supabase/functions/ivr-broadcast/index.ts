@@ -101,7 +101,7 @@ Deno.serve(async (req) => {
         const text = String(body.text ?? "").trim();
         const voiceId = String(body.voice_id ?? "EXAVITQu4vr4xnSDxMaL");
         if (!text) return json({ error: "missing_text" }, 400);
-        const elevenKey = await resolveElevenLabsKey(admin);
+        const elevenKey = await resolveElevenLabsKey(admin, user.id);
         if (!elevenKey) return json({ error: "missing_elevenlabs_api_key" }, 500);
         bytes = await generateTts(text, voiceId, elevenKey);
       } else if (body.audio_b64) {
