@@ -23,11 +23,27 @@ function normE164(raw: string): string {
   return t.startsWith("+") ? t : "+" + d;
 }
 
-async function resolveElevenLabsKey(admin: ReturnType<typeof createClient>): Promise<string | null> {
-  const envKey = Deno.env.get("ELEVENLABS_API_KEY");
-  if (envKey && envKey.trim()) return envKey.trim();
-  // DB fallback: api_configs row stored by the broker (Settings → API).
-  // We accept any common spelling variant so the lookup is resilient.
+async function resolveElevenLabsKey(
+  admin: ReturnType<typeof createClient>,
+  userId?: string | null,
+): Promise<string | null> {
+  // 1. Environment - try every common naming variation
+  for (const k of ["ELEVENLABS_API_KEY", "ELEVEN_LABS_API_KEY", "ELEVENLABS_KEY", "XI_API_KEY"]) {
+    const v = Deno.env.get(k);
+    if (v && v.trim()) return v.trim();
+  }
+  // 2. Per-user creds (user_api_keys) — broker-specific override
+  if (userId) {
+    const { data: uRows } = await admin
+      .from("user_api_keys")
+      .select("service_name, api_key")
+      .eq("user_id", userId);
+    const uRow = (uRows ?? []).find((r: any) =>
+      r.api_key && /eleven/i.test(String(r.service_name ?? ""))
+    );
+    if (uRow?.api_key) return String(uRow.api_key).trim();
+  }
+  // 3. Global api_configs row
   const { data } = await admin
     .from("api_configs")
     .select("service_name, api_key, is_active")
@@ -85,7 +101,7 @@ Deno.serve(async (req) => {
         const text = String(body.text ?? "").trim();
         const voiceId = String(body.voice_id ?? "EXAVITQu4vr4xnSDxMaL");
         if (!text) return json({ error: "missing_text" }, 400);
-        const elevenKey = await resolveElevenLabsKey(admin);
+        const elevenKey = await resolveElevenLabsKey(admin, user.id);
         if (!elevenKey) return json({ error: "missing_elevenlabs_api_key" }, 500);
         bytes = await generateTts(text, voiceId, elevenKey);
       } else if (body.audio_b64) {

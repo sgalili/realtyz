@@ -116,18 +116,56 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     })();
   }, [open]);
 
-  const allAgents = useMemo(
-    () => [
-      ...clonedVoices.map((v) => ({ id: `cv:${v.id}`, label: v.name, voice_id: v.voice_id })),
-      ...PRESET_VOICES,
-    ],
-    [clonedVoices],
-  );
+  const allAgents = useMemo(() => {
+    const seen = new Set<string>();
+    const out: { id: string; label: string; voice_id: string; preview_url?: string | null }[] = [];
+    for (const v of clonedVoices) {
+      if (!v.voice_id || seen.has(v.voice_id)) continue;
+      seen.add(v.voice_id);
+      out.push({ id: `cv:${v.id}`, label: v.name, voice_id: v.voice_id, preview_url: v.preview_url ?? null });
+    }
+    for (const p of PRESET_VOICES) {
+      if (seen.has(p.voice_id)) continue;
+      seen.add(p.voice_id);
+      out.push({ id: p.id, label: p.label, voice_id: p.voice_id });
+    }
+    return out;
+  }, [clonedVoices]);
 
   const agentLabel = useMemo(
     () => allAgents.find((a) => a.voice_id === agentVoiceId)?.label ?? 'נציג AI',
     [allAgents, agentVoiceId],
   );
+
+  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
+  const [previewingVoiceId, setPreviewingVoiceId] = useState<string | null>(null);
+
+  const playVoicePreview = async (voice: { voice_id: string; label: string; preview_url?: string | null }) => {
+    try {
+      if (previewAudioRef.current) {
+        previewAudioRef.current.pause();
+        previewAudioRef.current = null;
+        if (previewingVoiceId === voice.voice_id) { setPreviewingVoiceId(null); return; }
+      }
+      setPreviewingVoiceId(voice.voice_id);
+      let url = voice.preview_url || null;
+      if (!url) {
+        const { data, error } = await supabase.functions.invoke('ivr-broadcast', {
+          body: { source: 'tts', text: 'שלום, זה קול לדוגמה.', voice_id: voice.voice_id, generate_only: true },
+        });
+        if (error || (data as any)?.error) throw new Error((data as any)?.error ?? error?.message ?? 'preview_failed');
+        url = (data as any)?.audio_url ?? null;
+      }
+      if (!url) throw new Error('no_url');
+      const a = new Audio(url);
+      previewAudioRef.current = a;
+      a.onended = () => { if (previewAudioRef.current === a) { previewAudioRef.current = null; setPreviewingVoiceId(null); } };
+      await a.play();
+    } catch (e: any) {
+      setPreviewingVoiceId(null);
+      toast.error(`תצוגה מקדימה נכשלה: ${e?.message ?? 'שגיאה'}`);
+    }
+  };
 
   const filteredLeads = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -351,11 +389,24 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
                 <label className="text-[13px] font-semibold text-[#0f1b3d] text-right block">בחירת נציג/ת AI להקלטה</label>
                 <Select value={agentVoiceId} onValueChange={setAgentVoiceId} dir="rtl">
                   <SelectTrigger className="w-full h-12 text-right border-[#0f1b3d]/20 rounded-xl bg-background font-semibold">
-                    <SelectValue />
+                    <SelectValue placeholder="נציג AI">{agentLabel}</SelectValue>
                   </SelectTrigger>
                   <SelectContent dir="rtl">
                     {allAgents.map((a) => (
-                      <SelectItem key={a.id} value={a.voice_id}>{a.label}</SelectItem>
+                      <SelectItem key={a.voice_id} value={a.voice_id} className="pe-8">
+                        <div className="flex items-center justify-between gap-2 w-full">
+                          <span className="truncate">{a.label}</span>
+                          <button
+                            type="button"
+                            aria-label="השמע דוגמה"
+                            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); playVoicePreview(a); }}
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-muted text-[#0f1b3d]"
+                          >
+                            {previewingVoiceId === a.voice_id ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                          </button>
+                        </div>
+                      </SelectItem>
                     ))}
                     <div className="border-t border-border/60 my-1" />
                     <button type="button" onClick={() => setAddVoiceOpen(true)}

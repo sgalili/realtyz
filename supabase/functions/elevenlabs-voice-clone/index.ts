@@ -9,9 +9,19 @@ const json = (b: unknown, s = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
-async function resolveElevenLabsKey(admin: ReturnType<typeof createClient>): Promise<string | null> {
-  const envKey = Deno.env.get("ELEVENLABS_API_KEY");
-  if (envKey && envKey.trim()) return envKey.trim();
+async function resolveElevenLabsKey(
+  admin: ReturnType<typeof createClient>,
+  userId?: string | null,
+): Promise<string | null> {
+  for (const k of ["ELEVENLABS_API_KEY", "ELEVEN_LABS_API_KEY", "ELEVENLABS_KEY", "XI_API_KEY"]) {
+    const v = Deno.env.get(k);
+    if (v && v.trim()) return v.trim();
+  }
+  if (userId) {
+    const { data: uRows } = await admin.from("user_api_keys").select("service_name, api_key").eq("user_id", userId);
+    const uRow = (uRows ?? []).find((r: any) => r.api_key && /eleven/i.test(String(r.service_name ?? "")));
+    if (uRow?.api_key) return String(uRow.api_key).trim();
+  }
   const { data } = await admin.from("api_configs").select("service_name, api_key").ilike("service_name", "%eleven%");
   const row = (data ?? []).find((r: any) => r.api_key && String(r.api_key).trim().length > 0);
   return row?.api_key?.trim() ?? null;
@@ -36,7 +46,7 @@ Deno.serve(async (req) => {
     const file = form.get("file") as File | null;
     if (!name || !file) return json({ error: "missing_name_or_file" }, 400);
 
-    const apiKey = await resolveElevenLabsKey(admin);
+    const apiKey = await resolveElevenLabsKey(admin, user.id);
     if (!apiKey) return json({ error: "missing_elevenlabs_api_key" }, 500);
 
     const outForm = new FormData();
