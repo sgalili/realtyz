@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
     const file = form.get("file") as File | null;
     if (!name || !file) return json({ error: "missing_name_or_file" }, 400);
 
-    const apiKey = await resolveElevenLabsKey(admin);
+    const apiKey = await resolveElevenLabsKey(admin, user.id);
     if (!apiKey) return json({ error: "missing_elevenlabs_api_key" }, 500);
 
     const outForm = new FormData();
