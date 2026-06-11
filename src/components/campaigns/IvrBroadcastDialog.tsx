@@ -389,11 +389,24 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
                 <label className="text-[13px] font-semibold text-[#0f1b3d] text-right block">בחירת נציג/ת AI להקלטה</label>
                 <Select value={agentVoiceId} onValueChange={setAgentVoiceId} dir="rtl">
                   <SelectTrigger className="w-full h-12 text-right border-[#0f1b3d]/20 rounded-xl bg-background font-semibold">
-                    <SelectValue />
+                    <SelectValue placeholder="נציג AI">{agentLabel}</SelectValue>
                   </SelectTrigger>
                   <SelectContent dir="rtl">
                     {allAgents.map((a) => (
-                      <SelectItem key={a.id} value={a.voice_id}>{a.label}</SelectItem>
+                      <SelectItem key={a.voice_id} value={a.voice_id} className="pe-8">
+                        <div className="flex items-center justify-between gap-2 w-full">
+                          <span className="truncate">{a.label}</span>
+                          <button
+                            type="button"
+                            aria-label="השמע דוגמה"
+                            onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); playVoicePreview(a); }}
+                            className="inline-flex h-6 w-6 items-center justify-center rounded-md hover:bg-muted text-[#0f1b3d]"
+                          >
+                            {previewingVoiceId === a.voice_id ? <Pause className="h-3.5 w-3.5" /> : <Play className="h-3.5 w-3.5" />}
+                          </button>
+                        </div>
+                      </SelectItem>
                     ))}
                     <div className="border-t border-border/60 my-1" />
                     <button type="button" onClick={() => setAddVoiceOpen(true)}
