@@ -335,6 +335,14 @@ export default function AiDialer() {
           </div>
         )}
       </div>
+      <AddVoiceDialog
+        open={addVoiceOpen}
+        onClose={() => setAddVoiceOpen(false)}
+        onAdded={(v) => {
+          qc.invalidateQueries({ queryKey: ["dialer-voices"] });
+          setVoiceId(v.voice_id);
+        }}
+      />
     </div>
   );
 }
