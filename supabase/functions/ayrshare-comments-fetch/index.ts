@@ -250,6 +250,62 @@ Deno.serve(async (req) => {
       return { ok: res.ok, status: res.status, payload, text };
     };
 
+    // POST /api/analytics/post — returns the OUTER post's like/share/comment
+    // totals (the /comments endpoint only returns the comment thread, never
+    // share counts). We call this concurrently with the comments fetch and
+    // merge whichever numbers come back. Failures are non-fatal.
+    const fetchAyrsharePostAnalytics = async (id: string, platform: string, useSearchPlatformId = false) => {
+      try {
+        const body: Record<string, unknown> = { id, platforms: [platform] };
+        if (useSearchPlatformId) body.searchPlatformId = true;
+        const res = await fetch(`${AYR_BASE}/analytics/post`, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${AYR_KEY}`,
+            "Profile-Key": profileKey,
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
+          },
+          body: JSON.stringify(body),
+        });
+        const text = await res.text();
+        let payload: any = {};
+        try { payload = text ? JSON.parse(text) : {}; } catch { payload = { rawText: text }; }
+        return { ok: res.ok, status: res.status, payload };
+      } catch (e) {
+        return { ok: false, status: 0, payload: { message: e instanceof Error ? e.message : String(e) } };
+      }
+    };
+
+    // Extracts numeric like/share/comment counts from the /analytics/post
+    // shape, which differs from /comments: numbers live under
+    // payload.analytics.<platform> or payload.<platform>.analytics with keys
+    // like reactionsCount / shareCount / commentsCount / likeCount.
+    const extractAnalyticsMetrics = (payload: any, platformKey: string) => {
+      const candidates: any[] = [];
+      const push = (n: any) => { if (n && typeof n === "object") candidates.push(n); };
+      push(payload);
+      push(payload?.analytics);
+      push(payload?.[platformKey]);
+      push(payload?.[platformKey]?.analytics);
+      push(payload?.analytics?.[platformKey]);
+      push(payload?.post);
+      push(payload?.post?.analytics);
+      const pickNum = (...keys: string[]): number | null => {
+        for (const src of candidates) for (const k of keys) {
+          const v = src?.[k];
+          if (typeof v === "number" && Number.isFinite(v)) return v;
+          if (typeof v === "string" && v.trim() && !Number.isNaN(Number(v))) return Number(v);
+        }
+        return null;
+      };
+      return {
+        likes: pickNum("likeCount", "likes", "like_count", "reactionsCount", "reactions", "reactions_count"),
+        shares: pickNum("shareCount", "shares", "share_count", "sharesCount", "shares_count"),
+        comments: pickNum("commentsCount", "comments_count", "commentCount", "comment_count", "totalComments"),
+      };
+    };
+
     // NOTE: we intentionally do NOT normalize Ayrshare nodes into a stripped
     // shape before walking — doing so would discard the nested `replies` /
     // `children` arrays and we'd only flatten the top level. The walker
@@ -408,7 +464,11 @@ Deno.serve(async (req) => {
             return;
           }
 
-          const fetched = await fetchAyrshareTree(target);
+          const looksNativeForAnalytics = /_/.test(target.fetchPostId);
+          const [fetched, analytics] = await Promise.all([
+            fetchAyrshareTree(target),
+            fetchAyrsharePostAnalytics(target.fetchPostId, target.platform, looksNativeForAnalytics),
+          ]);
           const arr: any[] = fetched.comments;
           if (!fetched.ok) {
             const apiError = {
@@ -425,8 +485,23 @@ Deno.serve(async (req) => {
             results[nativePostId] = [];
             return;
           }
-          console.log("[ayrshare-comments-fetch] ayrshare comments success", { stored: nativePostId, resolved: fetched.resolvedPostId, count: arr.length, metrics: fetched.outerMetrics });
-          if (fetched.outerMetrics) metricsByPostId.set(nativePostId, fetched.outerMetrics);
+          // Merge: prefer /analytics/post numbers (authoritative for share &
+          // like counts on the outer post); fall back to anything /comments
+          // happened to return inline.
+          let merged = fetched.outerMetrics ?? { likes: null, shares: null, comments: null };
+          if (analytics?.ok) {
+            const ana = extractAnalyticsMetrics(analytics.payload, target.platform.toLowerCase());
+            merged = {
+              likes: typeof ana.likes === "number" ? ana.likes : merged.likes,
+              shares: typeof ana.shares === "number" ? ana.shares : merged.shares,
+              comments: typeof ana.comments === "number" ? ana.comments : merged.comments,
+            };
+            console.log("[ayrshare-comments-fetch] analytics merged", { stored: nativePostId, analytics: ana, final: merged });
+          } else if (analytics) {
+            console.warn("[ayrshare-comments-fetch] analytics fetch non-ok", { stored: nativePostId, status: analytics.status });
+          }
+          console.log("[ayrshare-comments-fetch] ayrshare comments success", { stored: nativePostId, resolved: fetched.resolvedPostId, count: arr.length, metrics: merged });
+          metricsByPostId.set(nativePostId, merged);
 
           // Flatten N levels of nested replies. Ayrshare/Meta nest child nodes
           // under any of: replies / children / comments / thread / data, so we
