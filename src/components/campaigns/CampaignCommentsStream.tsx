@@ -302,6 +302,53 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
   const [sending, setSending] = useState(false);
   const [sendPublic, setSendPublic] = useState(true);
   const [sendDm, setSendDm] = useState(true);
+  const [finalizingPub, setFinalizingPub] = useState(false);
+  const [finalizingDm, setFinalizingDm] = useState(false);
+
+  const finalizeReplyText = async (channel: "pub" | "dm") => {
+    if (!replyOpen) return;
+    const edited = channel === "pub" ? replyDraft : dmDraft;
+    const original = channel === "pub" ? originalReply : originalDm;
+    if (!edited.trim()) return;
+    const setBusy = channel === "pub" ? setFinalizingPub : setFinalizingDm;
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("finalize-text", {
+        body: {
+          edited_text: edited,
+          original_text: original,
+          context: [
+            `Campaign: ${campaign.campaign_name ?? ""}`,
+            replyOpen.inbound_text ? `Inbound comment: ${replyOpen.inbound_text}` : null,
+            campaign.message_body ? `Original post:\n${campaign.message_body}` : null,
+          ]
+            .filter(Boolean)
+            .join("\n\n"),
+          purpose: channel === "pub" ? "public_comment" : "private_dm",
+        },
+      });
+      if (error) throw error;
+      const finalText = (data as any)?.final_text;
+      if (typeof finalText !== "string" || !finalText.trim()) {
+        throw new Error((data as any)?.error || "לא התקבלה גרסה סופית");
+      }
+      const next = finalText.trim();
+      if (channel === "pub") {
+        setReplyDraft(next);
+        setOriginalReply(next);
+        setDraftCache((prev) => ({ ...prev, [replyOpen.id]: { pub: next, dm: dmDraft } }));
+      } else {
+        setDmDraft(next);
+        setOriginalDm(next);
+        setDraftCache((prev) => ({ ...prev, [replyOpen.id]: { pub: replyDraft, dm: next } }));
+      }
+      toast.success("נוצרה גרסה סופית");
+    } catch (e: any) {
+      toast.error(e?.message || "יצירת גרסה סופית נכשלה");
+    } finally {
+      setBusy(false);
+    }
+  };
   // Per-row cached AI drafts so closing/re-opening the editor does NOT
   // re-invoke the AI — only an explicit refresh-per-card regenerates.
   const [draftCache, setDraftCache] = useState<Record<string, { pub: string; dm: string }>>(() => readDraftCache(campaign.id));
