@@ -432,6 +432,37 @@ const AIContentGenerator = () => {
             <Button onClick={() => updateLogMutation.mutate()} disabled={updateLogMutation.isPending}>
               <Save className="h-4 w-4 ml-2" /> שמור
             </Button>
+            {editContent.trim() &&
+              editingOriginal.trim() &&
+              editContent.trim() !== editingOriginal.trim() && (
+                <Button
+                  variant="secondary"
+                  disabled={editingFinalizing}
+                  onClick={async () => {
+                    setEditingFinalizing(true);
+                    const finalText = await finalizeText({
+                      edited: editContent,
+                      original: editingOriginal,
+                      context: [
+                        editTopic ? `Topic: ${editTopic}` : null,
+                        editPlatform ? `Platform: ${editPlatform}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join('\n'),
+                      purpose: 'social_post',
+                    });
+                    if (finalText) {
+                      setEditContent(finalText);
+                      setEditingOriginal(finalText);
+                      toast.success('נוצרה גרסה סופית');
+                    }
+                    setEditingFinalizing(false);
+                  }}
+                >
+                  <Sparkles className={`h-4 w-4 ml-2 ${editingFinalizing ? 'animate-pulse' : ''}`} />
+                  {editingFinalizing ? 'מנסח...' : 'גרסה סופית'}
+                </Button>
+              )}
             <Button variant="outline" onClick={() => setEditingLog(null)}>ביטול</Button>
           </DialogFooter>
         </DialogContent>
