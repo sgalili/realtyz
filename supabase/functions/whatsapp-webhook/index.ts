@@ -415,6 +415,30 @@ Deno.serve(async (req) => {
   const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
   if (msg.kind === "text" && !isKnowledgeCommand(msg.text)) {
+    // 1. Owner companion router: if the sender is a whitelisted owner/broker,
+    //    try mirroring a dashboard action (generate post, reply to comment, or
+    //    deep-link fallback for heavy UI). Only if no command matched do we
+    //    fall through to the lead-inbox / KB ingestion paths.
+    try {
+      const ownerUserId = await lookupOwnerByPhone(admin, senderPhone);
+      if (ownerUserId) {
+        const routed = await routeOwnerCommand({
+          admin,
+          supabaseUrl: SUPABASE_URL,
+          serviceKey: SERVICE_KEY,
+          senderPhone,
+          ownerUserId,
+          text: msg.text,
+        });
+        if (routed.handled) {
+          await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, routed.reply);
+          return jsonResponse({ ok: true, companion: routed.action, meta: routed.meta ?? null });
+        }
+      }
+    } catch (e) {
+      console.warn("wa-companion-router error:", e instanceof Error ? e.message : e);
+    }
+
     try {
       const result = await handleLeadInboxInbound(
         admin,
