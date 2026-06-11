@@ -60,7 +60,7 @@ async function generateTts(text: string, voiceId: string, apiKey: string): Promi
       headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
       body: JSON.stringify({
         text,
-        model_id: "eleven_multilingual_v3",
+        model_id: "eleven_turbo_v2_5",
         language_code: "he",
         voice_settings: { stability: 0.5, similarity_boost: 0.85, style: 0.3, use_speaker_boost: true },
       }),
