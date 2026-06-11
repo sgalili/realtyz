@@ -357,6 +357,15 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
                     {allAgents.map((a) => (
                       <SelectItem key={a.id} value={a.voice_id}>{a.label}</SelectItem>
                     ))}
+                    <div className="border-t border-border/60 my-1" />
+                    <button type="button" onClick={() => setAddVoiceOpen(true)}
+                      className="w-full flex items-center gap-2 px-2 py-2 text-right text-[13px] font-medium text-[#0f1b3d] hover:bg-muted/50 rounded-md">
+                      <Plus className="h-4 w-4" /> הוסף קול (שיבוט מהיר)
+                    </button>
+                    <button type="button" onClick={() => setAddVoiceOpen(true)}
+                      className="w-full flex items-center gap-2 px-2 py-2 text-right text-[13px] font-medium text-[#0f1b3d] hover:bg-muted/50 rounded-md">
+                      <Plus className="h-4 w-4" /> הוסף קול לפי Voice ID של ElevenLabs
+                    </button>
                   </SelectContent>
                 </Select>
               </div>
