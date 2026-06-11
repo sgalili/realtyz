@@ -210,6 +210,7 @@ const AIContentGenerator = () => {
     setEditTopic(log.topic || '');
     setEditPlatform(log.platform || '');
     setEditContent(log.generated_text || '');
+    setEditingOriginal(log.generated_text || '');
   };
 
   const handleCopy = () => {
