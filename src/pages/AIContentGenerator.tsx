@@ -471,9 +471,11 @@ const AIContentGenerator = () => {
                   disabled={editingFinalizing}
                   onClick={async () => {
                     setEditingFinalizing(true);
+                    const aiBaseline = editingOriginal;
+                    const userEdited = editContent;
                     const finalText = await finalizeText({
-                      edited: editContent,
-                      original: editingOriginal,
+                      edited: userEdited,
+                      original: aiBaseline,
                       context: [
                         editTopic ? `Topic: ${editTopic}` : null,
                         editPlatform ? `Platform: ${editPlatform}` : null,
@@ -485,6 +487,13 @@ const AIContentGenerator = () => {
                     if (finalText) {
                       setEditContent(finalText);
                       setEditingOriginal(finalText);
+                      learnFromEdit({
+                        context: `ai_content_finalize:${editPlatform || 'unknown'}`,
+                        pairs: [
+                          { label: 'user_edit', original: aiBaseline, edited: userEdited },
+                          { label: 'final_polish', original: userEdited, edited: finalText },
+                        ],
+                      });
                       toast.success('נוצרה גרסה סופית');
                     }
                     setEditingFinalizing(false);
