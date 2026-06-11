@@ -27,6 +27,32 @@ Deno.serve(async (req) => {
   const KEY = Deno.env.get("AYRSHARE_API_KEY")?.trim().replace(/^["']|["']$/g, "");
   if (!KEY) return json({ error: "AYRSHARE_API_KEY missing" }, 500);
 
+  // Direct test of the stored workspace profile key.
+  const { data: ws } = await admin
+    .from("workspace_social_profile")
+    .select("ayrshare_profile_key, ayrshare_ref_id")
+    .eq("id", "00000000-0000-0000-0000-000000000001")
+    .maybeSingle();
+  let storedTest: any = null;
+  const storedKey = typeof ws?.ayrshare_profile_key === "string" ? ws.ayrshare_profile_key.trim() : "";
+  if (storedKey) {
+    const u = await fetch("https://api.ayrshare.com/api/user", {
+      headers: { Authorization: `Bearer ${KEY}`, "Profile-Key": storedKey },
+    });
+    const ud = await u.json().catch(() => ({}));
+    storedTest = {
+      status: u.status,
+      refId: ws?.ayrshare_ref_id ?? null,
+      activeSocialAccounts: ud?.activeSocialAccounts ?? null,
+      displayNames: Array.isArray(ud?.displayNames)
+        ? ud.displayNames.map((a: any) => ({ platform: a?.platform, id: a?.id ?? a?.pageId ?? null, displayName: a?.displayName ?? null }))
+        : null,
+      message: ud?.message ?? null,
+      code: ud?.code ?? null,
+    };
+  }
+
+
   const listRes = await fetch("https://api.ayrshare.com/api/profiles", {
     headers: { Authorization: `Bearer ${KEY}` },
   });
