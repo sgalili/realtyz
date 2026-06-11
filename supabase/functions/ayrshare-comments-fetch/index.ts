@@ -539,50 +539,27 @@ Deno.serve(async (req) => {
                 root?.analytics?.[platformKey] ?? root?.[platformKey]?.analytics ?? root?.[platformKey] ?? null;
               const arrayPick = (val: any) => Array.isArray(val) && val.length ? val[0] : val;
               const block = arrayPick(platformBlock) || {};
-              try {
-                console.log("[ayrshare-comments-fetch] reactions dump", JSON.stringify({
-                  blockReactions: block?.reactions ?? null,
-                  rootAnalyticsReactions: root?.analytics?.reactions ?? null,
-                  blockLikeCount: block?.likeCount ?? null,
-                  likedByLen: Array.isArray(block?.likedBy) ? block.likedBy.length : null,
-                }).slice(0, 1200));
-              } catch { /* noop */ }
-              const robustExtract = extractAnalyticsMetrics(analytics.payload, platformKey);
-              // TOTAL REACTIONS, not just "Like": Facebook's UI like badge
-              // counts every reaction type. Sum ONLY known reaction-type keys
-              // (a generic Object.values sum once swallowed impression metrics
-              // and produced a bogus 60). likedBy array length is also a
-              // ground-truth signal when present.
-              const REACTION_KEYS = ["like", "love", "wow", "haha", "sad", "angry", "care", "thankful", "pride"];
-              const sumReactions = (src: any): number | null => {
-                for (const cand of [src?.reactions, src?.reactionsByType, src?.reaction_counts]) {
-                  if (cand && typeof cand === "object" && !Array.isArray(cand)) {
-                    let total = 0; let found = false;
-                    for (const k of REACTION_KEYS) {
-                      const v = (cand as any)[k];
-                      const n = typeof v === "number" ? v : Number(v);
-                      if (Number.isFinite(n)) { total += n; found = true; }
-                    }
-                    if (found) return total;
-                  }
-                  if (typeof cand === "number" && Number.isFinite(cand)) return cand;
-                }
-                for (const k of ["reactionsCount", "totalReactions", "reactions_total"]) {
-                  const v = src?.[k];
-                  if (typeof v === "number" && Number.isFinite(v)) return v;
-                }
-                return null;
+              // LIKE MAPPING (verified live 2026-06-11): Ayrshare's facebook
+              // analytics block returns BOTH `likeCount` (lagging, often 1)
+              // and `reactions: { like, love, ..., total }`. Per spec we map
+              // like_count strictly to analytics.facebook.reactions.like,
+              // falling back to likeCount. We deliberately do NOT sum the
+              // whole reactions object (love/total include off-post share
+              // reactions and previously produced bogus 30/60 values).
+              const reactionsObj: any =
+                (block?.reactions && typeof block.reactions === "object" && !Array.isArray(block.reactions) ? block.reactions : null) ??
+                (root?.analytics?.reactions && typeof root.analytics.reactions === "object" ? root.analytics.reactions : null);
+              const num = (v: any): number | null => {
+                const n = typeof v === "number" ? v : Number(v);
+                return Number.isFinite(n) ? n : null;
               };
-              const reactionsTotal = sumReactions(block) ?? sumReactions(root?.analytics);
-              const likedByCount = Array.isArray(block?.likedBy) ? block.likedBy.length : null;
+              const reactionLike = num(reactionsObj?.like);
               const plainLikes =
                 (typeof block?.likeCount === "number" ? block.likeCount : null) ??
-                robustExtract.likes ??
                 (typeof root?.analytics?.likeCount === "number" ? root.analytics.likeCount : null) ??
                 (typeof root?.metrics?.likes === "number" ? root.metrics.likes : null);
-              const likeCount = reactionsTotal !== null || plainLikes !== null || likedByCount !== null
-                ? Math.max(reactionsTotal ?? 0, plainLikes ?? 0, likedByCount ?? 0)
-                : null;
+              const likeCount = reactionLike ?? plainLikes;
+              const robustExtract = extractAnalyticsMetrics(analytics.payload, platformKey);
               const shareCount =
                 (typeof block?.shareCount === "number" ? block.shareCount : null) ??
                 robustExtract.shares ??
