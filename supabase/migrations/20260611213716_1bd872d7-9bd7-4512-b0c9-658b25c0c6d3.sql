@@ -1,0 +1,1 @@
+UPDATE campaign_logs SET like_count = 1 WHERE provider_message_id = '729806313557785_122135818131020860' AND like_count = 60;
