@@ -25,6 +25,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
+import { routeOwnerCommand, lookupOwnerByPhone } from "../_shared/wa-companion-router.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
