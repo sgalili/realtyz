@@ -490,7 +490,16 @@ Deno.serve(async (req) => {
             return;
           }
           const fetched = commentsSettled.value;
-          const analytics = analyticsSettled.status === "fulfilled" ? analyticsSettled.value : null;
+          let analytics = analyticsSettled.status === "fulfilled" ? analyticsSettled.value : null;
+          // Legacy posts published under a previous (suspended) Ayrshare profile
+          // 404 on their old top-level id. Retry analytics with the native FB
+          // composite id + searchPlatformId, which the live profile CAN resolve.
+          if ((!analytics || !analytics.ok) && target.nativePostId && target.nativePostId !== target.fetchPostId) {
+            try {
+              const retry = await fetchAyrsharePostAnalytics(target.nativePostId, target.platform, true);
+              if (retry?.ok) analytics = retry;
+            } catch { /* non-fatal */ }
+          }
           const arr: any[] = fetched.comments;
           if (!fetched.ok) {
             const apiError = {
