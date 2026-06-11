@@ -62,7 +62,8 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
   const [leads, setLeads] = useState<IvrLead[]>([]);
   const [loadingLeads, setLoadingLeads] = useState(false);
   const [clonedVoices, setClonedVoices] = useState<ClonedVoice[]>([]);
-  const [agentVoiceId, setAgentVoiceId] = useState<string>(PRESET_VOICES[0].voice_id);
+  const [agentVoiceId, setAgentVoiceId] = useState<string>(UDI_VOICE.voice_id);
+  const [addVoiceOpen, setAddVoiceOpen] = useState(false);
 
   // Audience
   const [audience, setAudience] = useState<AudienceMode | ''>('');
