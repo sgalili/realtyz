@@ -3,9 +3,16 @@
 // Campaign Comments Stream (public reply + private DM). Honors the user's
 // edits as authoritative intent, then tightens tone, grammar, flow, and
 // length while preserving the user's facts, numbers, names and language.
+// Injects the workspace's learned-edit lexicon so polish reflects every
+// prior correction the broker has made.
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/cors.ts";
+import { fetchLearnedOverridesBlock } from "../_shared/persona.ts";
 
 const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY") ?? "";
+const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+const SUPABASE_ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY") ?? "";
+const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 type Purpose = "social_post" | "public_comment" | "private_dm" | "generic";
 
