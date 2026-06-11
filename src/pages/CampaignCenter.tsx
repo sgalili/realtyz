@@ -2042,7 +2042,6 @@ const PublishedFeed = () => {
                       commentCount={typeof liveCount === 'number' ? Math.max(liveCount, dbComments) : dbComments}
                       onLiveCountResolved={updateLiveCount}
                       refreshSignal={refreshSignals[r.id] ?? 0}
-                      hideHeader
                       onCountersResolved={(campaignId, counters) => {
                         // Force-overwrite when the child explicitly signals a
                         // manual refresh — that breaks the deadlock where a
