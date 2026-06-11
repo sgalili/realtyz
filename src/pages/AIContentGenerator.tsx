@@ -299,9 +299,44 @@ const AIContentGenerator = () => {
                   </div>
                   <Textarea
                     value={generatedContent}
-                    readOnly
-                    className="min-h-[200px] text-sm bg-muted/30"
+                    onChange={(e) => setGeneratedContent(e.target.value)}
+                    className="min-h-[200px] text-sm"
                   />
+                  {generatedContent.trim() &&
+                    originalGenerated.trim() &&
+                    generatedContent.trim() !== originalGenerated.trim() && (
+                      <div className="flex items-center justify-end">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={finalizing}
+                          onClick={async () => {
+                            setFinalizing(true);
+                            const finalText = await finalizeText({
+                              edited: generatedContent,
+                              original: originalGenerated,
+                              context: [
+                                topic ? `Topic: ${topic}` : null,
+                                platforms.length ? `Platforms: ${platforms.join(', ')}` : null,
+                              ]
+                                .filter(Boolean)
+                                .join('\n'),
+                              purpose: 'social_post',
+                            });
+                            if (finalText) {
+                              setGeneratedContent(finalText);
+                              setOriginalGenerated(finalText);
+                              toast.success('נוצרה גרסה סופית');
+                            }
+                            setFinalizing(false);
+                          }}
+                          className="h-8"
+                        >
+                          <Sparkles className={`h-3.5 w-3.5 ml-1 ${finalizing ? 'animate-pulse' : ''}`} />
+                          {finalizing ? 'מנסח גרסה סופית...' : 'גרסה סופית'}
+                        </Button>
+                      </div>
+                    )}
                 </div>
               </>
             )}
