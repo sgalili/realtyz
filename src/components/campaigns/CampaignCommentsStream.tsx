@@ -278,13 +278,20 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
   const cached = readCache(campaign.id);
   const [rows, setRows] = useState<EngagementRow[] | null>(cached);
 
+  // Latest flattened tree (top-level + nested replies), deduped by id —
+  // this is the authoritative on-screen comment count ("the truth is the tree").
+  const rowsRef = useRef<EngagementRow[] | null>(cached);
+  useEffect(() => { rowsRef.current = rows; }, [rows]);
+  const treeCount = (list: EngagementRow[] | null) =>
+    Math.max(0, list ? new Set(list.map((r) => r.id)).size : 0);
+
   // Surface live row count to the parent so the post-card header counter
   // reflects what the comment tree actually loaded (and matches Meta Graph
   // reality, not a stale Ayrshare analytics number).
   useEffect(() => {
     if (!onLiveCountResolved) return;
     if (!Array.isArray(rows)) return;
-    onLiveCountResolved(campaign.id, rows.length);
+    onLiveCountResolved(campaign.id, treeCount(rows));
   }, [rows, campaign.id, onLiveCountResolved]);
 
   const [loading, setLoading] = useState(false);
