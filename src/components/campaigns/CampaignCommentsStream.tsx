@@ -1111,9 +1111,9 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
   return (
     <div className="space-y-2 text-right" dir="rtl">
       {!hideHeader && (
-        <div className="flex items-center justify-start">
+        <div className="flex items-center justify-end">
           <p className="text-xs font-semibold text-foreground">
-            תגובות לקמפיין ({rows?.length ?? 0})
+            תגובות לקמפיין ({Math.max(0, rows ? new Set(rows.map((r) => r.id)).size : 0)})
           </p>
         </div>
       )}
