@@ -312,9 +312,11 @@ const AIContentGenerator = () => {
                           disabled={finalizing}
                           onClick={async () => {
                             setFinalizing(true);
+                            const aiBaseline = originalGenerated;
+                            const userEdited = generatedContent;
                             const finalText = await finalizeText({
-                              edited: generatedContent,
-                              original: originalGenerated,
+                              edited: userEdited,
+                              original: aiBaseline,
                               context: [
                                 topic ? `Topic: ${topic}` : null,
                                 platforms.length ? `Platforms: ${platforms.join(', ')}` : null,
@@ -326,6 +328,35 @@ const AIContentGenerator = () => {
                             if (finalText) {
                               setGeneratedContent(finalText);
                               setOriginalGenerated(finalText);
+                              // Active-learning: feed both the human edit and
+                              // the final polish into the lexicon so future
+                              // posts inherit Udi's corrections automatically.
+                              learnFromEdit({
+                                context: `ai_content_finalize:${platforms.join(',') || 'unknown'}`,
+                                pairs: [
+                                  { label: 'user_edit', original: aiBaseline, edited: userEdited },
+                                  { label: 'final_polish', original: userEdited, edited: finalText },
+                                ],
+                              });
+                              // Persist the polished version onto the most
+                              // recent ai_content_logs row so the saved
+                              // history reflects what Udi actually approved.
+                              try {
+                                const { data: latest } = await supabase
+                                  .from('ai_content_logs')
+                                  .select('id')
+                                  .eq('created_by', user?.id)
+                                  .order('created_at', { ascending: false })
+                                  .limit(1)
+                                  .maybeSingle();
+                                if (latest?.id) {
+                                  await supabase
+                                    .from('ai_content_logs')
+                                    .update({ generated_text: finalText } as any)
+                                    .eq('id', latest.id);
+                                  queryClient.invalidateQueries({ queryKey: ['ai-content-logs'] });
+                                }
+                              } catch { /* non-fatal */ }
                               toast.success('נוצרה גרסה סופית');
                             }
                             setFinalizing(false);
