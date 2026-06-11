@@ -1,11 +1,11 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Mic, Volume2, Upload, PhoneForwarded, Square, Play } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Mic, Volume2, Upload, Square, Play, Pause, Trash2, Check, PhoneForwarded } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -15,12 +15,30 @@ type IvrLead = { id: string; full_name: string | null; phone: string | null; cit
 type ClonedVoice = { id: string; name: string; voice_id: string; preview_url?: string | null };
 
 const PRESET_VOICES: { id: string; label: string; voice_id: string }[] = [
-  { id: 'sarah',   label: 'שרה (אישה)',     voice_id: 'EXAVITQu4vr4xnSDxMaL' },
-  { id: 'matilda', label: 'מטילדה (אישה)',  voice_id: 'XrExE9yKIg1WjnnlVkGX' },
-  { id: 'charlie', label: 'צ׳רלי (גבר)',    voice_id: 'IKne3meq5aSn9XLyUdCD' },
+  { id: 'matilda', label: 'נציגת מכירות דיגיטלית', voice_id: 'XrExE9yKIg1WjnnlVkGX' },
+  { id: 'sarah',   label: 'שירות דיירים',         voice_id: 'EXAVITQu4vr4xnSDxMaL' },
+  { id: 'charlie', label: 'נציג מתווך (גבר)',    voice_id: 'IKne3meq5aSn9XLyUdCD' },
 ];
 
-type SourceType = 'recording' | 'tts' | 'upload';
+type SourceType = 'tts' | 'recording' | 'upload';
+type AudienceMode = 'all' | 'manual' | 'csv' | 'paste';
+
+type HistoryItem = {
+  id: string;
+  text: string;
+  agentName: string;
+  audioUrl: string;
+  createdAt: string; // ISO
+};
+
+const HISTORY_KEY = 'realtyz_ivr_audio_history';
+
+const loadHistory = (): HistoryItem[] => {
+  try { return JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]'); } catch { return []; }
+};
+const saveHistory = (items: HistoryItem[]) => {
+  try { localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, 50))); } catch { /* ignore */ }
+};
 
 const arrayBufferToBase64 = (buf: ArrayBuffer): string => {
   const bytes = new Uint8Array(buf);
@@ -32,36 +50,57 @@ const arrayBufferToBase64 = (buf: ArrayBuffer): string => {
   return btoa(binary);
 };
 
+const fmtTs = (iso: string) => {
+  const d = new Date(iso);
+  const dd = String(d.getDate()).padStart(2, '0');
+  const mm = String(d.getMonth() + 1).padStart(2, '0');
+  const hh = String(d.getHours()).padStart(2, '0');
+  const mi = String(d.getMinutes()).padStart(2, '0');
+  const ss = String(d.getSeconds()).padStart(2, '0');
+  return `${dd}.${mm}.${d.getFullYear()}, ${hh}:${mi}:${ss}`;
+};
+
 export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: () => void }) => {
-  const [source, setSource] = useState<SourceType>('recording');
+  const [source, setSource] = useState<SourceType>('tts');
   const [leads, setLeads] = useState<IvrLead[]>([]);
   const [loadingLeads, setLoadingLeads] = useState(false);
-  const [listGroup, setListGroup] = useState<string>('');
-  const [search, setSearch] = useState('');
-  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
+  const [clonedVoices, setClonedVoices] = useState<ClonedVoice[]>([]);
+  const [agentVoiceId, setAgentVoiceId] = useState<string>(PRESET_VOICES[0].voice_id);
 
-  // Tab A — recording
+  // Audience
+  const [audience, setAudience] = useState<AudienceMode | ''>('');
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
+  const [search, setSearch] = useState('');
+  const [csvPhones, setCsvPhones] = useState<string[]>([]);
+  const [pasteText, setPasteText] = useState('');
+  const csvInputRef = useRef<HTMLInputElement>(null);
+
+  // TTS
+  const [ttsText, setTtsText] = useState('');
+  const [generatingTts, setGeneratingTts] = useState(false);
+
+  // Recording
   const [recording, setRecording] = useState(false);
   const [recElapsed, setRecElapsed] = useState(0);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const mediaRecRef = useRef<MediaRecorder | null>(null);
   const recTimerRef = useRef<number | null>(null);
 
-  // Tab B — TTS
-  const [ttsVoice, setTtsVoice] = useState<string>(PRESET_VOICES[0].voice_id);
-  const [clonedVoices, setClonedVoices] = useState<ClonedVoice[]>([]);
-  const [ttsText, setTtsText] = useState('');
-  const [generatingTts, setGeneratingTts] = useState(false);
-  const [ttsPreviewUrl, setTtsPreviewUrl] = useState<string | null>(null);
-
-  // Tab C — upload
+  // Upload
   const [uploadFile, setUploadFile] = useState<File | null>(null);
+
+  // History
+  const [history, setHistory] = useState<HistoryItem[]>([]);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const audioElRef = useRef<HTMLAudioElement | null>(null);
 
   const [dispatching, setDispatching] = useState(false);
   const hasLoadedRef = useRef(false);
 
   useEffect(() => {
-    if (!open || hasLoadedRef.current) return;
+    if (!open) return;
+    setHistory(loadHistory());
+    if (hasLoadedRef.current) return;
     hasLoadedRef.current = true;
     (async () => {
       setLoadingLeads(true);
@@ -78,12 +117,17 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     })();
   }, [open]);
 
-  const allVoices = useMemo(
+  const allAgents = useMemo(
     () => [
+      ...clonedVoices.map((v) => ({ id: `cv:${v.id}`, label: v.name, voice_id: v.voice_id })),
       ...PRESET_VOICES,
-      ...clonedVoices.map((v) => ({ id: `cv:${v.id}`, label: `${v.name} (קול מותאם)`, voice_id: v.voice_id })),
     ],
     [clonedVoices],
+  );
+
+  const agentLabel = useMemo(
+    () => allAgents.find((a) => a.voice_id === agentVoiceId)?.label ?? 'נציג AI',
+    [allAgents, agentVoiceId],
   );
 
   const filteredLeads = useMemo(() => {
@@ -92,7 +136,6 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     const digits = q.replace(/\D/g, '');
     return leads.filter((l) =>
       (l.full_name ?? '').toLowerCase().includes(q) ||
-      (l.city ?? '').toLowerCase().includes(q) ||
       (digits.length > 0 && (l.phone ?? '').replace(/\D/g, '').includes(digits)),
     );
   }, [leads, search]);
@@ -140,63 +183,81 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     if (recTimerRef.current) window.clearInterval(recTimerRef.current);
   };
 
-  // TTS generate preview
-  const generateTtsPreview = async () => {
+  // Generate TTS audio (calls ivr-broadcast with dry leads to obtain audio_url)
+  const generateTtsAudio = async () => {
     if (!ttsText.trim()) { toast.error('הקלידו טקסט'); return; }
     setGeneratingTts(true);
     try {
-      const { data, error } = await supabase.functions.invoke('ivr-broadcast', {
-        body: { source: 'tts', text: ttsText.trim(), voice_id: ttsVoice, leads: [{ phone: '+972000000000' }], dry_run: true },
+      const { data } = await supabase.functions.invoke('ivr-broadcast', {
+        body: { source: 'tts', text: ttsText.trim(), voice_id: agentVoiceId, leads: [{ phone: '+972000000000' }] },
       });
-      // dry_run not supported; we use a lighter path: just request the audio_url after upload
-      // Backend will reject without twilio; fall back to using audio_url it returned
-      if ((data as any)?.audio_url) {
-        setTtsPreviewUrl((data as any).audio_url);
-        toast.success('האודיו נוצר');
-      } else if ((data as any)?.error === 'twilio_not_configured' && (data as any)?.audio_url) {
-        setTtsPreviewUrl((data as any).audio_url);
-        toast.success('האודיו נוצר (Twilio לא מחובר עדיין)');
-      } else {
-        toast.error(`יצירת אודיו נכשלה: ${(data as any)?.error ?? error?.message ?? ''}`);
+      const audioUrl = (data as any)?.audio_url;
+      if (!audioUrl) {
+        toast.error(`יצירת אודיו נכשלה: ${(data as any)?.error ?? ''}`);
+        return;
       }
+      const item: HistoryItem = {
+        id: crypto.randomUUID(),
+        text: ttsText.trim(),
+        agentName: agentLabel,
+        audioUrl,
+        createdAt: new Date().toISOString(),
+      };
+      const next = [item, ...history];
+      setHistory(next); saveHistory(next);
+      toast.success('האודיו נוצר');
     } finally {
       setGeneratingTts(false);
     }
   };
 
+  // CSV / Excel upload — parse phone numbers from text
+  const handleCsvFile = async (f: File) => {
+    const text = await f.text();
+    const phones = Array.from(text.matchAll(/(\+?\d[\d\-\s().]{6,}\d)/g)).map((m) => m[1].replace(/\D/g, ''));
+    const unique = Array.from(new Set(phones)).filter((p) => p.length >= 9);
+    setCsvPhones(unique);
+    toast.success(`נטענו ${unique.length} מספרים`);
+  };
+  const parsedPasteNumbers = useMemo(() => {
+    const phones = Array.from(pasteText.matchAll(/(\+?\d[\d\-\s().]{6,}\d)/g)).map((m) => m[1].replace(/\D/g, ''));
+    return Array.from(new Set(phones)).filter((p) => p.length >= 9);
+  }, [pasteText]);
+
   const targetLeads = useMemo(() => {
-    if (listGroup === 'manual') return leads.filter((l) => selectedLeadIds.has(l.id));
-    if (listGroup === 'all') return leads;
+    if (audience === 'manual') return leads.filter((l) => selectedLeadIds.has(l.id)).map((l) => ({ id: l.id, phone: l.phone ?? '' }));
+    if (audience === 'all') return leads.map((l) => ({ id: l.id, phone: l.phone ?? '' }));
+    if (audience === 'csv') return csvPhones.map((p) => ({ phone: p }));
+    if (audience === 'paste') return parsedPasteNumbers.map((p) => ({ phone: p }));
     return [];
-  }, [listGroup, leads, selectedLeadIds]);
+  }, [audience, leads, selectedLeadIds, csvPhones, parsedPasteNumbers]);
 
-  const canDispatch = !dispatching && targetLeads.length > 0 && (
-    (source === 'recording' && !!recordedBlob) ||
-    (source === 'tts' && (ttsText.trim().length > 0 || !!ttsPreviewUrl)) ||
-    (source === 'upload' && !!uploadFile)
-  );
+  const playHistory = (item: HistoryItem) => {
+    if (playingId === item.id && audioElRef.current) {
+      audioElRef.current.pause();
+      setPlayingId(null);
+      return;
+    }
+    if (audioElRef.current) audioElRef.current.pause();
+    const a = new Audio(item.audioUrl);
+    audioElRef.current = a;
+    a.onended = () => setPlayingId(null);
+    a.play().then(() => setPlayingId(item.id)).catch(() => toast.error('נכשלה ההשמעה'));
+  };
+  const deleteHistory = (id: string) => {
+    const next = history.filter((h) => h.id !== id);
+    setHistory(next); saveHistory(next);
+  };
 
-  const dispatch = async () => {
+  const dispatchAudio = async (audioUrl: string | null, fallbackPayload?: Record<string, unknown>) => {
+    const targets = targetLeads.filter((x) => x.phone);
+    if (targets.length === 0) { toast.error('בחרו רשימת יעד'); return; }
     setDispatching(true);
     try {
-      const payload: Record<string, unknown> = {
-        source,
-        leads: targetLeads.map((l) => ({ id: l.id, phone: l.phone ?? '' })).filter((x) => x.phone),
-      };
-      if (ttsPreviewUrl && source === 'tts') {
-        payload.audio_url = ttsPreviewUrl;
-      } else if (source === 'tts') {
-        payload.text = ttsText.trim();
-        payload.voice_id = ttsVoice;
-      } else if (source === 'recording' && recordedBlob) {
-        payload.audio_b64 = arrayBufferToBase64(await recordedBlob.arrayBuffer());
-        payload.ext = 'webm';
-      } else if (source === 'upload' && uploadFile) {
-        payload.audio_b64 = arrayBufferToBase64(await uploadFile.arrayBuffer());
-        payload.ext = uploadFile.name.split('.').pop()?.toLowerCase() || 'mp3';
-      }
-
-      toast.loading(`משגר ל-${(payload.leads as any[]).length} יעדים…`, { id: 'ivr-dispatch' });
+      const payload: Record<string, unknown> = audioUrl
+        ? { source: 'tts', audio_url: audioUrl, leads: targets }
+        : { ...(fallbackPayload || {}), leads: targets };
+      toast.loading(`משגר ל-${targets.length} יעדים…`, { id: 'ivr-dispatch' });
       const { data, error } = await supabase.functions.invoke('ivr-broadcast', { body: payload });
       toast.dismiss('ivr-dispatch');
       if (error || (data as any)?.error) {
@@ -206,9 +267,36 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       const ok = (data as any)?.ok ?? 0;
       const failed = (data as any)?.failed ?? 0;
       toast.success(`שודרו ${ok} שיחות${failed ? ` · ${failed} נכשלו` : ''}`);
-      onClose();
     } finally {
       setDispatching(false);
+    }
+  };
+
+  const dispatchFromHistory = (item: HistoryItem) => dispatchAudio(item.audioUrl);
+
+  const dispatchCurrent = async () => {
+    if (source === 'tts') {
+      // create audio if no fresh one is generated, then dispatch
+      const last = history[0];
+      if (last && last.text === ttsText.trim()) return dispatchAudio(last.audioUrl);
+      if (!ttsText.trim()) { toast.error('צרו אודיו תחילה'); return; }
+      await generateTtsAudio();
+      const newest = loadHistory()[0];
+      if (newest) await dispatchAudio(newest.audioUrl);
+    } else if (source === 'recording' && recordedBlob) {
+      await dispatchAudio(null, {
+        source: 'recording',
+        audio_b64: arrayBufferToBase64(await recordedBlob.arrayBuffer()),
+        ext: 'webm',
+      });
+    } else if (source === 'upload' && uploadFile) {
+      await dispatchAudio(null, {
+        source: 'upload',
+        audio_b64: arrayBufferToBase64(await uploadFile.arrayBuffer()),
+        ext: uploadFile.name.split('.').pop()?.toLowerCase() || 'mp3',
+      });
+    } else {
+      toast.error('אין אודיו לשליחה');
     }
   };
 
@@ -217,10 +305,10 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       type="button"
       onClick={() => setSource(id)}
       className={cn(
-        'flex-1 flex items-center justify-center gap-2 h-11 rounded-lg text-sm font-semibold transition-colors border',
+        'flex-1 flex items-center justify-center gap-2 h-11 rounded-xl text-sm font-semibold transition-colors border',
         source === id
           ? 'bg-[#0f1b3d] text-white border-[#0f1b3d] shadow-sm'
-          : 'bg-muted/40 text-[#0f1b3d] border-[#0f1b3d]/15 hover:bg-muted/70',
+          : 'bg-background text-[#0f1b3d] border-[#0f1b3d]/15 hover:bg-muted/40',
       )}
     >
       <Icon className="h-4 w-4" />
@@ -231,27 +319,64 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
   const mm = String(Math.floor(recElapsed / 60)).padStart(2, '0');
   const ss = String(recElapsed % 60).padStart(2, '0');
 
+  const audienceCount = targetLeads.length;
+
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onClose(); }}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" dir="rtl">
-        <DialogHeader>
-          <DialogTitle className="text-right text-[#0f1b3d] text-lg font-bold">
+      <DialogContent className="max-w-lg max-h-[92vh] overflow-y-auto p-5" dir="rtl">
+        <DialogHeader className="space-y-1">
+          <DialogTitle className="text-center text-[#0f1b3d] text-[17px] font-bold leading-tight">
             מערך שידור והפצה לאומי · IVR וקול AI
           </DialogTitle>
-          <DialogDescription className="text-right text-[12px] text-muted-foreground">
-            צרו הודעה קולית והפיצו אותה לרשימת יעד · עלות ₪0.20 לדקה ליעד
+          <DialogDescription className="text-center text-[12px] text-muted-foreground">
+            צרו הודעה קולית והפיצו אותה לרשימת יעד
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Top segmented tabs */}
+        <div className="space-y-4 mt-2">
+          {/* Top 3-tab toggle: TTS active first */}
           <div className="flex gap-2">
-            {tabBtn('recording', 'הקלטה', Mic)}
             {tabBtn('tts', 'טקסט לדיבור', Volume2)}
+            {tabBtn('recording', 'הקלטה', Mic)}
             {tabBtn('upload', 'העלאת קובץ', Upload)}
           </div>
 
-          {/* Dynamic container */}
+          {source === 'tts' && (
+            <div className="space-y-3">
+              <div className="space-y-1.5">
+                <label className="text-[13px] font-semibold text-[#0f1b3d] text-right block">בחירת נציג/ת AI להקלטה</label>
+                <Select value={agentVoiceId} onValueChange={setAgentVoiceId} dir="rtl">
+                  <SelectTrigger className="w-full h-12 text-right border-[#0f1b3d]/20 rounded-xl bg-background font-semibold">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent dir="rtl">
+                    {allAgents.map((a) => (
+                      <SelectItem key={a.id} value={a.voice_id}>{a.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <Textarea
+                value={ttsText}
+                onChange={(e) => setTtsText(e.target.value)}
+                placeholder="הקלידו את ההודעה שתישמע ביעד..."
+                className="text-right min-h-[120px] border-[#0f1b3d]/20 rounded-xl bg-background"
+              />
+
+              <div className="flex justify-start">
+                <Button
+                  onClick={generateTtsAudio}
+                  disabled={generatingTts || !ttsText.trim()}
+                  className="bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-11 px-6 rounded-xl font-semibold"
+                >
+                  <Volume2 className="ml-2 h-4 w-4" />
+                  {generatingTts ? 'יוצר…' : 'צור אודיו'}
+                </Button>
+              </div>
+            </div>
+          )}
+
           {source === 'recording' && (
             <div className="rounded-xl border border-[#0f1b3d]/15 bg-muted/30 p-5 text-center space-y-3">
               <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
@@ -260,11 +385,11 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
               </div>
               <div className="text-3xl font-mono tabular-nums text-[#0f1b3d]" dir="ltr">{mm}:{ss}</div>
               {!recording ? (
-                <Button onClick={startRecording} className="bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-11 px-6">
+                <Button onClick={startRecording} className="bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-11 px-6 rounded-xl">
                   <Mic className="ml-2 h-4 w-4" /> התחל הקלטה
                 </Button>
               ) : (
-                <Button onClick={stopRecording} variant="destructive" className="h-11 px-6">
+                <Button onClick={stopRecording} variant="destructive" className="h-11 px-6 rounded-xl">
                   <Square className="ml-2 h-4 w-4" /> עצור הקלטה
                 </Button>
               )}
@@ -274,125 +399,124 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
             </div>
           )}
 
-          {source === 'tts' && (
-            <div className="rounded-xl border border-[#0f1b3d]/15 bg-muted/30 p-4 space-y-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-[#0f1b3d] text-right block">בחר קול</label>
-                <Select value={ttsVoice} onValueChange={setTtsVoice} dir="rtl">
-                  <SelectTrigger className="w-full text-right border-[#0f1b3d]/30 focus:ring-[#C9A84C]">
-                    <SelectValue placeholder="בחירת נציג/ת AI" />
-                  </SelectTrigger>
-                  <SelectContent dir="rtl">
-                    {allVoices.map((v) => (
-                      <SelectItem key={v.id} value={v.voice_id}>{v.label}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-xs font-semibold text-[#0f1b3d] text-right block">טקסט להמרה</label>
-                <Textarea
-                  value={ttsText}
-                  onChange={(e) => { setTtsText(e.target.value); setTtsPreviewUrl(null); }}
-                  placeholder="הקלידו את ההודעה שתישמע ביעד..."
-                  className="text-right min-h-[110px] border-[#0f1b3d]/30 focus-visible:ring-[#C9A84C] bg-background"
-                />
-              </div>
-              <div className="flex items-center justify-between gap-2">
-                {ttsPreviewUrl ? (
-                  <audio controls src={ttsPreviewUrl} className="flex-1 h-9" />
-                ) : <span />}
-                <Button onClick={generateTtsPreview} disabled={generatingTts || !ttsText.trim()}
-                  variant="outline" className="border-[#0f1b3d]/30 text-[#0f1b3d]">
-                  <Volume2 className="ml-2 h-4 w-4" />
-                  {generatingTts ? 'יוצר…' : 'צור אודיו'}
-                </Button>
-              </div>
-              <p className="text-[10px] text-muted-foreground text-right leading-tight">
-                ElevenLabs Multilingual v3 · עברית
-              </p>
-            </div>
-          )}
-
           {source === 'upload' && (
-            <label className="rounded-xl border-2 border-dashed border-[#0f1b3d]/25 bg-muted/30 p-6 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-muted/50 transition-colors">
+            <label className="rounded-xl border-2 border-dashed border-[#0f1b3d]/25 bg-muted/30 p-6 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-muted/50">
               <Upload className="h-8 w-8 text-[#0f1b3d]/50" />
-              <p className="text-xs text-muted-foreground text-center">
-                גררו לכאן קובץ mp3 / wav / m4a או לחצו לבחירה
-              </p>
-              <input
-                type="file"
-                accept="audio/mpeg,audio/mp3,audio/wav,audio/x-wav,audio/mp4,audio/x-m4a"
-                onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)}
-                className="hidden"
-              />
-              <div className="text-[11px] text-[#0f1b3d] font-medium">
-                {uploadFile ? uploadFile.name : 'Choose File · No file chosen'}
-              </div>
+              <p className="text-xs text-muted-foreground text-center">גררו לכאן קובץ mp3 / wav / m4a או לחצו לבחירה</p>
+              <input type="file" accept="audio/*" onChange={(e) => setUploadFile(e.target.files?.[0] ?? null)} className="hidden" />
+              <div className="text-[11px] text-[#0f1b3d] font-medium">{uploadFile ? uploadFile.name : 'בחרו קובץ'}</div>
             </label>
           )}
 
-          {/* Shared target picker */}
-          <div className="space-y-2 pt-2 border-t border-[#0f1b3d]/10">
-            <label className="text-xs font-semibold text-[#0f1b3d] text-right block">רשימת יעד</label>
-            <Select value={listGroup} onValueChange={setListGroup} dir="rtl">
-              <SelectTrigger className="w-full h-11 text-right border-[#0f1b3d]/20 focus:ring-[#C9A84C]">
+          {/* Audience selector */}
+          <div className="space-y-2">
+            <Select value={audience} onValueChange={(v) => setAudience(v as AudienceMode)} dir="rtl">
+              <SelectTrigger className="w-full h-12 text-right border-[#0f1b3d]/20 rounded-xl bg-background">
                 <SelectValue placeholder="למי מחייגים?" />
               </SelectTrigger>
               <SelectContent dir="rtl">
                 <SelectItem value="all">כל הרשימה ({loadingLeads ? '…' : leads.length})</SelectItem>
                 <SelectItem value="manual">בחירה מהרשימה</SelectItem>
+                <SelectItem value="csv">העלאת רשימה (CSV / Excel)</SelectItem>
+                <SelectItem value="paste">הדבקת טקסט</SelectItem>
               </SelectContent>
             </Select>
 
-            {listGroup === 'manual' && (
-              <div className="rounded-lg border border-[#0f1b3d]/15 bg-background">
+            {audience === 'manual' && (
+              <div className="rounded-xl border border-[#0f1b3d]/15 bg-background">
                 <div className="p-2 border-b border-[#0f1b3d]/10">
-                  <Input value={search} onChange={(e) => setSearch(e.target.value)}
-                    placeholder="חיפוש לפי שם או טלפון..."
-                    className="text-right h-9 border-[#0f1b3d]/20 focus-visible:ring-[#C9A84C]" />
+                  <Input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="חיפוש לפי שם או טלפון..."
+                    className="text-right h-9 rounded-lg" />
                 </div>
                 <label className="flex items-center justify-between gap-2 px-3 py-2 border-b border-[#0f1b3d]/10 bg-muted/40 cursor-pointer">
                   <span className="text-xs font-semibold text-[#0f1b3d]">בחר הכל ({filteredLeads.length})</span>
-                  <Checkbox checked={allFilteredSelected} onCheckedChange={toggleAllFiltered}
-                    className="data-[state=checked]:bg-[#0f1b3d] data-[state=checked]:border-[#0f1b3d]" />
+                  <Checkbox checked={allFilteredSelected} onCheckedChange={toggleAllFiltered} />
                 </label>
-                <div className="max-h-52 overflow-y-auto divide-y divide-border/50">
-                  {loadingLeads && <div className="p-3 text-center text-xs text-muted-foreground">טוען…</div>}
-                  {!loadingLeads && filteredLeads.length === 0 && (
-                    <div className="p-3 text-center text-xs text-muted-foreground">לא נמצאו מתעניינים</div>
-                  )}
-                  {!loadingLeads && filteredLeads.map((l) => {
-                    const checked = selectedLeadIds.has(l.id);
-                    return (
-                      <label key={l.id} className="flex items-center justify-between gap-3 px-3 py-2 cursor-pointer hover:bg-muted/40">
-                        <div className="flex-1 min-w-0 text-right">
-                          <div className="text-sm font-medium text-foreground truncate">{l.full_name || 'ללא שם'}</div>
-                          <div className="text-[11px] text-muted-foreground font-mono" dir="ltr">
-                            {formatPhoneDisplay(l.phone)}
-                          </div>
-                        </div>
-                        <Checkbox checked={checked} onCheckedChange={() => toggleLead(l.id)}
-                          className="rounded-full data-[state=checked]:bg-[#0f1b3d] data-[state=checked]:border-[#0f1b3d]" />
-                      </label>
-                    );
-                  })}
-                </div>
-                <div className="px-3 py-1.5 text-[11px] text-muted-foreground text-right border-t border-[#0f1b3d]/10">
-                  נבחרו {selectedLeadIds.size}
+                <div className="max-h-44 overflow-y-auto divide-y divide-border/50">
+                  {filteredLeads.map((l) => (
+                    <label key={l.id} className="flex items-center justify-between gap-3 px-3 py-2 cursor-pointer hover:bg-muted/40">
+                      <div className="flex-1 min-w-0 text-right">
+                        <div className="text-sm font-medium truncate">{l.full_name || 'ללא שם'}</div>
+                        <div className="text-[11px] text-muted-foreground font-mono" dir="ltr">{formatPhoneDisplay(l.phone)}</div>
+                      </div>
+                      <Checkbox checked={selectedLeadIds.has(l.id)} onCheckedChange={() => toggleLead(l.id)} />
+                    </label>
+                  ))}
                 </div>
               </div>
             )}
-          </div>
-        </div>
 
-        <DialogFooter className="mt-2">
-          <Button onClick={dispatch} disabled={!canDispatch}
-            className="w-full bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-11 text-base font-semibold shadow-md">
+            {audience === 'csv' && (
+              <div className="rounded-xl border border-[#0f1b3d]/15 bg-background p-3 space-y-2">
+                <input ref={csvInputRef} type="file" accept=".csv,.xlsx,.xls,text/csv" className="hidden"
+                  onChange={(e) => e.target.files?.[0] && handleCsvFile(e.target.files[0])} />
+                <Button variant="outline" onClick={() => csvInputRef.current?.click()} className="w-full rounded-lg">
+                  <Upload className="ml-2 h-4 w-4" /> בחירת קובץ CSV / Excel
+                </Button>
+                {csvPhones.length > 0 && (
+                  <div className="text-[11px] text-muted-foreground text-right">נטענו {csvPhones.length} מספרים</div>
+                )}
+              </div>
+            )}
+
+            {audience === 'paste' && (
+              <Textarea value={pasteText} onChange={(e) => setPasteText(e.target.value)}
+                placeholder="הדביקו מספרי טלפון, מופרדים בפסיק / רווח / שורה חדשה"
+                className="text-right min-h-[90px] rounded-xl border-[#0f1b3d]/20" />
+            )}
+
+            {audience && audienceCount > 0 && (
+              <div className="text-[11px] text-muted-foreground text-right flex items-center justify-end gap-1.5">
+                <Check className="h-3.5 w-3.5 text-emerald-600" />
+                {audienceCount} יעדים נבחרו
+              </div>
+            )}
+          </div>
+
+          {/* Dispatch button */}
+          <Button onClick={dispatchCurrent} disabled={dispatching || audienceCount === 0}
+            className="w-full bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-12 rounded-xl text-base font-semibold">
             <PhoneForwarded className="ml-2 h-5 w-5" />
-            {dispatching ? 'משגר…' : 'שגר חיוג קולי (IVR)'}
+            {dispatching ? 'משגר…' : 'שגר חיוג קולי'}
           </Button>
-        </DialogFooter>
+
+          {/* History feed */}
+          {history.length > 0 && (
+            <div className="space-y-2 pt-3 border-t border-[#0f1b3d]/10">
+              <div className="text-[12px] font-semibold text-[#0f1b3d] text-right">היסטוריית אודיו</div>
+              <div className="space-y-2">
+                {history.map((h, idx) => (
+                  <div key={h.id}
+                    className={cn(
+                      'rounded-xl border bg-background p-3 flex items-start gap-3',
+                      idx === 0 ? 'border-[#0f1b3d] ring-1 ring-[#0f1b3d]/20' : 'border-[#0f1b3d]/15',
+                    )}>
+                    <button type="button" onClick={() => playHistory(h)}
+                      className="shrink-0 h-9 w-9 rounded-lg border border-[#0f1b3d]/20 flex items-center justify-center hover:bg-muted/50">
+                      {playingId === h.id ? <Pause className="h-4 w-4 text-[#0f1b3d]" /> : <Play className="h-4 w-4 text-[#0f1b3d]" />}
+                    </button>
+                    <div className="flex-1 min-w-0 text-right space-y-1">
+                      <div className="text-[12.5px] leading-snug text-foreground whitespace-pre-wrap">{h.text}</div>
+                      <div className="text-[10.5px] text-muted-foreground font-mono" dir="ltr">
+                        {h.agentName} · {fmtTs(h.createdAt)}
+                      </div>
+                      {audience && audienceCount > 0 && (
+                        <button type="button" onClick={() => dispatchFromHistory(h)}
+                          className="text-[10.5px] text-[#0f1b3d] underline hover:text-[#1e3a5f]">
+                          שגר אודיו זה
+                        </button>
+                      )}
+                    </div>
+                    <button type="button" onClick={() => deleteHistory(h.id)}
+                      className="shrink-0 h-9 w-9 rounded-lg border border-[#0f1b3d]/15 flex items-center justify-center hover:bg-red-50 hover:border-red-200">
+                      <Trash2 className="h-4 w-4 text-muted-foreground" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
       </DialogContent>
     </Dialog>
   );
