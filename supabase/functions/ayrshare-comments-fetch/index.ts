@@ -817,12 +817,24 @@ Deno.serve(async (req) => {
     );
 
     // Sync campaign_logs counters (comment_count + like_count + share_count)
-    // with live Meta numbers. Force-overwrites — even when the live value is
-    // lower than what's currently stored — so a stale "0" gets replaced the
-    // moment the broker manually refreshes.
+    // with live Meta numbers.
+    // comment_count is AUTHORITATIVELY calculated from the full flattened
+    // comment tree (top-level + every nested reply parsed by the walker) —
+    // Ayrshare's analytics.commentCount integer lags behind the real thread
+    // and is used only as a floor, never as the primary source.
     try {
       for (const [nativePostId, list] of Object.entries(results)) {
-        const treeCount = Array.isArray(list) ? (list as any[]).length : 0;
+        // Dynamic tree count: dedup by native comment id so a node that
+        // appears both nested under `replies` AND flattened at the top level
+        // of Ayrshare's payload is counted exactly once.
+        const seenIds = new Set<string>();
+        let treeCount = 0;
+        for (const [idx, node] of (Array.isArray(list) ? (list as any[]) : []).entries()) {
+          const cid = pickStr(node?.id, node?.commentId, node?.comment_id, node?.platformCommentId) ?? `__anon_${idx}`;
+          if (seenIds.has(cid)) continue;
+          seenIds.add(cid);
+          treeCount += 1;
+        }
         const outer = metricsByPostId.get(nativePostId) ?? { likes: null, shares: null, comments: null };
         // Floor with the locally-persisted engagement_events count so a
         // transient empty Ayrshare payload can never collapse a real count to 0.
@@ -836,33 +848,16 @@ Deno.serve(async (req) => {
             .eq("external_post_id", nativePostId);
           if (typeof count === "number") dbCommentCount = count;
         } catch { /* non-fatal */ }
-        // On manual force-refresh, bypass the Math.max floor and overwrite
-        // directly with the freshest provider integers — this breaks the
-        // deadlock where a previously-stored value blocked the new healthy
-        // profile context from replacing legacy cached rows.
-        const liveComments = forceRefresh
-          ? (typeof outer.comments === "number"
-              ? outer.comments
-              : Math.max(treeCount, dbCommentCount))
-          : Math.max(
-              typeof outer.comments === "number" ? outer.comments : 0,
-              treeCount,
-              dbCommentCount,
-            );
-        const patch: Record<string, unknown> = {
-          comment_count: liveComments,
-          metrics_updated_at: new Date().toISOString(),
-        };
-        if (typeof outer.likes === "number") patch.like_count = outer.likes;
-        else if (forceRefresh) patch.like_count = 0;
-        if (typeof outer.shares === "number") patch.share_count = outer.shares;
-        else if (forceRefresh) patch.share_count = 0;
-        // Overwrite EVERY campaign_logs row that references this post under
-        // ANY known id alias (native FB composite id, Ayrshare top-level id,
-        // permalink aliases, and the raw requested ids). Previously only the
-        // native id was matched, so stale rows keyed by the legacy Ayrshare
-        // top-level id kept their scrambled counts and won the frontend's
-        // max() aggregation — that's the 12-comments / 1-like mismatch.
+        // Authoritative total: full walked tree, floored by analytics integer
+        // and the persisted DB rows — whichever reflects the most reality.
+        const liveComments = Math.max(
+          treeCount,
+          typeof outer.comments === "number" ? outer.comments : 0,
+          dbCommentCount,
+        );
+
+        // Resolve every known id alias for this post BEFORE the update so we
+        // can also read the previous high-water marks from those same rows.
         const target = targets.get(nativePostId);
         const idAliases = Array.from(new Set([
           nativePostId,
@@ -870,6 +865,46 @@ Deno.serve(async (req) => {
           ...(target?.permalinkAliases ?? []),
           ...requestedPostIds,
         ].map((v) => String(v || "").trim()).filter(Boolean)));
+
+        // High-water marks from existing rows: Ayrshare's /analytics likeCount
+        // intermittently regresses to 0/1 while the live FB post clearly has
+        // more engagement. Never let a low provider integer overwrite a higher
+        // previously-confirmed count.
+        let prevLikeHigh = 0;
+        let prevShareHigh = 0;
+        try {
+          const { data: prevRows } = await admin
+            .from("campaign_logs")
+            .select("like_count, share_count")
+            .eq("user_id", userId)
+            .in("provider_message_id", idAliases);
+          for (const r of prevRows ?? []) {
+            prevLikeHigh = Math.max(prevLikeHigh, Number((r as any)?.like_count ?? 0) || 0);
+            prevShareHigh = Math.max(prevShareHigh, Number((r as any)?.share_count ?? 0) || 0);
+          }
+        } catch { /* non-fatal */ }
+
+        const providerLikes = typeof outer.likes === "number" ? outer.likes : null;
+        // Safety floor: when the provider returns a suspiciously low like
+        // count (0/1) on a post that demonstrably has comments, keep the
+        // previous high-water mark instead of regressing the badge.
+        const likeSuspicious = providerLikes !== null && providerLikes <= 1 && liveComments > 1;
+        const finalLikes = likeSuspicious
+          ? Math.max(providerLikes, prevLikeHigh)
+          : (providerLikes ?? (forceRefresh ? prevLikeHigh : prevLikeHigh));
+        const providerShares = typeof outer.shares === "number" ? outer.shares : null;
+        const finalShares = providerShares !== null ? Math.max(providerShares, 0) : prevShareHigh;
+
+        const patch: Record<string, unknown> = {
+          comment_count: liveComments,
+          like_count: finalLikes,
+          share_count: finalShares,
+          metrics_updated_at: new Date().toISOString(),
+        };
+        console.log("[ayrshare-comments-fetch] counters overwrite", {
+          stored: nativePostId, treeCount, analyticsComments: outer.comments, dbCommentCount,
+          providerLikes, prevLikeHigh, final: { comments: liveComments, likes: finalLikes, shares: finalShares },
+        });
         await admin
           .from("campaign_logs")
           .update(patch)
