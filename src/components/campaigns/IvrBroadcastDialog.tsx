@@ -531,6 +531,14 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
           )}
         </div>
       </DialogContent>
+      <AddVoiceDialog
+        open={addVoiceOpen}
+        onClose={() => setAddVoiceOpen(false)}
+        onAdded={(v) => {
+          setClonedVoices((prev) => [{ id: v.id, name: v.name, voice_id: v.voice_id }, ...prev]);
+          setAgentVoiceId(v.voice_id);
+        }}
+      />
     </Dialog>
   );
 };
