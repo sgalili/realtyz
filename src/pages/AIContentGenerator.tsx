@@ -82,6 +82,10 @@ const AIContentGenerator = () => {
   const [topic, setTopic] = useState('');
   const [platforms, setPlatforms] = useState<string[]>([]);
   const [generatedContent, setGeneratedContent] = useState('');
+  const [originalGenerated, setOriginalGenerated] = useState('');
+  const [finalizing, setFinalizing] = useState(false);
+  const [editingFinalizing, setEditingFinalizing] = useState(false);
+  const [editingOriginal, setEditingOriginal] = useState('');
   const [copied, setCopied] = useState(false);
   const [openLog, setOpenLog] = useState<ContentLog | null>(null);
   const [editingLog, setEditingLog] = useState<ContentLog | null>(null);
@@ -91,6 +95,33 @@ const AIContentGenerator = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const blockDemoAction = useDemoGuard();
+
+  const finalizeText = async (params: {
+    edited: string;
+    original: string;
+    context?: string;
+    purpose?: 'social_post' | 'public_comment' | 'private_dm' | 'generic';
+  }): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('finalize-text', {
+        body: {
+          edited_text: params.edited,
+          original_text: params.original,
+          context: params.context ?? '',
+          purpose: params.purpose ?? 'social_post',
+        },
+      });
+      if (error) throw error;
+      const finalText = (data as any)?.final_text;
+      if (typeof finalText !== 'string' || !finalText.trim()) {
+        throw new Error((data as any)?.error || 'לא התקבלה גרסה סופית');
+      }
+      return finalText.trim();
+    } catch (e: any) {
+      toast.error(e?.message || 'יצירת גרסה סופית נכשלה');
+      return null;
+    }
+  };
 
   const { data: logs, isLoading } = useQuery({
     queryKey: ['ai-content-logs'],
