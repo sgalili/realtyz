@@ -333,6 +333,8 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
         throw new Error((data as any)?.error || "לא התקבלה גרסה סופית");
       }
       const next = finalText.trim();
+      const baseline = channel === "pub" ? originalReply : originalDm;
+      const editedBeforeFinal = edited;
       if (channel === "pub") {
         setReplyDraft(next);
         setOriginalReply(next);
@@ -342,6 +344,15 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
         setOriginalDm(next);
         setDraftCache((prev) => ({ ...prev, [replyOpen.id]: { pub: replyDraft, dm: next } }));
       }
+      // Active-learning: capture both the user's manual edit and the polish
+      // delta so future drafts incorporate the broker's voice + final polish.
+      learnFromEdit({
+        context: `campaign_reply_finalize:${replyOpen.platform}:${channel}`,
+        pairs: [
+          { label: `${channel}_user_edit`, original: baseline, edited: editedBeforeFinal },
+          { label: `${channel}_final_polish`, original: editedBeforeFinal, edited: next },
+        ],
+      });
       toast.success("נוצרה גרסה סופית");
     } catch (e: any) {
       toast.error(e?.message || "יצירת גרסה סופית נכשלה");

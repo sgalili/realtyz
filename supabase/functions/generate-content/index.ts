@@ -13,6 +13,7 @@ import {
   ANTI_SPAM_RULES,
   CTA_RULE,
 } from "../_shared/grounding.ts";
+import { fetchLearnedOverridesBlock } from "../_shared/persona.ts";
 
 
 const corsHeaders = {
@@ -271,7 +272,12 @@ NO-HASHTAGS RULE (HARD — ZERO TOLERANCE):
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [
-          { role: "system", content: systemPrompt },
+          {
+            role: "system",
+            content: [systemPrompt, await fetchLearnedOverridesBlock(admin as any, userId)]
+              .filter(Boolean)
+              .join("\n\n"),
+          },
           { role: "user", content: userPrompt },
         ],
         temperature: 1.0,
