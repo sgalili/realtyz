@@ -1,5 +1,5 @@
-import { useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,11 +8,14 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Phone, Loader2, PhoneCall, BarChart3, Pencil, X, Upload, Check,
+  Phone, Loader2, PhoneCall, BarChart3, Pencil, X, Upload, Check, Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatPhoneDisplay } from "@/lib/formatPhone";
+import { AddVoiceDialog } from "@/components/voice/AddVoiceDialog";
+
+const UDI_VOICE = { id: "udi", name: "אודי ויטמן", voice_id: "4eohDAy1kTS18Cnf0HiN" };
 
 type AudienceMode = "all" | "manual" | "csv" | "paste";
 
