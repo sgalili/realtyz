@@ -857,11 +857,24 @@ Deno.serve(async (req) => {
         else if (forceRefresh) patch.like_count = 0;
         if (typeof outer.shares === "number") patch.share_count = outer.shares;
         else if (forceRefresh) patch.share_count = 0;
+        // Overwrite EVERY campaign_logs row that references this post under
+        // ANY known id alias (native FB composite id, Ayrshare top-level id,
+        // permalink aliases, and the raw requested ids). Previously only the
+        // native id was matched, so stale rows keyed by the legacy Ayrshare
+        // top-level id kept their scrambled counts and won the frontend's
+        // max() aggregation — that's the 12-comments / 1-like mismatch.
+        const target = targets.get(nativePostId);
+        const idAliases = Array.from(new Set([
+          nativePostId,
+          target?.fetchPostId,
+          ...(target?.permalinkAliases ?? []),
+          ...requestedPostIds,
+        ].map((v) => String(v || "").trim()).filter(Boolean)));
         await admin
           .from("campaign_logs")
           .update(patch)
           .eq("user_id", userId)
-          .eq("provider_message_id", nativePostId);
+          .in("provider_message_id", idAliases);
       }
     } catch (countErr) {
       console.warn("[ayrshare-comments-fetch] counters sync failed", countErr);
