@@ -72,8 +72,9 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const source = body.source as "recording" | "tts" | "upload";
+    const generateOnly = body.generate_only === true;
     const leads = (body.leads ?? []) as Array<{ id?: string; phone: string }>;
-    if (!leads.length) return json({ error: "no_leads" }, 400);
+    if (!generateOnly && !leads.length) return json({ error: "no_leads" }, 400);
 
     // 1. Resolve audio URL (upload bytes, or generate via TTS)
     let audioUrl: string | null = body.audio_url ?? null;
