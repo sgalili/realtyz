@@ -112,9 +112,35 @@ Deno.serve(async (req) => {
     if (error) console.error("[ayrshare-profiles-audit] repair failed", error.message);
   }
 
+  // Optional probe: try multiple Ayrshare lookup shapes for a given post id.
+  let probe: any = null;
+  const url = new URL(req.url);
+  const probeId = url.searchParams.get("probe_id");
+  if (probeId && storedKey) {
+    const hdrs = { Authorization: `Bearer ${KEY}`, "Profile-Key": storedKey, "Content-Type": "application/json" };
+    const tryFetch = async (label: string, input: string, init?: RequestInit) => {
+      try {
+        const r = await fetch(input, init);
+        const t = await r.text();
+        let p: any = {};
+        try { p = t ? JSON.parse(t) : {}; } catch { p = { rawText: t.slice(0, 300) }; }
+        return { label, status: r.status, code: p?.code ?? null, message: p?.message ?? null, keys: Object.keys(p).slice(0, 12) };
+      } catch (e) {
+        return { label, error: e instanceof Error ? e.message : String(e) };
+      }
+    };
+    probe = await Promise.all([
+      tryFetch("comments_platforms_search", `https://api.ayrshare.com/api/comments/${encodeURIComponent(probeId)}?platforms=facebook&searchPlatformId=true`, { headers: hdrs }),
+      tryFetch("comments_platform_singular", `https://api.ayrshare.com/api/comments/${encodeURIComponent(probeId)}?platform=facebook&searchPlatformId=true`, { headers: hdrs }),
+      tryFetch("analytics_post_search", `https://api.ayrshare.com/api/analytics/post`, { method: "POST", headers: hdrs, body: JSON.stringify({ id: probeId, platforms: ["facebook"], searchPlatformId: true }) }),
+      tryFetch("analytics_social_by_id", `https://api.ayrshare.com/api/analytics/social`, { method: "POST", headers: hdrs, body: JSON.stringify({ id: probeId, platforms: ["facebook"] }) }),
+    ]);
+  }
+
   return json({
     count: profiles.length,
     storedTest,
+    probe,
     audit,
     repaired,
     active: best ? { keyPrefix: best.profileKey.slice(0, 8), refId: best.refId, fbName: best.fbName } : null,
