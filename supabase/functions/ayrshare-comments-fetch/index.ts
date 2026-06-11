@@ -465,10 +465,28 @@ Deno.serve(async (req) => {
           }
 
           const looksNativeForAnalytics = /_/.test(target.fetchPostId);
-          const [fetched, analytics] = await Promise.all([
+          // Run /comments and /analytics/post concurrently. The analytics call
+          // is wrapped in its own try/catch and `Promise.allSettled` so any
+          // unexpected payload shape or network error can NEVER crash the
+          // comments pipeline — the UI must always get an answer.
+          const [commentsSettled, analyticsSettled] = await Promise.allSettled([
             fetchAyrshareTree(target),
-            fetchAyrsharePostAnalytics(target.fetchPostId, target.platform, looksNativeForAnalytics),
+            (async () => {
+              try {
+                return await fetchAyrsharePostAnalytics(target.fetchPostId, target.platform, looksNativeForAnalytics);
+              } catch (anaErr) {
+                console.warn("[ayrshare-comments-fetch] analytics threw", anaErr instanceof Error ? anaErr.message : String(anaErr));
+                return null;
+              }
+            })(),
           ]);
+          if (commentsSettled.status !== "fulfilled") {
+            errors[nativePostId] = commentsSettled.reason instanceof Error ? commentsSettled.reason.message : String(commentsSettled.reason);
+            results[nativePostId] = [];
+            return;
+          }
+          const fetched = commentsSettled.value;
+          const analytics = analyticsSettled.status === "fulfilled" ? analyticsSettled.value : null;
           const arr: any[] = fetched.comments;
           if (!fetched.ok) {
             const apiError = {
@@ -487,18 +505,45 @@ Deno.serve(async (req) => {
           }
           // Merge: prefer /analytics/post numbers (authoritative for share &
           // like counts on the outer post); fall back to anything /comments
-          // happened to return inline.
+          // happened to return inline. Bulletproof: any extractor exception
+          // is swallowed and we keep the /comments inline numbers.
           let merged = fetched.outerMetrics ?? { likes: null, shares: null, comments: null };
-          if (analytics?.ok) {
-            const ana = extractAnalyticsMetrics(analytics.payload, target.platform.toLowerCase());
-            merged = {
-              likes: typeof ana.likes === "number" ? ana.likes : merged.likes,
-              shares: typeof ana.shares === "number" ? ana.shares : merged.shares,
-              comments: typeof ana.comments === "number" ? ana.comments : merged.comments,
-            };
-            console.log("[ayrshare-comments-fetch] analytics merged", { stored: nativePostId, analytics: ana, final: merged });
-          } else if (analytics) {
-            console.warn("[ayrshare-comments-fetch] analytics fetch non-ok", { stored: nativePostId, status: analytics.status });
+          try {
+            if (analytics?.ok && analytics.payload) {
+              const platformKey = target.platform.toLowerCase();
+              const root: any = analytics.payload ?? {};
+              const platformBlock: any =
+                root?.analytics?.[platformKey] ?? root?.[platformKey]?.analytics ?? root?.[platformKey] ?? null;
+              const arrayPick = (val: any) => Array.isArray(val) && val.length ? val[0] : val;
+              const block = arrayPick(platformBlock) || {};
+              const robustExtract = extractAnalyticsMetrics(analytics.payload, platformKey);
+              const likeCount =
+                (typeof block?.likeCount === "number" ? block.likeCount : null) ??
+                robustExtract.likes ??
+                (typeof root?.analytics?.likeCount === "number" ? root.analytics.likeCount : null) ??
+                (typeof root?.metrics?.likes === "number" ? root.metrics.likes : null);
+              const shareCount =
+                (typeof block?.shareCount === "number" ? block.shareCount : null) ??
+                robustExtract.shares ??
+                (typeof root?.analytics?.shareCount === "number" ? root.analytics.shareCount : null) ??
+                (typeof root?.metrics?.shares === "number" ? root.metrics.shares : null);
+              const commentCount =
+                (typeof block?.commentsCount === "number" ? block.commentsCount : null) ??
+                (typeof block?.commentCount === "number" ? block.commentCount : null) ??
+                robustExtract.comments ??
+                (typeof root?.analytics?.commentCount === "number" ? root.analytics.commentCount : null) ??
+                (typeof root?.metrics?.comments === "number" ? root.metrics.comments : null);
+              merged = {
+                likes: typeof likeCount === "number" ? likeCount : merged.likes,
+                shares: typeof shareCount === "number" ? shareCount : merged.shares,
+                comments: typeof commentCount === "number" ? commentCount : merged.comments,
+              };
+              console.log("[ayrshare-comments-fetch] analytics merged", { stored: nativePostId, likeCount, shareCount, commentCount, final: merged });
+            } else if (analytics) {
+              console.warn("[ayrshare-comments-fetch] analytics fetch non-ok", { stored: nativePostId, status: analytics.status });
+            }
+          } catch (mergeErr) {
+            console.error("[ayrshare-comments-fetch] analytics merge crashed (graceful fallback)", mergeErr instanceof Error ? mergeErr.message : String(mergeErr));
           }
           console.log("[ayrshare-comments-fetch] ayrshare comments success", { stored: nativePostId, resolved: fetched.resolvedPostId, count: arr.length, metrics: merged });
           metricsByPostId.set(nativePostId, merged);
