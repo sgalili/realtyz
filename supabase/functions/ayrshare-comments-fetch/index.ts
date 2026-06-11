@@ -540,7 +540,12 @@ Deno.serve(async (req) => {
               const arrayPick = (val: any) => Array.isArray(val) && val.length ? val[0] : val;
               const block = arrayPick(platformBlock) || {};
               try {
-                console.log("[ayrshare-comments-fetch] analytics block dump", JSON.stringify(block).slice(0, 1500));
+                console.log("[ayrshare-comments-fetch] reactions dump", JSON.stringify({
+                  blockReactions: block?.reactions ?? null,
+                  rootAnalyticsReactions: root?.analytics?.reactions ?? null,
+                  blockLikeCount: block?.likeCount ?? null,
+                  likedByLen: Array.isArray(block?.likedBy) ? block.likedBy.length : null,
+                }).slice(0, 1200));
               } catch { /* noop */ }
               const robustExtract = extractAnalyticsMetrics(analytics.payload, platformKey);
               // TOTAL REACTIONS, not just "Like": Facebook's UI like badge
