@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -653,6 +654,9 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
   const [editTarget, setEditTarget] = useState<HomelyProperty | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<HomelyProperty | null>(null);
   const [deleting, setDeleting] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
+  const [bulkDeleting, setBulkDeleting] = useState(false);
   const queryClient = useQueryClient();
   const extraKeys = useMemo(() => {
     const seen = new Set<string>();
@@ -682,7 +686,21 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
     }
   }), [properties, sort]);
 
+  const mineRows = useMemo(() => sorted.filter((p) => p.source === 'mine'), [sorted]);
+  const allMineSelected = mineRows.length > 0 && mineRows.every((p) => selectedIds.has(p.id));
+  const someMineSelected = mineRows.some((p) => selectedIds.has(p.id));
 
+  const toggleAll = () => {
+    if (allMineSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(mineRows.map((p) => p.id)));
+  };
+  const toggleOne = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      next.has(id) ? next.delete(id) : next.add(id);
+      return next;
+    });
+  };
 
   const handleDelete = async () => {
     if (!deleteTarget) return;
@@ -698,12 +716,51 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
     queryClient.invalidateQueries({ queryKey: ['properties-search'] });
   };
 
+  const handleBulkDelete = async () => {
+    const ids = Array.from(selectedIds);
+    if (ids.length === 0) return;
+    setBulkDeleting(true);
+    const { error } = await supabase.from('listings').delete().in('id', ids);
+    setBulkDeleting(false);
+    if (error) {
+      toast.error('מחיקה מרובה נכשלה: ' + error.message);
+      return;
+    }
+    toast.success(`${ids.length} נכסים נמחקו`);
+    setSelectedIds(new Set());
+    setBulkDeleteOpen(false);
+    queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+  };
+
   return (
     <>
+      {selectedIds.size > 0 && (
+        <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2" dir="rtl">
+          <div className="text-xs font-medium">
+            {selectedIds.size.toLocaleString('he-IL')} נכסים נבחרו
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setSelectedIds(new Set())}>
+              נקה בחירה
+            </Button>
+            <Button size="sm" variant="destructive" className="h-7 text-xs gap-1.5" onClick={() => setBulkDeleteOpen(true)}>
+              <Trash2 className="h-3.5 w-3.5" /> מחק נבחרים
+            </Button>
+          </div>
+        </div>
+      )}
       <Card className="overflow-x-auto">
         <table className="w-full text-xs" dir="rtl">
           <thead className="bg-muted/50 sticky top-0">
             <tr className="text-right">
+              <th className="px-2 py-2 w-8">
+                <Checkbox
+                  checked={allMineSelected ? true : someMineSelected ? 'indeterminate' : false}
+                  onCheckedChange={toggleAll}
+                  disabled={mineRows.length === 0}
+                  aria-label="בחר הכל"
+                />
+              </th>
               <SortableTh sortKey="listing_type" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">סוג עסקה</SortableTh>
               <SortableTh sortKey="title" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">כותרת</SortableTh>
               <SortableTh sortKey="price" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">מחיר</SortableTh>
@@ -721,7 +778,16 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
               const isRent = p.listing_type === 'rent';
               const isMine = p.source === 'mine';
               return (
-                <tr key={p.id} className="border-t hover:bg-muted/30">
+                <tr key={p.id} className={`border-t hover:bg-muted/30 ${selectedIds.has(p.id) ? 'bg-destructive/5' : ''}`}>
+                  <td className="px-2 py-1.5 w-8">
+                    {isMine ? (
+                      <Checkbox
+                        checked={selectedIds.has(p.id)}
+                        onCheckedChange={() => toggleOne(p.id)}
+                        aria-label="בחר נכס"
+                      />
+                    ) : null}
+                  </td>
                   <td className="px-2 py-1.5 whitespace-nowrap">
                     <Badge className={`text-[10px] ${isRent ? 'bg-[#0b3982] text-white' : 'bg-primary text-primary-foreground'}`}>
                       {LISTING_TYPE_LABELS_HE[p.listing_type ?? 'sale']}
@@ -805,6 +871,26 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleting ? 'מוחק…' : 'מחק'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={(open) => { if (!bulkDeleting) setBulkDeleteOpen(open); }}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>למחוק {selectedIds.size} נכסים?</AlertDialogTitle>
+            <AlertDialogDescription>
+              הנכסים שנבחרו יימחקו לצמיתות. לא ניתן לבטל פעולה זו.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleting}>ביטול</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={bulkDeleting}
+              onClick={(e) => { e.preventDefault(); handleBulkDelete(); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {bulkDeleting ? 'מוחק…' : `מחק ${selectedIds.size}`}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
