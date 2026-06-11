@@ -464,7 +464,11 @@ Deno.serve(async (req) => {
             return;
           }
 
-          const fetched = await fetchAyrshareTree(target);
+          const looksNativeForAnalytics = /_/.test(target.fetchPostId);
+          const [fetched, analytics] = await Promise.all([
+            fetchAyrshareTree(target),
+            fetchAyrsharePostAnalytics(target.fetchPostId, target.platform, looksNativeForAnalytics),
+          ]);
           const arr: any[] = fetched.comments;
           if (!fetched.ok) {
             const apiError = {
@@ -481,8 +485,23 @@ Deno.serve(async (req) => {
             results[nativePostId] = [];
             return;
           }
-          console.log("[ayrshare-comments-fetch] ayrshare comments success", { stored: nativePostId, resolved: fetched.resolvedPostId, count: arr.length, metrics: fetched.outerMetrics });
-          if (fetched.outerMetrics) metricsByPostId.set(nativePostId, fetched.outerMetrics);
+          // Merge: prefer /analytics/post numbers (authoritative for share &
+          // like counts on the outer post); fall back to anything /comments
+          // happened to return inline.
+          let merged = fetched.outerMetrics ?? { likes: null, shares: null, comments: null };
+          if (analytics?.ok) {
+            const ana = extractAnalyticsMetrics(analytics.payload, target.platform.toLowerCase());
+            merged = {
+              likes: typeof ana.likes === "number" ? ana.likes : merged.likes,
+              shares: typeof ana.shares === "number" ? ana.shares : merged.shares,
+              comments: typeof ana.comments === "number" ? ana.comments : merged.comments,
+            };
+            console.log("[ayrshare-comments-fetch] analytics merged", { stored: nativePostId, analytics: ana, final: merged });
+          } else if (analytics) {
+            console.warn("[ayrshare-comments-fetch] analytics fetch non-ok", { stored: nativePostId, status: analytics.status });
+          }
+          console.log("[ayrshare-comments-fetch] ayrshare comments success", { stored: nativePostId, resolved: fetched.resolvedPostId, count: arr.length, metrics: merged });
+          metricsByPostId.set(nativePostId, merged);
 
           // Flatten N levels of nested replies. Ayrshare/Meta nest child nodes
           // under any of: replies / children / comments / thread / data, so we
