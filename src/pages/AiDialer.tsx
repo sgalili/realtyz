@@ -189,12 +189,21 @@ export default function AiDialer() {
                     <SelectValue placeholder="בחירת נציג/ת AI טלפונית" />
                   </SelectTrigger>
                   <SelectContent dir="rtl">
+                    {!((voices as any[]).some((v) => v.voice_id === UDI_VOICE.voice_id)) && (
+                      <SelectItem value={UDI_VOICE.voice_id}>{UDI_VOICE.name}</SelectItem>
+                    )}
                     {(voices as any[]).map((v) => (
                       <SelectItem key={v.id} value={v.voice_id}>{v.name}</SelectItem>
                     ))}
-                    <SelectItem value="XrExE9yKIg1WjnnlVkGX">נציגת מכירות דיגיטלית</SelectItem>
-                    <SelectItem value="EXAVITQu4vr4xnSDxMaL">שירות דיירים</SelectItem>
-                    <SelectItem value="IKne3meq5aSn9XLyUdCD">נציג מתווך (גבר)</SelectItem>
+                    <div className="border-t border-border/60 my-1" />
+                    <button type="button" onClick={() => setAddVoiceOpen(true)}
+                      className="w-full flex items-center gap-2 px-2 py-2 text-right text-[13px] font-medium text-[#0f1b3d] hover:bg-muted/50 rounded-md">
+                      <Plus className="h-4 w-4" /> הוסף קול (שיבוט מהיר)
+                    </button>
+                    <button type="button" onClick={() => setAddVoiceOpen(true)}
+                      className="w-full flex items-center gap-2 px-2 py-2 text-right text-[13px] font-medium text-[#0f1b3d] hover:bg-muted/50 rounded-md">
+                      <Plus className="h-4 w-4" /> הוסף קול לפי Voice ID של ElevenLabs
+                    </button>
                   </SelectContent>
                 </Select>
                 {voiceId && (
