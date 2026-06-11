@@ -162,6 +162,7 @@ const AIContentGenerator = () => {
     },
     onSuccess: ({ content, approvalId }) => {
       setGeneratedContent(content);
+      setOriginalGenerated(content);
       queryClient.invalidateQueries({ queryKey: ['ai-content-logs'] });
       queryClient.invalidateQueries({ queryKey: ['approval-queue'] });
       toast.success(approvalId ? 'התוכן נוצר ונשלח לתור אישור אנושי' : 'התוכן נוצר בהצלחה!');
