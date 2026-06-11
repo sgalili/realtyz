@@ -13,6 +13,7 @@ import {
   ANTI_SPAM_RULES,
   CTA_RULE,
 } from "../_shared/grounding.ts";
+import { fetchLearnedOverridesBlock } from "../_shared/persona.ts";
 
 
 const corsHeaders = {
