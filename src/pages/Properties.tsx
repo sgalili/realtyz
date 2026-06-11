@@ -734,10 +734,33 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
 
   return (
     <>
+      {selectedIds.size > 0 && (
+        <div className="mb-3 flex items-center justify-between gap-3 rounded-lg border border-destructive/30 bg-destructive/5 px-3 py-2" dir="rtl">
+          <div className="text-xs font-medium">
+            {selectedIds.size.toLocaleString('he-IL')} נכסים נבחרו
+          </div>
+          <div className="flex items-center gap-2">
+            <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => setSelectedIds(new Set())}>
+              נקה בחירה
+            </Button>
+            <Button size="sm" variant="destructive" className="h-7 text-xs gap-1.5" onClick={() => setBulkDeleteOpen(true)}>
+              <Trash2 className="h-3.5 w-3.5" /> מחק נבחרים
+            </Button>
+          </div>
+        </div>
+      )}
       <Card className="overflow-x-auto">
         <table className="w-full text-xs" dir="rtl">
           <thead className="bg-muted/50 sticky top-0">
             <tr className="text-right">
+              <th className="px-2 py-2 w-8">
+                <Checkbox
+                  checked={allMineSelected ? true : someMineSelected ? 'indeterminate' : false}
+                  onCheckedChange={toggleAll}
+                  disabled={mineRows.length === 0}
+                  aria-label="בחר הכל"
+                />
+              </th>
               <SortableTh sortKey="listing_type" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">סוג עסקה</SortableTh>
               <SortableTh sortKey="title" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">כותרת</SortableTh>
               <SortableTh sortKey="price" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">מחיר</SortableTh>
