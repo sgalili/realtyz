@@ -114,6 +114,7 @@ Deno.serve(async (req) => {
 
   return json({
     count: profiles.length,
+    storedTest,
     audit,
     repaired,
     active: best ? { keyPrefix: best.profileKey.slice(0, 8), refId: best.refId, fbName: best.fbName } : null,
