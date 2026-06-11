@@ -570,10 +570,15 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
           // rows win and scrambled the badges (e.g. 12 comments / 1 like).
           const fresh: any = rows?.[0] ?? null;
           if (fresh) {
+            // Dynamic array-length override: if the rendered comment tree
+            // (top-level + nested replies, deduped by id) holds MORE rows than
+            // the lagging analytics integer, the tree wins.
+            const liveTree = treeCount(rowsRef.current);
+            const dbComments = Math.max(0, Number(fresh.comment_count ?? 0) || 0);
             onCountersResolved(campaign.id, {
               like_count: Number(fresh.like_count ?? 0) || 0,
               share_count: Number(fresh.share_count ?? 0) || 0,
-              comment_count: Number(fresh.comment_count ?? 0) || 0,
+              comment_count: Math.max(dbComments, liveTree),
               force: true,
             });
           }
