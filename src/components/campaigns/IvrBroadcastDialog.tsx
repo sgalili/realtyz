@@ -181,17 +181,17 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     if (recTimerRef.current) window.clearInterval(recTimerRef.current);
   };
 
-  // Generate TTS audio (calls ivr-broadcast with dry leads to obtain audio_url)
+  // Generate TTS audio (calls ivr-broadcast in generate-only mode for an audio_url)
   const generateTtsAudio = async () => {
     if (!ttsText.trim()) { toast.error('הקלידו טקסט'); return; }
     setGeneratingTts(true);
     try {
-      const { data } = await supabase.functions.invoke('ivr-broadcast', {
-        body: { source: 'tts', text: ttsText.trim(), voice_id: agentVoiceId, leads: [{ phone: '+972000000000' }] },
+      const { data, error } = await supabase.functions.invoke('ivr-broadcast', {
+        body: { source: 'tts', text: ttsText.trim(), voice_id: agentVoiceId, generate_only: true },
       });
       const audioUrl = (data as any)?.audio_url;
-      if (!audioUrl) {
-        toast.error(`יצירת אודיו נכשלה: ${(data as any)?.error ?? ''}`);
+      if (error || !audioUrl) {
+        toast.error(`הפקת האודיו נכשלה${(data as any)?.error ? `: ${(data as any).error}` : ''}`);
         return;
       }
       const item: HistoryItem = {
@@ -204,6 +204,8 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       const next = [item, ...history];
       setHistory(next); saveHistory(next);
       toast.success('האודיו נוצר');
+    } catch (e: any) {
+      toast.error(`הפקת האודיו נכשלה: ${e?.message ?? 'שגיאה'}`);
     } finally {
       setGeneratingTts(false);
     }
