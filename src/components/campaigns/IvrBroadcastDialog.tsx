@@ -5,11 +5,12 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Mic, Volume2, Upload, Square, Play, Pause, Trash2, Check, PhoneForwarded } from 'lucide-react';
+import { Mic, Volume2, Upload, Square, Play, Pause, Trash2, Check, PhoneForwarded, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
+import { AddVoiceDialog } from '@/components/voice/AddVoiceDialog';
 
 type IvrLead = { id: string; full_name: string | null; phone: string | null; city?: string | null };
 type ClonedVoice = { id: string; name: string; voice_id: string; preview_url?: string | null };
