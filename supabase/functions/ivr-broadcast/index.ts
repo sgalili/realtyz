@@ -102,6 +102,13 @@ Deno.serve(async (req) => {
       audioUrl = pub.publicUrl;
     }
 
+    // Generate-only mode: return the audio URL without dialing.
+    if (generateOnly) {
+      return json({ ok: 0, failed: 0, total: 0, audio_url: audioUrl });
+    }
+
+
+
     // 2. Load Twilio creds for this broker
     const { data: rows } = await admin
       .from("user_api_keys")
