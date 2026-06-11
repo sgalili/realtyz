@@ -540,11 +540,37 @@ Deno.serve(async (req) => {
               const arrayPick = (val: any) => Array.isArray(val) && val.length ? val[0] : val;
               const block = arrayPick(platformBlock) || {};
               const robustExtract = extractAnalyticsMetrics(analytics.payload, platformKey);
-              const likeCount =
+              // TOTAL REACTIONS, not just "Like": Facebook's UI like badge
+              // counts every reaction type (like + love + wow + ...). Sum the
+              // reactions object when present and take the max against the
+              // plain likeCount so we mirror what the live FB page displays.
+              const sumReactions = (src: any): number | null => {
+                for (const cand of [src?.reactions, src?.reactionsByType, src?.reaction_counts]) {
+                  if (cand && typeof cand === "object" && !Array.isArray(cand)) {
+                    let total = 0; let found = false;
+                    for (const v of Object.values(cand)) {
+                      const n = typeof v === "number" ? v : Number(v);
+                      if (Number.isFinite(n)) { total += n; found = true; }
+                    }
+                    if (found) return total;
+                  }
+                  if (typeof cand === "number" && Number.isFinite(cand)) return cand;
+                }
+                for (const k of ["reactionsCount", "totalReactions", "reactions_total"]) {
+                  const v = src?.[k];
+                  if (typeof v === "number" && Number.isFinite(v)) return v;
+                }
+                return null;
+              };
+              const reactionsTotal = sumReactions(block) ?? sumReactions(root?.analytics) ?? sumReactions(root);
+              const plainLikes =
                 (typeof block?.likeCount === "number" ? block.likeCount : null) ??
                 robustExtract.likes ??
                 (typeof root?.analytics?.likeCount === "number" ? root.analytics.likeCount : null) ??
                 (typeof root?.metrics?.likes === "number" ? root.metrics.likes : null);
+              const likeCount = reactionsTotal !== null || plainLikes !== null
+                ? Math.max(reactionsTotal ?? 0, plainLikes ?? 0)
+                : null;
               const shareCount =
                 (typeof block?.shareCount === "number" ? block.shareCount : null) ??
                 robustExtract.shares ??
