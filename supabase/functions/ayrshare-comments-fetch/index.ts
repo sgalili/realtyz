@@ -233,8 +233,12 @@ Deno.serve(async (req) => {
     };
 
     const fetchAyrshareComments = async (id: string, platform: string, useSearchPlatformId = false) => {
+      // CRITICAL: with searchPlatformId=true Ayrshare expects the SINGULAR
+      // `platform` query param. Sending `platforms=` alongside searchPlatformId
+      // makes Ayrshare return error 156 ("social network is not linked") even
+      // when the network IS linked. Verified live on 2026-06-11.
       const qs = useSearchPlatformId
-        ? `platforms=${encodeURIComponent(platform)}&searchPlatformId=true`
+        ? `platform=${encodeURIComponent(platform)}&searchPlatformId=true`
         : `platforms=${encodeURIComponent(platform)}`;
       const url = `${AYR_BASE}/comments/${encodeURIComponent(id)}?${qs}`;
       const res = await fetch(url, {
