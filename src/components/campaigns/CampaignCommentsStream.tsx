@@ -950,6 +950,24 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
           disabled={drafting || !sendPublic}
           className="w-full min-h-[120px] text-right text-sm leading-relaxed"
         />
+        {sendPublic &&
+          !drafting &&
+          replyDraft.trim() &&
+          originalReply.trim() &&
+          replyDraft.trim() !== originalReply.trim() && (
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={finalizingPub || sending}
+                onClick={() => finalizeReplyText("pub")}
+                className="h-8"
+              >
+                <Sparkles className={cn("h-3.5 w-3.5 ml-1", finalizingPub && "animate-pulse")} />
+                {finalizingPub ? "מנסח גרסה סופית..." : "גרסה סופית"}
+              </Button>
+            </div>
+          )}
       </div>
       <div className={cn("space-y-1.5", !sendDm && "opacity-50")}>
         <p className="text-xs font-semibold text-muted-foreground text-right">
@@ -964,6 +982,24 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
           disabled={drafting || !sendDm}
           className="w-full min-h-[160px] text-right text-sm leading-relaxed bg-muted/30"
         />
+        {sendDm &&
+          !drafting &&
+          dmDraft.trim() &&
+          originalDm.trim() &&
+          dmDraft.trim() !== originalDm.trim() && (
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={finalizingDm || sending}
+                onClick={() => finalizeReplyText("dm")}
+                className="h-8"
+              >
+                <Sparkles className={cn("h-3.5 w-3.5 ml-1", finalizingDm && "animate-pulse")} />
+                {finalizingDm ? "מנסח גרסה סופית..." : "גרסה סופית"}
+              </Button>
+            </div>
+          )}
       </div>
       <div className="flex items-center justify-between gap-2">
         <Button
