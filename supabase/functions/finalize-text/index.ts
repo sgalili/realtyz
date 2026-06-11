@@ -48,6 +48,24 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Resolve the calling user so we can inject their learned-edit lexicon.
+    let userId: string | null = null;
+    try {
+      const authHeader = req.headers.get("Authorization") ?? "";
+      if (authHeader.startsWith("Bearer ") && SUPABASE_URL && SUPABASE_ANON_KEY) {
+        const userClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+          global: { headers: { Authorization: authHeader } },
+        });
+        const { data } = await userClient.auth.getUser();
+        userId = data?.user?.id ?? null;
+      }
+    } catch { /* anonymous polish is allowed */ }
+
+    const admin = SUPABASE_SERVICE_ROLE_KEY
+      ? createClient(SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY)
+      : null;
+    const learnedBlock = admin ? await fetchLearnedOverridesBlock(admin as any, userId) : "";
+
     const lang = detectLang(edited_text);
     const langLine =
       lang === "he"
@@ -64,8 +82,9 @@ Deno.serve(async (req) => {
       "FORBIDDEN punctuation: em-dash (—), en-dash (–), double hyphen (--), triple hyphen (---). Use commas or periods instead.",
       PURPOSE_HINTS[purpose] || PURPOSE_HINTS.generic,
       langLine,
+      learnedBlock || null,
       "Return ONLY the final text, with no preface, no explanation, no quotes around it.",
-    ].join("\n");
+    ].filter(Boolean).join("\n\n");
 
     const userPrompt = [
       context ? `Context:\n${context}` : null,
