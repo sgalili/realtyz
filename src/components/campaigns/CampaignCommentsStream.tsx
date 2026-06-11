@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Bot, ChevronDown, ChevronUp, RefreshCw, Send, Smile, Meh, Frown } from "lucide-react";
+import { Bot, ChevronDown, ChevronUp, RefreshCw, Send, Smile, Meh, Frown, Sparkles } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
