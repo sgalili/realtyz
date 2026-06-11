@@ -233,8 +233,12 @@ Deno.serve(async (req) => {
     };
 
     const fetchAyrshareComments = async (id: string, platform: string, useSearchPlatformId = false) => {
+      // CRITICAL: with searchPlatformId=true Ayrshare expects the SINGULAR
+      // `platform` query param. Sending `platforms=` alongside searchPlatformId
+      // makes Ayrshare return error 156 ("social network is not linked") even
+      // when the network IS linked. Verified live on 2026-06-11.
       const qs = useSearchPlatformId
-        ? `platforms=${encodeURIComponent(platform)}&searchPlatformId=true`
+        ? `platform=${encodeURIComponent(platform)}&searchPlatformId=true`
         : `platforms=${encodeURIComponent(platform)}`;
       const url = `${AYR_BASE}/comments/${encodeURIComponent(id)}?${qs}`;
       const res = await fetch(url, {
@@ -486,7 +490,16 @@ Deno.serve(async (req) => {
             return;
           }
           const fetched = commentsSettled.value;
-          const analytics = analyticsSettled.status === "fulfilled" ? analyticsSettled.value : null;
+          let analytics = analyticsSettled.status === "fulfilled" ? analyticsSettled.value : null;
+          // Legacy posts published under a previous (suspended) Ayrshare profile
+          // 404 on their old top-level id. Retry analytics with the native FB
+          // composite id + searchPlatformId, which the live profile CAN resolve.
+          if ((!analytics || !analytics.ok) && target.nativePostId && target.nativePostId !== target.fetchPostId) {
+            try {
+              const retry = await fetchAyrsharePostAnalytics(target.nativePostId, target.platform, true);
+              if (retry?.ok) analytics = retry;
+            } catch { /* non-fatal */ }
+          }
           const arr: any[] = fetched.comments;
           if (!fetched.ok) {
             const apiError = {
