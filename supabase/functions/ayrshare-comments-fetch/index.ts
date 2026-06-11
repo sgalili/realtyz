@@ -241,17 +241,26 @@ Deno.serve(async (req) => {
         ? `platform=${encodeURIComponent(platform)}&searchPlatformId=true`
         : `platforms=${encodeURIComponent(platform)}`;
       const url = `${AYR_BASE}/comments/${encodeURIComponent(id)}?${qs}`;
-      const res = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${AYR_KEY}`,
-          "Profile-Key": profileKey,
-          "Cache-Control": "no-cache",
-        },
-      });
-      const text = await res.text();
-      let payload: any = {};
-      try { payload = text ? JSON.parse(text) : {}; } catch { payload = { rawText: text }; }
-      return { ok: res.ok, status: res.status, payload, text };
+      try {
+        // Strict 10s timeout: if Ayrshare hangs, abort gracefully so the
+        // function ALWAYS terminates and the UI spinner is released.
+        const res = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${AYR_KEY}`,
+            "Profile-Key": profileKey,
+            "Cache-Control": "no-cache",
+          },
+          signal: AbortSignal.timeout(10_000),
+        });
+        const text = await res.text();
+        let payload: any = {};
+        try { payload = text ? JSON.parse(text) : {}; } catch { payload = { rawText: text }; }
+        return { ok: res.ok, status: res.status, payload, text };
+      } catch (fetchErr) {
+        const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
+        console.warn("[ayrshare-comments-fetch] comments fetch aborted/failed", { id, msg });
+        return { ok: false, status: 0, payload: { message: msg, timeout: true }, text: "" };
+      }
     };
 
     // POST /api/analytics/post — returns the OUTER post's like/share/comment
@@ -271,6 +280,7 @@ Deno.serve(async (req) => {
             "Cache-Control": "no-cache",
           },
           body: JSON.stringify(body),
+          signal: AbortSignal.timeout(10_000),
         });
         const text = await res.text();
         let payload: any = {};
@@ -847,11 +857,24 @@ Deno.serve(async (req) => {
         else if (forceRefresh) patch.like_count = 0;
         if (typeof outer.shares === "number") patch.share_count = outer.shares;
         else if (forceRefresh) patch.share_count = 0;
+        // Overwrite EVERY campaign_logs row that references this post under
+        // ANY known id alias (native FB composite id, Ayrshare top-level id,
+        // permalink aliases, and the raw requested ids). Previously only the
+        // native id was matched, so stale rows keyed by the legacy Ayrshare
+        // top-level id kept their scrambled counts and won the frontend's
+        // max() aggregation — that's the 12-comments / 1-like mismatch.
+        const target = targets.get(nativePostId);
+        const idAliases = Array.from(new Set([
+          nativePostId,
+          target?.fetchPostId,
+          ...(target?.permalinkAliases ?? []),
+          ...requestedPostIds,
+        ].map((v) => String(v || "").trim()).filter(Boolean)));
         await admin
           .from("campaign_logs")
           .update(patch)
           .eq("user_id", userId)
-          .eq("provider_message_id", nativePostId);
+          .in("provider_message_id", idAliases);
       }
     } catch (countErr) {
       console.warn("[ayrshare-comments-fetch] counters sync failed", countErr);
