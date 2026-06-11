@@ -875,6 +875,26 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      <AlertDialog open={bulkDeleteOpen} onOpenChange={(open) => { if (!bulkDeleting) setBulkDeleteOpen(open); }}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>למחוק {selectedIds.size} נכסים?</AlertDialogTitle>
+            <AlertDialogDescription>
+              הנכסים שנבחרו יימחקו לצמיתות. לא ניתן לבטל פעולה זו.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={bulkDeleting}>ביטול</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={bulkDeleting}
+              onClick={(e) => { e.preventDefault(); handleBulkDelete(); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {bulkDeleting ? 'מוחק…' : `מחק ${selectedIds.size}`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
