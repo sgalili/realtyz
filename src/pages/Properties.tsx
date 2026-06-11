@@ -778,7 +778,16 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
               const isRent = p.listing_type === 'rent';
               const isMine = p.source === 'mine';
               return (
-                <tr key={p.id} className="border-t hover:bg-muted/30">
+                <tr key={p.id} className={`border-t hover:bg-muted/30 ${selectedIds.has(p.id) ? 'bg-destructive/5' : ''}`}>
+                  <td className="px-2 py-1.5 w-8">
+                    {isMine ? (
+                      <Checkbox
+                        checked={selectedIds.has(p.id)}
+                        onCheckedChange={() => toggleOne(p.id)}
+                        aria-label="בחר נכס"
+                      />
+                    ) : null}
+                  </td>
                   <td className="px-2 py-1.5 whitespace-nowrap">
                     <Badge className={`text-[10px] ${isRent ? 'bg-[#0b3982] text-white' : 'bg-primary text-primary-foreground'}`}>
                       {LISTING_TYPE_LABELS_HE[p.listing_type ?? 'sale']}
