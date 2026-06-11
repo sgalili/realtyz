@@ -82,6 +82,10 @@ const AIContentGenerator = () => {
   const [topic, setTopic] = useState('');
   const [platforms, setPlatforms] = useState<string[]>([]);
   const [generatedContent, setGeneratedContent] = useState('');
+  const [originalGenerated, setOriginalGenerated] = useState('');
+  const [finalizing, setFinalizing] = useState(false);
+  const [editingFinalizing, setEditingFinalizing] = useState(false);
+  const [editingOriginal, setEditingOriginal] = useState('');
   const [copied, setCopied] = useState(false);
   const [openLog, setOpenLog] = useState<ContentLog | null>(null);
   const [editingLog, setEditingLog] = useState<ContentLog | null>(null);
@@ -91,6 +95,33 @@ const AIContentGenerator = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const blockDemoAction = useDemoGuard();
+
+  const finalizeText = async (params: {
+    edited: string;
+    original: string;
+    context?: string;
+    purpose?: 'social_post' | 'public_comment' | 'private_dm' | 'generic';
+  }): Promise<string | null> => {
+    try {
+      const { data, error } = await supabase.functions.invoke('finalize-text', {
+        body: {
+          edited_text: params.edited,
+          original_text: params.original,
+          context: params.context ?? '',
+          purpose: params.purpose ?? 'social_post',
+        },
+      });
+      if (error) throw error;
+      const finalText = (data as any)?.final_text;
+      if (typeof finalText !== 'string' || !finalText.trim()) {
+        throw new Error((data as any)?.error || 'לא התקבלה גרסה סופית');
+      }
+      return finalText.trim();
+    } catch (e: any) {
+      toast.error(e?.message || 'יצירת גרסה סופית נכשלה');
+      return null;
+    }
+  };
 
   const { data: logs, isLoading } = useQuery({
     queryKey: ['ai-content-logs'],
@@ -131,6 +162,7 @@ const AIContentGenerator = () => {
     },
     onSuccess: ({ content, approvalId }) => {
       setGeneratedContent(content);
+      setOriginalGenerated(content);
       queryClient.invalidateQueries({ queryKey: ['ai-content-logs'] });
       queryClient.invalidateQueries({ queryKey: ['approval-queue'] });
       toast.success(approvalId ? 'התוכן נוצר ונשלח לתור אישור אנושי' : 'התוכן נוצר בהצלחה!');
@@ -178,6 +210,7 @@ const AIContentGenerator = () => {
     setEditTopic(log.topic || '');
     setEditPlatform(log.platform || '');
     setEditContent(log.generated_text || '');
+    setEditingOriginal(log.generated_text || '');
   };
 
   const handleCopy = () => {
@@ -266,9 +299,44 @@ const AIContentGenerator = () => {
                   </div>
                   <Textarea
                     value={generatedContent}
-                    readOnly
-                    className="min-h-[200px] text-sm bg-muted/30"
+                    onChange={(e) => setGeneratedContent(e.target.value)}
+                    className="min-h-[200px] text-sm"
                   />
+                  {generatedContent.trim() &&
+                    originalGenerated.trim() &&
+                    generatedContent.trim() !== originalGenerated.trim() && (
+                      <div className="flex items-center justify-end">
+                        <Button
+                          size="sm"
+                          variant="secondary"
+                          disabled={finalizing}
+                          onClick={async () => {
+                            setFinalizing(true);
+                            const finalText = await finalizeText({
+                              edited: generatedContent,
+                              original: originalGenerated,
+                              context: [
+                                topic ? `Topic: ${topic}` : null,
+                                platforms.length ? `Platforms: ${platforms.join(', ')}` : null,
+                              ]
+                                .filter(Boolean)
+                                .join('\n'),
+                              purpose: 'social_post',
+                            });
+                            if (finalText) {
+                              setGeneratedContent(finalText);
+                              setOriginalGenerated(finalText);
+                              toast.success('נוצרה גרסה סופית');
+                            }
+                            setFinalizing(false);
+                          }}
+                          className="h-8"
+                        >
+                          <Sparkles className={`h-3.5 w-3.5 ml-1 ${finalizing ? 'animate-pulse' : ''}`} />
+                          {finalizing ? 'מנסח גרסה סופית...' : 'גרסה סופית'}
+                        </Button>
+                      </div>
+                    )}
                 </div>
               </>
             )}
@@ -364,6 +432,37 @@ const AIContentGenerator = () => {
             <Button onClick={() => updateLogMutation.mutate()} disabled={updateLogMutation.isPending}>
               <Save className="h-4 w-4 ml-2" /> שמור
             </Button>
+            {editContent.trim() &&
+              editingOriginal.trim() &&
+              editContent.trim() !== editingOriginal.trim() && (
+                <Button
+                  variant="secondary"
+                  disabled={editingFinalizing}
+                  onClick={async () => {
+                    setEditingFinalizing(true);
+                    const finalText = await finalizeText({
+                      edited: editContent,
+                      original: editingOriginal,
+                      context: [
+                        editTopic ? `Topic: ${editTopic}` : null,
+                        editPlatform ? `Platform: ${editPlatform}` : null,
+                      ]
+                        .filter(Boolean)
+                        .join('\n'),
+                      purpose: 'social_post',
+                    });
+                    if (finalText) {
+                      setEditContent(finalText);
+                      setEditingOriginal(finalText);
+                      toast.success('נוצרה גרסה סופית');
+                    }
+                    setEditingFinalizing(false);
+                  }}
+                >
+                  <Sparkles className={`h-4 w-4 ml-2 ${editingFinalizing ? 'animate-pulse' : ''}`} />
+                  {editingFinalizing ? 'מנסח...' : 'גרסה סופית'}
+                </Button>
+              )}
             <Button variant="outline" onClick={() => setEditingLog(null)}>ביטול</Button>
           </DialogFooter>
         </DialogContent>

@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Bot, ChevronDown, ChevronUp, RefreshCw, Send, Smile, Meh, Frown } from "lucide-react";
+import { Bot, ChevronDown, ChevronUp, RefreshCw, Send, Smile, Meh, Frown, Sparkles } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -302,6 +302,53 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
   const [sending, setSending] = useState(false);
   const [sendPublic, setSendPublic] = useState(true);
   const [sendDm, setSendDm] = useState(true);
+  const [finalizingPub, setFinalizingPub] = useState(false);
+  const [finalizingDm, setFinalizingDm] = useState(false);
+
+  const finalizeReplyText = async (channel: "pub" | "dm") => {
+    if (!replyOpen) return;
+    const edited = channel === "pub" ? replyDraft : dmDraft;
+    const original = channel === "pub" ? originalReply : originalDm;
+    if (!edited.trim()) return;
+    const setBusy = channel === "pub" ? setFinalizingPub : setFinalizingDm;
+    setBusy(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("finalize-text", {
+        body: {
+          edited_text: edited,
+          original_text: original,
+          context: [
+            `Campaign: ${campaign.campaign_name ?? ""}`,
+            replyOpen.inbound_text ? `Inbound comment: ${replyOpen.inbound_text}` : null,
+            campaign.message_body ? `Original post:\n${campaign.message_body}` : null,
+          ]
+            .filter(Boolean)
+            .join("\n\n"),
+          purpose: channel === "pub" ? "public_comment" : "private_dm",
+        },
+      });
+      if (error) throw error;
+      const finalText = (data as any)?.final_text;
+      if (typeof finalText !== "string" || !finalText.trim()) {
+        throw new Error((data as any)?.error || "לא התקבלה גרסה סופית");
+      }
+      const next = finalText.trim();
+      if (channel === "pub") {
+        setReplyDraft(next);
+        setOriginalReply(next);
+        setDraftCache((prev) => ({ ...prev, [replyOpen.id]: { pub: next, dm: dmDraft } }));
+      } else {
+        setDmDraft(next);
+        setOriginalDm(next);
+        setDraftCache((prev) => ({ ...prev, [replyOpen.id]: { pub: replyDraft, dm: next } }));
+      }
+      toast.success("נוצרה גרסה סופית");
+    } catch (e: any) {
+      toast.error(e?.message || "יצירת גרסה סופית נכשלה");
+    } finally {
+      setBusy(false);
+    }
+  };
   // Per-row cached AI drafts so closing/re-opening the editor does NOT
   // re-invoke the AI — only an explicit refresh-per-card regenerates.
   const [draftCache, setDraftCache] = useState<Record<string, { pub: string; dm: string }>>(() => readDraftCache(campaign.id));
@@ -903,6 +950,24 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
           disabled={drafting || !sendPublic}
           className="w-full min-h-[120px] text-right text-sm leading-relaxed"
         />
+        {sendPublic &&
+          !drafting &&
+          replyDraft.trim() &&
+          originalReply.trim() &&
+          replyDraft.trim() !== originalReply.trim() && (
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={finalizingPub || sending}
+                onClick={() => finalizeReplyText("pub")}
+                className="h-8"
+              >
+                <Sparkles className={cn("h-3.5 w-3.5 ml-1", finalizingPub && "animate-pulse")} />
+                {finalizingPub ? "מנסח גרסה סופית..." : "גרסה סופית"}
+              </Button>
+            </div>
+          )}
       </div>
       <div className={cn("space-y-1.5", !sendDm && "opacity-50")}>
         <p className="text-xs font-semibold text-muted-foreground text-right">
@@ -917,6 +982,24 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
           disabled={drafting || !sendDm}
           className="w-full min-h-[160px] text-right text-sm leading-relaxed bg-muted/30"
         />
+        {sendDm &&
+          !drafting &&
+          dmDraft.trim() &&
+          originalDm.trim() &&
+          dmDraft.trim() !== originalDm.trim() && (
+            <div className="flex justify-end">
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={finalizingDm || sending}
+                onClick={() => finalizeReplyText("dm")}
+                className="h-8"
+              >
+                <Sparkles className={cn("h-3.5 w-3.5 ml-1", finalizingDm && "animate-pulse")} />
+                {finalizingDm ? "מנסח גרסה סופית..." : "גרסה סופית"}
+              </Button>
+            </div>
+          )}
       </div>
       <div className="flex items-center justify-between gap-2">
         <Button
