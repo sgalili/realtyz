@@ -23,7 +23,9 @@ export default function AiDialer() {
   const [aiActive, setAiActive] = useState(true);
   const [tab, setTab] = useState<"outbound" | "analytics">("outbound");
 
-  const [voiceId, setVoiceId] = useState<string>("");
+  const [voiceId, setVoiceId] = useState<string>(UDI_VOICE.voice_id);
+  const [addVoiceOpen, setAddVoiceOpen] = useState(false);
+  const qc = useQueryClient();
   const [audience, setAudience] = useState<AudienceMode | "">("");
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
