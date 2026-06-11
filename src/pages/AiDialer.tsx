@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,11 +8,14 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
-  Phone, Loader2, PhoneCall, BarChart3, Pencil, X, Upload, Check,
+  Phone, Loader2, PhoneCall, BarChart3, Pencil, X, Upload, Check, Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { formatPhoneDisplay } from "@/lib/formatPhone";
+import { AddVoiceDialog } from "@/components/voice/AddVoiceDialog";
+
+const UDI_VOICE = { id: "udi", name: "אודי ויטמן", voice_id: "4eohDAy1kTS18Cnf0HiN" };
 
 type AudienceMode = "all" | "manual" | "csv" | "paste";
 
@@ -20,7 +23,9 @@ export default function AiDialer() {
   const [aiActive, setAiActive] = useState(true);
   const [tab, setTab] = useState<"outbound" | "analytics">("outbound");
 
-  const [voiceId, setVoiceId] = useState<string>("");
+  const [voiceId, setVoiceId] = useState<string>(UDI_VOICE.voice_id);
+  const [addVoiceOpen, setAddVoiceOpen] = useState(false);
+  const qc = useQueryClient();
   const [audience, setAudience] = useState<AudienceMode | "">("");
   const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set());
   const [search, setSearch] = useState("");
@@ -184,12 +189,21 @@ export default function AiDialer() {
                     <SelectValue placeholder="בחירת נציג/ת AI טלפונית" />
                   </SelectTrigger>
                   <SelectContent dir="rtl">
+                    {!((voices as any[]).some((v) => v.voice_id === UDI_VOICE.voice_id)) && (
+                      <SelectItem value={UDI_VOICE.voice_id}>{UDI_VOICE.name}</SelectItem>
+                    )}
                     {(voices as any[]).map((v) => (
                       <SelectItem key={v.id} value={v.voice_id}>{v.name}</SelectItem>
                     ))}
-                    <SelectItem value="XrExE9yKIg1WjnnlVkGX">נציגת מכירות דיגיטלית</SelectItem>
-                    <SelectItem value="EXAVITQu4vr4xnSDxMaL">שירות דיירים</SelectItem>
-                    <SelectItem value="IKne3meq5aSn9XLyUdCD">נציג מתווך (גבר)</SelectItem>
+                    <div className="border-t border-border/60 my-1" />
+                    <button type="button" onClick={() => setAddVoiceOpen(true)}
+                      className="w-full flex items-center gap-2 px-2 py-2 text-right text-[13px] font-medium text-[#0f1b3d] hover:bg-muted/50 rounded-md">
+                      <Plus className="h-4 w-4" /> הוסף קול (שיבוט מהיר)
+                    </button>
+                    <button type="button" onClick={() => setAddVoiceOpen(true)}
+                      className="w-full flex items-center gap-2 px-2 py-2 text-right text-[13px] font-medium text-[#0f1b3d] hover:bg-muted/50 rounded-md">
+                      <Plus className="h-4 w-4" /> הוסף קול לפי Voice ID של ElevenLabs
+                    </button>
                   </SelectContent>
                 </Select>
                 {voiceId && (
@@ -321,6 +335,14 @@ export default function AiDialer() {
           </div>
         )}
       </div>
+      <AddVoiceDialog
+        open={addVoiceOpen}
+        onClose={() => setAddVoiceOpen(false)}
+        onAdded={(v) => {
+          qc.invalidateQueries({ queryKey: ["dialer-voices"] });
+          setVoiceId(v.voice_id);
+        }}
+      />
     </div>
   );
 }

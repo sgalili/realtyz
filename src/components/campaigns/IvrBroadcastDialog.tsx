@@ -5,20 +5,18 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Mic, Volume2, Upload, Square, Play, Pause, Trash2, Check, PhoneForwarded } from 'lucide-react';
+import { Mic, Volume2, Upload, Square, Play, Pause, Trash2, Check, PhoneForwarded, Plus } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
+import { AddVoiceDialog } from '@/components/voice/AddVoiceDialog';
 
 type IvrLead = { id: string; full_name: string | null; phone: string | null; city?: string | null };
 type ClonedVoice = { id: string; name: string; voice_id: string; preview_url?: string | null };
 
-const PRESET_VOICES: { id: string; label: string; voice_id: string }[] = [
-  { id: 'matilda', label: 'נציגת מכירות דיגיטלית', voice_id: 'XrExE9yKIg1WjnnlVkGX' },
-  { id: 'sarah',   label: 'שירות דיירים',         voice_id: 'EXAVITQu4vr4xnSDxMaL' },
-  { id: 'charlie', label: 'נציג מתווך (גבר)',    voice_id: 'IKne3meq5aSn9XLyUdCD' },
-];
+const UDI_VOICE = { id: 'udi', label: 'אודי ויטמן', voice_id: '4eohDAy1kTS18Cnf0HiN' };
+const PRESET_VOICES: { id: string; label: string; voice_id: string }[] = [UDI_VOICE];
 
 type SourceType = 'tts' | 'recording' | 'upload';
 type AudienceMode = 'all' | 'manual' | 'csv' | 'paste';
@@ -65,7 +63,8 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
   const [leads, setLeads] = useState<IvrLead[]>([]);
   const [loadingLeads, setLoadingLeads] = useState(false);
   const [clonedVoices, setClonedVoices] = useState<ClonedVoice[]>([]);
-  const [agentVoiceId, setAgentVoiceId] = useState<string>(PRESET_VOICES[0].voice_id);
+  const [agentVoiceId, setAgentVoiceId] = useState<string>(UDI_VOICE.voice_id);
+  const [addVoiceOpen, setAddVoiceOpen] = useState(false);
 
   // Audience
   const [audience, setAudience] = useState<AudienceMode | ''>('');
@@ -183,17 +182,17 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     if (recTimerRef.current) window.clearInterval(recTimerRef.current);
   };
 
-  // Generate TTS audio (calls ivr-broadcast with dry leads to obtain audio_url)
+  // Generate TTS audio (calls ivr-broadcast in generate-only mode for an audio_url)
   const generateTtsAudio = async () => {
     if (!ttsText.trim()) { toast.error('הקלידו טקסט'); return; }
     setGeneratingTts(true);
     try {
-      const { data } = await supabase.functions.invoke('ivr-broadcast', {
-        body: { source: 'tts', text: ttsText.trim(), voice_id: agentVoiceId, leads: [{ phone: '+972000000000' }] },
+      const { data, error } = await supabase.functions.invoke('ivr-broadcast', {
+        body: { source: 'tts', text: ttsText.trim(), voice_id: agentVoiceId, generate_only: true },
       });
       const audioUrl = (data as any)?.audio_url;
-      if (!audioUrl) {
-        toast.error(`יצירת אודיו נכשלה: ${(data as any)?.error ?? ''}`);
+      if (error || !audioUrl) {
+        toast.error(`הפקת האודיו נכשלה${(data as any)?.error ? `: ${(data as any).error}` : ''}`);
         return;
       }
       const item: HistoryItem = {
@@ -206,6 +205,8 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       const next = [item, ...history];
       setHistory(next); saveHistory(next);
       toast.success('האודיו נוצר');
+    } catch (e: any) {
+      toast.error(`הפקת האודיו נכשלה: ${e?.message ?? 'שגיאה'}`);
     } finally {
       setGeneratingTts(false);
     }
@@ -261,12 +262,15 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       const { data, error } = await supabase.functions.invoke('ivr-broadcast', { body: payload });
       toast.dismiss('ivr-dispatch');
       if (error || (data as any)?.error) {
-        toast.error(`שגיאה: ${(data as any)?.error ?? error?.message ?? ''}`);
+        toast.error(`הוצאת השיחה נכשלה: ${(data as any)?.error ?? error?.message ?? ''}`);
         return;
       }
       const ok = (data as any)?.ok ?? 0;
       const failed = (data as any)?.failed ?? 0;
       toast.success(`שודרו ${ok} שיחות${failed ? ` · ${failed} נכשלו` : ''}`);
+    } catch (e: any) {
+      toast.dismiss('ivr-dispatch');
+      toast.error(`הוצאת השיחה נכשלה: ${e?.message ?? 'שגיאה'}`);
     } finally {
       setDispatching(false);
     }
@@ -353,6 +357,15 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
                     {allAgents.map((a) => (
                       <SelectItem key={a.id} value={a.voice_id}>{a.label}</SelectItem>
                     ))}
+                    <div className="border-t border-border/60 my-1" />
+                    <button type="button" onClick={() => setAddVoiceOpen(true)}
+                      className="w-full flex items-center gap-2 px-2 py-2 text-right text-[13px] font-medium text-[#0f1b3d] hover:bg-muted/50 rounded-md">
+                      <Plus className="h-4 w-4" /> הוסף קול (שיבוט מהיר)
+                    </button>
+                    <button type="button" onClick={() => setAddVoiceOpen(true)}
+                      className="w-full flex items-center gap-2 px-2 py-2 text-right text-[13px] font-medium text-[#0f1b3d] hover:bg-muted/50 rounded-md">
+                      <Plus className="h-4 w-4" /> הוסף קול לפי Voice ID של ElevenLabs
+                    </button>
                   </SelectContent>
                 </Select>
               </div>
@@ -518,6 +531,14 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
           )}
         </div>
       </DialogContent>
+      <AddVoiceDialog
+        open={addVoiceOpen}
+        onClose={() => setAddVoiceOpen(false)}
+        onAdded={(v) => {
+          setClonedVoices((prev) => [{ id: v.id, name: v.name, voice_id: v.voice_id }, ...prev]);
+          setAgentVoiceId(v.voice_id);
+        }}
+      />
     </Dialog>
   );
 };

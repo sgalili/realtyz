@@ -72,8 +72,9 @@ Deno.serve(async (req) => {
 
     const body = await req.json();
     const source = body.source as "recording" | "tts" | "upload";
+    const generateOnly = body.generate_only === true;
     const leads = (body.leads ?? []) as Array<{ id?: string; phone: string }>;
-    if (!leads.length) return json({ error: "no_leads" }, 400);
+    if (!generateOnly && !leads.length) return json({ error: "no_leads" }, 400);
 
     // 1. Resolve audio URL (upload bytes, or generate via TTS)
     let audioUrl: string | null = body.audio_url ?? null;
@@ -100,6 +101,13 @@ Deno.serve(async (req) => {
       const { data: pub } = admin.storage.from("ivr-audio").getPublicUrl(path);
       audioUrl = pub.publicUrl;
     }
+
+    // Generate-only mode: return the audio URL without dialing.
+    if (generateOnly) {
+      return json({ ok: 0, failed: 0, total: 0, audio_url: audioUrl });
+    }
+
+
 
     // 2. Load Twilio creds for this broker
     const { data: rows } = await admin
