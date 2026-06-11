@@ -500,15 +500,22 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
     try {
       setProviderWarning(null);
       const pid = postIds[0] ?? null;
+      // WATCHDOG: even if an edge function hangs, never trap the button in an
+      // infinite spinner — race every invoke against a 25s hard timeout.
+      const withTimeout = <T,>(p: Promise<T>, ms = 25_000): Promise<T> =>
+        Promise.race([
+          p,
+          new Promise<T>((_, reject) => setTimeout(() => reject(new Error("provider_refresh_timeout")), ms)),
+        ]);
       const settled = await Promise.allSettled([
-        supabase.functions.invoke("ayrshare-analytics", {
+        withTimeout(supabase.functions.invoke("ayrshare-analytics", {
           body: pid ? { provider_message_id: pid } : {},
-        }),
-        postIds.length > 0
+        })),
+        withTimeout(postIds.length > 0
           ? supabase.functions.invoke("ayrshare-comments-fetch", {
               body: { post_ids: postIds, platform: platformForCampaignChannel(campaign.channel), campaign_body: campaign.message_body ?? null, force_refresh: manual },
             })
-          : supabase.functions.invoke("ayrshare-sync-comments", { body: {} }),
+          : supabase.functions.invoke("ayrshare-sync-comments", { body: {} })),
       ]);
       let sawSessionExpired = false;
       let sawHalt = false;
@@ -547,17 +554,22 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
         try {
           const { data: rows } = await supabase
             .from("campaign_logs")
-            .select("like_count, share_count, comment_count, provider_message_id")
+            .select("like_count, share_count, comment_count, provider_message_id, metrics_updated_at")
             .eq("user_id", userId)
-            .in("provider_message_id", postIds);
-          const max = (key: "like_count" | "share_count" | "comment_count") =>
-            (rows ?? []).reduce((acc, r: any) => Math.max(acc, Number(r?.[key] ?? 0) || 0), 0);
-          onCountersResolved(campaign.id, {
-            like_count: max("like_count"),
-            share_count: max("share_count"),
-            comment_count: max("comment_count"),
-            force: true,
-          });
+            .in("provider_message_id", postIds)
+            .order("metrics_updated_at", { ascending: false, nullsFirst: false })
+            .limit(1);
+          // Use the FRESHEST row only — max() across rows let stale legacy
+          // rows win and scrambled the badges (e.g. 12 comments / 1 like).
+          const fresh: any = rows?.[0] ?? null;
+          if (fresh) {
+            onCountersResolved(campaign.id, {
+              like_count: Number(fresh.like_count ?? 0) || 0,
+              share_count: Number(fresh.share_count ?? 0) || 0,
+              comment_count: Number(fresh.comment_count ?? 0) || 0,
+              force: true,
+            });
+          }
         } catch (counterErr) {
           console.warn("[CampaignCommentsStream] counter bubble-up failed", counterErr);
         }
