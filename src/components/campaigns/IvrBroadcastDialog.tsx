@@ -261,12 +261,15 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       const { data, error } = await supabase.functions.invoke('ivr-broadcast', { body: payload });
       toast.dismiss('ivr-dispatch');
       if (error || (data as any)?.error) {
-        toast.error(`שגיאה: ${(data as any)?.error ?? error?.message ?? ''}`);
+        toast.error(`הוצאת השיחה נכשלה: ${(data as any)?.error ?? error?.message ?? ''}`);
         return;
       }
       const ok = (data as any)?.ok ?? 0;
       const failed = (data as any)?.failed ?? 0;
       toast.success(`שודרו ${ok} שיחות${failed ? ` · ${failed} נכשלו` : ''}`);
+    } catch (e: any) {
+      toast.dismiss('ivr-dispatch');
+      toast.error(`הוצאת השיחה נכשלה: ${e?.message ?? 'שגיאה'}`);
     } finally {
       setDispatching(false);
     }
