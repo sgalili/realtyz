@@ -103,6 +103,11 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     return !window.localStorage.getItem(STORAGE_KEY);
   }, [workspaces, loading, user]);
 
+  // Auto-open selector when login leaves the user with no active workspace and multiple options.
+  useEffect(() => {
+    if (mustChoose) setSelectorOpen(true);
+  }, [mustChoose]);
+
   const value: WorkspaceContextType = {
     workspaces,
     activeWorkspaceId,
