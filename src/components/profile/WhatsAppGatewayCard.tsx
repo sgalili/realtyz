@@ -49,6 +49,14 @@ export function WhatsAppGatewayCard() {
     })();
   }, []);
 
+  // Probe phone once creds are populated.
+  useEffect(() => {
+    if (!loading && instanceId && token && !waPhone) {
+      probePhone();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, instanceId, token]);
+
   const upsertSocialConnection = async (waState: 'authorized' | 'unknown') => {
     try {
       await supabase
