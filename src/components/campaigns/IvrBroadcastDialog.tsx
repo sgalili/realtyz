@@ -110,15 +110,21 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     hasLoadedRef.current = true;
     (async () => {
       setLoadingLeads(true);
-      const [{ data: leadRows }, { data: voiceRows }] = await Promise.all([
+      const [{ data: leadRows }, { data: voiceRows }, { data: listingRows }] = await Promise.all([
         supabase.from('leads').select('id, full_name, phone_number, city')
           .not('phone_number', 'is', null).order('full_name', { ascending: true }).limit(1000),
         supabase.from('cloned_voices').select('id, name, voice_id, preview_url').order('created_at', { ascending: false }),
+        supabase.from('listings')
+          .select('id, property_title, address, city, neighborhood, rooms, sqm, asking_price, features')
+          .in('status', ['live', 'pending'])
+          .order('created_at', { ascending: false })
+          .limit(200),
       ]);
       setLeads(((leadRows as any[]) ?? []).map((r) => ({
         id: r.id, full_name: r.full_name, phone: r.phone_number, city: r.city,
       })));
       setClonedVoices((voiceRows ?? []) as ClonedVoice[]);
+      setListings((listingRows ?? []) as ListingOpt[]);
       setLoadingLeads(false);
     })();
   }, [open]);
