@@ -23,6 +23,7 @@ import { MessageCircle, Save, Loader2, CheckCircle2, ImageDown } from 'lucide-re
 export function WhatsAppGatewayCard() {
   const [instanceId, setInstanceId] = useState('');
   const [token, setToken] = useState('');
+  const [waPhone, setWaPhone] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
@@ -47,6 +48,14 @@ export function WhatsAppGatewayCard() {
       }
     })();
   }, []);
+
+  // Probe phone once creds are populated.
+  useEffect(() => {
+    if (!loading && instanceId && token && !waPhone) {
+      probePhone();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, instanceId, token]);
 
   const upsertSocialConnection = async (waState: 'authorized' | 'unknown') => {
     try {
@@ -80,13 +89,28 @@ export function WhatsAppGatewayCard() {
     }
   };
 
+  const probePhone = async (): Promise<void> => {
+    try {
+      const res = await fetch(
+        `https://api.green-api.com/waInstance${instanceId.trim()}/getWaSettings/${token.trim()}`,
+      );
+      const data = await res.json().catch(() => ({}));
+      const wid: string = data?.wid ?? data?.phone ?? '';
+      const digits = String(wid).replace(/\D/g, '');
+      if (digits) setWaPhone(digits);
+    } catch { /* ignore */ }
+  };
+
   const probeState = async (): Promise<'authorized' | 'unknown'> => {
     try {
       const res = await fetch(
         `https://api.green-api.com/waInstance${instanceId.trim()}/getStateInstance/${token.trim()}`,
       );
       const data = await res.json().catch(() => ({}));
-      if (res.ok && data?.stateInstance === 'authorized') return 'authorized';
+      if (res.ok && data?.stateInstance === 'authorized') {
+        probePhone();
+        return 'authorized';
+      }
     } catch { /* ignore */ }
     return 'unknown';
   };
@@ -186,11 +210,22 @@ export function WhatsAppGatewayCard() {
         </p>
 
         <div className="space-y-1.5">
+          <Label className="text-right block">מספר WhatsApp מחובר</Label>
+          <Input
+            dir="ltr"
+            readOnly
+            placeholder={waPhone ? '' : 'יוצג לאחר בדיקת חיבור'}
+            value={waPhone ? `+${waPhone}` : ''}
+            className="bg-muted/40"
+          />
+        </div>
+
+        <div className="space-y-1.5">
           <Label htmlFor="wa-instance" className="text-right block">Instance ID</Label>
           <Input
             id="wa-instance"
             dir="ltr"
-            placeholder="1101234567"
+            placeholder="7103164675"
             value={instanceId}
             onChange={(e) => setInstanceId(e.target.value)}
             disabled={loading}

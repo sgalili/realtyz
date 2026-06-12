@@ -405,6 +405,21 @@ Deno.serve(async (req) => {
     return jsonResponse({ error: "invalid_json" }, 400);
   }
 
+  // Pin Realtyz AI Master to GreenAPI Instance 7103164675.
+  // Reject inbound traffic from any other instance so stale/test instances
+  // can't drive the live owner/tenant pipeline.
+  const MASTER_INSTANCE_ID = "7103164675";
+  const incomingInstance = String(
+    payload?.instanceData?.idInstance ??
+      payload?.idInstance ??
+      payload?.instance_id ??
+      "",
+  ).replace(/\D/g, "");
+  if (incomingInstance && incomingInstance !== MASTER_INSTANCE_ID) {
+    console.warn("whatsapp-webhook: rejecting non-master instance", incomingInstance);
+    return jsonResponse({ ok: true, ignored: "non_master_instance", instance: incomingInstance });
+  }
+
   const extracted = extractGreenApiMessage(payload);
   if (!extracted) {
     // Acknowledge so GreenAPI does not retry (e.g. status receipts, group events).
