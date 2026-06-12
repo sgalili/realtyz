@@ -421,13 +421,17 @@ export default function Profile() {
   return (
     <div dir="rtl" className="mx-auto w-full max-w-4xl space-y-4 p-2 sm:p-4">
       <Tabs value={tab} onValueChange={setTab} dir="rtl">
-        <TabsList className="grid w-full grid-cols-3 mb-[15px]">
-          <TabsTrigger value="personal">הפרופיל</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4 mb-[15px]">
+          <TabsTrigger value="personal">פרופיל</TabsTrigger>
+          <TabsTrigger value="managers">מנהלים</TabsTrigger>
           <TabsTrigger value="workspace">המשרד</TabsTrigger>
           <TabsTrigger value="connections">חיבורים</TabsTrigger>
         </TabsList>
         <TabsContent value="personal" className="mt-[20px] space-y-4">
           <PersonalTab />
+        </TabsContent>
+        <TabsContent value="managers" className="mt-[20px] space-y-4">
+          <ManagersTab />
         </TabsContent>
         <TabsContent value="workspace" className="mt-[20px] space-y-4">
           <WorkspaceTab />
