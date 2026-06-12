@@ -31,6 +31,7 @@ import { AgentPersonaPanel } from '@/components/AgentPersonaPanel';
 import { PersonaCalibrationPanel } from '@/components/PersonaCalibrationPanel';
 import { ProductionPrepPanel } from '@/components/ProductionPrepPanel';
 import { AyrshareProfilePurgeCard } from '@/components/admin/AyrshareProfilePurgeCard';
+import { AyrshareBulkPurgeCard } from '@/components/admin/AyrshareBulkPurgeCard';
 import { VoiceAgentPanel } from '@/components/calendar/VoiceAgentPanel';
 import { UsageMeterPanel } from '@/components/UsageMeterPanel';
 import { ServiceAreasPanel } from '@/components/settings/ServiceAreasPanel';
@@ -1099,6 +1100,7 @@ const ApiSettings = () => {
         </div>
         <ProductionPrepPanel />
         {isSuperAdmin && <AyrshareProfilePurgeCard />}
+        {isSuperAdmin && <AyrshareBulkPurgeCard />}
       </div>
 
       {/* ── Section A.0b: Social Channels (Ayrshare dynamic grid) ── */}
