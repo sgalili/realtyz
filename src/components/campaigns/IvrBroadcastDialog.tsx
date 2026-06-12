@@ -458,12 +458,35 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
                 </Select>
               </div>
 
+              <div className="space-y-1.5">
+                <label className="text-[13px] font-semibold text-[#0f1b3d] text-right block">בחירת נכס לקמפיין</label>
+                <Select value={listingId} onValueChange={setListingId} dir="rtl">
+                  <SelectTrigger className="w-full h-12 text-right border-[#0f1b3d]/20 rounded-xl bg-background font-semibold">
+                    <SelectValue placeholder="קדם נכס ספציפי מהמאגר" />
+                  </SelectTrigger>
+                  <SelectContent dir="rtl">
+                    <SelectItem value="none">ללא נכס · הודעה כללית</SelectItem>
+                    {listings.map((l) => (
+                      <SelectItem key={l.id} value={l.id} className="pe-2">
+                        <span className="truncate block max-w-[22rem]">{listingLabel(l)}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedListing && (
+                  <p className="text-[11px] text-muted-foreground text-right leading-snug">
+                    הטקסט שייווצר ישלב אוטומטית את פרטי הנכס (כתובת, חדרים, מחיר) למסר מותאם.
+                  </p>
+                )}
+              </div>
+
               <Textarea
                 value={ttsText}
                 onChange={(e) => setTtsText(e.target.value)}
-                placeholder="הקלידו את ההודעה שתישמע ביעד..."
+                placeholder={selectedListing ? "כתבו זווית/הצעה — פרטי הנכס ישולבו אוטומטית" : "הקלידו את ההודעה שתישמע ביעד..."}
                 className="text-right min-h-[120px] border-[#0f1b3d]/20 rounded-xl bg-background"
               />
+
 
               <div className="flex justify-start">
                 <Button
