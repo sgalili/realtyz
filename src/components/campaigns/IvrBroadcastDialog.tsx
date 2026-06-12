@@ -14,6 +14,11 @@ import { AddVoiceDialog } from '@/components/voice/AddVoiceDialog';
 
 type IvrLead = { id: string; full_name: string | null; phone: string | null; city?: string | null };
 type ClonedVoice = { id: string; name: string; voice_id: string; preview_url?: string | null };
+type ListingOpt = {
+  id: string; property_title: string | null; address: string | null; city: string | null;
+  neighborhood: string | null; rooms: number | null; sqm: number | null; asking_price: number | null;
+  features: any;
+};
 
 const UDI_VOICE = { id: 'udi', label: 'אודי ויטמן', voice_id: '4eohDAy1kTS18Cnf0HiN' };
 const PRESET_VOICES: { id: string; label: string; voice_id: string }[] = [UDI_VOICE];
@@ -65,6 +70,8 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
   const [clonedVoices, setClonedVoices] = useState<ClonedVoice[]>([]);
   const [agentVoiceId, setAgentVoiceId] = useState<string>(UDI_VOICE.voice_id);
   const [addVoiceOpen, setAddVoiceOpen] = useState(false);
+  const [listings, setListings] = useState<ListingOpt[]>([]);
+  const [listingId, setListingId] = useState<string>("none");
 
   // Audience
   const [audience, setAudience] = useState<AudienceMode | ''>('');
@@ -103,15 +110,21 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     hasLoadedRef.current = true;
     (async () => {
       setLoadingLeads(true);
-      const [{ data: leadRows }, { data: voiceRows }] = await Promise.all([
+      const [{ data: leadRows }, { data: voiceRows }, { data: listingRows }] = await Promise.all([
         supabase.from('leads').select('id, full_name, phone_number, city')
           .not('phone_number', 'is', null).order('full_name', { ascending: true }).limit(1000),
         supabase.from('cloned_voices').select('id, name, voice_id, preview_url').order('created_at', { ascending: false }),
+        supabase.from('listings')
+          .select('id, property_title, address, city, neighborhood, rooms, sqm, asking_price, features')
+          .in('status', ['live', 'pending'])
+          .order('created_at', { ascending: false })
+          .limit(200),
       ]);
       setLeads(((leadRows as any[]) ?? []).map((r) => ({
         id: r.id, full_name: r.full_name, phone: r.phone_number, city: r.city,
       })));
       setClonedVoices((voiceRows ?? []) as ClonedVoice[]);
+      setListings((listingRows ?? []) as ListingOpt[]);
       setLoadingLeads(false);
     })();
   }, [open]);
@@ -220,13 +233,37 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     if (recTimerRef.current) window.clearInterval(recTimerRef.current);
   };
 
+  const selectedListing = useMemo(
+    () => listings.find((l) => l.id === listingId) ?? null,
+    [listings, listingId],
+  );
+  const listingLabel = (l: ListingOpt) => {
+    const parts = [l.property_title, l.address || l.neighborhood, l.city].filter(Boolean);
+    return parts.join(' · ') || 'נכס ללא כותרת';
+  };
+  const buildTtsPrompt = (raw: string): string => {
+    if (!selectedListing) return raw;
+    const l = selectedListing;
+    const ctx: string[] = [];
+    if (l.property_title) ctx.push(l.property_title);
+    if (l.address) ctx.push(`כתובת: ${l.address}`);
+    if (l.neighborhood) ctx.push(`שכונה: ${l.neighborhood}`);
+    if (l.city) ctx.push(`עיר: ${l.city}`);
+    if (l.rooms) ctx.push(`${l.rooms} חדרים`);
+    if (l.sqm) ctx.push(`${l.sqm} מ"ר`);
+    if (l.asking_price) ctx.push(`מחיר מבוקש: ${Number(l.asking_price).toLocaleString('he-IL')} ₪`);
+    const header = `הקשר הנכס לקמפיין: ${ctx.join(', ')}.`;
+    return `${header}\n\n${raw}`;
+  };
+
   // Generate TTS audio (calls ivr-broadcast in generate-only mode for an audio_url)
   const generateTtsAudio = async () => {
     if (!ttsText.trim()) { toast.error('הקלידו טקסט'); return; }
     setGeneratingTts(true);
     try {
+      const finalText = buildTtsPrompt(ttsText.trim());
       const { data, error } = await supabase.functions.invoke('ivr-broadcast', {
-        body: { source: 'tts', text: ttsText.trim(), voice_id: agentVoiceId, generate_only: true },
+        body: { source: 'tts', text: finalText, voice_id: agentVoiceId, generate_only: true },
       });
       const audioUrl = (data as any)?.audio_url;
       if (error || !audioUrl) {
@@ -421,12 +458,35 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
                 </Select>
               </div>
 
+              <div className="space-y-1.5">
+                <label className="text-[13px] font-semibold text-[#0f1b3d] text-right block">בחירת נכס לקמפיין</label>
+                <Select value={listingId} onValueChange={setListingId} dir="rtl">
+                  <SelectTrigger className="w-full h-12 text-right border-[#0f1b3d]/20 rounded-xl bg-background font-semibold">
+                    <SelectValue placeholder="קדם נכס ספציפי מהמאגר" />
+                  </SelectTrigger>
+                  <SelectContent dir="rtl">
+                    <SelectItem value="none">ללא נכס · הודעה כללית</SelectItem>
+                    {listings.map((l) => (
+                      <SelectItem key={l.id} value={l.id} className="pe-2">
+                        <span className="truncate block max-w-[22rem]">{listingLabel(l)}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                {selectedListing && (
+                  <p className="text-[11px] text-muted-foreground text-right leading-snug">
+                    הטקסט שייווצר ישלב אוטומטית את פרטי הנכס (כתובת, חדרים, מחיר) למסר מותאם.
+                  </p>
+                )}
+              </div>
+
               <Textarea
                 value={ttsText}
                 onChange={(e) => setTtsText(e.target.value)}
-                placeholder="הקלידו את ההודעה שתישמע ביעד..."
+                placeholder={selectedListing ? "כתבו זווית/הצעה — פרטי הנכס ישולבו אוטומטית" : "הקלידו את ההודעה שתישמע ביעד..."}
                 className="text-right min-h-[120px] border-[#0f1b3d]/20 rounded-xl bg-background"
               />
+
 
               <div className="flex justify-start">
                 <Button
