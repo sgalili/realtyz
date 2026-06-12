@@ -401,7 +401,7 @@ async function handleReplyCommand(ctx: RouterContext): Promise<RouterResult> {
     return {
       handled: true,
       action: "reply_failed",
-      reply: `שליחת התגובה נכשלה (${msg.slice(0, 80)}). אפשר להשלים מהדשבורד: ${DASHBOARD_BASE}/campaigns`,
+      reply: `שליחת התגובה נכשלה (${msg.slice(0, 80)}). נסה שוב בעוד רגע.`,
     };
   }
 }
