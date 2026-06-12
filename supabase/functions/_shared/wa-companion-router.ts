@@ -163,6 +163,35 @@ async function lookupOwnerFirstName(admin: any, userId: string, senderPhone?: st
 
 // ----- POST GENERATION command -----------------------------------------
 
+function formatIls(n: number | null | undefined): string | null {
+  if (!n || !Number.isFinite(Number(n))) return null;
+  try { return new Intl.NumberFormat("he-IL").format(Number(n)) + " ₪"; } catch { return String(n); }
+}
+
+function buildListingFactSheet(l: any): string {
+  if (!l) return "";
+  const lines: string[] = [];
+  const title = l.property_title || l.address || "הנכס";
+  lines.push(`כותרת: ${title}`);
+  if (l.address) lines.push(`כתובת: ${l.address}${l.city ? ", " + l.city : ""}`);
+  if (l.rooms) lines.push(`חדרים: ${l.rooms}`);
+  if (l.floor !== null && l.floor !== undefined) lines.push(`קומה: ${l.floor}`);
+  if (l.sqm) lines.push(`שטח: ${l.sqm} מ"ר`);
+  if (l.parking) lines.push(`חניה: כן`);
+  if (l.elevator) lines.push(`מעלית: כן`);
+  const price = formatIls(l.asking_price);
+  if (price) lines.push(`מחיר מבוקש: ${price}`);
+  // Features may be jsonb array of strings and/or objects.
+  if (Array.isArray(l.features)) {
+    const flat = l.features
+      .map((f: any) => typeof f === "string" ? f : (f && typeof f === "object" ? Object.values(f).filter((v) => typeof v === "string").join(" ") : ""))
+      .filter(Boolean);
+    if (flat.length) lines.push(`מאפיינים ייחודיים: ${flat.join(", ")}`);
+  }
+  if (l.description) lines.push(`תיאור: ${String(l.description).slice(0, 400)}`);
+  return lines.join("\n");
+}
+
 async function handlePostCommand(ctx: RouterContext): Promise<RouterResult> {
   const topic = stripTrigger(ctx.text);
   if (!topic) {
@@ -173,6 +202,15 @@ async function handlePostCommand(ctx: RouterContext): Promise<RouterResult> {
     };
   }
   const listing = await resolveOwnerListing(ctx.admin, ctx.ownerUserId, topic);
+  const factSheet = buildListingFactSheet(listing);
+  const customInstructions = [
+    "פוסט שיווקי לפייסבוק בעברית, ממוקד המרה, ללא em-dash וללא '--'.",
+    "השתמש אך ורק בנתוני הנכס המופיעים בגיליון העובדות מטה — אסור להמציא חדרים, קומה, מחיר או מאפיינים.",
+    "פתח במשפט הוק קצר, פרט 3-5 יתרונות קונקרטיים מהמאפיינים, וסיים בקריאה לפעולה לפנייה ישירה בוואטסאפ.",
+    "אורך: 90-160 מילים. בלי האשטגים מוגזמים (עד 3).",
+    factSheet ? `\n--- גיליון עובדות הנכס ---\n${factSheet}\n--- סוף ---` : "",
+  ].filter(Boolean).join("\n");
+
   try {
     const res = await fetch(`${ctx.supabaseUrl}/functions/v1/generate-content`, {
       method: "POST",
@@ -184,9 +222,10 @@ async function handlePostCommand(ctx: RouterContext): Promise<RouterResult> {
       body: JSON.stringify({
         topic,
         platform: "facebook",
-        customInstructions: "Drafted via WhatsApp companion. Keep concise.",
+        customInstructions,
         selectedListingId: listing?.id ?? null,
         listingFocusOnly: !!listing,
+        listingFacts: factSheet || null,
       }),
     });
     const j = await res.json().catch(() => ({}));
@@ -194,7 +233,7 @@ async function handlePostCommand(ctx: RouterContext): Promise<RouterResult> {
     const draft = String(j?.content ?? j?.text ?? "").trim();
     if (!draft) throw new Error("empty draft");
 
-    // Queue the draft for review (non-fatal if table shape differs).
+    // Queue the draft so a follow-up "פרסם" message can publish it.
     let queueId: string | null = null;
     try {
       const { data: q } = await ctx.admin
@@ -205,31 +244,102 @@ async function handlePostCommand(ctx: RouterContext): Promise<RouterResult> {
           draft_text: draft,
           source: "whatsapp_companion",
           status: "pending",
-          metadata: { listing_id: listing?.id ?? null, topic, via: "wa_router" },
+          metadata: {
+            listing_id: listing?.id ?? null,
+            topic,
+            via: "wa_router",
+            sender_phone: ctx.senderPhone,
+            awaiting_publish: true,
+          },
         })
         .select("id")
         .maybeSingle();
       queueId = q?.id ?? null;
     } catch (_) { /* best-effort */ }
 
-    const deepLink = `${DASHBOARD_BASE}/campaigns${queueId ? `?draft=${queueId}` : ""}`;
     const firstName = await lookupOwnerFirstName(ctx.admin, ctx.ownerUserId, ctx.senderPhone);
     const greet = firstName ? `היי ${firstName}` : "היי";
     const subject = listing
       ? `הדירה ב${listing.address ?? listing.property_title}`
-      : "הנושא שביקשת";
-    const ack = `${greet}, זיהיתי אותך כמנהל. אני מייצר כעת טיוטת פוסט שיווקי עבור ${subject} ומעביר לאישור שלך…`;
+      : "הבקשה שלך";
     const reply =
-      `${ack}\n\n` +
-      `✍️ טיוטה:\n${draft.slice(0, 700)}${draft.length > 700 ? "…" : ""}\n\n` +
-      `לעריכה / פרסום / בחירת Final Version: ${deepLink}`;
+      `${greet}, הנה טיוטת הפוסט השיווקי עבור ${subject}:\n\n` +
+      `${draft}\n\n` +
+      `כדי לפרסם את הפוסט הזה עכשיו ישירות לפייסבוק, השב להודעה זו במילה "פרסם".`;
     return { handled: true, action: "post_generated", reply, meta: { queueId, listingId: listing?.id ?? null } };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
     return {
       handled: true,
       action: "post_failed",
-      reply: `לא הצלחתי לייצר טיוטה כרגע (${msg.slice(0, 80)}). אפשר לנסות שוב או לעבור ל-${DASHBOARD_BASE}/campaigns`,
+      reply: `לא הצלחתי לייצר טיוטה כרגע (${msg.slice(0, 80)}). נסה שוב בעוד רגע.`,
+    };
+  }
+}
+
+// ----- PUBLISH command (responds to "פרסם" after a draft) --------------
+
+const PUBLISH_TRIGGERS = [
+  /^\s*פרסם\s*!?\s*$/i,
+  /^\s*פרסמי\s*!?\s*$/i,
+  /^\s*publish\s*!?\s*$/i,
+  /^\s*go\s*!?\s*$/i,
+];
+
+function isPublishCommand(t: string) {
+  return PUBLISH_TRIGGERS.some((r) => r.test(t.trim()));
+}
+
+async function handlePublishCommand(ctx: RouterContext): Promise<RouterResult> {
+  const { data: pending } = await ctx.admin
+    .from("approval_queue")
+    .select("id, draft_text, metadata, channel, status")
+    .eq("user_id", ctx.ownerUserId)
+    .eq("source", "whatsapp_companion")
+    .eq("status", "pending")
+    .order("created_at", { ascending: false })
+    .limit(1)
+    .maybeSingle();
+  if (!pending?.draft_text) {
+    return {
+      handled: true,
+      action: "publish_no_draft",
+      reply: "אין כרגע טיוטה ממתינה לפרסום. שלח קודם 'צור פוסט על …' ואחר כך 'פרסם'.",
+    };
+  }
+  try {
+    const res = await fetch(`${ctx.supabaseUrl}/functions/v1/ayrshare-post`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${ctx.serviceKey}`,
+        "x-impersonate-user": ctx.ownerUserId,
+      },
+      body: JSON.stringify({
+        post: pending.draft_text,
+        channels: ["facebook"],
+        campaign_name: "WhatsApp Companion",
+        listing_id: (pending.metadata as any)?.listing_id ?? null,
+      }),
+    });
+    const j = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(`ayrshare-post ${res.status}: ${JSON.stringify(j).slice(0, 200)}`);
+    await ctx.admin
+      .from("approval_queue")
+      .update({ status: "approved", metadata: { ...(pending.metadata ?? {}), published_at: new Date().toISOString() } })
+      .eq("id", pending.id);
+    return {
+      handled: true,
+      action: "publish_sent",
+      reply: "✅ הפוסט פורסם בפייסבוק.",
+      meta: { queueId: pending.id },
+    };
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : "unknown";
+    return {
+      handled: true,
+      action: "publish_failed",
+      reply: `פרסום הפוסט נכשל (${msg.slice(0, 100)}). אפשר לנסות שוב בעוד רגע.`,
     };
   }
 }
