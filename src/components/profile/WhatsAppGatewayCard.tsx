@@ -81,13 +81,28 @@ export function WhatsAppGatewayCard() {
     }
   };
 
+  const probePhone = async (): Promise<void> => {
+    try {
+      const res = await fetch(
+        `https://api.green-api.com/waInstance${instanceId.trim()}/getWaSettings/${token.trim()}`,
+      );
+      const data = await res.json().catch(() => ({}));
+      const wid: string = data?.wid ?? data?.phone ?? '';
+      const digits = String(wid).replace(/\D/g, '');
+      if (digits) setWaPhone(digits);
+    } catch { /* ignore */ }
+  };
+
   const probeState = async (): Promise<'authorized' | 'unknown'> => {
     try {
       const res = await fetch(
         `https://api.green-api.com/waInstance${instanceId.trim()}/getStateInstance/${token.trim()}`,
       );
       const data = await res.json().catch(() => ({}));
-      if (res.ok && data?.stateInstance === 'authorized') return 'authorized';
+      if (res.ok && data?.stateInstance === 'authorized') {
+        probePhone();
+        return 'authorized';
+      }
     } catch { /* ignore */ }
     return 'unknown';
   };
