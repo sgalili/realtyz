@@ -1,52 +1,75 @@
-## Workstream C — Broadcast Port into Realtyz
+# Realtyz multi-workspace clone of Kalpiz
 
-### Scope
+## 1. Database (one migration)
 
-Delta-port from KalpizAi `CampaignCenter.tsx` + `SmsBlastSimulator.tsx` into Realtyz. Realtyz already has 90% of these files; this plan covers only the differences. **No new tables created** — uses existing `leads` + `listings` + `dispatch-campaign` edge fn + `get_user_balance` RPC (if absent, falls back to `useFreemiumStatus`).
+New table `public.workspace_memberships`:
+- `user_id uuid` (member)
+- `workspace_owner_id uuid` (the user whose `profiles.workspace_owner_id` defines the workspace)
+- `role text` ('owner' | 'manager' | 'agent' | 'viewer' | 'super_admin')
+- `workspace_name text`, `workspace_logo_url text`, `account_type text` nullable
+- `last_accessed_at timestamptz`
+- unique (user_id, workspace_owner_id)
+- GRANTs to authenticated + service_role; RLS: user sees only own rows; service_role full.
 
-### 1. `src/pages/CampaignCenter.tsx` — Hero shell
+Profile additions (user-scoped personalization, KI parity):
+- `profiles.city text`, `profiles.gender text`, `profiles.phone text` (display), `profiles.active_workspace_owner_id uuid`
 
-- Read query: `tab`, `lead` (was `voter`), `phone`, `name`, `from` (treat `from=crm` and legacy `from=voter-crm` as same).
-- Render a deep-blue gradient hero with a white `RealtyzWave` bottom edge (reuse `<RealtyzWave>`).
-- Hero title: `שולחים ל- {name}` only (no phone, no digits). Prepend an `ArrowRight` IconButton that calls `navigate(\`/lead-crm?lead=${leadId}\`)` when `from=crm`.
-- Hide the hero (and back-arrow) when no `lead` param is present — keeps default `/campaigns` clean.
-- Remove "קמפיין AI" header text, wallet pill, balance badge from this view (they live in `HeaderProfileMenu` and the freemium banner on `/lead-crm`).
+Security-definer helpers:
+- `get_my_workspaces()` returns rows the user belongs to + their own implicit owner row.
+- `set_active_workspace(_owner uuid)` validates membership, updates `profiles.active_workspace_owner_id` + `last_accessed_at`.
+- Trigger on `auth.users` insert: auto-insert self-owner membership row.
+- Backfill: for every existing profile, insert one self-owner row.
 
-### 2. `src/pages/SmsBlastSimulator.tsx` — Broker composer
+## 2. Client context
 
-- `ChannelId` extended to 12: add `messenger | twitter | youtube` (ivr already present). Slot them into the same `CHANNELS` metadata pattern (icon, color, unit price, label).
-- Collapse channels 7–12 behind a `"עוד ערוצים"` toggle (Collapsible). First six remain visible.
-- Recipient data source: replace any `voters` query with `leads` (`lead_name`, `lead_phone`, `lead_email`, `city`, `preferences`, `lead_stage`). Filter chips swap "מפלגה / קלפי" → `deal_type` (sale/rent) and `city`. Personalization tags become `[שם_פרטי]`, `[עיר]`, `[נכס]` (resolved from `listings.property_title`).
-- File parser: keep `.csv/.txt/.xlsx` via `xlsx` lib, validate phone/email per row, cap at 10M rows.
-- Dispatch: keep call to edge fn `dispatch-campaign` with `mode: 'test' | 'preflight' | 'campaign'`. Wallet read via `supabase.rpc('get_user_balance', { _user_id })` with try/catch fallback to `useFreemiumStatus().walletBalanceAgorot / 100`.
-- WhatsApp payloads: ensure `preview_url: false` is included in the edge-fn body.
-- Currency: every ₪ amount rendered via `<PriceTag value={...} />` (₪ stays left).
+New `src/hooks/useWorkspace.tsx` (`WorkspaceProvider`):
+- Loads `get_my_workspaces` once after auth.
+- Exposes `{ workspaces, activeWorkspaceId, setActiveWorkspace, mustChoose }`.
+- `mustChoose = workspaces.length > 1 && !localStorage.realtyz-active-workspace`.
+- Mounted in `App.tsx` inside `AuthProvider`.
 
-### 3. Demo Mode override (per user decision)
+## 3. Workspace selector modal
 
-- `useDemoMode` / `useDemoGuard` re-wired inside `SmsBlastSimulator` only:
-  - When `isDemoMode === true`: skip the actual `supabase.functions.invoke('dispatch-campaign', ...)` POST, generate `generateFakeLog()` results, show a sticky banner `"מצב הדגמה — לא נשלחות הודעות אמיתיות"`.
-  - When OFF: real dispatch path.
-- Update memory: revise core rule + `mem://constraints/no-demo-mode` to scope the "no demo branches" rule to everywhere **except** the broadcast composer.
+New `src/components/workspace/WorkspaceSelectorModal.tsx`:
+- RTL dialog, title "בחר מרחב עבודה להתחברות".
+- Personal "החשבון שלי · בעלים" card on top (current user).
+- One card per membership row: logo, name, role subtitle ("הרשאה: …"), checkmark on active.
+- Dotted "+ הוספת מרחב עבודה חדש" expands inline form (שם / אימייל / +972 phone) → calls existing `super-admin-create-user` edge fn when caller is super_admin, otherwise creates a `team_invitations` row.
+- Auto-opens on first login when `mustChoose` is true (intercept in `AppLayout`).
+- Reusable: also opens from the swap-arrow icon on the connected-workspace card.
 
-### 4. Header capsule
+## 4. Profile page redesign
 
-- Already implemented as `HeaderProfileMenu` last turn. Verify it pulls `[user name] (agency name)` from `useAuth` + `useWhiteLabel`. No changes unless the format drifts.
+Replace `PersonalTab` in `src/pages/Profile.tsx` with KI row-style layout:
+- Avatar + display name centered.
+- Row component: icon on right, label + value, pencil + plus + trash on the left.
+- Rows: דוא״ל, וואטסאפ (05X-XXXXXXX), טלפון, עיר (IsraeliCityPicker), מגדר (זכר/נקבה select).
+- "+ הוסף פרופיל" pill at bottom of rows.
+- Below: `ConnectedWorkspaceCard`
+  - Workspace logo right, workspace name centered, swap-arrow button top-left (opens selector modal).
+  - שם המשרד / סוכנות input + סוג חשבון dropdown (placeholder list incl. "בחירות ארציות" preserved for KI parity, defaulted to "נדל\"ן" for Realtyz).
+- Red outlined "התנתק" button at bottom triggering `signOut()`.
 
-### 5. Out of scope / explicit non-changes
+Keep `WorkspaceTab` ("המשרד") as-is (already matches screenshot 230496) but ensure logo/name/service-areas + save button render in current RTL flow.
 
-- No new tables (no `clients` / `properties_pipeline`).
-- No notification webhook changes (18:00 digest already enforced elsewhere).
-- No edits to `HeaderProfileMenu`, `AppSidebar`, `NotificationCenter` (already done).
-- No changes to `properties_pipeline` references — they don't exist and won't be created.
+## 5. Active-workspace query scoping
 
-### Files touched
+Add `useActiveWorkspaceFilter()` helper returning the current `workspace_owner_id`.
+Touch the high-traffic data hooks/pages so every list query filters by `assigned_to in (workspace_member_ids)` OR `user_id = workspace_owner_id` depending on table:
+- `leads`, `listings`, `messages`, `chat_history`, `approval_queue`, `interaction_activity_log`, `homely_push_log`, `media_library`.
+- Implementation: small `scopedQuery(table)` wrapper that injects `.eq('assigned_to', workspaceOwnerId)` (or `user_id` for owner-keyed tables).
+- Migrate one page at a time starting with LeadCRM, Dashboard, Properties, Inbox; remaining pages keep existing behavior until follow-up.
 
-- `src/pages/CampaignCenter.tsx` — hero block, query-param remap.
-- `src/pages/SmsBlastSimulator.tsx` — channel expansion, leads schema, demo branch, collapsible.
-- `.lovable/memory/index.md` + `mem://constraints/no-demo-mode` — scope the demo rule.
+## 6. Technical notes
 
-### Risks
+- All new UI strictly RTL, Assistant font, blues/whites.
+- Modal cards: rounded-xl border, soft shadow, hover ring-primary/20.
+- No new external deps.
+- Phone normalization continues to use `formatPhone` helper.
+- Selector modal mounted globally in `AppLayout` so it can be opened from header avatar menu too (`HeaderProfileMenu` gets a "החלף מרחב עבודה" item).
 
-- Demo override conflicts with a long-standing rule. Memory will be updated to reflect the new scope so future sessions don't re-remove it.
-- `dispatch-campaign` edge fn must accept all 12 channel IDs; if it currently rejects `messenger/twitter/youtube`, those channels will show as "בפיתוח" disabled until the fn is updated (out of scope here).
+## 7. Out of scope (explicit)
+
+- Cross-workspace data migration / merging.
+- Per-workspace billing isolation.
+- Edge-function rewrites (they continue to use service role + the caller's `auth.uid()`); RLS on `workspace_memberships` is the source of truth.

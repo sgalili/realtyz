@@ -5,9 +5,11 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
-import { Switch } from '@/components/ui/switch';
-import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Sparkles, Mail, Phone, MessageCircle, Building2, MapPin, User as UserIcon, Briefcase, Upload, ImageIcon } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Plus, Trash2, Pencil, Mail, Phone, MessageCircle, MapPin, User as UserIcon,
+  Building2, Upload, ImageIcon, Share2,
+} from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
@@ -20,108 +22,282 @@ import { EmailAliasCard } from '@/components/profile/EmailAliasCard';
 import { ProfileAvatarUploader } from '@/components/profile/ProfileAvatarUploader';
 import { ManagersTab } from '@/components/profile/ManagersTab';
 import { ServiceAreasPanel } from '@/components/settings/ServiceAreasPanel';
+import { ConnectedWorkspaceCard } from '@/components/workspace/ConnectedWorkspaceCard';
 import { cn } from '@/lib/utils';
 
-
-type ContactList = { id: string; value: string }[];
-
-const newRow = (value = ''): ContactList[number] => ({ id: crypto.randomUUID(), value });
-
-function ContactArrayEditor({
-  label,
-  icon: Icon,
-  rows,
-  onChange,
-  placeholder,
-  type = 'text',
-  dir = 'rtl',
-}: {
-  label: string;
-  icon: typeof Mail;
-  rows: ContactList;
-  onChange: (next: ContactList) => void;
-  placeholder: string;
-  type?: string;
-  dir?: 'rtl' | 'ltr';
-}) {
-  return (
-    <div className="space-y-2">
-      <div className="flex items-center gap-2">
-        <Icon className="h-4 w-4 text-primary" />
-        <Label className="text-sm font-semibold">{label}</Label>
-      </div>
-      <div className="space-y-2">
-        {rows.map((row, idx) => (
-          <div key={row.id} className="flex items-center gap-2">
-            <Input
-              type={type}
-              dir={dir}
-              placeholder={placeholder}
-              value={row.value}
-              onChange={(e) =>
-                onChange(rows.map((r) => (r.id === row.id ? { ...r, value: e.target.value } : r)))
-              }
-              className={dir === 'ltr' ? 'text-left' : 'text-right'}
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => onChange([...rows, newRow()])}
-              aria-label="הוסף שורה"
-              className="text-primary hover:bg-primary/10"
-            >
-              <Plus className="h-4 w-4" />
-            </Button>
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={() => onChange(rows.filter((r) => r.id !== row.id))}
-              disabled={rows.length === 1 && idx === 0}
-              aria-label="מחיקה"
-              className="text-destructive hover:bg-destructive/10"
-            >
-              <Trash2 className="h-4 w-4" />
-            </Button>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-function AiSparkleSwitch({ checked, onCheckedChange }: { checked: boolean; onCheckedChange: (v: boolean) => void }) {
-  return (
-    <div className="flex items-center justify-between rounded-lg border bg-card/50 p-3">
-      <div className="flex items-center gap-2">
-        <div
-          className={cn(
-            'relative flex h-9 w-9 items-center justify-center rounded-full transition-all',
-            checked ? 'bg-emerald-500/15 ring-2 ring-emerald-400/60 shadow-[0_0_18px_-4px_hsl(142_70%_45%/0.7)]' : 'bg-muted',
-          )}
-        >
-          <Sparkles className={cn('h-4 w-4 transition-colors', checked ? 'text-emerald-500 animate-pulse' : 'text-muted-foreground')} />
-        </div>
-        <div className="text-right">
-          <p className="text-sm font-semibold">סוכן AI אוטונומי</p>
-          <p className="text-xs text-muted-foreground">מענה אוטומטי, ניסוח טיוטות והמלצות חכמות</p>
-        </div>
-      </div>
-      <Switch
-        checked={checked}
-        onCheckedChange={onCheckedChange}
-        className={cn(
-          'data-[state=checked]:bg-emerald-500',
-          'data-[state=unchecked]:bg-muted-foreground/40',
-        )}
-      />
-    </div>
-  );
-}
+type Row = { id: string; value: string };
+const newRow = (value = ''): Row => ({ id: crypto.randomUUID(), value });
 
 const WORKSPACE_STORAGE_KEY = 'realtyz-workspace-details';
 const LOGO_STORAGE_KEY = 'realtyz-agency-logo';
+const PROFILE_STORAGE_KEY = 'realtyz-profile-contacts';
+
+function formatIsraeliPhone(raw: string): string {
+  const digits = raw.replace(/\D/g, '');
+  let local = digits;
+  if (digits.startsWith('972')) local = '0' + digits.slice(3);
+  if (local.length === 10 && local.startsWith('05')) {
+    return `${local.slice(0, 3)}-${local.slice(3)}`;
+  }
+  return raw;
+}
+
+/** KI-style single-row field: icon + label + value on right, edit/add/delete on left. */
+function ProfileFieldRow({
+  icon: Icon,
+  iconClass,
+  label,
+  value,
+  editing,
+  onChange,
+  onToggleEdit,
+  onDelete,
+  onAdd,
+  placeholder,
+  inputDir = 'ltr',
+  children,
+}: {
+  icon: typeof Mail;
+  iconClass?: string;
+  label: string;
+  value: string;
+  editing: boolean;
+  onChange: (v: string) => void;
+  onToggleEdit: () => void;
+  onDelete?: () => void;
+  onAdd?: () => void;
+  placeholder?: string;
+  inputDir?: 'ltr' | 'rtl';
+  children?: React.ReactNode;
+}) {
+  return (
+    <div
+      dir="rtl"
+      className="flex items-center gap-2 rounded-xl border bg-card px-3 py-2.5 text-right shadow-sm"
+    >
+      <Icon className={cn('h-4 w-4 shrink-0', iconClass ?? 'text-primary')} />
+      <span className="text-xs font-semibold text-muted-foreground shrink-0">{label}:</span>
+      <div className="flex-1 min-w-0">
+        {editing ? (
+          children ?? (
+            <Input
+              autoFocus
+              dir={inputDir}
+              value={value}
+              onChange={(e) => onChange(e.target.value)}
+              onBlur={onToggleEdit}
+              placeholder={placeholder}
+              className={cn('h-8 px-2 text-sm', inputDir === 'ltr' ? 'text-left' : 'text-right')}
+            />
+          )
+        ) : (
+          <button
+            type="button"
+            onClick={onToggleEdit}
+            dir={inputDir}
+            className={cn(
+              'w-full truncate rounded px-1 py-0.5 text-sm font-medium hover:bg-muted/50',
+              inputDir === 'ltr' ? 'text-left' : 'text-right',
+              !value && 'text-muted-foreground/60',
+            )}
+          >
+            {value || placeholder || '—'}
+          </button>
+        )}
+      </div>
+      <div className="flex items-center gap-0.5 shrink-0">
+        <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-muted-foreground hover:text-primary" onClick={onToggleEdit} aria-label="עריכה">
+          <Pencil className="h-3.5 w-3.5" />
+        </Button>
+        {onAdd && (
+          <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-primary hover:bg-primary/10" onClick={onAdd} aria-label="הוסף">
+            <Plus className="h-4 w-4" />
+          </Button>
+        )}
+        {onDelete && (
+          <Button type="button" size="icon" variant="ghost" className="h-7 w-7 text-destructive hover:bg-destructive/10" onClick={onDelete} aria-label="מחק">
+            <Trash2 className="h-3.5 w-3.5" />
+          </Button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+/** Renders a stack of rows (array field) with KI styling. */
+function ProfileArrayRows({
+  rows, setRows, icon, label, placeholder, inputDir = 'ltr', formatter,
+}: {
+  rows: Row[];
+  setRows: (next: Row[]) => void;
+  icon: typeof Mail;
+  label: string;
+  placeholder?: string;
+  inputDir?: 'ltr' | 'rtl';
+  formatter?: (v: string) => string;
+}) {
+  const [editingId, setEditingId] = useState<string | null>(null);
+  return (
+    <div className="space-y-2">
+      {rows.map((row, idx) => (
+        <ProfileFieldRow
+          key={row.id}
+          icon={icon}
+          label={label}
+          value={formatter ? formatter(row.value) : row.value}
+          editing={editingId === row.id}
+          onChange={(v) => setRows(rows.map((r) => (r.id === row.id ? { ...r, value: v } : r)))}
+          onToggleEdit={() => setEditingId((id) => (id === row.id ? null : row.id))}
+          onAdd={idx === rows.length - 1 ? () => setRows([...rows, newRow()]) : undefined}
+          onDelete={rows.length > 1 ? () => setRows(rows.filter((r) => r.id !== row.id)) : undefined}
+          placeholder={placeholder}
+          inputDir={inputDir}
+        />
+      ))}
+    </div>
+  );
+}
+
+function PersonalTab() {
+  const { user } = useAuth();
+  const [emails, setEmails] = useState<Row[]>([newRow(user?.email ?? '')]);
+  const [whatsapps, setWhatsapps] = useState<Row[]>([newRow('')]);
+  const [phones, setPhones] = useState<Row[]>([newRow('')]);
+  const [fullName, setFullName] = useState('אודי ויטמן');
+  const [city, setCity] = useState('');
+  const [gender, setGender] = useState<string>('');
+  const [editing, setEditing] = useState<Record<string, boolean>>({});
+  const [hydrated, setHydrated] = useState(false);
+
+  useEffect(() => {
+    if (hydrated || !user) return;
+    const meta = (user.user_metadata ?? {}) as Record<string, any>;
+    const contacts = meta.profile_contacts ?? null;
+    let loaded = false;
+    const apply = (p: any) => {
+      if (Array.isArray(p.emails) && p.emails.length) setEmails(p.emails);
+      if (Array.isArray(p.whatsapps) && p.whatsapps.length) setWhatsapps(p.whatsapps);
+      if (Array.isArray(p.phones) && p.phones.length) setPhones(p.phones);
+      if (typeof p.fullName === 'string') setFullName(p.fullName);
+      if (typeof p.city === 'string') setCity(p.city);
+      if (typeof p.gender === 'string') setGender(p.gender);
+    };
+    if (contacts && typeof contacts === 'object') { apply(contacts); loaded = true; }
+    if (!loaded) {
+      try {
+        const raw = window.localStorage.getItem(PROFILE_STORAGE_KEY);
+        if (raw) apply(JSON.parse(raw));
+      } catch {}
+    }
+    setHydrated(true);
+  }, [user, hydrated]);
+
+  const setEdit = (k: string) => setEditing((e) => ({ ...e, [k]: !e[k] }));
+
+  const save = async () => {
+    const payload = { emails, whatsapps, phones, fullName, city, gender };
+    try { window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(payload)); } catch {}
+    try {
+      const { error } = await supabase.auth.updateUser({ data: { profile_contacts: payload } });
+      if (error) throw error;
+      // Also mirror city/gender/phone to profiles for cross-device + workspace use.
+      const primaryPhone = whatsapps[0]?.value || phones[0]?.value || null;
+      await supabase
+        .from('profiles')
+        .update({ city: city || null, gender: gender || null, phone: primaryPhone, full_name: fullName })
+        .eq('id', user!.id);
+      toast.success('הפרופיל נשמר');
+    } catch (err: any) {
+      toast.error('שמירה לשרת נכשלה: ' + (err?.message ?? 'שגיאה'));
+    }
+  };
+
+  return (
+    <Card>
+      <CardHeader className="pb-3">
+        <CardTitle className="text-right">הפרופיל האישי שלי</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        <ProfileAvatarUploader />
+
+        <div className="flex flex-col items-center gap-1 pb-1">
+          {editing.fullName ? (
+            <Input
+              autoFocus
+              dir="rtl"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              onBlur={() => setEdit('fullName')}
+              className="text-center text-base font-bold max-w-xs"
+            />
+          ) : (
+            <button
+              type="button"
+              onClick={() => setEdit('fullName')}
+              className="text-base font-bold hover:text-primary"
+            >
+              {fullName}
+            </button>
+          )}
+        </div>
+
+        <ProfileArrayRows rows={emails} setRows={setEmails} icon={Mail} label='דוא"ל' placeholder="user@example.com" />
+        <ProfileArrayRows rows={whatsapps} setRows={setWhatsapps} icon={MessageCircle} label="וואטסאפ" placeholder="054-0000000" formatter={formatIsraeliPhone} />
+        <ProfileArrayRows rows={phones} setRows={setPhones} icon={Phone} label="טלפון" placeholder="054-0000000" formatter={formatIsraeliPhone} />
+
+        <ProfileFieldRow
+          icon={MapPin}
+          label="עיר"
+          value={city}
+          editing={editing.city ?? false}
+          onChange={setCity}
+          onToggleEdit={() => setEdit('city')}
+          inputDir="rtl"
+          placeholder="בחר עיר"
+        >
+          <IsraeliCityPicker value={city} onChange={(v) => { setCity(v); setEdit('city'); }} placeholder="בחר עיר" />
+        </ProfileFieldRow>
+
+        <ProfileFieldRow
+          icon={UserIcon}
+          label="מגדר"
+          value={gender === 'male' ? 'זכר' : gender === 'female' ? 'נקבה' : gender}
+          editing={editing.gender ?? false}
+          onChange={setGender}
+          onToggleEdit={() => setEdit('gender')}
+          inputDir="rtl"
+          placeholder="בחר מגדר"
+        >
+          <Select value={gender || undefined} onValueChange={(v) => { setGender(v); setEdit('gender'); }}>
+            <SelectTrigger dir="rtl" className="h-8 text-right text-sm"><SelectValue placeholder="בחר מגדר" /></SelectTrigger>
+            <SelectContent dir="rtl">
+              <SelectItem value="male" className="text-right">זכר</SelectItem>
+              <SelectItem value="female" className="text-right">נקבה</SelectItem>
+              <SelectItem value="other" className="text-right">אחר</SelectItem>
+            </SelectContent>
+          </Select>
+        </ProfileFieldRow>
+
+        <div className="flex items-center justify-between pt-1">
+          <button type="button" className="inline-flex items-center gap-1.5 rounded-full border-2 border-dashed border-muted-foreground/30 px-3 py-1.5 text-xs font-medium hover:bg-muted/40">
+            <Plus className="h-3.5 w-3.5" />
+            הוסף פרופיל
+          </button>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <Share2 className="h-3.5 w-3.5" />
+            רשתות חברתיות
+          </div>
+        </div>
+
+        <Button onClick={save} size="lg" className="w-full mt-2">שמירת הפרופיל</Button>
+
+        <div className="pt-3">
+          <ConnectedWorkspaceCard />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
 
 function WorkspaceTab() {
   const { user } = useAuth();
@@ -130,11 +306,7 @@ function WorkspaceTab() {
     queryKey: ['profile-onboarding-state', user?.id],
     enabled: !!user?.id,
     queryFn: async () => {
-      const { data } = await supabase
-        .from('onboarding_state')
-        .select('*')
-        .eq('user_id', user!.id)
-        .maybeSingle();
+      const { data } = await supabase.from('onboarding_state').select('*').eq('user_id', user!.id).maybeSingle();
       return data;
     },
   });
@@ -142,25 +314,20 @@ function WorkspaceTab() {
   const initialValues = useMemo(() => {
     const base = {
       agency_name: meta.agency_name || 'ריאלטיז נדל"ן',
-      manager: 'אודי ויטמן',
-      tone: onboarding?.tone || 'מקצועי',
       service_areas: meta.service_areas || 'מרכז הארץ',
-      initial_message: onboarding?.initial_message || '',
     };
     try {
       const raw = window.localStorage.getItem(WORKSPACE_STORAGE_KEY);
       if (raw) return { ...base, ...JSON.parse(raw) };
     } catch {}
     return base;
-    // Depend on primitives only so this does NOT re-create on every render.
   }, [meta.agency_name, meta.service_areas, onboarding?.tone, onboarding?.initial_message]);
 
   const [values, setValues] = useState(initialValues);
-  const [logoUrl, setLogoUrl] = useState<string>('');
+  const [logoUrl, setLogoUrl] = useState('');
   const [uploading, setUploading] = useState(false);
   const [hydrated, setHydrated] = useState(false);
 
-  // Hydrate exactly once after onboarding loads, then never overwrite user input again.
   useEffect(() => {
     if (hydrated) return;
     setValues(initialValues);
@@ -171,28 +338,19 @@ function WorkspaceTab() {
     setHydrated(true);
   }, [initialValues, hydrated]);
 
-  const update = (key: keyof typeof values) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) =>
-    setValues((v) => ({ ...v, [key]: e.target.value }));
-
   const onLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user?.id) return;
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error('הקובץ גדול מדי (מקסימום 5MB)');
-      return;
-    }
+    if (file.size > 5 * 1024 * 1024) { toast.error('הקובץ גדול מדי (מקסימום 5MB)'); return; }
     setUploading(true);
     try {
       const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
       const path = `${user.id}/logo-${Date.now()}.${ext}`;
-      const { error: upErr } = await supabase.storage
-        .from('agency-logos')
-        .upload(path, file, { upsert: true, contentType: file.type });
+      const { error: upErr } = await supabase.storage.from('agency-logos').upload(path, file, { upsert: true, contentType: file.type });
       if (upErr) throw upErr;
       const { data: pub } = supabase.storage.from('agency-logos').getPublicUrl(path);
-      const url = pub.publicUrl;
-      setLogoUrl(url);
-      window.localStorage.setItem(LOGO_STORAGE_KEY, url);
+      setLogoUrl(pub.publicUrl);
+      window.localStorage.setItem(LOGO_STORAGE_KEY, pub.publicUrl);
       toast.success('הלוגו הועלה בהצלחה');
     } catch (err: any) {
       toast.error(err?.message || 'שגיאה בהעלאת הלוגו');
@@ -213,10 +371,6 @@ function WorkspaceTab() {
     toast.success('פרטי המשרד נשמרו');
   };
 
-  const fields: { key: keyof typeof values; icon: typeof Mail; label: string }[] = [
-    { key: 'agency_name', icon: Building2, label: 'שם המשרד' },
-  ];
-
   return (
     <Card>
       <CardHeader>
@@ -230,25 +384,12 @@ function WorkspaceTab() {
           </div>
           <div className="flex items-center gap-3 flex-row-reverse">
             <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-background">
-              {logoUrl ? (
-                <img src={logoUrl} alt="לוגו המשרד" className="h-full w-full object-contain" />
-              ) : (
-                <ImageIcon className="h-7 w-7 text-muted-foreground/50" />
-              )}
+              {logoUrl ? <img src={logoUrl} alt="לוגו המשרד" className="h-full w-full object-contain" /> : <ImageIcon className="h-7 w-7 text-muted-foreground/50" />}
             </div>
             <div className="flex flex-1 flex-col gap-2">
               <label className="inline-flex">
-                <input
-                  type="file"
-                  accept="image/png,image/jpeg,image/webp,image/svg+xml"
-                  className="hidden"
-                  onChange={onLogoUpload}
-                  disabled={uploading}
-                />
-                <span className={cn(
-                  'inline-flex items-center justify-center gap-1.5 rounded-md border bg-background px-3 py-2 text-sm font-medium cursor-pointer hover:bg-accent transition-colors',
-                  uploading && 'opacity-50 pointer-events-none',
-                )}>
+                <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={onLogoUpload} disabled={uploading} />
+                <span className={cn('inline-flex items-center justify-center gap-1.5 rounded-md border bg-background px-3 py-2 text-sm font-medium cursor-pointer hover:bg-accent transition-colors', uploading && 'opacity-50 pointer-events-none')}>
                   <Upload className="h-3.5 w-3.5" />
                   {uploading ? 'מעלה...' : logoUrl ? 'החלפת לוגו' : 'העלאת לוגו'}
                 </span>
@@ -265,34 +406,20 @@ function WorkspaceTab() {
         </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          {fields.map((f) => {
-            const Icon = f.icon;
-            return (
-              <div key={String(f.key)} className="rounded-lg border bg-card/40 p-3 text-right">
-                <div className="mb-1.5 flex items-center gap-2 text-xs text-muted-foreground">
-                  <Icon className="h-3.5 w-3.5" />
-                  <span>{f.label}</span>
-                </div>
-                <Input
-                  dir="rtl"
-                  value={values[f.key]}
-                  onChange={update(f.key)}
-                  className="h-9 text-right text-sm font-semibold"
-                />
-              </div>
-            );
-          })}
+          <div className="rounded-lg border bg-card/40 p-3 text-right">
+            <div className="mb-1.5 flex items-center gap-2 text-xs text-muted-foreground">
+              <Building2 className="h-3.5 w-3.5" />
+              <span>שם המשרד</span>
+            </div>
+            <Input dir="rtl" value={values.agency_name} onChange={(e) => setValues((v) => ({ ...v, agency_name: e.target.value }))} className="h-9 text-right text-sm font-semibold" />
+          </div>
 
           <div className="rounded-lg border bg-card/40 p-3 text-right">
             <div className="mb-1.5 flex items-center gap-2 text-xs text-muted-foreground">
               <MapPin className="h-3.5 w-3.5" />
               <span>אזורי שירות</span>
             </div>
-            <IsraeliCityPicker
-              value={values.service_areas}
-              onChange={(v) => setValues((s) => ({ ...s, service_areas: v }))}
-              placeholder="בחר עיר / אזור"
-            />
+            <IsraeliCityPicker value={values.service_areas} onChange={(v) => setValues((s) => ({ ...s, service_areas: v }))} placeholder="בחר עיר / אזור" />
           </div>
         </div>
         <Button onClick={save} size="lg" className="w-full">שמירת פרטי המשרד</Button>
@@ -301,117 +428,9 @@ function WorkspaceTab() {
   );
 }
 
-function PersonalTab() {
-  const { user } = useAuth();
-  const [emails, setEmails] = useState<ContactList>([newRow(user?.email ?? '')]);
-  const [whatsapps, setWhatsapps] = useState<ContactList>([newRow('')]);
-  const [phones, setPhones] = useState<ContactList>([newRow('')]);
-  const [aiEnabled, setAiEnabled] = useState(true);
-  const [fullName, setFullName] = useState('אודי ויטמן');
-  const [hydrated, setHydrated] = useState(false);
-
-  // Hydrate from auth user_metadata first (cross-device), then fall back to
-  // localStorage so older sessions don't lose their phone numbers.
-  useEffect(() => {
-    if (hydrated || !user) return;
-    const meta = (user.user_metadata ?? {}) as Record<string, any>;
-    const contacts = meta.profile_contacts ?? null;
-    let loaded = false;
-    if (contacts && typeof contacts === 'object') {
-      if (Array.isArray(contacts.emails) && contacts.emails.length) setEmails(contacts.emails);
-      if (Array.isArray(contacts.whatsapps) && contacts.whatsapps.length) setWhatsapps(contacts.whatsapps);
-      if (Array.isArray(contacts.phones) && contacts.phones.length) setPhones(contacts.phones);
-      if (typeof contacts.aiEnabled === 'boolean') setAiEnabled(contacts.aiEnabled);
-      if (typeof contacts.fullName === 'string') setFullName(contacts.fullName);
-      loaded = true;
-    }
-    if (!loaded) {
-      try {
-        const raw = window.localStorage.getItem('realtyz-profile-contacts');
-        if (raw) {
-          const p = JSON.parse(raw);
-          if (Array.isArray(p.emails) && p.emails.length) setEmails(p.emails);
-          if (Array.isArray(p.whatsapps) && p.whatsapps.length) setWhatsapps(p.whatsapps);
-          if (Array.isArray(p.phones) && p.phones.length) setPhones(p.phones);
-          if (typeof p.aiEnabled === 'boolean') setAiEnabled(p.aiEnabled);
-          if (typeof p.fullName === 'string') setFullName(p.fullName);
-        }
-      } catch {}
-    }
-    setHydrated(true);
-  }, [user, hydrated]);
-
-  const save = async () => {
-    const payload = { emails, whatsapps, phones, aiEnabled, fullName };
-    // Local cache for instant rehydration.
-    try {
-      window.localStorage.setItem('realtyz-profile-contacts', JSON.stringify(payload));
-    } catch {}
-    // Cross-device durable store: auth user_metadata.
-    try {
-      const { error } = await supabase.auth.updateUser({ data: { profile_contacts: payload } });
-      if (error) throw error;
-      toast.success('הפרופיל נשמר');
-    } catch (err: any) {
-      toast.error('שמירה מקומית הצליחה, אך שמירה לשרת נכשלה: ' + (err?.message ?? 'שגיאה'));
-    }
-  };
-
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-right">הפרופיל האישי שלי</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-5">
-        <ProfileAvatarUploader />
-
-        <div className="space-y-2">
-          <Label htmlFor="full-name" className="text-right text-sm">שם מלא להצגה</Label>
-          <Input id="full-name" value={fullName} onChange={(e) => setFullName(e.target.value)} className="text-right" dir="rtl" />
-        </div>
-
-        <ContactArrayEditor
-          label="כתובות מייל"
-          icon={Mail}
-          rows={emails}
-          onChange={setEmails}
-          placeholder="name@example.com"
-          type="email"
-          dir="ltr"
-        />
-        <ContactArrayEditor
-          label="מספרי WhatsApp"
-          icon={MessageCircle}
-          rows={whatsapps}
-          onChange={setWhatsapps}
-          placeholder="05X-XXXXXXX"
-          type="tel"
-          dir="ltr"
-        />
-        <ContactArrayEditor
-          label="טלפונים נוספים"
-          icon={Phone}
-          rows={phones}
-          onChange={setPhones}
-          placeholder="05X-XXXXXXX"
-          type="tel"
-          dir="ltr"
-        />
-
-        <AiSparkleSwitch checked={aiEnabled} onCheckedChange={setAiEnabled} />
-
-        <Button onClick={save} className="w-full" size="lg">
-          שמירת הפרופיל
-        </Button>
-      </CardContent>
-    </Card>
-  );
-}
-
 export default function Profile() {
   const [params, setParams] = useSearchParams();
   const tab = params.get('tab') ?? 'personal';
-
   const setTab = (v: string) => {
     const next = new URLSearchParams(params);
     next.set('tab', v);

@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Crown, LogOut, Shield, ShieldCheck, User, Wallet } from 'lucide-react';
+import { Crown, LogOut, Shield, ShieldCheck, User, Wallet, Repeat } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   AlertDialog,
@@ -15,6 +15,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
 import { cn } from '@/lib/utils';
 
@@ -41,6 +42,7 @@ export function HeaderProfileMenu() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { isManagingBroker, isSuperAdmin } = useUserRole();
+  const { workspaces, openSelector } = useWorkspace();
 
   const { settings: brand } = useWhiteLabel();
 
@@ -124,6 +126,16 @@ export function HeaderProfileMenu() {
                   </button>
                 );
               })}
+              {workspaces.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => { setOpen(false); openSelector(); }}
+                  className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-right text-sm text-[#0b3982] transition-colors hover:bg-[#0b3982]/10"
+                >
+                  <Repeat className="h-4 w-4 shrink-0 text-[#0b3982]" />
+                  <span className="flex-1">החלף מרחב עבודה</span>
+                </button>
+              )}
               {isSuperAdmin && (
                 <button
                   type="button"

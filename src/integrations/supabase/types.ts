@@ -3346,11 +3346,13 @@ export type Database = {
       }
       profiles: {
         Row: {
+          active_workspace_owner_id: string | null
           auto_reply_negative: boolean
           auto_reply_positive: boolean
           avatar_url: string | null
           ayrshare_profile_key: string | null
           ayrshare_ref_id: string | null
+          city: string | null
           created_at: string
           created_by_super_admin: boolean
           direct_channels: Json
@@ -3362,6 +3364,7 @@ export type Database = {
           is_suspended: boolean
           is_unlimited: boolean
           last_sign_in_at: string | null
+          phone: string | null
           plan_status: string
           service_areas: string[]
           trial_end_date: string | null
@@ -3371,11 +3374,13 @@ export type Database = {
           workspace_owner_id: string | null
         }
         Insert: {
+          active_workspace_owner_id?: string | null
           auto_reply_negative?: boolean
           auto_reply_positive?: boolean
           avatar_url?: string | null
           ayrshare_profile_key?: string | null
           ayrshare_ref_id?: string | null
+          city?: string | null
           created_at?: string
           created_by_super_admin?: boolean
           direct_channels?: Json
@@ -3387,6 +3392,7 @@ export type Database = {
           is_suspended?: boolean
           is_unlimited?: boolean
           last_sign_in_at?: string | null
+          phone?: string | null
           plan_status?: string
           service_areas?: string[]
           trial_end_date?: string | null
@@ -3396,11 +3402,13 @@ export type Database = {
           workspace_owner_id?: string | null
         }
         Update: {
+          active_workspace_owner_id?: string | null
           auto_reply_negative?: boolean
           auto_reply_positive?: boolean
           avatar_url?: string | null
           ayrshare_profile_key?: string | null
           ayrshare_ref_id?: string | null
+          city?: string | null
           created_at?: string
           created_by_super_admin?: boolean
           direct_channels?: Json
@@ -3412,6 +3420,7 @@ export type Database = {
           is_suspended?: boolean
           is_unlimited?: boolean
           last_sign_in_at?: string | null
+          phone?: string | null
           plan_status?: string
           service_areas?: string[]
           trial_end_date?: string | null
@@ -4202,6 +4211,45 @@ export type Database = {
         }
         Relationships: []
       }
+      workspace_memberships: {
+        Row: {
+          account_type: string | null
+          created_at: string
+          id: string
+          last_accessed_at: string | null
+          role: string
+          updated_at: string
+          user_id: string
+          workspace_logo_url: string | null
+          workspace_name: string | null
+          workspace_owner_id: string
+        }
+        Insert: {
+          account_type?: string | null
+          created_at?: string
+          id?: string
+          last_accessed_at?: string | null
+          role?: string
+          updated_at?: string
+          user_id: string
+          workspace_logo_url?: string | null
+          workspace_name?: string | null
+          workspace_owner_id: string
+        }
+        Update: {
+          account_type?: string | null
+          created_at?: string
+          id?: string
+          last_accessed_at?: string | null
+          role?: string
+          updated_at?: string
+          user_id?: string
+          workspace_logo_url?: string | null
+          workspace_name?: string | null
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       workspace_social_profile: {
         Row: {
           ayrshare_profile_key: string | null
@@ -4322,6 +4370,22 @@ export type Database = {
       get_followup_suggestions: { Args: { _user_id: string }; Returns: Json }
       get_homely_admin_overview: { Args: never; Returns: Json }
       get_homely_password: { Args: { _user_id: string }; Returns: string }
+      get_my_workspaces: {
+        Args: never
+        Returns: {
+          account_type: string
+          is_self: boolean
+          last_accessed_at: string
+          owner_avatar_url: string
+          owner_email: string
+          owner_full_name: string
+          role: string
+          user_id: string
+          workspace_logo_url: string
+          workspace_name: string
+          workspace_owner_id: string
+        }[]
+      }
       get_outcome_intelligence: {
         Args: { _days?: number; _user_id: string }
         Returns: Json
@@ -4441,6 +4505,7 @@ export type Database = {
       }
       requeue_stuck_autopilot_jobs: { Args: never; Returns: number }
       seed_demo_data: { Args: never; Returns: Json }
+      set_active_workspace: { Args: { _owner: string }; Returns: undefined }
       set_homely_broker_disabled: {
         Args: { _disabled: boolean; _reason?: string; _user_id: string }
         Returns: undefined

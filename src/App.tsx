@@ -10,6 +10,8 @@ import { AppLayout } from "@/components/AppLayout";
 import { DemoModeProvider } from "@/hooks/useDemoMode";
 import { ElectionTypeProvider } from "@/hooks/useElectionType";
 import { MandateProvider } from "@/hooks/useMandate";
+import { WorkspaceProvider } from "@/hooks/useWorkspace";
+import { WorkspaceSelectorModal } from "@/components/workspace/WorkspaceSelectorModal";
 import { toast } from "sonner";
 import { lazy, Suspense } from "react";
 import { RealtyzLoader } from "@/components/RealtyzLoader";
@@ -154,6 +156,8 @@ const App = () => (
             <DemoModeProvider>
             <ElectionTypeProvider>
             <MandateProvider>
+            <WorkspaceProvider>
+            <WorkspaceSelectorModal />
             <Routes>
               <Route path="/auth" element={<AuthRoute />} />
               <Route path="/reset-password" element={<ResetPassword />} />
@@ -221,6 +225,7 @@ const App = () => (
               <Route path="/contact" element={<Suspense fallback={<PageLoader />}><ContactForm /></Suspense>} />
               <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFound /></Suspense>} />
             </Routes>
+            </WorkspaceProvider>
             </MandateProvider>
             </ElectionTypeProvider>
             </DemoModeProvider>
