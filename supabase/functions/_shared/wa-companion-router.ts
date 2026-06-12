@@ -213,7 +213,7 @@ async function handlePostCommand(ctx: RouterContext): Promise<RouterResult> {
     } catch (_) { /* best-effort */ }
 
     const deepLink = `${DASHBOARD_BASE}/campaigns${queueId ? `?draft=${queueId}` : ""}`;
-    const firstName = await lookupOwnerFirstName(ctx.admin, ctx.ownerUserId);
+    const firstName = await lookupOwnerFirstName(ctx.admin, ctx.ownerUserId, ctx.senderPhone);
     const greet = firstName ? `היי ${firstName}` : "היי";
     const subject = listing
       ? `הדירה ב${listing.address ?? listing.property_title}`
