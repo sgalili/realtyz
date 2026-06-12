@@ -16,6 +16,10 @@
 
 const DASHBOARD_BASE = "https://realtyz.co.il";
 
+// Realtyz AI Master GreenAPI Instance. All owner-companion routing and
+// outbound replies are scoped to this single instance.
+export const MASTER_INSTANCE_ID = "7103164675";
+
 export type RouterContext = {
   admin: any; // supabase admin client
   supabaseUrl: string;
