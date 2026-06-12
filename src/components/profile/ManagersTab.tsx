@@ -197,7 +197,7 @@ export function ManagersTab() {
                   value={tierVal}
                   onValueChange={(v) => setTiers((s) => ({ ...s, [primary.id]: v }))}
                 >
-                  <SelectTrigger className="h-9 w-[130px] text-xs" dir="rtl">
+                  <SelectTrigger className="h-9 w-[110px] shrink-0 text-xs" dir="rtl">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent dir="rtl">
