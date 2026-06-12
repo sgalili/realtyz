@@ -107,7 +107,7 @@ function tokenize(text: string): string[] {
 async function resolveOwnerListing(admin: any, userId: string, text: string) {
   const { data } = await admin
     .from("listings")
-    .select("id, property_title, address, asking_price, status, created_at")
+    .select("id, property_title, address, city, neighborhood, asking_price, rooms, floor, sqm, parking, elevator, description, features, status, created_at")
     .eq("user_id", userId)
     .in("status", ["live", "pending"])
     .order("created_at", { ascending: false })
