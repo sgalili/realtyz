@@ -1,14 +1,14 @@
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mic, Upload, KeyRound } from "lucide-react";
+import { Mic, Upload, KeyRound, Square, Play, Pause, Trash2 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
-type Mode = "clone" | "voice_id";
+type Mode = "record" | "clone" | "voice_id";
 
 export const AddVoiceDialog = ({
   open, onClose, onAdded,
@@ -17,14 +17,75 @@ export const AddVoiceDialog = ({
   onClose: () => void;
   onAdded: (v: { id: string; name: string; voice_id: string }) => void;
 }) => {
-  const [mode, setMode] = useState<Mode>("clone");
+  const [mode, setMode] = useState<Mode>("record");
   const [name, setName] = useState("");
   const [voiceId, setVoiceId] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [submitting, setSubmitting] = useState(false);
+
+  // Recording
+  const [recording, setRecording] = useState(false);
+  const [elapsed, setElapsed] = useState(0);
+  const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
+  const [previewing, setPreviewing] = useState(false);
+  const mediaRecRef = useRef<MediaRecorder | null>(null);
+  const timerRef = useRef<number | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
-  const reset = () => { setName(""); setVoiceId(""); setFile(null); };
+  const reset = () => {
+    setName(""); setVoiceId(""); setFile(null);
+    setRecordedBlob(null); setElapsed(0); setPreviewing(false);
+    if (audioRef.current) { audioRef.current.pause(); audioRef.current = null; }
+    if (timerRef.current) { window.clearInterval(timerRef.current); timerRef.current = null; }
+  };
+
+  useEffect(() => () => reset(), []);
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream, { mimeType: "audio/webm" });
+      const chunks: BlobPart[] = [];
+      mr.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+      mr.onstop = () => {
+        setRecordedBlob(new Blob(chunks, { type: "audio/webm" }));
+        stream.getTracks().forEach((t) => t.stop());
+      };
+      mediaRecRef.current = mr;
+      mr.start();
+      setRecording(true);
+      setElapsed(0);
+      setRecordedBlob(null);
+      timerRef.current = window.setInterval(() => setElapsed((s) => {
+        const next = s + 1;
+        if (next >= 60) { stopRecording(); }
+        return next;
+      }), 1000);
+    } catch {
+      toast.error("לא ניתן לגשת למיקרופון");
+    }
+  };
+
+  const stopRecording = () => {
+    mediaRecRef.current?.stop();
+    setRecording(false);
+    if (timerRef.current) { window.clearInterval(timerRef.current); timerRef.current = null; }
+  };
+
+  const togglePreview = () => {
+    if (!recordedBlob) return;
+    if (previewing && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+      setPreviewing(false);
+      return;
+    }
+    const a = new Audio(URL.createObjectURL(recordedBlob));
+    audioRef.current = a;
+    a.onended = () => { setPreviewing(false); audioRef.current = null; };
+    a.play().then(() => setPreviewing(true)).catch(() => setPreviewing(false));
+  };
 
   const handleVoiceIdAdd = async () => {
     if (!name.trim() || !voiceId.trim()) return toast.error("מלאו שם ו-Voice ID");
@@ -43,14 +104,14 @@ export const AddVoiceDialog = ({
     } finally { setSubmitting(false); }
   };
 
-  const handleClone = async () => {
-    if (!name.trim() || !file) return toast.error("מלאו שם והעלו קובץ קול");
+  const sendClone = async (sample: Blob, filename: string) => {
+    if (!name.trim()) return toast.error("מלאו שם לקול");
     setSubmitting(true);
     const tid = toast.loading("משבט קול ב-ElevenLabs…");
     try {
       const form = new FormData();
       form.append("name", name.trim());
-      form.append("file", file);
+      form.append("file", sample, filename);
       const { data, error } = await supabase.functions.invoke("elevenlabs-voice-clone", { body: form });
       toast.dismiss(tid);
       if (error || (data as any)?.error) {
@@ -66,22 +127,35 @@ export const AddVoiceDialog = ({
     } finally { setSubmitting(false); }
   };
 
+  const handleCloneRecorded = () => {
+    if (!recordedBlob) return toast.error("הקליטו דוגמת קול");
+    sendClone(recordedBlob, "recording.webm");
+  };
+  const handleCloneFile = () => {
+    if (!file) return toast.error("העלו קובץ קול");
+    sendClone(file, file.name);
+  };
+
+  const mm = String(Math.floor(elapsed / 60)).padStart(2, "0");
+  const ss = String(elapsed % 60).padStart(2, "0");
+
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) { reset(); onClose(); } }}>
       <DialogContent className="max-w-md p-5" dir="rtl">
         <DialogHeader>
-          <DialogTitle className="text-[#0f1b3d] text-right">הוספת קול חדש</DialogTitle>
-          <DialogDescription className="text-right text-xs">בחרו שיבוט מהיר או חיבור לפי Voice ID של ElevenLabs.</DialogDescription>
+          <DialogTitle className="text-[#0f1b3d] text-right">שכפול קול חדש</DialogTitle>
+          <DialogDescription className="text-right text-xs">הקליטו דוגמה, העלו קובץ או חברו לפי Voice ID של ElevenLabs.</DialogDescription>
         </DialogHeader>
 
-        <div className="flex gap-2 mt-2">
+        <div className="grid grid-cols-3 gap-2 mt-2">
           {[
-            { id: "clone" as Mode, label: "שיבוט מהיר", Icon: Mic },
-            { id: "voice_id" as Mode, label: "לפי Voice ID", Icon: KeyRound },
+            { id: "record" as Mode, label: "הקלטה", Icon: Mic },
+            { id: "clone" as Mode, label: "העלאה", Icon: Upload },
+            { id: "voice_id" as Mode, label: "Voice ID", Icon: KeyRound },
           ].map(({ id, label, Icon }) => (
             <button key={id} type="button" onClick={() => setMode(id)}
               className={cn(
-                "flex-1 flex items-center justify-center gap-2 h-10 rounded-xl text-sm font-semibold border transition-colors",
+                "flex items-center justify-center gap-1.5 h-10 rounded-xl text-[13px] font-semibold border transition-colors",
                 mode === id ? "bg-[#0f1b3d] text-white border-[#0f1b3d]" : "bg-background text-[#0f1b3d] border-[#0f1b3d]/15 hover:bg-muted/40",
               )}>
               <Icon className="h-4 w-4" />{label}
@@ -95,25 +169,72 @@ export const AddVoiceDialog = ({
             <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="למשל: אודי ויטמן" className="text-right h-10 rounded-xl" />
           </div>
 
-          {mode === "clone" ? (
-            <label className="rounded-xl border-2 border-dashed border-[#0f1b3d]/25 bg-muted/30 p-4 flex flex-col items-center gap-2 cursor-pointer hover:bg-muted/50">
-              <Upload className="h-6 w-6 text-[#0f1b3d]/50" />
-              <p className="text-[11px] text-muted-foreground text-center">קובץ אודיו (10-60 שניות) — mp3 / wav / m4a / webm</p>
-              <input ref={fileRef} type="file" accept="audio/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="hidden" />
-              <div className="text-[11px] text-[#0f1b3d] font-medium">{file ? file.name : "בחרו קובץ"}</div>
-            </label>
-          ) : (
-            <div className="space-y-1.5">
-              <Label className="text-right block text-xs font-semibold text-[#0f1b3d]">Voice ID של ElevenLabs</Label>
-              <Input value={voiceId} onChange={(e) => setVoiceId(e.target.value)} placeholder="4eohDAy1kTS18Cnf0HiN" className="text-left h-10 rounded-xl font-mono" dir="ltr" />
+          {mode === "record" && (
+            <div className="rounded-xl border border-[#0f1b3d]/15 bg-muted/30 p-4 text-center space-y-3">
+              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                <span className={cn("h-2 w-2 rounded-full", recording ? "bg-red-500 animate-pulse" : recordedBlob ? "bg-emerald-500" : "bg-muted-foreground/40")} />
+                {recording ? "מקליט… (עד 60 שניות)" : recordedBlob ? "ההקלטה מוכנה" : "קראו טקסט קצר וברור (~30 שניות)"}
+              </div>
+              <div className="text-3xl font-mono tabular-nums text-[#0f1b3d]" dir="ltr">{mm}:{ss}</div>
+              <div className="flex items-center justify-center gap-2">
+                {!recording ? (
+                  <Button type="button" onClick={startRecording}
+                    className="bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-10 px-5 rounded-xl">
+                    <Mic className="ml-2 h-4 w-4" /> {recordedBlob ? "הקלטה מחדש" : "התחל הקלטה"}
+                  </Button>
+                ) : (
+                  <Button type="button" onClick={stopRecording} variant="destructive" className="h-10 px-5 rounded-xl">
+                    <Square className="ml-2 h-4 w-4" /> עצור
+                  </Button>
+                )}
+                {recordedBlob && !recording && (
+                  <>
+                    <Button type="button" variant="outline" onClick={togglePreview}
+                      className="h-10 w-10 p-0 rounded-xl border-[#0f1b3d]/20">
+                      {previewing ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                    </Button>
+                    <Button type="button" variant="outline" onClick={() => { setRecordedBlob(null); setElapsed(0); }}
+                      className="h-10 w-10 p-0 rounded-xl border-[#0f1b3d]/20">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </>
+                )}
+              </div>
+              <Button type="button" onClick={handleCloneRecorded}
+                disabled={submitting || !recordedBlob || recording}
+                className="w-full bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-11 rounded-xl font-semibold">
+                {submitting ? "משבט…" : "שבט את הקול"}
+              </Button>
             </div>
           )}
 
-          <Button onClick={mode === "clone" ? handleClone : handleVoiceIdAdd}
-            disabled={submitting}
-            className="w-full bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-11 rounded-xl font-semibold">
-            {submitting ? "שומר…" : "שמירת קול"}
-          </Button>
+          {mode === "clone" && (
+            <>
+              <label className="rounded-xl border-2 border-dashed border-[#0f1b3d]/25 bg-muted/30 p-4 flex flex-col items-center gap-2 cursor-pointer hover:bg-muted/50">
+                <Upload className="h-6 w-6 text-[#0f1b3d]/50" />
+                <p className="text-[11px] text-muted-foreground text-center">קובץ אודיו (10-60 שניות) — mp3 / wav / m4a / webm</p>
+                <input ref={fileRef} type="file" accept="audio/*" onChange={(e) => setFile(e.target.files?.[0] ?? null)} className="hidden" />
+                <div className="text-[11px] text-[#0f1b3d] font-medium">{file ? file.name : "בחרו קובץ"}</div>
+              </label>
+              <Button onClick={handleCloneFile} disabled={submitting || !file}
+                className="w-full bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-11 rounded-xl font-semibold">
+                {submitting ? "משבט…" : "שבט מהקובץ"}
+              </Button>
+            </>
+          )}
+
+          {mode === "voice_id" && (
+            <>
+              <div className="space-y-1.5">
+                <Label className="text-right block text-xs font-semibold text-[#0f1b3d]">Voice ID של ElevenLabs</Label>
+                <Input value={voiceId} onChange={(e) => setVoiceId(e.target.value)} placeholder="4eohDAy1kTS18Cnf0HiN" className="text-left h-10 rounded-xl font-mono" dir="ltr" />
+              </div>
+              <Button onClick={handleVoiceIdAdd} disabled={submitting}
+                className="w-full bg-[#0f1b3d] hover:bg-[#1e3a5f] text-white h-11 rounded-xl font-semibold">
+                {submitting ? "שומר…" : "שמירת קול"}
+              </Button>
+            </>
+          )}
         </div>
       </DialogContent>
     </Dialog>
