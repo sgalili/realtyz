@@ -70,6 +70,8 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
   const [clonedVoices, setClonedVoices] = useState<ClonedVoice[]>([]);
   const [agentVoiceId, setAgentVoiceId] = useState<string>(UDI_VOICE.voice_id);
   const [addVoiceOpen, setAddVoiceOpen] = useState(false);
+  const [listings, setListings] = useState<ListingOpt[]>([]);
+  const [listingId, setListingId] = useState<string>("none");
 
   // Audience
   const [audience, setAudience] = useState<AudienceMode | ''>('');
