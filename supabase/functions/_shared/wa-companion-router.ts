@@ -128,7 +128,27 @@ async function resolveOwnerListing(admin: any, userId: string, text: string) {
   return best?.row ?? rows[0];
 }
 
-async function lookupOwnerFirstName(admin: any, userId: string): Promise<string | null> {
+async function lookupOwnerFirstName(admin: any, userId: string, senderPhone?: string): Promise<string | null> {
+  // Prefer the per-phone whitelist label so co-managers mapped to the same
+  // owner user_id (e.g. Shay → Udi's user_id) still get greeted by their
+  // own first name.
+  if (senderPhone) {
+    try {
+      const variants = phoneVariants(senderPhone);
+      const { data } = await admin
+        .from("kb_whitelist")
+        .select("label")
+        .in("phone_number", variants)
+        .limit(1)
+        .maybeSingle();
+      const label = (data?.label as string | null)?.trim();
+      if (label) {
+        const clean = label.replace(/\s*\(pending invite\)\s*/i, "").trim();
+        const first = clean.split(/\s+/)[0];
+        if (first) return first;
+      }
+    } catch { /* fall through */ }
+  }
   try {
     const { data } = await admin
       .from("profiles")
