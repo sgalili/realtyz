@@ -133,9 +133,9 @@ export function ManagersTab() {
   };
 
   return (
-    <Card>
-      <CardContent className="space-y-4 p-4 sm:p-6">
-        <div className="flex items-center justify-between gap-3 flex-row-reverse">
+    <Card dir="rtl">
+      <CardContent className="space-y-4 p-4 sm:p-6 text-right">
+        <div className="flex items-center justify-between gap-3">
           <h2 className="text-lg font-bold text-right">מנהלים מורשים בחשבון</h2>
         </div>
 
