@@ -36,14 +36,15 @@ export type RouterResult =
 // ----- intent detection -------------------------------------------------
 
 const POST_TRIGGERS = [
-  /^\s*(צור|תייצר|תכין|תכתוב|כתוב|תפיק)\s+(לי\s+)?(פוסט|פרסום|מודעה|תוכן)\b/i,
-  /^\s*(post|create post|generate post|write post)\b/i,
+  /\b(צור|תייצר|תכין|תכתוב|כתוב|תפיק|הכן|הפק|תפרסם|פרסם)\s+(לי\s+)?(פוסט|פרסום|מודעה|תוכן|סטורי|ריל)\b/i,
+  /\bפוסט\s+(על|בשביל|ל)\b/i,
+  /\b(post|create post|generate post|write post|draft post)\b/i,
   /^\s*#?פוסט[:\s]/i,
 ];
 
 const REPLY_TRIGGERS = [
-  /^\s*(תגובה|השב|תענה|ענה|רספונס)\b/i,
-  /^\s*(reply|respond|answer)\b/i,
+  /\b(תגובה|השב|תענה|ענה|תגיב|רספונס)\b/i,
+  /\b(reply|respond|answer)\b/i,
   /^\s*#?תגובה[:\s]/i,
 ];
 
@@ -71,6 +72,21 @@ function stripTrigger(t: string): string {
 
 // ----- listing resolver -------------------------------------------------
 
+// Hebrew/English stop-words we never want to use as a "street name" token.
+const TOKEN_STOP = new Set([
+  "פוסט","תכתוב","תכין","צור","תייצר","כתוב","תפיק","הכן","הפק","תפרסם","פרסם",
+  "על","בשביל","עבור","של","את","עם","ל","ב","ה","לי","לנו","ברחוב","רחוב","דירה","דירת","הדירה",
+  "post","create","generate","write","draft","the","a","an","on","for","of",
+]);
+
+function tokenize(text: string): string[] {
+  return String(text || "")
+    .replace(/[^\p{L}\p{N}\s'"-]/gu, " ")
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 3 && !TOKEN_STOP.has(t.toLowerCase()));
+}
+
 async function resolveOwnerListing(admin: any, userId: string, text: string) {
   const { data } = await admin
     .from("listings")
@@ -78,14 +94,34 @@ async function resolveOwnerListing(admin: any, userId: string, text: string) {
     .eq("user_id", userId)
     .in("status", ["live", "pending"])
     .order("created_at", { ascending: false })
-    .limit(25);
+    .limit(50);
   const rows = (data ?? []) as any[];
   if (!rows.length) return null;
-  const lower = text.toLowerCase();
-  const hit = rows.find((r) =>
-    [r.property_title, r.address].filter(Boolean).some((s: string) => lower.includes(String(s).toLowerCase().slice(0, 20))),
-  );
-  return hit ?? rows[0];
+  const tokens = tokenize(text).map((t) => t.toLowerCase());
+  if (tokens.length === 0) return rows[0];
+  // Score by number of token hits inside title+address.
+  let best: { row: any; score: number } | null = null;
+  for (const r of rows) {
+    const hay = [r.property_title, r.address].filter(Boolean).join(" ").toLowerCase();
+    if (!hay) continue;
+    let score = 0;
+    for (const tok of tokens) if (hay.includes(tok)) score += 1;
+    if (score > 0 && (!best || score > best.score)) best = { row: r, score };
+  }
+  return best?.row ?? rows[0];
+}
+
+async function lookupOwnerFirstName(admin: any, userId: string): Promise<string | null> {
+  try {
+    const { data } = await admin
+      .from("profiles")
+      .select("full_name")
+      .eq("id", userId)
+      .maybeSingle();
+    const full = (data?.full_name as string | null) ?? null;
+    if (!full) return null;
+    return full.trim().split(/\s+/)[0] ?? null;
+  } catch { return null; }
 }
 
 // ----- POST GENERATION command -----------------------------------------
@@ -140,10 +176,16 @@ async function handlePostCommand(ctx: RouterContext): Promise<RouterResult> {
     } catch (_) { /* best-effort */ }
 
     const deepLink = `${DASHBOARD_BASE}/campaigns${queueId ? `?draft=${queueId}` : ""}`;
+    const firstName = await lookupOwnerFirstName(ctx.admin, ctx.ownerUserId);
+    const greet = firstName ? `היי ${firstName}` : "היי";
+    const subject = listing
+      ? `הדירה ב${listing.address ?? listing.property_title}`
+      : "הנושא שביקשת";
+    const ack = `${greet}, זיהיתי אותך כמנהל. אני מייצר כעת טיוטת פוסט שיווקי עבור ${subject} ומעביר לאישור שלך…`;
     const reply =
-      `✍️ טיוטת פוסט מוכנה${listing ? ` עבור ${listing.property_title ?? listing.address}` : ""}:\n\n` +
-      `${draft.slice(0, 700)}${draft.length > 700 ? "…" : ""}\n\n` +
-      `כדי לפרסם / לערוך / לבחור Final Version: ${deepLink}`;
+      `${ack}\n\n` +
+      `✍️ טיוטה:\n${draft.slice(0, 700)}${draft.length > 700 ? "…" : ""}\n\n` +
+      `לעריכה / פרסום / בחירת Final Version: ${deepLink}`;
     return { handled: true, action: "post_generated", reply, meta: { queueId, listingId: listing?.id ?? null } };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
@@ -242,11 +284,40 @@ export async function routeOwnerCommand(ctx: RouterContext): Promise<RouterResul
   return { handled: false };
 }
 
+/**
+ * Generate every plausible representation of an Israeli phone number so we can
+ * match a whitelist row that may have been stored as "0546811841",
+ * "972546811841", "+972546811841", or "9725468118 41" (with stray spaces / dashes).
+ */
+export function phoneVariants(raw: string): string[] {
+  const cleaned = String(raw ?? "")
+    .replace(/@c\.us$/i, "")
+    .replace(/@s\.whatsapp\.net$/i, "")
+    .replace(/[^\d+]/g, "");
+  let digits = cleaned.replace(/^\+/, "");
+  // Normalize to E.164-without-plus starting with 972
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  if (digits.startsWith("0")) digits = "972" + digits.slice(1);
+  if (digits && !digits.startsWith("972")) digits = "972" + digits;
+
+  const national = digits.startsWith("972") ? "0" + digits.slice(3) : digits;
+  const out = new Set<string>([
+    digits,
+    "+" + digits,
+    national,
+    raw?.trim() ?? "",
+  ].filter(Boolean));
+  return Array.from(out);
+}
+
 export async function lookupOwnerByPhone(admin: any, phone: string): Promise<string | null> {
+  const variants = phoneVariants(phone);
+  if (variants.length === 0) return null;
   const { data } = await admin
     .from("kb_whitelist")
-    .select("user_id")
-    .eq("phone_number", phone)
+    .select("user_id, phone_number")
+    .in("phone_number", variants)
+    .limit(1)
     .maybeSingle();
   return (data?.user_id as string | undefined) ?? null;
 }
