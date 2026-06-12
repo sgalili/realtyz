@@ -430,13 +430,20 @@ Deno.serve(async (req) => {
   const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
   if (msg.kind === "text" && !isKnowledgeCommand(msg.text)) {
-    // 1. Owner companion router: if the sender is a whitelisted owner/broker,
-    //    try mirroring a dashboard action (generate post, reply to comment, or
-    //    deep-link fallback for heavy UI). Only if no command matched do we
-    //    fall through to the lead-inbox / KB ingestion paths.
+    // ============================================================
+    // GATEKEEPER — owner whitelist lookup runs FIRST and HARD BLOCKS
+    // any lead/autopilot handling for whitelisted phones. A
+    // whitelisted owner must NEVER be treated as a client lead.
+    // ============================================================
+    let ownerUserId: string | null = null;
     try {
-      const ownerUserId = await lookupOwnerByPhone(admin, senderPhone);
-      if (ownerUserId) {
+      ownerUserId = await lookupOwnerByPhone(admin, senderPhone);
+    } catch (e) {
+      console.warn("wa-companion owner lookup failed:", e instanceof Error ? e.message : e);
+    }
+
+    if (ownerUserId) {
+      try {
         const routed = await routeOwnerCommand({
           admin,
           supabaseUrl: SUPABASE_URL,
@@ -445,15 +452,31 @@ Deno.serve(async (req) => {
           ownerUserId,
           text: msg.text,
         });
-        if (routed.handled) {
-          await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, routed.reply);
-          return jsonResponse({ ok: true, companion: routed.action, meta: routed.meta ?? null });
-        }
+        const replyText = routed.handled
+          ? routed.reply
+          : `היי, זיהיתי אותך כמנהל. לא זיהיתי פקודה ברורה — נסה למשל: "צור פוסט על הדירה ברחוב החליל בהרצליה" או "תגובה: תודה רבה!".`;
+        await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, replyText);
+        return jsonResponse({
+          ok: true,
+          companion: routed.handled ? routed.action : "owner_help",
+          owner_blocked_lead_autopilot: true,
+          meta: routed.handled ? (routed.meta ?? null) : null,
+        });
+      } catch (e) {
+        const errMsg = e instanceof Error ? e.message : "unknown";
+        console.error("wa-companion-router error (owner hard-block):", errMsg);
+        // Even on internal error we DO NOT fall through to the lead pipeline.
+        await sendRawWhatsApp(
+          SUPABASE_URL,
+          SERVICE_KEY,
+          senderPhone,
+          "היי, זיהיתי אותך כמנהל אבל נתקלתי בשגיאה זמנית בהפקת התוכן. נסה שוב בעוד רגע או היכנס לדשבורד.",
+        );
+        return jsonResponse({ ok: false, owner_blocked_lead_autopilot: true, error: errMsg }, 200);
       }
-    } catch (e) {
-      console.warn("wa-companion-router error:", e instanceof Error ? e.message : e);
     }
 
+    // Non-owner → standard lead inbox pipeline.
     try {
       const result = await handleLeadInboxInbound(
         admin,
