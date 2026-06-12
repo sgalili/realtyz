@@ -176,10 +176,16 @@ async function handlePostCommand(ctx: RouterContext): Promise<RouterResult> {
     } catch (_) { /* best-effort */ }
 
     const deepLink = `${DASHBOARD_BASE}/campaigns${queueId ? `?draft=${queueId}` : ""}`;
+    const firstName = await lookupOwnerFirstName(ctx.admin, ctx.ownerUserId);
+    const greet = firstName ? `היי ${firstName}` : "היי";
+    const subject = listing
+      ? `הדירה ב${listing.address ?? listing.property_title}`
+      : "הנושא שביקשת";
+    const ack = `${greet}, זיהיתי אותך כמנהל. אני מייצר כעת טיוטת פוסט שיווקי עבור ${subject} ומעביר לאישור שלך…`;
     const reply =
-      `✍️ טיוטת פוסט מוכנה${listing ? ` עבור ${listing.property_title ?? listing.address}` : ""}:\n\n` +
-      `${draft.slice(0, 700)}${draft.length > 700 ? "…" : ""}\n\n` +
-      `כדי לפרסם / לערוך / לבחור Final Version: ${deepLink}`;
+      `${ack}\n\n` +
+      `✍️ טיוטה:\n${draft.slice(0, 700)}${draft.length > 700 ? "…" : ""}\n\n` +
+      `לעריכה / פרסום / בחירת Final Version: ${deepLink}`;
     return { handled: true, action: "post_generated", reply, meta: { queueId, listingId: listing?.id ?? null } };
   } catch (e) {
     const msg = e instanceof Error ? e.message : "unknown";
