@@ -202,11 +202,22 @@ export function WhatsAppGatewayCard() {
         </p>
 
         <div className="space-y-1.5">
+          <Label className="text-right block">מספר WhatsApp מחובר</Label>
+          <Input
+            dir="ltr"
+            readOnly
+            placeholder={waPhone ? '' : 'יוצג לאחר בדיקת חיבור'}
+            value={waPhone ? `+${waPhone}` : ''}
+            className="bg-muted/40"
+          />
+        </div>
+
+        <div className="space-y-1.5">
           <Label htmlFor="wa-instance" className="text-right block">Instance ID</Label>
           <Input
             id="wa-instance"
             dir="ltr"
-            placeholder="1101234567"
+            placeholder="7103164675"
             value={instanceId}
             onChange={(e) => setInstanceId(e.target.value)}
             disabled={loading}
