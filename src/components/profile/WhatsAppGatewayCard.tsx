@@ -23,6 +23,7 @@ import { MessageCircle, Save, Loader2, CheckCircle2, ImageDown } from 'lucide-re
 export function WhatsAppGatewayCard() {
   const [instanceId, setInstanceId] = useState('');
   const [token, setToken] = useState('');
+  const [waPhone, setWaPhone] = useState<string>('');
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [testing, setTesting] = useState(false);
