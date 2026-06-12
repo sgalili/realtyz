@@ -242,11 +242,40 @@ export async function routeOwnerCommand(ctx: RouterContext): Promise<RouterResul
   return { handled: false };
 }
 
+/**
+ * Generate every plausible representation of an Israeli phone number so we can
+ * match a whitelist row that may have been stored as "0546811841",
+ * "972546811841", "+972546811841", or "9725468118 41" (with stray spaces / dashes).
+ */
+export function phoneVariants(raw: string): string[] {
+  const cleaned = String(raw ?? "")
+    .replace(/@c\.us$/i, "")
+    .replace(/@s\.whatsapp\.net$/i, "")
+    .replace(/[^\d+]/g, "");
+  let digits = cleaned.replace(/^\+/, "");
+  // Normalize to E.164-without-plus starting with 972
+  if (digits.startsWith("00")) digits = digits.slice(2);
+  if (digits.startsWith("0")) digits = "972" + digits.slice(1);
+  if (digits && !digits.startsWith("972")) digits = "972" + digits;
+
+  const national = digits.startsWith("972") ? "0" + digits.slice(3) : digits;
+  const out = new Set<string>([
+    digits,
+    "+" + digits,
+    national,
+    raw?.trim() ?? "",
+  ].filter(Boolean));
+  return Array.from(out);
+}
+
 export async function lookupOwnerByPhone(admin: any, phone: string): Promise<string | null> {
+  const variants = phoneVariants(phone);
+  if (variants.length === 0) return null;
   const { data } = await admin
     .from("kb_whitelist")
-    .select("user_id")
-    .eq("phone_number", phone)
+    .select("user_id, phone_number")
+    .in("phone_number", variants)
+    .limit(1)
     .maybeSingle();
   return (data?.user_id as string | undefined) ?? null;
 }
