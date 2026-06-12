@@ -156,6 +156,8 @@ const App = () => (
             <DemoModeProvider>
             <ElectionTypeProvider>
             <MandateProvider>
+            <WorkspaceProvider>
+            <WorkspaceSelectorModal />
             <Routes>
               <Route path="/auth" element={<AuthRoute />} />
               <Route path="/reset-password" element={<ResetPassword />} />
