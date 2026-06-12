@@ -79,6 +79,10 @@ function matchHeavy(t: string) { return HEAVY_DEEPLINKS.find((h) => h.test.test(
 function stripTrigger(t: string): string {
   let out = t.trim();
   for (const r of [...POST_TRIGGERS, ...REPLY_TRIGGERS]) out = out.replace(r, "").trim();
+  for (const p of POST_LOOSE_PHRASES) {
+    const rx = new RegExp(p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "ig");
+    out = out.replace(rx, "").trim();
+  }
   out = out.replace(/^[:\-–—]\s*/, "").trim();
   return out;
 }
