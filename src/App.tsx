@@ -225,6 +225,7 @@ const App = () => (
               <Route path="/contact" element={<Suspense fallback={<PageLoader />}><ContactForm /></Suspense>} />
               <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFound /></Suspense>} />
             </Routes>
+            </WorkspaceProvider>
             </MandateProvider>
             </ElectionTypeProvider>
             </DemoModeProvider>
