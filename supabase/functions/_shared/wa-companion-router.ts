@@ -374,7 +374,7 @@ async function handleReplyCommand(ctx: RouterContext): Promise<RouterResult> {
     return {
       handled: true,
       action: "reply_no_pending",
-      reply: `אין תגובה ממתינה ב-48 השעות האחרונות. ניתן להגיב ידנית מהדשבורד: ${DASHBOARD_BASE}/campaigns`,
+      reply: `אין תגובה ממתינה ב-48 השעות האחרונות.`,
     };
   }
   try {
