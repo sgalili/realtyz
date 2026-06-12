@@ -233,13 +233,37 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     if (recTimerRef.current) window.clearInterval(recTimerRef.current);
   };
 
+  const selectedListing = useMemo(
+    () => listings.find((l) => l.id === listingId) ?? null,
+    [listings, listingId],
+  );
+  const listingLabel = (l: ListingOpt) => {
+    const parts = [l.property_title, l.address || l.neighborhood, l.city].filter(Boolean);
+    return parts.join(' · ') || 'נכס ללא כותרת';
+  };
+  const buildTtsPrompt = (raw: string): string => {
+    if (!selectedListing) return raw;
+    const l = selectedListing;
+    const ctx: string[] = [];
+    if (l.property_title) ctx.push(l.property_title);
+    if (l.address) ctx.push(`כתובת: ${l.address}`);
+    if (l.neighborhood) ctx.push(`שכונה: ${l.neighborhood}`);
+    if (l.city) ctx.push(`עיר: ${l.city}`);
+    if (l.rooms) ctx.push(`${l.rooms} חדרים`);
+    if (l.sqm) ctx.push(`${l.sqm} מ"ר`);
+    if (l.asking_price) ctx.push(`מחיר מבוקש: ${Number(l.asking_price).toLocaleString('he-IL')} ₪`);
+    const header = `הקשר הנכס לקמפיין: ${ctx.join(', ')}.`;
+    return `${header}\n\n${raw}`;
+  };
+
   // Generate TTS audio (calls ivr-broadcast in generate-only mode for an audio_url)
   const generateTtsAudio = async () => {
     if (!ttsText.trim()) { toast.error('הקלידו טקסט'); return; }
     setGeneratingTts(true);
     try {
+      const finalText = buildTtsPrompt(ttsText.trim());
       const { data, error } = await supabase.functions.invoke('ivr-broadcast', {
-        body: { source: 'tts', text: ttsText.trim(), voice_id: agentVoiceId, generate_only: true },
+        body: { source: 'tts', text: finalText, voice_id: agentVoiceId, generate_only: true },
       });
       const audioUrl = (data as any)?.audio_url;
       if (error || !audioUrl) {
