@@ -190,7 +190,7 @@ export function ManagersTab() {
                 <div className="flex min-w-[120px] flex-1 flex-col text-right">
                   <span className="truncate whitespace-nowrap text-sm font-semibold">{displayName}</span>
                   <span className="truncate text-xs text-muted-foreground" dir="ltr">
-                    {rows.map((r) => r.phone_number).join(' · ')}
+                    {pickPrimaryPhone(rows)}
                   </span>
                   {isPending && (
                     <span className="text-[10px] text-amber-600">ממתין לאישור הזמנה</span>
