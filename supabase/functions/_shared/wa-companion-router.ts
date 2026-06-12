@@ -393,7 +393,7 @@ async function handleReplyCommand(ctx: RouterContext): Promise<RouterResult> {
     return {
       handled: true,
       action: "reply_sent",
-      reply: `✅ התגובה פורסמה בפייסבוק בשרשור של ${event.sender_handle ?? "המגיב"}.\nלצפייה: ${DASHBOARD_BASE}/campaigns`,
+      reply: `✅ התגובה פורסמה בפייסבוק בשרשור של ${event.sender_handle ?? "המגיב"}.`,
       meta: { event_id: event.id },
     };
   } catch (e) {
