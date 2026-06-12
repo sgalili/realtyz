@@ -126,6 +126,16 @@ export function HeaderProfileMenu() {
                   </button>
                 );
               })}
+              {workspaces.length > 1 && (
+                <button
+                  type="button"
+                  onClick={() => { setOpen(false); openSelector(); }}
+                  className="flex items-center gap-2.5 rounded-md px-2.5 py-2 text-right text-sm text-[#0b3982] transition-colors hover:bg-[#0b3982]/10"
+                >
+                  <Repeat className="h-4 w-4 shrink-0 text-[#0b3982]" />
+                  <span className="flex-1">החלף מרחב עבודה</span>
+                </button>
+              )}
               {isSuperAdmin && (
                 <button
                   type="button"
