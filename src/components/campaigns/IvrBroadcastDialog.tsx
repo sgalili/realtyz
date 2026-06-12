@@ -14,6 +14,11 @@ import { AddVoiceDialog } from '@/components/voice/AddVoiceDialog';
 
 type IvrLead = { id: string; full_name: string | null; phone: string | null; city?: string | null };
 type ClonedVoice = { id: string; name: string; voice_id: string; preview_url?: string | null };
+type ListingOpt = {
+  id: string; property_title: string | null; address: string | null; city: string | null;
+  neighborhood: string | null; rooms: number | null; sqm: number | null; asking_price: number | null;
+  features: any;
+};
 
 const UDI_VOICE = { id: 'udi', label: 'אודי ויטמן', voice_id: '4eohDAy1kTS18Cnf0HiN' };
 const PRESET_VOICES: { id: string; label: string; voice_id: string }[] = [UDI_VOICE];
