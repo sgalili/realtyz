@@ -72,6 +72,21 @@ function stripTrigger(t: string): string {
 
 // ----- listing resolver -------------------------------------------------
 
+// Hebrew/English stop-words we never want to use as a "street name" token.
+const TOKEN_STOP = new Set([
+  "פוסט","תכתוב","תכין","צור","תייצר","כתוב","תפיק","הכן","הפק","תפרסם","פרסם",
+  "על","בשביל","עבור","של","את","עם","ל","ב","ה","לי","לנו","ברחוב","רחוב","דירה","דירת","הדירה",
+  "post","create","generate","write","draft","the","a","an","on","for","of",
+]);
+
+function tokenize(text: string): string[] {
+  return String(text || "")
+    .replace(/[^\p{L}\p{N}\s'"-]/gu, " ")
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 3 && !TOKEN_STOP.has(t.toLowerCase()));
+}
+
 async function resolveOwnerListing(admin: any, userId: string, text: string) {
   const { data } = await admin
     .from("listings")
@@ -79,14 +94,34 @@ async function resolveOwnerListing(admin: any, userId: string, text: string) {
     .eq("user_id", userId)
     .in("status", ["live", "pending"])
     .order("created_at", { ascending: false })
-    .limit(25);
+    .limit(50);
   const rows = (data ?? []) as any[];
   if (!rows.length) return null;
-  const lower = text.toLowerCase();
-  const hit = rows.find((r) =>
-    [r.property_title, r.address].filter(Boolean).some((s: string) => lower.includes(String(s).toLowerCase().slice(0, 20))),
-  );
-  return hit ?? rows[0];
+  const tokens = tokenize(text).map((t) => t.toLowerCase());
+  if (tokens.length === 0) return rows[0];
+  // Score by number of token hits inside title+address.
+  let best: { row: any; score: number } | null = null;
+  for (const r of rows) {
+    const hay = [r.property_title, r.address].filter(Boolean).join(" ").toLowerCase();
+    if (!hay) continue;
+    let score = 0;
+    for (const tok of tokens) if (hay.includes(tok)) score += 1;
+    if (score > 0 && (!best || score > best.score)) best = { row: r, score };
+  }
+  return best?.row ?? rows[0];
+}
+
+async function lookupOwnerFirstName(admin: any, userId: string): Promise<string | null> {
+  try {
+    const { data } = await admin
+      .from("profiles")
+      .select("full_name")
+      .eq("id", userId)
+      .maybeSingle();
+    const full = (data?.full_name as string | null) ?? null;
+    if (!full) return null;
+    return full.trim().split(/\s+/)[0] ?? null;
+  } catch { return null; }
 }
 
 // ----- POST GENERATION command -----------------------------------------
