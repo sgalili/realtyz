@@ -42,6 +42,15 @@ const POST_TRIGGERS = [
   /^\s*#?פוסט[:\s]/i,
 ];
 
+// Loose contains-based fallbacks. If ANY of these substrings appears anywhere
+// in the normalized text we treat the message as a post-generation intent.
+const POST_LOOSE_PHRASES = [
+  "תכין פוסט", "תכין לי פוסט", "צור פוסט", "צור לי פוסט",
+  "תייצר פוסט", "תכתוב פוסט", "כתוב פוסט", "תפיק פוסט", "הפק פוסט",
+  "פוסט על", "פוסט לדירה", "פוסט לנכס", "פוסט שיווקי",
+  "תפרסם פוסט", "פרסם פוסט",
+];
+
 const REPLY_TRIGGERS = [
   /\b(תגובה|השב|תענה|ענה|תגיב|רספונס)\b/i,
   /\b(reply|respond|answer)\b/i,
@@ -58,7 +67,11 @@ const HEAVY_DEEPLINKS: Array<{ test: RegExp; path: string; label: string }> = [
   { test: /\b(הגדרות|settings)\b/i, path: "/settings", label: "הגדרות" },
 ];
 
-function isPostCommand(t: string) { return POST_TRIGGERS.some((r) => r.test(t)); }
+function isPostCommand(t: string) {
+  if (POST_TRIGGERS.some((r) => r.test(t))) return true;
+  const lower = t.toLowerCase();
+  return POST_LOOSE_PHRASES.some((p) => lower.includes(p.toLowerCase()));
+}
 function isReplyCommand(t: string) { return REPLY_TRIGGERS.some((r) => r.test(t)); }
 function matchHeavy(t: string) { return HEAVY_DEEPLINKS.find((h) => h.test.test(t)); }
 
@@ -66,6 +79,10 @@ function matchHeavy(t: string) { return HEAVY_DEEPLINKS.find((h) => h.test.test(
 function stripTrigger(t: string): string {
   let out = t.trim();
   for (const r of [...POST_TRIGGERS, ...REPLY_TRIGGERS]) out = out.replace(r, "").trim();
+  for (const p of POST_LOOSE_PHRASES) {
+    const rx = new RegExp(p.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "ig");
+    out = out.replace(rx, "").trim();
+  }
   out = out.replace(/^[:\-–—]\s*/, "").trim();
   return out;
 }
@@ -111,7 +128,27 @@ async function resolveOwnerListing(admin: any, userId: string, text: string) {
   return best?.row ?? rows[0];
 }
 
-async function lookupOwnerFirstName(admin: any, userId: string): Promise<string | null> {
+async function lookupOwnerFirstName(admin: any, userId: string, senderPhone?: string): Promise<string | null> {
+  // Prefer the per-phone whitelist label so co-managers mapped to the same
+  // owner user_id (e.g. Shay → Udi's user_id) still get greeted by their
+  // own first name.
+  if (senderPhone) {
+    try {
+      const variants = phoneVariants(senderPhone);
+      const { data } = await admin
+        .from("kb_whitelist")
+        .select("label")
+        .in("phone_number", variants)
+        .limit(1)
+        .maybeSingle();
+      const label = (data?.label as string | null)?.trim();
+      if (label) {
+        const clean = label.replace(/\s*\(pending invite\)\s*/i, "").trim();
+        const first = clean.split(/\s+/)[0];
+        if (first) return first;
+      }
+    } catch { /* fall through */ }
+  }
   try {
     const { data } = await admin
       .from("profiles")
@@ -176,7 +213,7 @@ async function handlePostCommand(ctx: RouterContext): Promise<RouterResult> {
     } catch (_) { /* best-effort */ }
 
     const deepLink = `${DASHBOARD_BASE}/campaigns${queueId ? `?draft=${queueId}` : ""}`;
-    const firstName = await lookupOwnerFirstName(ctx.admin, ctx.ownerUserId);
+    const firstName = await lookupOwnerFirstName(ctx.admin, ctx.ownerUserId, ctx.senderPhone);
     const greet = firstName ? `היי ${firstName}` : "היי";
     const subject = listing
       ? `הדירה ב${listing.address ?? listing.property_title}`
