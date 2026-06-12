@@ -30,13 +30,22 @@ const initialsOf = (name: string) => {
   return (parts[0][0] + (parts[1]?.[0] ?? '')).toUpperCase();
 };
 
-function normalizePhone(raw: string) {
-  const digits = raw.replace(/[^\d+]/g, '');
-  if (digits.startsWith('+972')) return digits;
-  if (digits.startsWith('972')) return digits;
-  if (digits.startsWith('05')) return digits;
-  if (digits.startsWith('5') && digits.length === 9) return '0' + digits;
-  return digits;
+/** Render any whitelist phone variant as a single Israeli 05X-XXXXXXX string. */
+function displayPhone(raw: string): string {
+  const digits = String(raw || '').replace(/[^\d]/g, '');
+  let national = digits;
+  if (national.startsWith('972')) national = '0' + national.slice(3);
+  if (!national.startsWith('0') && national.length === 9) national = '0' + national;
+  if (national.length !== 10) return ''; // hide malformed
+  return `${national.slice(0, 3)}-${national.slice(3)}`;
+}
+
+function pickPrimaryPhone(rows: { phone_number: string }[]): string {
+  for (const r of rows) {
+    const pretty = displayPhone(r.phone_number);
+    if (pretty) return pretty;
+  }
+  return '';
 }
 
 export function ManagersTab() {
