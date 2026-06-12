@@ -121,11 +121,19 @@ Deno.serve(async (req) => {
     if (!postText) return json({ error: "missing post text" }, 400);
     if (rawChannels.length === 0) return json({ error: "no channels selected" }, 400);
 
-    // Resolve caller from Authorization header (user_id isolation)
+    // Resolve caller from Authorization header (user_id isolation).
+    // Also support service-role + x-impersonate-user (used by WhatsApp
+    // companion router so an owner can publish directly from WhatsApp).
     const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
     if (!token) return json({ error: "unauthorized" }, 401);
-    const { data: authData } = await admin.auth.getUser(token);
-    const userId = authData?.user?.id;
+    let userId: string | null = null;
+    const impersonate = (req.headers.get("x-impersonate-user") ?? "").trim();
+    if (token === SERVICE && impersonate) {
+      userId = impersonate;
+    } else {
+      const { data: authData } = await admin.auth.getUser(token);
+      userId = authData?.user?.id ?? null;
+    }
     if (!userId) return json({ error: "unauthorized" }, 401);
 
     const platforms = Array.from(

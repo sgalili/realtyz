@@ -182,25 +182,25 @@ export function ManagersTab() {
               <div
                 key={primary.id}
                 dir="rtl"
-                className="flex items-center gap-2 rounded-xl border bg-card p-3 text-right"
+                className="flex w-full items-center gap-2 overflow-hidden rounded-xl border bg-card px-3 py-3 sm:px-4 text-right"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[hsl(220_70%_25%)] text-sm font-semibold text-white">
                   {initialsOf(displayName)}
                 </div>
-                <div className="flex min-w-[120px] flex-1 flex-col text-right">
-                  <span className="truncate whitespace-nowrap text-sm font-semibold">{displayName}</span>
+                <div className="flex min-w-0 flex-1 flex-col text-right">
+                  <span className="truncate text-sm font-semibold">{displayName}</span>
                   <span className="truncate text-xs text-muted-foreground" dir="ltr">
                     {pickPrimaryPhone(rows)}
                   </span>
                   {isPending && (
-                    <span className="text-[10px] text-amber-600">ממתין לאישור הזמנה</span>
+                    <span className="truncate text-[10px] text-amber-600">ממתין לאישור הזמנה</span>
                   )}
                 </div>
                 <Select
                   value={tierVal}
                   onValueChange={(v) => setTiers((s) => ({ ...s, [primary.id]: v }))}
                 >
-                  <SelectTrigger className="h-9 w-[110px] shrink-0 text-xs" dir="rtl">
+                  <SelectTrigger className="h-9 w-[96px] shrink-0 text-xs" dir="rtl">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent dir="rtl">
@@ -209,26 +209,28 @@ export function ManagersTab() {
                     ))}
                   </SelectContent>
                 </Select>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleMessage(rows)}
-                  aria-label="שלח הודעה"
-                  className="h-9 w-9 text-muted-foreground hover:text-foreground"
-                >
-                  <MessageSquare className="h-4 w-4" />
-                </Button>
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleDelete(rows)}
-                  aria-label="הסר מנהל"
-                  className="h-9 w-9 text-destructive hover:bg-destructive/10"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
+                <div className="flex shrink-0 items-center gap-1">
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleMessage(rows)}
+                    aria-label="שלח הודעה"
+                    className="h-9 w-9 text-muted-foreground hover:text-foreground"
+                  >
+                    <MessageSquare className="h-4 w-4" />
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    onClick={() => handleDelete(rows)}
+                    aria-label="הסר מנהל"
+                    className="h-9 w-9 text-destructive hover:bg-destructive/10"
+                  >
+                    <Trash2 className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             );
           })}
