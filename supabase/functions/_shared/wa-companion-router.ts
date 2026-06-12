@@ -36,14 +36,15 @@ export type RouterResult =
 // ----- intent detection -------------------------------------------------
 
 const POST_TRIGGERS = [
-  /^\s*(צור|תייצר|תכין|תכתוב|כתוב|תפיק)\s+(לי\s+)?(פוסט|פרסום|מודעה|תוכן)\b/i,
-  /^\s*(post|create post|generate post|write post)\b/i,
+  /\b(צור|תייצר|תכין|תכתוב|כתוב|תפיק|הכן|הפק|תפרסם|פרסם)\s+(לי\s+)?(פוסט|פרסום|מודעה|תוכן|סטורי|ריל)\b/i,
+  /\bפוסט\s+(על|בשביל|ל)\b/i,
+  /\b(post|create post|generate post|write post|draft post)\b/i,
   /^\s*#?פוסט[:\s]/i,
 ];
 
 const REPLY_TRIGGERS = [
-  /^\s*(תגובה|השב|תענה|ענה|רספונס)\b/i,
-  /^\s*(reply|respond|answer)\b/i,
+  /\b(תגובה|השב|תענה|ענה|תגיב|רספונס)\b/i,
+  /\b(reply|respond|answer)\b/i,
   /^\s*#?תגובה[:\s]/i,
 ];
 
