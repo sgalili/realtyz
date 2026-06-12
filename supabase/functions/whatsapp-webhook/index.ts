@@ -25,7 +25,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
-import { routeOwnerCommand, lookupOwnerByPhone } from "../_shared/wa-companion-router.ts";
+import { routeOwnerCommand, lookupOwnerByPhone, phoneVariants } from "../_shared/wa-companion-router.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -436,13 +436,24 @@ Deno.serve(async (req) => {
     // whitelisted owner must NEVER be treated as a client lead.
     // ============================================================
     let ownerUserId: string | null = null;
+    let ownerLabel: string | null = null;
     try {
-      ownerUserId = await lookupOwnerByPhone(admin, senderPhone);
+      const wl = await admin
+        .from("kb_whitelist")
+        .select("user_id, label, phone_number")
+        .in("phone_number", phoneVariants(senderPhone))
+        .limit(1)
+        .maybeSingle();
+      ownerUserId = (wl.data?.user_id as string | undefined) ?? null;
+      ownerLabel = (wl.data?.label as string | undefined) ?? null;
     } catch (e) {
       console.warn("wa-companion owner lookup failed:", e instanceof Error ? e.message : e);
     }
 
-    if (ownerUserId) {
+    if (!ownerUserId) {
+      console.log(`[ADMIN FLOW] No owner match for ${senderPhone} → falling through to lead pipeline`);
+    } else {
+      console.log(`[ADMIN FLOW] Owner identified: ${ownerLabel ?? ownerUserId} (phone=${senderPhone})`);
       try {
         const routed = await routeOwnerCommand({
           admin,
