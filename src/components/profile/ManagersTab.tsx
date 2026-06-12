@@ -86,18 +86,12 @@ export function ManagersTab() {
       return;
     }
     setSaving(true);
-    const normalized = normalizePhone(phone);
-    const variants = Array.from(
-      new Set(
-        [
-          normalized,
-          normalized.startsWith('+972') ? normalized.slice(1) : null,
-          normalized.startsWith('972') ? '0' + normalized.slice(3) : null,
-          normalized.startsWith('0') ? '972' + normalized.slice(1) : null,
-          normalized.startsWith('0') ? '+972' + normalized.slice(1) : null,
-        ].filter(Boolean) as string[],
-      ),
-    );
+    const raw = phone.replace(/[^\d+]/g, '');
+    let national = raw.replace(/^\+/, '');
+    if (national.startsWith('972')) national = '0' + national.slice(3);
+    if (!national.startsWith('0')) national = '0' + national;
+    const intl = '972' + national.slice(1);
+    const variants = Array.from(new Set([national, intl, '+' + intl]));
     const { error } = await supabase.from('kb_whitelist').upsert(
       variants.map((p) => ({
         user_id: user.id,
