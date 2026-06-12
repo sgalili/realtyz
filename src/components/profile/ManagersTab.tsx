@@ -178,13 +178,14 @@ export function ManagersTab() {
             return (
               <div
                 key={primary.id}
-                className="flex items-center gap-2 rounded-xl border bg-card p-3 flex-row-reverse"
+                dir="rtl"
+                className="flex items-center gap-2 rounded-xl border bg-card p-3 text-right"
               >
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-[hsl(220_70%_25%)] text-sm font-semibold text-white">
                   {initialsOf(displayName)}
                 </div>
-                <div className="flex min-w-0 flex-1 flex-col text-right">
-                  <span className="truncate text-sm font-semibold">{displayName}</span>
+                <div className="flex min-w-[120px] flex-1 flex-col text-right">
+                  <span className="truncate whitespace-nowrap text-sm font-semibold">{displayName}</span>
                   <span className="truncate text-xs text-muted-foreground" dir="ltr">
                     {rows.map((r) => r.phone_number).join(' · ')}
                   </span>
