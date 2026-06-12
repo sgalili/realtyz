@@ -424,6 +424,7 @@ function handleHeavyDeepLink(ctx: RouterContext): RouterResult {
 export async function routeOwnerCommand(ctx: RouterContext): Promise<RouterResult> {
   const t = ctx.text.trim();
   if (!t) return { handled: false };
+  if (isPublishCommand(t)) return handlePublishCommand(ctx);
   if (isPostCommand(t)) return handlePostCommand(ctx);
   if (isReplyCommand(t)) return handleReplyCommand(ctx);
   const heavy = handleHeavyDeepLink(ctx);
