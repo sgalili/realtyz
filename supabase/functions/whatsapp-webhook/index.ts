@@ -465,7 +465,7 @@ Deno.serve(async (req) => {
         });
         const replyText = routed.handled
           ? routed.reply
-          : `היי, זיהיתי אותך כמנהל. לא זיהיתי פקודה ברורה — נסה למשל: "צור פוסט על הדירה ברחוב החליל בהרצליה" או "תגובה: תודה רבה!".`;
+          : `לא זיהיתי פקודה ברורה. נסה למשל: "צור פוסט על הדירה ברחוב החליל בהרצליה" או "תגובה: תודה רבה!".`;
         await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, replyText);
         return jsonResponse({
           ok: true,
