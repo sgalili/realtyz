@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Crown, LogOut, Shield, ShieldCheck, User, Wallet } from 'lucide-react';
+import { Crown, LogOut, Shield, ShieldCheck, User, Wallet, Repeat } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import {
   AlertDialog,
@@ -15,6 +15,7 @@ import {
 import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { useWorkspace } from '@/hooks/useWorkspace';
 import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
 import { cn } from '@/lib/utils';
 
