@@ -10,6 +10,8 @@ import { AppLayout } from "@/components/AppLayout";
 import { DemoModeProvider } from "@/hooks/useDemoMode";
 import { ElectionTypeProvider } from "@/hooks/useElectionType";
 import { MandateProvider } from "@/hooks/useMandate";
+import { WorkspaceProvider } from "@/hooks/useWorkspace";
+import { WorkspaceSelectorModal } from "@/components/workspace/WorkspaceSelectorModal";
 import { toast } from "sonner";
 import { lazy, Suspense } from "react";
 import { RealtyzLoader } from "@/components/RealtyzLoader";
