@@ -42,6 +42,15 @@ const POST_TRIGGERS = [
   /^\s*#?פוסט[:\s]/i,
 ];
 
+// Loose contains-based fallbacks. If ANY of these substrings appears anywhere
+// in the normalized text we treat the message as a post-generation intent.
+const POST_LOOSE_PHRASES = [
+  "תכין פוסט", "תכין לי פוסט", "צור פוסט", "צור לי פוסט",
+  "תייצר פוסט", "תכתוב פוסט", "כתוב פוסט", "תפיק פוסט", "הפק פוסט",
+  "פוסט על", "פוסט לדירה", "פוסט לנכס", "פוסט שיווקי",
+  "תפרסם פוסט", "פרסם פוסט",
+];
+
 const REPLY_TRIGGERS = [
   /\b(תגובה|השב|תענה|ענה|תגיב|רספונס)\b/i,
   /\b(reply|respond|answer)\b/i,
@@ -58,7 +67,11 @@ const HEAVY_DEEPLINKS: Array<{ test: RegExp; path: string; label: string }> = [
   { test: /\b(הגדרות|settings)\b/i, path: "/settings", label: "הגדרות" },
 ];
 
-function isPostCommand(t: string) { return POST_TRIGGERS.some((r) => r.test(t)); }
+function isPostCommand(t: string) {
+  if (POST_TRIGGERS.some((r) => r.test(t))) return true;
+  const lower = t.toLowerCase();
+  return POST_LOOSE_PHRASES.some((p) => lower.includes(p.toLowerCase()));
+}
 function isReplyCommand(t: string) { return REPLY_TRIGGERS.some((r) => r.test(t)); }
 function matchHeavy(t: string) { return HEAVY_DEEPLINKS.find((h) => h.test.test(t)); }
 
