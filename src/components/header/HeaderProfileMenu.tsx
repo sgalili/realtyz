@@ -42,7 +42,7 @@ export function HeaderProfileMenu() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { isManagingBroker, isSuperAdmin } = useUserRole();
-  const { workspaces, openSelector } = useWorkspace();
+  const { workspaces, openSelector, activeWorkspace } = useWorkspace();
 
   const { settings: brand } = useWhiteLabel();
 
