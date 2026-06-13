@@ -1,75 +1,80 @@
-# Realtyz multi-workspace clone of Kalpiz
+# Continuous Learning Engine + Dynamic Persona Adaptation
+
+Build a workspace-scoped "system intelligence" layer that captures explicit owner rules (text or voice) and reinforcement signals (approve/edit/reject), then injects matching rules into every AI generation as `#CRITICAL_SYSTEM_PREFERENCES`.
+
+We already have `agent_learning_lexicon` (edit-diff rules) and `knowledge_chunks` (KB RAG). This adds a **rules layer** distinct from both: explicit, durable, owner-priority directives.
 
 ## 1. Database (one migration)
 
-New table `public.workspace_memberships`:
-- `user_id uuid` (member)
-- `workspace_owner_id uuid` (the user whose `profiles.workspace_owner_id` defines the workspace)
-- `role text` ('owner' | 'manager' | 'agent' | 'viewer' | 'super_admin')
-- `workspace_name text`, `workspace_logo_url text`, `account_type text` nullable
-- `last_accessed_at timestamptz`
-- unique (user_id, workspace_owner_id)
-- GRANTs to authenticated + service_role; RLS: user sees only own rows; service_role full.
+**`system_intelligence_kb`** — scoped by workspace_owner_id; role-tagged.
+- `id`, `workspace_owner_id` (uuid, NOT NULL), `created_by` (uuid), `actor_role` (text: 'owner'|'tenant'|'system'), `source` (text: 'kb_ui'|'whatsapp_text'|'whatsapp_voice'|'approval'|'rejection'|'edit_diff'), `rule_text` (text, the canonical imperative rule), `raw_input` (text, original utterance/transcript), `signal` (text: 'positive'|'negative'|'directive'), `weight` (numeric default 1.0), `embedding` (vector(1536)), `is_active` (bool default true), `expires_at` (timestamptz null), `metadata` (jsonb), `created_at`, `updated_at`.
+- GRANT SELECT/INSERT/UPDATE/DELETE to authenticated; ALL to service_role. No anon.
+- RLS: members of the workspace (via `workspace_memberships`) can SELECT; only owner + admins can INSERT/UPDATE/DELETE.
+- HNSW index on embedding (vector_cosine_ops).
+- `match_system_rules(workspace uuid, query vector, k int)` SECURITY DEFINER RPC returning top-k active rules ordered by `signal_priority` (negative+directive boosted) then cosine.
 
-Profile additions (user-scoped personalization, KI parity):
-- `profiles.city text`, `profiles.gender text`, `profiles.phone text` (display), `profiles.active_workspace_owner_id uuid`
+## 2. Edge functions
 
-Security-definer helpers:
-- `get_my_workspaces()` returns rows the user belongs to + their own implicit owner row.
-- `set_active_workspace(_owner uuid)` validates membership, updates `profiles.active_workspace_owner_id` + `last_accessed_at`.
-- Trigger on `auth.users` insert: auto-insert self-owner membership row.
-- Backfill: for every existing profile, insert one self-owner row.
+**New: `ingest-system-rule`** — accepts `{ text?, audio_base64?, audio_format?, source, role? }`. If audio, transcribe via Lovable AI Gateway (gemini-2.5-flash with `input_audio`). Detect Hebrew trigger phrases (`תמיד|מעכשיו|אל תשתמש|תזכור|חוק חדש|לעולם|כלל חדש|מהיום`) — if none and `source=whatsapp_text`, return `{captured:false}`. Otherwise call AI gateway to normalize the utterance into a concise English imperative rule + signal classification (`directive|negative|positive`). Embed via `google/gemini-embedding-001` truncated to 1536 dims (match column). Insert into `system_intelligence_kb`.
 
-## 2. Client context
+**New: `_shared/system-rules.ts`** — helper used by every generation function:
+```ts
+export async function fetchSystemRules(workspaceOwnerId, queryText, k=8): Promise<string>
+```
+- 30s in-memory LRU cache keyed by `${workspace}:${hash(queryText)}` for fast webhooks.
+- Embeds queryText, calls `match_system_rules`, formats as a `#CRITICAL_SYSTEM_PREFERENCES\n- rule1\n- rule2` block. Negative/directive rules listed first with `NEVER:`/`ALWAYS:` prefixes.
 
-New `src/hooks/useWorkspace.tsx` (`WorkspaceProvider`):
-- Loads `get_my_workspaces` once after auth.
-- Exposes `{ workspaces, activeWorkspaceId, setActiveWorkspace, mustChoose }`.
-- `mustChoose = workspaces.length > 1 && !localStorage.realtyz-active-workspace`.
-- Mounted in `App.tsx` inside `AuthProvider`.
+**Edit existing generation paths** to prepend the block to their system prompt (minimal touch — one helper call near top):
+- `_shared/persona.ts` (chat/autopilot/inbox replies)
+- `ayrshare-post/index.ts` (posts)
+- `fb-comment-reply` / equivalent
+- `voice-agent` script builder
+- `ai-agent` drawer
 
-## 3. Workspace selector modal
+**Edit `whatsapp-webhook/index.ts`** — after admin identification, before normal router: if the inbound message matches the trigger lexicon OR is a voice note from a workspace owner/super_admin, fire-and-forget POST to `ingest-system-rule` (don't block reply). Voice notes always go through ingestion (transcript reused for normal handling).
 
-New `src/components/workspace/WorkspaceSelectorModal.tsx`:
-- RTL dialog, title "בחר מרחב עבודה להתחברות".
-- Personal "החשבון שלי · בעלים" card on top (current user).
-- One card per membership row: logo, name, role subtitle ("הרשאה: …"), checkmark on active.
-- Dotted "+ הוספת מרחב עבודה חדש" expands inline form (שם / אימייל / +972 phone) → calls existing `super-admin-create-user` edge fn when caller is super_admin, otherwise creates a `team_invitations` row.
-- Auto-opens on first login when `mustChoose` is true (intercept in `AppLayout`).
-- Reusable: also opens from the swap-arrow icon on the connected-workspace card.
+**Edit `wa-companion-router.ts`** — on `פרסם`/`אשר`/`approve` recognize as positive reinforcement: log the just-approved draft via `ingest-system-rule` with `signal='positive', source='approval'`. On reject/edit, log negative with the diff (delegate to existing `learn-from-edit` for edits — already in place).
 
-## 4. Profile page redesign
+## 3. Client (KB UI)
 
-Replace `PersonalTab` in `src/pages/Profile.tsx` with KI row-style layout:
-- Avatar + display name centered.
-- Row component: icon on right, label + value, pencil + plus + trash on the left.
-- Rows: דוא״ל, וואטסאפ (05X-XXXXXXX), טלפון, עיר (IsraeliCityPicker), מגדר (זכר/נקבה select).
-- "+ הוסף פרופיל" pill at bottom of rows.
-- Below: `ConnectedWorkspaceCard`
-  - Workspace logo right, workspace name centered, swap-arrow button top-left (opens selector modal).
-  - שם המשרד / סוכנות input + סוג חשבון dropdown (placeholder list incl. "בחירות ארציות" preserved for KI parity, defaulted to "נדל\"ן" for Realtyz).
-- Red outlined "התנתק" button at bottom triggering `signOut()`.
+**`src/components/strategybank/SystemRulesInput.tsx`** — new card on `/knowledge-base`:
+- Hebrew RTL textarea + record button (existing `VoiceComposer` pattern).
+- Submit → `supabase.functions.invoke('ingest-system-rule', { body: { text or audio } })`.
+- Lists active rules below (queries `system_intelligence_kb` scoped to active workspace), with toggle to deactivate.
+- Owner-only (gate via `useUserRole` + `useWorkspace.activeWorkspace.role === 'owner'`).
 
-Keep `WorkspaceTab` ("המשרד") as-is (already matches screenshot 230496) but ensure logo/name/service-areas + save button render in current RTL flow.
+Mount the card inside `KnowledgeBase.tsx` above existing sections.
 
-## 5. Active-workspace query scoping
+## 4. Hierarchy & efficiency
 
-Add `useActiveWorkspaceFilter()` helper returning the current `workspace_owner_id`.
-Touch the high-traffic data hooks/pages so every list query filters by `assigned_to in (workspace_member_ids)` OR `user_id = workspace_owner_id` depending on table:
-- `leads`, `listings`, `messages`, `chat_history`, `approval_queue`, `interaction_activity_log`, `homely_push_log`, `media_library`.
-- Implementation: small `scopedQuery(table)` wrapper that injects `.eq('assigned_to', workspaceOwnerId)` (or `user_id` for owner-keyed tables).
-- Migrate one page at a time starting with LeadCRM, Dashboard, Properties, Inbox; remaining pages keep existing behavior until follow-up.
+- `signal_priority`: `directive=3, negative=2, positive=1`.
+- Owner-authored rules get `weight=2.0`; tenant rules `weight=0.5`; learned (approval/edit) rules `weight=1.0`.
+- `fetchSystemRules` caps at 8 rules, ~600 tokens total.
+- In-memory LRU survives across edge invocations within the same isolate (best-effort); cache TTL 30s.
+- The `#CRITICAL_SYSTEM_PREFERENCES` block is injected **after** persona/KB context and **before** user task — it wins the recency battle without rewriting any prompt.
 
-## 6. Technical notes
+## 5. Out of scope (explicit)
 
-- All new UI strictly RTL, Assistant font, blues/whites.
-- Modal cards: rounded-xl border, soft shadow, hover ring-primary/20.
-- No new external deps.
-- Phone normalization continues to use `formatPhone` helper.
-- Selector modal mounted globally in `AppLayout` so it can be opened from header avatar menu too (`HeaderProfileMenu` gets a "החלף מרחב עבודה" item).
+- No new approval-queue UI (we already have it; we only emit reinforcement signals).
+- No retraining of base models — this is prompt-time conditioning.
+- No automatic rule deletion; owners deactivate manually or set `expires_at` via the UI later.
+- No per-channel rule split — rules apply across post/comment/chat/voice surfaces uniformly.
 
-## 7. Out of scope (explicit)
+## Files
 
-- Cross-workspace data migration / merging.
-- Per-workspace billing isolation.
-- Edge-function rewrites (they continue to use service role + the caller's `auth.uid()`); RLS on `workspace_memberships` is the source of truth.
+New:
+- `supabase/migrations/<ts>_system_intelligence_kb.sql`
+- `supabase/functions/ingest-system-rule/index.ts`
+- `supabase/functions/_shared/system-rules.ts`
+- `src/components/strategybank/SystemRulesInput.tsx`
+- `.lovable/memory/features/system-intelligence-kb.md`
+
+Edited (small, additive):
+- `supabase/functions/_shared/persona.ts`
+- `supabase/functions/_shared/wa-companion-router.ts`
+- `supabase/functions/whatsapp-webhook/index.ts`
+- `supabase/functions/ayrshare-post/index.ts`
+- `src/pages/KnowledgeBase.tsx`
+- `.lovable/memory/index.md`
+
+Confirm to proceed and I'll ship the migration first, then the edge functions and UI.
