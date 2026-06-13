@@ -71,16 +71,20 @@ export function ConnectedWorkspaceCard() {
 
         <div className="flex flex-col items-center gap-2 pb-3">
           <div className="relative">
-            <Avatar className="h-20 w-20 border-2 bg-background">
+            <div className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-xl border-2 bg-background">
               {activeWorkspace.workspace_logo_url ? (
-                <AvatarImage src={activeWorkspace.workspace_logo_url} className="object-contain p-1" />
+                <img
+                  src={activeWorkspace.workspace_logo_url}
+                  alt={activeWorkspace.workspace_name}
+                  className="h-full w-full object-contain p-1"
+                />
               ) : (
-                <AvatarFallback className="bg-primary/10 text-primary">
+                <div className="flex h-full w-full items-center justify-center bg-primary/10 text-primary">
                   <Building2 className="h-8 w-8" />
-                </AvatarFallback>
+                </div>
               )}
-            </Avatar>
-            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex h-6 w-6 items-center justify-center rounded-full bg-primary text-primary-foreground shadow">
+            </div>
+            <span className="absolute -bottom-1 left-1/2 -translate-x-1/2 flex h-6 w-6 items-center justify-center rounded-md bg-primary text-primary-foreground shadow">
               <Camera className="h-3 w-3" />
             </span>
           </div>

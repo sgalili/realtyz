@@ -42,7 +42,7 @@ export function HeaderProfileMenu() {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { isManagingBroker, isSuperAdmin } = useUserRole();
-  const { workspaces, openSelector } = useWorkspace();
+  const { workspaces, openSelector, activeWorkspace } = useWorkspace();
 
   const { settings: brand } = useWhiteLabel();
 
@@ -91,7 +91,16 @@ export function HeaderProfileMenu() {
               ) : (
                 initial
               )}
-              {isSuperAdmin && (
+              {activeWorkspace?.workspace_logo_url && (
+                <span className="absolute -bottom-0.5 -left-0.5 flex h-4 w-4 items-center justify-center overflow-hidden rounded-[3px] bg-white ring-1 ring-[hsl(var(--header-bg))] shadow">
+                  <img
+                    src={activeWorkspace.workspace_logo_url}
+                    alt={activeWorkspace.workspace_name}
+                    className="h-full w-full object-contain"
+                  />
+                </span>
+              )}
+              {isSuperAdmin && !activeWorkspace?.workspace_logo_url && (
                 <span className="absolute -bottom-0.5 -left-0.5 h-2.5 w-2.5 rounded-full bg-warning ring-2 ring-[hsl(var(--header-bg))]" />
               )}
             </button>
