@@ -595,6 +595,31 @@ Deno.serve(async (req) => {
       sourceType = "audio";
       sourceMetadata.transcribed_via = "lovable-ai-gemini";
       if (msg.caption) sourceMetadata.caption = msg.caption;
+
+      // Continuous-learning capture: if the transcript looks like an explicit
+      // behavior rule, fire it into ingest-system-rule (fire-and-forget).
+      try {
+        const { hasSystemRuleTrigger } = await import("../_shared/system-rules.ts");
+        if (hasSystemRuleTrigger(finalText)) {
+          fetch(`${SUPABASE_URL}/functions/v1/ingest-system-rule`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${SERVICE_KEY}`,
+              apikey: SERVICE_KEY,
+            },
+            body: JSON.stringify({
+              text: finalText,
+              source: "whatsapp_voice",
+              role: "owner",
+              workspace_owner_id: userId,
+              actor_user_id: userId,
+            }),
+          }).catch((e) => console.warn("ingest-system-rule (voice) dispatch failed:", e));
+        }
+      } catch (e) {
+        console.warn("voice rule capture failed:", e instanceof Error ? e.message : e);
+      }
     } else {
       // media (image / video / document) — store privately, extract text via kb-ingest.
       // Guard: MIME allow-list per media kind.
