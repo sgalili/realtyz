@@ -454,6 +454,32 @@ Deno.serve(async (req) => {
       console.log(`[ADMIN FLOW] No owner match for ${senderPhone} → falling through to lead pipeline`);
     } else {
       console.log(`[ADMIN FLOW] Owner identified: ${ownerLabel ?? ownerUserId} (phone=${senderPhone})`);
+
+      // Continuous-learning capture: if the owner's text looks like an explicit
+      // behavior rule ("מעכשיו...", "תמיד...", "אל תשתמש..."), fire-and-forget
+      // it into ingest-system-rule. Does not block the reply.
+      try {
+        const { hasSystemRuleTrigger } = await import("../_shared/system-rules.ts");
+        if (hasSystemRuleTrigger(msg.text)) {
+          fetch(`${SUPABASE_URL}/functions/v1/ingest-system-rule`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${SERVICE_KEY}`,
+              apikey: SERVICE_KEY,
+            },
+            body: JSON.stringify({
+              text: msg.text,
+              source: "whatsapp_text",
+              role: "owner",
+              workspace_owner_id: ownerUserId,
+              actor_user_id: ownerUserId,
+            }),
+          }).catch((e) => console.warn("ingest-system-rule (text) dispatch failed:", e));
+        }
+      } catch (e) {
+        console.warn("system-rule capture failed:", e instanceof Error ? e.message : e);
+      }
       try {
         const routed = await routeOwnerCommand({
           admin,
