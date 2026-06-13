@@ -274,7 +274,11 @@ NO-HASHTAGS RULE (HARD — ZERO TOLERANCE):
         messages: [
           {
             role: "system",
-            content: [systemPrompt, await fetchLearnedOverridesBlock(admin as any, userId)]
+            content: [
+              await (await import("../_shared/system-rules.ts")).fetchSystemRulesBlock(userId, userPrompt),
+              systemPrompt,
+              await fetchLearnedOverridesBlock(admin as any, userId),
+            ]
               .filter(Boolean)
               .join("\n\n"),
           },

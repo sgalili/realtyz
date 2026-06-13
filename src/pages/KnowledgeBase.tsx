@@ -14,6 +14,7 @@ import {
   Brain, Send, Loader2, Upload, Search, FileText, Link as LinkIcon, Mic, Type, Trash2, Image as ImageIcon, Video as VideoIcon, Pencil, X, Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { SystemRulesInput } from '@/components/strategybank/SystemRulesInput';
 
 type ChatMsg = { role: 'user' | 'assistant'; content: string; sources?: string[]; isError?: boolean };
 type Tab = 'files' | 'text' | 'link' | 'voice';
@@ -328,6 +329,9 @@ export default function KnowledgeBase() {
 
   return (
     <div className="space-y-6" dir="rtl">
+      <SystemRulesInput />
+
+
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* RIGHT (first in RTL): Resource management */}

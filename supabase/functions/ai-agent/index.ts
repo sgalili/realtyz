@@ -16,6 +16,7 @@ import {
   detectWhatsAppPivotAgreement,
   type DealType,
 } from "../_shared/persona.ts";
+import { fetchSystemRulesBlock } from "../_shared/system-rules.ts";
 import { maskMessages } from "../_shared/pii.ts";
 
 const corsHeaders = {
@@ -280,6 +281,26 @@ serve(async (req) => {
       req.headers.get("Authorization") ?? "",
     );
     const personaBlock = renderPersonaPrompt(persona);
+
+    // Workspace-scoped owner-authored behavior rules (continuous learning layer).
+    let systemRulesBlock = "";
+    try {
+      const authHeader = req.headers.get("Authorization") ?? "";
+      if (authHeader.startsWith("Bearer ")) {
+        const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+          global: { headers: { Authorization: authHeader } },
+        });
+        const { data: uRes } = await userClient.auth.getUser();
+        const uid = uRes?.user?.id;
+        if (uid) {
+          const lastUserText =
+            [...(messages as Array<{ role: string; content: string }>)].reverse().find((m) => m.role === "user")?.content ?? "";
+          systemRulesBlock = await fetchSystemRulesBlock(uid, String(lastUserText));
+        }
+      }
+    } catch (e) {
+      console.warn("fetchSystemRulesBlock failed:", e instanceof Error ? e.message : e);
+    }
 
     // Hard pipeline separation, fetch the Lead's deal_type and inject a
     // forbid-list so the AI cannot offer mortgages to renters or rentals to buyers.
@@ -592,7 +613,7 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
       }
     }
 
-    const systemPrompt = isInternalDashboard
+    const systemPrompt = (systemRulesBlock ? systemRulesBlock + "\n\n" : "") + (isInternalDashboard
       ? MASTER_AGENT_PROMPT
       : SCHEMA_CONTEXT
           .replace("{{CAMPAIGN_CONTEXT}}", campaignContext)
@@ -602,7 +623,7 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
           + "\n\n" + stageHatBlock
           + "\n\n" + channelBlock
           + "\n\n" + compliance
-          + (matchingBlock ? "\n\n" + matchingBlock : "");
+          + (matchingBlock ? "\n\n" + matchingBlock : ""));
 
 
     // Persist WhatsApp Pivot agreement: if the Lead's latest inbound says "yes"

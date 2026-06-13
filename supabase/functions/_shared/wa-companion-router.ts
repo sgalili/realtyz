@@ -328,6 +328,30 @@ async function handlePublishCommand(ctx: RouterContext): Promise<RouterResult> {
       .from("approval_queue")
       .update({ status: "approved", metadata: { ...(pending.metadata ?? {}), published_at: new Date().toISOString() } })
       .eq("id", pending.id);
+
+    // Reinforcement signal: log the approved draft style as a positive rule.
+    try {
+      const draftText = String((pending as any).content ?? (pending.metadata as any)?.content ?? "").slice(0, 1500);
+      if (draftText) {
+        fetch(`${ctx.supabaseUrl}/functions/v1/ingest-system-rule`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${ctx.serviceKey}`,
+            apikey: ctx.serviceKey,
+          },
+          body: JSON.stringify({
+            text: `Owner approved this draft as-is. Reinforce its tone, length, and structure for future posts: """${draftText}"""`,
+            source: "approval",
+            role: "owner",
+            signal: "positive",
+            workspace_owner_id: ctx.ownerUserId,
+            actor_user_id: ctx.ownerUserId,
+          }),
+        }).catch(() => undefined);
+      }
+    } catch { /* non-blocking */ }
+
     return {
       handled: true,
       action: "publish_sent",

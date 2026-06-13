@@ -3694,6 +3694,60 @@ export type Database = {
         }
         Relationships: []
       }
+      system_intelligence_kb: {
+        Row: {
+          actor_role: string
+          created_at: string
+          created_by: string | null
+          embedding: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          metadata: Json
+          raw_input: string | null
+          rule_text: string
+          signal: string
+          source: string
+          updated_at: string
+          weight: number
+          workspace_owner_id: string
+        }
+        Insert: {
+          actor_role?: string
+          created_at?: string
+          created_by?: string | null
+          embedding?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          metadata?: Json
+          raw_input?: string | null
+          rule_text: string
+          signal?: string
+          source?: string
+          updated_at?: string
+          weight?: number
+          workspace_owner_id: string
+        }
+        Update: {
+          actor_role?: string
+          created_at?: string
+          created_by?: string | null
+          embedding?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          metadata?: Json
+          raw_input?: string | null
+          rule_text?: string
+          signal?: string
+          source?: string
+          updated_at?: string
+          weight?: number
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       team_invitations: {
         Row: {
           accepted_at: string | null
@@ -4469,6 +4523,18 @@ export type Database = {
           property_title: string
           similarity: number
           slug: string
+        }[]
+      }
+      match_system_rules: {
+        Args: { _k?: number; _query_embedding: string; _workspace: string }
+        Returns: {
+          actor_role: string
+          id: string
+          rule_text: string
+          signal: string
+          similarity: number
+          source: string
+          weight: number
         }[]
       }
       move_to_dlq: {
