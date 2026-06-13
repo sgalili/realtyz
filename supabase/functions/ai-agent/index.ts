@@ -282,6 +282,26 @@ serve(async (req) => {
     );
     const personaBlock = renderPersonaPrompt(persona);
 
+    // Workspace-scoped owner-authored behavior rules (continuous learning layer).
+    let systemRulesBlock = "";
+    try {
+      const authHeader = req.headers.get("Authorization") ?? "";
+      if (authHeader.startsWith("Bearer ")) {
+        const userClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+          global: { headers: { Authorization: authHeader } },
+        });
+        const { data: uRes } = await userClient.auth.getUser();
+        const uid = uRes?.user?.id;
+        if (uid) {
+          const lastUserText =
+            [...(messages as Array<{ role: string; content: string }>)].reverse().find((m) => m.role === "user")?.content ?? "";
+          systemRulesBlock = await fetchSystemRulesBlock(uid, String(lastUserText));
+        }
+      }
+    } catch (e) {
+      console.warn("fetchSystemRulesBlock failed:", e instanceof Error ? e.message : e);
+    }
+
     // Hard pipeline separation, fetch the Lead's deal_type and inject a
     // forbid-list so the AI cannot offer mortgages to renters or rentals to buyers.
     let dealType: DealType | null = null;
