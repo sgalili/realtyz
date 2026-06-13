@@ -16,6 +16,7 @@ import {
   detectWhatsAppPivotAgreement,
   type DealType,
 } from "../_shared/persona.ts";
+import { fetchSystemRulesBlock } from "../_shared/system-rules.ts";
 import { maskMessages } from "../_shared/pii.ts";
 
 const corsHeaders = {
