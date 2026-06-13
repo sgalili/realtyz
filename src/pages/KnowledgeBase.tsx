@@ -328,6 +328,9 @@ export default function KnowledgeBase() {
 
   return (
     <div className="space-y-6" dir="rtl">
+      <SystemRulesInput />
+
+
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         {/* RIGHT (first in RTL): Resource management */}
