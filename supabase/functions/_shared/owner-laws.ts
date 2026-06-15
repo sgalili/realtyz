@@ -89,46 +89,38 @@ const OWNER_PHONE = "052-2973500";
 const PHONE_RE = /052[\s\-]?297[\s\-]?3500/;
 const CONTACT_LINE = `לפרטים נוספים, סרטון מהנכס ותיאום ביקור פרטי, אל תהססו לפנות אליי בוואטסאפ או בטלפון ישירות: 📞 ${OWNER_PHONE}`;
 
-// HARD compliance fallback. The owner is legally required to publish a broker
-// license number on every marketing post. If the DB lookup returns blank we
-// MUST still emit the line — never silently omit it. Operator can override
-// via the OWNER_DEFAULT_LICENSE_NUMBER env var.
-const DEFAULT_OWNER_LICENSE =
-  (typeof Deno !== "undefined" && Deno.env.get("OWNER_DEFAULT_LICENSE_NUMBER")?.trim()) ||
-  "בהליך אימות";
+// HARD compliance constant. Udi's real broker license number — never replace
+// with a placeholder, never read from env, never fall back to anything else.
+const DEFAULT_OWNER_LICENSE = "3251676";
 
-function buildFooterBlock(license?: string | null): string {
-  const lic = (license ?? "").toString().trim() || DEFAULT_OWNER_LICENSE;
-  return `${CONTACT_LINE}\n\nרישיון תיווך מספר: ${lic}`;
+function buildFooterBlock(_license?: string | null): string {
+  // License is HARDCODED — ignore any caller-supplied value.
+  return `${CONTACT_LINE}\n\nרישיון תיווך מספר: ${DEFAULT_OWNER_LICENSE}`;
 }
 
 /**
- * Append the canonical owner footer (contact line + license) at the very
- * bottom of `text`. The license line is ALWAYS injected — falls back to the
- * hardcoded default when no DB license is configured.
+ * Append the canonical owner footer (contact line + hardcoded license) at
+ * the very bottom of `text`. The license number is ALWAYS Udi's real number
+ * (3251676) — DB values and caller args are ignored.
  */
 export function appendLicenseFooter(
   text: string,
-  license?: string | null,
+  _license?: string | null,
   _byline?: string | null,
 ): string {
   const body = String(text ?? "").replace(/\s+$/g, "");
   if (!body) return body;
 
-  // Strip any prior placeholder footer like "רישיון תיווך מספר: [...]".
-  let cleaned = body.replace(
-    /\n*\s*רישיון\s*תיווך\s*מספר\s*[:：]\s*\[[^\]]*\]\s*$/u,
-    "",
-  ).replace(/\s+$/g, "");
+  // Strip any prior footer (placeholders, wrong numbers, "בהליך אימות", etc.)
+  // so we can re-emit the canonical hardcoded line.
+  let cleaned = body
+    .replace(/\n*\s*רישיון\s*תיווך\s*מספר\s*[:：][^\n]*$/u, "")
+    .replace(/\s+$/g, "");
 
   const hasContact = PHONE_RE.test(cleaned);
-  const hasLicense = FOOTER_RE.test(cleaned);
-  if (hasContact && hasLicense) return cleaned;
-
-  const lic = (license ?? "").toString().trim() || DEFAULT_OWNER_LICENSE;
   const lines: string[] = [];
   if (!hasContact) lines.push(CONTACT_LINE);
-  if (!hasLicense) lines.push(`רישיון תיווך מספר: ${lic}`);
+  lines.push(`רישיון תיווך מספר: ${DEFAULT_OWNER_LICENSE}`);
   return `${cleaned}\n\n${lines.join("\n\n")}`;
 }
 
