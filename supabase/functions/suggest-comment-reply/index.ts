@@ -697,6 +697,55 @@ Deno.serve(async (req) => {
       private_messenger_dm: stripNoAlternativeDisclaimers(split.private_messenger_dm),
     };
 
+    // HARD GUARANTEE: every public reply ships with a matching private DM draft.
+    // If the primary model returned an empty DM (parse fallback, truncated JSON,
+    // or model omission), synthesize one in a second pass so the broker always
+    // has BOTH textareas pre-filled and ready to edit / finalize / send.
+    if (!split.private_messenger_dm) {
+      try {
+        const dmRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${LOVABLE_API_KEY}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash",
+            messages: [
+              {
+                role: "system",
+                content: [
+                  "You are an ELITE senior real-estate broker writing the PRIVATE Messenger DM follow-up to a public comment you just answered.",
+                  "Write 4-6 short lines in the SAME language as the inbound comment. Warm, confident, first-person. NO em-dash (—), en-dash (–), double/triple hyphen. NO English mixed into Hebrew.",
+                  "Acknowledge the primary property by name/city/rooms if provided. Add ONE concrete reframe or value point. End with EXACTLY ONE high-yield qualifying question (timing, budget fit, viewing).",
+                  "Return ONLY the DM text — no JSON, no quotes, no preface, no signature.",
+                ].join("\n"),
+              },
+              {
+                role: "user",
+                content: [
+                  `Inbound public comment:\n"""${inbound}"""`,
+                  `Public reply we just sent:\n"""${split.public_comment}"""`,
+                  primaryListing
+                    ? `Primary property: ${primaryListing.title}${primaryListing.city ? ", " + primaryListing.city : ""}${primaryListing.rooms ? ", " + primaryListing.rooms + " חד'" : ""}${primaryListing.asking_price ? ", " + Number(primaryListing.asking_price).toLocaleString("he-IL") + " ₪" : ""}`
+                    : null,
+                  "Write the private Messenger DM now.",
+                ].filter(Boolean).join("\n\n"),
+              },
+            ],
+          }),
+        });
+        if (dmRes.ok) {
+          const dj = await dmRes.json();
+          const dmText = sanitizeOutboundText(String(dj?.choices?.[0]?.message?.content ?? "")).trim();
+          if (dmText) split.private_messenger_dm = stripNoAlternativeDisclaimers(dmText);
+        }
+      } catch (_e) {
+        // Non-fatal: UI still allows manual DM entry.
+      }
+    }
+
+
     if (!split.public_comment) {
       return new Response(JSON.stringify({ error: "empty AI reply" }), {
         status: 502,
