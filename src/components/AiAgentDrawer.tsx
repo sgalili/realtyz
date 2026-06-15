@@ -616,8 +616,31 @@ export default function AiAgentDrawer() {
           )}
         </div>
 
+        {/* Attachments preview */}
+        {pendingAttachments.length > 0 && (
+          <div className="px-4 pt-2 flex flex-wrap gap-1.5 border-t">
+            {pendingAttachments.map((a, ai) => (
+              <span key={ai} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-muted border border-border">
+                <Paperclip className="h-2.5 w-2.5" />
+                <span className="truncate max-w-[140px]">{a.name}</span>
+                <button onClick={() => setPendingAttachments((p) => p.filter((_, i) => i !== ai))} className="hover:text-destructive">
+                  <X className="h-2.5 w-2.5" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* Input — mic on right, slate send on left */}
         <div className="px-4 py-3 border-t">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*,application/pdf"
+            className="hidden"
+            onChange={(e) => onFilePick(e.target.files)}
+          />
           <form
             onSubmit={(e) => { e.preventDefault(); sendMessage(input); }}
             className="flex items-center gap-2"
@@ -626,7 +649,7 @@ export default function AiAgentDrawer() {
               type="submit"
               size="icon"
               className="h-9 w-9 shrink-0 bg-slate-700 hover:bg-slate-800 text-white"
-              disabled={!input.trim() || isLoading}
+              disabled={(!input.trim() && pendingAttachments.length === 0) || isLoading}
               aria-label="שלח"
             >
               <Send className="h-4 w-4" />
@@ -634,10 +657,32 @@ export default function AiAgentDrawer() {
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={isListening ? '🎙️ מקשיב...' : 'מה הולכים לבדוק או לבצע בנכסים ובקמפיין?'}
+              placeholder={isListening ? '🎙️ מקשיב...' : researchMode ? 'מצב מחקר חי - שאל על שכונה/אזור/פרויקט' : 'מה הולכים לבדוק או לבצע בנכסים ובקמפיין?'}
               className="flex-1 h-9 text-sm"
               disabled={isLoading}
             />
+            <Button
+              type="button"
+              size="icon"
+              variant={researchMode ? 'default' : 'outline'}
+              className="h-9 w-9 shrink-0"
+              onClick={() => setResearchMode((v) => !v)}
+              disabled={isLoading}
+              title={researchMode ? 'כבה מצב מחקר חי' : 'הפעל מצב מחקר חי (Firecrawl)'}
+            >
+              <Globe className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              className="h-9 w-9 shrink-0"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading}
+              title="צרף קבצים (PDF/תמונות)"
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
             <Button
               type="button"
               size="icon"
