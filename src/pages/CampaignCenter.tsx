@@ -1884,7 +1884,7 @@ const PublishedFeed = () => {
 
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [userId]);
+  }, [userId, workspaceOwnerId]);
 
   // Each card represents a GROUP of campaign_logs rows (same campaign_name +
   // channel + minute bucket). Archive / delete must act on every row in the
