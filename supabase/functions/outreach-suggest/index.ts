@@ -15,6 +15,7 @@
 // Idempotency: a partial unique index on (lead_id, trigger_type) WHERE status='pending' prevents dupes.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { enforceOwnerLaws, fetchOwnerLicense } from "../_shared/owner-laws.ts";
 import { fetchSystemRulesBlock } from "../_shared/system-rules.ts";
 
 const corsHeaders = {
