@@ -98,14 +98,22 @@ export function appendLicenseFooter(
 ): string {
   const body = String(text ?? "").replace(/\s+$/g, "");
   if (!body) return body;
-  if (FOOTER_RE.test(body)) return body; // already footed
   const lic = (license ?? "").toString().trim();
   const bln = (byline ?? "").toString().trim();
-  const licenseLine = lic
-    ? `רישיון תיווך מספר: ${lic}`
-    : `רישיון תיווך מספר: [יש להזין מספר רישיון בפרופיל]`;
+  // Strip any prior placeholder footer that older drafts may carry.
+  let cleaned = body.replace(
+    /\n*\s*רישיון\s*תיווך\s*מספר\s*[:：]\s*\[[^\]]*\]\s*$/u,
+    "",
+  ).replace(/\s+$/g, "");
+  if (FOOTER_RE.test(cleaned)) return cleaned; // already has a real footer
+  if (!lic) {
+    // No license configured → do NOT emit the placeholder line. Optionally
+    // keep just the byline so brand attribution still appears.
+    return bln ? `${cleaned}\n\n${bln}` : cleaned;
+  }
+  const licenseLine = `רישיון תיווך מספר: ${lic}`;
   const footer = bln ? `${bln}\n${licenseLine}` : licenseLine;
-  return `${body}\n\n${footer}`;
+  return `${cleaned}\n\n${footer}`;
 }
 
 export function enforceOwnerLaws(
