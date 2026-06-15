@@ -111,10 +111,19 @@ Deno.serve(async (req) => {
       }
       const path = `${user.id}/${Date.now()}-${crypto.randomUUID()}.${ext}`;
       const contentType = ext === "mp3" ? "audio/mpeg" : ext === "wav" ? "audio/wav" : ext === "m4a" ? "audio/mp4" : "audio/webm";
-      const { error: upErr } = await admin.storage.from("ivr-audio").upload(path, bytes, { contentType, upsert: false });
+      const bucket = "ivr-audio";
+      let upErr = (await admin.storage.from(bucket).upload(path, bytes, { contentType, upsert: false })).error;
+      if (upErr && /not.?found|does not exist/i.test(upErr.message || "")) {
+        // Auto-heal: bucket missing, create on the fly then retry once
+        try { await admin.storage.createBucket(bucket, { public: false }); } catch (_) { /* ignore */ }
+        upErr = (await admin.storage.from(bucket).upload(path, bytes, { contentType, upsert: false })).error;
+      }
       if (upErr) return json({ error: "upload_failed", detail: upErr.message }, 500);
-      const { data: pub } = admin.storage.from("ivr-audio").getPublicUrl(path);
-      audioUrl = pub.publicUrl;
+      // Use signed URL (long expiry) — bucket is private but Twilio <Play> and <audio> need a fetchable URL
+      const SEVEN_DAYS = 60 * 60 * 24 * 7;
+      const { data: signed, error: signErr } = await admin.storage.from(bucket).createSignedUrl(path, SEVEN_DAYS);
+      if (signErr || !signed?.signedUrl) return json({ error: "sign_failed", detail: signErr?.message }, 500);
+      audioUrl = signed.signedUrl;
     }
 
     // Generate-only mode: return the audio URL without dialing.

@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { Mic, Volume2, Upload, Square, Play, Pause, Trash2, Check, PhoneForwarded, Plus } from 'lucide-react';
+import { Mic, Volume2, Upload, Square, Play, Pause, Trash2, Check, PhoneForwarded, Plus, RefreshCw, Search, Sparkles } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
@@ -84,6 +84,11 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
   // TTS
   const [ttsText, setTtsText] = useState('');
   const [generatingTts, setGeneratingTts] = useState(false);
+  const [autoScripting, setAutoScripting] = useState(false);
+  const [scriptEdited, setScriptEdited] = useState(false);
+  const [savingFinal, setSavingFinal] = useState(false);
+  const lastAutoScriptRef = useRef<string>('');
+  const [listingSearch, setListingSearch] = useState('');
 
   // Recording
   const [recording, setRecording] = useState(false);
@@ -254,6 +259,92 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     if (l.asking_price) ctx.push(`מחיר מבוקש: ${Number(l.asking_price).toLocaleString('he-IL')} ₪`);
     const header = `הקשר הנכס לקמפיין: ${ctx.join(', ')}.`;
     return `${header}\n\n${raw}`;
+  };
+
+  // Filtered listings for dropdown free-search
+  const filteredListings = useMemo(() => {
+    const q = listingSearch.trim().toLowerCase();
+    if (!q) return listings;
+    return listings.filter((l) => {
+      const hay = [l.property_title, l.address, l.neighborhood, l.city, l.rooms ? `${l.rooms} חדרים` : '']
+        .filter(Boolean).join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  }, [listings, listingSearch]);
+
+  // Auto-generate a punchy promo script when a property is selected
+  const autoGenerateScriptForListing = async (l: ListingOpt) => {
+    setAutoScripting(true);
+    try {
+      const facts: string[] = [];
+      if (l.property_title) facts.push(l.property_title);
+      if (l.address) facts.push(`כתובת ${l.address}`);
+      if (l.neighborhood) facts.push(`שכונת ${l.neighborhood}`);
+      if (l.city) facts.push(l.city);
+      if (l.rooms) facts.push(`${l.rooms} חדרים`);
+      if (l.sqm) facts.push(`${l.sqm} מ"ר`);
+      if (l.asking_price) facts.push(`מחיר ${Number(l.asking_price).toLocaleString('he-IL')} ₪`);
+      const topic = `כתוב סקריפט IVR קצר, ברור וקולח בעברית (2-4 משפטים, עד 35 שניות בהקראה) לקידום הנכס. עובדות: ${facts.join(', ')}. סיים בקריאה לפעולה להשאיר עניין בלחיצה אחת. ללא אימוג'ים, ללא מקפים כפולים, ללא placeholders.`;
+      const { data, error } = await supabase.functions.invoke('generate-content', {
+        body: { topic, platform: 'ivr', selectedListingId: l.id, listingFocusOnly: true },
+      });
+      if (error) throw new Error(error.message);
+      const text = String((data as any)?.content ?? (data as any)?.text ?? '').trim();
+      if (!text) throw new Error('empty');
+      setTtsText(text);
+      lastAutoScriptRef.current = text;
+      setScriptEdited(false);
+    } catch (e: any) {
+      toast.error(`יצירת סקריפט נכשלה: ${e?.message ?? 'שגיאה'}`);
+    } finally {
+      setAutoScripting(false);
+    }
+  };
+
+  // Re-generate variation
+  const regenerateScript = () => {
+    if (selectedListing) autoGenerateScriptForListing(selectedListing);
+    else toast.message('בחרו נכס כדי לייצר סקריפט');
+  };
+
+  // When listing changes, auto-generate
+  useEffect(() => {
+    if (selectedListing) autoGenerateScriptForListing(selectedListing);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listingId]);
+
+  // Save final edited version to learning KB
+  const saveFinalVersion = async () => {
+    const text = ttsText.trim();
+    if (!text) return;
+    setSavingFinal(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('not authenticated');
+      const { error } = await supabase.from('system_intelligence_kb').insert({
+        workspace_owner_id: user.id,
+        created_by: user.id,
+        actor_role: 'owner',
+        source: 'ivr_final_version',
+        rule_text: text,
+        raw_input: lastAutoScriptRef.current,
+        signal: 'ivr_script_style',
+        weight: 1.0,
+        is_active: true,
+        metadata: {
+          context: 'ivr_promo_script',
+          listing_id: selectedListing?.id ?? null,
+          listing_city: selectedListing?.city ?? null,
+        },
+      });
+      if (error) throw error;
+      toast.success('נשמר כגרסה סופית — הפלטפורמה תלמד את הסגנון');
+      setScriptEdited(false);
+    } catch (e: any) {
+      toast.error(`שמירה נכשלה: ${e?.message ?? 'שגיאה'}`);
+    } finally {
+      setSavingFinal(false);
+    }
   };
 
   // Generate TTS audio (calls ivr-broadcast in generate-only mode for an audio_url)
@@ -465,28 +556,81 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
                     <SelectValue placeholder="קדם נכס ספציפי מהמאגר" />
                   </SelectTrigger>
                   <SelectContent dir="rtl">
+                    <div className="sticky top-0 z-10 bg-popover p-2 border-b border-border/60">
+                      <div className="relative">
+                        <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input
+                          autoFocus
+                          value={listingSearch}
+                          onChange={(e) => setListingSearch(e.target.value)}
+                          onKeyDown={(e) => e.stopPropagation()}
+                          placeholder="חיפוש לפי כתובת, עיר, חדרים..."
+                          className="h-8 text-right text-[12.5px] pr-7 rounded-md"
+                        />
+                      </div>
+                    </div>
                     <SelectItem value="none">ללא נכס · הודעה כללית</SelectItem>
-                    {listings.map((l) => (
+                    {filteredListings.map((l) => (
                       <SelectItem key={l.id} value={l.id} className="pe-2">
                         <span className="truncate block max-w-[22rem]">{listingLabel(l)}</span>
                       </SelectItem>
                     ))}
+                    {filteredListings.length === 0 && (
+                      <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">לא נמצאו נכסים תואמים</div>
+                    )}
                   </SelectContent>
                 </Select>
                 {selectedListing && (
                   <p className="text-[11px] text-muted-foreground text-right leading-snug">
-                    הטקסט שייווצר ישלב אוטומטית את פרטי הנכס (כתובת, חדרים, מחיר) למסר מותאם.
+                    סקריפט קצר ומותאם נכתב אוטומטית מפרטי הנכס. ניתן לרענן או לערוך ידנית.
                   </p>
                 )}
               </div>
 
-              <Textarea
-                value={ttsText}
-                onChange={(e) => setTtsText(e.target.value)}
-                placeholder={selectedListing ? "כתבו זווית/הצעה — פרטי הנכס ישולבו אוטומטית" : "הקלידו את ההודעה שתישמע ביעד..."}
-                className="text-right min-h-[120px] border-[#0f1b3d]/20 rounded-xl bg-background"
-              />
+              <div className="relative">
+                <Textarea
+                  value={ttsText}
+                  onChange={(e) => {
+                    setTtsText(e.target.value);
+                    if (e.target.value.trim() && e.target.value.trim() !== lastAutoScriptRef.current.trim()) {
+                      setScriptEdited(true);
+                    }
+                  }}
+                  placeholder={
+                    autoScripting
+                      ? 'מייצר סקריפט מותאם לנכס…'
+                      : selectedListing
+                        ? 'הסקריפט נוצר אוטומטית — ערכו, או רעננו לקבלת גרסה חדשה'
+                        : 'הקלידו את ההודעה שתישמע ביעד...'
+                  }
+                  className="text-right min-h-[140px] border-[#0f1b3d]/20 rounded-xl bg-background pl-12"
+                  disabled={autoScripting}
+                />
+                {selectedListing && (
+                  <button
+                    type="button"
+                    onClick={regenerateScript}
+                    disabled={autoScripting}
+                    title="ייצר מחדש"
+                    className="absolute top-2 left-2 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#0f1b3d]/20 bg-background hover:bg-muted disabled:opacity-50"
+                  >
+                    <RefreshCw className={cn('h-4 w-4 text-[#0f1b3d]', autoScripting && 'animate-spin')} />
+                  </button>
+                )}
+              </div>
 
+              {scriptEdited && (
+                <Button
+                  type="button"
+                  onClick={saveFinalVersion}
+                  disabled={savingFinal}
+                  variant="outline"
+                  className="w-full h-10 rounded-xl border-emerald-500/40 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold"
+                >
+                  <Sparkles className="ml-2 h-4 w-4" />
+                  {savingFinal ? 'שומר…' : 'גרסה סופית — למד את הסגנון שלי'}
+                </Button>
+              )}
 
               <div className="flex justify-start">
                 <Button
