@@ -14,7 +14,7 @@ import {
   Brain, Send, Loader2, Upload, Search, FileText, Link as LinkIcon, Mic, Type, Trash2, Image as ImageIcon, Video as VideoIcon, Pencil, X, Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { SystemRulesInput } from '@/components/strategybank/SystemRulesInput';
+
 
 type ChatMsg = { role: 'user' | 'assistant'; content: string; sources?: string[]; isError?: boolean };
 type Tab = 'files' | 'text' | 'link' | 'voice';
@@ -192,6 +192,10 @@ export default function KnowledgeBase() {
         },
       });
       if (error) throw error;
+      // Also try to capture as a system rule (fire-and-forget)
+      supabase.functions.invoke('ingest-system-rule', {
+        body: { text: body, source: 'whatsapp_voice', role: 'owner' },
+      }).catch(() => {});
     },
     onSuccess: () => {
       toast.success('נשמר למאגר');
@@ -281,6 +285,10 @@ export default function KnowledgeBase() {
         },
       });
       if (error) throw error;
+      // Also try to capture as a system rule (fire-and-forget)
+      supabase.functions.invoke('ingest-system-rule', {
+        body: { text: textBody.trim(), source: 'kb_ui', role: 'owner' },
+      }).catch(() => {});
     },
     onSuccess: () => {
       toast.success('נשמר למאגר');
@@ -329,7 +337,7 @@ export default function KnowledgeBase() {
 
   return (
     <div className="space-y-6" dir="rtl">
-      <SystemRulesInput />
+
 
 
 
@@ -397,7 +405,7 @@ export default function KnowledgeBase() {
                 <Textarea
                   value={textBody}
                   onChange={(e) => setTextBody(e.target.value)}
-                  placeholder="הקלד את התוכן..."
+                  placeholder="הקלד חוקי התנהגות, הנחיות לסוכן או מידע על נכסים עבור מאגר הידע (לדוגמה: 'מעכשיו תתמקד תמיד בדירות להשקעה ברעננה ותדגיש שיש חניה...')"
                   className="min-h-[140px]"
                 />
                 <div className="flex justify-end">
