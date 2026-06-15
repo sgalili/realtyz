@@ -1328,32 +1328,17 @@ const LeadCRM = () => {
                 <SheetHeader>
                   <SheetTitle className="flex items-center gap-3">
                     <VoterAvatar fullName={selectedVoter.full_name} profilePictureUrl={(selectedVoter as any).profile_picture_url} className="h-16 w-16 shadow-lg" textClassName="text-xl" />
-                    <div className="flex-1">
-                      <p className="text-lg font-bold">{selectedVoter.full_name || 'מתעניין לא ידוע'}</p>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-lg font-bold truncate">{selectedVoter.full_name || 'מתעניין לא ידוע'}</p>
                       <p className="text-sm text-muted-foreground font-normal" dir="ltr">{formatPhoneDisplay(selectedVoter.phone_number)}</p>
-                      {selectedVoter.identity_number && (
-                        <p className="text-xs text-muted-foreground flex items-center justify-center gap-1 text-center">
-                          ת.ז.{' '}
-                          {revealedIds.has(selectedVoter.id)
-                            ? selectedVoter.identity_number
-                            : selectedVoter.identity_number.replace(/^(.{2})(.*)(.{2})$/, (_, a, b, c) => a + '•'.repeat(b.length) + c)
-                          }
-                          {isAdmin && (
-                            <button
-                              onClick={() => setRevealedIds(prev => {
-                                const next = new Set(prev);
-                                if (next.has(selectedVoter.id)) next.delete(selectedVoter.id);
-                                else next.add(selectedVoter.id);
-                                return next;
-                              })}
-                              className="mr-1 text-muted-foreground hover:text-foreground transition-colors"
-                              title={revealedIds.has(selectedVoter.id) ? 'הסתר' : 'חשוף'}
-                            >
-                              <Eye className="h-3 w-3" />
-                            </button>
-                          )}
-                        </p>
-                      )}
+                      <a
+                        href={`https://wa.me/${(selectedVoter.phone_number || '').replace(/\D/g, '')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1 mt-1 text-xs text-emerald-600 hover:text-emerald-700 font-medium"
+                      >
+                        <MessageCircle className="h-3.5 w-3.5" /> פתח בוואטסאפ
+                      </a>
                     </div>
                     <Badge className={`border text-xs ${getLoyalty(selectedVoter.status).color}`} variant="outline">
                       {getLoyalty(selectedVoter.status).label}
@@ -1362,6 +1347,32 @@ const LeadCRM = () => {
                 </SheetHeader>
 
                 <div className="mt-6 space-y-6">
+                  {/* AI Personal Digital Agent Toggle */}
+                  <div className="rounded-lg border border-primary/30 bg-gradient-to-l from-primary/10 to-transparent p-3 flex items-center justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <Bot className="h-5 w-5 text-primary shrink-0" />
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold">סוכן דיגיטלי אישי</p>
+                        <p className="text-[10px] text-muted-foreground">מנהל את הקשר, שולח הצעות ותיאומי סיורים</p>
+                      </div>
+                    </div>
+                    <Switch
+                      checked={!!selectedVoter.ai_autopilot}
+                      onCheckedChange={async (checked) => {
+                        const { error } = await supabase
+                          .from('leads')
+                          .update({ ai_autopilot: checked } as any)
+                          .eq('id', selectedVoter.id);
+                        if (error) {
+                          toast.error('שגיאה בעדכון הסוכן הדיגיטלי');
+                          return;
+                        }
+                        toast.success(checked ? 'הסוכן הדיגיטלי הופעל' : 'הסוכן הדיגיטלי כובה');
+                        queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+                      }}
+                    />
+                  </div>
+
                   {/* Outcome tagging — feeds Udi Intelligence */}
                   <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
                     <div className="flex items-center justify-between">
@@ -1377,40 +1388,61 @@ const LeadCRM = () => {
                     />
                   </div>
 
-                  {/* Quick Info Grid */}
-                  <div className="grid grid-cols-2 gap-3">
-                    <div className="p-3 rounded-lg bg-muted/40 space-y-1">
-                      <p className="text-[10px] text-muted-foreground flex items-center gap-1"><MapPin className="h-3 w-3" />עיר</p>
-                      <p className="text-sm font-medium">{selectedVoter.city || '-'}</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-muted/40 space-y-1">
-                      <p className="text-[10px] text-muted-foreground flex items-center gap-1"><Tag className="h-3 w-3" />תחומי עניין</p>
-                      <p className="text-sm font-medium">{hebrewLabel(interestHebrew, selectedVoter.interest_tag) || '-'}</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-muted/40 space-y-1">
-                      <p className="text-[10px] text-muted-foreground">AI טייס אוטומטי</p>
-                      <p className={`text-sm font-medium ${selectedVoter.ai_autopilot ? 'text-emerald-500' : 'text-muted-foreground'}`}>
-                        {selectedVoter.ai_autopilot ? 'פעיל' : 'כבוי'}
-                      </p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-muted/40 space-y-1">
-                      <p className="text-[10px] text-muted-foreground">סנטימנט</p>
-                      <p className={`text-sm font-medium flex items-center gap-2 ${messageSentiment.color}`}>
-                        {messageSentiment.key === 'positive' && <Smile className="h-7 w-7" />}
-                        {messageSentiment.key === 'neutral' && <Meh className="h-7 w-7" />}
-                        {messageSentiment.key === 'negative' && <Frown className="h-7 w-7" />}
-                        {messageSentiment.label}
-                      </p>
-                    </div>
-                  </div>
+                  {/* Real Estate Sales Closer Grid */}
+                  {(() => {
+                    const prefs = ((selectedVoter as any).preferences ?? {}) as Record<string, any>;
+                    const dealTypeMap: Record<string, string> = {
+                      sale: 'קנייה', rent: 'שכירות', investment: 'השקעה', sell: 'מכירה',
+                    };
+                    const propertyTypeMap: Record<string, string> = {
+                      apartment: 'דירת מגורים', penthouse: 'פנטהאוז', cottage: "קוטג'",
+                      office: 'משרד', house: 'בית פרטי', studio: 'סטודיו',
+                    };
+                    const sourceMap: Record<string, string> = {
+                      facebook_groups: 'פייסבוק קבוצות', facebook: 'פייסבוק',
+                      whatsapp: 'וואטסאפ', inbound_call: 'שיחה נכנסת',
+                      yad2: 'יד2', instagram: 'אינסטגרם', website: 'אתר', manual: 'הוזן ידנית',
+                    };
+                    const stageMap: Record<string, string> = {
+                      new: 'מתעניין קר', cold: 'מתעניין קר',
+                      qualified: 'ליד מוסמך', touring: 'בסיור נכסים',
+                      offer_pending: 'ממתין להצעה', negotiation: 'במשא ומתן',
+                      closed: 'סגר עסקה', won: 'סגר עסקה',
+                    };
+                    const dealType = (selectedVoter as any).deal_type;
+                    const propertyType = prefs.property_type || prefs.listing_type;
+                    const budget = prefs.budget_max || prefs.monthly_rent_max;
+                    const budgetLabel = budget
+                      ? `${Number(budget).toLocaleString('he-IL')} ₪${prefs.monthly_rent_max ? ' / חודש' : ''}`
+                      : '—';
+                    const source = prefs.source || prefs.lead_source || (selectedVoter as any).source;
+                    const stage = (selectedVoter as any).lead_stage || selectedVoter.status;
+                    const area = [selectedVoter.city, (selectedVoter as any).neighborhood].filter(Boolean).join(' · ') || '—';
+                    const cell = (icon: JSX.Element, label: string, value: string) => (
+                      <div className="p-3 rounded-lg bg-muted/40 space-y-1">
+                        <p className="text-[10px] text-muted-foreground flex items-center gap-1">{icon}{label}</p>
+                        <p className="text-sm font-medium truncate">{value}</p>
+                      </div>
+                    );
+                    return (
+                      <div className="grid grid-cols-2 gap-3">
+                        {cell(<Tag className="h-3 w-3" />, 'סוג עסקה', dealType ? (dealTypeMap[dealType] || dealType) : '—')}
+                        {cell(<Radio className="h-3 w-3" />, 'ערוץ הגעה', source ? (sourceMap[source] || source) : '—')}
+                        {cell(<Wallet className="h-3 w-3" />, 'תקציב מבוקש', budgetLabel)}
+                        {cell(<Target className="h-3 w-3" />, 'סטטוס לקוח', stage ? (stageMap[stage] || stage) : '—')}
+                        {cell(<HomeIcon className="h-3 w-3" />, 'סוג נכס מועדף', propertyType ? (propertyTypeMap[propertyType] || propertyType) : '—')}
+                        {cell(<Compass className="h-3 w-3" />, 'אזור ביקוש מועדף', area)}
+                      </div>
+                    );
+                  })()}
 
                   <Separator />
 
-                  {/* Health Score + Engagement side by side */}
+                  {/* Property Intent Score + Tours/Interactions side by side */}
                   <div className="grid grid-cols-2 gap-4">
                     <div className="text-center space-y-2">
                       <h3 className="text-sm font-semibold flex items-center justify-center gap-1.5">
-                        <Heart className="h-3.5 w-3.5 text-destructive" /> ציון מעורבות
+                        <Heart className="h-3.5 w-3.5 text-destructive" /> מדד רצינות לקוח
                       </h3>
                       <div className="relative w-20 h-20 mx-auto">
                         <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
@@ -1429,7 +1461,7 @@ const LeadCRM = () => {
                     </div>
 
                     <div className="text-center space-y-2">
-                      <h3 className="text-sm font-semibold">ציון פעילות</h3>
+                      <h3 className="text-sm font-semibold">אינטראקציות וסיורים</h3>
                       <CircularScore score={selectedVoter.engagement_score ?? 0} />
                       <p className="text-[10px] text-muted-foreground">
                         {selectedVoter.last_interaction_at ? format(new Date(selectedVoter.last_interaction_at), 'dd/MM/yyyy') : 'אף פעם'}
@@ -1464,20 +1496,6 @@ const LeadCRM = () => {
                     </>
                   )}
 
-                  {/* Interest Radar */}
-                  <div>
-                    <h3 className="text-sm font-semibold mb-2 text-center">מכ״ם אינטרסים</h3>
-                    <div className="h-48">
-                      <ResponsiveContainer width="100%" height="100%">
-                        <RadarChart data={getRadarData(selectedVoter)} cx="50%" cy="50%" outerRadius="70%">
-                          <PolarGrid stroke="hsl(var(--border))" />
-                          <PolarAngleAxis dataKey="subject" tick={{ fill: 'hsl(var(--muted-foreground))', fontSize: 11 }} />
-                          <PolarRadiusAxis angle={90} domain={[0, 100]} tick={false} axisLine={false} />
-                          <Radar name="עניין" dataKey="value" stroke="hsl(var(--primary))" fill="hsl(var(--primary))" fillOpacity={0.2} strokeWidth={2} />
-                        </RadarChart>
-                      </ResponsiveContainer>
-                    </div>
-                  </div>
 
                   <Separator />
 
