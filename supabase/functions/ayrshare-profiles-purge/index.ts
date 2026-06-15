@@ -100,6 +100,8 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const dryRun: boolean = body?.dry_run !== false; // default true
     const includeOrphans: boolean = body?.include_orphans !== false; // default true
+    const forceDeleteAll: boolean = body?.force_delete_all === true;
+    const allowActiveProfileDelete: boolean = body?.allow_active_profile_delete === true;
     const keepKeys = new Set<string>(
       Array.isArray(body?.keep_profile_keys)
         ? body.keep_profile_keys.map((k: unknown) => String(k ?? "").trim()).filter(Boolean)
@@ -113,7 +115,7 @@ Deno.serve(async (req) => {
       .eq("id", "00000000-0000-0000-0000-000000000001")
       .maybeSingle();
     const activeKey = typeof ws?.ayrshare_profile_key === "string" ? ws.ayrshare_profile_key.trim() : "";
-    if (activeKey) keepKeys.add(activeKey);
+    if (activeKey && !allowActiveProfileDelete && !forceDeleteAll) keepKeys.add(activeKey);
 
     // 1. List all profiles
     const listRes = await fetch(`${AYR}/profiles`, {
