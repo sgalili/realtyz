@@ -14,6 +14,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { loadAgentPersona, renderPersonaPrompt } from "../_shared/persona.ts";
+import { enforceOwnerLaws, fetchOwnerLicense } from "../_shared/owner-laws.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
