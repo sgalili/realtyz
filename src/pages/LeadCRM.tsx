@@ -1332,20 +1332,35 @@ const LeadCRM = () => {
                     <div className="flex-1 min-w-0">
                       <p className="text-lg font-bold truncate">{selectedVoter.full_name || 'מתעניין לא ידוע'}</p>
                       <p className="text-sm text-muted-foreground font-normal" dir="ltr">{formatPhoneDisplay(selectedVoter.phone_number)}</p>
-                      <a
-                        href={`https://wa.me/${(selectedVoter.phone_number || '').replace(/\D/g, '')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 mt-1 text-xs text-emerald-600 hover:text-emerald-700 font-medium"
-                      >
-                        <MessageCircle className="h-3.5 w-3.5" /> פתח בוואטסאפ
-                      </a>
+                      {(() => {
+                        const phoneDigits = (selectedVoter.phone_number || '').replace(/\D/g, '');
+                        const email = (selectedVoter as any).email as string | undefined;
+                        const aiOn = !!selectedVoter.ai_autopilot;
+                        const channels: { key: string; href?: string; onClick?: () => void; icon: JSX.Element; label: string; active: boolean; tone?: string }[] = [
+                          { key: 'chat',    onClick: () => { setSelectedVoterId(null); window.location.assign(`/omnichannel-inbox?lead=${selectedVoter.id}`); }, icon: <MessageCircle className="h-3.5 w-3.5" />, label: 'צ׳אט', active: true },
+                          { key: 'ai',      onClick: undefined, icon: <Bot className="h-3.5 w-3.5" />, label: aiOn ? 'AI פעיל' : 'AI כבוי', active: aiOn, tone: aiOn ? 'border-emerald-500 text-emerald-700 bg-emerald-50' : 'border-slate-300 text-slate-500 bg-slate-50' },
+                          { key: 'call',    href: phoneDigits ? `tel:+${phoneDigits}` : undefined, icon: <PhoneIcon className="h-3.5 w-3.5" />, label: 'חיוג', active: !!phoneDigits },
+                          { key: 'email',   href: email ? `mailto:${email}` : undefined, icon: <Mail className="h-3.5 w-3.5" />, label: 'דוא״ל', active: !!email },
+                          { key: 'whatsapp',href: phoneDigits ? `https://wa.me/${phoneDigits}` : undefined, icon: <MessageCircle className="h-3.5 w-3.5" />, label: 'WhatsApp', active: !!phoneDigits, tone: phoneDigits ? 'border-emerald-500 text-emerald-700 bg-emerald-50 hover:bg-emerald-100' : '' },
+                        ];
+                        return (
+                          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                            {channels.map((c) => {
+                              const base = `inline-flex items-center gap-1 h-7 px-2 rounded-md border text-[11px] font-semibold transition-colors ${c.active ? (c.tone || 'border-primary/40 text-primary bg-primary/5 hover:bg-primary/10') : 'border-slate-200 text-slate-400 bg-slate-50/60 cursor-not-allowed opacity-60'}`;
+                              if (!c.active) return <span key={c.key} className={base}>{c.icon}{c.label}</span>;
+                              if (c.href) return <a key={c.key} href={c.href} target={c.href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" className={base}>{c.icon}{c.label}</a>;
+                              return <button key={c.key} type="button" onClick={c.onClick} className={base}>{c.icon}{c.label}</button>;
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
                     <Badge className={`border text-xs ${getLoyalty(selectedVoter.status).color}`} variant="outline">
                       {getLoyalty(selectedVoter.status).label}
                     </Badge>
                   </SheetTitle>
                 </SheetHeader>
+
 
                 <div className="mt-6 space-y-6">
                   {/* AI Personal Digital Agent Toggle */}
