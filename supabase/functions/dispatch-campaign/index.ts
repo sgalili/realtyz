@@ -531,6 +531,17 @@ Deno.serve(async (req) => {
     // Service-role client - api_configs is admin-RLS protected, so we read with service key
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(supabaseUrl, serviceKey);
+    const requestedOwnerId = typeof body.workspace_owner_id === "string" ? body.workspace_owner_id.trim() : "";
+    let ownerUserId = userId;
+    if (requestedOwnerId && requestedOwnerId !== userId) {
+      const { data: member } = await admin
+        .from("workspace_memberships")
+        .select("user_id")
+        .eq("workspace_owner_id", requestedOwnerId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (member) ownerUserId = requestedOwnerId;
+    }
 
     // Load provider configs (global, shared across all users) using service role
     const { data: providerRows } = await admin
@@ -553,7 +564,7 @@ Deno.serve(async (req) => {
 
     // Load ALL of the user's connected Gmail accounts (multi-account distribution)
     const { sessions: gmailSessions, reason: gmailReason } =
-      await loadUserGmailSessions(admin, userId);
+      await loadUserGmailSessions(admin, ownerUserId);
     const gmailSession = gmailSessions[0] ?? null; // backward compat / preflight summary
     const gmailReady = gmailSessions.length > 0;
 
@@ -565,7 +576,7 @@ Deno.serve(async (req) => {
 
     // Load the user's connected Green API (with shared admin row as fallback)
     const { session: waSession, reason: waReason } =
-      await loadUserWhatsAppSession(admin, userId, greenShared);
+      await loadUserWhatsAppSession(admin, ownerUserId, greenShared);
     const whatsappReady = !!waSession;
 
     // ========== PREFLIGHT: report which providers are configured ==========
@@ -654,7 +665,7 @@ Deno.serve(async (req) => {
             waSession.apiToken,
             intl,
             personalized,
-            { supabaseUrl, serviceRoleKey: serviceKey, userId },
+            { supabaseUrl, serviceRoleKey: serviceKey, userId: ownerUserId },
           );
       } else if (channel === "email") {
         if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient))
@@ -710,7 +721,7 @@ Deno.serve(async (req) => {
     const { data: queued, error: queErr } = await admin
       .from("campaign_logs")
       .select("id, channel, lead_id, recipient_phone, recipient_email, recipient_name, message_body")
-      .eq("user_id", userId)
+      .eq("user_id", ownerUserId)
       .eq("campaign_name", campaignName)
       .eq("status", "queued")
       .limit(limit);
