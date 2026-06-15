@@ -1453,6 +1453,7 @@ export type Database = {
           group_name: string
           group_url: string
           id: string
+          last_draft_body: string | null
           platform: string
           updated_at: string
           workspace_owner_id: string
@@ -1463,6 +1464,7 @@ export type Database = {
           group_name: string
           group_url: string
           id?: string
+          last_draft_body?: string | null
           platform?: string
           updated_at?: string
           workspace_owner_id: string
@@ -1473,6 +1475,7 @@ export type Database = {
           group_name?: string
           group_url?: string
           id?: string
+          last_draft_body?: string | null
           platform?: string
           updated_at?: string
           workspace_owner_id?: string
