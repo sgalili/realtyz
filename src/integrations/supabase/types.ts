@@ -4497,6 +4497,10 @@ export type Database = {
       is_on_trial_plan: { Args: { _user_id: string }; Returns: boolean }
       is_team_member: { Args: { _user_id: string }; Returns: boolean }
       is_trial_active: { Args: { _user_id: string }; Returns: boolean }
+      is_workspace_member: {
+        Args: { _owner: string; _user: string }
+        Returns: boolean
+      }
       listing_embedding_text: {
         Args: { l: Database["public"]["Tables"]["listings"]["Row"] }
         Returns: string
