@@ -182,9 +182,7 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
 
   const handleShareReady = async () => {
     if (!nextReady) return;
-    const text =
-      String(nextReady.payload?.outbound_text ?? nextReady.payload?.body ?? '').trim() ||
-      ensureCanonicalFooter((body ?? '').trim());
+    const text = draft.trim();
     const url = String(nextReady.payload?.group_url ?? '');
     if (!text || !url) {
       toast.error('פרטי הקבוצה חסרים');
@@ -193,8 +191,8 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
     try {
       await navigator.clipboard.writeText(text);
       setJustCopied(true);
-      setTimeout(() => setJustCopied(false), 2000);
-      toast.success(`הטקסט הועתק · פותח את "${nextReady.target_label ?? ''}"`);
+      setTimeout(() => setJustCopied(false), 2500);
+      toast.success('הטקסט העדכני והקישור הועתקו! הדבק בקבוצה, המתן 2 שניות לטעינת התמונות, ומחק את שורת הקישור מהטקסט למראה נקי.');
     } catch {
       toast.error('העתקה נכשלה — העתק ידנית');
     }
@@ -202,11 +200,16 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
     // Mark completed so the next pending row becomes the "head" of the queue.
     await (supabase as any)
       .from('campaign_activity_queue')
-      .update({ status: 'completed', completed_at: new Date().toISOString() })
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+        payload: { ...(nextReady.payload ?? {}), outbound_text: text, edited_by_operator: true },
+      })
       .eq('id', nextReady.id);
     // Optimistic UI refresh
     setQueue((q) => q.filter((r) => r.id !== nextReady.id));
   };
+
 
   const countdownMs = nextPending
     ? new Date(nextPending.scheduled_for).getTime() - now
