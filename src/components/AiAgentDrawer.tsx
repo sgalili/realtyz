@@ -272,6 +272,11 @@ export default function AiAgentDrawer() {
     if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
+  // Load full chat history for this user (permanent — never forgets).
+  useEffect(() => {
+    if (!user?.id || historyLoaded) return;
+    (async () => {
+      const { data, error } = await supabase
         .from('ai_drawer_history')
         .select('role, content, payload, created_at')
         .eq('user_id', user.id)
@@ -286,6 +291,7 @@ export default function AiAgentDrawer() {
       setHistoryLoaded(true);
     })();
   }, [user?.id, historyLoaded]);
+
 
   const persistMessage = useCallback(async (m: Message) => {
     if (!user?.id) return;
