@@ -306,45 +306,10 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
         </>
       )}
 
-      {/* GreenAPI inline setup */}
-      <div className="rounded-lg border border-emerald-300/60 bg-emerald-50/40 p-3 space-y-2">
-        <button
-          type="button"
-          onClick={() => setGaOpen((s) => !s)}
-          className="w-full flex items-center justify-between gap-2"
-        >
-          <div className="flex items-center gap-2">
-            <KeyRound className="h-4 w-4 text-emerald-700" />
-            <span className="text-sm font-bold text-slate-900">שער WhatsApp ראשי — GreenAPI</span>
-          </div>
-          {gaActive ? (
-            <Badge className="bg-emerald-600 hover:bg-emerald-600 gap-1">
-              <CheckCircle2 className="h-3 w-3" /> מחובר
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="border-amber-400 text-amber-700">לא מוגדר</Badge>
-          )}
-        </button>
-
-        {gaOpen && (
-          <div className="space-y-2 pt-2 border-t border-emerald-200">
-            <div>
-              <Label className="text-xs font-semibold text-slate-900">Instance ID</Label>
-              <Input value={gaInstance} onChange={(e) => setGaInstance(e.target.value)} placeholder="1101000001" className="h-8 mt-1" dir="ltr" />
-            </div>
-            <div>
-              <Label className="text-xs font-semibold text-slate-900">API Token</Label>
-              <Input type="password" value={gaToken} onChange={(e) => setGaToken(e.target.value)} placeholder="••••••••••••" className="h-8 mt-1" dir="ltr" />
-            </div>
-            <Button type="button" size="sm" className="w-full" onClick={saveGreenApi} disabled={gaSaving}>
-              {gaSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'שמור והגדר כשער ראשי'}
-            </Button>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
+
 
 /* Standalone trigger button so the enrichment CTA can be repositioned
    anywhere in the drawer (e.g. directly under the AI master switch). */
