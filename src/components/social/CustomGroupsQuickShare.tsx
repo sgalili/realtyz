@@ -11,7 +11,9 @@ type CustomGroup = {
   id: string;
   group_name: string;
   group_url: string;
+  last_draft_body: string | null;
 };
+
 
 type QueuedRow = {
   id: string;
