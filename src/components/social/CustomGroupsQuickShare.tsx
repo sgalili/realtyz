@@ -222,7 +222,13 @@ export function CustomGroupsQuickShare({
     setTimeout(() => { shareReadyRef.current?.(target); }, 150);
   }, [queue]);
 
-  if (loading || groups.length === 0) return null;
+  const visibleGroups = useMemo(() => {
+    if (!restrictToGroupIds) return groups;
+    const set = new Set(restrictToGroupIds);
+    return groups.filter((g) => set.has(g.id));
+  }, [groups, restrictToGroupIds]);
+
+  if (loading || visibleGroups.length === 0) return null;
 
 
   const togglePick = (id: string) => {
