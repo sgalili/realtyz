@@ -135,9 +135,30 @@ export function isSelfAuthoredComment(args: {
   return false;
 }
 
+// Inline conservative street-number scrubber (mirrors owner-laws.ts so we
+// don't pull a circular import). HARD LAW #1: never expose building numbers.
+const _STREET_KW = /(רחוב|רח['׳]?|שדרות|שד['׳]?|דרך|טיילת|סמטת|סמטה|ככר|כיכר)/;
+const _TRAILING_UNITS = /(?:חדרים|חדר|מ["׳']?\s*ר|מטר|ק["׳']?\s*מ|קומה|קומות|דקות|שעות|שנה|שנים|אחוז|%|₪|ש["׳']?\s*ח|דולר|\$|€)/;
+function _stripStreetNumbersInline(s: string): string {
+  let out = s;
+  out = out.replace(
+    new RegExp(`(${_STREET_KW.source})\\s+([\\u0590-\\u05FF][\\u0590-\\u05FF״"׳'\\-\\s]{1,40}?)\\s+\\d{1,4}[א-ת]?\\b`, "g"),
+    (_m, kw, name) => `${kw} ${String(name).trim()}`,
+  );
+  out = out.replace(
+    /(^|[^\d:=״"׳'\u05F4\u05F3])([\u0590-\u05FF]{3,}(?:[\u0590-\u05FF״"׳'-]*[\u0590-\u05FF])?)\s+(\d{1,4})[א-ת]?\b/g,
+    (m, pre, word, _num, offset, full) => {
+      const after = String(full).slice(offset + m.length, offset + m.length + 24);
+      if (_TRAILING_UNITS.test(after.trim())) return m;
+      if (/^(שנת|שנה|גיל|טלפון|נייד|מספר|דירה|קומה|בנין|בניין|פרויקט|פרוייקט)$/.test(word)) return m;
+      return `${pre}${word}`;
+    },
+  );
+  return out;
+}
+
 export function sanitizeOutboundText(input: string): string {
   let out = String(input ?? "");
-  // Strip em/en dash, double-dash, asterisks, common emoji ranges
   out = out
     .replace(/[\u{1F300}-\u{1FAFF}\u{2600}-\u{27BF}\u{1F000}-\u{1F2FF}]/gu, "")
     .replace(/[—–]+/g, " ")
@@ -145,15 +166,8 @@ export function sanitizeOutboundText(input: string): string {
     .replace(/-{2,}/g, " ")
     .replace(/\s{2,}/g, " ")
     .trim();
-  // HARD LAW #1 — strip building numbers from street addresses on every
-  // outbound public surface (comments, replies, captions). Inline import
-  // to avoid a circular dependency with owner-laws.ts.
-  try {
-    // dynamic require pattern works at deno cold-start
-    // deno-lint-ignore no-explicit-any
-    const m = (globalThis as any).__ownerLaws ?? null;
-    if (m?.stripStreetNumbers) out = m.stripStreetNumbers(out);
-  } catch { /* noop */ }
+  // HARD LAW #1 — strip building numbers from street addresses.
+  out = _stripStreetNumbersInline(out);
   return out;
 }
 
