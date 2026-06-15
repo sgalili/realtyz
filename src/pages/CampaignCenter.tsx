@@ -34,6 +34,7 @@ import { SentimentAutomationToggles } from '@/components/automation/SentimentAut
 import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsStream';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { CustomGroupsQuickShare } from '@/components/social/CustomGroupsQuickShare';
+import { CampaignGroupBreakdown } from '@/components/social/CampaignGroupBreakdown';
 import { campaignMatchesExternalPost, normalizePostId, getCampaignPostIds, platformForCampaignChannel } from '@/lib/campaignPostIds';
 import { learnFromEdit } from '@/lib/learnFromEdit';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
@@ -2121,6 +2122,11 @@ const PublishedFeed = () => {
                     מחק פוסט
                   </Button>
                 </div>
+                <CampaignGroupBreakdown
+                  workspaceOwnerId={workspaceOwnerId}
+                  campaignBody={bodyText}
+                  campaignCreatedAt={r.created_at}
+                />
                 <div className="border-t border-border bg-muted/30 px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   {userId ? (
                     <CampaignCommentsStream
