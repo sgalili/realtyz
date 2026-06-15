@@ -154,6 +154,11 @@ Deno.serve(async (req) => {
         let dp: any = null;
         try { dp = dt ? JSON.parse(dt) : null; } catch { dp = { raw: dt }; }
         decision.deleted = { ok: del.ok, status: del.status, payload: dp };
+        if (del.ok) {
+          console.log(`[AYRSHARE PURGE] Successfully deleted suspended profile ID: ${profileKey.slice(0, 8)}… refId=${refId ?? "(none)"} title=${title ?? "(none)"} reason=${reason}`);
+        } else {
+          console.warn(`[AYRSHARE PURGE] DELETE failed status=${del.status} keyPrefix=${profileKey.slice(0, 8)} payload=${JSON.stringify(dp)}`);
+        }
 
         if (del.ok) {
           // 4. Sync local DB rows that referenced the purged key.
