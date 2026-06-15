@@ -154,6 +154,20 @@ Output JSON ONLY via the provided tool — no extra text.
 
 ${personaBlock ? personaBlock + "\n\n" : ""}${compliance}`;
 
+    // Owner standing orders (workspace-level) — must override persona + compliance defaults.
+    let systemRulesBlock = "";
+    try {
+      systemRulesBlock = await fetchSystemRulesBlock(
+        userData.user.id,
+        `outreach ${channel} ${lead.city || ""} ${lead.interest_tag || ""}`.trim(),
+      );
+    } catch (e) {
+      console.warn("[generate-outreach-message] fetchSystemRulesBlock failed:", e instanceof Error ? e.message : e);
+    }
+    const finalSystemPrompt = systemRulesBlock
+      ? `${systemRulesBlock}\n\n${systemPrompt}`
+      : systemPrompt;
+
     const leadBlock = JSON.stringify(
       {
         full_name: lead.full_name,
