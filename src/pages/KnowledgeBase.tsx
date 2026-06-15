@@ -14,7 +14,7 @@ import {
   Brain, Send, Loader2, Upload, Search, FileText, Link as LinkIcon, Mic, Type, Trash2, Image as ImageIcon, Video as VideoIcon, Pencil, X, Check,
 } from 'lucide-react';
 import { toast } from 'sonner';
-import { SystemRulesInput } from '@/components/strategybank/SystemRulesInput';
+
 
 type ChatMsg = { role: 'user' | 'assistant'; content: string; sources?: string[]; isError?: boolean };
 type Tab = 'files' | 'text' | 'link' | 'voice';
