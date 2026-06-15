@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
@@ -12,9 +12,10 @@ import {
 import { toast } from 'sonner';
 import {
   Sparkles, Facebook, Instagram, Linkedin, Music2,
-  User, Users as GenderIcon, KeyRound, Loader2, CheckCircle2,
+  User, Users as GenderIcon, Loader2,
   ChevronDown, ChevronUp, Plus, Trash2, Globe,
 } from 'lucide-react';
+
 
 interface Props {
   lead: any;
@@ -60,27 +61,10 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
   const [socialOpen, setSocialOpen] = useState(false);
   const [socials, setSocials] = useState<SocialEntry[]>(() => buildInitialSocials(lead, prefs));
 
-  // Green API credentials
-  const [gaOpen, setGaOpen] = useState(false);
-  const [gaInstance, setGaInstance] = useState('');
-  const [gaToken, setGaToken] = useState('');
-  const [gaActive, setGaActive] = useState<boolean>(false);
-  const [gaSaving, setGaSaving] = useState(false);
+  // GreenAPI credentials are now sourced from global workspace settings (api_configs).
+  // This panel never reads or writes them locally — the enrichment edge function
+  // (fetch-wa-avatars) resolves them server-side.
 
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from('api_configs')
-        .select('is_active, api_key')
-        .eq('service_name', 'Green API')
-        .maybeSingle();
-      if (data?.api_key) {
-        setGaActive(!!data.is_active);
-        const [inst] = String(data.api_key).split(':');
-        setGaInstance(inst ?? '');
-      }
-    })();
-  }, []);
 
   async function persist(patch: { col?: Record<string, any>; pref?: Record<string, any> }, fieldKey: string) {
     setSavingField(fieldKey);
@@ -126,38 +110,11 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
     await persist({ pref: { socials: clean } }, 'socials');
   }
 
-  async function saveGreenApi() {
-    if (!gaInstance.trim() || !gaToken.trim()) {
-      toast.error('יש למלא Instance ID ו־Token');
-      return;
-    }
-    setGaSaving(true);
-    try {
-      const { error } = await supabase
-        .from('api_configs')
-        .upsert(
-          {
-            service_name: 'Green API',
-            api_key: `${gaInstance.trim()}:${gaToken.trim()}`,
-            is_active: true,
-          } as any,
-          { onConflict: 'service_name' },
-        );
-      if (error) throw error;
-      setGaActive(true);
-      setGaToken('');
-      toast.success('GreenAPI הוגדר כשער הוואטסאפ הראשי');
-    } catch (e: any) {
-      toast.error(e?.message ?? 'שמירה נכשלה');
-    } finally {
-      setGaSaving(false);
-    }
-  }
-
   const activeSocialCount = socials.filter((s) => s.handle.trim()).length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
+
       <Separator />
 
       {/* Demographics */}
@@ -306,45 +263,10 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
         </>
       )}
 
-      {/* GreenAPI inline setup */}
-      <div className="rounded-lg border border-emerald-300/60 bg-emerald-50/40 p-3 space-y-2">
-        <button
-          type="button"
-          onClick={() => setGaOpen((s) => !s)}
-          className="w-full flex items-center justify-between gap-2"
-        >
-          <div className="flex items-center gap-2">
-            <KeyRound className="h-4 w-4 text-emerald-700" />
-            <span className="text-sm font-bold text-slate-900">שער WhatsApp ראשי — GreenAPI</span>
-          </div>
-          {gaActive ? (
-            <Badge className="bg-emerald-600 hover:bg-emerald-600 gap-1">
-              <CheckCircle2 className="h-3 w-3" /> מחובר
-            </Badge>
-          ) : (
-            <Badge variant="outline" className="border-amber-400 text-amber-700">לא מוגדר</Badge>
-          )}
-        </button>
-
-        {gaOpen && (
-          <div className="space-y-2 pt-2 border-t border-emerald-200">
-            <div>
-              <Label className="text-xs font-semibold text-slate-900">Instance ID</Label>
-              <Input value={gaInstance} onChange={(e) => setGaInstance(e.target.value)} placeholder="1101000001" className="h-8 mt-1" dir="ltr" />
-            </div>
-            <div>
-              <Label className="text-xs font-semibold text-slate-900">API Token</Label>
-              <Input type="password" value={gaToken} onChange={(e) => setGaToken(e.target.value)} placeholder="••••••••••••" className="h-8 mt-1" dir="ltr" />
-            </div>
-            <Button type="button" size="sm" className="w-full" onClick={saveGreenApi} disabled={gaSaving}>
-              {gaSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'שמור והגדר כשער ראשי'}
-            </Button>
-          </div>
-        )}
-      </div>
     </div>
   );
 }
+
 
 /* Standalone trigger button so the enrichment CTA can be repositioned
    anywhere in the drawer (e.g. directly under the AI master switch). */
