@@ -162,27 +162,35 @@ Deno.serve(async (req) => {
       // directly: Meta Page tokens expire and Ayrshare maintains the live
       // token + private-reply authorization on our behalf.
       try {
-        {
-          const ayrPath = `https://api.ayrshare.com/api/messages/${encodeURIComponent(platform)}`;
-          const dmRes = await fetch(ayrPath, {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-              "Profile-Key": profileKey,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              recipientId: dmParentId,
-              message: sanitizedDm,
-              searchPlatformId: true,
-            }),
-          });
-          privateDmStatus = dmRes.status;
-          const dmText = await dmRes.text();
-          try { privateDmResult = dmText ? JSON.parse(dmText) : { ok: dmRes.ok }; }
-          catch { privateDmResult = { raw: dmText, ok: dmRes.ok }; }
-          console.log("[MESSENGER PIPELINE] Ayrshare DM result", { status: privateDmStatus, platform, response: privateDmResult });
+        // Ayrshare Messenger / IG Direct PRIVATE REPLY contract:
+        // POST /api/messages with `commentId` (NOT recipientId, which expects a PSID).
+        // Meta authorizes the Page → user thread because the comment author is
+        // resolved from the commentId server-side.
+        const dmRes = await fetch("https://api.ayrshare.com/api/messages", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+            "Profile-Key": profileKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            platforms: [platform],
+            commentId: dmParentId,
+            message: sanitizedDm,
+            searchPlatformId: true,
+          }),
+        });
+        privateDmStatus = dmRes.status;
+        const dmText = await dmRes.text();
+        try { privateDmResult = dmText ? JSON.parse(dmText) : { ok: dmRes.ok }; }
+        catch { privateDmResult = { raw: dmText, ok: dmRes.ok }; }
+        const ayrStatus = (privateDmResult && typeof privateDmResult === "object")
+          ? String((privateDmResult as any).status ?? "").toLowerCase() : "";
+        if (dmRes.ok && ayrStatus && ayrStatus !== "success") {
+          // Ayrshare returned HTTP 200 but logical error — surface it.
+          console.warn("[MESSENGER PIPELINE] Ayrshare logical error on DM", privateDmResult);
         }
+        console.log("[MESSENGER PIPELINE] Ayrshare DM result", { status: privateDmStatus, platform, commentId: dmParentId, response: privateDmResult });
       } catch (e) {
         privateDmResult = { error: e instanceof Error ? e.message : String(e) };
         console.error("[MESSENGER PIPELINE] DM dispatch threw", privateDmResult);

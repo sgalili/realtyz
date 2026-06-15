@@ -1,80 +1,72 @@
-# Continuous Learning Engine + Dynamic Persona Adaptation
+# Fix: Messenger Private Reply not sending
 
-Build a workspace-scoped "system intelligence" layer that captures explicit owner rules (text or voice) and reinforcement signals (approve/edit/reject), then injects matching rules into every AI generation as `#CRITICAL_SYSTEM_PREFERENCES`.
+## Root cause (confirmed in logs)
 
-We already have `agent_learning_lexicon` (edit-diff rules) and `knowledge_chunks` (KB RAG). This adds a **rules layer** distinct from both: explicit, durable, owner-priority directives.
+`supabase/functions/ayrshare-comment-reply/index.ts` calls Ayrshare's DM endpoint with the wrong payload shape:
 
-## 1. Database (one migration)
-
-**`system_intelligence_kb`** — scoped by workspace_owner_id; role-tagged.
-- `id`, `workspace_owner_id` (uuid, NOT NULL), `created_by` (uuid), `actor_role` (text: 'owner'|'tenant'|'system'), `source` (text: 'kb_ui'|'whatsapp_text'|'whatsapp_voice'|'approval'|'rejection'|'edit_diff'), `rule_text` (text, the canonical imperative rule), `raw_input` (text, original utterance/transcript), `signal` (text: 'positive'|'negative'|'directive'), `weight` (numeric default 1.0), `embedding` (vector(1536)), `is_active` (bool default true), `expires_at` (timestamptz null), `metadata` (jsonb), `created_at`, `updated_at`.
-- GRANT SELECT/INSERT/UPDATE/DELETE to authenticated; ALL to service_role. No anon.
-- RLS: members of the workspace (via `workspace_memberships`) can SELECT; only owner + admins can INSERT/UPDATE/DELETE.
-- HNSW index on embedding (vector_cosine_ops).
-- `match_system_rules(workspace uuid, query vector, k int)` SECURITY DEFINER RPC returning top-k active rules ordered by `signal_priority` (negative+directive boosted) then cosine.
-
-## 2. Edge functions
-
-**New: `ingest-system-rule`** — accepts `{ text?, audio_base64?, audio_format?, source, role? }`. If audio, transcribe via Lovable AI Gateway (gemini-2.5-flash with `input_audio`). Detect Hebrew trigger phrases (`תמיד|מעכשיו|אל תשתמש|תזכור|חוק חדש|לעולם|כלל חדש|מהיום`) — if none and `source=whatsapp_text`, return `{captured:false}`. Otherwise call AI gateway to normalize the utterance into a concise English imperative rule + signal classification (`directive|negative|positive`). Embed via `google/gemini-embedding-001` truncated to 1536 dims (match column). Insert into `system_intelligence_kb`.
-
-**New: `_shared/system-rules.ts`** — helper used by every generation function:
-```ts
-export async function fetchSystemRules(workspaceOwnerId, queryText, k=8): Promise<string>
 ```
-- 30s in-memory LRU cache keyed by `${workspace}:${hash(queryText)}` for fast webhooks.
-- Embeds queryText, calls `match_system_rules`, formats as a `#CRITICAL_SYSTEM_PREFERENCES\n- rule1\n- rule2` block. Negative/directive rules listed first with `NEVER:`/`ALWAYS:` prefixes.
+POST https://api.ayrshare.com/api/messages/facebook
+body: { recipientId: "<COMMENT_ID>", message, searchPlatformId: true }
+```
 
-**Edit existing generation paths** to prepend the block to their system prompt (minimal touch — one helper call near top):
-- `_shared/persona.ts` (chat/autopilot/inbox replies)
-- `ayrshare-post/index.ts` (posts)
-- `fb-comment-reply` / equivalent
-- `voice-agent` script builder
-- `ai-agent` drawer
+Meta returns:
+```
+(#100) Param recipient[id] must be a valid ID string (e.g., "123")
+```
 
-**Edit `whatsapp-webhook/index.ts`** — after admin identification, before normal router: if the inbound message matches the trigger lexicon OR is a voice note from a workspace owner/super_admin, fire-and-forget POST to `ingest-system-rule` (don't block reply). Voice notes always go through ingestion (transcript reused for normal handling).
+Why: `recipientId` must be a **user PSID**, not a comment ID. To send a Messenger Private Reply triggered by a comment, Ayrshare's documented contract is:
 
-**Edit `wa-companion-router.ts`** — on `פרסם`/`אשר`/`approve` recognize as positive reinforcement: log the just-approved draft via `ingest-system-rule` with `signal='positive', source='approval'`. On reject/edit, log negative with the diff (delegate to existing `learn-from-edit` for edits — already in place).
+```
+POST https://api.ayrshare.com/api/messages
+{ platforms: ["facebook"], commentId: "<COMMENT_ID>", message: "..." }
+```
 
-## 3. Client (KB UI)
+This tells Meta "open Messenger thread tied to this comment's author" — the only legal way to DM someone who has not previously messaged the Page (and the 7-day Private Reply window).
 
-**`src/components/strategybank/SystemRulesInput.tsx`** — new card on `/knowledge-base`:
-- Hebrew RTL textarea + record button (existing `VoiceComposer` pattern).
-- Submit → `supabase.functions.invoke('ingest-system-rule', { body: { text or audio } })`.
-- Lists active rules below (queries `system_intelligence_kb` scoped to active workspace), with toggle to deactivate.
-- Owner-only (gate via `useUserRole` + `useWorkspace.activeWorkspace.role === 'owner'`).
+Also the auto-like failure (`POST /api/comments/like` → "endpoint does not exist") is a stale path — the correct Ayrshare endpoint is `POST /api/comments` with `action: "like"` (or `/api/comments/{id}/like` per current docs). I will fix that in the same pass since it shares the helper file.
 
-Mount the card inside `KnowledgeBase.tsx` above existing sections.
+## Changes
 
-## 4. Hierarchy & efficiency
+### 1. `supabase/functions/ayrshare-comment-reply/index.ts`
+- Replace the DM call with:
+  - URL: `https://api.ayrshare.com/api/messages` (no platform in path)
+  - Body: `{ platforms: [platform], commentId: nativeCommentId, message: sanitizedDm, searchPlatformId: true }`
+- Keep nativeCommentId as the routing key (not freshReplyId). For comment-replies the inbound external_id is already the reply's commentId, which Meta accepts.
+- Treat HTTP 200 + Ayrshare `status: "success"` as sent; surface Ayrshare error code/message in the response and persist into metadata so the UI shows why.
 
-- `signal_priority`: `directive=3, negative=2, positive=1`.
-- Owner-authored rules get `weight=2.0`; tenant rules `weight=0.5`; learned (approval/edit) rules `weight=1.0`.
-- `fetchSystemRules` caps at 8 rules, ~600 tokens total.
-- In-memory LRU survives across edge invocations within the same isolate (best-effort); cache TTL 30s.
-- The `#CRITICAL_SYSTEM_PREFERENCES` block is injected **after** persona/KB context and **before** user task — it wins the recency battle without rewriting any prompt.
+### 2. `supabase/functions/_shared/ayrshare-helpers.ts` — `likeNativeComment`
+- Switch to Ayrshare's current like contract:
+  - `POST /api/comments` with `{ platforms:[platform], id: commentId, action: "like", searchPlatformId: true }`
+  - Fallback to `POST /api/comments/{id}` with `{ action:"like" }` if the first returns 404.
+- Still non-fatal.
 
-## 5. Out of scope (explicit)
+### 3. Extend DM coverage to **reply-on-reply** and **likes**
+- **Comment replies (nested)**: already supported — `ayrshare-comments-fetch` writes nested replies as `engagement_events` rows with their own `external_id`. After the fix in §1, those will DM correctly because we pass `commentId`.
+- **Likes**: Meta platform constraint — Messenger Private Reply requires a `commentId`. A like has no comment, so Meta will not authorize a DM to a liker who has never messaged the Page. We will:
+  - Detect like events in `ayrshare-comments-fetch` ingestion and write them as `engagement_events` with `event_type='like'` (already done for comments; extend the mapper to likes when the webhook/poll returns them).
+  - In `ayrshare-comment-reply`, if `event_type='like'`, skip the public reply and attempt a generic `POST /api/messages` with `recipientId = liker_psid` ONLY when Ayrshare exposes the PSID (it does for Page reactions via `/comments` v2 with `includeReactions=true`). If no PSID is available, mark the row `dm_skipped_no_psid` with a clear reason — no fake success.
 
-- No new approval-queue UI (we already have it; we only emit reinforcement signals).
-- No retraining of base models — this is prompt-time conditioning.
-- No automatic rule deletion; owners deactivate manually or set `expires_at` via the UI later.
-- No per-channel rule split — rules apply across post/comment/chat/voice surfaces uniformly.
+### 4. Frontend (`src/components/campaigns/CampaignCommentsStream.tsx`)
+- Surface the new `private_dm_status` / Ayrshare error code in the row toast so Udi sees "DM נשלח" vs "DM נחסם ע״י Meta — אין PSID לליייקר".
 
-## Files
+## Out of scope
+- No schema changes. No new tables. `engagement_events.event_type` already supports 'like'.
+- No changes to the public-comment reply flow itself; only the DM leg.
 
-New:
-- `supabase/migrations/<ts>_system_intelligence_kb.sql`
-- `supabase/functions/ingest-system-rule/index.ts`
-- `supabase/functions/_shared/system-rules.ts`
-- `src/components/strategybank/SystemRulesInput.tsx`
-- `.lovable/memory/features/system-intelligence-kb.md`
+## Validation
+1. Redeploy `ayrshare-comment-reply` + shared helpers.
+2. Use `supabase--curl_edge_functions` to POST a known comment `event_id` and confirm:
+   - `private_dm_sent: true`
+   - Logs show `200` from `/api/messages` with `commentId` field.
+3. Trigger on a nested reply → same outcome.
+4. Trigger on a like row → either `private_dm_sent: true` (if PSID present) or explicit `dm_skipped_no_psid` reason.
 
-Edited (small, additive):
-- `supabase/functions/_shared/persona.ts`
-- `supabase/functions/_shared/wa-companion-router.ts`
-- `supabase/functions/whatsapp-webhook/index.ts`
-- `supabase/functions/ayrshare-post/index.ts`
-- `src/pages/KnowledgeBase.tsx`
-- `.lovable/memory/index.md`
+## Technical detail (for reference)
 
-Confirm to proceed and I'll ship the migration first, then the edge functions and UI.
+Ayrshare Private Reply contract (Messenger / IG Direct):
+```
+POST /api/messages
+Headers: Authorization, Profile-Key
+Body: { platforms: ["facebook"], commentId, message }
+```
+Returns `{ status: "success", id: "<thread_id>" }` on success.
