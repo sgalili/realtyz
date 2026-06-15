@@ -240,7 +240,7 @@ Deno.serve(async (req) => {
         // but we still proceed to force-clear local records so the ghost is gone.
         const effectiveOk = del.ok || suspended;
         decision.deleted = { ok: effectiveOk, status: del.status, payload: { final: dp, attempts: del.attempts } };
-        const displayId = profileKey ? profileKey.slice(0, 8) : (refId ? `ref:${refId.slice(0, 8)}` : `title:${(title ?? "unknown").slice(0, 8)}`);
+        const displayId = profileKey ? profileKey.slice(0, 8) : (refId ? refId.slice(0, 12) : `title:${(title ?? "unknown").slice(0, 8)}`);
         if (del.ok) {
           console.log(`[AYRSHARE PURGE] Successfully deleted suspended profile ID: ${displayId}… refId=${refId ?? "(none)"} title=${title ?? "(none)"} reason=${reason}`);
         } else if (suspended) {
