@@ -198,12 +198,15 @@ Deno.serve(async (req) => {
       const orphan = linked.length === 0;
       const isProtected = (profileKey ? keepKeys.has(profileKey) : false) || (!allowActiveProfileDelete && !forceDeleteAll && !!activeRef && refId === activeRef);
       let reason: string | null = null;
-      if (forceDeleteAll) reason = "force_delete_all";
+      if (selectedRefIds) {
+        if (refId && selectedRefIds.has(refId)) reason = "user_selected";
+      } else if (forceDeleteAll) reason = "force_delete_all";
       else if (suspendedFlag) reason = "suspended_flag";
       else if (inactive) reason = "inactive_status";
       else if (orphan && includeOrphans) reason = "orphan_no_links";
 
-      const willDelete = !isProtected && reason !== null;
+      // When explicit selection is provided, bypass the protection (operator chose it).
+      const willDelete = (selectedRefIds ? reason !== null : (!isProtected && reason !== null));
       const decision: Decision = {
         profileKey,
         keyPrefix: profileKey ? profileKey.slice(0, 8) : (refId ? `ref:${refId.slice(0, 8)}` : `title:${(title ?? "unknown").slice(0, 8)}`),
@@ -219,7 +222,7 @@ Deno.serve(async (req) => {
       };
 
       if (willDelete && !dryRun) {
-        const del = await deleteAyrshareProfile(profileKey || null, title);
+        const del = await deleteAyrshareProfile(refId, profileKey || null, title);
         const dp: any = del.payload;
         const code = readAyrshareErrorCode(dp) ?? readAyrshareErrorCode(del.attempts.find((a) => readAyrshareErrorCode(a.payload) != null)?.payload);
         const msg = `${readAyrshareMessage(dp)} ${del.attempts.map((a) => readAyrshareMessage(a.payload)).join(" ")}`.toLowerCase();
