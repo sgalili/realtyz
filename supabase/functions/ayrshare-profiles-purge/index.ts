@@ -192,8 +192,8 @@ Deno.serve(async (req) => {
       if (willDelete && !dryRun) {
         const del = await deleteAyrshareProfile(profileKey);
         const dp: any = del.payload;
-        const code = dp?.code ?? del.attempts.find((a) => (a.payload as any)?.code)?.payload?.code;
-        const msg = String(dp?.message ?? dp?.error ?? del.attempts.map((a) => `${(a.payload as any)?.message ?? ""} ${(a.payload as any)?.error ?? ""}`).join(" ")).toLowerCase();
+        const code = readAyrshareErrorCode(dp) ?? readAyrshareErrorCode(del.attempts.find((a) => readAyrshareErrorCode(a.payload) != null)?.payload);
+        const msg = `${readAyrshareMessage(dp)} ${del.attempts.map((a) => readAyrshareMessage(a.payload)).join(" ")}`.toLowerCase();
         const suspended = code === 276 || msg.includes("suspend");
         // Treat suspension (code 276) as a logical success — Ayrshare locks deletion,
         // but we still proceed to force-clear local records so the ghost is gone.
