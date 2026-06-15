@@ -181,7 +181,7 @@ ${personaBlock ? personaBlock + "\n\n" : ""}${compliance}`;
     );
     const listingBlock = JSON.stringify(listing, null, 2);
 
-    const userPrompt = `LEAD:\n${leadBlock}\n\nLISTING:\n${listingBlock}\n\nAGENT NOTE: ${agent_note || "(none)"}\n\nDraft the outreach now.`;
+    const userPrompt = `LEAD:\n${leadBlock}\n\nLISTING:\n${listingBlock}\n\nAGENT NOTE: ${agent_note || "(none)"}\n\nDraft the outreach now.${systemRulesBlock ? "\nObey every rule inside #CRITICAL_SYSTEM_PREFERENCES without exception — re-write silently until your draft complies." : ""}`;
 
     const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -192,7 +192,7 @@ ${personaBlock ? personaBlock + "\n\n" : ""}${compliance}`;
       body: JSON.stringify({
         model: "google/gemini-3-flash-preview",
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: finalSystemPrompt },
           { role: "user", content: userPrompt },
         ],
         tools: [
