@@ -24,6 +24,7 @@ const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY")!;
 
 const SUPPORTED_SOURCES = new Set([
   "kb_ui", "whatsapp_text", "whatsapp_voice", "approval", "rejection", "edit_diff",
+  "research_insight", "file_insight",
 ]);
 const SUPPORTED_ROLES = new Set(["owner", "tenant", "system"]);
 const SUPPORTED_SIGNALS = new Set(["directive", "negative", "positive"]);
