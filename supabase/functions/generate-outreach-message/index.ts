@@ -175,9 +175,9 @@ ${personaBlock ? personaBlock + "\n\n" : ""}${compliance}`;
     } catch (e) {
       console.warn("[generate-outreach-message] fetchSystemRulesBlock failed:", e instanceof Error ? e.message : e);
     }
-    const finalSystemPrompt = systemRulesBlock
+    const finalSystemPrompt = (systemRulesBlock
       ? `${systemRulesBlock}\n\n${systemPrompt}`
-      : systemPrompt;
+      : systemPrompt) + projectBlock;
 
     const leadBlock = JSON.stringify(
       {
