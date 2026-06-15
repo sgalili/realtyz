@@ -157,8 +157,8 @@ export default function PrivacyDashboard() {
             <span>תעודות זהות, כרטיסי אשראי, IBAN, אימיילים וטלפונים ממוסכים אוטומטית לפני שהם נשלחים ל-AI.</span>
           </div>
           <div className="flex items-start gap-2">
-            <Badge variant="outline">Disclosure</Badge>
-            <span>הודעות יוצאות שנוצרו ע"י AI מסומנות בכיתוב "תוכן בסיוע AI" כנדרש בחוק.</span>
+            <Badge variant="outline">Footer</Badge>
+            <span>כל הודעה יוצאת חתומה בכרטיס הקשר הקבוע של המשרד (שם, רישיון תיווך וטלפון) ללא סימוני AI.</span>
           </div>
         </CardContent>
       </Card>
