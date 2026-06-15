@@ -465,7 +465,7 @@ export function ListingOutreachDialog({
                   </Button>
                   <Button className="flex-1" onClick={handleApproveSend} disabled={sending}>
                     <Send className="h-4 w-4 ml-1.5" />
-                    {sending ? 'שולח…' : 'אישור ושליחה'}
+                    {sending ? 'שולח…' : channel === 'whatsapp' ? 'שלח עכשיו ב-WhatsApp' : 'אישור ושליחה'}
                   </Button>
                 </div>
               </div>
