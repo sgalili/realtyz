@@ -18,11 +18,13 @@ type QueuedRow = {
   target_ref: string | null;
   target_label: string | null;
   status: string;
+  publication_status: 'pending_time_bank' | 'ready_awaiting_whatsapp_auth' | 'published' | null;
   scheduled_for: string;
   payload: any;
   variations: any;
   variation_index: number | null;
 };
+
 
 // Canonical hardcoded footer — must match supabase/functions/_shared/owner-laws.ts
 const OWNER_PHONE = '052-2973500';
@@ -97,7 +99,7 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
     const tick = async () => {
       const { data } = await (supabase as any)
         .from('campaign_activity_queue')
-        .select('id, target_ref, target_label, status, scheduled_for, payload, variations, variation_index')
+        .select('id, target_ref, target_label, status, publication_status, scheduled_for, payload, variations, variation_index')
         .eq('workspace_owner_id', workspaceOwnerId)
         .eq('activity_type', 'manual_share')
         .in('status', ['pending', 'ready'])
@@ -109,6 +111,7 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
     const clock = setInterval(() => setNow(Date.now()), 1_000);
     return () => { cancelled = true; clearInterval(id); clearInterval(clock); };
   }, [workspaceOwnerId]);
+
 
   // Map group_id → queue row (single active row per group at a time)
   const queueByGroup = useMemo(() => {
@@ -184,19 +187,24 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
     }
   };
 
-  const handleShareReady = async () => {
-    if (!readyRow) return;
-    const text = (draftById[readyRow.id] ?? '').trim();
-    const url = String(readyRow.payload?.group_url ?? '');
+  const handleShareReady = async (rowArg?: QueuedRow) => {
+    const row = rowArg ?? readyRow;
+    if (!row) return;
+    const text = (draftById[row.id] ?? '').trim() ||
+      ensureCanonicalFooter([
+        String(row.payload?.title ?? '').trim(),
+        String(row.payload?.outbound_text ?? row.payload?.body ?? '').trim(),
+      ].filter(Boolean).join('\n\n'));
+    const url = String(row.payload?.group_url ?? '');
     if (!text || !url) {
       toast.error('פרטי הקבוצה חסרים');
       return;
     }
     try {
       await navigator.clipboard.writeText(text);
-      setJustCopiedId(readyRow.id);
+      setJustCopiedId(row.id);
       setTimeout(() => setJustCopiedId(null), 2500);
-      toast.success('הטקסט העדכני והקישור הועתקו! הדבק בקבוצה, המתן 2 שניות לטעינת התמונות, ומחק את שורת הקישור מהטקסט למראה נקי.');
+      toast.success('הטקסט והקישור הועתקו! הדבק בקבוצה, המתן 2 שניות לטעינת התמונות (Link Preview), ומחק את שורת הקישור מהטקסט למראה נקי לפני הלחיצה על פרסם.');
     } catch {
       toast.error('העתקה נכשלה — העתק ידנית');
     }
@@ -205,15 +213,38 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
       .from('campaign_activity_queue')
       .update({
         status: 'completed',
+        publication_status: 'published',
         completed_at: new Date().toISOString(),
-        payload: { ...(readyRow.payload ?? {}), outbound_text: text, edited_by_operator: true },
+        payload: { ...(row.payload ?? {}), outbound_text: text, edited_by_operator: true },
       })
-      .eq('id', readyRow.id);
-    setQueue((q) => q.filter((r) => r.id !== readyRow.id));
-    setDraftById((d) => { const n = { ...d }; delete n[readyRow.id]; return n; });
+      .eq('id', row.id);
+    setQueue((q) => q.filter((r) => r.id !== row.id));
+    setDraftById((d) => { const n = { ...d }; delete n[row.id]; return n; });
   };
 
+  // Auto-confirm from a WhatsApp deep link: /campaigns?action=confirm&queue_id=X
+  // Waits for the matching row to land in 'ready' state (the cron may take a
+  // few seconds), then runs the same copy + open-tab flow.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') !== 'confirm') return;
+    const qid = params.get('queue_id');
+    if (!qid) return;
+    const target = queue.find((r) => r.id === qid && r.status === 'ready');
+    if (!target) return;
+    // Strip the action params so a refresh doesn't re-fire.
+    params.delete('action');
+    params.delete('queue_id');
+    const next = `${window.location.pathname}${params.toString() ? `?${params}` : ''}`;
+    window.history.replaceState({}, '', next);
+    // Slight delay so the draft seeding effect has a tick to compose text.
+    setTimeout(() => { void handleShareReady(target); }, 150);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [queue]);
+
   const pickedCount = Array.from(picked).filter((id) => !queueByGroup[id]).length;
+
 
   return (
     <div className="rounded-xl border-2 border-dashed border-amber-400/60 bg-amber-50/40 p-3 space-y-3 dark:bg-amber-950/10" dir="rtl">
@@ -283,17 +314,23 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
                   </div>
                 </div>
 
-                {/* Status badge */}
+                {/* Status badge — publication lifecycle */}
                 {isReady ? (
-                  <span className="shrink-0 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
-                    מוכן לשיתוף
+                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                    <Check className="h-3 w-3" />
+                    ממתין לאישור בוואטסאפ
                   </span>
                 ) : isPending ? (
                   <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-300" dir="ltr">
                     <Timer className="h-3 w-3" />
                     {fmtCountdown(countdownMs)}
                   </span>
-                ) : null}
+                ) : (
+                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
+                    טרם פורסם
+                  </span>
+                )}
+
               </div>
 
               {/* Inline editor for the ready row only */}
@@ -317,7 +354,7 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
                   />
                   <button
                     type="button"
-                    onClick={handleShareReady}
+                    onClick={() => { void handleShareReady(); }}
                     className={cn(
                       'flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold transition',
                       justCopiedId === row!.id
