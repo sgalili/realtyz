@@ -252,10 +252,11 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
     }
   };
 
-  const handleShareReady = async (rowArg?: QueuedRow) => {
+  const handleShareReady = async (groupId?: string, rowArg?: QueuedRow) => {
     const row = rowArg ?? readyRow;
     if (!row) return;
-    const text = (draftById[row.id] ?? '').trim() ||
+    const gid = groupId ?? row.target_ref ?? '';
+    const text = (draftById[gid] ?? '').trim() ||
       ensureCanonicalFooter([
         String(row.payload?.title ?? '').trim(),
         String(row.payload?.outbound_text ?? row.payload?.body ?? '').trim(),
@@ -284,9 +285,10 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
       })
       .eq('id', row.id);
     setQueue((q) => q.filter((r) => r.id !== row.id));
-    setDraftById((d) => { const n = { ...d }; delete n[row.id]; return n; });
+    // Keep draftById[gid] — operator may want to reuse next time the group cycles.
+    if (gid) void persistDraft(gid, text);
   };
-  shareReadyRef.current = handleShareReady;
+  shareReadyRef.current = (row?: QueuedRow) => handleShareReady(row?.target_ref ?? undefined, row);
 
   const toggleExpand = (gid: string) => {
     setExpandedIds((prev) => {
@@ -294,6 +296,15 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
       if (next.has(gid)) next.delete(gid); else next.add(gid);
       return next;
     });
+    // First-open generator: if no draft exists for this group, compose & persist now.
+    const g = groups.find((x) => x.id === gid);
+    if (g && (draftById[gid] === undefined || draftById[gid] === '')) {
+      const composed = composeDraftForGroup(g);
+      if (composed) {
+        setDraftById((d) => ({ ...d, [gid]: composed }));
+        void persistDraft(gid, composed);
+      }
+    }
   };
 
   const handleDeleteGroup = async (g: CustomGroup, row: QueuedRow | null) => {
@@ -312,6 +323,7 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
         .eq('id', g.id);
       setGroups((gs) => gs.filter((x) => x.id !== g.id));
       setPicked((p) => { const n = new Set(p); n.delete(g.id); return n; });
+      setDraftById((d) => { const n = { ...d }; delete n[g.id]; return n; });
       toast.success(`הקבוצה "${g.group_name}" נמחקה`);
     } catch (e: any) {
       toast.error(`מחיקה נכשלה: ${e?.message ?? e}`);
@@ -319,31 +331,32 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
   };
 
   const handleRegenerate = async (g: CustomGroup, row: QueuedRow | null) => {
-    const text = ensureCanonicalFooter((body ?? '').trim());
-    if (!text) {
+    const composed = composeDraftForGroup(g);
+    if (!composed) {
       toast.error('אין תוכן זמין לחידוש — חולל קודם פוסט בסיסי');
       return;
     }
     setRegeneratingId(g.id);
     try {
-      const composed = [text, g.group_url ? `\n${g.group_url}` : ''].filter(Boolean).join('\n\n');
+      setDraftById((d) => ({ ...d, [g.id]: composed }));
+      await persistDraft(g.id, composed);
       if (row) {
-        const newPayload = { ...(row.payload ?? {}), body: text, outbound_text: composed };
+        const newPayload = { ...(row.payload ?? {}), body: composed, outbound_text: composed };
         await (supabase as any)
           .from('campaign_activity_queue')
-          .update({ payload: newPayload, variations: [{ title: '', body: text }] })
+          .update({ payload: newPayload, variations: [{ title: '', body: composed }] })
           .eq('id', row.id);
         setQueue((q) => q.map((r) => r.id === row.id ? { ...r, payload: newPayload } : r));
-        setDraftById((d) => ({ ...d, [row.id]: composed }));
       }
       setExpandedIds((p) => new Set(p).add(g.id));
-      toast.success('התוכן חודש לפי הטיוטה הנוכחית');
+      toast.success('התוכן חודש לקבוצה זו');
     } catch (e: any) {
       toast.error(`חידוש נכשל: ${e?.message ?? e}`);
     } finally {
       setRegeneratingId(null);
     }
   };
+
 
 
 
