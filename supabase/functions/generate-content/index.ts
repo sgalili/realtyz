@@ -381,6 +381,12 @@ NO-HASHTAGS RULE (HARD — ZERO TOLERANCE):
       .replace(/\n{3,}/g, "\n\n")
       .trim();
 
+    // HARD COMPLIANCE LAWS — deterministic safety net (street numbers, license footer).
+    try {
+      const ownerLicense = await fetchOwnerLicense(admin as any, userId);
+      content = enforceOwnerLaws(content, { license: ownerLicense, withLicense: true });
+    } catch (_e) { /* never block on enforcement failure */ }
+
 
     const p = String(platform).toLowerCase();
     if ((p === "twitter" || p === "x") && content.length > 280) {
