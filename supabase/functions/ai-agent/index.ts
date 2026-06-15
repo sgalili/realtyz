@@ -811,6 +811,38 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
     }
 
     // Step 1: Ask AI to generate SQL or text response (legacy single-shot path)
+    // Multi-modal attachments (PDFs / images / audio) are attached to the last
+    // user message only on Master Agent calls so the model can analyze them.
+    const baseMasked = maskMessages(messages as Array<{ role: string; content: string }>).messages;
+    let outgoingMessages: any[] = baseMasked as any[];
+    if (isInternalDashboard && attachments.length > 0 && outgoingMessages.length > 0) {
+      const cloned = outgoingMessages.map((m) => ({ ...m }));
+      const lastIdx = [...cloned].reverse().findIndex((m) => m.role === "user");
+      if (lastIdx !== -1) {
+        const idx = cloned.length - 1 - lastIdx;
+        const textPart = { type: "text", text: String(cloned[idx].content ?? "") };
+        const attachmentParts: any[] = [];
+        for (const a of attachments.slice(0, 6)) {
+          const mime = String(a.mime ?? "").toLowerCase();
+          const dataUrl = a.data_url || a.url || "";
+          if (!dataUrl) continue;
+          if (mime.startsWith("image/")) {
+            attachmentParts.push({ type: "image_url", image_url: { url: dataUrl } });
+          } else if (mime === "application/pdf" || /\.pdf(\?|$)/i.test(dataUrl) || /\.pdf$/i.test(a.name ?? "")) {
+            attachmentParts.push({ type: "file", file: { filename: a.name || "doc.pdf", file_data: dataUrl } });
+          }
+        }
+        cloned[idx] = { role: "user", content: [textPart, ...attachmentParts] };
+        outgoingMessages = cloned;
+      }
+    }
+
+    // When attachments OR research are present in Master Agent mode, relax the
+    // strict JSON-only contract so the model can return a rich Hebrew brief.
+    const richResponseHint = isInternalDashboard && (attachments.length > 0 || !!researchBlock)
+      ? `\n\nRESPONSE OVERRIDE: למשימה זו (קבצים מצורפים או תקציר מחקר חי), החזר JSON בצורת {"type":"text","content":"..."} כאשר content הוא תקציר עברית מובנה עם כותרות ## ולפחות 5 צעדים מעשיים. אל תחזיר SQL.`
+      : "";
+
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -818,13 +850,14 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
+        max_tokens: attachments.length > 0 || researchBlock ? 2400 : 1200,
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: systemPrompt + richResponseHint },
           // PII MASKING (Compliance Layer): scrub IDs / cards / IBANs /
           // emails / phones from the chat history before it leaves our
           // backend. The originals stay in Supabase for the human Agent.
-          ...maskMessages(messages as Array<{ role: string; content: string }>).messages,
+          ...outgoingMessages,
         ],
       }),
     });
