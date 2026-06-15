@@ -176,6 +176,9 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
       }
       if (!url) throw new Error('no_url');
       const a = new Audio(url);
+      a.setAttribute('data-allow-sound', 'true');
+      a.muted = false;
+      a.volume = 1;
       previewAudioRef.current = a;
       a.onended = () => { if (previewAudioRef.current === a) { previewAudioRef.current = null; setPreviewingVoiceId(null); } };
       await a.play();
