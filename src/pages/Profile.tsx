@@ -167,6 +167,7 @@ function PersonalTab() {
   const [city, setCity] = useState('');
   const [gender, setGender] = useState<string>('');
   const [brokerLicense, setBrokerLicense] = useState<string>('');
+  const [brokerByline, setBrokerByline] = useState<string>('');
   const [editing, setEditing] = useState<Record<string, boolean>>({});
   const [hydrated, setHydrated] = useState(false);
 
