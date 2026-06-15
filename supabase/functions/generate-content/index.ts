@@ -291,7 +291,7 @@ NO-HASHTAGS RULE (HARD — ZERO TOLERANCE):
               .filter(Boolean)
               .join("\n\n"),
           },
-          { role: "user", content: userPrompt },
+          { role: "user", content: `${userPrompt}\n\n[OWNER STANDING ORDERS] Before you return the post, re-read every ALWAYS / NEVER rule inside #CRITICAL_SYSTEM_PREFERENCES above and silently rewrite your draft until it complies with each one. Do not return text that violates any rule.` },
         ],
         temperature: 1.0,
         top_p: 0.95,
