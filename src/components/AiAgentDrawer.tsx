@@ -239,6 +239,10 @@ export default function AiAgentDrawer() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
+  const [researchMode, setResearchMode] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Allow opening from header button
   useEffect(() => {
     const handler = () => setOpen(true);
@@ -246,11 +250,28 @@ export default function AiAgentDrawer() {
     return () => window.removeEventListener('open-ai-drawer', handler);
   }, []);
 
-  // Load full chat history for this user (permanent — never forgets).
-  useEffect(() => {
-    if (!user?.id || historyLoaded) return;
-    (async () => {
-      const { data, error } = await supabase
+  const onFilePick = useCallback((files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const arr = Array.from(files).slice(0, 6);
+    arr.forEach((f) => {
+      if (f.size > 18 * 1024 * 1024) {
+        toast.error(`${f.name}: גדול מ-18MB`);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = String(reader.result || '');
+        if (!dataUrl) return;
+        setPendingAttachments((prev) => [
+          ...prev,
+          { name: f.name, mime: f.type || 'application/octet-stream', data_url: dataUrl, size: f.size },
+        ]);
+      };
+      reader.readAsDataURL(f);
+    });
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  }, []);
+
         .from('ai_drawer_history')
         .select('role, content, payload, created_at')
         .eq('user_id', user.id)
