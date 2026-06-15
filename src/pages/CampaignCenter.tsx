@@ -34,6 +34,7 @@ import { SentimentAutomationToggles } from '@/components/automation/SentimentAut
 import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsStream';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { CustomGroupsQuickShare } from '@/components/social/CustomGroupsQuickShare';
+import { CampaignGroupBreakdown } from '@/components/social/CampaignGroupBreakdown';
 import { campaignMatchesExternalPost, normalizePostId, getCampaignPostIds, platformForCampaignChannel } from '@/lib/campaignPostIds';
 import { learnFromEdit } from '@/lib/learnFromEdit';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
