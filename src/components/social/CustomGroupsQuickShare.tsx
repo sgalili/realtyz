@@ -157,10 +157,24 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
   };
 
   // Compose a per-group "spun" draft from the current base body.
-  const composeDraftForGroup = (g: CustomGroup): string => {
-    const base = ensureCanonicalFooter((body ?? '').trim());
-    if (!base) return '';
-    return [base, g.group_url ? `\n${g.group_url}` : ''].filter(Boolean).join('\n\n');
+  // Calls the AI edge function `spin-group-post` to produce an alternative
+  // phrasing, then re-applies the canonical broker footer + group URL line.
+  // Falls back to the raw body if the AI call fails so we never leave the
+  // textarea empty.
+  const composeDraftForGroup = async (g: CustomGroup, seed?: string | number): Promise<string> => {
+    const raw = (body ?? '').trim();
+    if (!raw) return '';
+    let spun = raw;
+    try {
+      const { data, error } = await (supabase as any).functions.invoke('spin-group-post', {
+        body: { body: raw, group_name: g.group_name, group_url: g.group_url, seed: seed ?? Date.now() },
+      });
+      if (!error && data?.draft) spun = String(data.draft);
+    } catch {
+      /* fall back to raw body */
+    }
+    const withFooter = ensureCanonicalFooter(spun);
+    return [withFooter, g.group_url ? `\n${g.group_url}` : ''].filter(Boolean).join('\n\n');
   };
 
   // Debounced save on textarea edits.
