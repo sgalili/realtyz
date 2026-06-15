@@ -2,6 +2,7 @@
 // (comment + Udi's approved reply) pair into the Knowledge Base for future
 // persona learning.
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { stripMarkdownEmphasis } from '../_shared/ayrshare-helpers.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
