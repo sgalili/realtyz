@@ -54,25 +54,23 @@ function fmtCountdown(ms: number): string {
 }
 
 /**
- * Workspace-scoped Facebook groups directory with Time Bank queue:
- *   1. User picks a group → "Schedule" stages it into campaign_activity_queue
- *      with a 1-7 min jitter (and stacking 15-30 min spacing per slot).
- *   2. Cron (process-activity-queue) flips the row to status='ready' when its
- *      cool-down elapses.
- *   3. UI reveals the share button ONLY for the next ready row — preventing
- *      30-tab bursts that trigger Meta spam filters.
+ * Unified cockpit: lists workspace FB groups + their Time Bank state inline.
+ *   - Idle row → checkbox to bulk-stage into campaign_activity_queue
+ *   - Queued (pending) → grayed countdown badge
+ *   - Ready (cooldown elapsed) → expands inline with editable textarea + copy/open
  */
 export function CustomGroupsQuickShare({ body }: { body: string }) {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const [groups, setGroups] = useState<CustomGroup[]>([]);
   const [loading, setLoading] = useState(false);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const [justCopied, setJustCopied] = useState(false);
+  const [picked, setPicked] = useState<Set<string>>(new Set());
+  const [justCopiedId, setJustCopiedId] = useState<string | null>(null);
   const [queue, setQueue] = useState<QueuedRow[]>([]);
   const [now, setNow] = useState(Date.now());
   const [staging, setStaging] = useState(false);
+  const [draftById, setDraftById] = useState<Record<string, string>>({});
 
-  // Load groups
+  // Load workspace's manually-curated FB groups
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
@@ -112,43 +110,43 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
     return () => { cancelled = true; clearInterval(id); clearInterval(clock); };
   }, [workspaceOwnerId]);
 
-  const selected = useMemo(() => groups.find((g) => g.id === selectedId) ?? null, [groups, selectedId]);
+  // Map group_id → queue row (single active row per group at a time)
+  const queueByGroup = useMemo(() => {
+    const m: Record<string, QueuedRow> = {};
+    for (const r of queue) {
+      if (r.target_ref && !m[r.target_ref]) m[r.target_ref] = r;
+    }
+    return m;
+  }, [queue]);
 
   // The single "next" unlocked row, if any
-  const nextReady = useMemo(
-    () => queue.find((r) => r.status === 'ready') ?? null,
-    [queue],
-  );
-  const nextPending = useMemo(
-    () => queue.find((r) => r.status === 'pending') ?? null,
-    [queue],
-  );
+  const readyRow = useMemo(() => queue.find((r) => r.status === 'ready') ?? null, [queue]);
 
-  // Editable draft for the unlocked row — initialized from payload, freely editable.
-  const [draft, setDraft] = useState('');
-  const [draftRowId, setDraftRowId] = useState<string | null>(null);
+  // Seed editable draft for the unlocked row
   useEffect(() => {
-    if (!nextReady) {
-      setDraft('');
-      setDraftRowId(null);
-      return;
-    }
-    if (nextReady.id === draftRowId) return;
-    const title = String(nextReady.payload?.title ?? '').trim();
+    if (!readyRow) return;
+    if (draftById[readyRow.id] !== undefined) return;
+    const title = String(readyRow.payload?.title ?? '').trim();
     const bodyText =
-      String(nextReady.payload?.outbound_text ?? nextReady.payload?.body ?? '').trim() ||
+      String(readyRow.payload?.outbound_text ?? readyRow.payload?.body ?? '').trim() ||
       ensureCanonicalFooter((body ?? '').trim());
-    const url = String(nextReady.payload?.group_url ?? '').trim();
+    const url = String(readyRow.payload?.group_url ?? '').trim();
     const composed = [title, bodyText, url ? `\n${url}` : ''].filter(Boolean).join('\n\n');
-    setDraft(composed);
-    setDraftRowId(nextReady.id);
-  }, [nextReady, draftRowId, body]);
+    setDraftById((d) => ({ ...d, [readyRow.id]: composed }));
+  }, [readyRow, body, draftById]);
 
   if (loading || groups.length === 0) return null;
 
+  const togglePick = (id: string) => {
+    setPicked((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
 
-  const handleSchedule = async () => {
-    if (!selected || !workspaceOwnerId) return;
+  const handleStageSelected = async () => {
+    if (picked.size === 0 || !workspaceOwnerId) return;
     const text = ensureCanonicalFooter((body ?? '').trim());
     if (!text) {
       toast.error('אין טקסט לפרסום — חולל קודם תוכן');
@@ -156,23 +154,29 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
     }
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
+    const toStage = groups.filter((g) => picked.has(g.id) && !queueByGroup[g.id]);
+    if (toStage.length === 0) {
+      toast.info('כל הקבוצות שנבחרו כבר נמצאות בתור');
+      setPicked(new Set());
+      return;
+    }
     setStaging(true);
     try {
-      // Position this in the next slot AFTER the queued items, so spacing
-      // stacks (each subsequent group lands ~18 min later + jitter).
-      const slot = queue.length;
-      await stageActivity({
-        workspaceOwnerId,
-        createdBy: user.id,
-        activityType: 'manual_share',
-        targetRef: selected.id,
-        targetLabel: selected.group_name,
-        payload: { group_url: selected.group_url, body: text },
-        variations: [{ title: '', body: text }],
-        slotIndex: slot,
-      });
-      toast.success(`"${selected.group_name}" נוסף לתור — תיפתח התראה כשמותר לפרסם`);
-      setSelectedId(null);
+      let baseSlot = queue.length;
+      for (const g of toStage) {
+        await stageActivity({
+          workspaceOwnerId,
+          createdBy: user.id,
+          activityType: 'manual_share',
+          targetRef: g.id,
+          targetLabel: g.group_name,
+          payload: { group_url: g.group_url, body: text },
+          variations: [{ title: '', body: text }],
+          slotIndex: baseSlot++,
+        });
+      }
+      toast.success(`${toStage.length} קבוצות נוספו לתור — תיפתחנה אחת-אחת`);
+      setPicked(new Set());
     } catch (e: any) {
       toast.error(`שגיאה בהוספה לתור: ${e?.message ?? e}`);
     } finally {
@@ -181,146 +185,170 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
   };
 
   const handleShareReady = async () => {
-    if (!nextReady) return;
-    const text = draft.trim();
-    const url = String(nextReady.payload?.group_url ?? '');
+    if (!readyRow) return;
+    const text = (draftById[readyRow.id] ?? '').trim();
+    const url = String(readyRow.payload?.group_url ?? '');
     if (!text || !url) {
       toast.error('פרטי הקבוצה חסרים');
       return;
     }
     try {
       await navigator.clipboard.writeText(text);
-      setJustCopied(true);
-      setTimeout(() => setJustCopied(false), 2500);
+      setJustCopiedId(readyRow.id);
+      setTimeout(() => setJustCopiedId(null), 2500);
       toast.success('הטקסט העדכני והקישור הועתקו! הדבק בקבוצה, המתן 2 שניות לטעינת התמונות, ומחק את שורת הקישור מהטקסט למראה נקי.');
     } catch {
       toast.error('העתקה נכשלה — העתק ידנית');
     }
     window.open(url, '_blank', 'noopener,noreferrer');
-    // Mark completed so the next pending row becomes the "head" of the queue.
     await (supabase as any)
       .from('campaign_activity_queue')
       .update({
         status: 'completed',
         completed_at: new Date().toISOString(),
-        payload: { ...(nextReady.payload ?? {}), outbound_text: text, edited_by_operator: true },
+        payload: { ...(readyRow.payload ?? {}), outbound_text: text, edited_by_operator: true },
       })
-      .eq('id', nextReady.id);
-    // Optimistic UI refresh
-    setQueue((q) => q.filter((r) => r.id !== nextReady.id));
+      .eq('id', readyRow.id);
+    setQueue((q) => q.filter((r) => r.id !== readyRow.id));
+    setDraftById((d) => { const n = { ...d }; delete n[readyRow.id]; return n; });
   };
 
-
-  const countdownMs = nextPending
-    ? new Date(nextPending.scheduled_for).getTime() - now
-    : 0;
+  const pickedCount = Array.from(picked).filter((id) => !queueByGroup[id]).length;
 
   return (
-    <div className="rounded-xl border-2 border-dashed border-amber-400/60 bg-amber-50/40 p-3 space-y-2 dark:bg-amber-950/10" dir="rtl">
+    <div className="rounded-xl border-2 border-dashed border-amber-400/60 bg-amber-50/40 p-3 space-y-3 dark:bg-amber-950/10" dir="rtl">
+      {/* Header */}
       <div className="flex items-center justify-between gap-2">
         <span className="flex items-center gap-1.5 text-sm font-bold text-foreground">
           <Users className="h-4 w-4 text-amber-700 dark:text-amber-400" />
-          שיתוף ידני לקבוצות פייסבוק
+          פרסום מבוקר בקבוצות פייסבוק
         </span>
         <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-800 dark:text-amber-300" dir="ltr">
           {groups.length}
         </span>
       </div>
       <p className="text-[11px] leading-relaxed text-muted-foreground">
-        כדי לא להיחסם ע״י Meta — בחר קבוצה ולחץ <b>הוסף לתור</b>. המערכת תפתח אותן אחת-אחת עם מרווח של 15–30 דקות בין פרסום לפרסום.
+        כדי לא להיחסם ע״י Meta — סמן קבוצות והוסף לתור. המערכת תפתח אותן אחת-אחת עם מרווח של 15–30 דקות בין פרסום לפרסום, ותאפשר לערוך כל פוסט לפני שיתוף.
       </p>
 
-      {/* Group picker */}
+      {/* Unified group rows */}
       <div className="divide-y divide-border/60 overflow-hidden rounded-lg border border-border bg-background">
         {groups.map((g) => {
-          const isSelected = selectedId === g.id;
-          const isQueued = queue.some((r) => r.target_ref === g.id);
+          const row = queueByGroup[g.id] ?? null;
+          const isReady = !!row && row.status === 'ready';
+          const isPending = !!row && row.status === 'pending';
+          const isPicked = picked.has(g.id);
+          const countdownMs = isPending ? new Date(row!.scheduled_for).getTime() - now : 0;
+
           return (
-            <button
+            <div
               key={g.id}
-              type="button"
-              disabled={isQueued}
-              onClick={() => setSelectedId(isSelected ? null : g.id)}
               className={cn(
-                'flex w-full items-center justify-between gap-3 px-3 py-2 text-right transition',
-                isQueued && 'opacity-50 cursor-not-allowed',
-                isSelected ? 'bg-amber-100/70 dark:bg-amber-900/30' : !isQueued && 'hover:bg-muted/50',
+                'transition',
+                isReady && 'bg-emerald-50/60 dark:bg-emerald-950/20',
+                isPending && 'bg-muted/40 opacity-80',
+                !row && isPicked && 'bg-amber-100/60 dark:bg-amber-900/20',
               )}
             >
-              <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold text-foreground">
-                  {g.group_name}
-                  {isQueued ? <span className="mr-2 text-[10px] font-normal text-amber-700">· בתור</span> : null}
-                </div>
-                <div className="flex items-center gap-1 truncate text-[10px] text-muted-foreground" dir="ltr">
-                  <ExternalLink className="h-3 w-3" />
-                  <span className="truncate">{g.group_url}</span>
-                </div>
-              </div>
-              <span
-                aria-hidden
-                className={cn(
-                  'flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition',
-                  isSelected ? 'border-amber-600 bg-amber-600' : 'border-muted-foreground/40',
+              {/* Row header */}
+              <div className="flex items-center gap-3 px-3 py-2">
+                {/* Checkbox — only when idle */}
+                {!row ? (
+                  <button
+                    type="button"
+                    onClick={() => togglePick(g.id)}
+                    aria-label={isPicked ? 'הסר בחירה' : 'בחר קבוצה'}
+                    className={cn(
+                      'flex h-4 w-4 shrink-0 items-center justify-center rounded border-2 transition',
+                      isPicked ? 'border-amber-600 bg-amber-600' : 'border-muted-foreground/40 hover:border-amber-500',
+                    )}
+                  >
+                    {isPicked ? <Check className="h-3 w-3 text-white" /> : null}
+                  </button>
+                ) : isReady ? (
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
+                    <Pencil className="h-3 w-3" />
+                  </span>
+                ) : (
+                  <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
+                    <Lock className="h-3 w-3" />
+                  </span>
                 )}
-              >
-                {isSelected ? <Check className="h-3 w-3 text-white" /> : null}
-              </span>
-            </button>
+
+                <div className="min-w-0 flex-1">
+                  <div className="truncate text-sm font-semibold text-foreground">{g.group_name}</div>
+                  <div className="flex items-center gap-1 truncate text-[10px] text-muted-foreground" dir="ltr">
+                    <ExternalLink className="h-3 w-3" />
+                    <span className="truncate">{g.group_url}</span>
+                  </div>
+                </div>
+
+                {/* Status badge */}
+                {isReady ? (
+                  <span className="shrink-0 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                    מוכן לשיתוף
+                  </span>
+                ) : isPending ? (
+                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-300" dir="ltr">
+                    <Timer className="h-3 w-3" />
+                    {fmtCountdown(countdownMs)}
+                  </span>
+                ) : null}
+              </div>
+
+              {/* Inline editor for the ready row only */}
+              {isReady ? (
+                <div className="space-y-2 border-t border-emerald-300/40 bg-emerald-50/30 px-3 py-2 dark:bg-emerald-950/10">
+                  <div className="flex items-center justify-between gap-2">
+                    <span className="text-[11px] font-bold text-emerald-900 dark:text-emerald-200">
+                      ערוך את הטקסט לפני שיתוף
+                    </span>
+                    <span className="text-[10px] text-muted-foreground" dir="ltr">
+                      {(draftById[row!.id] ?? '').length} chars
+                    </span>
+                  </div>
+                  <Textarea
+                    value={draftById[row!.id] ?? ''}
+                    onChange={(e) => setDraftById((d) => ({ ...d, [row!.id]: e.target.value }))}
+                    rows={9}
+                    dir="rtl"
+                    className="min-h-[160px] resize-y bg-background text-[13px] leading-relaxed"
+                    placeholder="התוכן יופיע כאן..."
+                  />
+                  <button
+                    type="button"
+                    onClick={handleShareReady}
+                    className={cn(
+                      'flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold transition',
+                      justCopiedId === row!.id
+                        ? 'bg-emerald-600 text-white'
+                        : 'bg-[#1877F2] text-white hover:bg-[#1668d8]',
+                    )}
+                  >
+                    {justCopiedId === row!.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                    {justCopiedId === row!.id ? 'הועתק · פותח את הקבוצה' : 'העתק את הטקסט הערוך ופתח את הקבוצה'}
+                  </button>
+                </div>
+              ) : null}
+            </div>
           );
         })}
       </div>
 
-      {/* Schedule action — only when something is selected */}
-      {selected ? (
+      {/* Bulk stage action */}
+      {pickedCount > 0 ? (
         <button
           type="button"
           disabled={staging}
-          onClick={handleSchedule}
+          onClick={handleStageSelected}
           className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-600 px-3 py-2.5 text-sm font-bold text-white transition hover:bg-amber-700 disabled:opacity-60"
         >
           <Timer className="h-4 w-4" />
-          {staging ? 'מוסיף לתור…' : `הוסף "${selected.group_name}" לתור`}
+          {staging
+            ? 'מוסיף לתור…'
+            : `הוסף קבוצות נבחרות לתור (${pickedCount})`}
         </button>
       ) : null}
-
-      {/* Single "ready" share action — Time Bank unlocked it. Editable preview first. */}
-      {nextReady ? (
-        <div className="space-y-2 rounded-lg border border-emerald-400/60 bg-emerald-50/40 p-2 dark:bg-emerald-950/10">
-          <div className="flex items-center justify-between gap-2">
-            <span className="flex items-center gap-1.5 text-[12px] font-bold text-emerald-900 dark:text-emerald-200">
-              <Pencil className="h-3.5 w-3.5" />
-              ערוך לפני שיתוף: {nextReady.target_label ?? ''}
-            </span>
-            <span className="text-[10px] text-muted-foreground" dir="ltr">{draft.length} chars</span>
-          </div>
-          <Textarea
-            value={draft}
-            onChange={(e) => setDraft(e.target.value)}
-            rows={10}
-            dir="rtl"
-            className="min-h-[180px] resize-y bg-background text-[13px] leading-relaxed"
-            placeholder="התוכן יופיע כאן..."
-          />
-          <button
-            type="button"
-            onClick={handleShareReady}
-            className={cn(
-              'flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold transition',
-              justCopied ? 'bg-emerald-600 text-white' : 'bg-[#1877F2] text-white hover:bg-[#1668d8]',
-            )}
-          >
-            {justCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-            {justCopied ? 'הועתק · פותח את הקבוצה' : 'העתק את הטקסט הערוך ופתח את הקבוצה'}
-          </button>
-        </div>
-      ) : nextPending ? (
-        <div className="flex items-center justify-center gap-2 rounded-lg border border-amber-300/70 bg-amber-100/50 px-3 py-2 text-[12px] font-semibold text-amber-900 dark:bg-amber-900/20 dark:text-amber-200">
-          <Lock className="h-3.5 w-3.5" />
-          הקבוצה הבאה ({nextPending.target_label}) תיפתח בעוד {fmtCountdown(countdownMs)}
-        </div>
-      ) : null}
-
     </div>
   );
 }
