@@ -161,6 +161,21 @@ Deno.serve(async (req) => {
 
     if (!finalText) throw new Error("empty final text");
 
+    // HARD COMPLIANCE LAWS — deterministic safety net. For posts and DMs we
+    // append the byline + license footer; for public comments we only strip
+    // street numbers and forbidden bylines (no footer on short replies).
+    try {
+      if (purpose === "social_post" || purpose === "private_dm" || purpose === "generic") {
+        finalText = enforceOwnerLaws(finalText, {
+          license: branding.license,
+          byline: branding.byline,
+          withLicense: true,
+        });
+      } else {
+        finalText = stripStreetNumbers(scrubForbiddenBylines(finalText));
+      }
+    } catch (_e) { /* never block on enforcement failure */ }
+
     return new Response(JSON.stringify({ final_text: finalText }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
