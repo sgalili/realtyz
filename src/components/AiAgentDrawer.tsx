@@ -318,12 +318,19 @@ export default function AiAgentDrawer() {
 
 
   const sendMessage = async (text: string) => {
-    if (!text.trim() || isLoading) return;
+    const hasFiles = pendingAttachments.length > 0;
+    if ((!text.trim() && !hasFiles) || isLoading) return;
 
-    const userMsg: Message = { role: 'user', content: text };
+    const sentAttachments = pendingAttachments;
+    const userMsg: Message = {
+      role: 'user',
+      content: text || (hasFiles ? `(נשלחו ${sentAttachments.length} קבצים לניתוח)` : ''),
+      attachments: sentAttachments.map((a) => ({ name: a.name, mime: a.mime })),
+    };
     setMessages(prev => [...prev, userMsg]);
     persistMessage(userMsg);
     setInput('');
+    setPendingAttachments([]);
     setIsLoading(true);
 
     try {
@@ -333,7 +340,11 @@ export default function AiAgentDrawer() {
       }));
 
       const { data, error } = await supabase.functions.invoke('ai-agent', {
-        body: { messages: chatMessages },
+        body: {
+          messages: chatMessages,
+          attachments: sentAttachments.map((a) => ({ name: a.name, mime: a.mime, data_url: a.data_url })),
+          enable_research: researchMode ? true : undefined,
+        },
       });
 
       if (error) {
@@ -352,6 +363,7 @@ export default function AiAgentDrawer() {
           query: data.query,
           type: 'data',
           sources: data.sources ?? [],
+          research_sources: data.research_sources ?? [],
         };
       } else {
         assistantMsg = {
@@ -359,6 +371,7 @@ export default function AiAgentDrawer() {
           content: data?.content || data?.explanation || 'לא הצלחתי לעבד את הבקשה',
           type: 'text',
           sources: data?.sources ?? [],
+          research_sources: data?.research_sources ?? [],
         };
       }
       setMessages(prev => [...prev, assistantMsg]);
@@ -376,6 +389,7 @@ export default function AiAgentDrawer() {
       setIsLoading(false);
     }
   };
+
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
