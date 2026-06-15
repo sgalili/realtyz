@@ -9,6 +9,7 @@ import {
   MISSING_TENANT_KEY,
   MISSING_TENANT_KEY_MESSAGE,
   resolveWorkspaceProfileKey,
+  stripMarkdownEmphasis,
   verifyWorkspaceProfileKey,
 } from "../_shared/ayrshare-helpers.ts";
 
