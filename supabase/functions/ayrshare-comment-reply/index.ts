@@ -4,15 +4,30 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { sanitizeOutboundText, resolveWorkspaceProfileKey, likeNativeComment } from "../_shared/ayrshare-helpers.ts";
+import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 
 const AYR_REPLY_URL = "https://api.ayrshare.com/api/comments/reply";
 const AYR_MESSAGES_URL = "https://api.ayrshare.com/api/messages";
+const MESSENGER_RELINK_MESSAGE = "Facebook Messenger DM is blocked by Meta permissions. Re-link the Facebook Page and approve messaging/private-reply permissions.";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
     status: s,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+
+function flattenErrorBlob(raw: string, payload: unknown): string {
+  return `${raw || ""}\n${JSON.stringify(payload ?? {})}`;
+}
+
+function isMetaPermissionBlock(status: number | null, raw: string, payload: unknown): boolean {
+  const blob = flattenErrorBlob(raw, payload);
+  return /requires\s+.*permission|pages_messaging|instagram_manage_messages|pages_manage_metadata|missing\s+permissions?|unsupported\s+post\s+request|oauth(exception)?|invalid\s+or\s+expired\s+token|access\s+token\s+.*expired|not\s+authorized|permission\s+.*not\s+granted|application\s+does\s+not\s+have\s+the\s+capability|messag(e|ing).*permission|private\s+reply.*permission|\(#200\)|\(#10\)/i.test(blob) || status === 401 || status === 403;
+}
+
+function isDuplicatePrivateReply(raw: string, payload: unknown): boolean {
+  return /already\s+(been\s+)?sent|private reply.*sent|duplicate|messag(e|ing).*already/i.test(flattenErrorBlob(raw, payload));
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -160,6 +175,9 @@ Deno.serve(async (req) => {
     const sanitizedDm = sanitizeOutboundText(privateDmRaw ?? "");
     let privateDmResult: any = null;
     let privateDmStatus: number | null = null;
+    let privateDmPermissionBlock = false;
+    let privateDmDuplicate = false;
+    let privateDmEmptySuccess = false;
     if (sanitizedDm && dmParentId) {
       // ALL outbound traffic — public reply AND private DM — is routed
       // exclusively through Ayrshare. We never call graph.facebook.com
@@ -194,6 +212,7 @@ Deno.serve(async (req) => {
         });
         privateDmStatus = dmRes.status;
         const dmText = await dmRes.text();
+        privateDmEmptySuccess = dmRes.ok && !dmText.trim();
         console.log("[MESSENGER PIPELINE] Ayrshare DM raw response", {
           status: privateDmStatus,
           commentId: dmParentId,
@@ -210,9 +229,67 @@ Deno.serve(async (req) => {
         }
         try { privateDmResult = dmText ? JSON.parse(dmText) : { ok: dmRes.ok }; }
         catch { privateDmResult = { raw: dmText, ok: dmRes.ok }; }
-        const dmErrorBlob = `${dmText} ${JSON.stringify(privateDmResult)}`.toLowerCase();
-        if (/already\s+(been\s+)?sent|private reply.*sent|duplicate|messag(e|ing).*already/i.test(dmErrorBlob)) {
+        privateDmDuplicate = isDuplicatePrivateReply(dmText, privateDmResult);
+        privateDmPermissionBlock = isMetaPermissionBlock(privateDmStatus, dmText, privateDmResult);
+        if (privateDmDuplicate) {
           console.log(`[MESSENGER DUP] DM locked by Meta for this specific commentId: ${dmParentId}`);
+        }
+        if (privateDmEmptySuccess) {
+          console.warn("[MESSENGER DELIVERY UNKNOWN] Ayrshare returned HTTP success with an empty DM payload", {
+            status: privateDmStatus,
+            commentId: dmParentId,
+            platform: "facebook",
+            profileKey: profileKeyFingerprint,
+          });
+          await logIntegrationError({
+            integration: "ayrshare",
+            functionName: "ayrshare-comment-reply",
+            errorCode: "MESSENGER_EMPTY_SUCCESS_PAYLOAD",
+            errorMessage: "Ayrshare returned HTTP success with an empty Messenger DM payload; delivery is not confirmed.",
+            context: { eventId: rowId, commentId: dmParentId, platform: "facebook", status: privateDmStatus },
+          });
+        }
+        if (privateDmPermissionBlock) {
+          console.error("[MESSENGER PERMISSION BLOCK] Re-authentication required. Please re-link the Facebook Page.", {
+            status: privateDmStatus,
+            commentId: dmParentId,
+            platform: "facebook",
+            raw: dmText,
+            response: privateDmResult,
+          });
+          await logIntegrationError({
+            integration: "ayrshare",
+            functionName: "ayrshare-comment-reply",
+            errorCode: "MESSENGER_PERMISSION_BLOCK",
+            errorMessage: flattenErrorBlob(dmText, privateDmResult).slice(0, 1800) || MESSENGER_RELINK_MESSAGE,
+            context: { eventId: rowId, commentId: dmParentId, platform: "facebook", status: privateDmStatus },
+          });
+          await admin
+            .from("social_connections")
+            .update({
+              last_test_status: "failed",
+              last_test_message: MESSENGER_RELINK_MESSAGE,
+              last_test_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .ilike("platform", "facebook%");
+          await admin.from("notifications").insert({
+            user_id: ownerUserId,
+            event_type: "critical_question",
+            title: "Messenger DM permission blocked",
+            body: `${MESSENGER_RELINK_MESSAGE}\nRaw Ayrshare response: ${(dmText || JSON.stringify(privateDmResult)).slice(0, 700)}`,
+            deep_link: `${Deno.env.get("APP_PUBLIC_URL") || "https://realtyz.co.il"}/campaigns?tab=create`,
+            channel: "system",
+            delivered: false,
+            delivery_result: { source: "ayrshare-comment-reply", relink_required: true, status: privateDmStatus },
+          });
+          privateDmResult = {
+            ...(privateDmResult && typeof privateDmResult === "object" ? privateDmResult : { raw: dmText }),
+            error_type: "MESSENGER_PERMISSION_ERROR",
+            message: MESSENGER_RELINK_MESSAGE,
+            fallback: true,
+            relink_required: true,
+          };
         }
         const ayrStatus = (privateDmResult && typeof privateDmResult === "object")
           ? String((privateDmResult as any).status ?? "").toLowerCase() : "";
@@ -229,7 +306,7 @@ Deno.serve(async (req) => {
     const ayrLogicalStatus = (privateDmResult && typeof privateDmResult === "object")
       ? String((privateDmResult as any).status ?? "").toLowerCase() : "";
     const privateDmSent = sanitizedDm
-      ? (privateDmStatus !== null && privateDmStatus >= 200 && privateDmStatus < 300 && (!ayrLogicalStatus || ayrLogicalStatus === "success"))
+      ? (privateDmStatus !== null && privateDmStatus >= 200 && privateDmStatus < 300 && !privateDmPermissionBlock && !privateDmEmptySuccess && (!ayrLogicalStatus || ayrLogicalStatus === "success"))
       : false;
 
     // Auto-Like runs after the DM completes — non-fatal regardless of outcome.
