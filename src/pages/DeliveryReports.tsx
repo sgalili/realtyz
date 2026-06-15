@@ -83,6 +83,8 @@ function dateFloor(daysAgo: number) {
 
 const DeliveryReports = () => {
   const { user } = useAuth();
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  const ownerScope = workspaceOwnerId ?? user?.id ?? null;
   const qc = useQueryClient();
 
   const [channelFilter, setChannelFilter] = useState<ChannelFilter>('all');
