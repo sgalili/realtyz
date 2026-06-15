@@ -284,27 +284,43 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
         </button>
       ) : null}
 
-      {/* Single "ready" share action — Time Bank unlocked it */}
+      {/* Single "ready" share action — Time Bank unlocked it. Editable preview first. */}
       {nextReady ? (
-        <button
-          type="button"
-          onClick={handleShareReady}
-          className={cn(
-            'flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold transition',
-            justCopied ? 'bg-emerald-600 text-white' : 'bg-[#1877F2] text-white hover:bg-[#1668d8]',
-          )}
-        >
-          {justCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-          {justCopied
-            ? 'הועתק · פותח את הקבוצה'
-            : `מוכן לשיתוף: ${nextReady.target_label ?? ''}`}
-        </button>
+        <div className="space-y-2 rounded-lg border border-emerald-400/60 bg-emerald-50/40 p-2 dark:bg-emerald-950/10">
+          <div className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1.5 text-[12px] font-bold text-emerald-900 dark:text-emerald-200">
+              <Pencil className="h-3.5 w-3.5" />
+              ערוך לפני שיתוף: {nextReady.target_label ?? ''}
+            </span>
+            <span className="text-[10px] text-muted-foreground" dir="ltr">{draft.length} chars</span>
+          </div>
+          <Textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={10}
+            dir="rtl"
+            className="min-h-[180px] resize-y bg-background text-[13px] leading-relaxed"
+            placeholder="התוכן יופיע כאן..."
+          />
+          <button
+            type="button"
+            onClick={handleShareReady}
+            className={cn(
+              'flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold transition',
+              justCopied ? 'bg-emerald-600 text-white' : 'bg-[#1877F2] text-white hover:bg-[#1668d8]',
+            )}
+          >
+            {justCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            {justCopied ? 'הועתק · פותח את הקבוצה' : 'העתק את הטקסט הערוך ופתח את הקבוצה'}
+          </button>
+        </div>
       ) : nextPending ? (
         <div className="flex items-center justify-center gap-2 rounded-lg border border-amber-300/70 bg-amber-100/50 px-3 py-2 text-[12px] font-semibold text-amber-900 dark:bg-amber-900/20 dark:text-amber-200">
           <Lock className="h-3.5 w-3.5" />
           הקבוצה הבאה ({nextPending.target_label}) תיפתח בעוד {fmtCountdown(countdownMs)}
         </div>
       ) : null}
+
     </div>
   );
 }
