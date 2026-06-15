@@ -36,6 +36,7 @@ import { VoiceAgentPanel } from '@/components/calendar/VoiceAgentPanel';
 import { UsageMeterPanel } from '@/components/UsageMeterPanel';
 import { ServiceAreasPanel } from '@/components/settings/ServiceAreasPanel';
 import { SocialChannelsGrid } from '@/components/social/SocialChannelsGrid';
+import { CustomGroupsManager } from '@/components/social/CustomGroupsManager';
 
 interface ApiConfig {
   id: string;
@@ -1110,6 +1111,7 @@ const ApiSettings = () => {
           <p className="text-xs text-muted-foreground">פרופיל Ayrshare ייעודי לסביבת העבודה (נוצר דינמית, לא משותף בין סוכנים), קטלוג ערוצים חי וייבוא חשבונות בלחיצה.</p>
         </div>
         <SocialChannelsGrid />
+        <CustomGroupsManager />
       </div>
 
       {/* ── Section A.4-fine-tune: AI Fine-Tuning ── */}

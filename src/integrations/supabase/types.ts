@@ -1380,6 +1380,39 @@ export type Database = {
         }
         Relationships: []
       }
+      custom_user_groups: {
+        Row: {
+          created_at: string
+          created_by: string
+          group_name: string
+          group_url: string
+          id: string
+          platform: string
+          updated_at: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string
+          group_name: string
+          group_url: string
+          id?: string
+          platform?: string
+          updated_at?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          group_name?: string
+          group_url?: string
+          id?: string
+          platform?: string
+          updated_at?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       deal_room_comments: {
         Row: {
           author_email: string | null
