@@ -12,7 +12,7 @@ import {
   stripMarkdownEmphasis,
   verifyWorkspaceProfileKey,
 } from "../_shared/ayrshare-helpers.ts";
-import { enforceOwnerLaws, fetchOwnerLicense } from "../_shared/owner-laws.ts";
+import { enforceOwnerLaws, fetchOwnerBranding } from "../_shared/owner-laws.ts";
 
 const AYR_POST_URL = "https://api.ayrshare.com/api/post";
 
@@ -139,8 +139,8 @@ Deno.serve(async (req) => {
     if (!userId) return json({ error: "unauthorized" }, 401);
 
     // Enforce owner laws (strip street numbers, append broker license footer).
-    const ownerLicense = await fetchOwnerLicense(admin as any, userId);
-    const finalPostText = enforceOwnerLaws(postText, { license: ownerLicense, withLicense: true });
+    const ownerLicense = await fetchOwnerBranding(admin as any, userId);
+    const finalPostText = enforceOwnerLaws(postText, { license: branding.license, byline: branding.byline, withLicense: true });
 
     const platforms = Array.from(
       new Set(rawChannels.map((c) => PLATFORM_MAP[String(c).toLowerCase()]).filter(Boolean)),

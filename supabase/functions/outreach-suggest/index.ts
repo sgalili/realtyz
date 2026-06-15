@@ -15,7 +15,7 @@
 // Idempotency: a partial unique index on (lead_id, trigger_type) WHERE status='pending' prevents dupes.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
-import { enforceOwnerLaws, fetchOwnerLicense } from "../_shared/owner-laws.ts";
+import { enforceOwnerLaws, fetchOwnerBranding } from "../_shared/owner-laws.ts";
 import { fetchSystemRulesBlock } from "../_shared/system-rules.ts";
 
 const corsHeaders = {
@@ -238,8 +238,8 @@ Deno.serve(async (req) => {
       }
       // HARD LAWS — strip street numbers + append broker license footer.
       try {
-        const lic = await fetchOwnerLicense(supabase as any, user.id);
-        draft = enforceOwnerLaws(draft, { license: lic, withLicense: true });
+        const lic = await fetchOwnerBranding(supabase as any, user.id);
+        draft = enforceOwnerLaws(draft, { license: branding.license, byline: branding.byline, withLicense: true });
       } catch (_e) { /* never block */ }
 
       const { error } = await supabase.from("outreach_suggestions").insert({

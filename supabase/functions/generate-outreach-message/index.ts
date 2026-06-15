@@ -9,7 +9,7 @@ import {
 } from "../_shared/guardrails.ts";
 import { loadAgentPersona, renderPersonaPrompt } from "../_shared/persona.ts";
 import { fetchSystemRulesBlock } from "../_shared/system-rules.ts";
-import { enforceOwnerLaws, fetchOwnerLicense, stripStreetNumbers } from "../_shared/owner-laws.ts";
+import { enforceOwnerLaws, fetchOwnerBranding, stripStreetNumbers } from "../_shared/owner-laws.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -285,7 +285,7 @@ ${personaBlock ? personaBlock + "\n\n" : ""}${compliance}`;
     // HARD COMPLIANCE LAWS — strip street numbers from every field, append
     // license footer to the primary message body only.
     try {
-      const ownerLicense = await fetchOwnerLicense(
+      const ownerLicense = await fetchOwnerBranding(
         createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!) as any,
         userData.user.id,
       );
@@ -295,7 +295,7 @@ ${personaBlock ? personaBlock + "\n\n" : ""}${compliance}`;
         draft.highlights = draft.highlights.map((h: unknown) => typeof h === "string" ? stripStreetNumbers(h) : h);
       }
       if (typeof draft.message === "string") {
-        draft.message = enforceOwnerLaws(draft.message, { license: ownerLicense, withLicense: true });
+        draft.message = enforceOwnerLaws(draft.message, { license: branding.license, byline: branding.byline, withLicense: true });
       }
     } catch (_e) { /* never block on enforcement failure */ }
 
