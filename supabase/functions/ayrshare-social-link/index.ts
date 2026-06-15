@@ -115,11 +115,63 @@ Deno.serve(async (req) => {
 
     let profileKey = cleanProfileKey(ws?.ayrshare_profile_key) || null;
     let refId = cleanProfileKey(ws?.ayrshare_ref_id) || null;
-    if (refId && refId !== ACTIVE_WORKSPACE_REF_ID) {
-      return jsonResponse({ error: 'Workspace is not bound to Ayrshare Profile 6200. Rebind the active workspace profile before connecting pages.' }, 409);
-    }
+
+    // ---- AUTO-HEAL: if workspace isn't bound to the active 6200 profile,
+    // look it up on Ayrshare by refId/title and re-bind the workspace row
+    // inline, instead of returning a hard 409 to the client. ----
     if (!profileKey || refId !== ACTIVE_WORKSPACE_REF_ID) {
-      return jsonResponse({ error: 'Missing active Ayrshare Profile 6200 binding. The workspace must use the approved active profile only.' }, 409);
+      console.warn('[ayrshare-social-link] workspace profile binding drift; attempting auto-heal', {
+        currentRefId: refId,
+        hasKey: !!profileKey,
+      });
+      try {
+        const listRes = await fetch(`${AYR_API}/profiles`, {
+          headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}` },
+        });
+        const listData = await listRes.json().catch(() => ({}));
+        const all: any[] = Array.isArray(listData?.profiles)
+          ? listData.profiles
+          : Array.isArray(listData) ? listData : [];
+        const match = all.find((p) =>
+          (typeof p?.refId === 'string' && p.refId.trim() === ACTIVE_WORKSPACE_REF_ID) ||
+          (typeof p?.title === 'string' && p.title.trim() === ACTIVE_WORKSPACE_TITLE)
+        );
+        const healedKey = cleanProfileKey(match?.profileKey);
+        const healedRef = cleanProfileKey(match?.refId);
+        if (healedKey && healedRef === ACTIVE_WORKSPACE_REF_ID) {
+          const { error: updErr } = await admin
+            .from('workspace_social_profile')
+            .update({
+              ayrshare_profile_key: healedKey,
+              ayrshare_ref_id: healedRef,
+              facebook_page_name: ACTIVE_WORKSPACE_TITLE,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', WORKSPACE_ID);
+          if (updErr) {
+            console.error('[ayrshare-social-link] auto-heal update failed', updErr);
+            return jsonResponse({ error: `Auto-heal failed to update workspace binding: ${updErr.message}` }, 500);
+          }
+          profileKey = healedKey;
+          refId = healedRef;
+          console.log('[AYRSHARE RE-BIND] Successfully auto-healed workspace profile mapping context', {
+            refId: healedRef,
+            keyPrefix: healedKey.slice(0, 8),
+          });
+        } else {
+          console.error('[ayrshare-social-link] auto-heal could not find active 6200 profile on Ayrshare', {
+            scanned: all.length,
+          });
+          return jsonResponse({
+            error: 'Auto-heal failed: active Ayrshare Profile 6200 was not found on the Ayrshare account. Please reconnect from settings.',
+          }, 409);
+        }
+      } catch (healErr) {
+        console.error('[ayrshare-social-link] auto-heal exception', healErr);
+        return jsonResponse({
+          error: `Auto-heal exception: ${healErr instanceof Error ? healErr.message : String(healErr)}`,
+        }, 500);
+      }
     }
     if (profileKey && refId === ACTIVE_WORKSPACE_REF_ID) {
       await admin
