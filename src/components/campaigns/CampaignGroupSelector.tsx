@@ -27,17 +27,31 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const fetchFromAyrshare = async (): Promise<FacebookGroup[]> => {
+    const { data: ws } = await supabase
+      .from("workspace_social_profile")
+      .select("ayrshare_profile_key")
+      .eq("id", "00000000-0000-0000-0000-000000000001")
+      .maybeSingle();
+    const activeKey = (ws as any)?.ayrshare_profile_key ?? null;
+    console.log("[FB_GROUPS] fetching via Ayrshare. Active Profile Key:", activeKey);
+    const { data, error } = await supabase.functions.invoke("ayrshare-groups-fetch", { body: {} });
+    console.log("[FB_GROUPS] ayrshare-groups-fetch response:", { data, error });
+    if (error) return [];
+    return Array.isArray((data as any)?.groups) ? (data as any).groups : [];
+  };
+
   const load = async () => {
     setLoading(true);
     setError(null);
     try {
-      const { data, error } = await supabase.functions.invoke("facebook-groups-fetch", { body: {} });
-      if (error || (data as any)?.error) {
-        setGroups([]);
-        onChange([]);
-        return;
+      // 1) Try Ayrshare (uses the active workspace profile key)
+      let list = await fetchFromAyrshare();
+      // 2) Fallback to the Meta direct bypass if Ayrshare returns nothing
+      if (list.length === 0) {
+        const { data } = await supabase.functions.invoke("facebook-groups-fetch", { body: {} });
+        list = Array.isArray((data as any)?.groups) ? (data as any).groups : [];
       }
-      const list: FacebookGroup[] = Array.isArray((data as any)?.groups) ? (data as any).groups : [];
       setGroups(list);
     } catch (e: any) {
       setGroups([]);
@@ -56,26 +70,46 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  const connectGroups = async () => {
+  const handleFetchFacebookGroups = async () => {
     setConnecting(true);
     try {
-      toast.loading("פותח חיבור קבוצות פייסבוק…", { id: "fbg-connect" });
+      const { data: ws } = await supabase
+        .from("workspace_social_profile")
+        .select("ayrshare_profile_key")
+        .eq("id", "00000000-0000-0000-0000-000000000001")
+        .maybeSingle();
+      const activeKey = (ws as any)?.ayrshare_profile_key ?? null;
+      console.log("[FB_GROUPS] Connect Groups clicked. Active Profile Key:", activeKey);
+      toast.loading("מסנכרן קבוצות פייסבוק…", { id: "fbg-connect" });
+
+      // First, try a live pull using the active profile key
+      const ayrGroups = await fetchFromAyrshare();
+      if (ayrGroups.length > 0) {
+        setGroups(ayrGroups);
+        toast.dismiss("fbg-connect");
+        toast.success(`נטענו ${ayrGroups.length} קבוצות`);
+        return;
+      }
+
+      // Otherwise, open the OAuth link so the user can authorize FB Groups
       const { data, error } = await supabase.functions.invoke("ayrshare-social-link", {
-        body: { platform: "fbg" },
+        body: { platform: "fbg", profileKey: activeKey },
       });
       toast.dismiss("fbg-connect");
       if (error) throw new Error(error.message || "יצירת חיבור נכשלה");
       const url = (data as any)?.url;
-      if (!url) throw new Error((data as any)?.error || "לא התקבל קישור חיבור מ-Ayrshare");
+      if (!url) throw new Error((data as any)?.error || "לא נמצאו קבוצות מחוברות");
       window.open(url, "_blank", "noopener,noreferrer");
       toast.success("חבר את הקבוצות בחלון שנפתח, ואז חזור לכאן — הרשימה תתעדכן אוטומטית");
     } catch (e: any) {
       toast.dismiss("fbg-connect");
+      console.error("[FB_GROUPS] connect failed", e);
       toast.error(e?.message ?? "פתיחת חיבור נכשלה");
     } finally {
       setConnecting(false);
     }
   };
+  const connectGroups = handleFetchFacebookGroups;
 
   const toggle = (id: string) => {
     onChange(selectedIds.includes(id) ? selectedIds.filter((x) => x !== id) : [...selectedIds, id]);
