@@ -113,6 +113,8 @@ type Props = {
   refreshSignal?: number;
   /** Hide the internal header (button + title) — used when parent renders its own controls. */
   hideHeader?: boolean;
+  /** Notified once a manual refresh cycle settles, with the live tree count. */
+  onRefreshComplete?: (campaignId: string, result: { ok: boolean; count: number; error?: string }) => void;
 };
 
 
