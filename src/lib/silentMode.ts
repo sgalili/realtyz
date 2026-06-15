@@ -25,7 +25,11 @@ const blockAudioContext = (contextName: 'AudioContext' | 'webkitAudioContext') =
   } as AudioContextConstructor;
 };
 
+const isAllowed = (element: HTMLMediaElement) =>
+  element.dataset?.allowSound === 'true' || element.getAttribute('data-allow-sound') === 'true';
+
 const muteMediaElement = (element: HTMLMediaElement) => {
+  if (isAllowed(element)) return;
   element.muted = true;
   element.volume = 0;
   element.setAttribute('muted', '');
