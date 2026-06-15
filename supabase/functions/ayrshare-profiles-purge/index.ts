@@ -56,32 +56,55 @@ const readAyrshareMessage = (payload: unknown): string => {
   return `${String(p.message ?? "")} ${String(p.error ?? "")}`;
 };
 
-async function deleteAyrshareProfile(profileKey: string | null, title: string | null) {
+async function deleteAyrshareProfile(refId: string | null, profileKey: string | null, title: string | null) {
   const attempts: Array<{ endpoint: string; status: number; ok: boolean; payload: unknown }> = [];
 
-  const documentedHeaders: Record<string, string> = {
-    Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-    "Content-Type": "application/json",
-  };
-  if (profileKey) documentedHeaders["Profile-Key"] = profileKey;
-  const documented = await fetch(`${AYR}/profiles`, {
-    method: "DELETE",
-    headers: documentedHeaders,
-    body: profileKey ? undefined : JSON.stringify({ title }),
-  });
-  const documentedText = await documented.text();
-  let documentedPayload: any = null;
-  try { documentedPayload = documentedText ? JSON.parse(documentedText) : null; } catch { documentedPayload = { raw: documentedText }; }
-  attempts.push({ endpoint: profileKey ? "/profiles:profile-key" : "/profiles:title", status: documented.status, ok: documented.ok, payload: documentedPayload });
-  if (documented.ok) return { ok: true, status: documented.status, payload: documentedPayload, attempts };
+  // Primary: documented enterprise contract — DELETE /api/profiles { profileId: refId }
+  if (refId) {
+    const r = await fetch(`${AYR}/profiles`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ profileId: refId }),
+    });
+    const t = await r.text();
+    let p: any = null;
+    try { p = t ? JSON.parse(t) : null; } catch { p = { raw: t }; }
+    attempts.push({ endpoint: "/profiles:profileId", status: r.status, ok: r.ok, payload: p });
+    if (r.ok) return { ok: true, status: r.status, payload: p, attempts };
+  }
 
+  // Fallback A: Profile-Key header against /profiles
+  if (profileKey) {
+    const r = await fetch(`${AYR}/profiles`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+        "Content-Type": "application/json",
+        "Profile-Key": profileKey,
+      },
+    });
+    const t = await r.text();
+    let p: any = null;
+    try { p = t ? JSON.parse(t) : null; } catch { p = { raw: t }; }
+    attempts.push({ endpoint: "/profiles:profile-key", status: r.status, ok: r.ok, payload: p });
+    if (r.ok) return { ok: true, status: r.status, payload: p, attempts };
+  }
+
+  // Fallback B: legacy /profiles/profile with body
+  const body: Record<string, string> = {};
+  if (refId) body.profileId = refId;
+  if (profileKey) body.profileKey = profileKey;
+  if (!refId && !profileKey && title) body.title = title;
   const fallback = await fetch(`${AYR}/profiles/profile`, {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${AYRSHARE_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(profileKey ? { profileKey } : { title }),
+    body: JSON.stringify(body),
   });
   const fallbackText = await fallback.text();
   let fallbackPayload: any = null;
