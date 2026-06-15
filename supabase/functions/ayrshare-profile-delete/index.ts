@@ -21,7 +21,16 @@ const readAyrshareCode = (payload: unknown): unknown => {
   return (payload as { code?: unknown }).code;
 };
 
-async function deleteAyrshareProfile(refId: string | null, profileKey: string | null) {
+const cleanRefId = (v: string | null | undefined): string | null => {
+  if (!v) return null;
+  // Defensive: strip any stray "ref:" prefix and whitespace so we only ever
+  // send the raw hex RefId to Ayrshare.
+  const s = String(v).trim().replace(/^ref:\s*/i, "");
+  return s || null;
+};
+
+async function deleteAyrshareProfile(refIdRaw: string | null, profileKey: string | null) {
+  const refId = cleanRefId(refIdRaw);
   const attempts: Array<{ endpoint: string; status: number; ok: boolean; payload: unknown }> = [];
 
   // Primary: documented enterprise contract — DELETE /api/profiles { profileId }
