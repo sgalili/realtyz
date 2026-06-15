@@ -159,13 +159,58 @@ Deno.serve(async (req) => {
             keyPrefix: healedKey.slice(0, 8),
           });
         } else {
-          console.error('[ayrshare-social-link] auto-heal could not find active 6200 profile on Ayrshare', {
+          // No matching profile on Ayrshare → provision a fresh one for this
+          // workspace instead of returning a hard 409. Honors the workspace
+          // isolation rule (each workspace owns its own Ayrshare sub-profile).
+          console.warn('[ayrshare-social-link] active profile not found on Ayrshare; provisioning new sub-profile', {
             scanned: all.length,
+            title: ACTIVE_WORKSPACE_TITLE,
+            refId: ACTIVE_WORKSPACE_REF_ID,
           });
-          return jsonResponse({
-            error: 'Auto-heal failed: active Ayrshare Profile 6200 was not found on the Ayrshare account. Please reconnect from settings.',
-          }, 409);
+          const createRes = await fetch(`${AYR_API}/profiles`, {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+              title: ACTIVE_WORKSPACE_TITLE,
+              refId: ACTIVE_WORKSPACE_REF_ID,
+            }),
+          });
+          const createData = await createRes.json().catch(() => ({} as any));
+          const newKey = cleanProfileKey((createData as any)?.profileKey);
+          const newRef = cleanProfileKey((createData as any)?.refId) || ACTIVE_WORKSPACE_REF_ID;
+          if (!createRes.ok || !newKey) {
+            console.error('[ayrshare-social-link] auto-provision failed', createRes.status, createData);
+            return jsonResponse({
+              error: 'Ayrshare profile is unavailable. Please open Settings → Social Connections and reconnect Facebook to re-provision the workspace profile.',
+              code: 'AYR_PROFILE_UNAVAILABLE',
+              fallback: true,
+              detail: (createData as any)?.message || `status ${createRes.status}`,
+            }, 200);
+          }
+          const { error: updErr2 } = await admin
+            .from('workspace_social_profile')
+            .update({
+              ayrshare_profile_key: newKey,
+              ayrshare_ref_id: newRef,
+              facebook_page_name: ACTIVE_WORKSPACE_TITLE,
+              updated_at: new Date().toISOString(),
+            })
+            .eq('id', WORKSPACE_ID);
+          if (updErr2) {
+            console.error('[ayrshare-social-link] post-provision update failed', updErr2);
+            return jsonResponse({ error: `Failed to persist new Ayrshare profile: ${updErr2.message}` }, 500);
+          }
+          profileKey = newKey;
+          refId = newRef;
+          console.log('[AYRSHARE PROVISIONED] new workspace profile bound', {
+            refId: newRef,
+            keyPrefix: newKey.slice(0, 8),
+          });
         }
+
       } catch (healErr) {
         console.error('[ayrshare-social-link] auto-heal exception', healErr);
         return jsonResponse({
