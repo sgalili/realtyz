@@ -157,7 +157,8 @@ Deno.serve(async (req) => {
       const orphan = linked.length === 0;
       const isProtected = keepKeys.has(profileKey);
       let reason: string | null = null;
-      if (suspendedFlag) reason = "suspended_flag";
+      if (forceDeleteAll) reason = "force_delete_all";
+      else if (suspendedFlag) reason = "suspended_flag";
       else if (inactive) reason = "inactive_status";
       else if (orphan && includeOrphans) reason = "orphan_no_links";
 
@@ -177,30 +178,21 @@ Deno.serve(async (req) => {
       };
 
       if (willDelete && !dryRun) {
-        const del = await fetch(`${AYR}/profiles/profile`, {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ profileKey }),
-        });
-        const dt = await del.text();
-        let dp: any = null;
-        try { dp = dt ? JSON.parse(dt) : null; } catch { dp = { raw: dt }; }
-        const code = dp?.code;
-        const msg = String(dp?.message ?? dp?.error ?? "").toLowerCase();
+        const del = await deleteAyrshareProfile(profileKey);
+        const dp: any = del.payload;
+        const code = dp?.code ?? del.attempts.find((a) => (a.payload as any)?.code)?.payload?.code;
+        const msg = String(dp?.message ?? dp?.error ?? del.attempts.map((a) => `${(a.payload as any)?.message ?? ""} ${(a.payload as any)?.error ?? ""}`).join(" ")).toLowerCase();
         const suspended = code === 276 || msg.includes("suspend");
         // Treat suspension (code 276) as a logical success — Ayrshare locks deletion,
         // but we still proceed to force-clear local records so the ghost is gone.
         const effectiveOk = del.ok || suspended;
-        decision.deleted = { ok: effectiveOk, status: del.status, payload: dp };
+        decision.deleted = { ok: effectiveOk, status: del.status, payload: { final: dp, attempts: del.attempts } };
         if (del.ok) {
           console.log(`[AYRSHARE PURGE] Successfully deleted suspended profile ID: ${profileKey.slice(0, 8)}… refId=${refId ?? "(none)"} title=${title ?? "(none)"} reason=${reason}`);
         } else if (suspended) {
           console.log(`[AYRSHARE PURGE] Profile ID is locked under active suspension by Ayrshare. Proceeding to force-clear local records. keyPrefix=${profileKey.slice(0, 8)} refId=${refId ?? "(none)"}`);
         } else {
-          console.warn(`[AYRSHARE PURGE] DELETE failed status=${del.status} keyPrefix=${profileKey.slice(0, 8)} payload=${JSON.stringify(dp)}`);
+          console.warn(`[AYRSHARE PURGE] DELETE failed status=${del.status} keyPrefix=${profileKey.slice(0, 8)} payload=${JSON.stringify(del.attempts)}`);
         }
 
         if (effectiveOk) {
