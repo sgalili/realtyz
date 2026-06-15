@@ -41,12 +41,12 @@ Deno.serve(async (req) => {
       return json({ error: "profile_key required" }, 400);
     }
 
-    // Ayrshare profile delete: DELETE /api/profiles with Profile-Key header.
+    // Ayrshare profile delete: use Master API key (NOT the suspended sub-profile key)
+    // so Ayrshare accepts the call even when the sub-profile is locked under code 276.
     const res = await fetch("https://api.ayrshare.com/api/profiles/profile", {
       method: "DELETE",
       headers: {
         Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-        "Profile-Key": profileKey,
         "Content-Type": "application/json",
       },
       body: JSON.stringify({ profileKey }),
@@ -55,23 +55,45 @@ Deno.serve(async (req) => {
     let payload: any = null;
     try { payload = text ? JSON.parse(text) : null; } catch { payload = { raw: text }; }
 
-    // Clear cached reference from workspace_social_profile if it matched.
+    const code = payload?.code;
+    const msg = String(payload?.message ?? payload?.error ?? "").toLowerCase();
+    const suspended = code === 276 || msg.includes("suspend");
+    if (suspended) {
+      console.log(`[AYRSHARE PURGE] Profile ID is locked under active suspension by Ayrshare. Proceeding to force-clear local records. keyPrefix=${profileKey.slice(0, 8)}`);
+    }
+
+    // Force-clear local references regardless of Ayrshare response.
+    const localCleared: { workspace: number; accounts: number } = { workspace: 0, accounts: 0 };
     try {
-      await admin
+      const { count: wsCount } = await admin
         .from("workspace_social_profile")
         .update({
           ayrshare_profile_key: null,
           ayrshare_ref_id: null,
           facebook_page_id: null,
           facebook_page_name: null,
-        })
+          connected_platforms: [],
+          updated_at: new Date().toISOString(),
+        }, { count: "exact" })
         .eq("ayrshare_profile_key", profileKey);
-    } catch (_) { /* non-fatal */ }
+      localCleared.workspace = wsCount ?? 0;
+
+      const { count: accCount } = await admin
+        .from("ayrshare_social_accounts")
+        .delete({ count: "exact" })
+        .eq("profile_key", profileKey);
+      localCleared.accounts = accCount ?? 0;
+    } catch (e) {
+      console.error("[ayrshare-profile-delete] local cleanup failed", e);
+    }
 
     return json({
-      ok: res.ok,
-      status: res.status,
+      ok: true,
+      ayrshare_ok: res.ok,
+      ayrshare_status: res.status,
+      ayrshare_suspended: suspended,
       ayrshare: payload,
+      local_cleared: localCleared,
     }, 200);
   } catch (e) {
     console.error("[ayrshare-profile-delete] fatal", e);
