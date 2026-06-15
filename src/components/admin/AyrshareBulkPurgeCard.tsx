@@ -89,6 +89,11 @@ export function AyrshareBulkPurgeCard() {
         <Switch id="orphans" checked={includeOrphans} onCheckedChange={setIncludeOrphans} />
       </div>
 
+      <div className="flex items-center justify-between bg-destructive/10 rounded-md p-2 border border-destructive/30">
+        <Label htmlFor="force-all" className="text-xs text-destructive">מצב חירום: מחק גם פרופיל מוגן/פעיל שנמצא בסריקה</Label>
+        <Switch id="force-all" checked={forceDeleteAll} onCheckedChange={setForceDeleteAll} />
+      </div>
+
       <div className="flex gap-2">
         <Button size="sm" variant="outline" disabled={working} onClick={() => run(true)}>
           {working ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'סרוק (Dry-Run)'}
@@ -97,7 +102,7 @@ export function AyrshareBulkPurgeCard() {
           size="sm"
           variant="destructive"
           className="gap-1.5"
-          disabled={working || !result || result.targets_count === 0}
+          disabled={working || !result || (!forceDeleteAll && result.targets_count === 0)}
           onClick={() => run(false)}
         >
           <Trash2 className="h-3.5 w-3.5" />
