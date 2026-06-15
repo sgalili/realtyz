@@ -529,6 +529,40 @@ export default function AiAgentDrawer() {
                     </div>
                   </div>
                 )}
+
+                {msg.role === 'assistant' && msg.research_sources && msg.research_sources.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-border/30">
+                    <p className="text-[10px] text-muted-foreground mb-1.5 flex items-center gap-1">
+                      <Globe className="h-2.5 w-2.5" /> מקורות מחקר חי:
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {msg.research_sources.slice(0, 8).map((rs, ri) => (
+                        <a
+                          key={ri}
+                          href={rs.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors max-w-[200px]"
+                          title={rs.url}
+                        >
+                          <Globe className="h-2.5 w-2.5 shrink-0" />
+                          <span className="truncate">{rs.title || rs.url}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {msg.role === 'user' && msg.attachments && msg.attachments.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {msg.attachments.map((a, ai) => (
+                      <span key={ai} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-white/15 border border-white/20">
+                        <Paperclip className="h-2.5 w-2.5" />
+                        <span className="truncate max-w-[140px]">{a.name}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ))}
