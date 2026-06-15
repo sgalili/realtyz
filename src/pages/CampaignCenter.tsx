@@ -2122,6 +2122,11 @@ const PublishedFeed = () => {
                     מחק פוסט
                   </Button>
                 </div>
+                <CampaignGroupBreakdown
+                  workspaceOwnerId={workspaceOwnerId}
+                  campaignBody={bodyText}
+                  campaignCreatedAt={r.created_at}
+                />
                 <div className="border-t border-border bg-muted/30 px-4 py-3" onClick={(e) => e.stopPropagation()}>
                   {userId ? (
                     <CampaignCommentsStream
