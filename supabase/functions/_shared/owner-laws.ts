@@ -85,11 +85,18 @@ export function scrubForbiddenBylines(input: string): string {
 }
 
 const FOOTER_RE = /רישיון\s*תיווך\s*מספר\s*[:：]/i;
+const OWNER_PHONE = "052-2973500";
+const PHONE_RE = /052[\s\-]?297[\s\-]?3500/;
+const CONTACT_LINE = `לפרטים נוספים, סרטון מהנכס ותיאום ביקור פרטי, אל תהססו לפנות אליי בוואטסאפ או בטלפון ישירות: 📞 ${OWNER_PHONE}`;
 
 /**
- * Append `<byline>\n<license-line>` at the very bottom of `text`, on a fresh
- * line, and ONLY if not already present. `byline` is optional; when omitted
- * we still emit the license line so the law is honored.
+ * Append the canonical owner footer (contact line + optional byline + license)
+ * at the very bottom of `text`, only if not already present.
+ *
+ * Footer shape:
+ *   <contact-line>
+ *   [byline]
+ *   רישיון תיווך מספר: <license>      ← only when a real license is configured
  */
 export function appendLicenseFooter(
   text: string,
@@ -100,20 +107,25 @@ export function appendLicenseFooter(
   if (!body) return body;
   const lic = (license ?? "").toString().trim();
   const bln = (byline ?? "").toString().trim();
+
   // Strip any prior placeholder footer that older drafts may carry.
   let cleaned = body.replace(
     /\n*\s*רישיון\s*תיווך\s*מספר\s*[:：]\s*\[[^\]]*\]\s*$/u,
     "",
   ).replace(/\s+$/g, "");
-  if (FOOTER_RE.test(cleaned)) return cleaned; // already has a real footer
-  if (!lic) {
-    // No license configured → do NOT emit the placeholder line. Optionally
-    // keep just the byline so brand attribution still appears.
-    return bln ? `${cleaned}\n\n${bln}` : cleaned;
+
+  const hasContact = PHONE_RE.test(cleaned);
+  const hasLicense = FOOTER_RE.test(cleaned);
+  if (hasContact && (hasLicense || !lic)) return cleaned;
+
+  const lines: string[] = [];
+  if (!hasContact) lines.push(CONTACT_LINE);
+  if (!hasLicense) {
+    if (bln) lines.push(bln);
+    if (lic) lines.push(`רישיון תיווך מספר: ${lic}`);
   }
-  const licenseLine = `רישיון תיווך מספר: ${lic}`;
-  const footer = bln ? `${bln}\n${licenseLine}` : licenseLine;
-  return `${cleaned}\n\n${footer}`;
+  if (lines.length === 0) return cleaned;
+  return `${cleaned}\n\n${lines.join("\n")}`;
 }
 
 export function enforceOwnerLaws(
@@ -125,10 +137,15 @@ export function enforceOwnerLaws(
   } = {},
 ): string {
   const { license, byline, withLicense = true } = opts;
+  // Step 1: scrub forbidden bylines. Step 2: strip street numbers.
   let out = stripStreetNumbers(scrubForbiddenBylines(text));
+  // Step 3 (ABSOLUTE LAST): inject contact + license footer if missing.
   if (withLicense) out = appendLicenseFooter(out, license, byline);
   return out;
 }
+
+/** Alias retained for callers that still reference the older name. */
+export const sanitizeOutboundText = enforceOwnerLaws;
 
 // ── Owner branding lookup (license + byline). 60s cache per process. ──
 type Branding = { license: string; byline: string };
