@@ -775,18 +775,9 @@ Deno.serve(async (req) => {
       functionName: "whatsapp-webhook",
       errorMessage: message,
     });
-    // Try to notify the Agent that something went wrong so they aren't left guessing.
-    try {
-      await sendRawWhatsApp(
-        SUPABASE_URL,
-        SERVICE_KEY,
-        senderPhone,
-        HEBREW_FILE_ERROR_REPLY,
-      );
-    } catch (_) {
-      // best-effort
-    }
-    return jsonResponse({ ok: false, error: message }, 500);
+    // Acknowledge failures without sending a WhatsApp error reply. Returning 200
+    // prevents provider retries from repeatedly notifying the owner.
+    return jsonResponse({ ok: true, error: message, suppressed_reply: true }, 200);
   }
 });
 
