@@ -4367,6 +4367,7 @@ export type Database = {
         }
         Returns: number
       }
+      can_access_workspace_owner: { Args: { _owner: string }; Returns: boolean }
       can_close_deal: { Args: { _user_id: string }; Returns: boolean }
       can_delete_leads: { Args: { _user_id: string }; Returns: boolean }
       can_manage_data: { Args: { _user_id: string }; Returns: boolean }
