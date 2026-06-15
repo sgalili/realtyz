@@ -60,27 +60,10 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
   const [socialOpen, setSocialOpen] = useState(false);
   const [socials, setSocials] = useState<SocialEntry[]>(() => buildInitialSocials(lead, prefs));
 
-  // Green API credentials
-  const [gaOpen, setGaOpen] = useState(false);
-  const [gaInstance, setGaInstance] = useState('');
-  const [gaToken, setGaToken] = useState('');
-  const [gaActive, setGaActive] = useState<boolean>(false);
-  const [gaSaving, setGaSaving] = useState(false);
+  // GreenAPI credentials are now sourced from global workspace settings (api_configs).
+  // This panel never reads or writes them locally — the enrichment edge function
+  // (fetch-wa-avatars) resolves them server-side.
 
-  useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from('api_configs')
-        .select('is_active, api_key')
-        .eq('service_name', 'Green API')
-        .maybeSingle();
-      if (data?.api_key) {
-        setGaActive(!!data.is_active);
-        const [inst] = String(data.api_key).split(':');
-        setGaInstance(inst ?? '');
-      }
-    })();
-  }, []);
 
   async function persist(patch: { col?: Record<string, any>; pref?: Record<string, any> }, fieldKey: string) {
     setSavingField(fieldKey);
