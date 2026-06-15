@@ -920,7 +920,7 @@ const InlineComposer = ({
         </span>
       </div>
 
-      {hasBody && originalAiBody.trim() && body.trim() !== originalAiBody.trim() && (
+      {hasBody && (
         <div className="flex justify-end">
           <Button
             size="sm"
@@ -928,6 +928,7 @@ const InlineComposer = ({
             disabled={finalizingBody || generating}
             onClick={finalizeBody}
             className="h-8"
+            title="לטשטוש מספרי בית, הוספת חתימת רישיון תיווך ושיוף הניסוח"
           >
             <Sparkles className={cn('h-3.5 w-3.5 ml-1', finalizingBody && 'animate-pulse')} />
             {finalizingBody ? 'מנסח גרסה סופית...' : 'גרסה סופית'}

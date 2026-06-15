@@ -3352,6 +3352,7 @@ export type Database = {
           avatar_url: string | null
           ayrshare_profile_key: string | null
           ayrshare_ref_id: string | null
+          broker_byline: string | null
           broker_license_number: string | null
           city: string | null
           created_at: string
@@ -3381,6 +3382,7 @@ export type Database = {
           avatar_url?: string | null
           ayrshare_profile_key?: string | null
           ayrshare_ref_id?: string | null
+          broker_byline?: string | null
           broker_license_number?: string | null
           city?: string | null
           created_at?: string
@@ -3410,6 +3412,7 @@ export type Database = {
           avatar_url?: string | null
           ayrshare_profile_key?: string | null
           ayrshare_ref_id?: string | null
+          broker_byline?: string | null
           broker_license_number?: string | null
           city?: string | null
           created_at?: string

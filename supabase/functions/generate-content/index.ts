@@ -14,7 +14,7 @@ import {
   CTA_RULE,
 } from "../_shared/grounding.ts";
 import { fetchLearnedOverridesBlock } from "../_shared/persona.ts";
-import { enforceOwnerLaws, fetchOwnerLicense } from "../_shared/owner-laws.ts";
+import { enforceOwnerLaws, fetchOwnerBranding } from "../_shared/owner-laws.ts";
 
 
 const corsHeaders = {
@@ -383,8 +383,12 @@ NO-HASHTAGS RULE (HARD — ZERO TOLERANCE):
 
     // HARD COMPLIANCE LAWS — deterministic safety net (street numbers, license footer).
     try {
-      const ownerLicense = await fetchOwnerLicense(admin as any, userId);
-      content = enforceOwnerLaws(content, { license: ownerLicense, withLicense: true });
+      const branding = await fetchOwnerBranding(admin as any, userId);
+      content = enforceOwnerLaws(content, {
+        license: branding.license,
+        byline: branding.byline,
+        withLicense: true,
+      });
     } catch (_e) { /* never block on enforcement failure */ }
 
 
