@@ -63,7 +63,13 @@ function fmtCountdown(ms: number): string {
  *   - Queued (pending) → grayed countdown badge
  *   - Ready (cooldown elapsed) → expands inline with editable textarea + copy/open
  */
-export function CustomGroupsQuickShare({ body }: { body: string }) {
+export function CustomGroupsQuickShare({
+  body,
+  restrictToGroupIds = null,
+}: {
+  body: string;
+  restrictToGroupIds?: string[] | null;
+}) {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const [groups, setGroups] = useState<CustomGroup[]>([]);
   const [loading, setLoading] = useState(false);
