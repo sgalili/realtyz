@@ -890,6 +890,7 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
         type: "text",
         content: rawContent,
         escalation,
+        research_sources: researchSources,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -898,7 +899,7 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
     if (parsed.type === "text") {
       // Fact-check the AI's draft against verified listings.
       const fact_violations = factCheckDraft(String(parsed.content || ""), listingFacts);
-      return new Response(JSON.stringify({ ...parsed, sources: kbSources, escalation, fact_violations }), {
+      return new Response(JSON.stringify({ ...parsed, sources: kbSources, research_sources: researchSources, escalation, fact_violations }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
