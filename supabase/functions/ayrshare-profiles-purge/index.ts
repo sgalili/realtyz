@@ -218,7 +218,7 @@ Deno.serve(async (req) => {
       const willDelete = (selectedRefIds ? reason !== null : (!isProtected && reason !== null));
       const decision: Decision = {
         profileKey,
-        keyPrefix: profileKey ? profileKey.slice(0, 8) : (refId ? `ref:${refId.slice(0, 8)}` : `title:${(title ?? "unknown").slice(0, 8)}`),
+        keyPrefix: profileKey ? profileKey.slice(0, 8) : (refId ? refId.slice(0, 12) : `title:${(title ?? "unknown").slice(0, 8)}`),
         refId,
         title,
         suspended: suspendedFlag,
