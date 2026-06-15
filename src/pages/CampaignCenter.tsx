@@ -422,6 +422,49 @@ const InlineComposer = ({
   }, [channel.id, platformProfiles]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [generating, setGenerating] = useState(false);
+  const [finalizingBody, setFinalizingBody] = useState(false);
+
+  const finalizeBody = async () => {
+    const edited = body.trim();
+    if (!edited) return;
+    setFinalizingBody(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('finalize-text', {
+        body: {
+          edited_text: edited,
+          original_text: originalAiBody,
+          context: [
+            `Platform: ${channel.label}`,
+            customInstructions ? `Broker instructions: ${customInstructions}` : null,
+            selectedListing?.property_title ? `Promoted listing: ${selectedListing.property_title}` : null,
+          ].filter(Boolean).join('\n\n'),
+          purpose: 'social_post',
+        },
+      });
+      if (error) throw error;
+      const finalText = (data as any)?.final_text;
+      if (typeof finalText !== 'string' || !finalText.trim()) {
+        throw new Error((data as any)?.error || 'לא התקבלה גרסה סופית');
+      }
+      const baseline = originalAiBody;
+      const editedBeforeFinal = edited;
+      const next = finalText.trim().slice(0, MAX_CHARS);
+      setBody(next);
+      setOriginalAiBody(next);
+      learnFromEdit({
+        context: `campaign_post_finalize:${channel.id}`,
+        pairs: [
+          { label: 'post_user_edit', original: baseline, edited: editedBeforeFinal },
+          { label: 'post_final_polish', original: editedBeforeFinal, edited: next },
+        ],
+      });
+      toast.success('נוצרה גרסה סופית');
+    } catch (e: any) {
+      toast.error(e?.message || 'יצירת גרסה סופית נכשלה');
+    } finally {
+      setFinalizingBody(false);
+    }
+  };
 
   // Custom AI generation context (broker steering inputs)
   const [customInstructions, setCustomInstructions] = useState<string>(initial.customInstructions || '');
@@ -876,6 +919,21 @@ const InlineComposer = ({
           {count}/{MAX_CHARS}
         </span>
       </div>
+
+      {hasBody && originalAiBody.trim() && body.trim() !== originalAiBody.trim() && (
+        <div className="flex justify-end">
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={finalizingBody || generating}
+            onClick={finalizeBody}
+            className="h-8"
+          >
+            <Sparkles className={cn('h-3.5 w-3.5 ml-1', finalizingBody && 'animate-pulse')} />
+            {finalizingBody ? 'מנסח גרסה סופית...' : 'גרסה סופית'}
+          </Button>
+        </div>
+      )}
 
 
       {/* Hidden inputs */}
@@ -1969,19 +2027,13 @@ const PublishedFeed = () => {
         return (
           <article
             key={r.id}
-            className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden cursor-pointer"
+            className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden"
             dir={dirAttr}
-            onClick={() => setExpanded((s) => ({ ...s, [r.id]: !isOpen }))}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                setExpanded((s) => ({ ...s, [r.id]: !isOpen }));
-              }
-            }}
           >
-            <header className="p-4 space-y-2">
+            <header
+              className="p-4 space-y-2 cursor-pointer"
+              onClick={() => setExpanded((s) => ({ ...s, [r.id]: !isOpen }))}
+            >
 
               {/* Row 1: post title */}
               <h3 className={cn('font-semibold text-foreground truncate', alignClass)} dir={dirAttr}>
