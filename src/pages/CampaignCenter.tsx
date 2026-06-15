@@ -920,6 +920,21 @@ const InlineComposer = ({
         </span>
       </div>
 
+      {hasBody && originalAiBody.trim() && body.trim() !== originalAiBody.trim() && (
+        <div className="flex justify-end">
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={finalizingBody || generating}
+            onClick={finalizeBody}
+            className="h-8"
+          >
+            <Sparkles className={cn('h-3.5 w-3.5 ml-1', finalizingBody && 'animate-pulse')} />
+            {finalizingBody ? 'מנסח גרסה סופית...' : 'גרסה סופית'}
+          </Button>
+        </div>
+      )}
+
 
       {/* Hidden inputs */}
       <input ref={galleryInputRef} type="file" accept="image/*" multiple className="hidden"
