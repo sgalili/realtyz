@@ -129,6 +129,7 @@ Deno.serve(async (req) => {
       .eq("id", "00000000-0000-0000-0000-000000000001")
       .maybeSingle();
     const activeKey = typeof ws?.ayrshare_profile_key === "string" ? ws.ayrshare_profile_key.trim() : "";
+    const activeRef = typeof ws?.ayrshare_ref_id === "string" ? ws.ayrshare_ref_id.trim() : "";
     if (activeKey && !allowActiveProfileDelete && !forceDeleteAll) keepKeys.add(activeKey);
 
     // 1. List all profiles
@@ -147,7 +148,6 @@ Deno.serve(async (req) => {
     const decisions: Decision[] = [];
     for (const p of profiles) {
       const profileKey = typeof p?.profileKey === "string" ? p.profileKey.trim() : "";
-      if (!profileKey) continue;
       const refId = typeof p?.refId === "string" ? p.refId : null;
       const title = typeof p?.title === "string" ? p.title : null;
       const suspendedFlag = Boolean(p?.suspended);
@@ -156,6 +156,7 @@ Deno.serve(async (req) => {
       let userStatus = 0;
       let inactive = false;
       try {
+        if (!profileKey) throw new Error("profile_key_not_returned_by_list_api");
         const u = await fetch(`${AYR}/user`, {
           headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}`, "Profile-Key": profileKey },
         });
@@ -169,7 +170,7 @@ Deno.serve(async (req) => {
       } catch { /* network noise — treat as unknown, don't auto-delete */ }
 
       const orphan = linked.length === 0;
-      const isProtected = keepKeys.has(profileKey);
+      const isProtected = (profileKey && keepKeys.has(profileKey)) || (!allowActiveProfileDelete && !forceDeleteAll && !!activeRef && refId === activeRef);
       let reason: string | null = null;
       if (forceDeleteAll) reason = "force_delete_all";
       else if (suspendedFlag) reason = "suspended_flag";
@@ -179,7 +180,7 @@ Deno.serve(async (req) => {
       const willDelete = !isProtected && reason !== null;
       const decision: Decision = {
         profileKey,
-        keyPrefix: profileKey.slice(0, 8),
+        keyPrefix: profileKey ? profileKey.slice(0, 8) : (refId ? `ref:${refId.slice(0, 8)}` : `title:${(title ?? "unknown").slice(0, 8)}`),
         refId,
         title,
         suspended: suspendedFlag,
@@ -192,7 +193,7 @@ Deno.serve(async (req) => {
       };
 
       if (willDelete && !dryRun) {
-        const del = await deleteAyrshareProfile(profileKey);
+        const del = await deleteAyrshareProfile(profileKey || null, title);
         const dp: any = del.payload;
         const code = readAyrshareErrorCode(dp) ?? readAyrshareErrorCode(del.attempts.find((a) => readAyrshareErrorCode(a.payload) != null)?.payload);
         const msg = `${readAyrshareMessage(dp)} ${del.attempts.map((a) => readAyrshareMessage(a.payload)).join(" ")}`.toLowerCase();
