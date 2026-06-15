@@ -285,7 +285,7 @@ ${personaBlock ? personaBlock + "\n\n" : ""}${compliance}`;
     // HARD COMPLIANCE LAWS — strip street numbers from every field, append
     // license footer to the primary message body only.
     try {
-      const ownerLicense = await fetchOwnerBranding(
+      const branding = await fetchOwnerBranding(
         createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!) as any,
         userData.user.id,
       );

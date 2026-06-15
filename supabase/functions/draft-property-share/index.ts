@@ -182,7 +182,7 @@ Deno.serve(async (req) => {
 
     // HARD COMPLIANCE LAWS — strip street numbers + append broker license footer.
     try {
-      const lic = await fetchOwnerBranding(admin as any, user.id);
+      const branding = await fetchOwnerBranding(admin as any, user.id);
       draft = enforceOwnerLaws(draft, { license: branding.license, byline: branding.byline, withLicense: true });
     } catch (_e) { /* never block */ }
 
