@@ -9,6 +9,7 @@ import {
   MISSING_TENANT_KEY,
   MISSING_TENANT_KEY_MESSAGE,
   resolveWorkspaceProfileKey,
+  stripMarkdownEmphasis,
   verifyWorkspaceProfileKey,
 } from "../_shared/ayrshare-helpers.ts";
 
@@ -99,7 +100,7 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE, { auth: { persistSession: false } });
 
     const body = await req.json().catch(() => ({}));
-    const postText: string = String(body?.post ?? body?.message ?? "").trim();
+    const postText: string = stripMarkdownEmphasis(String(body?.post ?? body?.message ?? "")).trim();
     const rawChannels: string[] = Array.isArray(body?.channels) ? body.channels : [];
     const campaignName: string = String(body?.campaign_name ?? "Campaign");
     const rawMediaInput: unknown[] = Array.isArray(body?.media_urls) ? body.media_urls.filter(Boolean) : [];

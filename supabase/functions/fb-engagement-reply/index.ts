@@ -2,6 +2,7 @@
 // (comment + Udi's approved reply) pair into the Knowledge Base for future
 // persona learning.
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { stripMarkdownEmphasis } from '../_shared/ayrshare-helpers.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -29,8 +30,9 @@ Deno.serve(async (req) => {
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) throw new Error('Invalid token');
 
-    const { comment_id, final_text, mode = 'hitl' } = await req.json();
-    if (!comment_id || !final_text) throw new Error('comment_id + final_text required');
+    const { comment_id, final_text: rawFinalText, mode = 'hitl' } = await req.json();
+    if (!comment_id || !rawFinalText) throw new Error('comment_id + final_text required');
+    const final_text = stripMarkdownEmphasis(String(rawFinalText));
 
     const admin = createClient(URL_, SERVICE);
     const { data: comment, error: cErr } = await admin
