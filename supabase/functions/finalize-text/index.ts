@@ -75,6 +75,24 @@ Deno.serve(async (req) => {
           ? "Respond in English."
           : "Respond in the SAME language as the edited draft.";
 
+    // Resolve owner branding so we can hard-pin the byline + license footer
+    // for the model AND deterministically re-apply them after generation.
+    const branding = admin ? await fetchOwnerBranding(admin as any, userId) : { license: "", byline: "" };
+    const HARD_LAWS_BLOCK = [
+      "#HARD COMPLIANCE LAWS — HIGHEST PRIORITY, NON-NEGOTIABLE:",
+      "- NEVER include a building / house / apartment number in any street address. \"ארלוזורוב 26\" must become \"ברחוב ארלוזורוב\". Strip ALL numeric suffixes from street addresses.",
+      "- NEVER invent or attach an agency title to the broker's name. Forbidden: \"אודי ויטמן נדל\"ן\", \"אודי ויטמן | תיווך\", \"Udi Vitman Real Estate\", \"Udi Vitman Realty\", or anything similar.",
+      branding.byline
+        ? `- The ONLY allowed broker byline is exactly: "${branding.byline}". Use it only inside the bottom footer block, never inside the body copy.`
+        : `- Do NOT invent any broker title; only the broker's plain name may appear.`,
+      `- ALWAYS end the post with a clean blank line and the footer block below — exactly as written, no markdown, no emoji, no extra text after it:`,
+      branding.byline ? `    ${branding.byline}` : "",
+      branding.license
+        ? `    רישיון תיווך מספר: ${branding.license}`
+        : `    רישיון תיווך מספר: [יש להזין מספר רישיון בפרופיל]`,
+      "#END_HARD_LAWS",
+    ].filter(Boolean).join("\n");
+
     const SYSTEM = [
       "You are a senior copy editor producing the FINAL VERSION of a draft.",
       "The user has already edited the AI's first draft. Their edits are AUTHORITATIVE INTENT — preserve every fact, name, number, price, link, hashtag and emoji they kept.",
@@ -83,6 +101,7 @@ Deno.serve(async (req) => {
       "FORBIDDEN punctuation: em-dash (—), en-dash (–), double hyphen (--), triple hyphen (---). Use commas or periods instead.",
       PURPOSE_HINTS[purpose] || PURPOSE_HINTS.generic,
       langLine,
+      HARD_LAWS_BLOCK,
       learnedBlock || null,
       "Return ONLY the final text, with no preface, no explanation, no quotes around it.",
     ].filter(Boolean).join("\n\n");
