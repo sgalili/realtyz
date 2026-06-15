@@ -41,3 +41,4 @@
 
 
 - [Owner Rules Enforcement](mem://features/owner-rules-enforcement) — Every AI generator (ai-agent, generate-content, generate-outreach-message, outreach-suggest, fb-engagement-draft, suggest-comment-reply, master-research) MUST inject fetchSystemRulesBlock so owner standing orders override persona/template defaults. System prompt block is framed HIGHEST PRIORITY + a user-prompt reminder enforces silent rewrite-to-comply.
+- [Owner Hard Laws](mem://constraints/owner-hard-laws) — Two non-negotiable compliance laws: strip building/house numbers from any street address in generated text, and append `רישיון תיווך מספר: <profiles.broker_license_number>` footer to every post/outreach/property draft. Enforced via system-rules.ts prompt block AND `_shared/owner-laws.ts` post-processor wired into ayrshare-post, generate-content, generate-outreach-message, outreach-suggest, draft-property-share, fb-engagement-reply, sanitizeOutboundText.
