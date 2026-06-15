@@ -108,9 +108,10 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { lead_id, lead_name, mode, context, variants: variantsReq } = body ?? {};
+    const { lead_id, lead_name, mode, context, variants: variantsReq, attachments: attachmentsReq, enable_research: enableResearchReq } = body ?? {};
     let { messages } = body ?? {};
     const variantCount = Math.max(1, Math.min(5, Number(variantsReq ?? 1) || 1));
+    const attachments: Array<{ name?: string; mime?: string; data_url?: string; url?: string }> = Array.isArray(attachmentsReq) ? attachmentsReq : [];
 
     // Deal-Room call shape: no `messages` provided — synthesize from chat_history
     // so the function still works as a "draft-the-next-reply" call.
