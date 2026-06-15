@@ -1566,6 +1566,7 @@ const GlobalSocialFeed = ({
 const PublishedFeed = () => {
   const { settings } = useWhiteLabel();
   const ownerName = settings?.agency_name || 'אודי ויטמן';
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const [rows, setRows] = useState<CampaignRow[] | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
