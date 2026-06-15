@@ -84,24 +84,26 @@ export function scrubForbiddenBylines(input: string): string {
   return out.replace(/[ \t]{2,}/g, " ");
 }
 
-const FOOTER_RE = /רישיון\s*תיווך\s*מספר\s*[:：]/i;
+const FOOTER_RE = /ר\.?\s*מ\s*[:：]\s*3251676/i;
 const OWNER_PHONE = "052-2973500";
 const PHONE_RE = /052[\s\-]?297[\s\-]?3500/;
 const CONTACT_LINE = `לפרטים נוספים, סרטון מהנכס ותיאום ביקור פרטי, אל תהססו לפנות אליי בוואטסאפ או בטלפון ישירות: 📞 ${OWNER_PHONE}`;
 
-// HARD compliance constant. Udi's real broker license number — never replace
-// with a placeholder, never read from env, never fall back to anything else.
+// HARD compliance constants. Udi's real byline + license — never replace,
+// never read from env, never fall back to anything else.
 const DEFAULT_OWNER_LICENSE = "3251676";
+const OWNER_BYLINE_LINE = "אודי ויטמן - אנגלו סכסון, הרצליה/רמה״ש";
+const OWNER_LICENSE_LINE = `ר.מ: ${DEFAULT_OWNER_LICENSE}`;
 
 function buildFooterBlock(_license?: string | null): string {
-  // License is HARDCODED — ignore any caller-supplied value.
-  return `${CONTACT_LINE}\n\nרישיון תיווך מספר: ${DEFAULT_OWNER_LICENSE}`;
+  // Byline + license are HARDCODED — ignore any caller-supplied value.
+  return `${CONTACT_LINE}\n\n${OWNER_BYLINE_LINE}\n${OWNER_LICENSE_LINE}`;
 }
 
 /**
- * Append the canonical owner footer (contact line + hardcoded license) at
- * the very bottom of `text`. The license number is ALWAYS Udi's real number
- * (3251676) — DB values and caller args are ignored.
+ * Append the canonical owner footer (contact line + hardcoded byline +
+ * hardcoded license) at the very bottom of `text`. The byline and license
+ * number are ALWAYS the canonical values — DB values and caller args ignored.
  */
 export function appendLicenseFooter(
   text: string,
@@ -111,17 +113,21 @@ export function appendLicenseFooter(
   const body = String(text ?? "").replace(/\s+$/g, "");
   if (!body) return body;
 
-  // Strip any prior footer (placeholders, wrong numbers, "בהליך אימות", etc.)
-  // so we can re-emit the canonical hardcoded line.
+  // Strip any prior footer variants (old "רישיון תיווך מספר: ...",
+  // "בהליך אימות" placeholders, prior "ר.מ:" lines, prior byline line)
+  // so we can re-emit the canonical block cleanly.
   let cleaned = body
-    .replace(/\n*\s*רישיון\s*תיווך\s*מספר\s*[:：][^\n]*$/u, "")
+    .replace(/\n*\s*רישיון\s*תיווך\s*מספר\s*[:：][^\n]*/gu, "")
+    .replace(/\n*\s*ר\.?\s*מ\s*[:：][^\n]*/gu, "")
+    .replace(/\n*\s*אודי\s+ויטמן\s*-\s*אנגלו[^\n]*/gu, "")
+    .replace(/בהליך\s*אימות/gu, "")
     .replace(/\s+$/g, "");
 
   const hasContact = PHONE_RE.test(cleaned);
-  const lines: string[] = [];
-  if (!hasContact) lines.push(CONTACT_LINE);
-  lines.push(`רישיון תיווך מספר: ${DEFAULT_OWNER_LICENSE}`);
-  return `${cleaned}\n\n${lines.join("\n\n")}`;
+  const parts: string[] = [];
+  if (!hasContact) parts.push(CONTACT_LINE);
+  parts.push(`${OWNER_BYLINE_LINE}\n${OWNER_LICENSE_LINE}`);
+  return `${cleaned}\n\n${parts.join("\n\n")}`;
 }
 
 export function enforceOwnerLaws(

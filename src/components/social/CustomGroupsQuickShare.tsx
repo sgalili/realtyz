@@ -11,17 +11,40 @@ type CustomGroup = {
   group_url: string;
 };
 
+// Canonical hardcoded footer — must match supabase/functions/_shared/owner-laws.ts
+const OWNER_PHONE = '052-2973500';
+const CONTACT_LINE = `לפרטים נוספים, סרטון מהנכס ותיאום ביקור פרטי, אל תהססו לפנות אליי בוואטסאפ או בטלפון ישירות: 📞 ${OWNER_PHONE}`;
+const OWNER_BYLINE_LINE = 'אודי ויטמן - אנגלו סכסון, הרצליה/רמה״ש';
+const OWNER_LICENSE_LINE = 'ר.מ: 3251676';
+
+function ensureCanonicalFooter(text: string): string {
+  const body = String(text ?? '').replace(/\s+$/g, '');
+  if (!body) return body;
+  let cleaned = body
+    .replace(/\n*\s*רישיון\s*תיווך\s*מספר\s*[:：][^\n]*/gu, '')
+    .replace(/\n*\s*ר\.?\s*מ\s*[:：][^\n]*/gu, '')
+    .replace(/\n*\s*אודי\s+ויטמן\s*-\s*אנגלו[^\n]*/gu, '')
+    .replace(/בהליך\s*אימות/gu, '')
+    .replace(/\s+$/g, '');
+  const hasContact = /052[\s\-]?297[\s\-]?3500/.test(cleaned);
+  const parts: string[] = [];
+  if (!hasContact) parts.push(CONTACT_LINE);
+  parts.push(`${OWNER_BYLINE_LINE}\n${OWNER_LICENSE_LINE}`);
+  return `${cleaned}\n\n${parts.join('\n\n')}`;
+}
+
 /**
- * Renders a list of manually-saved Facebook groups (workspace-scoped) with a
- * "Quick Manual Share" button per row. Clicking copies the prepared post body
- * to the clipboard and opens the group URL in a new tab — a workaround for
- * Facebook Graph API restrictions on non-admin group posting.
+ * Workspace-scoped Facebook groups directory. User picks ONE group from the
+ * list, then a single "שיתוף ידני מהיר" button appears below — clicking it
+ * copies the canonical post (with hardcoded byline+license footer) and opens
+ * the selected group in a new tab.
  */
 export function CustomGroupsQuickShare({ body }: { body: string }) {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const [groups, setGroups] = useState<CustomGroup[]>([]);
   const [loading, setLoading] = useState(false);
-  const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [justCopied, setJustCopied] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -44,21 +67,24 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
 
   if (loading || groups.length === 0) return null;
 
-  const handleShare = async (g: CustomGroup) => {
-    const text = (body ?? '').trim();
+  const selected = groups.find((g) => g.id === selectedId) ?? null;
+
+  const handleShare = async () => {
+    if (!selected) return;
+    const text = ensureCanonicalFooter((body ?? '').trim());
     if (!text) {
       toast.error('אין טקסט לפרסום — חולל קודם תוכן');
       return;
     }
     try {
       await navigator.clipboard.writeText(text);
-      setCopiedId(g.id);
-      setTimeout(() => setCopiedId((cur) => (cur === g.id ? null : cur)), 2000);
-      toast.success(`הטקסט הועתק · פותח את "${g.group_name}"`);
+      setJustCopied(true);
+      setTimeout(() => setJustCopied(false), 2000);
+      toast.success(`הטקסט הועתק · פותח את "${selected.group_name}"`);
     } catch {
       toast.error('העתקה נכשלה — העתק ידנית');
     }
-    window.open(g.group_url, '_blank', 'noopener,noreferrer');
+    window.open(selected.group_url, '_blank', 'noopener,noreferrer');
   };
 
   return (
@@ -73,19 +99,19 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
         </span>
       </div>
       <p className="text-[11px] leading-relaxed text-muted-foreground">
-        Facebook חוסם פרסום אוטומטי לקבוצות שאינך מנהל בהן. לחץ על הקבוצה — הטקסט יועתק ללוח, והקבוצה תיפתח בכרטיסייה חדשה להדבקה.
+        Facebook חוסם פרסום אוטומטי לקבוצות שאינך מנהל בהן. בחר קבוצה מהרשימה — ואז יופיע כפתור השיתוף שיעתיק את הטקסט ויפתח את הקבוצה בכרטיסייה חדשה.
       </p>
       <div className="divide-y divide-border/60 overflow-hidden rounded-lg border border-border bg-background">
         {groups.map((g) => {
-          const copied = copiedId === g.id;
+          const isSelected = selectedId === g.id;
           return (
             <button
               key={g.id}
               type="button"
-              onClick={() => handleShare(g)}
+              onClick={() => setSelectedId(isSelected ? null : g.id)}
               className={cn(
                 'flex w-full items-center justify-between gap-3 px-3 py-2 text-right transition',
-                copied ? 'bg-emerald-50 dark:bg-emerald-950/20' : 'hover:bg-muted/50',
+                isSelected ? 'bg-amber-100/70 dark:bg-amber-900/30' : 'hover:bg-muted/50',
               )}
             >
               <div className="min-w-0 flex-1">
@@ -95,17 +121,35 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
                   <span className="truncate">{g.group_url}</span>
                 </div>
               </div>
-              <span className={cn(
-                'inline-flex shrink-0 items-center gap-1 rounded-md px-2.5 py-1 text-[11px] font-bold transition',
-                copied ? 'bg-emerald-600 text-white' : 'bg-[#1877F2] text-white hover:bg-[#1668d8]',
-              )}>
-                {copied ? <Check className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
-                {copied ? 'הועתק' : 'שיתוף ידני מהיר'}
+              <span
+                aria-hidden
+                className={cn(
+                  'flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 transition',
+                  isSelected ? 'border-amber-600 bg-amber-600' : 'border-muted-foreground/40',
+                )}
+              >
+                {isSelected ? <Check className="h-3 w-3 text-white" /> : null}
               </span>
             </button>
           );
         })}
       </div>
+
+      {selected ? (
+        <button
+          type="button"
+          onClick={handleShare}
+          className={cn(
+            'flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold transition',
+            justCopied
+              ? 'bg-emerald-600 text-white'
+              : 'bg-[#1877F2] text-white hover:bg-[#1668d8]',
+          )}
+        >
+          {justCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+          {justCopied ? 'הועתק · פותח את הקבוצה' : `שיתוף ידני ל-"${selected.group_name}"`}
+        </button>
+      ) : null}
     </div>
   );
 }
