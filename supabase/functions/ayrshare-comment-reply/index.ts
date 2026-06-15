@@ -4,15 +4,30 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { sanitizeOutboundText, resolveWorkspaceProfileKey, likeNativeComment } from "../_shared/ayrshare-helpers.ts";
+import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 
 const AYR_REPLY_URL = "https://api.ayrshare.com/api/comments/reply";
 const AYR_MESSAGES_URL = "https://api.ayrshare.com/api/messages";
+const MESSENGER_RELINK_MESSAGE = "Facebook Messenger DM is blocked by Meta permissions. Re-link the Facebook Page and approve messaging/private-reply permissions.";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
     status: s,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+
+function flattenErrorBlob(raw: string, payload: unknown): string {
+  return `${raw || ""}\n${JSON.stringify(payload ?? {})}`;
+}
+
+function isMetaPermissionBlock(status: number | null, raw: string, payload: unknown): boolean {
+  const blob = flattenErrorBlob(raw, payload);
+  return /requires\s+.*permission|pages_messaging|instagram_manage_messages|pages_manage_metadata|missing\s+permissions?|unsupported\s+post\s+request|oauth(exception)?|invalid\s+or\s+expired\s+token|access\s+token\s+.*expired|not\s+authorized|permission\s+.*not\s+granted|application\s+does\s+not\s+have\s+the\s+capability|messag(e|ing).*permission|private\s+reply.*permission|\(#200\)|\(#10\)/i.test(blob) || status === 401 || status === 403;
+}
+
+function isDuplicatePrivateReply(raw: string, payload: unknown): boolean {
+  return /already\s+(been\s+)?sent|private reply.*sent|duplicate|messag(e|ing).*already/i.test(flattenErrorBlob(raw, payload));
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
