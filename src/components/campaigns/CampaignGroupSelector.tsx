@@ -86,11 +86,15 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
       if (list.length === 0) {
         const manual = await fetchCustomGroups();
         console.log("[FB_GROUPS] using custom_user_groups fallback", manual.length);
-        list = manual;
+        setAyrshareGroups([]);
+        setCustomUserGroups(manual);
+        return;
       }
-      setGroups(list);
+      setAyrshareGroups(list);
+      setCustomUserGroups([]);
     } catch (e: any) {
-      setGroups([]);
+      setAyrshareGroups([]);
+      setCustomUserGroups([]);
       onChange([]);
       setError(null);
     } finally {
@@ -121,7 +125,8 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
       // First, try a live pull using the active profile key
       const ayrGroups = await fetchFromAyrshare();
       if (ayrGroups.length > 0) {
-        setGroups(ayrGroups);
+        setAyrshareGroups(ayrGroups);
+        setCustomUserGroups([]);
         toast.dismiss("fbg-connect");
         toast.success(`נטענו ${ayrGroups.length} קבוצות`);
         return;
@@ -133,7 +138,8 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
       const manual = await fetchCustomGroups();
       toast.dismiss("fbg-connect");
       if (manual.length > 0) {
-        setGroups(manual);
+        setAyrshareGroups([]);
+        setCustomUserGroups(manual);
         toast.success(`נטענו ${manual.length} קבוצות לשיתוף ידני מהיר`);
         return;
       }
