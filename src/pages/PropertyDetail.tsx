@@ -313,6 +313,13 @@ export default function PropertyDetail() {
               </div>
             </Card>
           )}
+
+          {projectName && (
+            <ProjectAlternativesCard
+              currentListingId={property.id}
+              projectName={projectName}
+            />
+          )}
         </div>
 
         {/* Agent sidebar */}
