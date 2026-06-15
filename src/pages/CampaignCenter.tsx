@@ -1972,7 +1972,10 @@ const PublishedFeed = () => {
             className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden"
             dir={dirAttr}
           >
-            <header className="p-4 space-y-2">
+            <header
+              className="p-4 space-y-2 cursor-pointer"
+              onClick={() => setExpanded((s) => ({ ...s, [r.id]: !isOpen }))}
+            >
 
               {/* Row 1: post title */}
               <h3 className={cn('font-semibold text-foreground truncate', alignClass)} dir={dirAttr}>
