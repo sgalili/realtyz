@@ -21,7 +21,7 @@ import {
   ArrowUpRight, ArrowDownLeft, Upload, FileSpreadsheet, AlertTriangle,
   Users, Download, Megaphone, Trash2, X, Sparkles, Eye, SlidersHorizontal,
   Heart, MessageCircle, UserPlus, Bot, Map, Smile, Meh, Frown,
-  Wallet, Compass, Radio, Target, Home as HomeIcon
+  Wallet, Compass, Radio, Target, Home as HomeIcon, Phone as PhoneIcon, Mail
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
@@ -42,7 +42,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import NewLeadDialog from '@/components/leads/NewLeadDialog';
-import LeadEnrichmentPanel from '@/components/leads/LeadEnrichmentPanel';
+import LeadEnrichmentPanel, { LeadEnrichmentButton } from '@/components/leads/LeadEnrichmentPanel';
 import { useFreemiumStatus } from '@/hooks/useFreemiumStatus';
 import { PriceTag } from '@/components/PriceTag';
 import { Rows, Rows3, Home, Building2 } from 'lucide-react';
@@ -1332,20 +1332,35 @@ const LeadCRM = () => {
                     <div className="flex-1 min-w-0">
                       <p className="text-lg font-bold truncate">{selectedVoter.full_name || 'מתעניין לא ידוע'}</p>
                       <p className="text-sm text-muted-foreground font-normal" dir="ltr">{formatPhoneDisplay(selectedVoter.phone_number)}</p>
-                      <a
-                        href={`https://wa.me/${(selectedVoter.phone_number || '').replace(/\D/g, '')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-1 mt-1 text-xs text-emerald-600 hover:text-emerald-700 font-medium"
-                      >
-                        <MessageCircle className="h-3.5 w-3.5" /> פתח בוואטסאפ
-                      </a>
+                      {(() => {
+                        const phoneDigits = (selectedVoter.phone_number || '').replace(/\D/g, '');
+                        const email = (selectedVoter as any).email as string | undefined;
+                        const aiOn = !!selectedVoter.ai_autopilot;
+                        const channels: { key: string; href?: string; onClick?: () => void; icon: JSX.Element; label: string; active: boolean; tone?: string }[] = [
+                          { key: 'chat',    onClick: () => { setSelectedVoterId(null); window.location.assign(`/omnichannel-inbox?lead=${selectedVoter.id}`); }, icon: <MessageCircle className="h-3.5 w-3.5" />, label: 'צ׳אט', active: true },
+                          { key: 'ai',      onClick: undefined, icon: <Bot className="h-3.5 w-3.5" />, label: aiOn ? 'AI פעיל' : 'AI כבוי', active: aiOn, tone: aiOn ? 'border-emerald-500 text-emerald-700 bg-emerald-50' : 'border-slate-300 text-slate-500 bg-slate-50' },
+                          { key: 'call',    href: phoneDigits ? `tel:+${phoneDigits}` : undefined, icon: <PhoneIcon className="h-3.5 w-3.5" />, label: 'חיוג', active: !!phoneDigits },
+                          { key: 'email',   href: email ? `mailto:${email}` : undefined, icon: <Mail className="h-3.5 w-3.5" />, label: 'דוא״ל', active: !!email },
+                          { key: 'whatsapp',href: phoneDigits ? `https://wa.me/${phoneDigits}` : undefined, icon: <MessageCircle className="h-3.5 w-3.5" />, label: 'WhatsApp', active: !!phoneDigits, tone: phoneDigits ? 'border-emerald-500 text-emerald-700 bg-emerald-50 hover:bg-emerald-100' : '' },
+                        ];
+                        return (
+                          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                            {channels.map((c) => {
+                              const base = `inline-flex items-center gap-1 h-7 px-2 rounded-md border text-[11px] font-semibold transition-colors ${c.active ? (c.tone || 'border-primary/40 text-primary bg-primary/5 hover:bg-primary/10') : 'border-slate-200 text-slate-400 bg-slate-50/60 cursor-not-allowed opacity-60'}`;
+                              if (!c.active) return <span key={c.key} className={base}>{c.icon}{c.label}</span>;
+                              if (c.href) return <a key={c.key} href={c.href} target={c.href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" className={base}>{c.icon}{c.label}</a>;
+                              return <button key={c.key} type="button" onClick={c.onClick} className={base}>{c.icon}{c.label}</button>;
+                            })}
+                          </div>
+                        );
+                      })()}
                     </div>
                     <Badge className={`border text-xs ${getLoyalty(selectedVoter.status).color}`} variant="outline">
                       {getLoyalty(selectedVoter.status).label}
                     </Badge>
                   </SheetTitle>
                 </SheetHeader>
+
 
                 <div className="mt-6 space-y-6">
                   {/* AI Personal Digital Agent Toggle */}
@@ -1374,56 +1389,92 @@ const LeadCRM = () => {
                     />
                   </div>
 
-                  {/* Real Estate Sales Closer Grid — high-contrast labels */}
+                  {/* Profile data enrichment — now sits directly under the AI master switch */}
+                  <LeadEnrichmentButton lead={selectedVoter} />
+
+                  {/* Real Estate Sales Closer Grid — editable dropdowns, high-contrast labels */}
                   {(() => {
                     const prefs = ((selectedVoter as any).preferences ?? {}) as Record<string, any>;
-                    const dealTypeMap: Record<string, string> = {
-                      sale: 'קנייה', rent: 'שכירות', investment: 'השקעה', sell: 'מכירה',
+                    const dealType: string = (selectedVoter as any).deal_type ?? '';
+                    const propertyType: string = prefs.property_type || prefs.listing_type || '';
+                    const budgetRange: string = prefs.budget_range || '';
+                    const source: string = prefs.source || prefs.lead_source || (selectedVoter as any).source || '';
+                    const stage: string = (selectedVoter as any).lead_stage || selectedVoter.status || '';
+                    const area: string = (selectedVoter as any).neighborhood || selectedVoter.city || '';
+
+                    const dealTypeOpts = [
+                      { v: 'sale', l: 'קנייה' }, { v: 'rent', l: 'שכירות' },
+                      { v: 'investment', l: 'השקעה' }, { v: 'sell', l: 'מכירה' },
+                    ];
+                    const propertyOpts = [
+                      { v: 'apartment', l: 'דירת מגורים' }, { v: 'penthouse', l: 'פנטהאוז' },
+                      { v: 'cottage', l: "קוטג'" }, { v: 'house', l: 'בית פרטי' },
+                      { v: 'studio', l: 'סטודיו' }, { v: 'office', l: 'משרד' },
+                    ];
+                    const budgetOpts = [
+                      { v: '0-1500000',       l: 'עד 1.5M ₪' },
+                      { v: '1500000-2500000', l: '1.5M–2.5M ₪' },
+                      { v: '2500000-4000000', l: '2.5M–4M ₪' },
+                      { v: '4000000-6000000', l: '4M–6M ₪' },
+                      { v: '6000000-10000000',l: '6M–10M ₪' },
+                      { v: '10000000+',       l: 'מעל 10M ₪' },
+                    ];
+                    const stageOpts = [
+                      { v: 'cold', l: 'מתעניין קר' }, { v: 'qualified', l: 'ליד מוסמך' },
+                      { v: 'touring', l: 'בסיור נכסים' }, { v: 'offer_pending', l: 'ממתין להצעה' },
+                      { v: 'negotiation', l: 'במשא ומתן' }, { v: 'closed', l: 'סגר עסקה' },
+                    ];
+                    const sourceOpts = [
+                      { v: 'facebook_groups', l: 'פייסבוק קבוצות' }, { v: 'facebook', l: 'פייסבוק' },
+                      { v: 'instagram', l: 'אינסטגרם' }, { v: 'whatsapp', l: 'וואטסאפ' },
+                      { v: 'inbound_call', l: 'שיחה נכנסת' }, { v: 'yad2', l: 'יד2' },
+                      { v: 'website', l: 'אתר' }, { v: 'manual', l: 'הוזן ידנית' },
+                    ];
+                    const areaOpts = [
+                      'תל אביב', 'רמת גן', 'גבעתיים', 'הרצליה', 'רעננה', 'כפר סבא',
+                      'נתניה', 'ראשון לציון', 'חיפה', 'ירושלים', 'באר שבע',
+                    ];
+
+                    const saveLead = async (patch: Record<string, any>) => {
+                      const { error } = await supabase.from('leads').update(patch as any).eq('id', selectedVoter.id);
+                      if (error) { toast.error('שגיאה בעדכון'); return; }
+                      toast.success('עודכן');
+                      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
                     };
-                    const propertyTypeMap: Record<string, string> = {
-                      apartment: 'דירת מגורים', penthouse: 'פנטהאוז', cottage: "קוטג'",
-                      office: 'משרד', house: 'בית פרטי', studio: 'סטודיו',
-                    };
-                    const sourceMap: Record<string, string> = {
-                      facebook_groups: 'פייסבוק קבוצות', facebook: 'פייסבוק',
-                      whatsapp: 'וואטסאפ', inbound_call: 'שיחה נכנסת',
-                      yad2: 'יד2', instagram: 'אינסטגרם', website: 'אתר', manual: 'הוזן ידנית',
-                    };
-                    const stageMap: Record<string, string> = {
-                      new: 'מתעניין קר', cold: 'מתעניין קר',
-                      qualified: 'ליד מוסמך', touring: 'בסיור נכסים',
-                      offer_pending: 'ממתין להצעה', negotiation: 'במשא ומתן',
-                      closed: 'סגר עסקה', won: 'סגר עסקה',
-                    };
-                    const dealType = (selectedVoter as any).deal_type;
-                    const propertyType = prefs.property_type || prefs.listing_type;
-                    const budget = prefs.budget_max || prefs.monthly_rent_max;
-                    const budgetLabel = budget
-                      ? `${Number(budget).toLocaleString('he-IL')} ₪${prefs.monthly_rent_max ? ' / חודש' : ''}`
-                      : '—';
-                    const source = prefs.source || prefs.lead_source || (selectedVoter as any).source;
-                    const stage = (selectedVoter as any).lead_stage || selectedVoter.status;
-                    const area = [selectedVoter.city, (selectedVoter as any).neighborhood].filter(Boolean).join(' · ') || '—';
-                    const cell = (icon: JSX.Element, label: string, value: string) => (
-                      <div className="p-3 rounded-lg bg-slate-100 border border-slate-200 space-y-1">
-                        <p className="text-sm font-bold text-slate-900 flex items-center gap-1.5">{icon}{label}</p>
-                        <p className="text-base font-semibold text-slate-800 truncate">{value}</p>
+                    const savePref = (pref: Record<string, any>) =>
+                      saveLead({ preferences: { ...prefs, ...pref } });
+
+                    const SelectCell = ({
+                      icon, label, value, placeholder, options, onChange,
+                    }: { icon: JSX.Element; label: string; value: string; placeholder: string; options: { v: string; l: string }[]; onChange: (v: string) => void }) => (
+                      <div className="p-3 rounded-lg bg-slate-100 border border-slate-200 space-y-1.5">
+                        <p className="text-xs font-bold text-slate-900 flex items-center gap-1.5">{icon}{label}</p>
+                        <Select value={value || undefined} onValueChange={onChange}>
+                          <SelectTrigger className="h-8 text-sm font-semibold text-slate-900 bg-white">
+                            <SelectValue placeholder={placeholder} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {options.map((o) => <SelectItem key={o.v} value={o.v}>{o.l}</SelectItem>)}
+                          </SelectContent>
+                        </Select>
                       </div>
                     );
+
                     return (
                       <div className="grid grid-cols-2 gap-3">
-                        {cell(<Tag className="h-3.5 w-3.5 text-slate-700" />, 'סוג עסקה', dealType ? (dealTypeMap[dealType] || dealType) : '—')}
-                        {cell(<Radio className="h-3.5 w-3.5 text-slate-700" />, 'ערוץ הגעה', source ? (sourceMap[source] || source) : '—')}
-                        {cell(<Wallet className="h-3.5 w-3.5 text-slate-700" />, 'תקציב מבוקש', budgetLabel)}
-                        {cell(<Target className="h-3.5 w-3.5 text-slate-700" />, 'סטטוס לקוח', stage ? (stageMap[stage] || stage) : '—')}
-                        {cell(<HomeIcon className="h-3.5 w-3.5 text-slate-700" />, 'סוג נכס מועדף', propertyType ? (propertyTypeMap[propertyType] || propertyType) : '—')}
-                        {cell(<Compass className="h-3.5 w-3.5 text-slate-700" />, 'אזור ביקוש מועדף', area)}
+                        <SelectCell icon={<Tag className="h-3.5 w-3.5 text-slate-700" />} label="סוג עסקה" value={dealType} placeholder="בחר עסקה" options={dealTypeOpts} onChange={(v) => saveLead({ deal_type: v })} />
+                        <SelectCell icon={<Radio className="h-3.5 w-3.5 text-slate-700" />} label="ערוץ הגעה" value={source} placeholder="בחר ערוץ" options={sourceOpts} onChange={(v) => savePref({ source: v })} />
+                        <SelectCell icon={<Wallet className="h-3.5 w-3.5 text-slate-700" />} label="תקציב מבוקש" value={budgetRange} placeholder="בחר תקציב" options={budgetOpts} onChange={(v) => savePref({ budget_range: v })} />
+                        <SelectCell icon={<Target className="h-3.5 w-3.5 text-slate-700" />} label="סטטוס לקוח" value={stage} placeholder="בחר סטטוס" options={stageOpts} onChange={(v) => saveLead({ lead_stage: v })} />
+                        <SelectCell icon={<HomeIcon className="h-3.5 w-3.5 text-slate-700" />} label="סוג נכס מועדף" value={propertyType} placeholder="בחר נכס" options={propertyOpts} onChange={(v) => savePref({ property_type: v })} />
+                        <SelectCell icon={<Compass className="h-3.5 w-3.5 text-slate-700" />} label="אזור ביקוש מועדף" value={area} placeholder="בחר אזור" options={areaOpts.map((c) => ({ v: c, l: c }))} onChange={(v) => saveLead({ neighborhood: v })} />
                       </div>
                     );
                   })()}
 
-                  {/* Demographics + Social + Web enrichment + GreenAPI */}
-                  <LeadEnrichmentPanel lead={selectedVoter} />
+                  {/* Demographics + Social (collapsed) + GreenAPI */}
+                  <LeadEnrichmentPanel lead={selectedVoter} hideEnrichmentButton />
+
 
                   <Separator />
 
