@@ -145,6 +145,15 @@ export function sanitizeOutboundText(input: string): string {
     .replace(/-{2,}/g, " ")
     .replace(/\s{2,}/g, " ")
     .trim();
+  // HARD LAW #1 — strip building numbers from street addresses on every
+  // outbound public surface (comments, replies, captions). Inline import
+  // to avoid a circular dependency with owner-laws.ts.
+  try {
+    // dynamic require pattern works at deno cold-start
+    // deno-lint-ignore no-explicit-any
+    const m = (globalThis as any).__ownerLaws ?? null;
+    if (m?.stripStreetNumbers) out = m.stripStreetNumbers(out);
+  } catch { /* noop */ }
   return out;
 }
 
