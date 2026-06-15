@@ -476,6 +476,69 @@ Deno.serve(async (req) => {
       } catch (e) {
         console.warn("system-rule capture failed:", e instanceof Error ? e.message : e);
       }
+      // RESEARCH INTERCEPTOR — fires BEFORE routeOwnerCommand. If the owner
+      // texts a research directive ("תחקור את שכונת...", "תעשה לי דוח על..."),
+      // bypass the standard router and execute the master-research engine
+      // (Firecrawl + Gemini synthesis), then reply with the clean Hebrew brief.
+      try {
+        const { hasResearchTrigger, extractResearchSubject } = await import("../_shared/research-intel.ts");
+        if (hasResearchTrigger(msg.text)) {
+          const subject = extractResearchSubject(msg.text);
+          if (subject) {
+            await sendRawWhatsApp(
+              SUPABASE_URL,
+              SERVICE_KEY,
+              senderPhone,
+              `קצין המודיעין נכנס לפעולה.\nמתחיל מחקר חי על: ${subject}.\nאחזור אליך תוך כמה רגעים עם דוח מובנה.`,
+            );
+            const researchRes = await fetch(`${SUPABASE_URL}/functions/v1/master-research`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${SERVICE_KEY}`,
+              },
+              body: JSON.stringify({
+                query: subject,
+                mode: "neighborhood",
+                workspace_owner_id: ownerUserId,
+                persist: true,
+              }),
+            });
+            const rj: any = await researchRes.json().catch(() => ({}));
+            const brief = String(rj?.brief ?? "").trim();
+            const sources: Array<{ url?: string; title?: string }> = Array.isArray(rj?.sources) ? rj.sources : [];
+            let replyText: string;
+            if (brief) {
+              const srcLines = sources
+                .slice(0, 5)
+                .map((s, i) => `${i + 1}. ${(s.title || s.url || "").slice(0, 90)}${s.url ? `\n${s.url}` : ""}`)
+                .join("\n");
+              replyText = [
+                `דוח מודיעין — ${subject}`,
+                "",
+                brief,
+                srcLines ? "\n— מקורות —\n" + srcLines : "",
+                "\nהדוח נשמר בזיכרון המשרד ויוטמע אוטומטית בפוסטים, תגובות ושיחות שיתייחסו לאזור הזה.",
+              ].filter(Boolean).join("\n");
+            } else {
+              replyText = `לא הצלחתי להפיק דוח על "${subject}" כרגע. נסה ניסוח אחר או נסה שוב עוד מספר דקות.`;
+            }
+            await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, replyText.slice(0, 3800));
+            return jsonResponse({
+              ok: true,
+              companion: "master_research",
+              owner_blocked_lead_autopilot: true,
+              subject,
+              persisted: rj?.persisted === true,
+              source_count: sources.length,
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("master-research interceptor failed:", e instanceof Error ? e.message : e);
+        // fall through to normal router
+      }
+
       try {
         const routed = await routeOwnerCommand({
           admin,
