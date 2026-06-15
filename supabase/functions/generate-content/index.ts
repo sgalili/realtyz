@@ -14,6 +14,7 @@ import {
   CTA_RULE,
 } from "../_shared/grounding.ts";
 import { fetchLearnedOverridesBlock } from "../_shared/persona.ts";
+import { enforceOwnerLaws, fetchOwnerLicense } from "../_shared/owner-laws.ts";
 
 
 const corsHeaders = {
