@@ -17,6 +17,7 @@ import {
   type PropertyType,
 } from '@/lib/homelyMockProperties';
 import { ShareWithLeadDialog } from '@/components/properties/ShareWithLeadDialog';
+import { ProjectAlternativesCard } from '@/components/properties/ProjectAlternativesCard';
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
