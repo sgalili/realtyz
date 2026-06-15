@@ -84,6 +84,11 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
   // TTS
   const [ttsText, setTtsText] = useState('');
   const [generatingTts, setGeneratingTts] = useState(false);
+  const [autoScripting, setAutoScripting] = useState(false);
+  const [scriptEdited, setScriptEdited] = useState(false);
+  const [savingFinal, setSavingFinal] = useState(false);
+  const lastAutoScriptRef = useRef<string>('');
+  const [listingSearch, setListingSearch] = useState('');
 
   // Recording
   const [recording, setRecording] = useState(false);
