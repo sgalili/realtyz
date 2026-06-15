@@ -197,11 +197,16 @@ function PersonalTab() {
       try {
         const { data } = await supabase
           .from('profiles')
-          .select('broker_license_number')
+          .select('broker_license_number, broker_byline')
           .eq('id', user!.id)
           .maybeSingle();
-        if (data && typeof (data as any).broker_license_number === 'string') {
-          setBrokerLicense((data as any).broker_license_number ?? '');
+        if (data) {
+          if (typeof (data as any).broker_license_number === 'string') {
+            setBrokerLicense((data as any).broker_license_number ?? '');
+          }
+          if (typeof (data as any).broker_byline === 'string') {
+            setBrokerByline((data as any).broker_byline ?? '');
+          }
         }
       } catch { /* ignore */ }
     })();
