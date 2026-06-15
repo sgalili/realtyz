@@ -125,7 +125,7 @@ Deno.serve(async (req) => {
     // Always protect the active workspace profile from accidental deletion.
     const { data: ws } = await admin
       .from("workspace_social_profile")
-      .select("ayrshare_profile_key")
+      .select("ayrshare_profile_key, ayrshare_ref_id")
       .eq("id", "00000000-0000-0000-0000-000000000001")
       .maybeSingle();
     const activeKey = typeof ws?.ayrshare_profile_key === "string" ? ws.ayrshare_profile_key.trim() : "";
