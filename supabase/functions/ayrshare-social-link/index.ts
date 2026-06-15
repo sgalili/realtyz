@@ -194,6 +194,63 @@ Deno.serve(async (req) => {
         });
         return jsonResponse({ error: 'Active Ayrshare workspace profile 6200 was rejected by Ayrshare. Re-check the profile key before connecting pages.' }, 403);
       }
+
+      // ---- FB GROUPS PRE-FLIGHT: force profile metadata verification to
+      // confirm the underlying Facebook token actually carries the
+      // "Publish to Groups" scope. If the profile is active but groups
+      // come back empty / scope-mismatched, surface a friendly UI error
+      // instead of silently generating a relink URL that the user has
+      // already clicked through.
+      const wantsGroupsCheck = !!body?.verifyGroupsAccess || platform === 'facebook_groups';
+      if (wantsGroupsCheck) {
+        try {
+          const meRes = await fetch(`${AYR_API}/profiles/me`, {
+            headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}`, 'Profile-Key': profileKey },
+          });
+          const mePayload = await meRes.json().catch(() => ({}));
+          const activeSocials: string[] = Array.isArray(mePayload?.activeSocialAccounts)
+            ? mePayload.activeSocialAccounts.map((s: any) => String(s).toLowerCase())
+            : Array.isArray(mePayload?.displayNames)
+              ? mePayload.displayNames.map((d: any) => String(d?.platform ?? '').toLowerCase()).filter(Boolean)
+              : [];
+          const fbActive = activeSocials.includes('facebook');
+
+          // Probe Ayrshare's groups listing for this profile to detect a
+          // scope mismatch (FB linked, but Publish-to-Groups missing).
+          let groupsCount = 0;
+          let groupsErrorMsg: string | null = null;
+          try {
+            const grpRes = await fetch(`${AYR_API}/feed/facebook/groups`, {
+              headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}`, 'Profile-Key': profileKey },
+            });
+            const grpPayload = await grpRes.json().catch(() => ({}));
+            const grpList: any[] = Array.isArray(grpPayload?.groups)
+              ? grpPayload.groups
+              : Array.isArray(grpPayload?.data) ? grpPayload.data
+              : Array.isArray(grpPayload) ? grpPayload : [];
+            groupsCount = grpList.length;
+            if (!grpRes.ok) {
+              groupsErrorMsg = (grpPayload?.message || grpPayload?.error || `HTTP ${grpRes.status}`).toString();
+            }
+          } catch (gErr) {
+            groupsErrorMsg = gErr instanceof Error ? gErr.message : String(gErr);
+          }
+
+          if (fbActive && groupsCount === 0) {
+            console.warn('[ayrshare-social-link] FB active but Publish-to-Groups scope missing', {
+              refId,
+              groupsErrorMsg,
+            });
+            return jsonResponse({
+              error: "Please disconnect and re-connect Facebook inside the social settings, ensuring 'Publish to Groups' permissions are checked.",
+              code: 'FB_GROUPS_SCOPE_MISSING',
+              detail: groupsErrorMsg ?? 'Facebook profile is linked but no groups were returned.',
+            }, 409);
+          }
+        } catch (preErr) {
+          console.warn('[ayrshare-social-link] groups pre-flight failed (non-fatal)', preErr instanceof Error ? preErr.message : String(preErr));
+        }
+      }
     }
 
     // ---- SAFETY GUARD: only touch realtyz- prefixed profiles ----
