@@ -493,27 +493,31 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
                     </a>
                   </div>
 
-                  {isReady ? (
-                    <div className="space-y-2 border-t border-emerald-300/40 bg-emerald-50/30 px-3 py-2 dark:bg-emerald-950/10">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-bold text-emerald-900 dark:text-emerald-200">
-                          ערוך את הטקסט לפני שיתוף
-                        </span>
-                        <span className="text-[10px] text-muted-foreground" dir="ltr">
-                          {(draftById[row!.id] ?? '').length} chars
-                        </span>
-                      </div>
-                      <Textarea
-                        value={draftById[row!.id] ?? ''}
-                        onChange={(e) => setDraftById((d) => ({ ...d, [row!.id]: e.target.value }))}
-                        rows={9}
-                        dir="rtl"
-                        className="min-h-[160px] resize-y bg-background text-[13px] leading-relaxed"
-                        placeholder="התוכן יופיע כאן..."
-                      />
+                  <div className="space-y-2 border-t border-border/40 bg-muted/20 px-3 py-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-bold text-foreground">
+                        {isReady ? 'ערוך את הטקסט לפני שיתוף' : 'טיוטת הפוסט (נשמרת אוטומטית)'}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground" dir="ltr">
+                        {(draftById[g.id] ?? '').length} chars
+                      </span>
+                    </div>
+                    <Textarea
+                      value={draftById[g.id] ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setDraftById((d) => ({ ...d, [g.id]: v }));
+                        scheduleSave(g.id, v);
+                      }}
+                      rows={9}
+                      dir="rtl"
+                      className="min-h-[160px] resize-y bg-background text-[13px] leading-relaxed"
+                      placeholder="התוכן יופיע כאן..."
+                    />
+                    {isReady ? (
                       <button
                         type="button"
-                        onClick={() => { void handleShareReady(); }}
+                        onClick={() => { void handleShareReady(g.id, row!); }}
                         className={cn(
                           'flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold transition',
                           justCopiedId === row!.id
@@ -524,8 +528,9 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
                         {justCopiedId === row!.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                         {justCopiedId === row!.id ? 'הועתק · פותח את הקבוצה' : 'העתק את הטקסט הערוך ופתח את הקבוצה'}
                       </button>
-                    </div>
-                  ) : null}
+                    ) : null}
+                  </div>
+
                 </div>
               ) : null}
             </div>
