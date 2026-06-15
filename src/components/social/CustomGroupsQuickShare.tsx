@@ -138,7 +138,26 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
     setDraftById((d) => ({ ...d, [readyRow.id]: composed }));
   }, [readyRow, body, draftById]);
 
+  // Auto-confirm from a WhatsApp deep link: /campaigns?action=confirm&queue_id=X.
+  // Declared BEFORE any early return so hook order stays stable.
+  const shareReadyRef = useRef<(row?: QueuedRow) => void>(() => {});
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') !== 'confirm') return;
+    const qid = params.get('queue_id');
+    if (!qid) return;
+    const target = queue.find((r) => r.id === qid && r.status === 'ready');
+    if (!target) return;
+    params.delete('action');
+    params.delete('queue_id');
+    const next = `${window.location.pathname}${params.toString() ? `?${params}` : ''}`;
+    window.history.replaceState({}, '', next);
+    setTimeout(() => { shareReadyRef.current?.(target); }, 150);
+  }, [queue]);
+
   if (loading || groups.length === 0) return null;
+
 
   const togglePick = (id: string) => {
     setPicked((prev) => {
