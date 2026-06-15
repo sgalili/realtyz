@@ -858,11 +858,13 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
       });
       if (error) throw error;
       const pub = (data as any)?.public_comment ?? (data as any)?.draft;
+      const dm = (data as any)?.private_messenger_dm ?? "";
       if (typeof pub !== "string" || !pub.trim()) {
         toast.error((data as any)?.error ?? "לא התקבל ניסוח");
         return;
       }
       const next = pub.trim();
+      const dmNext = typeof dm === "string" ? dm.trim() : "";
       const { error: upErr } = await supabase
         .from("engagement_events")
         .update({ ai_reply_text: next })
@@ -872,6 +874,16 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
       setRows((prev) =>
         (prev ?? []).map((r) => (r.id === row.id ? { ...r, ai_reply_text: next } : r)),
       );
+      // Mirror the freshly generated DM into the per-row draft cache so the
+      // editor for this comment opens with BOTH textareas pre-filled.
+      setDraftCache((prev) => ({ ...prev, [row.id]: { pub: next, dm: dmNext } }));
+      // If the editor is currently open on this row, hydrate live state too.
+      if (replyOpen?.id === row.id) {
+        setReplyDraft(next);
+        setDmDraft(dmNext);
+        setOriginalReply(next);
+        setOriginalDm(dmNext);
+      }
       toast.success("הטקסט נוצר מחדש");
     } catch (e: any) {
       toast.error(e?.message ?? "ניסוח נכשל");
