@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useActiveWorkspaceOwnerId } from "@/hooks/useWorkspace";
 import { cn } from "@/lib/utils";
 import { Users, Check, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -24,10 +25,15 @@ type Props = {
  * never blocks the composer if the provider rejects the request.
  */
 export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Props) => {
-  const [groups, setGroups] = useState<FacebookGroup[]>([]);
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  const [ayrshareGroups, setAyrshareGroups] = useState<FacebookGroup[]>([]);
+  const [customUserGroups, setCustomUserGroups] = useState<FacebookGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const groups = [...ayrshareGroups, ...customUserGroups];
+  const hasVisibleGroups = ayrshareGroups.length > 0 || customUserGroups.length > 0;
+  const manualMode = customUserGroups.length > 0;
 
   const fetchFromAyrshare = async (): Promise<FacebookGroup[]> => {
     const { data: ws } = await supabase
@@ -44,16 +50,19 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
   };
 
   const fetchCustomGroups = async (): Promise<FacebookGroup[]> => {
+    if (!workspaceOwnerId) return [];
     const { data, error } = await (supabase as any)
       .from("custom_user_groups")
-      .select("id, group_name, group_url, platform")
-      .eq("platform", "facebook");
+      .select("id, group_name, group_url, platform, workspace_owner_id")
+      .eq("workspace_owner_id", workspaceOwnerId)
+      .eq("platform", "facebook")
+      .order("created_at", { ascending: false });
     if (error) {
       console.warn("[FB_GROUPS] custom_user_groups query failed", error);
       return [];
     }
     return (data ?? []).map((r: any) => ({
-      group_id: String(r.group_url || r.id),
+      group_id: `manual:${String(r.id)}`,
       group_name: String(r.group_name || r.group_url || "קבוצה"),
       group_icon: null,
       connected: true,
@@ -66,6 +75,12 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     setLoading(true);
     setError(null);
     try {
+      const manual = await fetchCustomGroups();
+      setCustomUserGroups(manual);
+      if (manual.length > 0) {
+        console.log("[FB_GROUPS] custom_user_groups ready", manual.length);
+      }
+
       // 1) Try Ayrshare (uses the active workspace profile key)
       let list = await fetchFromAyrshare();
       // 2) Fallback to Meta direct bypass
@@ -75,13 +90,14 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
       }
       // 3) Final fallback — the workspace's manually curated group directory
       if (list.length === 0) {
-        const manual = await fetchCustomGroups();
         console.log("[FB_GROUPS] using custom_user_groups fallback", manual.length);
-        list = manual;
+        setAyrshareGroups([]);
+        return;
       }
-      setGroups(list);
+      setAyrshareGroups(list);
     } catch (e: any) {
-      setGroups([]);
+      setAyrshareGroups([]);
+      setCustomUserGroups([]);
       onChange([]);
       setError(null);
     } finally {
@@ -89,13 +105,13 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [workspaceOwnerId]);
   useEffect(() => {
     const onFocus = () => { load(); };
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [workspaceOwnerId]);
 
   const handleFetchFacebookGroups = async () => {
     setConnecting(true);
@@ -112,7 +128,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
       // First, try a live pull using the active profile key
       const ayrGroups = await fetchFromAyrshare();
       if (ayrGroups.length > 0) {
-        setGroups(ayrGroups);
+        setAyrshareGroups(ayrGroups);
         toast.dismiss("fbg-connect");
         toast.success(`נטענו ${ayrGroups.length} קבוצות`);
         return;
@@ -124,7 +140,8 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
       const manual = await fetchCustomGroups();
       toast.dismiss("fbg-connect");
       if (manual.length > 0) {
-        setGroups(manual);
+        setAyrshareGroups([]);
+        setCustomUserGroups(manual);
         toast.success(`נטענו ${manual.length} קבוצות לשיתוף ידני מהיר`);
         return;
       }
@@ -166,16 +183,18 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
             <span className="text-xs text-muted-foreground">({selectedIds.length}/{groups.length})</span>
           )}
         </div>
-        <button
-          type="button"
-          onClick={connectGroups}
-          disabled={connecting}
-          title="חבר קבוצות פייסבוק נוספות"
-          className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/5 px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-60"
-        >
-          {connecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-          {groups.length > 0 ? "הוסף קבוצות" : "חבר קבוצות"}
-        </button>
+        {!manualMode && (
+          <button
+            type="button"
+            onClick={connectGroups}
+            disabled={connecting}
+            title="חבר קבוצות פייסבוק נוספות"
+            className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/5 px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-60"
+          >
+            {connecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+            {groups.length > 0 ? "הוסף קבוצות" : "חבר קבוצות"}
+          </button>
+        )}
       </div>
 
       {/* Error */}
@@ -186,7 +205,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
       )}
 
       {/* Loading */}
-      {loading && groups.length === 0 && !error && (
+      {loading && !hasVisibleGroups && !error && (
         <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           טוען קבוצות מחוברות…
@@ -195,7 +214,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
 
 
       {/* Checkbox list */}
-      {groups.length > 0 && (
+      {hasVisibleGroups && (
         <div className="rounded-lg border border-border overflow-hidden">
           {/* Select All master row */}
           <label className="flex items-center gap-3 bg-muted/40 px-3 py-2 cursor-pointer border-b border-border">
