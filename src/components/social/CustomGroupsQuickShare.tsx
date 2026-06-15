@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
-import { Copy, ExternalLink, Users, Check, Timer, Lock, Pencil } from 'lucide-react';
+import { Copy, ExternalLink, Users, Check, Timer, Lock, Pencil, Trash2, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { stageActivity } from '@/lib/activityQueue';
