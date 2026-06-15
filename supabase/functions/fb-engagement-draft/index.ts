@@ -2,6 +2,7 @@
 // voice. Strict persona: signature "אודי" / "אודי ויטמן" — NO titles, NO emojis
 // of professional roles, no political/Realtyz-internal jargon.
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { fetchSystemRulesBlock } from '../_shared/system-rules.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
