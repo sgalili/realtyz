@@ -422,6 +422,49 @@ const InlineComposer = ({
   }, [channel.id, platformProfiles]);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [generating, setGenerating] = useState(false);
+  const [finalizingBody, setFinalizingBody] = useState(false);
+
+  const finalizeBody = async () => {
+    const edited = body.trim();
+    if (!edited) return;
+    setFinalizingBody(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('finalize-text', {
+        body: {
+          edited_text: edited,
+          original_text: originalAiBody,
+          context: [
+            `Platform: ${channel.label}`,
+            customInstructions ? `Broker instructions: ${customInstructions}` : null,
+            selectedListing?.property_title ? `Promoted listing: ${selectedListing.property_title}` : null,
+          ].filter(Boolean).join('\n\n'),
+          purpose: 'social_post',
+        },
+      });
+      if (error) throw error;
+      const finalText = (data as any)?.final_text;
+      if (typeof finalText !== 'string' || !finalText.trim()) {
+        throw new Error((data as any)?.error || 'לא התקבלה גרסה סופית');
+      }
+      const baseline = originalAiBody;
+      const editedBeforeFinal = edited;
+      const next = finalText.trim().slice(0, MAX_CHARS);
+      setBody(next);
+      setOriginalAiBody(next);
+      learnFromEdit({
+        context: `campaign_post_finalize:${channel.id}`,
+        pairs: [
+          { label: 'post_user_edit', original: baseline, edited: editedBeforeFinal },
+          { label: 'post_final_polish', original: editedBeforeFinal, edited: next },
+        ],
+      });
+      toast.success('נוצרה גרסה סופית');
+    } catch (e: any) {
+      toast.error(e?.message || 'יצירת גרסה סופית נכשלה');
+    } finally {
+      setFinalizingBody(false);
+    }
+  };
 
   // Custom AI generation context (broker steering inputs)
   const [customInstructions, setCustomInstructions] = useState<string>(initial.customInstructions || '');
