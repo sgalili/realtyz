@@ -436,8 +436,8 @@ export function CustomGroupsQuickShare({
                 !row && isPicked && 'bg-amber-100/60 dark:bg-amber-900/20',
               )}
             >
-              {/* Row 1: icon · group name · refresh · delete · chevron */}
-              <div className="flex items-center gap-2 px-3 pt-2">
+              {/* Row 1: icon · group name · status pill · refresh · delete · chevron */}
+              <div className="flex items-center gap-2 px-3 py-2">
                 {!row ? (
                   <button
                     type="button"
@@ -452,7 +452,7 @@ export function CustomGroupsQuickShare({
                   </button>
                 ) : isReady ? (
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
-                    <Pencil className="h-3 w-3" />
+                    <Check className="h-3 w-3" />
                   </span>
                 ) : (
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
@@ -468,6 +468,23 @@ export function CustomGroupsQuickShare({
                 >
                   <div className="truncate text-sm font-semibold text-foreground">{g.group_name}</div>
                 </button>
+
+                {/* Status pill — inline after the group name */}
+                {isReady ? (
+                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                    <Check className="h-3 w-3" />
+                    ממתין לאישור
+                  </span>
+                ) : isPending ? (
+                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-300" dir="ltr">
+                    <Timer className="h-3 w-3" />
+                    {fmtCountdown(countdownMs)}
+                  </span>
+                ) : (
+                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
+                    טרם פורסם
+                  </span>
+                )}
 
                 <button
                   type="button"
@@ -499,26 +516,6 @@ export function CustomGroupsQuickShare({
                 </button>
               </div>
 
-              {/* Row 2: status pill at start. Engagement counters intentionally omitted —
-                  Meta does not expose group-member post insights via Graph API. */}
-              <div className="flex items-center gap-2 px-3 pb-2 pt-1">
-                {isReady ? (
-                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
-                    <Check className="h-3 w-3" />
-                    ממתין לאישור
-                  </span>
-                ) : isPending ? (
-                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-300" dir="ltr">
-                    <Timer className="h-3 w-3" />
-                    {fmtCountdown(countdownMs)}
-                  </span>
-                ) : (
-                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
-                    טרם פורסם
-                  </span>
-                )}
-                <span className="flex-1" />
-              </div>
 
               {/* Collapsible body */}
               {isExpanded ? (
