@@ -191,6 +191,19 @@ function PersonalTab() {
       } catch {}
     }
     setHydrated(true);
+    // Hydrate broker license from the profiles table (separate column).
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('broker_license_number')
+          .eq('id', user!.id)
+          .maybeSingle();
+        if (data && typeof (data as any).broker_license_number === 'string') {
+          setBrokerLicense((data as any).broker_license_number ?? '');
+        }
+      } catch { /* ignore */ }
+    })();
   }, [user, hydrated]);
 
   const setEdit = (k: string) => setEditing((e) => ({ ...e, [k]: !e[k] }));
