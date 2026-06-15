@@ -276,6 +276,15 @@ NO-HASHTAGS RULE (HARD — ZERO TOLERANCE):
             role: "system",
             content: [
               await (await import("../_shared/system-rules.ts")).fetchSystemRulesBlock(userId, userPrompt),
+              // Live web-research and uploaded-document intelligence tied to
+              // this post's promoted listing location (city / neighborhood /
+              // address / title) — overrides generic guidance with real data.
+              await (await import("../_shared/research-intel.ts")).fetchResearchIntelBlock(userId, [
+                promotedListing?.city,
+                promotedListing?.neighborhood,
+                promotedListing?.address,
+                promotedListing?.property_title,
+              ]),
               systemPrompt,
               await fetchLearnedOverridesBlock(admin as any, userId),
             ]

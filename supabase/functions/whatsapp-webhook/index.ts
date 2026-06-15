@@ -476,6 +476,69 @@ Deno.serve(async (req) => {
       } catch (e) {
         console.warn("system-rule capture failed:", e instanceof Error ? e.message : e);
       }
+      // RESEARCH INTERCEPTOR — fires BEFORE routeOwnerCommand. If the owner
+      // texts a research directive ("תחקור את שכונת...", "תעשה לי דוח על..."),
+      // bypass the standard router and execute the master-research engine
+      // (Firecrawl + Gemini synthesis), then reply with the clean Hebrew brief.
+      try {
+        const { hasResearchTrigger, extractResearchSubject } = await import("../_shared/research-intel.ts");
+        if (hasResearchTrigger(msg.text)) {
+          const subject = extractResearchSubject(msg.text);
+          if (subject) {
+            await sendRawWhatsApp(
+              SUPABASE_URL,
+              SERVICE_KEY,
+              senderPhone,
+              `קצין המודיעין נכנס לפעולה.\nמתחיל מחקר חי על: ${subject}.\nאחזור אליך תוך כמה רגעים עם דוח מובנה.`,
+            );
+            const researchRes = await fetch(`${SUPABASE_URL}/functions/v1/master-research`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${SERVICE_KEY}`,
+              },
+              body: JSON.stringify({
+                query: subject,
+                mode: "neighborhood",
+                workspace_owner_id: ownerUserId,
+                persist: true,
+              }),
+            });
+            const rj: any = await researchRes.json().catch(() => ({}));
+            const brief = String(rj?.brief ?? "").trim();
+            const sources: Array<{ url?: string; title?: string }> = Array.isArray(rj?.sources) ? rj.sources : [];
+            let replyText: string;
+            if (brief) {
+              const srcLines = sources
+                .slice(0, 5)
+                .map((s, i) => `${i + 1}. ${(s.title || s.url || "").slice(0, 90)}${s.url ? `\n${s.url}` : ""}`)
+                .join("\n");
+              replyText = [
+                `דוח מודיעין — ${subject}`,
+                "",
+                brief,
+                srcLines ? "\n— מקורות —\n" + srcLines : "",
+                "\nהדוח נשמר בזיכרון המשרד ויוטמע אוטומטית בפוסטים, תגובות ושיחות שיתייחסו לאזור הזה.",
+              ].filter(Boolean).join("\n");
+            } else {
+              replyText = `לא הצלחתי להפיק דוח על "${subject}" כרגע. נסה ניסוח אחר או נסה שוב עוד מספר דקות.`;
+            }
+            await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, replyText.slice(0, 3800));
+            return jsonResponse({
+              ok: true,
+              companion: "master_research",
+              owner_blocked_lead_autopilot: true,
+              subject,
+              persisted: rj?.persisted === true,
+              source_count: sources.length,
+            });
+          }
+        }
+      } catch (e) {
+        console.warn("master-research interceptor failed:", e instanceof Error ? e.message : e);
+        // fall through to normal router
+      }
+
       try {
         const routed = await routeOwnerCommand({
           admin,
@@ -693,15 +756,69 @@ Deno.serve(async (req) => {
           .eq("id", ingestJson.document_id);
       }
 
-      // Confirm to the Agent and short-circuit (kb-ingest already did embeddings).
-      await sendConfirmation(
-        SUPABASE_URL,
-        SERVICE_KEY,
-        senderPhone,
-        title,
-        tags,
-        sourceType,
-      );
+      // MASTER MULTIMODAL ANALYSIS — forward the binary as an attachment to
+      // ai-agent so קצין המודיעין produces a clean, structured Hebrew analysis
+      // (key facts, action items, leads/listings to update) and reply with it
+      // instead of a generic confirmation. Falls back to the standard
+      // confirmation card if analysis fails.
+      let masterReplyText = "";
+      try {
+        const analysisRes = await fetch(`${SUPABASE_URL}/functions/v1/ai-agent`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${SERVICE_KEY}`,
+            "x-actor-user-id": userId,
+          },
+          body: JSON.stringify({
+            mode: "master_analysis",
+            context:
+              `המשרד שלך קיבל קובץ ${sourceType === "image" ? "תמונה" : sourceType === "video" ? "וידאו" : "מסמך"} ב-WhatsApp` +
+              (msg.caption ? ` עם הערה: "${msg.caption}"` : "") +
+              `. נתח את הקובץ כקצין מודיעין: כותרת קצרה, 5-7 עובדות מרכזיות, פעולות מומלצות, וכל מספר/מחיר/כתובת שצריך לחלץ. עברית רהוטה, סעיפים נקיים, ללא em-dash.`,
+            messages: [{
+              role: "user",
+              content: msg.caption || `נתח את הקובץ "${title}"`,
+            }],
+            attachments: [{
+              name: msg.fileName ?? "attachment",
+              mime: msg.mimeType ?? contentType,
+              data_url: dataUrl,
+            }],
+          }),
+        });
+        const aj: any = await analysisRes.json().catch(() => ({}));
+        const analysisText = String(aj?.content ?? aj?.message ?? "").trim();
+        if (analysisRes.ok && analysisText) {
+          masterReplyText = analysisText;
+        } else {
+          console.warn("master analysis non-fatal failure", analysisRes.status, JSON.stringify(aj).slice(0, 200));
+        }
+      } catch (e) {
+        console.warn("master analysis dispatch threw:", e instanceof Error ? e.message : e);
+      }
+
+      if (masterReplyText) {
+        const tagsLine = tags.length ? tags.map((t) => `#${t.replace(/\s+/g, "")}`).join(" ") : "#General";
+        const header =
+          sourceType === "image" ? "🖼️ ניתוח תמונה"
+          : sourceType === "video" ? "🎬 ניתוח וידאו"
+          : "📄 ניתוח מסמך";
+        await sendRawWhatsApp(
+          SUPABASE_URL, SERVICE_KEY, senderPhone,
+          `${header} — ${title.slice(0, 80)}\n\n${masterReplyText.slice(0, 3400)}\n\nתיוג: ${tagsLine}\nהקובץ נשמר ב-Strategy Bank ויהיה זמין לפוסטים, תגובות ושיחות עתידיות.`,
+        );
+      } else {
+        // Fallback to the standard confirmation card.
+        await sendConfirmation(
+          SUPABASE_URL,
+          SERVICE_KEY,
+          senderPhone,
+          title,
+          tags,
+          sourceType,
+        );
+      }
 
       return jsonResponse({
         ok: true,
@@ -709,6 +826,7 @@ Deno.serve(async (req) => {
         chunks: ingestJson?.chunks,
         tags,
         file_path: storedFilePath,
+        master_analysis: !!masterReplyText,
       });
     }
 
