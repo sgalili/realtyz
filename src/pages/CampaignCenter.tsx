@@ -1670,10 +1670,13 @@ const PublishedFeed = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setRows([]); return; }
     setUserId(user.id);
+    // Scope by workspace owner so team members see the same campaign history
+    // as the owner (RLS now allows workspace members to read these rows).
+    const ownerScope = workspaceOwnerId ?? user.id;
     const { data } = await supabase
       .from('campaign_logs')
       .select('id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at')
-      .eq('user_id', user.id)
+      .eq('user_id', ownerScope)
       .eq('is_archived', false)
       .order('created_at', { ascending: false })
       .limit(500);
