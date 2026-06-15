@@ -8,7 +8,13 @@ import { corsHeaders } from "../_shared/cors.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const AYRSHARE_API_KEY = Deno.env.get("AYRSHARE_API_KEY") ?? "";
+const AYRSHARE_API_KEY = (Deno.env.get("AYRSHARE_API_KEY") ?? "").trim().replace(/^["']|["']$/g, "");
+
+const readAyrshareMessage = (payload: unknown): string => {
+  if (!payload || typeof payload !== "object") return "";
+  const p = payload as { message?: unknown; error?: unknown };
+  return `${String(p.message ?? "")} ${String(p.error ?? "")}`;
+};
 
 async function deleteAyrshareProfile(profileKey: string) {
   const attempts: Array<{ endpoint: string; status: number; ok: boolean; payload: unknown }> = [];
@@ -78,8 +84,8 @@ Deno.serve(async (req) => {
     const res = await deleteAyrshareProfile(profileKey);
     const payload: any = res.payload;
 
-    const code = payload?.code;
-    const msg = String(payload?.message ?? payload?.error ?? "").toLowerCase();
+    const code = payload?.code ?? res.attempts.find((a) => (a.payload as { code?: unknown })?.code != null)?.payload?.code;
+    const msg = `${readAyrshareMessage(payload)} ${res.attempts.map((a) => readAyrshareMessage(a.payload)).join(" ")}`.toLowerCase();
     const suspended = code === 276 || msg.includes("suspend");
     if (suspended) {
       console.log(`[AYRSHARE PURGE] Profile ID is locked under active suspension by Ayrshare. Proceeding to force-clear local records. keyPrefix=${profileKey.slice(0, 8)}`);
