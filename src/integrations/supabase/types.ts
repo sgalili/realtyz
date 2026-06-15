@@ -917,6 +917,66 @@ export type Database = {
           },
         ]
       }
+      campaign_activity_queue: {
+        Row: {
+          activity_type: string
+          attempts: number
+          completed_at: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          last_error: string | null
+          payload: Json
+          processed_at: string | null
+          scheduled_for: string
+          status: string
+          target_label: string | null
+          target_ref: string | null
+          updated_at: string
+          variation_index: number | null
+          variations: Json
+          workspace_owner_id: string
+        }
+        Insert: {
+          activity_type: string
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_error?: string | null
+          payload?: Json
+          processed_at?: string | null
+          scheduled_for?: string
+          status?: string
+          target_label?: string | null
+          target_ref?: string | null
+          updated_at?: string
+          variation_index?: number | null
+          variations?: Json
+          workspace_owner_id: string
+        }
+        Update: {
+          activity_type?: string
+          attempts?: number
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          last_error?: string | null
+          payload?: Json
+          processed_at?: string | null
+          scheduled_for?: string
+          status?: string
+          target_label?: string | null
+          target_ref?: string | null
+          updated_at?: string
+          variation_index?: number | null
+          variations?: Json
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       campaign_logs: {
         Row: {
           campaign_name: string
