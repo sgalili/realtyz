@@ -251,6 +251,10 @@ export function PropertyMatchmakerDialog({
 
             <PropertySnippet property={selected} />
 
+            <SelectedProjectAlternatives
+              listingId={selected.source === 'listings' ? selected.id : null}
+            />
+
             <div className="flex items-center justify-end gap-2 pt-2 border-t">
               <Button variant="outline" size="sm" onClick={() => setSelected(null)}>
                 בחירת נכס אחר
