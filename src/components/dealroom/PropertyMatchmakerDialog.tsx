@@ -1,5 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { ProjectAlternativesCard } from '@/components/properties/ProjectAlternativesCard';
 import {
   Dialog,
   DialogContent,
@@ -249,6 +251,10 @@ export function PropertyMatchmakerDialog({
 
             <PropertySnippet property={selected} />
 
+            <SelectedProjectAlternatives
+              listingId={selected.source === 'listings' ? selected.id : null}
+            />
+
             <div className="flex items-center justify-end gap-2 pt-2 border-t">
               <Button variant="outline" size="sm" onClick={() => setSelected(null)}>
                 בחירת נכס אחר
@@ -266,6 +272,23 @@ export function PropertyMatchmakerDialog({
       </DialogContent>
     </Dialog>
   );
+}
+
+function SelectedProjectAlternatives({ listingId }: { listingId: string | null }) {
+  const { data } = useQuery({
+    queryKey: ['matchmaker-listing-project', listingId],
+    enabled: !!listingId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('listings')
+        .select('project_name')
+        .eq('id', listingId!)
+        .maybeSingle();
+      return (data as any)?.project_name as string | null;
+    },
+  });
+  if (!listingId || !data) return null;
+  return <ProjectAlternativesCard currentListingId={listingId} projectName={data} compact />;
 }
 
 function FilterField({ label, children }: { label: string; children: React.ReactNode }) {

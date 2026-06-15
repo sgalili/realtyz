@@ -17,6 +17,7 @@ import {
   type PropertyType,
 } from '@/lib/homelyMockProperties';
 import { ShareWithLeadDialog } from '@/components/properties/ShareWithLeadDialog';
+import { ProjectAlternativesCard } from '@/components/properties/ProjectAlternativesCard';
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
@@ -77,7 +78,7 @@ export default function PropertyDetail() {
     queryFn: async () => {
       const { data: row } = await supabase
         .from('listings')
-        .select('id, property_title, description, asking_price, features, slug, source_metadata, city, neighborhood, address, rooms, sqm, floor, parking, elevator, status, source_url')
+        .select('id, property_title, description, asking_price, features, slug, source_metadata, city, neighborhood, address, rooms, sqm, floor, parking, elevator, status, source_url, project_name')
         .eq('id', id!)
         .maybeSingle();
       if (!row) return null;
@@ -111,13 +112,14 @@ export default function PropertyDetail() {
         url: row.slug ? `/listing/${row.slug}` : (row.source_url || null),
         features: Array.from(new Set(textFeatures)),
       } as HomelyProperty;
-      return { property, meta, neighborhood: (row as any).neighborhood as string | null };
+      return { property, meta, neighborhood: (row as any).neighborhood as string | null, projectName: (row as any).project_name as string | null };
     },
   });
 
   const property = data?.property;
   const meta: Record<string, any> = data?.meta || {};
   const neighborhood = data?.neighborhood;
+  const projectName = data?.projectName ?? null;
 
   if (isLoading) {
     return (
@@ -310,6 +312,13 @@ export default function PropertyDetail() {
                 ))}
               </div>
             </Card>
+          )}
+
+          {projectName && (
+            <ProjectAlternativesCard
+              currentListingId={property.id}
+              projectName={projectName}
+            />
           )}
         </div>
 

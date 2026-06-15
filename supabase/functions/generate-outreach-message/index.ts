@@ -73,12 +73,13 @@ serve(async (req) => {
       price: string | number | null;
       features: unknown;
       url?: string | null;
+      project_name?: string | null;
     };
 
     if (listing_source === "internal") {
       const { data: l, error: lErr } = await supabase
         .from("listings")
-        .select("property_title, description, asking_price, features, slug, city, neighborhood, address, rooms, sqm, floor, parking, elevator")
+        .select("property_title, description, asking_price, features, slug, city, neighborhood, address, rooms, sqm, floor, parking, elevator, project_name")
         .eq("id", listing_id)
         .maybeSingle();
       if (lErr || !l) {
@@ -93,6 +94,7 @@ serve(async (req) => {
         price: l.asking_price,
         features: { ...(Array.isArray(l.features) ? (l.features[0] ?? {}) : (l.features ?? {})), city: l.city, neighborhood: l.neighborhood, address: l.address, rooms: l.rooms, sqm: l.sqm, floor: l.floor, parking: l.parking, elevator: l.elevator },
         url: l.slug ? `/p/${l.slug}` : null,
+        project_name: (l as any).project_name ?? null,
       };
     } else {
       // Homely via proxy
@@ -155,6 +157,14 @@ Output JSON ONLY via the provided tool — no extra text.
 
 ${personaBlock ? personaBlock + "\n\n" : ""}${compliance}`;
 
+    // Project-level talking point: when the listing belongs to a development
+    // project, the AI must explicitly anchor the lead in the broader project
+    // context (other floors / sizes / pre-sale / off-market units available).
+    const projectName = (listing as any).project_name as string | null | undefined;
+    const projectBlock = projectName
+      ? `\n\n#PROJECT_CONTEXT\nהדירה הזו היא חלק מפרויקט הבלעדיות היוקרתי '${projectName}'. כשאתה מנסח את ההודעה, חובה לשלב במפורש משפט אסטרטגי קצר בנוסח הבא (אפשר לחדד את הניסוח, אך לשמר את המסר במלואו ולא להחסיר אף רכיב):\n"הדירה הזו היא חלק מפרויקט הבלעדיות היוקרתי '${projectName}'. מעבר ליחידה הספציפית הזו, ישנן מגוון רחב של אפשרויות נוספות זמינות בפרויקט, כולל דירות פרי-סייל מיוחדות ויחידות 'אוף-מרקט' (Unlisted) שעדיין לא פורסמו רשמית לקהל הרחב. נשמח להתאים לך את הטיפוס המדויק לצרכים שלך."\nשלב את המשפט הזה באופן טבעי בגוף ההודעה (לא כפוטר), לפני ה-CTA.`
+      : "";
+
     // Owner standing orders (workspace-level) — must override persona + compliance defaults.
     let systemRulesBlock = "";
     try {
@@ -165,9 +175,9 @@ ${personaBlock ? personaBlock + "\n\n" : ""}${compliance}`;
     } catch (e) {
       console.warn("[generate-outreach-message] fetchSystemRulesBlock failed:", e instanceof Error ? e.message : e);
     }
-    const finalSystemPrompt = systemRulesBlock
+    const finalSystemPrompt = (systemRulesBlock
       ? `${systemRulesBlock}\n\n${systemPrompt}`
-      : systemPrompt;
+      : systemPrompt) + projectBlock;
 
     const leadBlock = JSON.stringify(
       {

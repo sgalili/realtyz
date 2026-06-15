@@ -20,6 +20,7 @@ import {
 import { Megaphone, Sparkles, Send, Home, Globe, MessageSquare, Mail, Smartphone, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { ProjectAlternativesCard } from '@/components/properties/ProjectAlternativesCard';
 
 type Lead = {
   id: string;
@@ -138,6 +139,19 @@ export function ListingOutreachDialog({
     () => leads?.find((p) => p.id === leadId),
     [leads, leadId],
   );
+
+  const { data: selectedProjectName } = useQuery({
+    queryKey: ['outreach-listing-project', source, listingId],
+    enabled: source === 'internal' && !!listingId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('listings')
+        .select('project_name')
+        .eq('id', listingId)
+        .maybeSingle();
+      return (data as any)?.project_name as string | null;
+    },
+  });
 
   async function handleGenerate() {
     if (!leadId || !listingId) {
@@ -365,6 +379,14 @@ export function ListingOutreachDialog({
         </Button>
 
         {/* Preview */}
+        {selectedProjectName && (
+          <ProjectAlternativesCard
+            currentListingId={listingId}
+            projectName={selectedProjectName}
+            compact
+          />
+        )}
+
         {(generating || draft) && (
           <Card className="p-4 bg-muted/30 border-dashed">
             <div className="flex items-center gap-2 mb-3">
