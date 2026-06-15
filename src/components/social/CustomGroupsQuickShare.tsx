@@ -11,7 +11,9 @@ type CustomGroup = {
   id: string;
   group_name: string;
   group_url: string;
+  last_draft_body: string | null;
 };
+
 
 type QueuedRow = {
   id: string;
@@ -75,7 +77,7 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
 
 
-  // Load workspace's manually-curated FB groups
+  // Load workspace's manually-curated FB groups + seed any persisted drafts.
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
@@ -83,17 +85,30 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
       setLoading(true);
       const { data, error } = await (supabase as any)
         .from('custom_user_groups')
-        .select('id, group_name, group_url')
+        .select('id, group_name, group_url, last_draft_body')
         .eq('workspace_owner_id', workspaceOwnerId)
         .eq('platform', 'facebook')
         .order('created_at', { ascending: false });
       if (cancelled) return;
       setLoading(false);
-      if (!error) setGroups((data ?? []) as CustomGroup[]);
+      if (!error) {
+        const list = (data ?? []) as CustomGroup[];
+        setGroups(list);
+        setDraftById((prev) => {
+          const next = { ...prev };
+          for (const g of list) {
+            if (next[g.id] === undefined && g.last_draft_body) {
+              next[g.id] = g.last_draft_body;
+            }
+          }
+          return next;
+        });
+      }
     };
     load();
     return () => { cancelled = true; };
   }, [workspaceOwnerId]);
+
 
   // Poll the queue for this workspace's manual_share items
   useEffect(() => {
@@ -128,18 +143,46 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
   // The single "next" unlocked row, if any
   const readyRow = useMemo(() => queue.find((r) => r.status === 'ready') ?? null, [queue]);
 
-  // Seed editable draft for the unlocked row
+  // Persist a draft to custom_user_groups.last_draft_body (best-effort).
+  const persistDraft = async (gid: string, text: string) => {
+    try {
+      await (supabase as any)
+        .from('custom_user_groups')
+        .update({ last_draft_body: text })
+        .eq('id', gid);
+      setGroups((gs) => gs.map((x) => x.id === gid ? { ...x, last_draft_body: text } : x));
+    } catch {
+      /* non-fatal */
+    }
+  };
+
+  // Compose a per-group "spun" draft from the current base body.
+  const composeDraftForGroup = (g: CustomGroup): string => {
+    const base = ensureCanonicalFooter((body ?? '').trim());
+    if (!base) return '';
+    return [base, g.group_url ? `\n${g.group_url}` : ''].filter(Boolean).join('\n\n');
+  };
+
+  // Debounced save on textarea edits.
+  const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const scheduleSave = (gid: string, text: string) => {
+    if (saveTimers.current[gid]) clearTimeout(saveTimers.current[gid]);
+    saveTimers.current[gid] = setTimeout(() => { void persistDraft(gid, text); }, 600);
+  };
+
+  // Auto-expand each ready row exactly once (so the operator sees the editor),
+  // but never override the user's collapse choice afterwards.
+  const autoExpandedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (!readyRow) return;
-    if (draftById[readyRow.id] !== undefined) return;
-    const title = String(readyRow.payload?.title ?? '').trim();
-    const bodyText =
-      String(readyRow.payload?.outbound_text ?? readyRow.payload?.body ?? '').trim() ||
-      ensureCanonicalFooter((body ?? '').trim());
-    const url = String(readyRow.payload?.group_url ?? '').trim();
-    const composed = [title, bodyText, url ? `\n${url}` : ''].filter(Boolean).join('\n\n');
-    setDraftById((d) => ({ ...d, [readyRow.id]: composed }));
-  }, [readyRow, body, draftById]);
+    for (const r of queue) {
+      if (r.status === 'ready' && r.target_ref && !autoExpandedRef.current.has(r.target_ref)) {
+        autoExpandedRef.current.add(r.target_ref);
+        const gid = r.target_ref;
+        setExpandedIds((prev) => prev.has(gid) ? prev : new Set(prev).add(gid));
+      }
+    }
+  }, [queue]);
+
 
   // Auto-confirm from a WhatsApp deep link: /campaigns?action=confirm&queue_id=X.
   // Declared BEFORE any early return so hook order stays stable.
@@ -209,10 +252,11 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
     }
   };
 
-  const handleShareReady = async (rowArg?: QueuedRow) => {
+  const handleShareReady = async (groupId?: string, rowArg?: QueuedRow) => {
     const row = rowArg ?? readyRow;
     if (!row) return;
-    const text = (draftById[row.id] ?? '').trim() ||
+    const gid = groupId ?? row.target_ref ?? '';
+    const text = (draftById[gid] ?? '').trim() ||
       ensureCanonicalFooter([
         String(row.payload?.title ?? '').trim(),
         String(row.payload?.outbound_text ?? row.payload?.body ?? '').trim(),
@@ -241,9 +285,10 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
       })
       .eq('id', row.id);
     setQueue((q) => q.filter((r) => r.id !== row.id));
-    setDraftById((d) => { const n = { ...d }; delete n[row.id]; return n; });
+    // Keep draftById[gid] — operator may want to reuse next time the group cycles.
+    if (gid) void persistDraft(gid, text);
   };
-  shareReadyRef.current = handleShareReady;
+  shareReadyRef.current = (row?: QueuedRow) => handleShareReady(row?.target_ref ?? undefined, row);
 
   const toggleExpand = (gid: string) => {
     setExpandedIds((prev) => {
@@ -251,6 +296,15 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
       if (next.has(gid)) next.delete(gid); else next.add(gid);
       return next;
     });
+    // First-open generator: if no draft exists for this group, compose & persist now.
+    const g = groups.find((x) => x.id === gid);
+    if (g && (draftById[gid] === undefined || draftById[gid] === '')) {
+      const composed = composeDraftForGroup(g);
+      if (composed) {
+        setDraftById((d) => ({ ...d, [gid]: composed }));
+        void persistDraft(gid, composed);
+      }
+    }
   };
 
   const handleDeleteGroup = async (g: CustomGroup, row: QueuedRow | null) => {
@@ -269,6 +323,7 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
         .eq('id', g.id);
       setGroups((gs) => gs.filter((x) => x.id !== g.id));
       setPicked((p) => { const n = new Set(p); n.delete(g.id); return n; });
+      setDraftById((d) => { const n = { ...d }; delete n[g.id]; return n; });
       toast.success(`הקבוצה "${g.group_name}" נמחקה`);
     } catch (e: any) {
       toast.error(`מחיקה נכשלה: ${e?.message ?? e}`);
@@ -276,31 +331,32 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
   };
 
   const handleRegenerate = async (g: CustomGroup, row: QueuedRow | null) => {
-    const text = ensureCanonicalFooter((body ?? '').trim());
-    if (!text) {
+    const composed = composeDraftForGroup(g);
+    if (!composed) {
       toast.error('אין תוכן זמין לחידוש — חולל קודם פוסט בסיסי');
       return;
     }
     setRegeneratingId(g.id);
     try {
-      const composed = [text, g.group_url ? `\n${g.group_url}` : ''].filter(Boolean).join('\n\n');
+      setDraftById((d) => ({ ...d, [g.id]: composed }));
+      await persistDraft(g.id, composed);
       if (row) {
-        const newPayload = { ...(row.payload ?? {}), body: text, outbound_text: composed };
+        const newPayload = { ...(row.payload ?? {}), body: composed, outbound_text: composed };
         await (supabase as any)
           .from('campaign_activity_queue')
-          .update({ payload: newPayload, variations: [{ title: '', body: text }] })
+          .update({ payload: newPayload, variations: [{ title: '', body: composed }] })
           .eq('id', row.id);
         setQueue((q) => q.map((r) => r.id === row.id ? { ...r, payload: newPayload } : r));
-        setDraftById((d) => ({ ...d, [row.id]: composed }));
       }
       setExpandedIds((p) => new Set(p).add(g.id));
-      toast.success('התוכן חודש לפי הטיוטה הנוכחית');
+      toast.success('התוכן חודש לקבוצה זו');
     } catch (e: any) {
       toast.error(`חידוש נכשל: ${e?.message ?? e}`);
     } finally {
       setRegeneratingId(null);
     }
   };
+
 
 
 
@@ -333,7 +389,7 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
           const isPicked = picked.has(g.id);
           const countdownMs = isPending ? new Date(row!.scheduled_for).getTime() - now : 0;
 
-          const isExpanded = expandedIds.has(g.id) || isReady;
+          const isExpanded = expandedIds.has(g.id);
 
           return (
             <div
@@ -437,27 +493,31 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
                     </a>
                   </div>
 
-                  {isReady ? (
-                    <div className="space-y-2 border-t border-emerald-300/40 bg-emerald-50/30 px-3 py-2 dark:bg-emerald-950/10">
-                      <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-bold text-emerald-900 dark:text-emerald-200">
-                          ערוך את הטקסט לפני שיתוף
-                        </span>
-                        <span className="text-[10px] text-muted-foreground" dir="ltr">
-                          {(draftById[row!.id] ?? '').length} chars
-                        </span>
-                      </div>
-                      <Textarea
-                        value={draftById[row!.id] ?? ''}
-                        onChange={(e) => setDraftById((d) => ({ ...d, [row!.id]: e.target.value }))}
-                        rows={9}
-                        dir="rtl"
-                        className="min-h-[160px] resize-y bg-background text-[13px] leading-relaxed"
-                        placeholder="התוכן יופיע כאן..."
-                      />
+                  <div className="space-y-2 border-t border-border/40 bg-muted/20 px-3 py-2">
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-bold text-foreground">
+                        {isReady ? 'ערוך את הטקסט לפני שיתוף' : 'טיוטת הפוסט (נשמרת אוטומטית)'}
+                      </span>
+                      <span className="text-[10px] text-muted-foreground" dir="ltr">
+                        {(draftById[g.id] ?? '').length} chars
+                      </span>
+                    </div>
+                    <Textarea
+                      value={draftById[g.id] ?? ''}
+                      onChange={(e) => {
+                        const v = e.target.value;
+                        setDraftById((d) => ({ ...d, [g.id]: v }));
+                        scheduleSave(g.id, v);
+                      }}
+                      rows={9}
+                      dir="rtl"
+                      className="min-h-[160px] resize-y bg-background text-[13px] leading-relaxed"
+                      placeholder="התוכן יופיע כאן..."
+                    />
+                    {isReady ? (
                       <button
                         type="button"
-                        onClick={() => { void handleShareReady(); }}
+                        onClick={() => { void handleShareReady(g.id, row!); }}
                         className={cn(
                           'flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold transition',
                           justCopiedId === row!.id
@@ -468,8 +528,9 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
                         {justCopiedId === row!.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
                         {justCopiedId === row!.id ? 'הועתק · פותח את הקבוצה' : 'העתק את הטקסט הערוך ופתח את הקבוצה'}
                       </button>
-                    </div>
-                  ) : null}
+                    ) : null}
+                  </div>
+
                 </div>
               ) : null}
             </div>
