@@ -145,6 +145,8 @@ export function ShareWithLeadDialog({ property, open, onOpenChange }: Props) {
         open={outreachOpen}
         onOpenChange={setOutreachOpen}
         defaultLeadId={outreachLeadId}
+        defaultListingId={property?.id ?? null}
+        defaultSource={(property?.source as 'internal' | 'homely') === 'homely' ? 'homely' : 'internal'}
       />
     </>
   );
