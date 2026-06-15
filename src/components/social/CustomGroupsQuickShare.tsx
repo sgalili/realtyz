@@ -124,7 +124,28 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
     [queue],
   );
 
+  // Editable draft for the unlocked row — initialized from payload, freely editable.
+  const [draft, setDraft] = useState('');
+  const [draftRowId, setDraftRowId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!nextReady) {
+      setDraft('');
+      setDraftRowId(null);
+      return;
+    }
+    if (nextReady.id === draftRowId) return;
+    const title = String(nextReady.payload?.title ?? '').trim();
+    const bodyText =
+      String(nextReady.payload?.outbound_text ?? nextReady.payload?.body ?? '').trim() ||
+      ensureCanonicalFooter((body ?? '').trim());
+    const url = String(nextReady.payload?.group_url ?? '').trim();
+    const composed = [title, bodyText, url ? `\n${url}` : ''].filter(Boolean).join('\n\n');
+    setDraft(composed);
+    setDraftRowId(nextReady.id);
+  }, [nextReady, draftRowId, body]);
+
   if (loading || groups.length === 0) return null;
+
 
   const handleSchedule = async () => {
     if (!selected || !workspaceOwnerId) return;
