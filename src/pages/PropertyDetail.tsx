@@ -112,7 +112,7 @@ export default function PropertyDetail() {
         url: row.slug ? `/listing/${row.slug}` : (row.source_url || null),
         features: Array.from(new Set(textFeatures)),
       } as HomelyProperty;
-      return { property, meta, neighborhood: (row as any).neighborhood as string | null };
+      return { property, meta, neighborhood: (row as any).neighborhood as string | null, projectName: (row as any).project_name as string | null };
     },
   });
 
