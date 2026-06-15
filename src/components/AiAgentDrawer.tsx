@@ -83,6 +83,18 @@ interface SourceTag {
   similarity: number;
 }
 
+interface ResearchSource {
+  url: string;
+  title?: string;
+}
+
+interface Attachment {
+  name: string;
+  mime: string;
+  data_url: string;
+  size: number;
+}
+
 interface Message {
   role: 'user' | 'assistant';
   content: string;
@@ -90,6 +102,8 @@ interface Message {
   query?: string;
   type?: 'text' | 'data' | 'error';
   sources?: SourceTag[];
+  research_sources?: ResearchSource[];
+  attachments?: Array<{ name: string; mime: string }>;
 }
 
 // Hebrew translations for common SQL/aggregate column names returned by ai-agent
