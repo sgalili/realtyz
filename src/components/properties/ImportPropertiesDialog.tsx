@@ -249,10 +249,21 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
             continue;
           }
 
+          const projectName = mapped.project_name ? String(mapped.project_name).trim() : '';
+          const aptNumber = mapped.apt_number != null && mapped.apt_number !== ''
+            ? String(mapped.apt_number).trim() : '';
+          const aptModel = mapped.apt_model ? String(mapped.apt_model).trim() : '';
+
           const titleFromHeader = mapped.title ? String(mapped.title).trim() : '';
           const title =
             titleFromHeader ||
-            [propertyType || 'נכס', address && `· ${address}`, rooms && `· ${rooms} חד'`]
+            [
+              projectName || propertyType || 'נכס',
+              aptNumber && `דירה ${aptNumber}`,
+              aptModel && `(${aptModel})`,
+              address && `· ${address}`,
+              rooms && `· ${rooms} חד'`,
+            ]
               .filter(Boolean)
               .join(' ');
 
@@ -273,11 +284,13 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
             floor: floor != null ? Math.round(floor) : null,
             elevator,
             parking,
+            project_name: projectName || null,
             status: 'live',
             source: 'import',
             is_published: true,
             features: [
               ...(propertyType ? [propertyType] : []),
+              ...(aptModel ? [{ apt_model: aptModel }] : []),
               { listing_type: detectListingType(extras, mapped.listing_type, price) },
             ],
             source_metadata: {
@@ -288,6 +301,9 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
               opened_at: mapped.opened_at ? String(mapped.opened_at).trim() : null,
               updated_at_src: mapped.updated_at_src ? String(mapped.updated_at_src).trim() : null,
               property_type: propertyType || null,
+              project_name: projectName || null,
+              apt_number: aptNumber || null,
+              apt_model: aptModel || null,
               extras,
             },
           });
