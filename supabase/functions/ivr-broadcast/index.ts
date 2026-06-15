@@ -53,6 +53,9 @@ async function resolveElevenLabsKey(
 }
 
 async function generateTts(text: string, voiceId: string, apiKey: string): Promise<Uint8Array> {
+  // HARD LOCK: ElevenLabs v3 multilingual model for ALL IVR audio (including
+  // cloned voices like Udi Vitman). Never downgrade to v1/v2 or browser TTS.
+  const MODEL_ID = "eleven_multilingual_v3";
   const r = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
     {
@@ -60,17 +63,24 @@ async function generateTts(text: string, voiceId: string, apiKey: string): Promi
       headers: { "xi-api-key": apiKey, "Content-Type": "application/json" },
       body: JSON.stringify({
         text,
-        model_id: "eleven_multilingual_v2",
-        voice_settings: { stability: 0.5, similarity_boost: 0.85, style: 0.3, use_speaker_boost: true },
+        model_id: MODEL_ID,
+        voice_settings: {
+          stability: 0.45,
+          similarity_boost: 0.9,
+          style: 0.35,
+          use_speaker_boost: true,
+        },
       }),
     },
   );
   if (!r.ok) {
     const t = await r.text();
-    throw new Error(`elevenlabs_failed_${r.status}: ${t}`);
+    // No silent fallback — surface the failure so we never ship low-fidelity audio.
+    throw new Error(`elevenlabs_v3_failed_${r.status}: ${t}`);
   }
   return new Uint8Array(await r.arrayBuffer());
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
