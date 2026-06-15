@@ -144,6 +144,9 @@ Deno.serve(async (req) => {
         ? body.keep_profile_keys.map((k: unknown) => String(k ?? "").trim()).filter(Boolean)
         : [],
     );
+    const selectedRefIds: Set<string> | null = Array.isArray(body?.selected_ref_ids) && body.selected_ref_ids.length > 0
+      ? new Set<string>(body.selected_ref_ids.map((r: unknown) => String(r ?? "").trim()).filter(Boolean))
+      : null;
 
     // Always protect the active workspace profile from accidental deletion.
     const { data: ws } = await admin
