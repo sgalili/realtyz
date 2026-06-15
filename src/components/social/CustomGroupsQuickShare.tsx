@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { Copy, ExternalLink, Users, Check, Timer, Lock, Pencil } from 'lucide-react';
@@ -138,7 +138,26 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
     setDraftById((d) => ({ ...d, [readyRow.id]: composed }));
   }, [readyRow, body, draftById]);
 
+  // Auto-confirm from a WhatsApp deep link: /campaigns?action=confirm&queue_id=X.
+  // Declared BEFORE any early return so hook order stays stable.
+  const shareReadyRef = useRef<(row?: QueuedRow) => void>(() => {});
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('action') !== 'confirm') return;
+    const qid = params.get('queue_id');
+    if (!qid) return;
+    const target = queue.find((r) => r.id === qid && r.status === 'ready');
+    if (!target) return;
+    params.delete('action');
+    params.delete('queue_id');
+    const next = `${window.location.pathname}${params.toString() ? `?${params}` : ''}`;
+    window.history.replaceState({}, '', next);
+    setTimeout(() => { shareReadyRef.current?.(target); }, 150);
+  }, [queue]);
+
   if (loading || groups.length === 0) return null;
+
 
   const togglePick = (id: string) => {
     setPicked((prev) => {
@@ -221,27 +240,9 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
     setQueue((q) => q.filter((r) => r.id !== row.id));
     setDraftById((d) => { const n = { ...d }; delete n[row.id]; return n; });
   };
+  shareReadyRef.current = handleShareReady;
 
-  // Auto-confirm from a WhatsApp deep link: /campaigns?action=confirm&queue_id=X
-  // Waits for the matching row to land in 'ready' state (the cron may take a
-  // few seconds), then runs the same copy + open-tab flow.
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('action') !== 'confirm') return;
-    const qid = params.get('queue_id');
-    if (!qid) return;
-    const target = queue.find((r) => r.id === qid && r.status === 'ready');
-    if (!target) return;
-    // Strip the action params so a refresh doesn't re-fire.
-    params.delete('action');
-    params.delete('queue_id');
-    const next = `${window.location.pathname}${params.toString() ? `?${params}` : ''}`;
-    window.history.replaceState({}, '', next);
-    // Slight delay so the draft seeding effect has a tick to compose text.
-    setTimeout(() => { void handleShareReady(target); }, 150);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queue]);
+
 
   const pickedCount = Array.from(picked).filter((id) => !queueByGroup[id]).length;
 
