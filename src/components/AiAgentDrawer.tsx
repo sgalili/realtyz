@@ -6,7 +6,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, Send, Sparkles, Loader2, BarChart3, Database, X, Mic, MicOff, FileText, ChevronDown, ChevronLeft } from 'lucide-react';
+import { Bot, Send, Sparkles, Loader2, BarChart3, Database, X, Mic, MicOff, FileText, ChevronDown, ChevronLeft, Paperclip, Globe } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -83,6 +83,18 @@ interface SourceTag {
   similarity: number;
 }
 
+interface ResearchSource {
+  url: string;
+  title?: string;
+}
+
+interface Attachment {
+  name: string;
+  mime: string;
+  data_url: string;
+  size: number;
+}
+
 interface Message {
   role: 'user' | 'assistant';
   content: string;
@@ -90,6 +102,8 @@ interface Message {
   query?: string;
   type?: 'text' | 'data' | 'error';
   sources?: SourceTag[];
+  research_sources?: ResearchSource[];
+  attachments?: Array<{ name: string; mime: string }>;
 }
 
 // Hebrew translations for common SQL/aggregate column names returned by ai-agent
@@ -225,11 +239,37 @@ export default function AiAgentDrawer() {
   const location = useLocation();
   const navigate = useNavigate();
 
+  const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
+  const [researchMode, setResearchMode] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
   // Allow opening from header button
   useEffect(() => {
     const handler = () => setOpen(true);
     window.addEventListener('open-ai-drawer', handler);
     return () => window.removeEventListener('open-ai-drawer', handler);
+  }, []);
+
+  const onFilePick = useCallback((files: FileList | null) => {
+    if (!files || files.length === 0) return;
+    const arr = Array.from(files).slice(0, 6);
+    arr.forEach((f) => {
+      if (f.size > 18 * 1024 * 1024) {
+        toast.error(`${f.name}: גדול מ-18MB`);
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = () => {
+        const dataUrl = String(reader.result || '');
+        if (!dataUrl) return;
+        setPendingAttachments((prev) => [
+          ...prev,
+          { name: f.name, mime: f.type || 'application/octet-stream', data_url: dataUrl, size: f.size },
+        ]);
+      };
+      reader.readAsDataURL(f);
+    });
+    if (fileInputRef.current) fileInputRef.current.value = '';
   }, []);
 
   // Load full chat history for this user (permanent — never forgets).
@@ -251,6 +291,7 @@ export default function AiAgentDrawer() {
       setHistoryLoaded(true);
     })();
   }, [user?.id, historyLoaded]);
+
 
   const persistMessage = useCallback(async (m: Message) => {
     if (!user?.id) return;
@@ -277,12 +318,19 @@ export default function AiAgentDrawer() {
 
 
   const sendMessage = async (text: string) => {
-    if (!text.trim() || isLoading) return;
+    const hasFiles = pendingAttachments.length > 0;
+    if ((!text.trim() && !hasFiles) || isLoading) return;
 
-    const userMsg: Message = { role: 'user', content: text };
+    const sentAttachments = pendingAttachments;
+    const userMsg: Message = {
+      role: 'user',
+      content: text || (hasFiles ? `(נשלחו ${sentAttachments.length} קבצים לניתוח)` : ''),
+      attachments: sentAttachments.map((a) => ({ name: a.name, mime: a.mime })),
+    };
     setMessages(prev => [...prev, userMsg]);
     persistMessage(userMsg);
     setInput('');
+    setPendingAttachments([]);
     setIsLoading(true);
 
     try {
@@ -292,7 +340,11 @@ export default function AiAgentDrawer() {
       }));
 
       const { data, error } = await supabase.functions.invoke('ai-agent', {
-        body: { messages: chatMessages },
+        body: {
+          messages: chatMessages,
+          attachments: sentAttachments.map((a) => ({ name: a.name, mime: a.mime, data_url: a.data_url })),
+          enable_research: researchMode ? true : undefined,
+        },
       });
 
       if (error) {
@@ -311,6 +363,7 @@ export default function AiAgentDrawer() {
           query: data.query,
           type: 'data',
           sources: data.sources ?? [],
+          research_sources: data.research_sources ?? [],
         };
       } else {
         assistantMsg = {
@@ -318,6 +371,7 @@ export default function AiAgentDrawer() {
           content: data?.content || data?.explanation || 'לא הצלחתי לעבד את הבקשה',
           type: 'text',
           sources: data?.sources ?? [],
+          research_sources: data?.research_sources ?? [],
         };
       }
       setMessages(prev => [...prev, assistantMsg]);
@@ -335,6 +389,7 @@ export default function AiAgentDrawer() {
       setIsLoading(false);
     }
   };
+
 
   return (
     <Sheet open={open} onOpenChange={setOpen}>
@@ -474,6 +529,40 @@ export default function AiAgentDrawer() {
                     </div>
                   </div>
                 )}
+
+                {msg.role === 'assistant' && msg.research_sources && msg.research_sources.length > 0 && (
+                  <div className="mt-2 pt-2 border-t border-border/30">
+                    <p className="text-[10px] text-muted-foreground mb-1.5 flex items-center gap-1">
+                      <Globe className="h-2.5 w-2.5" /> מקורות מחקר חי:
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {msg.research_sources.slice(0, 8).map((rs, ri) => (
+                        <a
+                          key={ri}
+                          href={rs.url}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-emerald-500/10 text-emerald-700 border border-emerald-500/20 hover:bg-emerald-500/20 transition-colors max-w-[200px]"
+                          title={rs.url}
+                        >
+                          <Globe className="h-2.5 w-2.5 shrink-0" />
+                          <span className="truncate">{rs.title || rs.url}</span>
+                        </a>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {msg.role === 'user' && msg.attachments && msg.attachments.length > 0 && (
+                  <div className="mt-2 flex flex-wrap gap-1">
+                    {msg.attachments.map((a, ai) => (
+                      <span key={ai} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-white/15 border border-white/20">
+                        <Paperclip className="h-2.5 w-2.5" />
+                        <span className="truncate max-w-[140px]">{a.name}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           ))}
@@ -527,8 +616,31 @@ export default function AiAgentDrawer() {
           )}
         </div>
 
+        {/* Attachments preview */}
+        {pendingAttachments.length > 0 && (
+          <div className="px-4 pt-2 flex flex-wrap gap-1.5 border-t">
+            {pendingAttachments.map((a, ai) => (
+              <span key={ai} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-muted border border-border">
+                <Paperclip className="h-2.5 w-2.5" />
+                <span className="truncate max-w-[140px]">{a.name}</span>
+                <button onClick={() => setPendingAttachments((p) => p.filter((_, i) => i !== ai))} className="hover:text-destructive">
+                  <X className="h-2.5 w-2.5" />
+                </button>
+              </span>
+            ))}
+          </div>
+        )}
+
         {/* Input — mic on right, slate send on left */}
         <div className="px-4 py-3 border-t">
+          <input
+            ref={fileInputRef}
+            type="file"
+            multiple
+            accept="image/*,application/pdf"
+            className="hidden"
+            onChange={(e) => onFilePick(e.target.files)}
+          />
           <form
             onSubmit={(e) => { e.preventDefault(); sendMessage(input); }}
             className="flex items-center gap-2"
@@ -537,7 +649,7 @@ export default function AiAgentDrawer() {
               type="submit"
               size="icon"
               className="h-9 w-9 shrink-0 bg-slate-700 hover:bg-slate-800 text-white"
-              disabled={!input.trim() || isLoading}
+              disabled={(!input.trim() && pendingAttachments.length === 0) || isLoading}
               aria-label="שלח"
             >
               <Send className="h-4 w-4" />
@@ -545,10 +657,32 @@ export default function AiAgentDrawer() {
             <Input
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder={isListening ? '🎙️ מקשיב...' : 'מה הולכים לבדוק או לבצע בנכסים ובקמפיין?'}
+              placeholder={isListening ? '🎙️ מקשיב...' : researchMode ? 'מצב מחקר חי - שאל על שכונה/אזור/פרויקט' : 'מה הולכים לבדוק או לבצע בנכסים ובקמפיין?'}
               className="flex-1 h-9 text-sm"
               disabled={isLoading}
             />
+            <Button
+              type="button"
+              size="icon"
+              variant={researchMode ? 'default' : 'outline'}
+              className="h-9 w-9 shrink-0"
+              onClick={() => setResearchMode((v) => !v)}
+              disabled={isLoading}
+              title={researchMode ? 'כבה מצב מחקר חי' : 'הפעל מצב מחקר חי (Firecrawl)'}
+            >
+              <Globe className="h-4 w-4" />
+            </Button>
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              className="h-9 w-9 shrink-0"
+              onClick={() => fileInputRef.current?.click()}
+              disabled={isLoading}
+              title="צרף קבצים (PDF/תמונות)"
+            >
+              <Paperclip className="h-4 w-4" />
+            </Button>
             <Button
               type="button"
               size="icon"

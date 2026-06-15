@@ -108,9 +108,10 @@ serve(async (req) => {
 
   try {
     const body = await req.json();
-    const { lead_id, lead_name, mode, context, variants: variantsReq } = body ?? {};
+    const { lead_id, lead_name, mode, context, variants: variantsReq, attachments: attachmentsReq, enable_research: enableResearchReq } = body ?? {};
     let { messages } = body ?? {};
     const variantCount = Math.max(1, Math.min(5, Number(variantsReq ?? 1) || 1));
+    const attachments: Array<{ name?: string; mime?: string; data_url?: string; url?: string }> = Array.isArray(attachmentsReq) ? attachmentsReq : [];
 
     // Deal-Room call shape: no `messages` provided — synthesize from chat_history
     // so the function still works as a "draft-the-next-reply" call.
@@ -462,6 +463,45 @@ serve(async (req) => {
       }
     }
 
+    // === LIVE WEB RESEARCH (Master Intelligence Officer) ===
+    // Auto-trigger Firecrawl-backed research when the owner asks about an
+    // area, neighborhood, market comp, or explicitly requests a "תחקיר/מחקר".
+    // The synthesized Hebrew brief is injected into the prompt AND persisted
+    // into system_intelligence_kb so all downstream generators inherit it.
+    let researchBlock = "";
+    let researchSources: Array<{ url: string; title?: string }> = [];
+    if (isInternalDashboard) {
+      try {
+        const lastUserText = String(
+          [...(messages as Array<{ role: string; content: any }>)].reverse().find((m) => m.role === "user")?.content ?? "",
+        );
+        const RESEARCH_TRIGGER = /(תחקיר|מחקר|חקור|חקרי|בדוק לי|בדקי לי|שכונה|אזור|נייבורהוד|תכנון|תב"?ע|פרויקט חדש|נכס חדש|השווא|השוואה|בתי ספר|תחבורה|מחירים ב|neighborhood|research|comparative|zoning|market study)/i;
+        const shouldResearch = enableResearchReq === true || (enableResearchReq !== false && RESEARCH_TRIGGER.test(lastUserText));
+        if (shouldResearch && lastUserText.trim().length > 3) {
+          const authHeader = req.headers.get("Authorization") ?? "";
+          const r = await fetch(`${supabaseUrl}/functions/v1/master-research`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: authHeader },
+            body: JSON.stringify({ query: lastUserText.slice(0, 400), mode: "neighborhood" }),
+          });
+          if (r.ok) {
+            const rj = await r.json();
+            if (rj?.brief) {
+              researchBlock = `LIVE WEB RESEARCH BRIEF (Firecrawl + Gemini synthesis, persisted to workspace KB):\n${String(rj.brief).slice(0, 6000)}`;
+              researchSources = Array.isArray(rj?.sources) ? rj.sources : [];
+            }
+          } else {
+            console.warn("master-research failed", r.status);
+          }
+        }
+      } catch (e) {
+        console.warn("master-research dispatch failed:", e);
+      }
+    }
+    if (researchBlock) {
+      liveDataBlock = (liveDataBlock ? liveDataBlock + "\n\n" : "") + researchBlock;
+    }
+
     const MASTER_AGENT_PROMPT = `אתה ה-Master AI Agent — הרמטכ"ל הדיגיטלי (chief of staff) של בעל סביבת העבודה ב-Realtyz AI.
 אתה מדבר עם המנהל/בעלים עצמו (לא עם לקוח קצה). פנה אליו בכבוד בגוף שני, כאל המפקד שלך.
 אסור לך בשום אופן להציג את עצמך בשמו של בעל סביבת העבודה (למשל "היי, אני אודי ויטמן"). אינך מתחזה אליו — אתה הנכס התפעולי שלו.
@@ -771,6 +811,38 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
     }
 
     // Step 1: Ask AI to generate SQL or text response (legacy single-shot path)
+    // Multi-modal attachments (PDFs / images / audio) are attached to the last
+    // user message only on Master Agent calls so the model can analyze them.
+    const baseMasked = maskMessages(messages as Array<{ role: string; content: string }>).messages;
+    let outgoingMessages: any[] = baseMasked as any[];
+    if (isInternalDashboard && attachments.length > 0 && outgoingMessages.length > 0) {
+      const cloned = outgoingMessages.map((m) => ({ ...m }));
+      const lastIdx = [...cloned].reverse().findIndex((m) => m.role === "user");
+      if (lastIdx !== -1) {
+        const idx = cloned.length - 1 - lastIdx;
+        const textPart = { type: "text", text: String(cloned[idx].content ?? "") };
+        const attachmentParts: any[] = [];
+        for (const a of attachments.slice(0, 6)) {
+          const mime = String(a.mime ?? "").toLowerCase();
+          const dataUrl = a.data_url || a.url || "";
+          if (!dataUrl) continue;
+          if (mime.startsWith("image/")) {
+            attachmentParts.push({ type: "image_url", image_url: { url: dataUrl } });
+          } else if (mime === "application/pdf" || /\.pdf(\?|$)/i.test(dataUrl) || /\.pdf$/i.test(a.name ?? "")) {
+            attachmentParts.push({ type: "file", file: { filename: a.name || "doc.pdf", file_data: dataUrl } });
+          }
+        }
+        cloned[idx] = { role: "user", content: [textPart, ...attachmentParts] };
+        outgoingMessages = cloned;
+      }
+    }
+
+    // When attachments OR research are present in Master Agent mode, relax the
+    // strict JSON-only contract so the model can return a rich Hebrew brief.
+    const richResponseHint = isInternalDashboard && (attachments.length > 0 || !!researchBlock)
+      ? `\n\nRESPONSE OVERRIDE: למשימה זו (קבצים מצורפים או תקציר מחקר חי), החזר JSON בצורת {"type":"text","content":"..."} כאשר content הוא תקציר עברית מובנה עם כותרות ## ולפחות 5 צעדים מעשיים. אל תחזיר SQL.`
+      : "";
+
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -778,13 +850,14 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
+        max_tokens: attachments.length > 0 || researchBlock ? 2400 : 1200,
         messages: [
-          { role: "system", content: systemPrompt },
+          { role: "system", content: systemPrompt + richResponseHint },
           // PII MASKING (Compliance Layer): scrub IDs / cards / IBANs /
           // emails / phones from the chat history before it leaves our
           // backend. The originals stay in Supabase for the human Agent.
-          ...maskMessages(messages as Array<{ role: string; content: string }>).messages,
+          ...outgoingMessages,
         ],
       }),
     });
@@ -817,6 +890,7 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
         type: "text",
         content: rawContent,
         escalation,
+        research_sources: researchSources,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -825,7 +899,7 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
     if (parsed.type === "text") {
       // Fact-check the AI's draft against verified listings.
       const fact_violations = factCheckDraft(String(parsed.content || ""), listingFacts);
-      return new Response(JSON.stringify({ ...parsed, sources: kbSources, escalation, fact_violations }), {
+      return new Response(JSON.stringify({ ...parsed, sources: kbSources, research_sources: researchSources, escalation, fact_violations }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
