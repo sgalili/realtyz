@@ -1803,12 +1803,13 @@ const PublishedFeed = () => {
   // Realtime: live-patch counters into rows as soon as the edge function
   // updates campaign_logs — no manual refresh needed.
   useEffect(() => {
-    if (!userId) return;
+    const scope = workspaceOwnerId ?? userId;
+    if (!scope) return;
     const channel = supabase
-      .channel(`campaign_logs:${userId}`)
+      .channel(`campaign_logs:${scope}`)
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'campaign_logs', filter: `user_id=eq.${userId}` },
+        { event: 'UPDATE', schema: 'public', table: 'campaign_logs', filter: `user_id=eq.${scope}` },
         (payload) => {
           const updated: any = payload.new;
           setRows((prev) => prev?.map((r) => {
@@ -1835,12 +1836,12 @@ const PublishedFeed = () => {
       )
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'campaign_logs', filter: `user_id=eq.${userId}` },
+        { event: 'INSERT', schema: 'public', table: 'campaign_logs', filter: `user_id=eq.${scope}` },
         () => { load(); },
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'engagement_events', filter: `user_id=eq.${userId}` },
+        { event: '*', schema: 'public', table: 'engagement_events', filter: `user_id=eq.${scope}` },
         async (payload) => {
           const changed: any = payload.new || payload.old;
           const externalPostId = normalizePostId(changed?.external_post_id);
