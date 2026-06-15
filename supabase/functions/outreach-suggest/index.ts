@@ -15,6 +15,7 @@
 // Idempotency: a partial unique index on (lead_id, trigger_type) WHERE status='pending' prevents dupes.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
+import { fetchSystemRulesBlock } from "../_shared/system-rules.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -68,13 +69,14 @@ const TEMPLATES: Record<string, (l: Lead, ctx: Record<string, any>) => string> =
     }₪. חשבתי שיעניין אותך — נוכל לתאם סיור?`,
 };
 
-async function draftWithAI(lead: Lead, trigger: string, ctx: Record<string, any>): Promise<string | null> {
+async function draftWithAI(lead: Lead, trigger: string, ctx: Record<string, any>, systemRulesBlock = ""): Promise<string | null> {
   if (!LOVABLE_API_KEY) return null;
   const fallback = TEMPLATES[trigger]?.(lead, ctx) || "";
-  const sysPrompt = `אתה סוכן נדל"ן ישראלי כותב הודעת WhatsApp קצרה, חמה ומקצועית בעברית (עד 3 משפטים, ללא אימוג׳ים מוגזמים).`;
+  const basePrompt = `אתה סוכן נדל"ן ישראלי כותב הודעת WhatsApp קצרה, חמה ומקצועית בעברית (עד 3 משפטים, ללא אימוג׳ים מוגזמים).`;
+  const sysPrompt = systemRulesBlock ? `${systemRulesBlock}\n\n${basePrompt}` : basePrompt;
   const userPrompt = `Lead: ${lead.full_name || "Unknown"} (${lead.city || "—"}). Stage: ${lead.lead_stage}. Tier: ${lead.loyalty_tier || "—"}. Interest: ${lead.interest_tag || "—"}.
 Trigger: ${trigger}. Context: ${JSON.stringify(ctx)}.
-Write a single short follow-up message in Hebrew. Do not invent prices or addresses not in the context.`;
+Write a single short follow-up message in Hebrew. Do not invent prices or addresses not in the context.${systemRulesBlock ? "\nObey every rule in #CRITICAL_SYSTEM_PREFERENCES above without exception." : ""}`;
 
   try {
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -215,6 +217,14 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Pre-fetch owner's system rules once for this batch.
+    let systemRulesBlock = "";
+    try {
+      systemRulesBlock = await fetchSystemRulesBlock(user.id, "real estate follow-up outreach message");
+    } catch (e) {
+      console.warn("[outreach-suggest] fetchSystemRulesBlock failed:", e instanceof Error ? e.message : e);
+    }
+
     // Insert suggestions (skip duplicates via the partial unique index)
     let inserted = 0;
     for (const hit of hits) {
@@ -222,7 +232,7 @@ Deno.serve(async (req) => {
       const autoDraft = tier ? autoTiers.has(tier) : false;
       let draft = TEMPLATES[hit.trigger_type]?.(hit.lead, hit.context) || "";
       if (autoDraft) {
-        const aiDraft = await draftWithAI(hit.lead, hit.trigger_type, hit.context);
+        const aiDraft = await draftWithAI(hit.lead, hit.trigger_type, hit.context, systemRulesBlock);
         if (aiDraft) draft = aiDraft;
       }
 

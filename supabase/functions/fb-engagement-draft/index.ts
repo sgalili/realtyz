@@ -2,6 +2,7 @@
 // voice. Strict persona: signature "אודי" / "אודי ויטמן" — NO titles, NO emojis
 // of professional roles, no political/Realtyz-internal jargon.
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { fetchSystemRulesBlock } from '../_shared/system-rules.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -43,14 +44,37 @@ Deno.serve(async (req) => {
       ? `תגובה של ${comment.author_name || 'גולש'}: "${comment.comment_text}"\n\nהתשובה של אודי בפועל היתה: "${comment.historical_reply_text}".\nהפק 3 גרסאות חלופיות בסגנון של אודי.`
       : `תגובה של ${comment.author_name || 'גולש'}: "${comment.comment_text}"\n\nהפק 3 גרסאות תשובה שונות בסגנון של אודי.`;
 
+    // Pull the workspace owner's standing orders. fb-engagement is a workspace-
+    // singleton surface (one Facebook Page), so resolve owner via the engagement
+    // settings table.
+    let systemRulesBlock = '';
+    try {
+      const { data: ownerRow } = await admin
+        .from('fb_engagement_settings')
+        .select('user_id')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (ownerRow?.user_id) {
+        systemRulesBlock = await fetchSystemRulesBlock(ownerRow.user_id, comment.comment_text || 'facebook comment reply');
+      }
+    } catch (e) {
+      console.warn('[fb-engagement-draft] fetchSystemRulesBlock failed:', e instanceof Error ? e.message : e);
+    }
+
+    const finalSystem = systemRulesBlock ? `${systemRulesBlock}\n\n${SYSTEM}` : SYSTEM;
+    const finalUser = systemRulesBlock
+      ? `${userMsg}\n\nכל גרסה חייבת לציית במלואה לכל הכללים תחת #CRITICAL_SYSTEM_PREFERENCES — אל תפר אף כלל.`
+      : userMsg;
+
     const aiRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
       method: 'POST',
       headers: { Authorization: `Bearer ${LOVABLE}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: 'google/gemini-2.5-flash',
         messages: [
-          { role: 'system', content: SYSTEM },
-          { role: 'user', content: userMsg },
+          { role: 'system', content: finalSystem },
+          { role: 'user', content: finalUser },
         ],
         response_format: { type: 'json_object' },
       }),
