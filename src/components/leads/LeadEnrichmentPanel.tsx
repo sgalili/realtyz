@@ -63,7 +63,7 @@ export default function LeadEnrichmentPanel({ lead }: Props) {
       if (patch.pref) {
         update.preferences = { ...prefs, ...patch.pref };
       }
-      const { error } = await supabase.from('leads').update(update).eq('id', lead.id);
+      const { error } = await supabase.from('leads').update(update as any).eq('id', lead.id);
       if (error) throw error;
       qc.invalidateQueries({ queryKey: ['leads-infinite'] });
       toast.success('עודכן');
