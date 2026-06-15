@@ -325,7 +325,10 @@ function PersonalTab() {
             placeholder={'לדוגמה: אודי ויטמן, אנגלו-סכסון, הרצליה/רמה״ש'}
             className="text-right"
           />
-          <p className="text-[11px] text-muted-foreground/80">משמש כחתימה הבלעדית; הפלטפורמה תסיר אוטומטית כל תואר כמו "נדל&quot;ן" / "Real Estate" שיומצא ע&quot;י ה-AI.</p>
+          <p className="text-[11px] text-muted-foreground/80">משמש כחתימה הבלעדית; הפלטפורמה תסיר אוטומטית כל תואר כמו "נדל״ן" / "Real Estate" שיומצא ע״י ה-AI.</p>
+        </div>
+
+
 
 
 
