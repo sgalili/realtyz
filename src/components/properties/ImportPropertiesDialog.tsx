@@ -108,14 +108,28 @@ function slugify(s: string) {
 }
 
 // Stable fingerprint used to detect duplicates inside the file and vs the DB.
+// For project rows (multi-unit developments), distinct units share the same address/project,
+// so we identify duplicates by apartment number + floor instead.
 function fingerprintInsert(ins: any): string {
   const norm = (v: any) => String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const meta = ins.source_metadata || {};
+  const project = norm(ins.project_name ?? meta.project_name);
+  const aptNumber = norm(meta.apt_number);
+  const floor = norm(ins.floor);
+
+  if (project && (aptNumber || floor)) {
+    // Project-scoped fingerprint: unit number + floor uniquely identifies a sibling unit
+    return ['project', project, aptNumber, floor].join('|');
+  }
+
   const parts = [
     norm(ins.city),
     norm(ins.address),
     norm(ins.rooms),
     norm(Math.round(Number(ins.asking_price ?? 0))),
     norm(ins.property_title),
+    aptNumber,
+    floor,
   ];
   return parts.join('|');
 }
