@@ -1,5 +1,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { useActiveWorkspaceOwnerId } from "@/hooks/useWorkspace";
 import { cn } from "@/lib/utils";
 import { Users, Check, Loader2, Plus } from "lucide-react";
 import { toast } from "sonner";
@@ -24,10 +25,15 @@ type Props = {
  * never blocks the composer if the provider rejects the request.
  */
 export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Props) => {
-  const [groups, setGroups] = useState<FacebookGroup[]>([]);
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  const [ayrshareGroups, setAyrshareGroups] = useState<FacebookGroup[]>([]);
+  const [customUserGroups, setCustomUserGroups] = useState<FacebookGroup[]>([]);
   const [loading, setLoading] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const groups = ayrshareGroups.length > 0 ? ayrshareGroups : customUserGroups;
+  const hasVisibleGroups = ayrshareGroups.length > 0 || customUserGroups.length > 0;
+  const manualMode = ayrshareGroups.length === 0 && customUserGroups.length > 0;
 
   const fetchFromAyrshare = async (): Promise<FacebookGroup[]> => {
     const { data: ws } = await supabase
@@ -44,16 +50,19 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
   };
 
   const fetchCustomGroups = async (): Promise<FacebookGroup[]> => {
+    if (!workspaceOwnerId) return [];
     const { data, error } = await (supabase as any)
       .from("custom_user_groups")
-      .select("id, group_name, group_url, platform")
-      .eq("platform", "facebook");
+      .select("id, group_name, group_url, platform, workspace_owner_id")
+      .eq("workspace_owner_id", workspaceOwnerId)
+      .eq("platform", "facebook")
+      .order("created_at", { ascending: false });
     if (error) {
       console.warn("[FB_GROUPS] custom_user_groups query failed", error);
       return [];
     }
     return (data ?? []).map((r: any) => ({
-      group_id: String(r.group_url || r.id),
+      group_id: `manual:${String(r.id)}`,
       group_name: String(r.group_name || r.group_url || "קבוצה"),
       group_icon: null,
       connected: true,
