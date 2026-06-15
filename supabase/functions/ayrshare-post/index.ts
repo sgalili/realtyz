@@ -137,9 +137,20 @@ Deno.serve(async (req) => {
       userId = authData?.user?.id ?? null;
     }
     if (!userId) return json({ error: "unauthorized" }, 401);
+    const requestedOwnerId = typeof body?.workspace_owner_id === "string" ? body.workspace_owner_id.trim() : "";
+    let ownerUserId = userId;
+    if (requestedOwnerId && requestedOwnerId !== userId) {
+      const { data: member } = await admin
+        .from("workspace_memberships")
+        .select("user_id")
+        .eq("workspace_owner_id", requestedOwnerId)
+        .eq("user_id", userId)
+        .maybeSingle();
+      if (member) ownerUserId = requestedOwnerId;
+    }
 
     // Enforce owner laws (strip street numbers, append broker license footer).
-    const branding = await fetchOwnerBranding(admin as any, userId);
+    const branding = await fetchOwnerBranding(admin as any, ownerUserId);
     const finalPostText = enforceOwnerLaws(postText, { license: branding.license, byline: branding.byline, withLicense: true });
 
     const platforms = Array.from(
@@ -334,7 +345,7 @@ Deno.serve(async (req) => {
       const mapped = PLATFORM_MAP[lc];
       const match = postIds.find((p) => p.platform === mapped);
       return {
-        user_id: userId,
+        user_id: ownerUserId,
         campaign_name: campaignName,
         channel: lc,
         message_body: finalPostText,
@@ -346,7 +357,7 @@ Deno.serve(async (req) => {
       } as any;
     });
     const groupRows = groupResults.map((g) => ({
-      user_id: userId,
+      user_id: ownerUserId,
       campaign_name: `${campaignName} · קבוצה`,
       channel: "facebook",
       message_body: finalPostText,
