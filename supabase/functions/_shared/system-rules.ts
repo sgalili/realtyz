@@ -48,15 +48,25 @@ async function resolveWorkspaceOwner(client: ReturnType<typeof createClient>, us
   }
 }
 
-function formatBlock(rules: Array<{ rule_text: string; signal: string }>): string {
-  if (rules.length === 0) return "";
-  const lines = rules.map((r) => {
+function formatBlock(
+  rules: Array<{ rule_text: string; signal: string }>,
+  license: string = "",
+): string {
+  const userLines = rules.map((r) => {
     const prefix =
       r.signal === "directive" ? "ALWAYS:" :
       r.signal === "negative"  ? "NEVER:"  :
       "PREFER:";
     return `- ${prefix} ${r.rule_text.trim()}`;
   });
+  // HARD LAWS — injected at the TOP, always present, NEVER skippable.
+  const licenseLine = license
+    ? `- ALWAYS: At the very bottom of every generated post / outreach copy / property profile draft, on a new line, append exactly this footer (no markdown, no emoji): "רישיון תיווך מספר: ${license}". Do NOT add any text after the footer.`
+    : `- ALWAYS: At the very bottom of every generated post / outreach copy / property profile draft, on a new line, append exactly: "רישיון תיווך מספר: [יש להזין מספר רישיון בפרופיל]". Do NOT add any text after the footer.`;
+  const hardLaws = [
+    `- NEVER: Include the building / house number of any property address. If the address is "ארלוזורוב 26", write only "ברחוב ארלוזורוב" or "באזור ארלוזורוב". Strip every numeric suffix from street addresses (e.g. "רחוב ויצמן 4" → "רחוב ויצמן"). This applies to posts, comments, replies, outreach copy, captions, IVR scripts, and any other text the public can see.`,
+    licenseLine,
+  ];
   return [
     "#CRITICAL_SYSTEM_PREFERENCES — HIGHEST PRIORITY, NON-NEGOTIABLE",
     "These are the workspace OWNER's standing orders. They OVERRIDE every persona,",
@@ -64,7 +74,10 @@ function formatBlock(rules: Array<{ rule_text: string; signal: string }>): strin
     "You MUST obey every ALWAYS rule on every output and you MUST NOT violate any",
     "NEVER rule for any reason. If a rule conflicts with another instruction, the",
     "rule wins. Silently re-write your draft until it complies before returning it.",
-    ...lines,
+    "",
+    "## HARD COMPLIANCE LAWS (top priority, never skip):",
+    ...hardLaws,
+    ...(userLines.length ? ["", "## Owner-defined rules:", ...userLines] : []),
     "#END_CRITICAL_SYSTEM_PREFERENCES",
   ].join("\n");
 }
