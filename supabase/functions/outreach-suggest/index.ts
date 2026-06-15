@@ -241,9 +241,6 @@ Deno.serve(async (req) => {
         const lic = await fetchOwnerLicense(supabase as any, user.id);
         draft = enforceOwnerLaws(draft, { license: lic, withLicense: true });
       } catch (_e) { /* never block */ }
-      // (re-open the trigger loop indentation)
-      {
-      }
 
       const { error } = await supabase.from("outreach_suggestions").insert({
         user_id: user.id,
