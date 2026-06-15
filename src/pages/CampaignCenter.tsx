@@ -1030,15 +1030,11 @@ const InlineComposer = ({
 
 
 
-      {/* Facebook Group multi-select — only when posting to Facebook */}
-      {hasBody && channel.id === 'facebook' && (
-        <CampaignGroupSelector selectedIds={groupIds} onChange={setGroupIds} />
-      )}
-
-      {/* Custom Facebook Groups — manual quick-share for non-admin groups */}
+      {/* Unified controlled-share cockpit for Facebook groups (merged selector + Time Bank queue) */}
       {hasBody && channel.id === 'facebook' && (
         <CustomGroupsQuickShare body={body} />
       )}
+
 
       {hasBody && channel.id === 'facebook' && platformProfiles.length > 1 && (
         <div className="rounded-xl border-2 border-primary bg-primary/5 p-3 space-y-2" dir="rtl">
