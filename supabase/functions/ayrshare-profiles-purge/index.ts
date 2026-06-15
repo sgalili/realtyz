@@ -56,21 +56,23 @@ const readAyrshareMessage = (payload: unknown): string => {
   return `${String(p.message ?? "")} ${String(p.error ?? "")}`;
 };
 
-async function deleteAyrshareProfile(profileKey: string) {
+async function deleteAyrshareProfile(profileKey: string | null, title: string | null) {
   const attempts: Array<{ endpoint: string; status: number; ok: boolean; payload: unknown }> = [];
 
+  const documentedHeaders: Record<string, string> = {
+    Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+    "Content-Type": "application/json",
+  };
+  if (profileKey) documentedHeaders["Profile-Key"] = profileKey;
   const documented = await fetch(`${AYR}/profiles`, {
     method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-      "Content-Type": "application/json",
-      "Profile-Key": profileKey,
-    },
+    headers: documentedHeaders,
+    body: profileKey ? undefined : JSON.stringify({ title }),
   });
   const documentedText = await documented.text();
   let documentedPayload: any = null;
   try { documentedPayload = documentedText ? JSON.parse(documentedText) : null; } catch { documentedPayload = { raw: documentedText }; }
-  attempts.push({ endpoint: "/profiles", status: documented.status, ok: documented.ok, payload: documentedPayload });
+  attempts.push({ endpoint: profileKey ? "/profiles:profile-key" : "/profiles:title", status: documented.status, ok: documented.ok, payload: documentedPayload });
   if (documented.ok) return { ok: true, status: documented.status, payload: documentedPayload, attempts };
 
   const fallback = await fetch(`${AYR}/profiles/profile`, {
@@ -79,7 +81,7 @@ async function deleteAyrshareProfile(profileKey: string) {
       Authorization: `Bearer ${AYRSHARE_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ profileKey }),
+    body: JSON.stringify(profileKey ? { profileKey } : { title }),
   });
   const fallbackText = await fallback.text();
   let fallbackPayload: any = null;
