@@ -1035,6 +1035,11 @@ const InlineComposer = ({
         <CampaignGroupSelector selectedIds={groupIds} onChange={setGroupIds} />
       )}
 
+      {/* Custom Facebook Groups — manual quick-share for non-admin groups */}
+      {hasBody && channel.id === 'facebook' && (
+        <CustomGroupsQuickShare body={body} />
+      )}
+
       {hasBody && channel.id === 'facebook' && platformProfiles.length > 1 && (
         <div className="rounded-xl border-2 border-primary bg-primary/5 p-3 space-y-2" dir="rtl">
           <div className="flex items-center justify-between gap-2">
