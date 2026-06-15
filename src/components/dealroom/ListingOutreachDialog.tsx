@@ -20,6 +20,7 @@ import {
 import { Megaphone, Sparkles, Send, Home, Globe, MessageSquare, Mail, Smartphone, Check } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { ProjectAlternativesCard } from '@/components/properties/ProjectAlternativesCard';
 
 type Lead = {
   id: string;
