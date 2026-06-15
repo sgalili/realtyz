@@ -393,7 +393,23 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
   const postIdsKey = postIds.join("|");
 
   const fetchRows = async () => {
-    let q = supabase
+    // STRICT POST-ID ISOLATION (anti cross-contamination):
+    // We refuse to do the legacy time-windowed fallback. If this campaign
+    // has no resolvable post id, there is no safe way to scope comments
+    // without leaking other posts' threads — render an empty tree instead.
+    if (postIds.length === 0) {
+      setRows((prev) => {
+        // Wipe any previously-cached rows so a stale time-window pull from
+        // a prior build can't keep displaying foreign comments.
+        const empty: EngagementRow[] = [];
+        if (prev && prev.length > 0) writeCache(campaign.id, empty, []);
+        return empty;
+      });
+      return;
+    }
+
+    const allowedPostIds = new Set(postIds.map((p) => String(p)));
+    const { data, error } = await supabase
       .from("engagement_events")
       .select(
         "id, user_id, platform, sender_handle, inbound_text, ai_reply_text, status, sentiment, external_id, external_post_id, metadata, created_at, is_archived",
@@ -402,32 +418,24 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
       // NOTE: do NOT filter on is_archived — incoming comments are not
       // guaranteed to be initialized to false, and archived AI rows still
       // belong on the thread for full visibility.
+      .in("external_post_id", postIds.map((p) => String(p)))
       .order("created_at", { ascending: true })
       .limit(500);
-
-    if (postIds.length > 0) {
-      // Explicit String() guards against any int/text coercion mismatch.
-      q = q.in("external_post_id", postIds.map((p) => String(p)));
-
-    } else {
-      const from = new Date(campaign.created_at).toISOString();
-      const to = new Date(
-        new Date(campaign.created_at).getTime() + 30 * 86400_000,
-      ).toISOString();
-      q = q
-        .eq("platform", campaign.channel)
-        .gte("created_at", from)
-        .lte("created_at", to);
-    }
-    const { data, error } = await q;
     if (error) throw error;
-    const incoming = (data ?? []) as EngagementRow[];
-    // Append-only delta merge: keep every cached/existing row, overlay updates
-    // by id, and append brand-new ids. The tree never flickers, collapses, or
-    // resets to an empty state mid-refresh — only NEW comments slide in.
+    const incoming = ((data ?? []) as EngagementRow[]).filter(
+      (r) => r.external_post_id && allowedPostIds.has(String(r.external_post_id)),
+    );
+    // Append-only delta merge — BUT first evict any stale cached row whose
+    // external_post_id is no longer in the active scope (cross-contamination
+    // guard). This ensures the tree only ever displays comments belonging
+    // to the currently selected post(s).
     setRows((prev) => {
       const byId = new Map<string, EngagementRow>();
-      for (const r of prev ?? []) byId.set(r.id, r);
+      for (const r of prev ?? []) {
+        if (r.external_post_id && allowedPostIds.has(String(r.external_post_id))) {
+          byId.set(r.id, r);
+        }
+      }
       for (const r of incoming) byId.set(r.id, { ...(byId.get(r.id) ?? {} as EngagementRow), ...r });
       const merged = Array.from(byId.values()).sort(
         (a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime(),
@@ -436,6 +444,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
       return merged;
     });
   };
+
 
 
 
