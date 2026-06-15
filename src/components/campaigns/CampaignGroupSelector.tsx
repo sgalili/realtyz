@@ -31,9 +31,9 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
   const [loading, setLoading] = useState(false);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const groups = ayrshareGroups.length > 0 ? ayrshareGroups : customUserGroups;
+  const groups = [...ayrshareGroups, ...customUserGroups];
   const hasVisibleGroups = ayrshareGroups.length > 0 || customUserGroups.length > 0;
-  const manualMode = ayrshareGroups.length === 0 && customUserGroups.length > 0;
+  const manualMode = customUserGroups.length > 0;
 
   const fetchFromAyrshare = async (): Promise<FacebookGroup[]> => {
     const { data: ws } = await supabase
@@ -75,6 +75,12 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     setLoading(true);
     setError(null);
     try {
+      const manual = await fetchCustomGroups();
+      setCustomUserGroups(manual);
+      if (manual.length > 0) {
+        console.log("[FB_GROUPS] custom_user_groups ready", manual.length);
+      }
+
       // 1) Try Ayrshare (uses the active workspace profile key)
       let list = await fetchFromAyrshare();
       // 2) Fallback to Meta direct bypass
@@ -84,14 +90,11 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
       }
       // 3) Final fallback — the workspace's manually curated group directory
       if (list.length === 0) {
-        const manual = await fetchCustomGroups();
         console.log("[FB_GROUPS] using custom_user_groups fallback", manual.length);
         setAyrshareGroups([]);
-        setCustomUserGroups(manual);
         return;
       }
       setAyrshareGroups(list);
-      setCustomUserGroups([]);
     } catch (e: any) {
       setAyrshareGroups([]);
       setCustomUserGroups([]);
