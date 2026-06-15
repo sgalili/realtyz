@@ -109,38 +109,11 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
     await persist({ pref: { socials: clean } }, 'socials');
   }
 
-  async function saveGreenApi() {
-    if (!gaInstance.trim() || !gaToken.trim()) {
-      toast.error('יש למלא Instance ID ו־Token');
-      return;
-    }
-    setGaSaving(true);
-    try {
-      const { error } = await supabase
-        .from('api_configs')
-        .upsert(
-          {
-            service_name: 'Green API',
-            api_key: `${gaInstance.trim()}:${gaToken.trim()}`,
-            is_active: true,
-          } as any,
-          { onConflict: 'service_name' },
-        );
-      if (error) throw error;
-      setGaActive(true);
-      setGaToken('');
-      toast.success('GreenAPI הוגדר כשער הוואטסאפ הראשי');
-    } catch (e: any) {
-      toast.error(e?.message ?? 'שמירה נכשלה');
-    } finally {
-      setGaSaving(false);
-    }
-  }
-
   const activeSocialCount = socials.filter((s) => s.handle.trim()).length;
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
+
       <Separator />
 
       {/* Demographics */}
