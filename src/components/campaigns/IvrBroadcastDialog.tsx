@@ -261,6 +261,92 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     return `${header}\n\n${raw}`;
   };
 
+  // Filtered listings for dropdown free-search
+  const filteredListings = useMemo(() => {
+    const q = listingSearch.trim().toLowerCase();
+    if (!q) return listings;
+    return listings.filter((l) => {
+      const hay = [l.property_title, l.address, l.neighborhood, l.city, l.rooms ? `${l.rooms} חדרים` : '']
+        .filter(Boolean).join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  }, [listings, listingSearch]);
+
+  // Auto-generate a punchy promo script when a property is selected
+  const autoGenerateScriptForListing = async (l: ListingOpt) => {
+    setAutoScripting(true);
+    try {
+      const facts: string[] = [];
+      if (l.property_title) facts.push(l.property_title);
+      if (l.address) facts.push(`כתובת ${l.address}`);
+      if (l.neighborhood) facts.push(`שכונת ${l.neighborhood}`);
+      if (l.city) facts.push(l.city);
+      if (l.rooms) facts.push(`${l.rooms} חדרים`);
+      if (l.sqm) facts.push(`${l.sqm} מ"ר`);
+      if (l.asking_price) facts.push(`מחיר ${Number(l.asking_price).toLocaleString('he-IL')} ₪`);
+      const topic = `כתוב סקריפט IVR קצר, ברור וקולח בעברית (2-4 משפטים, עד 35 שניות בהקראה) לקידום הנכס. עובדות: ${facts.join(', ')}. סיים בקריאה לפעולה להשאיר עניין בלחיצה אחת. ללא אימוג'ים, ללא מקפים כפולים, ללא placeholders.`;
+      const { data, error } = await supabase.functions.invoke('generate-content', {
+        body: { topic, platform: 'ivr', selectedListingId: l.id, listingFocusOnly: true },
+      });
+      if (error) throw new Error(error.message);
+      const text = String((data as any)?.content ?? (data as any)?.text ?? '').trim();
+      if (!text) throw new Error('empty');
+      setTtsText(text);
+      lastAutoScriptRef.current = text;
+      setScriptEdited(false);
+    } catch (e: any) {
+      toast.error(`יצירת סקריפט נכשלה: ${e?.message ?? 'שגיאה'}`);
+    } finally {
+      setAutoScripting(false);
+    }
+  };
+
+  // Re-generate variation
+  const regenerateScript = () => {
+    if (selectedListing) autoGenerateScriptForListing(selectedListing);
+    else toast.message('בחרו נכס כדי לייצר סקריפט');
+  };
+
+  // When listing changes, auto-generate
+  useEffect(() => {
+    if (selectedListing) autoGenerateScriptForListing(selectedListing);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [listingId]);
+
+  // Save final edited version to learning KB
+  const saveFinalVersion = async () => {
+    const text = ttsText.trim();
+    if (!text) return;
+    setSavingFinal(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('not authenticated');
+      const { error } = await supabase.from('system_intelligence_kb').insert({
+        workspace_owner_id: user.id,
+        created_by: user.id,
+        actor_role: 'owner',
+        source: 'ivr_final_version',
+        rule_text: text,
+        raw_input: lastAutoScriptRef.current,
+        signal: 'ivr_script_style',
+        weight: 1.0,
+        is_active: true,
+        metadata: {
+          context: 'ivr_promo_script',
+          listing_id: selectedListing?.id ?? null,
+          listing_city: selectedListing?.city ?? null,
+        },
+      });
+      if (error) throw error;
+      toast.success('נשמר כגרסה סופית — הפלטפורמה תלמד את הסגנון');
+      setScriptEdited(false);
+    } catch (e: any) {
+      toast.error(`שמירה נכשלה: ${e?.message ?? 'שגיאה'}`);
+    } finally {
+      setSavingFinal(false);
+    }
+  };
+
   // Generate TTS audio (calls ivr-broadcast in generate-only mode for an audio_url)
   const generateTtsAudio = async () => {
     if (!ttsText.trim()) { toast.error('הקלידו טקסט'); return; }
