@@ -1527,14 +1527,27 @@ const PublishedFeed = () => {
   // Per-card refresh-signal counter. Bumping triggers a manual refresh inside
   // CampaignCommentsStream via its refreshSignal prop.
   const [refreshSignals, setRefreshSignals] = useState<Record<string, number>>({});
+  const [refreshingIds, setRefreshingIds] = useState<Record<string, boolean>>({});
   const bumpRefresh = (campaignId: string) => {
+    if (refreshingIds[campaignId]) return;
     // Purge any stale per-campaign cache blocks before the child fires its
     // network cycle, so the new Ayrshare integers can land without contention.
     try {
       sessionStorage.removeItem(`realtyz.comments.${campaignId}`);
       sessionStorage.removeItem(`realtyz.live_comment_counts`);
     } catch { /* quota */ }
+    setRefreshingIds((prev) => ({ ...prev, [campaignId]: true }));
+    toast.loading('מרענן תגובות חיות מפייסבוק…', { id: `refresh-${campaignId}` });
     setRefreshSignals((prev) => ({ ...prev, [campaignId]: (prev[campaignId] ?? 0) + 1 }));
+  };
+  const handleRefreshComplete = (campaignId: string, result: { ok: boolean; count: number; error?: string }) => {
+    setRefreshingIds((prev) => { const n = { ...prev }; delete n[campaignId]; return n; });
+    toast.dismiss(`refresh-${campaignId}`);
+    if (result.ok) {
+      toast.success(`רוענן: ${result.count} תגובות חיות`, { id: `refresh-${campaignId}` });
+    } else {
+      toast.error(result.error || 'רענון נכשל', { id: `refresh-${campaignId}` });
+    }
   };
 
 
@@ -2024,9 +2037,10 @@ const PublishedFeed = () => {
                     פתח פוסט
                   </Button>
                   <Button variant="outline" size="sm"
+                          disabled={!!refreshingIds[r.id]}
                           onClick={(e) => { e.stopPropagation(); bumpRefresh(r.id); }}>
-                    <RefreshCw className="ml-1 h-4 w-4" />
-                    רענן תגובות
+                    <RefreshCw className={cn('ml-1 h-4 w-4', refreshingIds[r.id] && 'animate-spin')} />
+                    {refreshingIds[r.id] ? 'מרענן…' : 'רענן תגובות'}
                   </Button>
                   <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
                           className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
@@ -2058,6 +2072,7 @@ const PublishedFeed = () => {
                           metrics_updated_at: new Date().toISOString(),
                         } : row) ?? prev);
                       }}
+                      onRefreshComplete={handleRefreshComplete}
                     />
                   ) : (
                     <p className="text-xs text-muted-foreground text-right">נדרשת התחברות לצפייה בתגובות</p>

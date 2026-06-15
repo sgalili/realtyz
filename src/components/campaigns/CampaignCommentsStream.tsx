@@ -113,6 +113,8 @@ type Props = {
   refreshSignal?: number;
   /** Hide the internal header (button + title) — used when parent renders its own controls. */
   hideHeader?: boolean;
+  /** Notified once a manual refresh cycle settles, with the live tree count. */
+  onRefreshComplete?: (campaignId: string, result: { ok: boolean; count: number; error?: string }) => void;
 };
 
 
@@ -274,7 +276,7 @@ const writeDraftCache = (campaignId: string, map: DraftMap) => {
   try { sessionStorage.setItem(draftKey(campaignId), JSON.stringify(map)); } catch { /* quota */ }
 };
 
-export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveCountResolved, onCountersResolved, refreshSignal, hideHeader }: Props) {
+export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveCountResolved, onCountersResolved, refreshSignal, hideHeader, onRefreshComplete }: Props) {
   const cached = readCache(campaign.id);
   const [rows, setRows] = useState<EngagementRow[] | null>(cached);
 
@@ -483,9 +485,11 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
     if (lastManualRefreshAtRef.current > 0 && elapsed < 60_000) {
       const wait = Math.ceil((60_000 - elapsed) / 1000);
       toast.message(`רענון ידני זמין שוב בעוד ${wait} שניות`);
+      onRefreshComplete?.(campaign.id, { ok: false, count: treeCount(rowsRef.current), error: `רענון ידני זמין שוב בעוד ${wait} שניות` });
       return;
     }
     if (isProviderFetchLocked(postIds, { manual })) {
+      onRefreshComplete?.(campaign.id, { ok: false, count: treeCount(rowsRef.current), error: 'הספק נעול זמנית להגנת החשבון' });
       return;
     }
     // HARD RESET on manual click: evict every per-post cache + lock entry so
@@ -586,8 +590,10 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
           console.warn("[CampaignCommentsStream] counter bubble-up failed", counterErr);
         }
       }
+      onRefreshComplete?.(campaign.id, { ok: true, count: treeCount(rowsRef.current) });
     } catch (e: any) {
       console.warn("[CampaignCommentsStream] manual refresh failed", e);
+      onRefreshComplete?.(campaign.id, { ok: false, count: treeCount(rowsRef.current), error: e?.message || 'רענון נכשל' });
     } finally {
       // Debounce window starts when the request COMPLETES (success or fail),
       // not when the user clicked — prevents rapid retries during slow calls.
