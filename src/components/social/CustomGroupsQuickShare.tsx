@@ -1,14 +1,26 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
-import { Copy, ExternalLink, Users, Check } from 'lucide-react';
+import { Copy, ExternalLink, Users, Check, Timer, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
+import { stageActivity } from '@/lib/activityQueue';
 
 type CustomGroup = {
   id: string;
   group_name: string;
   group_url: string;
+};
+
+type QueuedRow = {
+  id: string;
+  target_ref: string | null;
+  target_label: string | null;
+  status: string;
+  scheduled_for: string;
+  payload: any;
+  variations: any;
+  variation_index: number | null;
 };
 
 // Canonical hardcoded footer — must match supabase/functions/_shared/owner-laws.ts
@@ -33,11 +45,21 @@ function ensureCanonicalFooter(text: string): string {
   return `${cleaned}\n\n${parts.join('\n\n')}`;
 }
 
+function fmtCountdown(ms: number): string {
+  const s = Math.max(0, Math.floor(ms / 1000));
+  const m = Math.floor(s / 60);
+  const r = s % 60;
+  return `${m}:${String(r).padStart(2, '0')}`;
+}
+
 /**
- * Workspace-scoped Facebook groups directory. User picks ONE group from the
- * list, then a single "שיתוף ידני מהיר" button appears below — clicking it
- * copies the canonical post (with hardcoded byline+license footer) and opens
- * the selected group in a new tab.
+ * Workspace-scoped Facebook groups directory with Time Bank queue:
+ *   1. User picks a group → "Schedule" stages it into campaign_activity_queue
+ *      with a 1-7 min jitter (and stacking 15-30 min spacing per slot).
+ *   2. Cron (process-activity-queue) flips the row to status='ready' when its
+ *      cool-down elapses.
+ *   3. UI reveals the share button ONLY for the next ready row — preventing
+ *      30-tab bursts that trigger Meta spam filters.
  */
 export function CustomGroupsQuickShare({ body }: { body: string }) {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
@@ -45,7 +67,11 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
   const [loading, setLoading] = useState(false);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [justCopied, setJustCopied] = useState(false);
+  const [queue, setQueue] = useState<QueuedRow[]>([]);
+  const [now, setNow] = useState(Date.now());
+  const [staging, setStaging] = useState(false);
 
+  // Load groups
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
@@ -65,27 +91,104 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
     return () => { cancelled = true; };
   }, [workspaceOwnerId]);
 
+  // Poll the queue for this workspace's manual_share items
+  useEffect(() => {
+    if (!workspaceOwnerId) return;
+    let cancelled = false;
+    const tick = async () => {
+      const { data } = await (supabase as any)
+        .from('campaign_activity_queue')
+        .select('id, target_ref, target_label, status, scheduled_for, payload, variations, variation_index')
+        .eq('workspace_owner_id', workspaceOwnerId)
+        .eq('activity_type', 'manual_share')
+        .in('status', ['pending', 'ready'])
+        .order('scheduled_for', { ascending: true });
+      if (!cancelled) setQueue((data ?? []) as QueuedRow[]);
+    };
+    tick();
+    const id = setInterval(tick, 15_000);
+    const clock = setInterval(() => setNow(Date.now()), 1_000);
+    return () => { cancelled = true; clearInterval(id); clearInterval(clock); };
+  }, [workspaceOwnerId]);
+
+  const selected = useMemo(() => groups.find((g) => g.id === selectedId) ?? null, [groups, selectedId]);
+
+  // The single "next" unlocked row, if any
+  const nextReady = useMemo(
+    () => queue.find((r) => r.status === 'ready') ?? null,
+    [queue],
+  );
+  const nextPending = useMemo(
+    () => queue.find((r) => r.status === 'pending') ?? null,
+    [queue],
+  );
+
   if (loading || groups.length === 0) return null;
 
-  const selected = groups.find((g) => g.id === selectedId) ?? null;
-
-  const handleShare = async () => {
-    if (!selected) return;
+  const handleSchedule = async () => {
+    if (!selected || !workspaceOwnerId) return;
     const text = ensureCanonicalFooter((body ?? '').trim());
     if (!text) {
       toast.error('אין טקסט לפרסום — חולל קודם תוכן');
+      return;
+    }
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) return;
+    setStaging(true);
+    try {
+      // Position this in the next slot AFTER the queued items, so spacing
+      // stacks (each subsequent group lands ~18 min later + jitter).
+      const slot = queue.length;
+      await stageActivity({
+        workspaceOwnerId,
+        createdBy: user.id,
+        activityType: 'manual_share',
+        targetRef: selected.id,
+        targetLabel: selected.group_name,
+        payload: { group_url: selected.group_url, body: text },
+        variations: [{ title: '', body: text }],
+        slotIndex: slot,
+      });
+      toast.success(`"${selected.group_name}" נוסף לתור — תיפתח התראה כשמותר לפרסם`);
+      setSelectedId(null);
+    } catch (e: any) {
+      toast.error(`שגיאה בהוספה לתור: ${e?.message ?? e}`);
+    } finally {
+      setStaging(false);
+    }
+  };
+
+  const handleShareReady = async () => {
+    if (!nextReady) return;
+    const text =
+      String(nextReady.payload?.outbound_text ?? nextReady.payload?.body ?? '').trim() ||
+      ensureCanonicalFooter((body ?? '').trim());
+    const url = String(nextReady.payload?.group_url ?? '');
+    if (!text || !url) {
+      toast.error('פרטי הקבוצה חסרים');
       return;
     }
     try {
       await navigator.clipboard.writeText(text);
       setJustCopied(true);
       setTimeout(() => setJustCopied(false), 2000);
-      toast.success(`הטקסט הועתק · פותח את "${selected.group_name}"`);
+      toast.success(`הטקסט הועתק · פותח את "${nextReady.target_label ?? ''}"`);
     } catch {
       toast.error('העתקה נכשלה — העתק ידנית');
     }
-    window.open(selected.group_url, '_blank', 'noopener,noreferrer');
+    window.open(url, '_blank', 'noopener,noreferrer');
+    // Mark completed so the next pending row becomes the "head" of the queue.
+    await (supabase as any)
+      .from('campaign_activity_queue')
+      .update({ status: 'completed', completed_at: new Date().toISOString() })
+      .eq('id', nextReady.id);
+    // Optimistic UI refresh
+    setQueue((q) => q.filter((r) => r.id !== nextReady.id));
   };
+
+  const countdownMs = nextPending
+    ? new Date(nextPending.scheduled_for).getTime() - now
+    : 0;
 
   return (
     <div className="rounded-xl border-2 border-dashed border-amber-400/60 bg-amber-50/40 p-3 space-y-2 dark:bg-amber-950/10" dir="rtl">
@@ -99,23 +202,31 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
         </span>
       </div>
       <p className="text-[11px] leading-relaxed text-muted-foreground">
-        Facebook חוסם פרסום אוטומטי לקבוצות שאינך מנהל בהן. בחר קבוצה מהרשימה — ואז יופיע כפתור השיתוף שיעתיק את הטקסט ויפתח את הקבוצה בכרטיסייה חדשה.
+        כדי לא להיחסם ע״י Meta — בחר קבוצה ולחץ <b>הוסף לתור</b>. המערכת תפתח אותן אחת-אחת עם מרווח של 15–30 דקות בין פרסום לפרסום.
       </p>
+
+      {/* Group picker */}
       <div className="divide-y divide-border/60 overflow-hidden rounded-lg border border-border bg-background">
         {groups.map((g) => {
           const isSelected = selectedId === g.id;
+          const isQueued = queue.some((r) => r.target_ref === g.id);
           return (
             <button
               key={g.id}
               type="button"
+              disabled={isQueued}
               onClick={() => setSelectedId(isSelected ? null : g.id)}
               className={cn(
                 'flex w-full items-center justify-between gap-3 px-3 py-2 text-right transition',
-                isSelected ? 'bg-amber-100/70 dark:bg-amber-900/30' : 'hover:bg-muted/50',
+                isQueued && 'opacity-50 cursor-not-allowed',
+                isSelected ? 'bg-amber-100/70 dark:bg-amber-900/30' : !isQueued && 'hover:bg-muted/50',
               )}
             >
               <div className="min-w-0 flex-1">
-                <div className="truncate text-sm font-semibold text-foreground">{g.group_name}</div>
+                <div className="truncate text-sm font-semibold text-foreground">
+                  {g.group_name}
+                  {isQueued ? <span className="mr-2 text-[10px] font-normal text-amber-700">· בתור</span> : null}
+                </div>
                 <div className="flex items-center gap-1 truncate text-[10px] text-muted-foreground" dir="ltr">
                   <ExternalLink className="h-3 w-3" />
                   <span className="truncate">{g.group_url}</span>
@@ -135,20 +246,39 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
         })}
       </div>
 
+      {/* Schedule action — only when something is selected */}
       {selected ? (
         <button
           type="button"
-          onClick={handleShare}
+          disabled={staging}
+          onClick={handleSchedule}
+          className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-600 px-3 py-2.5 text-sm font-bold text-white transition hover:bg-amber-700 disabled:opacity-60"
+        >
+          <Timer className="h-4 w-4" />
+          {staging ? 'מוסיף לתור…' : `הוסף "${selected.group_name}" לתור`}
+        </button>
+      ) : null}
+
+      {/* Single "ready" share action — Time Bank unlocked it */}
+      {nextReady ? (
+        <button
+          type="button"
+          onClick={handleShareReady}
           className={cn(
             'flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold transition',
-            justCopied
-              ? 'bg-emerald-600 text-white'
-              : 'bg-[#1877F2] text-white hover:bg-[#1668d8]',
+            justCopied ? 'bg-emerald-600 text-white' : 'bg-[#1877F2] text-white hover:bg-[#1668d8]',
           )}
         >
           {justCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-          {justCopied ? 'הועתק · פותח את הקבוצה' : `שיתוף ידני ל-"${selected.group_name}"`}
+          {justCopied
+            ? 'הועתק · פותח את הקבוצה'
+            : `מוכן לשיתוף: ${nextReady.target_label ?? ''}`}
         </button>
+      ) : nextPending ? (
+        <div className="flex items-center justify-center gap-2 rounded-lg border border-amber-300/70 bg-amber-100/50 px-3 py-2 text-[12px] font-semibold text-amber-900 dark:bg-amber-900/20 dark:text-amber-200">
+          <Lock className="h-3.5 w-3.5" />
+          הקבוצה הבאה ({nextPending.target_label}) תיפתח בעוד {fmtCountdown(countdownMs)}
+        </div>
       ) : null}
     </div>
   );
