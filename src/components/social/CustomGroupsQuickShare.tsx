@@ -411,16 +411,13 @@ export function CustomGroupsQuickShare({
           פרסום מבוקר בקבוצות פייסבוק
         </span>
         <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-800 dark:text-amber-300" dir="ltr">
-          {groups.length}
+          {visibleGroups.length}
         </span>
       </div>
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
-        כדי לא להיחסם ע״י Meta — סמן קבוצות והוסף לתור. המערכת תפתח אותן אחת-אחת עם מרווח של 15–30 דקות בין פרסום לפרסום, ותאפשר לערוך כל פוסט לפני שיתוף.
-      </p>
 
       {/* Unified group rows */}
       <div className="divide-y divide-border/60 overflow-hidden rounded-lg border border-border bg-background">
-        {groups.map((g) => {
+        {visibleGroups.map((g) => {
           const row = queueByGroup[g.id] ?? null;
           const isReady = !!row && row.status === 'ready';
           const isPending = !!row && row.status === 'pending';
