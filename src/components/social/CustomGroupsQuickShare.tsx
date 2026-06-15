@@ -310,14 +310,21 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
       if (next.has(gid)) next.delete(gid); else next.add(gid);
       return next;
     });
-    // First-open generator: if no draft exists for this group, compose & persist now.
+    // First-open generator: if no draft exists for this group, spin one now.
     const g = groups.find((x) => x.id === gid);
     if (g && (draftById[gid] === undefined || draftById[gid] === '')) {
-      const composed = composeDraftForGroup(g);
-      if (composed) {
-        setDraftById((d) => ({ ...d, [gid]: composed }));
-        void persistDraft(gid, composed);
-      }
+      setRegeneratingId(gid);
+      void (async () => {
+        try {
+          const composed = await composeDraftForGroup(g);
+          if (composed) {
+            setDraftById((d) => ({ ...d, [gid]: composed }));
+            void persistDraft(gid, composed);
+          }
+        } finally {
+          setRegeneratingId((cur) => (cur === gid ? null : cur));
+        }
+      })();
     }
   };
 
