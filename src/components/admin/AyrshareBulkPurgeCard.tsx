@@ -38,18 +38,24 @@ type Response = {
  */
 export function AyrshareBulkPurgeCard() {
   const [includeOrphans, setIncludeOrphans] = useState(true);
+  const [forceDeleteAll, setForceDeleteAll] = useState(false);
   const [working, setWorking] = useState(false);
   const [result, setResult] = useState<Response | null>(null);
 
   const run = async (dryRun: boolean) => {
     if (!dryRun) {
-      const targets = result?.decisions.filter((d) => d.willDelete).length ?? 0;
+      const targets = forceDeleteAll ? (result?.total_profiles ?? 0) : (result?.decisions.filter((d) => d.willDelete).length ?? 0);
       if (!confirm(`למחוק לצמיתות ${targets} פרופילים מ-Ayrshare? פעולה בלתי הפיכה.`)) return;
     }
     setWorking(true);
     try {
       const { data, error } = await supabase.functions.invoke('ayrshare-profiles-purge', {
-        body: { dry_run: dryRun, include_orphans: includeOrphans },
+        body: {
+          dry_run: dryRun,
+          include_orphans: includeOrphans,
+          force_delete_all: forceDeleteAll,
+          allow_active_profile_delete: forceDeleteAll,
+        },
       });
       if (error) throw error;
       setResult(data as Response);
