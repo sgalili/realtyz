@@ -5,7 +5,8 @@
 //      suspended/inactive status OR an orphan profile (zero linked social
 //      accounts). Profiles flagged with `suspended:true` in the list payload
 //      are also targeted.
-//   3. DELETE /api/profiles/profile with { profileKey } for each target.
+//   3. DELETE /api/profiles for each target, then fall back to the legacy
+//      /api/profiles/profile contract if Ayrshare rejects the documented path.
 //   4. Hard-clear any local workspace_social_profile row that referenced a
 //      purged key so the dashboard stops rendering ghost connections.
 //
@@ -42,6 +43,17 @@ type Decision = {
   reason: string | null;
   willDelete: boolean;
   deleted?: { ok: boolean; status: number; payload: unknown } | null;
+};
+
+const readAyrshareErrorCode = (payload: unknown): number | undefined => {
+  if (payload && typeof payload === "object" && "code" in payload) return Number((payload as { code: unknown }).code);
+  return undefined;
+};
+
+const readAyrshareMessage = (payload: unknown): string => {
+  if (!payload || typeof payload !== "object") return "";
+  const p = payload as { message?: unknown; error?: unknown };
+  return `${String(p.message ?? "")} ${String(p.error ?? "")}`;
 };
 
 async function deleteAyrshareProfile(profileKey: string) {
