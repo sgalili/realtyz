@@ -1969,17 +1969,8 @@ const PublishedFeed = () => {
         return (
           <article
             key={r.id}
-            className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden cursor-pointer"
+            className="rounded-2xl border border-border/60 bg-card shadow-sm overflow-hidden"
             dir={dirAttr}
-            onClick={() => setExpanded((s) => ({ ...s, [r.id]: !isOpen }))}
-            role="button"
-            tabIndex={0}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter' || e.key === ' ') {
-                e.preventDefault();
-                setExpanded((s) => ({ ...s, [r.id]: !isOpen }));
-              }
-            }}
           >
             <header className="p-4 space-y-2">
 
