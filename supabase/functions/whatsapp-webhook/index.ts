@@ -44,10 +44,6 @@ const SUPPORTED_DOC_MIME =
 const SUPPORTED_IMAGE_MIME = /^image\/(jpeg|png|webp|gif|heic|heif)/i;
 const SUPPORTED_VIDEO_MIME = /^video\/(mp4|quicktime|webm|3gpp)/i;
 
-// Exact Hebrew reply requested for any unreadable / oversized / failed file.
-const HEBREW_FILE_ERROR_REPLY =
-  "מצטער, לא הצלחתי לקרוא את הקובץ. אנא נסה שוב.";
-
 function isSupportedMime(mime: string | undefined, kind: "audio" | "image" | "video" | "document"): boolean {
   const m = String(mime ?? "").toLowerCase();
   if (!m) return kind === "document"; // some senders omit MIME on docs — let kb-ingest try.
@@ -569,15 +565,15 @@ Deno.serve(async (req) => {
     } else if (msg.kind === "audio") {
       // Guard: MIME allow-list.
       if (!isSupportedMime(msg.mimeType, "audio")) {
-        await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, HEBREW_FILE_ERROR_REPLY);
-        return jsonResponse({ ok: false, ignored: "unsupported_audio_mime", mime: msg.mimeType }, 200);
+        console.warn("whatsapp-webhook ignored unsupported audio", { senderPhone, messageId, mime: msg.mimeType });
+        return jsonResponse({ ok: true, ignored: "unsupported_audio_mime", mime: msg.mimeType }, 200);
       }
       // Download → store private copy → transcribe → ingest text only.
       const { bytes, contentType } = await fetchBinary(msg.downloadUrl);
       // Guard: size cap (20MB).
       if (bytes.byteLength > MAX_FILE_BYTES) {
-        await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, HEBREW_FILE_ERROR_REPLY);
-        return jsonResponse({ ok: false, ignored: "audio_too_large", bytes: bytes.byteLength }, 200);
+        console.warn("whatsapp-webhook ignored oversized audio", { senderPhone, messageId, bytes: bytes.byteLength });
+        return jsonResponse({ ok: true, ignored: "audio_too_large", bytes: bytes.byteLength }, 200);
       }
       const ext = (msg.fileName?.match(/\.(\w+)$/i)?.[1] ?? "ogg").toLowerCase();
       const objectPath = `${userId}/whatsapp/${Date.now()}-${crypto.randomUUID()}.${ext}`;
@@ -624,14 +620,14 @@ Deno.serve(async (req) => {
       // media (image / video / document) — store privately, extract text via kb-ingest.
       // Guard: MIME allow-list per media kind.
       if (!isSupportedMime(msg.mimeType, msg.mediaKind)) {
-        await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, HEBREW_FILE_ERROR_REPLY);
-        return jsonResponse({ ok: false, ignored: "unsupported_media_mime", mime: msg.mimeType, kind: msg.mediaKind }, 200);
+        console.warn("whatsapp-webhook ignored unsupported media", { senderPhone, messageId, mime: msg.mimeType, kind: msg.mediaKind });
+        return jsonResponse({ ok: true, ignored: "unsupported_media_mime", mime: msg.mimeType, kind: msg.mediaKind }, 200);
       }
       const { bytes, contentType } = await fetchBinary(msg.downloadUrl);
       // Guard: size cap (20MB).
       if (bytes.byteLength > MAX_FILE_BYTES) {
-        await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, HEBREW_FILE_ERROR_REPLY);
-        return jsonResponse({ ok: false, ignored: "media_too_large", bytes: bytes.byteLength }, 200);
+        console.warn("whatsapp-webhook ignored oversized media", { senderPhone, messageId, bytes: bytes.byteLength });
+        return jsonResponse({ ok: true, ignored: "media_too_large", bytes: bytes.byteLength }, 200);
       }
       const safeName = (msg.fileName ?? "attachment").replace(/[^\w.\-]+/g, "_");
       const objectPath = `${userId}/whatsapp/${Date.now()}-${crypto.randomUUID()}-${safeName}`;
@@ -775,18 +771,9 @@ Deno.serve(async (req) => {
       functionName: "whatsapp-webhook",
       errorMessage: message,
     });
-    // Try to notify the Agent that something went wrong so they aren't left guessing.
-    try {
-      await sendRawWhatsApp(
-        SUPABASE_URL,
-        SERVICE_KEY,
-        senderPhone,
-        HEBREW_FILE_ERROR_REPLY,
-      );
-    } catch (_) {
-      // best-effort
-    }
-    return jsonResponse({ ok: false, error: message }, 500);
+    // Acknowledge failures without sending a WhatsApp error reply. Returning 200
+    // prevents provider retries from repeatedly notifying the owner.
+    return jsonResponse({ ok: true, error: message, suppressed_reply: true }, 200);
   }
 });
 
