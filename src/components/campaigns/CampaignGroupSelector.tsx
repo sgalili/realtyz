@@ -118,11 +118,21 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
         return;
       }
 
-      // Otherwise, open the OAuth link so the user can authorize FB Groups
+      // Meta API returned an empty list (agent is non-admin in those groups).
+      // Skip the OAuth loop and surface the workspace's manual directory so
+      // the operator can launch the שיתוף ידני מהיר flow.
+      const manual = await fetchCustomGroups();
+      toast.dismiss("fbg-connect");
+      if (manual.length > 0) {
+        setGroups(manual);
+        toast.success(`נטענו ${manual.length} קבוצות לשיתוף ידני מהיר`);
+        return;
+      }
+
+      // No automatic groups AND no manual directory yet — fall back to OAuth.
       const { data, error } = await supabase.functions.invoke("ayrshare-social-link", {
         body: { platform: "fbg", profileKey: activeKey },
       });
-      toast.dismiss("fbg-connect");
       if (error) throw new Error(error.message || "יצירת חיבור נכשלה");
       const url = (data as any)?.url;
       if (!url) throw new Error((data as any)?.error || "לא נמצאו קבוצות מחוברות");
