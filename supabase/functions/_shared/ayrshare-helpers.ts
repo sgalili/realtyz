@@ -171,25 +171,40 @@ export async function likeNativeComment(params: {
     return { ok: false, error: "missing_params" };
   }
   try {
-    const res = await fetch(`${AYR_BASE}/comments/like`, {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${apiKey}`,
-        "Profile-Key": profileKey,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        platforms: [platform],
-        id: commentId,
-        commentId,
-        like: true,
-        searchPlatformId: true,
-      }),
+    // Ayrshare current contract for liking a native comment:
+    //   POST /api/comments  { platforms, id, action: "like", searchPlatformId: true }
+    // (the legacy /api/comments/like endpoint was removed and now 404s).
+    const tryRequest = async (url: string, body: Record<string, unknown>) => {
+      const r = await fetch(url, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Profile-Key": profileKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+      const t = await r.text();
+      let p: unknown = t;
+      try { p = t ? JSON.parse(t) : null; } catch { /* keep raw */ }
+      return { ok: r.ok, status: r.status, response: p };
+    };
+
+    let result = await tryRequest(`${AYR_BASE}/comments`, {
+      platforms: [platform],
+      id: commentId,
+      action: "like",
+      searchPlatformId: true,
     });
-    const text = await res.text();
-    let payload: unknown = text;
-    try { payload = text ? JSON.parse(text) : null; } catch { /* keep raw */ }
-    return { ok: res.ok, status: res.status, response: payload };
+    if (!result.ok && result.status === 404) {
+      // Fallback: per-id path variant.
+      result = await tryRequest(`${AYR_BASE}/comments/${encodeURIComponent(commentId)}`, {
+        action: "like",
+        platforms: [platform],
+        searchPlatformId: true,
+      });
+    }
+    return result;
   } catch (e) {
     return { ok: false, error: e instanceof Error ? e.message : String(e) };
   }
