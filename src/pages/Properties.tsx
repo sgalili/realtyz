@@ -289,7 +289,7 @@ export default function Properties() {
   }, [merged, listingType, city, propertyType, rooms, priceRange, areaMin, isConfigured, serviceAreas, searchQuery]);
 
   return (
-    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6" dir="rtl">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden min-w-0" dir="rtl">
       {/* Header — title only (the '+' button lives inside the global hero) */}
       <header className="text-right">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
