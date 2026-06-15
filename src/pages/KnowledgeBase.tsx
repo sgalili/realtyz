@@ -281,6 +281,10 @@ export default function KnowledgeBase() {
         },
       });
       if (error) throw error;
+      // Also try to capture as a system rule (fire-and-forget)
+      supabase.functions.invoke('ingest-system-rule', {
+        body: { text: textBody.trim(), source: 'kb_ui', role: 'owner' },
+      }).catch(() => {});
     },
     onSuccess: () => {
       toast.success('נשמר למאגר');
