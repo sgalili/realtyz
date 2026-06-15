@@ -348,7 +348,7 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
                   />
                   <button
                     type="button"
-                    onClick={handleShareReady}
+                    onClick={() => { void handleShareReady(); }}
                     className={cn(
                       'flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold transition',
                       justCopiedId === row!.id
