@@ -140,6 +140,19 @@ export function ListingOutreachDialog({
     [leads, leadId],
   );
 
+  const { data: selectedProjectName } = useQuery({
+    queryKey: ['outreach-listing-project', source, listingId],
+    enabled: source === 'internal' && !!listingId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('listings')
+        .select('project_name')
+        .eq('id', listingId)
+        .maybeSingle();
+      return (data as any)?.project_name as string | null;
+    },
+  });
+
   async function handleGenerate() {
     if (!leadId || !listingId) {
       toast.error('יש לבחור לקוח ונכס תחילה');
