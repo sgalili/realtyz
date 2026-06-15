@@ -410,6 +410,9 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
     }
     if (audioElRef.current) audioElRef.current.pause();
     const a = new Audio(item.audioUrl);
+    a.setAttribute('data-allow-sound', 'true');
+    a.muted = false;
+    a.volume = 1;
     audioElRef.current = a;
     a.onended = () => setPlayingId(null);
     a.play().then(() => setPlayingId(item.id)).catch(() => toast.error('נכשלה ההשמעה'));
