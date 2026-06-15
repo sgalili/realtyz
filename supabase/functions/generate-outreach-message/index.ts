@@ -8,6 +8,7 @@ import {
   type ListingFact,
 } from "../_shared/guardrails.ts";
 import { loadAgentPersona, renderPersonaPrompt } from "../_shared/persona.ts";
+import { fetchSystemRulesBlock } from "../_shared/system-rules.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
