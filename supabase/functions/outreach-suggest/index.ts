@@ -69,13 +69,14 @@ const TEMPLATES: Record<string, (l: Lead, ctx: Record<string, any>) => string> =
     }₪. חשבתי שיעניין אותך — נוכל לתאם סיור?`,
 };
 
-async function draftWithAI(lead: Lead, trigger: string, ctx: Record<string, any>): Promise<string | null> {
+async function draftWithAI(lead: Lead, trigger: string, ctx: Record<string, any>, systemRulesBlock = ""): Promise<string | null> {
   if (!LOVABLE_API_KEY) return null;
   const fallback = TEMPLATES[trigger]?.(lead, ctx) || "";
-  const sysPrompt = `אתה סוכן נדל"ן ישראלי כותב הודעת WhatsApp קצרה, חמה ומקצועית בעברית (עד 3 משפטים, ללא אימוג׳ים מוגזמים).`;
+  const basePrompt = `אתה סוכן נדל"ן ישראלי כותב הודעת WhatsApp קצרה, חמה ומקצועית בעברית (עד 3 משפטים, ללא אימוג׳ים מוגזמים).`;
+  const sysPrompt = systemRulesBlock ? `${systemRulesBlock}\n\n${basePrompt}` : basePrompt;
   const userPrompt = `Lead: ${lead.full_name || "Unknown"} (${lead.city || "—"}). Stage: ${lead.lead_stage}. Tier: ${lead.loyalty_tier || "—"}. Interest: ${lead.interest_tag || "—"}.
 Trigger: ${trigger}. Context: ${JSON.stringify(ctx)}.
-Write a single short follow-up message in Hebrew. Do not invent prices or addresses not in the context.`;
+Write a single short follow-up message in Hebrew. Do not invent prices or addresses not in the context.${systemRulesBlock ? "\nObey every rule in #CRITICAL_SYSTEM_PREFERENCES above without exception." : ""}`;
 
   try {
     const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
