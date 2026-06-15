@@ -71,6 +71,9 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
   const [now, setNow] = useState(Date.now());
   const [staging, setStaging] = useState(false);
   const [draftById, setDraftById] = useState<Record<string, string>>({});
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+
 
   // Load workspace's manually-curated FB groups
   useEffect(() => {
