@@ -230,6 +230,7 @@ function PersonalTab() {
           phone: primaryPhone,
           full_name: fullName,
           broker_license_number: brokerLicense.trim() || null,
+          broker_byline: brokerByline.trim() || null,
         })
         .eq('id', user!.id);
       toast.success('הפרופיל נשמר');
