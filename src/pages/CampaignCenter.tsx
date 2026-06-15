@@ -38,6 +38,7 @@ import { learnFromEdit } from '@/lib/learnFromEdit';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import { IvrBroadcastDialog } from '@/components/campaigns/IvrBroadcastDialog';
 import { EmailAliasSetupDialog } from '@/components/campaigns/EmailAliasSetupDialog';
+import { getCampaignWorkspaceUserIds } from '@/lib/campaignWorkspace';
 
 
 type TabValue = 'create' | 'published';
@@ -1413,6 +1414,7 @@ const ConfirmDispatchDialog = ({
 
 type CampaignRow = {
   id: string;
+  user_id?: string;
   campaign_name: string;
   channel: string;
   message_body: string | null;
@@ -1569,6 +1571,7 @@ const PublishedFeed = () => {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const [rows, setRows] = useState<CampaignRow[] | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [campaignUserIds, setCampaignUserIds] = useState<string[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [liveCommentCounts, setLiveCommentCounts] = useState<Record<string, number>>(() => {
     try {
