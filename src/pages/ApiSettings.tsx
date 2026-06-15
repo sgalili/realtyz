@@ -1111,6 +1111,7 @@ const ApiSettings = () => {
           <p className="text-xs text-muted-foreground">פרופיל Ayrshare ייעודי לסביבת העבודה (נוצר דינמית, לא משותף בין סוכנים), קטלוג ערוצים חי וייבוא חשבונות בלחיצה.</p>
         </div>
         <SocialChannelsGrid />
+        <CustomGroupsManager />
       </div>
 
       {/* ── Section A.4-fine-tune: AI Fine-Tuning ── */}
