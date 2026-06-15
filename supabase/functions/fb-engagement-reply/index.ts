@@ -3,6 +3,7 @@
 // persona learning.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { stripMarkdownEmphasis } from '../_shared/ayrshare-helpers.ts';
+import { stripStreetNumbers } from '../_shared/owner-laws.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
