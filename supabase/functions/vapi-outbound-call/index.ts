@@ -270,11 +270,12 @@ Deno.serve(async (req) => {
     // Pull either a specific listing (IVR context) or a short top-listings blurb
     let listingsBlurb = "";
     let focusListing = "";
+    let researchIntel = "";
     try {
       if (listing_id) {
         const { data: l } = await supabase
           .from("listings")
-          .select("property_title, description, features, city, asking_price")
+          .select("property_title, description, features, city, neighborhood, address, asking_price")
           .eq("id", listing_id)
           .maybeSingle();
         if (l) {
@@ -285,6 +286,17 @@ Deno.serve(async (req) => {
             l.features ? `מאפיינים: ${JSON.stringify(l.features).slice(0, 400)}` : "",
             "אם הלקוח מעלה התנגדות (למשל 'אין מעלית'), השב במסגרת ה-Playbook של מתווך בכיר: הכר בהתנגדות, מסגר מחדש את היתרון, וחזור לשאלת איתור צרכים.",
           ].filter(Boolean).join("\n");
+          // Inject owner-curated research/file intelligence for this listing's
+          // city/neighborhood so the voice agent quotes real schools/prices/
+          // transit instead of generic talking points.
+          try {
+            const { fetchResearchIntelBlock } = await import("../_shared/research-intel.ts");
+            researchIntel = await fetchResearchIntelBlock(user.id, [
+              l.city, l.neighborhood, l.address, l.property_title,
+            ]);
+          } catch (e) {
+            console.warn("vapi research intel non-fatal failure:", e instanceof Error ? e.message : e);
+          }
         }
       } else {
         const { data: listings } = await supabase
@@ -299,11 +311,12 @@ Deno.serve(async (req) => {
       }
     } catch (_) { /* best effort */ }
 
-    const systemPrompt = buildSystemPrompt({
+    const baseSystemPrompt = buildSystemPrompt({
       leadName, city, preferences,
       listingsBlurb: focusListing || listingsBlurb,
       voiceGender, userGender, brokerInstructions,
     });
+    const systemPrompt = [researchIntel, baseSystemPrompt].filter(Boolean).join("\n\n");
     const firstMessage = leadName
       ? `שלום ${leadName}, מדבר הסוכן הדיגיטלי של המתווך. יש לי שתי שאלות קצרות לגבי החיפוש שלך, אפשר?`
       : "שלום, מדבר הסוכן הדיגיטלי של המתווך. יש לי שתי שאלות קצרות לגבי החיפוש שלך, אפשר?";
