@@ -245,6 +245,64 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
   };
   shareReadyRef.current = handleShareReady;
 
+  const toggleExpand = (gid: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(gid)) next.delete(gid); else next.add(gid);
+      return next;
+    });
+  };
+
+  const handleDeleteGroup = async (g: CustomGroup, row: QueuedRow | null) => {
+    if (!confirm(`למחוק את הקבוצה "${g.group_name}" מהרשימה? פעולה זו גם תבטל פוסט תור פעיל.`)) return;
+    try {
+      if (row) {
+        await (supabase as any)
+          .from('campaign_activity_queue')
+          .delete()
+          .eq('id', row.id);
+        setQueue((q) => q.filter((r) => r.id !== row.id));
+      }
+      await (supabase as any)
+        .from('custom_user_groups')
+        .delete()
+        .eq('id', g.id);
+      setGroups((gs) => gs.filter((x) => x.id !== g.id));
+      setPicked((p) => { const n = new Set(p); n.delete(g.id); return n; });
+      toast.success(`הקבוצה "${g.group_name}" נמחקה`);
+    } catch (e: any) {
+      toast.error(`מחיקה נכשלה: ${e?.message ?? e}`);
+    }
+  };
+
+  const handleRegenerate = async (g: CustomGroup, row: QueuedRow | null) => {
+    const text = ensureCanonicalFooter((body ?? '').trim());
+    if (!text) {
+      toast.error('אין תוכן זמין לחידוש — חולל קודם פוסט בסיסי');
+      return;
+    }
+    setRegeneratingId(g.id);
+    try {
+      const composed = [text, g.group_url ? `\n${g.group_url}` : ''].filter(Boolean).join('\n\n');
+      if (row) {
+        const newPayload = { ...(row.payload ?? {}), body: text, outbound_text: composed };
+        await (supabase as any)
+          .from('campaign_activity_queue')
+          .update({ payload: newPayload, variations: [{ title: '', body: text }] })
+          .eq('id', row.id);
+        setQueue((q) => q.map((r) => r.id === row.id ? { ...r, payload: newPayload } : r));
+        setDraftById((d) => ({ ...d, [row.id]: composed }));
+      }
+      setExpandedIds((p) => new Set(p).add(g.id));
+      toast.success('התוכן חודש לפי הטיוטה הנוכחית');
+    } catch (e: any) {
+      toast.error(`חידוש נכשל: ${e?.message ?? e}`);
+    } finally {
+      setRegeneratingId(null);
+    }
+  };
+
+
 
 
   const pickedCount = Array.from(picked).filter((id) => !queueByGroup[id]).length;
