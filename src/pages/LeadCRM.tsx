@@ -1282,7 +1282,7 @@ const LeadCRM = () => {
                 id: `msg-${msg.id}`,
                 date: msg.created_at || '',
                 type: msg.direction === 'outbound' ? 'message_out' : 'message_in',
-                label: msg.direction === 'outbound' ? 'הודעה יוצאת' : 'הודעה נכנסת',
+                label: msg.direction === 'outbound' ? 'הצעת נכס נשלחה אוטומטית בוואטסאפ' : 'תגובת לקוח התקבלה',
                 detail: msg.content?.slice(0, 80) || 'אין תוכן',
               });
             });
