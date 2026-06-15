@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
-import { Copy, ExternalLink, Users, Check, Timer, Lock } from 'lucide-react';
+import { Copy, ExternalLink, Users, Check, Timer, Lock, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { stageActivity } from '@/lib/activityQueue';
+import { Textarea } from '@/components/ui/textarea';
 
 type CustomGroup = {
   id: string;
