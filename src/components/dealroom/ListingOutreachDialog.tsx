@@ -191,6 +191,25 @@ export function ListingOutreachDialog({
         channel === 'email' && draft.subject
           ? `${draft.subject}\n\n${draft.message}`
           : draft.message;
+
+      if (channel === 'whatsapp') {
+        // Immediate WhatsApp send via the connected GreenAPI (or WBA) gateway.
+        const { data, error } = await supabase.functions.invoke('send-whatsapp', {
+          body: {
+            lead_id: selectedLead.id,
+            phone_number: selectedLead.phone_number,
+            message: fullText,
+            ai_assisted: true,
+          },
+        });
+        if (error) throw error;
+        const res = data as { success?: boolean; provider?: string; error?: string } | null;
+        if (!res?.success) throw new Error(res?.error || 'GreenAPI send failed');
+        toast.success(`נשלח ב-WhatsApp${res.provider ? ` (${res.provider})` : ''}`);
+        onOpenChange(false);
+        return;
+      }
+
       const { error } = await supabase.functions.invoke('send-message', {
         body: {
           lead_id: selectedLead.id,
