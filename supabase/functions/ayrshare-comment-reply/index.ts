@@ -78,6 +78,7 @@ Deno.serve(async (req) => {
 
     const { profileKey } = await resolveWorkspaceProfileKey(admin);
     if (!profileKey) return json({ error: "workspace ayrshare profile key missing" }, 500);
+    const profileKeyFingerprint = `${profileKey.slice(0, 4)}…${profileKey.slice(-4)}`;
 
     let ayrPayload: any = null;
     if (!skipPublicReply) {
@@ -148,10 +149,13 @@ Deno.serve(async (req) => {
     // external_id (engagement_events.external_id), fall back to the verified
     // reply id only if the source row had none.
     const dmParentId = nativeCommentId || freshReplyId || "";
-    console.log(
-      `[MESSENGER PIPELINE] Directing private DM for listing הבשן 3 to comment ID: ${dmParentId}` +
-      ` (fresh_reply_id=${freshReplyId ?? "none"})`,
-    );
+    console.log("[MESSENGER PIPELINE] Directing private DM", {
+      eventId: rowId,
+      commentId: dmParentId,
+      freshReplyId: freshReplyId ?? "none",
+      platform: "facebook",
+      profileKey: profileKeyFingerprint,
+    });
 
     const sanitizedDm = sanitizeOutboundText(privateDmRaw ?? "");
     let privateDmResult: any = null;
@@ -162,28 +166,54 @@ Deno.serve(async (req) => {
       // directly: Meta Page tokens expire and Ayrshare maintains the live
       // token + private-reply authorization on our behalf.
       try {
-        // Ayrshare Messenger / IG Direct PRIVATE REPLY contract:
-        // POST /api/messages with `commentId` (NOT recipientId, which expects a PSID).
+        // Ayrshare Messenger PRIVATE REPLY contract:
+        // POST /api/messages with the exact Meta private-reply fields.
+        // `platform: "facebook"` is mandatory; without it Ayrshare may treat
+        // the payload as a direct user-id message instead of a comment reply.
         // Meta authorizes the Page → user thread because the comment author is
         // resolved from the commentId server-side.
-        const dmRes = await fetch("https://api.ayrshare.com/api/messages", {
+        const dmBody = {
+          commentId: dmParentId,
+          text: sanitizedDm,
+          platform: "facebook",
+        };
+        console.log("[MESSENGER PIPELINE] Ayrshare DM request", {
+          commentId: dmParentId,
+          platform: "facebook",
+          profileKey: profileKeyFingerprint,
+          textLength: sanitizedDm.length,
+        });
+        const dmRes = await fetch(AYR_MESSAGES_URL, {
           method: "POST",
           headers: {
             Authorization: `Bearer ${AYRSHARE_API_KEY}`,
             "Profile-Key": profileKey,
             "Content-Type": "application/json",
           },
-          body: JSON.stringify({
-            platforms: [platform],
-            commentId: dmParentId,
-            message: sanitizedDm,
-            searchPlatformId: true,
-          }),
+          body: JSON.stringify(dmBody),
         });
         privateDmStatus = dmRes.status;
         const dmText = await dmRes.text();
+        console.log("[MESSENGER PIPELINE] Ayrshare DM raw response", {
+          status: privateDmStatus,
+          commentId: dmParentId,
+          platform: "facebook",
+          raw: dmText,
+        });
+        if (!dmRes.ok) {
+          console.error("[MESSENGER PIPELINE] Ayrshare DM HTTP error", {
+            status: privateDmStatus,
+            commentId: dmParentId,
+            platform: "facebook",
+            raw: dmText,
+          });
+        }
         try { privateDmResult = dmText ? JSON.parse(dmText) : { ok: dmRes.ok }; }
         catch { privateDmResult = { raw: dmText, ok: dmRes.ok }; }
+        const dmErrorBlob = `${dmText} ${JSON.stringify(privateDmResult)}`.toLowerCase();
+        if (/already\s+(been\s+)?sent|private reply.*sent|duplicate|messag(e|ing).*already/i.test(dmErrorBlob)) {
+          console.log(`[MESSENGER DUP] DM locked by Meta for this specific commentId: ${dmParentId}`);
+        }
         const ayrStatus = (privateDmResult && typeof privateDmResult === "object")
           ? String((privateDmResult as any).status ?? "").toLowerCase() : "";
         if (dmRes.ok && ayrStatus && ayrStatus !== "success") {
