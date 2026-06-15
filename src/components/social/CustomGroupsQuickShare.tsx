@@ -99,7 +99,7 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
     const tick = async () => {
       const { data } = await (supabase as any)
         .from('campaign_activity_queue')
-        .select('id, target_ref, target_label, status, scheduled_for, payload, variations, variation_index')
+        .select('id, target_ref, target_label, status, publication_status, scheduled_for, payload, variations, variation_index')
         .eq('workspace_owner_id', workspaceOwnerId)
         .eq('activity_type', 'manual_share')
         .in('status', ['pending', 'ready'])
@@ -111,6 +111,7 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
     const clock = setInterval(() => setNow(Date.now()), 1_000);
     return () => { cancelled = true; clearInterval(id); clearInterval(clock); };
   }, [workspaceOwnerId]);
+
 
   // Map group_id → queue row (single active row per group at a time)
   const queueByGroup = useMemo(() => {
