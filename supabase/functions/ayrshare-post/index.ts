@@ -138,6 +138,10 @@ Deno.serve(async (req) => {
     }
     if (!userId) return json({ error: "unauthorized" }, 401);
 
+    // Enforce owner laws (strip street numbers, append broker license footer).
+    const ownerLicense = await fetchOwnerLicense(admin as any, userId);
+    const finalPostText = enforceOwnerLaws(postText, { license: ownerLicense, withLicense: true });
+
     const platforms = Array.from(
       new Set(rawChannels.map((c) => PLATFORM_MAP[String(c).toLowerCase()]).filter(Boolean)),
     );
