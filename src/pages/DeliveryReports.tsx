@@ -182,7 +182,7 @@ const DeliveryReports = () => {
         .eq('id', row.id);
       if (upErr) throw upErr;
       const { data, error } = await supabase.functions.invoke('dispatch-campaign', {
-        body: { mode: 'campaign', campaign_name: row.campaign_name, limit: 50 },
+        body: { mode: 'campaign', campaign_name: row.campaign_name, limit: 50, workspace_owner_id: ownerScope },
       });
       if (error) throw error;
       const succeeded = (data as any)?.succeeded ?? 0;
