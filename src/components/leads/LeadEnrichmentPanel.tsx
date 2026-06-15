@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
@@ -12,9 +12,10 @@ import {
 import { toast } from 'sonner';
 import {
   Sparkles, Facebook, Instagram, Linkedin, Music2,
-  User, Users as GenderIcon, KeyRound, Loader2, CheckCircle2,
+  User, Users as GenderIcon, Loader2,
   ChevronDown, ChevronUp, Plus, Trash2, Globe,
 } from 'lucide-react';
+
 
 interface Props {
   lead: any;
