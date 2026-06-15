@@ -274,6 +274,23 @@ export function PropertyMatchmakerDialog({
   );
 }
 
+function SelectedProjectAlternatives({ listingId }: { listingId: string | null }) {
+  const { data } = useQuery({
+    queryKey: ['matchmaker-listing-project', listingId],
+    enabled: !!listingId,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('listings')
+        .select('project_name')
+        .eq('id', listingId!)
+        .maybeSingle();
+      return (data as any)?.project_name as string | null;
+    },
+  });
+  if (!listingId || !data) return null;
+  return <ProjectAlternativesCard currentListingId={listingId} projectName={data} compact />;
+}
+
 function FilterField({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
