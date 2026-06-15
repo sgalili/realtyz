@@ -344,12 +344,21 @@ Deno.serve(async (req) => {
     const cleanPrivateKey = normalizePrivateKey(AYRSHARE_PRIVATE_KEY);
     const cleanPlatform = platform.toLowerCase().trim();
 
-    const jwtBody = new URLSearchParams({
+    const jwtParams: Record<string, string> = {
       domain: AYRSHARE_DOMAIN,
       privateKey: cleanPrivateKey,
       profileKey: cleanKey,
       logout: 'true',
-    });
+    };
+    // Ayrshare does not expose a per-request Facebook OAuth scope override in
+    // generateJWT. The supported way to force a fresh Page token is logout +
+    // limiting the re-link session to Facebook so Meta re-prompts the Page
+    // permission bundle configured on the Ayrshare integration app.
+    if (cleanPlatform === 'facebook' || cleanPlatform === 'facebook_groups') {
+      jwtParams.allowedSocial = JSON.stringify(['facebook']);
+      jwtParams.verify = 'true';
+    }
+    const jwtBody = new URLSearchParams(jwtParams);
 
     const jwtRes = await fetch(`${AYR_API}/profiles/generateJWT`, {
       method: 'POST',
@@ -368,7 +377,7 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: `Ayrshare generateJWT failed: ${msg}` }, 500);
     }
 
-    const url = `${jwtData.url}${jwtData.url.includes('?') ? '&' : '?'}network=${encodeURIComponent(cleanPlatform)}`;
+    const url = `${jwtData.url}${jwtData.url.includes('?') ? '&' : '?'}network=${encodeURIComponent(cleanPlatform === 'facebook_groups' ? 'facebook' : cleanPlatform)}&relink=true`;
     console.log('Final Redirect URL:', url);
     return jsonResponse({ url, profileKey: cleanKey, refId, platform: cleanPlatform });
   } catch (e) {
