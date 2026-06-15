@@ -126,7 +126,7 @@ Deno.serve(async (req) => {
     const code = payload?.code ?? readAyrshareCode(res.attempts.find((a) => readAyrshareCode(a.payload) != null)?.payload);
     const msg = `${readAyrshareMessage(payload)} ${res.attempts.map((a) => readAyrshareMessage(a.payload)).join(" ")}`.toLowerCase();
     const suspended = code === 276 || msg.includes("suspend");
-    const displayId = profileKey ? profileKey.slice(0, 8) : (refId ? `ref:${refId.slice(0, 8)}` : "unknown");
+    const displayId = profileKey ? profileKey.slice(0, 8) : (refId ? refId.slice(0, 12) : "unknown");
     if (suspended) {
       console.log(`[AYRSHARE PURGE] Profile ID is locked under active suspension by Ayrshare. Proceeding to force-clear local records. id=${displayId}`);
     }
