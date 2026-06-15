@@ -1373,22 +1373,7 @@ const LeadCRM = () => {
                     />
                   </div>
 
-                  {/* Outcome tagging — feeds Udi Intelligence */}
-                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-3 space-y-2">
-                    <div className="flex items-center justify-between">
-                      <p className="text-xs font-semibold text-primary">תוצאת אינטראקציה</p>
-                      {(selectedVoter as any).interaction_outcome && (
-                        <OutcomeBadge value={(selectedVoter as any).interaction_outcome as InteractionOutcome} />
-                      )}
-                    </div>
-                    <OutcomePicker
-                      leadId={selectedVoter.id}
-                      value={(selectedVoter as any).interaction_outcome ?? null}
-                      size="md"
-                    />
-                  </div>
-
-                  {/* Real Estate Sales Closer Grid */}
+                  {/* Real Estate Sales Closer Grid — high-contrast labels */}
                   {(() => {
                     const prefs = ((selectedVoter as any).preferences ?? {}) as Record<string, any>;
                     const dealTypeMap: Record<string, string> = {
@@ -1419,22 +1404,25 @@ const LeadCRM = () => {
                     const stage = (selectedVoter as any).lead_stage || selectedVoter.status;
                     const area = [selectedVoter.city, (selectedVoter as any).neighborhood].filter(Boolean).join(' · ') || '—';
                     const cell = (icon: JSX.Element, label: string, value: string) => (
-                      <div className="p-3 rounded-lg bg-muted/40 space-y-1">
-                        <p className="text-[10px] text-muted-foreground flex items-center gap-1">{icon}{label}</p>
-                        <p className="text-sm font-medium truncate">{value}</p>
+                      <div className="p-3 rounded-lg bg-slate-100 border border-slate-200 space-y-1">
+                        <p className="text-sm font-bold text-slate-900 flex items-center gap-1.5">{icon}{label}</p>
+                        <p className="text-base font-semibold text-slate-800 truncate">{value}</p>
                       </div>
                     );
                     return (
                       <div className="grid grid-cols-2 gap-3">
-                        {cell(<Tag className="h-3 w-3" />, 'סוג עסקה', dealType ? (dealTypeMap[dealType] || dealType) : '—')}
-                        {cell(<Radio className="h-3 w-3" />, 'ערוץ הגעה', source ? (sourceMap[source] || source) : '—')}
-                        {cell(<Wallet className="h-3 w-3" />, 'תקציב מבוקש', budgetLabel)}
-                        {cell(<Target className="h-3 w-3" />, 'סטטוס לקוח', stage ? (stageMap[stage] || stage) : '—')}
-                        {cell(<HomeIcon className="h-3 w-3" />, 'סוג נכס מועדף', propertyType ? (propertyTypeMap[propertyType] || propertyType) : '—')}
-                        {cell(<Compass className="h-3 w-3" />, 'אזור ביקוש מועדף', area)}
+                        {cell(<Tag className="h-3.5 w-3.5 text-slate-700" />, 'סוג עסקה', dealType ? (dealTypeMap[dealType] || dealType) : '—')}
+                        {cell(<Radio className="h-3.5 w-3.5 text-slate-700" />, 'ערוץ הגעה', source ? (sourceMap[source] || source) : '—')}
+                        {cell(<Wallet className="h-3.5 w-3.5 text-slate-700" />, 'תקציב מבוקש', budgetLabel)}
+                        {cell(<Target className="h-3.5 w-3.5 text-slate-700" />, 'סטטוס לקוח', stage ? (stageMap[stage] || stage) : '—')}
+                        {cell(<HomeIcon className="h-3.5 w-3.5 text-slate-700" />, 'סוג נכס מועדף', propertyType ? (propertyTypeMap[propertyType] || propertyType) : '—')}
+                        {cell(<Compass className="h-3.5 w-3.5 text-slate-700" />, 'אזור ביקוש מועדף', area)}
                       </div>
                     );
                   })()}
+
+                  {/* Demographics + Social + Web enrichment + GreenAPI */}
+                  <LeadEnrichmentPanel lead={selectedVoter} />
 
                   <Separator />
 
