@@ -111,7 +111,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     window.addEventListener("focus", onFocus);
     return () => window.removeEventListener("focus", onFocus);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [workspaceOwnerId]);
 
   const handleFetchFacebookGroups = async () => {
     setConnecting(true);
@@ -129,7 +129,6 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
       const ayrGroups = await fetchFromAyrshare();
       if (ayrGroups.length > 0) {
         setAyrshareGroups(ayrGroups);
-        setCustomUserGroups([]);
         toast.dismiss("fbg-connect");
         toast.success(`נטענו ${ayrGroups.length} קבוצות`);
         return;
