@@ -576,6 +576,15 @@ Deno.serve(async (req) => {
         model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: [
+              // Owner-curated behavior rules (highest priority).
+              await (await import("../_shared/system-rules.ts")).fetchSystemRulesBlock(userId, userPrompt),
+              // Live web research + uploaded-document intel tied to THIS listing's location.
+              await (await import("../_shared/research-intel.ts")).fetchResearchIntelBlock(userId, [
+                (primaryListing as any)?.city,
+                (primaryListing as any)?.neighborhood,
+                (primaryListing as any)?.address,
+                (primaryListing as any)?.title,
+              ]),
               rentalOnlyMode ? `${SYSTEM}\n\n${RENTAL_DELETION_OVERRIDE}` : SYSTEM,
               await fetchLearnedOverridesBlock(admin as any, userId),
             ].filter(Boolean).join("\n\n") },
