@@ -56,14 +56,18 @@ interface ListingOutreachDialogProps {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   defaultLeadId?: string | null;
+  defaultListingId?: string | null;
+  defaultSource?: 'internal' | 'homely';
 }
 
 export function ListingOutreachDialog({
   open,
   onOpenChange,
   defaultLeadId,
+  defaultListingId,
+  defaultSource,
 }: ListingOutreachDialogProps) {
-  const [source, setSource] = useState<'internal' | 'homely'>('internal');
+  const [source, setSource] = useState<'internal' | 'homely'>(defaultSource ?? 'internal');
   const [leadId, setLeadId] = useState<string>('');
   const [listingId, setListingId] = useState<string>('');
   const [channel, setChannel] = useState<Channel>('whatsapp');
@@ -76,6 +80,13 @@ export function ListingOutreachDialog({
     if (defaultLeadId) setLeadId(defaultLeadId);
   }, [defaultLeadId]);
 
+  useEffect(() => {
+    if (open && defaultListingId) {
+      setListingId(defaultListingId);
+      if (defaultSource) setSource(defaultSource);
+    }
+  }, [open, defaultListingId, defaultSource]);
+
   // Reset on close
   useEffect(() => {
     if (!open) {
@@ -84,6 +95,7 @@ export function ListingOutreachDialog({
       setAgentNote('');
     }
   }, [open]);
+
 
   const { data: leads, isLoading: loadingLeads } = useQuery({
     queryKey: ['outreach-leads'],
