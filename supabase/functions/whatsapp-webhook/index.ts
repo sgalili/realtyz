@@ -44,10 +44,6 @@ const SUPPORTED_DOC_MIME =
 const SUPPORTED_IMAGE_MIME = /^image\/(jpeg|png|webp|gif|heic|heif)/i;
 const SUPPORTED_VIDEO_MIME = /^video\/(mp4|quicktime|webm|3gpp)/i;
 
-// Exact Hebrew reply requested for any unreadable / oversized / failed file.
-const HEBREW_FILE_ERROR_REPLY =
-  "מצטער, לא הצלחתי לקרוא את הקובץ. אנא נסה שוב.";
-
 function isSupportedMime(mime: string | undefined, kind: "audio" | "image" | "video" | "document"): boolean {
   const m = String(mime ?? "").toLowerCase();
   if (!m) return kind === "document"; // some senders omit MIME on docs — let kb-ingest try.
