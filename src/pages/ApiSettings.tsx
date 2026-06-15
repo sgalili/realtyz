@@ -36,6 +36,7 @@ import { VoiceAgentPanel } from '@/components/calendar/VoiceAgentPanel';
 import { UsageMeterPanel } from '@/components/UsageMeterPanel';
 import { ServiceAreasPanel } from '@/components/settings/ServiceAreasPanel';
 import { SocialChannelsGrid } from '@/components/social/SocialChannelsGrid';
+import { CustomGroupsManager } from '@/components/social/CustomGroupsManager';
 
 interface ApiConfig {
   id: string;
