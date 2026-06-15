@@ -463,6 +463,45 @@ serve(async (req) => {
       }
     }
 
+    // === LIVE WEB RESEARCH (Master Intelligence Officer) ===
+    // Auto-trigger Firecrawl-backed research when the owner asks about an
+    // area, neighborhood, market comp, or explicitly requests a "תחקיר/מחקר".
+    // The synthesized Hebrew brief is injected into the prompt AND persisted
+    // into system_intelligence_kb so all downstream generators inherit it.
+    let researchBlock = "";
+    let researchSources: Array<{ url: string; title?: string }> = [];
+    if (isInternalDashboard) {
+      try {
+        const lastUserText = String(
+          [...(messages as Array<{ role: string; content: any }>)].reverse().find((m) => m.role === "user")?.content ?? "",
+        );
+        const RESEARCH_TRIGGER = /(תחקיר|מחקר|חקור|חקרי|בדוק לי|בדקי לי|שכונה|אזור|נייבורהוד|תכנון|תב"?ע|פרויקט חדש|נכס חדש|השווא|השוואה|בתי ספר|תחבורה|מחירים ב|neighborhood|research|comparative|zoning|market study)/i;
+        const shouldResearch = enableResearchReq === true || (enableResearchReq !== false && RESEARCH_TRIGGER.test(lastUserText));
+        if (shouldResearch && lastUserText.trim().length > 3) {
+          const authHeader = req.headers.get("Authorization") ?? "";
+          const r = await fetch(`${supabaseUrl}/functions/v1/master-research`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: authHeader },
+            body: JSON.stringify({ query: lastUserText.slice(0, 400), mode: "neighborhood" }),
+          });
+          if (r.ok) {
+            const rj = await r.json();
+            if (rj?.brief) {
+              researchBlock = `LIVE WEB RESEARCH BRIEF (Firecrawl + Gemini synthesis, persisted to workspace KB):\n${String(rj.brief).slice(0, 6000)}`;
+              researchSources = Array.isArray(rj?.sources) ? rj.sources : [];
+            }
+          } else {
+            console.warn("master-research failed", r.status);
+          }
+        }
+      } catch (e) {
+        console.warn("master-research dispatch failed:", e);
+      }
+    }
+    if (researchBlock) {
+      liveDataBlock = (liveDataBlock ? liveDataBlock + "\n\n" : "") + researchBlock;
+    }
+
     const MASTER_AGENT_PROMPT = `אתה ה-Master AI Agent — הרמטכ"ל הדיגיטלי (chief of staff) של בעל סביבת העבודה ב-Realtyz AI.
 אתה מדבר עם המנהל/בעלים עצמו (לא עם לקוח קצה). פנה אליו בכבוד בגוף שני, כאל המפקד שלך.
 אסור לך בשום אופן להציג את עצמך בשמו של בעל סביבת העבודה (למשל "היי, אני אודי ויטמן"). אינך מתחזה אליו — אתה הנכס התפעולי שלו.
