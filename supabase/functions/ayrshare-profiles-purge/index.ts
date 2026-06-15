@@ -56,32 +56,55 @@ const readAyrshareMessage = (payload: unknown): string => {
   return `${String(p.message ?? "")} ${String(p.error ?? "")}`;
 };
 
-async function deleteAyrshareProfile(profileKey: string | null, title: string | null) {
+async function deleteAyrshareProfile(refId: string | null, profileKey: string | null, title: string | null) {
   const attempts: Array<{ endpoint: string; status: number; ok: boolean; payload: unknown }> = [];
 
-  const documentedHeaders: Record<string, string> = {
-    Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-    "Content-Type": "application/json",
-  };
-  if (profileKey) documentedHeaders["Profile-Key"] = profileKey;
-  const documented = await fetch(`${AYR}/profiles`, {
-    method: "DELETE",
-    headers: documentedHeaders,
-    body: profileKey ? undefined : JSON.stringify({ title }),
-  });
-  const documentedText = await documented.text();
-  let documentedPayload: any = null;
-  try { documentedPayload = documentedText ? JSON.parse(documentedText) : null; } catch { documentedPayload = { raw: documentedText }; }
-  attempts.push({ endpoint: profileKey ? "/profiles:profile-key" : "/profiles:title", status: documented.status, ok: documented.ok, payload: documentedPayload });
-  if (documented.ok) return { ok: true, status: documented.status, payload: documentedPayload, attempts };
+  // Primary: documented enterprise contract — DELETE /api/profiles { profileId: refId }
+  if (refId) {
+    const r = await fetch(`${AYR}/profiles`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ profileId: refId }),
+    });
+    const t = await r.text();
+    let p: any = null;
+    try { p = t ? JSON.parse(t) : null; } catch { p = { raw: t }; }
+    attempts.push({ endpoint: "/profiles:profileId", status: r.status, ok: r.ok, payload: p });
+    if (r.ok) return { ok: true, status: r.status, payload: p, attempts };
+  }
 
+  // Fallback A: Profile-Key header against /profiles
+  if (profileKey) {
+    const r = await fetch(`${AYR}/profiles`, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+        "Content-Type": "application/json",
+        "Profile-Key": profileKey,
+      },
+    });
+    const t = await r.text();
+    let p: any = null;
+    try { p = t ? JSON.parse(t) : null; } catch { p = { raw: t }; }
+    attempts.push({ endpoint: "/profiles:profile-key", status: r.status, ok: r.ok, payload: p });
+    if (r.ok) return { ok: true, status: r.status, payload: p, attempts };
+  }
+
+  // Fallback B: legacy /profiles/profile with body
+  const body: Record<string, string> = {};
+  if (refId) body.profileId = refId;
+  if (profileKey) body.profileKey = profileKey;
+  if (!refId && !profileKey && title) body.title = title;
   const fallback = await fetch(`${AYR}/profiles/profile`, {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${AYRSHARE_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify(profileKey ? { profileKey } : { title }),
+    body: JSON.stringify(body),
   });
   const fallbackText = await fallback.text();
   let fallbackPayload: any = null;
@@ -121,6 +144,9 @@ Deno.serve(async (req) => {
         ? body.keep_profile_keys.map((k: unknown) => String(k ?? "").trim()).filter(Boolean)
         : [],
     );
+    const selectedRefIds: Set<string> | null = Array.isArray(body?.selected_ref_ids) && body.selected_ref_ids.length > 0
+      ? new Set<string>(body.selected_ref_ids.map((r: unknown) => String(r ?? "").trim()).filter(Boolean))
+      : null;
 
     // Always protect the active workspace profile from accidental deletion.
     const { data: ws } = await admin
@@ -172,12 +198,15 @@ Deno.serve(async (req) => {
       const orphan = linked.length === 0;
       const isProtected = (profileKey ? keepKeys.has(profileKey) : false) || (!allowActiveProfileDelete && !forceDeleteAll && !!activeRef && refId === activeRef);
       let reason: string | null = null;
-      if (forceDeleteAll) reason = "force_delete_all";
+      if (selectedRefIds) {
+        if (refId && selectedRefIds.has(refId)) reason = "user_selected";
+      } else if (forceDeleteAll) reason = "force_delete_all";
       else if (suspendedFlag) reason = "suspended_flag";
       else if (inactive) reason = "inactive_status";
       else if (orphan && includeOrphans) reason = "orphan_no_links";
 
-      const willDelete = !isProtected && reason !== null;
+      // When explicit selection is provided, bypass the protection (operator chose it).
+      const willDelete = (selectedRefIds ? reason !== null : (!isProtected && reason !== null));
       const decision: Decision = {
         profileKey,
         keyPrefix: profileKey ? profileKey.slice(0, 8) : (refId ? `ref:${refId.slice(0, 8)}` : `title:${(title ?? "unknown").slice(0, 8)}`),
@@ -193,7 +222,7 @@ Deno.serve(async (req) => {
       };
 
       if (willDelete && !dryRun) {
-        const del = await deleteAyrshareProfile(profileKey || null, title);
+        const del = await deleteAyrshareProfile(refId, profileKey || null, title);
         const dp: any = del.payload;
         const code = readAyrshareErrorCode(dp) ?? readAyrshareErrorCode(del.attempts.find((a) => readAyrshareErrorCode(a.payload) != null)?.payload);
         const msg = `${readAyrshareMessage(dp)} ${del.attempts.map((a) => readAyrshareMessage(a.payload)).join(" ")}`.toLowerCase();

@@ -21,30 +21,54 @@ const readAyrshareCode = (payload: unknown): unknown => {
   return (payload as { code?: unknown }).code;
 };
 
-async function deleteAyrshareProfile(profileKey: string) {
+async function deleteAyrshareProfile(refId: string | null, profileKey: string | null) {
   const attempts: Array<{ endpoint: string; status: number; ok: boolean; payload: unknown }> = [];
 
-  const documented = await fetch("https://api.ayrshare.com/api/profiles", {
-    method: "DELETE",
-    headers: {
-      Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-      "Content-Type": "application/json",
-      "Profile-Key": profileKey,
-    },
-  });
-  const documentedText = await documented.text();
-  let documentedPayload: any = null;
-  try { documentedPayload = documentedText ? JSON.parse(documentedText) : null; } catch { documentedPayload = { raw: documentedText }; }
-  attempts.push({ endpoint: "/profiles", status: documented.status, ok: documented.ok, payload: documentedPayload });
-  if (documented.ok) return { ok: true, status: documented.status, payload: documentedPayload, attempts };
+  // Primary: documented enterprise contract — DELETE /api/profiles { profileId }
+  if (refId) {
+    const r = await fetch("https://api.ayrshare.com/api/profiles", {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ profileId: refId }),
+    });
+    const t = await r.text();
+    let p: any = null;
+    try { p = t ? JSON.parse(t) : null; } catch { p = { raw: t }; }
+    attempts.push({ endpoint: "/profiles:profileId", status: r.status, ok: r.ok, payload: p });
+    if (r.ok) return { ok: true, status: r.status, payload: p, attempts };
+  }
 
+  // Fallback: Profile-Key header
+  if (profileKey) {
+    const r = await fetch("https://api.ayrshare.com/api/profiles", {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+        "Content-Type": "application/json",
+        "Profile-Key": profileKey,
+      },
+    });
+    const t = await r.text();
+    let p: any = null;
+    try { p = t ? JSON.parse(t) : null; } catch { p = { raw: t }; }
+    attempts.push({ endpoint: "/profiles:profile-key", status: r.status, ok: r.ok, payload: p });
+    if (r.ok) return { ok: true, status: r.status, payload: p, attempts };
+  }
+
+  // Legacy fallback
+  const body: Record<string, string> = {};
+  if (refId) body.profileId = refId;
+  if (profileKey) body.profileKey = profileKey;
   const fallback = await fetch("https://api.ayrshare.com/api/profiles/profile", {
     method: "DELETE",
     headers: {
       Authorization: `Bearer ${AYRSHARE_API_KEY}`,
       "Content-Type": "application/json",
     },
-    body: JSON.stringify({ profileKey }),
+    body: JSON.stringify(body),
   });
   const fallbackText = await fallback.text();
   let fallbackPayload: any = null;
@@ -79,44 +103,56 @@ Deno.serve(async (req) => {
     if (!AYRSHARE_API_KEY) return json({ error: "AYRSHARE_API_KEY not configured" }, 500);
 
     const body = await req.json().catch(() => ({}));
-    const profileKey: string | undefined = body?.profile_key;
-    if (!profileKey || typeof profileKey !== "string") {
-      return json({ error: "profile_key required" }, 400);
+    const profileKey: string | null = typeof body?.profile_key === "string" && body.profile_key.trim() ? body.profile_key.trim() : null;
+    const refId: string | null = typeof body?.ref_id === "string" && body.ref_id.trim()
+      ? body.ref_id.trim()
+      : (typeof body?.profile_id === "string" && body.profile_id.trim() ? body.profile_id.trim() : null);
+    if (!profileKey && !refId) {
+      return json({ error: "profile_key or ref_id required" }, 400);
     }
 
-    // Try Ayrshare's documented delete contract first; fall back to the legacy
-    // body-based contract for accounts where that route is still enabled.
-    const res = await deleteAyrshareProfile(profileKey);
+    const res = await deleteAyrshareProfile(refId, profileKey);
     const payload: any = res.payload;
 
     const code = payload?.code ?? readAyrshareCode(res.attempts.find((a) => readAyrshareCode(a.payload) != null)?.payload);
     const msg = `${readAyrshareMessage(payload)} ${res.attempts.map((a) => readAyrshareMessage(a.payload)).join(" ")}`.toLowerCase();
     const suspended = code === 276 || msg.includes("suspend");
+    const displayId = profileKey ? profileKey.slice(0, 8) : (refId ? `ref:${refId.slice(0, 8)}` : "unknown");
     if (suspended) {
-      console.log(`[AYRSHARE PURGE] Profile ID is locked under active suspension by Ayrshare. Proceeding to force-clear local records. keyPrefix=${profileKey.slice(0, 8)}`);
+      console.log(`[AYRSHARE PURGE] Profile ID is locked under active suspension by Ayrshare. Proceeding to force-clear local records. id=${displayId}`);
+    }
+    if (res.ok) {
+      console.log(`[AYRSHARE PURGE] Successfully deleted profile id=${displayId} refId=${refId ?? "(none)"}`);
     }
 
     // Force-clear local references regardless of Ayrshare response.
     const localCleared: { workspace: number; accounts: number } = { workspace: 0, accounts: 0 };
     try {
-      const { count: wsCount } = await admin
-        .from("workspace_social_profile")
-        .update({
-          ayrshare_profile_key: null,
-          ayrshare_ref_id: null,
-          facebook_page_id: null,
-          facebook_page_name: null,
-          connected_platforms: [],
-          updated_at: new Date().toISOString(),
-        }, { count: "exact" })
-        .eq("ayrshare_profile_key", profileKey);
-      localCleared.workspace = wsCount ?? 0;
+      const filters: string[] = [];
+      if (profileKey) filters.push(`ayrshare_profile_key.eq.${profileKey}`);
+      if (refId) filters.push(`ayrshare_ref_id.eq.${refId}`);
+      if (filters.length) {
+        const { count: wsCount } = await admin
+          .from("workspace_social_profile")
+          .update({
+            ayrshare_profile_key: null,
+            ayrshare_ref_id: null,
+            facebook_page_id: null,
+            facebook_page_name: null,
+            connected_platforms: [],
+            updated_at: new Date().toISOString(),
+          }, { count: "exact" })
+          .or(filters.join(","));
+        localCleared.workspace = wsCount ?? 0;
+      }
 
-      const { count: accCount } = await admin
-        .from("ayrshare_social_accounts")
-        .delete({ count: "exact" })
-        .eq("profile_key", profileKey);
-      localCleared.accounts = accCount ?? 0;
+      if (profileKey) {
+        const { count: accCount } = await admin
+          .from("ayrshare_social_accounts")
+          .delete({ count: "exact" })
+          .eq("profile_key", profileKey);
+        localCleared.accounts = accCount ?? 0;
+      }
     } catch (e) {
       console.error("[ayrshare-profile-delete] local cleanup failed", e);
     }
