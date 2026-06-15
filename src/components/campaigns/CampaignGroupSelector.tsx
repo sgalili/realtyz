@@ -9,6 +9,8 @@ export type FacebookGroup = {
   group_name: string;
   group_icon: string | null;
   connected: boolean;
+  source?: "api" | "manual";
+  group_url?: string | null;
 };
 
 type Props = {
@@ -41,16 +43,41 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     return Array.isArray((data as any)?.groups) ? (data as any).groups : [];
   };
 
+  const fetchCustomGroups = async (): Promise<FacebookGroup[]> => {
+    const { data, error } = await (supabase as any)
+      .from("custom_user_groups")
+      .select("id, group_name, group_url, platform")
+      .eq("platform", "facebook");
+    if (error) {
+      console.warn("[FB_GROUPS] custom_user_groups query failed", error);
+      return [];
+    }
+    return (data ?? []).map((r: any) => ({
+      group_id: String(r.group_url || r.id),
+      group_name: String(r.group_name || r.group_url || "קבוצה"),
+      group_icon: null,
+      connected: true,
+      source: "manual" as const,
+      group_url: r.group_url ?? null,
+    }));
+  };
+
   const load = async () => {
     setLoading(true);
     setError(null);
     try {
       // 1) Try Ayrshare (uses the active workspace profile key)
       let list = await fetchFromAyrshare();
-      // 2) Fallback to the Meta direct bypass if Ayrshare returns nothing
+      // 2) Fallback to Meta direct bypass
       if (list.length === 0) {
         const { data } = await supabase.functions.invoke("facebook-groups-fetch", { body: {} });
         list = Array.isArray((data as any)?.groups) ? (data as any).groups : [];
+      }
+      // 3) Final fallback — the workspace's manually curated group directory
+      if (list.length === 0) {
+        const manual = await fetchCustomGroups();
+        console.log("[FB_GROUPS] using custom_user_groups fallback", manual.length);
+        list = manual;
       }
       setGroups(list);
     } catch (e: any) {
@@ -91,11 +118,21 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
         return;
       }
 
-      // Otherwise, open the OAuth link so the user can authorize FB Groups
+      // Meta API returned an empty list (agent is non-admin in those groups).
+      // Skip the OAuth loop and surface the workspace's manual directory so
+      // the operator can launch the שיתוף ידני מהיר flow.
+      const manual = await fetchCustomGroups();
+      toast.dismiss("fbg-connect");
+      if (manual.length > 0) {
+        setGroups(manual);
+        toast.success(`נטענו ${manual.length} קבוצות לשיתוף ידני מהיר`);
+        return;
+      }
+
+      // No automatic groups AND no manual directory yet — fall back to OAuth.
       const { data, error } = await supabase.functions.invoke("ayrshare-social-link", {
         body: { platform: "fbg", profileKey: activeKey },
       });
-      toast.dismiss("fbg-connect");
       if (error) throw new Error(error.message || "יצירת חיבור נכשלה");
       const url = (data as any)?.url;
       if (!url) throw new Error((data as any)?.error || "לא נמצאו קבוצות מחוברות");
