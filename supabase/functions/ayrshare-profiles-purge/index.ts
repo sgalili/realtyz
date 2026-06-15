@@ -56,7 +56,16 @@ const readAyrshareMessage = (payload: unknown): string => {
   return `${String(p.message ?? "")} ${String(p.error ?? "")}`;
 };
 
-async function deleteAyrshareProfile(refId: string | null, profileKey: string | null, title: string | null) {
+const cleanRefId = (v: string | null | undefined): string | null => {
+  if (!v) return null;
+  // Defensive: strip any stray "ref:" prefix and whitespace so we only ever
+  // send the raw hex RefId to Ayrshare.
+  const s = String(v).trim().replace(/^ref:\s*/i, "");
+  return s || null;
+};
+
+async function deleteAyrshareProfile(refIdRaw: string | null, profileKey: string | null, title: string | null) {
+  const refId = cleanRefId(refIdRaw);
   const attempts: Array<{ endpoint: string; status: number; ok: boolean; payload: unknown }> = [];
 
   // Primary: documented enterprise contract — DELETE /api/profiles { profileId: refId }
@@ -209,7 +218,7 @@ Deno.serve(async (req) => {
       const willDelete = (selectedRefIds ? reason !== null : (!isProtected && reason !== null));
       const decision: Decision = {
         profileKey,
-        keyPrefix: profileKey ? profileKey.slice(0, 8) : (refId ? `ref:${refId.slice(0, 8)}` : `title:${(title ?? "unknown").slice(0, 8)}`),
+        keyPrefix: profileKey ? profileKey.slice(0, 8) : (refId ? refId.slice(0, 12) : `title:${(title ?? "unknown").slice(0, 8)}`),
         refId,
         title,
         suspended: suspendedFlag,
@@ -231,7 +240,7 @@ Deno.serve(async (req) => {
         // but we still proceed to force-clear local records so the ghost is gone.
         const effectiveOk = del.ok || suspended;
         decision.deleted = { ok: effectiveOk, status: del.status, payload: { final: dp, attempts: del.attempts } };
-        const displayId = profileKey ? profileKey.slice(0, 8) : (refId ? `ref:${refId.slice(0, 8)}` : `title:${(title ?? "unknown").slice(0, 8)}`);
+        const displayId = profileKey ? profileKey.slice(0, 8) : (refId ? refId.slice(0, 12) : `title:${(title ?? "unknown").slice(0, 8)}`);
         if (del.ok) {
           console.log(`[AYRSHARE PURGE] Successfully deleted suspended profile ID: ${displayId}… refId=${refId ?? "(none)"} title=${title ?? "(none)"} reason=${reason}`);
         } else if (suspended) {
