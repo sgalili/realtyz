@@ -1,55 +1,45 @@
 // _shared/owner-laws.ts
-// Two compliance laws enforced on EVERY AI-generated text that ships to the
-// public (social posts, comments/replies, outreach copy, property profile
-// drafts, IVR scripts, etc):
+// Two compliance laws + brand-byline enforcement on every AI-generated text
+// that ships to the public.
 //
 //   LAW #1 — STREET-NUMBER REDACTION:
-//     Remove specific house/building numbers from street addresses so a
-//     listing's exact door can't be derived from a marketing post.
 //     "ארלוזורוב 26" → "ברחוב ארלוזורוב"
-//     "רחוב ויצמן 4" → "רחוב ויצמן"
 //
-//   LAW #2 — BROKER LICENSE FOOTER (posts / outreach / property drafts only):
-//     Always append the workspace owner's real-estate broker license number
-//     on a clean newline at the very bottom of the output.
-//     "רישיון תיווך מספר: 123456"
+//   LAW #2 — BROKER LICENSE FOOTER (posts / outreach / property drafts):
+//     Append the workspace owner's byline + license on a clean new line at
+//     the very bottom of the output. Example:
 //
-// Both rules are also injected into #CRITICAL_SYSTEM_PREFERENCES by
-// `_shared/system-rules.ts`, but this module is the deterministic safety net:
-// it runs on the buffer right before we hand the text to the user / to
-// Ayrshare / to the inbox / to ElevenLabs, so even a non-compliant model
-// output is corrected.
+//       אודי ויטמן, אנגלו-סכסון, הרצליה/רמה״ש
+//       רישיון תיווך מספר: 123456
+//
+//   BYLINE SCRUB:
+//     Strip "Udi Vitman Real Estate" / "אודי ויטמן נדל"ן" / "אודי ויטמן | תיווך"
+//     and any other invented agency-title styling — only the canonical byline
+//     above is allowed in the body. (Then the footer block re-appends the
+//     canonical byline at the bottom for posts/outreach.)
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 
-// ── Street-keyword anchors (Hebrew). We only strip a trailing number when the
-//    address is clearly a street address — never near "חדרים", "מ"ר", price, %,
-//    "שנה", etc.
+// ── Street-keyword anchors. We only strip a trailing number when the address
+//    is clearly a street address — never near "חדרים", "מ"ר", price, %, etc.
 const STREET_KEYWORDS = [
   "רחוב", "רח'", "רח׳", "רח",
   "שדרות", "שד'", "שד׳",
   "סמטת", "סמטה",
   "דרך", "טיילת", "ככר", "כיכר",
 ];
-
 const STREET_KEYWORD_GROUP = STREET_KEYWORDS
   .map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"))
   .join("|");
 
-// Trailing-unit blocklist — these tokens after a number mean "this is NOT a
-// street number" (e.g. "4 חדרים", "85 מ"ר", "1,200,000 ₪", "30%").
 const TRAILING_UNITS = /(?:חדרים|חדר|מ["׳']?\s*ר|מטר|מ['׳]|ק["׳']?\s*מ|קומה|קומות|דקות|שעות|שנה|שנים|אחוז|%|₪|ש["׳']?\s*ח|דולר|\$|€)/;
 
-/**
- * LAW #1 — strip building/house numbers from street addresses.
- * Conservative: only touches digits that are obviously part of a street name.
- */
+/** LAW #1 — strip building/house numbers from street addresses. */
 export function stripStreetNumbers(input: string): string {
   let out = String(input ?? "");
   if (!out) return out;
 
-  // Pattern A: "<street-keyword> <hebrew name> <digits>[suffix-letter]"
-  //   → keep "<street-keyword> <hebrew name>"
+  // Pattern A: "<street-keyword> <hebrew name> <digits>[suffix]" → drop digits.
   const reA = new RegExp(
     `(${STREET_KEYWORD_GROUP})\\s+([\\u0590-\\u05FF][\\u0590-\\u05FF״"׳'\\-\\s]{1,40}?)\\s+\\d{1,4}[א-ת]?\\b`,
     "g",
@@ -57,88 +47,125 @@ export function stripStreetNumbers(input: string): string {
   out = out.replace(reA, (_m, kw, name) => `${kw} ${String(name).trim()}`);
 
   // Pattern B: standalone "<hebrew word> <digits>" NOT followed by a unit.
-  //   Risky but covers "ארלוזורוב 26" with no prefix. Guarded by:
-  //     - the hebrew word is 3+ letters
-  //     - the next token is NOT a unit (חדרים / מ"ר / ₪ / % / …)
-  //     - not preceded by a digit (so "1,200,000 ₪" is safe)
-  //     - not preceded by ":" or "=" (price/key contexts)
   const reB = /(^|[^\d:=״"׳'\u05F4\u05F3])([\u0590-\u05FF]{3,}(?:[\u0590-\u05FF״"׳'-]*[\u0590-\u05FF])?)\s+(\d{1,4})[א-ת]?\b/g;
-  out = out.replace(reB, (m, pre, word, num, offset, full) => {
-    const after = full.slice(offset + m.length, offset + m.length + 24);
-    if (TRAILING_UNITS.test(after.trim())) return m;            // not an address
-    // Skip very common non-address Hebrew nouns that frequently precede numbers
-    if (/^(שנת|שנה|גיל|טלפון|נייד|מספר|דירה|קומה|בנין|בניין|פרויקט|פרוייקט)$/.test(word)) return m;
+  out = out.replace(reB, (m, pre, word, _num, offset, full) => {
+    const after = String(full).slice(offset + m.length, offset + m.length + 24);
+    if (TRAILING_UNITS.test(after.trim())) return m;
+    if (/^(שנת|שנה|גיל|טלפון|נייד|מספר|דירה|קומה|בנין|בניין|פרויקט|פרוייקט|בן|בת)$/.test(word)) return m;
     return `${pre}${word}`;
   });
 
-  // Cleanup double spaces left behind.
+  // Pattern C: "address: ארלוזורוב 26" or "כתובת: ויצמן 4" — keep label, drop digits.
+  out = out.replace(
+    /(כתובת|address|location)\s*[:：]\s*([\u0590-\u05FF][\u0590-\u05FF\s\-״"׳']{1,40}?)\s+\d{1,4}[א-ת]?\b/gi,
+    (_m, label, name) => `${label}: ${String(name).trim()}`,
+  );
+
   return out.replace(/[ \t]{2,}/g, " ").replace(/\s+([,.!?])/g, "$1");
 }
 
+// Forbidden invented-title patterns. We never let the model attach a fake
+// agency suffix to the broker's name. Cases handled:
+//   "אודי ויטמן נדל"ן"   →  "אודי ויטמן"
+//   "אודי ויטמן | תיווך"  →  "אודי ויטמן"
+//   "אודי ויטמן - יועץ נדל"ן" → "אודי ויטמן"
+//   "Udi Vitman Real Estate" / "Udi Vitman Realty" → "Udi Vitman"
+const FORBIDDEN_TITLE_PATTERNS: RegExp[] = [
+  /(אודי\s+ויטמן)\s*(?:\||,|-|–|—)\s*(?:נדל["׳]?\s*ן|נדלן|תיווך|יועץ\s+נדל["׳]?\s*ן|סוכן|מתווך|משרד|real\s*estate|realty)[^\n]*/gi,
+  /(אודי\s+ויטמן)\s+(?:נדל["׳]?\s*ן|נדלן|תיווך|מתווך|סוכן|משרד)[^\n]*/g,
+  /(Udi\s+Vitman)\s+(?:Real\s*Estate|Realty|Realtor|Brokerage|Properties)[^\n]*/gi,
+];
+
+export function scrubForbiddenBylines(input: string): string {
+  let out = String(input ?? "");
+  for (const re of FORBIDDEN_TITLE_PATTERNS) out = out.replace(re, "$1");
+  // Collapse trailing punctuation like "אודי ויטמן ," → "אודי ויטמן"
+  out = out.replace(/(אודי\s+ויטמן)\s*[\|,\-–—]+\s*$/gm, "$1");
+  return out.replace(/[ \t]{2,}/g, " ");
+}
+
+const FOOTER_RE = /רישיון\s*תיווך\s*מספר\s*[:：]/i;
+
 /**
- * LAW #2 — append the workspace owner's broker-license footer if missing.
- * Pass an empty license to fall back to a "[יש להזין מספר רישיון]" placeholder
- * so the owner immediately notices the missing setting.
+ * Append `<byline>\n<license-line>` at the very bottom of `text`, on a fresh
+ * line, and ONLY if not already present. `byline` is optional; when omitted
+ * we still emit the license line so the law is honored.
  */
-export function appendLicenseFooter(text: string, license?: string | null): string {
+export function appendLicenseFooter(
+  text: string,
+  license?: string | null,
+  byline?: string | null,
+): string {
   const body = String(text ?? "").replace(/\s+$/g, "");
   if (!body) return body;
+  if (FOOTER_RE.test(body)) return body; // already footed
   const lic = (license ?? "").toString().trim();
-  // Don't double-append if footer is already present (Hebrew or English label).
-  if (/רישיון\s*תיווך\s*מספר\s*[:：]/i.test(body) || /broker\s*license\s*(?:no\.?|number)\s*[:：]/i.test(body)) {
-    return body;
-  }
-  const footer = lic
+  const bln = (byline ?? "").toString().trim();
+  const licenseLine = lic
     ? `רישיון תיווך מספר: ${lic}`
     : `רישיון תיווך מספר: [יש להזין מספר רישיון בפרופיל]`;
+  const footer = bln ? `${bln}\n${licenseLine}` : licenseLine;
   return `${body}\n\n${footer}`;
 }
 
-/**
- * Run both laws. `withLicense=false` for short surfaces (comment replies, IVR
- * line previews) where a license footer would feel out of place.
- */
 export function enforceOwnerLaws(
   text: string,
-  opts: { license?: string | null; withLicense?: boolean } = {},
+  opts: {
+    license?: string | null;
+    byline?: string | null;
+    withLicense?: boolean;
+  } = {},
 ): string {
-  const { license, withLicense = true } = opts;
-  const stripped = stripStreetNumbers(text);
-  return withLicense ? appendLicenseFooter(stripped, license) : stripped;
+  const { license, byline, withLicense = true } = opts;
+  let out = stripStreetNumbers(scrubForbiddenBylines(text));
+  if (withLicense) out = appendLicenseFooter(out, license, byline);
+  return out;
 }
 
-// ── License lookup (cached per-process; cheap fallback when no DB hit). ──
-const licenseCache = new Map<string, { at: number; value: string }>();
-const LIC_TTL_MS = 60_000;
+// ── Owner branding lookup (license + byline). 60s cache per process. ──
+type Branding = { license: string; byline: string };
+const brandingCache = new Map<string, { at: number; v: Branding }>();
+const TTL = 60_000;
 
+export async function fetchOwnerBranding(
+  admin: ReturnType<typeof createClient>,
+  userId: string | null | undefined,
+): Promise<Branding> {
+  const empty: Branding = { license: "", byline: "" };
+  if (!userId) return empty;
+  const hit = brandingCache.get(userId);
+  if (hit && Date.now() - hit.at < TTL) return hit.v;
+  try {
+    const { data: me } = await admin
+      .from("profiles")
+      .select("active_workspace_owner_id, broker_license_number, broker_byline")
+      .eq("id", userId)
+      .maybeSingle();
+    let lic = String((me as any)?.broker_license_number ?? "").trim();
+    let bln = String((me as any)?.broker_byline ?? "").trim();
+    const ownerId = (me as any)?.active_workspace_owner_id ?? null;
+    if ((!lic || !bln) && ownerId && ownerId !== userId) {
+      const { data: owner } = await admin
+        .from("profiles")
+        .select("broker_license_number, broker_byline")
+        .eq("id", ownerId)
+        .maybeSingle();
+      if (!lic) lic = String((owner as any)?.broker_license_number ?? "").trim();
+      if (!bln) bln = String((owner as any)?.broker_byline ?? "").trim();
+    }
+    const v = { license: lic, byline: bln };
+    brandingCache.set(userId, { at: Date.now(), v });
+    return v;
+  } catch {
+    return empty;
+  }
+}
+
+/** Back-compat wrapper kept for older imports. */
 export async function fetchOwnerLicense(
   admin: ReturnType<typeof createClient>,
   userId: string | null | undefined,
 ): Promise<string> {
-  if (!userId) return "";
-  const hit = licenseCache.get(userId);
-  if (hit && Date.now() - hit.at < LIC_TTL_MS) return hit.value;
-  try {
-    // Resolve workspace owner first so team members inherit the broker's license.
-    const { data: profile } = await admin
-      .from("profiles")
-      .select("active_workspace_owner_id, broker_license_number")
-      .eq("id", userId)
-      .maybeSingle();
-    let lic = (profile?.broker_license_number as string | null) || "";
-    const ownerId = (profile?.active_workspace_owner_id as string | null) || null;
-    if (!lic && ownerId && ownerId !== userId) {
-      const { data: owner } = await admin
-        .from("profiles")
-        .select("broker_license_number")
-        .eq("id", ownerId)
-        .maybeSingle();
-      lic = (owner?.broker_license_number as string | null) || "";
-    }
-    lic = (lic || "").trim();
-    licenseCache.set(userId, { at: Date.now(), value: lic });
-    return lic;
-  } catch {
-    return "";
-  }
+  const { license } = await fetchOwnerBranding(admin, userId);
+  return license;
 }
