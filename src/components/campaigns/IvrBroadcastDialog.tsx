@@ -556,28 +556,81 @@ export const IvrBroadcastDialog = ({ open, onClose }: { open: boolean; onClose: 
                     <SelectValue placeholder="קדם נכס ספציפי מהמאגר" />
                   </SelectTrigger>
                   <SelectContent dir="rtl">
+                    <div className="sticky top-0 z-10 bg-popover p-2 border-b border-border/60">
+                      <div className="relative">
+                        <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                        <Input
+                          autoFocus
+                          value={listingSearch}
+                          onChange={(e) => setListingSearch(e.target.value)}
+                          onKeyDown={(e) => e.stopPropagation()}
+                          placeholder="חיפוש לפי כתובת, עיר, חדרים..."
+                          className="h-8 text-right text-[12.5px] pr-7 rounded-md"
+                        />
+                      </div>
+                    </div>
                     <SelectItem value="none">ללא נכס · הודעה כללית</SelectItem>
-                    {listings.map((l) => (
+                    {filteredListings.map((l) => (
                       <SelectItem key={l.id} value={l.id} className="pe-2">
                         <span className="truncate block max-w-[22rem]">{listingLabel(l)}</span>
                       </SelectItem>
                     ))}
+                    {filteredListings.length === 0 && (
+                      <div className="px-3 py-4 text-center text-[12px] text-muted-foreground">לא נמצאו נכסים תואמים</div>
+                    )}
                   </SelectContent>
                 </Select>
                 {selectedListing && (
                   <p className="text-[11px] text-muted-foreground text-right leading-snug">
-                    הטקסט שייווצר ישלב אוטומטית את פרטי הנכס (כתובת, חדרים, מחיר) למסר מותאם.
+                    סקריפט קצר ומותאם נכתב אוטומטית מפרטי הנכס. ניתן לרענן או לערוך ידנית.
                   </p>
                 )}
               </div>
 
-              <Textarea
-                value={ttsText}
-                onChange={(e) => setTtsText(e.target.value)}
-                placeholder={selectedListing ? "כתבו זווית/הצעה — פרטי הנכס ישולבו אוטומטית" : "הקלידו את ההודעה שתישמע ביעד..."}
-                className="text-right min-h-[120px] border-[#0f1b3d]/20 rounded-xl bg-background"
-              />
+              <div className="relative">
+                <Textarea
+                  value={ttsText}
+                  onChange={(e) => {
+                    setTtsText(e.target.value);
+                    if (e.target.value.trim() && e.target.value.trim() !== lastAutoScriptRef.current.trim()) {
+                      setScriptEdited(true);
+                    }
+                  }}
+                  placeholder={
+                    autoScripting
+                      ? 'מייצר סקריפט מותאם לנכס…'
+                      : selectedListing
+                        ? 'הסקריפט נוצר אוטומטית — ערכו, או רעננו לקבלת גרסה חדשה'
+                        : 'הקלידו את ההודעה שתישמע ביעד...'
+                  }
+                  className="text-right min-h-[140px] border-[#0f1b3d]/20 rounded-xl bg-background pl-12"
+                  disabled={autoScripting}
+                />
+                {selectedListing && (
+                  <button
+                    type="button"
+                    onClick={regenerateScript}
+                    disabled={autoScripting}
+                    title="ייצר מחדש"
+                    className="absolute top-2 left-2 inline-flex h-8 w-8 items-center justify-center rounded-lg border border-[#0f1b3d]/20 bg-background hover:bg-muted disabled:opacity-50"
+                  >
+                    <RefreshCw className={cn('h-4 w-4 text-[#0f1b3d]', autoScripting && 'animate-spin')} />
+                  </button>
+                )}
+              </div>
 
+              {scriptEdited && (
+                <Button
+                  type="button"
+                  onClick={saveFinalVersion}
+                  disabled={savingFinal}
+                  variant="outline"
+                  className="w-full h-10 rounded-xl border-emerald-500/40 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 font-semibold"
+                >
+                  <Sparkles className="ml-2 h-4 w-4" />
+                  {savingFinal ? 'שומר…' : 'גרסה סופית — למד את הסגנון שלי'}
+                </Button>
+              )}
 
               <div className="flex justify-start">
                 <Button
