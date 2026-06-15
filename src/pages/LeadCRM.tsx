@@ -20,8 +20,10 @@ import {
   Search, CheckCircle2, XCircle, User, MapPin, Tag, Clock,
   ArrowUpRight, ArrowDownLeft, Upload, FileSpreadsheet, AlertTriangle,
   Users, Download, Megaphone, Trash2, X, Sparkles, Eye, SlidersHorizontal,
-  Heart, MessageCircle, UserPlus, Bot, Map, Smile, Meh, Frown
+  Heart, MessageCircle, UserPlus, Bot, Map, Smile, Meh, Frown,
+  Wallet, Compass, Radio, Target, Home as HomeIcon
 } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
 import { useVirtualizer } from '@tanstack/react-virtual';
 import { format } from 'date-fns';
