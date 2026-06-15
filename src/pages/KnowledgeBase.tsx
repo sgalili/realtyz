@@ -329,7 +329,7 @@ export default function KnowledgeBase() {
 
   return (
     <div className="space-y-6" dir="rtl">
-      <SystemRulesInput />
+
 
 
 
