@@ -6,32 +6,59 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select';
 import { toast } from 'sonner';
 import {
   Sparkles, Facebook, Instagram, Linkedin, Music2,
   User, Users as GenderIcon, KeyRound, Loader2, CheckCircle2,
+  ChevronDown, ChevronUp, Plus, Trash2, Globe,
 } from 'lucide-react';
 
 interface Props {
   lead: any;
+  hideEnrichmentButton?: boolean;
 }
 
-// Compact, KI-style enrichment + social + GreenAPI panel.
-// Persists age/gender/social URLs inside leads.preferences (no schema change),
-// instagram_handle directly on the column, and Green API creds in api_configs.
-export default function LeadEnrichmentPanel({ lead }: Props) {
+type SocialPlatform = 'facebook' | 'instagram' | 'tiktok' | 'linkedin' | 'x' | 'youtube' | 'other';
+
+const PLATFORM_META: Record<SocialPlatform, { label: string; icon: JSX.Element }> = {
+  facebook:  { label: 'Facebook',  icon: <Facebook className="h-3.5 w-3.5 text-[#1877F2]" /> },
+  instagram: { label: 'Instagram', icon: <Instagram className="h-3.5 w-3.5 text-pink-600" /> },
+  tiktok:    { label: 'TikTok',    icon: <Music2 className="h-3.5 w-3.5 text-slate-900" /> },
+  linkedin:  { label: 'LinkedIn',  icon: <Linkedin className="h-3.5 w-3.5 text-[#0A66C2]" /> },
+  x:         { label: 'X',         icon: <Globe className="h-3.5 w-3.5 text-slate-900" /> },
+  youtube:   { label: 'YouTube',   icon: <Globe className="h-3.5 w-3.5 text-red-600" /> },
+  other:     { label: 'אחר',       icon: <Globe className="h-3.5 w-3.5 text-slate-700" /> },
+};
+
+interface SocialEntry { platform: SocialPlatform; handle: string; }
+
+function buildInitialSocials(lead: any, prefs: Record<string, any>): SocialEntry[] {
+  const list: SocialEntry[] = Array.isArray(prefs.socials) ? [...prefs.socials] : [];
+  if (list.length) return list;
+  const seeded: SocialEntry[] = [];
+  if (prefs.facebook_url)            seeded.push({ platform: 'facebook',  handle: prefs.facebook_url });
+  if (lead.instagram_handle)         seeded.push({ platform: 'instagram', handle: lead.instagram_handle });
+  if (prefs.tiktok_handle)           seeded.push({ platform: 'tiktok',    handle: prefs.tiktok_handle });
+  if (prefs.linkedin_url)            seeded.push({ platform: 'linkedin',  handle: prefs.linkedin_url });
+  return seeded;
+}
+
+export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Props) {
   const qc = useQueryClient();
   const prefs = (lead.preferences ?? {}) as Record<string, any>;
 
   const [age, setAge] = useState<string>(prefs.age ? String(prefs.age) : '');
   const [gender, setGender] = useState<string>(prefs.gender ?? '');
-  const [fb, setFb] = useState<string>(prefs.facebook_url ?? '');
-  const [ig, setIg] = useState<string>(lead.instagram_handle ?? '');
-  const [tk, setTk] = useState<string>(prefs.tiktok_handle ?? '');
-  const [li, setLi] = useState<string>(prefs.linkedin_url ?? '');
   const [savingField, setSavingField] = useState<string | null>(null);
 
   const [enriching, setEnriching] = useState(false);
+
+  // Collapsible social section
+  const [socialOpen, setSocialOpen] = useState(false);
+  const [socials, setSocials] = useState<SocialEntry[]>(() => buildInitialSocials(lead, prefs));
 
   // Green API credentials
   const [gaOpen, setGaOpen] = useState(false);
@@ -41,7 +68,6 @@ export default function LeadEnrichmentPanel({ lead }: Props) {
   const [gaSaving, setGaSaving] = useState(false);
 
   useEffect(() => {
-    // Probe Green API config (does not expose value).
     (async () => {
       const { data } = await supabase
         .from('api_configs')
@@ -77,26 +103,27 @@ export default function LeadEnrichmentPanel({ lead }: Props) {
   async function runEnrichment() {
     setEnriching(true);
     try {
-      // Pull live WhatsApp avatar via existing fetch-wa-avatars edge fn.
       const { data, error } = await supabase.functions.invoke('fetch-wa-avatars', {
         body: { lead_ids: [lead.id], force: true },
       });
       if (error) throw error;
       const updated = (data as any)?.updated ?? 0;
       const failed = (data as any)?.failed ?? 0;
-      if (updated > 0) {
-        toast.success('תמונת פרופיל סונכרנה מוואטסאפ');
-      } else if (failed > 0) {
-        toast.warning('לא נמצאה תמונת פרופיל פעילה לאיש קשר זה');
-      } else {
-        toast.info('סריקה הושלמה — אין נתונים חדשים להעשרה');
-      }
+      if (updated > 0)      toast.success('תמונת פרופיל סונכרנה מוואטסאפ');
+      else if (failed > 0)  toast.warning('לא נמצאה תמונת פרופיל פעילה לאיש קשר זה');
+      else                  toast.info('סריקה הושלמה — אין נתונים חדשים להעשרה');
       qc.invalidateQueries({ queryKey: ['leads-infinite'] });
     } catch (e: any) {
       toast.error(e?.message ?? 'שגיאה בסריקה');
     } finally {
       setEnriching(false);
     }
+  }
+
+  async function persistSocials(next: SocialEntry[]) {
+    setSocials(next);
+    const clean = next.filter((s) => s.handle.trim().length > 0);
+    await persist({ pref: { socials: clean } }, 'socials');
   }
 
   async function saveGreenApi() {
@@ -127,37 +154,7 @@ export default function LeadEnrichmentPanel({ lead }: Props) {
     }
   }
 
-  const inlineRow = (
-    icon: JSX.Element,
-    label: string,
-    value: string,
-    onChange: (v: string) => void,
-    fieldKey: string,
-    onCommit: () => void,
-    placeholder?: string,
-    type: string = 'text',
-  ) => (
-    <div className="grid grid-cols-[110px_1fr_auto] items-center gap-2">
-      <Label className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-        {icon}
-        {label}
-      </Label>
-      <Input
-        type={type}
-        value={value}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        onBlur={onCommit}
-        className="h-8 text-sm"
-        dir={type === 'number' ? 'ltr' : undefined}
-      />
-      {savingField === fieldKey ? (
-        <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />
-      ) : (
-        <span className="w-3.5" />
-      )}
-    </div>
-  );
+  const activeSocialCount = socials.filter((s) => s.handle.trim()).length;
 
   return (
     <div className="space-y-4">
@@ -167,114 +164,147 @@ export default function LeadEnrichmentPanel({ lead }: Props) {
       <div>
         <h3 className="text-sm font-bold text-slate-900 mb-3">דמוגרפיה</h3>
         <div className="space-y-2">
-          {inlineRow(
-            <User className="h-3.5 w-3.5 text-slate-700" />,
-            'גיל',
-            age,
-            setAge,
-            'age',
-            () => {
-              const n = age.trim() === '' ? null : Number(age);
-              if (n !== null && (Number.isNaN(n) || n < 0 || n > 120)) {
-                toast.error('גיל לא תקין');
-                return;
-              }
-              persist({ pref: { age: n } }, 'age');
-            },
-            'לדוגמה 34',
-            'number',
-          )}
           <div className="grid grid-cols-[110px_1fr_auto] items-center gap-2">
             <Label className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
-              <GenderIcon className="h-3.5 w-3.5 text-slate-700" />
-              מגדר
+              <User className="h-3.5 w-3.5 text-slate-700" /> גיל
             </Label>
-            <div className="flex gap-2">
-              {[
-                { v: 'male', l: 'זכר' },
-                { v: 'female', l: 'נקבה' },
-                { v: 'other', l: 'אחר' },
-              ].map((opt) => (
-                <Button
-                  key={opt.v}
-                  type="button"
-                  variant={gender === opt.v ? 'default' : 'outline'}
-                  size="sm"
-                  className="h-8 flex-1"
-                  onClick={() => {
-                    setGender(opt.v);
-                    persist({ pref: { gender: opt.v } }, 'gender');
-                  }}
-                >
-                  {opt.l}
-                </Button>
-              ))}
-            </div>
-            {savingField === 'gender' && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" />}
+            <Input
+              type="number"
+              value={age}
+              placeholder="לדוגמה 34"
+              onChange={(e) => setAge(e.target.value)}
+              onBlur={() => {
+                const n = age.trim() === '' ? null : Number(age);
+                if (n !== null && (Number.isNaN(n) || n < 0 || n > 120)) {
+                  toast.error('גיל לא תקין'); return;
+                }
+                persist({ pref: { age: n } }, 'age');
+              }}
+              className="h-8 text-sm"
+              dir="ltr"
+            />
+            {savingField === 'age' ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : <span className="w-3.5" />}
+          </div>
+          <div className="grid grid-cols-[110px_1fr_auto] items-center gap-2">
+            <Label className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+              <GenderIcon className="h-3.5 w-3.5 text-slate-700" /> מגדר
+            </Label>
+            <Select
+              value={gender || undefined}
+              onValueChange={(v) => { setGender(v); persist({ pref: { gender: v } }, 'gender'); }}
+            >
+              <SelectTrigger className="h-8 text-sm font-semibold text-slate-900"><SelectValue placeholder="בחר מגדר" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="male">זכר</SelectItem>
+                <SelectItem value="female">נקבה</SelectItem>
+                <SelectItem value="other">אחר</SelectItem>
+              </SelectContent>
+            </Select>
+            {savingField === 'gender' ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : <span className="w-3.5" />}
           </div>
         </div>
       </div>
 
       <Separator />
 
-      {/* Social Profiles */}
-      <div>
-        <h3 className="text-sm font-bold text-slate-900 mb-3">רשתות חברתיות</h3>
-        <div className="space-y-2">
-          {inlineRow(
-            <Facebook className="h-3.5 w-3.5 text-[#1877F2]" />,
-            'פייסבוק',
-            fb,
-            setFb,
-            'fb',
-            () => persist({ pref: { facebook_url: fb.trim() || null } }, 'fb'),
-            'facebook.com/username',
-          )}
-          {inlineRow(
-            <Instagram className="h-3.5 w-3.5 text-pink-600" />,
-            'אינסטגרם',
-            ig,
-            setIg,
-            'ig',
-            () => persist({ col: { instagram_handle: ig.trim() || null } }, 'ig'),
-            '@handle',
-          )}
-          {inlineRow(
-            <Music2 className="h-3.5 w-3.5 text-slate-900" />,
-            'טיקטוק',
-            tk,
-            setTk,
-            'tk',
-            () => persist({ pref: { tiktok_handle: tk.trim() || null } }, 'tk'),
-            '@handle',
-          )}
-          {inlineRow(
-            <Linkedin className="h-3.5 w-3.5 text-[#0A66C2]" />,
-            'לינקדאין',
-            li,
-            setLi,
-            'li',
-            () => persist({ pref: { linkedin_url: li.trim() || null } }, 'li'),
-            'linkedin.com/in/...',
-          )}
-        </div>
+      {/* Social Profiles — collapsed by default */}
+      <div className="rounded-lg border border-slate-200 bg-slate-50/60">
+        <button
+          type="button"
+          onClick={() => setSocialOpen((s) => !s)}
+          className="w-full flex items-center justify-between gap-2 p-3"
+        >
+          <div className="flex items-center gap-2 min-w-0">
+            <span className="text-sm font-bold text-slate-900">רשתות חברתיות</span>
+            <Badge variant="outline" className="text-[10px] font-bold border-slate-300 text-slate-700">
+              {activeSocialCount} פעילים
+            </Badge>
+            <div className="flex items-center gap-1">
+              {socials.filter((s) => s.handle.trim()).slice(0, 5).map((s, i) => (
+                <span key={i}>{PLATFORM_META[s.platform]?.icon ?? PLATFORM_META.other.icon}</span>
+              ))}
+            </div>
+          </div>
+          {socialOpen ? <ChevronUp className="h-4 w-4 text-slate-600" /> : <ChevronDown className="h-4 w-4 text-slate-600" />}
+        </button>
+
+        {socialOpen && (
+          <div className="px-3 pb-3 space-y-2 border-t border-slate-200 pt-3">
+            {socials.length === 0 && (
+              <p className="text-xs text-muted-foreground text-center py-2">לא הוגדרו פרופילים — הוסף ראשון</p>
+            )}
+            {socials.map((s, idx) => (
+              <div key={idx} className="grid grid-cols-[130px_1fr_auto] items-center gap-2">
+                <Select
+                  value={s.platform}
+                  onValueChange={(v) => {
+                    const next = [...socials];
+                    next[idx] = { ...next[idx], platform: v as SocialPlatform };
+                    persistSocials(next);
+                  }}
+                >
+                  <SelectTrigger className="h-8 text-xs font-semibold text-slate-900">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {(Object.keys(PLATFORM_META) as SocialPlatform[]).map((p) => (
+                      <SelectItem key={p} value={p}>
+                        <span className="flex items-center gap-2">{PLATFORM_META[p].icon} {PLATFORM_META[p].label}</span>
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <Input
+                  value={s.handle}
+                  placeholder="@handle או URL"
+                  onChange={(e) => {
+                    const next = [...socials];
+                    next[idx] = { ...next[idx], handle: e.target.value };
+                    setSocials(next);
+                  }}
+                  onBlur={() => persistSocials(socials)}
+                  className="h-8 text-sm"
+                  dir="ltr"
+                />
+                <button
+                  type="button"
+                  aria-label="מחק"
+                  className="text-slate-500 hover:text-destructive"
+                  onClick={() => {
+                    const next = socials.filter((_, i) => i !== idx);
+                    persistSocials(next);
+                  }}
+                >
+                  <Trash2 className="h-4 w-4" />
+                </button>
+              </div>
+            ))}
+
+            <button
+              type="button"
+              onClick={() => setSocials((prev) => [...prev, { platform: 'facebook', handle: '' }])}
+              className="w-full flex items-center justify-center gap-1.5 text-xs font-semibold text-slate-700 hover:text-primary border border-dashed border-slate-300 rounded-md py-2 transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" /> הוסף פרופיל
+            </button>
+          </div>
+        )}
       </div>
 
-      <Separator />
-
-      {/* Web enrichment trigger */}
-      <Button
-        type="button"
-        onClick={runEnrichment}
-        disabled={enriching}
-        className="w-full h-11 text-sm font-bold gap-2 bg-gradient-to-l from-primary to-primary/80"
-      >
-        {enriching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-        סריקת מידע והעשרת פרופיל מהרשת
-      </Button>
-      <p className="text-[11px] text-muted-foreground text-center -mt-2">
-        מסנכרן תמונת פרופיל חיה מוואטסאפ דרך GreenAPI ומעדכן שדות חסרים
-      </p>
+      {!hideEnrichmentButton && (
+        <>
+          <Separator />
+          <Button
+            type="button"
+            onClick={runEnrichment}
+            disabled={enriching}
+            className="w-full h-11 text-sm font-bold gap-2 bg-gradient-to-l from-primary to-primary/80"
+          >
+            {enriching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+            סריקת מידע והעשרת פרופיל מהרשת
+          </Button>
+        </>
+      )}
 
       {/* GreenAPI inline setup */}
       <div className="rounded-lg border border-emerald-300/60 bg-emerald-50/40 p-3 space-y-2">
@@ -300,37 +330,55 @@ export default function LeadEnrichmentPanel({ lead }: Props) {
           <div className="space-y-2 pt-2 border-t border-emerald-200">
             <div>
               <Label className="text-xs font-semibold text-slate-900">Instance ID</Label>
-              <Input
-                value={gaInstance}
-                onChange={(e) => setGaInstance(e.target.value)}
-                placeholder="1101000001"
-                className="h-8 mt-1"
-                dir="ltr"
-              />
+              <Input value={gaInstance} onChange={(e) => setGaInstance(e.target.value)} placeholder="1101000001" className="h-8 mt-1" dir="ltr" />
             </div>
             <div>
               <Label className="text-xs font-semibold text-slate-900">API Token</Label>
-              <Input
-                type="password"
-                value={gaToken}
-                onChange={(e) => setGaToken(e.target.value)}
-                placeholder="••••••••••••"
-                className="h-8 mt-1"
-                dir="ltr"
-              />
+              <Input type="password" value={gaToken} onChange={(e) => setGaToken(e.target.value)} placeholder="••••••••••••" className="h-8 mt-1" dir="ltr" />
             </div>
-            <Button
-              type="button"
-              size="sm"
-              className="w-full"
-              onClick={saveGreenApi}
-              disabled={gaSaving}
-            >
+            <Button type="button" size="sm" className="w-full" onClick={saveGreenApi} disabled={gaSaving}>
               {gaSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'שמור והגדר כשער ראשי'}
             </Button>
           </div>
         )}
       </div>
     </div>
+  );
+}
+
+/* Standalone trigger button so the enrichment CTA can be repositioned
+   anywhere in the drawer (e.g. directly under the AI master switch). */
+export function LeadEnrichmentButton({ lead }: { lead: any }) {
+  const qc = useQueryClient();
+  const [enriching, setEnriching] = useState(false);
+  async function runEnrichment() {
+    setEnriching(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-wa-avatars', {
+        body: { lead_ids: [lead.id], force: true },
+      });
+      if (error) throw error;
+      const updated = (data as any)?.updated ?? 0;
+      const failed = (data as any)?.failed ?? 0;
+      if (updated > 0)      toast.success('תמונת פרופיל סונכרנה מוואטסאפ');
+      else if (failed > 0)  toast.warning('לא נמצאה תמונת פרופיל פעילה לאיש קשר זה');
+      else                  toast.info('סריקה הושלמה — אין נתונים חדשים להעשרה');
+      qc.invalidateQueries({ queryKey: ['leads-infinite'] });
+    } catch (e: any) {
+      toast.error(e?.message ?? 'שגיאה בסריקה');
+    } finally {
+      setEnriching(false);
+    }
+  }
+  return (
+    <Button
+      type="button"
+      onClick={runEnrichment}
+      disabled={enriching}
+      className="w-full h-10 text-sm font-bold gap-2 bg-gradient-to-l from-primary to-primary/80"
+    >
+      {enriching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+      סריקת מידע והעשרת פרופיל מהרשת
+    </Button>
   );
 }
