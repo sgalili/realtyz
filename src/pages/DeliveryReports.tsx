@@ -101,13 +101,13 @@ const DeliveryReports = () => {
   }, [dateRange]);
 
   const { data: rows = [], isLoading, refetch, isFetching } = useQuery({
-    queryKey: ['delivery-reports', user?.id, sinceIso, channelFilter, statusFilter],
+    queryKey: ['delivery-reports', ownerScope, sinceIso, channelFilter, statusFilter],
     queryFn: async (): Promise<LogRow[]> => {
-      if (!user) return [];
+      if (!ownerScope) return [];
       let q = supabase
         .from('campaign_logs')
         .select('id,campaign_name,channel,status,recipient_name,recipient_phone,recipient_email,message_body,source_account,provider_message_id,failure_reason,cost,sent_at,created_at')
-        .eq('user_id', user.id)
+        .eq('user_id', ownerScope)
         .order('created_at', { ascending: false })
         .limit(500);
       if (sinceIso) q = q.gte('created_at', sinceIso);
@@ -117,21 +117,21 @@ const DeliveryReports = () => {
       if (error) throw error;
       return (data ?? []) as LogRow[];
     },
-    enabled: !!user,
+    enabled: !!ownerScope,
     refetchInterval: 15000,
   });
 
   // Realtime updates
   useEffect(() => {
-    if (!user) return;
+    if (!ownerScope) return;
     const channel = supabase
       .channel('delivery-reports-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'campaign_logs', filter: `user_id=eq.${user.id}` }, () => {
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'campaign_logs', filter: `user_id=eq.${ownerScope}` }, () => {
         qc.invalidateQueries({ queryKey: ['delivery-reports'] });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [user, qc]);
+  }, [ownerScope, qc]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return rows;
