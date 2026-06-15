@@ -89,26 +89,33 @@ const OWNER_PHONE = "052-2973500";
 const PHONE_RE = /052[\s\-]?297[\s\-]?3500/;
 const CONTACT_LINE = `לפרטים נוספים, סרטון מהנכס ותיאום ביקור פרטי, אל תהססו לפנות אליי בוואטסאפ או בטלפון ישירות: 📞 ${OWNER_PHONE}`;
 
+// HARD compliance fallback. The owner is legally required to publish a broker
+// license number on every marketing post. If the DB lookup returns blank we
+// MUST still emit the line — never silently omit it. Operator can override
+// via the OWNER_DEFAULT_LICENSE_NUMBER env var.
+const DEFAULT_OWNER_LICENSE =
+  (typeof Deno !== "undefined" && Deno.env.get("OWNER_DEFAULT_LICENSE_NUMBER")?.trim()) ||
+  "בהליך אימות";
+
+function buildFooterBlock(license?: string | null): string {
+  const lic = (license ?? "").toString().trim() || DEFAULT_OWNER_LICENSE;
+  return `${CONTACT_LINE}\n\nרישיון תיווך מספר: ${lic}`;
+}
+
 /**
- * Append the canonical owner footer (contact line + optional byline + license)
- * at the very bottom of `text`, only if not already present.
- *
- * Footer shape:
- *   <contact-line>
- *   [byline]
- *   רישיון תיווך מספר: <license>      ← only when a real license is configured
+ * Append the canonical owner footer (contact line + license) at the very
+ * bottom of `text`. The license line is ALWAYS injected — falls back to the
+ * hardcoded default when no DB license is configured.
  */
 export function appendLicenseFooter(
   text: string,
   license?: string | null,
-  byline?: string | null,
+  _byline?: string | null,
 ): string {
   const body = String(text ?? "").replace(/\s+$/g, "");
   if (!body) return body;
-  const lic = (license ?? "").toString().trim();
-  const bln = (byline ?? "").toString().trim();
 
-  // Strip any prior placeholder footer that older drafts may carry.
+  // Strip any prior placeholder footer like "רישיון תיווך מספר: [...]".
   let cleaned = body.replace(
     /\n*\s*רישיון\s*תיווך\s*מספר\s*[:：]\s*\[[^\]]*\]\s*$/u,
     "",
@@ -116,16 +123,13 @@ export function appendLicenseFooter(
 
   const hasContact = PHONE_RE.test(cleaned);
   const hasLicense = FOOTER_RE.test(cleaned);
-  if (hasContact && (hasLicense || !lic)) return cleaned;
+  if (hasContact && hasLicense) return cleaned;
 
+  const lic = (license ?? "").toString().trim() || DEFAULT_OWNER_LICENSE;
   const lines: string[] = [];
   if (!hasContact) lines.push(CONTACT_LINE);
-  if (!hasLicense) {
-    if (bln) lines.push(bln);
-    if (lic) lines.push(`רישיון תיווך מספר: ${lic}`);
-  }
-  if (lines.length === 0) return cleaned;
-  return `${cleaned}\n\n${lines.join("\n")}`;
+  if (!hasLicense) lines.push(`רישיון תיווך מספר: ${lic}`);
+  return `${cleaned}\n\n${lines.join("\n\n")}`;
 }
 
 export function enforceOwnerLaws(
@@ -140,9 +144,18 @@ export function enforceOwnerLaws(
   // Step 1: scrub forbidden bylines. Step 2: strip street numbers.
   let out = stripStreetNumbers(scrubForbiddenBylines(text));
   // Step 3 (ABSOLUTE LAST): inject contact + license footer if missing.
-  if (withLicense) out = appendLicenseFooter(out, license, byline);
+  if (withLicense) {
+    out = appendLicenseFooter(out, license, byline);
+    // Final deterministic guarantee — if for any reason the license line is
+    // still absent (e.g. caller passed withLicense=true but the body was
+    // pre-sanitized upstream), force-append the canonical 2-line footer.
+    if (!FOOTER_RE.test(out) || !PHONE_RE.test(out)) {
+      out = `${out.replace(/\s+$/g, "")}\n\n${buildFooterBlock(license)}`;
+    }
+  }
   return out;
 }
+
 
 /** Alias retained for callers that still reference the older name. */
 export const sanitizeOutboundText = enforceOwnerLaws;
