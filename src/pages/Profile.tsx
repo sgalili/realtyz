@@ -298,6 +298,19 @@ function PersonalTab() {
           </Select>
         </ProfileFieldRow>
 
+        <div className="space-y-1" dir="rtl">
+          <label className="text-xs font-medium text-muted-foreground">מספר רישיון תיווך (יצורף אוטומטית לתחתית כל פוסט/הודעה)</label>
+          <Input
+            dir="rtl"
+            value={brokerLicense}
+            onChange={(e) => setBrokerLicense(e.target.value)}
+            placeholder="לדוגמה: 3019283"
+            className="text-right"
+          />
+        </div>
+
+
+
         <div className="flex items-center justify-between pt-1">
           <button type="button" className="inline-flex items-center gap-1.5 rounded-full border-2 border-dashed border-muted-foreground/30 px-3 py-1.5 text-xs font-medium hover:bg-muted/40">
             <Plus className="h-3.5 w-3.5" />
