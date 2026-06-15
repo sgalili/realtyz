@@ -121,7 +121,14 @@ export function appendLicenseFooter(
     .replace(/\n*\s*ר\.?\s*מ\s*[:：][^\n]*/gu, "")
     .replace(/\n*\s*אודי\s+ויטמן\s*-\s*אנגלו[^\n]*/gu, "")
     .replace(/בהליך\s*אימות/gu, "")
+    // STRICT: AI-assisted watermark is forbidden — purge every variant.
+    .replace(/,\s*תוכן\s*בסיוע\s*AI/giu, "")
+    .replace(/תוכן\s*בסיוע\s*AI/giu, "")
+    .replace(/,\s*AI[- ]assisted\s*content/giu, "")
+    .replace(/AI[- ]assisted\s*content/giu, "")
+    .replace(/\n{3,}/g, "\n\n")
     .replace(/\s+$/g, "");
+
 
   const hasContact = PHONE_RE.test(cleaned);
   const parts: string[] = [];
