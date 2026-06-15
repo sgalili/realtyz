@@ -148,6 +148,27 @@ export function sanitizeOutboundText(input: string): string {
   return out;
 }
 
+/**
+ * Strip markdown emphasis (** bold **, * italics *, __ underline __, _ italics _,
+ * ` code `, # headers) from generated text. Use for any AI text that lands in
+ * social posts, social comments/replies, email, SMS, or any non-WhatsApp surface.
+ * NEVER apply this to WhatsApp Green API output — WA renders `*bold*` natively.
+ */
+export function stripMarkdownEmphasis(input: string): string {
+  let out = String(input ?? "");
+  // Bold: **text** or __text__  →  text
+  out = out.replace(/\*\*([^*\n]+?)\*\*/g, "$1").replace(/__([^_\n]+?)__/g, "$1");
+  // Italics: *text* or _text_  →  text  (avoid touching lone * already gone)
+  out = out.replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, "$1$2");
+  out = out.replace(/(^|[^_])_([^_\n]+?)_(?!_)/g, "$1$2");
+  // Any leftover stray asterisks/underscores from partial markdown
+  out = out.replace(/\*+/g, "").replace(/(^|\s)_+|_+(?=\s|$)/g, "$1");
+  // Inline code `x` and leading # headers
+  out = out.replace(/`+([^`\n]+?)`+/g, "$1").replace(/^\s{0,3}#{1,6}\s+/gm, "");
+  return out.replace(/[ \t]{2,}/g, " ").trim();
+}
+
+
 export function detectDominantLanguage(text: string): "he" | "en" | "other" {
   const s = String(text || "");
   const hebrew = (s.match(/[\u0590-\u05FF]/g) ?? []).length;
