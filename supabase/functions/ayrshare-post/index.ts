@@ -12,6 +12,7 @@ import {
   stripMarkdownEmphasis,
   verifyWorkspaceProfileKey,
 } from "../_shared/ayrshare-helpers.ts";
+import { enforceOwnerLaws, fetchOwnerLicense } from "../_shared/owner-laws.ts";
 
 const AYR_POST_URL = "https://api.ayrshare.com/api/post";
 
