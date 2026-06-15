@@ -153,15 +153,23 @@ Deno.serve(async (req) => {
         const dt = await del.text();
         let dp: any = null;
         try { dp = dt ? JSON.parse(dt) : null; } catch { dp = { raw: dt }; }
-        decision.deleted = { ok: del.ok, status: del.status, payload: dp };
+        const code = dp?.code;
+        const msg = String(dp?.message ?? dp?.error ?? "").toLowerCase();
+        const suspended = code === 276 || msg.includes("suspend");
+        // Treat suspension (code 276) as a logical success — Ayrshare locks deletion,
+        // but we still proceed to force-clear local records so the ghost is gone.
+        const effectiveOk = del.ok || suspended;
+        decision.deleted = { ok: effectiveOk, status: del.status, payload: dp };
         if (del.ok) {
           console.log(`[AYRSHARE PURGE] Successfully deleted suspended profile ID: ${profileKey.slice(0, 8)}… refId=${refId ?? "(none)"} title=${title ?? "(none)"} reason=${reason}`);
+        } else if (suspended) {
+          console.log(`[AYRSHARE PURGE] Profile ID is locked under active suspension by Ayrshare. Proceeding to force-clear local records. keyPrefix=${profileKey.slice(0, 8)} refId=${refId ?? "(none)"}`);
         } else {
           console.warn(`[AYRSHARE PURGE] DELETE failed status=${del.status} keyPrefix=${profileKey.slice(0, 8)} payload=${JSON.stringify(dp)}`);
         }
 
-        if (del.ok) {
-          // 4. Sync local DB rows that referenced the purged key.
+        if (effectiveOk) {
+          // Force-cascade local DB rows that referenced the purged/suspended key.
           try {
             await admin
               .from("workspace_social_profile")
@@ -174,9 +182,10 @@ Deno.serve(async (req) => {
                 updated_at: new Date().toISOString(),
               })
               .eq("ayrshare_profile_key", profileKey);
+            // Hard delete the social-account rows so the ghost FB page disappears from the UI.
             await admin
               .from("ayrshare_social_accounts")
-              .update({ connected: false, is_active: false, updated_at: new Date().toISOString() })
+              .delete()
               .eq("profile_key", profileKey);
           } catch (e) {
             console.error("[ayrshare-profiles-purge] local sync failed", profileKey.slice(0, 8), e);
