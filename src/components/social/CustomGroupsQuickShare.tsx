@@ -389,7 +389,7 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
           const isPicked = picked.has(g.id);
           const countdownMs = isPending ? new Date(row!.scheduled_for).getTime() - now : 0;
 
-          const isExpanded = expandedIds.has(g.id) || isReady;
+          const isExpanded = expandedIds.has(g.id);
 
           return (
             <div
