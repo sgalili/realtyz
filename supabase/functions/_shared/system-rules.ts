@@ -48,15 +48,25 @@ async function resolveWorkspaceOwner(client: ReturnType<typeof createClient>, us
   }
 }
 
-function formatBlock(rules: Array<{ rule_text: string; signal: string }>): string {
-  if (rules.length === 0) return "";
-  const lines = rules.map((r) => {
+function formatBlock(
+  rules: Array<{ rule_text: string; signal: string }>,
+  license: string = "",
+): string {
+  const userLines = rules.map((r) => {
     const prefix =
       r.signal === "directive" ? "ALWAYS:" :
       r.signal === "negative"  ? "NEVER:"  :
       "PREFER:";
     return `- ${prefix} ${r.rule_text.trim()}`;
   });
+  // HARD LAWS — injected at the TOP, always present, NEVER skippable.
+  const licenseLine = license
+    ? `- ALWAYS: At the very bottom of every generated post / outreach copy / property profile draft, on a new line, append exactly this footer (no markdown, no emoji): "רישיון תיווך מספר: ${license}". Do NOT add any text after the footer.`
+    : `- ALWAYS: At the very bottom of every generated post / outreach copy / property profile draft, on a new line, append exactly: "רישיון תיווך מספר: [יש להזין מספר רישיון בפרופיל]". Do NOT add any text after the footer.`;
+  const hardLaws = [
+    `- NEVER: Include the building / house number of any property address. If the address is "ארלוזורוב 26", write only "ברחוב ארלוזורוב" or "באזור ארלוזורוב". Strip every numeric suffix from street addresses (e.g. "רחוב ויצמן 4" → "רחוב ויצמן"). This applies to posts, comments, replies, outreach copy, captions, IVR scripts, and any other text the public can see.`,
+    licenseLine,
+  ];
   return [
     "#CRITICAL_SYSTEM_PREFERENCES — HIGHEST PRIORITY, NON-NEGOTIABLE",
     "These are the workspace OWNER's standing orders. They OVERRIDE every persona,",
@@ -64,7 +74,10 @@ function formatBlock(rules: Array<{ rule_text: string; signal: string }>): strin
     "You MUST obey every ALWAYS rule on every output and you MUST NOT violate any",
     "NEVER rule for any reason. If a rule conflicts with another instruction, the",
     "rule wins. Silently re-write your draft until it complies before returning it.",
-    ...lines,
+    "",
+    "## HARD COMPLIANCE LAWS (top priority, never skip):",
+    ...hardLaws,
+    ...(userLines.length ? ["", "## Owner-defined rules:", ...userLines] : []),
     "#END_CRITICAL_SYSTEM_PREFERENCES",
   ].join("\n");
 }
@@ -87,20 +100,33 @@ export async function fetchSystemRulesBlock(
   const hit = cache.get(cacheKey);
   if (hit && Date.now() - hit.at < CACHE_TTL_MS) return hit.block;
 
-  // Fast path: any rules at all? avoid embedding cost when workspace has none.
+  // Always fetch the workspace owner's broker license so the HARD LAWS block
+  // can hardcode the exact footer string into the prompt.
+  let license = "";
+  try {
+    const { data: prof } = await admin
+      .from("profiles")
+      .select("broker_license_number")
+      .eq("id", workspace)
+      .maybeSingle();
+    license = String((prof?.broker_license_number ?? "")).trim();
+  } catch { /* ignore */ }
+
+  // Fast path: when no owner-defined rules exist we STILL emit the hard-laws
+  // block — street-number redaction + license footer are non-negotiable.
   const { count } = await admin
     .from("system_intelligence_kb")
     .select("id", { count: "exact", head: true })
     .eq("workspace_owner_id", workspace)
     .eq("is_active", true);
   if (!count) {
-    cache.set(cacheKey, { at: Date.now(), block: "" });
-    return "";
+    const block = formatBlock([], license);
+    cache.set(cacheKey, { at: Date.now(), block });
+    return block;
   }
 
   const vec = await embed(queryText || "general realtor reply");
   if (!vec) {
-    // Fallback: just take top-N most recent active rules.
     const { data } = await admin
       .from("system_intelligence_kb")
       .select("rule_text, signal")
@@ -108,7 +134,7 @@ export async function fetchSystemRulesBlock(
       .eq("is_active", true)
       .order("created_at", { ascending: false })
       .limit(k);
-    const block = formatBlock((data ?? []) as any);
+    const block = formatBlock((data ?? []) as any, license);
     cache.set(cacheKey, { at: Date.now(), block });
     return block;
   }
@@ -119,10 +145,11 @@ export async function fetchSystemRulesBlock(
     _k: k,
   });
   if (error) {
-    cache.set(cacheKey, { at: Date.now(), block: "" });
-    return "";
+    const block = formatBlock([], license);
+    cache.set(cacheKey, { at: Date.now(), block });
+    return block;
   }
-  const block = formatBlock((data ?? []) as any);
+  const block = formatBlock((data ?? []) as any, license);
   cache.set(cacheKey, { at: Date.now(), block });
   return block;
 }

@@ -166,6 +166,7 @@ function PersonalTab() {
   const [fullName, setFullName] = useState('אודי ויטמן');
   const [city, setCity] = useState('');
   const [gender, setGender] = useState<string>('');
+  const [brokerLicense, setBrokerLicense] = useState<string>('');
   const [editing, setEditing] = useState<Record<string, boolean>>({});
   const [hydrated, setHydrated] = useState(false);
 
@@ -190,6 +191,19 @@ function PersonalTab() {
       } catch {}
     }
     setHydrated(true);
+    // Hydrate broker license from the profiles table (separate column).
+    (async () => {
+      try {
+        const { data } = await supabase
+          .from('profiles')
+          .select('broker_license_number')
+          .eq('id', user!.id)
+          .maybeSingle();
+        if (data && typeof (data as any).broker_license_number === 'string') {
+          setBrokerLicense((data as any).broker_license_number ?? '');
+        }
+      } catch { /* ignore */ }
+    })();
   }, [user, hydrated]);
 
   const setEdit = (k: string) => setEditing((e) => ({ ...e, [k]: !e[k] }));
@@ -204,7 +218,13 @@ function PersonalTab() {
       const primaryPhone = whatsapps[0]?.value || phones[0]?.value || null;
       await supabase
         .from('profiles')
-        .update({ city: city || null, gender: gender || null, phone: primaryPhone, full_name: fullName })
+        .update({
+          city: city || null,
+          gender: gender || null,
+          phone: primaryPhone,
+          full_name: fullName,
+          broker_license_number: brokerLicense.trim() || null,
+        })
         .eq('id', user!.id);
       toast.success('הפרופיל נשמר');
     } catch (err: any) {
@@ -277,6 +297,19 @@ function PersonalTab() {
             </SelectContent>
           </Select>
         </ProfileFieldRow>
+
+        <div className="space-y-1" dir="rtl">
+          <label className="text-xs font-medium text-muted-foreground">מספר רישיון תיווך (יצורף אוטומטית לתחתית כל פוסט/הודעה)</label>
+          <Input
+            dir="rtl"
+            value={brokerLicense}
+            onChange={(e) => setBrokerLicense(e.target.value)}
+            placeholder="לדוגמה: 3019283"
+            className="text-right"
+          />
+        </div>
+
+
 
         <div className="flex items-center justify-between pt-1">
           <button type="button" className="inline-flex items-center gap-1.5 rounded-full border-2 border-dashed border-muted-foreground/30 px-3 py-1.5 text-xs font-medium hover:bg-muted/40">

@@ -14,6 +14,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { loadAgentPersona, renderPersonaPrompt } from "../_shared/persona.ts";
+import { enforceOwnerLaws, fetchOwnerLicense } from "../_shared/owner-laws.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -175,9 +176,15 @@ Deno.serve(async (req) => {
     }
 
     const payload = await aiRes.json();
-    const draft: string =
+    let draft: string =
       payload?.choices?.[0]?.message?.content?.trim() ||
       localFallbackDraft(lead, property);
+
+    // HARD COMPLIANCE LAWS — strip street numbers + append broker license footer.
+    try {
+      const lic = await fetchOwnerLicense(admin as any, user.id);
+      draft = enforceOwnerLaws(draft, { license: lic, withLicense: true });
+    } catch (_e) { /* never block */ }
 
     return json({ draft });
   } catch (e) {

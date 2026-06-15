@@ -3,6 +3,7 @@
 // persona learning.
 import { createClient } from 'npm:@supabase/supabase-js@2';
 import { stripMarkdownEmphasis } from '../_shared/ayrshare-helpers.ts';
+import { stripStreetNumbers } from '../_shared/owner-laws.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -32,7 +33,7 @@ Deno.serve(async (req) => {
 
     const { comment_id, final_text: rawFinalText, mode = 'hitl' } = await req.json();
     if (!comment_id || !rawFinalText) throw new Error('comment_id + final_text required');
-    const final_text = stripMarkdownEmphasis(String(rawFinalText));
+    const final_text = stripStreetNumbers(stripMarkdownEmphasis(String(rawFinalText)));
 
     const admin = createClient(URL_, SERVICE);
     const { data: comment, error: cErr } = await admin

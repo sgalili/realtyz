@@ -12,6 +12,7 @@ import {
   stripMarkdownEmphasis,
   verifyWorkspaceProfileKey,
 } from "../_shared/ayrshare-helpers.ts";
+import { enforceOwnerLaws, fetchOwnerLicense } from "../_shared/owner-laws.ts";
 
 const AYR_POST_URL = "https://api.ayrshare.com/api/post";
 
@@ -137,6 +138,10 @@ Deno.serve(async (req) => {
     }
     if (!userId) return json({ error: "unauthorized" }, 401);
 
+    // Enforce owner laws (strip street numbers, append broker license footer).
+    const ownerLicense = await fetchOwnerLicense(admin as any, userId);
+    const finalPostText = enforceOwnerLaws(postText, { license: ownerLicense, withLicense: true });
+
     const platforms = Array.from(
       new Set(rawChannels.map((c) => PLATFORM_MAP[String(c).toLowerCase()]).filter(Boolean)),
     );
@@ -236,7 +241,7 @@ Deno.serve(async (req) => {
     // each selected Facebook Group fan-out target.
     const firePost = async (extra: Record<string, unknown>, label: string) => {
       const payload: Record<string, unknown> = {
-        post: postText,
+        post: finalPostText,
         platforms: extra.platforms ?? platforms,
         profileKey,
         ...(targetAccountRef ? { facebookOptions: { pageId: targetAccountRef } } : {}),
@@ -332,7 +337,7 @@ Deno.serve(async (req) => {
         user_id: userId,
         campaign_name: campaignName,
         channel: lc,
-        message_body: postText,
+        message_body: finalPostText,
         status: scheduledIso ? "scheduled" : (match?.status === "success" || ayrRes.ok ? "sent" : "queued"),
         provider_message_id: match?.id ?? null,
         provider_response: ayrJson ?? {},
@@ -344,7 +349,7 @@ Deno.serve(async (req) => {
       user_id: userId,
       campaign_name: `${campaignName} · קבוצה`,
       channel: "facebook",
-      message_body: postText,
+      message_body: finalPostText,
       status: g.ok ? (scheduledIso ? "scheduled" : "sent") : "failed",
       provider_message_id: g.id,
       provider_response: { group_id: g.group_id, error: g.error },
