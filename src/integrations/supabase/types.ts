@@ -2694,6 +2694,7 @@ export type Database = {
           is_published: boolean
           neighborhood: string | null
           parking: boolean | null
+          project_name: string | null
           promoted_until: string | null
           property_title: string
           rooms: number | null
@@ -2729,6 +2730,7 @@ export type Database = {
           is_published?: boolean
           neighborhood?: string | null
           parking?: boolean | null
+          project_name?: string | null
           promoted_until?: string | null
           property_title: string
           rooms?: number | null
@@ -2764,6 +2766,7 @@ export type Database = {
           is_published?: boolean
           neighborhood?: string | null
           parking?: boolean | null
+          project_name?: string | null
           promoted_until?: string | null
           property_title?: string
           rooms?: number | null
