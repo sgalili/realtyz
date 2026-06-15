@@ -42,7 +42,7 @@ import {
   ResponsiveContainer
 } from 'recharts';
 import NewLeadDialog from '@/components/leads/NewLeadDialog';
-import LeadEnrichmentPanel from '@/components/leads/LeadEnrichmentPanel';
+import LeadEnrichmentPanel, { LeadEnrichmentButton } from '@/components/leads/LeadEnrichmentPanel';
 import { useFreemiumStatus } from '@/hooks/useFreemiumStatus';
 import { PriceTag } from '@/components/PriceTag';
 import { Rows, Rows3, Home, Building2 } from 'lucide-react';
