@@ -89,13 +89,9 @@ const OWNER_PHONE = "052-2973500";
 const PHONE_RE = /052[\s\-]?297[\s\-]?3500/;
 const CONTACT_LINE = `לפרטים נוספים, סרטון מהנכס ותיאום ביקור פרטי, אל תהססו לפנות אליי בוואטסאפ או בטלפון ישירות: 📞 ${OWNER_PHONE}`;
 
-// HARD compliance fallback. The owner is legally required to publish a broker
-// license number on every marketing post. If the DB lookup returns blank we
-// MUST still emit the line — never silently omit it. Operator can override
-// via the OWNER_DEFAULT_LICENSE_NUMBER env var.
-const DEFAULT_OWNER_LICENSE =
-  (typeof Deno !== "undefined" && Deno.env.get("OWNER_DEFAULT_LICENSE_NUMBER")?.trim()) ||
-  "בהליך אימות";
+// HARD compliance constant. Udi's real broker license number — never replace
+// with a placeholder, never read from env, never fall back to anything else.
+const DEFAULT_OWNER_LICENSE = "3251676";
 
 function buildFooterBlock(license?: string | null): string {
   const lic = (license ?? "").toString().trim() || DEFAULT_OWNER_LICENSE;
