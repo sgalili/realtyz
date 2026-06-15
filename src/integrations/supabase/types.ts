@@ -926,8 +926,10 @@ export type Database = {
           created_by: string | null
           id: string
           last_error: string | null
+          owner_notified_at: string | null
           payload: Json
           processed_at: string | null
+          publication_status: string
           scheduled_for: string
           status: string
           target_label: string | null
@@ -945,8 +947,10 @@ export type Database = {
           created_by?: string | null
           id?: string
           last_error?: string | null
+          owner_notified_at?: string | null
           payload?: Json
           processed_at?: string | null
+          publication_status?: string
           scheduled_for?: string
           status?: string
           target_label?: string | null
@@ -964,8 +968,10 @@ export type Database = {
           created_by?: string | null
           id?: string
           last_error?: string | null
+          owner_notified_at?: string | null
           payload?: Json
           processed_at?: string | null
+          publication_status?: string
           scheduled_for?: string
           status?: string
           target_label?: string | null
