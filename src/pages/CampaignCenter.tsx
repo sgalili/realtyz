@@ -2037,9 +2037,10 @@ const PublishedFeed = () => {
                     פתח פוסט
                   </Button>
                   <Button variant="outline" size="sm"
+                          disabled={!!refreshingIds[r.id]}
                           onClick={(e) => { e.stopPropagation(); bumpRefresh(r.id); }}>
-                    <RefreshCw className="ml-1 h-4 w-4" />
-                    רענן תגובות
+                    <RefreshCw className={cn('ml-1 h-4 w-4', refreshingIds[r.id] && 'animate-spin')} />
+                    {refreshingIds[r.id] ? 'מרענן…' : 'רענן תגובות'}
                   </Button>
                   <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
                           className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
