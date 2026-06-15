@@ -279,7 +279,25 @@ ${personaBlock ? personaBlock + "\n\n" : ""}${compliance}`;
       if (typeof draft.call_to_action === "string") draft.call_to_action = stripMarkdownEmphasis(draft.call_to_action);
       if (Array.isArray(draft.highlights)) {
         draft.highlights = draft.highlights.map((h: unknown) => typeof h === "string" ? stripMarkdownEmphasis(h) : h);
+    }
+
+    // HARD COMPLIANCE LAWS — strip street numbers from every field, append
+    // license footer to the primary message body only (subjects/highlights
+    // stay clean, footer lives at the bottom of `message`).
+    try {
+      const ownerLicense = await fetchOwnerLicense(
+        createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!) as any,
+        userData.user.id,
+      );
+      if (typeof draft.subject === "string") draft.subject = stripStreetNumbers(draft.subject);
+      if (typeof draft.call_to_action === "string") draft.call_to_action = stripStreetNumbers(draft.call_to_action);
+      if (Array.isArray(draft.highlights)) {
+        draft.highlights = draft.highlights.map((h: unknown) => typeof h === "string" ? stripStreetNumbers(h) : h);
       }
+      if (typeof draft.message === "string") {
+        draft.message = enforceOwnerLaws(draft.message, { license: ownerLicense, withLicense: true });
+      }
+    } catch (_e) { /* never block on enforcement failure */ }
     }
 
     // Compliance Fact-Check Layer: verify the AI didn't invent prices/titles.
