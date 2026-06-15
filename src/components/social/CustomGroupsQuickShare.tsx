@@ -157,10 +157,24 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
   };
 
   // Compose a per-group "spun" draft from the current base body.
-  const composeDraftForGroup = (g: CustomGroup): string => {
-    const base = ensureCanonicalFooter((body ?? '').trim());
-    if (!base) return '';
-    return [base, g.group_url ? `\n${g.group_url}` : ''].filter(Boolean).join('\n\n');
+  // Calls the AI edge function `spin-group-post` to produce an alternative
+  // phrasing, then re-applies the canonical broker footer + group URL line.
+  // Falls back to the raw body if the AI call fails so we never leave the
+  // textarea empty.
+  const composeDraftForGroup = async (g: CustomGroup, seed?: string | number): Promise<string> => {
+    const raw = (body ?? '').trim();
+    if (!raw) return '';
+    let spun = raw;
+    try {
+      const { data, error } = await (supabase as any).functions.invoke('spin-group-post', {
+        body: { body: raw, group_name: g.group_name, group_url: g.group_url, seed: seed ?? Date.now() },
+      });
+      if (!error && data?.draft) spun = String(data.draft);
+    } catch {
+      /* fall back to raw body */
+    }
+    const withFooter = ensureCanonicalFooter(spun);
+    return [withFooter, g.group_url ? `\n${g.group_url}` : ''].filter(Boolean).join('\n\n');
   };
 
   // Debounced save on textarea edits.
@@ -296,14 +310,21 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
       if (next.has(gid)) next.delete(gid); else next.add(gid);
       return next;
     });
-    // First-open generator: if no draft exists for this group, compose & persist now.
+    // First-open generator: if no draft exists for this group, spin one now.
     const g = groups.find((x) => x.id === gid);
     if (g && (draftById[gid] === undefined || draftById[gid] === '')) {
-      const composed = composeDraftForGroup(g);
-      if (composed) {
-        setDraftById((d) => ({ ...d, [gid]: composed }));
-        void persistDraft(gid, composed);
-      }
+      setRegeneratingId(gid);
+      void (async () => {
+        try {
+          const composed = await composeDraftForGroup(g);
+          if (composed) {
+            setDraftById((d) => ({ ...d, [gid]: composed }));
+            void persistDraft(gid, composed);
+          }
+        } finally {
+          setRegeneratingId((cur) => (cur === gid ? null : cur));
+        }
+      })();
     }
   };
 
@@ -331,13 +352,18 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
   };
 
   const handleRegenerate = async (g: CustomGroup, row: QueuedRow | null) => {
-    const composed = composeDraftForGroup(g);
-    if (!composed) {
+    if (!(body ?? '').trim()) {
       toast.error('אין תוכן זמין לחידוש — חולל קודם פוסט בסיסי');
       return;
     }
     setRegeneratingId(g.id);
     try {
+      // Pass a fresh seed so the AI returns a different phrasing each click.
+      const composed = await composeDraftForGroup(g, `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+      if (!composed) {
+        toast.error('חידוש נכשל — נסה שוב');
+        return;
+      }
       setDraftById((d) => ({ ...d, [g.id]: composed }));
       await persistDraft(g.id, composed);
       if (row) {
@@ -349,7 +375,7 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
         setQueue((q) => q.map((r) => r.id === row.id ? { ...r, payload: newPayload } : r));
       }
       setExpandedIds((p) => new Set(p).add(g.id));
-      toast.success('התוכן חודש לקבוצה זו');
+      toast.success('נוצרה גרסה חלופית לקבוצה זו');
     } catch (e: any) {
       toast.error(`חידוש נכשל: ${e?.message ?? e}`);
     } finally {
