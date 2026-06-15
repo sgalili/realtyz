@@ -485,9 +485,11 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
     if (lastManualRefreshAtRef.current > 0 && elapsed < 60_000) {
       const wait = Math.ceil((60_000 - elapsed) / 1000);
       toast.message(`רענון ידני זמין שוב בעוד ${wait} שניות`);
+      onRefreshComplete?.(campaign.id, { ok: false, count: treeCount(rowsRef.current), error: `רענון ידני זמין שוב בעוד ${wait} שניות` });
       return;
     }
     if (isProviderFetchLocked(postIds, { manual })) {
+      onRefreshComplete?.(campaign.id, { ok: false, count: treeCount(rowsRef.current), error: 'הספק נעול זמנית להגנת החשבון' });
       return;
     }
     // HARD RESET on manual click: evict every per-post cache + lock entry so
