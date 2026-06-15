@@ -16,6 +16,11 @@ const readAyrshareMessage = (payload: unknown): string => {
   return `${String(p.message ?? "")} ${String(p.error ?? "")}`;
 };
 
+const readAyrshareCode = (payload: unknown): unknown => {
+  if (!payload || typeof payload !== "object") return undefined;
+  return (payload as { code?: unknown }).code;
+};
+
 async function deleteAyrshareProfile(profileKey: string) {
   const attempts: Array<{ endpoint: string; status: number; ok: boolean; payload: unknown }> = [];
 
@@ -84,7 +89,7 @@ Deno.serve(async (req) => {
     const res = await deleteAyrshareProfile(profileKey);
     const payload: any = res.payload;
 
-    const code = payload?.code ?? res.attempts.find((a) => (a.payload as { code?: unknown })?.code != null)?.payload?.code;
+    const code = payload?.code ?? readAyrshareCode(res.attempts.find((a) => readAyrshareCode(a.payload) != null)?.payload);
     const msg = `${readAyrshareMessage(payload)} ${res.attempts.map((a) => readAyrshareMessage(a.payload)).join(" ")}`.toLowerCase();
     const suspended = code === 276 || msg.includes("suspend");
     if (suspended) {
