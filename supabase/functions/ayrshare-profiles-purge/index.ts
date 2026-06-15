@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
       const title = typeof p?.title === "string" ? p.title : null;
       const suspendedFlag = Boolean(p?.suspended);
 
-      let linked: string[] = [];
+      let linked: string[] = Array.isArray(p?.activeSocialAccounts) ? p.activeSocialAccounts : [];
       let userStatus = 0;
       let inactive = false;
       try {
@@ -170,7 +170,7 @@ Deno.serve(async (req) => {
       } catch { /* network noise — treat as unknown, don't auto-delete */ }
 
       const orphan = linked.length === 0;
-      const isProtected = (profileKey && keepKeys.has(profileKey)) || (!allowActiveProfileDelete && !forceDeleteAll && !!activeRef && refId === activeRef);
+      const isProtected = (profileKey ? keepKeys.has(profileKey) : false) || (!allowActiveProfileDelete && !forceDeleteAll && !!activeRef && refId === activeRef);
       let reason: string | null = null;
       if (forceDeleteAll) reason = "force_delete_all";
       else if (suspendedFlag) reason = "suspended_flag";
@@ -214,7 +214,11 @@ Deno.serve(async (req) => {
         if (effectiveOk) {
           // Force-cascade local DB rows that referenced the purged/suspended key.
           try {
-            await admin
+            const workspaceFilters = [
+              profileKey ? `ayrshare_profile_key.eq.${profileKey}` : "",
+              refId ? `ayrshare_ref_id.eq.${refId}` : "",
+            ].filter(Boolean).join(",");
+            if (workspaceFilters) await admin
               .from("workspace_social_profile")
               .update({
                 ayrshare_profile_key: null,
@@ -224,10 +228,7 @@ Deno.serve(async (req) => {
                 connected_platforms: [],
                 updated_at: new Date().toISOString(),
               })
-              .or([
-                profileKey ? `ayrshare_profile_key.eq.${profileKey}` : "",
-                refId ? `ayrshare_ref_id.eq.${refId}` : "",
-              ].filter(Boolean).join(","));
+              .or(workspaceFilters);
             // Hard delete the social-account rows so the ghost FB page disappears from the UI.
             if (profileKey) {
               await admin
