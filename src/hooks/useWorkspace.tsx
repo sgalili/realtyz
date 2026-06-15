@@ -60,15 +60,22 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     }
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc('get_my_workspaces');
+      const [{ data, error }, { data: profile }] = await Promise.all([
+        supabase.rpc('get_my_workspaces'),
+        supabase.from('profiles').select('active_workspace_owner_id').eq('id', user.id).maybeSingle(),
+      ]);
       if (error) throw error;
       const rows = (data ?? []) as Workspace[];
       setWorkspaces(rows);
 
       const stored = window.localStorage.getItem(STORAGE_KEY);
       const validStored = stored && rows.some((r) => r.workspace_owner_id === stored) ? stored : null;
+      const profileActive = (profile as any)?.active_workspace_owner_id as string | null | undefined;
+      const validProfile = profileActive && rows.some((r) => r.workspace_owner_id === profileActive) ? profileActive : null;
       const fallback = rows.find((r) => r.is_self)?.workspace_owner_id ?? rows[0]?.workspace_owner_id ?? user.id;
-      setActiveWorkspaceId(validStored ?? fallback);
+      const nextActive = validStored ?? validProfile ?? fallback;
+      setActiveWorkspaceId(nextActive);
+      if (nextActive) window.localStorage.setItem(STORAGE_KEY, nextActive);
     } catch (err) {
       // Fail open: fall back to self
       setWorkspaces([]);
