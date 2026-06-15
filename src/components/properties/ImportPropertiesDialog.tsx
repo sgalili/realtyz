@@ -43,6 +43,9 @@ const FIELD_ALIASES: Record<string, string[]> = {
   opened_at:    ['פתיחה', 'נפתח', 'opened', 'opened at'],
   updated_at_src:['עדכון', 'עודכן', 'updated', 'updated at'],
   listing_type: ['עסקה', 'סוג עסקה', 'מצב', 'deal', 'deal type', 'listing type'],
+  project_name: ['פרוייקט', 'פרויקט', 'project', 'project name', 'שם פרויקט'],
+  apt_number:   ['מספר דירה', 'מס דירה', 'דירה', 'apt', 'apartment', 'apartment number', 'unit', 'unit number'],
+  apt_model:    ['טיפוס', 'דגם', 'טיפוס דירה', 'דגם דירה', 'טיפוס/דגם', 'טיפוס/דגם דירה', 'model', 'type model'],
 };
 
 function detectListingType(extras: Record<string, string>, mappedListingType: any, price: number | null): 'sale' | 'rent' {
