@@ -53,9 +53,12 @@ async function resolveElevenLabsKey(
 }
 
 async function generateTts(text: string, voiceId: string, apiKey: string): Promise<Uint8Array> {
-  // HARD LOCK: ElevenLabs v3 multilingual model for ALL IVR audio (including
-  // cloned voices like Udi Vitman). Never downgrade to v1/v2 or browser TTS.
-  const MODEL_ID = "eleven_multilingual_v3";
+  // HARD LOCK: ElevenLabs verified production multilingual model for ALL IVR
+  // audio (including cloned voices like Udi Vitman). `eleven_multilingual_v3`
+  // does NOT exist on the ElevenLabs API and returns 400 model_not_found, so
+  // we pin to the stable `eleven_multilingual_v2` model. Never downgrade to
+  // v1 or browser TTS.
+  const MODEL_ID = "eleven_multilingual_v2";
   const r = await fetch(
     `https://api.elevenlabs.io/v1/text-to-speech/${voiceId}?output_format=mp3_44100_128`,
     {
@@ -76,7 +79,7 @@ async function generateTts(text: string, voiceId: string, apiKey: string): Promi
   if (!r.ok) {
     const t = await r.text();
     // No silent fallback — surface the failure so we never ship low-fidelity audio.
-    throw new Error(`elevenlabs_v3_failed_${r.status}: ${t}`);
+    throw new Error(`elevenlabs_${MODEL_ID}_failed_${r.status}: ${t}`);
   }
   return new Uint8Array(await r.arrayBuffer());
 }
