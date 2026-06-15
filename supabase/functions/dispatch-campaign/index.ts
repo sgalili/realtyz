@@ -583,7 +583,7 @@ Deno.serve(async (req) => {
     if (mode === "preflight") {
       let gmailUsedToday = 0;
       if (gmailSession) {
-        gmailUsedToday = await gmailDailyUsedToday(admin, userId);
+        gmailUsedToday = await gmailDailyUsedToday(admin, ownerUserId);
       }
       const totalGmailDailyCap = gmailSessions.reduce((s, g) => s + g.dailyLimit, 0);
       return new Response(
