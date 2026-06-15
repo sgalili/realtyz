@@ -4367,6 +4367,11 @@ export type Database = {
         }
         Returns: number
       }
+      can_access_campaign_log_owner: {
+        Args: { _row_user: string }
+        Returns: boolean
+      }
+      can_access_workspace_owner: { Args: { _owner: string }; Returns: boolean }
       can_close_deal: { Args: { _user_id: string }; Returns: boolean }
       can_delete_leads: { Args: { _user_id: string }; Returns: boolean }
       can_manage_data: { Args: { _user_id: string }; Returns: boolean }
@@ -4483,6 +4488,12 @@ export type Database = {
           total_topups: number
         }[]
       }
+      get_workspace_member_ids: {
+        Args: { _owner: string }
+        Returns: {
+          user_id: string
+        }[]
+      }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]
@@ -4589,6 +4600,10 @@ export type Database = {
       set_homely_password: {
         Args: { _password: string; _user_id: string }
         Returns: undefined
+      }
+      shares_workspace_with: {
+        Args: { _row_user: string; _viewer: string }
+        Returns: boolean
       }
       trial_outbound_used: { Args: { _user_id: string }; Returns: number }
       wipe_demo_data: { Args: never; Returns: Json }

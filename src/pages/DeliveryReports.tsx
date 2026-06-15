@@ -14,6 +14,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { RealtyzLoader } from '@/components/RealtyzLoader';
 import { MessageSquare, Mail, Smartphone, Info, RefreshCw, CheckCircle2, XCircle, Clock, AlertCircle } from 'lucide-react';
 import { toast } from 'sonner';
+import { getCampaignWorkspaceUserIds } from '@/lib/campaignWorkspace';
 
 type Channel = 'sms' | 'whatsapp' | 'email' | 'voice';
 type StatusFilter = 'all' | 'queued' | 'sent' | 'delivered' | 'failed';
@@ -86,6 +87,7 @@ const DeliveryReports = () => {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const ownerScope = workspaceOwnerId ?? user?.id ?? null;
   const qc = useQueryClient();
+  const [campaignUserIds, setCampaignUserIds] = useState<string[]>([]);
 
   const [channelFilter, setChannelFilter] = useState<ChannelFilter>('all');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -100,14 +102,23 @@ const DeliveryReports = () => {
     return dateFloor(30);
   }, [dateRange]);
 
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      const ids = await getCampaignWorkspaceUserIds(ownerScope, user?.id);
+      if (!cancelled) setCampaignUserIds(ids);
+    })();
+    return () => { cancelled = true; };
+  }, [ownerScope, user?.id]);
+
   const { data: rows = [], isLoading, refetch, isFetching } = useQuery({
-    queryKey: ['delivery-reports', ownerScope, sinceIso, channelFilter, statusFilter],
+    queryKey: ['delivery-reports', ownerScope, campaignUserIds.join('|'), sinceIso, channelFilter, statusFilter],
     queryFn: async (): Promise<LogRow[]> => {
-      if (!ownerScope) return [];
+      if (!ownerScope || campaignUserIds.length === 0) return [];
       let q = supabase
         .from('campaign_logs')
         .select('id,campaign_name,channel,status,recipient_name,recipient_phone,recipient_email,message_body,source_account,provider_message_id,failure_reason,cost,sent_at,created_at')
-        .eq('user_id', ownerScope)
+        .in('user_id', campaignUserIds)
         .order('created_at', { ascending: false })
         .limit(500);
       if (sinceIso) q = q.gte('created_at', sinceIso);
@@ -117,21 +128,22 @@ const DeliveryReports = () => {
       if (error) throw error;
       return (data ?? []) as LogRow[];
     },
-    enabled: !!ownerScope,
+    enabled: !!ownerScope && campaignUserIds.length > 0,
     refetchInterval: 15000,
   });
 
   // Realtime updates
   useEffect(() => {
-    if (!ownerScope) return;
+    if (!ownerScope || campaignUserIds.length === 0) return;
     const channel = supabase
       .channel('delivery-reports-rt')
-      .on('postgres_changes', { event: '*', schema: 'public', table: 'campaign_logs', filter: `user_id=eq.${ownerScope}` }, () => {
-        qc.invalidateQueries({ queryKey: ['delivery-reports'] });
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'campaign_logs' }, (payload) => {
+        const changed: any = payload.new || payload.old;
+        if (campaignUserIds.includes(changed?.user_id)) qc.invalidateQueries({ queryKey: ['delivery-reports'] });
       })
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [ownerScope, qc]);
+  }, [ownerScope, campaignUserIds.join('|'), qc]);
 
   const filtered = useMemo(() => {
     if (!search.trim()) return rows;
@@ -170,7 +182,7 @@ const DeliveryReports = () => {
         .eq('id', row.id);
       if (upErr) throw upErr;
       const { data, error } = await supabase.functions.invoke('dispatch-campaign', {
-        body: { mode: 'campaign', campaign_name: row.campaign_name, limit: 50 },
+        body: { mode: 'campaign', campaign_name: row.campaign_name, limit: 50, workspace_owner_id: ownerScope },
       });
       if (error) throw error;
       const succeeded = (data as any)?.succeeded ?? 0;

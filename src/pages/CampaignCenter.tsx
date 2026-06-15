@@ -38,6 +38,7 @@ import { learnFromEdit } from '@/lib/learnFromEdit';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import { IvrBroadcastDialog } from '@/components/campaigns/IvrBroadcastDialog';
 import { EmailAliasSetupDialog } from '@/components/campaigns/EmailAliasSetupDialog';
+import { getCampaignWorkspaceUserIds } from '@/lib/campaignWorkspace';
 
 
 type TabValue = 'create' | 'published';
@@ -1160,6 +1161,7 @@ const ConfirmDispatchDialog = ({
   onConfirmed: () => void;
 }) => {
   const { user } = useAuth();
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const [sending, setSending] = useState(false);
   const [pages, setPages] = useState<SocialAccountProfile[]>([]);
   const [pagesLoading, setPagesLoading] = useState(false);
@@ -1209,6 +1211,7 @@ const ConfirmDispatchDialog = ({
 
   const handleConfirm = async () => {
     if (!user) { toast.error('יש להתחבר'); return; }
+    const ownerScope = workspaceOwnerId ?? user.id;
     setSending(true);
     try {
       const campaignName = `${brandName} · ${channel.label}`;
@@ -1231,6 +1234,7 @@ const ConfirmDispatchDialog = ({
               campaign_name: target ? `${campaignName} · ${target.name}` : campaignName,
               media_urls: mediaUrls,
               scheduled_at: scheduledAt,
+              workspace_owner_id: ownerScope,
               group_ids: groupIds,
               target_profile_id: target?.id ?? null,
               target_account_ref: target?.accountRef ?? null,
@@ -1278,7 +1282,7 @@ const ConfirmDispatchDialog = ({
         if (error) throw error;
 
         const rows = (leads || []).map((l: any) => ({
-          user_id: user.id,
+          user_id: ownerScope,
           campaign_name: campaignName,
           channel: channel.id,
           lead_id: l.id,
@@ -1413,6 +1417,7 @@ const ConfirmDispatchDialog = ({
 
 type CampaignRow = {
   id: string;
+  user_id?: string;
   campaign_name: string;
   channel: string;
   message_body: string | null;
@@ -1569,6 +1574,7 @@ const PublishedFeed = () => {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const [rows, setRows] = useState<CampaignRow[] | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
+  const [campaignUserIds, setCampaignUserIds] = useState<string[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [liveCommentCounts, setLiveCommentCounts] = useState<Record<string, number>>(() => {
     try {
@@ -1670,13 +1676,14 @@ const PublishedFeed = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setRows([]); return; }
     setUserId(user.id);
-    // Scope by workspace owner so team members see the same campaign history
-    // as the owner (RLS now allows workspace members to read these rows).
+    // Scope by active workspace, not by the tenant's personal user id.
     const ownerScope = workspaceOwnerId ?? user.id;
+    const scopedUserIds = await getCampaignWorkspaceUserIds(ownerScope, user.id);
+    setCampaignUserIds(scopedUserIds);
     const { data } = await supabase
       .from('campaign_logs')
-      .select('id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at')
-      .eq('user_id', ownerScope)
+      .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at')
+      .in('user_id', scopedUserIds)
       .eq('is_archived', false)
       .order('created_at', { ascending: false })
       .limit(500);
@@ -1804,14 +1811,15 @@ const PublishedFeed = () => {
   // updates campaign_logs — no manual refresh needed.
   useEffect(() => {
     const scope = workspaceOwnerId ?? userId;
-    if (!scope) return;
+    if (!scope || campaignUserIds.length === 0) return;
     const channel = supabase
       .channel(`campaign_logs:${scope}`)
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'campaign_logs', filter: `user_id=eq.${scope}` },
+        { event: 'UPDATE', schema: 'public', table: 'campaign_logs' },
         (payload) => {
           const updated: any = payload.new;
+          if (!campaignUserIds.includes(updated?.user_id)) return;
           setRows((prev) => prev?.map((r) => {
             if (r.id !== updated.id && !campaignMatchesExternalPost(r, updated.provider_message_id)) return r;
             // Protect-from-zero: a transient 0 from the provider must never
@@ -1836,14 +1844,18 @@ const PublishedFeed = () => {
       )
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'campaign_logs', filter: `user_id=eq.${scope}` },
-        () => { load(); },
+        { event: 'INSERT', schema: 'public', table: 'campaign_logs' },
+        (payload) => {
+          const inserted: any = payload.new;
+          if (campaignUserIds.includes(inserted?.user_id)) load();
+        },
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'engagement_events', filter: `user_id=eq.${scope}` },
+        { event: '*', schema: 'public', table: 'engagement_events' },
         async (payload) => {
           const changed: any = payload.new || payload.old;
+          if (!campaignUserIds.includes(changed?.user_id)) return;
           const externalPostId = normalizePostId(changed?.external_post_id);
           if (!externalPostId) return;
 
@@ -1869,7 +1881,7 @@ const PublishedFeed = () => {
           const { count } = await supabase
             .from('engagement_events')
             .select('id', { count: 'exact', head: true })
-            .eq('user_id', userId)
+            .in('user_id', campaignUserIds)
             .eq('is_archived', false)
             .eq('external_post_id', externalPostId);
           if (typeof count === 'number') {
@@ -1884,7 +1896,7 @@ const PublishedFeed = () => {
 
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [userId, workspaceOwnerId]);
+  }, [userId, workspaceOwnerId, campaignUserIds.join('|')]);
 
   // Each card represents a GROUP of campaign_logs rows (same campaign_name +
   // channel + minute bucket). Archive / delete must act on every row in the
