@@ -58,8 +58,12 @@ function formatBlock(rules: Array<{ rule_text: string; signal: string }>): strin
     return `- ${prefix} ${r.rule_text.trim()}`;
   });
   return [
-    "#CRITICAL_SYSTEM_PREFERENCES",
-    "Owner-authored behavior rules. These OVERRIDE any conflicting persona, template, or generic guidance below.",
+    "#CRITICAL_SYSTEM_PREFERENCES — HIGHEST PRIORITY, NON-NEGOTIABLE",
+    "These are the workspace OWNER's standing orders. They OVERRIDE every persona,",
+    "template, sample, channel guide, and generic best-practice in this prompt.",
+    "You MUST obey every ALWAYS rule on every output and you MUST NOT violate any",
+    "NEVER rule for any reason. If a rule conflicts with another instruction, the",
+    "rule wins. Silently re-write your draft until it complies before returning it.",
     ...lines,
     "#END_CRITICAL_SYSTEM_PREFERENCES",
   ].join("\n");
