@@ -102,7 +102,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     }
   };
 
-  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, []);
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [workspaceOwnerId]);
   useEffect(() => {
     const onFocus = () => { load(); };
     window.addEventListener("focus", onFocus);
@@ -181,16 +181,18 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
             <span className="text-xs text-muted-foreground">({selectedIds.length}/{groups.length})</span>
           )}
         </div>
-        <button
-          type="button"
-          onClick={connectGroups}
-          disabled={connecting}
-          title="חבר קבוצות פייסבוק נוספות"
-          className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/5 px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-60"
-        >
-          {connecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
-          {groups.length > 0 ? "הוסף קבוצות" : "חבר קבוצות"}
-        </button>
+        {!manualMode && (
+          <button
+            type="button"
+            onClick={connectGroups}
+            disabled={connecting}
+            title="חבר קבוצות פייסבוק נוספות"
+            className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/5 px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-60"
+          >
+            {connecting ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+            {groups.length > 0 ? "הוסף קבוצות" : "חבר קבוצות"}
+          </button>
+        )}
       </div>
 
       {/* Error */}
@@ -201,7 +203,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
       )}
 
       {/* Loading */}
-      {loading && groups.length === 0 && !error && (
+      {loading && !hasVisibleGroups && !error && (
         <div className="flex items-center justify-center gap-2 py-6 text-xs text-muted-foreground">
           <Loader2 className="h-4 w-4 animate-spin" />
           טוען קבוצות מחוברות…
@@ -210,7 +212,7 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
 
 
       {/* Checkbox list */}
-      {groups.length > 0 && (
+      {hasVisibleGroups && (
         <div className="rounded-lg border border-border overflow-hidden">
           {/* Select All master row */}
           <label className="flex items-center gap-3 bg-muted/40 px-3 py-2 cursor-pointer border-b border-border">
