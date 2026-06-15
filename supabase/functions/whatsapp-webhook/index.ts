@@ -756,15 +756,69 @@ Deno.serve(async (req) => {
           .eq("id", ingestJson.document_id);
       }
 
-      // Confirm to the Agent and short-circuit (kb-ingest already did embeddings).
-      await sendConfirmation(
-        SUPABASE_URL,
-        SERVICE_KEY,
-        senderPhone,
-        title,
-        tags,
-        sourceType,
-      );
+      // MASTER MULTIMODAL ANALYSIS — forward the binary as an attachment to
+      // ai-agent so קצין המודיעין produces a clean, structured Hebrew analysis
+      // (key facts, action items, leads/listings to update) and reply with it
+      // instead of a generic confirmation. Falls back to the standard
+      // confirmation card if analysis fails.
+      let masterReplyText = "";
+      try {
+        const analysisRes = await fetch(`${SUPABASE_URL}/functions/v1/ai-agent`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${SERVICE_KEY}`,
+            "x-actor-user-id": userId,
+          },
+          body: JSON.stringify({
+            mode: "master_analysis",
+            context:
+              `המשרד שלך קיבל קובץ ${sourceType === "image" ? "תמונה" : sourceType === "video" ? "וידאו" : "מסמך"} ב-WhatsApp` +
+              (msg.caption ? ` עם הערה: "${msg.caption}"` : "") +
+              `. נתח את הקובץ כקצין מודיעין: כותרת קצרה, 5-7 עובדות מרכזיות, פעולות מומלצות, וכל מספר/מחיר/כתובת שצריך לחלץ. עברית רהוטה, סעיפים נקיים, ללא em-dash.`,
+            messages: [{
+              role: "user",
+              content: msg.caption || `נתח את הקובץ "${title}"`,
+            }],
+            attachments: [{
+              name: msg.fileName ?? "attachment",
+              mime: msg.mimeType ?? contentType,
+              data_url: dataUrl,
+            }],
+          }),
+        });
+        const aj: any = await analysisRes.json().catch(() => ({}));
+        const analysisText = String(aj?.content ?? aj?.message ?? "").trim();
+        if (analysisRes.ok && analysisText) {
+          masterReplyText = analysisText;
+        } else {
+          console.warn("master analysis non-fatal failure", analysisRes.status, JSON.stringify(aj).slice(0, 200));
+        }
+      } catch (e) {
+        console.warn("master analysis dispatch threw:", e instanceof Error ? e.message : e);
+      }
+
+      if (masterReplyText) {
+        const tagsLine = tags.length ? tags.map((t) => `#${t.replace(/\s+/g, "")}`).join(" ") : "#General";
+        const header =
+          sourceType === "image" ? "🖼️ ניתוח תמונה"
+          : sourceType === "video" ? "🎬 ניתוח וידאו"
+          : "📄 ניתוח מסמך";
+        await sendRawWhatsApp(
+          SUPABASE_URL, SERVICE_KEY, senderPhone,
+          `${header} — ${title.slice(0, 80)}\n\n${masterReplyText.slice(0, 3400)}\n\nתיוג: ${tagsLine}\nהקובץ נשמר ב-Strategy Bank ויהיה זמין לפוסטים, תגובות ושיחות עתידיות.`,
+        );
+      } else {
+        // Fallback to the standard confirmation card.
+        await sendConfirmation(
+          SUPABASE_URL,
+          SERVICE_KEY,
+          senderPhone,
+          title,
+          tags,
+          sourceType,
+        );
+      }
 
       return jsonResponse({
         ok: true,
@@ -772,6 +826,7 @@ Deno.serve(async (req) => {
         chunks: ingestJson?.chunks,
         tags,
         file_path: storedFilePath,
+        master_analysis: !!masterReplyText,
       });
     }
 
