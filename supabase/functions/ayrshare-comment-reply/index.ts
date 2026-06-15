@@ -196,8 +196,10 @@ Deno.serve(async (req) => {
         console.error("[MESSENGER PIPELINE] DM dispatch threw", privateDmResult);
       }
     }
+    const ayrLogicalStatus = (privateDmResult && typeof privateDmResult === "object")
+      ? String((privateDmResult as any).status ?? "").toLowerCase() : "";
     const privateDmSent = sanitizedDm
-      ? (privateDmStatus !== null && privateDmStatus >= 200 && privateDmStatus < 300)
+      ? (privateDmStatus !== null && privateDmStatus >= 200 && privateDmStatus < 300 && (!ayrLogicalStatus || ayrLogicalStatus === "success"))
       : false;
 
     // Auto-Like runs after the DM completes — non-fatal regardless of outcome.
