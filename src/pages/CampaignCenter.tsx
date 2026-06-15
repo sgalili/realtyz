@@ -1796,7 +1796,7 @@ const PublishedFeed = () => {
     // the broker manually clicks the per-card "רענן" button.
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [workspaceOwnerId]);
 
 
 
