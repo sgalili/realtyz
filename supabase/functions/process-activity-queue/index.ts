@@ -104,21 +104,69 @@ Deno.serve(async (req) => {
         locked.activity_type === "manual_share" ||
         locked.activity_type === "fb_group_post"; // groups also go via manual paste
       const nextStatus = isManual ? "ready" : "completed";
+      const nextPublication = isManual
+        ? "ready_awaiting_whatsapp_auth"
+        : "published";
 
       await admin
         .from("campaign_activity_queue")
         .update({
           status: nextStatus,
+          publication_status: nextPublication,
           payload: newPayload,
           variation_index:
             typeof locked.variation_index === "number"
               ? locked.variation_index
               : pickVariationIndex(locked),
           completed_at: nextStatus === "completed" ? now : null,
-          // Schedule the NEXT pending item in this workspace forward by a
-          // randomized 15-30 min cool-down so the next tick keeps spacing.
         })
         .eq("id", locked.id);
+
+      // Fire WhatsApp confirmation alert to the workspace owner the moment
+      // a manual-share slot unlocks. Best-effort: failures must NOT abort
+      // the dispatch loop.
+      if (isManual) {
+        try {
+          const { data: ownerProfile } = await admin
+            .from("profiles")
+            .select("phone, full_name")
+            .eq("id", locked.workspace_owner_id)
+            .maybeSingle();
+          const ownerPhone = String(ownerProfile?.phone ?? "").trim();
+          if (ownerPhone) {
+            const appUrl =
+              Deno.env.get("APP_URL")?.replace(/\/+$/, "") ||
+              "https://realtyz.udiman.com";
+            const groupName = String(locked.target_label ?? "קבוצה").trim();
+            const confirmUrl =
+              `${appUrl}/campaigns?tab=create&action=confirm&queue_id=${locked.id}`;
+            const message =
+              `📢 פוסט חדש מוכן לפרסום בקבוצה: ${groupName}!\n\n` +
+              `הטקסט עבר התאמת AI ייחודית ומוכן להעתקה.\n\n` +
+              `לאישור ומעבר מהיר לקבוצה לחץ כאן: ${confirmUrl}`;
+            await fetch(`${SUPABASE_URL}/functions/v1/send-whatsapp`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${SERVICE_KEY}`,
+                apikey: SERVICE_KEY,
+              },
+              body: JSON.stringify({
+                phone_number: ownerPhone,
+                message,
+                tenant_id: locked.workspace_owner_id,
+              }),
+            });
+            await admin
+              .from("campaign_activity_queue")
+              .update({ owner_notified_at: new Date().toISOString() })
+              .eq("id", locked.id);
+          }
+        } catch (notifyErr) {
+          console.error("owner WhatsApp notify failed:", notifyErr);
+        }
+      }
+
 
       // Push remaining pending rows for this workspace forward by cooldown.
       const cool = COOLDOWN_MIN + Math.floor(Math.random() * (COOLDOWN_MAX - COOLDOWN_MIN + 1));
