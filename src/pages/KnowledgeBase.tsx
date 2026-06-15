@@ -397,7 +397,7 @@ export default function KnowledgeBase() {
                 <Textarea
                   value={textBody}
                   onChange={(e) => setTextBody(e.target.value)}
-                  placeholder="הקלד את התוכן..."
+                  placeholder="הקלד חוקי התנהגות, הנחיות לסוכן או מידע על נכסים עבור מאגר הידע (לדוגמה: 'מעכשיו תתמקד תמיד בדירות להשקעה ברעננה ותדגיש שיש חניה...')"
                   className="min-h-[140px]"
                 />
                 <div className="flex justify-end">
