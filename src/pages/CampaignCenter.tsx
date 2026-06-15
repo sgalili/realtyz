@@ -1527,14 +1527,27 @@ const PublishedFeed = () => {
   // Per-card refresh-signal counter. Bumping triggers a manual refresh inside
   // CampaignCommentsStream via its refreshSignal prop.
   const [refreshSignals, setRefreshSignals] = useState<Record<string, number>>({});
+  const [refreshingIds, setRefreshingIds] = useState<Record<string, boolean>>({});
   const bumpRefresh = (campaignId: string) => {
+    if (refreshingIds[campaignId]) return;
     // Purge any stale per-campaign cache blocks before the child fires its
     // network cycle, so the new Ayrshare integers can land without contention.
     try {
       sessionStorage.removeItem(`realtyz.comments.${campaignId}`);
       sessionStorage.removeItem(`realtyz.live_comment_counts`);
     } catch { /* quota */ }
+    setRefreshingIds((prev) => ({ ...prev, [campaignId]: true }));
+    toast.loading('מרענן תגובות חיות מפייסבוק…', { id: `refresh-${campaignId}` });
     setRefreshSignals((prev) => ({ ...prev, [campaignId]: (prev[campaignId] ?? 0) + 1 }));
+  };
+  const handleRefreshComplete = (campaignId: string, result: { ok: boolean; count: number; error?: string }) => {
+    setRefreshingIds((prev) => { const n = { ...prev }; delete n[campaignId]; return n; });
+    toast.dismiss(`refresh-${campaignId}`);
+    if (result.ok) {
+      toast.success(`רוענן: ${result.count} תגובות חיות`, { id: `refresh-${campaignId}` });
+    } else {
+      toast.error(result.error || 'רענון נכשל', { id: `refresh-${campaignId}` });
+    }
   };
 
 
