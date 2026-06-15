@@ -27,6 +27,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { supabase } from '@/integrations/supabase/client';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { SentimentAutomationToggles } from '@/components/automation/SentimentAutomationToggles';
@@ -1565,6 +1566,7 @@ const GlobalSocialFeed = ({
 const PublishedFeed = () => {
   const { settings } = useWhiteLabel();
   const ownerName = settings?.agency_name || 'אודי ויטמן';
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const [rows, setRows] = useState<CampaignRow[] | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -1668,10 +1670,13 @@ const PublishedFeed = () => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setRows([]); return; }
     setUserId(user.id);
+    // Scope by workspace owner so team members see the same campaign history
+    // as the owner (RLS now allows workspace members to read these rows).
+    const ownerScope = workspaceOwnerId ?? user.id;
     const { data } = await supabase
       .from('campaign_logs')
       .select('id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at')
-      .eq('user_id', user.id)
+      .eq('user_id', ownerScope)
       .eq('is_archived', false)
       .order('created_at', { ascending: false })
       .limit(500);
@@ -1791,19 +1796,20 @@ const PublishedFeed = () => {
     // the broker manually clicks the per-card "רענן" button.
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [workspaceOwnerId]);
 
 
 
   // Realtime: live-patch counters into rows as soon as the edge function
   // updates campaign_logs — no manual refresh needed.
   useEffect(() => {
-    if (!userId) return;
+    const scope = workspaceOwnerId ?? userId;
+    if (!scope) return;
     const channel = supabase
-      .channel(`campaign_logs:${userId}`)
+      .channel(`campaign_logs:${scope}`)
       .on(
         'postgres_changes',
-        { event: 'UPDATE', schema: 'public', table: 'campaign_logs', filter: `user_id=eq.${userId}` },
+        { event: 'UPDATE', schema: 'public', table: 'campaign_logs', filter: `user_id=eq.${scope}` },
         (payload) => {
           const updated: any = payload.new;
           setRows((prev) => prev?.map((r) => {
@@ -1830,12 +1836,12 @@ const PublishedFeed = () => {
       )
       .on(
         'postgres_changes',
-        { event: 'INSERT', schema: 'public', table: 'campaign_logs', filter: `user_id=eq.${userId}` },
+        { event: 'INSERT', schema: 'public', table: 'campaign_logs', filter: `user_id=eq.${scope}` },
         () => { load(); },
       )
       .on(
         'postgres_changes',
-        { event: '*', schema: 'public', table: 'engagement_events', filter: `user_id=eq.${userId}` },
+        { event: '*', schema: 'public', table: 'engagement_events', filter: `user_id=eq.${scope}` },
         async (payload) => {
           const changed: any = payload.new || payload.old;
           const externalPostId = normalizePostId(changed?.external_post_id);
@@ -1878,7 +1884,7 @@ const PublishedFeed = () => {
 
       .subscribe();
     return () => { supabase.removeChannel(channel); };
-  }, [userId]);
+  }, [userId, workspaceOwnerId]);
 
   // Each card represents a GROUP of campaign_logs rows (same campaign_name +
   // channel + minute bucket). Archive / delete must act on every row in the
