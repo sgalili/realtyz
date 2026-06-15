@@ -1,22 +1,29 @@
 /**
  * Compliance helpers shared by all outbound functions.
  *
- * - DISCLOSURE_FOOTER_HE: subtle Hebrew "AI-assisted content" tag appended to
- *   public-facing AI-generated messages where law requires disclosure.
- * - appendDisclosure(text, enabled): idempotently appends the footer.
+ * STRICT POLICY (Udi): the AI-assisted watermark is FORBIDDEN on every
+ * outbound message. The footer constants are kept as empty strings so any
+ * legacy caller of appendDisclosure() becomes a no-op (and any previously
+ * appended watermark is actively stripped by stripDisclosure()).
  */
 
-export const DISCLOSURE_FOOTER_HE = ", תוכן בסיוע AI";
-export const DISCLOSURE_FOOTER_EN = ", AI-assisted content";
+export const DISCLOSURE_FOOTER_HE = "";
+export const DISCLOSURE_FOOTER_EN = "";
+
+const WATERMARK_RE = /[,،]?\s*(?:תוכן\s*בסיוע\s*AI|AI[- ]assisted\s*content)\s*/giu;
+
+export function stripDisclosure(text: string): string {
+  if (!text) return text;
+  return text.replace(WATERMARK_RE, "").replace(/\n{3,}/g, "\n\n").replace(/\s+$/g, "");
+}
 
 export function appendDisclosure(
   text: string,
-  enabled: boolean,
-  language: "he" | "en" = "he",
+  _enabled: boolean,
+  _language: "he" | "en" = "he",
 ): { text: string; appended: boolean } {
-  if (!enabled || !text) return { text, appended: false };
-  const footer = language === "en" ? DISCLOSURE_FOOTER_EN : DISCLOSURE_FOOTER_HE;
-  // Idempotent, don't double-append.
-  if (text.trimEnd().endsWith(footer)) return { text, appended: true };
-  return { text: `${text.trimEnd()}\n\n${footer}`, appended: true };
+  // Watermark is permanently disabled. Strip any pre-existing instance so
+  // upstream drafts that already contained it come out clean.
+  return { text: stripDisclosure(text ?? ""), appended: false };
 }
+
