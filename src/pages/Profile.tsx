@@ -218,7 +218,13 @@ function PersonalTab() {
       const primaryPhone = whatsapps[0]?.value || phones[0]?.value || null;
       await supabase
         .from('profiles')
-        .update({ city: city || null, gender: gender || null, phone: primaryPhone, full_name: fullName })
+        .update({
+          city: city || null,
+          gender: gender || null,
+          phone: primaryPhone,
+          full_name: fullName,
+          broker_license_number: brokerLicense.trim() || null,
+        })
         .eq('id', user!.id);
       toast.success('הפרופיל נשמר');
     } catch (err: any) {
