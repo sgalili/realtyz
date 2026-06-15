@@ -222,26 +222,6 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
     setDraftById((d) => { const n = { ...d }; delete n[row.id]; return n; });
   };
 
-  // Auto-confirm from a WhatsApp deep link: /campaigns?action=confirm&queue_id=X
-  // Waits for the matching row to land in 'ready' state (the cron may take a
-  // few seconds), then runs the same copy + open-tab flow.
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get('action') !== 'confirm') return;
-    const qid = params.get('queue_id');
-    if (!qid) return;
-    const target = queue.find((r) => r.id === qid && r.status === 'ready');
-    if (!target) return;
-    // Strip the action params so a refresh doesn't re-fire.
-    params.delete('action');
-    params.delete('queue_id');
-    const next = `${window.location.pathname}${params.toString() ? `?${params}` : ''}`;
-    window.history.replaceState({}, '', next);
-    // Slight delay so the draft seeding effect has a tick to compose text.
-    setTimeout(() => { void handleShareReady(target); }, 150);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [queue]);
 
   const pickedCount = Array.from(picked).filter((id) => !queueByGroup[id]).length;
 
