@@ -217,6 +217,14 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Pre-fetch owner's system rules once for this batch.
+    let systemRulesBlock = "";
+    try {
+      systemRulesBlock = await fetchSystemRulesBlock(user.id, "real estate follow-up outreach message");
+    } catch (e) {
+      console.warn("[outreach-suggest] fetchSystemRulesBlock failed:", e instanceof Error ? e.message : e);
+    }
+
     // Insert suggestions (skip duplicates via the partial unique index)
     let inserted = 0;
     for (const hit of hits) {
@@ -224,7 +232,7 @@ Deno.serve(async (req) => {
       const autoDraft = tier ? autoTiers.has(tier) : false;
       let draft = TEMPLATES[hit.trigger_type]?.(hit.lead, hit.context) || "";
       if (autoDraft) {
-        const aiDraft = await draftWithAI(hit.lead, hit.trigger_type, hit.context);
+        const aiDraft = await draftWithAI(hit.lead, hit.trigger_type, hit.context, systemRulesBlock);
         if (aiDraft) draft = aiDraft;
       }
 
