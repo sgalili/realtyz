@@ -5,13 +5,15 @@
 //      suspended/inactive status OR an orphan profile (zero linked social
 //      accounts). Profiles flagged with `suspended:true` in the list payload
 //      are also targeted.
-//   3. DELETE /api/profiles/profile with { profileKey } for each target.
+//   3. DELETE /api/profiles for each target, then fall back to the legacy
+//      /api/profiles/profile contract if Ayrshare rejects the documented path.
 //   4. Hard-clear any local workspace_social_profile row that referenced a
 //      purged key so the dashboard stops rendering ghost connections.
 //
 // Body (optional):
 //   { dry_run?: boolean = true, include_orphans?: boolean = true,
-//     keep_profile_keys?: string[] }
+//     keep_profile_keys?: string[], force_delete_all?: boolean,
+//     allow_active_profile_delete?: boolean }
 // Default is dry_run=true — caller must explicitly opt-in to destructive run.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
@@ -43,6 +45,51 @@ type Decision = {
   deleted?: { ok: boolean; status: number; payload: unknown } | null;
 };
 
+const readAyrshareErrorCode = (payload: unknown): number | undefined => {
+  if (payload && typeof payload === "object" && "code" in payload) return Number((payload as { code: unknown }).code);
+  return undefined;
+};
+
+const readAyrshareMessage = (payload: unknown): string => {
+  if (!payload || typeof payload !== "object") return "";
+  const p = payload as { message?: unknown; error?: unknown };
+  return `${String(p.message ?? "")} ${String(p.error ?? "")}`;
+};
+
+async function deleteAyrshareProfile(profileKey: string | null, title: string | null) {
+  const attempts: Array<{ endpoint: string; status: number; ok: boolean; payload: unknown }> = [];
+
+  const documentedHeaders: Record<string, string> = {
+    Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+    "Content-Type": "application/json",
+  };
+  if (profileKey) documentedHeaders["Profile-Key"] = profileKey;
+  const documented = await fetch(`${AYR}/profiles`, {
+    method: "DELETE",
+    headers: documentedHeaders,
+    body: profileKey ? undefined : JSON.stringify({ title }),
+  });
+  const documentedText = await documented.text();
+  let documentedPayload: any = null;
+  try { documentedPayload = documentedText ? JSON.parse(documentedText) : null; } catch { documentedPayload = { raw: documentedText }; }
+  attempts.push({ endpoint: profileKey ? "/profiles:profile-key" : "/profiles:title", status: documented.status, ok: documented.ok, payload: documentedPayload });
+  if (documented.ok) return { ok: true, status: documented.status, payload: documentedPayload, attempts };
+
+  const fallback = await fetch(`${AYR}/profiles/profile`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(profileKey ? { profileKey } : { title }),
+  });
+  const fallbackText = await fallback.text();
+  let fallbackPayload: any = null;
+  try { fallbackPayload = fallbackText ? JSON.parse(fallbackText) : null; } catch { fallbackPayload = { raw: fallbackText }; }
+  attempts.push({ endpoint: "/profiles/profile", status: fallback.status, ok: fallback.ok, payload: fallbackPayload });
+  return { ok: fallback.ok, status: fallback.status, payload: fallbackPayload, attempts };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -67,6 +114,8 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const dryRun: boolean = body?.dry_run !== false; // default true
     const includeOrphans: boolean = body?.include_orphans !== false; // default true
+    const forceDeleteAll: boolean = body?.force_delete_all === true;
+    const allowActiveProfileDelete: boolean = body?.allow_active_profile_delete === true;
     const keepKeys = new Set<string>(
       Array.isArray(body?.keep_profile_keys)
         ? body.keep_profile_keys.map((k: unknown) => String(k ?? "").trim()).filter(Boolean)
@@ -76,11 +125,12 @@ Deno.serve(async (req) => {
     // Always protect the active workspace profile from accidental deletion.
     const { data: ws } = await admin
       .from("workspace_social_profile")
-      .select("ayrshare_profile_key")
+      .select("ayrshare_profile_key, ayrshare_ref_id")
       .eq("id", "00000000-0000-0000-0000-000000000001")
       .maybeSingle();
     const activeKey = typeof ws?.ayrshare_profile_key === "string" ? ws.ayrshare_profile_key.trim() : "";
-    if (activeKey) keepKeys.add(activeKey);
+    const activeRef = typeof ws?.ayrshare_ref_id === "string" ? ws.ayrshare_ref_id.trim() : "";
+    if (activeKey && !allowActiveProfileDelete && !forceDeleteAll) keepKeys.add(activeKey);
 
     // 1. List all profiles
     const listRes = await fetch(`${AYR}/profiles`, {
@@ -98,15 +148,15 @@ Deno.serve(async (req) => {
     const decisions: Decision[] = [];
     for (const p of profiles) {
       const profileKey = typeof p?.profileKey === "string" ? p.profileKey.trim() : "";
-      if (!profileKey) continue;
       const refId = typeof p?.refId === "string" ? p.refId : null;
       const title = typeof p?.title === "string" ? p.title : null;
       const suspendedFlag = Boolean(p?.suspended);
 
-      let linked: string[] = [];
+      let linked: string[] = Array.isArray(p?.activeSocialAccounts) ? p.activeSocialAccounts : [];
       let userStatus = 0;
       let inactive = false;
       try {
+        if (!profileKey) throw new Error("profile_key_not_returned_by_list_api");
         const u = await fetch(`${AYR}/user`, {
           headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}`, "Profile-Key": profileKey },
         });
@@ -120,16 +170,17 @@ Deno.serve(async (req) => {
       } catch { /* network noise — treat as unknown, don't auto-delete */ }
 
       const orphan = linked.length === 0;
-      const isProtected = keepKeys.has(profileKey);
+      const isProtected = (profileKey ? keepKeys.has(profileKey) : false) || (!allowActiveProfileDelete && !forceDeleteAll && !!activeRef && refId === activeRef);
       let reason: string | null = null;
-      if (suspendedFlag) reason = "suspended_flag";
+      if (forceDeleteAll) reason = "force_delete_all";
+      else if (suspendedFlag) reason = "suspended_flag";
       else if (inactive) reason = "inactive_status";
       else if (orphan && includeOrphans) reason = "orphan_no_links";
 
       const willDelete = !isProtected && reason !== null;
       const decision: Decision = {
         profileKey,
-        keyPrefix: profileKey.slice(0, 8),
+        keyPrefix: profileKey ? profileKey.slice(0, 8) : (refId ? `ref:${refId.slice(0, 8)}` : `title:${(title ?? "unknown").slice(0, 8)}`),
         refId,
         title,
         suspended: suspendedFlag,
@@ -142,36 +193,32 @@ Deno.serve(async (req) => {
       };
 
       if (willDelete && !dryRun) {
-        const del = await fetch(`${AYR}/profiles/profile`, {
-          method: "DELETE",
-          headers: {
-            Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ profileKey }),
-        });
-        const dt = await del.text();
-        let dp: any = null;
-        try { dp = dt ? JSON.parse(dt) : null; } catch { dp = { raw: dt }; }
-        const code = dp?.code;
-        const msg = String(dp?.message ?? dp?.error ?? "").toLowerCase();
+        const del = await deleteAyrshareProfile(profileKey || null, title);
+        const dp: any = del.payload;
+        const code = readAyrshareErrorCode(dp) ?? readAyrshareErrorCode(del.attempts.find((a) => readAyrshareErrorCode(a.payload) != null)?.payload);
+        const msg = `${readAyrshareMessage(dp)} ${del.attempts.map((a) => readAyrshareMessage(a.payload)).join(" ")}`.toLowerCase();
         const suspended = code === 276 || msg.includes("suspend");
         // Treat suspension (code 276) as a logical success — Ayrshare locks deletion,
         // but we still proceed to force-clear local records so the ghost is gone.
         const effectiveOk = del.ok || suspended;
-        decision.deleted = { ok: effectiveOk, status: del.status, payload: dp };
+        decision.deleted = { ok: effectiveOk, status: del.status, payload: { final: dp, attempts: del.attempts } };
+        const displayId = profileKey ? profileKey.slice(0, 8) : (refId ? `ref:${refId.slice(0, 8)}` : `title:${(title ?? "unknown").slice(0, 8)}`);
         if (del.ok) {
-          console.log(`[AYRSHARE PURGE] Successfully deleted suspended profile ID: ${profileKey.slice(0, 8)}… refId=${refId ?? "(none)"} title=${title ?? "(none)"} reason=${reason}`);
+          console.log(`[AYRSHARE PURGE] Successfully deleted suspended profile ID: ${displayId}… refId=${refId ?? "(none)"} title=${title ?? "(none)"} reason=${reason}`);
         } else if (suspended) {
-          console.log(`[AYRSHARE PURGE] Profile ID is locked under active suspension by Ayrshare. Proceeding to force-clear local records. keyPrefix=${profileKey.slice(0, 8)} refId=${refId ?? "(none)"}`);
+          console.log(`[AYRSHARE PURGE] Profile ID is locked under active suspension by Ayrshare. Proceeding to force-clear local records. keyPrefix=${displayId} refId=${refId ?? "(none)"}`);
         } else {
-          console.warn(`[AYRSHARE PURGE] DELETE failed status=${del.status} keyPrefix=${profileKey.slice(0, 8)} payload=${JSON.stringify(dp)}`);
+          console.warn(`[AYRSHARE PURGE] DELETE failed status=${del.status} keyPrefix=${displayId} payload=${JSON.stringify(del.attempts)}`);
         }
 
         if (effectiveOk) {
           // Force-cascade local DB rows that referenced the purged/suspended key.
           try {
-            await admin
+            const workspaceFilters = [
+              profileKey ? `ayrshare_profile_key.eq.${profileKey}` : "",
+              refId ? `ayrshare_ref_id.eq.${refId}` : "",
+            ].filter(Boolean).join(",");
+            if (workspaceFilters) await admin
               .from("workspace_social_profile")
               .update({
                 ayrshare_profile_key: null,
@@ -181,14 +228,16 @@ Deno.serve(async (req) => {
                 connected_platforms: [],
                 updated_at: new Date().toISOString(),
               })
-              .eq("ayrshare_profile_key", profileKey);
+              .or(workspaceFilters);
             // Hard delete the social-account rows so the ghost FB page disappears from the UI.
-            await admin
-              .from("ayrshare_social_accounts")
-              .delete()
-              .eq("profile_key", profileKey);
+            if (profileKey) {
+              await admin
+                .from("ayrshare_social_accounts")
+                .delete()
+                .eq("profile_key", profileKey);
+            }
           } catch (e) {
-            console.error("[ayrshare-profiles-purge] local sync failed", profileKey.slice(0, 8), e);
+            console.error("[ayrshare-profiles-purge] local sync failed", displayId, e);
           }
         }
       }

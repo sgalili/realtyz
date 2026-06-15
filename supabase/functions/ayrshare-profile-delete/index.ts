@@ -8,7 +8,50 @@ import { corsHeaders } from "../_shared/cors.ts";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-const AYRSHARE_API_KEY = Deno.env.get("AYRSHARE_API_KEY") ?? "";
+const AYRSHARE_API_KEY = (Deno.env.get("AYRSHARE_API_KEY") ?? "").trim().replace(/^["']|["']$/g, "");
+
+const readAyrshareMessage = (payload: unknown): string => {
+  if (!payload || typeof payload !== "object") return "";
+  const p = payload as { message?: unknown; error?: unknown };
+  return `${String(p.message ?? "")} ${String(p.error ?? "")}`;
+};
+
+const readAyrshareCode = (payload: unknown): unknown => {
+  if (!payload || typeof payload !== "object") return undefined;
+  return (payload as { code?: unknown }).code;
+};
+
+async function deleteAyrshareProfile(profileKey: string) {
+  const attempts: Array<{ endpoint: string; status: number; ok: boolean; payload: unknown }> = [];
+
+  const documented = await fetch("https://api.ayrshare.com/api/profiles", {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+      "Content-Type": "application/json",
+      "Profile-Key": profileKey,
+    },
+  });
+  const documentedText = await documented.text();
+  let documentedPayload: any = null;
+  try { documentedPayload = documentedText ? JSON.parse(documentedText) : null; } catch { documentedPayload = { raw: documentedText }; }
+  attempts.push({ endpoint: "/profiles", status: documented.status, ok: documented.ok, payload: documentedPayload });
+  if (documented.ok) return { ok: true, status: documented.status, payload: documentedPayload, attempts };
+
+  const fallback = await fetch("https://api.ayrshare.com/api/profiles/profile", {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ profileKey }),
+  });
+  const fallbackText = await fallback.text();
+  let fallbackPayload: any = null;
+  try { fallbackPayload = fallbackText ? JSON.parse(fallbackText) : null; } catch { fallbackPayload = { raw: fallbackText }; }
+  attempts.push({ endpoint: "/profiles/profile", status: fallback.status, ok: fallback.ok, payload: fallbackPayload });
+  return { ok: fallback.ok, status: fallback.status, payload: fallbackPayload, attempts };
+}
 
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -41,22 +84,13 @@ Deno.serve(async (req) => {
       return json({ error: "profile_key required" }, 400);
     }
 
-    // Ayrshare profile delete: use Master API key (NOT the suspended sub-profile key)
-    // so Ayrshare accepts the call even when the sub-profile is locked under code 276.
-    const res = await fetch("https://api.ayrshare.com/api/profiles/profile", {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ profileKey }),
-    });
-    const text = await res.text();
-    let payload: any = null;
-    try { payload = text ? JSON.parse(text) : null; } catch { payload = { raw: text }; }
+    // Try Ayrshare's documented delete contract first; fall back to the legacy
+    // body-based contract for accounts where that route is still enabled.
+    const res = await deleteAyrshareProfile(profileKey);
+    const payload: any = res.payload;
 
-    const code = payload?.code;
-    const msg = String(payload?.message ?? payload?.error ?? "").toLowerCase();
+    const code = payload?.code ?? readAyrshareCode(res.attempts.find((a) => readAyrshareCode(a.payload) != null)?.payload);
+    const msg = `${readAyrshareMessage(payload)} ${res.attempts.map((a) => readAyrshareMessage(a.payload)).join(" ")}`.toLowerCase();
     const suspended = code === 276 || msg.includes("suspend");
     if (suspended) {
       console.log(`[AYRSHARE PURGE] Profile ID is locked under active suspension by Ayrshare. Proceeding to force-clear local records. keyPrefix=${profileKey.slice(0, 8)}`);
@@ -93,6 +127,7 @@ Deno.serve(async (req) => {
       ayrshare_status: res.status,
       ayrshare_suspended: suspended,
       ayrshare: payload,
+      ayrshare_attempts: res.attempts,
       local_cleared: localCleared,
     }, 200);
   } catch (e) {
