@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
-import { Copy, ExternalLink, Users, Check, Timer, Lock, Pencil, Trash2, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
+import { Copy, ExternalLink, Users, Check, Timer, Lock, Trash2, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { stageActivity } from '@/lib/activityQueue';
@@ -63,7 +63,13 @@ function fmtCountdown(ms: number): string {
  *   - Queued (pending) → grayed countdown badge
  *   - Ready (cooldown elapsed) → expands inline with editable textarea + copy/open
  */
-export function CustomGroupsQuickShare({ body }: { body: string }) {
+export function CustomGroupsQuickShare({
+  body,
+  restrictToGroupIds = null,
+}: {
+  body: string;
+  restrictToGroupIds?: string[] | null;
+}) {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const [groups, setGroups] = useState<CustomGroup[]>([]);
   const [loading, setLoading] = useState(false);
@@ -216,7 +222,13 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
     setTimeout(() => { shareReadyRef.current?.(target); }, 150);
   }, [queue]);
 
-  if (loading || groups.length === 0) return null;
+  const visibleGroups = useMemo(() => {
+    if (!restrictToGroupIds) return groups;
+    const set = new Set(restrictToGroupIds);
+    return groups.filter((g) => set.has(g.id));
+  }, [groups, restrictToGroupIds]);
+
+  if (loading || visibleGroups.length === 0) return null;
 
 
   const togglePick = (id: string) => {
@@ -399,16 +411,13 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
           פרסום מבוקר בקבוצות פייסבוק
         </span>
         <span className="rounded-full bg-amber-500/15 px-2 py-0.5 text-[11px] font-bold text-amber-800 dark:text-amber-300" dir="ltr">
-          {groups.length}
+          {visibleGroups.length}
         </span>
       </div>
-      <p className="text-[11px] leading-relaxed text-muted-foreground">
-        כדי לא להיחסם ע״י Meta — סמן קבוצות והוסף לתור. המערכת תפתח אותן אחת-אחת עם מרווח של 15–30 דקות בין פרסום לפרסום, ותאפשר לערוך כל פוסט לפני שיתוף.
-      </p>
 
       {/* Unified group rows */}
       <div className="divide-y divide-border/60 overflow-hidden rounded-lg border border-border bg-background">
-        {groups.map((g) => {
+        {visibleGroups.map((g) => {
           const row = queueByGroup[g.id] ?? null;
           const isReady = !!row && row.status === 'ready';
           const isPending = !!row && row.status === 'pending';
@@ -427,8 +436,8 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
                 !row && isPicked && 'bg-amber-100/60 dark:bg-amber-900/20',
               )}
             >
-              {/* Row 1: icon · group name · refresh · delete · chevron */}
-              <div className="flex items-center gap-2 px-3 pt-2">
+              {/* Row 1: icon · group name · status pill · refresh · delete · chevron */}
+              <div className="flex items-center gap-2 px-3 py-2">
                 {!row ? (
                   <button
                     type="button"
@@ -443,7 +452,7 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
                   </button>
                 ) : isReady ? (
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-600 text-white">
-                    <Pencil className="h-3 w-3" />
+                    <Check className="h-3 w-3" />
                   </span>
                 ) : (
                   <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-muted text-muted-foreground">
@@ -459,6 +468,23 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
                 >
                   <div className="truncate text-sm font-semibold text-foreground">{g.group_name}</div>
                 </button>
+
+                {/* Status pill — inline after the group name */}
+                {isReady ? (
+                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                    <Check className="h-3 w-3" />
+                    ממתין לאישור
+                  </span>
+                ) : isPending ? (
+                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-300" dir="ltr">
+                    <Timer className="h-3 w-3" />
+                    {fmtCountdown(countdownMs)}
+                  </span>
+                ) : (
+                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
+                    טרם פורסם
+                  </span>
+                )}
 
                 <button
                   type="button"
@@ -490,26 +516,6 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
                 </button>
               </div>
 
-              {/* Row 2: status pill at start. Engagement counters intentionally omitted —
-                  Meta does not expose group-member post insights via Graph API. */}
-              <div className="flex items-center gap-2 px-3 pb-2 pt-1">
-                {isReady ? (
-                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
-                    <Check className="h-3 w-3" />
-                    ממתין לאישור
-                  </span>
-                ) : isPending ? (
-                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-300" dir="ltr">
-                    <Timer className="h-3 w-3" />
-                    {fmtCountdown(countdownMs)}
-                  </span>
-                ) : (
-                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
-                    טרם פורסם
-                  </span>
-                )}
-                <span className="flex-1" />
-              </div>
 
               {/* Collapsible body */}
               {isExpanded ? (
