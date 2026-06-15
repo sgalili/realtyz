@@ -314,17 +314,23 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
                   </div>
                 </div>
 
-                {/* Status badge */}
+                {/* Status badge — publication lifecycle */}
                 {isReady ? (
-                  <span className="shrink-0 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
-                    מוכן לשיתוף
+                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                    <Check className="h-3 w-3" />
+                    ממתין לאישור בוואטסאפ
                   </span>
                 ) : isPending ? (
                   <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-300" dir="ltr">
                     <Timer className="h-3 w-3" />
                     {fmtCountdown(countdownMs)}
                   </span>
-                ) : null}
+                ) : (
+                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
+                    טרם פורסם
+                  </span>
+                )}
+
               </div>
 
               {/* Inline editor for the ready row only */}
