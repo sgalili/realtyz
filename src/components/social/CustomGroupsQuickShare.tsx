@@ -352,13 +352,18 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
   };
 
   const handleRegenerate = async (g: CustomGroup, row: QueuedRow | null) => {
-    const composed = composeDraftForGroup(g);
-    if (!composed) {
+    if (!(body ?? '').trim()) {
       toast.error('אין תוכן זמין לחידוש — חולל קודם פוסט בסיסי');
       return;
     }
     setRegeneratingId(g.id);
     try {
+      // Pass a fresh seed so the AI returns a different phrasing each click.
+      const composed = await composeDraftForGroup(g, `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
+      if (!composed) {
+        toast.error('חידוש נכשל — נסה שוב');
+        return;
+      }
       setDraftById((d) => ({ ...d, [g.id]: composed }));
       await persistDraft(g.id, composed);
       if (row) {
@@ -370,7 +375,7 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
         setQueue((q) => q.map((r) => r.id === row.id ? { ...r, payload: newPayload } : r));
       }
       setExpandedIds((p) => new Set(p).add(g.id));
-      toast.success('התוכן חודש לקבוצה זו');
+      toast.success('נוצרה גרסה חלופית לקבוצה זו');
     } catch (e: any) {
       toast.error(`חידוש נכשל: ${e?.message ?? e}`);
     } finally {
