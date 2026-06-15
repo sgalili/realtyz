@@ -11,7 +11,8 @@
 //
 // Body (optional):
 //   { dry_run?: boolean = true, include_orphans?: boolean = true,
-//     keep_profile_keys?: string[] }
+//     keep_profile_keys?: string[], force_delete_all?: boolean,
+//     allow_active_profile_delete?: boolean }
 // Default is dry_run=true — caller must explicitly opt-in to destructive run.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
@@ -42,6 +43,38 @@ type Decision = {
   willDelete: boolean;
   deleted?: { ok: boolean; status: number; payload: unknown } | null;
 };
+
+async function deleteAyrshareProfile(profileKey: string) {
+  const attempts: Array<{ endpoint: string; status: number; ok: boolean; payload: unknown }> = [];
+
+  const documented = await fetch(`${AYR}/profiles`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+      "Content-Type": "application/json",
+      "Profile-Key": profileKey,
+    },
+  });
+  const documentedText = await documented.text();
+  let documentedPayload: any = null;
+  try { documentedPayload = documentedText ? JSON.parse(documentedText) : null; } catch { documentedPayload = { raw: documentedText }; }
+  attempts.push({ endpoint: "/profiles", status: documented.status, ok: documented.ok, payload: documentedPayload });
+  if (documented.ok) return { ok: true, status: documented.status, payload: documentedPayload, attempts };
+
+  const fallback = await fetch(`${AYR}/profiles/profile`, {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ profileKey }),
+  });
+  const fallbackText = await fallback.text();
+  let fallbackPayload: any = null;
+  try { fallbackPayload = fallbackText ? JSON.parse(fallbackText) : null; } catch { fallbackPayload = { raw: fallbackText }; }
+  attempts.push({ endpoint: "/profiles/profile", status: fallback.status, ok: fallback.ok, payload: fallbackPayload });
+  return { ok: fallback.ok, status: fallback.status, payload: fallbackPayload, attempts };
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
