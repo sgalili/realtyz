@@ -9,6 +9,7 @@ import {
 } from "../_shared/guardrails.ts";
 import { loadAgentPersona, renderPersonaPrompt } from "../_shared/persona.ts";
 import { fetchSystemRulesBlock } from "../_shared/system-rules.ts";
+import { enforceOwnerLaws, fetchOwnerLicense, stripStreetNumbers } from "../_shared/owner-laws.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
