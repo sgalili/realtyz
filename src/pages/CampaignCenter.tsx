@@ -2072,6 +2072,7 @@ const PublishedFeed = () => {
                           metrics_updated_at: new Date().toISOString(),
                         } : row) ?? prev);
                       }}
+                      onRefreshComplete={handleRefreshComplete}
                     />
                   ) : (
                     <p className="text-xs text-muted-foreground text-right">נדרשת התחברות לצפייה בתגובות</p>
