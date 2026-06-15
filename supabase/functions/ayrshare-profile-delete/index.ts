@@ -10,6 +10,38 @@ const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const AYRSHARE_API_KEY = Deno.env.get("AYRSHARE_API_KEY") ?? "";
 
+async function deleteAyrshareProfile(profileKey: string) {
+  const attempts: Array<{ endpoint: string; status: number; ok: boolean; payload: unknown }> = [];
+
+  const documented = await fetch("https://api.ayrshare.com/api/profiles", {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+      "Content-Type": "application/json",
+      "Profile-Key": profileKey,
+    },
+  });
+  const documentedText = await documented.text();
+  let documentedPayload: any = null;
+  try { documentedPayload = documentedText ? JSON.parse(documentedText) : null; } catch { documentedPayload = { raw: documentedText }; }
+  attempts.push({ endpoint: "/profiles", status: documented.status, ok: documented.ok, payload: documentedPayload });
+  if (documented.ok) return { ok: true, status: documented.status, payload: documentedPayload, attempts };
+
+  const fallback = await fetch("https://api.ayrshare.com/api/profiles/profile", {
+    method: "DELETE",
+    headers: {
+      Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({ profileKey }),
+  });
+  const fallbackText = await fallback.text();
+  let fallbackPayload: any = null;
+  try { fallbackPayload = fallbackText ? JSON.parse(fallbackText) : null; } catch { fallbackPayload = { raw: fallbackText }; }
+  attempts.push({ endpoint: "/profiles/profile", status: fallback.status, ok: fallback.ok, payload: fallbackPayload });
+  return { ok: fallback.ok, status: fallback.status, payload: fallbackPayload, attempts };
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
