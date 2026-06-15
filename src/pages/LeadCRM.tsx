@@ -1293,7 +1293,7 @@ const LeadCRM = () => {
                 id: `chat-${ch.id}`,
                 date: ch.created_at || '',
                 type: ch.role === 'assistant' ? 'chat_ai' : 'chat_user',
-                label: ch.role === 'assistant' ? 'תגובת AI' : 'תגובת מתעניין',
+                label: ch.role === 'assistant' ? 'תיאום סיור / עדכון מהסוכן הדיגיטלי' : 'הערות לקוח עודכנו במערכת',
                 detail: ch.content?.slice(0, 80) || '',
               });
             });
