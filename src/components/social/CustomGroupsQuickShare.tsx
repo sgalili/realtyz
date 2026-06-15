@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
-import { Copy, ExternalLink, Users, Check, Timer, Lock, Pencil } from 'lucide-react';
+import { Copy, ExternalLink, Users, Check, Timer, Lock, Pencil, Trash2, RefreshCw, ChevronDown, ChevronUp } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { stageActivity } from '@/lib/activityQueue';
@@ -71,6 +71,9 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
   const [now, setNow] = useState(Date.now());
   const [staging, setStaging] = useState(false);
   const [draftById, setDraftById] = useState<Record<string, string>>({});
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
+
 
   // Load workspace's manually-curated FB groups
   useEffect(() => {
@@ -242,6 +245,64 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
   };
   shareReadyRef.current = handleShareReady;
 
+  const toggleExpand = (gid: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(gid)) next.delete(gid); else next.add(gid);
+      return next;
+    });
+  };
+
+  const handleDeleteGroup = async (g: CustomGroup, row: QueuedRow | null) => {
+    if (!confirm(`למחוק את הקבוצה "${g.group_name}" מהרשימה? פעולה זו גם תבטל פוסט תור פעיל.`)) return;
+    try {
+      if (row) {
+        await (supabase as any)
+          .from('campaign_activity_queue')
+          .delete()
+          .eq('id', row.id);
+        setQueue((q) => q.filter((r) => r.id !== row.id));
+      }
+      await (supabase as any)
+        .from('custom_user_groups')
+        .delete()
+        .eq('id', g.id);
+      setGroups((gs) => gs.filter((x) => x.id !== g.id));
+      setPicked((p) => { const n = new Set(p); n.delete(g.id); return n; });
+      toast.success(`הקבוצה "${g.group_name}" נמחקה`);
+    } catch (e: any) {
+      toast.error(`מחיקה נכשלה: ${e?.message ?? e}`);
+    }
+  };
+
+  const handleRegenerate = async (g: CustomGroup, row: QueuedRow | null) => {
+    const text = ensureCanonicalFooter((body ?? '').trim());
+    if (!text) {
+      toast.error('אין תוכן זמין לחידוש — חולל קודם פוסט בסיסי');
+      return;
+    }
+    setRegeneratingId(g.id);
+    try {
+      const composed = [text, g.group_url ? `\n${g.group_url}` : ''].filter(Boolean).join('\n\n');
+      if (row) {
+        const newPayload = { ...(row.payload ?? {}), body: text, outbound_text: composed };
+        await (supabase as any)
+          .from('campaign_activity_queue')
+          .update({ payload: newPayload, variations: [{ title: '', body: text }] })
+          .eq('id', row.id);
+        setQueue((q) => q.map((r) => r.id === row.id ? { ...r, payload: newPayload } : r));
+        setDraftById((d) => ({ ...d, [row.id]: composed }));
+      }
+      setExpandedIds((p) => new Set(p).add(g.id));
+      toast.success('התוכן חודש לפי הטיוטה הנוכחית');
+    } catch (e: any) {
+      toast.error(`חידוש נכשל: ${e?.message ?? e}`);
+    } finally {
+      setRegeneratingId(null);
+    }
+  };
+
+
 
 
   const pickedCount = Array.from(picked).filter((id) => !queueByGroup[id]).length;
@@ -272,18 +333,20 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
           const isPicked = picked.has(g.id);
           const countdownMs = isPending ? new Date(row!.scheduled_for).getTime() - now : 0;
 
+          const isExpanded = expandedIds.has(g.id) || isReady;
+
           return (
             <div
               key={g.id}
               className={cn(
                 'transition',
                 isReady && 'bg-emerald-50/60 dark:bg-emerald-950/20',
-                isPending && 'bg-muted/40 opacity-80',
+                isPending && 'bg-muted/40',
                 !row && isPicked && 'bg-amber-100/60 dark:bg-amber-900/20',
               )}
             >
               {/* Row header */}
-              <div className="flex items-center gap-3 px-3 py-2">
+              <div className="flex items-center gap-2 px-3 py-2">
                 {/* Checkbox — only when idle */}
                 {!row ? (
                   <button
@@ -307,19 +370,20 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
                   </span>
                 )}
 
-                <div className="min-w-0 flex-1">
+                <button
+                  type="button"
+                  onClick={() => toggleExpand(g.id)}
+                  className="min-w-0 flex-1 text-right"
+                  aria-expanded={isExpanded}
+                >
                   <div className="truncate text-sm font-semibold text-foreground">{g.group_name}</div>
-                  <div className="flex items-center gap-1 truncate text-[10px] text-muted-foreground" dir="ltr">
-                    <ExternalLink className="h-3 w-3" />
-                    <span className="truncate">{g.group_url}</span>
-                  </div>
-                </div>
+                </button>
 
                 {/* Status badge — publication lifecycle */}
                 {isReady ? (
                   <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
                     <Check className="h-3 w-3" />
-                    ממתין לאישור בוואטסאפ
+                    ממתין לאישור
                   </span>
                 ) : isPending ? (
                   <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-300" dir="ltr">
@@ -332,45 +396,86 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
                   </span>
                 )}
 
+                {/* Row action icons */}
+                <button
+                  type="button"
+                  onClick={() => handleRegenerate(g, row)}
+                  disabled={regeneratingId === g.id}
+                  title="חדש תוכן"
+                  aria-label="חדש תוכן"
+                  className="shrink-0 rounded p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:opacity-50"
+                >
+                  <RefreshCw className={cn('h-3.5 w-3.5', regeneratingId === g.id && 'animate-spin')} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleDeleteGroup(g, row)}
+                  title="מחק קבוצה"
+                  aria-label="מחק קבוצה"
+                  className="shrink-0 rounded p-1 text-muted-foreground transition hover:bg-destructive/10 hover:text-destructive"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => toggleExpand(g.id)}
+                  title={isExpanded ? 'כווץ' : 'הרחב'}
+                  aria-label={isExpanded ? 'כווץ' : 'הרחב'}
+                  className="shrink-0 rounded p-1 text-muted-foreground transition hover:bg-muted hover:text-foreground"
+                >
+                  {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
+                </button>
               </div>
 
-              {/* Inline editor for the ready row only */}
-              {isReady ? (
-                <div className="space-y-2 border-t border-emerald-300/40 bg-emerald-50/30 px-3 py-2 dark:bg-emerald-950/10">
-                  <div className="flex items-center justify-between gap-2">
-                    <span className="text-[11px] font-bold text-emerald-900 dark:text-emerald-200">
-                      ערוך את הטקסט לפני שיתוף
-                    </span>
-                    <span className="text-[10px] text-muted-foreground" dir="ltr">
-                      {(draftById[row!.id] ?? '').length} chars
-                    </span>
+              {/* Collapsible body */}
+              {isExpanded ? (
+                <div className="border-t border-border/60">
+                  <div className="flex items-center gap-1 truncate px-3 py-1.5 text-[10px] text-muted-foreground" dir="ltr">
+                    <ExternalLink className="h-3 w-3" />
+                    <a href={g.group_url} target="_blank" rel="noopener noreferrer" className="truncate hover:underline">
+                      {g.group_url}
+                    </a>
                   </div>
-                  <Textarea
-                    value={draftById[row!.id] ?? ''}
-                    onChange={(e) => setDraftById((d) => ({ ...d, [row!.id]: e.target.value }))}
-                    rows={9}
-                    dir="rtl"
-                    className="min-h-[160px] resize-y bg-background text-[13px] leading-relaxed"
-                    placeholder="התוכן יופיע כאן..."
-                  />
-                  <button
-                    type="button"
-                    onClick={() => { void handleShareReady(); }}
-                    className={cn(
-                      'flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold transition',
-                      justCopiedId === row!.id
-                        ? 'bg-emerald-600 text-white'
-                        : 'bg-[#1877F2] text-white hover:bg-[#1668d8]',
-                    )}
-                  >
-                    {justCopiedId === row!.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                    {justCopiedId === row!.id ? 'הועתק · פותח את הקבוצה' : 'העתק את הטקסט הערוך ופתח את הקבוצה'}
-                  </button>
+
+                  {isReady ? (
+                    <div className="space-y-2 border-t border-emerald-300/40 bg-emerald-50/30 px-3 py-2 dark:bg-emerald-950/10">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[11px] font-bold text-emerald-900 dark:text-emerald-200">
+                          ערוך את הטקסט לפני שיתוף
+                        </span>
+                        <span className="text-[10px] text-muted-foreground" dir="ltr">
+                          {(draftById[row!.id] ?? '').length} chars
+                        </span>
+                      </div>
+                      <Textarea
+                        value={draftById[row!.id] ?? ''}
+                        onChange={(e) => setDraftById((d) => ({ ...d, [row!.id]: e.target.value }))}
+                        rows={9}
+                        dir="rtl"
+                        className="min-h-[160px] resize-y bg-background text-[13px] leading-relaxed"
+                        placeholder="התוכן יופיע כאן..."
+                      />
+                      <button
+                        type="button"
+                        onClick={() => { void handleShareReady(); }}
+                        className={cn(
+                          'flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold transition',
+                          justCopiedId === row!.id
+                            ? 'bg-emerald-600 text-white'
+                            : 'bg-[#1877F2] text-white hover:bg-[#1668d8]',
+                        )}
+                      >
+                        {justCopiedId === row!.id ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+                        {justCopiedId === row!.id ? 'הועתק · פותח את הקבוצה' : 'העתק את הטקסט הערוך ופתח את הקבוצה'}
+                      </button>
+                    </div>
+                  ) : null}
                 </div>
               ) : null}
             </div>
           );
         })}
+
       </div>
 
       {/* Bulk stage action */}
