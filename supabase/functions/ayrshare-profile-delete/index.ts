@@ -73,19 +73,10 @@ Deno.serve(async (req) => {
       return json({ error: "profile_key required" }, 400);
     }
 
-    // Ayrshare profile delete: use Master API key (NOT the suspended sub-profile key)
-    // so Ayrshare accepts the call even when the sub-profile is locked under code 276.
-    const res = await fetch("https://api.ayrshare.com/api/profiles/profile", {
-      method: "DELETE",
-      headers: {
-        Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({ profileKey }),
-    });
-    const text = await res.text();
-    let payload: any = null;
-    try { payload = text ? JSON.parse(text) : null; } catch { payload = { raw: text }; }
+    // Try Ayrshare's documented delete contract first; fall back to the legacy
+    // body-based contract for accounts where that route is still enabled.
+    const res = await deleteAyrshareProfile(profileKey);
+    const payload: any = res.payload;
 
     const code = payload?.code;
     const msg = String(payload?.message ?? payload?.error ?? "").toLowerCase();
@@ -125,6 +116,7 @@ Deno.serve(async (req) => {
       ayrshare_status: res.status,
       ayrshare_suspended: suspended,
       ayrshare: payload,
+      ayrshare_attempts: res.attempts,
       local_cleared: localCleared,
     }, 200);
   } catch (e) {
