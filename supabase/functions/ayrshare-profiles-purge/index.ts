@@ -202,12 +202,13 @@ Deno.serve(async (req) => {
         // but we still proceed to force-clear local records so the ghost is gone.
         const effectiveOk = del.ok || suspended;
         decision.deleted = { ok: effectiveOk, status: del.status, payload: { final: dp, attempts: del.attempts } };
+        const displayId = profileKey ? profileKey.slice(0, 8) : (refId ? `ref:${refId.slice(0, 8)}` : `title:${(title ?? "unknown").slice(0, 8)}`);
         if (del.ok) {
-          console.log(`[AYRSHARE PURGE] Successfully deleted suspended profile ID: ${profileKey.slice(0, 8)}… refId=${refId ?? "(none)"} title=${title ?? "(none)"} reason=${reason}`);
+          console.log(`[AYRSHARE PURGE] Successfully deleted suspended profile ID: ${displayId}… refId=${refId ?? "(none)"} title=${title ?? "(none)"} reason=${reason}`);
         } else if (suspended) {
-          console.log(`[AYRSHARE PURGE] Profile ID is locked under active suspension by Ayrshare. Proceeding to force-clear local records. keyPrefix=${profileKey.slice(0, 8)} refId=${refId ?? "(none)"}`);
+          console.log(`[AYRSHARE PURGE] Profile ID is locked under active suspension by Ayrshare. Proceeding to force-clear local records. keyPrefix=${displayId} refId=${refId ?? "(none)"}`);
         } else {
-          console.warn(`[AYRSHARE PURGE] DELETE failed status=${del.status} keyPrefix=${profileKey.slice(0, 8)} payload=${JSON.stringify(del.attempts)}`);
+          console.warn(`[AYRSHARE PURGE] DELETE failed status=${del.status} keyPrefix=${displayId} payload=${JSON.stringify(del.attempts)}`);
         }
 
         if (effectiveOk) {
@@ -223,14 +224,19 @@ Deno.serve(async (req) => {
                 connected_platforms: [],
                 updated_at: new Date().toISOString(),
               })
-              .eq("ayrshare_profile_key", profileKey);
+              .or([
+                profileKey ? `ayrshare_profile_key.eq.${profileKey}` : "",
+                refId ? `ayrshare_ref_id.eq.${refId}` : "",
+              ].filter(Boolean).join(","));
             // Hard delete the social-account rows so the ghost FB page disappears from the UI.
-            await admin
-              .from("ayrshare_social_accounts")
-              .delete()
-              .eq("profile_key", profileKey);
+            if (profileKey) {
+              await admin
+                .from("ayrshare_social_accounts")
+                .delete()
+                .eq("profile_key", profileKey);
+            }
           } catch (e) {
-            console.error("[ayrshare-profiles-purge] local sync failed", profileKey.slice(0, 8), e);
+            console.error("[ayrshare-profiles-purge] local sync failed", displayId, e);
           }
         }
       }
