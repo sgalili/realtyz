@@ -240,6 +240,8 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
     setQueue((q) => q.filter((r) => r.id !== row.id));
     setDraftById((d) => { const n = { ...d }; delete n[row.id]; return n; });
   };
+  shareReadyRef.current = handleShareReady;
+
 
 
   const pickedCount = Array.from(picked).filter((id) => !queueByGroup[id]).length;
