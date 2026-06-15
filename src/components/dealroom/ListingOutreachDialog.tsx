@@ -379,6 +379,14 @@ export function ListingOutreachDialog({
         </Button>
 
         {/* Preview */}
+        {selectedProjectName && (
+          <ProjectAlternativesCard
+            currentListingId={listingId}
+            projectName={selectedProjectName}
+            compact
+          />
+        )}
+
         {(generating || draft) && (
           <Card className="p-4 bg-muted/30 border-dashed">
             <div className="flex items-center gap-2 mb-3">
