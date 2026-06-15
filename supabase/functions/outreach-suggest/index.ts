@@ -236,6 +236,14 @@ Deno.serve(async (req) => {
         const aiDraft = await draftWithAI(hit.lead, hit.trigger_type, hit.context, systemRulesBlock);
         if (aiDraft) draft = aiDraft;
       }
+      // HARD LAWS — strip street numbers + append broker license footer.
+      try {
+        const lic = await fetchOwnerLicense(supabase as any, user.id);
+        draft = enforceOwnerLaws(draft, { license: lic, withLicense: true });
+      } catch (_e) { /* never block */ }
+      // (re-open the trigger loop indentation)
+      {
+      }
 
       const { error } = await supabase.from("outreach_suggestions").insert({
         user_id: user.id,
