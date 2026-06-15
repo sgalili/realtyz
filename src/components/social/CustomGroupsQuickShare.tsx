@@ -1,10 +1,11 @@
 import { useEffect, useMemo, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
-import { Copy, ExternalLink, Users, Check, Timer, Lock } from 'lucide-react';
+import { Copy, ExternalLink, Users, Check, Timer, Lock, Pencil } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { stageActivity } from '@/lib/activityQueue';
+import { Textarea } from '@/components/ui/textarea';
 
 type CustomGroup = {
   id: string;
@@ -123,7 +124,28 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
     [queue],
   );
 
+  // Editable draft for the unlocked row — initialized from payload, freely editable.
+  const [draft, setDraft] = useState('');
+  const [draftRowId, setDraftRowId] = useState<string | null>(null);
+  useEffect(() => {
+    if (!nextReady) {
+      setDraft('');
+      setDraftRowId(null);
+      return;
+    }
+    if (nextReady.id === draftRowId) return;
+    const title = String(nextReady.payload?.title ?? '').trim();
+    const bodyText =
+      String(nextReady.payload?.outbound_text ?? nextReady.payload?.body ?? '').trim() ||
+      ensureCanonicalFooter((body ?? '').trim());
+    const url = String(nextReady.payload?.group_url ?? '').trim();
+    const composed = [title, bodyText, url ? `\n${url}` : ''].filter(Boolean).join('\n\n');
+    setDraft(composed);
+    setDraftRowId(nextReady.id);
+  }, [nextReady, draftRowId, body]);
+
   if (loading || groups.length === 0) return null;
+
 
   const handleSchedule = async () => {
     if (!selected || !workspaceOwnerId) return;
@@ -160,9 +182,7 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
 
   const handleShareReady = async () => {
     if (!nextReady) return;
-    const text =
-      String(nextReady.payload?.outbound_text ?? nextReady.payload?.body ?? '').trim() ||
-      ensureCanonicalFooter((body ?? '').trim());
+    const text = draft.trim();
     const url = String(nextReady.payload?.group_url ?? '');
     if (!text || !url) {
       toast.error('פרטי הקבוצה חסרים');
@@ -171,8 +191,8 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
     try {
       await navigator.clipboard.writeText(text);
       setJustCopied(true);
-      setTimeout(() => setJustCopied(false), 2000);
-      toast.success(`הטקסט הועתק · פותח את "${nextReady.target_label ?? ''}"`);
+      setTimeout(() => setJustCopied(false), 2500);
+      toast.success('הטקסט העדכני והקישור הועתקו! הדבק בקבוצה, המתן 2 שניות לטעינת התמונות, ומחק את שורת הקישור מהטקסט למראה נקי.');
     } catch {
       toast.error('העתקה נכשלה — העתק ידנית');
     }
@@ -180,11 +200,16 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
     // Mark completed so the next pending row becomes the "head" of the queue.
     await (supabase as any)
       .from('campaign_activity_queue')
-      .update({ status: 'completed', completed_at: new Date().toISOString() })
+      .update({
+        status: 'completed',
+        completed_at: new Date().toISOString(),
+        payload: { ...(nextReady.payload ?? {}), outbound_text: text, edited_by_operator: true },
+      })
       .eq('id', nextReady.id);
     // Optimistic UI refresh
     setQueue((q) => q.filter((r) => r.id !== nextReady.id));
   };
+
 
   const countdownMs = nextPending
     ? new Date(nextPending.scheduled_for).getTime() - now
@@ -259,27 +284,43 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
         </button>
       ) : null}
 
-      {/* Single "ready" share action — Time Bank unlocked it */}
+      {/* Single "ready" share action — Time Bank unlocked it. Editable preview first. */}
       {nextReady ? (
-        <button
-          type="button"
-          onClick={handleShareReady}
-          className={cn(
-            'flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold transition',
-            justCopied ? 'bg-emerald-600 text-white' : 'bg-[#1877F2] text-white hover:bg-[#1668d8]',
-          )}
-        >
-          {justCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-          {justCopied
-            ? 'הועתק · פותח את הקבוצה'
-            : `מוכן לשיתוף: ${nextReady.target_label ?? ''}`}
-        </button>
+        <div className="space-y-2 rounded-lg border border-emerald-400/60 bg-emerald-50/40 p-2 dark:bg-emerald-950/10">
+          <div className="flex items-center justify-between gap-2">
+            <span className="flex items-center gap-1.5 text-[12px] font-bold text-emerald-900 dark:text-emerald-200">
+              <Pencil className="h-3.5 w-3.5" />
+              ערוך לפני שיתוף: {nextReady.target_label ?? ''}
+            </span>
+            <span className="text-[10px] text-muted-foreground" dir="ltr">{draft.length} chars</span>
+          </div>
+          <Textarea
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            rows={10}
+            dir="rtl"
+            className="min-h-[180px] resize-y bg-background text-[13px] leading-relaxed"
+            placeholder="התוכן יופיע כאן..."
+          />
+          <button
+            type="button"
+            onClick={handleShareReady}
+            className={cn(
+              'flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2.5 text-sm font-bold transition',
+              justCopied ? 'bg-emerald-600 text-white' : 'bg-[#1877F2] text-white hover:bg-[#1668d8]',
+            )}
+          >
+            {justCopied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
+            {justCopied ? 'הועתק · פותח את הקבוצה' : 'העתק את הטקסט הערוך ופתח את הקבוצה'}
+          </button>
+        </div>
       ) : nextPending ? (
         <div className="flex items-center justify-center gap-2 rounded-lg border border-amber-300/70 bg-amber-100/50 px-3 py-2 text-[12px] font-semibold text-amber-900 dark:bg-amber-900/20 dark:text-amber-200">
           <Lock className="h-3.5 w-3.5" />
           הקבוצה הבאה ({nextPending.target_label}) תיפתח בעוד {fmtCountdown(countdownMs)}
         </div>
       ) : null}
+
     </div>
   );
 }
