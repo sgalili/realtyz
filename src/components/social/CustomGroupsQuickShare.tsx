@@ -143,18 +143,46 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
   // The single "next" unlocked row, if any
   const readyRow = useMemo(() => queue.find((r) => r.status === 'ready') ?? null, [queue]);
 
-  // Seed editable draft for the unlocked row
+  // Persist a draft to custom_user_groups.last_draft_body (best-effort).
+  const persistDraft = async (gid: string, text: string) => {
+    try {
+      await (supabase as any)
+        .from('custom_user_groups')
+        .update({ last_draft_body: text })
+        .eq('id', gid);
+      setGroups((gs) => gs.map((x) => x.id === gid ? { ...x, last_draft_body: text } : x));
+    } catch {
+      /* non-fatal */
+    }
+  };
+
+  // Compose a per-group "spun" draft from the current base body.
+  const composeDraftForGroup = (g: CustomGroup): string => {
+    const base = ensureCanonicalFooter((body ?? '').trim());
+    if (!base) return '';
+    return [base, g.group_url ? `\n${g.group_url}` : ''].filter(Boolean).join('\n\n');
+  };
+
+  // Debounced save on textarea edits.
+  const saveTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
+  const scheduleSave = (gid: string, text: string) => {
+    if (saveTimers.current[gid]) clearTimeout(saveTimers.current[gid]);
+    saveTimers.current[gid] = setTimeout(() => { void persistDraft(gid, text); }, 600);
+  };
+
+  // Auto-expand each ready row exactly once (so the operator sees the editor),
+  // but never override the user's collapse choice afterwards.
+  const autoExpandedRef = useRef<Set<string>>(new Set());
   useEffect(() => {
-    if (!readyRow) return;
-    if (draftById[readyRow.id] !== undefined) return;
-    const title = String(readyRow.payload?.title ?? '').trim();
-    const bodyText =
-      String(readyRow.payload?.outbound_text ?? readyRow.payload?.body ?? '').trim() ||
-      ensureCanonicalFooter((body ?? '').trim());
-    const url = String(readyRow.payload?.group_url ?? '').trim();
-    const composed = [title, bodyText, url ? `\n${url}` : ''].filter(Boolean).join('\n\n');
-    setDraftById((d) => ({ ...d, [readyRow.id]: composed }));
-  }, [readyRow, body, draftById]);
+    for (const r of queue) {
+      if (r.status === 'ready' && r.target_ref && !autoExpandedRef.current.has(r.target_ref)) {
+        autoExpandedRef.current.add(r.target_ref);
+        const gid = r.target_ref;
+        setExpandedIds((prev) => prev.has(gid) ? prev : new Set(prev).add(gid));
+      }
+    }
+  }, [queue]);
+
 
   // Auto-confirm from a WhatsApp deep link: /campaigns?action=confirm&queue_id=X.
   // Declared BEFORE any early return so hook order stays stable.
