@@ -343,7 +343,7 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
       // Dedupe against existing DB rows for this user
       const { data: existing } = await supabase
         .from('listings')
-        .select('city,address,rooms,asking_price,property_title')
+        .select('city,address,rooms,asking_price,property_title,project_name,floor,source_metadata')
         .eq('user_id', auth.user.id);
       const dbFps = new Set<string>((existing ?? []).map((r: any) => fingerprintInsert(r)));
       const finalInserts: any[] = [];
