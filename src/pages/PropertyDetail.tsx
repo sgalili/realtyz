@@ -119,6 +119,7 @@ export default function PropertyDetail() {
   const property = data?.property;
   const meta: Record<string, any> = data?.meta || {};
   const neighborhood = data?.neighborhood;
+  const projectName = data?.projectName ?? null;
 
   if (isLoading) {
     return (
