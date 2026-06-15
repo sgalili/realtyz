@@ -18,11 +18,13 @@ type QueuedRow = {
   target_ref: string | null;
   target_label: string | null;
   status: string;
+  publication_status: 'pending_time_bank' | 'ready_awaiting_whatsapp_auth' | 'published' | null;
   scheduled_for: string;
   payload: any;
   variations: any;
   variation_index: number | null;
 };
+
 
 // Canonical hardcoded footer — must match supabase/functions/_shared/owner-laws.ts
 const OWNER_PHONE = '052-2973500';
