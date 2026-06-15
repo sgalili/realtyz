@@ -73,12 +73,13 @@ serve(async (req) => {
       price: string | number | null;
       features: unknown;
       url?: string | null;
+      project_name?: string | null;
     };
 
     if (listing_source === "internal") {
       const { data: l, error: lErr } = await supabase
         .from("listings")
-        .select("property_title, description, asking_price, features, slug, city, neighborhood, address, rooms, sqm, floor, parking, elevator")
+        .select("property_title, description, asking_price, features, slug, city, neighborhood, address, rooms, sqm, floor, parking, elevator, project_name")
         .eq("id", listing_id)
         .maybeSingle();
       if (lErr || !l) {
@@ -93,6 +94,7 @@ serve(async (req) => {
         price: l.asking_price,
         features: { ...(Array.isArray(l.features) ? (l.features[0] ?? {}) : (l.features ?? {})), city: l.city, neighborhood: l.neighborhood, address: l.address, rooms: l.rooms, sqm: l.sqm, floor: l.floor, parking: l.parking, elevator: l.elevator },
         url: l.slug ? `/p/${l.slug}` : null,
+        project_name: (l as any).project_name ?? null,
       };
     } else {
       // Homely via proxy
