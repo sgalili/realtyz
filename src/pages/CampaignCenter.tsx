@@ -1161,6 +1161,7 @@ const ConfirmDispatchDialog = ({
   onConfirmed: () => void;
 }) => {
   const { user } = useAuth();
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const [sending, setSending] = useState(false);
   const [pages, setPages] = useState<SocialAccountProfile[]>([]);
   const [pagesLoading, setPagesLoading] = useState(false);
@@ -1210,6 +1211,7 @@ const ConfirmDispatchDialog = ({
 
   const handleConfirm = async () => {
     if (!user) { toast.error('יש להתחבר'); return; }
+    const ownerScope = workspaceOwnerId ?? user.id;
     setSending(true);
     try {
       const campaignName = `${brandName} · ${channel.label}`;
@@ -1232,6 +1234,7 @@ const ConfirmDispatchDialog = ({
               campaign_name: target ? `${campaignName} · ${target.name}` : campaignName,
               media_urls: mediaUrls,
               scheduled_at: scheduledAt,
+              workspace_owner_id: ownerScope,
               group_ids: groupIds,
               target_profile_id: target?.id ?? null,
               target_account_ref: target?.accountRef ?? null,
@@ -1279,7 +1282,7 @@ const ConfirmDispatchDialog = ({
         if (error) throw error;
 
         const rows = (leads || []).map((l: any) => ({
-          user_id: user.id,
+          user_id: ownerScope,
           campaign_name: campaignName,
           channel: channel.id,
           lead_id: l.id,
