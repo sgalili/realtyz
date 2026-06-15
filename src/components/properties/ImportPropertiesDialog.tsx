@@ -43,6 +43,9 @@ const FIELD_ALIASES: Record<string, string[]> = {
   opened_at:    ['פתיחה', 'נפתח', 'opened', 'opened at'],
   updated_at_src:['עדכון', 'עודכן', 'updated', 'updated at'],
   listing_type: ['עסקה', 'סוג עסקה', 'מצב', 'deal', 'deal type', 'listing type'],
+  project_name: ['פרוייקט', 'פרויקט', 'project', 'project name', 'שם פרויקט'],
+  apt_number:   ['מספר דירה', 'מס דירה', 'דירה', 'apt', 'apartment', 'apartment number', 'unit', 'unit number'],
+  apt_model:    ['טיפוס', 'דגם', 'טיפוס דירה', 'דגם דירה', 'טיפוס/דגם', 'טיפוס/דגם דירה', 'model', 'type model'],
 };
 
 function detectListingType(extras: Record<string, string>, mappedListingType: any, price: number | null): 'sale' | 'rent' {
@@ -105,14 +108,28 @@ function slugify(s: string) {
 }
 
 // Stable fingerprint used to detect duplicates inside the file and vs the DB.
+// For project rows (multi-unit developments), distinct units share the same address/project,
+// so we identify duplicates by apartment number + floor instead.
 function fingerprintInsert(ins: any): string {
   const norm = (v: any) => String(v ?? '').trim().toLowerCase().replace(/\s+/g, ' ');
+  const meta = ins.source_metadata || {};
+  const project = norm(ins.project_name ?? meta.project_name);
+  const aptNumber = norm(meta.apt_number);
+  const floor = norm(ins.floor);
+
+  if (project && (aptNumber || floor)) {
+    // Project-scoped fingerprint: unit number + floor uniquely identifies a sibling unit
+    return ['project', project, aptNumber, floor].join('|');
+  }
+
   const parts = [
     norm(ins.city),
     norm(ins.address),
     norm(ins.rooms),
     norm(Math.round(Number(ins.asking_price ?? 0))),
     norm(ins.property_title),
+    aptNumber,
+    floor,
   ];
   return parts.join('|');
 }
@@ -232,10 +249,21 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
             continue;
           }
 
+          const projectName = mapped.project_name ? String(mapped.project_name).trim() : '';
+          const aptNumber = mapped.apt_number != null && mapped.apt_number !== ''
+            ? String(mapped.apt_number).trim() : '';
+          const aptModel = mapped.apt_model ? String(mapped.apt_model).trim() : '';
+
           const titleFromHeader = mapped.title ? String(mapped.title).trim() : '';
           const title =
             titleFromHeader ||
-            [propertyType || 'נכס', address && `· ${address}`, rooms && `· ${rooms} חד'`]
+            [
+              projectName || propertyType || 'נכס',
+              aptNumber && `דירה ${aptNumber}`,
+              aptModel && `(${aptModel})`,
+              address && `· ${address}`,
+              rooms && `· ${rooms} חד'`,
+            ]
               .filter(Boolean)
               .join(' ');
 
@@ -256,11 +284,13 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
             floor: floor != null ? Math.round(floor) : null,
             elevator,
             parking,
+            project_name: projectName || null,
             status: 'live',
             source: 'import',
             is_published: true,
             features: [
               ...(propertyType ? [propertyType] : []),
+              ...(aptModel ? [{ apt_model: aptModel }] : []),
               { listing_type: detectListingType(extras, mapped.listing_type, price) },
             ],
             source_metadata: {
@@ -271,6 +301,9 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
               opened_at: mapped.opened_at ? String(mapped.opened_at).trim() : null,
               updated_at_src: mapped.updated_at_src ? String(mapped.updated_at_src).trim() : null,
               property_type: propertyType || null,
+              project_name: projectName || null,
+              apt_number: aptNumber || null,
+              apt_model: aptModel || null,
               extras,
             },
           });
@@ -310,7 +343,7 @@ export function ImportPropertiesDialog({ open, onOpenChange, onImported }: Props
       // Dedupe against existing DB rows for this user
       const { data: existing } = await supabase
         .from('listings')
-        .select('city,address,rooms,asking_price,property_title')
+        .select('city,address,rooms,asking_price,property_title,project_name,floor,source_metadata')
         .eq('user_id', auth.user.id);
       const dbFps = new Set<string>((existing ?? []).map((r: any) => fingerprintInsert(r)));
       const finalInserts: any[] = [];
