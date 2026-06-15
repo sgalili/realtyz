@@ -77,7 +77,7 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null);
 
 
-  // Load workspace's manually-curated FB groups
+  // Load workspace's manually-curated FB groups + seed any persisted drafts.
   useEffect(() => {
     let cancelled = false;
     const load = async () => {
@@ -85,17 +85,30 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
       setLoading(true);
       const { data, error } = await (supabase as any)
         .from('custom_user_groups')
-        .select('id, group_name, group_url')
+        .select('id, group_name, group_url, last_draft_body')
         .eq('workspace_owner_id', workspaceOwnerId)
         .eq('platform', 'facebook')
         .order('created_at', { ascending: false });
       if (cancelled) return;
       setLoading(false);
-      if (!error) setGroups((data ?? []) as CustomGroup[]);
+      if (!error) {
+        const list = (data ?? []) as CustomGroup[];
+        setGroups(list);
+        setDraftById((prev) => {
+          const next = { ...prev };
+          for (const g of list) {
+            if (next[g.id] === undefined && g.last_draft_body) {
+              next[g.id] = g.last_draft_body;
+            }
+          }
+          return next;
+        });
+      }
     };
     load();
     return () => { cancelled = true; };
   }, [workspaceOwnerId]);
+
 
   // Poll the queue for this workspace's manual_share items
   useEffect(() => {
