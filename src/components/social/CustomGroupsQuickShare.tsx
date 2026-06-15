@@ -427,9 +427,8 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
                 !row && isPicked && 'bg-amber-100/60 dark:bg-amber-900/20',
               )}
             >
-              {/* Row header */}
-              <div className="flex items-center gap-2 px-3 py-2">
-                {/* Checkbox — only when idle */}
+              {/* Row 1: icon · group name · refresh · delete · chevron */}
+              <div className="flex items-center gap-2 px-3 pt-2">
                 {!row ? (
                   <button
                     type="button"
@@ -461,24 +460,6 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
                   <div className="truncate text-sm font-semibold text-foreground">{g.group_name}</div>
                 </button>
 
-                {/* Status badge — publication lifecycle */}
-                {isReady ? (
-                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
-                    <Check className="h-3 w-3" />
-                    ממתין לאישור
-                  </span>
-                ) : isPending ? (
-                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-300" dir="ltr">
-                    <Timer className="h-3 w-3" />
-                    {fmtCountdown(countdownMs)}
-                  </span>
-                ) : (
-                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
-                    טרם פורסם
-                  </span>
-                )}
-
-                {/* Row action icons */}
                 <button
                   type="button"
                   onClick={() => handleRegenerate(g, row)}
@@ -507,6 +488,27 @@ export function CustomGroupsQuickShare({ body }: { body: string }) {
                 >
                   {isExpanded ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
                 </button>
+              </div>
+
+              {/* Row 2: status pill at start. Engagement counters intentionally omitted —
+                  Meta does not expose group-member post insights via Graph API. */}
+              <div className="flex items-center gap-2 px-3 pb-2 pt-1">
+                {isReady ? (
+                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-emerald-600 px-2 py-0.5 text-[10px] font-bold text-white">
+                    <Check className="h-3 w-3" />
+                    ממתין לאישור
+                  </span>
+                ) : isPending ? (
+                  <span className="shrink-0 inline-flex items-center gap-1 rounded-full bg-amber-500/15 px-2 py-0.5 text-[10px] font-bold text-amber-800 dark:text-amber-300" dir="ltr">
+                    <Timer className="h-3 w-3" />
+                    {fmtCountdown(countdownMs)}
+                  </span>
+                ) : (
+                  <span className="shrink-0 rounded-full bg-muted px-2 py-0.5 text-[10px] font-bold text-muted-foreground">
+                    טרם פורסם
+                  </span>
+                )}
+                <span className="flex-1" />
               </div>
 
               {/* Collapsible body */}
