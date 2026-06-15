@@ -166,6 +166,7 @@ function PersonalTab() {
   const [fullName, setFullName] = useState('אודי ויטמן');
   const [city, setCity] = useState('');
   const [gender, setGender] = useState<string>('');
+  const [brokerLicense, setBrokerLicense] = useState<string>('');
   const [editing, setEditing] = useState<Record<string, boolean>>({});
   const [hydrated, setHydrated] = useState(false);
 
