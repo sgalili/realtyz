@@ -33,40 +33,24 @@ async function analyzeWithAI(input: {
     return { sentiment: "neutral", key_concerns: [], reply: "", summary: "" };
   }
   const variantSeed = `${crypto.randomUUID()}-${Math.floor(Math.random()*1_000_000)}`;
-  const system = `You are the workspace owner's social-engagement voice analyzing an inbound interaction and drafting a public reply.
-
-Return JSON ONLY with this shape:
+  // SENTIMENT-ONLY classifier. Reply drafting is delegated to
+  // `suggest-comment-reply`, which is property-locked to the exact post body
+  // and its single linked listing. We intentionally do NOT pass workspace-wide
+  // KB chunks here — that was the source of cross-property hallucinations
+  // (mixing prices/locations/features from other listings into the reply).
+  const system = `You classify an inbound social interaction. Return JSON ONLY:
 {
   "sentiment": "positive" | "neutral" | "negative",
   "key_concerns": ["budget","location","timing",...],
-  "reply": "<2 to 4 sentence reply in the inbound language>",
-  "summary": "<short English internal summary>"
+  "summary": "<short English internal summary, max 1 sentence>"
 }
+Do not draft a reply. Do not include any property facts, prices, or addresses. entropy_seed=${variantSeed}`;
 
-LANGUAGE MIRROR: detect inbound language and reply ONLY in it. English in -> English out. Hebrew in -> Hebrew out. Never mix.
-
-KB GROUNDING: ground every assertion strictly in the workspace KNOWLEDGE BASE excerpts in the user message. Never invent facts, prices, listings or claims outside the KB. If KB lacks the answer, ask a clarifying question or honestly offer to follow up privately.
-
-ANTI-SPAM HIGH-ENTROPY (Meta-safety, prevents template detection):
-- Reply must be structurally unique vs. any prior reply: vary opener, sentence count, sentence length, vocabulary, register, rhythm and CTA wording.
-- Quote or paraphrase at least one specific detail from THIS inbound text (name, place, budget, feeling, exact question) so the reply is provably context-bound.
-- Forbidden generic openers: "Thanks for your comment", "Great question", "Hi there", "תודה על התגובה", "שאלה מצוינת", "היי".
-- Close with ONE clear, localized Call-To-Action that advances the workspace agenda; phrase it differently every time.
-
-ABSOLUTE PROHIBITIONS:
-- No asterisks, em-dashes, en-dashes, double dashes, markdown, emojis, hashtags.
-- No "AI" / "bot" / "automated" wording. No legacy persona name.
-- Hebrew gender: match grammatical gender to sender's first name; unknown defaults to masculine singular. Never slash forms.
-- entropy_seed=${variantSeed}`;
-
-  const kbBlock = input.kb_snippets && input.kb_snippets.trim()
-    ? `WORKSPACE KNOWLEDGE BASE (ground every assertion strictly here):\n"""${input.kb_snippets}"""\n\n`
-    : `WORKSPACE KNOWLEDGE BASE: (empty — if needed, ask a clarifying question or offer to follow up privately).\n\n`;
   const user = `Platform: ${input.platform}
 Event: ${input.event_type}
 Sender: ${input.sender_name ?? "unknown"}
 
-${kbBlock}Inbound text:
+Inbound text:
 """${input.text}"""`;
 
   const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -195,30 +179,103 @@ Deno.serve(async (req) => {
     const autoReplyPositive = Boolean(profileRow?.auto_reply_positive);
     const autoReplyNegative = Boolean(profileRow?.auto_reply_negative);
 
-    // Load workspace KB snippets (strict isolation via .eq user_id).
-    let kbSnippets = "";
-    try {
-      const { data: kbRows } = await admin
-        .from("knowledge_chunks")
-        .select("content")
-        .eq("user_id", user_id)
-        .limit(8);
-      kbSnippets = (kbRows ?? [])
-        .map((r: any) => String(r?.content ?? "").trim())
-        .filter(Boolean)
-        .map((c: string) => c.slice(0, 600))
-        .join("\n---\n")
-        .slice(0, 4000);
-    } catch { /* ignore */ }
+    // STRICT POST→LISTING RESOLUTION. The reply MUST be scoped to the exact
+    // post the commenter is responding to and ONLY the property linked to
+    // that post — never a broad sweep of workspace listings or KB chunks.
+    let campaignPostBody = "";
+    let primaryListingId: string | null = null;
+    let primaryListingType: "sale" | "rent" | null = null;
+    if (external_post_id) {
+      try {
+        const { data: logRow } = await admin
+          .from("campaign_logs")
+          .select("message_body")
+          .eq("user_id", user_id)
+          .eq("provider_message_id", external_post_id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+        if (logRow?.message_body) campaignPostBody = String(logRow.message_body).slice(0, 4000);
+      } catch { /* ignore */ }
+    }
 
-    // 1. AI analysis
+    // Resolve the SINGLE listing this post is about by scoring listing
+    // identifiers (address > title > neighborhood) against the post body.
+    if (campaignPostBody) {
+      try {
+        const { data: liveRows } = await admin
+          .from("listings")
+          .select("id,property_title,address,neighborhood,city,asking_price,features,status,is_published")
+          .eq("user_id", user_id)
+          .eq("status", "live")
+          .eq("is_published", true)
+          .limit(120);
+        const body_l = campaignPostBody.toLowerCase();
+        const norm = (v: unknown) => String(v ?? "").replace(/\s+/g, " ").trim().toLowerCase();
+        const scored = (liveRows ?? [])
+          .map((row: any) => {
+            const addr = norm(row?.address);
+            const title = norm(row?.property_title);
+            const hood = norm(row?.neighborhood);
+            let s = 0;
+            if (addr && addr.length >= 4 && body_l.includes(addr)) s += 100;
+            if (title && title.length >= 4 && body_l.includes(title)) s += 60;
+            if (hood && hood.length >= 4 && body_l.includes(hood)) s += 20;
+            return { row, s };
+          })
+          .filter((e) => e.s > 0)
+          .sort((a, b) => b.s - a.s);
+        if (scored[0]?.row) {
+          primaryListingId = scored[0].row.id as string;
+          const feat = scored[0].row.features;
+          if (feat && typeof feat === "object") {
+            const lt = String((feat as any).listing_type ?? "").toLowerCase();
+            if (lt === "rent" || lt === "sale") primaryListingType = lt as any;
+          }
+        }
+      } catch { /* ignore */ }
+    }
+
+    // 1. AI analysis (sentiment only — reply text comes from the
+    // property-locked suggest-comment-reply below).
     const analysis = await analyzeWithAI({
       text: inbound_text,
       platform,
       event_type,
       sender_name,
-      kb_snippets: kbSnippets,
     });
+
+    // Generate the actual public reply through the property-locked pipeline.
+    // suggest-comment-reply enforces a STRICT LISTING PAYLOAD — no other
+    // properties from the workspace can leak into the prompt.
+    try {
+      const sugBody: Record<string, unknown> = {
+        user_id,
+        platform,
+        sender_handle: sender_handle ?? sender_name ?? "",
+        inbound_text,
+      };
+      if (campaignPostBody) {
+        sugBody.campaign_context = campaignPostBody;
+        sugBody.campaign_post_body = campaignPostBody;
+      }
+      if (primaryListingId) sugBody.primary_listing_id = primaryListingId;
+      if (primaryListingType) sugBody.listing_type = primaryListingType;
+      const sugRes = await fetch(`${SUPABASE_URL}/functions/v1/suggest-comment-reply`, {
+        method: "POST",
+        headers: { Authorization: `Bearer ${SERVICE}`, "Content-Type": "application/json" },
+        body: JSON.stringify(sugBody),
+      });
+      if (sugRes.ok) {
+        const sj = await sugRes.json().catch(() => ({}));
+        const pub = sanitizeOutboundText(String(sj?.public_comment ?? sj?.reply ?? "")).trim();
+        if (pub) analysis.reply = pub;
+      } else {
+        console.warn("[auto-engagement-process] suggest-comment-reply failed", sugRes.status);
+      }
+    } catch (e) {
+      console.error("[auto-engagement-process] suggest-comment-reply error", e);
+    }
 
     const willAutoReply =
       (analysis.sentiment === "positive" && autoReplyPositive) ||
