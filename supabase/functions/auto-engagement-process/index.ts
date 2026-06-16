@@ -33,40 +33,24 @@ async function analyzeWithAI(input: {
     return { sentiment: "neutral", key_concerns: [], reply: "", summary: "" };
   }
   const variantSeed = `${crypto.randomUUID()}-${Math.floor(Math.random()*1_000_000)}`;
-  const system = `You are the workspace owner's social-engagement voice analyzing an inbound interaction and drafting a public reply.
-
-Return JSON ONLY with this shape:
+  // SENTIMENT-ONLY classifier. Reply drafting is delegated to
+  // `suggest-comment-reply`, which is property-locked to the exact post body
+  // and its single linked listing. We intentionally do NOT pass workspace-wide
+  // KB chunks here — that was the source of cross-property hallucinations
+  // (mixing prices/locations/features from other listings into the reply).
+  const system = `You classify an inbound social interaction. Return JSON ONLY:
 {
   "sentiment": "positive" | "neutral" | "negative",
   "key_concerns": ["budget","location","timing",...],
-  "reply": "<2 to 4 sentence reply in the inbound language>",
-  "summary": "<short English internal summary>"
+  "summary": "<short English internal summary, max 1 sentence>"
 }
+Do not draft a reply. Do not include any property facts, prices, or addresses. entropy_seed=${variantSeed}`;
 
-LANGUAGE MIRROR: detect inbound language and reply ONLY in it. English in -> English out. Hebrew in -> Hebrew out. Never mix.
-
-KB GROUNDING: ground every assertion strictly in the workspace KNOWLEDGE BASE excerpts in the user message. Never invent facts, prices, listings or claims outside the KB. If KB lacks the answer, ask a clarifying question or honestly offer to follow up privately.
-
-ANTI-SPAM HIGH-ENTROPY (Meta-safety, prevents template detection):
-- Reply must be structurally unique vs. any prior reply: vary opener, sentence count, sentence length, vocabulary, register, rhythm and CTA wording.
-- Quote or paraphrase at least one specific detail from THIS inbound text (name, place, budget, feeling, exact question) so the reply is provably context-bound.
-- Forbidden generic openers: "Thanks for your comment", "Great question", "Hi there", "תודה על התגובה", "שאלה מצוינת", "היי".
-- Close with ONE clear, localized Call-To-Action that advances the workspace agenda; phrase it differently every time.
-
-ABSOLUTE PROHIBITIONS:
-- No asterisks, em-dashes, en-dashes, double dashes, markdown, emojis, hashtags.
-- No "AI" / "bot" / "automated" wording. No legacy persona name.
-- Hebrew gender: match grammatical gender to sender's first name; unknown defaults to masculine singular. Never slash forms.
-- entropy_seed=${variantSeed}`;
-
-  const kbBlock = input.kb_snippets && input.kb_snippets.trim()
-    ? `WORKSPACE KNOWLEDGE BASE (ground every assertion strictly here):\n"""${input.kb_snippets}"""\n\n`
-    : `WORKSPACE KNOWLEDGE BASE: (empty — if needed, ask a clarifying question or offer to follow up privately).\n\n`;
   const user = `Platform: ${input.platform}
 Event: ${input.event_type}
 Sender: ${input.sender_name ?? "unknown"}
 
-${kbBlock}Inbound text:
+Inbound text:
 """${input.text}"""`;
 
   const resp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
