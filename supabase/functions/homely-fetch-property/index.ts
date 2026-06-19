@@ -84,10 +84,10 @@ Deno.serve(async (req) => {
         .eq("user_id", user.id)
         .maybeSingle();
       if (!cred?.homely_agency || !cred?.homely_username) {
-        return json({ error: "no_homely_credentials" }, 400);
+        return json({ ok: false, needs_setup: true, error: "no_homely_credentials", action }, 200);
       }
       const { data: pw } = await admin.rpc("get_homely_password", { _user_id: user.id });
-      if (!pw) return json({ error: "no_homely_password" }, 400);
+      if (!pw) return json({ ok: false, needs_setup: true, error: "no_homely_password", action }, 200);
       const login = await webtivLogin(String(cred.homely_agency), String(cred.homely_username), pw as unknown as string);
       if (!login.ok) return json({ error: `login_failed:${login.status}`, note: login.note }, 502);
       const session = login.session as any;
@@ -170,10 +170,10 @@ Deno.serve(async (req) => {
       .eq("user_id", user.id)
       .maybeSingle();
     if (!cred?.homely_agency || !cred?.homely_username) {
-      return json({ error: "no_homely_credentials" }, 400);
+      return json({ ok: false, needs_setup: true, error: "no_homely_credentials" }, 200);
     }
     const { data: pw } = await admin.rpc("get_homely_password", { _user_id: user.id });
-    if (!pw) return json({ error: "no_homely_password" }, 400);
+    if (!pw) return json({ ok: false, needs_setup: true, error: "no_homely_password" }, 200);
 
     const login = await webtivLogin(String(cred.homely_agency), String(cred.homely_username), pw as unknown as string);
     if (!login.ok) return json({ error: `login_failed:${login.status}`, note: login.note }, 502);

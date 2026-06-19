@@ -145,6 +145,12 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
       });
       if (error) throw error;
       const payload = (data as any) ?? {};
+      if (payload.needs_setup) {
+        toast.message("יש לחבר תחילה את חשבון Homely", {
+          description: "עברו ל-הגדרות ← חיבורים והזינו את פרטי Homely (קוד משרד, משתמש וסיסמה).",
+        });
+        return;
+      }
       // Graceful zero-state: edge fn returns { fallback: true } with HTTP 200
       // when the broker has no active properties / serial isn't on Homely.
       if (payload.fallback) {
