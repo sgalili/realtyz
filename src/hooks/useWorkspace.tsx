@@ -77,7 +77,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const fallback = rows.find((r) => r.is_self)?.workspace_owner_id ?? rows[0]?.workspace_owner_id ?? user.id;
       const nextActive = validStored ?? validProfile ?? fallback;
       setActiveWorkspaceId(nextActive);
-      if (nextActive) window.localStorage.setItem(workspaceStorageKey(user.id), nextActive);
+      if (nextActive && (validStored || validProfile || rows.length <= 1)) {
+        window.localStorage.setItem(workspaceStorageKey(user.id), nextActive);
+      }
     } catch (err) {
       // Fail open: fall back to self
       setWorkspaces([]);
