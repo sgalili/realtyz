@@ -34,8 +34,6 @@ const ITEMS: Item[] = [
   { label: 'חשבוניות ותשלומים', icon: Wallet, to: '/billing?tab=finance', iconClass: 'text-primary-glow' },
 ];
 
-const FORCED_DISPLAY_NAME = 'אודי ויטמן';
-
 export function HeaderProfileMenu() {
   const [open, setOpen] = useState(false);
   const [logoutOpen, setLogoutOpen] = useState(false);
@@ -51,7 +49,7 @@ export function HeaderProfileMenu() {
   const meta = (user.user_metadata ?? {}) as Record<string, any>;
   const avatarUrl: string | null =
     meta.avatar_url || meta.picture || meta.profile_picture_url || null;
-  const displayName = FORCED_DISPLAY_NAME;
+  const displayName = meta.full_name || meta.name || user.email || (user as any).phone || 'משתמש';
   const initial = displayName.slice(0, 1);
 
   const goProfile = () => navigate('/profile');
