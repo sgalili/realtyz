@@ -83,7 +83,13 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
         body: { action },
       });
       if (error) throw error;
-      const payload = data as { ok?: boolean; error?: string; properties?: HomelyProperty[]; contacts?: HomelyContact[]; count?: number };
+      const payload = data as { ok?: boolean; error?: string; needs_setup?: boolean; properties?: HomelyProperty[]; contacts?: HomelyContact[]; count?: number };
+      if (payload?.needs_setup) {
+        toast.message('יש לחבר תחילה את חשבון Homely', {
+          description: 'עברו ל-הגדרות ← חיבורים והזינו קוד משרד, משתמש וסיסמה.',
+        });
+        return;
+      }
       if (payload?.error) throw new Error(payload.error);
       if (isProps) {
         const list = payload.properties ?? [];
