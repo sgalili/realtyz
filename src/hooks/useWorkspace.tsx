@@ -31,6 +31,8 @@ type WorkspaceContextType = {
 
 const STORAGE_KEY = 'realtyz-active-workspace';
 
+const workspaceStorageKey = (userId: string) => `${STORAGE_KEY}:${userId}`;
+
 const WorkspaceContext = createContext<WorkspaceContextType>({
   workspaces: [],
   activeWorkspaceId: null,
@@ -68,14 +70,14 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const rows = (data ?? []) as Workspace[];
       setWorkspaces(rows);
 
-      const stored = window.localStorage.getItem(STORAGE_KEY);
+      const stored = window.localStorage.getItem(workspaceStorageKey(user.id));
       const validStored = stored && rows.some((r) => r.workspace_owner_id === stored) ? stored : null;
       const profileActive = (profile as any)?.active_workspace_owner_id as string | null | undefined;
       const validProfile = profileActive && rows.some((r) => r.workspace_owner_id === profileActive) ? profileActive : null;
       const fallback = rows.find((r) => r.is_self)?.workspace_owner_id ?? rows[0]?.workspace_owner_id ?? user.id;
       const nextActive = validStored ?? validProfile ?? fallback;
       setActiveWorkspaceId(nextActive);
-      if (nextActive) window.localStorage.setItem(STORAGE_KEY, nextActive);
+      if (nextActive) window.localStorage.setItem(workspaceStorageKey(user.id), nextActive);
     } catch (err) {
       // Fail open: fall back to self
       setWorkspaces([]);
@@ -90,14 +92,15 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   }, [refresh]);
 
   const setActiveWorkspace = useCallback(async (ownerId: string) => {
+    if (!user) return;
     setActiveWorkspaceId(ownerId);
-    window.localStorage.setItem(STORAGE_KEY, ownerId);
+    window.localStorage.setItem(workspaceStorageKey(user.id), ownerId);
     try {
       await supabase.rpc('set_active_workspace', { _owner: ownerId });
     } catch {
       // non-fatal
     }
-  }, []);
+  }, [user]);
 
   const activeWorkspace = useMemo(
     () => workspaces.find((w) => w.workspace_owner_id === activeWorkspaceId) ?? null,
@@ -107,7 +110,7 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
   const mustChoose = useMemo(() => {
     if (loading || !user) return false;
     if (workspaces.length <= 1) return false;
-    return !window.localStorage.getItem(STORAGE_KEY);
+    return !window.localStorage.getItem(workspaceStorageKey(user.id));
   }, [workspaces, loading, user]);
 
   // Auto-open selector when login leaves the user with no active workspace and multiple options.
