@@ -626,8 +626,10 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
 
 
   useEffect(() => {
-    // SAFETY: load cached DB rows only — NEVER auto-hit Ayrshare on mount.
-    // The broker must click "רענן" to pull fresh provider data.
+    // Load cached DB rows immediately. On first expand per browser session
+    // (sentinel in sessionStorage), ALSO pull live Ayrshare comments so the
+    // tree populates without requiring a manual click. After that, the
+    // session cache hydrates instantly on every subsequent expand.
     (async () => {
       const hadEmptyPerPostCache = purgeEmptyPerPostCacheBlocks(postIds);
       if (hadEmptyPerPostCache) {
@@ -636,9 +638,20 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
         setRows(null);
       }
       await load();
+
+      // Session-scoped first-expand provider fetch (one per campaign per tab).
+      try {
+        const sentinelKey = `realtyz.first_expand_fetched.${campaign.id}`;
+        const alreadyFetched = sessionStorage.getItem(sentinelKey) === '1';
+        if (!alreadyFetched && postIds.length > 0 && !isProviderFetchLocked(postIds)) {
+          sessionStorage.setItem(sentinelKey, '1');
+          void forceRefresh({ manual: true });
+        }
+      } catch { /* quota / private mode */ }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaign.id, postIdsKey, campaign.channel]);
+
 
 
   // When the parent's counter bumps (analytics realtime patch on
