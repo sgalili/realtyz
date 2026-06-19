@@ -382,12 +382,15 @@ NO-HASHTAGS RULE (HARD — ZERO TOLERANCE):
       .trim();
 
     // HARD COMPLIANCE LAWS — deterministic safety net (street numbers, license footer).
+    // The broker license footer ("אודי ויטמן - אנגלו סכסון... / ר.מ: 3251676") is
+    // appended ONLY when a real property is attached (promotedListing). General /
+    // brand / knowledge posts publish without the listing-grade signature block.
     try {
       const branding = await fetchOwnerBranding(admin as any, userId);
       content = enforceOwnerLaws(content, {
         license: branding.license,
         byline: branding.byline,
-        withLicense: true,
+        withLicense: !!promotedListing,
       });
     } catch (_e) { /* never block on enforcement failure */ }
 

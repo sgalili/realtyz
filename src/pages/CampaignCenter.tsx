@@ -443,6 +443,9 @@ const InlineComposer = ({
             selectedListing?.property_title ? `Promoted listing: ${selectedListing.property_title}` : null,
           ].filter(Boolean).join('\n\n'),
           purpose: 'social_post',
+          // Signals the backend that no property is attached — the broker
+          // license footer must be OMITTED for general/brand posts.
+          listing_id: selectedListingId ?? null,
         },
       });
       if (error) throw error;
@@ -1166,6 +1169,10 @@ const ConfirmDispatchDialog = ({
   const { user } = useAuth();
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const [sending, setSending] = useState(false);
+  // Instant re-entry lock — useState updates are async, so a fast double-click
+  // can fire handleConfirm twice before `sending` flips. A ref blocks it the
+  // moment the first click lands and guarantees the publish path runs ONCE.
+  const inFlightRef = useRef(false);
   const [pages, setPages] = useState<SocialAccountProfile[]>([]);
   const [pagesLoading, setPagesLoading] = useState(false);
 
@@ -1214,6 +1221,9 @@ const ConfirmDispatchDialog = ({
 
   const handleConfirm = async () => {
     if (!user) { toast.error('יש להתחבר'); return; }
+    // Hard idempotency guard — prevents accidental duplicate dispatches.
+    if (inFlightRef.current || sending) return;
+    inFlightRef.current = true;
     const ownerScope = workspaceOwnerId ?? user.id;
     setSending(true);
     try {
@@ -1354,6 +1364,7 @@ const ConfirmDispatchDialog = ({
       toast.error('פרסום נכשל: ' + (e?.message ?? 'שגיאה לא ידועה'));
     } finally {
       setSending(false);
+      inFlightRef.current = false;
     }
   };
 
@@ -1692,7 +1703,11 @@ const PublishedFeed = () => {
       .limit(500);
     const grouped = new Map<string, CampaignRow>();
     (data || []).forEach((r: any) => {
-      const key = `${r.campaign_name}|${r.channel}|${r.created_at.slice(0, 16)}`;
+      // Use the FULL created_at timestamp (not minute-precision) so distinct
+      // campaigns published in the same minute don't collapse into one row.
+      // Previously this was sliced to 16 chars, which silently merged ~2 of
+      // every 10 fresh campaigns on screen.
+      const key = `${r.campaign_name}|${r.channel}|${r.created_at}`;
       const existing = grouped.get(key);
       if (existing) {
         existing.recipient_count = (existing.recipient_count || 1) + 1;

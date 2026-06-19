@@ -150,8 +150,10 @@ Deno.serve(async (req) => {
     }
 
     // Enforce owner laws (strip street numbers, append broker license footer).
+    // Footer is appended ONLY when an actual listing is attached to this post;
+    // general/brand posts (no listing_id) publish without the property signature.
     const branding = await fetchOwnerBranding(admin as any, ownerUserId);
-    const finalPostText = enforceOwnerLaws(postText, { license: branding.license, byline: branding.byline, withLicense: true });
+    const finalPostText = enforceOwnerLaws(postText, { license: branding.license, byline: branding.byline, withLicense: !!listingId });
 
     const platforms = Array.from(
       new Set(rawChannels.map((c) => PLATFORM_MAP[String(c).toLowerCase()]).filter(Boolean)),

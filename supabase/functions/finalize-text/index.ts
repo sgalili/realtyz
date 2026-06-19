@@ -42,6 +42,9 @@ Deno.serve(async (req) => {
     const original_text: string = String(body?.original_text ?? "").trim();
     const context: string = String(body?.context ?? "").trim();
     const purpose: Purpose = (body?.purpose as Purpose) || "generic";
+    const listingId: string | null = typeof body?.listing_id === "string" && body.listing_id.trim()
+      ? body.listing_id.trim()
+      : null;
     if (!edited_text) {
       return new Response(JSON.stringify({ error: "edited_text required" }), {
         status: 400,
@@ -164,8 +167,16 @@ Deno.serve(async (req) => {
     // HARD COMPLIANCE LAWS — deterministic safety net. For posts and DMs we
     // append the byline + license footer; for public comments we only strip
     // street numbers and forbidden bylines (no footer on short replies).
+    // For social posts the listing-grade signature is appended ONLY when an
+    // active property (listing_id) is attached to the post.
     try {
-      if (purpose === "social_post" || purpose === "private_dm" || purpose === "generic") {
+      if (purpose === "social_post") {
+        finalText = enforceOwnerLaws(finalText, {
+          license: branding.license,
+          byline: branding.byline,
+          withLicense: !!listingId,
+        });
+      } else if (purpose === "private_dm" || purpose === "generic") {
         finalText = enforceOwnerLaws(finalText, {
           license: branding.license,
           byline: branding.byline,
