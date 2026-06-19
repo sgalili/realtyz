@@ -1815,13 +1815,28 @@ const PublishedFeed = () => {
 
 
   useEffect(() => {
-    // SAFETY (Ayrshare suspension prevention): one-shot DB read on mount only.
-    // NO automatic intervals and NO background ayrshare-comments-fetch /
-    // ayrshare-analytics hydration. Provider data is pulled lazily — only when
-    // the broker manually clicks the per-card "רענן" button.
+    // Hydrate cached DB rows immediately, then — on the first visit per
+    // browser session per workspace — pull fresh live counters + comments
+    // from Ayrshare so collapsed cards show real numbers without requiring
+    // a manual click. A background interval keeps new likes / comments /
+    // replies trickling in every 2 minutes while the page is open.
     load();
+    if (!workspaceOwnerId) return;
+    const sessionKey = `realtyz.feed_metrics_fetched.${workspaceOwnerId}`;
+    let alreadyFetched = false;
+    try { alreadyFetched = sessionStorage.getItem(sessionKey) === '1'; } catch { /* noop */ }
+    if (!alreadyFetched) {
+      try { sessionStorage.setItem(sessionKey, '1'); } catch { /* quota */ }
+      // Defer a tick so `load()` finishes hydrating rows before we patch counters.
+      setTimeout(() => { void refreshMetrics(); }, 500);
+    }
+    // Background polling: 2-minute cadence picks up new comments/replies/reactions
+    // without the broker having to refresh the page.
+    const intervalId = window.setInterval(() => { void refreshMetrics(); }, 2 * 60 * 1000);
+    return () => { window.clearInterval(intervalId); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceOwnerId]);
+
 
 
 
