@@ -887,14 +887,18 @@ Deno.serve(async (req) => {
           dbCommentCount,
         );
 
-        // Resolve every known id alias for this post BEFORE the update so we
-        // can also read the previous high-water marks from those same rows.
+        // Resolve the exact campaign row for this native post BEFORE the
+        // update. Never include the whole requestedPostIds batch here: the
+        // feed calls this function with many posts at once, and using the
+        // complete batch made each iteration overwrite every campaign row with
+        // the current post's likes/shares. That is why all collapsed cards kept
+        // showing identical counters.
         const target = targets.get(nativePostId);
         const idAliases = Array.from(new Set([
           nativePostId,
           target?.fetchPostId,
+          target?.providerMessageId,
           ...(target?.permalinkAliases ?? []),
-          ...requestedPostIds,
         ].map((v) => String(v || "").trim()).filter(Boolean)));
 
         // High-water marks from existing rows: Ayrshare's /analytics likeCount
@@ -936,11 +940,16 @@ Deno.serve(async (req) => {
           stored: nativePostId, treeCount, analyticsComments: outer.comments, dbCommentCount,
           providerLikes, prevLikeHigh, final: { comments: liveComments, likes: finalLikes, shares: finalShares },
         });
-        await admin
+        let updateQuery = admin
           .from("campaign_logs")
           .update(patch)
-          .eq("user_id", userId)
-          .in("provider_message_id", idAliases);
+          .eq("user_id", userId);
+        if (target?.campaignLogId) {
+          updateQuery = updateQuery.eq("id", target.campaignLogId);
+        } else {
+          updateQuery = updateQuery.in("provider_message_id", idAliases);
+        }
+        await updateQuery;
       }
     } catch (countErr) {
       console.warn("[ayrshare-comments-fetch] counters sync failed", countErr);
