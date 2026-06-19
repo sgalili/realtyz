@@ -1822,7 +1822,7 @@ const PublishedFeed = () => {
     // replies trickling in every 2 minutes while the page is open.
     load();
     if (!workspaceOwnerId) return;
-    const sessionKey = `realtyz.feed_metrics_fetched.${workspaceOwnerId}`;
+    const sessionKey = `realtyz.feed_metrics_fetched.v2.${workspaceOwnerId}`;
     let alreadyFetched = false;
     try { alreadyFetched = sessionStorage.getItem(sessionKey) === '1'; } catch { /* noop */ }
     if (!alreadyFetched) {
