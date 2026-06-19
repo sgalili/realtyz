@@ -133,15 +133,27 @@ Deno.serve(async (req) => {
       await admin.from("whatsapp_login_otps").update({ consumed_at: new Date().toISOString() }).eq("id", otpRow.id);
 
       // Try to find an existing user already linked to this phone number (covers merged accounts).
+      // Query auth.users directly via the service role so we don't miss accounts past listUsers' page cap.
       let targetEmail: string | null = null;
       try {
-        const { data: byPhone } = await admin.auth.admin.listUsers({ page: 1, perPage: 200 });
-        const match = byPhone?.users?.find((u) => {
-          const userPhone = String(u.phone ?? "").replace(/\D/g, "");
-          const metaPhone = String((u.user_metadata as { phone_number?: string } | null)?.phone_number ?? "").replace(/\D/g, "");
-          return userPhone === phone || metaPhone === phone;
-        });
+        const { data: rows } = await admin
+          .schema("auth" as never)
+          .from("users" as never)
+          .select("email, phone")
+          .or(`phone.eq.${phone},phone.eq.+${phone}`)
+          .limit(1);
+        const match = (rows ?? [])[0] as { email?: string } | undefined;
         if (match?.email) targetEmail = match.email;
+        if (!targetEmail) {
+          // Fallback: scan user_metadata.phone_number via listUsers (best-effort).
+          const { data: byPhone } = await admin.auth.admin.listUsers({ page: 1, perPage: 1000 });
+          const meta = byPhone?.users?.find((u) => {
+            const userPhone = String(u.phone ?? "").replace(/\D/g, "");
+            const metaPhone = String((u.user_metadata as { phone_number?: string } | null)?.phone_number ?? "").replace(/\D/g, "");
+            return userPhone === phone || metaPhone === phone;
+          });
+          if (meta?.email) targetEmail = meta.email;
+        }
       } catch (lookupErr) {
         console.warn("whatsapp-auth: phone lookup failed, falling back to synthetic email", lookupErr);
       }
