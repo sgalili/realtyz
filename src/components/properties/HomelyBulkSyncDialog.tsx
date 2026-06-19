@@ -83,7 +83,7 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
         body: { action },
       });
       if (error) throw error;
-      const payload = data as { ok?: boolean; error?: string; needs_setup?: boolean; properties?: HomelyProperty[]; contacts?: HomelyContact[]; count?: number };
+      const payload = data as { ok?: boolean; error?: string; needs_setup?: boolean; empty?: boolean; endpoint?: string | null; properties?: HomelyProperty[]; contacts?: HomelyContact[]; count?: number };
       if (payload?.needs_setup) {
         toast.message('יש לחבר תחילה את חשבון Homely', {
           description: 'עברו ל-הגדרות ← חיבורים והזינו קוד משרד, משתמש וסיסמה.',
@@ -91,15 +91,16 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
         return;
       }
       if (payload?.error) throw new Error(payload.error);
+      const emptyMsg = 'התחברות הצליחה, לא נמצאו נכסים חדשים בחשבון הומלי המחובר.';
       if (isProps) {
         const list = payload.properties ?? [];
         setProperties(list);
-        if (!list.length) toast.info('אין נכסים פעילים בחשבון הומלי המחובר');
+        if (!list.length) toast.info(emptyMsg);
         else toast.success(`נטענו ${list.length} נכסים מהומלי`);
       } else {
         const list = payload.contacts ?? [];
         setContacts(list);
-        if (!list.length) toast.info('אין אנשי קשר פעילים בחשבון הומלי המחובר');
+        if (!list.length) toast.info(emptyMsg.replace('נכסים', 'אנשי קשר'));
         else toast.success(`נטענו ${list.length} אנשי קשר מהומלי`);
       }
     } catch (e) {
