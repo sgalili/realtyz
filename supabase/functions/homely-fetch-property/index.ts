@@ -100,12 +100,37 @@ Deno.serve(async (req) => {
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
       const PATHS = action === "fetchAllProperties"
-        ? ["/api/Properties/GetActiveByBroker", "/api/Nechasim/GetActiveByBroker", "/api/Nechasim/GetAll", "/api/Properties/GetAll"]
-        : ["/api/Contacts/Get", "/api/Leads/GetActive", "/api/Anashim/GetAll", "/api/Contacts/GetAll"];
+        ? ["/api/Properties/GetActiveByBroker", "/api/Nechasim/GetActiveByBroker", "/api/Nechasim/GetAll", "/api/Properties/GetAll", "/api/Nechasim/GetActive"]
+        : ["/api/Contacts/Get", "/api/Leads/GetActive", "/api/Anashim/GetAll", "/api/Contacts/GetAll", "/api/Anashim/GetActive"];
+
+      // Walk any object/array tree and return the first array that "looks like"
+      // a list of records (objects with id-ish or name-ish fields). This lets
+      // us survive Homely returning {Data: {Items: [...]}} or {result: {list: [...]}}
+      // or {properties: [...]} without hard-coding each shape.
+      function findRecordArray(root: any): { arr: any[]; path: string } | null {
+        const seen = new Set<any>();
+        const queue: Array<{ v: any; p: string }> = [{ v: root, p: "$" }];
+        while (queue.length) {
+          const { v, p } = queue.shift()!;
+          if (!v || typeof v !== "object" || seen.has(v)) continue;
+          seen.add(v);
+          if (Array.isArray(v)) {
+            if (v.length && typeof v[0] === "object" && v[0] !== null) {
+              const keys = Object.keys(v[0]);
+              if (keys.length >= 2) return { arr: v, path: p };
+            }
+            continue;
+          }
+          for (const k of Object.keys(v)) queue.push({ v: v[k], p: `${p}.${k}` });
+        }
+        return null;
+      }
 
       let items: any[] = [];
       let usedEndpoint: string | null = null;
+      let arrPath = "";
       let lastError = "";
+      const debug: Array<{ path: string; status?: number; topKeys?: string[]; sample?: string }> = [];
       for (const path of PATHS) {
         try {
           const r = await fetch(`${WEBTIV_BASE}${path}`, {
@@ -113,10 +138,28 @@ Deno.serve(async (req) => {
             headers,
             body: JSON.stringify({ db, token, agency: cred.homely_agency }),
           });
+          const text = await r.text();
+          let data: any = null;
+          try { data = JSON.parse(text); } catch { /* not json */ }
+          const topKeys = data && typeof data === "object" && !Array.isArray(data) ? Object.keys(data) : [];
+          debug.push({ path, status: r.status, topKeys, sample: text.slice(0, 240) });
+          console.log(`[homely-fetch-property] ${action} ${path} -> HTTP ${r.status}, topKeys=${JSON.stringify(topKeys)}, sample=${text.slice(0, 400)}`);
           if (!r.ok) { lastError = `${path}:HTTP ${r.status}`; continue; }
-          const data = await r.json().catch(() => null);
-          const arr = Array.isArray(data) ? data : (data?.result || data?.data || data?.items || data?.nechasim || data?.contacts || []);
-          if (Array.isArray(arr)) { items = arr; usedEndpoint = path; break; }
+          if (!data) { lastError = `${path}:not_json`; continue; }
+          const found = Array.isArray(data) ? { arr: data, path: "$" } : findRecordArray(data);
+          if (found && found.arr.length) {
+            items = found.arr;
+            usedEndpoint = path;
+            arrPath = found.path;
+            console.log(`[homely-fetch-property] ${action} matched ${items.length} items at ${path}${found.path}`);
+            break;
+          }
+          // Empty payload from a valid endpoint — accept and stop probing.
+          if (found && Array.isArray(found.arr)) {
+            usedEndpoint = path;
+            arrPath = found.path;
+            break;
+          }
         } catch (e) {
           lastError = `${path}:${(e as Error).message}`;
         }
@@ -124,30 +167,30 @@ Deno.serve(async (req) => {
 
       if (action === "fetchAllProperties") {
         const properties = items.map((it: any) => ({
-          homely_id: String(it?.id ?? it?.Id ?? it?.nechesId ?? it?.NechesId ?? it?.sidur ?? it?.Sidur ?? it?.serial ?? ""),
-          title: it?.title || it?.Title || it?.kotert || it?.Kotert || "",
-          description: it?.description || it?.Description || it?.tiur || "",
-          price: Number(it?.price ?? it?.Price ?? it?.mehir ?? 0) || 0,
-          city: it?.city || it?.City || it?.ir || "",
-          address: it?.address || it?.Address || it?.ktovet || "",
-          rooms: Number(it?.rooms ?? it?.Rooms ?? it?.hadarim ?? 0) || 0,
-          sqm: Number(it?.size_sqm ?? it?.area ?? it?.shetach ?? 0) || 0,
-          floor: Number(it?.floor ?? it?.Floor ?? it?.koma ?? 0) || 0,
+          homely_id: String(it?.id ?? it?.Id ?? it?.nechesId ?? it?.NechesId ?? it?.sidur ?? it?.Sidur ?? it?.serial ?? it?.PropertyId ?? it?.propertyId ?? ""),
+          title: it?.title || it?.Title || it?.kotert || it?.Kotert || it?.Name || it?.name || "",
+          description: it?.description || it?.Description || it?.tiur || it?.Tiur || "",
+          price: Number(it?.price ?? it?.Price ?? it?.mehir ?? it?.Mehir ?? 0) || 0,
+          city: it?.city || it?.City || it?.ir || it?.Ir || "",
+          address: it?.address || it?.Address || it?.ktovet || it?.Ktovet || "",
+          rooms: Number(it?.rooms ?? it?.Rooms ?? it?.hadarim ?? it?.Hadarim ?? 0) || 0,
+          sqm: Number(it?.size_sqm ?? it?.area ?? it?.shetach ?? it?.Shetach ?? 0) || 0,
+          floor: Number(it?.floor ?? it?.Floor ?? it?.koma ?? it?.Koma ?? 0) || 0,
           photo: extractPhotos(it)[0] ?? null,
           raw: it,
         })).filter((p) => p.homely_id);
-        return json({ ok: true, endpoint: usedEndpoint, count: properties.length, properties, last_error: lastError });
+        return json({ ok: true, endpoint: usedEndpoint, array_path: arrPath, count: properties.length, properties, empty: properties.length === 0, last_error: lastError, debug });
       } else {
         const contacts = items.map((it: any) => ({
-          homely_id: String(it?.id ?? it?.Id ?? it?.contactId ?? it?.ContactId ?? ""),
-          full_name: it?.full_name || it?.FullName || it?.name || it?.Name || it?.shem || "",
-          phone: it?.phone || it?.Phone || it?.mobile || it?.Mobile || it?.telefon || "",
+          homely_id: String(it?.id ?? it?.Id ?? it?.contactId ?? it?.ContactId ?? it?.adamId ?? it?.AdamId ?? ""),
+          full_name: it?.full_name || it?.FullName || it?.name || it?.Name || it?.shem || it?.Shem || "",
+          phone: it?.phone || it?.Phone || it?.mobile || it?.Mobile || it?.telefon || it?.Telefon || it?.Cell || it?.cell || "",
           email: it?.email || it?.Email || "",
           city: it?.city || it?.City || it?.ir || "",
-          notes: it?.notes || it?.Notes || it?.heara || "",
+          notes: it?.notes || it?.Notes || it?.heara || it?.Heara || "",
           raw: it,
         })).filter((c) => c.phone || c.email);
-        return json({ ok: true, endpoint: usedEndpoint, count: contacts.length, contacts, last_error: lastError });
+        return json({ ok: true, endpoint: usedEndpoint, array_path: arrPath, count: contacts.length, contacts, empty: contacts.length === 0, last_error: lastError, debug });
       }
     }
 
