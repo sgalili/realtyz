@@ -30,6 +30,7 @@ import NotificationPreferencesPanel from '@/components/NotificationPreferencesPa
 import { AgentPersonaPanel } from '@/components/AgentPersonaPanel';
 import { PersonaCalibrationPanel } from '@/components/PersonaCalibrationPanel';
 import { ProductionPrepPanel } from '@/components/ProductionPrepPanel';
+import { WebtivHomelySyncCard } from '@/components/integrations/WebtivHomelySyncCard';
 import { AyrshareProfilePurgeCard } from '@/components/admin/AyrshareProfilePurgeCard';
 import { AyrshareBulkPurgeCard } from '@/components/admin/AyrshareBulkPurgeCard';
 import { VoiceAgentPanel } from '@/components/calendar/VoiceAgentPanel';
@@ -1355,6 +1356,10 @@ const ApiSettings = () => {
             </div>
           )}
         </div>
+
+        {/* ── Webtiv ⇄ Homely background sync ── */}
+        <WebtivHomelySyncCard />
+
 
 
         {homelyDiag && (

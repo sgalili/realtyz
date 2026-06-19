@@ -4310,6 +4310,84 @@ export type Database = {
         }
         Relationships: []
       }
+      webtiv_sync_state: {
+        Row: {
+          buyers_guid: string | null
+          created_at: string
+          enabled: boolean
+          last_error: string | null
+          last_run_at: string | null
+          last_status: string | null
+          last_summary: Json
+          sellers_guid: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          buyers_guid?: string | null
+          created_at?: string
+          enabled?: boolean
+          last_error?: string | null
+          last_run_at?: string | null
+          last_status?: string | null
+          last_summary?: Json
+          sellers_guid?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          buyers_guid?: string | null
+          created_at?: string
+          enabled?: boolean
+          last_error?: string | null
+          last_run_at?: string | null
+          last_status?: string | null
+          last_summary?: Json
+          sellers_guid?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      webtiv_synced_records: {
+        Row: {
+          email: string | null
+          homely_serial: string | null
+          homely_status: string | null
+          id: string
+          phone: string | null
+          raw: Json
+          serial: string
+          source: string
+          synced_at: string
+          user_id: string
+        }
+        Insert: {
+          email?: string | null
+          homely_serial?: string | null
+          homely_status?: string | null
+          id?: string
+          phone?: string | null
+          raw?: Json
+          serial: string
+          source: string
+          synced_at?: string
+          user_id: string
+        }
+        Update: {
+          email?: string | null
+          homely_serial?: string | null
+          homely_status?: string | null
+          id?: string
+          phone?: string | null
+          raw?: Json
+          serial?: string
+          source?: string
+          synced_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       whatsapp_login_otps: {
         Row: {
           attempts: number
