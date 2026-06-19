@@ -1356,6 +1356,10 @@ const ApiSettings = () => {
           )}
         </div>
 
+        {/* ── Webtiv ⇄ Homely background sync ── */}
+        <WebtivHomelySyncCard />
+
+
 
         {homelyDiag && (
           <div className={`mt-3 rounded-lg border p-3 text-xs space-y-2 ${
