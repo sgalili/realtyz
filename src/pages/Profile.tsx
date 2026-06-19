@@ -282,18 +282,32 @@ function PersonalTab() {
               value={fullName}
               onChange={(e) => setFullName(e.target.value)}
               onBlur={() => setEdit('fullName')}
+              placeholder="הזן שם מלא"
               className="text-center text-base font-bold max-w-xs"
             />
           ) : (
-            <button
-              type="button"
-              onClick={() => setEdit('fullName')}
-              className="text-base font-bold hover:text-primary"
-            >
-              {fullName}
-            </button>
+            <div className="flex items-center gap-1.5">
+              <button
+                type="button"
+                onClick={() => setEdit('fullName')}
+                className="text-base font-bold hover:text-primary"
+              >
+                {fullName || 'הזן שם מלא'}
+              </button>
+              <Button
+                type="button"
+                size="icon"
+                variant="ghost"
+                className="h-7 w-7 text-muted-foreground hover:text-primary"
+                onClick={() => setEdit('fullName')}
+                aria-label="עריכת שם מלא"
+              >
+                <Pencil className="h-3.5 w-3.5" />
+              </Button>
+            </div>
           )}
         </div>
+
 
         <ProfileArrayRows rows={emails} setRows={setEmails} icon={Mail} label='דוא"ל' placeholder="user@example.com" />
         <ProfileArrayRows rows={whatsapps} setRows={setWhatsapps} icon={MessageCircle} label="וואטסאפ" placeholder="054-0000000" formatter={formatIsraeliPhone} />
