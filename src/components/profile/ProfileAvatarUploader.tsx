@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { toast } from 'sonner';
 import { Upload, Trash2, User as UserIcon } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -13,11 +13,21 @@ export function ProfileAvatarUploader() {
   const { user } = useAuth();
   const inputRef = useRef<HTMLInputElement>(null);
   const meta = ((user?.user_metadata ?? {}) as Record<string, any>);
-  const [avatarUrl, setAvatarUrl] = useState<string | null>(
-    meta.avatar_url || meta.picture || meta.profile_picture_url || null,
-  );
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [avatarPath, setAvatarPath] = useState<string | null>(meta.avatar_path ?? null);
   const [busy, setBusy] = useState(false);
+
+  useEffect(() => {
+    if (!user?.id) return;
+    setAvatarUrl(null);
+    setAvatarPath(meta.avatar_path ?? null);
+    supabase
+      .from('profiles')
+      .select('avatar_url')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => setAvatarUrl((data as any)?.avatar_url ?? null));
+  }, [user?.id, meta.avatar_path]);
 
   if (!user) return null;
 
