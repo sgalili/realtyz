@@ -98,7 +98,14 @@ Deno.serve(async (req) => {
         ? body.platform.trim().toLowerCase()
         : "facebook";
 
-    type CommentFetchTarget = { fetchPostId: string; nativePostId: string; platform: string; permalinkAliases?: string[] };
+    type CommentFetchTarget = {
+      campaignLogId?: string;
+      fetchPostId: string;
+      nativePostId: string;
+      platform: string;
+      providerMessageId?: string;
+      permalinkAliases?: string[];
+    };
     const targets = new Map<string, CommentFetchTarget>();
 
     // Recursively walk a provider_response blob and pull out every Facebook
@@ -142,7 +149,7 @@ Deno.serve(async (req) => {
     try {
       const { data: campaigns, error: campaignErr } = await admin
         .from("campaign_logs")
-        .select("channel, provider_message_id, provider_response")
+        .select("id, channel, provider_message_id, provider_response")
         .eq("user_id", userId)
         .eq("is_archived", false)
         .order("created_at", { ascending: false })
@@ -176,16 +183,25 @@ Deno.serve(async (req) => {
             postIds.find((p: any) => String(p?.id || "") === nativeId)?.platform ||
             rowChannel,
           ).toLowerCase();
-          targets.set(nativeId, { fetchPostId: topId, nativePostId: nativeId, platform: platform || platformHint, permalinkAliases });
+          targets.set(nativeId, {
+            campaignLogId: String((row as any).id || ""),
+            fetchPostId: topId,
+            nativePostId: nativeId,
+            platform: platform || platformHint,
+            providerMessageId: providerMsgId || undefined,
+            permalinkAliases,
+          });
           matchedFromPosts = true;
         }
 
         // Path B: legacy rows with NO Ayrshare top id.
         if (!matchedFromPosts && providerMsgId && (requested.has(providerMsgId) || permalinkAliases.some((alias) => requested.has(alias)))) {
           targets.set(providerMsgId, {
+            campaignLogId: String((row as any).id || ""),
             fetchPostId: providerMsgId,
             nativePostId: providerMsgId,
             platform: rowChannel || platformHint,
+            providerMessageId: providerMsgId,
             permalinkAliases,
           });
         }
@@ -871,14 +887,18 @@ Deno.serve(async (req) => {
           dbCommentCount,
         );
 
-        // Resolve every known id alias for this post BEFORE the update so we
-        // can also read the previous high-water marks from those same rows.
+        // Resolve the exact campaign row for this native post BEFORE the
+        // update. Never include the whole requestedPostIds batch here: the
+        // feed calls this function with many posts at once, and using the
+        // complete batch made each iteration overwrite every campaign row with
+        // the current post's likes/shares. That is why all collapsed cards kept
+        // showing identical counters.
         const target = targets.get(nativePostId);
         const idAliases = Array.from(new Set([
           nativePostId,
           target?.fetchPostId,
+          target?.providerMessageId,
           ...(target?.permalinkAliases ?? []),
-          ...requestedPostIds,
         ].map((v) => String(v || "").trim()).filter(Boolean)));
 
         // High-water marks from existing rows: Ayrshare's /analytics likeCount
@@ -920,11 +940,16 @@ Deno.serve(async (req) => {
           stored: nativePostId, treeCount, analyticsComments: outer.comments, dbCommentCount,
           providerLikes, prevLikeHigh, final: { comments: liveComments, likes: finalLikes, shares: finalShares },
         });
-        await admin
+        let updateQuery = admin
           .from("campaign_logs")
           .update(patch)
-          .eq("user_id", userId)
-          .in("provider_message_id", idAliases);
+          .eq("user_id", userId);
+        if (target?.campaignLogId) {
+          updateQuery = updateQuery.eq("id", target.campaignLogId);
+        } else {
+          updateQuery = updateQuery.in("provider_message_id", idAliases);
+        }
+        await updateQuery;
       }
     } catch (countErr) {
       console.warn("[ayrshare-comments-fetch] counters sync failed", countErr);
