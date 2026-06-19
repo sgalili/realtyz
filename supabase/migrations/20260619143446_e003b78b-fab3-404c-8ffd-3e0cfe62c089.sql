@@ -1,0 +1,1 @@
+UPDATE public.campaign_logs SET like_count=0, comment_count=0, share_count=0, view_count=0, metrics_updated_at=NULL WHERE like_count=4 AND share_count=16 AND comment_count=1 AND metrics_updated_at='2026-06-18 17:44:25.146+00';
