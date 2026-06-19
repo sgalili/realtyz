@@ -219,8 +219,12 @@ function PersonalTab() {
           city: (data as any).city,
           gender: (data as any).gender,
         } : {};
+        const contactEmails = Array.isArray(contacts?.emails)
+          ? contacts.emails.map((item: any) => (typeof item === 'string' ? item : item?.value)).filter(Boolean)
+          : [];
+        const contactsBelongToUser = contactEmails.length > 0 && !!user.email && contactEmails.includes(user.email);
         if (local) apply(local, serverProfile);
-        else if (contacts && typeof contacts === 'object') apply(contacts, serverProfile);
+        else if (contactsBelongToUser) apply(contacts, serverProfile);
         else apply(serverProfile);
         if (data) {
           if (typeof (data as any).broker_license_number === 'string') {
