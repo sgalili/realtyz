@@ -32,6 +32,19 @@ const WORKSPACE_STORAGE_KEY = 'realtyz-workspace-details';
 const LOGO_STORAGE_KEY = 'realtyz-agency-logo';
 const PROFILE_STORAGE_KEY = 'realtyz-profile-contacts';
 
+const profileStorageKey = (userId: string) => `${PROFILE_STORAGE_KEY}:${userId}`;
+
+function rowList(value: any, fallback: string[] = []): Row[] {
+  const source = Array.isArray(value) && value.length ? value : fallback;
+  const rows = source
+    .map((item: any) => {
+      const raw = typeof item === 'string' ? item : item?.value;
+      return typeof raw === 'string' ? newRow(raw) : null;
+    })
+    .filter(Boolean) as Row[];
+  return rows.length ? rows : [newRow('')];
+}
+
 function formatIsraeliPhone(raw: string): string {
   const digits = raw.replace(/\D/g, '');
   let local = digits;
@@ -163,7 +176,7 @@ function PersonalTab() {
   const [emails, setEmails] = useState<Row[]>([newRow(user?.email ?? '')]);
   const [whatsapps, setWhatsapps] = useState<Row[]>([newRow('')]);
   const [phones, setPhones] = useState<Row[]>([newRow('')]);
-  const [fullName, setFullName] = useState('אודי ויטמן');
+  const [fullName, setFullName] = useState('');
   const [city, setCity] = useState('');
   const [gender, setGender] = useState<string>('');
   const [brokerLicense, setBrokerLicense] = useState<string>('');
@@ -175,31 +188,40 @@ function PersonalTab() {
     if (hydrated || !user) return;
     const meta = (user.user_metadata ?? {}) as Record<string, any>;
     const contacts = meta.profile_contacts ?? null;
-    let loaded = false;
-    const apply = (p: any) => {
-      if (Array.isArray(p.emails) && p.emails.length) setEmails(p.emails);
-      if (Array.isArray(p.whatsapps) && p.whatsapps.length) setWhatsapps(p.whatsapps);
-      if (Array.isArray(p.phones) && p.phones.length) setPhones(p.phones);
+    const userPhone = ((user as any).phone ?? meta.phone_number ?? meta.phone ?? '').toString();
+    const defaultName = meta.full_name || meta.name || user.email || userPhone || '';
+    const apply = (p: any, fallback: any = {}) => {
+      setEmails(rowList(p.emails, [p.email || fallback.email || user.email || ''].filter(Boolean)));
+      setWhatsapps(rowList(p.whatsapps, [p.whatsapp || p.phone || fallback.phone || userPhone].filter(Boolean)));
+      setPhones(rowList(p.phones, [p.phone || fallback.phone || userPhone].filter(Boolean)));
       if (typeof p.fullName === 'string') setFullName(p.fullName);
+      else if (typeof p.full_name === 'string') setFullName(p.full_name);
+      else setFullName(defaultName);
       if (typeof p.city === 'string') setCity(p.city);
       if (typeof p.gender === 'string') setGender(p.gender);
     };
-    if (contacts && typeof contacts === 'object') { apply(contacts); loaded = true; }
-    if (!loaded) {
-      try {
-        const raw = window.localStorage.getItem(PROFILE_STORAGE_KEY);
-        if (raw) apply(JSON.parse(raw));
-      } catch {}
-    }
-    setHydrated(true);
-    // Hydrate broker license from the profiles table (separate column).
     (async () => {
       try {
         const { data } = await supabase
           .from('profiles')
-          .select('broker_license_number, broker_byline')
+          .select('email, full_name, phone, city, gender, broker_license_number, broker_byline')
           .eq('id', user!.id)
           .maybeSingle();
+        let local: any = null;
+        try {
+          const raw = window.localStorage.getItem(profileStorageKey(user.id));
+          if (raw) local = JSON.parse(raw);
+        } catch {}
+        const serverProfile = data ? {
+          email: (data as any).email,
+          full_name: (data as any).full_name,
+          phone: (data as any).phone,
+          city: (data as any).city,
+          gender: (data as any).gender,
+        } : {};
+        if (local) apply(local, serverProfile);
+        else if (contacts && typeof contacts === 'object') apply(contacts, serverProfile);
+        else apply(serverProfile);
         if (data) {
           if (typeof (data as any).broker_license_number === 'string') {
             setBrokerLicense((data as any).broker_license_number ?? '');
@@ -209,6 +231,7 @@ function PersonalTab() {
           }
         }
       } catch { /* ignore */ }
+      setHydrated(true);
     })();
   }, [user, hydrated]);
 
@@ -216,7 +239,7 @@ function PersonalTab() {
 
   const save = async () => {
     const payload = { emails, whatsapps, phones, fullName, city, gender };
-    try { window.localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(payload)); } catch {}
+    try { if (user?.id) window.localStorage.setItem(profileStorageKey(user.id), JSON.stringify(payload)); } catch {}
     try {
       const { error } = await supabase.auth.updateUser({ data: { profile_contacts: payload } });
       if (error) throw error;
