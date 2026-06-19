@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Crown, LogOut, Shield, ShieldCheck, User, Wallet, Repeat } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -16,6 +16,7 @@ import { useAuth } from '@/hooks/useAuth';
 import { useUserRole } from '@/hooks/useUserRole';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { supabase } from '@/integrations/supabase/client';
 import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
 import { cn } from '@/lib/utils';
 
@@ -41,14 +42,27 @@ export function HeaderProfileMenu() {
   const { user, signOut } = useAuth();
   const { isManagingBroker, isSuperAdmin } = useUserRole();
   const { workspaces, openSelector, activeWorkspace } = useWorkspace();
+  const [profileAvatarUrl, setProfileAvatarUrl] = useState<string | null>(null);
 
   const { settings: brand } = useWhiteLabel();
+
+  useEffect(() => {
+    if (!user?.id) {
+      setProfileAvatarUrl(null);
+      return;
+    }
+    supabase
+      .from('profiles')
+      .select('avatar_url')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => setProfileAvatarUrl((data as any)?.avatar_url ?? null));
+  }, [user?.id]);
 
   if (!user) return null;
 
   const meta = (user.user_metadata ?? {}) as Record<string, any>;
-  const avatarUrl: string | null =
-    meta.avatar_url || meta.picture || meta.profile_picture_url || null;
+  const avatarUrl: string | null = profileAvatarUrl;
   const displayName = meta.full_name || meta.name || user.email || (user as any).phone || 'משתמש';
   const initial = displayName.slice(0, 1);
 
