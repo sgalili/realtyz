@@ -98,7 +98,14 @@ Deno.serve(async (req) => {
         ? body.platform.trim().toLowerCase()
         : "facebook";
 
-    type CommentFetchTarget = { fetchPostId: string; nativePostId: string; platform: string; permalinkAliases?: string[] };
+    type CommentFetchTarget = {
+      campaignLogId?: string;
+      fetchPostId: string;
+      nativePostId: string;
+      platform: string;
+      providerMessageId?: string;
+      permalinkAliases?: string[];
+    };
     const targets = new Map<string, CommentFetchTarget>();
 
     // Recursively walk a provider_response blob and pull out every Facebook
@@ -142,7 +149,7 @@ Deno.serve(async (req) => {
     try {
       const { data: campaigns, error: campaignErr } = await admin
         .from("campaign_logs")
-        .select("channel, provider_message_id, provider_response")
+        .select("id, channel, provider_message_id, provider_response")
         .eq("user_id", userId)
         .eq("is_archived", false)
         .order("created_at", { ascending: false })
@@ -176,16 +183,25 @@ Deno.serve(async (req) => {
             postIds.find((p: any) => String(p?.id || "") === nativeId)?.platform ||
             rowChannel,
           ).toLowerCase();
-          targets.set(nativeId, { fetchPostId: topId, nativePostId: nativeId, platform: platform || platformHint, permalinkAliases });
+          targets.set(nativeId, {
+            campaignLogId: String((row as any).id || ""),
+            fetchPostId: topId,
+            nativePostId: nativeId,
+            platform: platform || platformHint,
+            providerMessageId: providerMsgId || undefined,
+            permalinkAliases,
+          });
           matchedFromPosts = true;
         }
 
         // Path B: legacy rows with NO Ayrshare top id.
         if (!matchedFromPosts && providerMsgId && (requested.has(providerMsgId) || permalinkAliases.some((alias) => requested.has(alias)))) {
           targets.set(providerMsgId, {
+            campaignLogId: String((row as any).id || ""),
             fetchPostId: providerMsgId,
             nativePostId: providerMsgId,
             platform: rowChannel || platformHint,
+            providerMessageId: providerMsgId,
             permalinkAliases,
           });
         }
