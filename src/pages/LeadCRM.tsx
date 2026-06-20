@@ -207,6 +207,7 @@ const LeadCRM = () => {
   }, [compactMode]);
   const freemium = useFreemiumStatus();
   const [selectedVoterId, setSelectedVoterId] = useState<string | null>(null);
+  const [statusInfoOpen, setStatusInfoOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [newLeadOpen, setNewLeadOpen] = useState(false);
