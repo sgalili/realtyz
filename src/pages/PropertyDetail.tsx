@@ -261,7 +261,7 @@ export default function PropertyDetail() {
               <Spec icon={Home} label="סוג נכס" value={propertyTypeHe} />
               <Spec icon={MapPin} label="עיר" value={property.city || '—'} />
               <Spec icon={MapPin} label="שכונה" value={neighborhood || '—'} />
-              <Spec icon={Building2} label="מצב" value={transactionHe} />
+              
 
               {/* Amenities — merged into the same grid */}
               {amenities && amenities.parking > 0 && (
