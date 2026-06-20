@@ -1139,7 +1139,7 @@ const LeadCRM = () => {
                   <TableHead className="w-auto font-semibold text-xs text-right">טלפון</TableHead>
                   <TableHead className="w-auto font-semibold text-xs">עיר</TableHead>
                   <TableHead className="w-auto text-center font-semibold text-xs">סוג</TableHead>
-                  <TableHead className="w-auto text-center font-semibold text-xs">שלב מתעניין</TableHead>
+                  <TableHead className="w-auto text-center font-semibold text-xs">שלב</TableHead>
                   {extraColumns.map((col) => (
                     <TableHead key={`h-${col}`} className="w-auto font-semibold text-xs text-center">{col}</TableHead>
                   ))}
