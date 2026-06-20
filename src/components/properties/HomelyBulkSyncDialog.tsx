@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { RefreshCw, MapPin, Phone, Mail, Home, SlidersHorizontal, Loader2 } from 'lucide-react';
+import { RefreshCw, MapPin, Phone, Mail, Home, SlidersHorizontal, Loader2, CheckCircle2, Building2, Users, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 // 60s client-side debounce shared across both fetch actions to protect Homely.
