@@ -120,31 +120,12 @@ export default function Properties() {
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [homelyBulkOpen, setHomelyBulkOpen] = useState(false);
-  const [homelyRefreshing, setHomelyRefreshing] = useState(false);
   const queryClient = useQueryClient();
   const refreshListings = () => {
-    setSourceTab('mine');
+    setSourceTab('all');
     queryClient.invalidateQueries({ queryKey: ['properties-search'] });
   };
 
-  const triggerWebtivApiFetch = async () => {
-    const { error } = await supabase.functions.invoke('homely-search', { body: { hydrate: true } });
-    if (error) throw error;
-  };
-
-  const handleHomelyRefresh = async () => {
-    setHomelyRefreshing(true);
-    try {
-      await triggerWebtivApiFetch();
-      await queryClient.invalidateQueries({ queryKey: ['properties-search'] });
-      toast.success('הנכסים מ-Homely רוענו');
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err?.message ?? 'רענון נכסי Homely נכשל');
-    } finally {
-      setHomelyRefreshing(false);
-    }
-  };
 
   // Listen for hero-emitted add events (the '+' button lives in PageHero now).
   useEffect(() => {
