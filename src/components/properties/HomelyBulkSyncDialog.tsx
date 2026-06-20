@@ -40,12 +40,14 @@ type HomelyContact = {
   raw: unknown;
 };
 
-export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
+export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'properties' }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onImported?: () => void;
+  mode?: 'properties' | 'contacts';
 }) {
-  const [tab, setTab] = useState<'properties' | 'contacts'>('properties');
+  const [tab, setTab] = useState<'properties' | 'contacts'>(mode);
+  useEffect(() => { setTab(mode); }, [mode, open]);
   const [loadingProps, setLoadingProps] = useState(false);
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [properties, setProperties] = useState<HomelyProperty[]>([]);
