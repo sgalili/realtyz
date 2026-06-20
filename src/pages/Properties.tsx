@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Send, BedDouble, Ruler, MapPin, Building2, FileSpreadsheet, LayoutGrid, SlidersHorizontal, Trash2, Pencil, RefreshCw } from 'lucide-react';
+import { Send, BedDouble, Ruler, MapPin, Building2, FileSpreadsheet, LayoutGrid, SlidersHorizontal, Trash2, Pencil } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -90,17 +90,19 @@ function dedupeProperties<T extends Partial<HomelyProperty> & { address?: string
   });
 }
 
-type SourceTab = 'mine' | 'homely' | 'yad2' | 'madlan';
+type SourceTab = 'all' | 'mine' | 'homely' | 'yad2' | 'madlan';
 const SOURCE_LABELS: Record<SourceTab, string> = {
+  all: 'הכל',
   mine: 'הנכסים שלי',
   homely: 'הומלי',
   yad2: 'יד-2',
   madlan: 'מדל״ן',
 };
 
+
 export default function Properties() {
   const { serviceAreas, coveredCities, isConfigured } = useServiceAreas();
-  const [sourceTab, setSourceTab] = useState<SourceTab>('mine');
+  const [sourceTab, setSourceTab] = useState<SourceTab>('all');
   const [listingType, setListingType] = useState<ListingType | 'all'>('all');
   const [city, setCity] = useState<string>('כל הערים');
   const [propertyType, setPropertyType] = useState<PropertyType | 'all'>('all');
@@ -118,31 +120,12 @@ export default function Properties() {
   const [addOpen, setAddOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
   const [homelyBulkOpen, setHomelyBulkOpen] = useState(false);
-  const [homelyRefreshing, setHomelyRefreshing] = useState(false);
   const queryClient = useQueryClient();
   const refreshListings = () => {
-    setSourceTab('mine');
+    setSourceTab('all');
     queryClient.invalidateQueries({ queryKey: ['properties-search'] });
   };
 
-  const triggerWebtivApiFetch = async () => {
-    const { error } = await supabase.functions.invoke('homely-search', { body: { hydrate: true } });
-    if (error) throw error;
-  };
-
-  const handleHomelyRefresh = async () => {
-    setHomelyRefreshing(true);
-    try {
-      await triggerWebtivApiFetch();
-      await queryClient.invalidateQueries({ queryKey: ['properties-search'] });
-      toast.success('הנכסים מ-Homely רוענו');
-    } catch (err: any) {
-      console.error(err);
-      toast.error(err?.message ?? 'רענון נכסי Homely נכשל');
-    } finally {
-      setHomelyRefreshing(false);
-    }
-  };
 
   // Listen for hero-emitted add events (the '+' button lives in PageHero now).
   useEffect(() => {
@@ -166,7 +149,7 @@ export default function Properties() {
     queryKey: ['properties-search', sourceTab, { city, rooms, propertyType, priceRange, areaMin }],
     queryFn: async () => {
       try {
-        if (sourceTab === 'mine' || sourceTab === 'homely') {
+        if (sourceTab === 'all' || sourceTab === 'mine' || sourceTab === 'homely') {
           const rows: any[] = [];
           const pageSize = 1000;
           for (let from = 0; ; from += pageSize) {
@@ -177,22 +160,50 @@ export default function Properties() {
               .eq('is_published', true)
               .order('created_at', { ascending: false })
               .range(from, from + pageSize - 1);
-            query = sourceTab === 'homely' ? query.eq('source', 'homely') : query.neq('source', 'homely');
+            if (sourceTab === 'homely') query = query.eq('source', 'homely');
             const { data, error } = await query;
             if (error) throw error;
             rows.push(...(data ?? []));
             if ((data ?? []).length < pageSize) break;
           }
+          // For "mine": exclude any local listing whose dedupe key already
+          // exists on a homely-sourced listing, so the broker's own grid
+          // shows only the unique non-Homely properties.
+          let scoped = rows;
+          if (sourceTab === 'mine') {
+            const homelyKeys = new Set<string>();
+            for (const r of rows) {
+              if (r.source !== 'homely') continue;
+              homelyKeys.add(propertyDedupeKey({
+                address: r.address ?? r.neighborhood ?? '',
+                city: r.city ?? '',
+                title: r.property_title ?? '',
+                rooms: Number(r.rooms ?? 0),
+                price: Number(r.asking_price ?? 0),
+              }));
+            }
+            scoped = rows.filter((r) => {
+              if (r.source === 'homely') return false;
+              const k = propertyDedupeKey({
+                address: r.address ?? r.neighborhood ?? '',
+                city: r.city ?? '',
+                title: r.property_title ?? '',
+                rooms: Number(r.rooms ?? 0),
+                price: Number(r.asking_price ?? 0),
+              });
+              return !homelyKeys.has(k);
+            });
+          }
           return {
             connected: true,
-            results: dedupeProperties(rows.map((row: any) => {
+            results: dedupeProperties(scoped.map((row: any) => {
               const meta = row.source_metadata && typeof row.source_metadata === 'object' ? row.source_metadata : {};
               const metaPhotos = Array.isArray(meta.photos)
                 ? meta.photos.filter((p: any) => typeof p === 'string')
                 : [];
               return {
                 id: row.id,
-                source: sourceTab === 'homely' ? 'homely' : 'mine',
+                source: row.source === 'homely' ? 'homely' : 'mine',
                 title: row.property_title || 'נכס',
                 description: row.description || '',
                 price: Number(row.asking_price ?? 0),
@@ -212,6 +223,7 @@ export default function Properties() {
             })),
           };
         }
+
 
         const { data, error } = await supabase.functions.invoke(fnName, {
           body: {
@@ -340,28 +352,16 @@ export default function Properties() {
             </button>
           ))}
           {sourceTab === 'homely' && (
-            <>
-              <button
-                type="button"
-                onClick={handleHomelyRefresh}
-                disabled={isLoading || homelyRefreshing}
-                className="ml-1 inline-flex items-center gap-1 px-2.5 py-2 text-xs font-semibold rounded-lg text-muted-foreground hover:text-foreground hover:bg-primary/5 transition-colors disabled:opacity-50"
-                title="רענון נכסים מ-Homely"
-                aria-label="רענון נכסים מ-Homely"
-              >
-                <RefreshCw className={`h-3.5 w-3.5 ${homelyRefreshing ? 'animate-spin' : ''}`} />
-                רענן
-              </button>
-              <button
-                type="button"
-                onClick={() => setHomelyBulkOpen(true)}
-                className="ml-1 inline-flex items-center gap-1 px-2.5 py-2 text-xs font-semibold rounded-lg text-primary hover:bg-primary/10 transition-colors"
-                title="סנכרון מלא מהומלי — נכסים ואנשי קשר"
-              >
-                סנכרון מלא מהומלי
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={() => setHomelyBulkOpen(true)}
+              className="ml-1 inline-flex items-center gap-1 px-2.5 py-2 text-xs font-semibold rounded-lg text-primary hover:bg-primary/10 transition-colors"
+              title="סנכרון מלא מהומלי — נכסים ואנשי קשר"
+            >
+              סנכרון מלא מהומלי
+            </button>
           )}
+
         </div>
       </div>
 
@@ -761,8 +761,9 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
                   aria-label="בחר הכל"
                 />
               </th>
-              <SortableTh sortKey="listing_type" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">סוג עסקה</SortableTh>
               <SortableTh sortKey="title" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">כותרת</SortableTh>
+              <SortableTh sortKey="listing_type" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">סוג עסקה</SortableTh>
+
               <SortableTh sortKey="price" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">מחיר</SortableTh>
               <SortableTh sortKey="city" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">עיר</SortableTh>
               <SortableTh sortKey="rooms" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">חדרים</SortableTh>
@@ -788,14 +789,15 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
                       />
                     ) : null}
                   </td>
+                  <td className="px-2 py-1.5 max-w-[220px] truncate">
+                    <Link to={`/properties/${p.id}`} className="hover:underline">{p.title}</Link>
+                  </td>
                   <td className="px-2 py-1.5 whitespace-nowrap">
                     <Badge className={`text-[10px] ${isRent ? 'bg-[#0b3982] text-white' : 'bg-primary text-primary-foreground'}`}>
                       {LISTING_TYPE_LABELS_HE[p.listing_type ?? 'sale']}
                     </Badge>
                   </td>
-                  <td className="px-2 py-1.5 max-w-[220px] truncate">
-                    <Link to={`/properties/${p.id}`} className="hover:underline">{p.title}</Link>
-                  </td>
+
                   <td className="px-2 py-1.5 whitespace-nowrap font-semibold text-success">
                     {p.price ? formatPrice(p.price) : '—'}{isRent && p.price ? <span className="text-[10px] text-muted-foreground">/ח</span> : null}
                   </td>
