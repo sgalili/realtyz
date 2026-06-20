@@ -1222,7 +1222,9 @@ const LeadCRM = () => {
                           </div>
                         </TableCell>
                         <TableCell className="text-sm font-mono text-right" dir="ltr" onClick={(e) => { if (waHref) e.stopPropagation(); }}>
-                          {waHref ? (
+                          {!isValidIsraeliPhone(lead.phone_number) ? (
+                            <span className="text-muted-foreground">—</span>
+                          ) : waHref ? (
                             <a
                               href={waHref}
                               target="_blank"
