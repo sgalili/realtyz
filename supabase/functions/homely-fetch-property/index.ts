@@ -298,8 +298,22 @@ Deno.serve(async (req) => {
     const listing_id = (body as any)?.listing_id;
 
     if (action === "importOutJson") {
-      const properties = Array.isArray((body as any)?.properties) ? (body as any).properties : [];
-      const contacts = Array.isArray((body as any)?.contacts) ? (body as any).contacts : [];
+      const propertyIds = new Set(((body as any)?.propertyIds ?? []).map((v: unknown) => String(v)));
+      const contactIds = new Set(((body as any)?.contactIds ?? []).map((v: unknown) => String(v)));
+      let properties = Array.isArray((body as any)?.properties) ? (body as any).properties : [];
+      let contacts = Array.isArray((body as any)?.contacts) ? (body as any).contacts : [];
+      const SELLERS_GUID = Deno.env.get("HOMELY_SELLERS_GUID") || "32dc79a4-88ba-49a4-816e-f1fc43024c2f";
+      const BUYERS_GUID  = Deno.env.get("HOMELY_BUYERS_GUID")  || "b6bb7f44-571b-4551-8de9-e075b8a89128";
+      if (propertyIds.size && properties.length === 0) {
+        const r = await getJson(`${WEBTIV_BASE}/AutomaionJson/outJson.ashx?guid=${SELLERS_GUID}`);
+        if (r.status < 200 || r.status >= 300) throw new Error(`properties_stream_http_${r.status}`);
+        properties = asArray(r.data).map(mapStreamProperty).filter((p) => propertyIds.has(String(p.homely_id)));
+      }
+      if (contactIds.size && contacts.length === 0) {
+        const r = await getJson(`${WEBTIV_BASE}/AutomaionJson/outJson.ashx?guid=${BUYERS_GUID}`);
+        if (r.status < 200 || r.status >= 300) throw new Error(`contacts_stream_http_${r.status}`);
+        contacts = asArray(r.data).map(mapStreamContact).filter((c) => contactIds.has(String(c.homely_id)));
+      }
       let propsCount = 0;
       let contactsCount = 0;
 
