@@ -700,7 +700,7 @@ const ApiSettings = () => {
       // Load Homely broker credentials (login + webhook)
       const { data: cred } = await supabaseClient
         .from('homely_broker_credentials' as any)
-        .select('homely_username, homely_agency, connection_status, last_verified_at, webhook_token, homely_password_encrypted')
+        .select('homely_username, homely_agency, connection_status, last_verified_at, webhook_token, homely_password_encrypted, homely_feed_url')
         .eq('user_id', authUser.id)
         .maybeSingle();
       if (cred) {
@@ -710,6 +710,7 @@ const ApiSettings = () => {
         setHomelyLastVerified((cred as any).last_verified_at || null);
         setHomelyWebhookToken((cred as any).webhook_token || '');
         setHomelyHasPassword(Boolean((cred as any).homely_password_encrypted));
+        setHomelyFeedUrl((cred as any).homely_feed_url || '');
       }
     })();
   }, [authUser]);
