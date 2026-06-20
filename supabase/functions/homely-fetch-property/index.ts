@@ -334,7 +334,7 @@ Deno.serve(async (req) => {
             synced_at: new Date().toISOString(),
           },
         };
-        const { error } = await admin.from("listings").upsert(row as any, { onConflict: "slug" });
+        const { error } = await admin.from("listings").upsert(row as any, { onConflict: "source,external_id" });
         if (error) throw new Error(`listings#${homelyId}: ${error.message}`);
         propsCount++;
       }
