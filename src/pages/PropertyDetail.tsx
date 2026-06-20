@@ -199,40 +199,22 @@ export default function PropertyDetail() {
 
   return (
     <div className="p-3 sm:p-6 space-y-6" dir="rtl">
-      {/* Floating back arrow — positioned on opposite edge of the burger/sidebar trigger (LTR-left in RTL layout) */}
-      <div className="flex items-center">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="חזרה לקטלוג הנכסים"
-          onClick={() => navigate('/properties')}
-          className="h-9 w-9 rounded-full text-foreground hover:bg-foreground/10"
-        >
-          <ArrowRight className="h-5 w-5 rotate-180" />
-        </Button>
-      </div>
-
-      {/* Headline + price */}
+      {/* Headline + price (back button lives in the hero, opposite the burger) */}
       <header className="space-y-2">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
           {headline || property.title}
         </h1>
 
-        <div className="flex items-end justify-between gap-4 flex-wrap">
-          <div className="text-3xl font-extrabold text-success tabular-nums">
+        <div className="flex items-baseline gap-3 flex-wrap">
+          <span className="text-3xl font-extrabold text-success tabular-nums">
             {formatPrice(property.price)}
             {isRent && <span className="text-base font-normal text-muted-foreground"> /חודש</span>}
-            {property.size_sqm ? (
-              <p className="text-xs text-muted-foreground mt-1 font-normal">
-                {formatPrice(Math.round(property.price / property.size_sqm))} למ"ר
-              </p>
-            ) : null}
-          </div>
-          <span
-            className={`text-lg font-bold ${isRent ? 'text-amber-600' : 'text-primary'}`}
-          >
-            {transactionHe}
           </span>
+          {property.size_sqm ? (
+            <span className="text-xs text-muted-foreground font-normal">
+              {formatPrice(Math.round(property.price / property.size_sqm))} למ"ר
+            </span>
+          ) : null}
         </div>
       </header>
 
