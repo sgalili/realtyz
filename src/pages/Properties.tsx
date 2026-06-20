@@ -808,14 +808,15 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
                       />
                     ) : null}
                   </td>
+                  <td className="px-2 py-1.5 max-w-[220px] truncate">
+                    <Link to={`/properties/${p.id}`} className="hover:underline">{p.title}</Link>
+                  </td>
                   <td className="px-2 py-1.5 whitespace-nowrap">
                     <Badge className={`text-[10px] ${isRent ? 'bg-[#0b3982] text-white' : 'bg-primary text-primary-foreground'}`}>
                       {LISTING_TYPE_LABELS_HE[p.listing_type ?? 'sale']}
                     </Badge>
                   </td>
-                  <td className="px-2 py-1.5 max-w-[220px] truncate">
-                    <Link to={`/properties/${p.id}`} className="hover:underline">{p.title}</Link>
-                  </td>
+
                   <td className="px-2 py-1.5 whitespace-nowrap font-semibold text-success">
                     {p.price ? formatPrice(p.price) : '—'}{isRent && p.price ? <span className="text-[10px] text-muted-foreground">/ח</span> : null}
                   </td>
