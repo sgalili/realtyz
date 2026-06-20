@@ -456,6 +456,7 @@ const ApiSettings = () => {
   const [homelyConnStatus, setHomelyConnStatus] = useState<string>('not_configured');
   const [homelyLastVerified, setHomelyLastVerified] = useState<string | null>(null);
   const [homelyWebhookToken, setHomelyWebhookToken] = useState<string>('');
+  const [homelyFeedUrl, setHomelyFeedUrl] = useState<string>('');
   // Diagnostic snapshot from the last "Test Connection" run.
   const [homelyDiag, setHomelyDiag] = useState<null | {
     ok: boolean;
