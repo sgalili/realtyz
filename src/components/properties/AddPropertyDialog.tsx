@@ -43,18 +43,57 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: Props) {
   const [listingType, setListingType] = useState<'sale' | 'rent'>('sale');
   const [price, setPrice] = useState('');
   const [city, setCity] = useState('');
+  const [neighborhood, setNeighborhood] = useState('');
   const [propertyType, setPropertyType] = useState<PropertyType>('apartment');
   const [rooms, setRooms] = useState('');
   const [sqm, setSqm] = useState('');
+  const [floor, setFloor] = useState('');
+  const [description, setDescription] = useState('');
+  const [aiText, setAiText] = useState('');
+  const [hydrating, setHydrating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const reset = () => {
     setListingType('sale');
     setPrice('');
     setCity('');
+    setNeighborhood('');
     setPropertyType('apartment');
     setRooms('');
     setSqm('');
+    setFloor('');
+    setDescription('');
+    setAiText('');
+  };
+
+  const handleHydrate = async () => {
+    if (aiText.trim().length < 10) {
+      toast.error('הדבק טקסט ארוך יותר מהמודעה');
+      return;
+    }
+    setHydrating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('parse-listing-text', {
+        body: { text: aiText },
+      });
+      if (error) throw error;
+      if (!data?.ok || !data?.data) throw new Error(data?.error || 'parse_failed');
+      const d = data.data;
+      if (d.listing_type) setListingType(d.listing_type);
+      if (d.property_type) setPropertyType(d.property_type);
+      if (d.city) setCity(d.city);
+      if (d.neighborhood) setNeighborhood(d.neighborhood);
+      if (d.rooms != null) setRooms(String(d.rooms));
+      if (d.price != null) setPrice(String(d.price));
+      if (d.sqm != null) setSqm(String(d.sqm));
+      if (d.floor != null) setFloor(String(d.floor));
+      if (d.description) setDescription(d.description);
+      toast.success('הפרטים חולצו בהצלחה — סקרו ושמרו');
+    } catch (e: any) {
+      toast.error(`שגיאה בחילוץ: ${e.message ?? e}`);
+    } finally {
+      setHydrating(false);
+    }
   };
 
   const handleSubmit = async () => {
