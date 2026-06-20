@@ -383,15 +383,13 @@ export default function PropertyDetail() {
       {/* Gallery + sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-3">
-          <Card className="overflow-hidden">
-            <div className="aspect-[16/10] bg-muted relative">
-              {main ? (
+          {main && (
+            <Card className="overflow-hidden">
+              <div className="aspect-[16/10] bg-muted relative">
                 <img src={main} alt={dynamicHeadline} className="h-full w-full object-cover" />
-              ) : (
-                <div className="h-full w-full bg-slate-100" />
-              )}
-            </div>
-          </Card>
+              </div>
+            </Card>
+          )}
           {photos.length > 1 && (
             <div className="flex gap-2 overflow-x-auto pb-1">
               {photos.map((p, i) => (
