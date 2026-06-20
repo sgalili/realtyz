@@ -320,19 +320,20 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
                           </div>
                         )}
                       </div>
-                      <div className="flex-1 min-w-0 text-right">
-                        <div className="flex items-center gap-2 justify-end flex-wrap">
-                          {mediaCount > 0 && <Badge variant="secondary" className="text-[10px]">{mediaCount} קבצים</Badge>}
+                      <div dir="rtl" className="flex-1 min-w-0 text-right">
+                        <div dir="rtl" className="flex items-center gap-2 justify-start flex-wrap text-right">
+                          <h4 className="font-semibold text-xs sm:text-sm truncate text-right">{p.title || p.address || 'ללא כותרת'}</h4>
                           <Badge variant="outline" className="text-[10px]">#{p.homely_id}</Badge>
-                          <h4 className="font-semibold text-xs sm:text-sm truncate">{p.title || p.address || 'ללא כותרת'}</h4>
+                          {mediaCount > 0 && <Badge variant="secondary" className="text-[10px]">{mediaCount} קבצים</Badge>}
                         </div>
-                        <div className="text-[11px] sm:text-xs text-muted-foreground flex items-center gap-2 sm:gap-3 justify-end mt-1 flex-wrap break-words">
+                        <div dir="rtl" className="text-[11px] sm:text-xs text-muted-foreground flex items-center gap-2 sm:gap-3 justify-start mt-1 flex-wrap break-words text-right">
                           {p.city && (<span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{p.city}{p.address ? ` · ${p.address}` : ''}</span>)}
                           {p.rooms ? <span>{p.rooms} חד׳</span> : null}
                           {p.sqm ? <span>{p.sqm} מ״ר</span> : null}
-                          {p.price ? <span className="font-semibold text-foreground">₪{p.price.toLocaleString('he-IL')}</span> : null}
+                          {p.price ? <span dir="rtl" className="font-semibold text-foreground">₪{p.price.toLocaleString('he-IL')}</span> : null}
                         </div>
                       </div>
+
                     </label>
                   );
                 })
