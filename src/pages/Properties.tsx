@@ -691,6 +691,18 @@ function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare
             </Button>
           </div>
         </div>
+
+        {property.url ? (
+          <a
+            href={property.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 text-xs text-primary hover:underline inline-flex items-center gap-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            🔗 קישור למקור המודעה
+          </a>
+        ) : null}
       </div>
     </Card>
   );
