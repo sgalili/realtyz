@@ -900,6 +900,9 @@ const LeadCRM = () => {
 
       toast.success(`ייבוא הושלם: ${totalInserted.toLocaleString('he-IL')} רשומות נשמרו במאגר`);
 
+      // Background Green API avatar fetch for the freshly imported rows.
+      supabase.functions.invoke('fetch-wa-avatars', { body: { limit: Math.min(totalInserted + 50, 2000) } }).catch(() => {});
+
       const n8nResult = await sendToN8n('contacts_synced', { imported_count: totalInserted, phone_numbers: rows.map((r) => r.phone_number) });
       if (n8nResult.ok) toast.success('רשימות התפוצה עודכנו');
       else if (!n8nResult.skipped) toast.warning('הייבוא הצליח אך סנכרון n8n נכשל');
