@@ -253,6 +253,22 @@ function absolutize(u: string, base: string): string {
 function cleanUrl(u: string): string {
   return String(u).replace(/\\\//g, "/").replace(/&amp;/g, "&").replace(/[.,;:]+$/g, "").trim();
 }
+function extractAggressivePhotos(raw: string): string[] {
+  const normalized = String(raw).replace(/\\\//g, "/").replace(/&amp;/g, "&");
+  const imageRegex = /(https?:\/\/[^\s"'<>]+?\.(?:jpg|jpeg|png|webp|gif)[^\s"'<>]*|https:\/\/img\.yad2\.co\.il\/[^\s"'<>]+)/gi;
+  return dedupe((normalized.match(imageRegex) || []).map(cleanUrl))
+    .filter((u) => /^https?:\/\//i.test(u))
+    .filter((u) => !/logo|sprite|icon|favicon|placeholder/i.test(u));
+}
+function extractAllUrls(raw: string): string[] {
+  const normalized = String(raw).replace(/\\\//g, "/").replace(/&amp;/g, "&");
+  const urlRegex = /(https?:\/\/(?:www\.)?[-a-zA-Z0-9@:%._\+~#=]{1,256}\.[a-zA-Z0-9()]{1,6}\b(?:[-a-zA-Z0-9()@:%_\+.~#?&//=]*))/gi;
+  return dedupe((normalized.match(urlRegex) || []).map(cleanUrl));
+}
+function extractPrimaryUrl(raw: string): string | null {
+  const urls = extractAllUrls(raw);
+  return urls.find((u) => /yad2|madlan/i.test(u)) || urls[0] || null;
+}
 function extractSourceUrl(raw: string): string | null {
   const normalized = String(raw).replace(/\\\//g, "/").replace(/&amp;/g, "&").trim();
   const preferred = normalized.match(/https?:\/\/(?:www\.)?(?:yad2|madlan)\.co\.il\/[^\s"'<>)\]}{]+/i)?.[0];
