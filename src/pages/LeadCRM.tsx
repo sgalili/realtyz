@@ -21,7 +21,8 @@ import {
   ArrowUpRight, ArrowDownLeft, Upload, FileSpreadsheet, AlertTriangle,
   Users, Download, Megaphone, Trash2, X, Sparkles, Eye, SlidersHorizontal,
   Heart, MessageCircle, UserPlus, Bot, Map, Smile, Meh, Frown,
-  Wallet, Compass, Radio, Target, Home as HomeIcon, Phone as PhoneIcon, Mail
+  Wallet, Compass, Radio, Target, Home as HomeIcon, Phone as PhoneIcon, Mail,
+  UploadCloud, Loader2
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
