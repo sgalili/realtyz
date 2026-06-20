@@ -419,7 +419,8 @@ serve(async (req) => {
           if (uid) {
             const [listingsRes, leadsRes, leadsCount, listingsCount] = await Promise.all([
               userClient.from("listings")
-                .select("id, property_title, asking_price, features, description, is_published, created_at")
+                .select("id, property_title, asking_price, features, description, office_notes, is_published, created_at")
+
                 .eq("user_id", uid)
                 .order("created_at", { ascending: false })
                 .limit(25),
