@@ -297,7 +297,7 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
           </TabsContent>
 
           <TabsContent value="contacts" className="mt-3 flex-1 min-h-0 data-[state=active]:flex flex-col">
-            <div dir="rtl" className="flex-1 min-h-0 overflow-y-auto space-y-2 pl-1">
+            <div dir="rtl" className="flex-1 min-h-0 overflow-y-auto space-y-2 pe-1">
               {loadingContacts ? (
                 Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)
               ) : filteredContacts.length === 0 ? (
@@ -311,21 +311,21 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
                     <label
                       key={c.homely_id}
                       dir="rtl"
-                      className={`flex items-start gap-2 sm:gap-3 rounded-lg border p-2 sm:p-3 cursor-pointer transition-colors text-right ${checked ? 'border-primary bg-primary/5' : 'hover:bg-muted/40'}`}
+                      className={`flex flex-row items-start gap-2 sm:gap-3 rounded-lg border p-2 sm:p-3 cursor-pointer transition-colors text-right ${checked ? 'border-primary bg-primary/5' : 'hover:bg-muted/40'}`}
                     >
                       <Checkbox checked={checked} onCheckedChange={() => toggle(pickedContacts, c.homely_id, setPickedContacts)} className="mt-1 shrink-0" />
-                      <div className="flex-1 min-w-0 text-right">
-                        <div className="flex items-center gap-2 justify-start flex-wrap text-right">
+                      <div className="flex-1 min-w-0 text-right" dir="rtl">
+                        <div dir="rtl" className="flex flex-row items-center gap-2 flex-wrap text-right">
+                          <h4 className="font-semibold text-xs sm:text-sm truncate text-right">{c.full_name || 'ללא שם'}</h4>
                           <Badge variant="outline" className="text-[10px]">#{c.homely_id}</Badge>
-                          <h4 className="font-semibold text-xs sm:text-sm truncate">{c.full_name || 'ללא שם'}</h4>
                         </div>
-                        <div className="text-[11px] sm:text-xs text-muted-foreground flex items-center gap-2 sm:gap-3 justify-start mt-1 flex-wrap break-all text-right">
-
+                        <div dir="rtl" className="text-[11px] sm:text-xs text-muted-foreground flex flex-row items-center gap-2 sm:gap-3 mt-1 flex-wrap break-all text-right">
+                          {c.city && (<span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{c.city}</span>)}
                           {c.phone && (<span className="inline-flex items-center gap-1" dir="ltr"><Phone className="h-3 w-3" />{c.phone}</span>)}
                           {c.email && (<span className="inline-flex items-center gap-1" dir="ltr"><Mail className="h-3 w-3" />{c.email}</span>)}
-                          {c.city && (<span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{c.city}</span>)}
                         </div>
                       </div>
+
                     </label>
                   );
                 })
