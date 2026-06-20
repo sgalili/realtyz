@@ -156,9 +156,13 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
         sqm: sqm ? Number(sqm) : null,
         floor: floor ? Number(floor) : null,
         status: 'live',
-        source: 'manual',
+        source: sourceUrl.includes('yad2') ? 'yad2' : sourceUrl.includes('madlan') ? 'madlan' : 'manual',
+        source_url: sourceUrl || null,
+        source_metadata: { photos, ...features2 },
+        parking: features2.parking != null ? features2.parking > 0 : null,
+        elevator: features2.elevator ?? null,
         is_published: true,
-        features: [{ listing_type: listingType, property_type: propertyType }],
+        features: [{ listing_type: listingType, property_type: propertyType, ...features2 }],
       });
       if (error) throw error;
       toast.success('הנכס נוסף בהצלחה');
