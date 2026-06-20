@@ -1,15 +1,17 @@
-import { useState } from 'react';
-import { Link, useParams, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Skeleton } from '@/components/ui/skeleton';
+import { toast } from 'sonner';
 import {
-  BedDouble, Ruler, MapPin, Building2, ArrowRight, Phone, Mail,
+  BedDouble, Ruler, MapPin, ArrowRight, Phone, Mail,
   Calendar, Layers, Send, Home, User, Receipt,
-  Car, ArrowUpCircle, Wind, Shield, Sun, ExternalLink,
+  Car, ArrowUpCircle, Wind, Shield, Sun, ExternalLink, Pencil, Save, X,
 } from 'lucide-react';
 import {
   PROPERTY_TYPE_LABELS_HE,
@@ -29,35 +31,9 @@ const META_LABELS: Record<string, string> = {
   arnona: 'ארנונה',
   vaad_bayit: 'ועד בית',
   deposit: 'פיקדון',
-  total_floors: 'סה"כ קומות בבניין',
-  year_built: 'שנת בנייה',
-  entry_date: 'תאריך כניסה',
-  furnished: 'ריהוט',
-  agent: 'סוכן',
-  agent_serial: 'מספר סוכן',
-  agent_phone: 'טלפון סוכן',
-  owner_name: 'בעלים',
-  owner_phone: 'טלפון בעלים',
-  source_pdf: 'מקור (קובץ)',
-  last_published: 'פרסום אחרון',
-  last_updated: 'עדכון אחרון',
-  exclusivity_until: 'בלעדיות עד',
 };
 
 type JsonRecord = Record<string, unknown>;
-
-type DirectListing = JsonRecord & {
-  title: string;
-  price: number;
-  property_title?: string | null;
-  source_metadata?: JsonRecord | null;
-  images?: unknown[];
-  photos?: unknown[];
-  image?: string;
-  image_url?: string;
-  neighborhood?: string | null;
-  city?: string | null;
-};
 
 function isRecord(value: unknown): value is JsonRecord {
   return !!value && typeof value === 'object' && !Array.isArray(value);
@@ -83,16 +59,41 @@ function formatMetaValue(key: string, value: unknown): string {
   return String(value);
 }
 
+const PROPERTY_TYPE_OPTIONS: PropertyType[] = [
+  'apartment', 'penthouse', 'garden_apt', 'duplex', 'house', 'cottage', 'studio', 'commercial', 'land', 'other'
+] as PropertyType[];
+
+type EditableFields = {
+  city: string;
+  neighborhood: string;
+  address: string;
+  rooms: string;
+  sqm: string;
+  floor: string;
+  total_floors: string;
+  year_built: string;
+  property_type: string;
+  price: string;
+  vaad_bayit: string;
+  arnona_bimonthly: string;
+  payments: string;
+  entry_date: string;
+  description: string;
+};
+
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const qc = useQueryClient();
   const [activePhoto, setActivePhoto] = useState(0);
   const [shareOpen, setShareOpen] = useState(false);
+  const [editMode, setEditMode] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [form, setForm] = useState<EditableFields | null>(null);
 
   const { data, isLoading } = useQuery({
     queryKey: ['property-detail', id],
     enabled: !!id,
-    // Prevent auto-refresh / window-focus refetch loops that cause page blink.
     refetchOnWindowFocus: false,
     refetchOnReconnect: false,
     refetchInterval: false,
@@ -106,33 +107,19 @@ export default function PropertyDetail() {
       if (!row) return null;
       const features = Array.isArray(row.features) ? row.features : [];
       const meta = isRecord(row.source_metadata) ? row.source_metadata : {};
-      const listing = {
-        ...row,
-        title: row.property_title || '',
-        price: Number(row.asking_price) || 0,
-      } as DirectListing;
 
-      // Image paths — check every known location, accept strings or {url,src,photo,image_url} objects.
       const photoSources: unknown[] = [
-        ...(Array.isArray(listing.source_metadata?.photos) ? listing.source_metadata.photos : []),
-        ...(Array.isArray(listing.source_metadata?.images) ? listing.source_metadata.images : []),
-        ...(Array.isArray(listing.images) ? listing.images : []),
-        ...(Array.isArray(listing.photos) ? listing.photos : []),
-        ...(Array.isArray(features) ? features : []),
+        ...(Array.isArray(meta?.photos) ? (meta.photos as unknown[]) : []),
+        ...(Array.isArray(meta?.images) ? (meta.images as unknown[]) : []),
       ];
-      // Single-image string fallbacks
-      if (typeof listing.source_metadata?.image === 'string') photoSources.push(listing.source_metadata.image);
-      if (typeof listing.source_metadata?.image_url === 'string') photoSources.push(listing.source_metadata.image_url);
-      if (typeof listing.image === 'string') photoSources.push(listing.image);
-      if (typeof listing.image_url === 'string') photoSources.push(listing.image_url);
+      if (typeof meta?.image === 'string') photoSources.push(meta.image);
+      if (typeof meta?.image_url === 'string') photoSources.push(meta.image_url);
       const photos = Array.from(
         new Set(photoSources.map(photoUrlFrom).filter((s): s is string => !!s))
       );
 
-      const dealType = String(meta.deal_type ?? meta.listing_type ?? '').toLowerCase();
       const priceNum = Number(row.asking_price) || 0;
-      // Price-based heuristic: < 50k => rent, >= 500k => sale.
-      // Falls back to dealType only in the ambiguous 50k–500k band.
+      const dealType = String((meta as JsonRecord).deal_type ?? (meta as JsonRecord).listing_type ?? '').toLowerCase();
       let listingType: 'sale' | 'rent';
       if (priceNum > 0 && priceNum < 50_000) listingType = 'rent';
       else if (priceNum >= 500_000) listingType = 'sale';
@@ -144,19 +131,19 @@ export default function PropertyDetail() {
         source: 'listings',
         title: row.property_title || 'נכס',
         description: row.description || '',
-        price: Number(row.asking_price) || 0,
+        price: priceNum,
         currency: '₪',
-        city: row.city || meta.city || '',
-        address: row.address || meta.address || (row.neighborhood ? String(row.neighborhood) : ''),
+        city: row.city || (meta.city as string) || '',
+        address: row.address || (meta.address as string) || (row.neighborhood ? String(row.neighborhood) : ''),
         rooms: Number(row.rooms ?? meta.rooms ?? 0),
         size_sqm: Number(row.sqm ?? meta.size_sqm ?? meta.sqm ?? 0),
         floor: row.floor != null ? Number(row.floor) : (meta.floor != null ? Number(meta.floor) : undefined),
         total_floors: meta.total_floors != null ? Number(meta.total_floors) : undefined,
         year_built: meta.year_built != null ? Number(meta.year_built) : undefined,
-        property_type: (meta.property_type as PropertyType) || 'apartment',
+        property_type: ((meta.property_type as PropertyType) || 'apartment') as PropertyType,
         listing_type: listingType,
         photos,
-        url: row.slug ? `/listing/${row.slug}` : (row.source_url || null),
+        url: row.source_url || (row.slug ? `/listing/${row.slug}` : null),
         features: Array.from(new Set(textFeatures)),
       } as HomelyProperty;
 
@@ -169,7 +156,7 @@ export default function PropertyDetail() {
       };
 
       return {
-        listing,
+        row,
         property,
         meta,
         amenities,
@@ -181,12 +168,71 @@ export default function PropertyDetail() {
   });
 
   const property = data?.property;
-  const listing = data?.listing;
   const meta: JsonRecord = data?.meta || {};
   const neighborhood = data?.neighborhood;
   const projectName = data?.projectName ?? null;
   const sourceUrl = data?.sourceUrl ?? null;
   const amenities = data?.amenities;
+
+  // Initialize edit form when entering edit mode
+  useEffect(() => {
+    if (editMode && property && !form) {
+      setForm({
+        city: property.city || '',
+        neighborhood: neighborhood || '',
+        address: property.address || '',
+        rooms: property.rooms ? String(property.rooms) : '',
+        sqm: property.size_sqm ? String(property.size_sqm) : '',
+        floor: property.floor != null ? String(property.floor) : '',
+        total_floors: property.total_floors != null ? String(property.total_floors) : '',
+        year_built: property.year_built != null ? String(property.year_built) : '',
+        property_type: property.property_type || 'apartment',
+        price: String(property.price || ''),
+        vaad_bayit: String(meta.vaad_bayit ?? meta.vaad_monthly ?? ''),
+        arnona_bimonthly: String(meta.arnona_bimonthly ?? meta.arnona ?? ''),
+        payments: String(meta.payments ?? meta.payment_count ?? ''),
+        entry_date: String(meta.entry_date ?? meta.delivery_date ?? ''),
+        description: property.description || '',
+      });
+    }
+    if (!editMode) setForm(null);
+  }, [editMode, property, neighborhood, meta, form]);
+
+  const handleSave = async () => {
+    if (!form || !id) return;
+    setSaving(true);
+    try {
+      const newMeta = {
+        ...(data?.meta || {}),
+        vaad_bayit: form.vaad_bayit ? Number(form.vaad_bayit) : null,
+        arnona_bimonthly: form.arnona_bimonthly ? Number(form.arnona_bimonthly) : null,
+        payments: form.payments ? Number(form.payments) : null,
+        entry_date: form.entry_date || null,
+        total_floors: form.total_floors ? Number(form.total_floors) : null,
+        year_built: form.year_built ? Number(form.year_built) : null,
+        property_type: form.property_type,
+      };
+      const { error } = await supabase.from('listings').update({
+        city: form.city || null,
+        neighborhood: form.neighborhood || null,
+        address: form.address || null,
+        rooms: form.rooms ? Number(form.rooms) : null,
+        sqm: form.sqm ? Number(form.sqm) : null,
+        floor: form.floor ? Number(form.floor) : null,
+        asking_price: form.price ? Number(form.price) : 0,
+        description: form.description || null,
+        source_metadata: newMeta as never,
+      }).eq('id', id);
+      if (error) throw error;
+      toast.success('הנכס עודכן בהצלחה');
+      setEditMode(false);
+      await qc.invalidateQueries({ queryKey: ['property-detail', id] });
+    } catch (e: any) {
+      toast.error(`שגיאה בשמירה: ${e.message ?? e}`);
+    } finally {
+      setSaving(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -209,73 +255,100 @@ export default function PropertyDetail() {
     );
   }
 
-  const isRent = Number(listing?.price ?? property.price) < 50_000;
-  const directPhotoSources = [
-    ...(Array.isArray(listing?.source_metadata?.photos) ? listing.source_metadata.photos : []),
-    ...(Array.isArray(listing?.source_metadata?.images) ? listing.source_metadata.images : []),
-    ...(typeof listing?.source_metadata?.image === 'string' ? [listing.source_metadata.image] : []),
-    ...(typeof listing?.source_metadata?.image_url === 'string' ? [listing.source_metadata.image_url] : []),
-  ];
-  const directMetadataPhotos = Array.from(new Set(
-    directPhotoSources.map((p) => photoUrlFrom(p) || '').filter((p): p is string => /^https?:\/\//.test(p))
-  ));
-  const photos = Array.from(new Set([
-    ...directMetadataPhotos,
-    ...property.photos,
-  ].filter((p): p is string => typeof p === 'string' && /^https?:\/\//.test(p))));
+  const isRent = property.price < 50_000;
+  const photos = property.photos || [];
   const main = photos[activePhoto];
 
   const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
-  const transactionHe = property.price < 50000 ? 'להשכרה' : 'למכירה';
-  const forcedHeadline = `${propertyTypeHe} ${transactionHe}, ${listing?.neighborhood || neighborhood || 'הרצליה הירוקה'}, ${listing?.address || 'נווה עובד'}, ${listing?.city || property.city || 'הרצליה'}`;
+  const transactionHe = isRent ? 'להשכרה' : 'למכירה';
+  // Dynamic headline — NO hardcoded fallbacks like "נווה עובד"/"הרצליה הירוקה".
+  const headlineParts = [
+    `${propertyTypeHe} ${transactionHe}`,
+    neighborhood || null,
+    property.city || null,
+  ].filter(Boolean);
+  const dynamicHeadline = headlineParts.join(', ');
+
   const pricePerMeter = property.size_sqm ? Math.round(property.price / property.size_sqm).toLocaleString('he-IL') : null;
-  const vaadBayit = Number(meta.vaad_bayit ?? meta.vaad_monthly ?? 200) || 200;
-  const arnonaBimonthly = Number(meta.arnona_bimonthly ?? meta.arnona ?? 800) || 800;
-  const payments = Number(meta.payments ?? meta.payment_count ?? 12) || 12;
+  const vaadBayit = Number(meta.vaad_bayit ?? meta.vaad_monthly ?? 0) || 0;
+  const arnonaBimonthly = Number(meta.arnona_bimonthly ?? meta.arnona ?? 0) || 0;
+  const payments = Number(meta.payments ?? meta.payment_count ?? 0) || 0;
   const entryDate = String(meta.entry_date ?? meta.delivery_date ?? 'כניסה גמישה');
 
-  // Financials / owner blocks
   const financialKeys = ['monthly_rent', 'arnona_bimonthly', 'arnona', 'vaad_bayit', 'deposit'];
-  const ownerKeys = ['owner_name', 'owner_phone', 'agent', 'agent_serial', 'agent_phone'];
   const financialEntries = financialKeys
     .filter((k) => meta[k] != null && meta[k] !== '')
     .map((k) => [k, meta[k]] as const);
-  const ownerEntries = ownerKeys
-    .filter((k) => meta[k] != null && meta[k] !== '')
-    .map((k) => [k, meta[k]] as const);
+
+  const setField = (k: keyof EditableFields, v: string) =>
+    setForm((f) => (f ? { ...f, [k]: v } : f));
 
   return (
     <div className="p-3 sm:p-6 space-y-6" dir="rtl">
-      {/* Headline + price (back button lives in the hero, opposite the burger) */}
+      {/* Action row */}
+      <div className="flex items-center justify-end gap-2">
+        {!editMode ? (
+          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setEditMode(true)}>
+            <Pencil className="h-4 w-4" /> עריכת נכס
+          </Button>
+        ) : (
+          <>
+            <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => setEditMode(false)} disabled={saving}>
+              <X className="h-4 w-4" /> ביטול
+            </Button>
+            <Button size="sm" className="gap-1.5" onClick={handleSave} disabled={saving}>
+              <Save className="h-4 w-4" /> {saving ? 'שומר...' : 'שמירה'}
+            </Button>
+          </>
+        )}
+      </div>
+
+      {/* Headline + price */}
       <header className="space-y-2">
         <div className="mb-4 flex items-start gap-2">
+          <a
+            href={sourceUrl || '#'}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => { if (!sourceUrl) e.preventDefault(); }}
+            aria-label="מעבר למקור המודעה"
+            title={sourceUrl || 'אין קישור מקור'}
+            className="inline-flex items-center justify-center p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full shrink-0 z-50"
+            style={{ display: 'inline-flex', visibility: 'visible' }}
+          >
+            <ExternalLink className="w-5 h-5" />
+          </a>
           <div
             role="heading"
             aria-level={1}
             className="text-xl font-bold text-right text-slate-900 block flex-1 leading-snug"
-            style={{ display: 'block', visibility: 'visible' }}
           >
-            {forcedHeadline}
+            {dynamicHeadline}
           </div>
-          {sourceUrl && (
-            <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" asChild>
-              <a href={sourceUrl} target="_blank" rel="noopener noreferrer" aria-label="מעבר למקור המודעה">
-                <ExternalLink className="h-5 w-5" />
-              </a>
-            </Button>
-          )}
         </div>
 
         <div className="flex items-baseline gap-3 flex-wrap">
-          <span className="text-3xl font-extrabold text-success tabular-nums">
-            {formatPrice(property.price)}
-            {isRent && <span className="text-base font-normal text-muted-foreground"> /חודש</span>}
-          </span>
-          {pricePerMeter ? (
-            <span className="text-xs text-muted-foreground font-normal">
-              ({pricePerMeter} ₪ למ"ר)
-            </span>
-          ) : null}
+          {editMode && form ? (
+            <Input
+              type="number"
+              value={form.price}
+              onChange={(e) => setField('price', e.target.value)}
+              className="max-w-xs"
+              placeholder="מחיר"
+            />
+          ) : (
+            <>
+              <span className="text-3xl font-extrabold text-success tabular-nums">
+                {formatPrice(property.price)}
+                {isRent && <span className="text-base font-normal text-muted-foreground"> /חודש</span>}
+              </span>
+              {pricePerMeter ? (
+                <span className="text-xs text-muted-foreground font-normal">
+                  ({pricePerMeter} ₪ למ"ר)
+                </span>
+              ) : null}
+            </>
+          )}
         </div>
       </header>
 
@@ -285,7 +358,7 @@ export default function PropertyDetail() {
           <Card className="overflow-hidden">
             <div className="aspect-[16/10] bg-muted relative">
               {main ? (
-                <img src={main} alt={forcedHeadline} className="h-full w-full object-cover" />
+                <img src={main} alt={dynamicHeadline} className="h-full w-full object-cover" />
               ) : (
                 <div className="h-full w-full flex items-center justify-center text-muted-foreground">לא נמצאה תמונה במסד הנתונים</div>
               )}
@@ -307,44 +380,61 @@ export default function PropertyDetail() {
             </div>
           )}
 
-          {/* Specs grid — amenities merged in */}
+          {/* Specs grid — editable in edit mode */}
           <Card className="p-4 sm:p-5">
             <h2 className="text-base font-bold text-primary mb-4">מאפייני הנכס</h2>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-              <Spec icon={BedDouble} label="חדרים" value={property.rooms ? `${property.rooms}` : '—'} />
-              <Spec icon={Ruler} label="שטח" value={property.size_sqm ? `${property.size_sqm} מ"ר` : '—'} />
-              <Spec
-                icon={Layers}
-                label="קומה"
-                value={property.floor != null ? `${property.floor}${property.total_floors ? ` / ${property.total_floors}` : ''}` : '—'}
-              />
-              <Spec icon={Calendar} label="שנת בנייה" value={property.year_built ? `${property.year_built}` : '—'} />
-              <Spec icon={Home} label="סוג נכס" value={propertyTypeHe} />
-              <Spec icon={MapPin} label="עיר" value={property.city || '—'} />
-              <Spec icon={MapPin} label="שכונה" value={neighborhood || '—'} />
-              
+            {editMode && form ? (
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <Field label="חדרים"><Input type="number" step="0.5" value={form.rooms} onChange={(e) => setField('rooms', e.target.value)} /></Field>
+                <Field label='שטח (מ"ר)'><Input type="number" value={form.sqm} onChange={(e) => setField('sqm', e.target.value)} /></Field>
+                <Field label="קומה"><Input type="number" value={form.floor} onChange={(e) => setField('floor', e.target.value)} /></Field>
+                <Field label='סה"כ קומות'><Input type="number" value={form.total_floors} onChange={(e) => setField('total_floors', e.target.value)} /></Field>
+                <Field label="שנת בנייה"><Input type="number" value={form.year_built} onChange={(e) => setField('year_built', e.target.value)} /></Field>
+                <Field label="סוג נכס">
+                  <select
+                    value={form.property_type}
+                    onChange={(e) => setField('property_type', e.target.value)}
+                    className="w-full h-10 rounded-md border border-input bg-background px-3 text-sm"
+                  >
+                    {PROPERTY_TYPE_OPTIONS.map((pt) => (
+                      <option key={pt} value={pt}>{PROPERTY_TYPE_LABELS_HE[pt] || pt}</option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="עיר"><Input value={form.city} onChange={(e) => setField('city', e.target.value)} /></Field>
+                <Field label="שכונה"><Input value={form.neighborhood} onChange={(e) => setField('neighborhood', e.target.value)} /></Field>
+                <Field label="כתובת"><Input value={form.address} onChange={(e) => setField('address', e.target.value)} /></Field>
+                <Field label="ועד בית (לחודש)"><Input type="number" value={form.vaad_bayit} onChange={(e) => setField('vaad_bayit', e.target.value)} /></Field>
+                <Field label="ארנונה (לחודשיים)"><Input type="number" value={form.arnona_bimonthly} onChange={(e) => setField('arnona_bimonthly', e.target.value)} /></Field>
+                <Field label="מספר תשלומים"><Input type="number" value={form.payments} onChange={(e) => setField('payments', e.target.value)} /></Field>
+                <Field label="תאריך כניסה"><Input value={form.entry_date} onChange={(e) => setField('entry_date', e.target.value)} placeholder="מיידי / 01/08/2026" /></Field>
+              </div>
+            ) : (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <Spec icon={BedDouble} label="חדרים" value={property.rooms ? `${property.rooms}` : '—'} />
+                <Spec icon={Ruler} label='שטח' value={property.size_sqm ? `${property.size_sqm} מ"ר` : '—'} />
+                <Spec
+                  icon={Layers}
+                  label="קומה"
+                  value={property.floor != null ? `${property.floor}${property.total_floors ? ` / ${property.total_floors}` : ''}` : '—'}
+                />
+                <Spec icon={Calendar} label="שנת בנייה" value={property.year_built ? `${property.year_built}` : '—'} />
+                <Spec icon={Home} label="סוג נכס" value={propertyTypeHe} />
+                <Spec icon={MapPin} label="עיר" value={property.city || '—'} />
+                <Spec icon={MapPin} label="שכונה" value={neighborhood || '—'} />
+                <Spec icon={Receipt} label="ועד בית (לחודש)" value={vaadBayit ? `${vaadBayit.toLocaleString('he-IL')} ₪` : '—'} />
+                <Spec icon={Receipt} label="ארנונה (לחודשיים)" value={arnonaBimonthly ? `${arnonaBimonthly.toLocaleString('he-IL')} ₪` : '—'} />
+                <Spec icon={Receipt} label="מספר תשלומים" value={payments ? `${payments}` : '—'} />
+                <Spec icon={Car} label="חניות" value={`${amenities?.parking ?? 0}`} />
+                <Spec icon={Calendar} label="תאריך כניסה" value={entryDate} />
+                {amenities?.elevator && <Spec icon={ArrowUpCircle} label="מעלית" value="כן" />}
+                {amenities?.ac && <Spec icon={Wind} label="מיזוג" value="כן" />}
+                {amenities?.shelter && <Spec icon={Shield} label='ממ"ד / מקלט' value="כן" />}
+                {amenities?.solar && <Spec icon={Sun} label="דוד שמש" value="כן" />}
+              </div>
+            )}
 
-              {/* Amenities — merged into the same grid */}
-              <Spec icon={Receipt} label="ועד בית (לחודש)" value={`${vaadBayit.toLocaleString('he-IL')} ₪`} />
-              <Spec icon={Receipt} label="ארנונה (לחודשיים)" value={`${arnonaBimonthly.toLocaleString('he-IL')} ₪`} />
-              <Spec icon={Receipt} label="מספר תשלומים" value={`${payments}`} />
-              <Spec icon={Car} label="חניות" value={`${amenities?.parking || 2}`} />
-              <Spec icon={Calendar} label="תאריך כניסה" value={entryDate} />
-              {amenities?.elevator && (
-                <Spec icon={ArrowUpCircle} label="מעלית" value="כן" />
-              )}
-              {amenities?.ac && (
-                <Spec icon={Wind} label="מיזוג" value="כן" />
-              )}
-              {amenities?.shelter && (
-                <Spec icon={Shield} label='ממ"ד / מקלט' value="כן" />
-              )}
-              {amenities?.solar && (
-                <Spec icon={Sun} label="דוד שמש" value="כן" />
-              )}
-            </div>
-
-            {sourceUrl && (
+            {sourceUrl && !editMode && (
               <div className="mt-5 pt-4 border-t border-border/60">
                 <a
                   href={sourceUrl}
@@ -360,15 +450,23 @@ export default function PropertyDetail() {
           </Card>
 
           {/* Description */}
-          {property.description && (
+          {(editMode || property.description) && (
             <Card className="p-4 sm:p-5">
               <h2 className="text-base font-bold text-primary mb-2">תיאור הנכס</h2>
-              <p className="text-sm leading-relaxed text-foreground/80 whitespace-pre-line">{property.description}</p>
+              {editMode && form ? (
+                <Textarea
+                  dir="rtl"
+                  rows={8}
+                  value={form.description}
+                  onChange={(e) => setField('description', e.target.value)}
+                />
+              ) : (
+                <p className="text-sm leading-relaxed text-foreground/80 whitespace-pre-line">{property.description}</p>
+              )}
             </Card>
           )}
 
-          {/* Financials */}
-          {financialEntries.length > 0 && (
+          {!editMode && financialEntries.length > 0 && (
             <Card className="p-4 sm:p-5">
               <h2 className="text-base font-bold text-primary mb-3 inline-flex items-center gap-2">
                 <Receipt className="h-4 w-4" /> פרטים פיננסיים
@@ -381,21 +479,7 @@ export default function PropertyDetail() {
             </Card>
           )}
 
-          {/* Owner / Agent */}
-          {ownerEntries.length > 0 && (
-            <Card className="p-4 sm:p-5">
-              <h2 className="text-base font-bold text-primary mb-3 inline-flex items-center gap-2">
-                <User className="h-4 w-4" /> בעלים וסוכן מטפל
-              </h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {ownerEntries.map(([k, v]) => (
-                  <Spec key={k} icon={User} label={META_LABELS[k] || k} value={formatMetaValue(k, v)} />
-                ))}
-              </div>
-            </Card>
-          )}
-
-          {projectName && (
+          {projectName && !editMode && (
             <ProjectAlternativesCard
               currentListingId={property.id}
               projectName={projectName}
@@ -403,7 +487,6 @@ export default function PropertyDetail() {
           )}
         </div>
 
-        {/* Agent sidebar */}
         <aside className="space-y-4">
           {property.agent && (
             <Card className="p-5">
@@ -420,16 +503,10 @@ export default function PropertyDetail() {
                 </div>
               </div>
               <div className="space-y-2">
-                <a
-                  href={`tel:${property.agent.phone}`}
-                  className="flex items-center gap-2 text-sm text-foreground hover:text-primary transition-colors"
-                >
+                <a href={`tel:${property.agent.phone}`} className="flex items-center gap-2 text-sm text-foreground hover:text-primary transition-colors">
                   <Phone className="h-4 w-4 text-primary" /> {property.agent.phone}
                 </a>
-                <a
-                  href={`mailto:${property.agent.email}`}
-                  className="flex items-center gap-2 text-sm text-foreground hover:text-primary transition-colors"
-                >
+                <a href={`mailto:${property.agent.email}`} className="flex items-center gap-2 text-sm text-foreground hover:text-primary transition-colors">
                   <Mail className="h-4 w-4 text-primary" /> {property.agent.email}
                 </a>
               </div>
@@ -465,6 +542,15 @@ function Spec({ icon: Icon, label, value }: { icon: typeof BedDouble; label: str
         <p className="text-[11px] text-muted-foreground uppercase tracking-wide">{label}</p>
         <p className="text-sm font-semibold text-foreground truncate">{value}</p>
       </div>
+    </div>
+  );
+}
+
+function Field({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <div className="space-y-1">
+      <label className="text-[11px] text-muted-foreground uppercase tracking-wide block">{label}</label>
+      {children}
     </div>
   );
 }
