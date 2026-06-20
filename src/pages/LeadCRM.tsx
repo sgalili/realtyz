@@ -46,7 +46,9 @@ import NewLeadDialog from '@/components/leads/NewLeadDialog';
 import LeadEnrichmentPanel, { LeadEnrichmentButton } from '@/components/leads/LeadEnrichmentPanel';
 import { useFreemiumStatus } from '@/hooks/useFreemiumStatus';
 import { PriceTag } from '@/components/PriceTag';
-import { Rows, Rows3, Home, Building2 } from 'lucide-react';
+import { Rows, Rows3, Home, Building2, Plus, Upload as UploadIcon, UserRoundPlus } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { HomelyBulkSyncDialog } from '@/components/properties/HomelyBulkSyncDialog';
 
 // Strict Israeli mobile cleaner. Returns 9725XXXXXXXX (12 digits) for storage, or null if invalid.
 // Rules per spec:
