@@ -63,6 +63,18 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
     <div className="space-y-6" dir="rtl">
       <header className="space-y-2">
         <div className="mb-4 flex items-start gap-2">
+          <Button
+            size="icon"
+            variant="ghost"
+            className="h-9 w-9 shrink-0 order-first"
+            type="button"
+            disabled={!sourceUrl}
+            onClick={() => sourceUrl && window.open(sourceUrl, '_blank', 'noopener,noreferrer')}
+            aria-label="מעבר למקור המודעה"
+            title={sourceUrl || 'אין קישור מקור'}
+          >
+            <ExternalLink className="h-5 w-5" />
+          </Button>
           <div
             role="heading"
             aria-level={1}
@@ -70,13 +82,6 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
           >
             {headline}
           </div>
-          {sourceUrl && (
-            <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" asChild>
-              <a href={sourceUrl} target="_blank" rel="noopener noreferrer" aria-label="מעבר למקור המודעה">
-                <ExternalLink className="h-5 w-5" />
-              </a>
-            </Button>
-          )}
         </div>
 
         <div className="flex items-baseline gap-3 flex-wrap">
