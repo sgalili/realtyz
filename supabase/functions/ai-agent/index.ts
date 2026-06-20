@@ -540,12 +540,13 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
 
           let q = userClient
             .from("listings")
-            .select("id, property_title, asking_price, features, description")
+            .select("id, property_title, asking_price, features, description, office_notes")
             .eq("is_published", true)
             .order("created_at", { ascending: false })
             .limit(30);
           if (budgetMax) q = q.lte("asking_price", Math.round(budgetMax * 1.15));
           if (budgetMin) q = q.gte("asking_price", Math.round(budgetMin * 0.85));
+
           const { data: candRows } = await q;
           let candidates = (candRows ?? []) as any[];
 
