@@ -2007,6 +2007,12 @@ const LeadCRM = () => {
 
       {/* Add Lead — deal_type-aware dynamic form (Sale vs Rent pipeline) */}
       <NewLeadDialog open={newLeadOpen} onOpenChange={setNewLeadOpen} />
+      <HomelyBulkSyncDialog
+        open={homelyContactsSyncOpen}
+        onOpenChange={setHomelyContactsSyncOpen}
+        onImported={() => loadVoters()}
+        mode="contacts"
+      />
     </div>
   );
 };
