@@ -2010,7 +2010,7 @@ const LeadCRM = () => {
       <HomelyBulkSyncDialog
         open={homelyContactsSyncOpen}
         onOpenChange={setHomelyContactsSyncOpen}
-        onImported={() => loadVoters()}
+        onImported={() => { queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }); queryClient.invalidateQueries({ queryKey: ['leads-total'] }); }}
         mode="contacts"
       />
     </div>
