@@ -101,7 +101,7 @@ export default function PropertyDetail() {
     queryFn: async () => {
       const { data: row } = await supabase
         .from('listings')
-        .select('id, property_title, description, asking_price, features, slug, source_metadata, city, neighborhood, address, rooms, sqm, floor, parking, elevator, status, source_url, project_name')
+        .select('id, property_title, description, asking_price, features, slug, source_metadata, city, neighborhood, address, rooms, sqm, floor, parking, elevator, status, source_url, source, project_name')
         .eq('id', id!)
         .maybeSingle();
       if (!row) return null;
@@ -283,41 +283,16 @@ export default function PropertyDetail() {
   const setField = (k: keyof EditableFields, v: string) =>
     setForm((f) => (f ? { ...f, [k]: v } : f));
 
+  const resolvedSourceUrl =
+    sourceUrl ||
+    (typeof (meta as JsonRecord).source_url === 'string' ? (meta as JsonRecord).source_url as string : '') ||
+    '';
+
   return (
     <div className="p-3 sm:p-6 space-y-6" dir="rtl">
-      {/* Action row */}
-      <div className="flex items-center justify-end gap-2">
-        {!editMode ? (
-          <Button size="sm" variant="outline" className="gap-1.5" onClick={() => setEditMode(true)}>
-            <Pencil className="h-4 w-4" /> עריכת נכס
-          </Button>
-        ) : (
-          <>
-            <Button size="sm" variant="ghost" className="gap-1.5" onClick={() => setEditMode(false)} disabled={saving}>
-              <X className="h-4 w-4" /> ביטול
-            </Button>
-            <Button size="sm" className="gap-1.5" onClick={handleSave} disabled={saving}>
-              <Save className="h-4 w-4" /> {saving ? 'שומר...' : 'שמירה'}
-            </Button>
-          </>
-        )}
-      </div>
-
       {/* Headline + price */}
       <header className="space-y-2">
         <div className="mb-4 flex items-start gap-2">
-          <a
-            href={sourceUrl || '#'}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => { if (!sourceUrl) e.preventDefault(); }}
-            aria-label="מעבר למקור המודעה"
-            title={sourceUrl || 'אין קישור מקור'}
-            className="inline-flex items-center justify-center p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full shrink-0 z-50"
-            style={{ display: 'inline-flex', visibility: 'visible' }}
-          >
-            <ExternalLink className="w-5 h-5" />
-          </a>
           <div
             role="heading"
             aria-level={1}
@@ -325,30 +300,82 @@ export default function PropertyDetail() {
           >
             {dynamicHeadline}
           </div>
+          <button
+            type="button"
+            onClick={() => {
+              const url = resolvedSourceUrl;
+              if (url) window.open(url, '_blank', 'noopener,noreferrer');
+            }}
+            aria-label="מעבר למקור המודעה"
+            title={resolvedSourceUrl || 'אין קישור מקור'}
+            className="shrink-0 text-slate-600 hover:text-primary transition-colors bg-transparent border-0 p-0"
+          >
+            <ExternalLink className="w-5 h-5" />
+          </button>
         </div>
 
-        <div className="flex items-baseline gap-3 flex-wrap">
-          {editMode && form ? (
-            <Input
-              type="number"
-              value={form.price}
-              onChange={(e) => setField('price', e.target.value)}
-              className="max-w-xs"
-              placeholder="מחיר"
-            />
-          ) : (
-            <>
-              <span className="text-3xl font-extrabold text-success tabular-nums">
-                {formatPrice(property.price)}
-                {isRent && <span className="text-base font-normal text-muted-foreground"> /חודש</span>}
-              </span>
-              {pricePerMeter ? (
-                <span className="text-xs text-muted-foreground font-normal">
-                  ({pricePerMeter} ₪ למ"ר)
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          {/* Edit pencil — far top-left of price row */}
+          <div className="order-2">
+            {!editMode ? (
+              <button
+                type="button"
+                onClick={() => setEditMode(true)}
+                aria-label="עריכת נכס"
+                title="עריכת נכס"
+                className="text-slate-500 hover:text-primary transition-colors bg-transparent border-0 p-0"
+              >
+                <Pencil className="h-5 w-5" />
+              </button>
+            ) : (
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setEditMode(false)}
+                  disabled={saving}
+                  aria-label="ביטול"
+                  title="ביטול"
+                  className="text-slate-500 hover:text-destructive transition-colors bg-transparent border-0 p-0"
+                >
+                  <X className="h-5 w-5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSave}
+                  disabled={saving}
+                  aria-label="שמירה"
+                  title="שמירה"
+                  className="text-primary hover:opacity-80 transition-opacity bg-transparent border-0 p-0"
+                >
+                  <Save className="h-5 w-5" />
+                </button>
+              </div>
+            )}
+          </div>
+
+          <div className="flex items-baseline gap-3 flex-wrap order-1">
+            {editMode && form ? (
+              <Input
+                type="number"
+                value={form.price}
+                onChange={(e) => setField('price', e.target.value)}
+                className="max-w-xs"
+                placeholder="מחיר"
+              />
+            ) : (
+              <>
+                <span className="text-3xl font-extrabold text-success tabular-nums">
+                  {formatPrice(property.price)}
+                  {isRent && <span className="text-base font-normal text-muted-foreground"> /חודש</span>}
                 </span>
-              ) : null}
-            </>
-          )}
+                {pricePerMeter ? (
+                  <span className="text-xs text-muted-foreground font-normal">
+                    ({pricePerMeter} ₪ למ"ר)
+                  </span>
+                ) : null}
+              </>
+            )}
+          </div>
         </div>
       </header>
 
@@ -360,7 +387,7 @@ export default function PropertyDetail() {
               {main ? (
                 <img src={main} alt={dynamicHeadline} className="h-full w-full object-cover" />
               ) : (
-                <div className="h-full w-full flex items-center justify-center text-muted-foreground">לא נמצאה תמונה במסד הנתונים</div>
+                <div className="h-full w-full bg-slate-100" />
               )}
             </div>
           </Card>

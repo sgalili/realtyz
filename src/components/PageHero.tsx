@@ -16,12 +16,41 @@ import { RealtyzWave } from '@/components/RealtyzWave';
 // CreditBalancePill moved to /billing (Packages & Payments page).
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+
+const SOURCE_LABELS_HE: Record<string, string> = {
+  yad2: 'יד2',
+  'yad-2': 'יד2',
+  yad_2: 'יד2',
+  madlan: 'מדל״ן',
+  homely: 'Homely',
+  manual: 'ידני',
+};
+
+function usePropertyHeroSuffix(pathname: string): string {
+  const match = pathname.match(/^\/properties\/([^/]+)/);
+  const id = match?.[1];
+  const { data } = useQuery({
+    queryKey: ['property-hero-source', id],
+    enabled: !!id,
+    staleTime: 5 * 60 * 1000,
+    queryFn: async () => {
+      const { data: row } = await supabase.from('listings').select('source').eq('id', id!).maybeSingle();
+      return (row?.source as string | null) || '';
+    },
+  });
+  if (!data) return '';
+  const key = String(data).toLowerCase().trim();
+  return SOURCE_LABELS_HE[key] || data;
+}
+
 
 function PropertiesHeroAddButton() {
   const dispatch = (action: 'manual' | 'import') =>
@@ -152,6 +181,10 @@ export function PageHero() {
   const [searchParams] = useSearchParams();
   const title = resolvePageTitle(location.pathname);
   const isPropertyDetail = /^\/properties\/[^/]+/.test(location.pathname);
+  const propertySuffix = usePropertyHeroSuffix(location.pathname);
+  const displayTitle = isPropertyDetail && propertySuffix
+    ? `${title} - ${propertySuffix}`
+    : title;
 
   // On /campaigns with a lead context, CampaignCenter renders its own
   // avatar+name hero — skip the default hero to avoid a stacked duplicate.
@@ -186,7 +219,7 @@ export function PageHero() {
 
         {/* Absolute-centered page title — locked to screen center */}
         <h1 className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap pt-[10px] pb-[20px] text-center text-xl font-bold tracking-tight text-white sm:text-2xl">
-          {title}
+          {displayTitle}
         </h1>
 
         {/* Visual left (RTL flex end): page-specific action button */}
