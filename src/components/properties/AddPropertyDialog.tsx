@@ -44,6 +44,9 @@ type ParsedListing = {
   price: number | null;
   sqm: number | null;
   floor: number | null;
+  total_floors?: number | null;
+  year_built?: number | null;
+  address?: string | null;
   description: string | null;
   photos: string[];
   source_url: string | null;
