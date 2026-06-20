@@ -144,15 +144,15 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
   async function handleImport() {
     setImporting(true);
     try {
-      const selectedProperties = properties.filter((p) => pickedProps.has(p.homely_id));
-      const selectedContacts = contacts.filter((c) => pickedContacts.has(c.homely_id));
+      const selectedPropertyIds = Array.from(pickedProps);
+      const selectedContactIds = Array.from(pickedContacts);
       const { data, error } = await supabase.functions.invoke('homely-fetch-property', {
-        body: { action: 'importOutJson', properties: selectedProperties, contacts: selectedContacts },
+        body: { action: 'importOutJson', propertyIds: selectedPropertyIds, contactIds: selectedContactIds },
       });
       if (error) throw error;
       const payload = data as any;
       if (payload?.error) throw new Error(payload.error);
-      const count = Number(payload?.imported ?? (selectedProperties.length + selectedContacts.length));
+      const count = Number(payload?.imported ?? (selectedPropertyIds.length + selectedContactIds.length));
       toast.success(`הייבוא הושלם! ${count} רשומות עודכנו בהצלחה`);
       setPickedProps(new Set());
       setPickedContacts(new Set());
