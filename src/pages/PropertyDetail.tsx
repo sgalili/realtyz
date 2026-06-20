@@ -88,7 +88,13 @@ export default function PropertyDetail() {
       const photos = Array.from(new Set([...metaPhotos, ...featurePhotos]));
 
       const dealType = String(meta.deal_type ?? meta.listing_type ?? '').toLowerCase();
-      const listingType: 'sale' | 'rent' = dealType === 'rent' ? 'rent' : 'sale';
+      const priceNum = Number(row.asking_price) || 0;
+      // Price-based heuristic: < 50k => rent, >= 500k => sale.
+      // Falls back to dealType only in the ambiguous 50k–500k band.
+      let listingType: 'sale' | 'rent';
+      if (priceNum > 0 && priceNum < 50_000) listingType = 'rent';
+      else if (priceNum >= 500_000) listingType = 'sale';
+      else listingType = dealType === 'rent' ? 'rent' : 'sale';
       const textFeatures = (features as any[]).filter((f) => typeof f === 'string') as string[];
 
       const property = {
