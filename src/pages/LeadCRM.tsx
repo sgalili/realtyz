@@ -1440,6 +1440,8 @@ const LeadCRM = () => {
                       if (error) { toast.error('שגיאה בעדכון'); return; }
                       toast.success('עודכן');
                       queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+                      // Instant background push to Homely (Open Card) with latest fields
+                      supabase.functions.invoke('homely-push-lead', { body: { lead_id: selectedVoter.id } }).catch(() => {});
                     };
                     const savePref = (pref: Record<string, any>) =>
                       saveLead({ preferences: { ...prefs, ...pref } });
