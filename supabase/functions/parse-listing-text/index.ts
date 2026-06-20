@@ -124,7 +124,8 @@ Return ONLY a strict JSON object matching this shape (use null when unknown):
 Rules:
 - "להשכרה" / "שכירות" / monthly-magnitude price => rent. "למכירה" => sale.
 - Strip currency symbols / thousands separators from price.
-- Detect amenities: מיזוג=>air_conditioning, דוד שמש=>solar_heater, מקלט / ממ"ד=>shelter, מעלית=>elevator, חניות N=>parking=N.
+- PRICE PRIORITY (CRITICAL): Use the PRIMARY listing price shown in the header/title badge (e.g. "7,800 ₪", "מחיר: 7,800"). NEVER use aggregated totals like "סה\"כ תשלום חודשי", "סה\"כ לתשלום", "כולל ארנונה", "כולל ועד בית" — those bundle municipal tax/HOA and are NOT the property price. If both appear, always pick the smaller base rent/sale figure shown at the top of the listing.
+- Detect amenities: מיזוג / מזגן => air_conditioning=true. דוד שמש => solar_heater=true. מקלט / ממ"ד / מרחב מוגן => shelter=true. מעלית => elevator=true. "חניות: N" / "חניה N" / "N חניות" => parking=N (integer).
 - HARD RULE: Never invent or guess values. If a field is not literally present in the input, return null (or false for booleans, [] for photos). Do NOT use placeholders like "תל אביב", "פלורנטין", "1,500,000".
 - If the input is only a URL with no listing details, return all fields as null/false/[].
 - For photos, return real image URLs only (must start with http). Do not include logos/ads.

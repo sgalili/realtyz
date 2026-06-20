@@ -157,7 +157,7 @@ export default function Properties() {
           for (let from = 0; ; from += pageSize) {
             let query = supabase
               .from('listings')
-              .select('id, property_title, description, asking_price, city, address, neighborhood, rooms, sqm, features, source_metadata, source, created_at')
+              .select('id, property_title, description, asking_price, city, address, neighborhood, rooms, sqm, features, source_metadata, source, source_url, created_at')
               .eq('status', 'live')
               .eq('is_published', true)
               .order('created_at', { ascending: false })
@@ -228,7 +228,7 @@ export default function Properties() {
                 size_sqm: Number(row.sqm ?? 0),
                 property_type: detectPropertyType(`${row.property_title ?? ''} ${row.description ?? ''}`),
                 photos: metaPhotos,
-                url: null,
+                url: row.source_url ?? null,
                 features: Array.isArray(row.features) ? row.features.filter((f: any) => typeof f === 'string') : [],
                 listing_type: extractListingType(row.features),
                 extras: (meta.extras ?? {}) as Record<string, string>,
@@ -691,6 +691,18 @@ function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare
             </Button>
           </div>
         </div>
+
+        {property.url ? (
+          <a
+            href={property.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="mt-2 text-xs text-primary hover:underline inline-flex items-center gap-1"
+            onClick={(e) => e.stopPropagation()}
+          >
+            🔗 קישור למקור המודעה
+          </a>
+        ) : null}
       </div>
     </Card>
   );

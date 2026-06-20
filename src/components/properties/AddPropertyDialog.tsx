@@ -188,11 +188,15 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="max-w-lg max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
+      <DialogContent
+        dir="rtl"
+        className="w-screen h-screen max-w-none sm:max-w-none p-0 gap-0 rounded-none border-0 flex flex-col"
+      >
+        <DialogHeader className="px-6 py-4 border-b shrink-0">
           <DialogTitle>הוספת נכס ידנית</DialogTitle>
           <DialogDescription>הזינו פרטי נכס בסיסיים, או הדביקו טקסט מודעה וה-AI ימלא את השדות.</DialogDescription>
         </DialogHeader>
+        <div className="flex-1 overflow-y-auto px-6 py-4">
 
         <div className="space-y-4">
           {/* AI Paste & Hydrate */}
@@ -337,9 +341,11 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
             </div>
           </div>
         </div>
+        </div>
 
 
-        <DialogFooter className="gap-2">
+
+        <DialogFooter className="px-6 py-4 border-t shrink-0 flex-row justify-between sm:justify-between gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
             ביטול
           </Button>
