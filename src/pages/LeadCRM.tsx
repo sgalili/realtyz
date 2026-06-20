@@ -1258,29 +1258,8 @@ const LeadCRM = () => {
                           <TooltipProvider delayDuration={150}>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <div className="inline-flex flex-col items-center gap-1 w-full">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-base leading-none" aria-hidden>{profile.emoji}</span>
-                                    <Badge className={`text-xs font-bold border ${profile.badgeClass}`}>
-                                      {profile.badge}
-                                    </Badge>
-                                  </div>
-                                  <div className="flex flex-row-reverse items-center gap-1 w-full px-1">
-                                    <span className="text-[10px] text-muted-foreground tabular-nums w-6 text-left">{eng}</span>
-                                    <div className="h-1.5 flex-1 rounded-full bg-slate-200 overflow-hidden">
-                                      <div
-                                        className="h-full rounded-full"
-                                        style={{
-                                          width: `${Math.min(100, Math.max(0, eng))}%`,
-                                          background: eng >= 80 ? 'hsl(0 84% 50%)'
-                                            : eng >= 60 ? 'hsl(25 95% 53%)'
-                                            : eng >= 30 ? 'hsl(45 93% 47%)'
-                                            : 'hsl(215 16% 47%)',
-                                        }}
-                                      />
-                                    </div>
-                                    <span className="text-[10px] text-muted-foreground tabular-nums w-3">0</span>
-                                  </div>
+                                <div className="inline-flex items-center justify-center w-full">
+                                  <span className="text-2xl leading-none" aria-hidden>{profile.emoji}</span>
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent side="top" className="text-right">
