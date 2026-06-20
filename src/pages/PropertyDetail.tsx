@@ -88,7 +88,13 @@ export default function PropertyDetail() {
       const photos = Array.from(new Set([...metaPhotos, ...featurePhotos]));
 
       const dealType = String(meta.deal_type ?? meta.listing_type ?? '').toLowerCase();
-      const listingType: 'sale' | 'rent' = dealType === 'rent' ? 'rent' : 'sale';
+      const priceNum = Number(row.asking_price) || 0;
+      // Price-based heuristic: < 50k => rent, >= 500k => sale.
+      // Falls back to dealType only in the ambiguous 50k–500k band.
+      let listingType: 'sale' | 'rent';
+      if (priceNum > 0 && priceNum < 50_000) listingType = 'rent';
+      else if (priceNum >= 500_000) listingType = 'sale';
+      else listingType = dealType === 'rent' ? 'rent' : 'sale';
       const textFeatures = (features as any[]).filter((f) => typeof f === 'string') as string[];
 
       const property = {
@@ -193,40 +199,22 @@ export default function PropertyDetail() {
 
   return (
     <div className="p-3 sm:p-6 space-y-6" dir="rtl">
-      {/* Floating back arrow — positioned on opposite edge of the burger/sidebar trigger (LTR-left in RTL layout) */}
-      <div className="flex items-center">
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label="חזרה לקטלוג הנכסים"
-          onClick={() => navigate('/properties')}
-          className="h-9 w-9 rounded-full text-foreground hover:bg-foreground/10"
-        >
-          <ArrowRight className="h-5 w-5 rotate-180" />
-        </Button>
-      </div>
-
-      {/* Headline + price */}
+      {/* Headline + price (back button lives in the hero, opposite the burger) */}
       <header className="space-y-2">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
           {headline || property.title}
         </h1>
 
-        <div className="flex items-end justify-between gap-4 flex-wrap">
-          <div className="text-3xl font-extrabold text-success tabular-nums">
+        <div className="flex items-baseline gap-3 flex-wrap">
+          <span className="text-3xl font-extrabold text-success tabular-nums">
             {formatPrice(property.price)}
             {isRent && <span className="text-base font-normal text-muted-foreground"> /חודש</span>}
-            {property.size_sqm ? (
-              <p className="text-xs text-muted-foreground mt-1 font-normal">
-                {formatPrice(Math.round(property.price / property.size_sqm))} למ"ר
-              </p>
-            ) : null}
-          </div>
-          <span
-            className={`text-lg font-bold ${isRent ? 'text-amber-600' : 'text-primary'}`}
-          >
-            {transactionHe}
           </span>
+          {property.size_sqm ? (
+            <span className="text-xs text-muted-foreground font-normal">
+              {formatPrice(Math.round(property.price / property.size_sqm))} למ"ר
+            </span>
+          ) : null}
         </div>
       </header>
 
@@ -273,7 +261,7 @@ export default function PropertyDetail() {
               <Spec icon={Home} label="סוג נכס" value={propertyTypeHe} />
               <Spec icon={MapPin} label="עיר" value={property.city || '—'} />
               <Spec icon={MapPin} label="שכונה" value={neighborhood || '—'} />
-              <Spec icon={Building2} label="מצב" value={transactionHe} />
+              
 
               {/* Amenities — merged into the same grid */}
               {amenities && amenities.parking > 0 && (
