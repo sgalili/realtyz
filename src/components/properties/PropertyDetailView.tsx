@@ -40,18 +40,7 @@ function formatMetaValue(key: string, value: unknown): string {
 
 export function PropertyDetailView({ property, meta = {}, amenities, neighborhood, sourceUrl, previewPhotos }: PropertyDetailViewData) {
   const [activePhoto, setActivePhoto] = useState(0);
-  const p = property as unknown as Record<string, any>;
-  const sourceMeta = (p?.source_metadata ?? {}) as Record<string, any>;
-  const resolvedPhotos: string[] = (
-    sourceMeta?.photos ||
-    sourceMeta?.images ||
-    p?.photos ||
-    p?.images ||
-    previewPhotos ||
-    []
-  ) as string[];
-  const photos = (resolvedPhotos || []).filter((u): u is string => typeof u === 'string' && u.length > 0);
-  const hasPhotos = photos.length > 0;
+  const photos = previewPhotos?.length ? previewPhotos : (property.photos || []);
 
   const isRent = Number(property.price) < 50_000;
   const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
