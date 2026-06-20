@@ -118,6 +118,8 @@ export default function Properties() {
 
   const [shareTarget, setShareTarget] = useState<HomelyProperty | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [quickLinkUrl, setQuickLinkUrl] = useState('');
+  const [quickLinkSeed, setQuickLinkSeed] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [homelyBulkOpen, setHomelyBulkOpen] = useState(false);
   const queryClient = useQueryClient();
