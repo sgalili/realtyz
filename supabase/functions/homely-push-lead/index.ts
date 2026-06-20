@@ -163,28 +163,44 @@ async function pushLead(params: {
   const text = await upstream.text();
   try { parsed = JSON.parse(text); } catch { parsed = text; }
 
+  // Webtiv often returns HTTP 200 with { success: false, errorMessage } in the body.
+  // Treat that as a real failure so the UI surfaces the actual reason.
+  const bodyObj = (parsed && typeof parsed === "object") ? parsed as Record<string, unknown> : null;
+  const bodySuccess = bodyObj ? (bodyObj.success !== false) : true;
+  const bodyError = bodyObj
+    ? String(bodyObj.errorMessage ?? bodyObj.error ?? "")
+    : (typeof parsed === "string" ? parsed : "");
+  const effectiveOk = upstream.ok && bodySuccess;
+
   await admin.from("homely_push_log").insert({
     lead_id: leadId,
     user_id: ownerId,
-    status: upstream.ok ? "success" : "failed",
+    status: effectiveOk ? "success" : "failed",
     http_status: upstream.status,
     category,
     request: payload,
     response: typeof parsed === "string" ? { text: parsed } : (parsed as any),
-    error: upstream.ok ? null : `HTTP ${upstream.status}`,
+    error: effectiveOk ? null : (bodyError || `HTTP ${upstream.status}`),
   });
 
-  if (!upstream.ok) {
+  if (!effectiveOk) {
     await logIntegrationError({
       integration: "homely",
       functionName: "homely-push-lead",
       errorCode: upstream.status,
-      errorMessage: typeof parsed === "string" ? parsed : JSON.stringify(parsed),
-      context: { lead_id: leadId },
+      errorMessage: bodyError || (typeof parsed === "string" ? parsed : JSON.stringify(parsed)),
+      context: { lead_id: leadId, client },
     });
   }
 
-  return { ok: upstream.ok, status: upstream.status, body: parsed, category, payload };
+  return {
+    ok: effectiveOk,
+    status: upstream.status,
+    body: parsed,
+    category,
+    payload,
+    error: effectiveOk ? undefined : (bodyError || `HTTP ${upstream.status}`),
+  };
 }
 
 Deno.serve(async (req) => {
