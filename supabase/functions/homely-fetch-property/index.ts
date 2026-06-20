@@ -255,6 +255,33 @@ function mapStreamContact(it: any, idx: number) {
   };
 }
 
+function normalizeIlPhone(raw: unknown): string {
+  const digits = String(raw ?? "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("972")) return digits;
+  if (digits.startsWith("0")) return `972${digits.slice(1)}`;
+  return digits;
+}
+
+function compactRaw(raw: unknown) {
+  if (!raw || typeof raw !== "object") return raw ?? null;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (v === null || v === undefined || v === "") continue;
+    if (typeof v === "string" && v.length > 1000) out[k] = v.slice(0, 1000);
+    else out[k] = v;
+  }
+  return out;
+}
+
+function slugify(s: string): string {
+  return (s || "homely")
+    .toLowerCase()
+    .replace(/[^\w\u0590-\u05FF]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "homely";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -269,6 +296,92 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = (body as any)?.action as string | undefined;
     const listing_id = (body as any)?.listing_id;
+
+    if (action === "importOutJson") {
+      const propertyIds = new Set(((body as any)?.propertyIds ?? []).map((v: unknown) => String(v)));
+      const contactIds = new Set(((body as any)?.contactIds ?? []).map((v: unknown) => String(v)));
+      let properties = Array.isArray((body as any)?.properties) ? (body as any).properties : [];
+      let contacts = Array.isArray((body as any)?.contacts) ? (body as any).contacts : [];
+      const SELLERS_GUID = Deno.env.get("HOMELY_SELLERS_GUID") || "32dc79a4-88ba-49a4-816e-f1fc43024c2f";
+      const BUYERS_GUID  = Deno.env.get("HOMELY_BUYERS_GUID")  || "b6bb7f44-571b-4551-8de9-e075b8a89128";
+      if (propertyIds.size && properties.length === 0) {
+        const r = await getJson(`${WEBTIV_BASE}/AutomaionJson/outJson.ashx?guid=${SELLERS_GUID}`);
+        if (r.status < 200 || r.status >= 300) throw new Error(`properties_stream_http_${r.status}`);
+        properties = asArray(r.data).map(mapStreamProperty).filter((p) => propertyIds.has(String(p.homely_id)));
+      }
+      if (contactIds.size && contacts.length === 0) {
+        const r = await getJson(`${WEBTIV_BASE}/AutomaionJson/outJson.ashx?guid=${BUYERS_GUID}`);
+        if (r.status < 200 || r.status >= 300) throw new Error(`contacts_stream_http_${r.status}`);
+        contacts = asArray(r.data).map(mapStreamContact).filter((c) => contactIds.has(String(c.homely_id)));
+      }
+      let propsCount = 0;
+      let contactsCount = 0;
+
+      for (const p of properties) {
+        const homelyId = String(p?.homely_id ?? "").trim();
+        if (!homelyId) continue;
+        const photos = Array.isArray(p?.photos) && p.photos.length ? p.photos : (p?.photo ? [p.photo] : []);
+        const documents = Array.isArray(p?.documents) ? p.documents : [];
+        const row = {
+          user_id: user.id,
+          slug: `${slugify(String(p?.title || p?.address || "homely"))}-${homelyId}`,
+          source: "homely",
+          external_id: homelyId,
+          property_title: String(p?.title || p?.address || `נכס ${homelyId}`),
+          description: String(p?.description || ""),
+          asking_price: Number(p?.price) || 0,
+          city: p?.city ? String(p.city) : null,
+          address: p?.address ? String(p.address) : null,
+          rooms: Number(p?.rooms) || null,
+          sqm: Number.isFinite(Number(p?.sqm)) ? Number(p.sqm) : null,
+          floor: Number.isFinite(Number(p?.floor)) ? Number(p.floor) : null,
+          status: "live",
+          is_published: true,
+          features: Array.isArray(p?.features) ? p.features : [],
+          source_metadata: {
+            homely_id: homelyId,
+            property_type: p?.property_type || null,
+            photos,
+            documents,
+            media_count: photos.length + documents.length,
+            homely_raw: compactRaw(p?.raw),
+            synced_at: new Date().toISOString(),
+          },
+        };
+        const { error } = await admin.from("listings").upsert(row as any, { onConflict: "source,external_id" });
+        if (error) throw new Error(`listings#${homelyId}: ${error.message}`);
+        propsCount++;
+      }
+
+      for (const c of contacts) {
+        const homelyId = String(c?.homely_id ?? "").trim();
+        const phone = normalizeIlPhone(c?.phone) || String(c?.phone || c?.email || homelyId).trim();
+        if (!phone) continue;
+        const row = {
+          phone_number: phone,
+          full_name: c?.full_name ? String(c.full_name) : `איש קשר ${homelyId || phone}`,
+          city: c?.city ? String(c.city) : null,
+          email: c?.email ? String(c.email) : null,
+          status: "contacted",
+          lead_stage: "qualified",
+          deal_type: "sale",
+          assigned_to: user.id,
+          is_demo: false,
+          preferences: {
+            homely_id: homelyId || null,
+            homely_notes: c?.notes || null,
+            source: "homely",
+            homely_raw: compactRaw(c?.raw),
+            synced_at: new Date().toISOString(),
+          },
+        };
+        const { error } = await admin.from("leads").upsert(row as any, { onConflict: "phone_number" });
+        if (error) throw new Error(`leads#${homelyId || phone}: ${error.message}`);
+        contactsCount++;
+      }
+
+      return json({ ok: true, imported: propsCount + contactsCount, propsCount, contactsCount });
+    }
 
     // ---------- Bulk pull (verified Webtiv AutomaionJson streams) ----------
     // These are the office's outbound JSON exports (one GUID per stream),
