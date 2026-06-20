@@ -1022,7 +1022,7 @@ const LeadCRM = () => {
               </SelectContent>
             </Select>
             <Select value={profileFilter} onValueChange={setProfileFilter}>
-              <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="שלב מתעניין" /></SelectTrigger>
+              <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="שלב" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">כל השלבים</SelectItem>
                 <SelectItem value="מתעניין קר">מתעניין קר</SelectItem>
@@ -1139,7 +1139,7 @@ const LeadCRM = () => {
                   <TableHead className="w-auto font-semibold text-xs text-right">טלפון</TableHead>
                   <TableHead className="w-auto font-semibold text-xs">עיר</TableHead>
                   <TableHead className="w-auto text-center font-semibold text-xs">סוג</TableHead>
-                  <TableHead className="w-auto text-center font-semibold text-xs">שלב מתעניין</TableHead>
+                  <TableHead className="w-auto text-center font-semibold text-xs">שלב</TableHead>
                   {extraColumns.map((col) => (
                     <TableHead key={`h-${col}`} className="w-auto font-semibold text-xs text-center">{col}</TableHead>
                   ))}
