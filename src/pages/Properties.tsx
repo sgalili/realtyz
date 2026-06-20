@@ -605,7 +605,13 @@ export default function Properties() {
         onOpenChange={(open) => { if (!open) setShareTarget(null); }}
       />
 
-      <AddPropertyDialog open={addOpen} onOpenChange={setAddOpen} onCreated={refreshListings} />
+      <AddPropertyDialog
+        open={addOpen}
+        onOpenChange={(o) => { setAddOpen(o); if (!o) setQuickLinkSeed(null); }}
+        onCreated={refreshListings}
+        initialText={quickLinkSeed ?? undefined}
+        autoHydrate={!!quickLinkSeed}
+      />
       <ImportPropertiesDialog open={importOpen} onOpenChange={setImportOpen} onImported={refreshListings} />
       <HomelyBulkSyncDialog open={homelyBulkOpen} onOpenChange={setHomelyBulkOpen} onImported={refreshListings} mode="properties" />
     </div>
