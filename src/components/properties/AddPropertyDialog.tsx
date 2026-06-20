@@ -11,6 +11,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Sparkles, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 import { PROPERTY_TYPE_LABELS_HE, type PropertyType } from '@/lib/homelyMockProperties';
 import {
@@ -41,18 +43,57 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: Props) {
   const [listingType, setListingType] = useState<'sale' | 'rent'>('sale');
   const [price, setPrice] = useState('');
   const [city, setCity] = useState('');
+  const [neighborhood, setNeighborhood] = useState('');
   const [propertyType, setPropertyType] = useState<PropertyType>('apartment');
   const [rooms, setRooms] = useState('');
   const [sqm, setSqm] = useState('');
+  const [floor, setFloor] = useState('');
+  const [description, setDescription] = useState('');
+  const [aiText, setAiText] = useState('');
+  const [hydrating, setHydrating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   const reset = () => {
     setListingType('sale');
     setPrice('');
     setCity('');
+    setNeighborhood('');
     setPropertyType('apartment');
     setRooms('');
     setSqm('');
+    setFloor('');
+    setDescription('');
+    setAiText('');
+  };
+
+  const handleHydrate = async () => {
+    if (aiText.trim().length < 10) {
+      toast.error('הדבק טקסט ארוך יותר מהמודעה');
+      return;
+    }
+    setHydrating(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('parse-listing-text', {
+        body: { text: aiText },
+      });
+      if (error) throw error;
+      if (!data?.ok || !data?.data) throw new Error(data?.error || 'parse_failed');
+      const d = data.data;
+      if (d.listing_type) setListingType(d.listing_type);
+      if (d.property_type) setPropertyType(d.property_type);
+      if (d.city) setCity(d.city);
+      if (d.neighborhood) setNeighborhood(d.neighborhood);
+      if (d.rooms != null) setRooms(String(d.rooms));
+      if (d.price != null) setPrice(String(d.price));
+      if (d.sqm != null) setSqm(String(d.sqm));
+      if (d.floor != null) setFloor(String(d.floor));
+      if (d.description) setDescription(d.description);
+      toast.success('הפרטים חולצו בהצלחה — סקרו ושמרו');
+    } catch (e: any) {
+      toast.error(`שגיאה בחילוץ: ${e.message ?? e}`);
+    } finally {
+      setHydrating(false);
+    }
   };
 
   const handleSubmit = async () => {
@@ -72,15 +113,17 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: Props) {
         user_id: auth.user.id,
         slug: slugify(title),
         property_title: title,
-        description: title,
+        description: description.trim() || title,
         asking_price: Number(price) || 0,
         city: city.trim(),
+        neighborhood: neighborhood.trim() || null,
         rooms: rooms ? Number(rooms) : null,
         sqm: sqm ? Number(sqm) : null,
+        floor: floor ? Number(floor) : null,
         status: 'live',
         source: 'manual',
         is_published: true,
-        features: [{ listing_type: listingType }],
+        features: [{ listing_type: listingType, property_type: propertyType }],
       });
       if (error) throw error;
       toast.success('הנכס נוסף בהצלחה');
@@ -96,13 +139,40 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="max-w-lg">
+      <DialogContent dir="rtl" className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>הוספת נכס ידנית</DialogTitle>
-          <DialogDescription>הזינו פרטי נכס בסיסיים. ניתן להעשיר מאוחר יותר.</DialogDescription>
+          <DialogDescription>הזינו פרטי נכס בסיסיים, או הדביקו טקסט מודעה וה-AI ימלא את השדות.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* AI Paste & Hydrate */}
+          <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-3 space-y-2">
+            <Label className="text-xs font-bold flex items-center gap-1.5 text-primary">
+              <Sparkles className="h-3.5 w-3.5" />
+              הדבקת טקסט חופשי או מודעה (Yad2 / מדלן)
+            </Label>
+            <Textarea
+              dir="rtl"
+              rows={4}
+              placeholder="הדבק כאן את הטקסט המועתק מהמודעה הציבורית, וה-AI יחלץ את כל השדות אוטומטית..."
+              value={aiText}
+              onChange={(e) => setAiText(e.target.value)}
+              className="resize-none text-sm bg-background"
+              disabled={hydrating}
+            />
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleHydrate}
+              disabled={hydrating || aiText.trim().length < 10}
+              className="w-full gap-1.5"
+            >
+              {hydrating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+              {hydrating ? 'מנתח...' : 'נתח והשלם פרטים'}
+            </Button>
+          </div>
+
           <div className="flex justify-center">
             <div className="inline-flex items-center rounded-xl border border-primary/20 bg-card/40 p-1" dir="rtl">
               {(['sale', 'rent'] as const).map((t) => (
@@ -140,12 +210,21 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: Props) {
               </div>
             </div>
 
-            <div className="space-y-1.5 col-span-2">
-              <Label className="text-xs font-semibold">עיר / אזור</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">עיר</Label>
               <Input
                 placeholder="לדוגמה: תל אביב"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">שכונה</Label>
+              <Input
+                placeholder="לדוגמה: פלורנטין"
+                value={neighborhood}
+                onChange={(e) => setNeighborhood(e.target.value)}
               />
             </div>
 
@@ -176,7 +255,7 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: Props) {
               />
             </div>
 
-            <div className="space-y-1.5 col-span-2">
+            <div className="space-y-1.5">
               <Label className="text-xs font-semibold">שטח (מ"ר)</Label>
               <Input
                 type="number"
@@ -185,8 +264,31 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: Props) {
                 onChange={(e) => setSqm(e.target.value)}
               />
             </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">קומה</Label>
+              <Input
+                type="number"
+                placeholder="3"
+                value={floor}
+                onChange={(e) => setFloor(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1.5 col-span-2">
+              <Label className="text-xs font-semibold">תיאור / הערות</Label>
+              <Textarea
+                dir="rtl"
+                rows={3}
+                placeholder="חניה, מעלית, מרפסת, שיפוץ..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="resize-none text-sm"
+              />
+            </div>
           </div>
         </div>
+
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
