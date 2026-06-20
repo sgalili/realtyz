@@ -102,7 +102,7 @@ const SOURCE_LABELS: Record<SourceTab, string> = {
 
 export default function Properties() {
   const { serviceAreas, coveredCities, isConfigured } = useServiceAreas();
-  const [sourceTab, setSourceTab] = useState<SourceTab>('mine');
+  const [sourceTab, setSourceTab] = useState<SourceTab>('all');
   const [listingType, setListingType] = useState<ListingType | 'all'>('all');
   const [city, setCity] = useState<string>('כל הערים');
   const [propertyType, setPropertyType] = useState<PropertyType | 'all'>('all');
