@@ -154,18 +154,24 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
       if (error) throw error;
       const payload = data as any;
       if (payload?.error) throw new Error(payload.error);
-      const count = Number(payload?.imported ?? (selectedPropertyIds.length + selectedContactIds.length));
-      toast.success(`הייבוא הושלם! ${count} רשומות עודכנו בהצלחה`);
+      const propsCount = Number(payload?.propsCount ?? selectedPropertyIds.length);
+      const contactsCount = Number(payload?.contactsCount ?? selectedContactIds.length);
       setPickedProps(new Set());
       setPickedContacts(new Set());
       onImported?.();
-      onOpenChange(false);
+      setSummary({ properties: propsCount, contacts: contactsCount });
     } catch (e) {
       toast.error(`שגיאה בייבוא: ${(e as Error).message}`);
     } finally {
       setImporting(false);
     }
   }
+
+  function closeAll() {
+    setSummary(null);
+    onOpenChange(false);
+  }
+
 
   const totalPicked = pickedProps.size + pickedContacts.size;
   const loading = loadingProps || loadingContacts;
