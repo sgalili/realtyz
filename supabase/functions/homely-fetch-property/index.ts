@@ -135,11 +135,13 @@ Deno.serve(async (req) => {
       let lastError = "";
       const debug: Array<{ path: string; status?: number; topKeys?: string[]; sample?: string }> = [];
       for (const path of PATHS) {
+        const url = `${WEBTIV_BASE}${path}`;
+        console.log(`[homely-fetch-property] Targeting Homely URL: ${url}`);
         try {
-          const r = await fetch(`${WEBTIV_BASE}${path}`, {
+          const r = await fetch(url, {
             method: "POST",
             headers,
-            body: JSON.stringify({ db, token, agency: cred.homely_agency }),
+            body: JSON.stringify({ db, token, page: 1, pageSize: 200, agency: cred.homely_agency }),
           });
           const text = await r.text();
           let data: any = null;
