@@ -361,20 +361,19 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
           <DialogTitle className="text-xl text-center">הסנכרון הושלם בהצלחה!</DialogTitle>
         </DialogHeader>
         <div dir="rtl" className="mt-4 space-y-3 text-right">
-          <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
-            <Building2 className="h-5 w-5 text-primary shrink-0" />
-            <div className="flex-1 text-sm">נכסים שנקלטו במערכת</div>
-            <div className="text-lg font-bold tabular-nums">{summary?.properties ?? 0}</div>
-          </div>
-          <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
-            <Users className="h-5 w-5 text-primary shrink-0" />
-            <div className="flex-1 text-sm">אנשי קשר שנקלטו במערכת</div>
-            <div className="text-lg font-bold tabular-nums">{summary?.contacts ?? 0}</div>
-          </div>
-          <div className="flex items-start gap-3 rounded-lg border bg-primary/5 p-3 text-right">
-            <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-            <div className="flex-1 text-sm leading-relaxed">הערות משרד ומדיה סונכרנו עבור ה-Marketing AI.</div>
-          </div>
+          {mode === 'properties' ? (
+            <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
+              <Building2 className="h-5 w-5 text-primary shrink-0" />
+              <div className="flex-1 text-sm">נכסים שנקלטו במערכת</div>
+              <div className="text-lg font-bold tabular-nums">{summary?.properties ?? 0}</div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
+              <Users className="h-5 w-5 text-primary shrink-0" />
+              <div className="flex-1 text-sm">אנשי קשר שנקלטו במערכת</div>
+              <div className="text-lg font-bold tabular-nums">{summary?.contacts ?? 0}</div>
+            </div>
+          )}
         </div>
         <DialogFooter className="mt-6 sm:justify-center">
           <Button onClick={closeAll} className="w-full sm:w-auto px-8">מעולה, תודה</Button>
