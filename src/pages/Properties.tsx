@@ -715,30 +715,20 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const queryClient = useQueryClient();
-  const extraKeys = useMemo(() => {
-    const seen = new Set<string>();
-    const order: string[] = [];
-    for (const p of properties) {
-      const ex = p.extras ?? {};
-      for (const k of Object.keys(ex)) {
-        if (!seen.has(k)) { seen.add(k); order.push(k); }
-      }
-    }
-    return order;
-  }, [properties]);
-
-  type SortKey = 'created_at' | 'listing_type' | 'title' | 'price' | 'city' | 'rooms' | 'size_sqm' | `extra:${string}`;
+  type SortKey = 'created_at' | 'listing_type' | 'title' | 'price' | 'city' | 'address' | 'rooms' | 'floor' | 'size_sqm' | 'property_type';
   const { sort, toggle } = useTableSort<SortKey>({ key: 'created_at', dir: 'desc' });
   const sorted = useMemo(() => sortRows(properties, sort, (row, key) => {
-    if (key.startsWith('extra:')) return row.extras?.[key.slice(6)] ?? '';
     switch (key) {
       case 'created_at': return row.created_at ? new Date(row.created_at) : null;
       case 'listing_type': return LISTING_TYPE_LABELS_HE[row.listing_type ?? 'sale'];
       case 'title': return row.title;
       case 'price': return Number(row.price ?? 0);
       case 'city': return row.city ?? '';
+      case 'address': return row.address ?? '';
       case 'rooms': return Number(row.rooms ?? 0);
+      case 'floor': return Number(row.floor ?? 0);
       case 'size_sqm': return Number(row.size_sqm ?? 0);
+      case 'property_type': return row.property_type ?? '';
       default: return '';
     }
   }), [properties, sort]);
