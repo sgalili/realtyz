@@ -228,6 +228,7 @@ export default function Properties() {
                 address: row.address ?? row.neighborhood ?? '',
                 rooms: Number(row.rooms ?? 0),
                 size_sqm: Number(row.sqm ?? 0),
+                floor: row.floor != null ? Number(row.floor) : (meta.floor != null ? Number(meta.floor) : undefined),
                 property_type: detectPropertyType(`${row.property_title ?? ''} ${row.description ?? ''}`),
                 photos: metaPhotos,
                 url: row.source_url ?? null,
