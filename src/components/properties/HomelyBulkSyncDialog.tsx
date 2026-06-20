@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { RefreshCw, MapPin, Phone, Mail, Home, SlidersHorizontal, Loader2 } from 'lucide-react';
+import { RefreshCw, MapPin, Phone, Mail, Home, SlidersHorizontal, Loader2, CheckCircle2, Building2, Users, Sparkles } from 'lucide-react';
 import { toast } from 'sonner';
 
 // 60s client-side debounce shared across both fetch actions to protect Homely.
@@ -53,6 +53,8 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
   const [pickedProps, setPickedProps] = useState<Set<string>>(new Set());
   const [pickedContacts, setPickedContacts] = useState<Set<string>>(new Set());
   const [importing, setImporting] = useState(false);
+  const [summary, setSummary] = useState<{ properties: number; contacts: number } | null>(null);
+
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [fCity, setFCity] = useState('');
   const [fRooms, setFRooms] = useState('');
@@ -152,12 +154,12 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
       if (error) throw error;
       const payload = data as any;
       if (payload?.error) throw new Error(payload.error);
-      const count = Number(payload?.imported ?? (selectedPropertyIds.length + selectedContactIds.length));
-      toast.success(`הייבוא הושלם! ${count} רשומות עודכנו בהצלחה`);
+      const propsCount = Number(payload?.propsCount ?? selectedPropertyIds.length);
+      const contactsCount = Number(payload?.contactsCount ?? selectedContactIds.length);
       setPickedProps(new Set());
       setPickedContacts(new Set());
       onImported?.();
-      onOpenChange(false);
+      setSummary({ properties: propsCount, contacts: contactsCount });
     } catch (e) {
       toast.error(`שגיאה בייבוא: ${(e as Error).message}`);
     } finally {
@@ -165,11 +167,19 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
     }
   }
 
+  function closeAll() {
+    setSummary(null);
+    onOpenChange(false);
+  }
+
+
   const totalPicked = pickedProps.size + pickedContacts.size;
   const loading = loadingProps || loadingContacts;
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (importing && !v) return; onOpenChange(v); }}>
+    <>
+    <Dialog open={open && !summary} onOpenChange={(v) => { if (importing && !v) return; onOpenChange(v); }}>
+
       <DialogContent
         dir="rtl"
         className="max-w-3xl w-[calc(100vw-1rem)] max-h-[95vh] overflow-hidden p-4 sm:p-6 flex flex-col gap-3"
@@ -338,5 +348,37 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
         </DialogFooter>
       </DialogContent>
     </Dialog>
+
+    <Dialog open={!!summary} onOpenChange={(v) => { if (!v) closeAll(); }}>
+      <DialogContent dir="rtl" className="max-w-md text-center p-6">
+        <DialogHeader className="items-center text-center space-y-3">
+          <div className="h-14 w-14 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center mx-auto">
+            <CheckCircle2 className="h-8 w-8" />
+          </div>
+          <DialogTitle className="text-xl text-center">הסנכרון הושלם בהצלחה!</DialogTitle>
+        </DialogHeader>
+        <div dir="rtl" className="mt-4 space-y-3 text-right">
+          <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
+            <Building2 className="h-5 w-5 text-primary shrink-0" />
+            <div className="flex-1 text-sm">נכסים שנקלטו במערכת</div>
+            <div className="text-lg font-bold tabular-nums">{summary?.properties ?? 0}</div>
+          </div>
+          <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
+            <Users className="h-5 w-5 text-primary shrink-0" />
+            <div className="flex-1 text-sm">אנשי קשר שנקלטו במערכת</div>
+            <div className="text-lg font-bold tabular-nums">{summary?.contacts ?? 0}</div>
+          </div>
+          <div className="flex items-start gap-3 rounded-lg border bg-primary/5 p-3 text-right">
+            <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />
+            <div className="flex-1 text-sm leading-relaxed">הערות משרד ומדיה סונכרנו עבור ה-Marketing AI.</div>
+          </div>
+        </div>
+        <DialogFooter className="mt-6 sm:justify-center">
+          <Button onClick={closeAll} className="w-full sm:w-auto px-8">מעולה, תודה</Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 }
+
