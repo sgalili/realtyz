@@ -100,6 +100,17 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Always harvest direct image URLs from the raw payload text (works for pasted listings too)
+    const rawImageMatches = Array.from(
+      payload.matchAll(/https?:\/\/[^\s"'<>)\]]+?\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>)\]]*)?/gi)
+    ).map((m) => m[0]);
+    const yad2Specific = Array.from(
+      payload.matchAll(/https?:\/\/img\.yad2\.co\.il\/[^\s"'<>)\]]+/gi)
+    ).map((m) => m[0]);
+    scrapedPhotos = dedupe([...scrapedPhotos, ...rawImageMatches, ...yad2Specific])
+      .filter((u) => !/logo|sprite|icon|favicon|placeholder/i.test(u))
+      .slice(0, 20);
+
 
     const system = `You extract Israeli real-estate listing data from Hebrew/English content (Yad2, Madlan, WhatsApp forwards, free notes).
 Return ONLY a strict JSON object matching this shape (use null when unknown):

@@ -29,6 +29,7 @@ interface Props {
   onCreated?: () => void;
   initialText?: string;
   autoHydrate?: boolean;
+  defaultSource?: 'manual' | 'yad2' | 'madlan';
 }
 
 function slugify(s: string) {
@@ -41,7 +42,7 @@ function slugify(s: string) {
   ) + '-' + Math.random().toString(36).slice(2, 8);
 }
 
-export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, autoHydrate }: Props) {
+export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, autoHydrate, defaultSource }: Props) {
   const [listingType, setListingType] = useState<'sale' | 'rent'>('sale');
   const [price, setPrice] = useState('');
   const [city, setCity] = useState('');
@@ -166,7 +167,7 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
         sqm: sqm ? Number(sqm) : null,
         floor: floor ? Number(floor) : null,
         status: 'live',
-        source: sourceUrl.includes('yad2') ? 'yad2' : sourceUrl.includes('madlan') ? 'madlan' : 'manual',
+        source: (defaultSource && defaultSource !== 'manual') ? defaultSource : (sourceUrl.includes('yad2') ? 'yad2' : sourceUrl.includes('madlan') ? 'madlan' : (defaultSource || 'manual')),
         source_url: sourceUrl || null,
         source_metadata: { photos, ...features2 },
         parking: features2.parking != null ? features2.parking > 0 : null,
@@ -192,11 +193,11 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
         dir="rtl"
         className="w-screen h-screen max-w-none sm:max-w-none p-0 gap-0 rounded-none border-0 flex flex-col"
       >
-        <DialogHeader className="px-6 py-4 border-b shrink-0">
-          <DialogTitle>הוספת נכס ידנית</DialogTitle>
-          <DialogDescription>הזינו פרטי נכס בסיסיים, או הדביקו טקסט מודעה וה-AI ימלא את השדות.</DialogDescription>
+        <DialogHeader className="px-6 py-4 border-b shrink-0 sr-only">
+          <DialogTitle>הוספת נכס</DialogTitle>
+          <DialogDescription>הוספת נכס חדש לקטלוג</DialogDescription>
         </DialogHeader>
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto px-6 py-6">
 
         <div className="space-y-4">
           {/* AI Paste & Hydrate */}
