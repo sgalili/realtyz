@@ -2705,6 +2705,7 @@ export type Database = {
           is_promoted: boolean
           is_published: boolean
           neighborhood: string | null
+          office_notes: string | null
           parking: boolean | null
           project_name: string | null
           promoted_until: string | null
@@ -2741,6 +2742,7 @@ export type Database = {
           is_promoted?: boolean
           is_published?: boolean
           neighborhood?: string | null
+          office_notes?: string | null
           parking?: boolean | null
           project_name?: string | null
           promoted_until?: string | null
@@ -2777,6 +2779,7 @@ export type Database = {
           is_promoted?: boolean
           is_published?: boolean
           neighborhood?: string | null
+          office_notes?: string | null
           parking?: boolean | null
           project_name?: string | null
           promoted_until?: string | null
