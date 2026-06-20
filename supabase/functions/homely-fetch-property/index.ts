@@ -360,6 +360,7 @@ Deno.serve(async (req) => {
           floor: Number.isFinite(Number(p?.floor)) ? Number(p.floor) : null,
           status: "live",
           is_published: true,
+          office_notes: p?.office_notes ? String(p.office_notes) : null,
           features: Array.isArray(p?.features) ? p.features : [],
           source_metadata: {
             homely_id: homelyId,
@@ -367,9 +368,11 @@ Deno.serve(async (req) => {
             photos,
             documents,
             media_count: photos.length + documents.length,
+            office_notes: p?.office_notes || null,
             homely_raw: compactRaw(p?.raw),
             synced_at: new Date().toISOString(),
           },
+
         };
         const { error } = await admin.from("listings").upsert(row as any, { onConflict: "source,external_id" });
         if (error) throw new Error(`listings#${homelyId}: ${error.message}`);
