@@ -32,7 +32,7 @@ import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import { parsePdfToRows } from '@/lib/parsePdfTable';
 import { sendToN8n } from '@/lib/n8nService';
-import { formatPhoneDisplay } from '@/lib/formatPhone';
+import { formatPhoneDisplay, isValidIsraeliPhone } from '@/lib/formatPhone';
 import VoterAvatar from '@/components/VoterAvatar';
 import { useAuth } from '@/hooks/useAuth';
 import { useDemoMode } from '@/hooks/useDemoMode';
