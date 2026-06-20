@@ -125,7 +125,8 @@ Rules:
 - "להשכרה" / "שכירות" / monthly-magnitude price => rent. "למכירה" => sale.
 - Strip currency symbols / thousands separators from price.
 - Detect amenities: מיזוג=>air_conditioning, דוד שמש=>solar_heater, מקלט / ממ"ד=>shelter, מעלית=>elevator, חניות N=>parking=N.
-- Never invent data. Use null/false when uncertain.
+- HARD RULE: Never invent or guess values. If a field is not literally present in the input, return null (or false for booleans, [] for photos). Do NOT use placeholders like "תל אביב", "פלורנטין", "1,500,000".
+- If the input is only a URL with no listing details, return all fields as null/false/[].
 - For photos, return real image URLs only (must start with http). Do not include logos/ads.
 - Output JSON only.`;
 
