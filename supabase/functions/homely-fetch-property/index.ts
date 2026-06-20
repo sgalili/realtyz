@@ -178,6 +178,58 @@ function mapContact(it: any, idx: number) {
   };
 }
 
+// ---- AutomaionJson stream mappers (verified Webtiv outJson.ashx shape) ----
+function firstPhone(it: any): string {
+  for (const k of ["tel2", "tel1", "tel3", "tel4", "tel5"]) {
+    const v = it?.[k];
+    if (v && String(v).replace(/\D/g, "").length >= 7) return String(v);
+  }
+  return "";
+}
+function joinName(it: any): string {
+  const name = (it?.name ?? "").toString().trim();
+  const family = (it?.family ?? "").toString().trim();
+  // Hebrew order: first name then family
+  return [name, family].filter(Boolean).join(" ").trim();
+}
+function mapStreamProperty(it: any, idx: number) {
+  const serial = String(it?.serial ?? it?.Serial ?? `row-${idx + 1}`);
+  const street = [it?.street, it?.number, it?.flatnumber].filter((v) => v && String(v).trim()).join(" ").trim();
+  const owner = joinName(it);
+  const title = [it?.objectresidence || "נכס", it?.city, street].filter(Boolean).join(" · ").trim();
+  const notes = [it?.comments1, it?.comments2, it?.more].filter(Boolean).join(" | ");
+  return {
+    homely_id: serial,
+    title: title || `נכס ${serial}`,
+    description: [owner ? `בעלים: ${owner}` : "", notes].filter(Boolean).join("\n"),
+    price: Number(it?.priceshekel ?? 0) || 0,
+    city: String(it?.city ?? ""),
+    address: street,
+    rooms: Number(it?.room ?? 0) || 0,
+    sqm: Number(it?.builtsqmr ?? 0) || 0,
+    floor: Number(it?.floor ?? 0) || 0,
+    photo: null,
+    raw: it,
+  };
+}
+function mapStreamContact(it: any, idx: number) {
+  const serial = String(it?.serial ?? it?.Serial ?? `row-${idx + 1}`);
+  const wants = [
+    it?.objectresidence,
+    it?.room ? `${it.room}${it?.room_max && it.room_max !== it.room ? `-${it.room_max}` : ""} חד׳` : "",
+    it?.priceshekel ? `₪${Number(it.priceshekel).toLocaleString("he-IL")}${it?.priceshekel_max ? `-${Number(it.priceshekel_max).toLocaleString("he-IL")}` : ""}` : "",
+  ].filter(Boolean).join(" · ");
+  return {
+    homely_id: serial,
+    full_name: joinName(it) || `איש קשר ${serial}`,
+    phone: firstPhone(it),
+    email: String(it?.email ?? ""),
+    city: String(it?.city1 ?? it?.city ?? ""),
+    notes: [wants, it?.comments1].filter(Boolean).join("\n"),
+    raw: it,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -193,101 +245,64 @@ Deno.serve(async (req) => {
     const action = (body as any)?.action as string | undefined;
     const listing_id = (body as any)?.listing_id;
 
-    // ---------- Bulk pull (verified Webtiv report routes) ----------
+    // ---------- Bulk pull (verified Webtiv AutomaionJson streams) ----------
+    // These are the office's outbound JSON exports (one GUID per stream),
+    // configured inside Homely by the broker. They are the same arrays the
+    // Homely web app uses for the "נכסים" and "אנשי קשר" reports — they
+    // always contain real data, unlike the per-agent /api/report/* routes
+    // that depend on the agent's personal "interesting" filter.
     if (action === "fetchAllProperties" || action === "fetchAllContacts") {
-      const { data: cred } = await admin
-        .from("homely_broker_credentials")
-        .select("homely_agency, homely_username")
-        .eq("user_id", user.id)
-        .maybeSingle();
-      if (!cred?.homely_agency || !cred?.homely_username) {
-        return json({ ok: false, needs_setup: true, error: "no_homely_credentials", action }, 200);
-      }
-      const { data: pw } = await admin.rpc("get_homely_password", { _user_id: user.id });
-      if (!pw) return json({ ok: false, needs_setup: true, error: "no_homely_password" }, 200);
+      const SELLERS_GUID = Deno.env.get("HOMELY_SELLERS_GUID") || "32dc79a4-88ba-49a4-816e-f1fc43024c2f";
+      const BUYERS_GUID  = Deno.env.get("HOMELY_BUYERS_GUID")  || "b6bb7f44-571b-4551-8de9-e075b8a89128";
+      const guid = action === "fetchAllProperties" ? SELLERS_GUID : BUYERS_GUID;
+      const url = `${WEBTIV_BASE}/AutomaionJson/outJson.ashx?guid=${guid}`;
 
-      const login = await webtivLogin(String(cred.homely_agency), String(cred.homely_username), pw as unknown as string);
-      if (!login.ok) return json({ error: `login_failed:${login.status}`, note: login.note }, 502);
-
-      const hash = extractHash(login.session);
-      if (!hash) {
+      const r = await getJson(url);
+      console.log(`[homely-fetch-property] GET ${url} → ${r.status}, bytes-sample=${r.sample.length}`);
+      if (r.status < 200 || r.status >= 300) {
         return json({
           ok: false,
-          error: "no_hash_in_login",
-          note: "Login succeeded but no agent hash token was returned.",
-          session_keys: Object.keys(login.session || {}),
+          error: `stream_http_${r.status}`,
+          endpoint: url,
+          sample: r.sample,
+          properties: [],
+          contacts: [],
+          empty: true,
         }, 200);
       }
-      const agentId = extractAgentId(login.session);
-      console.log(`[homely-fetch-property] login OK, hash len=${hash.length}, agentId=${agentId}`);
-
-      const debug: any[] = [];
+      const items = asArray(r.data);
+      const debug = [{
+        url, status: r.status,
+        topKeys: r.data && typeof r.data === "object" && !Array.isArray(r.data) ? Object.keys(r.data).slice(0, 10) : null,
+        sampleKeys: items[0] && typeof items[0] === "object" ? Object.keys(items[0]).slice(0, 20) : null,
+        count: items.length,
+      }];
 
       if (action === "fetchAllProperties") {
-        // Primary: getInterestingAdminByAgent → broker's live listings feed.
-        const candidates = [
-          `${WEBTIV_BASE}/api/report/getInterestingAdminByAgent/${encodeURIComponent(hash)}/${encodeURIComponent(agentId)}/null/null`,
-          `${WEBTIV_BASE}/api/report/getInterestingAdminByAgent/${encodeURIComponent(hash)}/${encodeURIComponent(agentId)}/null/null/null`,
-        ];
-        let items: any[] = [];
-        let usedUrl: string | null = null;
-        for (const url of candidates) {
-          const r = await getJson(url);
-          debug.push({ url, status: r.status, sample: r.sample, topKeys: r.data && typeof r.data === "object" ? Object.keys(r.data).slice(0, 10) : null });
-          console.log(`[homely-fetch-property] GET ${url} → ${r.status}`);
-          if (r.status >= 200 && r.status < 300) {
-            const arr = asArray(r.data);
-            if (arr.length) { items = arr; usedUrl = url; break; }
-            if (!items.length) usedUrl = url; // remember last 200 even if empty
-          }
-        }
-        const properties = items.map(mapProperty);
+        const properties = items.map(mapStreamProperty);
         return json({
           ok: true,
-          source: "report.getInterestingAdminByAgent",
-          endpoint: usedUrl,
+          source: "AutomaionJson.sellers",
+          endpoint: url,
           count: properties.length,
           properties,
           empty: properties.length === 0,
-          message: properties.length === 0
-            ? "התחברות הצליחה, לא נמצאו נכסים פעילים בחשבון הומלי המחובר."
-            : undefined,
           debug,
         });
       }
-
-      // ---- contacts ---- (search summaries = leads/buyers actively searching)
-      const candidates = [
-        `${WEBTIV_BASE}/api/report/getSearchSummaries/${encodeURIComponent(hash)}`,
-        `${WEBTIV_BASE}/api/report/getRounds/${encodeURIComponent(hash)}`,
-        `${WEBTIV_BASE}/api/report/getAgenda/${encodeURIComponent(hash)}/null/null`,
-      ];
-      let items: any[] = [];
-      let usedUrl: string | null = null;
-      for (const url of candidates) {
-        const r = await getJson(url);
-        debug.push({ url, status: r.status, sample: r.sample, topKeys: r.data && typeof r.data === "object" ? Object.keys(r.data).slice(0, 10) : null });
-        console.log(`[homely-fetch-property] GET ${url} → ${r.status}`);
-        if (r.status >= 200 && r.status < 300) {
-          const arr = asArray(r.data);
-          if (arr.length) { items = arr; usedUrl = url; break; }
-          if (!usedUrl) usedUrl = url;
-        }
-      }
-      const contacts = items.map(mapContact);
+      const contacts = items.map(mapStreamContact);
       return json({
         ok: true,
-        source: "report.getSearchSummaries",
-        endpoint: usedUrl,
+        source: "AutomaionJson.buyers",
+        endpoint: url,
         count: contacts.length,
         contacts,
         empty: contacts.length === 0,
-        message: contacts.length === 0
-          ? "התחברות הצליחה, לא נמצאו אנשי קשר פעילים בחשבון הומלי המחובר."
-          : undefined,
         debug,
       });
     }
+
+
 
     // ---------- Single listing refresh (used by Edit dialog) ----------
     if (!listing_id) return json({ error: "listing_id required" }, 400);
