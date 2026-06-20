@@ -1045,7 +1045,7 @@ const LeadCRM = () => {
                   <Plus className="h-3.5 w-3.5" /> הוסף
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" dir="rtl" className="min-w-[220px]">
+              <DropdownMenuContent align="end" className="min-w-[220px]">
                 <DropdownMenuItem onClick={() => setNewLeadOpen(true)} className="gap-2 cursor-pointer">
                   <UserPlus className="h-4 w-4 text-primary" /> מתעניין חדש
                 </DropdownMenuItem>
