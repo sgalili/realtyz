@@ -180,7 +180,8 @@ Rules:
     const aiPhotos = Array.isArray(parsed.photos)
       ? parsed.photos.filter((p: any) => typeof p === "string" && /^https?:\/\//.test(p))
       : [];
-    const photos = dedupe([...aiPhotos, ...scrapedPhotos]).slice(0, 15);
+    const photos = dedupe([...regexPhotos, ...aiPhotos, ...scrapedPhotos]).slice(0, 20);
+    const finalSourceUrl = sourceUrl || primaryUrl || null;
 
     const out = {
       property_type: PROPERTY_TYPES.includes(parsed.property_type) ? parsed.property_type : "apartment",
@@ -202,8 +203,18 @@ Rules:
       shelter: !!parsed.shelter,
       elevator: !!parsed.elevator,
       photos,
-      source_url: sourceUrl,
+      images: photos,
+      source_url: finalSourceUrl,
+      source_metadata: {
+        photos,
+        images: photos,
+        source_url: finalSourceUrl,
+        regex_photo_count: regexPhotos.length,
+        regex_url_count: extractAllUrls(rawText).length,
+      },
     };
+
+    console.log(`[parse-listing-text] regex photos=${regexPhotos.length} final_photos=${photos.length} primary_url=${finalSourceUrl || "null"}`);
 
     return json({ ok: true, data: out });
   } catch (e: any) {
