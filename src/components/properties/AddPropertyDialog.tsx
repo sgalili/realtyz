@@ -42,7 +42,7 @@ function slugify(s: string) {
   ) + '-' + Math.random().toString(36).slice(2, 8);
 }
 
-export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, autoHydrate }: Props) {
+export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, autoHydrate, defaultSource }: Props) {
   const [listingType, setListingType] = useState<'sale' | 'rent'>('sale');
   const [price, setPrice] = useState('');
   const [city, setCity] = useState('');
