@@ -113,15 +113,17 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: Props) {
         user_id: auth.user.id,
         slug: slugify(title),
         property_title: title,
-        description: title,
+        description: description.trim() || title,
         asking_price: Number(price) || 0,
         city: city.trim(),
+        neighborhood: neighborhood.trim() || null,
         rooms: rooms ? Number(rooms) : null,
         sqm: sqm ? Number(sqm) : null,
+        floor: floor ? Number(floor) : null,
         status: 'live',
         source: 'manual',
         is_published: true,
-        features: [{ listing_type: listingType }],
+        features: [{ listing_type: listingType, property_type: propertyType }],
       });
       if (error) throw error;
       toast.success('הנכס נוסף בהצלחה');
