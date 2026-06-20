@@ -209,6 +209,34 @@ const LeadCRM = () => {
   const freemium = useFreemiumStatus();
   const [selectedVoterId, setSelectedVoterId] = useState<string | null>(null);
   const [statusInfoOpen, setStatusInfoOpen] = useState(false);
+  const [pushingHomely, setPushingHomely] = useState(false);
+  const pushLeadToHomely = useCallback(async (leadId: string, silent = false) => {
+    try {
+      if (!silent) setPushingHomely(true);
+      const payloadPreview = { lead_id: leadId, action: 'WebtivLidPost', office: '9095' };
+      // eslint-disable-next-line no-console
+      console.log('Pushing Payload to Homely:', JSON.stringify(payloadPreview));
+      const { data, error } = await supabase.functions.invoke('homely-push-lead', {
+        body: { lead_id: leadId },
+      });
+      if (error) throw error;
+      const res = data as any;
+      // eslint-disable-next-line no-console
+      console.log('Homely push response:', JSON.stringify(res));
+      if (res?.ok) {
+        if (!silent) toast.success('איש הקשר נדחף בהצלחה ל-Homely');
+        return true;
+      }
+      const msg = res?.error || `HTTP ${res?.status || '???'}`;
+      if (!silent) toast.error(`דחיפה ל-Homely נכשלה: ${msg}`);
+      return false;
+    } catch (e: any) {
+      if (!silent) toast.error(`דחיפה ל-Homely נכשלה: ${e?.message || 'unknown'}`);
+      return false;
+    } finally {
+      if (!silent) setPushingHomely(false);
+    }
+  }, []);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [newLeadOpen, setNewLeadOpen] = useState(false);
