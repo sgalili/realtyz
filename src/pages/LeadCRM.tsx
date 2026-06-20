@@ -207,6 +207,7 @@ const LeadCRM = () => {
   }, [compactMode]);
   const freemium = useFreemiumStatus();
   const [selectedVoterId, setSelectedVoterId] = useState<string | null>(null);
+  const [statusInfoOpen, setStatusInfoOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [newLeadOpen, setNewLeadOpen] = useState(false);
@@ -1200,6 +1201,67 @@ const LeadCRM = () => {
         </CardContent>
       </Card>
 
+      {/* Communication Status Info Dialog */}
+      <Dialog open={statusInfoOpen} onOpenChange={setStatusInfoOpen}>
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          {(() => {
+            const v = leads?.find((x) => x.id === selectedVoterId);
+            const status = v?.status || 'cold';
+            const cfg = getLoyalty(status);
+            const descriptions: Record<string, string> = {
+              cold: 'מתעניין קר — נרשם במערכת אך עדיין לא הייתה אינטראקציה משמעותית. הסוכן הדיגיטלי ינסה ליצור קשר ראשוני.',
+              qualified: 'מתעניין מוסמך — נוצר קשר, אומתו צרכים בסיסיים (תקציב/אזור/סוג נכס). מוכן לשלב הצגת נכסים.',
+              negotiation: 'במשא ומתן — התקיים סיור או הוצגה הצעה. שלב רגיש: הסוכן מעדיף תשובה אישית של הברוקר.',
+              closed: 'נסגר — העסקה הושלמה. הלקוח עובר למאגר חיזוק קשר ולא ייפנה אוטומטית.',
+              contacted: 'נוצר קשר — בוצעה פנייה ראשונית. ממתינים לתגובה כדי להעלות לשלב הבא.',
+              inactive: 'לא רלוונטי — לא מתאים כרגע. לא תישלחנה פניות עד שינוי ידני של הסטטוס.',
+              lead: 'מתעניין קר — נרשם במערכת אך עדיין לא הייתה אינטראקציה משמעותית.',
+              supporter: 'נסגר — העסקה הושלמה.',
+              active: 'מתעניין מוסמך — קשר פעיל ושוטף.',
+              voted: 'נסגר — העסקה הושלמה.',
+            };
+            const lastInteraction = v?.last_interaction_at
+              ? format(new Date(v.last_interaction_at), 'dd/MM/yyyy HH:mm')
+              : 'לא נרשמה אינטראקציה';
+            const createdAt = (v as any)?.created_at
+              ? format(new Date((v as any).created_at), 'dd/MM/yyyy HH:mm')
+              : '—';
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <span className={`border text-xs rounded-md px-2.5 py-1 font-medium ${cfg.color}`}>{cfg.label}</span>
+                    <span>סטטוס תקשורת</span>
+                  </DialogTitle>
+                  <DialogDescription className="text-right">{descriptions[status] || 'אין תיאור זמין לסטטוס זה.'}</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between border-b border-border/40 py-2">
+                    <span className="text-muted-foreground">נוצר במערכת</span>
+                    <span className="font-medium">{createdAt}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-border/40 py-2">
+                    <span className="text-muted-foreground">אינטראקציה אחרונה</span>
+                    <span className="font-medium">{lastInteraction}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-border/40 py-2">
+                    <span className="text-muted-foreground">סוכן דיגיטלי</span>
+                    <span className="font-medium">{v?.ai_autopilot ? 'פעיל' : 'כבוי'}</span>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <span className="text-muted-foreground">ציון מעורבות</span>
+                    <span className="font-medium">{v?.engagement_score ?? 0}</span>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setStatusInfoOpen(false)}>סגור</Button>
+                </DialogFooter>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
       {/* Add to Campaign Dialog */}
       <Dialog open={addToCampaignOpen} onOpenChange={setAddToCampaignOpen}>
         <DialogContent className="sm:max-w-md">
@@ -1336,28 +1398,40 @@ const LeadCRM = () => {
                         const phoneDigits = (selectedVoter.phone_number || '').replace(/\D/g, '');
                         const email = (selectedVoter as any).email as string | undefined;
                         const aiOn = !!selectedVoter.ai_autopilot;
-                        const channels: { key: string; href?: string; onClick?: () => void; icon: JSX.Element; label: string; active: boolean; tone?: string }[] = [
-                          { key: 'chat',    onClick: () => { setSelectedVoterId(null); window.location.assign(`/omnichannel-inbox?lead=${selectedVoter.id}`); }, icon: <MessageCircle className="h-3.5 w-3.5" />, label: 'צ׳אט', active: true },
-                          { key: 'ai',      onClick: undefined, icon: <Bot className="h-3.5 w-3.5" />, label: aiOn ? 'AI פעיל' : 'AI כבוי', active: aiOn, tone: aiOn ? 'border-emerald-500 text-emerald-700 bg-emerald-50' : 'border-slate-300 text-slate-500 bg-slate-50' },
-                          { key: 'call',    href: phoneDigits ? `tel:+${phoneDigits}` : undefined, icon: <PhoneIcon className="h-3.5 w-3.5" />, label: 'חיוג', active: !!phoneDigits },
-                          { key: 'email',   href: email ? `mailto:${email}` : undefined, icon: <Mail className="h-3.5 w-3.5" />, label: 'דוא״ל', active: !!email },
-                          { key: 'whatsapp',href: phoneDigits ? `https://wa.me/${phoneDigits}` : undefined, icon: <MessageCircle className="h-3.5 w-3.5" />, label: 'WhatsApp', active: !!phoneDigits, tone: phoneDigits ? 'border-emerald-500 text-emerald-700 bg-emerald-50 hover:bg-emerald-100' : '' },
+                        const WhatsAppIcon = (
+                          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                            <path d="M20.5 3.5A11 11 0 0 0 3.6 17.4L2.5 21.5l4.2-1.1A11 11 0 1 0 20.5 3.5z" />
+                            <path d="M8.5 7.8c.3-.1.6 0 .8.3l.9 1.7c.2.3.1.6-.1.8l-.7.7c.6 1.3 1.7 2.4 3 3l.7-.7c.2-.2.5-.3.8-.1l1.7.9c.3.2.4.5.3.8-.4 1.2-1.7 1.9-2.9 1.6-2.7-.6-4.8-2.7-5.4-5.4-.3-1.2.4-2.5 1.6-2.9z" />
+                          </svg>
+                        );
+                        const channels: { key: string; href?: string; onClick?: () => void; icon: JSX.Element; label: string; active: boolean; accent?: string }[] = [
+                          { key: 'chat',    onClick: () => { setSelectedVoterId(null); window.location.assign(`/omnichannel-inbox?lead=${selectedVoter.id}`); }, icon: <MessageCircle className="h-4 w-4" strokeWidth={1.8} />, label: 'צ׳אט', active: true },
+                          { key: 'ai',      onClick: undefined, icon: <Bot className="h-4 w-4" strokeWidth={1.8} />, label: aiOn ? 'AI פעיל' : 'AI כבוי', active: aiOn, accent: aiOn ? 'text-emerald-600' : 'text-slate-400' },
+                          { key: 'call',    href: phoneDigits ? `tel:+${phoneDigits}` : undefined, icon: <PhoneIcon className="h-4 w-4" strokeWidth={1.8} />, label: 'חיוג', active: !!phoneDigits },
+                          { key: 'email',   href: email ? `mailto:${email}` : undefined, icon: <Mail className="h-4 w-4" strokeWidth={1.8} />, label: 'דוא״ל', active: !!email },
+                          { key: 'whatsapp',href: phoneDigits ? `https://wa.me/${phoneDigits}` : undefined, icon: WhatsAppIcon, label: 'WhatsApp', active: !!phoneDigits, accent: phoneDigits ? 'text-emerald-600' : '' },
                         ];
                         return (
-                          <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                          <div className="flex items-center gap-1 mt-2">
                             {channels.map((c) => {
-                              const base = `inline-flex items-center gap-1 h-7 px-2 rounded-md border text-[11px] font-semibold transition-colors ${c.active ? (c.tone || 'border-primary/40 text-primary bg-primary/5 hover:bg-primary/10') : 'border-slate-200 text-slate-400 bg-slate-50/60 cursor-not-allowed opacity-60'}`;
-                              if (!c.active) return <span key={c.key} className={base}>{c.icon}{c.label}</span>;
-                              if (c.href) return <a key={c.key} href={c.href} target={c.href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" className={base}>{c.icon}{c.label}</a>;
-                              return <button key={c.key} type="button" onClick={c.onClick} className={base}>{c.icon}{c.label}</button>;
+                              const base = `inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent transition-colors ${c.active ? `${c.accent || 'text-slate-700'} hover:bg-slate-100` : 'text-slate-300 cursor-not-allowed'}`;
+                              const aria = { 'aria-label': c.label, title: c.label } as const;
+                              if (!c.active) return <span key={c.key} {...aria} className={base}>{c.icon}</span>;
+                              if (c.href) return <a key={c.key} {...aria} href={c.href} target={c.href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" className={base}>{c.icon}</a>;
+                              return <button key={c.key} {...aria} type="button" onClick={c.onClick} className={base}>{c.icon}</button>;
                             })}
                           </div>
                         );
                       })()}
                     </div>
-                    <Badge className={`border text-xs ${getLoyalty(selectedVoter.status).color}`} variant="outline">
+                    <button
+                      type="button"
+                      onClick={() => setStatusInfoOpen(true)}
+                      className={`border text-xs rounded-md px-2.5 py-1 font-medium transition-opacity hover:opacity-80 cursor-pointer ${getLoyalty(selectedVoter.status).color}`}
+                      aria-label="פרטי סטטוס תקשורת"
+                    >
                       {getLoyalty(selectedVoter.status).label}
-                    </Badge>
+                    </button>
                   </SheetTitle>
                 </SheetHeader>
 
@@ -1440,6 +1514,8 @@ const LeadCRM = () => {
                       if (error) { toast.error('שגיאה בעדכון'); return; }
                       toast.success('עודכן');
                       queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+                      // Instant background push to Homely (Open Card) with latest fields
+                      supabase.functions.invoke('homely-push-lead', { body: { lead_id: selectedVoter.id } }).catch(() => {});
                     };
                     const savePref = (pref: Record<string, any>) =>
                       saveLead({ preferences: { ...prefs, ...pref } });

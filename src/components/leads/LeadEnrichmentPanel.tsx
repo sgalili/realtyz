@@ -128,7 +128,7 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
             <Input
               type="number"
               value={age}
-              placeholder="לדוגמה 34"
+              placeholder=""
               onChange={(e) => setAge(e.target.value)}
               onBlur={() => {
                 const n = age.trim() === '' ? null : Number(age);
