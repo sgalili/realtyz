@@ -181,8 +181,8 @@ export default function PropertyDetail() {
   });
 
   const property = data?.property;
-  const listing = data?.listing as Record<string, any> | undefined;
-  const meta: Record<string, any> = data?.meta || {};
+  const listing = data?.listing;
+  const meta: JsonRecord = data?.meta || {};
   const neighborhood = data?.neighborhood;
   const projectName = data?.projectName ?? null;
   const sourceUrl = data?.sourceUrl ?? null;
@@ -221,11 +221,7 @@ export default function PropertyDetail() {
     ...(typeof listing?.image_url === 'string' ? [listing.image_url] : []),
   ];
   const photos = Array.from(new Set([
-    ...directPhotoSources.map((p: any) => {
-      if (typeof p === 'string') return p;
-      if (p && typeof p === 'object') return p.url || p.src || p.photo || p.image_url || p.image || '';
-      return '';
-    }),
+    ...directPhotoSources.map((p) => photoUrlFrom(p) || ''),
     ...property.photos,
   ].filter((p): p is string => typeof p === 'string' && /^https?:\/\//.test(p))));
   const main = photos[activePhoto];
