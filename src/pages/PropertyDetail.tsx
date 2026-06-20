@@ -184,23 +184,10 @@ export default function PropertyDetail() {
   const photos = property.photos.length ? property.photos : [];
   const main = photos[activePhoto];
 
-  const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'נכס';
-  const transactionHe = isRent ? 'להשכרה' : 'למכירה';
-  // Dynamic headline e.g. "דירה להשכרה, הרצליה הירוקה, נווה עובד, הרצליה"
-  const headlineParts = [
-    `${propertyTypeHe} ${transactionHe}`,
-    property.address || null,
-    neighborhood || null,
-    property.city || null,
-  ].filter((s): s is string => Boolean(s && String(s).trim()));
-  // de-duplicate identical fragments (e.g. address === neighborhood)
-  const seen = new Set<string>();
-  const headline = headlineParts.filter((p) => {
-    const k = p.trim();
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  }).join(', ');
+  const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
+  const transactionHe = property.price < 50000 ? 'להשכרה' : 'למכירה';
+  // FORCE-RENDER headline — unconditional safe-fallback template.
+  const headline = `${propertyTypeHe} ${transactionHe}, ${neighborhood || 'שכונה'}, ${property.city || 'עיר'}`;
 
   // Financials / owner blocks
   const financialKeys = ['monthly_rent', 'arnona_bimonthly', 'arnona', 'vaad_bayit', 'deposit'];
