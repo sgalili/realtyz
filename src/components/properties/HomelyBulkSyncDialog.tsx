@@ -1,12 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
-import { RefreshCw, MapPin, Phone, Mail, Home } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { RefreshCw, MapPin, Phone, Mail, Home, SlidersHorizontal, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
 // 60s client-side debounce shared across both fetch actions to protect Homely.
@@ -23,6 +24,9 @@ type HomelyProperty = {
   sqm: number;
   floor: number;
   photo: string | null;
+  photos?: string[];
+  documents?: string[];
+  property_type?: string;
   raw: unknown;
 };
 
@@ -65,10 +69,12 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
   const [pickedProps, setPickedProps] = useState<Set<string>>(new Set());
   const [pickedContacts, setPickedContacts] = useState<Set<string>>(new Set());
   const [importing, setImporting] = useState(false);
+  const [filtersOpen, setFiltersOpen] = useState(false);
+  const [fCity, setFCity] = useState('');
+  const [fRooms, setFRooms] = useState('');
+  const [fType, setFType] = useState('');
   const fetchedOnce = useRef<{ properties: boolean; contacts: boolean }>({ properties: false, contacts: false });
 
-  // Manual-only fetch. Auto-runs the first time the dialog is opened for each
-  // tab, then stays silent — no intervals, no realtime, no re-fetch on focus.
   async function fetchAction(action: 'fetchAllProperties' | 'fetchAllContacts') {
     const now = Date.now();
     if (now - lastCallRef.ts < 60_000) {
@@ -79,52 +85,21 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
     const isProps = action === 'fetchAllProperties';
     isProps ? setLoadingProps(true) : setLoadingContacts(true);
     try {
-      const { data, error } = await supabase.functions.invoke('homely-fetch-property', {
-        body: { action },
-      });
+      const { data, error } = await supabase.functions.invoke('homely-fetch-property', { body: { action } });
       if (error) throw error;
-      const payload = data as {
-        ok?: boolean;
-        error?: string;
-        needs_setup?: boolean;
-        needs_feed_url?: boolean;
-        unsupported?: boolean;
-        empty?: boolean;
-        message?: string;
-        properties?: HomelyProperty[];
-        contacts?: HomelyContact[];
-        count?: number;
-      };
+      const payload = data as any;
       if (payload?.needs_setup) {
-        toast.message('יש לחבר תחילה את חשבון Homely', {
-          description: 'עברו ל-הגדרות ← חיבורים והזינו קוד משרד, משתמש וסיסמה.',
-        });
-        return;
-      }
-      if (payload?.needs_feed_url) {
-        toast.message('נדרשת כתובת פיד XML של Homely', {
-          description: payload.message ?? 'הגדרות ← חיבורים ← Homely ← כתובת פיד XML.',
-          duration: 9000,
-        });
-        if (isProps) setProperties([]);
-        return;
-      }
-      if (payload?.unsupported && !isProps) {
-        toast.message('אנשי קשר נכנסים דרך Webhook', {
-          description: payload.message ?? 'Homely אינה מספקת פיד אנשי קשר ציבורי.',
-          duration: 9000,
-        });
-        setContacts([]);
+        toast.message('יש לחבר תחילה את חשבון Homely', { description: 'עברו ל-הגדרות ← חיבורים והזינו קוד משרד, משתמש וסיסמה.' });
         return;
       }
       if (payload?.error && !payload?.empty) throw new Error(payload.error);
       if (isProps) {
-        const list = payload.properties ?? [];
+        const list: HomelyProperty[] = payload.properties ?? [];
         setProperties(list);
         if (!list.length) toast.info(payload.message ?? 'התחברות הצליחה, לא נמצאו נכסים חדשים בחשבון הומלי המחובר.');
         else toast.success(`נטענו ${list.length} נכסים מהומלי`);
       } else {
-        const list = payload.contacts ?? [];
+        const list: HomelyContact[] = payload.contacts ?? [];
         setContacts(list);
         if (!list.length) toast.info(payload.message ?? 'אין אנשי קשר פעילים בחשבון הומלי המחובר');
         else toast.success(`נטענו ${list.length} אנשי קשר מהומלי`);
@@ -137,6 +112,7 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
     }
   }
 
+  // Auto-fetch ONLY once per tab when dialog opens. No intervals, no polling, no refocus refetch.
   useEffect(() => {
     if (!open) return;
     if (tab === 'properties' && !fetchedOnce.current.properties) {
@@ -149,11 +125,12 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, tab]);
 
-  // Reset selection (but not cached lists) when the dialog closes.
   useEffect(() => {
     if (!open) {
       setPickedProps(new Set());
       setPickedContacts(new Set());
+      setFiltersOpen(false);
+      setFCity(''); setFRooms(''); setFType('');
     }
   }, [open]);
 
@@ -162,6 +139,23 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
     next.has(id) ? next.delete(id) : next.add(id);
     apply(next);
   }
+
+  const cityOptions = useMemo(() => {
+    const src = tab === 'properties' ? properties.map(p => p.city) : contacts.map(c => c.city);
+    return Array.from(new Set(src.filter(Boolean))).sort();
+  }, [tab, properties, contacts]);
+  const typeOptions = useMemo(() => Array.from(new Set(properties.map(p => p.property_type || '').filter(Boolean))).sort(), [properties]);
+
+  const filteredProps = useMemo(() => properties.filter(p => {
+    if (fCity && p.city !== fCity) return false;
+    if (fType && (p.property_type || '') !== fType) return false;
+    if (fRooms && Number(p.rooms) !== Number(fRooms)) return false;
+    return true;
+  }), [properties, fCity, fType, fRooms]);
+  const filteredContacts = useMemo(() => contacts.filter(c => {
+    if (fCity && c.city !== fCity) return false;
+    return true;
+  }), [contacts, fCity]);
 
   async function handleImport() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -174,31 +168,35 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
       if (pickedProps.size) {
         const rows = properties
           .filter((p) => pickedProps.has(p.homely_id))
-          .map((p) => ({
-            user_id: user.id,
-            slug: `${slugify(p.title || p.address || 'homely')}-${p.homely_id}`,
-            source: 'homely',
-            external_id: p.homely_id,
-            property_title: p.title || p.address || `נכס ${p.homely_id}`,
-            description: p.description || '',
-            asking_price: p.price || 0,
-            city: p.city || null,
-            address: p.address || null,
-            rooms: p.rooms || null,
-            sqm: p.sqm || null,
-            floor: p.floor || null,
-            status: 'live',
-            features: [],
-            source_metadata: {
-              homely_id: p.homely_id,
-              photos: p.photo ? [p.photo] : [],
-              homely_raw: p.raw,
-              synced_at: new Date().toISOString(),
-            },
-          }));
-        const { error } = await supabase
-          .from('listings')
-          .upsert(rows as any, { onConflict: 'source,external_id' });
+          .map((p) => {
+            const photos = (p.photos && p.photos.length) ? p.photos : (p.photo ? [p.photo] : []);
+            const documents = p.documents ?? [];
+            return {
+              user_id: user.id,
+              slug: `${slugify(p.title || p.address || 'homely')}-${p.homely_id}`,
+              source: 'homely',
+              external_id: p.homely_id,
+              property_title: p.title || p.address || `נכס ${p.homely_id}`,
+              description: p.description || '',
+              asking_price: p.price || 0,
+              city: p.city || null,
+              address: p.address || null,
+              rooms: p.rooms || null,
+              sqm: p.sqm || null,
+              floor: p.floor || null,
+              status: 'live',
+              features: [],
+              source_metadata: {
+                homely_id: p.homely_id,
+                photos,
+                documents,
+                media_count: photos.length + documents.length,
+                homely_raw: p.raw,
+                synced_at: new Date().toISOString(),
+              },
+            };
+          });
+        const { error } = await supabase.from('listings').upsert(rows as any, { onConflict: 'source,external_id' });
         if (error) throw error;
         propsCount = rows.length;
       }
@@ -213,10 +211,7 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
             email: c.email || null,
             preferences: { homely_id: c.homely_id, homely_notes: c.notes, source: 'homely' },
           }));
-        // Upsert by phone_number — leads.phone_number is the natural key.
-        const { error } = await supabase
-          .from('leads')
-          .upsert(rows as any, { onConflict: 'phone_number' });
+        const { error } = await supabase.from('leads').upsert(rows as any, { onConflict: 'phone_number' });
         if (error) throw error;
         contactsCount = rows.length;
       }
@@ -232,53 +227,91 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
   }
 
   const totalPicked = pickedProps.size + pickedContacts.size;
+  const loading = loadingProps || loadingContacts;
 
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="max-w-3xl">
-        <DialogHeader className="text-right">
-          <DialogTitle>סנכרון מלא מהומלי</DialogTitle>
-          <DialogDescription>
-            בחרו אילו נכסים ואנשי קשר לייבא ולסנכרן עם המערכת. הסנכרון ידני בלבד.
-          </DialogDescription>
+    <Dialog open={open} onOpenChange={(v) => { if (importing && !v) return; onOpenChange(v); }}>
+      <DialogContent
+        dir="rtl"
+        className="max-w-3xl w-[calc(100vw-1rem)] max-h-[95vh] overflow-hidden p-4 sm:p-6 flex flex-col gap-3"
+      >
+        <DialogHeader className="text-right space-y-0">
+          <DialogTitle className="text-right">סנכרון מלא מהומלי</DialogTitle>
         </DialogHeader>
 
-        <Tabs value={tab} onValueChange={(v) => setTab(v as 'properties' | 'contacts')}>
-          <div className="flex items-center justify-between gap-2">
-            <TabsList>
-              <TabsTrigger value="properties">נכסים זמינים {properties.length ? `(${properties.length})` : ''}</TabsTrigger>
-              <TabsTrigger value="contacts">אנשי קשר {contacts.length ? `(${contacts.length})` : ''}</TabsTrigger>
+        <Tabs value={tab} onValueChange={(v) => setTab(v as 'properties' | 'contacts')} className="flex flex-col min-h-0 flex-1">
+          <div dir="rtl" className="flex flex-wrap items-center justify-between gap-2">
+            <TabsList className="h-auto flex-wrap">
+              <TabsTrigger value="properties" className="text-xs sm:text-sm">נכסים {properties.length ? `(${properties.length})` : ''}</TabsTrigger>
+              <TabsTrigger value="contacts" className="text-xs sm:text-sm">אנשי קשר {contacts.length ? `(${contacts.length})` : ''}</TabsTrigger>
             </TabsList>
-            <Button
-              variant="outline"
-              size="sm"
-              className="gap-1.5"
-              disabled={loadingProps || loadingContacts}
-              onClick={() => fetchAction(tab === 'properties' ? 'fetchAllProperties' : 'fetchAllContacts')}
-            >
-              <RefreshCw className={`h-3.5 w-3.5 ${(loadingProps || loadingContacts) ? 'animate-spin' : ''}`} />
-              רענון
-            </Button>
+            <div className="flex items-center gap-1.5">
+              <Button
+                variant={filtersOpen ? 'secondary' : 'outline'}
+                size="sm"
+                className="gap-1.5"
+                onClick={() => setFiltersOpen(v => !v)}
+                aria-label="סינון"
+              >
+                <SlidersHorizontal className="h-3.5 w-3.5" />
+                <span className="hidden sm:inline">סינון</span>
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                disabled={loading}
+                onClick={() => fetchAction(tab === 'properties' ? 'fetchAllProperties' : 'fetchAllContacts')}
+              >
+                <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+                <span className="hidden sm:inline">רענון</span>
+              </Button>
+            </div>
           </div>
 
-          <TabsContent value="properties" className="mt-3">
-            <div className="max-h-[55vh] overflow-y-auto space-y-2 pr-1">
+          {filtersOpen && (
+            <div dir="rtl" className="grid grid-cols-1 sm:grid-cols-3 gap-2 rounded-lg border bg-muted/30 p-2 text-right">
+              <div>
+                <label className="text-[10px] text-muted-foreground block mb-1">עיר</label>
+                <select className="w-full h-8 rounded-md border bg-background px-2 text-xs text-right" value={fCity} onChange={(e) => setFCity(e.target.value)}>
+                  <option value="">הכל</option>
+                  {cityOptions.map(c => <option key={c} value={c}>{c}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground block mb-1">חדרים</label>
+                <Input type="number" min={1} step={0.5} value={fRooms} onChange={(e) => setFRooms(e.target.value)} className="h-8 text-xs text-right" placeholder="הכל" />
+              </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground block mb-1">סוג נכס</label>
+                <select className="w-full h-8 rounded-md border bg-background px-2 text-xs text-right" value={fType} onChange={(e) => setFType(e.target.value)}>
+                  <option value="">הכל</option>
+                  {typeOptions.map(t => <option key={t} value={t}>{t}</option>)}
+                </select>
+              </div>
+            </div>
+          )}
+
+          <TabsContent value="properties" className="mt-3 flex-1 min-h-0 data-[state=active]:flex flex-col">
+            <div dir="rtl" className="flex-1 min-h-0 overflow-y-auto space-y-2 pl-1">
               {loadingProps ? (
                 Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
-              ) : properties.length === 0 ? (
+              ) : filteredProps.length === 0 ? (
                 <div className="text-center text-sm text-muted-foreground py-10">
-                  אין נכסים פעילים בחשבון הומלי המחובר
+                  {properties.length === 0 ? 'אין נכסים פעילים בחשבון הומלי המחובר' : 'אין תוצאות שתואמות לסינון'}
                 </div>
               ) : (
-                properties.map((p) => {
+                filteredProps.map((p) => {
                   const checked = pickedProps.has(p.homely_id);
+                  const mediaCount = (p.photos?.length ?? (p.photo ? 1 : 0)) + (p.documents?.length ?? 0);
                   return (
                     <label
                       key={p.homely_id}
-                      className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${checked ? 'border-primary bg-primary/5' : 'hover:bg-muted/40'}`}
+                      dir="rtl"
+                      className={`flex items-start gap-2 sm:gap-3 rounded-lg border p-2 sm:p-3 cursor-pointer transition-colors text-right ${checked ? 'border-primary bg-primary/5' : 'hover:bg-muted/40'}`}
                     >
-                      <Checkbox checked={checked} onCheckedChange={() => toggle(pickedProps, p.homely_id, setPickedProps)} />
-                      <div className="h-14 w-20 rounded-md bg-muted overflow-hidden flex-shrink-0">
+                      <Checkbox checked={checked} onCheckedChange={() => toggle(pickedProps, p.homely_id, setPickedProps)} className="mt-1 shrink-0" />
+                      <div className="h-12 w-16 sm:h-14 sm:w-20 rounded-md bg-muted overflow-hidden flex-shrink-0">
                         {p.photo ? (
                           <img src={p.photo} alt="" className="h-full w-full object-cover" loading="lazy" />
                         ) : (
@@ -288,11 +321,12 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
                         )}
                       </div>
                       <div className="flex-1 min-w-0 text-right">
-                        <div className="flex items-center gap-2 justify-end">
+                        <div className="flex items-center gap-2 justify-end flex-wrap">
+                          {mediaCount > 0 && <Badge variant="secondary" className="text-[10px]">{mediaCount} קבצים</Badge>}
                           <Badge variant="outline" className="text-[10px]">#{p.homely_id}</Badge>
-                          <h4 className="font-semibold text-sm truncate">{p.title || p.address || 'ללא כותרת'}</h4>
+                          <h4 className="font-semibold text-xs sm:text-sm truncate">{p.title || p.address || 'ללא כותרת'}</h4>
                         </div>
-                        <div className="text-xs text-muted-foreground flex items-center gap-3 justify-end mt-1 flex-wrap">
+                        <div className="text-[11px] sm:text-xs text-muted-foreground flex items-center gap-2 sm:gap-3 justify-end mt-1 flex-wrap break-words">
                           {p.city && (<span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{p.city}{p.address ? ` · ${p.address}` : ''}</span>)}
                           {p.rooms ? <span>{p.rooms} חד׳</span> : null}
                           {p.sqm ? <span>{p.sqm} מ״ר</span> : null}
@@ -304,37 +338,38 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
                 })
               )}
             </div>
-            {properties.length > 0 && (
-              <div className="flex items-center justify-between mt-2 text-xs">
-                <button type="button" className="text-primary hover:underline" onClick={() => setPickedProps(new Set(properties.map((p) => p.homely_id)))}>בחר הכל</button>
+            {filteredProps.length > 0 && (
+              <div dir="rtl" className="flex items-center justify-between mt-2 text-xs">
+                <button type="button" className="text-primary hover:underline" onClick={() => setPickedProps(new Set(filteredProps.map((p) => p.homely_id)))}>בחר הכל</button>
                 <button type="button" className="text-muted-foreground hover:underline" onClick={() => setPickedProps(new Set())}>נקה בחירה</button>
               </div>
             )}
           </TabsContent>
 
-          <TabsContent value="contacts" className="mt-3">
-            <div className="max-h-[55vh] overflow-y-auto space-y-2 pr-1">
+          <TabsContent value="contacts" className="mt-3 flex-1 min-h-0 data-[state=active]:flex flex-col">
+            <div dir="rtl" className="flex-1 min-h-0 overflow-y-auto space-y-2 pl-1">
               {loadingContacts ? (
                 Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)
-              ) : contacts.length === 0 ? (
+              ) : filteredContacts.length === 0 ? (
                 <div className="text-center text-sm text-muted-foreground py-10">
-                  אין אנשי קשר פעילים בחשבון הומלי המחובר
+                  {contacts.length === 0 ? 'אין אנשי קשר פעילים בחשבון הומלי המחובר' : 'אין תוצאות שתואמות לסינון'}
                 </div>
               ) : (
-                contacts.map((c) => {
+                filteredContacts.map((c) => {
                   const checked = pickedContacts.has(c.homely_id);
                   return (
                     <label
                       key={c.homely_id}
-                      className={`flex items-start gap-3 rounded-lg border p-3 cursor-pointer transition-colors ${checked ? 'border-primary bg-primary/5' : 'hover:bg-muted/40'}`}
+                      dir="rtl"
+                      className={`flex items-start gap-2 sm:gap-3 rounded-lg border p-2 sm:p-3 cursor-pointer transition-colors text-right ${checked ? 'border-primary bg-primary/5' : 'hover:bg-muted/40'}`}
                     >
-                      <Checkbox checked={checked} onCheckedChange={() => toggle(pickedContacts, c.homely_id, setPickedContacts)} />
+                      <Checkbox checked={checked} onCheckedChange={() => toggle(pickedContacts, c.homely_id, setPickedContacts)} className="mt-1 shrink-0" />
                       <div className="flex-1 min-w-0 text-right">
-                        <div className="flex items-center gap-2 justify-end">
+                        <div className="flex items-center gap-2 justify-end flex-wrap">
                           <Badge variant="outline" className="text-[10px]">#{c.homely_id}</Badge>
-                          <h4 className="font-semibold text-sm truncate">{c.full_name || 'ללא שם'}</h4>
+                          <h4 className="font-semibold text-xs sm:text-sm truncate">{c.full_name || 'ללא שם'}</h4>
                         </div>
-                        <div className="text-xs text-muted-foreground flex items-center gap-3 justify-end mt-1 flex-wrap">
+                        <div className="text-[11px] sm:text-xs text-muted-foreground flex items-center gap-2 sm:gap-3 justify-end mt-1 flex-wrap break-all">
                           {c.phone && (<span className="inline-flex items-center gap-1" dir="ltr"><Phone className="h-3 w-3" />{c.phone}</span>)}
                           {c.email && (<span className="inline-flex items-center gap-1" dir="ltr"><Mail className="h-3 w-3" />{c.email}</span>)}
                           {c.city && (<span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{c.city}</span>)}
@@ -345,19 +380,20 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
                 })
               )}
             </div>
-            {contacts.length > 0 && (
-              <div className="flex items-center justify-between mt-2 text-xs">
-                <button type="button" className="text-primary hover:underline" onClick={() => setPickedContacts(new Set(contacts.map((c) => c.homely_id)))}>בחר הכל</button>
+            {filteredContacts.length > 0 && (
+              <div dir="rtl" className="flex items-center justify-between mt-2 text-xs">
+                <button type="button" className="text-primary hover:underline" onClick={() => setPickedContacts(new Set(filteredContacts.map((c) => c.homely_id)))}>בחר הכל</button>
                 <button type="button" className="text-muted-foreground hover:underline" onClick={() => setPickedContacts(new Set())}>נקה בחירה</button>
               </div>
             )}
           </TabsContent>
         </Tabs>
 
-        <DialogFooter className="gap-2">
-          <Button variant="ghost" onClick={() => onOpenChange(false)}>ביטול</Button>
-          <Button onClick={handleImport} disabled={importing || totalPicked === 0}>
-            {importing ? 'מייבא...' : `ייבא וסנכרן ${totalPicked || ''} פריטים נבחרים`.trim()}
+        <DialogFooter dir="rtl" className="flex-row justify-between gap-2 sm:justify-between border-t pt-3 mt-1">
+          <Button variant="ghost" onClick={() => onOpenChange(false)} disabled={importing}>ביטול</Button>
+          <Button onClick={handleImport} disabled={importing || totalPicked === 0} className="gap-2">
+            {importing && <Loader2 className="h-4 w-4 animate-spin" />}
+            {importing ? 'מייבא...' : `ייבא וסנכרן${totalPicked ? ` ${totalPicked}` : ''}`}
           </Button>
         </DialogFooter>
       </DialogContent>
