@@ -292,43 +292,45 @@ export default function PropertyDetail() {
     <div className="p-3 sm:p-6 space-y-6" dir="rtl">
       {/* Headline + price */}
       <header className="space-y-2">
-        <div className="mb-4 flex items-start gap-2">
+        <div className="mb-4">
           <div
             role="heading"
             aria-level={1}
-            className="text-xl font-bold text-right text-slate-900 block flex-1 leading-snug"
+            className="text-xl font-bold text-right text-slate-900 block leading-snug"
           >
             {dynamicHeadline}
           </div>
-          <button
-            type="button"
-            onClick={() => {
-              const url = resolvedSourceUrl;
-              if (url) window.open(url, '_blank', 'noopener,noreferrer');
-            }}
-            aria-label="מעבר למקור המודעה"
-            title={resolvedSourceUrl || 'אין קישור מקור'}
-            className="shrink-0 text-slate-600 hover:text-primary transition-colors bg-transparent border-0 p-0"
-          >
-            <ExternalLink className="w-5 h-5" />
-          </button>
         </div>
 
         <div className="flex items-center justify-between gap-3 flex-wrap">
-          {/* Edit pencil — far top-left of price row */}
-          <div className="order-2">
+          {/* Edit pencil + external link — far top-left of price row */}
+          <div className="order-2 flex items-center gap-3">
             {!editMode ? (
-              <button
-                type="button"
-                onClick={() => setEditMode(true)}
-                aria-label="עריכת נכס"
-                title="עריכת נכס"
-                className="text-slate-500 hover:text-primary transition-colors bg-transparent border-0 p-0"
-              >
-                <Pencil className="h-5 w-5" />
-              </button>
+              <>
+                <button
+                  type="button"
+                  onClick={() => setEditMode(true)}
+                  aria-label="עריכת נכס"
+                  title="עריכת נכס"
+                  className="text-slate-500 hover:text-primary transition-colors bg-transparent border-0 p-0"
+                >
+                  <Pencil className="h-5 w-5" />
+                </button>
+                <a
+                  href={resolvedSourceUrl || '#'}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  onClick={(e) => { if (!resolvedSourceUrl) e.preventDefault(); }}
+                  aria-label="מעבר למקור המודעה"
+                  title={resolvedSourceUrl || 'אין קישור מקור'}
+                  className="text-slate-600 hover:text-primary transition-colors cursor-pointer"
+                  style={{ display: 'block', visibility: 'visible' }}
+                >
+                  <ExternalLink className="w-5 h-5" />
+                </a>
+              </>
             ) : (
-              <div className="flex items-center gap-2">
+              <>
                 <button
                   type="button"
                   onClick={() => setEditMode(false)}
@@ -349,7 +351,7 @@ export default function PropertyDetail() {
                 >
                   <Save className="h-5 w-5" />
                 </button>
-              </div>
+              </>
             )}
           </div>
 
