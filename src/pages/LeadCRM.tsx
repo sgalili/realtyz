@@ -630,28 +630,48 @@ const LeadCRM = () => {
     }
   };
 
-  const handleBatchDelete = async () => {
+  const openBatchDeleteDialog = () => {
     if (blockDemoAction('delete-leads')) return;
+    if (!selectedIds.size) return;
+    setDeleteConfirmText('');
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmBatchDelete = async () => {
     const ids = Array.from(selectedIds);
     if (!ids.length) return;
-    if (!confirm(`האם למחוק ${ids.length} מתעניינים? פעולה זו בלתי הפיכה.`)) return;
-    const { data, error } = await supabase.rpc('delete_leads_cascade', { _ids: ids });
-    if (error) {
-      toast.error('שגיאה במחיקה: ' + error.message);
+    if (ids.length > 50 && !isAdmin) {
+      toast.error('מחיקה של מעל 50 רשומות דורשת הרשאת מנהל');
       return;
     }
-    const deleted = typeof data === 'number' ? data : Number(data ?? 0);
-    if (deleted === 0) {
-      toast.error('המחיקה נחסמה - אין הרשאה למחוק את הרשומות שנבחרו');
+    if (deleteConfirmText.trim() !== 'DELETE') {
+      toast.error('יש להקליד DELETE באותיות גדולות לאישור');
       return;
     }
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }),
-      queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] }),
-      queryClient.invalidateQueries({ queryKey: ['leads-total'] }),
-    ]);
-    setSelectedIds(new Set());
-    toast.success(`${deleted} מתעניינים נמחקו בהצלחה`);
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.rpc('delete_leads_cascade', { _ids: ids });
+      if (error) {
+        toast.error('שגיאה במחיקה: ' + error.message);
+        return;
+      }
+      const deleted = typeof data === 'number' ? data : Number(data ?? 0);
+      if (deleted === 0) {
+        toast.error('המחיקה נחסמה - אין הרשאה למחוק את הרשומות שנבחרו');
+        return;
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }),
+        queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] }),
+        queryClient.invalidateQueries({ queryKey: ['leads-total'] }),
+      ]);
+      setSelectedIds(new Set());
+      setDeleteDialogOpen(false);
+      setDeleteConfirmText('');
+      toast.success(`${deleted} מתעניינים נמחקו בהצלחה`);
+    } finally {
+      setDeleting(false);
+    }
   };
 
 
