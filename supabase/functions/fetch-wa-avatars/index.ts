@@ -28,13 +28,17 @@ interface Body {
 
 function normalizeChatId(phone: string): string | null {
   if (!phone) return null;
+  // Strip every non-digit (spaces, dashes, parens, +): "054-681-1841" -> "0546811841"
   let digits = String(phone).replace(/\D/g, "");
   if (!digits) return null;
-  // Israeli local numbers (e.g. 05XXXXXXXX) -> 9725XXXXXXXX
+  // Israeli local "0XXXXXXXXX"            -> "972XXXXXXXXX"
   if (digits.startsWith("0")) digits = "972" + digits.slice(1);
-  if (digits.length < 8) return null;
+  // Bare Israeli mobile "5XXXXXXXX" (9 digits, no leading 0) -> "9725XXXXXXXX"
+  else if (digits.length === 9 && digits.startsWith("5")) digits = "972" + digits;
+  if (digits.length < 10) return null;
   return `${digits}@c.us`;
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
