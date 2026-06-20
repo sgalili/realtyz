@@ -168,7 +168,7 @@ export default function Properties() {
     queryKey: ['properties-search', sourceTab, { city, rooms, propertyType, priceRange, areaMin }],
     queryFn: async () => {
       try {
-        if (sourceTab === 'mine' || sourceTab === 'homely') {
+        if (sourceTab === 'all' || sourceTab === 'mine' || sourceTab === 'homely') {
           const rows: any[] = [];
           const pageSize = 1000;
           for (let from = 0; ; from += pageSize) {
@@ -179,22 +179,50 @@ export default function Properties() {
               .eq('is_published', true)
               .order('created_at', { ascending: false })
               .range(from, from + pageSize - 1);
-            query = sourceTab === 'homely' ? query.eq('source', 'homely') : query.neq('source', 'homely');
+            if (sourceTab === 'homely') query = query.eq('source', 'homely');
             const { data, error } = await query;
             if (error) throw error;
             rows.push(...(data ?? []));
             if ((data ?? []).length < pageSize) break;
           }
+          // For "mine": exclude any local listing whose dedupe key already
+          // exists on a homely-sourced listing, so the broker's own grid
+          // shows only the unique non-Homely properties.
+          let scoped = rows;
+          if (sourceTab === 'mine') {
+            const homelyKeys = new Set<string>();
+            for (const r of rows) {
+              if (r.source !== 'homely') continue;
+              homelyKeys.add(propertyDedupeKey({
+                address: r.address ?? r.neighborhood ?? '',
+                city: r.city ?? '',
+                title: r.property_title ?? '',
+                rooms: Number(r.rooms ?? 0),
+                price: Number(r.asking_price ?? 0),
+              }));
+            }
+            scoped = rows.filter((r) => {
+              if (r.source === 'homely') return false;
+              const k = propertyDedupeKey({
+                address: r.address ?? r.neighborhood ?? '',
+                city: r.city ?? '',
+                title: r.property_title ?? '',
+                rooms: Number(r.rooms ?? 0),
+                price: Number(r.asking_price ?? 0),
+              });
+              return !homelyKeys.has(k);
+            });
+          }
           return {
             connected: true,
-            results: dedupeProperties(rows.map((row: any) => {
+            results: dedupeProperties(scoped.map((row: any) => {
               const meta = row.source_metadata && typeof row.source_metadata === 'object' ? row.source_metadata : {};
               const metaPhotos = Array.isArray(meta.photos)
                 ? meta.photos.filter((p: any) => typeof p === 'string')
                 : [];
               return {
                 id: row.id,
-                source: sourceTab === 'homely' ? 'homely' : 'mine',
+                source: row.source === 'homely' ? 'homely' : 'mine',
                 title: row.property_title || 'נכס',
                 description: row.description || '',
                 price: Number(row.asking_price ?? 0),
@@ -214,6 +242,7 @@ export default function Properties() {
             })),
           };
         }
+
 
         const { data, error } = await supabase.functions.invoke(fnName, {
           body: {
