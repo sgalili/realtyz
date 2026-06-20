@@ -1201,6 +1201,67 @@ const LeadCRM = () => {
         </CardContent>
       </Card>
 
+      {/* Communication Status Info Dialog */}
+      <Dialog open={statusInfoOpen} onOpenChange={setStatusInfoOpen}>
+        <DialogContent className="sm:max-w-md" dir="rtl">
+          {(() => {
+            const v = voters?.find((x) => x.id === selectedVoterId);
+            const status = v?.status || 'cold';
+            const cfg = getLoyalty(status);
+            const descriptions: Record<string, string> = {
+              cold: 'מתעניין קר — נרשם במערכת אך עדיין לא הייתה אינטראקציה משמעותית. הסוכן הדיגיטלי ינסה ליצור קשר ראשוני.',
+              qualified: 'מתעניין מוסמך — נוצר קשר, אומתו צרכים בסיסיים (תקציב/אזור/סוג נכס). מוכן לשלב הצגת נכסים.',
+              negotiation: 'במשא ומתן — התקיים סיור או הוצגה הצעה. שלב רגיש: הסוכן מעדיף תשובה אישית של הברוקר.',
+              closed: 'נסגר — העסקה הושלמה. הלקוח עובר למאגר חיזוק קשר ולא ייפנה אוטומטית.',
+              contacted: 'נוצר קשר — בוצעה פנייה ראשונית. ממתינים לתגובה כדי להעלות לשלב הבא.',
+              inactive: 'לא רלוונטי — לא מתאים כרגע. לא תישלחנה פניות עד שינוי ידני של הסטטוס.',
+              lead: 'מתעניין קר — נרשם במערכת אך עדיין לא הייתה אינטראקציה משמעותית.',
+              supporter: 'נסגר — העסקה הושלמה.',
+              active: 'מתעניין מוסמך — קשר פעיל ושוטף.',
+              voted: 'נסגר — העסקה הושלמה.',
+            };
+            const lastInteraction = v?.last_interaction_at
+              ? format(new Date(v.last_interaction_at), 'dd/MM/yyyy HH:mm')
+              : 'לא נרשמה אינטראקציה';
+            const createdAt = (v as any)?.created_at
+              ? format(new Date((v as any).created_at), 'dd/MM/yyyy HH:mm')
+              : '—';
+            return (
+              <>
+                <DialogHeader>
+                  <DialogTitle className="flex items-center gap-2">
+                    <span className={`border text-xs rounded-md px-2.5 py-1 font-medium ${cfg.color}`}>{cfg.label}</span>
+                    <span>סטטוס תקשורת</span>
+                  </DialogTitle>
+                  <DialogDescription className="text-right">{descriptions[status] || 'אין תיאור זמין לסטטוס זה.'}</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between border-b border-border/40 py-2">
+                    <span className="text-muted-foreground">נוצר במערכת</span>
+                    <span className="font-medium">{createdAt}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-border/40 py-2">
+                    <span className="text-muted-foreground">אינטראקציה אחרונה</span>
+                    <span className="font-medium">{lastInteraction}</span>
+                  </div>
+                  <div className="flex justify-between border-b border-border/40 py-2">
+                    <span className="text-muted-foreground">סוכן דיגיטלי</span>
+                    <span className="font-medium">{v?.ai_autopilot ? 'פעיל' : 'כבוי'}</span>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <span className="text-muted-foreground">ציון מעורבות</span>
+                    <span className="font-medium">{v?.engagement_score ?? 0}</span>
+                  </div>
+                </div>
+                <DialogFooter>
+                  <Button variant="outline" onClick={() => setStatusInfoOpen(false)}>סגור</Button>
+                </DialogFooter>
+              </>
+            );
+          })()}
+        </DialogContent>
+      </Dialog>
+
       {/* Add to Campaign Dialog */}
       <Dialog open={addToCampaignOpen} onOpenChange={setAddToCampaignOpen}>
         <DialogContent className="sm:max-w-md">
