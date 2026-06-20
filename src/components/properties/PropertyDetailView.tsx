@@ -102,7 +102,7 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
               target="_blank"
               rel="noopener noreferrer"
               className={`text-slate-600 hover:text-blue-600 block z-50 cursor-pointer ${!resolvedUrl ? 'pointer-events-none opacity-40' : ''}`}
-              style={{ display: 'block', visibility: 'visible', pointerEvents: 'auto' }}
+              style={{ display: 'block', visibility: 'visible' }}
             >
               <ExternalLink className="w-6 h-6" />
             </a>
