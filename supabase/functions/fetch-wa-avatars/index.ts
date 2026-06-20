@@ -28,13 +28,17 @@ interface Body {
 
 function normalizeChatId(phone: string): string | null {
   if (!phone) return null;
+  // Strip every non-digit (spaces, dashes, parens, +): "054-681-1841" -> "0546811841"
   let digits = String(phone).replace(/\D/g, "");
   if (!digits) return null;
-  // Israeli local numbers (e.g. 05XXXXXXXX) -> 9725XXXXXXXX
+  // Israeli local "0XXXXXXXXX"            -> "972XXXXXXXXX"
   if (digits.startsWith("0")) digits = "972" + digits.slice(1);
-  if (digits.length < 8) return null;
+  // Bare Israeli mobile "5XXXXXXXX" (9 digits, no leading 0) -> "9725XXXXXXXX"
+  else if (digits.length === 9 && digits.startsWith("5")) digits = "972" + digits;
+  if (digits.length < 10) return null;
   return `${digits}@c.us`;
 }
+
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -103,8 +107,44 @@ Deno.serve(async (req) => {
       });
     }
 
-    const endpoint =
+    const avatarEndpoint =
       `https://api.green-api.com/waInstance${instanceId}/getAvatar/${token}`;
+    const contactInfoEndpoint =
+      `https://api.green-api.com/waInstance${instanceId}/getContactInfo/${token}`;
+
+    async function resolveAvatarUrl(chatId: string): Promise<{ url: string | null; httpErr?: string }> {
+      // 1) primary: getAvatar
+      try {
+        const res = await fetch(avatarEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chatId }),
+        });
+        if (res.ok) {
+          const j = await res.json().catch(() => ({} as any));
+          const u = typeof j?.urlAvatar === "string" ? j.urlAvatar.trim() : "";
+          if (u) return { url: u };
+        } else if (res.status !== 404) {
+          return { url: null, httpErr: `getAvatar HTTP ${res.status}` };
+        }
+      } catch (e) {
+        return { url: null, httpErr: `getAvatar ${(e as Error).message}` };
+      }
+      // 2) fallback: getContactInfo (returns avatar field for known contacts)
+      try {
+        const res2 = await fetch(contactInfoEndpoint, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ chatId }),
+        });
+        if (res2.ok) {
+          const j = await res2.json().catch(() => ({} as any));
+          const u = typeof j?.avatar === "string" ? j.avatar.trim() : "";
+          if (u) return { url: u };
+        }
+      } catch { /* ignore */ }
+      return { url: null };
+    }
 
     // Sequential with small delay — Green API rate-limits aggressive bursts.
     for (const lead of leads) {
@@ -114,22 +154,10 @@ Deno.serve(async (req) => {
         continue;
       }
       try {
-        const res = await fetch(endpoint, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ chatId }),
-        });
-        const json = await res.json().catch(() => ({} as any));
-        const url: string | null =
-          json?.urlAvatar && typeof json.urlAvatar === "string" && json.urlAvatar.trim().length > 0
-            ? json.urlAvatar.trim()
-            : null;
-
-        if (!res.ok) {
+        const { url, httpErr } = await resolveAvatarUrl(chatId);
+        if (httpErr) {
           results.failed++;
-          if (results.errors.length < 5) {
-            results.errors.push(`${lead.phone_number}: HTTP ${res.status}`);
-          }
+          if (results.errors.length < 5) results.errors.push(`${lead.phone_number}: ${httpErr}`);
         } else if (url) {
           const { error: upErr } = await supabase
             .from("leads")
@@ -142,7 +170,6 @@ Deno.serve(async (req) => {
             results.updated++;
           }
         } else {
-          // No avatar set on this WA account.
           results.skipped++;
         }
       } catch (e: any) {
@@ -152,6 +179,7 @@ Deno.serve(async (req) => {
       // Gentle pacing — Green API personal-tier ~5 req/s.
       await new Promise((r) => setTimeout(r, 220));
     }
+
 
     return new Response(JSON.stringify(results), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
