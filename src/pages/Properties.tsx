@@ -859,13 +859,12 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
                     {p.price ? formatPrice(p.price) : '—'}{isRent && p.price ? <span className="text-[12px] text-muted-foreground">/ח</span> : null}
                   </td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{p.city || '—'}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap max-w-[180px] truncate" title={p.address || ''}>{p.address || '—'}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{p.rooms || '—'}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap">{p.floor ?? '—'}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{p.size_sqm || '—'}</td>
-                  {extraKeys.map((k) => (
-                    <td key={k} className="px-2 py-1.5 whitespace-nowrap max-w-[200px] truncate" title={p.extras?.[k] ?? ''}>
-                      {p.extras?.[k] ?? ''}
-                    </td>
-                  ))}
+                  <td className="px-2 py-1.5 whitespace-nowrap">{PROPERTY_TYPE_LABELS_HE[p.property_type] || '—'}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap text-muted-foreground">{p.created_at ? new Date(p.created_at).toLocaleDateString('he-IL') : '—'}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap text-left">
                     <div className="inline-flex items-center gap-1.5">
                       <Button size="sm" variant="outline" onClick={() => setShareTarget(p)} className="gap-1.5">
