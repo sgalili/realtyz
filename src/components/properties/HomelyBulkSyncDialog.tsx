@@ -187,14 +187,14 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
         className="max-w-3xl w-[calc(100vw-1rem)] max-h-[95vh] overflow-hidden p-4 sm:p-6 flex flex-col gap-3"
       >
         <DialogHeader className="text-right space-y-0">
-          <DialogTitle className="text-right">סנכרון מלא מהומלי</DialogTitle>
+          <DialogTitle className="text-right">{mode === 'contacts' ? 'סנכרון מתעניינים מהומלי' : 'סנכרון נכסים מהומלי'}</DialogTitle>
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as 'properties' | 'contacts')} className="flex flex-col min-h-0 flex-1">
           <div dir="rtl" className="flex flex-wrap items-center justify-between gap-2">
             <TabsList className="h-auto flex-wrap">
-              <TabsTrigger value="properties" className="text-xs sm:text-sm">נכסים {properties.length ? `(${properties.length})` : ''}</TabsTrigger>
-              <TabsTrigger value="contacts" className="text-xs sm:text-sm">אנשי קשר {contacts.length ? `(${contacts.length})` : ''}</TabsTrigger>
+              {mode === 'properties' && <TabsTrigger value="properties" className="text-xs sm:text-sm">נכסים {properties.length ? `(${properties.length})` : ''}</TabsTrigger>}
+              {mode === 'contacts' && <TabsTrigger value="contacts" className="text-xs sm:text-sm">אנשי קשר {contacts.length ? `(${contacts.length})` : ''}</TabsTrigger>}
             </TabsList>
             <div className="flex items-center gap-1.5">
               <Button
