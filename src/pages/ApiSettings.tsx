@@ -728,6 +728,7 @@ const ApiSettings = () => {
           user_id: authUser.id,
           homely_agency: homelyAgency.trim(),
           homely_username: homelyUsername.trim(),
+          homely_feed_url: homelyFeedUrl.trim() || null,
           updated_at: new Date().toISOString(),
         } as any, { onConflict: 'user_id' });
       if (upErr) throw upErr;
