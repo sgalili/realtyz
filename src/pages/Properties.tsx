@@ -818,16 +818,16 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
                   aria-label="בחר הכל"
                 />
               </th>
-              <SortableTh sortKey="title" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">כותרת</SortableTh>
+              <SortableTh sortKey="title" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">שם מלא</SortableTh>
               <SortableTh sortKey="listing_type" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">סוג עסקה</SortableTh>
-
               <SortableTh sortKey="price" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">מחיר</SortableTh>
               <SortableTh sortKey="city" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">עיר</SortableTh>
+              <SortableTh sortKey="address" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">רחוב</SortableTh>
               <SortableTh sortKey="rooms" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">חדרים</SortableTh>
+              <SortableTh sortKey="floor" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">קומה</SortableTh>
               <SortableTh sortKey="size_sqm" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">מ"ר</SortableTh>
-              {extraKeys.map((k) => (
-                <SortableTh key={k} sortKey={`extra:${k}` as const} sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap text-muted-foreground">{k}</SortableTh>
-              ))}
+              <SortableTh sortKey="property_type" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">סוג נכס</SortableTh>
+              <SortableTh sortKey="created_at" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">עדכון</SortableTh>
               <th className="px-2 py-2 font-semibold whitespace-nowrap text-left">פעולות</th>
             </tr>
           </thead>
