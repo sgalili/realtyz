@@ -151,7 +151,7 @@ export default function Properties() {
     queryKey: ['properties-search', sourceTab, { city, rooms, propertyType, priceRange, areaMin }],
     queryFn: async () => {
       try {
-        if (sourceTab === 'all' || sourceTab === 'mine' || sourceTab === 'homely') {
+        {
           const rows: any[] = [];
           const pageSize = 1000;
           for (let from = 0; ; from += pageSize) {
@@ -163,6 +163,8 @@ export default function Properties() {
               .order('created_at', { ascending: false })
               .range(from, from + pageSize - 1);
             if (sourceTab === 'homely') query = query.eq('source', 'homely');
+            else if (sourceTab === 'yad2') query = query.eq('source', 'yad2');
+            else if (sourceTab === 'madlan') query = query.eq('source', 'madlan');
             const { data, error } = await query;
             if (error) throw error;
             rows.push(...(data ?? []));
