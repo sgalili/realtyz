@@ -219,7 +219,7 @@ export default function Properties() {
                 : [];
               return {
                 id: row.id,
-                source: row.source === 'homely' ? 'homely' : 'mine',
+                source: row.source === 'homely' ? 'homely' : row.source === 'yad2' ? 'yad2' : row.source === 'madlan' ? 'madlan' : 'mine',
                 title: row.property_title || 'נכס',
                 description: row.description || '',
                 price: Number(row.asking_price ?? 0),
