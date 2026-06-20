@@ -1039,9 +1039,25 @@ const LeadCRM = () => {
             <Button variant="outline" size="sm" className="gap-1.5 h-8 shrink-0" onClick={() => handleExportExcel('filtered')}>
               <FileSpreadsheet className="h-3.5 w-3.5" /> ייצוא
             </Button>
-            <Button size="sm" className="gap-1.5 h-8 shrink-0" onClick={() => setNewLeadOpen(true)} disabled={freemium.isBlocked}>
-              <UserPlus className="h-3.5 w-3.5" /> מתעניין חדש
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" className="gap-1.5 h-8 shrink-0" disabled={freemium.isBlocked}>
+                  <Plus className="h-3.5 w-3.5" /> הוסף
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" dir="rtl" className="min-w-[220px]">
+                <DropdownMenuItem onClick={() => setNewLeadOpen(true)} className="gap-2 cursor-pointer">
+                  <UserPlus className="h-4 w-4 text-primary" /> מתעניין חדש
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="gap-2 cursor-pointer">
+                  <UploadIcon className="h-4 w-4 text-primary" /> ייבוא מקובץ
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setHomelyContactsSyncOpen(true)} className="gap-2 cursor-pointer">
+                  <UserRoundPlus className="h-4 w-4 text-primary" /> סנכרון מתעניינים מהומלי
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>}
         </CardHeader>
         {selectedIds.size > 0 && (
