@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
     const isUrl = /^https?:\/\/\S+$/i.test(trimmed);
 
     let payload = trimmed;
-    let sourceUrl: string | null = null;
+    let sourceUrl: string | null = extractSourceUrl(trimmed);
     let scrapedPhotos: string[] = [];
 
     if (isUrl) {
@@ -101,12 +101,13 @@ Deno.serve(async (req) => {
     }
 
     // Always harvest direct image URLs from the raw payload text (works for pasted listings too)
+    const normalizedPayload = payload.replace(/\\\//g, "/").replace(/&amp;/g, "&");
     const rawImageMatches = Array.from(
-      payload.matchAll(/https?:\/\/[^\s"'<>)\]]+?\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>)\]]*)?/gi)
-    ).map((m) => m[0]);
+      normalizedPayload.matchAll(/https?:\/\/[^\s"'<>)\]}{]+?\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>)\]}{]*)?/gi)
+    ).map((m) => cleanUrl(m[0]));
     const yad2Specific = Array.from(
-      payload.matchAll(/https?:\/\/img\.yad2\.co\.il\/[^\s"'<>)\]]+/gi)
-    ).map((m) => m[0]);
+      normalizedPayload.matchAll(/https?:\/\/img\.yad2\.co\.il\/[^\s"'<>)\]}{]+/gi)
+    ).map((m) => cleanUrl(m[0]));
     scrapedPhotos = dedupe([...scrapedPhotos, ...rawImageMatches, ...yad2Specific])
       .filter((u) => !/logo|sprite|icon|favicon|placeholder/i.test(u))
       .slice(0, 20);
