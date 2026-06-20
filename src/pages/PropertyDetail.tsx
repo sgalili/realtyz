@@ -9,10 +9,10 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   BedDouble, Ruler, MapPin, Building2, ArrowRight, Phone, Mail,
   Calendar, Layers, Send, Home, User, Receipt,
+  Car, ArrowUpCircle, Wind, Shield, Sun, ExternalLink,
 } from 'lucide-react';
 import {
   PROPERTY_TYPE_LABELS_HE,
-  LISTING_TYPE_LABELS_HE,
   type HomelyProperty,
   type PropertyType,
 } from '@/lib/homelyMockProperties';
@@ -23,7 +23,6 @@ function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
 }
 
-// Hebrew labels for the extra fields we persist in source_metadata
 const META_LABELS: Record<string, string> = {
   monthly_rent: 'שכר דירה חודשי',
   arnona_bimonthly: 'ארנונה (לחודשיים)',
@@ -34,12 +33,6 @@ const META_LABELS: Record<string, string> = {
   year_built: 'שנת בנייה',
   entry_date: 'תאריך כניסה',
   furnished: 'ריהוט',
-  ac: 'מיזוג',
-  storage: 'מחסן',
-  balcony: 'מרפסת',
-  shelter: 'ממ"ד / מקלט',
-  bars: 'סורגים',
-  renovated: 'משופץ',
   agent: 'סוכן',
   agent_serial: 'מספר סוכן',
   agent_phone: 'טלפון סוכן',
@@ -50,11 +43,6 @@ const META_LABELS: Record<string, string> = {
   last_updated: 'עדכון אחרון',
   exclusivity_until: 'בלעדיות עד',
 };
-
-const META_HIDDEN = new Set([
-  'deal_type', 'listing_type', 'property_type',
-  'city', 'address', 'rooms', 'sqm', 'size_sqm', 'floor',
-]);
 
 function formatMetaValue(key: string, value: any): string {
   if (value == null || value === '') return '—';
@@ -75,6 +63,11 @@ export default function PropertyDetail() {
   const { data, isLoading } = useQuery({
     queryKey: ['property-detail', id],
     enabled: !!id,
+    // Prevent auto-refresh / window-focus refetch loops that cause page blink.
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+    refetchInterval: false,
+    staleTime: 5 * 60 * 1000,
     queryFn: async () => {
       const { data: row } = await supabase
         .from('listings')
@@ -83,15 +76,21 @@ export default function PropertyDetail() {
         .maybeSingle();
       if (!row) return null;
       const features = Array.isArray(row.features) ? row.features : [];
-      const photos: string[] = (features as any[])
+      const meta = ((row as any).source_metadata || {}) as Record<string, any>;
+
+      // Photos: prefer source_metadata.photos, fall back to features array.
+      const metaPhotos: string[] = Array.isArray(meta.photos)
+        ? meta.photos.filter((s: any) => typeof s === 'string' && /^https?:\/\//.test(s))
+        : [];
+      const featurePhotos: string[] = (features as any[])
         .map((f) => (typeof f === 'string' ? f : (f as any)?.photo || (f as any)?.image_url))
         .filter((s: any) => typeof s === 'string' && /^https?:\/\//.test(s));
-      const meta = ((row as any).source_metadata || {}) as Record<string, any>;
+      const photos = Array.from(new Set([...metaPhotos, ...featurePhotos]));
+
       const dealType = String(meta.deal_type ?? meta.listing_type ?? '').toLowerCase();
       const listingType: 'sale' | 'rent' = dealType === 'rent' ? 'rent' : 'sale';
       const textFeatures = (features as any[]).filter((f) => typeof f === 'string') as string[];
-      if (row.parking) textFeatures.push('חניה');
-      if (row.elevator) textFeatures.push('מעלית');
+
       const property = {
         id: String(row.id),
         source: 'listings',
@@ -112,7 +111,23 @@ export default function PropertyDetail() {
         url: row.slug ? `/listing/${row.slug}` : (row.source_url || null),
         features: Array.from(new Set(textFeatures)),
       } as HomelyProperty;
-      return { property, meta, neighborhood: (row as any).neighborhood as string | null, projectName: (row as any).project_name as string | null };
+
+      const amenities = {
+        parking: Number(row.parking ?? meta.parking ?? 0) || 0,
+        elevator: Boolean(row.elevator ?? meta.elevator ?? false),
+        ac: Boolean(meta.ac ?? meta.air_conditioning ?? false),
+        shelter: Boolean(meta.shelter ?? meta.mamad ?? false),
+        solar: Boolean(meta.solar_heater ?? meta.solar ?? false),
+      };
+
+      return {
+        property,
+        meta,
+        amenities,
+        neighborhood: (row as any).neighborhood as string | null,
+        projectName: (row as any).project_name as string | null,
+        sourceUrl: (row as any).source_url as string | null,
+      };
     },
   });
 
@@ -120,6 +135,8 @@ export default function PropertyDetail() {
   const meta: Record<string, any> = data?.meta || {};
   const neighborhood = data?.neighborhood;
   const projectName = data?.projectName ?? null;
+  const sourceUrl = data?.sourceUrl ?? null;
+  const amenities = data?.amenities;
 
   if (isLoading) {
     return (
@@ -146,7 +163,25 @@ export default function PropertyDetail() {
   const photos = property.photos.length ? property.photos : [];
   const main = photos[activePhoto];
 
-  // Split metadata into financial vs other extras
+  const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'נכס';
+  const transactionHe = isRent ? 'להשכרה' : 'למכירה';
+  // Dynamic headline e.g. "דירה להשכרה, הרצליה הירוקה, נווה עובד, הרצליה"
+  const headlineParts = [
+    `${propertyTypeHe} ${transactionHe}`,
+    property.address || null,
+    neighborhood || null,
+    property.city || null,
+  ].filter((s): s is string => Boolean(s && String(s).trim()));
+  // de-duplicate identical fragments (e.g. address === neighborhood)
+  const seen = new Set<string>();
+  const headline = headlineParts.filter((p) => {
+    const k = p.trim();
+    if (seen.has(k)) return false;
+    seen.add(k);
+    return true;
+  }).join(', ');
+
+  // Financials / owner blocks
   const financialKeys = ['monthly_rent', 'arnona_bimonthly', 'arnona', 'vaad_bayit', 'deposit'];
   const ownerKeys = ['owner_name', 'owner_phone', 'agent', 'agent_serial', 'agent_phone'];
   const financialEntries = financialKeys
@@ -155,58 +190,48 @@ export default function PropertyDetail() {
   const ownerEntries = ownerKeys
     .filter((k) => meta[k] != null && meta[k] !== '')
     .map((k) => [k, meta[k]] as const);
-  const otherEntries = Object.entries(meta).filter(
-    ([k, v]) =>
-      v != null && v !== '' &&
-      !META_HIDDEN.has(k) &&
-      !financialKeys.includes(k) &&
-      !ownerKeys.includes(k),
-  );
 
   return (
     <div className="p-3 sm:p-6 space-y-6" dir="rtl">
-      {/* Top breadcrumb / back */}
-      <div className="flex items-center justify-between gap-3 flex-wrap">
-        <Button variant="ghost" size="sm" asChild className="gap-1.5">
-          <Link to="/properties">
-            <ArrowRight className="h-4 w-4" /> חזרה לקטלוג הנכסים
-          </Link>
+      {/* Floating back arrow — positioned on opposite edge of the burger/sidebar trigger (LTR-left in RTL layout) */}
+      <div className="flex items-center">
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="חזרה לקטלוג הנכסים"
+          onClick={() => navigate('/properties')}
+          className="h-9 w-9 rounded-full text-foreground hover:bg-foreground/10"
+        >
+          <ArrowRight className="h-5 w-5 rotate-180" />
         </Button>
-        <div className="flex items-center gap-2">
-          {property.listing_type && (
-            <Badge className={`border ${isRent ? 'bg-amber-500 text-white' : 'bg-primary text-primary-foreground'}`}>
-              {LISTING_TYPE_LABELS_HE[property.listing_type]}
-            </Badge>
-          )}
-          <Badge variant="secondary">{PROPERTY_TYPE_LABELS_HE[property.property_type]}</Badge>
-        </div>
       </div>
 
-      {/* Header — title + price */}
-      <header className="flex items-start justify-between gap-4 flex-wrap">
-        <div className="min-w-0">
-          <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">{property.title}</h1>
-          {(property.address || neighborhood || property.city) && (
-            <p className="text-sm text-muted-foreground mt-1 inline-flex items-center gap-1.5">
-              <MapPin className="h-4 w-4" />
-              {[property.address, neighborhood, property.city].filter(Boolean).join(', ')}
-            </p>
-          )}
-        </div>
-        <div className="text-right">
+      {/* Headline + price */}
+      <header className="space-y-2">
+        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
+          {headline || property.title}
+        </h1>
+
+        <div className="flex items-end justify-between gap-4 flex-wrap">
           <div className="text-3xl font-extrabold text-success tabular-nums">
             {formatPrice(property.price)}
             {isRent && <span className="text-base font-normal text-muted-foreground"> /חודש</span>}
+            {property.size_sqm ? (
+              <p className="text-xs text-muted-foreground mt-1 font-normal">
+                {formatPrice(Math.round(property.price / property.size_sqm))} למ"ר
+              </p>
+            ) : null}
           </div>
-          <p className="text-xs text-muted-foreground mt-1">
-            {property.size_sqm ? `${formatPrice(Math.round(property.price / property.size_sqm))} למ"ר` : ''}
-          </p>
+          <span
+            className={`text-lg font-bold ${isRent ? 'text-amber-600' : 'text-primary'}`}
+          >
+            {transactionHe}
+          </span>
         </div>
       </header>
 
       {/* Gallery + sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Gallery */}
         <div className="lg:col-span-2 space-y-3">
           <Card className="overflow-hidden">
             <div className="aspect-[16/10] bg-muted relative">
@@ -233,7 +258,7 @@ export default function PropertyDetail() {
             </div>
           )}
 
-          {/* Specs grid */}
+          {/* Specs grid — amenities merged in */}
           <Card className="p-4 sm:p-5">
             <h2 className="text-base font-bold text-primary mb-4">מאפייני הנכס</h2>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
@@ -245,11 +270,42 @@ export default function PropertyDetail() {
                 value={property.floor != null ? `${property.floor}${property.total_floors ? ` / ${property.total_floors}` : ''}` : '—'}
               />
               <Spec icon={Calendar} label="שנת בנייה" value={property.year_built ? `${property.year_built}` : '—'} />
-              <Spec icon={Home} label="סוג נכס" value={PROPERTY_TYPE_LABELS_HE[property.property_type]} />
+              <Spec icon={Home} label="סוג נכס" value={propertyTypeHe} />
               <Spec icon={MapPin} label="עיר" value={property.city || '—'} />
               <Spec icon={MapPin} label="שכונה" value={neighborhood || '—'} />
-              <Spec icon={Building2} label="מצב" value={isRent ? 'להשכרה' : 'למכירה'} />
+              <Spec icon={Building2} label="מצב" value={transactionHe} />
+
+              {/* Amenities — merged into the same grid */}
+              {amenities && amenities.parking > 0 && (
+                <Spec icon={Car} label="חניה" value={`${amenities.parking}`} />
+              )}
+              {amenities?.elevator && (
+                <Spec icon={ArrowUpCircle} label="מעלית" value="כן" />
+              )}
+              {amenities?.ac && (
+                <Spec icon={Wind} label="מיזוג" value="כן" />
+              )}
+              {amenities?.shelter && (
+                <Spec icon={Shield} label='ממ"ד / מקלט' value="כן" />
+              )}
+              {amenities?.solar && (
+                <Spec icon={Sun} label="דוד שמש" value="כן" />
+              )}
             </div>
+
+            {sourceUrl && (
+              <div className="mt-5 pt-4 border-t border-border/60">
+                <a
+                  href={sourceUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+                >
+                  <ExternalLink className="h-4 w-4" />
+                  🔗 מעבר למקור המודעה
+                </a>
+              </div>
+            )}
           </Card>
 
           {/* Description */}
@@ -283,23 +339,6 @@ export default function PropertyDetail() {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {ownerEntries.map(([k, v]) => (
                   <Spec key={k} icon={User} label={META_LABELS[k] || k} value={formatMetaValue(k, v)} />
-                ))}
-              </div>
-            </Card>
-          )}
-
-
-
-
-          {/* Features */}
-          {property.features?.length > 0 && (
-            <Card className="p-4 sm:p-5">
-              <h2 className="text-base font-bold text-primary mb-3">מאפיינים נוספים</h2>
-              <div className="flex flex-wrap gap-2">
-                {property.features.map((f) => (
-                  <Badge key={f} variant="secondary" className="text-xs">
-                    {f}
-                  </Badge>
                 ))}
               </div>
             </Card>
