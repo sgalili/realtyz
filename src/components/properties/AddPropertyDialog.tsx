@@ -205,36 +205,48 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
           <DialogDescription>הוספת נכס לקטלוג</DialogDescription>
         </DialogHeader>
 
-        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
-          {/* AI paste box */}
-          <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-3 space-y-2">
-            <Label className="text-xs font-bold flex items-center gap-1.5 text-primary">
-              <Sparkles className="h-3.5 w-3.5" />
-              הדבק כאן טקסט מודעה (Yad2 / מדלן) או קישור
-            </Label>
-            <Textarea
-              dir="rtl"
-              rows={4}
-              placeholder="הדבק את גוף המודעה — AI יחלץ אוטומטית את כל הפרטים והתמונות..."
-              value={aiText}
-              onChange={(e) => setAiText(e.target.value)}
-              className="resize-none text-sm bg-background"
-              disabled={hydrating}
-            />
-            <Button
-              type="button"
-              size="sm"
-              onClick={() => handleHydrate()}
-              disabled={hydrating || aiText.trim().length < 10}
-              className="w-full gap-1.5"
-            >
-              {hydrating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-              {hydrating ? 'מנתח...' : 'נתח והשלם פרטים'}
-            </Button>
-          </div>
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4">
+          {/* State 1: Initial — show paste box. Hidden the moment hydrate fires. */}
+          {!hydrating && !parsed && (
+            <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-3 space-y-2 max-w-2xl mx-auto mt-6">
+              <Label className="text-xs font-bold flex items-center gap-1.5 text-primary">
+                <Sparkles className="h-3.5 w-3.5" />
+                הדבק כאן טקסט מודעה (Yad2 / מדלן) או קישור
+              </Label>
+              <Textarea
+                dir="rtl"
+                rows={6}
+                placeholder="הדבק את גוף המודעה — AI יחלץ אוטומטית את כל הפרטים והתמונות..."
+                value={aiText}
+                onChange={(e) => setAiText(e.target.value)}
+                className="resize-none text-sm bg-background"
+              />
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => handleHydrate()}
+                disabled={aiText.trim().length < 10}
+                className="w-full gap-1.5"
+              >
+                <Sparkles className="h-3.5 w-3.5" />
+                נתח והשלם פרטים
+              </Button>
+            </div>
+          )}
 
-          {/* Live preview rendered with the SAME PropertyDetail view component */}
-          {previewProperty && parsed && (
+          {/* State 2: Loading — centered spinner only */}
+          {hydrating && (
+            <div className="flex flex-col items-center justify-center min-h-[60vh] gap-4">
+              <div className="relative h-16 w-16">
+                <div className="absolute inset-0 rounded-full border-4 border-primary/20" />
+                <div className="absolute inset-0 rounded-full border-4 border-transparent border-t-primary animate-spin" />
+              </div>
+              <p className="text-sm font-medium text-muted-foreground">מנתח את המודעה...</p>
+            </div>
+          )}
+
+          {/* State 3: Parsed — pure PropertyDetailView */}
+          {!hydrating && previewProperty && parsed && (
             <PropertyDetailView
               property={previewProperty}
               meta={{}}
@@ -250,6 +262,7 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
             />
           )}
         </div>
+
 
         <DialogFooter className="px-6 py-4 border-t shrink-0 flex-row justify-between sm:justify-between gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
