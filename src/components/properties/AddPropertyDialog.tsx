@@ -88,6 +88,16 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
         body: { text: inputText },
       });
       if (error) throw error;
+      // Graceful fallback when source-site scraping is blocked (Cloudflare etc.)
+      if (data && data.ok === false && data.fallback) {
+        if (typeof data.source_url === 'string') setSourceUrl(data.source_url);
+        toast.error(
+          data.message ||
+            'חסימת אבטחה של המקור מנעה משיכה אוטומטית. אנא העתק את הטקסט של המודעה עצמה והדבק אותו כאן במקום הקישור!',
+          { duration: 9000 }
+        );
+        return; // keep aiText as-is so the user can paste the listing body
+      }
       if (!data?.ok || !data?.data) throw new Error(data?.error || 'parse_failed');
       const d = data.data;
       if (d.listing_type) setListingType(d.listing_type);
