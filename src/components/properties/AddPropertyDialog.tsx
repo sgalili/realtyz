@@ -9,19 +9,12 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Sparkles, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
-import { PROPERTY_TYPE_LABELS_HE, type PropertyType } from '@/lib/homelyMockProperties';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
+import { PROPERTY_TYPE_LABELS_HE, type PropertyType, type HomelyProperty } from '@/lib/homelyMockProperties';
+import { PropertyDetailView } from './PropertyDetailView';
 
 interface Props {
   open: boolean;
@@ -42,38 +35,35 @@ function slugify(s: string) {
   ) + '-' + Math.random().toString(36).slice(2, 8);
 }
 
+type ParsedListing = {
+  listing_type: 'sale' | 'rent';
+  property_type: PropertyType | string;
+  city: string | null;
+  neighborhood: string | null;
+  rooms: number | null;
+  price: number | null;
+  sqm: number | null;
+  floor: number | null;
+  description: string | null;
+  photos: string[];
+  source_url: string | null;
+  parking?: number | null;
+  air_conditioning?: boolean;
+  solar_heater?: boolean;
+  shelter?: boolean;
+  elevator?: boolean;
+};
+
 export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, autoHydrate, defaultSource }: Props) {
-  const [listingType, setListingType] = useState<'sale' | 'rent'>('sale');
-  const [price, setPrice] = useState('');
-  const [city, setCity] = useState('');
-  const [neighborhood, setNeighborhood] = useState('');
-  const [propertyType, setPropertyType] = useState<PropertyType>('apartment');
-  const [rooms, setRooms] = useState('');
-  const [sqm, setSqm] = useState('');
-  const [floor, setFloor] = useState('');
-  const [description, setDescription] = useState('');
   const [aiText, setAiText] = useState('');
   const [hydrating, setHydrating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [photos, setPhotos] = useState<string[]>([]);
-  const [sourceUrl, setSourceUrl] = useState<string>('');
-  const [features2, setFeatures2] = useState<{ parking?: number; ac?: boolean; solar?: boolean; shelter?: boolean; elevator?: boolean }>({});
+  const [parsed, setParsed] = useState<ParsedListing | null>(null);
   const autoFiredRef = useRef<string | null>(null);
 
   const reset = () => {
-    setListingType('sale');
-    setPrice('');
-    setCity('');
-    setNeighborhood('');
-    setPropertyType('apartment');
-    setRooms('');
-    setSqm('');
-    setFloor('');
-    setDescription('');
     setAiText('');
-    setPhotos([]);
-    setSourceUrl('');
-    setFeatures2({});
+    setParsed(null);
     autoFiredRef.current = null;
   };
 
@@ -89,38 +79,19 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
         body: { text: inputText },
       });
       if (error) throw error;
-      // Graceful fallback when source-site scraping is blocked (Cloudflare etc.)
       if (data && data.ok === false && data.fallback) {
-        if (typeof data.source_url === 'string') setSourceUrl(data.source_url);
         toast.error(
           data.message ||
             'חסימת אבטחה של המקור מנעה משיכה אוטומטית. אנא העתק את הטקסט של המודעה עצמה והדבק אותו כאן במקום הקישור!',
           { duration: 9000 }
         );
-        return; // keep aiText as-is so the user can paste the listing body
+        return;
       }
       if (!data?.ok || !data?.data) throw new Error(data?.error || 'parse_failed');
-      const d = data.data;
-      if (d.listing_type) setListingType(d.listing_type);
-      if (d.property_type) setPropertyType(d.property_type);
-      if (d.city) setCity(d.city);
-      if (d.neighborhood) setNeighborhood(d.neighborhood);
-      if (d.rooms != null) setRooms(String(d.rooms));
-      if (d.price != null) setPrice(String(d.price));
-      if (d.sqm != null) setSqm(String(d.sqm));
-      if (d.floor != null) setFloor(String(d.floor));
-      if (d.description) setDescription(d.description);
-      if (Array.isArray(d.photos)) setPhotos(d.photos.filter((p: any) => typeof p === 'string').slice(0, 20));
-      if (typeof d.source_url === 'string') setSourceUrl(d.source_url);
-      else if (/^https?:\/\//i.test(inputText)) setSourceUrl(inputText);
-      setFeatures2({
-        parking: typeof d.parking === 'number' ? d.parking : undefined,
-        ac: !!d.air_conditioning,
-        solar: !!d.solar_heater,
-        shelter: !!d.shelter,
-        elevator: !!d.elevator,
-      });
-      toast.success(`הפרטים חולצו בהצלחה${Array.isArray(d.photos) && d.photos.length ? ` (${d.photos.length} תמונות)` : ''} — סקרו ושמרו`);
+      const d = data.data as ParsedListing;
+      const sourceUrl = d.source_url || (/^https?:\/\//i.test(inputText) ? inputText : null);
+      setParsed({ ...d, source_url: sourceUrl, photos: Array.isArray(d.photos) ? d.photos : [] });
+      toast.success(`הפרטים חולצו בהצלחה${d.photos?.length ? ` (${d.photos.length} תמונות)` : ''} — סקרו ושמרו`);
     } catch (e: any) {
       toast.error(`שגיאה בחילוץ: ${e.message ?? e}`);
     } finally {
@@ -128,7 +99,6 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
     }
   };
 
-  // Seed from initialText and optionally auto-fire hydration
   useEffect(() => {
     if (!open) return;
     if (initialText && autoFiredRef.current !== initialText) {
@@ -141,10 +111,13 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, initialText, autoHydrate]);
 
-
   const handleSubmit = async () => {
-    if (!city.trim() || !price) {
-      toast.error('יש למלא לפחות עיר ומחיר');
+    if (!parsed) {
+      toast.error('הדבק תוכן ולחץ "נתח והשלם פרטים"');
+      return;
+    }
+    if (!parsed.city || !parsed.price) {
+      toast.error('חסר עיר או מחיר במודעה');
       return;
     }
     setSubmitting(true);
@@ -154,26 +127,40 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
         toast.error('יש להתחבר כדי להוסיף נכס');
         return;
       }
-      const title = `${PROPERTY_TYPE_LABELS_HE[propertyType]} ב${city}${rooms ? ` · ${rooms} חד'` : ''}`;
+      const propType = (parsed.property_type as PropertyType) || 'apartment';
+      const title = `${PROPERTY_TYPE_LABELS_HE[propType] || 'נכס'} ב${parsed.city}${parsed.rooms ? ` · ${parsed.rooms} חד'` : ''}`;
+      const sourceUrl = parsed.source_url || '';
+      const source =
+        (defaultSource && defaultSource !== 'manual') ? defaultSource :
+        sourceUrl.includes('yad2') ? 'yad2' :
+        sourceUrl.includes('madlan') ? 'madlan' :
+        (defaultSource || 'manual');
+      const features2 = {
+        parking: typeof parsed.parking === 'number' ? parsed.parking : undefined,
+        ac: !!parsed.air_conditioning,
+        solar: !!parsed.solar_heater,
+        shelter: !!parsed.shelter,
+        elevator: !!parsed.elevator,
+      };
       const { error } = await supabase.from('listings').insert({
         user_id: auth.user.id,
         slug: slugify(title),
         property_title: title,
-        description: description.trim() || title,
-        asking_price: Number(price) || 0,
-        city: city.trim(),
-        neighborhood: neighborhood.trim() || null,
-        rooms: rooms ? Number(rooms) : null,
-        sqm: sqm ? Number(sqm) : null,
-        floor: floor ? Number(floor) : null,
+        description: (parsed.description || title).trim(),
+        asking_price: Number(parsed.price) || 0,
+        city: parsed.city.trim(),
+        neighborhood: parsed.neighborhood?.trim() || null,
+        rooms: parsed.rooms ?? null,
+        sqm: parsed.sqm ?? null,
+        floor: parsed.floor ?? null,
         status: 'live',
-        source: (defaultSource && defaultSource !== 'manual') ? defaultSource : (sourceUrl.includes('yad2') ? 'yad2' : sourceUrl.includes('madlan') ? 'madlan' : (defaultSource || 'manual')),
+        source,
         source_url: sourceUrl || null,
-        source_metadata: { photos, ...features2 },
+        source_metadata: { photos: parsed.photos, ...features2 },
         parking: features2.parking != null ? features2.parking > 0 : null,
         elevator: features2.elevator ?? null,
         is_published: true,
-        features: [{ listing_type: listingType, property_type: propertyType, ...features2 }],
+        features: [{ listing_type: parsed.listing_type, property_type: propType, ...features2 }],
       });
       if (error) throw error;
       toast.success('הנכס נוסף בהצלחה');
@@ -187,29 +174,48 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
     }
   };
 
+  // Build a HomelyProperty preview object from parsed data
+  const previewProperty: HomelyProperty | null = parsed ? {
+    id: 'preview',
+    source: 'mine',
+    title: '',
+    description: parsed.description || '',
+    price: Number(parsed.price) || 0,
+    currency: '₪',
+    city: parsed.city || '',
+    address: parsed.neighborhood || '',
+    rooms: Number(parsed.rooms) || 0,
+    size_sqm: Number(parsed.sqm) || 0,
+    property_type: (parsed.property_type as PropertyType) || 'apartment',
+    photos: parsed.photos || [],
+    url: parsed.source_url || null,
+    features: [],
+    listing_type: parsed.listing_type,
+    floor: parsed.floor ?? undefined,
+  } : null;
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(o) => { onOpenChange(o); if (!o) reset(); }}>
       <DialogContent
         dir="rtl"
         className="w-screen h-screen max-w-none sm:max-w-none p-0 gap-0 rounded-none border-0 flex flex-col"
       >
-        <DialogHeader className="px-6 py-4 border-b shrink-0 sr-only">
+        <DialogHeader className="sr-only">
           <DialogTitle>הוספת נכס</DialogTitle>
-          <DialogDescription>הוספת נכס חדש לקטלוג</DialogDescription>
+          <DialogDescription>הוספת נכס לקטלוג</DialogDescription>
         </DialogHeader>
-        <div className="flex-1 overflow-y-auto px-6 py-6">
 
-        <div className="space-y-4">
-          {/* AI Paste & Hydrate */}
+        <div className="flex-1 overflow-y-auto px-4 sm:px-6 py-4 space-y-4">
+          {/* AI paste box */}
           <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-3 space-y-2">
             <Label className="text-xs font-bold flex items-center gap-1.5 text-primary">
               <Sparkles className="h-3.5 w-3.5" />
-              הדבקת טקסט חופשי או מודעה (Yad2 / מדלן)
+              הדבק כאן טקסט מודעה (Yad2 / מדלן) או קישור
             </Label>
             <Textarea
               dir="rtl"
               rows={4}
-              placeholder="הדבק כאן את הטקסט המועתק מהמודעה הציבורית, וה-AI יחלץ את כל השדות אוטומטית..."
+              placeholder="הדבק את גוף המודעה — AI יחלץ אוטומטית את כל הפרטים והתמונות..."
               value={aiText}
               onChange={(e) => setAiText(e.target.value)}
               className="resize-none text-sm bg-background"
@@ -227,130 +233,29 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
             </Button>
           </div>
 
-          <div className="flex justify-center">
-            <div className="inline-flex items-center rounded-xl border border-primary/20 bg-card/40 p-1" dir="rtl">
-              {(['sale', 'rent'] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setListingType(t)}
-                  className={`px-5 py-1.5 text-sm font-bold rounded-lg transition-colors ${
-                    listingType === t
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'text-muted-foreground hover:text-foreground'
-                  }`}
-                >
-                  {t === 'sale' ? 'למכירה' : 'להשכרה'}
-                </button>
-              ))}
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div className="space-y-1.5 col-span-2">
-              <Label className="text-xs font-semibold">מחיר</Label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">
-                  ₪
-                </span>
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder="₪1,500,000"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  className="pl-7"
-                />
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">עיר</Label>
-              <Input
-                placeholder="לדוגמה: תל אביב"
-                value={city}
-                onChange={(e) => setCity(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">שכונה</Label>
-              <Input
-                placeholder="לדוגמה: פלורנטין"
-                value={neighborhood}
-                onChange={(e) => setNeighborhood(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">סוג נכס</Label>
-              <Select value={propertyType} onValueChange={(v) => setPropertyType(v as PropertyType)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {Object.entries(PROPERTY_TYPE_LABELS_HE)
-                    .filter(([k]) => k !== 'all')
-                    .map(([k, label]) => (
-                      <SelectItem key={k} value={k}>{label}</SelectItem>
-                    ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">חדרים</Label>
-              <Input
-                type="number"
-                step="0.5"
-                placeholder="4"
-                value={rooms}
-                onChange={(e) => setRooms(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">שטח (מ"ר)</Label>
-              <Input
-                type="number"
-                placeholder="100"
-                value={sqm}
-                onChange={(e) => setSqm(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">קומה</Label>
-              <Input
-                type="number"
-                placeholder="3"
-                value={floor}
-                onChange={(e) => setFloor(e.target.value)}
-              />
-            </div>
-
-            <div className="space-y-1.5 col-span-2">
-              <Label className="text-xs font-semibold">תיאור / הערות</Label>
-              <Textarea
-                dir="rtl"
-                rows={3}
-                placeholder="חניה, מעלית, מרפסת, שיפוץ..."
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                className="resize-none text-sm"
-              />
-            </div>
-          </div>
+          {/* Live preview rendered with the SAME PropertyDetail view component */}
+          {previewProperty && parsed && (
+            <PropertyDetailView
+              property={previewProperty}
+              meta={{}}
+              amenities={{
+                parking: parsed.parking ?? 0,
+                elevator: !!parsed.elevator,
+                ac: !!parsed.air_conditioning,
+                shelter: !!parsed.shelter,
+                solar: !!parsed.solar_heater,
+              }}
+              neighborhood={parsed.neighborhood}
+              sourceUrl={parsed.source_url}
+            />
+          )}
         </div>
-        </div>
-
-
 
         <DialogFooter className="px-6 py-4 border-t shrink-0 flex-row justify-between sm:justify-between gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
             ביטול
           </Button>
-          <Button onClick={handleSubmit} disabled={submitting}>
+          <Button onClick={handleSubmit} disabled={submitting || !parsed}>
             {submitting ? 'שומר...' : 'הוסף נכס'}
           </Button>
         </DialogFooter>
