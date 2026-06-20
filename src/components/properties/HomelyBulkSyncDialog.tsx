@@ -53,6 +53,8 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
   const [pickedProps, setPickedProps] = useState<Set<string>>(new Set());
   const [pickedContacts, setPickedContacts] = useState<Set<string>>(new Set());
   const [importing, setImporting] = useState(false);
+  const [summary, setSummary] = useState<{ properties: number; contacts: number } | null>(null);
+
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [fCity, setFCity] = useState('');
   const [fRooms, setFRooms] = useState('');
