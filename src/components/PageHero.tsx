@@ -219,7 +219,7 @@ export function PageHero() {
 
         {/* Absolute-centered page title — locked to screen center */}
         <h1 className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap pt-[10px] pb-[20px] text-center text-xl font-bold tracking-tight text-white sm:text-2xl">
-          {title}
+          {displayTitle}
         </h1>
 
         {/* Visual left (RTL flex end): page-specific action button */}
