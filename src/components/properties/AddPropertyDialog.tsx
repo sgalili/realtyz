@@ -199,7 +199,7 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
             <Button
               type="button"
               size="sm"
-              onClick={handleHydrate}
+              onClick={() => handleHydrate()}
               disabled={hydrating || aiText.trim().length < 10}
               className="w-full gap-1.5"
             >
