@@ -49,7 +49,9 @@ type ParsedListing = {
   address?: string | null;
   description: string | null;
   photos: string[];
+  images?: string[];
   source_url: string | null;
+  source_metadata?: Record<string, unknown>;
   parking?: number | null;
   air_conditioning?: boolean;
   solar_heater?: boolean;
@@ -137,9 +139,14 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
         || immediateSourceUrl
         || (/^https?:\/\//i.test(inputText) ? inputText : null);
       // Harvest any inline image URLs from the raw paste that the AI may have dropped.
+      const metadataPhotos = Array.isArray(d.source_metadata?.photos) ? d.source_metadata.photos.filter((p): p is string => typeof p === 'string') : [];
+      const metadataImages = Array.isArray(d.source_metadata?.images) ? d.source_metadata.images.filter((p): p is string => typeof p === 'string') : [];
       const mergedPhotos = Array.from(new Set([
         ...immediatePhotos,
         ...(Array.isArray(d.photos) ? d.photos : []),
+        ...(Array.isArray(d.images) ? d.images : []),
+        ...metadataPhotos,
+        ...metadataImages,
       ])).filter((u) => /^https?:\/\//.test(u));
       setRawPreviewPhotos(mergedPhotos);
       setRawPreviewSourceUrl(sourceUrl);
@@ -209,7 +216,15 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
         status: 'live',
         source,
         source_url: sourceUrl || null,
-        source_metadata: { photos: parsed.photos, total_floors: parsed.total_floors ?? null, year_built: parsed.year_built ?? null, ...features2 },
+        source_metadata: {
+          ...(parsed.source_metadata || {}),
+          photos: parsed.photos,
+          images: parsed.images || parsed.photos,
+          source_url: sourceUrl || null,
+          total_floors: parsed.total_floors ?? null,
+          year_built: parsed.year_built ?? null,
+          ...features2,
+        },
         parking: features2.parking != null ? features2.parking > 0 : null,
         elevator: features2.elevator ?? null,
         is_published: true,
