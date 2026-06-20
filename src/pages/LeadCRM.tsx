@@ -1205,7 +1205,7 @@ const LeadCRM = () => {
       <Dialog open={statusInfoOpen} onOpenChange={setStatusInfoOpen}>
         <DialogContent className="sm:max-w-md" dir="rtl">
           {(() => {
-            const v = voters?.find((x) => x.id === selectedVoterId);
+            const v = leads?.find((x) => x.id === selectedVoterId);
             const status = v?.status || 'cold';
             const cfg = getLoyalty(status);
             const descriptions: Record<string, string> = {
