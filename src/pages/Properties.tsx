@@ -371,28 +371,16 @@ export default function Properties() {
             </button>
           ))}
           {sourceTab === 'homely' && (
-            <>
-              <button
-                type="button"
-                onClick={handleHomelyRefresh}
-                disabled={isLoading || homelyRefreshing}
-                className="ml-1 inline-flex items-center gap-1 px-2.5 py-2 text-xs font-semibold rounded-lg text-muted-foreground hover:text-foreground hover:bg-primary/5 transition-colors disabled:opacity-50"
-                title="רענון נכסים מ-Homely"
-                aria-label="רענון נכסים מ-Homely"
-              >
-                <RefreshCw className={`h-3.5 w-3.5 ${homelyRefreshing ? 'animate-spin' : ''}`} />
-                רענן
-              </button>
-              <button
-                type="button"
-                onClick={() => setHomelyBulkOpen(true)}
-                className="ml-1 inline-flex items-center gap-1 px-2.5 py-2 text-xs font-semibold rounded-lg text-primary hover:bg-primary/10 transition-colors"
-                title="סנכרון מלא מהומלי — נכסים ואנשי קשר"
-              >
-                סנכרון מלא מהומלי
-              </button>
-            </>
+            <button
+              type="button"
+              onClick={() => setHomelyBulkOpen(true)}
+              className="ml-1 inline-flex items-center gap-1 px-2.5 py-2 text-xs font-semibold rounded-lg text-primary hover:bg-primary/10 transition-colors"
+              title="סנכרון מלא מהומלי — נכסים ואנשי קשר"
+            >
+              סנכרון מלא מהומלי
+            </button>
           )}
+
         </div>
       </div>
 
