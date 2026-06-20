@@ -419,7 +419,8 @@ serve(async (req) => {
           if (uid) {
             const [listingsRes, leadsRes, leadsCount, listingsCount] = await Promise.all([
               userClient.from("listings")
-                .select("id, property_title, asking_price, features, description, is_published, created_at")
+                .select("id, property_title, asking_price, features, description, office_notes, is_published, created_at")
+
                 .eq("user_id", uid)
                 .order("created_at", { ascending: false })
                 .limit(25),
@@ -439,7 +440,9 @@ serve(async (req) => {
               const rooms = f.rooms ?? f.room_count ?? "";
               const size = f.size_sqm ?? f.size ?? "";
               const price = l.asking_price ? `₪${Number(l.asking_price).toLocaleString()}` : "—";
-              return `• [${String(l.id).slice(0,8)}] ${l.property_title ?? "(ללא כותרת)"} | ${city} | ${rooms} חד׳ | ${size} מ"ר | ${price}${l.is_published ? "" : " (טיוטה)"}`;
+              const officeNotes = l.office_notes ? ` | הערות משרד: ${String(l.office_notes).replace(/\s+/g, " ").slice(0, 200)}` : "";
+              return `• [${String(l.id).slice(0,8)}] ${l.property_title ?? "(ללא כותרת)"} | ${city} | ${rooms} חד׳ | ${size} מ"ר | ${price}${l.is_published ? "" : " (טיוטה)"}${officeNotes}`;
+
             };
             const fmtLead = (v: any) => {
               const prefs = v.preferences ?? {};
@@ -540,12 +543,13 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
 
           let q = userClient
             .from("listings")
-            .select("id, property_title, asking_price, features, description")
+            .select("id, property_title, asking_price, features, description, office_notes")
             .eq("is_published", true)
             .order("created_at", { ascending: false })
             .limit(30);
           if (budgetMax) q = q.lte("asking_price", Math.round(budgetMax * 1.15));
           if (budgetMin) q = q.gte("asking_price", Math.round(budgetMin * 0.85));
+
           const { data: candRows } = await q;
           let candidates = (candRows ?? []) as any[];
 
@@ -610,8 +614,10 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
               const rooms = f.rooms ?? f.room_count ?? "—";
               const sqm = f.size_sqm ?? f.size ?? "—";
               const price = l.asking_price ? `₪${Number(l.asking_price).toLocaleString()}${isRent ? "/חודש" : ""}` : "—";
-              return `• ${l.property_title ?? "(ללא כותרת)"} | ${city} | ${rooms} חד׳ | ${sqm} מ"ר | ${priceLabel}: ${price}`;
+              const notes = l.office_notes ? `\n   הערות משרד: ${String(l.office_notes).replace(/\s+/g, " ").slice(0, 240)}` : "";
+              return `• ${l.property_title ?? "(ללא כותרת)"} | ${city} | ${rooms} חד׳ | ${sqm} מ"ר | ${priceLabel}: ${price}${notes}`;
             };
+
             const directiveLines: string[] = [];
             if (isRent) {
               directiveLines.push(
