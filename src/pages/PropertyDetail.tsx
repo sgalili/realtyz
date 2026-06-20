@@ -78,14 +78,29 @@ export default function PropertyDetail() {
       const features = Array.isArray(row.features) ? row.features : [];
       const meta = ((row as any).source_metadata || {}) as Record<string, any>;
 
-      // Photos: prefer source_metadata.photos, fall back to features array.
-      const metaPhotos: string[] = Array.isArray(meta.photos)
-        ? meta.photos.filter((s: any) => typeof s === 'string' && /^https?:\/\//.test(s))
-        : [];
-      const featurePhotos: string[] = (features as any[])
-        .map((f) => (typeof f === 'string' ? f : (f as any)?.photo || (f as any)?.image_url))
-        .filter((s: any) => typeof s === 'string' && /^https?:\/\//.test(s));
-      const photos = Array.from(new Set([...metaPhotos, ...featurePhotos]));
+      // Image paths — check every known location, accept strings or {url,src,photo,image_url} objects.
+      const normalizePhoto = (p: any): string | null => {
+        if (!p) return null;
+        if (typeof p === 'string') return /^https?:\/\//.test(p) ? p : null;
+        if (typeof p === 'object') {
+          const v = p.url || p.src || p.photo || p.image_url || p.image;
+          return typeof v === 'string' && /^https?:\/\//.test(v) ? v : null;
+        }
+        return null;
+      };
+      const photoSources: any[] = [
+        ...(Array.isArray(meta.photos) ? meta.photos : []),
+        ...(Array.isArray(meta.images) ? meta.images : []),
+        ...(Array.isArray((row as any).images) ? (row as any).images : []),
+        ...(Array.isArray((row as any).photos) ? (row as any).photos : []),
+        ...(Array.isArray(features) ? features : []),
+      ];
+      // Single-image string fallbacks
+      if (typeof meta.image === 'string') photoSources.push(meta.image);
+      if (typeof (row as any).image_url === 'string') photoSources.push((row as any).image_url);
+      const photos = Array.from(
+        new Set(photoSources.map(normalizePhoto).filter((s): s is string => !!s))
+      );
 
       const dealType = String(meta.deal_type ?? meta.listing_type ?? '').toLowerCase();
       const priceNum = Number(row.asking_price) || 0;
@@ -169,23 +184,10 @@ export default function PropertyDetail() {
   const photos = property.photos.length ? property.photos : [];
   const main = photos[activePhoto];
 
-  const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'נכס';
-  const transactionHe = isRent ? 'להשכרה' : 'למכירה';
-  // Dynamic headline e.g. "דירה להשכרה, הרצליה הירוקה, נווה עובד, הרצליה"
-  const headlineParts = [
-    `${propertyTypeHe} ${transactionHe}`,
-    property.address || null,
-    neighborhood || null,
-    property.city || null,
-  ].filter((s): s is string => Boolean(s && String(s).trim()));
-  // de-duplicate identical fragments (e.g. address === neighborhood)
-  const seen = new Set<string>();
-  const headline = headlineParts.filter((p) => {
-    const k = p.trim();
-    if (seen.has(k)) return false;
-    seen.add(k);
-    return true;
-  }).join(', ');
+  const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
+  const transactionHe = property.price < 50000 ? 'להשכרה' : 'למכירה';
+  // FORCE-RENDER headline — unconditional safe-fallback template.
+  const headline = `${propertyTypeHe} ${transactionHe}, ${neighborhood || 'שכונה'}, ${property.city || 'עיר'}`;
 
   // Financials / owner blocks
   const financialKeys = ['monthly_rent', 'arnona_bimonthly', 'arnona', 'vaad_bayit', 'deposit'];
