@@ -2009,7 +2009,12 @@ const LeadCRM = () => {
       <HomelyBulkSyncDialog
         open={homelyContactsSyncOpen}
         onOpenChange={setHomelyContactsSyncOpen}
-        onImported={() => { queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }); queryClient.invalidateQueries({ queryKey: ['leads-total'] }); }}
+        onImported={() => {
+          queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+          queryClient.invalidateQueries({ queryKey: ['leads-total'] });
+          // Immediately pull WA profile pictures for the freshly synced contacts.
+          supabase.functions.invoke('fetch-wa-avatars', { body: { limit: 2000 } }).catch(() => {});
+        }}
         mode="contacts"
       />
     </div>
