@@ -49,6 +49,7 @@ import { PriceTag } from '@/components/PriceTag';
 import { Rows, Rows3, Home, Building2, Plus, Upload as UploadIcon, UserRoundPlus } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { HomelyBulkSyncDialog } from '@/components/properties/HomelyBulkSyncDialog';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 
 // Strict Israeli mobile cleaner. Returns 9725XXXXXXXX (12 digits) for storage, or null if invalid.
 // Rules per spec:
@@ -243,6 +244,9 @@ const LeadCRM = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [newLeadOpen, setNewLeadOpen] = useState(false);
   const [homelyContactsSyncOpen, setHomelyContactsSyncOpen] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
+  const [deleting, setDeleting] = useState(false);
   const [importPreview, setImportPreview] = useState<ImportRow[]>([]);
   const [importStats, setImportStats] = useState<{ total: number; valid: number; duplicates: number; invalid: number; healthPct: number; detectedFields: string[]; missingPhone: boolean } | null>(null);
   const [importing, setImporting] = useState(false);
@@ -626,28 +630,48 @@ const LeadCRM = () => {
     }
   };
 
-  const handleBatchDelete = async () => {
+  const openBatchDeleteDialog = () => {
     if (blockDemoAction('delete-leads')) return;
+    if (!selectedIds.size) return;
+    setDeleteConfirmText('');
+    setDeleteDialogOpen(true);
+  };
+
+  const confirmBatchDelete = async () => {
     const ids = Array.from(selectedIds);
     if (!ids.length) return;
-    if (!confirm(`האם למחוק ${ids.length} מתעניינים? פעולה זו בלתי הפיכה.`)) return;
-    const { data, error } = await supabase.rpc('delete_leads_cascade', { _ids: ids });
-    if (error) {
-      toast.error('שגיאה במחיקה: ' + error.message);
+    if (ids.length > 50 && !isAdmin) {
+      toast.error('מחיקה של מעל 50 רשומות דורשת הרשאת מנהל');
       return;
     }
-    const deleted = typeof data === 'number' ? data : Number(data ?? 0);
-    if (deleted === 0) {
-      toast.error('המחיקה נחסמה - אין הרשאה למחוק את הרשומות שנבחרו');
+    if (deleteConfirmText.trim() !== 'DELETE') {
+      toast.error('יש להקליד DELETE באותיות גדולות לאישור');
       return;
     }
-    await Promise.all([
-      queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }),
-      queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] }),
-      queryClient.invalidateQueries({ queryKey: ['leads-total'] }),
-    ]);
-    setSelectedIds(new Set());
-    toast.success(`${deleted} מתעניינים נמחקו בהצלחה`);
+    setDeleting(true);
+    try {
+      const { data, error } = await supabase.rpc('delete_leads_cascade', { _ids: ids });
+      if (error) {
+        toast.error('שגיאה במחיקה: ' + error.message);
+        return;
+      }
+      const deleted = typeof data === 'number' ? data : Number(data ?? 0);
+      if (deleted === 0) {
+        toast.error('המחיקה נחסמה - אין הרשאה למחוק את הרשומות שנבחרו');
+        return;
+      }
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }),
+        queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] }),
+        queryClient.invalidateQueries({ queryKey: ['leads-total'] }),
+      ]);
+      setSelectedIds(new Set());
+      setDeleteDialogOpen(false);
+      setDeleteConfirmText('');
+      toast.success(`${deleted} מתעניינים נמחקו בהצלחה`);
+    } finally {
+      setDeleting(false);
+    }
   };
 
 
@@ -1113,7 +1137,7 @@ const LeadCRM = () => {
             <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={() => handleExportExcel('selected')}>
               <Download className="h-3.5 w-3.5" /> ייצוא נבחרים
             </Button>
-            <Button variant="destructive" size="sm" className="gap-1.5 h-8" onClick={handleBatchDelete}>
+            <Button variant="destructive" size="sm" className="gap-1.5 h-8" onClick={openBatchDeleteDialog}>
               <Trash2 className="h-3.5 w-3.5" /> מחק
             </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8 ms-auto" onClick={() => setSelectedIds(new Set())}>
@@ -2017,6 +2041,55 @@ const LeadCRM = () => {
         }}
         mode="contacts"
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={(o) => { if (!deleting) setDeleteDialogOpen(o); }}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">מחיקה לצמיתות</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-right">
+                <div>
+                  אתה עומד למחוק לצמיתות{' '}
+                  <span className="font-bold text-destructive">
+                    {selectedIds.size.toLocaleString('he-IL')}
+                  </span>{' '}
+                  מתעניינים. פעולה זו <span className="font-bold">בלתי הפיכה</span> ותסיר את כל ההיסטוריה, ההודעות והפגישות המשויכות.
+                </div>
+                {selectedIds.size > 50 && !isAdmin && (
+                  <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
+                    מחיקה של מעל 50 רשומות חסומה עבור משתמש שאינו מנהל. פנה למנהל המערכת.
+                  </div>
+                )}
+                <div className="pt-2">
+                  הקלד <span className="font-mono font-bold">DELETE</span> כדי לאשר:
+                </div>
+                <Input
+                  dir="ltr"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="DELETE"
+                  autoFocus
+                  disabled={deleting}
+                />
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>ביטול</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); confirmBatchDelete(); }}
+              disabled={
+                deleting ||
+                deleteConfirmText.trim() !== 'DELETE' ||
+                (selectedIds.size > 50 && !isAdmin)
+              }
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'מוחק...' : `מחק ${selectedIds.size.toLocaleString('he-IL')} לצמיתות`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
