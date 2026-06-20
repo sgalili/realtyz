@@ -177,7 +177,9 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
   const loading = loadingProps || loadingContacts;
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { if (importing && !v) return; onOpenChange(v); }}>
+    <>
+    <Dialog open={open && !summary} onOpenChange={(v) => { if (importing && !v) return; onOpenChange(v); }}>
+
       <DialogContent
         dir="rtl"
         className="max-w-3xl w-[calc(100vw-1rem)] max-h-[95vh] overflow-hidden p-4 sm:p-6 flex flex-col gap-3"
