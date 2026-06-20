@@ -213,17 +213,40 @@ function collectMedia(it: any): { photos: string[]; documents: string[] } {
   }
   return { photos: Array.from(photos), documents: Array.from(documents) };
 }
+function buildOfficeNotes(it: any): string {
+  // Aggregate every broker-side note the office maintains on the property.
+  // These are the strings shown in the "הערות משרד" block of Homely and the
+  // AI campaign generator must read them verbatim (status, פינוי-בינוי,
+  // exclusivity, eviction-reconstruction, agent assignments, etc).
+  const parts: string[] = [];
+  const push = (label: string, val: unknown) => {
+    const s = (val ?? "").toString().trim();
+    if (s) parts.push(`${label}: ${s}`);
+  };
+  push("הערות 1", it?.comments1);
+  push("הערות 2", it?.comments2);
+  push("הערות נוספות", it?.more);
+  push("בלעדיות/סטטוס", it?.exclusive);
+  push("פינוי", it?.removal);
+  push("מקור", it?.source);
+  push("סוכן מטפל", it?.agent);
+  push("מכירה", it?.sale_f3);
+  return parts.join("\n");
+}
 function mapStreamProperty(it: any, idx: number) {
   const serial = String(it?.serial ?? it?.Serial ?? `row-${idx + 1}`);
   const street = [it?.street, it?.number, it?.flatnumber].filter((v) => v && String(v).trim()).join(" ").trim();
   const owner = joinName(it);
   const title = [it?.objectresidence || "נכס", it?.city, street].filter(Boolean).join(" · ").trim();
-  const notes = [it?.comments1, it?.comments2, it?.more].filter(Boolean).join(" | ");
+  const office_notes = buildOfficeNotes(it);
+  const notes = [owner ? `בעלים: ${owner}` : "", office_notes].filter(Boolean).join("\n");
   const media = collectMedia(it);
   return {
     homely_id: serial,
     title: title || `נכס ${serial}`,
-    description: [owner ? `בעלים: ${owner}` : "", notes].filter(Boolean).join("\n"),
+    description: notes,
+    office_notes,
+
     price: Number(it?.priceshekel ?? 0) || 0,
     city: String(it?.city ?? ""),
     address: street,
