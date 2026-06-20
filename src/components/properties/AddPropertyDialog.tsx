@@ -84,9 +84,9 @@ function extractRawImageUrls(raw: string) {
 function extractRawSourceUrl(raw: string) {
   const normalized = raw.replace(/\\\//g, '/').replace(/&amp;/g, '&').trim();
   const preferred = normalized.match(/https?:\/\/(?:www\.)?(?:yad2|madlan)\.co\.il\/[^\s"'<>)\]}{]+/i)?.[0];
-  const direct = /^https?:\/\//i.test(normalized) ? normalized : null;
   const generic = normalized.match(/https?:\/\/[^\s"'<>)\]}{]+/i)?.[0];
-  return cleanPastedUrl(preferred || direct || generic || '') || null;
+  const direct = /^https?:\/\/\S+$/i.test(normalized) ? normalized : null;
+  return cleanPastedUrl(preferred || generic || direct || '') || null;
 }
 
 export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, autoHydrate, defaultSource }: Props) {
