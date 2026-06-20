@@ -157,7 +157,7 @@ export default function Properties() {
           for (let from = 0; ; from += pageSize) {
             let query = supabase
               .from('listings')
-              .select('id, property_title, description, asking_price, city, address, neighborhood, rooms, sqm, features, source_metadata, source, source_url, created_at')
+              .select('id, property_title, description, asking_price, city, address, neighborhood, rooms, sqm, floor, features, source_metadata, source, source_url, created_at')
               .eq('status', 'live')
               .eq('is_published', true)
               .order('created_at', { ascending: false })
@@ -228,6 +228,7 @@ export default function Properties() {
                 address: row.address ?? row.neighborhood ?? '',
                 rooms: Number(row.rooms ?? 0),
                 size_sqm: Number(row.sqm ?? 0),
+                floor: row.floor != null ? Number(row.floor) : (meta.floor != null ? Number(meta.floor) : undefined),
                 property_type: detectPropertyType(`${row.property_title ?? ''} ${row.description ?? ''}`),
                 photos: metaPhotos,
                 url: row.source_url ?? null,
@@ -273,7 +274,8 @@ export default function Properties() {
       address: r.address ?? '',
       rooms: Number(r.rooms ?? 0),
       size_sqm: Number(r.size_sqm ?? 0),
-      property_type: 'apartment' as PropertyType,
+      floor: r.floor != null ? Number(r.floor) : undefined,
+      property_type: (r.property_type ?? 'apartment') as PropertyType,
       photos: Array.isArray(r.photos) ? r.photos as string[] : [],
       url: r.url ?? null,
       features: Array.isArray(r.features) ? r.features as string[] : [],
@@ -713,30 +715,20 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const queryClient = useQueryClient();
-  const extraKeys = useMemo(() => {
-    const seen = new Set<string>();
-    const order: string[] = [];
-    for (const p of properties) {
-      const ex = p.extras ?? {};
-      for (const k of Object.keys(ex)) {
-        if (!seen.has(k)) { seen.add(k); order.push(k); }
-      }
-    }
-    return order;
-  }, [properties]);
-
-  type SortKey = 'created_at' | 'listing_type' | 'title' | 'price' | 'city' | 'rooms' | 'size_sqm' | `extra:${string}`;
+  type SortKey = 'created_at' | 'listing_type' | 'title' | 'price' | 'city' | 'address' | 'rooms' | 'floor' | 'size_sqm' | 'property_type';
   const { sort, toggle } = useTableSort<SortKey>({ key: 'created_at', dir: 'desc' });
   const sorted = useMemo(() => sortRows(properties, sort, (row, key) => {
-    if (key.startsWith('extra:')) return row.extras?.[key.slice(6)] ?? '';
     switch (key) {
       case 'created_at': return row.created_at ? new Date(row.created_at) : null;
       case 'listing_type': return LISTING_TYPE_LABELS_HE[row.listing_type ?? 'sale'];
       case 'title': return row.title;
       case 'price': return Number(row.price ?? 0);
       case 'city': return row.city ?? '';
+      case 'address': return row.address ?? '';
       case 'rooms': return Number(row.rooms ?? 0);
+      case 'floor': return Number(row.floor ?? 0);
       case 'size_sqm': return Number(row.size_sqm ?? 0);
+      case 'property_type': return row.property_type ?? '';
       default: return '';
     }
   }), [properties, sort]);
@@ -816,16 +808,16 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
                   aria-label="בחר הכל"
                 />
               </th>
-              <SortableTh sortKey="title" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">כותרת</SortableTh>
+              <SortableTh sortKey="title" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">שם מלא</SortableTh>
               <SortableTh sortKey="listing_type" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">סוג עסקה</SortableTh>
-
               <SortableTh sortKey="price" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">מחיר</SortableTh>
               <SortableTh sortKey="city" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">עיר</SortableTh>
+              <SortableTh sortKey="address" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">רחוב</SortableTh>
               <SortableTh sortKey="rooms" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">חדרים</SortableTh>
+              <SortableTh sortKey="floor" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">קומה</SortableTh>
               <SortableTh sortKey="size_sqm" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">מ"ר</SortableTh>
-              {extraKeys.map((k) => (
-                <SortableTh key={k} sortKey={`extra:${k}` as const} sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap text-muted-foreground">{k}</SortableTh>
-              ))}
+              <SortableTh sortKey="property_type" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">סוג נכס</SortableTh>
+              <SortableTh sortKey="created_at" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">עדכון</SortableTh>
               <th className="px-2 py-2 font-semibold whitespace-nowrap text-left">פעולות</th>
             </tr>
           </thead>
@@ -857,13 +849,12 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
                     {p.price ? formatPrice(p.price) : '—'}{isRent && p.price ? <span className="text-[12px] text-muted-foreground">/ח</span> : null}
                   </td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{p.city || '—'}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap max-w-[180px] truncate" title={p.address || ''}>{p.address || '—'}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{p.rooms || '—'}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap">{p.floor ?? '—'}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{p.size_sqm || '—'}</td>
-                  {extraKeys.map((k) => (
-                    <td key={k} className="px-2 py-1.5 whitespace-nowrap max-w-[200px] truncate" title={p.extras?.[k] ?? ''}>
-                      {p.extras?.[k] ?? ''}
-                    </td>
-                  ))}
+                  <td className="px-2 py-1.5 whitespace-nowrap">{PROPERTY_TYPE_LABELS_HE[p.property_type] || '—'}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap text-muted-foreground">{p.created_at ? new Date(p.created_at).toLocaleDateString('he-IL') : '—'}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap text-left">
                     <div className="inline-flex items-center gap-1.5">
                       <Button size="sm" variant="outline" onClick={() => setShareTarget(p)} className="gap-1.5">
