@@ -25,17 +25,20 @@ Deno.serve(async (req) => {
   if (!LOVABLE_API_KEY) return json({ error: "AI gateway not configured" }, 500);
 
   try {
-    const { text } = await req.json().catch(() => ({}));
-    if (!text || typeof text !== "string" || text.trim().length < 5) {
+    const body = await req.json().catch(() => ({}));
+    const rawText = body.text || "";
+    if (!rawText || typeof rawText !== "string" || rawText.trim().length < 5) {
       return json({ error: "text is required" }, 400);
     }
 
-    const trimmed = text.trim();
+    const trimmed = rawText.trim();
     const isUrl = /^https?:\/\/\S+$/i.test(trimmed);
+    const regexPhotos = extractAggressivePhotos(rawText);
+    const primaryUrl = extractPrimaryUrl(rawText);
 
     let payload = trimmed;
-    let sourceUrl: string | null = extractSourceUrl(trimmed);
-    let scrapedPhotos: string[] = [];
+    let sourceUrl: string | null = primaryUrl || extractSourceUrl(trimmed);
+    let scrapedPhotos: string[] = [...regexPhotos];
 
     if (isUrl) {
       sourceUrl = trimmed;
@@ -84,7 +87,7 @@ Deno.serve(async (req) => {
         const doc = fcData?.data ?? fcData;
         const md = (doc?.markdown ?? "").trim();
         const html = doc?.html ?? doc?.rawHtml ?? "";
-        scrapedPhotos = extractPhotos(html, trimmed);
+        scrapedPhotos = dedupe([...scrapedPhotos, ...extractPhotos(html, trimmed)]);
 
         // Detect Cloudflare / empty / challenge pages
         const looksBlocked =
@@ -108,9 +111,10 @@ Deno.serve(async (req) => {
     const yad2Specific = Array.from(
       normalizedPayload.matchAll(/https?:\/\/img\.yad2\.co\.il\/[^\s"'<>)\]}{]+/gi)
     ).map((m) => cleanUrl(m[0]));
-    scrapedPhotos = dedupe([...scrapedPhotos, ...rawImageMatches, ...yad2Specific])
+    scrapedPhotos = dedupe([...regexPhotos, ...scrapedPhotos, ...rawImageMatches, ...yad2Specific])
       .filter((u) => !/logo|sprite|icon|favicon|placeholder/i.test(u))
       .slice(0, 20);
+    sourceUrl = sourceUrl || primaryUrl || extractSourceUrl(payload);
 
 
     const system = `You extract Israeli real-estate listing data from Hebrew/English content (Yad2, Madlan, WhatsApp forwards, free notes).
