@@ -99,9 +99,12 @@ Deno.serve(async (req) => {
       };
       if (token) headers["Authorization"] = `Bearer ${token}`;
 
+      // ✅ Verified Homely/Webtiv paths (mirror homely-daily-sync + homely-leads,
+      // which return live data today). The previous `/GetActiveByBroker`,
+      // `/GetAll`, `/GetActive` paths all returned 404 HTML.
       const PATHS = action === "fetchAllProperties"
-        ? ["/api/Properties/GetActiveByBroker", "/api/Nechasim/GetActiveByBroker", "/api/Nechasim/GetAll", "/api/Properties/GetAll", "/api/Nechasim/GetActive"]
-        : ["/api/Contacts/Get", "/api/Leads/GetActive", "/api/Anashim/GetAll", "/api/Contacts/GetAll", "/api/Anashim/GetActive"];
+        ? ["/api/Nechasim/GetNechasim", "/api/Property/GetProperties", "/api/Properties/GetAll", "/api/Nechasim/Search"]
+        : ["/api/WebtivLid/GetLidim", "/api/Lid/GetLidim", "/api/Leads/GetAll", "/api/WebtivLid/Search"];
 
       // Walk any object/array tree and return the first array that "looks like"
       // a list of records (objects with id-ish or name-ish fields). This lets
@@ -132,11 +135,13 @@ Deno.serve(async (req) => {
       let lastError = "";
       const debug: Array<{ path: string; status?: number; topKeys?: string[]; sample?: string }> = [];
       for (const path of PATHS) {
+        const url = `${WEBTIV_BASE}${path}`;
+        console.log(`[homely-fetch-property] Targeting Homely URL: ${url}`);
         try {
-          const r = await fetch(`${WEBTIV_BASE}${path}`, {
+          const r = await fetch(url, {
             method: "POST",
             headers,
-            body: JSON.stringify({ db, token, agency: cred.homely_agency }),
+            body: JSON.stringify({ db, token, page: 1, pageSize: 200, agency: cred.homely_agency }),
           });
           const text = await r.text();
           let data: any = null;
