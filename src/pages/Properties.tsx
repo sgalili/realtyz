@@ -151,7 +151,7 @@ export default function Properties() {
     queryKey: ['properties-search', sourceTab, { city, rooms, propertyType, priceRange, areaMin }],
     queryFn: async () => {
       try {
-        if (sourceTab === 'all' || sourceTab === 'mine' || sourceTab === 'homely') {
+        {
           const rows: any[] = [];
           const pageSize = 1000;
           for (let from = 0; ; from += pageSize) {
@@ -163,6 +163,8 @@ export default function Properties() {
               .order('created_at', { ascending: false })
               .range(from, from + pageSize - 1);
             if (sourceTab === 'homely') query = query.eq('source', 'homely');
+            else if (sourceTab === 'yad2') query = query.eq('source', 'yad2');
+            else if (sourceTab === 'madlan') query = query.eq('source', 'madlan');
             const { data, error } = await query;
             if (error) throw error;
             rows.push(...(data ?? []));
@@ -217,7 +219,7 @@ export default function Properties() {
                 : [];
               return {
                 id: row.id,
-                source: row.source === 'homely' ? 'homely' : 'mine',
+                source: row.source === 'homely' ? 'homely' : row.source === 'yad2' ? 'yad2' : row.source === 'madlan' ? 'madlan' : 'mine',
                 title: row.property_title || 'נכס',
                 description: row.description || '',
                 price: Number(row.asking_price ?? 0),
@@ -239,17 +241,8 @@ export default function Properties() {
         }
 
 
-        const { data, error } = await supabase.functions.invoke(fnName, {
-          body: {
-            city: city !== 'כל הערים' && city !== '__my_zones__' ? city : undefined,
-            min_price: priceRange[0] > PRICE_MIN ? priceRange[0] : undefined,
-            max_price: priceRange[1] < PRICE_MAX ? priceRange[1] : undefined,
-            rooms: rooms !== 'any' ? Number(rooms) : undefined,
-            limit: 24,
-          },
-        });
-        if (error) throw error;
-        return data as { connected?: boolean; results?: Array<Partial<HomelyProperty>>; error?: string };
+        // (yad2/madlan now read from the listings table above, filtered by source.)
+        return { connected: true, results: [] };
       } catch {
         return { connected: false, results: [] };
       }
