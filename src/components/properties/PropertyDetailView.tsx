@@ -42,7 +42,6 @@ function formatMetaValue(key: string, value: unknown): string {
 export function PropertyDetailView({ property, meta = {}, amenities, neighborhood, sourceUrl, previewPhotos }: PropertyDetailViewData) {
   const [activePhoto, setActivePhoto] = useState(0);
   const photos = previewPhotos?.length ? previewPhotos : (property.photos || []);
-  const main = photos[activePhoto];
 
   const isRent = Number(property.price) < 50_000;
   const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
