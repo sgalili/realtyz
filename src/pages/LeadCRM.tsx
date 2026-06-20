@@ -46,7 +46,9 @@ import NewLeadDialog from '@/components/leads/NewLeadDialog';
 import LeadEnrichmentPanel, { LeadEnrichmentButton } from '@/components/leads/LeadEnrichmentPanel';
 import { useFreemiumStatus } from '@/hooks/useFreemiumStatus';
 import { PriceTag } from '@/components/PriceTag';
-import { Rows, Rows3, Home, Building2 } from 'lucide-react';
+import { Rows, Rows3, Home, Building2, Plus, Upload as UploadIcon, UserRoundPlus } from 'lucide-react';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { HomelyBulkSyncDialog } from '@/components/properties/HomelyBulkSyncDialog';
 
 // Strict Israeli mobile cleaner. Returns 9725XXXXXXXX (12 digits) for storage, or null if invalid.
 // Rules per spec:
@@ -240,6 +242,7 @@ const LeadCRM = () => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [newLeadOpen, setNewLeadOpen] = useState(false);
+  const [homelyContactsSyncOpen, setHomelyContactsSyncOpen] = useState(false);
   const [importPreview, setImportPreview] = useState<ImportRow[]>([]);
   const [importStats, setImportStats] = useState<{ total: number; valid: number; duplicates: number; invalid: number; healthPct: number; detectedFields: string[]; missingPhone: boolean } | null>(null);
   const [importing, setImporting] = useState(false);
@@ -1036,9 +1039,25 @@ const LeadCRM = () => {
             <Button variant="outline" size="sm" className="gap-1.5 h-8 shrink-0" onClick={() => handleExportExcel('filtered')}>
               <FileSpreadsheet className="h-3.5 w-3.5" /> ייצוא
             </Button>
-            <Button size="sm" className="gap-1.5 h-8 shrink-0" onClick={() => setNewLeadOpen(true)} disabled={freemium.isBlocked}>
-              <UserPlus className="h-3.5 w-3.5" /> מתעניין חדש
-            </Button>
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button size="sm" className="gap-1.5 h-8 shrink-0" disabled={freemium.isBlocked}>
+                  <Plus className="h-3.5 w-3.5" /> הוסף
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="min-w-[220px]">
+                <DropdownMenuItem onClick={() => setNewLeadOpen(true)} className="gap-2 cursor-pointer">
+                  <UserPlus className="h-4 w-4 text-primary" /> מתעניין חדש
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="gap-2 cursor-pointer">
+                  <UploadIcon className="h-4 w-4 text-primary" /> ייבוא מקובץ
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setHomelyContactsSyncOpen(true)} className="gap-2 cursor-pointer">
+                  <UserRoundPlus className="h-4 w-4 text-primary" /> סנכרון מתעניינים מהומלי
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>}
         </CardHeader>
         {selectedIds.size > 0 && (
@@ -1988,6 +2007,12 @@ const LeadCRM = () => {
 
       {/* Add Lead — deal_type-aware dynamic form (Sale vs Rent pipeline) */}
       <NewLeadDialog open={newLeadOpen} onOpenChange={setNewLeadOpen} />
+      <HomelyBulkSyncDialog
+        open={homelyContactsSyncOpen}
+        onOpenChange={setHomelyContactsSyncOpen}
+        onImported={() => { queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }); queryClient.invalidateQueries({ queryKey: ['leads-total'] }); }}
+        mode="contacts"
+      />
     </div>
   );
 };

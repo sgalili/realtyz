@@ -576,7 +576,7 @@ export default function Properties() {
 
       <AddPropertyDialog open={addOpen} onOpenChange={setAddOpen} onCreated={refreshListings} />
       <ImportPropertiesDialog open={importOpen} onOpenChange={setImportOpen} onImported={refreshListings} />
-      <HomelyBulkSyncDialog open={homelyBulkOpen} onOpenChange={setHomelyBulkOpen} onImported={refreshListings} />
+      <HomelyBulkSyncDialog open={homelyBulkOpen} onOpenChange={setHomelyBulkOpen} onImported={refreshListings} mode="properties" />
     </div>
   );
 }

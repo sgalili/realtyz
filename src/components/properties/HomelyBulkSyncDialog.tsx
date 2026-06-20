@@ -40,12 +40,14 @@ type HomelyContact = {
   raw: unknown;
 };
 
-export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
+export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'properties' }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onImported?: () => void;
+  mode?: 'properties' | 'contacts';
 }) {
-  const [tab, setTab] = useState<'properties' | 'contacts'>('properties');
+  const [tab, setTab] = useState<'properties' | 'contacts'>(mode);
+  useEffect(() => { setTab(mode); }, [mode, open]);
   const [loadingProps, setLoadingProps] = useState(false);
   const [loadingContacts, setLoadingContacts] = useState(false);
   const [properties, setProperties] = useState<HomelyProperty[]>([]);
@@ -185,14 +187,14 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
         className="max-w-3xl w-[calc(100vw-1rem)] max-h-[95vh] overflow-hidden p-4 sm:p-6 flex flex-col gap-3"
       >
         <DialogHeader className="text-right space-y-0">
-          <DialogTitle className="text-right">סנכרון מלא מהומלי</DialogTitle>
+          <DialogTitle className="text-right">{mode === 'contacts' ? 'סנכרון מתעניינים מהומלי' : 'סנכרון נכסים מהומלי'}</DialogTitle>
         </DialogHeader>
 
         <Tabs value={tab} onValueChange={(v) => setTab(v as 'properties' | 'contacts')} className="flex flex-col min-h-0 flex-1">
           <div dir="rtl" className="flex flex-wrap items-center justify-between gap-2">
             <TabsList className="h-auto flex-wrap">
-              <TabsTrigger value="properties" className="text-xs sm:text-sm">נכסים {properties.length ? `(${properties.length})` : ''}</TabsTrigger>
-              <TabsTrigger value="contacts" className="text-xs sm:text-sm">אנשי קשר {contacts.length ? `(${contacts.length})` : ''}</TabsTrigger>
+              {mode === 'properties' && <TabsTrigger value="properties" className="text-xs sm:text-sm">נכסים {properties.length ? `(${properties.length})` : ''}</TabsTrigger>}
+              {mode === 'contacts' && <TabsTrigger value="contacts" className="text-xs sm:text-sm">אנשי קשר {contacts.length ? `(${contacts.length})` : ''}</TabsTrigger>}
             </TabsList>
             <div className="flex items-center gap-1.5">
               <Button
@@ -359,20 +361,19 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
           <DialogTitle className="text-xl text-center">הסנכרון הושלם בהצלחה!</DialogTitle>
         </DialogHeader>
         <div dir="rtl" className="mt-4 space-y-3 text-right">
-          <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
-            <Building2 className="h-5 w-5 text-primary shrink-0" />
-            <div className="flex-1 text-sm">נכסים שנקלטו במערכת</div>
-            <div className="text-lg font-bold tabular-nums">{summary?.properties ?? 0}</div>
-          </div>
-          <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
-            <Users className="h-5 w-5 text-primary shrink-0" />
-            <div className="flex-1 text-sm">אנשי קשר שנקלטו במערכת</div>
-            <div className="text-lg font-bold tabular-nums">{summary?.contacts ?? 0}</div>
-          </div>
-          <div className="flex items-start gap-3 rounded-lg border bg-primary/5 p-3 text-right">
-            <Sparkles className="h-5 w-5 text-primary shrink-0 mt-0.5" />
-            <div className="flex-1 text-sm leading-relaxed">הערות משרד ומדיה סונכרנו עבור ה-Marketing AI.</div>
-          </div>
+          {mode === 'properties' ? (
+            <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
+              <Building2 className="h-5 w-5 text-primary shrink-0" />
+              <div className="flex-1 text-sm">נכסים שנקלטו במערכת</div>
+              <div className="text-lg font-bold tabular-nums">{summary?.properties ?? 0}</div>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3 rounded-lg border bg-muted/30 p-3">
+              <Users className="h-5 w-5 text-primary shrink-0" />
+              <div className="flex-1 text-sm">אנשי קשר שנקלטו במערכת</div>
+              <div className="text-lg font-bold tabular-nums">{summary?.contacts ?? 0}</div>
+            </div>
+          )}
         </div>
         <DialogFooter className="mt-6 sm:justify-center">
           <Button onClick={closeAll} className="w-full sm:w-auto px-8">מעולה, תודה</Button>
