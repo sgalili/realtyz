@@ -1313,7 +1313,26 @@ const ApiSettings = () => {
                 placeholder={homelyHasPassword ? '•••••••• (שמורה)' : 'הזן סיסמה'}
                 autoComplete="new-password"
               />
-            </div>
+          </div>
+
+          <div className="space-y-1 pt-2 border-t border-border/30">
+            <Label className="text-xs">כתובת פיד XML של Homely (לטעינת נכסים)</Label>
+            <Input
+              dir="ltr"
+              value={homelyFeedUrl}
+              onChange={(e) => setHomelyFeedUrl(e.target.value)}
+              placeholder="https://www.homely.co.il/feed/xml/..."
+              autoComplete="off"
+            />
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              כדי להציג את הנכסים שלך כאן, יש להזין את כתובת פיד ה‑XML שלכם מהומלי
+              (נמצא בהגדרות הומלי ← הפצה לאתרים / פיד XML). ה‑API של Homely חושף רק
+              הזרמת ליד יוצאת (<span dir="ltr">POST /api/WebtivLid/WebtivLidPost</span>) —
+              אין endpoint ציבורי למשיכת נכסים, לכן אנו קוראים את הפיד הרשמי שלכם
+              שמופץ ליד2/מדלן.
+            </p>
+          </div>
+
           </div>
 
           <div className="flex items-center justify-between gap-2">
