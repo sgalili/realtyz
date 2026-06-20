@@ -315,11 +315,12 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
                     >
                       <Checkbox checked={checked} onCheckedChange={() => toggle(pickedContacts, c.homely_id, setPickedContacts)} className="mt-1 shrink-0" />
                       <div className="flex-1 min-w-0 text-right">
-                        <div className="flex items-center gap-2 justify-end flex-wrap">
+                        <div className="flex items-center gap-2 justify-start flex-wrap text-right">
                           <Badge variant="outline" className="text-[10px]">#{c.homely_id}</Badge>
                           <h4 className="font-semibold text-xs sm:text-sm truncate">{c.full_name || 'ללא שם'}</h4>
                         </div>
-                        <div className="text-[11px] sm:text-xs text-muted-foreground flex items-center gap-2 sm:gap-3 justify-end mt-1 flex-wrap break-all">
+                        <div className="text-[11px] sm:text-xs text-muted-foreground flex items-center gap-2 sm:gap-3 justify-start mt-1 flex-wrap break-all text-right">
+
                           {c.phone && (<span className="inline-flex items-center gap-1" dir="ltr"><Phone className="h-3 w-3" />{c.phone}</span>)}
                           {c.email && (<span className="inline-flex items-center gap-1" dir="ltr"><Mail className="h-3 w-3" />{c.email}</span>)}
                           {c.city && (<span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{c.city}</span>)}
