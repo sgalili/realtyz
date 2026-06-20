@@ -311,7 +311,8 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
                 solar: !!parsed.solar_heater,
               }}
               neighborhood={parsed.neighborhood}
-              sourceUrl={parsed.source_url}
+              sourceUrl={rawPreviewSourceUrl || parsed.source_url}
+              previewPhotos={rawPreviewPhotos}
             />
           )}
         </div>
