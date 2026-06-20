@@ -40,22 +40,6 @@ type HomelyContact = {
   raw: unknown;
 };
 
-function normalizeIlPhone(raw: string): string {
-  const digits = (raw || '').replace(/\D/g, '');
-  if (!digits) return '';
-  if (digits.startsWith('972')) return digits;
-  if (digits.startsWith('0')) return '972' + digits.slice(1);
-  return digits;
-}
-
-function slugify(s: string): string {
-  return (s || 'homely')
-    .toLowerCase()
-    .replace(/[^\w\u0590-\u05FF]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 60) || 'homely';
-}
-
 export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
   open: boolean;
   onOpenChange: (v: boolean) => void;
