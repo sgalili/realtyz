@@ -166,24 +166,30 @@ export default function Properties() {
             rows.push(...(data ?? []));
             if ((data ?? []).length < pageSize) break;
           }
-          // For "mine": exclude any local listing whose dedupe key already
-          // exists on a homely-sourced listing, so the broker's own grid
-          // shows only the unique non-Homely properties.
+          // For "mine": strictly exclude any record whose source is
+          // 'homely' or 'webtiv', and additionally drop any local row
+          // that collides on dedupe key OR shares the same address/city
+          // with an imported Homely/Webtiv property.
           let scoped = rows;
           if (sourceTab === 'mine') {
-            const homelyKeys = new Set<string>();
+            const externalKeys = new Set<string>();
+            const externalAddrKeys = new Set<string>();
+            const normAddr = (r: any) =>
+              `${(r.address ?? r.neighborhood ?? '').toString().trim().toLowerCase()}|${(r.city ?? '').toString().trim().toLowerCase()}`;
             for (const r of rows) {
-              if (r.source !== 'homely') continue;
-              homelyKeys.add(propertyDedupeKey({
+              if (r.source !== 'homely' && r.source !== 'webtiv') continue;
+              externalKeys.add(propertyDedupeKey({
                 address: r.address ?? r.neighborhood ?? '',
                 city: r.city ?? '',
                 title: r.property_title ?? '',
                 rooms: Number(r.rooms ?? 0),
                 price: Number(r.asking_price ?? 0),
               }));
+              const addrKey = normAddr(r);
+              if (addrKey !== '|') externalAddrKeys.add(addrKey);
             }
             scoped = rows.filter((r) => {
-              if (r.source === 'homely') return false;
+              if (r.source === 'homely' || r.source === 'webtiv') return false;
               const k = propertyDedupeKey({
                 address: r.address ?? r.neighborhood ?? '',
                 city: r.city ?? '',
@@ -191,9 +197,15 @@ export default function Properties() {
                 rooms: Number(r.rooms ?? 0),
                 price: Number(r.asking_price ?? 0),
               });
-              return !homelyKeys.has(k);
+              if (externalKeys.has(k)) return false;
+              const addrKey = normAddr(r);
+              if (addrKey !== '|' && externalAddrKeys.has(addrKey)) return false;
+              return true;
             });
+          } else if (sourceTab === 'homely') {
+            scoped = rows.filter((r) => r.source === 'homely' || r.source === 'webtiv');
           }
+
           return {
             connected: true,
             results: dedupeProperties(scoped.map((row: any) => {
