@@ -29,6 +29,7 @@ interface Props {
   onCreated?: () => void;
   initialText?: string;
   autoHydrate?: boolean;
+  defaultSource?: 'manual' | 'yad2' | 'madlan';
 }
 
 function slugify(s: string) {
