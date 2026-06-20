@@ -44,7 +44,36 @@ const META_LABELS: Record<string, string> = {
   exclusivity_until: 'בלעדיות עד',
 };
 
-function formatMetaValue(key: string, value: any): string {
+type JsonRecord = Record<string, unknown>;
+
+type DirectListing = JsonRecord & {
+  title: string;
+  price: number;
+  property_title?: string | null;
+  source_metadata?: JsonRecord | null;
+  images?: unknown[];
+  photos?: unknown[];
+  image?: string;
+  image_url?: string;
+  neighborhood?: string | null;
+  city?: string | null;
+};
+
+function isRecord(value: unknown): value is JsonRecord {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function photoUrlFrom(value: unknown): string | null {
+  if (!value) return null;
+  if (typeof value === 'string') return /^https?:\/\//.test(value) ? value : null;
+  if (isRecord(value)) {
+    const candidate = value.url || value.src || value.photo || value.image_url || value.image;
+    return typeof candidate === 'string' && /^https?:\/\//.test(candidate) ? candidate : null;
+  }
+  return null;
+}
+
+function formatMetaValue(key: string, value: unknown): string {
   if (value == null || value === '') return '—';
   if (typeof value === 'boolean') return value ? 'כן' : 'לא';
   if (typeof value === 'number') {
@@ -76,30 +105,28 @@ export default function PropertyDetail() {
         .maybeSingle();
       if (!row) return null;
       const features = Array.isArray(row.features) ? row.features : [];
-      const meta = ((row as any).source_metadata || {}) as Record<string, any>;
+      const meta = isRecord(row.source_metadata) ? row.source_metadata : {};
+      const listing = {
+        ...row,
+        title: row.property_title || '',
+        price: Number(row.asking_price) || 0,
+      } as DirectListing;
 
       // Image paths — check every known location, accept strings or {url,src,photo,image_url} objects.
-      const normalizePhoto = (p: any): string | null => {
-        if (!p) return null;
-        if (typeof p === 'string') return /^https?:\/\//.test(p) ? p : null;
-        if (typeof p === 'object') {
-          const v = p.url || p.src || p.photo || p.image_url || p.image;
-          return typeof v === 'string' && /^https?:\/\//.test(v) ? v : null;
-        }
-        return null;
-      };
-      const photoSources: any[] = [
-        ...(Array.isArray(meta.photos) ? meta.photos : []),
-        ...(Array.isArray(meta.images) ? meta.images : []),
-        ...(Array.isArray((row as any).images) ? (row as any).images : []),
-        ...(Array.isArray((row as any).photos) ? (row as any).photos : []),
+      const photoSources: unknown[] = [
+        ...(Array.isArray(listing.source_metadata?.photos) ? listing.source_metadata.photos : []),
+        ...(Array.isArray(listing.source_metadata?.images) ? listing.source_metadata.images : []),
+        ...(Array.isArray(listing.images) ? listing.images : []),
+        ...(Array.isArray(listing.photos) ? listing.photos : []),
         ...(Array.isArray(features) ? features : []),
       ];
       // Single-image string fallbacks
-      if (typeof meta.image === 'string') photoSources.push(meta.image);
-      if (typeof (row as any).image_url === 'string') photoSources.push((row as any).image_url);
+      if (typeof listing.source_metadata?.image === 'string') photoSources.push(listing.source_metadata.image);
+      if (typeof listing.source_metadata?.image_url === 'string') photoSources.push(listing.source_metadata.image_url);
+      if (typeof listing.image === 'string') photoSources.push(listing.image);
+      if (typeof listing.image_url === 'string') photoSources.push(listing.image_url);
       const photos = Array.from(
-        new Set(photoSources.map(normalizePhoto).filter((s): s is string => !!s))
+        new Set(photoSources.map(photoUrlFrom).filter((s): s is string => !!s))
       );
 
       const dealType = String(meta.deal_type ?? meta.listing_type ?? '').toLowerCase();
@@ -110,7 +137,7 @@ export default function PropertyDetail() {
       if (priceNum > 0 && priceNum < 50_000) listingType = 'rent';
       else if (priceNum >= 500_000) listingType = 'sale';
       else listingType = dealType === 'rent' ? 'rent' : 'sale';
-      const textFeatures = (features as any[]).filter((f) => typeof f === 'string') as string[];
+      const textFeatures = features.filter((f): f is string => typeof f === 'string');
 
       const property = {
         id: String(row.id),
@@ -142,18 +169,20 @@ export default function PropertyDetail() {
       };
 
       return {
+        listing,
         property,
         meta,
         amenities,
-        neighborhood: (row as any).neighborhood as string | null,
-        projectName: (row as any).project_name as string | null,
-        sourceUrl: (row as any).source_url as string | null,
+        neighborhood: row.neighborhood,
+        projectName: row.project_name,
+        sourceUrl: row.source_url,
       };
     },
   });
 
   const property = data?.property;
-  const meta: Record<string, any> = data?.meta || {};
+  const listing = data?.listing;
+  const meta: JsonRecord = data?.meta || {};
   const neighborhood = data?.neighborhood;
   const projectName = data?.projectName ?? null;
   const sourceUrl = data?.sourceUrl ?? null;
@@ -181,7 +210,20 @@ export default function PropertyDetail() {
   }
 
   const isRent = property.listing_type === 'rent';
-  const photos = property.photos.length ? property.photos : [];
+  const directPhotoSources = [
+    ...(Array.isArray(listing?.source_metadata?.photos) ? listing.source_metadata.photos : []),
+    ...(Array.isArray(listing?.source_metadata?.images) ? listing.source_metadata.images : []),
+    ...(Array.isArray(listing?.images) ? listing.images : []),
+    ...(Array.isArray(listing?.photos) ? listing.photos : []),
+    ...(typeof listing?.source_metadata?.image === 'string' ? [listing.source_metadata.image] : []),
+    ...(typeof listing?.source_metadata?.image_url === 'string' ? [listing.source_metadata.image_url] : []),
+    ...(typeof listing?.image === 'string' ? [listing.image] : []),
+    ...(typeof listing?.image_url === 'string' ? [listing.image_url] : []),
+  ];
+  const photos = Array.from(new Set([
+    ...directPhotoSources.map((p) => photoUrlFrom(p) || ''),
+    ...property.photos,
+  ].filter((p): p is string => typeof p === 'string' && /^https?:\/\//.test(p))));
   const main = photos[activePhoto];
 
   const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
@@ -203,9 +245,14 @@ export default function PropertyDetail() {
     <div className="p-3 sm:p-6 space-y-6" dir="rtl">
       {/* Headline + price (back button lives in the hero, opposite the burger) */}
       <header className="space-y-2">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
-          {headline || property.title}
-        </h1>
+        <div
+          role="heading"
+          aria-level={1}
+          className="text-xl font-bold text-right mb-4 text-slate-900 block"
+          style={{ display: 'block', visibility: 'visible' }}
+        >
+          {listing?.title || `דירה ${Number(listing?.price) < 50000 ? 'להשכרה' : 'למכירה'}, ${listing?.neighborhood || 'נווה עובד'}, ${listing?.city || 'הרצליה'}`}
+        </div>
 
         <div className="flex items-baseline gap-3 flex-wrap">
           <span className="text-3xl font-extrabold text-success tabular-nums">
@@ -226,9 +273,9 @@ export default function PropertyDetail() {
           <Card className="overflow-hidden">
             <div className="aspect-[16/10] bg-muted relative">
               {main ? (
-                <img src={main} alt={property.title} className="h-full w-full object-cover" />
+                <img src={main} alt={listing?.title || property.title} className="h-full w-full object-cover" />
               ) : (
-                <div className="h-full w-full flex items-center justify-center text-muted-foreground">אין תמונה</div>
+                <div className="h-full w-full flex items-center justify-center text-muted-foreground">לא נמצאה תמונה במסד הנתונים</div>
               )}
             </div>
           </Card>
