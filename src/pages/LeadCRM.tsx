@@ -2041,6 +2041,55 @@ const LeadCRM = () => {
         }}
         mode="contacts"
       />
+
+      <AlertDialog open={deleteDialogOpen} onOpenChange={(o) => { if (!deleting) setDeleteDialogOpen(o); }}>
+        <AlertDialogContent dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-destructive">מחיקה לצמיתות</AlertDialogTitle>
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-right">
+                <div>
+                  אתה עומד למחוק לצמיתות{' '}
+                  <span className="font-bold text-destructive">
+                    {selectedIds.size.toLocaleString('he-IL')}
+                  </span>{' '}
+                  מתעניינים. פעולה זו <span className="font-bold">בלתי הפיכה</span> ותסיר את כל ההיסטוריה, ההודעות והפגישות המשויכות.
+                </div>
+                {selectedIds.size > 50 && !isAdmin && (
+                  <div className="rounded-md border border-destructive/40 bg-destructive/10 p-2 text-xs text-destructive">
+                    מחיקה של מעל 50 רשומות חסומה עבור משתמש שאינו מנהל. פנה למנהל המערכת.
+                  </div>
+                )}
+                <div className="pt-2">
+                  הקלד <span className="font-mono font-bold">DELETE</span> כדי לאשר:
+                </div>
+                <Input
+                  dir="ltr"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="DELETE"
+                  autoFocus
+                  disabled={deleting}
+                />
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>ביטול</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={(e) => { e.preventDefault(); confirmBatchDelete(); }}
+              disabled={
+                deleting ||
+                deleteConfirmText.trim() !== 'DELETE' ||
+                (selectedIds.size > 50 && !isAdmin)
+              }
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? 'מוחק...' : `מחק ${selectedIds.size.toLocaleString('he-IL')} לצמיתות`}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
