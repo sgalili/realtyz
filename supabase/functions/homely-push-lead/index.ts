@@ -232,7 +232,14 @@ Deno.serve(async (req) => {
     if (!ownerId) return json({ error: "could_not_resolve_owner" }, 400);
 
     const result = await pushLead({ admin, leadId, ownerId, categoryOverride });
-    return json(result, result.ok ? 200 : 502);
+    // Soft-fail config/validation issues with 200 so DB triggers and frontend don't crash.
+    const softFail = !result.ok && (
+      result.error === "missing_homely_client_code" ||
+      result.error === "missing_phone_and_email" ||
+      result.error === "lead_not_found" ||
+      (typeof result.error === "string" && result.error.startsWith("invalid_category:"))
+    );
+    return json({ ...result, skipped: softFail || undefined, fallback: softFail || undefined }, result.ok || softFail ? 200 : 502);
   } catch (e) {
     console.error("[homely-push-lead] fatal", e);
     return json({ error: (e as Error).message }, 500);
