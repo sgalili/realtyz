@@ -40,8 +40,23 @@ Deno.serve(async (req) => {
     if (isUrl) {
       sourceUrl = trimmed;
       if (!FIRECRAWL_API_KEY) {
-        return json({ error: "URL ingestion requires Firecrawl. הדבק טקסט במקום." }, 400);
+        return json({
+          ok: false,
+          code: "SCRAPING_UNAVAILABLE",
+          fallback: true,
+          message: "חסימת אבטחה של המקור מנעה משיכה אוטומטית. אנא העתק את הטקסט של המודעה עצמה והדבק אותו כאן במקום הקישור!",
+        }, 200);
       }
+      const blockedResponse = (code: string, status: number, detail = "") => {
+        console.warn(`[parse-listing-text] scrape blocked code=${code} status=${status} url=${trimmed} detail=${detail.slice(0, 200)}`);
+        return json({
+          ok: false,
+          code,
+          fallback: true,
+          source_url: trimmed,
+          message: "חסימת אבטחה של המקור מנעה משיכה אוטומטית. אנא העתק את הטקסט של המודעה עצמה והדבק אותו כאן במקום הקישור!",
+        }, 200);
+      };
       try {
         const fcRes = await fetch("https://api.firecrawl.dev/v2/scrape", {
           method: "POST",
@@ -53,23 +68,38 @@ Deno.serve(async (req) => {
             url: trimmed,
             formats: ["markdown", "html"],
             onlyMainContent: false,
-            waitFor: 1500,
+            waitFor: 2500,
             location: { country: "IL", languages: ["he", "en"] },
           }),
         });
-        const fcData = await fcRes.json().catch(() => ({}));
+        const fcText = await fcRes.text();
+        let fcData: any = {};
+        try { fcData = JSON.parse(fcText); } catch { /* ignore */ }
         if (!fcRes.ok) {
-          return json({ error: "scrape_failed", detail: JSON.stringify(fcData).slice(0, 400) }, 502);
+          if (fcRes.status === 401 || fcRes.status === 402 || fcRes.status === 403 || fcRes.status === 429 || fcRes.status >= 500) {
+            return blockedResponse("SCRAPING_BLOCKED", fcRes.status, fcText);
+          }
+          return blockedResponse("SCRAPE_FAILED", fcRes.status, fcText);
         }
         const doc = fcData?.data ?? fcData;
-        const md = doc?.markdown ?? "";
+        const md = (doc?.markdown ?? "").trim();
         const html = doc?.html ?? doc?.rawHtml ?? "";
         scrapedPhotos = extractPhotos(html, trimmed);
-        payload = `URL: ${trimmed}\n\nMARKDOWN:\n${md.slice(0, 6000)}\n\nIMAGES_FOUND:\n${scrapedPhotos.slice(0, 12).join("\n")}`;
+
+        // Detect Cloudflare / empty / challenge pages
+        const looksBlocked =
+          md.length < 120 ||
+          /just a moment|attention required|cloudflare|enable javascript|access denied|cf-chl|verifying you are human/i.test(md + " " + html);
+        if (looksBlocked && scrapedPhotos.length === 0) {
+          return blockedResponse("SCRAPING_BLOCKED", 200, md.slice(0, 200));
+        }
+
+        payload = `URL: ${trimmed}\n\nMARKDOWN:\n${md.slice(0, 8000)}\n\nIMAGES_FOUND:\n${scrapedPhotos.slice(0, 12).join("\n")}`;
       } catch (e: any) {
-        return json({ error: "scrape_exception", detail: String(e?.message ?? e) }, 502);
+        return blockedResponse("SCRAPE_EXCEPTION", 0, String(e?.message ?? e));
       }
     }
+
 
     const system = `You extract Israeli real-estate listing data from Hebrew/English content (Yad2, Madlan, WhatsApp forwards, free notes).
 Return ONLY a strict JSON object matching this shape (use null when unknown):
