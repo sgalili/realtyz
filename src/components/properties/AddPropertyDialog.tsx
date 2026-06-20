@@ -57,16 +57,52 @@ type ParsedListing = {
   elevator?: boolean;
 };
 
+const ASSET_URL_RE = /https?:\/\/[^\s"'<>)\]}{]+?\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>)\]}{]*)?/gi;
+const YAD2_IMAGE_RE = /https?:\/\/img\.yad2\.co\.il\/[^\s"'<>)\]}{]+/gi;
+
+function cleanPastedUrl(url: string) {
+  return url
+    .replace(/\\\//g, '/')
+    .replace(/&amp;/g, '&')
+    .replace(/[.,;:]+$/g, '')
+    .trim();
+}
+
+function extractRawImageUrls(raw: string) {
+  const normalized = raw.replace(/\\\//g, '/').replace(/&amp;/g, '&');
+  const candidates = [
+    ...Array.from(normalized.matchAll(ASSET_URL_RE)).map((m) => m[0]),
+    ...Array.from(normalized.matchAll(YAD2_IMAGE_RE)).map((m) => m[0]),
+  ].map(cleanPastedUrl);
+
+  return Array.from(new Set(candidates))
+    .filter((u) => /^https?:\/\//i.test(u))
+    .filter((u) => /img\.yad2\.co\.il/i.test(u) || /\.(?:jpg|jpeg|png|webp)(?:\?|$)/i.test(u))
+    .filter((u) => !/logo|sprite|icon|favicon|placeholder/i.test(u));
+}
+
+function extractRawSourceUrl(raw: string) {
+  const normalized = raw.replace(/\\\//g, '/').replace(/&amp;/g, '&').trim();
+  const preferred = normalized.match(/https?:\/\/(?:www\.)?(?:yad2|madlan)\.co\.il\/[^\s"'<>)\]}{]+/i)?.[0];
+  const direct = /^https?:\/\//i.test(normalized) ? normalized : null;
+  const generic = normalized.match(/https?:\/\/[^\s"'<>)\]}{]+/i)?.[0];
+  return cleanPastedUrl(preferred || direct || generic || '') || null;
+}
+
 export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, autoHydrate, defaultSource }: Props) {
   const [aiText, setAiText] = useState('');
   const [hydrating, setHydrating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [parsed, setParsed] = useState<ParsedListing | null>(null);
+  const [rawPreviewPhotos, setRawPreviewPhotos] = useState<string[]>([]);
+  const [rawPreviewSourceUrl, setRawPreviewSourceUrl] = useState<string | null>(null);
   const autoFiredRef = useRef<string | null>(null);
 
   const reset = () => {
     setAiText('');
     setParsed(null);
+    setRawPreviewPhotos([]);
+    setRawPreviewSourceUrl(null);
     autoFiredRef.current = null;
   };
 
@@ -76,6 +112,10 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
       toast.error('הדבק טקסט או קישור');
       return;
     }
+    const immediatePhotos = extractRawImageUrls(inputText);
+    const immediateSourceUrl = extractRawSourceUrl(inputText);
+    setRawPreviewPhotos(immediatePhotos);
+    setRawPreviewSourceUrl(immediateSourceUrl);
     setHydrating(true);
     try {
       const { data, error } = await supabase.functions.invoke('parse-listing-text', {
@@ -93,23 +133,16 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
       if (!data?.ok || !data?.data) throw new Error(data?.error || 'parse_failed');
       const d = data.data as ParsedListing;
       // Source URL fallback: prefer parser, then raw URL input, then any yad2/madlan link found in pasted text.
-      const urlMatch = inputText.match(/https?:\/\/(?:www\.)?(?:yad2|madlan)\.co\.il\/[^\s"'<>)\]]+/i)
-        || inputText.match(/https?:\/\/[^\s"'<>)\]]+/i);
       const sourceUrl = d.source_url
-        || (/^https?:\/\//i.test(inputText) ? inputText : null)
-        || (urlMatch ? urlMatch[0] : null);
+        || immediateSourceUrl
+        || (/^https?:\/\//i.test(inputText) ? inputText : null);
       // Harvest any inline image URLs from the raw paste that the AI may have dropped.
-      const inlineImages = Array.from(
-        inputText.matchAll(/https?:\/\/[^\s"'<>)\]]+?\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>)\]]*)?/gi)
-      ).map((m) => m[0]);
-      const yad2Images = Array.from(
-        inputText.matchAll(/https?:\/\/img\.yad2\.co\.il\/[^\s"'<>)\]]+/gi)
-      ).map((m) => m[0]);
       const mergedPhotos = Array.from(new Set([
+        ...immediatePhotos,
         ...(Array.isArray(d.photos) ? d.photos : []),
-        ...inlineImages,
-        ...yad2Images,
       ])).filter((u) => /^https?:\/\//.test(u));
+      setRawPreviewPhotos(mergedPhotos);
+      setRawPreviewSourceUrl(sourceUrl);
       setParsed({ ...d, source_url: sourceUrl, photos: mergedPhotos });
       toast.success(`הפרטים חולצו בהצלחה${mergedPhotos.length ? ` (${mergedPhotos.length} תמונות)` : ''} — סקרו ושמרו`);
     } catch (e: any) {
