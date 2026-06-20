@@ -1,0 +1,2 @@
+ALTER TABLE public.listings DROP CONSTRAINT IF EXISTS listings_source_check;
+ALTER TABLE public.listings ADD CONSTRAINT listings_source_check CHECK (source = ANY (ARRAY['manual','ai_extraction','import','homely','webtiv','yad2','madlan']));
