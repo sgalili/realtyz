@@ -1022,7 +1022,7 @@ const LeadCRM = () => {
               </SelectContent>
             </Select>
             <Select value={profileFilter} onValueChange={setProfileFilter}>
-              <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="שלב מתעניין" /></SelectTrigger>
+              <SelectTrigger className="w-[160px] h-8 text-xs"><SelectValue placeholder="שלב" /></SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">כל השלבים</SelectItem>
                 <SelectItem value="מתעניין קר">מתעניין קר</SelectItem>
