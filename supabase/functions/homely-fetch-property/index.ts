@@ -255,6 +255,33 @@ function mapStreamContact(it: any, idx: number) {
   };
 }
 
+function normalizeIlPhone(raw: unknown): string {
+  const digits = String(raw ?? "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (digits.startsWith("972")) return digits;
+  if (digits.startsWith("0")) return `972${digits.slice(1)}`;
+  return digits;
+}
+
+function compactRaw(raw: unknown) {
+  if (!raw || typeof raw !== "object") return raw ?? null;
+  const out: Record<string, unknown> = {};
+  for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
+    if (v === null || v === undefined || v === "") continue;
+    if (typeof v === "string" && v.length > 1000) out[k] = v.slice(0, 1000);
+    else out[k] = v;
+  }
+  return out;
+}
+
+function slugify(s: string): string {
+  return (s || "homely")
+    .toLowerCase()
+    .replace(/[^\w\u0590-\u05FF]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60) || "homely";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
