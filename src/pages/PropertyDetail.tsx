@@ -320,13 +320,12 @@ export default function PropertyDetail() {
                   href={resolvedSourceUrl || '#'}
                   target="_blank"
                   rel="noopener noreferrer"
-                  onClick={(e) => { if (!resolvedSourceUrl) e.preventDefault(); }}
                   aria-label="מעבר למקור המודעה"
                   title={resolvedSourceUrl || 'אין קישור מקור'}
-                  className="text-slate-600 hover:text-primary transition-colors cursor-pointer"
-                  style={{ display: 'block', visibility: 'visible' }}
+                  className="text-slate-600 hover:text-blue-600 block z-50 cursor-pointer"
+                  style={{ display: 'block', visibility: 'visible', pointerEvents: 'auto' }}
                 >
-                  <ExternalLink className="w-5 h-5" />
+                  <ExternalLink className="w-6 h-6" />
                 </a>
               </>
             ) : (

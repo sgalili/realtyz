@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import {
   BedDouble, Ruler, MapPin, Calendar, Layers, Home, Receipt,
   Car, ArrowUpCircle, Wind, Shield, Sun, ExternalLink,
@@ -15,6 +14,7 @@ export type PropertyDetailViewData = {
   amenities?: { parking?: number; elevator?: boolean; ac?: boolean; shelter?: boolean; solar?: boolean };
   neighborhood?: string | null;
   sourceUrl?: string | null;
+  previewPhotos?: string[];
 };
 
 const META_LABELS: Record<string, string> = {
@@ -38,10 +38,9 @@ function formatMetaValue(key: string, value: unknown): string {
   return String(value);
 }
 
-export function PropertyDetailView({ property, meta = {}, amenities, neighborhood, sourceUrl }: PropertyDetailViewData) {
+export function PropertyDetailView({ property, meta = {}, amenities, neighborhood, sourceUrl, previewPhotos }: PropertyDetailViewData) {
   const [activePhoto, setActivePhoto] = useState(0);
-  const photos = property.photos || [];
-  const main = photos[activePhoto];
+  const photos = previewPhotos?.length ? previewPhotos : (property.photos || []);
 
   const isRent = Number(property.price) < 50_000;
   const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
@@ -63,18 +62,6 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
     <div className="space-y-6" dir="rtl">
       <header className="space-y-2">
         <div className="mb-4 flex items-start gap-2">
-          <a
-            href={sourceUrl || '#'}
-            target="_blank"
-            rel="noopener noreferrer"
-            onClick={(e) => { if (!sourceUrl) e.preventDefault(); }}
-            aria-label="מעבר למקור המודעה"
-            title={sourceUrl || 'אין קישור מקור'}
-            className="inline-flex items-center justify-center p-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-full shrink-0 z-50"
-            style={{ display: 'inline-flex', visibility: 'visible' }}
-          >
-            <ExternalLink className="w-5 h-5" />
-          </a>
           <div
             role="heading"
             aria-level={1}
@@ -84,26 +71,49 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
           </div>
         </div>
 
-        <div className="flex items-baseline gap-3 flex-wrap">
-          <span className="text-3xl font-extrabold text-success tabular-nums">
-            {formatPrice(property.price)}
-            {isRent && <span className="text-base font-normal text-muted-foreground"> /חודש</span>}
-          </span>
-          {pricePerMeter ? (
-            <span className="text-xs text-muted-foreground font-normal">
-              ({pricePerMeter} ₪ למ"ר)
+        <div className="flex items-center justify-between gap-3 flex-wrap">
+          <div className="flex items-center gap-3 order-2">
+            <a
+              href={sourceUrl || '#'}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-slate-600 hover:text-blue-600 block z-50 cursor-pointer"
+              style={{ display: 'block', visibility: 'visible', pointerEvents: 'auto' }}
+            >
+              <ExternalLink className="w-6 h-6" />
+            </a>
+          </div>
+          <div className="flex items-baseline gap-3 flex-wrap order-1">
+            <span className="text-3xl font-extrabold text-success tabular-nums">
+              {formatPrice(property.price)}
+              {isRent && <span className="text-base font-normal text-muted-foreground"> /חודש</span>}
             </span>
-          ) : null}
+            {pricePerMeter ? (
+              <span className="text-xs text-muted-foreground font-normal">
+                ({pricePerMeter} ₪ למ"ר)
+              </span>
+            ) : null}
+          </div>
         </div>
       </header>
 
       <div className="space-y-3">
         <Card className="overflow-hidden">
           <div className="aspect-[16/10] bg-muted relative">
-            {main ? (
-              <img src={main} alt={headline} className="h-full w-full object-cover" />
+            {photos.length ? (
+              <div className="h-full w-full overflow-x-auto flex snap-x snap-mandatory">
+                {photos.map((src, index) => (
+                  <img
+                    key={`${src}-${index}`}
+                    src={src}
+                    alt={headline}
+                    className="h-full w-full min-w-full object-cover block snap-center"
+                    loading={index === 0 ? 'eager' : 'lazy'}
+                  />
+                ))}
+              </div>
             ) : (
-              <div className="h-full w-full flex items-center justify-center text-muted-foreground">לא נמצאה תמונה במסד הנתונים</div>
+              <div className="h-full w-full bg-slate-100" />
             )}
           </div>
         </Card>
