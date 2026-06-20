@@ -192,12 +192,34 @@ function joinName(it: any): string {
   // Hebrew order: first name then family
   return [name, family].filter(Boolean).join(" ").trim();
 }
+function collectMedia(it: any): { photos: string[]; documents: string[] } {
+  const photos = new Set<string>();
+  const documents = new Set<string>();
+  const isUrl = (v: any) => typeof v === "string" && /^https?:\/\//i.test(v);
+  const isImg = (u: string) => /\.(jpe?g|png|gif|webp|bmp|heic)(\?|#|$)/i.test(u);
+  const isDoc = (u: string) => /\.(pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i.test(u);
+  const push = (v: any) => {
+    if (!isUrl(v)) return;
+    if (isImg(v)) photos.add(v);
+    else if (isDoc(v)) documents.add(v);
+    else photos.add(v); // assume image (Homely CDN often lacks ext)
+  };
+  // numbered fields: pic1..pic30, photo1..., image1..., file1...
+  for (const k of Object.keys(it || {})) {
+    const v = (it as any)[k];
+    if (Array.isArray(v)) v.forEach(push);
+    else if (/^(pic|photo|image|img|file|doc|attach)/i.test(k)) push(v);
+    else if (isUrl(v) && (isImg(v) || isDoc(v))) push(v);
+  }
+  return { photos: Array.from(photos), documents: Array.from(documents) };
+}
 function mapStreamProperty(it: any, idx: number) {
   const serial = String(it?.serial ?? it?.Serial ?? `row-${idx + 1}`);
   const street = [it?.street, it?.number, it?.flatnumber].filter((v) => v && String(v).trim()).join(" ").trim();
   const owner = joinName(it);
   const title = [it?.objectresidence || "נכס", it?.city, street].filter(Boolean).join(" · ").trim();
   const notes = [it?.comments1, it?.comments2, it?.more].filter(Boolean).join(" | ");
+  const media = collectMedia(it);
   return {
     homely_id: serial,
     title: title || `נכס ${serial}`,
@@ -208,7 +230,10 @@ function mapStreamProperty(it: any, idx: number) {
     rooms: Number(it?.room ?? 0) || 0,
     sqm: Number(it?.builtsqmr ?? 0) || 0,
     floor: Number(it?.floor ?? 0) || 0,
-    photo: null,
+    photo: media.photos[0] ?? null,
+    photos: media.photos,
+    documents: media.documents,
+    property_type: String(it?.objectresidence ?? ""),
     raw: it,
   };
 }
