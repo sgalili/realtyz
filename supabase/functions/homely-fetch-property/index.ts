@@ -178,6 +178,58 @@ function mapContact(it: any, idx: number) {
   };
 }
 
+// ---- AutomaionJson stream mappers (verified Webtiv outJson.ashx shape) ----
+function firstPhone(it: any): string {
+  for (const k of ["tel2", "tel1", "tel3", "tel4", "tel5"]) {
+    const v = it?.[k];
+    if (v && String(v).replace(/\D/g, "").length >= 7) return String(v);
+  }
+  return "";
+}
+function joinName(it: any): string {
+  const name = (it?.name ?? "").toString().trim();
+  const family = (it?.family ?? "").toString().trim();
+  // Hebrew order: first name then family
+  return [name, family].filter(Boolean).join(" ").trim();
+}
+function mapStreamProperty(it: any, idx: number) {
+  const serial = String(it?.serial ?? it?.Serial ?? `row-${idx + 1}`);
+  const street = [it?.street, it?.number, it?.flatnumber].filter((v) => v && String(v).trim()).join(" ").trim();
+  const owner = joinName(it);
+  const title = [it?.objectresidence || "נכס", it?.city, street].filter(Boolean).join(" · ").trim();
+  const notes = [it?.comments1, it?.comments2, it?.more].filter(Boolean).join(" | ");
+  return {
+    homely_id: serial,
+    title: title || `נכס ${serial}`,
+    description: [owner ? `בעלים: ${owner}` : "", notes].filter(Boolean).join("\n"),
+    price: Number(it?.priceshekel ?? 0) || 0,
+    city: String(it?.city ?? ""),
+    address: street,
+    rooms: Number(it?.room ?? 0) || 0,
+    sqm: Number(it?.builtsqmr ?? 0) || 0,
+    floor: Number(it?.floor ?? 0) || 0,
+    photo: null,
+    raw: it,
+  };
+}
+function mapStreamContact(it: any, idx: number) {
+  const serial = String(it?.serial ?? it?.Serial ?? `row-${idx + 1}`);
+  const wants = [
+    it?.objectresidence,
+    it?.room ? `${it.room}${it?.room_max && it.room_max !== it.room ? `-${it.room_max}` : ""} חד׳` : "",
+    it?.priceshekel ? `₪${Number(it.priceshekel).toLocaleString("he-IL")}${it?.priceshekel_max ? `-${Number(it.priceshekel_max).toLocaleString("he-IL")}` : ""}` : "",
+  ].filter(Boolean).join(" · ");
+  return {
+    homely_id: serial,
+    full_name: joinName(it) || `איש קשר ${serial}`,
+    phone: firstPhone(it),
+    email: String(it?.email ?? ""),
+    city: String(it?.city1 ?? it?.city ?? ""),
+    notes: [wants, it?.comments1].filter(Boolean).join("\n"),
+    raw: it,
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
