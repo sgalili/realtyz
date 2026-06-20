@@ -805,7 +805,7 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
         </div>
       )}
       <Card className="overflow-x-auto max-w-full w-full">
-        <table className="w-full text-xs" dir="rtl">
+        <table className="w-full text-[15px]" dir="rtl">
           <thead className="bg-muted/50 sticky top-0">
             <tr className="text-right">
               <th className="px-2 py-2 w-8">
@@ -848,13 +848,13 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
                     <Link to={`/properties/${p.id}`} className="hover:underline">{p.title}</Link>
                   </td>
                   <td className="px-2 py-1.5 whitespace-nowrap">
-                    <Badge className={`text-[10px] ${isRent ? 'bg-[#0b3982] text-white' : 'bg-primary text-primary-foreground'}`}>
+                    <span className={`text-xs font-bold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>
                       {LISTING_TYPE_LABELS_HE[p.listing_type ?? 'sale']}
-                    </Badge>
+                    </span>
                   </td>
 
-                  <td className="px-2 py-1.5 whitespace-nowrap font-semibold text-success">
-                    {p.price ? formatPrice(p.price) : '—'}{isRent && p.price ? <span className="text-[10px] text-muted-foreground">/ח</span> : null}
+                  <td className={`px-2 py-1.5 whitespace-nowrap font-semibold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>
+                    {p.price ? formatPrice(p.price) : '—'}{isRent && p.price ? <span className="text-[12px] text-muted-foreground">/ח</span> : null}
                   </td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{p.city || '—'}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{p.rooms || '—'}</td>
