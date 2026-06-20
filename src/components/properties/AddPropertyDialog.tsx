@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
   Dialog,
@@ -27,6 +27,8 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onCreated?: () => void;
+  initialText?: string;
+  autoHydrate?: boolean;
 }
 
 function slugify(s: string) {
@@ -39,7 +41,7 @@ function slugify(s: string) {
   ) + '-' + Math.random().toString(36).slice(2, 8);
 }
 
-export function AddPropertyDialog({ open, onOpenChange, onCreated }: Props) {
+export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, autoHydrate }: Props) {
   const [listingType, setListingType] = useState<'sale' | 'rent'>('sale');
   const [price, setPrice] = useState('');
   const [city, setCity] = useState('');
@@ -52,6 +54,10 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: Props) {
   const [aiText, setAiText] = useState('');
   const [hydrating, setHydrating] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  const [photos, setPhotos] = useState<string[]>([]);
+  const [sourceUrl, setSourceUrl] = useState<string>('');
+  const [features2, setFeatures2] = useState<{ parking?: number; ac?: boolean; solar?: boolean; shelter?: boolean; elevator?: boolean }>({});
+  const autoFiredRef = useRef<string | null>(null);
 
   const reset = () => {
     setListingType('sale');
@@ -64,17 +70,22 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: Props) {
     setFloor('');
     setDescription('');
     setAiText('');
+    setPhotos([]);
+    setSourceUrl('');
+    setFeatures2({});
+    autoFiredRef.current = null;
   };
 
-  const handleHydrate = async () => {
-    if (aiText.trim().length < 10) {
-      toast.error('הדבק טקסט ארוך יותר מהמודעה');
+  const handleHydrate = async (textOverride?: string) => {
+    const inputText = (textOverride ?? aiText).trim();
+    if (inputText.length < 5) {
+      toast.error('הדבק טקסט או קישור');
       return;
     }
     setHydrating(true);
     try {
       const { data, error } = await supabase.functions.invoke('parse-listing-text', {
-        body: { text: aiText },
+        body: { text: inputText },
       });
       if (error) throw error;
       if (!data?.ok || !data?.data) throw new Error(data?.error || 'parse_failed');
@@ -88,13 +99,37 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: Props) {
       if (d.sqm != null) setSqm(String(d.sqm));
       if (d.floor != null) setFloor(String(d.floor));
       if (d.description) setDescription(d.description);
-      toast.success('הפרטים חולצו בהצלחה — סקרו ושמרו');
+      if (Array.isArray(d.photos)) setPhotos(d.photos.filter((p: any) => typeof p === 'string').slice(0, 20));
+      if (typeof d.source_url === 'string') setSourceUrl(d.source_url);
+      else if (/^https?:\/\//i.test(inputText)) setSourceUrl(inputText);
+      setFeatures2({
+        parking: typeof d.parking === 'number' ? d.parking : undefined,
+        ac: !!d.air_conditioning,
+        solar: !!d.solar_heater,
+        shelter: !!d.shelter,
+        elevator: !!d.elevator,
+      });
+      toast.success(`הפרטים חולצו בהצלחה${Array.isArray(d.photos) && d.photos.length ? ` (${d.photos.length} תמונות)` : ''} — סקרו ושמרו`);
     } catch (e: any) {
       toast.error(`שגיאה בחילוץ: ${e.message ?? e}`);
     } finally {
       setHydrating(false);
     }
   };
+
+  // Seed from initialText and optionally auto-fire hydration
+  useEffect(() => {
+    if (!open) return;
+    if (initialText && autoFiredRef.current !== initialText) {
+      setAiText(initialText);
+      if (autoHydrate) {
+        autoFiredRef.current = initialText;
+        handleHydrate(initialText);
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, initialText, autoHydrate]);
+
 
   const handleSubmit = async () => {
     if (!city.trim() || !price) {
@@ -121,9 +156,13 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: Props) {
         sqm: sqm ? Number(sqm) : null,
         floor: floor ? Number(floor) : null,
         status: 'live',
-        source: 'manual',
+        source: sourceUrl.includes('yad2') ? 'yad2' : sourceUrl.includes('madlan') ? 'madlan' : 'manual',
+        source_url: sourceUrl || null,
+        source_metadata: { photos, ...features2 },
+        parking: features2.parking != null ? features2.parking > 0 : null,
+        elevator: features2.elevator ?? null,
         is_published: true,
-        features: [{ listing_type: listingType, property_type: propertyType }],
+        features: [{ listing_type: listingType, property_type: propertyType, ...features2 }],
       });
       if (error) throw error;
       toast.success('הנכס נוסף בהצלחה');
@@ -164,7 +203,7 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: Props) {
             <Button
               type="button"
               size="sm"
-              onClick={handleHydrate}
+              onClick={() => handleHydrate()}
               disabled={hydrating || aiText.trim().length < 10}
               className="w-full gap-1.5"
             >

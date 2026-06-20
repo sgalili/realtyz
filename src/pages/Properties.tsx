@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Send, BedDouble, Ruler, MapPin, Building2, FileSpreadsheet, LayoutGrid, SlidersHorizontal, Trash2, Pencil } from 'lucide-react';
+import { Send, BedDouble, Ruler, MapPin, Building2, FileSpreadsheet, LayoutGrid, SlidersHorizontal, Trash2, Pencil, Sparkles } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -118,6 +118,8 @@ export default function Properties() {
 
   const [shareTarget, setShareTarget] = useState<HomelyProperty | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [quickLinkUrl, setQuickLinkUrl] = useState('');
+  const [quickLinkSeed, setQuickLinkSeed] = useState<string | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [homelyBulkOpen, setHomelyBulkOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -377,10 +379,39 @@ export default function Properties() {
         </div>
       </div>
 
-      {sourceTab !== 'mine' && !externalConnected && (
-        <Card className="p-4 text-sm text-center text-muted-foreground">
-          לא נמצא חיבור פעיל ל-{SOURCE_LABELS[sourceTab]}. הגדירו את פרטי ההתחברות בפרופיל כדי לראות נכסים מהמקור הזה.
-        </Card>
+      {(sourceTab === 'yad2' || sourceTab === 'madlan') && (
+        <div className="flex justify-center" dir="rtl">
+          <div className="flex w-full max-w-2xl items-center gap-2 rounded-xl border-2 border-primary/30 bg-primary/5 p-2">
+            <Input
+              dir="ltr"
+              placeholder="הוספה מהירה באמצעות קישור (Link) — הדבק כאן URL מ-Yad2 / מדל״ן"
+              value={quickLinkUrl}
+              onChange={(e) => setQuickLinkUrl(e.target.value)}
+              className="flex-1 bg-background text-right"
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' && quickLinkUrl.trim().length > 5) {
+                  setQuickLinkSeed(quickLinkUrl.trim());
+                  setAddOpen(true);
+                  setQuickLinkUrl('');
+                }
+              }}
+            />
+            <Button
+              type="button"
+              size="sm"
+              disabled={quickLinkUrl.trim().length < 5}
+              onClick={() => {
+                setQuickLinkSeed(quickLinkUrl.trim());
+                setAddOpen(true);
+                setQuickLinkUrl('');
+              }}
+              className="gap-1.5 whitespace-nowrap"
+            >
+              <Sparkles className="h-3.5 w-3.5" />
+              משוך נכס
+            </Button>
+          </div>
+        </div>
       )}
 
       {/* Count + view mode + search (with inline filter) — centered row */}
@@ -574,7 +605,13 @@ export default function Properties() {
         onOpenChange={(open) => { if (!open) setShareTarget(null); }}
       />
 
-      <AddPropertyDialog open={addOpen} onOpenChange={setAddOpen} onCreated={refreshListings} />
+      <AddPropertyDialog
+        open={addOpen}
+        onOpenChange={(o) => { setAddOpen(o); if (!o) setQuickLinkSeed(null); }}
+        onCreated={refreshListings}
+        initialText={quickLinkSeed ?? undefined}
+        autoHydrate={!!quickLinkSeed}
+      />
       <ImportPropertiesDialog open={importOpen} onOpenChange={setImportOpen} onImported={refreshListings} />
       <HomelyBulkSyncDialog open={homelyBulkOpen} onOpenChange={setHomelyBulkOpen} onImported={refreshListings} mode="properties" />
     </div>
