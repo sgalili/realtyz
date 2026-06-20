@@ -241,17 +241,8 @@ export default function Properties() {
         }
 
 
-        const { data, error } = await supabase.functions.invoke(fnName, {
-          body: {
-            city: city !== 'כל הערים' && city !== '__my_zones__' ? city : undefined,
-            min_price: priceRange[0] > PRICE_MIN ? priceRange[0] : undefined,
-            max_price: priceRange[1] < PRICE_MAX ? priceRange[1] : undefined,
-            rooms: rooms !== 'any' ? Number(rooms) : undefined,
-            limit: 24,
-          },
-        });
-        if (error) throw error;
-        return data as { connected?: boolean; results?: Array<Partial<HomelyProperty>>; error?: string };
+        // (yad2/madlan now read from the listings table above, filtered by source.)
+        return { connected: true, results: [] };
       } catch {
         return { connected: false, results: [] };
       }
