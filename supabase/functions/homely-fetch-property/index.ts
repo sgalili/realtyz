@@ -218,16 +218,16 @@ Deno.serve(async (req) => {
           session_keys: Object.keys(login.session || {}),
         }, 200);
       }
-      const officeId = extractOfficeId(login.session, cred.homely_agency as any);
-      console.log(`[homely-fetch-property] login OK, hash len=${hash.length}, officeId=${officeId}`);
+      const agentId = extractAgentId(login.session);
+      console.log(`[homely-fetch-property] login OK, hash len=${hash.length}, agentId=${agentId}`);
 
       const debug: any[] = [];
 
       if (action === "fetchAllProperties") {
         // Primary: getInterestingAdminByAgent → broker's live listings feed.
         const candidates = [
-          `${WEBTIV_BASE}/api/report/getInterestingAdminByAgent/${encodeURIComponent(hash)}/${encodeURIComponent(officeId)}/null/null`,
-          `${WEBTIV_BASE}/api/report/getInterestingAdminByAgent/${encodeURIComponent(hash)}/${encodeURIComponent(officeId)}/null/null/null`,
+          `${WEBTIV_BASE}/api/report/getInterestingAdminByAgent/${encodeURIComponent(hash)}/${encodeURIComponent(agentId)}/null/null`,
+          `${WEBTIV_BASE}/api/report/getInterestingAdminByAgent/${encodeURIComponent(hash)}/${encodeURIComponent(agentId)}/null/null/null`,
         ];
         let items: any[] = [];
         let usedUrl: string | null = null;
@@ -319,10 +319,10 @@ Deno.serve(async (req) => {
 
     const hash = extractHash(login.session);
     if (!hash) return json({ error: "no_hash_in_login" }, 502);
-    const officeId = extractOfficeId(login.session, cred.homely_agency as any);
+    const agentId = extractAgentId(login.session);
 
     // Pull the broker's active list and find the matching serial in it.
-    const url = `${WEBTIV_BASE}/api/report/getInterestingAdminByAgent/${encodeURIComponent(hash)}/${encodeURIComponent(officeId)}/null/null`;
+    const url = `${WEBTIV_BASE}/api/report/getInterestingAdminByAgent/${encodeURIComponent(hash)}/${encodeURIComponent(agentId)}/null/null`;
     const r = await getJson(url);
     const list = asArray(r.data);
     const serialStr = String(serial);
