@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Send, BedDouble, Ruler, MapPin, Building2, FileSpreadsheet, LayoutGrid, SlidersHorizontal, Trash2, Pencil } from 'lucide-react';
+import { Send, BedDouble, Ruler, MapPin, Building2, FileSpreadsheet, LayoutGrid, SlidersHorizontal, Trash2, Pencil, Sparkles } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
