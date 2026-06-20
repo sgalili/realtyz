@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import { Card } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import {
   BedDouble, Ruler, MapPin, Calendar, Layers, Home, Receipt,
   Car, ArrowUpCircle, Wind, Shield, Sun, ExternalLink,
