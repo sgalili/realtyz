@@ -89,9 +89,26 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
       }
       if (!data?.ok || !data?.data) throw new Error(data?.error || 'parse_failed');
       const d = data.data as ParsedListing;
-      const sourceUrl = d.source_url || (/^https?:\/\//i.test(inputText) ? inputText : null);
-      setParsed({ ...d, source_url: sourceUrl, photos: Array.isArray(d.photos) ? d.photos : [] });
-      toast.success(`הפרטים חולצו בהצלחה${d.photos?.length ? ` (${d.photos.length} תמונות)` : ''} — סקרו ושמרו`);
+      // Source URL fallback: prefer parser, then raw URL input, then any yad2/madlan link found in pasted text.
+      const urlMatch = inputText.match(/https?:\/\/(?:www\.)?(?:yad2|madlan)\.co\.il\/[^\s"'<>)\]]+/i)
+        || inputText.match(/https?:\/\/[^\s"'<>)\]]+/i);
+      const sourceUrl = d.source_url
+        || (/^https?:\/\//i.test(inputText) ? inputText : null)
+        || (urlMatch ? urlMatch[0] : null);
+      // Harvest any inline image URLs from the raw paste that the AI may have dropped.
+      const inlineImages = Array.from(
+        inputText.matchAll(/https?:\/\/[^\s"'<>)\]]+?\.(?:jpg|jpeg|png|webp)(?:\?[^\s"'<>)\]]*)?/gi)
+      ).map((m) => m[0]);
+      const yad2Images = Array.from(
+        inputText.matchAll(/https?:\/\/img\.yad2\.co\.il\/[^\s"'<>)\]]+/gi)
+      ).map((m) => m[0]);
+      const mergedPhotos = Array.from(new Set([
+        ...(Array.isArray(d.photos) ? d.photos : []),
+        ...inlineImages,
+        ...yad2Images,
+      ])).filter((u) => /^https?:\/\//.test(u));
+      setParsed({ ...d, source_url: sourceUrl, photos: mergedPhotos });
+      toast.success(`הפרטים חולצו בהצלחה${mergedPhotos.length ? ` (${mergedPhotos.length} תמונות)` : ''} — סקרו ושמרו`);
     } catch (e: any) {
       toast.error(`שגיאה בחילוץ: ${e.message ?? e}`);
     } finally {
