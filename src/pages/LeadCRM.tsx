@@ -478,16 +478,29 @@ const LeadCRM = () => {
     const base = Number(lead?.engagement_score ?? 0);
     let bonus = 0;
     const prefs = (lead?.preferences ?? {}) as Record<string, any>;
-    const notes = String(prefs.homely_notes ?? prefs.summary ?? lead?.notes ?? '');
+    const raw = (prefs.homely_raw ?? {}) as Record<string, any>;
+    const notes = String(prefs.homely_notes ?? prefs.summary ?? lead?.notes ?? raw.comments1 ?? '');
     if (notes.length > 0) bonus += Math.min(20, Math.ceil(notes.length / 40));
     if (/בלעדי|חתימה|מ"מ|משא ומתן|negotiation|סגור|חתום/i.test(notes)) bonus += 25;
     if (/לא רלוונטי|לא מעוניין|לא עובד/i.test(notes)) bonus -= 30;
-    if (prefs.budget_max || prefs.desired_city || prefs.rooms) bonus += 10;
+    // Homely / KB intent signals (budget, search criteria, assigned broker)
+    if (prefs.budget_max || prefs.desired_city || prefs.rooms || prefs.budget_range) bonus += 10;
+    if (Number(raw.priceshekel) > 0 || Number(raw.priceshekel_max) > 0) bonus += 12;
+    if (raw.room || raw.objectresidence || raw.shcuna1) bonus += 6;
+    if (raw.agent && String(raw.agent).trim()) bonus += 8;       // assigned office manager
     if (lead?.last_contact_at) {
       const ageDays = (Date.now() - new Date(lead.last_contact_at).getTime()) / 86_400_000;
       if (ageDays < 3) bonus += 15; else if (ageDays > 30) bonus -= 10;
     }
-    return Math.max(0, Math.min(100, base + bonus));
+    const lastDate = raw.lastdate ? new Date(raw.lastdate).getTime() : null;
+    if (lastDate) {
+      const ageDays = (Date.now() - lastDate) / 86_400_000;
+      if (ageDays < 30) bonus += 10; else if (ageDays > 365) bonus -= 8;
+    }
+    // Minimum floor for Homely-imported leads with any real signal so we never default to ❄️.
+    const hasHomelySignal = !!(prefs.source === 'homely' && (notes || raw.priceshekel || raw.agent || raw.room));
+    const score = Math.max(0, Math.min(100, base + bonus));
+    return hasHomelySignal ? Math.max(score, 35) : score;
   };
 
   // Real-estate temperature tiers driven by the dynamic score.
