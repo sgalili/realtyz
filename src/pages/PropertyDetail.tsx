@@ -288,17 +288,8 @@ export default function PropertyDetail() {
             </Card>
           )}
 
-          {/* Other metadata */}
-          {otherEntries.length > 0 && (
-            <Card className="p-4 sm:p-5">
-              <h2 className="text-base font-bold text-primary mb-3">פרטים נוספים</h2>
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {otherEntries.map(([k, v]) => (
-                  <Spec key={k} icon={Building2} label={META_LABELS[k] || k} value={formatMetaValue(k, v)} />
-                ))}
-              </div>
-            </Card>
-          )}
+
+
 
           {/* Features */}
           {property.features?.length > 0 && (
