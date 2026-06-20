@@ -466,27 +466,47 @@ const LeadCRM = () => {
     return { key: 'negative' as const, emoji: '😟', label: 'שלילי', color: 'text-red-600', cssColor: 'hsl(var(--destructive))' };
   };
 
-  // Combine sentiment + status + engagement into a real-estate lead profile bottom-line
-  const getPoliticalProfile = (status: string | null, engagement: number | null) => {
-    const sent = getSentimentForVoter(engagement);
-    const tier: 'closed' | 'negotiation' | 'qualified' | 'cold' =
-      status === 'closed' || status === 'supporter' || status === 'voted' ? 'closed'
-      : status === 'negotiation' ? 'negotiation'
-      : status === 'qualified' || status === 'active' ? 'qualified'
-      : 'cold';
-    const eng = engagement ?? 0;
-
-    if (tier === 'closed') {
-      return { ...sent, badge: 'נסגר', badgeClass: 'bg-emerald-600 text-white border-emerald-700' };
+  // Derive a 0-100 lead-temperature score from every signal we already have on
+  // the row: AI-computed engagement_score (primary), recent message activity,
+  // and the broker's office notes (homely_notes / preferences.summary) — the
+  // ingested "הערות משרד" feed gives us strong intent signals that the DB
+  // score may not yet reflect.
+  const computeLeadTemp = (lead: any): number => {
+    const base = Number(lead?.engagement_score ?? 0);
+    let bonus = 0;
+    const prefs = (lead?.preferences ?? {}) as Record<string, any>;
+    const notes = String(prefs.homely_notes ?? prefs.summary ?? lead?.notes ?? '');
+    if (notes.length > 0) bonus += Math.min(20, Math.ceil(notes.length / 40));
+    if (/בלעדי|חתימה|מ"מ|משא ומתן|negotiation|סגור|חתום/i.test(notes)) bonus += 25;
+    if (/לא רלוונטי|לא מעוניין|לא עובד/i.test(notes)) bonus -= 30;
+    if (prefs.budget_max || prefs.desired_city || prefs.rooms) bonus += 10;
+    if (lead?.last_contact_at) {
+      const ageDays = (Date.now() - new Date(lead.last_contact_at).getTime()) / 86_400_000;
+      if (ageDays < 3) bonus += 15; else if (ageDays > 30) bonus -= 10;
     }
-    if (tier === 'negotiation') {
-      return { ...sent, badge: 'במשא ומתן', badgeClass: 'bg-amber-500 text-white border-amber-600' };
-    }
-    if (tier === 'qualified' || (sent.key === 'positive' && eng >= 60)) {
-      return { ...sent, badge: 'מתעניין מוסמך', badgeClass: 'bg-blue-500 text-white border-blue-600' };
-    }
-    return { ...sent, badge: 'מתעניין קר', badgeClass: 'bg-slate-500 text-white border-slate-600' };
+    return Math.max(0, Math.min(100, base + bonus));
   };
+
+  // Real-estate temperature tiers driven by the dynamic score.
+  // 0-29 = קר ❄️, 30-59 = פושר 🌤️, 60-79 = חם 🔥, 80-100 = רותח 🌋
+  const getPoliticalProfile = (status: string | null, engagement: number | null, lead?: any) => {
+    const score = lead ? computeLeadTemp(lead) : Math.max(0, Math.min(100, Number(engagement ?? 0)));
+    const sent = getSentimentForVoter(score);
+
+    // Pipeline overrides (closed/negotiation always win over temperature).
+    if (status === 'closed' || status === 'supporter' || status === 'voted') {
+      return { ...sent, score, badge: 'נסגר', emoji: '🤝', badgeClass: 'bg-emerald-600 text-white border-emerald-700' };
+    }
+    if (status === 'negotiation') {
+      return { ...sent, score, badge: 'במשא ומתן', emoji: '✍️', badgeClass: 'bg-amber-500 text-white border-amber-600' };
+    }
+
+    if (score >= 80) return { ...sent, score, badge: 'מתעניין רותח', emoji: '🌋', badgeClass: 'bg-red-600 text-white border-red-700' };
+    if (score >= 60) return { ...sent, score, badge: 'מתעניין חם',   emoji: '🔥', badgeClass: 'bg-orange-500 text-white border-orange-600' };
+    if (score >= 30) return { ...sent, score, badge: 'מתעניין פושר', emoji: '🌤️', badgeClass: 'bg-amber-400 text-amber-950 border-amber-500' };
+    return { ...sent, score, badge: 'מתעניין קר', emoji: '❄️', badgeClass: 'bg-slate-500 text-white border-slate-600' };
+  };
+
 
   const getSentimentFromMessages = (messages: typeof voterMessages) => {
     if (!messages || messages.length === 0) return { key: 'neutral' as const, emoji: '😐', label: 'ניטרלי', color: 'text-amber-500' };
