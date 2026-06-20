@@ -41,3 +41,17 @@ export function formatPhoneDisplay(phone: string | null | undefined): string {
 
   return raw;
 }
+
+/**
+ * True only when the input normalizes to a real Israeli mobile/landline.
+ * Used to hide garbage values (e.g. Homely serial numbers) from the phone column.
+ */
+export function isValidIsraeliPhone(phone: string | null | undefined): boolean {
+  if (!phone) return false;
+  const digits = String(phone).replace(/\D/g, '');
+  if (!digits) return false;
+  let local = digits;
+  if (local.startsWith('972')) local = '0' + local.slice(3);
+  else if (!local.startsWith('0')) local = '0' + local;
+  return /^05\d{8}$/.test(local) || /^07\d{8}$/.test(local) || /^0[2-489]\d{6,7}$/.test(local);
+}
