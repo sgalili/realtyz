@@ -1449,6 +1449,18 @@ const LeadCRM = () => {
                               if (c.href) return <a key={c.key} {...aria} href={c.href} target={c.href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" className={base}>{c.icon}</a>;
                               return <button key={c.key} {...aria} type="button" onClick={c.onClick} className={base}>{c.icon}</button>;
                             })}
+                            <button
+                              type="button"
+                              onClick={() => pushLeadToHomely(selectedVoter.id, false)}
+                              disabled={pushingHomely}
+                              aria-label="סנכרן להומלי"
+                              title="סנכרן להומלי"
+                              className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent text-emerald-700 hover:bg-emerald-50 transition-colors disabled:opacity-50"
+                            >
+                              {pushingHomely
+                                ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.8} />
+                                : <UploadCloud className="h-4 w-4" strokeWidth={1.8} />}
+                            </button>
                           </div>
                         );
                       })()}
