@@ -77,6 +77,11 @@ export default function PropertyDetail() {
       if (!row) return null;
       const features = Array.isArray(row.features) ? row.features : [];
       const meta = ((row as any).source_metadata || {}) as Record<string, any>;
+      const listing = {
+        ...(row as any),
+        title: row.property_title || '',
+        price: Number(row.asking_price) || 0,
+      } as Record<string, any>;
 
       // Image paths — check every known location, accept strings or {url,src,photo,image_url} objects.
       const normalizePhoto = (p: any): string | null => {
@@ -89,15 +94,17 @@ export default function PropertyDetail() {
         return null;
       };
       const photoSources: any[] = [
-        ...(Array.isArray(meta.photos) ? meta.photos : []),
-        ...(Array.isArray(meta.images) ? meta.images : []),
-        ...(Array.isArray((row as any).images) ? (row as any).images : []),
-        ...(Array.isArray((row as any).photos) ? (row as any).photos : []),
+        ...(Array.isArray(listing.source_metadata?.photos) ? listing.source_metadata.photos : []),
+        ...(Array.isArray(listing.source_metadata?.images) ? listing.source_metadata.images : []),
+        ...(Array.isArray(listing.images) ? listing.images : []),
+        ...(Array.isArray(listing.photos) ? listing.photos : []),
         ...(Array.isArray(features) ? features : []),
       ];
       // Single-image string fallbacks
-      if (typeof meta.image === 'string') photoSources.push(meta.image);
-      if (typeof (row as any).image_url === 'string') photoSources.push((row as any).image_url);
+      if (typeof listing.source_metadata?.image === 'string') photoSources.push(listing.source_metadata.image);
+      if (typeof listing.source_metadata?.image_url === 'string') photoSources.push(listing.source_metadata.image_url);
+      if (typeof listing.image === 'string') photoSources.push(listing.image);
+      if (typeof listing.image_url === 'string') photoSources.push(listing.image_url);
       const photos = Array.from(
         new Set(photoSources.map(normalizePhoto).filter((s): s is string => !!s))
       );
@@ -142,6 +149,7 @@ export default function PropertyDetail() {
       };
 
       return {
+        listing,
         property,
         meta,
         amenities,
@@ -153,6 +161,7 @@ export default function PropertyDetail() {
   });
 
   const property = data?.property;
+  const listing = data?.listing as Record<string, any> | undefined;
   const meta: Record<string, any> = data?.meta || {};
   const neighborhood = data?.neighborhood;
   const projectName = data?.projectName ?? null;
@@ -181,7 +190,24 @@ export default function PropertyDetail() {
   }
 
   const isRent = property.listing_type === 'rent';
-  const photos = property.photos.length ? property.photos : [];
+  const directPhotoSources = [
+    ...(Array.isArray(listing?.source_metadata?.photos) ? listing.source_metadata.photos : []),
+    ...(Array.isArray(listing?.source_metadata?.images) ? listing.source_metadata.images : []),
+    ...(Array.isArray(listing?.images) ? listing.images : []),
+    ...(Array.isArray(listing?.photos) ? listing.photos : []),
+    ...(typeof listing?.source_metadata?.image === 'string' ? [listing.source_metadata.image] : []),
+    ...(typeof listing?.source_metadata?.image_url === 'string' ? [listing.source_metadata.image_url] : []),
+    ...(typeof listing?.image === 'string' ? [listing.image] : []),
+    ...(typeof listing?.image_url === 'string' ? [listing.image_url] : []),
+  ];
+  const photos = Array.from(new Set([
+    ...directPhotoSources.map((p: any) => {
+      if (typeof p === 'string') return p;
+      if (p && typeof p === 'object') return p.url || p.src || p.photo || p.image_url || p.image || '';
+      return '';
+    }),
+    ...property.photos,
+  ].filter((p): p is string => typeof p === 'string' && /^https?:\/\//.test(p))));
   const main = photos[activePhoto];
 
   const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
@@ -203,9 +229,14 @@ export default function PropertyDetail() {
     <div className="p-3 sm:p-6 space-y-6" dir="rtl">
       {/* Headline + price (back button lives in the hero, opposite the burger) */}
       <header className="space-y-2">
-        <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
-          {headline || property.title}
-        </h1>
+        <div
+          role="heading"
+          aria-level={1}
+          className="text-xl font-bold text-right mb-4 text-slate-900 block"
+          style={{ display: 'block', visibility: 'visible' }}
+        >
+          {listing?.title || `דירה ${Number(listing?.price) < 50000 ? 'להשכרה' : 'למכירה'}, ${listing?.neighborhood || 'נווה עובד'}, ${listing?.city || 'הרצליה'}`}
+        </div>
 
         <div className="flex items-baseline gap-3 flex-wrap">
           <span className="text-3xl font-extrabold text-success tabular-nums">
@@ -226,9 +257,9 @@ export default function PropertyDetail() {
           <Card className="overflow-hidden">
             <div className="aspect-[16/10] bg-muted relative">
               {main ? (
-                <img src={main} alt={property.title} className="h-full w-full object-cover" />
+                <img src={main} alt={listing?.title || property.title} className="h-full w-full object-cover" />
               ) : (
-                <div className="h-full w-full flex items-center justify-center text-muted-foreground">אין תמונה</div>
+                <div className="h-full w-full flex items-center justify-center text-muted-foreground">לא נמצאה תמונה במסד הנתונים</div>
               )}
             </div>
           </Card>
