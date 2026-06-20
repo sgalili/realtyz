@@ -297,6 +297,78 @@ Deno.serve(async (req) => {
     const action = (body as any)?.action as string | undefined;
     const listing_id = (body as any)?.listing_id;
 
+    if (action === "importOutJson") {
+      const properties = Array.isArray((body as any)?.properties) ? (body as any).properties : [];
+      const contacts = Array.isArray((body as any)?.contacts) ? (body as any).contacts : [];
+      let propsCount = 0;
+      let contactsCount = 0;
+
+      for (const p of properties) {
+        const homelyId = String(p?.homely_id ?? "").trim();
+        if (!homelyId) continue;
+        const photos = Array.isArray(p?.photos) && p.photos.length ? p.photos : (p?.photo ? [p.photo] : []);
+        const documents = Array.isArray(p?.documents) ? p.documents : [];
+        const row = {
+          user_id: user.id,
+          slug: `${slugify(String(p?.title || p?.address || "homely"))}-${homelyId}`,
+          source: "homely",
+          external_id: homelyId,
+          property_title: String(p?.title || p?.address || `נכס ${homelyId}`),
+          description: String(p?.description || ""),
+          asking_price: Number(p?.price) || 0,
+          city: p?.city ? String(p.city) : null,
+          address: p?.address ? String(p.address) : null,
+          rooms: Number(p?.rooms) || null,
+          sqm: Number.isFinite(Number(p?.sqm)) ? Number(p.sqm) : null,
+          floor: Number.isFinite(Number(p?.floor)) ? Number(p.floor) : null,
+          status: "live",
+          is_published: true,
+          features: Array.isArray(p?.features) ? p.features : [],
+          source_metadata: {
+            homely_id: homelyId,
+            property_type: p?.property_type || null,
+            photos,
+            documents,
+            media_count: photos.length + documents.length,
+            homely_raw: compactRaw(p?.raw),
+            synced_at: new Date().toISOString(),
+          },
+        };
+        const { error } = await admin.from("listings").upsert(row as any, { onConflict: "slug" });
+        if (error) throw new Error(`listings#${homelyId}: ${error.message}`);
+        propsCount++;
+      }
+
+      for (const c of contacts) {
+        const homelyId = String(c?.homely_id ?? "").trim();
+        const phone = normalizeIlPhone(c?.phone) || String(c?.phone || c?.email || homelyId).trim();
+        if (!phone) continue;
+        const row = {
+          phone_number: phone,
+          full_name: c?.full_name ? String(c.full_name) : `איש קשר ${homelyId || phone}`,
+          city: c?.city ? String(c.city) : null,
+          email: c?.email ? String(c.email) : null,
+          status: "contacted",
+          lead_stage: "qualified",
+          deal_type: "sale",
+          assigned_to: user.id,
+          is_demo: false,
+          preferences: {
+            homely_id: homelyId || null,
+            homely_notes: c?.notes || null,
+            source: "homely",
+            homely_raw: compactRaw(c?.raw),
+            synced_at: new Date().toISOString(),
+          },
+        };
+        const { error } = await admin.from("leads").upsert(row as any, { onConflict: "phone_number" });
+        if (error) throw new Error(`leads#${homelyId || phone}: ${error.message}`);
+        contactsCount++;
+      }
+
+      return json({ ok: true, imported: propsCount + contactsCount, propsCount, contactsCount });
+    }
+
     // ---------- Bulk pull (verified Webtiv AutomaionJson streams) ----------
     // These are the office's outbound JSON exports (one GUID per stream),
     // configured inside Homely by the broker. They are the same arrays the
