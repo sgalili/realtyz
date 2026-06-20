@@ -229,6 +229,7 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
 
   // Build a HomelyProperty preview object from parsed data
   const previewProperty: HomelyProperty | null = parsed ? {
+    ...parsed,
     id: 'preview',
     source: 'mine',
     title: '',
@@ -240,11 +241,22 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
     rooms: Number(parsed.rooms) || 0,
     size_sqm: Number(parsed.sqm) || 0,
     property_type: (parsed.property_type as PropertyType) || 'apartment',
-    photos: parsed.photos || [],
-    url: parsed.source_url || null,
+    photos: rawPreviewPhotos.length ? rawPreviewPhotos : (parsed.photos || []),
+    images: rawPreviewPhotos.length ? rawPreviewPhotos : (parsed.photos || []),
+    url: rawPreviewSourceUrl || parsed.source_url || null,
+    source_url: rawPreviewSourceUrl || parsed.source_url || null,
+    source_metadata: {
+      ...parsed,
+      photos: rawPreviewPhotos.length ? rawPreviewPhotos : (parsed.photos || []),
+      images: rawPreviewPhotos.length ? rawPreviewPhotos : (parsed.photos || []),
+      source_url: rawPreviewSourceUrl || parsed.source_url || null,
+    },
+    metadata: { source_url: rawPreviewSourceUrl || parsed.source_url || null },
     features: [],
     listing_type: parsed.listing_type,
     floor: parsed.floor ?? undefined,
+    total_floors: parsed.total_floors ?? undefined,
+    year_built: parsed.year_built ?? undefined,
   } : null;
 
   return (

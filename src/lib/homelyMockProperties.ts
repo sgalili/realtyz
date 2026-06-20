@@ -29,7 +29,11 @@ export type HomelyProperty = {
   size_sqm: number;
   property_type: PropertyType;
   photos: string[];
+  images?: string[];
   url: string | null;
+  source_url?: string | null;
+  source_metadata?: Record<string, unknown> | null;
+  metadata?: Record<string, unknown> | null;
   features: string[];
   listing_type?: ListingType;
   floor?: number;
