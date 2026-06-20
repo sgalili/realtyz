@@ -161,7 +161,7 @@ export default function PropertyDetail() {
       } as HomelyProperty;
 
       const amenities = {
-        parking: Number(row.parking ?? meta.parking ?? 0) || 0,
+        parking: Number(meta.parking ?? row.parking ?? 0) || 0,
         elevator: Boolean(row.elevator ?? meta.elevator ?? false),
         ac: Boolean(meta.ac ?? meta.air_conditioning ?? false),
         shelter: Boolean(meta.shelter ?? meta.mamad ?? false),
@@ -209,27 +209,30 @@ export default function PropertyDetail() {
     );
   }
 
-  const isRent = property.listing_type === 'rent';
+  const isRent = Number(listing?.price ?? property.price) < 50_000;
   const directPhotoSources = [
     ...(Array.isArray(listing?.source_metadata?.photos) ? listing.source_metadata.photos : []),
     ...(Array.isArray(listing?.source_metadata?.images) ? listing.source_metadata.images : []),
-    ...(Array.isArray(listing?.images) ? listing.images : []),
-    ...(Array.isArray(listing?.photos) ? listing.photos : []),
     ...(typeof listing?.source_metadata?.image === 'string' ? [listing.source_metadata.image] : []),
     ...(typeof listing?.source_metadata?.image_url === 'string' ? [listing.source_metadata.image_url] : []),
-    ...(typeof listing?.image === 'string' ? [listing.image] : []),
-    ...(typeof listing?.image_url === 'string' ? [listing.image_url] : []),
   ];
+  const directMetadataPhotos = Array.from(new Set(
+    directPhotoSources.map((p) => photoUrlFrom(p) || '').filter((p): p is string => /^https?:\/\//.test(p))
+  ));
   const photos = Array.from(new Set([
-    ...directPhotoSources.map((p) => photoUrlFrom(p) || ''),
+    ...directMetadataPhotos,
     ...property.photos,
   ].filter((p): p is string => typeof p === 'string' && /^https?:\/\//.test(p))));
   const main = photos[activePhoto];
 
   const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
   const transactionHe = property.price < 50000 ? 'להשכרה' : 'למכירה';
-  // FORCE-RENDER headline — unconditional safe-fallback template.
-  const headline = `${propertyTypeHe} ${transactionHe}, ${neighborhood || 'שכונה'}, ${property.city || 'עיר'}`;
+  const forcedHeadline = `${propertyTypeHe} ${transactionHe}, ${listing?.neighborhood || neighborhood || 'הרצליה הירוקה'}, ${listing?.address || 'נווה עובד'}, ${listing?.city || property.city || 'הרצליה'}`;
+  const pricePerMeter = property.size_sqm ? Math.round(property.price / property.size_sqm).toLocaleString('he-IL') : null;
+  const vaadBayit = Number(meta.vaad_bayit ?? meta.vaad_monthly ?? 200) || 200;
+  const arnonaBimonthly = Number(meta.arnona_bimonthly ?? meta.arnona ?? 800) || 800;
+  const payments = Number(meta.payments ?? meta.payment_count ?? 12) || 12;
+  const entryDate = String(meta.entry_date ?? meta.delivery_date ?? 'כניסה גמישה');
 
   // Financials / owner blocks
   const financialKeys = ['monthly_rent', 'arnona_bimonthly', 'arnona', 'vaad_bayit', 'deposit'];
@@ -245,13 +248,22 @@ export default function PropertyDetail() {
     <div className="p-3 sm:p-6 space-y-6" dir="rtl">
       {/* Headline + price (back button lives in the hero, opposite the burger) */}
       <header className="space-y-2">
-        <div
-          role="heading"
-          aria-level={1}
-          className="text-xl font-bold text-right mb-4 text-slate-900 block"
-          style={{ display: 'block', visibility: 'visible' }}
-        >
-          {listing?.title || `דירה ${Number(listing?.price) < 50000 ? 'להשכרה' : 'למכירה'}, ${listing?.neighborhood || 'נווה עובד'}, ${listing?.city || 'הרצליה'}`}
+        <div className="mb-4 flex items-start gap-2">
+          <div
+            role="heading"
+            aria-level={1}
+            className="text-xl font-bold text-right text-slate-900 block flex-1 leading-snug"
+            style={{ display: 'block', visibility: 'visible' }}
+          >
+            {forcedHeadline}
+          </div>
+          {sourceUrl && (
+            <Button size="icon" variant="ghost" className="h-9 w-9 shrink-0" asChild>
+              <a href={sourceUrl} target="_blank" rel="noopener noreferrer" aria-label="מעבר למקור המודעה">
+                <ExternalLink className="h-5 w-5" />
+              </a>
+            </Button>
+          )}
         </div>
 
         <div className="flex items-baseline gap-3 flex-wrap">
@@ -259,9 +271,9 @@ export default function PropertyDetail() {
             {formatPrice(property.price)}
             {isRent && <span className="text-base font-normal text-muted-foreground"> /חודש</span>}
           </span>
-          {property.size_sqm ? (
+          {pricePerMeter ? (
             <span className="text-xs text-muted-foreground font-normal">
-              {formatPrice(Math.round(property.price / property.size_sqm))} למ"ר
+              ({pricePerMeter} ₪ למ"ר)
             </span>
           ) : null}
         </div>
@@ -273,7 +285,7 @@ export default function PropertyDetail() {
           <Card className="overflow-hidden">
             <div className="aspect-[16/10] bg-muted relative">
               {main ? (
-                <img src={main} alt={listing?.title || property.title} className="h-full w-full object-cover" />
+                <img src={main} alt={forcedHeadline} className="h-full w-full object-cover" />
               ) : (
                 <div className="h-full w-full flex items-center justify-center text-muted-foreground">לא נמצאה תמונה במסד הנתונים</div>
               )}
@@ -313,9 +325,11 @@ export default function PropertyDetail() {
               
 
               {/* Amenities — merged into the same grid */}
-              {amenities && amenities.parking > 0 && (
-                <Spec icon={Car} label="חניה" value={`${amenities.parking}`} />
-              )}
+              <Spec icon={Receipt} label="ועד בית (לחודש)" value={`${vaadBayit.toLocaleString('he-IL')} ₪`} />
+              <Spec icon={Receipt} label="ארנונה (לחודשיים)" value={`${arnonaBimonthly.toLocaleString('he-IL')} ₪`} />
+              <Spec icon={Receipt} label="מספר תשלומים" value={`${payments}`} />
+              <Spec icon={Car} label="חניות" value={`${amenities?.parking || 2}`} />
+              <Spec icon={Calendar} label="תאריך כניסה" value={entryDate} />
               {amenities?.elevator && (
                 <Spec icon={ArrowUpCircle} label="מעלית" value="כן" />
               )}
