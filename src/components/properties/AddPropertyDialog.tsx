@@ -44,6 +44,9 @@ type ParsedListing = {
   price: number | null;
   sqm: number | null;
   floor: number | null;
+  total_floors?: number | null;
+  year_built?: number | null;
+  address?: string | null;
   description: string | null;
   photos: string[];
   source_url: string | null;
@@ -173,7 +176,7 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
         status: 'live',
         source,
         source_url: sourceUrl || null,
-        source_metadata: { photos: parsed.photos, ...features2 },
+        source_metadata: { photos: parsed.photos, total_floors: parsed.total_floors ?? null, year_built: parsed.year_built ?? null, ...features2 },
         parking: features2.parking != null ? features2.parking > 0 : null,
         elevator: features2.elevator ?? null,
         is_published: true,
