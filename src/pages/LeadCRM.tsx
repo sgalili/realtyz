@@ -21,7 +21,8 @@ import {
   ArrowUpRight, ArrowDownLeft, Upload, FileSpreadsheet, AlertTriangle,
   Users, Download, Megaphone, Trash2, X, Sparkles, Eye, SlidersHorizontal,
   Heart, MessageCircle, UserPlus, Bot, Map, Smile, Meh, Frown,
-  Wallet, Compass, Radio, Target, Home as HomeIcon, Phone as PhoneIcon, Mail
+  Wallet, Compass, Radio, Target, Home as HomeIcon, Phone as PhoneIcon, Mail,
+  UploadCloud, Loader2
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
@@ -208,6 +209,34 @@ const LeadCRM = () => {
   const freemium = useFreemiumStatus();
   const [selectedVoterId, setSelectedVoterId] = useState<string | null>(null);
   const [statusInfoOpen, setStatusInfoOpen] = useState(false);
+  const [pushingHomely, setPushingHomely] = useState(false);
+  const pushLeadToHomely = useCallback(async (leadId: string, silent = false) => {
+    try {
+      if (!silent) setPushingHomely(true);
+      const payloadPreview = { lead_id: leadId, action: 'WebtivLidPost', office: '9095' };
+      // eslint-disable-next-line no-console
+      console.log('Pushing Payload to Homely:', JSON.stringify(payloadPreview));
+      const { data, error } = await supabase.functions.invoke('homely-push-lead', {
+        body: { lead_id: leadId },
+      });
+      if (error) throw error;
+      const res = data as any;
+      // eslint-disable-next-line no-console
+      console.log('Homely push response:', JSON.stringify(res));
+      if (res?.ok) {
+        if (!silent) toast.success('איש הקשר נדחף בהצלחה ל-Homely');
+        return true;
+      }
+      const msg = res?.error || `HTTP ${res?.status || '???'}`;
+      if (!silent) toast.error(`דחיפה ל-Homely נכשלה: ${msg}`);
+      return false;
+    } catch (e: any) {
+      if (!silent) toast.error(`דחיפה ל-Homely נכשלה: ${e?.message || 'unknown'}`);
+      return false;
+    } finally {
+      if (!silent) setPushingHomely(false);
+    }
+  }, []);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [newLeadOpen, setNewLeadOpen] = useState(false);
@@ -1420,6 +1449,18 @@ const LeadCRM = () => {
                               if (c.href) return <a key={c.key} {...aria} href={c.href} target={c.href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" className={base}>{c.icon}</a>;
                               return <button key={c.key} {...aria} type="button" onClick={c.onClick} className={base}>{c.icon}</button>;
                             })}
+                            <button
+                              type="button"
+                              onClick={() => pushLeadToHomely(selectedVoter.id, false)}
+                              disabled={pushingHomely}
+                              aria-label="סנכרן להומלי"
+                              title="סנכרן להומלי"
+                              className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent text-emerald-700 hover:bg-emerald-50 transition-colors disabled:opacity-50"
+                            >
+                              {pushingHomely
+                                ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.8} />
+                                : <UploadCloud className="h-4 w-4" strokeWidth={1.8} />}
+                            </button>
                           </div>
                         );
                       })()}
@@ -1514,8 +1555,10 @@ const LeadCRM = () => {
                       if (error) { toast.error('שגיאה בעדכון'); return; }
                       toast.success('עודכן');
                       queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+                      // eslint-disable-next-line no-console
+                      console.log('Pushing Payload to Homely:', JSON.stringify({ lead_id: selectedVoter.id, patch }));
                       // Instant background push to Homely (Open Card) with latest fields
-                      supabase.functions.invoke('homely-push-lead', { body: { lead_id: selectedVoter.id } }).catch(() => {});
+                      pushLeadToHomely(selectedVoter.id, true);
                     };
                     const savePref = (pref: Record<string, any>) =>
                       saveLead({ preferences: { ...prefs, ...pref } });
