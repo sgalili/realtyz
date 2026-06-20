@@ -228,7 +228,7 @@ export default function Properties() {
                 size_sqm: Number(row.sqm ?? 0),
                 property_type: detectPropertyType(`${row.property_title ?? ''} ${row.description ?? ''}`),
                 photos: metaPhotos,
-                url: null,
+                url: row.source_url ?? null,
                 features: Array.isArray(row.features) ? row.features.filter((f: any) => typeof f === 'string') : [],
                 listing_type: extractListingType(row.features),
                 extras: (meta.extras ?? {}) as Record<string, string>,
