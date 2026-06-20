@@ -611,8 +611,10 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
               const rooms = f.rooms ?? f.room_count ?? "—";
               const sqm = f.size_sqm ?? f.size ?? "—";
               const price = l.asking_price ? `₪${Number(l.asking_price).toLocaleString()}${isRent ? "/חודש" : ""}` : "—";
-              return `• ${l.property_title ?? "(ללא כותרת)"} | ${city} | ${rooms} חד׳ | ${sqm} מ"ר | ${priceLabel}: ${price}`;
+              const notes = l.office_notes ? `\n   הערות משרד: ${String(l.office_notes).replace(/\s+/g, " ").slice(0, 240)}` : "";
+              return `• ${l.property_title ?? "(ללא כותרת)"} | ${city} | ${rooms} חד׳ | ${sqm} מ"ר | ${priceLabel}: ${price}${notes}`;
             };
+
             const directiveLines: string[] = [];
             if (isRent) {
               directiveLines.push(
