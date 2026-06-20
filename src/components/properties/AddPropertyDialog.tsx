@@ -139,13 +139,40 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: Props) {
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent dir="rtl" className="max-w-lg">
+      <DialogContent dir="rtl" className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>הוספת נכס ידנית</DialogTitle>
-          <DialogDescription>הזינו פרטי נכס בסיסיים. ניתן להעשיר מאוחר יותר.</DialogDescription>
+          <DialogDescription>הזינו פרטי נכס בסיסיים, או הדביקו טקסט מודעה וה-AI ימלא את השדות.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* AI Paste & Hydrate */}
+          <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-3 space-y-2">
+            <Label className="text-xs font-bold flex items-center gap-1.5 text-primary">
+              <Sparkles className="h-3.5 w-3.5" />
+              הדבקת טקסט חופשי או מודעה (Yad2 / מדלן)
+            </Label>
+            <Textarea
+              dir="rtl"
+              rows={4}
+              placeholder="הדבק כאן את הטקסט המועתק מהמודעה הציבורית, וה-AI יחלץ את כל השדות אוטומטית..."
+              value={aiText}
+              onChange={(e) => setAiText(e.target.value)}
+              className="resize-none text-sm bg-background"
+              disabled={hydrating}
+            />
+            <Button
+              type="button"
+              size="sm"
+              onClick={handleHydrate}
+              disabled={hydrating || aiText.trim().length < 10}
+              className="w-full gap-1.5"
+            >
+              {hydrating ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+              {hydrating ? 'מנתח...' : 'נתח והשלם פרטים'}
+            </Button>
+          </div>
+
           <div className="flex justify-center">
             <div className="inline-flex items-center rounded-xl border border-primary/20 bg-card/40 p-1" dir="rtl">
               {(['sale', 'rent'] as const).map((t) => (
@@ -183,12 +210,21 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: Props) {
               </div>
             </div>
 
-            <div className="space-y-1.5 col-span-2">
-              <Label className="text-xs font-semibold">עיר / אזור</Label>
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">עיר</Label>
               <Input
                 placeholder="לדוגמה: תל אביב"
                 value={city}
                 onChange={(e) => setCity(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">שכונה</Label>
+              <Input
+                placeholder="לדוגמה: פלורנטין"
+                value={neighborhood}
+                onChange={(e) => setNeighborhood(e.target.value)}
               />
             </div>
 
@@ -219,7 +255,7 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: Props) {
               />
             </div>
 
-            <div className="space-y-1.5 col-span-2">
+            <div className="space-y-1.5">
               <Label className="text-xs font-semibold">שטח (מ"ר)</Label>
               <Input
                 type="number"
@@ -228,8 +264,31 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated }: Props) {
                 onChange={(e) => setSqm(e.target.value)}
               />
             </div>
+
+            <div className="space-y-1.5">
+              <Label className="text-xs font-semibold">קומה</Label>
+              <Input
+                type="number"
+                placeholder="3"
+                value={floor}
+                onChange={(e) => setFloor(e.target.value)}
+              />
+            </div>
+
+            <div className="space-y-1.5 col-span-2">
+              <Label className="text-xs font-semibold">תיאור / הערות</Label>
+              <Textarea
+                dir="rtl"
+                rows={3}
+                placeholder="חניה, מעלית, מרפסת, שיפוץ..."
+                value={description}
+                onChange={(e) => setDescription(e.target.value)}
+                className="resize-none text-sm"
+              />
+            </div>
           </div>
         </div>
+
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
