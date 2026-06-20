@@ -27,6 +27,8 @@ interface Props {
   open: boolean;
   onOpenChange: (v: boolean) => void;
   onCreated?: () => void;
+  initialText?: string;
+  autoHydrate?: boolean;
 }
 
 function slugify(s: string) {
