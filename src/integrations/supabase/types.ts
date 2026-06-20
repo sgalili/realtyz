@@ -4600,6 +4600,7 @@ export type Database = {
         Args: { message_id: number; queue_name: string }
         Returns: boolean
       }
+      delete_leads_cascade: { Args: { _ids: string[] }; Returns: number }
       dispatch_automation_run: { Args: { _run_id: string }; Returns: undefined }
       dispatch_smart_notification: {
         Args: {
