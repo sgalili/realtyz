@@ -90,13 +90,15 @@ function dedupeProperties<T extends Partial<HomelyProperty> & { address?: string
   });
 }
 
-type SourceTab = 'mine' | 'homely' | 'yad2' | 'madlan';
+type SourceTab = 'all' | 'mine' | 'homely' | 'yad2' | 'madlan';
 const SOURCE_LABELS: Record<SourceTab, string> = {
+  all: 'הכל',
   mine: 'הנכסים שלי',
   homely: 'הומלי',
   yad2: 'יד-2',
   madlan: 'מדל״ן',
 };
+
 
 export default function Properties() {
   const { serviceAreas, coveredCities, isConfigured } = useServiceAreas();
