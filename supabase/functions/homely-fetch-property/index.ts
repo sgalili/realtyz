@@ -76,127 +76,144 @@ Deno.serve(async (req) => {
     const listing_id = (body as any)?.listing_id;
 
     // ------------- Bulk actions (manual-trigger only — gated by the
-    // dialog's "סנכרון מלא מהומלי" button on the Properties page) -------------
+    // "סנכרון מלא מהומלי" dialog on the Properties page). The Webtiv JSON
+    // API only exposes login + WebtivLidPost (push) — there are no public GET
+    // routes for nechasim/contacts. So we pull the official Homely broker
+    // XML/IDX feed (the same one syndicated to Yad2/Madlan). The broker
+    // pastes the feed URL in /settings → חיבורים → Homely. -------------
     if (action === "fetchAllProperties" || action === "fetchAllContacts") {
+      // Contacts are NOT exposed via the XML feed. Be honest.
+      if (action === "fetchAllContacts") {
+        return json({
+          ok: true,
+          empty: true,
+          unsupported: true,
+          contacts: [],
+          message:
+            "Homely אינה מספקת פיד אנשי קשר ציבורי. אנשי קשר נכנסים אוטומטית כאשר Homely שולחת ליד לכתובת ה‑Webhook שלך (מוצגת בטופס Homely). אין צורך לסנכרן ידנית.",
+        });
+      }
+
       const { data: cred } = await admin
         .from("homely_broker_credentials")
-        .select("homely_agency, homely_username")
+        .select("homely_agency, homely_username, homely_feed_url")
         .eq("user_id", user.id)
         .maybeSingle();
       if (!cred?.homely_agency || !cred?.homely_username) {
         return json({ ok: false, needs_setup: true, error: "no_homely_credentials", action }, 200);
       }
-      const { data: pw } = await admin.rpc("get_homely_password", { _user_id: user.id });
-      if (!pw) return json({ ok: false, needs_setup: true, error: "no_homely_password", action }, 200);
-      const login = await webtivLogin(String(cred.homely_agency), String(cred.homely_username), pw as unknown as string);
-      if (!login.ok) return json({ error: `login_failed:${login.status}`, note: login.note }, 502);
-      const session = login.session as any;
-      const token = session?.token || session?.Token || session?.accessToken;
-      const db = session?.db ?? session?.Db;
-      const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        Accept: "application/json",
-      };
-      if (token) headers["Authorization"] = `Bearer ${token}`;
+      const feedUrl = (cred as any)?.homely_feed_url as string | null;
+      if (!feedUrl || !/^https?:\/\//i.test(feedUrl)) {
+        return json({
+          ok: false,
+          needs_feed_url: true,
+          empty: true,
+          properties: [],
+          message:
+            "כדי להציג את הנכסים שלך כאן, יש להזין את כתובת פיד ה‑XML שלכם מהומלי (נמצא בהגדרות הומלי ← הפצה לאתרים / פיד XML).",
+        }, 200);
+      }
 
-      // ✅ Verified Homely/Webtiv paths (mirror homely-daily-sync + homely-leads,
-      // which return live data today). The previous `/GetActiveByBroker`,
-      // `/GetAll`, `/GetActive` paths all returned 404 HTML.
-      const PATHS = action === "fetchAllProperties"
-        ? ["/api/Nechasim/GetNechasim", "/api/Property/GetProperties", "/api/Properties/GetAll", "/api/Nechasim/Search"]
-        : ["/api/WebtivLid/GetLidim", "/api/Lid/GetLidim", "/api/Leads/GetAll", "/api/WebtivLid/Search"];
+      console.log(`[homely-fetch-property] Targeting Homely XML feed: ${feedUrl}`);
+      let xmlText = "";
+      let httpStatus = 0;
+      try {
+        const r = await fetch(feedUrl, {
+          headers: { Accept: "application/xml, text/xml, */*", "User-Agent": "Realtyz/1.0" },
+        });
+        httpStatus = r.status;
+        xmlText = await r.text();
+        console.log(`[homely-fetch-property] Feed HTTP ${httpStatus}, bytes=${xmlText.length}, sample=${xmlText.slice(0, 240)}`);
+      } catch (e) {
+        return json({ ok: false, error: `feed_fetch_failed:${(e as Error).message}`, properties: [], empty: true }, 200);
+      }
+      if (httpStatus < 200 || httpStatus >= 300 || !xmlText) {
+        return json({
+          ok: false,
+          error: `feed_http_${httpStatus}`,
+          properties: [],
+          empty: true,
+          message: "לא הצלחנו להוריד את פיד ה‑XML. ודאו שהקישור פתוח לציבור ושאינו מוגן בסיסמה.",
+        }, 200);
+      }
 
-      // Walk any object/array tree and return the first array that "looks like"
-      // a list of records (objects with id-ish or name-ish fields). This lets
-      // us survive Homely returning {Data: {Items: [...]}} or {result: {list: [...]}}
-      // or {properties: [...]} without hard-coding each shape.
-      function findRecordArray(root: any): { arr: any[]; path: string } | null {
-        const seen = new Set<any>();
-        const queue: Array<{ v: any; p: string }> = [{ v: root, p: "$" }];
-        while (queue.length) {
-          const { v, p } = queue.shift()!;
-          if (!v || typeof v !== "object" || seen.has(v)) continue;
-          seen.add(v);
-          if (Array.isArray(v)) {
-            if (v.length && typeof v[0] === "object" && v[0] !== null) {
-              const keys = Object.keys(v[0]);
-              if (keys.length >= 2) return { arr: v, path: p };
-            }
-            continue;
+      // -------- Minimal XML extractor --------
+      // Strip XML/CDATA noise and pull each <property|listing|item|neches>...</...>
+      // block, then extract common child tags case-insensitively. Works against
+      // Yad2/Madlan-shaped Homely feeds without needing a full DOM parser.
+      function decodeEntities(s: string): string {
+        return s
+          .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, "$1")
+          .replace(/&amp;/g, "&")
+          .replace(/&lt;/g, "<")
+          .replace(/&gt;/g, ">")
+          .replace(/&quot;/g, '"')
+          .replace(/&apos;/g, "'")
+          .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
+      }
+      function pickTag(block: string, names: string[]): string {
+        for (const n of names) {
+          const m = block.match(new RegExp(`<${n}\\b[^>]*>([\\s\\S]*?)<\\/${n}>`, "i"));
+          if (m && m[1] != null) {
+            const v = decodeEntities(m[1]).replace(/<[^>]+>/g, "").trim();
+            if (v) return v;
           }
-          for (const k of Object.keys(v)) queue.push({ v: v[k], p: `${p}.${k}` });
         }
-        return null;
+        return "";
       }
-
-      let items: any[] = [];
-      let usedEndpoint: string | null = null;
-      let arrPath = "";
-      let lastError = "";
-      const debug: Array<{ path: string; status?: number; topKeys?: string[]; sample?: string }> = [];
-      for (const path of PATHS) {
-        const url = `${WEBTIV_BASE}${path}`;
-        console.log(`[homely-fetch-property] Targeting Homely URL: ${url}`);
-        try {
-          const r = await fetch(url, {
-            method: "POST",
-            headers,
-            body: JSON.stringify({ db, token, page: 1, pageSize: 200, agency: cred.homely_agency }),
-          });
-          const text = await r.text();
-          let data: any = null;
-          try { data = JSON.parse(text); } catch { /* not json */ }
-          const topKeys = data && typeof data === "object" && !Array.isArray(data) ? Object.keys(data) : [];
-          debug.push({ path, status: r.status, topKeys, sample: text.slice(0, 240) });
-          console.log(`[homely-fetch-property] ${action} ${path} -> HTTP ${r.status}, topKeys=${JSON.stringify(topKeys)}, sample=${text.slice(0, 400)}`);
-          if (!r.ok) { lastError = `${path}:HTTP ${r.status}`; continue; }
-          if (!data) { lastError = `${path}:not_json`; continue; }
-          const found = Array.isArray(data) ? { arr: data, path: "$" } : findRecordArray(data);
-          if (found && found.arr.length) {
-            items = found.arr;
-            usedEndpoint = path;
-            arrPath = found.path;
-            console.log(`[homely-fetch-property] ${action} matched ${items.length} items at ${path}${found.path}`);
-            break;
-          }
-          // Empty payload from a valid endpoint — accept and stop probing.
-          if (found && Array.isArray(found.arr)) {
-            usedEndpoint = path;
-            arrPath = found.path;
-            break;
-          }
-        } catch (e) {
-          lastError = `${path}:${(e as Error).message}`;
+      function pickAllUrls(block: string, wrapperNames: string[]): string[] {
+        const out: string[] = [];
+        for (const w of wrapperNames) {
+          const wrap = block.match(new RegExp(`<${w}\\b[^>]*>([\\s\\S]*?)<\\/${w}>`, "i"));
+          if (!wrap) continue;
+          const inner = wrap[1];
+          const urlMatches = inner.match(/https?:\/\/[^\s<>"']+\.(?:jpg|jpeg|png|webp|gif)/gi) || [];
+          out.push(...urlMatches);
         }
+        // Fallback: any image URL anywhere in the block.
+        if (!out.length) {
+          const urlMatches = block.match(/https?:\/\/[^\s<>"']+\.(?:jpg|jpeg|png|webp|gif)/gi) || [];
+          out.push(...urlMatches);
+        }
+        return Array.from(new Set(out));
       }
 
-      if (action === "fetchAllProperties") {
-        const properties = items.map((it: any) => ({
-          homely_id: String(it?.id ?? it?.Id ?? it?.nechesId ?? it?.NechesId ?? it?.sidur ?? it?.Sidur ?? it?.serial ?? it?.PropertyId ?? it?.propertyId ?? ""),
-          title: it?.title || it?.Title || it?.kotert || it?.Kotert || it?.Name || it?.name || "",
-          description: it?.description || it?.Description || it?.tiur || it?.Tiur || "",
-          price: Number(it?.price ?? it?.Price ?? it?.mehir ?? it?.Mehir ?? 0) || 0,
-          city: it?.city || it?.City || it?.ir || it?.Ir || "",
-          address: it?.address || it?.Address || it?.ktovet || it?.Ktovet || "",
-          rooms: Number(it?.rooms ?? it?.Rooms ?? it?.hadarim ?? it?.Hadarim ?? 0) || 0,
-          sqm: Number(it?.size_sqm ?? it?.area ?? it?.shetach ?? it?.Shetach ?? 0) || 0,
-          floor: Number(it?.floor ?? it?.Floor ?? it?.koma ?? it?.Koma ?? 0) || 0,
-          photo: extractPhotos(it)[0] ?? null,
-          raw: it,
-        })).filter((p) => p.homely_id);
-        return json({ ok: true, endpoint: usedEndpoint, array_path: arrPath, count: properties.length, properties, empty: properties.length === 0, last_error: lastError, debug });
-      } else {
-        const contacts = items.map((it: any) => ({
-          homely_id: String(it?.id ?? it?.Id ?? it?.contactId ?? it?.ContactId ?? it?.adamId ?? it?.AdamId ?? ""),
-          full_name: it?.full_name || it?.FullName || it?.name || it?.Name || it?.shem || it?.Shem || "",
-          phone: it?.phone || it?.Phone || it?.mobile || it?.Mobile || it?.telefon || it?.Telefon || it?.Cell || it?.cell || "",
-          email: it?.email || it?.Email || "",
-          city: it?.city || it?.City || it?.ir || "",
-          notes: it?.notes || it?.Notes || it?.heara || it?.Heara || "",
-          raw: it,
-        })).filter((c) => c.phone || c.email);
-        return json({ ok: true, endpoint: usedEndpoint, array_path: arrPath, count: contacts.length, contacts, empty: contacts.length === 0, last_error: lastError, debug });
+      const blockRegex = /<(property|listing|item|neches|nechess|asset|ad|advert)\b[^>]*>([\s\S]*?)<\/\1>/gi;
+      const items: any[] = [];
+      let m: RegExpExecArray | null;
+      while ((m = blockRegex.exec(xmlText)) !== null) {
+        const block = m[2];
+        const photos = pickAllUrls(block, ["images", "pictures", "photos", "tmunot", "media"]);
+        const homely_id = pickTag(block, ["id", "propertyid", "listingid", "nechesid", "serial", "sidur", "code"]);
+        items.push({
+          homely_id: homely_id || String(items.length + 1),
+          title: pickTag(block, ["title", "kotert", "name", "headline"]),
+          description: pickTag(block, ["description", "tiur", "remarks", "summary"]),
+          price: Number(pickTag(block, ["price", "mehir", "askingprice"]).replace(/[^\d.]/g, "")) || 0,
+          city: pickTag(block, ["city", "ir", "town"]),
+          address: pickTag(block, ["address", "ktovet", "street"]),
+          rooms: Number(pickTag(block, ["rooms", "hadarim", "bedrooms"]).replace(/[^\d.]/g, "")) || 0,
+          sqm: Number(pickTag(block, ["size", "sqm", "shetach", "area"]).replace(/[^\d.]/g, "")) || 0,
+          floor: Number(pickTag(block, ["floor", "koma"]).replace(/[^\d.]/g, "")) || 0,
+          photo: photos[0] ?? null,
+          raw: { _xml_block: block.slice(0, 2000), photos },
+        });
       }
+
+      console.log(`[homely-fetch-property] Parsed ${items.length} property blocks from feed`);
+
+      return json({
+        ok: true,
+        source: "xml_feed",
+        feed_url: feedUrl,
+        http_status: httpStatus,
+        count: items.length,
+        properties: items,
+        empty: items.length === 0,
+        message: items.length === 0
+          ? "התחברות הצליחה, לא נמצאו נכסים בפיד ה‑XML של הומלי."
+          : undefined,
+      });
     }
 
     if (!listing_id) return json({ error: "listing_id required" }, 400);

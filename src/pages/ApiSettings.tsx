@@ -456,6 +456,7 @@ const ApiSettings = () => {
   const [homelyConnStatus, setHomelyConnStatus] = useState<string>('not_configured');
   const [homelyLastVerified, setHomelyLastVerified] = useState<string | null>(null);
   const [homelyWebhookToken, setHomelyWebhookToken] = useState<string>('');
+  const [homelyFeedUrl, setHomelyFeedUrl] = useState<string>('');
   // Diagnostic snapshot from the last "Test Connection" run.
   const [homelyDiag, setHomelyDiag] = useState<null | {
     ok: boolean;
@@ -699,7 +700,7 @@ const ApiSettings = () => {
       // Load Homely broker credentials (login + webhook)
       const { data: cred } = await supabaseClient
         .from('homely_broker_credentials' as any)
-        .select('homely_username, homely_agency, connection_status, last_verified_at, webhook_token, homely_password_encrypted')
+        .select('homely_username, homely_agency, connection_status, last_verified_at, webhook_token, homely_password_encrypted, homely_feed_url')
         .eq('user_id', authUser.id)
         .maybeSingle();
       if (cred) {
@@ -709,6 +710,7 @@ const ApiSettings = () => {
         setHomelyLastVerified((cred as any).last_verified_at || null);
         setHomelyWebhookToken((cred as any).webhook_token || '');
         setHomelyHasPassword(Boolean((cred as any).homely_password_encrypted));
+        setHomelyFeedUrl((cred as any).homely_feed_url || '');
       }
     })();
   }, [authUser]);
@@ -726,6 +728,7 @@ const ApiSettings = () => {
           user_id: authUser.id,
           homely_agency: homelyAgency.trim(),
           homely_username: homelyUsername.trim(),
+          homely_feed_url: homelyFeedUrl.trim() || null,
           updated_at: new Date().toISOString(),
         } as any, { onConflict: 'user_id' });
       if (upErr) throw upErr;
@@ -1310,7 +1313,26 @@ const ApiSettings = () => {
                 placeholder={homelyHasPassword ? '•••••••• (שמורה)' : 'הזן סיסמה'}
                 autoComplete="new-password"
               />
-            </div>
+          </div>
+
+          <div className="space-y-1 pt-2 border-t border-border/30">
+            <Label className="text-xs">כתובת פיד XML של Homely (לטעינת נכסים)</Label>
+            <Input
+              dir="ltr"
+              value={homelyFeedUrl}
+              onChange={(e) => setHomelyFeedUrl(e.target.value)}
+              placeholder="https://www.homely.co.il/feed/xml/..."
+              autoComplete="off"
+            />
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              כדי להציג את הנכסים שלך כאן, יש להזין את כתובת פיד ה‑XML שלכם מהומלי
+              (נמצא בהגדרות הומלי ← הפצה לאתרים / פיד XML). ה‑API של Homely חושף רק
+              הזרמת ליד יוצאת (<span dir="ltr">POST /api/WebtivLid/WebtivLidPost</span>) —
+              אין endpoint ציבורי למשיכת נכסים, לכן אנו קוראים את הפיד הרשמי שלכם
+              שמופץ ליד2/מדלן.
+            </p>
+          </div>
+
           </div>
 
           <div className="flex items-center justify-between gap-2">

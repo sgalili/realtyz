@@ -2156,6 +2156,7 @@ export type Database = {
           disabled_by: string | null
           disabled_reason: string | null
           homely_agency: string | null
+          homely_feed_url: string | null
           homely_password_encrypted: string | null
           homely_username: string | null
           last_error: string | null
@@ -2170,6 +2171,7 @@ export type Database = {
           disabled_by?: string | null
           disabled_reason?: string | null
           homely_agency?: string | null
+          homely_feed_url?: string | null
           homely_password_encrypted?: string | null
           homely_username?: string | null
           last_error?: string | null
@@ -2184,6 +2186,7 @@ export type Database = {
           disabled_by?: string | null
           disabled_reason?: string | null
           homely_agency?: string | null
+          homely_feed_url?: string | null
           homely_password_encrypted?: string | null
           homely_username?: string | null
           last_error?: string | null

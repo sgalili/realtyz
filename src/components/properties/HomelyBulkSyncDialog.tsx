@@ -83,24 +83,50 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
         body: { action },
       });
       if (error) throw error;
-      const payload = data as { ok?: boolean; error?: string; needs_setup?: boolean; empty?: boolean; endpoint?: string | null; properties?: HomelyProperty[]; contacts?: HomelyContact[]; count?: number };
+      const payload = data as {
+        ok?: boolean;
+        error?: string;
+        needs_setup?: boolean;
+        needs_feed_url?: boolean;
+        unsupported?: boolean;
+        empty?: boolean;
+        message?: string;
+        properties?: HomelyProperty[];
+        contacts?: HomelyContact[];
+        count?: number;
+      };
       if (payload?.needs_setup) {
         toast.message('יש לחבר תחילה את חשבון Homely', {
           description: 'עברו ל-הגדרות ← חיבורים והזינו קוד משרד, משתמש וסיסמה.',
         });
         return;
       }
-      if (payload?.error) throw new Error(payload.error);
-      const emptyMsg = 'התחברות הצליחה, לא נמצאו נכסים חדשים בחשבון הומלי המחובר.';
+      if (payload?.needs_feed_url) {
+        toast.message('נדרשת כתובת פיד XML של Homely', {
+          description: payload.message ?? 'הגדרות ← חיבורים ← Homely ← כתובת פיד XML.',
+          duration: 9000,
+        });
+        if (isProps) setProperties([]);
+        return;
+      }
+      if (payload?.unsupported && !isProps) {
+        toast.message('אנשי קשר נכנסים דרך Webhook', {
+          description: payload.message ?? 'Homely אינה מספקת פיד אנשי קשר ציבורי.',
+          duration: 9000,
+        });
+        setContacts([]);
+        return;
+      }
+      if (payload?.error && !payload?.empty) throw new Error(payload.error);
       if (isProps) {
         const list = payload.properties ?? [];
         setProperties(list);
-        if (!list.length) toast.info(emptyMsg);
+        if (!list.length) toast.info(payload.message ?? 'התחברות הצליחה, לא נמצאו נכסים חדשים בחשבון הומלי המחובר.');
         else toast.success(`נטענו ${list.length} נכסים מהומלי`);
       } else {
         const list = payload.contacts ?? [];
         setContacts(list);
-        if (!list.length) toast.info(emptyMsg.replace('נכסים', 'אנשי קשר'));
+        if (!list.length) toast.info(payload.message ?? 'אין אנשי קשר פעילים בחשבון הומלי המחובר');
         else toast.success(`נטענו ${list.length} אנשי קשר מהומלי`);
       }
     } catch (e) {
