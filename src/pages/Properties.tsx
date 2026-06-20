@@ -805,7 +805,7 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
         </div>
       )}
       <Card className="overflow-x-auto max-w-full w-full">
-        <table className="w-full text-xs" dir="rtl">
+        <table className="w-full text-[15px]" dir="rtl">
           <thead className="bg-muted/50 sticky top-0">
             <tr className="text-right">
               <th className="px-2 py-2 w-8">
