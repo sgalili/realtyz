@@ -1137,7 +1137,7 @@ const LeadCRM = () => {
             <Button variant="outline" size="sm" className="gap-1.5 h-8" onClick={() => handleExportExcel('selected')}>
               <Download className="h-3.5 w-3.5" /> ייצוא נבחרים
             </Button>
-            <Button variant="destructive" size="sm" className="gap-1.5 h-8" onClick={handleBatchDelete}>
+            <Button variant="destructive" size="sm" className="gap-1.5 h-8" onClick={openBatchDeleteDialog}>
               <Trash2 className="h-3.5 w-3.5" /> מחק
             </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8 ms-auto" onClick={() => setSelectedIds(new Set())}>
