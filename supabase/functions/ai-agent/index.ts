@@ -440,7 +440,9 @@ serve(async (req) => {
               const rooms = f.rooms ?? f.room_count ?? "";
               const size = f.size_sqm ?? f.size ?? "";
               const price = l.asking_price ? `₪${Number(l.asking_price).toLocaleString()}` : "—";
-              return `• [${String(l.id).slice(0,8)}] ${l.property_title ?? "(ללא כותרת)"} | ${city} | ${rooms} חד׳ | ${size} מ"ר | ${price}${l.is_published ? "" : " (טיוטה)"}`;
+              const officeNotes = l.office_notes ? ` | הערות משרד: ${String(l.office_notes).replace(/\s+/g, " ").slice(0, 200)}` : "";
+              return `• [${String(l.id).slice(0,8)}] ${l.property_title ?? "(ללא כותרת)"} | ${city} | ${rooms} חד׳ | ${size} מ"ר | ${price}${l.is_published ? "" : " (טיוטה)"}${officeNotes}`;
+
             };
             const fmtLead = (v: any) => {
               const prefs = v.preferences ?? {};
