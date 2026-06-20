@@ -8,6 +8,14 @@ import { PROPERTY_TYPE_LABELS_HE, type HomelyProperty } from '@/lib/homelyMockPr
 
 type JsonRecord = Record<string, unknown>;
 
+function asStringArray(value: unknown): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => typeof item === 'string' && item.length > 0) : [];
+}
+
+function firstString(...values: unknown[]) {
+  return values.find((value): value is string => typeof value === 'string' && value.length > 0) || null;
+}
+
 export type PropertyDetailViewData = {
   property: HomelyProperty;
   meta?: JsonRecord;
@@ -40,7 +48,23 @@ function formatMetaValue(key: string, value: unknown): string {
 
 export function PropertyDetailView({ property, meta = {}, amenities, neighborhood, sourceUrl, previewPhotos }: PropertyDetailViewData) {
   const [activePhoto, setActivePhoto] = useState(0);
-  const photos = previewPhotos?.length ? previewPhotos : (property.photos || []);
+  const sourceMetadata = (property.source_metadata && typeof property.source_metadata === 'object' ? property.source_metadata : {}) as JsonRecord;
+  const metadata = (property.metadata && typeof property.metadata === 'object' ? property.metadata : {}) as JsonRecord;
+  const resolvedPhotos = [
+    ...asStringArray(sourceMetadata.photos),
+    ...asStringArray(sourceMetadata.images),
+    ...asStringArray(property.photos),
+    ...asStringArray(property.images),
+    ...asStringArray(previewPhotos),
+  ];
+  const photos = Array.from(new Set(resolvedPhotos));
+  const resolvedUrl = firstString(
+    property.source_url,
+    sourceMetadata.source_url,
+    metadata.source_url,
+    sourceUrl,
+    property.url,
+  );
 
   const isRent = Number(property.price) < 50_000;
   const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
@@ -74,10 +98,10 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3 order-2">
             <a
-              href={sourceUrl || '#'}
+              href={resolvedUrl || '#'}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-slate-600 hover:text-blue-600 block z-50 cursor-pointer"
+              className={`text-slate-600 hover:text-blue-600 block z-50 cursor-pointer ${!resolvedUrl ? 'pointer-events-none opacity-40' : ''}`}
               style={{ display: 'block', visibility: 'visible', pointerEvents: 'auto' }}
             >
               <ExternalLink className="w-6 h-6" />
@@ -98,9 +122,9 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
       </header>
 
       <div className="space-y-3">
-        <Card className="overflow-hidden">
-          <div className="aspect-[16/10] bg-muted relative">
-            {photos.length ? (
+        {photos.length > 0 && (
+          <Card className="overflow-hidden">
+            <div className="aspect-[16/10] bg-muted relative">
               <div className="h-full w-full overflow-x-auto flex snap-x snap-mandatory">
                 {photos.map((src, index) => (
                   <img
@@ -112,11 +136,9 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
                   />
                 ))}
               </div>
-            ) : (
-              <div className="h-full w-full bg-slate-100" />
-            )}
-          </div>
-        </Card>
+            </div>
+          </Card>
+        )}
         {photos.length > 1 && (
           <div className="flex gap-2 overflow-x-auto pb-1">
             {photos.map((p, i) => (
@@ -156,10 +178,10 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
             {amenities?.solar && <Spec icon={Sun} label="דוד שמש" value="כן" />}
           </div>
 
-          {sourceUrl && (
+          {resolvedUrl && (
             <div className="mt-5 pt-4 border-t border-border/60">
               <a
-                href={sourceUrl}
+                href={resolvedUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
