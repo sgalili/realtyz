@@ -615,12 +615,13 @@ const LeadCRM = () => {
     const ids = Array.from(selectedIds);
     if (!ids.length) return;
     if (!confirm(`האם למחוק ${ids.length} מתעניינים? פעולה זו בלתי הפיכה.`)) return;
-    const { error, count } = await supabase
-      .from('leads')
-      .delete({ count: 'exact' })
-      .in('id', ids);
-    if (error) { toast.error('שגיאה במחיקה: ' + error.message); return; }
-    if ((count ?? 0) === 0) {
+    const { data, error } = await supabase.rpc('delete_leads_cascade', { _ids: ids });
+    if (error) {
+      toast.error('שגיאה במחיקה: ' + error.message);
+      return;
+    }
+    const deleted = typeof data === 'number' ? data : Number(data ?? 0);
+    if (deleted === 0) {
       toast.error('המחיקה נחסמה - אין הרשאה למחוק את הרשומות שנבחרו');
       return;
     }
@@ -630,8 +631,9 @@ const LeadCRM = () => {
       queryClient.invalidateQueries({ queryKey: ['leads-total'] }),
     ]);
     setSelectedIds(new Set());
-    toast.success(`${count} מתעניינים נמחקו בהצלחה`);
+    toast.success(`${deleted} מתעניינים נמחקו בהצלחה`);
   };
+
 
   const handleAddToCampaign = async (campaignId: string) => {
     if (blockDemoAction('add-to-campaign')) return;
