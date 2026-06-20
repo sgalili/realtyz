@@ -1151,24 +1151,61 @@ const LeadCRM = () => {
                     );
                   })()}
                   {filtered?.map((lead) => {
-                    const profile = getPoliticalProfile(lead.status, lead.engagement_score);
-                    const eng = lead.engagement_score ?? 0;
+                    const profile = getPoliticalProfile(lead.status, lead.engagement_score, lead);
+                    const eng = profile.score;
                     const rowCls = compactMode
-                      ? 'cursor-pointer hover:bg-accent/40 transition-colors text-[12px] leading-tight [&>td]:!px-0 [&>td]:py-1'
-                      : 'cursor-pointer hover:bg-accent/40 transition-colors text-sm [&>td]:!px-0';
+                      ? 'cursor-pointer hover:bg-accent/40 transition-colors text-sm leading-snug [&>td]:!px-0 [&>td]:py-1.5'
+                      : 'cursor-pointer hover:bg-accent/40 transition-colors text-base [&>td]:!px-0 [&>td]:py-2';
+                    const prefs = (lead as any).preferences ?? {};
+                    const sourceLabel = prefs.homely_id || prefs.source === 'homely' ? 'הומלי' : 'Realtyz CRM';
+                    const sourceCls = prefs.homely_id || prefs.source === 'homely'
+                      ? 'bg-blue-500/10 text-blue-700 border-blue-300'
+                      : 'bg-primary/10 text-primary border-primary/30';
+                    const cleanPhone = String(lead.phone_number ?? '').replace(/\D/g, '');
+                    const waHref = cleanPhone ? `https://wa.me/${cleanPhone.startsWith('0') ? '972' + cleanPhone.slice(1) : cleanPhone}` : null;
+                    const homelyId = prefs.homely_id ? String(prefs.homely_id) : null;
                     return (
                       <TableRow key={lead.id} className={rowCls}>
                         <TableCell className="font-medium whitespace-nowrap" onClick={() => setSelectedVoterId(lead.id)}>
-                          <div className="flex min-w-0 items-center gap-1.5 whitespace-nowrap">
-                            <VoterAvatar fullName={lead.full_name} profilePictureUrl={(lead as any).profile_picture_url} className="h-7 w-7" textClassName="text-[10px]" />
-                            <span className="min-w-0 truncate whitespace-nowrap">{lead.full_name || '-'}</span>
+                          <div className="flex min-w-0 items-center gap-2 whitespace-nowrap">
+                            <VoterAvatar fullName={lead.full_name} profilePictureUrl={(lead as any).profile_picture_url} className="h-9 w-9" textClassName="text-xs" />
+                            <div className="flex flex-col min-w-0">
+                              <span className="min-w-0 truncate whitespace-nowrap text-sm font-semibold">{lead.full_name || '-'}</span>
+                              <div className="flex items-center gap-1.5">
+                                <Badge variant="outline" className={`text-[10px] font-normal h-4 px-1.5 ${sourceCls}`}>{sourceLabel}</Badge>
+                                {homelyId && (
+                                  <a
+                                    href={`/properties?homely=${encodeURIComponent(homelyId)}`}
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="text-[10px] text-muted-foreground hover:text-primary hover:underline font-mono"
+                                    title="פתח את הרשומה המקורית בהומלי"
+                                  >
+                                    #{homelyId}
+                                  </a>
+                                )}
+                              </div>
+                            </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-muted-foreground text-xs font-mono text-right" dir="ltr" onClick={() => setSelectedVoterId(lead.id)}>{formatPhoneDisplay(lead.phone_number)}</TableCell>
-                        <TableCell className="text-xs" onClick={() => setSelectedVoterId(lead.id)}>{lead.city || '-'}</TableCell>
+                        <TableCell className="text-sm font-mono text-right" dir="ltr" onClick={(e) => { if (waHref) e.stopPropagation(); }}>
+                          {waHref ? (
+                            <a
+                              href={waHref}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-primary hover:underline inline-flex items-center gap-1"
+                              title="פתח שיחת WhatsApp"
+                            >
+                              {formatPhoneDisplay(lead.phone_number)}
+                            </a>
+                          ) : (
+                            <span className="text-muted-foreground">{formatPhoneDisplay(lead.phone_number)}</span>
+                          )}
+                        </TableCell>
+                        <TableCell className="text-sm" onClick={() => setSelectedVoterId(lead.id)}>{lead.city || '-'}</TableCell>
                         <TableCell className="text-center" onClick={() => setSelectedVoterId(lead.id)}>
                           {(() => {
-                            const kind = (lead as any).preferences?.lead_kind as string | undefined;
+                            const kind = prefs.lead_kind as string | undefined;
                             const map: Record<string, { label: string; cls: string }> = {
                               buyer:    { label: 'קונה',   cls: 'bg-blue-500/10 text-blue-700 border-blue-300' },
                               seller:   { label: 'מוכר',   cls: 'bg-emerald-500/10 text-emerald-700 border-emerald-300' },
@@ -1177,8 +1214,8 @@ const LeadCRM = () => {
                             };
                             const m = kind ? map[kind] : null;
                             return m
-                              ? <Badge variant="outline" className={`text-[10px] font-normal ${m.cls}`}>{m.label}</Badge>
-                              : <span className="text-[10px] text-muted-foreground">-</span>;
+                              ? <Badge variant="outline" className={`text-xs font-normal ${m.cls}`}>{m.label}</Badge>
+                              : <span className="text-xs text-muted-foreground">-</span>;
                           })()}
                         </TableCell>
                         <TableCell className="text-center !px-0" onClick={() => setSelectedVoterId(lead.id)}>
@@ -1187,31 +1224,36 @@ const LeadCRM = () => {
                               <TooltipTrigger asChild>
                                 <div className="inline-flex flex-col items-center gap-1 w-full">
                                   <div className="flex items-center gap-1.5">
-                                    {profile.key === 'positive' && <Smile className="h-[23px] w-[23px] shrink-0" style={{ color: profile.cssColor }} />}
-                                    {profile.key === 'neutral' && <Meh className="h-[23px] w-[23px] shrink-0" style={{ color: profile.cssColor }} />}
-                                    {profile.key === 'negative' && <Frown className="h-[23px] w-[23px] shrink-0" style={{ color: profile.cssColor }} />}
-                                    <Badge className={`text-[11px] font-bold border ${profile.badgeClass}`}>
+                                    <span className="text-base leading-none" aria-hidden>{profile.emoji}</span>
+                                    <Badge className={`text-xs font-bold border ${profile.badgeClass}`}>
                                       {profile.badge}
                                     </Badge>
                                   </div>
                                   <div className="flex flex-row-reverse items-center gap-1 w-full px-1">
-                                    <span className="text-[9px] text-muted-foreground tabular-nums">{eng}</span>
-                                    <div className="h-1 flex-1 rounded-full bg-slate-300 overflow-hidden">
+                                    <span className="text-[10px] text-muted-foreground tabular-nums w-6 text-left">{eng}</span>
+                                    <div className="h-1.5 flex-1 rounded-full bg-slate-200 overflow-hidden">
                                       <div
-                                        className="h-full rounded-full bg-slate-600"
-                                        style={{ width: `${Math.min(100, Math.max(0, eng))}%` }}
+                                        className="h-full rounded-full"
+                                        style={{
+                                          width: `${Math.min(100, Math.max(0, eng))}%`,
+                                          background: eng >= 80 ? 'hsl(0 84% 50%)'
+                                            : eng >= 60 ? 'hsl(25 95% 53%)'
+                                            : eng >= 30 ? 'hsl(45 93% 47%)'
+                                            : 'hsl(215 16% 47%)',
+                                        }}
                                       />
                                     </div>
-                                    <span className="text-[9px] text-muted-foreground tabular-nums">0</span>
+                                    <span className="text-[10px] text-muted-foreground tabular-nums w-3">0</span>
                                   </div>
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent side="top" className="text-right">
-                                {profile.badge} · סנטימנט {profile.label} · מעורבות {eng}
+                                {profile.badge} · ציון לידים {eng}/100 · סנטימנט {profile.label}
                               </TooltipContent>
                             </Tooltip>
                           </TooltipProvider>
                         </TableCell>
+
                         {extraColumns.map((col) => {
                           const ex = (lead as any).preferences?.extra_fields ?? {};
                           const val = ex?.[col];
