@@ -142,65 +142,20 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported }: {
   }), [contacts, fCity]);
 
   async function handleImport() {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { toast.error('יש להתחבר מחדש'); return; }
     setImporting(true);
     try {
-      let propsCount = 0;
-      let contactsCount = 0;
-
-      if (pickedProps.size) {
-        const rows = properties
-          .filter((p) => pickedProps.has(p.homely_id))
-          .map((p) => {
-            const photos = (p.photos && p.photos.length) ? p.photos : (p.photo ? [p.photo] : []);
-            const documents = p.documents ?? [];
-            return {
-              user_id: user.id,
-              slug: `${slugify(p.title || p.address || 'homely')}-${p.homely_id}`,
-              source: 'homely',
-              external_id: p.homely_id,
-              property_title: p.title || p.address || `נכס ${p.homely_id}`,
-              description: p.description || '',
-              asking_price: p.price || 0,
-              city: p.city || null,
-              address: p.address || null,
-              rooms: p.rooms || null,
-              sqm: p.sqm || null,
-              floor: p.floor || null,
-              status: 'live',
-              features: [],
-              source_metadata: {
-                homely_id: p.homely_id,
-                photos,
-                documents,
-                media_count: photos.length + documents.length,
-                homely_raw: p.raw,
-                synced_at: new Date().toISOString(),
-              },
-            };
-          });
-        const { error } = await supabase.from('listings').upsert(rows as any, { onConflict: 'source,external_id' });
-        if (error) throw error;
-        propsCount = rows.length;
-      }
-
-      if (pickedContacts.size) {
-        const rows = contacts
-          .filter((c) => pickedContacts.has(c.homely_id))
-          .map((c) => ({
-            phone_number: normalizeIlPhone(c.phone) || c.phone || c.email || c.homely_id,
-            full_name: c.full_name || null,
-            city: c.city || null,
-            email: c.email || null,
-            preferences: { homely_id: c.homely_id, homely_notes: c.notes, source: 'homely' },
-          }));
-        const { error } = await supabase.from('leads').upsert(rows as any, { onConflict: 'phone_number' });
-        if (error) throw error;
-        contactsCount = rows.length;
-      }
-
-      toast.success(`יובאו ${propsCount} נכסים ו-${contactsCount} אנשי קשר`);
+      const selectedProperties = properties.filter((p) => pickedProps.has(p.homely_id));
+      const selectedContacts = contacts.filter((c) => pickedContacts.has(c.homely_id));
+      const { data, error } = await supabase.functions.invoke('homely-fetch-property', {
+        body: { action: 'importOutJson', properties: selectedProperties, contacts: selectedContacts },
+      });
+      if (error) throw error;
+      const payload = data as any;
+      if (payload?.error) throw new Error(payload.error);
+      const count = Number(payload?.imported ?? (selectedProperties.length + selectedContacts.length));
+      toast.success(`הייבוא הושלם! ${count} רשומות עודכנו בהצלחה`);
+      setPickedProps(new Set());
+      setPickedContacts(new Set());
       onImported?.();
       onOpenChange(false);
     } catch (e) {
