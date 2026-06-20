@@ -79,11 +79,46 @@ function extractHash(session: any): string | null {
   return null;
 }
 
-function extractOfficeId(session: any, fallback: string | number): string {
-  const v = session?.officeId ?? session?.OfficeId ?? session?.office_id
-    ?? session?.user?.officeId ?? session?.User?.OfficeId
-    ?? session?.agent?.officeId ?? session?.Agent?.OfficeId;
-  return String(v ?? fallback ?? "9095");
+// The second path slot in getInterestingAdminByAgent is the Worker/Agent ID
+// (e.g. 6617303), NOT the office id. Walk the login payload for it; fall back
+// to the known-good agent id so the grid still populates while we audit.
+function extractAgentId(session: any, fallback = "6617303"): string {
+  const KEYS = [
+    "agentId", "AgentId", "AgentID", "agent_id",
+    "workerId", "WorkerId", "WorkerID", "worker_id",
+    "userId", "UserId", "UserID", "user_id",
+    "userCode", "UserCode", "id", "Id",
+  ];
+  const pick = (o: any) => {
+    if (!o || typeof o !== "object") return null;
+    for (const k of KEYS) {
+      const v = o[k];
+      if (typeof v === "number" && v > 0) return String(v);
+      if (typeof v === "string" && /^\d{4,}$/.test(v)) return v;
+    }
+    return null;
+  };
+  const direct = pick(session)
+    ?? pick(session?.user) ?? pick(session?.User)
+    ?? pick(session?.agent) ?? pick(session?.Agent)
+    ?? pick(session?.worker) ?? pick(session?.Worker)
+    ?? pick(session?.data) ?? pick(session?.result);
+  if (direct) return direct;
+  // Deep scan for any numeric id that looks like a worker id (7+ digits).
+  const stack: any[] = [session];
+  const seen = new Set<any>();
+  while (stack.length) {
+    const cur = stack.pop();
+    if (!cur || typeof cur !== "object" || seen.has(cur)) continue;
+    seen.add(cur);
+    for (const [k, v] of Object.entries(cur)) {
+      if ((typeof v === "number" || typeof v === "string") && /id$/i.test(k)) {
+        const s = String(v);
+        if (/^\d{6,}$/.test(s)) return s;
+      } else if (v && typeof v === "object") stack.push(v);
+    }
+  }
+  return fallback;
 }
 
 async function getJson(url: string) {
