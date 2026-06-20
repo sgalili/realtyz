@@ -235,6 +235,16 @@ function extractPhotos(html: string, baseUrl: string): string[] {
 function absolutize(u: string, base: string): string {
   try { return new URL(u, base).toString(); } catch { return u; }
 }
+function cleanUrl(u: string): string {
+  return String(u).replace(/\\\//g, "/").replace(/&amp;/g, "&").replace(/[.,;:]+$/g, "").trim();
+}
+function extractSourceUrl(raw: string): string | null {
+  const normalized = String(raw).replace(/\\\//g, "/").replace(/&amp;/g, "&").trim();
+  const preferred = normalized.match(/https?:\/\/(?:www\.)?(?:yad2|madlan)\.co\.il\/[^\s"'<>)\]}{]+/i)?.[0];
+  const generic = normalized.match(/https?:\/\/[^\s"'<>)\]}{]+/i)?.[0];
+  const direct = /^https?:\/\/\S+$/i.test(normalized) ? normalized : null;
+  return cleanUrl(preferred || generic || direct || "") || null;
+}
 function dedupe<T>(arr: T[]): T[] { return [...new Set(arr)]; }
 function cleanStr(v: any): string | null {
   if (typeof v !== "string") return null;
