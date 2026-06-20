@@ -381,8 +381,10 @@ Deno.serve(async (req) => {
 
       for (const c of contacts) {
         const homelyId = String(c?.homely_id ?? "").trim();
-        const phone = normalizeIlPhone(c?.phone) || String(c?.phone || c?.email || homelyId).trim();
-        if (!phone) continue;
+        const phone = normalizeIlPhone(c?.phone);
+        // Hard skip when there's no real phone — never fall back to the
+        // serial/homely_id, that's what produced bogus "16553" rows.
+        if (!phone || phone.length < 11) continue;
         const row = {
           phone_number: phone,
           full_name: c?.full_name ? String(c.full_name) : `איש קשר ${homelyId || phone}`,

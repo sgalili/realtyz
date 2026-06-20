@@ -32,7 +32,7 @@ import { toast } from 'sonner';
 import * as XLSX from 'xlsx';
 import { parsePdfToRows } from '@/lib/parsePdfTable';
 import { sendToN8n } from '@/lib/n8nService';
-import { formatPhoneDisplay } from '@/lib/formatPhone';
+import { formatPhoneDisplay, isValidIsraeliPhone } from '@/lib/formatPhone';
 import VoterAvatar from '@/components/VoterAvatar';
 import { useAuth } from '@/hooks/useAuth';
 import { useDemoMode } from '@/hooks/useDemoMode';
@@ -478,16 +478,29 @@ const LeadCRM = () => {
     const base = Number(lead?.engagement_score ?? 0);
     let bonus = 0;
     const prefs = (lead?.preferences ?? {}) as Record<string, any>;
-    const notes = String(prefs.homely_notes ?? prefs.summary ?? lead?.notes ?? '');
+    const raw = (prefs.homely_raw ?? {}) as Record<string, any>;
+    const notes = String(prefs.homely_notes ?? prefs.summary ?? lead?.notes ?? raw.comments1 ?? '');
     if (notes.length > 0) bonus += Math.min(20, Math.ceil(notes.length / 40));
     if (/בלעדי|חתימה|מ"מ|משא ומתן|negotiation|סגור|חתום/i.test(notes)) bonus += 25;
     if (/לא רלוונטי|לא מעוניין|לא עובד/i.test(notes)) bonus -= 30;
-    if (prefs.budget_max || prefs.desired_city || prefs.rooms) bonus += 10;
+    // Homely / KB intent signals (budget, search criteria, assigned broker)
+    if (prefs.budget_max || prefs.desired_city || prefs.rooms || prefs.budget_range) bonus += 10;
+    if (Number(raw.priceshekel) > 0 || Number(raw.priceshekel_max) > 0) bonus += 12;
+    if (raw.room || raw.objectresidence || raw.shcuna1) bonus += 6;
+    if (raw.agent && String(raw.agent).trim()) bonus += 8;       // assigned office manager
     if (lead?.last_contact_at) {
       const ageDays = (Date.now() - new Date(lead.last_contact_at).getTime()) / 86_400_000;
       if (ageDays < 3) bonus += 15; else if (ageDays > 30) bonus -= 10;
     }
-    return Math.max(0, Math.min(100, base + bonus));
+    const lastDate = raw.lastdate ? new Date(raw.lastdate).getTime() : null;
+    if (lastDate) {
+      const ageDays = (Date.now() - lastDate) / 86_400_000;
+      if (ageDays < 30) bonus += 10; else if (ageDays > 365) bonus -= 8;
+    }
+    // Minimum floor for Homely-imported leads with any real signal so we never default to ❄️.
+    const hasHomelySignal = !!(prefs.source === 'homely' && (notes || raw.priceshekel || raw.agent || raw.room));
+    const score = Math.max(0, Math.min(100, base + bonus));
+    return hasHomelySignal ? Math.max(score, 35) : score;
   };
 
   // Real-estate temperature tiers driven by the dynamic score.
@@ -674,6 +687,8 @@ const LeadCRM = () => {
       queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] });
       queryClient.invalidateQueries({ queryKey: ['leads-total'] });
       toast.success('מתעניין נוסף בהצלחה');
+      // Fire-and-forget Green API avatar fetch so the new row gets a real WA photo.
+      supabase.functions.invoke('fetch-wa-avatars', { body: { limit: 5 } }).catch(() => {});
       setAddVoterOpen(false);
       setNewVoter({ full_name: '', phone_number: '', city: '', identity_number: '', instagram_handle: '', telegram_username: '' });
     } catch (err: any) {
@@ -884,6 +899,9 @@ const LeadCRM = () => {
       ]);
 
       toast.success(`ייבוא הושלם: ${totalInserted.toLocaleString('he-IL')} רשומות נשמרו במאגר`);
+
+      // Background Green API avatar fetch for the freshly imported rows.
+      supabase.functions.invoke('fetch-wa-avatars', { body: { limit: Math.min(totalInserted + 50, 2000) } }).catch(() => {});
 
       const n8nResult = await sendToN8n('contacts_synced', { imported_count: totalInserted, phone_numbers: rows.map((r) => r.phone_number) });
       if (n8nResult.ok) toast.success('רשימות התפוצה עודכנו');
@@ -1209,7 +1227,9 @@ const LeadCRM = () => {
                           </div>
                         </TableCell>
                         <TableCell className="text-sm font-mono text-right" dir="ltr" onClick={(e) => { if (waHref) e.stopPropagation(); }}>
-                          {waHref ? (
+                          {!isValidIsraeliPhone(lead.phone_number) ? (
+                            <span className="text-muted-foreground">—</span>
+                          ) : waHref ? (
                             <a
                               href={waHref}
                               target="_blank"
@@ -1243,29 +1263,8 @@ const LeadCRM = () => {
                           <TooltipProvider delayDuration={150}>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <div className="inline-flex flex-col items-center gap-1 w-full">
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-base leading-none" aria-hidden>{profile.emoji}</span>
-                                    <Badge className={`text-xs font-bold border ${profile.badgeClass}`}>
-                                      {profile.badge}
-                                    </Badge>
-                                  </div>
-                                  <div className="flex flex-row-reverse items-center gap-1 w-full px-1">
-                                    <span className="text-[10px] text-muted-foreground tabular-nums w-6 text-left">{eng}</span>
-                                    <div className="h-1.5 flex-1 rounded-full bg-slate-200 overflow-hidden">
-                                      <div
-                                        className="h-full rounded-full"
-                                        style={{
-                                          width: `${Math.min(100, Math.max(0, eng))}%`,
-                                          background: eng >= 80 ? 'hsl(0 84% 50%)'
-                                            : eng >= 60 ? 'hsl(25 95% 53%)'
-                                            : eng >= 30 ? 'hsl(45 93% 47%)'
-                                            : 'hsl(215 16% 47%)',
-                                        }}
-                                      />
-                                    </div>
-                                    <span className="text-[10px] text-muted-foreground tabular-nums w-3">0</span>
-                                  </div>
+                                <div className="inline-flex items-center justify-center w-full">
+                                  <span className="text-2xl leading-none" aria-hidden>{profile.emoji}</span>
                                 </div>
                               </TooltipTrigger>
                               <TooltipContent side="top" className="text-right">
@@ -2010,7 +2009,12 @@ const LeadCRM = () => {
       <HomelyBulkSyncDialog
         open={homelyContactsSyncOpen}
         onOpenChange={setHomelyContactsSyncOpen}
-        onImported={() => { queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }); queryClient.invalidateQueries({ queryKey: ['leads-total'] }); }}
+        onImported={() => {
+          queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+          queryClient.invalidateQueries({ queryKey: ['leads-total'] });
+          // Immediately pull WA profile pictures for the freshly synced contacts.
+          supabase.functions.invoke('fetch-wa-avatars', { body: { limit: 2000 } }).catch(() => {});
+        }}
         mode="contacts"
       />
     </div>
