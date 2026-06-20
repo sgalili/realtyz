@@ -44,7 +44,36 @@ const META_LABELS: Record<string, string> = {
   exclusivity_until: 'בלעדיות עד',
 };
 
-function formatMetaValue(key: string, value: any): string {
+type JsonRecord = Record<string, unknown>;
+
+type DirectListing = JsonRecord & {
+  title: string;
+  price: number;
+  property_title?: string | null;
+  source_metadata?: JsonRecord | null;
+  images?: unknown[];
+  photos?: unknown[];
+  image?: string;
+  image_url?: string;
+  neighborhood?: string | null;
+  city?: string | null;
+};
+
+function isRecord(value: unknown): value is JsonRecord {
+  return !!value && typeof value === 'object' && !Array.isArray(value);
+}
+
+function photoUrlFrom(value: unknown): string | null {
+  if (!value) return null;
+  if (typeof value === 'string') return /^https?:\/\//.test(value) ? value : null;
+  if (isRecord(value)) {
+    const candidate = value.url || value.src || value.photo || value.image_url || value.image;
+    return typeof candidate === 'string' && /^https?:\/\//.test(candidate) ? candidate : null;
+  }
+  return null;
+}
+
+function formatMetaValue(key: string, value: unknown): string {
   if (value == null || value === '') return '—';
   if (typeof value === 'boolean') return value ? 'כן' : 'לא';
   if (typeof value === 'number') {
@@ -76,24 +105,15 @@ export default function PropertyDetail() {
         .maybeSingle();
       if (!row) return null;
       const features = Array.isArray(row.features) ? row.features : [];
-      const meta = ((row as any).source_metadata || {}) as Record<string, any>;
+      const meta = isRecord(row.source_metadata) ? row.source_metadata : {};
       const listing = {
-        ...(row as any),
+        ...row,
         title: row.property_title || '',
         price: Number(row.asking_price) || 0,
-      } as Record<string, any>;
+      } as DirectListing;
 
       // Image paths — check every known location, accept strings or {url,src,photo,image_url} objects.
-      const normalizePhoto = (p: any): string | null => {
-        if (!p) return null;
-        if (typeof p === 'string') return /^https?:\/\//.test(p) ? p : null;
-        if (typeof p === 'object') {
-          const v = p.url || p.src || p.photo || p.image_url || p.image;
-          return typeof v === 'string' && /^https?:\/\//.test(v) ? v : null;
-        }
-        return null;
-      };
-      const photoSources: any[] = [
+      const photoSources: unknown[] = [
         ...(Array.isArray(listing.source_metadata?.photos) ? listing.source_metadata.photos : []),
         ...(Array.isArray(listing.source_metadata?.images) ? listing.source_metadata.images : []),
         ...(Array.isArray(listing.images) ? listing.images : []),
@@ -106,7 +126,7 @@ export default function PropertyDetail() {
       if (typeof listing.image === 'string') photoSources.push(listing.image);
       if (typeof listing.image_url === 'string') photoSources.push(listing.image_url);
       const photos = Array.from(
-        new Set(photoSources.map(normalizePhoto).filter((s): s is string => !!s))
+        new Set(photoSources.map(photoUrlFrom).filter((s): s is string => !!s))
       );
 
       const dealType = String(meta.deal_type ?? meta.listing_type ?? '').toLowerCase();
@@ -117,7 +137,7 @@ export default function PropertyDetail() {
       if (priceNum > 0 && priceNum < 50_000) listingType = 'rent';
       else if (priceNum >= 500_000) listingType = 'sale';
       else listingType = dealType === 'rent' ? 'rent' : 'sale';
-      const textFeatures = (features as any[]).filter((f) => typeof f === 'string') as string[];
+      const textFeatures = features.filter((f): f is string => typeof f === 'string');
 
       const property = {
         id: String(row.id),
@@ -153,9 +173,9 @@ export default function PropertyDetail() {
         property,
         meta,
         amenities,
-        neighborhood: (row as any).neighborhood as string | null,
-        projectName: (row as any).project_name as string | null,
-        sourceUrl: (row as any).source_url as string | null,
+        neighborhood: row.neighborhood,
+        projectName: row.project_name,
+        sourceUrl: row.source_url,
       };
     },
   });
