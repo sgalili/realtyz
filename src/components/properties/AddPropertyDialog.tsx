@@ -342,8 +342,7 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
           </div>
         </div>
 
-
-        <DialogFooter className="gap-2">
+        <DialogFooter className="px-6 py-4 border-t shrink-0 flex-row justify-between sm:justify-between gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>
             ביטול
           </Button>
