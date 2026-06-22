@@ -618,7 +618,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                 if (n > 1) toast.success(`נוצרו ${n} חלונות תזמון · הראשון נטען לעורך`);
                 setScheduleDay(null);
                 const first = assignments[0];
-                onCreateAt(first.iso, { listing: first.listing, variant: first.variant, totalVariants: first.totalVariants });
+                onCreateAt(first.iso, { listing: first.listing, variant: first.variant, totalVariants: first.totalVariants, groupIds: selectedGroupIds });
               }}
             >
               צור וטען לעורך
