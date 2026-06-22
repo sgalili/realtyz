@@ -448,11 +448,11 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-semibold text-muted-foreground mb-1 block">משעה</label>
-                <Input type="time" value={winStart} onChange={(e) => setWinStart(e.target.value)} dir="rtl" className="text-right [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:mr-auto" />
+                <Input type="time" value={winStart} onChange={(e) => setWinStart(e.target.value)} dir="rtl" className="text-right [&::-webkit-calendar-picker-indicator]:mr-0 [&::-webkit-calendar-picker-indicator]:ml-auto" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-muted-foreground mb-1 block">עד שעה</label>
-                <Input type="time" value={winEnd} onChange={(e) => setWinEnd(e.target.value)} dir="rtl" className="text-right [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:mr-auto" />
+                <Input type="time" value={winEnd} onChange={(e) => setWinEnd(e.target.value)} dir="rtl" className="text-right [&::-webkit-calendar-picker-indicator]:mr-0 [&::-webkit-calendar-picker-indicator]:ml-auto" />
               </div>
             </div>
             <div>
