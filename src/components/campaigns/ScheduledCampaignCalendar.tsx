@@ -454,15 +454,103 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
                 <label className="text-xs font-semibold text-muted-foreground mb-1 block">משעה</label>
                 <Input type="time" value={winStart} onChange={(e) => setWinStart(e.target.value)} dir="rtl" className="text-right [&::-webkit-calendar-picker-indicator]:mr-0 [&::-webkit-calendar-picker-indicator]:ml-auto" />
               </div>
-              <div>
+              <div className="flex-1">
                 <label className="text-xs font-semibold text-muted-foreground mb-1 block">עד שעה</label>
                 <Input type="time" value={winEnd} onChange={(e) => setWinEnd(e.target.value)} dir="rtl" className="text-right [&::-webkit-calendar-picker-indicator]:mr-0 [&::-webkit-calendar-picker-indicator]:ml-auto" />
               </div>
+              <Popover open={recurrenceOpen} onOpenChange={setRecurrenceOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    title="חזרתיות"
+                    aria-label="חזרתיות"
+                    className={cn(
+                      'relative inline-flex items-center justify-center h-9 w-9 rounded-md text-foreground hover:text-primary transition-colors',
+                      recurrence !== 'none' && 'text-primary',
+                    )}
+                  >
+                    <Repeat className="h-5 w-5" />
+                    {recurrence !== 'none' && (
+                      <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary" />
+                    )}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" side="bottom" className="w-64 p-2" dir="rtl">
+                  <div className="text-xs font-semibold text-muted-foreground px-2 py-1">חזרתיות</div>
+                  <div className="flex flex-col">
+                    {([
+                      ['none', 'ללא חזרה'],
+                      ['daily', 'בכל יום'],
+                      ['weekly', 'בכל שבוע'],
+                      ['monthly', 'בכל חודש'],
+                      ['custom', 'ימים ושעות נבחרים'],
+                    ] as Array<[Recurrence, string]>).map(([key, label]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setRecurrence(key)}
+                        className={cn(
+                          'text-right text-sm rounded-md px-2 py-1.5 hover:bg-muted/60',
+                          recurrence === key && 'bg-primary/10 text-primary font-semibold',
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  {recurrence === 'custom' && (
+                    <div className="mt-2 border-t pt-2">
+                      <div className="text-[11px] text-muted-foreground mb-1 text-right">בחר ימי שבוע</div>
+                      <div className="flex flex-wrap gap-1 justify-end">
+                        {HEBREW_WEEKDAYS.map((d, i) => {
+                          const active = recurrenceDays.includes(i);
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() =>
+                                setRecurrenceDays((prev) =>
+                                  prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i],
+                                )
+                              }
+                              className={cn(
+                                'h-7 w-7 text-[11px] rounded-full border',
+                                active
+                                  ? 'bg-primary text-primary-foreground border-primary'
+                                  : 'bg-background text-foreground border-border hover:bg-muted/60',
+                              )}
+                            >
+                              {d}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {recurrence !== 'none' && (
+                    <div className="mt-2 border-t pt-2">
+                      <label className="text-[11px] text-muted-foreground block mb-1 text-right">
+                        {recurrence === 'weekly' || recurrence === 'custom'
+                          ? 'מספר שבועות'
+                          : recurrence === 'monthly' ? 'מספר חודשים' : 'מספר ימים'}
+                      </label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={52}
+                        value={recurrenceCount}
+                        onChange={(e) => setRecurrenceCount(Math.max(1, Math.min(52, Number(e.target.value) || 1)))}
+                        className="h-8 text-right"
+                      />
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
             </div>
             <div>
               <label className="text-xs font-semibold text-muted-foreground mb-1 block">כמות פוסטים לאותו יום</label>
