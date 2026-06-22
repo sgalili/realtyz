@@ -125,7 +125,7 @@ function CampaignsHeroAddButton() {
       className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white"
     >
       {active ? (
-        <ArrowLeft className="!h-5 !w-5" strokeWidth={2.5} />
+        <ArrowRight className="!h-5 !w-5" strokeWidth={2.5} />
       ) : (
         <Plus className="!h-5 !w-5" strokeWidth={2.5} />
       )}
