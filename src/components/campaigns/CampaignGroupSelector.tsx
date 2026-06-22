@@ -235,6 +235,17 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
         </div>
       )}
 
+      {/* Empty state — no groups discovered from any source */}
+      {!loading && !hasVisibleGroups && !error && (
+        <div className="rounded-lg border border-dashed border-border bg-muted/20 p-3 text-center text-xs text-muted-foreground">
+          לא נמצאו קבוצות פייסבוק מחוברות לפרופיל זה.
+          <br />
+          לחץ על "חבר קבוצות" כדי לסנכרן או להוסיף קבוצה ידנית.
+        </div>
+      )}
+
+
+
 
       {/* Checkbox list */}
       {hasVisibleGroups && (
