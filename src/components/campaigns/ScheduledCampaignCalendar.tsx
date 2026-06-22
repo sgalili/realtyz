@@ -65,7 +65,7 @@ const listingLabel = (l: ListingLite) => {
   return `${loc}${price}`;
 };
 
-export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt: (iso: string, extras?: { listing?: string | null; variant?: number; totalVariants?: number; groupIds?: string[] }) => void; onClose?: () => void }) {
+export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt: (iso: string, extras?: { listing?: string | null; variant?: number; totalVariants?: number; groupIds?: string[]; properties?: string[]; assignments?: Array<{ iso: string; listing: string | null; variant: number; totalVariants: number }> }) => void; onClose?: () => void }) {
   const queryClient = useQueryClient();
   const [rows, setRows] = useState<ScheduledRow[]>([]);
   const [loading, setLoading] = useState(true);
