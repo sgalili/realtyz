@@ -1327,7 +1327,7 @@ const ConfirmDispatchDialog = ({
         for (const target of targets) {
           const { data, error } = await supabase.functions.invoke('ayrshare-post', {
             body: {
-              post: body,
+              post: bodyToPublish,
               channels: [channel.id],
               campaign_name: target ? `${campaignName} · ${target.name}` : campaignName,
               media_urls: mediaUrls,
@@ -1387,7 +1387,7 @@ const ConfirmDispatchDialog = ({
           recipient_phone: l.phone_number,
           recipient_email: l.email,
           recipient_name: l.full_name,
-          message_body: body,
+          message_body: bodyToPublish,
           status: 'queued' as const,
         }));
         if (rows.length > 0) {
@@ -1413,7 +1413,7 @@ const ConfirmDispatchDialog = ({
                 recipient_email: l.email,
                 recipient_name: l.full_name,
                 subject: `${brandName} · עדכון אישי עבורך`,
-                intro: body || 'מצורפים הפרטים העדכניים שביקשת.',
+                intro: bodyToPublish || 'מצורפים הפרטים העדכניים שביקשת.',
                 cta_question: 'מתי נוח לך לקפוץ לראות?',
               },
             });
