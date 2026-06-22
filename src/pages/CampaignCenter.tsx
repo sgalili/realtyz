@@ -427,14 +427,21 @@ const listingOptionLabel = (listing: CampaignListing) => {
 
 const InlineComposer = ({
   channel, brandName, socialProfiles = [], onConfirm,
+  presetListingId, presetScheduleIso, presetVariant, presetVariants, instanceId,
 }: {
   channel: ChannelCard;
   brandName: string;
   socialProfiles?: SocialAccountProfile[];
   onConfirm: (payload: ConfirmPayload) => void;
+  presetListingId?: string | null;
+  presetScheduleIso?: string | null;
+  presetVariant?: number;
+  presetVariants?: number;
+  instanceId?: string;
 }) => {
-  // Session-persistence key — keeps unfinished drafts alive across collapse / expand / tab switch
-  const draftKey = `rz-composer-draft:${channel.id}`;
+  // Session-persistence key — namespaced per replicated instance so multiple
+  // composers on the same page don't clobber each other's drafts.
+  const draftKey = `rz-composer-draft:${channel.id}${instanceId ? `:${instanceId}` : ''}`;
   const readDraft = (): any => {
     if (typeof window === 'undefined') return null;
     try { return JSON.parse(sessionStorage.getItem(draftKey) || 'null'); } catch { return null; }
@@ -450,12 +457,12 @@ const InlineComposer = ({
   // Local datetime string in `YYYY-MM-DDTHH:mm` (input[type=datetime-local] format).
   const [scheduledLocal, setScheduledLocal] = useState<string>('');
 
-  // Preset from ?schedule=ISO so the calendar can deep-link the composer to
-  // a specific date tile. Run once per mount.
+  // Preset from props (multi-property replicas) OR ?schedule=ISO so the calendar
+  // can deep-link the composer. Run once per mount.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
-    const iso = params.get('schedule');
+    const iso = presetScheduleIso || params.get('schedule');
     if (iso) {
       const d = new Date(iso);
       if (!Number.isNaN(d.getTime())) {
@@ -465,16 +472,17 @@ const InlineComposer = ({
         setMode('scheduled');
       }
     }
-    const listingParam = params.get('listing');
+    const listingParam = presetListingId ?? params.get('listing');
     if (listingParam) setSelectedListingId(listingParam);
-    const variant = Number(params.get('variant') || '');
-    const variants = Number(params.get('variants') || '');
+    const variant = presetVariant ?? Number(params.get('variant') || '');
+    const variants = presetVariants ?? Number(params.get('variants') || '');
     if (variant > 0 && variants > 1) {
       const hint = `וריאציה ${variant} מתוך ${variants} — כתוב גרסה אחרת לחלוטין בזווית, פתיחה, מבנה וניסוח. אסור לחזור על משפטי פתיחה או על אותה ה-CTA של הוריאציות הקודמות.`;
       setCustomInstructions((prev) => (prev && prev.includes(hint) ? prev : (prev ? `${prev}\n\n${hint}` : hint)));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   // Multi-select of connected Facebook Group IDs to fan-out a single post to.
   // Persisted to localStorage so a reload / background refresh doesn't wipe the selection.
@@ -3304,16 +3312,59 @@ const CampaignCenter = () => {
             socialProfiles={socialAccountProfiles}
             onAddFacebookPage={() => handleConnectChannel(CHANNEL_CARDS.find((c) => c.id === 'facebook')!)}
           />
-          {pickedChannel && (
-            <>
-              <InlineComposer
-                channel={pickedChannel}
-                brandName={brandName}
-                socialProfiles={socialAccountProfiles}
-                onConfirm={(p) => setConfirmPayload(p)}
-              />
-            </>
-          )}
+          {pickedChannel && (() => {
+            const propertiesParam = searchParams.get('properties') || '';
+            const propertyIds = propertiesParam.split(',').map((s) => s.trim()).filter(Boolean);
+            let assignments: Array<{ iso: string; listing: string | null; variant: number; totalVariants: number }> = [];
+            try {
+              const raw = sessionStorage.getItem('rz-schedule-assignments');
+              if (raw) assignments = JSON.parse(raw) || [];
+            } catch {}
+            // Single composer when no multi-property fan-out
+            if (propertyIds.length <= 1) {
+              return (
+                <InlineComposer
+                  channel={pickedChannel}
+                  brandName={brandName}
+                  socialProfiles={socialAccountProfiles}
+                  onConfirm={(p) => setConfirmPayload(p)}
+                />
+              );
+            }
+            // One composer block per scheduled assignment — each tied to its
+            // listing, slot time and variant index for independent generation
+            // and an independent Approve/Schedule action.
+            const blocks = assignments.length > 0
+              ? assignments
+              : propertyIds.map((lid, i) => ({ iso: searchParams.get('schedule') || new Date().toISOString(), listing: lid, variant: 1, totalVariants: 1 }));
+            return (
+              <div className="space-y-4">
+                <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-2 text-sm text-foreground" dir="rtl">
+                  נוצרו <span className="font-bold">{blocks.length}</span> טיוטות פוסט עבור <span className="font-bold">{propertyIds.length}</span> נכסים. ערוך, אשר ושגר כל אחת בנפרד.
+                </div>
+                {blocks.map((b, idx) => (
+                  <div key={`${b.listing || 'na'}-${b.iso}-${idx}`} className="space-y-2">
+                    <div className="text-xs font-semibold text-muted-foreground" dir="rtl">
+                      טיוטה #{idx + 1} · {new Date(b.iso).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
+                      {b.totalVariants > 1 ? ` · וריאציה ${b.variant}/${b.totalVariants}` : ''}
+                    </div>
+                    <InlineComposer
+                      channel={pickedChannel}
+                      brandName={brandName}
+                      socialProfiles={socialAccountProfiles}
+                      onConfirm={(p) => setConfirmPayload(p)}
+                      presetListingId={b.listing}
+                      presetScheduleIso={b.iso}
+                      presetVariant={b.variant}
+                      presetVariants={b.totalVariants}
+                      instanceId={`${idx}-${b.listing || 'na'}`}
+                    />
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
         </TabsContent>
         <TabsContent value="published" className="mt-6">
           <PublishedFeed />
@@ -3325,12 +3376,21 @@ const CampaignCenter = () => {
               next.set('tab', 'create');
               next.set('schedule', iso);
               if (extras?.listing) next.set('listing', extras.listing); else next.delete('listing');
+              if (extras?.properties && extras.properties.length > 0) {
+                next.set('properties', extras.properties.join(','));
+              } else {
+                next.delete('properties');
+              }
               if (extras?.variant && extras?.totalVariants && extras.totalVariants > 1) {
                 next.set('variant', String(extras.variant));
                 next.set('variants', String(extras.totalVariants));
               } else {
                 next.delete('variant');
                 next.delete('variants');
+              }
+              // Persist full per-property assignments for the composer to read.
+              if (extras?.assignments) {
+                try { sessionStorage.setItem('rz-schedule-assignments', JSON.stringify(extras.assignments)); } catch {}
               }
               // Persist selected Facebook groups so the composer picks them up
               // (it hydrates `groupIds` from this localStorage key on mount).

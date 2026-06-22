@@ -65,7 +65,7 @@ const listingLabel = (l: ListingLite) => {
   return `${loc}${price}`;
 };
 
-export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt: (iso: string, extras?: { listing?: string | null; variant?: number; totalVariants?: number; groupIds?: string[] }) => void; onClose?: () => void }) {
+export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt: (iso: string, extras?: { listing?: string | null; variant?: number; totalVariants?: number; groupIds?: string[]; properties?: string[]; assignments?: Array<{ iso: string; listing: string | null; variant: number; totalVariants: number }> }) => void; onClose?: () => void }) {
   const queryClient = useQueryClient();
   const [rows, setRows] = useState<ScheduledRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -614,11 +614,19 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
 
                 try {
                   sessionStorage.setItem('rz-schedule-queue', JSON.stringify(assignments.slice(1)));
+                  sessionStorage.setItem('rz-schedule-assignments', JSON.stringify(assignments));
                 } catch {}
-                if (n > 1) toast.success(`נוצרו ${n} חלונות תזמון · הראשון נטען לעורך`);
+                if (n > 1) toast.success(`נוצרו ${n} חלונות תזמון · נטענו לעורך`);
                 setScheduleDay(null);
                 const first = assignments[0];
-                onCreateAt(first.iso, { listing: first.listing, variant: first.variant, totalVariants: first.totalVariants, groupIds: selectedGroupIds });
+                onCreateAt(first.iso, {
+                  listing: first.listing,
+                  variant: first.variant,
+                  totalVariants: first.totalVariants,
+                  groupIds: selectedGroupIds,
+                  properties: selectedListingIds,
+                  assignments,
+                });
               }}
             >
               צור וטען לעורך
