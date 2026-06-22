@@ -10,7 +10,7 @@
  * Mounted once at the layout level to avoid per-route hero "jumps".
  */
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Menu, Plus, FileSpreadsheet, User, ArrowLeft } from 'lucide-react';
+import { Menu, Plus, FileSpreadsheet, User, ArrowRight } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { RealtyzWave } from '@/components/RealtyzWave';
 // CreditBalancePill moved to /billing (Packages & Payments page).
