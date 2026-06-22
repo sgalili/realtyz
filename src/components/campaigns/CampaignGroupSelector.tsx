@@ -102,12 +102,56 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     }
   };
 
-  const load = async () => {
+  const readLocalManual = (): FacebookGroup[] => {
+    try {
+      const raw = localStorage.getItem(LOCAL_MANUAL_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch { return []; }
+  };
+  const writeLocalManual = (rows: FacebookGroup[]) => {
+    try { localStorage.setItem(LOCAL_MANUAL_KEY, JSON.stringify(rows)); } catch {}
+  };
+
+  const load = async (opts?: { force?: boolean }) => {
     setLoading(true);
     setError(null);
     try {
+      // Session-wide cache: fetch FB groups EXACTLY ONCE per app session.
+      // Subsequent mounts hydrate from sessionStorage so we never re-hit the
+      // provider redundantly and never blank an already-loaded list.
+      if (!opts?.force) {
+        try {
+          const cached = sessionStorage.getItem(SESSION_CACHE_KEY);
+          if (cached) {
+            const parsed = JSON.parse(cached) as { ayrshare: FacebookGroup[]; manual: FacebookGroup[] };
+            if (Array.isArray(parsed.ayrshare)) {
+              setAyrshareGroups(parsed.ayrshare);
+              const localManual = readLocalManual();
+              const dbManual = Array.isArray(parsed.manual) ? parsed.manual : [];
+              const seen = new Set<string>();
+              const merged = [...dbManual, ...localManual].filter((g) => {
+                if (seen.has(g.group_id)) return false;
+                seen.add(g.group_id);
+                return true;
+              });
+              setCustomUserGroups(merged);
+              setLoading(false);
+              return;
+            }
+          }
+        } catch {}
+      }
+
       const manual = await fetchCustomGroups();
-      setCustomUserGroups(manual);
+      const localManual = readLocalManual();
+      const seenManual = new Set<string>();
+      const mergedManual = [...manual, ...localManual].filter((g) => {
+        if (seenManual.has(g.group_id)) return false;
+        seenManual.add(g.group_id);
+        return true;
+      });
+      setCustomUserGroups(mergedManual);
 
       // 1) Live Ayrshare pull via active workspace profile key
       let list = await fetchFromAyrshare();
@@ -121,8 +165,14 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
         list = await fetchSyncedGroups();
       }
       // De-dupe API list against manual entries
-      const manualIds = new Set(manual.map((g) => g.group_id));
-      setAyrshareGroups(list.filter((g) => !manualIds.has(g.group_id)));
+      const manualIds = new Set(mergedManual.map((g) => g.group_id));
+      const apiList = list.filter((g) => !manualIds.has(g.group_id));
+      setAyrshareGroups(apiList);
+
+      // Commit to session cache so the rest of the session reads from here.
+      try {
+        sessionStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({ ayrshare: apiList, manual }));
+      } catch {}
     } catch (e: any) {
       setAyrshareGroups([]);
       setError(null);
@@ -132,12 +182,39 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
   };
 
   useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [workspaceOwnerId]);
-  useEffect(() => {
-    const onFocus = () => { load(); };
-    window.addEventListener("focus", onFocus);
-    return () => window.removeEventListener("focus", onFocus);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspaceOwnerId]);
+  // NOTE: focus listener removed — FB groups fetch is once-per-session by design.
+
+  // Manual paste of a Facebook Group URL / ID — surfaces immediately even
+  // when the provider returns an empty list, and persists in localStorage.
+  const [manualUrl, setManualUrl] = useState("");
+  const addManualGroup = () => {
+    const raw = manualUrl.trim();
+    if (!raw) return;
+    // Extract group id from common URL shapes; fall back to raw token.
+    const idMatch = raw.match(/facebook\.com\/groups\/([A-Za-z0-9._-]+)/i);
+    const id = idMatch ? idMatch[1] : raw.replace(/[^A-Za-z0-9._-]/g, "");
+    if (!id) { toast.error("מזהה קבוצה לא תקין"); return; }
+    const groupId = `manual:${id}`;
+    if (customUserGroups.some((g) => g.group_id === groupId) || ayrshareGroups.some((g) => g.group_id === groupId)) {
+      toast.info("הקבוצה כבר נוספה"); setManualUrl(""); return;
+    }
+    const row: FacebookGroup = {
+      group_id: groupId,
+      group_name: raw.startsWith("http") ? raw.replace(/^https?:\/\//, "").slice(0, 60) : id,
+      group_icon: null,
+      connected: true,
+      source: "manual",
+      group_url: raw.startsWith("http") ? raw : null,
+    };
+    const next = [row, ...customUserGroups];
+    setCustomUserGroups(next);
+    writeLocalManual([row, ...readLocalManual()]);
+    // Auto-select newly added group
+    onChange([...selectedIds, groupId]);
+    setManualUrl("");
+    toast.success("נוספה קבוצה ידנית");
+  };
+
 
   const handleFetchFacebookGroups = async () => {
     setConnecting(true);
