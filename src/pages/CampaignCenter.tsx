@@ -43,11 +43,12 @@ import { EmailAliasSetupDialog } from '@/components/campaigns/EmailAliasSetupDia
 import { getCampaignWorkspaceUserIds } from '@/lib/campaignWorkspace';
 
 
-type TabValue = 'create' | 'published';
+type TabValue = 'create' | 'published' | 'calendar';
 
 const TABS: { value: TabValue; label: string }[] = [
   { value: 'create',    label: 'צור קמפיין' },
   { value: 'published', label: 'פורסמו' },
+  { value: 'calendar',  label: 'לוח שנה' },
 ];
 
 type ChannelCard = {
