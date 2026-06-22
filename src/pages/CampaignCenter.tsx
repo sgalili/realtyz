@@ -1195,21 +1195,6 @@ const InlineComposer = ({
               <Send className="h-4 w-4 -scale-x-100" />
               {mode === 'scheduled' ? 'תזמן פרסום' : 'פרסם קמפיין'}
             </button>
-            {!isFromScheduling && (
-              <button
-                type="button"
-                onClick={() => setMode((m) => (m === 'scheduled' ? 'now' : 'scheduled'))}
-                title={mode === 'scheduled' ? 'בטל תזמון — פרסם עכשיו' : 'תזמן פרסום עתידי'}
-                aria-label="תזמן פרסום"
-                className={cn(
-                  'inline-flex items-center justify-center rounded-xl border px-3 transition',
-                  mode === 'scheduled'
-                    ? 'border-[#C9A84C] bg-[#C9A84C]/15 text-[#7a6210] hover:bg-[#C9A84C]/25'
-                    : 'border-border bg-background text-muted-foreground hover:text-foreground hover:border-primary/40',
-                )}>
-                <CalendarIcon className="h-5 w-5" />
-              </button>
-            )}
           </div>
         );
       })()}
