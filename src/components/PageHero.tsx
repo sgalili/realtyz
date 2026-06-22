@@ -120,14 +120,15 @@ function CampaignsHeroAddButton() {
       size="icon"
       variant="ghost"
       onClick={toggle}
-      aria-label={active ? 'סגירת יצירת קמפיין' : 'יצירת קמפיין חדש'}
-      title={active ? 'סגירת יצירת קמפיין' : 'יצירת קמפיין חדש'}
+      aria-label={active ? 'חזרה לקמפיינים' : 'יצירת קמפיין חדש'}
+      title={active ? 'חזרה לקמפיינים' : 'יצירת קמפיין חדש'}
       className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white"
     >
-      <Plus
-        className={cn('!h-5 !w-5 transition-transform duration-200', active && 'rotate-45')}
-        strokeWidth={2.5}
-      />
+      {active ? (
+        <ArrowLeft className="!h-5 !w-5" strokeWidth={2.5} />
+      ) : (
+        <Plus className="!h-5 !w-5" strokeWidth={2.5} />
+      )}
     </Button>
   );
 }
