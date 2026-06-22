@@ -1509,6 +1509,57 @@ export type Database = {
         }
         Relationships: []
       }
+      deal_room_matches: {
+        Row: {
+          acknowledged_at: string | null
+          broker_id: string
+          created_at: string
+          id: string
+          lead_id: string
+          listing_id: string
+          match_reasons: Json
+          match_score: number
+          status: string
+        }
+        Insert: {
+          acknowledged_at?: string | null
+          broker_id: string
+          created_at?: string
+          id?: string
+          lead_id: string
+          listing_id: string
+          match_reasons?: Json
+          match_score?: number
+          status?: string
+        }
+        Update: {
+          acknowledged_at?: string | null
+          broker_id?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+          listing_id?: string
+          match_reasons?: Json
+          match_score?: number
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "deal_room_matches_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "deal_room_matches_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       demo_captured_leads: {
         Row: {
           archetype: string | null
@@ -3657,6 +3708,44 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      short_urls: {
+        Row: {
+          clicks: number
+          created_at: string
+          created_by: string | null
+          last_click_at: string | null
+          long_url: string
+          property_id: string | null
+          slug: string
+        }
+        Insert: {
+          clicks?: number
+          created_at?: string
+          created_by?: string | null
+          last_click_at?: string | null
+          long_url: string
+          property_id?: string | null
+          slug: string
+        }
+        Update: {
+          clicks?: number
+          created_at?: string
+          created_by?: string | null
+          last_click_at?: string | null
+          long_url?: string
+          property_id?: string | null
+          slug?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "short_urls_property_id_fkey"
+            columns: ["property_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       social_connections: {
         Row: {
