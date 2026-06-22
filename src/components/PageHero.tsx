@@ -106,6 +106,27 @@ function LeadsHeroAddButton() {
   );
 }
 
+function CampaignsHeroCalendarButton() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const active = (searchParams.get('tab') ?? 'published') === 'calendar';
+  return (
+    <Button
+      size="icon"
+      variant="ghost"
+      onClick={() => navigate('/campaigns?tab=calendar')}
+      aria-label="לוח שנה מתוזמנים"
+      title="לוח שנה מתוזמנים"
+      className={cn(
+        'h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white',
+        active && 'bg-white/10'
+      )}
+    >
+      <CalendarIcon className="!h-5 !w-5" strokeWidth={2.5} />
+    </Button>
+  );
+}
+
 function CampaignsHeroAddButton() {
   const [searchParams, setSearchParams] = useSearchParams();
   const active = (searchParams.get('tab') ?? 'published') === 'create';
