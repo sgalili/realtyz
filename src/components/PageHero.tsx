@@ -219,12 +219,16 @@ export function PageHero() {
   const title = resolvePageTitle(location.pathname);
   const isPropertyDetail = /^\/properties\/[^/]+/.test(location.pathname);
   const propertySuffix = usePropertyHeroSuffix(location.pathname);
-  const isCampaignsCreate = location.pathname.startsWith('/campaigns') && (searchParams.get('tab') ?? 'published') === 'create';
+  const campaignsTab = searchParams.get('tab') ?? 'published';
+  const isCampaignsCreate = location.pathname.startsWith('/campaigns') && campaignsTab === 'create';
+  const isCampaignsCalendar = location.pathname.startsWith('/campaigns') && campaignsTab === 'calendar';
   const displayTitle = isCampaignsCreate
     ? 'פרסום פוסט חדש'
-    : isPropertyDetail && propertySuffix
-      ? `${title} - ${propertySuffix}`
-      : title;
+    : isCampaignsCalendar
+      ? 'פרסומים מתוזמנים'
+      : isPropertyDetail && propertySuffix
+        ? `${title} - ${propertySuffix}`
+        : title;
 
   // On /campaigns with a lead context, CampaignCenter renders its own
   // avatar+name hero — skip the default hero to avoid a stacked duplicate.
