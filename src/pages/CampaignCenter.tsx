@@ -439,12 +439,14 @@ const InlineComposer = ({
   presetVariants?: number;
   instanceId?: string;
 }) => {
-  // Session-persistence key — namespaced per replicated instance so multiple
-  // composers on the same page don't clobber each other's drafts.
+  // Persistent draft key — namespaced per replicated instance so multiple
+  // composers on the same page don't clobber each other's drafts. Persisted
+  // to localStorage so dialog closes, route changes, and hard refreshes
+  // never lose unfinished work. Cleared only on successful publish.
   const draftKey = `rz-composer-draft:${channel.id}${instanceId ? `:${instanceId}` : ''}`;
   const readDraft = (): any => {
     if (typeof window === 'undefined') return null;
-    try { return JSON.parse(sessionStorage.getItem(draftKey) || 'null'); } catch { return null; }
+    try { return JSON.parse(localStorage.getItem(draftKey) || sessionStorage.getItem(draftKey) || 'null'); } catch { return null; }
   };
   const cleanBody = (s: string) => s.replace(/^[\s\u200f\u200e]+/g, '').slice(0, MAX_CHARS);
   const initial = readDraft() || {};
