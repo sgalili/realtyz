@@ -40,14 +40,16 @@ import { learnFromEdit } from '@/lib/learnFromEdit';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import { IvrBroadcastDialog } from '@/components/campaigns/IvrBroadcastDialog';
 import { EmailAliasSetupDialog } from '@/components/campaigns/EmailAliasSetupDialog';
+import { ScheduledCampaignCalendar } from '@/components/campaigns/ScheduledCampaignCalendar';
 import { getCampaignWorkspaceUserIds } from '@/lib/campaignWorkspace';
 
 
-type TabValue = 'create' | 'published';
+type TabValue = 'create' | 'published' | 'calendar';
 
 const TABS: { value: TabValue; label: string }[] = [
   { value: 'create',    label: 'צור קמפיין' },
   { value: 'published', label: 'פורסמו' },
+  { value: 'calendar',  label: 'לוח שנה' },
 ];
 
 type ChannelCard = {
@@ -399,6 +401,23 @@ const InlineComposer = ({
   const [mode, setMode] = useState<'now' | 'scheduled'>('now');
   // Local datetime string in `YYYY-MM-DDTHH:mm` (input[type=datetime-local] format).
   const [scheduledLocal, setScheduledLocal] = useState<string>('');
+
+  // Preset from ?schedule=ISO so the calendar can deep-link the composer to
+  // a specific date tile. Run once per mount.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const iso = params.get('schedule');
+    if (!iso) return;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    setScheduledLocal(local);
+    setMode('scheduled');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Multi-select of connected Facebook Group IDs to fan-out a single post to.
   // Persisted to localStorage so a reload / background refresh doesn't wipe the selection.
   const [groupIds, setGroupIds] = useState<string[]>(() => {
@@ -1444,6 +1463,19 @@ type CampaignRow = {
   share_count?: number;
   view_count?: number;
   metrics_updated_at?: string | null;
+  status?: string | null;
+  sent_at?: string | null;
+};
+
+// A scheduled row is one whose status is "scheduled" AND whose execution time
+// (sent_at) is still in the future. This is the single source of truth for the
+// "מתוזמן" badge and the calendar view — never infer scheduling purely from
+// the presence of sent_at, because real sent posts also stamp sent_at.
+export const isScheduledRow = (r: Pick<CampaignRow, 'status' | 'sent_at'>): boolean => {
+  const status = String(r.status || '').toLowerCase();
+  if (status !== 'scheduled') return false;
+  if (!r.sent_at) return false;
+  return new Date(r.sent_at).getTime() > Date.now();
 };
 
 const extractFunctionError = async (error: any, fallback = 'שגיאת API חיצונית') => {
@@ -1696,7 +1728,7 @@ const PublishedFeed = () => {
     setCampaignUserIds(scopedUserIds);
     const { data } = await supabase
       .from('campaign_logs')
-      .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at')
+      .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at, status, sent_at')
       .in('user_id', scopedUserIds)
       .eq('is_archived', false)
       .order('created_at', { ascending: false })
@@ -2025,15 +2057,28 @@ const PublishedFeed = () => {
     return <div className="rounded-2xl border border-border/60 bg-card p-10 text-center text-sm text-muted-foreground">טוען…</div>;
   }
 
+  const scheduledCount = rows.filter((r) => isScheduledRow(r)).length;
+
   return (
     <div className="space-y-3">
-      <GlobalSocialFeed
-        rows={rows}
-        activeChannel={activeChannel}
-        onChannelChange={setActiveChannel}
-        connectedChannels={connectedChannels}
-        onConnectChannel={handleFeedConnect}
-      />
+      <div className="flex items-center justify-between gap-3">
+        <GlobalSocialFeed
+          rows={rows}
+          activeChannel={activeChannel}
+          onChannelChange={setActiveChannel}
+          connectedChannels={connectedChannels}
+          onConnectChannel={handleFeedConnect}
+        />
+        <a
+          href="/campaigns?tab=calendar"
+          className="inline-flex items-center gap-1.5 shrink-0 rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-800 ring-1 ring-amber-200 hover:bg-amber-200 transition-colors"
+          title="פתח לוח שנה של פרסומים מתוזמנים"
+        >
+          <CalendarIcon className="h-3.5 w-3.5" />
+          לוח שנה
+          {scheduledCount > 0 && <span className="tabular-nums">· {scheduledCount}</span>}
+        </a>
+      </div>
 
       {filteredRows && filteredRows.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/60 p-10 text-center">
@@ -2041,8 +2086,11 @@ const PublishedFeed = () => {
           <p className="mt-1 text-xs text-muted-foreground">לאחר שתפעיל קמפיין מהטאב "צור קמפיין", הוא יופיע כאן עם מעקב לייקים, שיתופים ותגובות.</p>
         </div>
       ) : (filteredRows || []).map((r) => {
+
+
         const isOpen = expanded[r.id] ?? false;
-        const dt = new Date(r.created_at);
+        const scheduled = isScheduledRow(r);
+        const dt = scheduled && r.sent_at ? new Date(r.sent_at) : new Date(r.created_at);
         const dateStr = dt.toLocaleDateString('he-IL') + ', ' + dt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
         const platformMeta = FEED_PLATFORMS.find((p) => p.id === String(r.channel || '').toLowerCase());
         const postUrl = derivePostUrl(r);
@@ -2105,20 +2153,34 @@ const PublishedFeed = () => {
                 </span>
                 <span className="text-sm font-semibold text-foreground truncate">{pageLabel}</span>
                 <span className="text-xs text-muted-foreground">·</span>
-                <span className="text-xs text-muted-foreground whitespace-nowrap">{dateStr}</span>
+                <span className={cn(
+                  'text-xs whitespace-nowrap',
+                  scheduled ? 'text-amber-700 font-semibold' : 'text-muted-foreground',
+                )}>
+                  {scheduled ? `מתוזמן ל-${dateStr}` : dateStr}
+                </span>
                 <span className="flex-1" />
-                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="תגובות">
-                  <MessageSquare className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
-                  <span className="tabular-nums">{commentDisplay}</span>
-                </span>
-                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="שיתופים">
-                  <Share2 className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
-                  <span className="tabular-nums">{r.share_count ?? 0}</span>
-                </span>
-                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="לייקים">
-                  <Heart className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
-                  <span className="tabular-nums">{r.like_count ?? 0}</span>
-                </span>
+                {scheduled ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200">
+                    <CalendarIcon className="h-3 w-3" />
+                    מתוזמן
+                  </span>
+                ) : (
+                  <>
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="תגובות">
+                      <MessageSquare className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
+                      <span className="tabular-nums">{commentDisplay}</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="שיתופים">
+                      <Share2 className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
+                      <span className="tabular-nums">{r.share_count ?? 0}</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="לייקים">
+                      <Heart className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
+                      <span className="tabular-nums">{r.like_count ?? 0}</span>
+                    </span>
+                  </>
+                )}
                 <button onClick={(e) => { e.stopPropagation(); setExpanded((s) => ({ ...s, [r.id]: !isOpen })); }}
                         className="rounded-md p-1 text-muted-foreground hover:bg-muted shrink-0"
                         aria-label={isOpen ? 'כווץ' : 'הרחב'}>
@@ -3122,8 +3184,6 @@ const CampaignCenter = () => {
   const remapped: TabValue =
     initial === 'campaigns' || initial === 'strategy' || initial === 'send' || initial === 'broadcast'
       ? 'create'
-      : initial === 'calendar'
-      ? 'published'
       : (initial as TabValue);
   const active: TabValue = TABS.some((t) => t.value === remapped) ? remapped : 'published';
 
@@ -3248,6 +3308,16 @@ const CampaignCenter = () => {
         </TabsContent>
         <TabsContent value="published" className="mt-6">
           <PublishedFeed />
+        </TabsContent>
+        <TabsContent value="calendar" className="mt-6">
+          <ScheduledCampaignCalendar
+            onCreateAt={(iso) => {
+              const next = new URLSearchParams(searchParams);
+              next.set('tab', 'create');
+              next.set('schedule', iso);
+              setSearchParams(next, { replace: false });
+            }}
+          />
         </TabsContent>
       </Tabs>
 
