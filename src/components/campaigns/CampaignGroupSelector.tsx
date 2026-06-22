@@ -71,34 +71,57 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
     }));
   };
 
+  // Fallback: any previously synchronized FB Group rows stored on
+  // ayrshare_social_accounts. Surfaces groups even when the live API
+  // rejects the request or the admin token lacks group scopes.
+  const fetchSyncedGroups = async (): Promise<FacebookGroup[]> => {
+    try {
+      const { data, error } = await (supabase as any)
+        .from("ayrshare_social_accounts")
+        .select("account_ref, account_name, page_name, profile_image_url, platform")
+        .in("platform", ["fbg", "facebook_group", "facebookgroup"]);
+      if (error) {
+        console.warn("[FB_GROUPS] synced fallback query failed", error);
+        return [];
+      }
+      return (data ?? [])
+        .filter((r: any) => r.account_ref)
+        .map((r: any) => ({
+          group_id: String(r.account_ref),
+          group_name: String(r.page_name || r.account_name || "קבוצה"),
+          group_icon: r.profile_image_url || null,
+          connected: true,
+          source: "api" as const,
+        }));
+    } catch (e) {
+      console.warn("[FB_GROUPS] synced fallback exception", e);
+      return [];
+    }
+  };
+
   const load = async () => {
     setLoading(true);
     setError(null);
     try {
       const manual = await fetchCustomGroups();
       setCustomUserGroups(manual);
-      if (manual.length > 0) {
-        console.log("[FB_GROUPS] custom_user_groups ready", manual.length);
-      }
 
-      // 1) Try Ayrshare (uses the active workspace profile key)
+      // 1) Live Ayrshare pull via active workspace profile key
       let list = await fetchFromAyrshare();
-      // 2) Fallback to Meta direct bypass
+      // 2) Meta direct bypass
       if (list.length === 0) {
         const { data } = await supabase.functions.invoke("facebook-groups-fetch", { body: {} });
         list = Array.isArray((data as any)?.groups) ? (data as any).groups : [];
       }
-      // 3) Final fallback — the workspace's manually curated group directory
+      // 3) Previously synchronized group rows in our DB
       if (list.length === 0) {
-        console.log("[FB_GROUPS] using custom_user_groups fallback", manual.length);
-        setAyrshareGroups([]);
-        return;
+        list = await fetchSyncedGroups();
       }
-      setAyrshareGroups(list);
+      // De-dupe API list against manual entries
+      const manualIds = new Set(manual.map((g) => g.group_id));
+      setAyrshareGroups(list.filter((g) => !manualIds.has(g.group_id)));
     } catch (e: any) {
       setAyrshareGroups([]);
-      setCustomUserGroups([]);
-      onChange([]);
       setError(null);
     } finally {
       setLoading(false);
