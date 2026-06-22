@@ -306,7 +306,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                       <button
                         key={r.id}
                         type="button"
-                        onClick={() => openEditor(r)}
+                        onClick={(e) => { e.stopPropagation(); openEditor(r); }}
                         className={cn(
                           'truncate text-right text-[11px] font-semibold rounded-md px-1.5 py-0.5 ring-1 hover:opacity-80 transition-opacity',
                           cls,
