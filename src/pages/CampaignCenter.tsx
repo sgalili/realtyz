@@ -606,7 +606,7 @@ const InlineComposer = ({
   // On channel change: rehydrate from saved draft for that channel (keeps unfinished work alive per platform)
   useEffect(() => {
     const saved = readDraft() || {};
-    setBody(saved.body || '');
+    setBody(cleanBody(saved.body || ''));
     setCustomInstructions(saved.customInstructions || '');
     setSelectedListingId(saved.selectedListingId ?? null);
     setAttachments(saved.attachments || []);
@@ -878,7 +878,7 @@ const InlineComposer = ({
                 return (
                   <button key={h.id} type="button"
                     onClick={() => {
-                      const loaded = (h.generated_text || '').slice(0, MAX_CHARS);
+                      const loaded = cleanBody(h.generated_text || '');
                       setBody(loaded);
                       setOriginalAiBody(loaded);
                       setAttachments(media.map((m: any) => ({ name: m?.name || 'קובץ', kind: m?.kind || 'file', url: m?.url || undefined })));
@@ -3376,9 +3376,13 @@ const CampaignCenter = () => {
         onConfirmed={async () => {
           const body = confirmPayload?.body ?? '';
           const shouldEmail = alsoEmail && pickedChannel?.id !== 'email' && connectedChannels.has('email') && body.trim().length > 0;
+          const publishedChannelId = pickedChannel?.id;
           setConfirmPayload(null);
           setPickedChannel(null);
           setPickedChannelIds(new Set());
+          if (publishedChannelId) {
+            try { sessionStorage.removeItem(`rz-composer-draft:${publishedChannelId}`); } catch {}
+          }
 
           setAlsoEmail(false);
           if (shouldEmail) {
