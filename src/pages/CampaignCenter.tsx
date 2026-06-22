@@ -3317,6 +3317,7 @@ const CampaignCenter = () => {
               next.set('schedule', iso);
               setSearchParams(next, { replace: false });
             }}
+            onClose={() => handleChange('published')}
           />
         </TabsContent>
       </Tabs>
