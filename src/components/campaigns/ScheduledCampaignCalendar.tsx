@@ -81,6 +81,45 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
   const [winStart, setWinStart] = useState('09:00');
   const [winEnd, setWinEnd] = useState('21:00');
   const [winCount, setWinCount] = useState(3);
+  const [listings, setListings] = useState<ListingLite[]>([]);
+  const [listingsLoading, setListingsLoading] = useState(false);
+  const [selectedListingIds, setSelectedListingIds] = useState<string[]>([]);
+  const [listingSearch, setListingSearch] = useState('');
+
+  useEffect(() => {
+    if (!scheduleDay) return;
+    let cancelled = false;
+    setListingsLoading(true);
+    setListingSearch('');
+    setSelectedListingIds([]);
+    (async () => {
+      const { data, error } = await supabase
+        .from('listings')
+        .select('id, property_title, city, neighborhood, address, asking_price, status, is_published, created_at')
+        .eq('is_archived', false)
+        .order('created_at', { ascending: false })
+        .limit(500);
+      if (cancelled) return;
+      if (error) {
+        console.error('[Calendar] listings fetch failed', error);
+        setListings([]);
+      } else {
+        setListings((data || []) as ListingLite[]);
+      }
+      setListingsLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [scheduleDay]);
+
+  const filteredListings = useMemo(() => {
+    const q = listingSearch.trim().toLowerCase();
+    if (!q) return listings;
+    return listings.filter((l) => {
+      const hay = [l.property_title, l.city, l.neighborhood, l.address, l.asking_price ? String(l.asking_price) : '']
+        .filter(Boolean).join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  }, [listings, listingSearch]);
 
   const load = async () => {
     setLoading(true);
