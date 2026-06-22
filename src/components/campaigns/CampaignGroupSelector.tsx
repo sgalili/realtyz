@@ -323,9 +323,34 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
         <div className="rounded-lg border border-dashed border-border bg-muted/20 p-3 text-center text-xs text-muted-foreground">
           לא נמצאו קבוצות פייסבוק מחוברות לפרופיל זה.
           <br />
-          לחץ על "חבר קבוצות" כדי לסנכרן או להוסיף קבוצה ידנית.
+          הדבק קישור / מזהה קבוצה למטה כדי להוסיף ידנית.
         </div>
       )}
+
+      {/* Inline manual paste — always available so the operator can inject
+          groups even when the provider returns an empty list. */}
+      <div className="flex items-center gap-2">
+        <Link2 className="h-4 w-4 text-muted-foreground shrink-0" />
+        <input
+          type="text"
+          value={manualUrl}
+          onChange={(e) => setManualUrl(e.target.value)}
+          onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addManualGroup(); } }}
+          placeholder="הדבק קישור או מזהה קבוצה (facebook.com/groups/...)"
+          className="flex-1 rounded-md border border-border bg-background px-2 py-1.5 text-xs text-foreground placeholder:text-muted-foreground focus:outline-none focus:ring-1 focus:ring-primary"
+          dir="rtl"
+        />
+        <button
+          type="button"
+          onClick={addManualGroup}
+          disabled={!manualUrl.trim()}
+          className="inline-flex items-center gap-1 rounded-md border border-primary/40 bg-primary/5 px-2 py-1 text-xs font-semibold text-primary hover:bg-primary/10 disabled:opacity-60"
+        >
+          <Plus className="h-3 w-3" /> הוסף
+        </button>
+      </div>
+
+
 
 
 
