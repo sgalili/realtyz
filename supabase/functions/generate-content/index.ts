@@ -393,6 +393,20 @@ NO-HASHTAGS RULE (HARD — ZERO TOLERANCE):
       });
     } catch (_e) { /* never block on enforcement failure */ }
 
+    // MANDATORY SHORT-LINK INJECTION: every promoted-listing post ends with
+    // a branded realtyz.co.il/r/<slug> CTA that 302-redirects into the
+    // GreenAPI WhatsApp chat for that exact property.
+    if (promotedListing?.id && userId) {
+      try {
+        const slug = await ensureListingShortlink(admin as any, promotedListing, userId);
+        if (slug) {
+          content = content.replace(/\n*[^\n]*דברו\s+איתנו\s+עכשיו[^\n]*/gu, "").replace(/\s+$/g, "");
+          content = `${content}\n\nדברו איתנו עכשיו: realtyz.co.il/r/${slug}`;
+        }
+      } catch (_e) { /* short-link is best-effort */ }
+    }
+
+
 
     const p = String(platform).toLowerCase();
     if ((p === "twitter" || p === "x") && content.length > 280) {
