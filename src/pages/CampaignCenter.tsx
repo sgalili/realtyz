@@ -188,7 +188,6 @@ const ChannelGrid = ({
             className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap opacity-100"
           >
             <span className="text-sm font-semibold text-slate-900">הכל</span>
-            <span className="text-sm font-bold tabular-nums text-slate-900" dir="ltr">{selectedCount}</span>
           </button>
           {[
             { id: 'facebook',  label: 'Facebook',  brand: 'facebook' },
@@ -217,7 +216,7 @@ const ChannelGrid = ({
                   aria-label={p.label}
                   className={cn('h-5 w-5', isConnected ? (BRAND_COLOR[p.id] ?? 'text-slate-600') : 'text-slate-500')}
                 />
-                <span className="text-sm font-bold tabular-nums text-slate-500" dir="ltr">{count}</span>
+                
               </button>
             );
           })}
