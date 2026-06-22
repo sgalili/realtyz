@@ -87,23 +87,23 @@ export function scrubForbiddenBylines(input: string): string {
 const FOOTER_RE = /ר\.?\s*מ\s*[:：]\s*3251676/i;
 const OWNER_PHONE = "052-2973500";
 const PHONE_RE = /052[\s\-]?297[\s\-]?3500/;
-const CONTACT_LINE = `לפרטים נוספים, סרטון מהנכס ותיאום ביקור פרטי, אל תהססו לפנות אליי בוואטסאפ או בטלפון ישירות: 📞 ${OWNER_PHONE}`;
 
 // HARD compliance constants. Udi's real byline + license — never replace,
 // never read from env, never fall back to anything else.
 const DEFAULT_OWNER_LICENSE = "3251676";
-const OWNER_BYLINE_LINE = "אודי ויטמן - אנגלו סכסון, הרצליה/רמה״ש";
-const OWNER_LICENSE_LINE = `ר.מ: ${DEFAULT_OWNER_LICENSE}`;
+// STRICT canonical 2-line footer — exactly as the owner specified.
+const OWNER_BYLINE_LINE = 'אודי ויטמן | אנגלו סכסון הרצליה/רמ"ש';
+const OWNER_LICENSE_LINE = `ר.מ: ${DEFAULT_OWNER_LICENSE} | ${OWNER_PHONE}`;
 
 function buildFooterBlock(_license?: string | null): string {
   // Byline + license are HARDCODED — ignore any caller-supplied value.
-  return `${CONTACT_LINE}\n\n${OWNER_BYLINE_LINE}\n${OWNER_LICENSE_LINE}`;
+  return `${OWNER_BYLINE_LINE}\n${OWNER_LICENSE_LINE}`;
 }
 
 /**
- * Append the canonical owner footer (contact line + hardcoded byline +
- * hardcoded license) at the very bottom of `text`. The byline and license
- * number are ALWAYS the canonical values — DB values and caller args ignored.
+ * Append the canonical owner footer (strict 2-line block) at the very bottom
+ * of `text`. Strips any prior contact lines, phone numbers, byline variants,
+ * or license lines the AI may have produced so the final block is unique.
  */
 export function appendLicenseFooter(
   text: string,
@@ -113,13 +113,23 @@ export function appendLicenseFooter(
   const body = String(text ?? "").replace(/\s+$/g, "");
   if (!body) return body;
 
-  // Strip any prior footer variants (old "רישיון תיווך מספר: ...",
-  // "בהליך אימות" placeholders, prior "ר.מ:" lines, prior byline line)
-  // so we can re-emit the canonical block cleanly.
+  // Strip every prior signature/contact variant so we emit ONE canonical block.
   let cleaned = body
+    // old license lines
     .replace(/\n*\s*רישיון\s*תיווך\s*מספר\s*[:：][^\n]*/gu, "")
+    .replace(/\n*\s*רישיון\s*תיווך\s*\d[^\n]*/gu, "")
     .replace(/\n*\s*ר\.?\s*מ\s*[:：][^\n]*/gu, "")
-    .replace(/\n*\s*אודי\s+ויטמן\s*-\s*אנגלו[^\n]*/gu, "")
+    // any prior byline line (Udi Witman + agency)
+    .replace(/\n*\s*אודי\s+ויטמן[^\n]*אנגלו[^\n]*/gu, "")
+    .replace(/\n*\s*אודי\s+ויטמן[^\n]*/gu, "")
+    // old contact/CTA lines the AI sometimes generates
+    .replace(/\n*[^\n]*לקבלת\s+פרטים\s+נוספים[^\n]*/gu, "")
+    .replace(/\n*[^\n]*לפרטים\s+נוספים[^\n]*/gu, "")
+    .replace(/\n*[^\n]*תיאום\s+(?:סיור|ביקור|צפייה|צפיה)[^\n]*/gu, "")
+    .replace(/\n*[^\n]*שלחו\s+הודעה\s+(?:או|ב)?\s*וו?ואטסאפ[^\n]*/gu, "")
+    .replace(/\n*[^\n]*וו?ואטסאפ\s+או\s+בטלפון[^\n]*/gu, "")
+    // bare phone numbers (with or without emoji prefix)
+    .replace(/\n*\s*(?:📞|☎️|📱)?\s*0?5[0-9][\s\-]?\d{3}[\s\-]?\d{4}[^\n]*/gu, "")
     .replace(/בהליך\s*אימות/gu, "")
     // STRICT: AI-assisted watermark is forbidden — purge every variant.
     .replace(/,\s*תוכן\s*בסיוע\s*AI/giu, "")
@@ -129,12 +139,7 @@ export function appendLicenseFooter(
     .replace(/\n{3,}/g, "\n\n")
     .replace(/\s+$/g, "");
 
-
-  const hasContact = PHONE_RE.test(cleaned);
-  const parts: string[] = [];
-  if (!hasContact) parts.push(CONTACT_LINE);
-  parts.push(`${OWNER_BYLINE_LINE}\n${OWNER_LICENSE_LINE}`);
-  return `${cleaned}\n\n${parts.join("\n\n")}`;
+  return `${cleaned}\n\n${OWNER_BYLINE_LINE}\n${OWNER_LICENSE_LINE}`;
 }
 
 export function enforceOwnerLaws(
