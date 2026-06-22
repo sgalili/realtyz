@@ -174,145 +174,166 @@ const ChannelGrid = ({
   accountNames?: Record<string, string>;
   socialProfiles?: SocialAccountProfile[];
   onAddFacebookPage?: () => void;
-}) => (
-
-  <div className="w-full rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
-    <div className="grid grid-cols-3 md:grid-cols-9 gap-2" dir="rtl">
-      {CHANNEL_CARDS.map((c) => {
-        const Icon = c.icon;
-        const isSelected = selectedIds.has(c.id);
-        const isConnected = connected.has(c.id);
-        const brandColor = isConnected ? (BRAND_COLOR[c.id] ?? c.iconColor ?? 'text-foreground') : 'text-muted-foreground/60';
-        const profiles = socialProfiles.filter((p) => p.platform === c.id || (c.id === 'x' && p.platform === 'twitter'));
-        return (
-          <button key={c.id} type="button"
-            onClick={() => isConnected ? onPick(c) : onConnect(c)}
-
-            aria-pressed={isSelected}
-            className={cn(
-              'group relative flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border bg-background p-3 text-center transition active:scale-[0.98]',
-              !isConnected && 'border-dashed border-border bg-muted/30',
-              isConnected && !isSelected && 'border-[#C9A84C]/60 hover:border-[#C9A84C] hover:shadow-md',
-              isSelected && 'border-primary ring-2 ring-primary/30 shadow-md',
-            )}>
-            {isConnected && isSelected && (
-              <span aria-hidden className="absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full text-primary" title="נבחר">
-                <CheckCircle2 className="h-4 w-4" />
-              </span>
-            )}
-
-            {c.id === 'facebook' && (
-              <span
-                role="button"
-                tabIndex={0}
-                onClick={(e) => { e.stopPropagation(); onAddFacebookPage?.(); }}
-                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onAddFacebookPage?.(); } }}
-                className="absolute left-1 top-1 z-10 inline-flex h-5 w-5 items-center justify-center rounded-full text-[#0a2540] hover:text-[#0a2540]/80"
-                title="הוסף עמוד נוסף"
-                aria-label="הוסף עמוד נוסף"
-              >
-                <Plus className="h-4 w-4" strokeWidth={2.75} />
-              </span>
-            )}
-
-
-            <span className="flex h-7 w-7 items-center justify-center">
-              {c.brand
-                ? <BrandIcon name={c.brand} className={cn('h-6 w-6', brandColor)} />
-                : Icon ? <Icon className={cn('h-6 w-6', brandColor)} /> : null}
+}) => {
+  const [open, setOpen] = useState(false);
+  const selectedCount = selectedIds.size;
+  return (
+    <Collapsible open={open} onOpenChange={setOpen} className="w-full rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <span className="text-sm font-bold text-foreground">בחירת ערוצים</span>
+          {selectedCount > 0 && (
+            <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground">
+              {selectedCount}
             </span>
+          )}
+        </div>
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" size="sm" className="gap-1 text-foreground hover:bg-muted">
+            {open ? 'סגור' : 'פתח'}
+            {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
+        </CollapsibleTrigger>
+      </div>
+      <CollapsibleContent>
+        <div className="grid grid-cols-3 md:grid-cols-9 gap-2 pt-4" dir="rtl">
+          {CHANNEL_CARDS.map((c) => {
+            const Icon = c.icon;
+            const isSelected = selectedIds.has(c.id);
+            const isConnected = connected.has(c.id);
+            const brandColor = isConnected ? (BRAND_COLOR[c.id] ?? c.iconColor ?? 'text-foreground') : 'text-muted-foreground/60';
+            const profiles = socialProfiles.filter((p) => p.platform === c.id || (c.id === 'x' && p.platform === 'twitter'));
+            return (
+              <button key={c.id} type="button"
+                onClick={() => isConnected ? onPick(c) : onConnect(c)}
 
-            <span className={cn(
-              'text-[13px] font-semibold leading-tight',
-              isConnected ? 'text-foreground' : 'text-muted-foreground/70',
-            )}>
-              {c.label}
-            </span>
+                aria-pressed={isSelected}
+                className={cn(
+                  'group relative flex aspect-square flex-col items-center justify-center gap-1 rounded-xl border bg-background p-3 text-center transition active:scale-[0.98]',
+                  !isConnected && 'border-dashed border-border bg-muted/30',
+                  isConnected && !isSelected && 'border-[#C9A84C]/60 hover:border-[#C9A84C] hover:shadow-md',
+                  isSelected && 'border-primary ring-2 ring-primary/30 shadow-md',
+                )}>
+                {isConnected && isSelected && (
+                  <span aria-hidden className="absolute right-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full text-primary" title="נבחר">
+                    <CheckCircle2 className="h-4 w-4" />
+                  </span>
+                )}
 
-            {c.free ? (
-              <span className={cn('text-[11px] font-bold', isConnected ? 'text-primary' : 'text-muted-foreground/60')}>
-                חינם
-              </span>
-            ) : (
-              <span className={cn('text-[12px] font-bold', isConnected ? 'text-foreground' : 'text-muted-foreground/60')} dir="ltr">
-                <bdi dir="ltr">₪{c.price}</bdi>
-              </span>
-            )}
+                {c.id === 'facebook' && (
+                  <span
+                    role="button"
+                    tabIndex={0}
+                    onClick={(e) => { e.stopPropagation(); onAddFacebookPage?.(); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onAddFacebookPage?.(); } }}
+                    className="absolute left-1 top-1 z-10 inline-flex h-5 w-5 items-center justify-center rounded-full text-[#0a2540] hover:text-[#0a2540]/80"
+                    title="הוסף עמוד נוסף"
+                    aria-label="הוסף עמוד נוסף"
+                  >
+                    <Plus className="h-4 w-4" strokeWidth={2.75} />
+                  </span>
+                )}
 
 
-            {isConnected && profiles.length > 0 ? (
-              <span className="mt-0.5 flex w-full flex-col gap-1 overflow-hidden">
-                {profiles.slice(0, 2).map((profile) => {
-                  const url = profile.profileUrl || buildAccountUrl(c.id, profile.accountRef || profile.name);
+                <span className="flex h-7 w-7 items-center justify-center">
+                  {c.brand
+                    ? <BrandIcon name={c.brand} className={cn('h-6 w-6', brandColor)} />
+                    : Icon ? <Icon className={cn('h-6 w-6', brandColor)} /> : null}
+                </span>
+
+                <span className={cn(
+                  'text-[13px] font-semibold leading-tight',
+                  isConnected ? 'text-foreground' : 'text-muted-foreground/70',
+                )}>
+                  {c.label}
+                </span>
+
+                {c.free ? (
+                  <span className={cn('text-[11px] font-bold', isConnected ? 'text-primary' : 'text-muted-foreground/60')}>
+                    חינם
+                  </span>
+                ) : (
+                  <span className={cn('text-[12px] font-bold', isConnected ? 'text-foreground' : 'text-muted-foreground/60')} dir="ltr">
+                    <bdi dir="ltr">₪{c.price}</bdi>
+                  </span>
+                )}
+
+
+                {isConnected && profiles.length > 0 ? (
+                  <span className="mt-0.5 flex w-full flex-col gap-1 overflow-hidden">
+                    {profiles.slice(0, 2).map((profile) => {
+                      const url = profile.profileUrl || buildAccountUrl(c.id, profile.accountRef || profile.name);
+                      const handleOpen = (e: React.MouseEvent) => {
+                        e.stopPropagation();
+                        if (url) window.open(url, '_blank', 'noopener,noreferrer');
+                      };
+                      return (
+                        <span key={profile.id} className="block max-w-full text-center">
+                          <span
+                            role={url ? 'link' : undefined}
+                            tabIndex={url ? 0 : undefined}
+                            onClick={url ? handleOpen : undefined}
+                            onKeyDown={url ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleOpen(e as unknown as React.MouseEvent); } : undefined}
+                            className={cn('block truncate text-[10px] font-bold text-[#8a7327]', url && 'cursor-pointer hover:underline')}
+                            title={profile.name}
+                          >
+                            {profile.name}
+                          </span>
+                        </span>
+                      );
+                    })}
+                    {profiles.length > 2 && <span className="text-[9px] font-semibold text-muted-foreground">+{profiles.length - 2}</span>}
+                  </span>
+                ) : isConnected && accountNames[c.id] && (() => {
+                  const raw = accountNames[c.id];
+                  // Strip any "Realtyz Workspace - " prefix, trailing "- 1234" numeric ids,
+                  // and profile-key / refId tokens so only the human page name remains.
+                  const cleaned = String(raw)
+                    .replace(/^Realtyz Workspace\s*[-–]\s*/i, '')
+                    .replace(/\s*[-–]\s*\d{2,}$/, '')
+                    .replace(/\b[0-9a-f]{8}-[0-9a-f]{4,}\b/gi, '')
+                    .replace(/\b[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}\b/g, '')
+                    .trim();
+                  const display = formatPhoneDisplay(cleaned) || cleaned || raw;
+
+                  const url = buildAccountUrl(c.id, raw);
                   const handleOpen = (e: React.MouseEvent) => {
                     e.stopPropagation();
                     if (url) window.open(url, '_blank', 'noopener,noreferrer');
                   };
                   return (
-                    <span key={profile.id} className="block max-w-full text-center">
-                      <span
-                        role={url ? 'link' : undefined}
-                        tabIndex={url ? 0 : undefined}
-                        onClick={url ? handleOpen : undefined}
-                        onKeyDown={url ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleOpen(e as unknown as React.MouseEvent); } : undefined}
-                        className={cn('block truncate text-[10px] font-bold text-[#8a7327]', url && 'cursor-pointer hover:underline')}
-                        title={profile.name}
-                      >
-                        {profile.name}
-                      </span>
+                    <span
+                      role={url ? 'link' : undefined}
+                      tabIndex={url ? 0 : undefined}
+                      onClick={url ? handleOpen : undefined}
+                      onKeyDown={url ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleOpen(e as unknown as React.MouseEvent); } : undefined}
+                      className={cn(
+                        'mt-0.5 inline-block max-w-full truncate rounded-md border border-[#C9A84C]/40 bg-[#C9A84C]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#8a7327]',
+                        url && 'cursor-pointer hover:bg-[#C9A84C]/20 hover:underline',
+                      )}
+                      dir="ltr"
+                      title={url ? `פתח: ${display}` : display}
+                    >
+                      {display}
                     </span>
                   );
-                })}
-                {profiles.length > 2 && <span className="text-[9px] font-semibold text-muted-foreground">+{profiles.length - 2}</span>}
-              </span>
-            ) : isConnected && accountNames[c.id] && (() => {
-              const raw = accountNames[c.id];
-              // Strip any "Realtyz Workspace - " prefix, trailing "- 1234" numeric ids,
-              // and profile-key / refId tokens so only the human page name remains.
-              const cleaned = String(raw)
-                .replace(/^Realtyz Workspace\s*[-–]\s*/i, '')
-                .replace(/\s*[-–]\s*\d{2,}$/, '')
-                .replace(/\b[0-9a-f]{8}-[0-9a-f]{4,}\b/gi, '')
-                .replace(/\b[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}\b/g, '')
-                .trim();
-              const display = formatPhoneDisplay(cleaned) || cleaned || raw;
-
-              const url = buildAccountUrl(c.id, raw);
-              const handleOpen = (e: React.MouseEvent) => {
-                e.stopPropagation();
-                if (url) window.open(url, '_blank', 'noopener,noreferrer');
-              };
-              return (
-                <span
-                  role={url ? 'link' : undefined}
-                  tabIndex={url ? 0 : undefined}
-                  onClick={url ? handleOpen : undefined}
-                  onKeyDown={url ? (e) => { if (e.key === 'Enter' || e.key === ' ') handleOpen(e as unknown as React.MouseEvent); } : undefined}
-                  className={cn(
-                    'mt-0.5 inline-block max-w-full truncate rounded-md border border-[#C9A84C]/40 bg-[#C9A84C]/10 px-1.5 py-0.5 text-[10px] font-semibold text-[#8a7327]',
-                    url && 'cursor-pointer hover:bg-[#C9A84C]/20 hover:underline',
-                  )}
-                  dir="ltr"
-                  title={url ? `פתח: ${display}` : display}
-                >
-                  {display}
-                </span>
-              );
-            })()}
+                })()}
 
 
-            {!isConnected && (
-              <span className="mt-1 inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
-                <Plug className="h-3 w-3" />
-                חבר
-              </span>
-            )}
-          </button>
-        );
-      })}
-    </div>
-  </div>
-);
+                {!isConnected && (
+                  <span className="mt-1 inline-flex items-center gap-1 rounded-md border border-border bg-background px-2 py-0.5 text-[11px] font-medium text-muted-foreground">
+                    <Plug className="h-3 w-3" />
+                    חבר
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+      </CollapsibleContent>
+    </Collapsible>
+  );
+};
 
 
 
