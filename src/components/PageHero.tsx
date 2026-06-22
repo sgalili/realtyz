@@ -10,7 +10,7 @@
  * Mounted once at the layout level to avoid per-route hero "jumps".
  */
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Menu, Plus, FileSpreadsheet, User, ArrowLeft } from 'lucide-react';
+import { Menu, Plus, FileSpreadsheet, User, ArrowLeft, ArrowRight } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { RealtyzWave } from '@/components/RealtyzWave';
 // CreditBalancePill moved to /billing (Packages & Payments page).
@@ -120,14 +120,15 @@ function CampaignsHeroAddButton() {
       size="icon"
       variant="ghost"
       onClick={toggle}
-      aria-label={active ? 'סגירת יצירת קמפיין' : 'יצירת קמפיין חדש'}
-      title={active ? 'סגירת יצירת קמפיין' : 'יצירת קמפיין חדש'}
+      aria-label={active ? 'חזרה לקמפיינים' : 'יצירת קמפיין חדש'}
+      title={active ? 'חזרה לקמפיינים' : 'יצירת קמפיין חדש'}
       className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white"
     >
-      <Plus
-        className={cn('!h-5 !w-5 transition-transform duration-200', active && 'rotate-45')}
-        strokeWidth={2.5}
-      />
+      {active ? (
+        <ArrowRight className="!h-5 !w-5" strokeWidth={2.5} />
+      ) : (
+        <Plus className="!h-5 !w-5" strokeWidth={2.5} />
+      )}
     </Button>
   );
 }
