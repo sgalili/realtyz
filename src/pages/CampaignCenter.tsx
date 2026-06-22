@@ -182,13 +182,6 @@ const ChannelGrid = ({
     <Collapsible open={open} onOpenChange={setOpen} className="w-full">
       <div className="flex items-center justify-between gap-3">
         <div className="flex items-center gap-4 overflow-x-auto scrollbar-none -mx-1 px-1 pb-1" dir="rtl">
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap opacity-100"
-          >
-            <span className="text-sm font-semibold text-slate-900">הכל</span>
-          </button>
           {[
             { id: 'facebook',  label: 'Facebook',  brand: 'facebook' },
             { id: 'instagram', label: 'Instagram', brand: 'instagram' },
