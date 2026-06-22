@@ -397,46 +397,52 @@ function PersonalTab() {
 
 function WorkspaceTab() {
   const { user } = useAuth();
-  const meta = (user?.user_metadata ?? {}) as Record<string, any>;
-  const { data: onboarding } = useQuery({
-    queryKey: ['profile-onboarding-state', user?.id],
-    enabled: !!user?.id,
-    queryFn: async () => {
-      const { data } = await supabase.from('onboarding_state').select('*').eq('user_id', user!.id).maybeSingle();
-      return data;
-    },
-  });
+  const { activeWorkspace, activeWorkspaceId } = useWorkspace();
+  const ownerId = activeWorkspaceId ?? user?.id ?? null;
+  const isOwner = !!user?.id && !!ownerId && user.id === ownerId;
 
-  const initialValues = useMemo(() => {
-    const base = {
-      agency_name: meta.agency_name || 'ריאלטיז נדל"ן',
-      service_areas: meta.service_areas || 'מרכז הארץ',
-    };
-    try {
-      const raw = window.localStorage.getItem(WORKSPACE_STORAGE_KEY);
-      if (raw) return { ...base, ...JSON.parse(raw) };
-    } catch {}
-    return base;
-  }, [meta.agency_name, meta.service_areas, onboarding?.tone, onboarding?.initial_message]);
-
-  const [values, setValues] = useState(initialValues);
+  const [agencyName, setAgencyName] = useState('');
+  const [serviceAreas, setServiceAreas] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
   const [uploading, setUploading] = useState(false);
-  const [hydrated, setHydrated] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
+  // Load shared workspace branding from white_label_settings keyed by the workspace owner.
   useEffect(() => {
-    if (hydrated) return;
-    setValues(initialValues);
-    try {
-      const savedLogo = window.localStorage.getItem(LOGO_STORAGE_KEY);
-      if (savedLogo) setLogoUrl(savedLogo);
-    } catch {}
-    setHydrated(true);
-  }, [initialValues, hydrated]);
+    if (!ownerId) return;
+    let cancelled = false;
+    (async () => {
+      setLoading(true);
+      try {
+        const { data } = await supabase
+          .from('white_label_settings')
+          .select('agency_name, logo_url')
+          .eq('user_id', ownerId)
+          .maybeSingle();
+        if (cancelled) return;
+        setAgencyName((data as any)?.agency_name || activeWorkspace?.workspace_name || 'ריאלטיז נדל"ן');
+        setLogoUrl((data as any)?.logo_url || activeWorkspace?.workspace_logo_url || '');
+
+        // service_areas isn't on white_label_settings; pull from owner's user_metadata via profiles fallback
+        const { data: ownerProfile } = await supabase
+          .from('profiles')
+          .select('city')
+          .eq('id', ownerId)
+          .maybeSingle();
+        if (cancelled) return;
+        setServiceAreas((ownerProfile as any)?.city || 'מרכז הארץ');
+      } finally {
+        if (!cancelled) setLoading(false);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [ownerId, activeWorkspace?.workspace_name, activeWorkspace?.workspace_logo_url]);
 
   const onLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !user?.id) return;
+    if (!isOwner) { toast.error('רק בעל החשבון יכול לעדכן את לוגו המשרד'); return; }
     if (file.size > 5 * 1024 * 1024) { toast.error('הקובץ גדול מדי (מקסימום 5MB)'); return; }
     setUploading(true);
     try {
@@ -446,8 +452,12 @@ function WorkspaceTab() {
       if (upErr) throw upErr;
       const { data: pub } = supabase.storage.from('agency-logos').getPublicUrl(path);
       setLogoUrl(pub.publicUrl);
-      window.localStorage.setItem(LOGO_STORAGE_KEY, pub.publicUrl);
-      toast.success('הלוגו הועלה בהצלחה');
+      const { error: wlErr } = await supabase
+        .from('white_label_settings')
+        .upsert({ user_id: user.id, logo_url: pub.publicUrl, agency_name: agencyName || null } as any, { onConflict: 'user_id' });
+      if (wlErr) throw wlErr;
+      try { window.localStorage.setItem(LOGO_STORAGE_KEY, pub.publicUrl); } catch {}
+      toast.success('הלוגו הועלה ושותף לכל חברי המשרד');
     } catch (err: any) {
       toast.error(err?.message || 'שגיאה בהעלאת הלוגו');
     } finally {
@@ -456,21 +466,43 @@ function WorkspaceTab() {
     }
   };
 
-  const removeLogo = () => {
+  const removeLogo = async () => {
+    if (!isOwner || !user?.id) return;
     setLogoUrl('');
-    window.localStorage.removeItem(LOGO_STORAGE_KEY);
+    await supabase
+      .from('white_label_settings')
+      .upsert({ user_id: user.id, logo_url: null } as any, { onConflict: 'user_id' });
+    try { window.localStorage.removeItem(LOGO_STORAGE_KEY); } catch {}
     toast.success('הלוגו הוסר');
   };
 
-  const save = () => {
-    window.localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify(values));
-    toast.success('פרטי המשרד נשמרו');
+  const save = async () => {
+    if (!isOwner || !user?.id) { toast.error('רק בעל החשבון יכול לשמור את פרטי המשרד'); return; }
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from('white_label_settings')
+        .upsert({ user_id: user.id, agency_name: agencyName || null, logo_url: logoUrl || null } as any, { onConflict: 'user_id' });
+      if (error) throw error;
+      await supabase.auth.updateUser({ data: { agency_name: agencyName, service_areas: serviceAreas } });
+      try { window.localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify({ agency_name: agencyName, service_areas: serviceAreas })); } catch {}
+      toast.success('פרטי המשרד נשמרו ושותפו לכל חברי המשרד');
+    } catch (err: any) {
+      toast.error(err?.message || 'שמירה נכשלה');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="text-right">פרטי המשרד והסוכנות</CardTitle>
+        <CardTitle className="text-right flex items-center justify-between gap-2">
+          <span>פרטי המשרד והסוכנות</span>
+          {!isOwner && (
+            <span className="text-[11px] font-normal text-muted-foreground">לצפייה בלבד · מנוהל ע״י בעל החשבון</span>
+          )}
+        </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="rounded-lg border bg-card/40 p-3 text-right">
@@ -482,22 +514,26 @@ function WorkspaceTab() {
             <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-background">
               {logoUrl ? <img src={logoUrl} alt="לוגו המשרד" className="h-full w-full object-contain" /> : <ImageIcon className="h-7 w-7 text-muted-foreground/50" />}
             </div>
-            <div className="flex flex-1 flex-col gap-2">
-              <label className="inline-flex">
-                <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={onLogoUpload} disabled={uploading} />
-                <span className={cn('inline-flex items-center justify-center gap-1.5 rounded-md border bg-background px-3 py-2 text-sm font-medium cursor-pointer hover:bg-accent transition-colors', uploading && 'opacity-50 pointer-events-none')}>
-                  <Upload className="h-3.5 w-3.5" />
-                  {uploading ? 'מעלה...' : logoUrl ? 'החלפת לוגו' : 'העלאת לוגו'}
-                </span>
-              </label>
-              {logoUrl && (
-                <Button type="button" variant="ghost" size="sm" onClick={removeLogo} className="text-destructive hover:bg-destructive/10 self-start">
-                  <Trash2 className="h-3.5 w-3.5 ml-1" />
-                  הסר לוגו
-                </Button>
-              )}
-              <p className="text-xs text-muted-foreground">PNG, JPG, WEBP או SVG. עד 5MB.</p>
-            </div>
+            {isOwner ? (
+              <div className="flex flex-1 flex-col gap-2">
+                <label className="inline-flex">
+                  <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={onLogoUpload} disabled={uploading} />
+                  <span className={cn('inline-flex items-center justify-center gap-1.5 rounded-md border bg-background px-3 py-2 text-sm font-medium cursor-pointer hover:bg-accent transition-colors', uploading && 'opacity-50 pointer-events-none')}>
+                    <Upload className="h-3.5 w-3.5" />
+                    {uploading ? 'מעלה...' : logoUrl ? 'החלפת לוגו' : 'העלאת לוגו'}
+                  </span>
+                </label>
+                {logoUrl && (
+                  <Button type="button" variant="ghost" size="sm" onClick={removeLogo} className="text-destructive hover:bg-destructive/10 self-start">
+                    <Trash2 className="h-3.5 w-3.5 ml-1" />
+                    הסר לוגו
+                  </Button>
+                )}
+                <p className="text-xs text-muted-foreground">PNG, JPG, WEBP או SVG. עד 5MB.</p>
+              </div>
+            ) : (
+              <p className="flex-1 text-xs text-muted-foreground">לוגו המשרד מנוהל ע״י בעל החשבון.</p>
+            )}
           </div>
         </div>
 
@@ -507,7 +543,7 @@ function WorkspaceTab() {
               <Building2 className="h-3.5 w-3.5" />
               <span>שם המשרד</span>
             </div>
-            <Input dir="rtl" value={values.agency_name} onChange={(e) => setValues((v) => ({ ...v, agency_name: e.target.value }))} className="h-9 text-right text-sm font-semibold" />
+            <Input dir="rtl" value={agencyName} disabled={!isOwner || loading} onChange={(e) => setAgencyName(e.target.value)} className="h-9 text-right text-sm font-semibold" />
           </div>
 
           <div className="rounded-lg border bg-card/40 p-3 text-right">
@@ -515,14 +551,23 @@ function WorkspaceTab() {
               <MapPin className="h-3.5 w-3.5" />
               <span>אזורי שירות</span>
             </div>
-            <IsraeliCityPicker value={values.service_areas} onChange={(v) => setValues((s) => ({ ...s, service_areas: v }))} placeholder="בחר עיר / אזור" />
+            {isOwner ? (
+              <IsraeliCityPicker value={serviceAreas} onChange={(v) => setServiceAreas(v)} placeholder="בחר עיר / אזור" />
+            ) : (
+              <Input dir="rtl" value={serviceAreas} disabled className="h-9 text-right text-sm" />
+            )}
           </div>
         </div>
-        <Button onClick={save} size="lg" className="w-full">שמירת פרטי המשרד</Button>
+        {isOwner && (
+          <Button onClick={save} size="lg" className="w-full" disabled={saving || loading}>
+            {saving ? 'שומר…' : 'שמירת פרטי המשרד'}
+          </Button>
+        )}
       </CardContent>
     </Card>
   );
 }
+
 
 export default function Profile() {
   const [params, setParams] = useSearchParams();
