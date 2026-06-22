@@ -179,47 +179,53 @@ const ChannelGrid = ({
   const selectedCount = selectedIds.size;
   const connectedCards = CHANNEL_CARDS.filter((c) => connected.has(c.id));
   return (
-    <Collapsible open={open} onOpenChange={setOpen} className="w-full rounded-2xl border border-border/60 bg-card p-4 shadow-sm">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          <span className="text-sm font-bold text-foreground">בחירת ערוצים</span>
-          {open && selectedCount > 0 && (
-            <span className="inline-flex h-5 min-w-[20px] items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground">
-              {selectedCount}
-            </span>
-          )}
-        </div>
-        <div className="flex items-center gap-1.5">
-          {!open && connectedCards.length > 0 && (
-            <div className="flex items-center gap-1" dir="rtl">
-              {connectedCards.map((c) => {
-                const Icon = c.icon;
-                const isSelected = selectedIds.has(c.id);
-                return (
-                  <button
-                    key={c.id}
-                    type="button"
-                    onClick={(e) => { e.stopPropagation(); onPick(c); }}
-                    className={cn(
-                      'flex h-7 w-7 items-center justify-center rounded-full border transition active:scale-95',
-                      isSelected ? 'border-primary bg-primary/10 text-primary' : 'border-border bg-background text-muted-foreground hover:text-foreground'
-                    )}
-                    title={c.label}
-                    aria-label={c.label}
-                  >
-                    {c.brand
-                      ? <BrandIcon name={c.brand} className="h-4 w-4" />
-                      : Icon ? <Icon className="h-4 w-4" /> : null}
-                  </button>
-                );
-              })}
-            </div>
-          )}
-          <CollapsibleTrigger asChild>
-            <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground hover:bg-muted">
-              {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-            </Button>
-          </CollapsibleTrigger>
+    <Collapsible open={open} onOpenChange={setOpen} className="w-full">
+      <div className="flex items-center justify-between gap-3">
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground hover:bg-transparent hover:text-foreground focus-visible:text-foreground active:text-foreground">
+            {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
+        </CollapsibleTrigger>
+        <div className="flex items-center gap-4 overflow-x-auto scrollbar-none -mx-1 px-1 pb-1" dir="rtl">
+          <button
+            type="button"
+            onClick={() => setOpen((v) => !v)}
+            className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap opacity-100"
+          >
+            <span className="text-sm font-semibold text-slate-900">הכל</span>
+            <span className="text-sm font-bold tabular-nums text-slate-900" dir="ltr">{selectedCount}</span>
+          </button>
+          {[
+            { id: 'facebook',  label: 'Facebook',  brand: 'facebook' },
+            { id: 'instagram', label: 'Instagram', brand: 'instagram' },
+            { id: 'x',         label: 'X',         brand: 'x' },
+            { id: 'tiktok',    label: 'TikTok',    brand: 'tiktok' },
+            { id: 'linkedin',  label: 'LinkedIn',  brand: 'linkedin' },
+            { id: 'youtube',   label: 'YouTube',   brand: 'youtube' },
+          ].map((p) => {
+            const isConnected = connected.has(p.id);
+            const count = selectedIds.has(p.id) ? 1 : 0;
+            return (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setOpen((v) => !v)}
+                title={p.label}
+                aria-label={p.label}
+                className={cn(
+                  'inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap transition-opacity',
+                  !isConnected && 'opacity-40 grayscale',
+                )}
+              >
+                <BrandIcon
+                  name={p.brand}
+                  aria-label={p.label}
+                  className={cn('h-5 w-5', isConnected ? (BRAND_COLOR[p.id] ?? 'text-slate-600') : 'text-slate-500')}
+                />
+                <span className="text-sm font-bold tabular-nums text-slate-500" dir="ltr">{count}</span>
+              </button>
+            );
+          })}
         </div>
       </div>
       <CollapsibleContent>
