@@ -3332,6 +3332,11 @@ const CampaignCenter = () => {
                 next.delete('variant');
                 next.delete('variants');
               }
+              // Persist selected Facebook groups so the composer picks them up
+              // (it hydrates `groupIds` from this localStorage key on mount).
+              if (extras?.groupIds && extras.groupIds.length > 0) {
+                try { localStorage.setItem('campaign:groupIds', JSON.stringify(extras.groupIds)); } catch {}
+              }
               setSearchParams(next, { replace: false });
             }}
             onClose={() => handleChange('published')}
