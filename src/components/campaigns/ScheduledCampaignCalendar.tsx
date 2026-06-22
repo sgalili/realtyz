@@ -102,6 +102,10 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
     setListingSearch('');
     setSelectedListingIds([]);
     setSelectedGroupIds([]);
+    setRecurrence('none');
+    setRecurrenceDays([]);
+    setRecurrenceCount(4);
+    setRecurrenceOpen(false);
     (async () => {
       const { data, error } = await supabase
         .from('listings')
