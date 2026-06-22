@@ -605,11 +605,12 @@ const InlineComposer = ({
   const [logId, setLogId] = useState<string | null>(initial.logId ?? null);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
 
-  // Persist composer draft to sessionStorage so collapsing or switching tabs never loses unfinished work.
+  // Persist composer draft to localStorage so collapsing/switching tabs,
+  // closing dialogs, navigating away, or hard-refreshing never loses work.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      sessionStorage.setItem(draftKey, JSON.stringify({
+      localStorage.setItem(draftKey, JSON.stringify({
         body,
         customInstructions,
         selectedListingId,
