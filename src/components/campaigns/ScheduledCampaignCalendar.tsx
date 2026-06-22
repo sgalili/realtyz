@@ -534,8 +534,32 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
               )}
             </div>
           </div>
-          <DialogFooter className="flex flex-row justify-between sm:justify-between gap-2 w-full">
+          <DialogFooter className="flex flex-row justify-between sm:justify-between gap-2 w-full items-center">
             <Button variant="outline" onClick={() => setScheduleDay(null)}>ביטול</Button>
+            <Popover open={groupsOpen} onOpenChange={setGroupsOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  title="בחר קבוצות פייסבוק לפרסום"
+                  aria-label="קבוצות פייסבוק"
+                  className="relative inline-flex items-center justify-center h-9 w-9 rounded-md text-foreground hover:text-primary transition-colors"
+                >
+                  <Users className="h-5 w-5" />
+                  {selectedGroupIds.length > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center tabular-nums">
+                      {selectedGroupIds.length}
+                    </span>
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="center" side="top" className="w-[360px] p-0" dir="rtl">
+                <CampaignGroupSelector
+                  selectedIds={selectedGroupIds}
+                  onChange={setSelectedGroupIds}
+                  className="border-0 shadow-none"
+                />
+              </PopoverContent>
+            </Popover>
             <Button
               onClick={() => {
                 if (!scheduleDay) return;
