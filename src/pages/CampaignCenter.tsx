@@ -861,64 +861,7 @@ const InlineComposer = ({
 
   return (
     <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-sm space-y-4" dir="rtl">
-      {/* Header row — title moved into the textarea placeholder for a cleaner card */}
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-sm font-semibold text-foreground">פרסום פוסט חדש</h2>
-
-        <div className="flex items-center gap-2">
-          <Popover open={historyOpen} onOpenChange={setHistoryOpen}>
-            <PopoverTrigger asChild>
-              <button type="button"
-                className="inline-flex items-center gap-1.5 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-semibold text-muted-foreground hover:text-foreground hover:border-primary/30">
-                היסטוריה
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-[360px] p-2 max-h-96 overflow-auto" dir="rtl">
-              {history.length === 0 ? (
-                <p className="px-3 py-6 text-center text-xs text-muted-foreground">אין יצירות שמורות עדיין עבור {channel.label}</p>
-              ) : history.map((h) => {
-                const media = Array.isArray(h.media_urls) ? h.media_urls : [];
-                const stamp = h.updated_at || h.created_at;
-                const edited = h.updated_at && h.updated_at !== h.created_at;
-                const linkedListing = h.listing_id ? listings.find((l) => l.id === h.listing_id) : null;
-                return (
-                  <button key={h.id} type="button"
-                    onClick={() => {
-                      const loaded = cleanBody(h.generated_text || '');
-                      setBody(loaded);
-                      setOriginalAiBody(loaded);
-                      setAttachments(media.map((m: any) => ({ name: m?.name || 'קובץ', kind: m?.kind || 'file', url: m?.url || undefined })));
-                      setSelectedListingId(h.listing_id || null);
-                      setLogId(h.id);
-                      setHistoryOpen(false);
-                      toast.success('הטיוטה נטענה לעורך');
-                    }}
-                    className={cn('mb-1 w-full rounded-md border border-border/60 bg-background px-3 py-2 text-right hover:bg-muted', logId === h.id && 'border-primary/60 bg-primary/5')}>
-                    <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                      <span>{new Date(stamp).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}</span>
-                      <span className="flex items-center gap-2">
-                        {edited && <span className="rounded bg-amber-100 px-1.5 py-0.5 text-amber-800">נערך</span>}
-                        {media.length > 0 && <span className="inline-flex items-center gap-0.5"><Paperclip className="h-3 w-3" />{media.length}</span>}
-                      </span>
-                    </div>
-                    {linkedListing && (
-                      <div className="mt-1 inline-flex max-w-full items-center gap-1 rounded bg-primary/10 px-1.5 py-0.5 text-[10px] font-medium text-primary">
-                        <span className="truncate">🏠 {listingOptionLabel(linkedListing as CampaignListing)}</span>
-                      </div>
-                    )}
-                    {!linkedListing && h.listing_id && (
-                      <div className="mt-1 text-[10px] text-muted-foreground">🏠 נכס מקושר</div>
-                    )}
-                    <div className="mt-1 text-xs text-foreground line-clamp-3 whitespace-pre-wrap">
-                      {h.generated_text || h.topic || '—'}
-                    </div>
-                  </button>
-                );
-              })}
-            </PopoverContent>
-          </Popover>
-        </div>
-      </div>
+      {/* Header row removed — title lives in the page hero; history is in the hero icon */}
 
 
 
