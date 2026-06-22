@@ -2106,7 +2106,7 @@ const PublishedFeed = () => {
     return <div className="rounded-2xl border border-border/60 bg-card p-10 text-center text-sm text-muted-foreground">טוען…</div>;
   }
 
-  const scheduledCount = rows.filter((r) => isScheduledRow(r)).length;
+  
 
   return (
     <div className="space-y-3">
