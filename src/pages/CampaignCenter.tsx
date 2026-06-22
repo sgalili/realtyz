@@ -1296,6 +1296,22 @@ const ConfirmDispatchDialog = ({
     const ownerScope = workspaceOwnerId ?? user.id;
     setSending(true);
     try {
+      // Auto-append branded WhatsApp short link CTA when a listing is attached.
+      // realtyz.co.il/r/:slug → wa.me with a pre-filled Hebrew intro.
+      let bodyToPublish = body;
+      if (listingId && !/realtyz\.co\.il\/r\//.test(body)) {
+        try {
+          const { data: slugRes } = await supabase.functions.invoke('shortlink-create', {
+            body: { property_id: listingId },
+          });
+          const slug = (slugRes as any)?.slug;
+          if (slug) {
+            bodyToPublish = `${body.trim()}\n\nדברו איתנו עכשיו: realtyz.co.il/r/${slug}`;
+          }
+        } catch (e) {
+          console.warn('[shortlink] generation failed', e);
+        }
+      }
       const campaignName = `${brandName} · ${channel.label}`;
 
       if (SOCIAL_CHANNELS.has(channel.id)) {
