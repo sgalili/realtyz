@@ -3312,16 +3312,59 @@ const CampaignCenter = () => {
             socialProfiles={socialAccountProfiles}
             onAddFacebookPage={() => handleConnectChannel(CHANNEL_CARDS.find((c) => c.id === 'facebook')!)}
           />
-          {pickedChannel && (
-            <>
-              <InlineComposer
-                channel={pickedChannel}
-                brandName={brandName}
-                socialProfiles={socialAccountProfiles}
-                onConfirm={(p) => setConfirmPayload(p)}
-              />
-            </>
-          )}
+          {pickedChannel && (() => {
+            const propertiesParam = searchParams.get('properties') || '';
+            const propertyIds = propertiesParam.split(',').map((s) => s.trim()).filter(Boolean);
+            let assignments: Array<{ iso: string; listing: string | null; variant: number; totalVariants: number }> = [];
+            try {
+              const raw = sessionStorage.getItem('rz-schedule-assignments');
+              if (raw) assignments = JSON.parse(raw) || [];
+            } catch {}
+            // Single composer when no multi-property fan-out
+            if (propertyIds.length <= 1) {
+              return (
+                <InlineComposer
+                  channel={pickedChannel}
+                  brandName={brandName}
+                  socialProfiles={socialAccountProfiles}
+                  onConfirm={(p) => setConfirmPayload(p)}
+                />
+              );
+            }
+            // One composer block per scheduled assignment — each tied to its
+            // listing, slot time and variant index for independent generation
+            // and an independent Approve/Schedule action.
+            const blocks = assignments.length > 0
+              ? assignments
+              : propertyIds.map((lid, i) => ({ iso: searchParams.get('schedule') || new Date().toISOString(), listing: lid, variant: 1, totalVariants: 1 }));
+            return (
+              <div className="space-y-4">
+                <div className="rounded-xl border border-primary/30 bg-primary/5 px-4 py-2 text-sm text-foreground" dir="rtl">
+                  נוצרו <span className="font-bold">{blocks.length}</span> טיוטות פוסט עבור <span className="font-bold">{propertyIds.length}</span> נכסים. ערוך, אשר ושגר כל אחת בנפרד.
+                </div>
+                {blocks.map((b, idx) => (
+                  <div key={`${b.listing || 'na'}-${b.iso}-${idx}`} className="space-y-2">
+                    <div className="text-xs font-semibold text-muted-foreground" dir="rtl">
+                      טיוטה #{idx + 1} · {new Date(b.iso).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
+                      {b.totalVariants > 1 ? ` · וריאציה ${b.variant}/${b.totalVariants}` : ''}
+                    </div>
+                    <InlineComposer
+                      channel={pickedChannel}
+                      brandName={brandName}
+                      socialProfiles={socialAccountProfiles}
+                      onConfirm={(p) => setConfirmPayload(p)}
+                      presetListingId={b.listing}
+                      presetScheduleIso={b.iso}
+                      presetVariant={b.variant}
+                      presetVariants={b.totalVariants}
+                      instanceId={`${idx}-${b.listing || 'na'}`}
+                    />
+                  </div>
+                ))}
+              </div>
+            );
+          })()}
+
         </TabsContent>
         <TabsContent value="published" className="mt-6">
           <PublishedFeed />
