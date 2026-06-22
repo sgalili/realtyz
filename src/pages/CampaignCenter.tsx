@@ -3466,7 +3466,21 @@ const CampaignCenter = () => {
           setPickedChannel(null);
           setPickedChannelIds(new Set());
           if (publishedChannelId) {
-            try { sessionStorage.removeItem(`rz-composer-draft:${publishedChannelId}`); } catch {}
+            const prefix = `rz-composer-draft:${publishedChannelId}`;
+            try {
+              sessionStorage.removeItem(prefix);
+              localStorage.removeItem(prefix);
+              // Sweep namespaced draft entries (replicated composers)
+              for (const store of [localStorage, sessionStorage]) {
+                const keys: string[] = [];
+                for (let i = 0; i < store.length; i++) {
+                  const k = store.key(i);
+                  if (k && k.startsWith(`${prefix}:`)) keys.push(k);
+                }
+                keys.forEach((k) => store.removeItem(k));
+              }
+              sessionStorage.removeItem('rz-schedule-assignments');
+            } catch {}
           }
 
           setAlsoEmail(false);
