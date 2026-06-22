@@ -387,9 +387,6 @@ function PersonalTab() {
 
         <Button onClick={save} size="lg" className="w-full mt-2">שמירת הפרופיל</Button>
 
-        <div className="pt-3">
-          <ConnectedWorkspaceCard />
-        </div>
       </CardContent>
     </Card>
   );
