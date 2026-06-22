@@ -3376,9 +3376,13 @@ const CampaignCenter = () => {
         onConfirmed={async () => {
           const body = confirmPayload?.body ?? '';
           const shouldEmail = alsoEmail && pickedChannel?.id !== 'email' && connectedChannels.has('email') && body.trim().length > 0;
+          const publishedChannelId = pickedChannel?.id;
           setConfirmPayload(null);
           setPickedChannel(null);
           setPickedChannelIds(new Set());
+          if (publishedChannelId) {
+            try { sessionStorage.removeItem(`rz-composer-draft:${publishedChannelId}`); } catch {}
+          }
 
           setAlsoEmail(false);
           if (shouldEmail) {
