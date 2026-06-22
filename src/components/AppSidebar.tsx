@@ -130,18 +130,53 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
     item.aliases?.some((a) => location.pathname === a || location.pathname.startsWith(a + '/'));
 
   const meta = (user?.user_metadata ?? {}) as Record<string, any>;
-  const avatarUrl: string | null =
-    settings?.logo_url || meta.avatar_url || meta.picture || meta.profile_picture_url || null;
-  const brokerName = settings?.agency_name || 'Realtyz AI';
-  const initial = brokerName.slice(0, 1);
+  const [userAvatarUrl, setUserAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) { setUserAvatarUrl(null); return; }
+    supabase
+      .from('profiles')
+      .select('avatar_url')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => setUserAvatarUrl((data as any)?.avatar_url ?? meta.avatar_url ?? meta.picture ?? null));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.id]);
+
+  const userDisplayName: string =
+    meta.full_name || meta.name || user?.email || (user as any)?.phone || 'משתמש';
+  const userInitial = userDisplayName.slice(0, 1);
+
+  const officeLogoUrl: string | null = settings?.logo_url || null;
+  const officeName = settings?.agency_name || 'Realtyz AI';
+  const officeInitial = officeName.slice(0, 1);
 
   return (
     <Sidebar collapsible="offcanvas" className="realtyz-premium-sidebar border-l border-r-0 border-sidebar-border" side="right">
       <SidebarContent className="realtyz-sidebar-menu pt-3">
-        {isSuperAdmin && (
-          <SidebarGroup>
-            <SidebarGroupContent className="px-3 pb-3 border-b border-primary/10">
-              <SuperAdminLeadAlert collapsed={collapsed} />
+        {/* TOP: user profile picture + full name */}
+        {!collapsed && user && (
+          <SidebarGroup className="p-0 border-b border-slate-200">
+            <SidebarGroupContent className="px-3 py-3">
+              <button
+                type="button"
+                onClick={() => navigate('/profile')}
+                className="flex w-full items-center gap-3 rounded-md px-1 py-1 text-right transition-colors hover:bg-slate-50 min-w-0"
+              >
+                <div className="w-10 h-10 min-w-[40px] rounded-full overflow-hidden shrink-0 ring-1 ring-slate-200">
+                  {userAvatarUrl ? (
+                    <img src={userAvatarUrl} alt={userDisplayName} className="w-10 h-10 rounded-full object-cover block" />
+                  ) : (
+                    <div className="flex h-full w-full items-center justify-center bg-slate-900 text-xs font-bold text-white">
+                      {userInitial}
+                    </div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1 text-right">
+                  <div className="truncate text-sm font-bold text-slate-900">{userDisplayName}</div>
+                  <div className="truncate text-[11px] text-slate-500">הפרופיל שלי</div>
+                </div>
+              </button>
             </SidebarGroupContent>
           </SidebarGroup>
         )}
@@ -189,6 +224,14 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
           </SidebarGroupContent>
         </SidebarGroup>
 
+        {/* Super admin section moved BELOW the menu */}
+        {isSuperAdmin && (
+          <SidebarGroup>
+            <SidebarGroupContent className="px-3 py-3 border-t border-primary/10">
+              <SuperAdminLeadAlert collapsed={collapsed} />
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
 
         {!collapsed && (
           <div className="mt-auto">
@@ -201,20 +244,20 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                     className="flex flex-1 items-center gap-3 rounded-md px-1 py-1 text-right transition-colors hover:bg-slate-50 min-w-0"
                   >
                     <div className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-lg overflow-hidden shrink-0 ring-1 ring-slate-200">
-                      {avatarUrl ? (
+                      {officeLogoUrl ? (
                         <img
-                          src={avatarUrl}
-                          alt={brokerName}
+                          src={officeLogoUrl}
+                          alt={officeName}
                           className="w-10 h-10 rounded-lg object-cover block"
                         />
                       ) : (
                         <div className="flex h-full w-full items-center justify-center rounded-lg bg-slate-900 text-xs font-bold text-white">
-                          {initial}
+                          {officeInitial}
                         </div>
                       )}
                     </div>
                     <div className="min-w-0 flex-1 text-right">
-                      <div className="truncate text-sm font-bold text-slate-900">{brokerName}</div>
+                      <div className="truncate text-sm font-bold text-slate-900">{officeName}</div>
                       <div className="truncate text-[11px] text-slate-500">
                         חשבון המתווך · ניהול נכסים, משרד ובו...
                       </div>
