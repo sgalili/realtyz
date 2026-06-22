@@ -96,6 +96,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
     setListingsLoading(true);
     setListingSearch('');
     setSelectedListingIds([]);
+    setSelectedGroupIds([]);
     (async () => {
       const { data, error } = await supabase
         .from('listings')
