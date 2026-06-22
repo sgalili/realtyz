@@ -606,7 +606,7 @@ const InlineComposer = ({
   // On channel change: rehydrate from saved draft for that channel (keeps unfinished work alive per platform)
   useEffect(() => {
     const saved = readDraft() || {};
-    setBody(saved.body || '');
+    setBody(cleanBody(saved.body || ''));
     setCustomInstructions(saved.customInstructions || '');
     setSelectedListingId(saved.selectedListingId ?? null);
     setAttachments(saved.attachments || []);
