@@ -2055,7 +2055,8 @@ const PublishedFeed = () => {
           <p className="mt-1 text-xs text-muted-foreground">לאחר שתפעיל קמפיין מהטאב "צור קמפיין", הוא יופיע כאן עם מעקב לייקים, שיתופים ותגובות.</p>
         </div>
       ) : (filteredRows || []).map((r) => {
-      }) => {
+
+
         const isOpen = expanded[r.id] ?? false;
         const scheduled = isScheduledRow(r);
         const dt = scheduled && r.sent_at ? new Date(r.sent_at) : new Date(r.created_at);
