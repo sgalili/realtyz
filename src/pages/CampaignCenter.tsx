@@ -441,9 +441,10 @@ const InlineComposer = ({
     if (typeof window === 'undefined') return null;
     try { return JSON.parse(sessionStorage.getItem(draftKey) || 'null'); } catch { return null; }
   };
+  const cleanBody = (s: string) => s.replace(/^[\s\u200f\u200e]+/g, '').slice(0, MAX_CHARS);
   const initial = readDraft() || {};
 
-  const [body, setBody] = useState<string>(initial.body || '');
+  const [body, setBody] = useState<string>(cleanBody(initial.body || ''));
   // Tracks the last AI-generated body so manual edits before publish can be
   // shipped to learn-from-edit on success. Reset on send.
   const [originalAiBody, setOriginalAiBody] = useState<string>('');
@@ -523,7 +524,7 @@ const InlineComposer = ({
       }
       const baseline = originalAiBody;
       const editedBeforeFinal = edited;
-      const next = finalText.trim().slice(0, MAX_CHARS);
+      const next = cleanBody(finalText);
       setBody(next);
       setOriginalAiBody(next);
       learnFromEdit({
@@ -788,10 +789,10 @@ const InlineComposer = ({
 
   const insertTag = (tag: string) => {
     const el = textareaRef.current;
-    if (!el) { setBody((b) => (b + ' ' + tag).slice(0, MAX_CHARS)); return; }
+    if (!el) { setBody((b) => cleanBody(b + ' ' + tag)); return; }
     const start = el.selectionStart ?? body.length;
     const end = el.selectionEnd ?? body.length;
-    const next = (body.slice(0, start) + tag + body.slice(end)).slice(0, MAX_CHARS);
+    const next = cleanBody(body.slice(0, start) + tag + body.slice(end));
     setBody(next);
     requestAnimationFrame(() => {
       el.focus();
@@ -820,7 +821,7 @@ const InlineComposer = ({
         },
       });
       if (error) throw error;
-      const text = (data?.content || data?.text || '').toString().slice(0, MAX_CHARS);
+      const text = cleanBody(data?.content || data?.text || '').toString();
       if (text) {
         setBody(text);
         setOriginalAiBody(text);
@@ -986,7 +987,7 @@ const InlineComposer = ({
           rows={6}
           value={body}
           maxLength={MAX_CHARS}
-          onChange={(e) => setBody(e.target.value)}
+          onChange={(e) => setBody(cleanBody(e.target.value))}
           placeholder="תוכן ההודעה — כתוב כאן או חולל באמצעות AI"
           className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-10 pb-7"
         />
