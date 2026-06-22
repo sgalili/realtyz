@@ -454,14 +454,26 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="flex items-end gap-2">
+            <div className="flex items-end gap-2 flex-row-reverse">
               <div className="flex-1">
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block">משעה</label>
-                <Input type="time" value={winStart} onChange={(e) => setWinStart(e.target.value)} dir="rtl" className="text-right [&::-webkit-calendar-picker-indicator]:mr-0 [&::-webkit-calendar-picker-indicator]:ml-auto" />
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">משעה</label>
+                <Input
+                  type="time"
+                  value={winStart}
+                  onChange={(e) => setWinStart(e.target.value)}
+                  dir="ltr"
+                  className="text-right [&::-webkit-datetime-edit]:text-right [&::-webkit-datetime-edit-fields-wrapper]:justify-end [&::-webkit-datetime-edit-fields-wrapper]:w-full [&::-webkit-calendar-picker-indicator]:mr-0 [&::-webkit-calendar-picker-indicator]:ml-auto"
+                />
               </div>
               <div className="flex-1">
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block">עד שעה</label>
-                <Input type="time" value={winEnd} onChange={(e) => setWinEnd(e.target.value)} dir="rtl" className="text-right [&::-webkit-calendar-picker-indicator]:mr-0 [&::-webkit-calendar-picker-indicator]:ml-auto" />
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">עד שעה</label>
+                <Input
+                  type="time"
+                  value={winEnd}
+                  onChange={(e) => setWinEnd(e.target.value)}
+                  dir="ltr"
+                  className="text-right [&::-webkit-datetime-edit]:text-right [&::-webkit-datetime-edit-fields-wrapper]:justify-end [&::-webkit-datetime-edit-fields-wrapper]:w-full [&::-webkit-calendar-picker-indicator]:mr-0 [&::-webkit-calendar-picker-indicator]:ml-auto"
+                />
               </div>
               <Popover open={recurrenceOpen} onOpenChange={setRecurrenceOpen}>
                 <PopoverTrigger asChild>
