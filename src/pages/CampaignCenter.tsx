@@ -441,9 +441,10 @@ const InlineComposer = ({
     if (typeof window === 'undefined') return null;
     try { return JSON.parse(sessionStorage.getItem(draftKey) || 'null'); } catch { return null; }
   };
+  const cleanBody = (s: string) => s.replace(/^[\s\u200f\u200e]+/g, '').slice(0, MAX_CHARS);
   const initial = readDraft() || {};
 
-  const [body, setBody] = useState<string>(initial.body || '');
+  const [body, setBody] = useState<string>(cleanBody(initial.body || ''));
   // Tracks the last AI-generated body so manual edits before publish can be
   // shipped to learn-from-edit on success. Reset on send.
   const [originalAiBody, setOriginalAiBody] = useState<string>('');
