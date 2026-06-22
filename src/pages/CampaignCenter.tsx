@@ -2083,24 +2083,13 @@ const PublishedFeed = () => {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <GlobalSocialFeed
-          rows={rows}
-          activeChannel={activeChannel}
-          onChannelChange={setActiveChannel}
-          connectedChannels={connectedChannels}
-          onConnectChannel={handleFeedConnect}
-        />
-        <a
-          href="/campaigns?tab=calendar"
-          className="inline-flex items-center gap-1.5 shrink-0 rounded-full bg-amber-100 px-3 py-1.5 text-xs font-bold text-amber-800 ring-1 ring-amber-200 hover:bg-amber-200 transition-colors"
-          title="פתח לוח שנה של פרסומים מתוזמנים"
-        >
-          <CalendarIcon className="h-3.5 w-3.5" />
-          לוח שנה
-          {scheduledCount > 0 && <span className="tabular-nums">· {scheduledCount}</span>}
-        </a>
-      </div>
+      <GlobalSocialFeed
+        rows={rows}
+        activeChannel={activeChannel}
+        onChannelChange={setActiveChannel}
+        connectedChannels={connectedChannels}
+        onConnectChannel={handleFeedConnect}
+      />
 
       {filteredRows && filteredRows.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/60 p-10 text-center">

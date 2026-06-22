@@ -10,7 +10,7 @@
  * Mounted once at the layout level to avoid per-route hero "jumps".
  */
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Menu, Plus, FileSpreadsheet, User, ArrowLeft, ArrowRight } from 'lucide-react';
+import { Menu, Plus, FileSpreadsheet, User, ArrowLeft, ArrowRight, Calendar as CalendarIcon } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { RealtyzWave } from '@/components/RealtyzWave';
 // CreditBalancePill moved to /billing (Packages & Payments page).
@@ -106,6 +106,27 @@ function LeadsHeroAddButton() {
   );
 }
 
+function CampaignsHeroCalendarButton() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const active = (searchParams.get('tab') ?? 'published') === 'calendar';
+  return (
+    <Button
+      size="icon"
+      variant="ghost"
+      onClick={() => navigate('/campaigns?tab=calendar')}
+      aria-label="לוח שנה מתוזמנים"
+      title="לוח שנה מתוזמנים"
+      className={cn(
+        'h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white',
+        active && 'bg-white/10'
+      )}
+    >
+      <CalendarIcon className="!h-5 !w-5" strokeWidth={2.5} />
+    </Button>
+  );
+}
+
 function CampaignsHeroAddButton() {
   const [searchParams, setSearchParams] = useSearchParams();
   const active = (searchParams.get('tab') ?? 'published') === 'create';
@@ -183,9 +204,12 @@ export function PageHero() {
   const title = resolvePageTitle(location.pathname);
   const isPropertyDetail = /^\/properties\/[^/]+/.test(location.pathname);
   const propertySuffix = usePropertyHeroSuffix(location.pathname);
-  const displayTitle = isPropertyDetail && propertySuffix
-    ? `${title} - ${propertySuffix}`
-    : title;
+  const isCampaignsCreate = location.pathname.startsWith('/campaigns') && (searchParams.get('tab') ?? 'published') === 'create';
+  const displayTitle = isCampaignsCreate
+    ? 'פרסום פוסט חדש'
+    : isPropertyDetail && propertySuffix
+      ? `${title} - ${propertySuffix}`
+      : title;
 
   // On /campaigns with a lead context, CampaignCenter renders its own
   // avatar+name hero — skip the default hero to avoid a stacked duplicate.
@@ -227,6 +251,7 @@ export function PageHero() {
         <div className="flex items-center justify-end gap-2" style={{ marginLeft: '-5px' }}>
           {location.pathname === '/properties' && <PropertiesHeroAddButton />}
           {location.pathname.startsWith('/lead-crm') && <LeadsHeroAddButton />}
+          {location.pathname.startsWith('/campaigns') && <CampaignsHeroCalendarButton />}
           {location.pathname.startsWith('/campaigns') && <CampaignsHeroAddButton />}
           {isPropertyDetail && (
             <Button
