@@ -1668,6 +1668,7 @@ const PublishedFeed = () => {
   const { settings } = useWhiteLabel();
   const ownerName = settings?.agency_name || 'אודי ויטמן';
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  const queryClient = useQueryClient();
   const [rows, setRows] = useState<CampaignRow[] | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [campaignUserIds, setCampaignUserIds] = useState<string[]>([]);
