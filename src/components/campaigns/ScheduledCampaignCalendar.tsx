@@ -48,7 +48,22 @@ const toLocalInput = (d: Date): string => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
-export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt: (iso: string) => void; onClose?: () => void }) {
+type ListingLite = {
+  id: string;
+  property_title: string | null;
+  city: string | null;
+  neighborhood: string | null;
+  address: string | null;
+  asking_price: number | null;
+};
+
+const listingLabel = (l: ListingLite) => {
+  const loc = [l.address || l.property_title || 'נכס', l.neighborhood, l.city].filter(Boolean).join(', ');
+  const price = l.asking_price ? ` — ${Number(l.asking_price).toLocaleString('he-IL')} ₪` : '';
+  return `${loc}${price}`;
+};
+
+export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt: (iso: string, extras?: { listing?: string | null; variant?: number; totalVariants?: number }) => void; onClose?: () => void }) {
   const queryClient = useQueryClient();
   const [rows, setRows] = useState<ScheduledRow[]>([]);
   const [loading, setLoading] = useState(true);
