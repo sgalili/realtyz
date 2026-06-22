@@ -3310,10 +3310,18 @@ const CampaignCenter = () => {
         </TabsContent>
         <TabsContent value="calendar" className="mt-6">
           <ScheduledCampaignCalendar
-            onCreateAt={(iso) => {
+            onCreateAt={(iso, extras) => {
               const next = new URLSearchParams(searchParams);
               next.set('tab', 'create');
               next.set('schedule', iso);
+              if (extras?.listing) next.set('listing', extras.listing); else next.delete('listing');
+              if (extras?.variant && extras?.totalVariants && extras.totalVariants > 1) {
+                next.set('variant', String(extras.variant));
+                next.set('variants', String(extras.totalVariants));
+              } else {
+                next.delete('variant');
+                next.delete('variants');
+              }
               setSearchParams(next, { replace: false });
             }}
             onClose={() => handleChange('published')}
