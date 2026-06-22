@@ -232,6 +232,9 @@ export const CampaignGroupSelector = ({ selectedIds, onChange, className }: Prop
       const ayrGroups = await fetchFromAyrshare();
       if (ayrGroups.length > 0) {
         setAyrshareGroups(ayrGroups);
+        try {
+          sessionStorage.setItem(SESSION_CACHE_KEY, JSON.stringify({ ayrshare: ayrGroups, manual: customUserGroups.filter((g) => g.source !== "manual" || !g.group_id.startsWith("manual:")) }));
+        } catch {}
         toast.dismiss("fbg-connect");
         toast.success(`נטענו ${ayrGroups.length} קבוצות`);
         return;
