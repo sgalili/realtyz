@@ -87,6 +87,8 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
   const [listingsLoading, setListingsLoading] = useState(false);
   const [selectedListingIds, setSelectedListingIds] = useState<string[]>([]);
   const [listingSearch, setListingSearch] = useState('');
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  const [groupsOpen, setGroupsOpen] = useState(false);
 
   useEffect(() => {
     if (!scheduleDay) return;
