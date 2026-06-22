@@ -452,3 +452,80 @@ NO-HASHTAGS RULE (HARD — ZERO TOLERANCE):
     });
   }
 });
+
+// ── Short-link helper ───────────────────────────────────────────────────────
+// Reuses an existing short_urls row for this listing if one exists, otherwise
+// allocates a fresh slug whose long_url points at the broker's GreenAPI
+// WhatsApp chat pre-filled with the listing context.
+const SHORTLINK_ALPHA = "abcdefghijkmnpqrstuvwxyz23456789";
+function makeShortSlug(len = 8): string {
+  const buf = new Uint8Array(len);
+  crypto.getRandomValues(buf);
+  let s = "";
+  for (let i = 0; i < len; i++) s += SHORTLINK_ALPHA[buf[i] % SHORTLINK_ALPHA.length];
+  return s;
+}
+function normalizeIsraeliPhone(raw: string): string {
+  let p = (raw || "").replace(/\D/g, "");
+  if (p.startsWith("0")) p = "972" + p.slice(1);
+  if (!p.startsWith("972") && p.length === 9) p = "972" + p;
+  return p;
+}
+function formatListingPrice(n: number | null | undefined): string {
+  if (!n || !isFinite(Number(n))) return "המחיר המבוקש";
+  const v = Number(n);
+  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(v % 1_000_000 === 0 ? 0 : 2).replace(/\.?0+$/, "")} מיליון שקל`;
+  if (v >= 1000) return `${Math.round(v / 1000).toLocaleString("he-IL")} אלף שקל`;
+  return `${v.toLocaleString("he-IL")} שקל`;
+}
+async function ensureListingShortlink(
+  admin: any,
+  listing: any,
+  userId: string,
+): Promise<string | null> {
+  // 1) Reuse existing slug for this property if present.
+  const { data: existing } = await admin
+    .from("short_urls")
+    .select("slug")
+    .eq("property_id", listing.id)
+    .limit(1)
+    .maybeSingle();
+  if (existing?.slug) return existing.slug as string;
+
+  // 2) Resolve broker WhatsApp phone (GreenAPI provider first, then profile).
+  const ownerId = listing.user_id ?? userId;
+  let brokerPhone = "";
+  try {
+    const { data: wa } = await admin
+      .from("wa_providers")
+      .select("config")
+      .eq("user_id", ownerId)
+      .eq("provider_name", "GreenAPI")
+      .eq("is_active", true)
+      .maybeSingle();
+    brokerPhone = (wa?.config as any)?.phoneNumber || (wa?.config as any)?.phone_number || "";
+  } catch { /* ignore */ }
+  if (!brokerPhone) {
+    const { data: prof } = await admin.from("profiles").select("phone").eq("id", ownerId).maybeSingle();
+    brokerPhone = (prof as any)?.phone || "";
+  }
+  brokerPhone = normalizeIsraeliPhone(brokerPhone);
+  if (!brokerPhone) return null;
+
+  const neighborhood = String(listing.neighborhood ?? "").trim() || String(listing.city ?? "").trim() || "האזור";
+  const city = String(listing.city ?? "").trim();
+  const price = formatListingPrice(listing.asking_price as number | null);
+  const text =
+    `היי אודי, אני פונה אליך לגבי הדירה שפרסמת ב${neighborhood}${city && city !== neighborhood ? ", " + city : ""} במחיר ${price}. אשמח לקבל פרטים נוספים.`;
+  const long_url = `https://api.whatsapp.com/send?phone=${brokerPhone}&text=${encodeURIComponent(text)}`;
+
+  for (let i = 0; i < 5; i++) {
+    const slug = makeShortSlug();
+    const { error } = await admin
+      .from("short_urls")
+      .insert({ slug, property_id: listing.id, long_url, created_by: userId });
+    if (!error) return slug;
+  }
+  return null;
+}
+
