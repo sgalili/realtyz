@@ -1296,6 +1296,22 @@ const ConfirmDispatchDialog = ({
     const ownerScope = workspaceOwnerId ?? user.id;
     setSending(true);
     try {
+      // Auto-append branded WhatsApp short link CTA when a listing is attached.
+      // realtyz.co.il/r/:slug → wa.me with a pre-filled Hebrew intro.
+      let bodyToPublish = body;
+      if (listingId && !/realtyz\.co\.il\/r\//.test(body)) {
+        try {
+          const { data: slugRes } = await supabase.functions.invoke('shortlink-create', {
+            body: { property_id: listingId },
+          });
+          const slug = (slugRes as any)?.slug;
+          if (slug) {
+            bodyToPublish = `${body.trim()}\n\nדברו איתנו עכשיו: realtyz.co.il/r/${slug}`;
+          }
+        } catch (e) {
+          console.warn('[shortlink] generation failed', e);
+        }
+      }
       const campaignName = `${brandName} · ${channel.label}`;
 
       if (SOCIAL_CHANNELS.has(channel.id)) {
@@ -1311,7 +1327,7 @@ const ConfirmDispatchDialog = ({
         for (const target of targets) {
           const { data, error } = await supabase.functions.invoke('ayrshare-post', {
             body: {
-              post: body,
+              post: bodyToPublish,
               channels: [channel.id],
               campaign_name: target ? `${campaignName} · ${target.name}` : campaignName,
               media_urls: mediaUrls,
@@ -1371,7 +1387,7 @@ const ConfirmDispatchDialog = ({
           recipient_phone: l.phone_number,
           recipient_email: l.email,
           recipient_name: l.full_name,
-          message_body: body,
+          message_body: bodyToPublish,
           status: 'queued' as const,
         }));
         if (rows.length > 0) {
@@ -1397,7 +1413,7 @@ const ConfirmDispatchDialog = ({
                 recipient_email: l.email,
                 recipient_name: l.full_name,
                 subject: `${brandName} · עדכון אישי עבורך`,
-                intro: body || 'מצורפים הפרטים העדכניים שביקשת.',
+                intro: bodyToPublish || 'מצורפים הפרטים העדכניים שביקשת.',
                 cta_question: 'מתי נוח לך לקפוץ לראות?',
               },
             });

@@ -44,6 +44,7 @@ const SuperAdmin = lazy(() => import("./pages/SuperAdmin"));
 const Finance = lazy(() => import("./pages/Finance"));
 const KnowledgeBase = lazy(() => import("./pages/KnowledgeBase"));
 const PublicListingPage = lazy(() => import("./pages/PublicListingPage"));
+const ShortLinkRedirect = lazy(() => import("./pages/ShortLinkRedirect"));
 const Unsubscribe = lazy(() => import("./pages/Unsubscribe"));
 const SocialConnect = lazy(() => import("./pages/SocialConnect"));
 const OAuthCallback = lazy(() => import("./pages/OAuthCallback"));
@@ -163,6 +164,7 @@ const App = () => (
               <Route path="/reset-password" element={<ResetPassword />} />
               <Route path="/oauth/callback" element={<Suspense fallback={<PageLoader />}><OAuthCallback /></Suspense>} />
               <Route path="/p/:slug" element={<Suspense fallback={<PageLoader />}><PublicListingPage /></Suspense>} />
+              <Route path="/r/:slug" element={<Suspense fallback={<PageLoader />}><ShortLinkRedirect /></Suspense>} />
               <Route path="/portal/:token" element={<Suspense fallback={<PageLoader />}><ClientPortal /></Suspense>} />
               <Route path="/unsubscribe" element={<Suspense fallback={<PageLoader />}><Unsubscribe /></Suspense>} />
               <Route path="/" element={<ProtectedRoute allowGuestDemo><Index /></ProtectedRoute>} />

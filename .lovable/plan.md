@@ -1,72 +1,60 @@
-# Fix: Messenger Private Reply not sending
 
-## Root cause (confirmed in logs)
+## What you'll get
 
-`supabase/functions/ayrshare-comment-reply/index.ts` calls Ayrshare's DM endpoint with the wrong payload shape:
+A user clicks an AI-generated post → opens `realtyz.co.il/r/abc123` → resolves to a `wa.me` link with a pre-filled Hebrew intro that includes the property signature → Udi persona greets them, qualifies them as Buyer (קונה) or Renter (שוכר), queries listings dynamically, and when a hot match lands, a `deal_room_matches` row is created and an in-app notification fires for the broker.
 
-```
-POST https://api.ayrshare.com/api/messages/facebook
-body: { recipientId: "<COMMENT_ID>", message, searchPlatformId: true }
-```
+## Database (one migration)
 
-Meta returns:
-```
-(#100) Param recipient[id] must be a valid ID string (e.g., "123")
-```
+**`public.short_urls`** — slug catalog
+- `slug` text PK (8-char nanoid)
+- `property_id` uuid → `listings(id)` on delete cascade
+- `long_url` text (the `wa.me` URL)
+- `created_by` uuid (workspace owner)
+- `clicks` int default 0
+- `created_at` timestamptz
+- Public SELECT (needed for anonymous redirect), authenticated INSERT scoped to own listings, service_role ALL.
 
-Why: `recipientId` must be a **user PSID**, not a comment ID. To send a Messenger Private Reply triggered by a comment, Ayrshare's documented contract is:
+**`public.deal_room_matches`** — hot-match ledger
+- `lead_id` uuid → leads, `listing_id` uuid → listings
+- `match_score` numeric, `match_reasons` jsonb, `status` text default 'new'
+- `broker_id` uuid (alert recipient = listing owner)
+- `created_at`, `acknowledged_at`
+- RLS: broker_id = auth.uid() OR admin. Standard GRANTs.
 
-```
-POST https://api.ayrshare.com/api/messages
-{ platforms: ["facebook"], commentId: "<COMMENT_ID>", message: "..." }
-```
+**Trigger**: AFTER INSERT on `deal_room_matches` → inserts a row in `notifications` for the broker with type `deal_room_hot_match` and a Hebrew body referencing the city.
 
-This tells Meta "open Messenger thread tied to this comment's author" — the only legal way to DM someone who has not previously messaged the Page (and the 7-day Private Reply window).
+## Edge functions
 
-Also the auto-like failure (`POST /api/comments/like` → "endpoint does not exist") is a stale path — the correct Ayrshare endpoint is `POST /api/comments` with `action: "like"` (or `/api/comments/{id}/like` per current docs). I will fix that in the same pass since it shares the helper file.
+1. **`shortlink-create`** (authed) — input `{ property_id }`, builds the Hebrew `wa.me` URL using the listing's neighborhood/city/price + the workspace owner's GreenAPI phone (from `user_api_keys`), generates a slug, inserts into `short_urls`, returns `{ slug, short_url }`.
 
-## Changes
+2. **`shortlink-resolve`** (public, no JWT) — input `{ slug }`, returns `{ long_url }` and increments `clicks`.
 
-### 1. `supabase/functions/ayrshare-comment-reply/index.ts`
-- Replace the DM call with:
-  - URL: `https://api.ayrshare.com/api/messages` (no platform in path)
-  - Body: `{ platforms: [platform], commentId: nativeCommentId, message: sanitizedDm, searchPlatformId: true }`
-- Keep nativeCommentId as the routing key (not freshReplyId). For comment-replies the inbound external_id is already the reply's commentId, which Meta accepts.
-- Treat HTTP 200 + Ayrshare `status: "success"` as sent; surface Ayrshare error code/message in the response and persist into metadata so the UI shows why.
+3. **`greenapi-webhook`** (public, no JWT) — receives GreenAPI inbound. Parses sender phone, matches the pre-written text signature against `short_urls.long_url` to recover `property_id`. If no existing lead for that phone in the listing-owner's workspace, creates one with `deal_type` mirroring listing (sale→Buyer/קונה, rent→Renter/שוכר) and `interest_tag = property_id`. Inserts inbound `messages` row. Then invokes existing `ai-agent` function to draft + send the Udi reply.
 
-### 2. `supabase/functions/_shared/ayrshare-helpers.ts` — `likeNativeComment`
-- Switch to Ayrshare's current like contract:
-  - `POST /api/comments` with `{ platforms:[platform], id: commentId, action: "like", searchPlatformId: true }`
-  - Fallback to `POST /api/comments/{id}` with `{ action:"like" }` if the first returns 404.
-- Still non-fatal.
+4. **`match-and-alert`** (internal, called by `ai-agent` when it detects qualified preferences) — given a lead, runs a SQL match against `listings` using preferences (rooms, budget, city), and if score ≥ threshold, inserts `deal_room_matches` (which fires the notification trigger).
 
-### 3. Extend DM coverage to **reply-on-reply** and **likes**
-- **Comment replies (nested)**: already supported — `ayrshare-comments-fetch` writes nested replies as `engagement_events` rows with their own `external_id`. After the fix in §1, those will DM correctly because we pass `commentId`.
-- **Likes**: Meta platform constraint — Messenger Private Reply requires a `commentId`. A like has no comment, so Meta will not authorize a DM to a liker who has never messaged the Page. We will:
-  - Detect like events in `ayrshare-comments-fetch` ingestion and write them as `engagement_events` with `event_type='like'` (already done for comments; extend the mapper to likes when the webhook/poll returns them).
-  - In `ayrshare-comment-reply`, if `event_type='like'`, skip the public reply and attempt a generic `POST /api/messages` with `recipientId = liker_psid` ONLY when Ayrshare exposes the PSID (it does for Page reactions via `/comments` v2 with `includeReactions=true`). If no PSID is available, mark the row `dm_skipped_no_psid` with a clear reason — no fake success.
+## Frontend
 
-### 4. Frontend (`src/components/campaigns/CampaignCommentsStream.tsx`)
-- Surface the new `private_dm_status` / Ayrshare error code in the row toast so Udi sees "DM נשלח" vs "DM נחסם ע״י Meta — אין PSID לליייקר".
+- **`src/pages/ShortLinkRedirect.tsx`** — SPA route at `/r/:slug`, calls `shortlink-resolve`, sets `window.location.href` to the long URL. Minimal RTL loading screen.
+- Add route to `src/App.tsx`.
+- **Post composer (`CampaignCenter` AI generate flow)** — after AI generates a post and a `property_id` is selected, call `shortlink-create` and append `\n\nדברו איתנו עכשיו: realtyz.co.il/{slug}` to the body before publishing.
 
-## Out of scope
-- No schema changes. No new tables. `engagement_events.event_type` already supports 'like'.
-- No changes to the public-comment reply flow itself; only the DM leg.
+## Persona / AI logic (`ai-agent` function)
 
-## Validation
-1. Redeploy `ayrshare-comment-reply` + shared helpers.
-2. Use `supabase--curl_edge_functions` to POST a known comment `event_id` and confirm:
-   - `private_dm_sent: true`
-   - Logs show `200` from `/api/messages` with `commentId` field.
-3. Trigger on a nested reply → same outcome.
-4. Trigger on a like row → either `private_dm_sent: true` (if PSID present) or explicit `dm_skipped_no_psid` reason.
+Add a branch: when the inbound message matches the signature pattern (`לגבי הדירה שפרסמת ב…`), and the lead has a linked `interest_tag` listing, prepend a context block to the system prompt: property summary + "ask 2 short qualifying questions (budget range, must-haves), then offer up to 3 matches from the DB". After capturing prefs to `leads.preferences`, call `match-and-alert`.
 
-## Technical detail (for reference)
+## What I will NOT change
 
-Ayrshare Private Reply contract (Messenger / IG Direct):
-```
-POST /api/messages
-Headers: Authorization, Profile-Key
-Body: { platforms: ["facebook"], commentId, message }
-```
-Returns `{ status: "success", id: "<thread_id>" }` on success.
+- Existing GreenAPI outbound paths, Homely push, autopilot queue.
+- Existing Deal Room UI keeps reading from `leads`; `deal_room_matches` is additive ledger surfaced via notification + (next iteration) a tab.
+- No new secrets — uses existing GreenAPI credentials in `user_api_keys`.
+
+## Order of operations
+
+1. Migration (short_urls + deal_room_matches + notification trigger).
+2. Edge functions: shortlink-create, shortlink-resolve, match-and-alert, greenapi-webhook (or extend existing if present — I'll check before duplicating).
+3. SPA redirect page + route.
+4. CampaignCenter: append short link on publish.
+5. ai-agent: signature parsing + match call.
+
+Reply **go** to proceed, or tell me what to drop/change.
