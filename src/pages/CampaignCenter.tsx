@@ -821,7 +821,7 @@ const InlineComposer = ({
         },
       });
       if (error) throw error;
-      const text = (data?.content || data?.text || '').toString().slice(0, MAX_CHARS);
+      const text = cleanBody(data?.content || data?.text || '').toString();
       if (text) {
         setBody(text);
         setOriginalAiBody(text);
