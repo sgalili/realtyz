@@ -2083,15 +2083,13 @@ const PublishedFeed = () => {
 
   return (
     <div className="space-y-3">
-      <div className="flex items-center justify-between gap-3">
-        <GlobalSocialFeed
-          rows={rows}
-          activeChannel={activeChannel}
-          onChannelChange={setActiveChannel}
-          connectedChannels={connectedChannels}
-          onConnectChannel={handleFeedConnect}
-        />
-      </div>
+      <GlobalSocialFeed
+        rows={rows}
+        activeChannel={activeChannel}
+        onChannelChange={setActiveChannel}
+        connectedChannels={connectedChannels}
+        onConnectChannel={handleFeedConnect}
+      />
 
       {filteredRows && filteredRows.length === 0 ? (
         <div className="rounded-2xl border border-dashed border-border bg-card/60 p-10 text-center">
