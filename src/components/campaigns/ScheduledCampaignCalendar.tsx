@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Trash2, Pencil, Plus, Calendar as CalendarIcon, ArrowRight, X, Users } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2, Pencil, Plus, Calendar as CalendarIcon, ArrowRight, X, Users, Repeat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
