@@ -2,8 +2,11 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useActiveWorkspaceOwnerId } from "@/hooks/useWorkspace";
 import { cn } from "@/lib/utils";
-import { Users, Check, Loader2, Plus } from "lucide-react";
+import { Users, Check, Loader2, Plus, Link2 } from "lucide-react";
 import { toast } from "sonner";
+
+const SESSION_CACHE_KEY = "rz-fb-groups-cache";
+const LOCAL_MANUAL_KEY = "rz-fb-groups-manual";
 
 export type FacebookGroup = {
   group_id: string;
