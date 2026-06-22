@@ -62,6 +62,10 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
   const [editBody, setEditBody] = useState('');
   const [editWhen, setEditWhen] = useState('');
   const [saving, setSaving] = useState(false);
+  const [scheduleDay, setScheduleDay] = useState<Date | null>(null);
+  const [winStart, setWinStart] = useState('09:00');
+  const [winEnd, setWinEnd] = useState('21:00');
+  const [winCount, setWinCount] = useState(3);
 
   const load = async () => {
     setLoading(true);
