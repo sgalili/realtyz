@@ -195,11 +195,10 @@ REFERENCE TEMPLATE (match this rhythm and tone exactly — adapt wording per lis
 [משפט סגירה קצר אחד שמדגיש את ההזדמנות.]
 
 📞 אם זה נשמע מעניין, שלחו הודעה או התקשרו
+"""
 
-אודי ויטמן | אנגלו סכסון הרצליה/רמ"ש
-052-2973500
-רישיון תיווך 3251767
-"""`) : "";
+DO NOT add any signature, byline, phone number, license number, or contact lines yourself. The system appends Udi's canonical signature + short link automatically at the very bottom.`) : "";
+
 
 
     const EMOJI_RULES = `EMOJI PALETTE (MINIMAL BUT REQUIRED — restore Udi's signature emoji rhythm):
