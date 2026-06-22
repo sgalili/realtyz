@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Trash2, Pencil, Plus, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2, Pencil, Plus, Calendar as CalendarIcon, ArrowRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -47,7 +47,7 @@ const toLocalInput = (d: Date): string => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
-export function ScheduledCampaignCalendar({ onCreateAt }: { onCreateAt: (iso: string) => void }) {
+export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt: (iso: string) => void; onClose?: () => void }) {
   const [rows, setRows] = useState<ScheduledRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [cursor, setCursor] = useState<Date>(() => {
@@ -193,6 +193,38 @@ export function ScheduledCampaignCalendar({ onCreateAt }: { onCreateAt: (iso: st
 
   return (
     <div className="space-y-4" dir="rtl">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              aria-label="חזור"
+              title="חזור"
+              className="h-9 w-9"
+            >
+              <ArrowRight className="h-5 w-5" />
+            </Button>
+          )}
+          <h2 className="text-lg font-bold text-foreground">לוח שנה — פרסומים מתוזמנים</h2>
+        </div>
+        <div className="flex items-center gap-2">
+          {onClose && (
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={onClose}
+              aria-label="סגור לוח שנה"
+              title="סגור לוח שנה"
+              className="h-9 w-9"
+            >
+              <X className="h-5 w-5" />
+            </Button>
+          )}
+        </div>
+      </div>
+
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
           <Button
