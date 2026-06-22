@@ -233,14 +233,27 @@ export function PageHero() {
         className="relative z-10 flex items-center justify-between gap-3 px-4 sm:px-6"
         style={{ minHeight: '65px', paddingTop: '10px', paddingBottom: '10px' }}
       >
-        {/* Visual right (RTL flex start): Burger / nav toggle */}
-        <SidebarTrigger
-          className="h-10 w-10 text-white hover:bg-white/10 hover:text-white [&_svg]:!h-6 [&_svg]:!w-6"
-          aria-label="פתח תפריט"
-          style={{ marginRight: '-15px' }}
-        >
-          <Menu className="h-6 w-6" />
-        </SidebarTrigger>
+        {/* Visual right (RTL flex start): Burger / nav toggle + optional history */}
+        <div className="flex items-center gap-1" style={{ marginRight: '-15px' }}>
+          <SidebarTrigger
+            className="h-10 w-10 text-white hover:bg-white/10 hover:text-white [&_svg]:!h-6 [&_svg]:!w-6"
+            aria-label="פתח תפריט"
+          >
+            <Menu className="h-6 w-6" />
+          </SidebarTrigger>
+          {location.pathname.startsWith('/campaigns') && (
+            <Button
+              size="icon"
+              variant="ghost"
+              onClick={() => navigate('/campaigns?tab=published')}
+              aria-label="היסטוריית פוסטים"
+              title="היסטוריית פוסטים"
+              className="h-10 w-10 rounded-full text-white hover:bg-white/15 hover:text-white"
+            >
+              <History className="!h-5 !w-5" strokeWidth={2.5} />
+            </Button>
+          )}
+        </div>
 
         {/* Absolute-centered page title — locked to screen center */}
         <h1 className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 whitespace-nowrap pt-[10px] pb-[20px] text-center text-xl font-bold tracking-tight text-white sm:text-2xl">
