@@ -188,7 +188,6 @@ const ChannelGrid = ({
             className="inline-flex shrink-0 items-center gap-1.5 whitespace-nowrap opacity-100"
           >
             <span className="text-sm font-semibold text-slate-900">הכל</span>
-            <span className="text-sm font-bold tabular-nums text-slate-900" dir="ltr">{selectedCount}</span>
           </button>
           {[
             { id: 'facebook',  label: 'Facebook',  brand: 'facebook' },
