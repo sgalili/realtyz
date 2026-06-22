@@ -222,6 +222,11 @@ const ChannelGrid = ({
             );
           })}
         </div>
+        <CollapsibleTrigger asChild>
+          <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground hover:bg-transparent hover:text-foreground focus-visible:text-foreground active:text-foreground">
+            {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+          </Button>
+        </CollapsibleTrigger>
       </div>
       <CollapsibleContent>
         <div className="grid grid-cols-3 md:grid-cols-9 gap-2 pt-4" dir="rtl">
