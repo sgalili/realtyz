@@ -1668,6 +1668,7 @@ const PublishedFeed = () => {
   const { settings } = useWhiteLabel();
   const ownerName = settings?.agency_name || 'אודי ויטמן';
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
+  const queryClient = useQueryClient();
   const [rows, setRows] = useState<CampaignRow[] | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [campaignUserIds, setCampaignUserIds] = useState<string[]>([]);
@@ -2035,6 +2036,7 @@ const PublishedFeed = () => {
       .lt('created_at', to);
     if (error) { toast.error('העברה לארכיון נכשלה: ' + error.message); return; }
     setRows((prev) => prev?.filter((x) => x.id !== r.id) ?? prev);
+    queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
     toast.success('הקמפיין הועבר לארכיון');
     load();
   };
@@ -2087,6 +2089,7 @@ const PublishedFeed = () => {
       .lt('created_at', to);
     if (error) { toast.error('מחיקה נכשלה: ' + error.message); return; }
     setRows((prev) => prev?.filter((x) => x.id !== r.id) ?? prev);
+    queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
     toast.success(
       externalIds.length > 0
         ? `הפוסט נמחק בהצלחה מפייסבוק ומהמערכת${typeof count === 'number' ? ` (${count} רשומות)` : ''}`

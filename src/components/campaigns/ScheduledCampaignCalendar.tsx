@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
+import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
@@ -48,6 +49,7 @@ const toLocalInput = (d: Date): string => {
 };
 
 export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt: (iso: string) => void; onClose?: () => void }) {
+  const queryClient = useQueryClient();
   const [rows, setRows] = useState<ScheduledRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [cursor, setCursor] = useState<Date>(() => {
@@ -184,6 +186,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
       .eq('channel', r.channel)
       .eq('sent_at', r.sent_at!);
     if (error) { toast.error('ביטול נכשל: ' + error.message); return; }
+    queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
     toast.success('הפרסום המתוזמן בוטל');
     load();
   };
