@@ -439,12 +439,14 @@ const InlineComposer = ({
   presetVariants?: number;
   instanceId?: string;
 }) => {
-  // Session-persistence key — namespaced per replicated instance so multiple
-  // composers on the same page don't clobber each other's drafts.
+  // Persistent draft key — namespaced per replicated instance so multiple
+  // composers on the same page don't clobber each other's drafts. Persisted
+  // to localStorage so dialog closes, route changes, and hard refreshes
+  // never lose unfinished work. Cleared only on successful publish.
   const draftKey = `rz-composer-draft:${channel.id}${instanceId ? `:${instanceId}` : ''}`;
   const readDraft = (): any => {
     if (typeof window === 'undefined') return null;
-    try { return JSON.parse(sessionStorage.getItem(draftKey) || 'null'); } catch { return null; }
+    try { return JSON.parse(localStorage.getItem(draftKey) || sessionStorage.getItem(draftKey) || 'null'); } catch { return null; }
   };
   const cleanBody = (s: string) => s.replace(/^[\s\u200f\u200e]+/g, '').slice(0, MAX_CHARS);
   const initial = readDraft() || {};
@@ -603,11 +605,12 @@ const InlineComposer = ({
   const [logId, setLogId] = useState<string | null>(initial.logId ?? null);
   const [saveState, setSaveState] = useState<'idle' | 'saving' | 'saved'>('idle');
 
-  // Persist composer draft to sessionStorage so collapsing or switching tabs never loses unfinished work.
+  // Persist composer draft to localStorage so collapsing/switching tabs,
+  // closing dialogs, navigating away, or hard-refreshing never loses work.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     try {
-      sessionStorage.setItem(draftKey, JSON.stringify({
+      localStorage.setItem(draftKey, JSON.stringify({
         body,
         customInstructions,
         selectedListingId,
@@ -881,6 +884,27 @@ const InlineComposer = ({
     }
   };
 
+  // Auto-trigger AI generation when entered via calendar scheduling flow
+  // (presetListingId present + no existing body). Runs once after listings
+  // load so the property context can be enriched into the AI payload.
+  const autoGenTriggeredRef = useRef(false);
+  useEffect(() => {
+    if (autoGenTriggeredRef.current) return;
+    if (!presetListingId) return;
+    if (body.trim().length > 0) return; // honor draft restoration
+    if (listingsLoading) return;
+    autoGenTriggeredRef.current = true;
+    // Defer slightly so the variant-hint customInstructions effect (mount)
+    // is committed before the AI call snapshots `customInstructions`.
+    const t = setTimeout(() => { handleGenerate().catch(() => {}); }, 50);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presetListingId, listingsLoading]);
+
+  // True when this composer was launched from the scheduling calendar
+  // (the date is already locked in); we hide the standalone calendar
+  // toggle button in that case so the operator doesn't re-pick a date.
+  const isFromScheduling = !!presetScheduleIso;
 
   const hasBody = body.trim().length > 0;
   const count = body.length;
@@ -1171,19 +1195,21 @@ const InlineComposer = ({
               <Send className="h-4 w-4 -scale-x-100" />
               {mode === 'scheduled' ? 'תזמן פרסום' : 'פרסם קמפיין'}
             </button>
-            <button
-              type="button"
-              onClick={() => setMode((m) => (m === 'scheduled' ? 'now' : 'scheduled'))}
-              title={mode === 'scheduled' ? 'בטל תזמון — פרסם עכשיו' : 'תזמן פרסום עתידי'}
-              aria-label="תזמן פרסום"
-              className={cn(
-                'inline-flex items-center justify-center rounded-xl border px-3 transition',
-                mode === 'scheduled'
-                  ? 'border-[#C9A84C] bg-[#C9A84C]/15 text-[#7a6210] hover:bg-[#C9A84C]/25'
-                  : 'border-border bg-background text-muted-foreground hover:text-foreground hover:border-primary/40',
-              )}>
-              <CalendarIcon className="h-5 w-5" />
-            </button>
+            {!isFromScheduling && (
+              <button
+                type="button"
+                onClick={() => setMode((m) => (m === 'scheduled' ? 'now' : 'scheduled'))}
+                title={mode === 'scheduled' ? 'בטל תזמון — פרסם עכשיו' : 'תזמן פרסום עתידי'}
+                aria-label="תזמן פרסום"
+                className={cn(
+                  'inline-flex items-center justify-center rounded-xl border px-3 transition',
+                  mode === 'scheduled'
+                    ? 'border-[#C9A84C] bg-[#C9A84C]/15 text-[#7a6210] hover:bg-[#C9A84C]/25'
+                    : 'border-border bg-background text-muted-foreground hover:text-foreground hover:border-primary/40',
+                )}>
+                <CalendarIcon className="h-5 w-5" />
+              </button>
+            )}
           </div>
         );
       })()}
@@ -3440,7 +3466,21 @@ const CampaignCenter = () => {
           setPickedChannel(null);
           setPickedChannelIds(new Set());
           if (publishedChannelId) {
-            try { sessionStorage.removeItem(`rz-composer-draft:${publishedChannelId}`); } catch {}
+            const prefix = `rz-composer-draft:${publishedChannelId}`;
+            try {
+              sessionStorage.removeItem(prefix);
+              localStorage.removeItem(prefix);
+              // Sweep namespaced draft entries (replicated composers)
+              for (const store of [localStorage, sessionStorage]) {
+                const keys: string[] = [];
+                for (let i = 0; i < store.length; i++) {
+                  const k = store.key(i);
+                  if (k && k.startsWith(`${prefix}:`)) keys.push(k);
+                }
+                keys.forEach((k) => store.removeItem(k));
+              }
+              sessionStorage.removeItem('rz-schedule-assignments');
+            } catch {}
           }
 
           setAlsoEmail(false);
