@@ -427,14 +427,21 @@ const listingOptionLabel = (listing: CampaignListing) => {
 
 const InlineComposer = ({
   channel, brandName, socialProfiles = [], onConfirm,
+  presetListingId, presetScheduleIso, presetVariant, presetVariants, instanceId,
 }: {
   channel: ChannelCard;
   brandName: string;
   socialProfiles?: SocialAccountProfile[];
   onConfirm: (payload: ConfirmPayload) => void;
+  presetListingId?: string | null;
+  presetScheduleIso?: string | null;
+  presetVariant?: number;
+  presetVariants?: number;
+  instanceId?: string;
 }) => {
-  // Session-persistence key — keeps unfinished drafts alive across collapse / expand / tab switch
-  const draftKey = `rz-composer-draft:${channel.id}`;
+  // Session-persistence key — namespaced per replicated instance so multiple
+  // composers on the same page don't clobber each other's drafts.
+  const draftKey = `rz-composer-draft:${channel.id}${instanceId ? `:${instanceId}` : ''}`;
   const readDraft = (): any => {
     if (typeof window === 'undefined') return null;
     try { return JSON.parse(sessionStorage.getItem(draftKey) || 'null'); } catch { return null; }
@@ -450,12 +457,12 @@ const InlineComposer = ({
   // Local datetime string in `YYYY-MM-DDTHH:mm` (input[type=datetime-local] format).
   const [scheduledLocal, setScheduledLocal] = useState<string>('');
 
-  // Preset from ?schedule=ISO so the calendar can deep-link the composer to
-  // a specific date tile. Run once per mount.
+  // Preset from props (multi-property replicas) OR ?schedule=ISO so the calendar
+  // can deep-link the composer. Run once per mount.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
-    const iso = params.get('schedule');
+    const iso = presetScheduleIso || params.get('schedule');
     if (iso) {
       const d = new Date(iso);
       if (!Number.isNaN(d.getTime())) {
@@ -465,16 +472,17 @@ const InlineComposer = ({
         setMode('scheduled');
       }
     }
-    const listingParam = params.get('listing');
+    const listingParam = presetListingId ?? params.get('listing');
     if (listingParam) setSelectedListingId(listingParam);
-    const variant = Number(params.get('variant') || '');
-    const variants = Number(params.get('variants') || '');
+    const variant = presetVariant ?? Number(params.get('variant') || '');
+    const variants = presetVariants ?? Number(params.get('variants') || '');
     if (variant > 0 && variants > 1) {
       const hint = `וריאציה ${variant} מתוך ${variants} — כתוב גרסה אחרת לחלוטין בזווית, פתיחה, מבנה וניסוח. אסור לחזור על משפטי פתיחה או על אותה ה-CTA של הוריאציות הקודמות.`;
       setCustomInstructions((prev) => (prev && prev.includes(hint) ? prev : (prev ? `${prev}\n\n${hint}` : hint)));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
 
   // Multi-select of connected Facebook Group IDs to fan-out a single post to.
   // Persisted to localStorage so a reload / background refresh doesn't wipe the selection.
