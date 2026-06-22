@@ -48,7 +48,22 @@ const toLocalInput = (d: Date): string => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
-export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt: (iso: string) => void; onClose?: () => void }) {
+type ListingLite = {
+  id: string;
+  property_title: string | null;
+  city: string | null;
+  neighborhood: string | null;
+  address: string | null;
+  asking_price: number | null;
+};
+
+const listingLabel = (l: ListingLite) => {
+  const loc = [l.address || l.property_title || 'נכס', l.neighborhood, l.city].filter(Boolean).join(', ');
+  const price = l.asking_price ? ` — ${Number(l.asking_price).toLocaleString('he-IL')} ₪` : '';
+  return `${loc}${price}`;
+};
+
+export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt: (iso: string, extras?: { listing?: string | null; variant?: number; totalVariants?: number }) => void; onClose?: () => void }) {
   const queryClient = useQueryClient();
   const [rows, setRows] = useState<ScheduledRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -66,6 +81,44 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
   const [winStart, setWinStart] = useState('09:00');
   const [winEnd, setWinEnd] = useState('21:00');
   const [winCount, setWinCount] = useState(3);
+  const [listings, setListings] = useState<ListingLite[]>([]);
+  const [listingsLoading, setListingsLoading] = useState(false);
+  const [selectedListingIds, setSelectedListingIds] = useState<string[]>([]);
+  const [listingSearch, setListingSearch] = useState('');
+
+  useEffect(() => {
+    if (!scheduleDay) return;
+    let cancelled = false;
+    setListingsLoading(true);
+    setListingSearch('');
+    setSelectedListingIds([]);
+    (async () => {
+      const { data, error } = await supabase
+        .from('listings')
+        .select('id, property_title, city, neighborhood, address, asking_price, status, is_published, created_at')
+        .order('created_at', { ascending: false })
+        .limit(500);
+      if (cancelled) return;
+      if (error) {
+        console.error('[Calendar] listings fetch failed', error);
+        setListings([]);
+      } else {
+        setListings((data || []) as ListingLite[]);
+      }
+      setListingsLoading(false);
+    })();
+    return () => { cancelled = true; };
+  }, [scheduleDay]);
+
+  const filteredListings = useMemo(() => {
+    const q = listingSearch.trim().toLowerCase();
+    if (!q) return listings;
+    return listings.filter((l) => {
+      const hay = [l.property_title, l.city, l.neighborhood, l.address, l.asking_price ? String(l.asking_price) : '']
+        .filter(Boolean).join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  }, [listings, listingSearch]);
 
   const load = async () => {
     setLoading(true);
@@ -407,11 +460,76 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                 onChange={(e) => setWinCount(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
               />
             </div>
-            <p className="text-[11px] text-muted-foreground">
-              המערכת תפזר את הפוסטים בשעות אקראיות בתוך החלון שבחרת. הראשון ייטען אוטומטית לעורך הפוסט; את הבאים תוכל לפרסם בזה אחר זה.
-            </p>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">
+                נכסים לשיוך {selectedListingIds.length > 0 && <span className="text-foreground">({selectedListingIds.length})</span>}
+              </label>
+              <div className="rounded-md border border-border bg-card">
+                <div className="sticky top-0 z-10 p-2 border-b border-border bg-card">
+                  <Input
+                    placeholder="חיפוש לפי עיר, שכונה, רחוב או מחיר…"
+                    value={listingSearch}
+                    onChange={(e) => setListingSearch(e.target.value)}
+                    className="h-8 text-right"
+                  />
+                </div>
+                <div className="max-h-48 overflow-y-auto p-1">
+                  {listingsLoading ? (
+                    <div className="px-2 py-3 text-xs text-muted-foreground text-center">טוען נכסים…</div>
+                  ) : filteredListings.length === 0 ? (
+                    <div className="px-2 py-3 text-xs text-muted-foreground text-center">לא נמצאו נכסים</div>
+                  ) : (
+                    filteredListings.map((l) => {
+                      const checked = selectedListingIds.includes(l.id);
+                      return (
+                        <label
+                          key={l.id}
+                          className={cn(
+                            'flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-muted/60 text-xs',
+                            checked && 'bg-muted/80',
+                          )}
+                        >
+                          <input
+                            type="checkbox"
+                            checked={checked}
+                            onChange={(e) => {
+                              setSelectedListingIds((prev) =>
+                                e.target.checked ? [...prev, l.id] : prev.filter((id) => id !== l.id),
+                              );
+                            }}
+                            className="h-3.5 w-3.5 accent-slate-900"
+                          />
+                          <span className="truncate text-right flex-1">{listingLabel(l)}</span>
+                        </label>
+                      );
+                    })
+                  )}
+                </div>
+              </div>
+              {selectedListingIds.length > 0 && (
+                <div className="flex flex-wrap gap-1 mt-2">
+                  {selectedListingIds.map((id) => {
+                    const l = listings.find((x) => x.id === id);
+                    if (!l) return null;
+                    return (
+                      <span key={id} className="inline-flex items-center gap-1 rounded-full bg-slate-100 text-slate-800 ring-1 ring-slate-200 px-2 py-0.5 text-[11px]">
+                        <span className="truncate max-w-[160px]">{listingLabel(l)}</span>
+                        <button
+                          type="button"
+                          onClick={() => setSelectedListingIds((prev) => prev.filter((x) => x !== id))}
+                          className="opacity-60 hover:opacity-100"
+                          aria-label="הסר"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </span>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
           </div>
-          <DialogFooter className="gap-2 sm:gap-2">
+          <DialogFooter className="flex flex-row justify-between sm:justify-between gap-2 w-full">
             <Button variant="outline" onClick={() => setScheduleDay(null)}>ביטול</Button>
             <Button
               onClick={() => {
@@ -439,15 +557,39 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                   slots.push(d);
                 }
                 slots.sort((a, b) => a.getTime() - b.getTime());
+
+                // Distribute properties across slots (round-robin) and compute
+                // per-listing variant index so the composer can synthesize
+                // distinct copy variations when the same property repeats.
+                const picks = selectedListingIds;
+                const perListingTotal = new Map<string, number>();
+                if (picks.length > 0) {
+                  for (let i = 0; i < slots.length; i++) {
+                    const lid = picks[i % picks.length];
+                    perListingTotal.set(lid, (perListingTotal.get(lid) || 0) + 1);
+                  }
+                }
+                const seenByListing = new Map<string, number>();
+                const assignments = slots.map((d, i) => {
+                  const lid = picks.length > 0 ? picks[i % picks.length] : null;
+                  let variant = 1;
+                  let totalVariants = 1;
+                  if (lid) {
+                    const next = (seenByListing.get(lid) || 0) + 1;
+                    seenByListing.set(lid, next);
+                    variant = next;
+                    totalVariants = perListingTotal.get(lid) || 1;
+                  }
+                  return { iso: d.toISOString(), listing: lid, variant, totalVariants };
+                });
+
                 try {
-                  sessionStorage.setItem(
-                    'rz-schedule-queue',
-                    JSON.stringify(slots.slice(1).map((d) => d.toISOString())),
-                  );
+                  sessionStorage.setItem('rz-schedule-queue', JSON.stringify(assignments.slice(1)));
                 } catch {}
                 if (n > 1) toast.success(`נוצרו ${n} חלונות תזמון · הראשון נטען לעורך`);
                 setScheduleDay(null);
-                onCreateAt(slots[0].toISOString());
+                const first = assignments[0];
+                onCreateAt(first.iso, { listing: first.listing, variant: first.variant, totalVariants: first.totalVariants });
               }}
             >
               צור וטען לעורך
