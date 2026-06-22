@@ -261,13 +261,23 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
             const isPast = day.getTime() < new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
             const key = `${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`;
             const dayRows = rowsByDay.get(key) || [];
+            const openSchedule = () => {
+              if (isPast) return;
+              setScheduleDay(new Date(day));
+              setWinStart('09:00');
+              setWinEnd('21:00');
+              setWinCount(3);
+            };
             return (
               <div
                 key={idx}
+                onClick={openSchedule}
+                role={!isPast ? 'button' : undefined}
                 className={cn(
                   'group relative min-h-[110px] border-b border-l border-border p-1.5 flex flex-col gap-1',
                   !inMonth && 'bg-muted/20 text-muted-foreground',
                   isToday && 'bg-amber-50/50',
+                  !isPast && 'cursor-pointer hover:bg-muted/30 transition-colors',
                 )}
               >
                 <div className="flex items-center justify-between">
@@ -278,22 +288,13 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                     {day.getDate()}
                   </span>
                   {!isPast && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const slot = new Date(day);
-                        slot.setHours(10, 0, 0, 0);
-                        if (slot.getTime() <= Date.now() + 60_000) {
-                          slot.setTime(Date.now() + 30 * 60_000);
-                        }
-                        onCreateAt(slot.toISOString());
-                      }}
+                    <span
                       className="opacity-0 group-hover:opacity-100 transition-opacity rounded-full bg-slate-900 text-white p-0.5"
-                      aria-label="הוסף פרסום מתוזמן"
+                      aria-hidden
                       title="הוסף פרסום מתוזמן"
                     >
                       <Plus className="h-3 w-3" />
-                    </button>
+                    </span>
                   )}
                 </div>
                 <div className="flex flex-col gap-1 overflow-hidden">
