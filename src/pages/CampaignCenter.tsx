@@ -2055,8 +2055,10 @@ const PublishedFeed = () => {
           <p className="mt-1 text-xs text-muted-foreground">לאחר שתפעיל קמפיין מהטאב "צור קמפיין", הוא יופיע כאן עם מעקב לייקים, שיתופים ותגובות.</p>
         </div>
       ) : (filteredRows || []).map((r) => {
+      }) => {
         const isOpen = expanded[r.id] ?? false;
-        const dt = new Date(r.created_at);
+        const scheduled = isScheduledRow(r);
+        const dt = scheduled && r.sent_at ? new Date(r.sent_at) : new Date(r.created_at);
         const dateStr = dt.toLocaleDateString('he-IL') + ', ' + dt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
         const platformMeta = FEED_PLATFORMS.find((p) => p.id === String(r.channel || '').toLowerCase());
         const postUrl = derivePostUrl(r);
