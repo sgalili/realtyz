@@ -3325,12 +3325,21 @@ const CampaignCenter = () => {
               next.set('tab', 'create');
               next.set('schedule', iso);
               if (extras?.listing) next.set('listing', extras.listing); else next.delete('listing');
+              if (extras?.properties && extras.properties.length > 0) {
+                next.set('properties', extras.properties.join(','));
+              } else {
+                next.delete('properties');
+              }
               if (extras?.variant && extras?.totalVariants && extras.totalVariants > 1) {
                 next.set('variant', String(extras.variant));
                 next.set('variants', String(extras.totalVariants));
               } else {
                 next.delete('variant');
                 next.delete('variants');
+              }
+              // Persist full per-property assignments for the composer to read.
+              if (extras?.assignments) {
+                try { sessionStorage.setItem('rz-schedule-assignments', JSON.stringify(extras.assignments)); } catch {}
               }
               // Persist selected Facebook groups so the composer picks them up
               // (it hydrates `groupIds` from this localStorage key on mount).
