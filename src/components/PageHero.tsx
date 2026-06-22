@@ -260,18 +260,6 @@ export function PageHero() {
           >
             <Menu className="h-6 w-6" />
           </SidebarTrigger>
-          {location.pathname.startsWith('/campaigns') && (
-            <Button
-              size="icon"
-              variant="ghost"
-              onClick={() => navigate('/campaigns?tab=published')}
-              aria-label="היסטוריית פוסטים"
-              title="היסטוריית פוסטים"
-              className="h-10 w-10 rounded-full text-white hover:bg-white/15 hover:text-white"
-            >
-              <History className="!h-5 !w-5" strokeWidth={2.5} />
-            </Button>
-          )}
         </div>
 
         {/* Absolute-centered page title — locked to screen center */}
