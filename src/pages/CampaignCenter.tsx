@@ -524,7 +524,7 @@ const InlineComposer = ({
       }
       const baseline = originalAiBody;
       const editedBeforeFinal = edited;
-      const next = finalText.trim().slice(0, MAX_CHARS);
+      const next = cleanBody(finalText);
       setBody(next);
       setOriginalAiBody(next);
       learnFromEdit({
