@@ -456,13 +456,23 @@ const InlineComposer = ({
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     const iso = params.get('schedule');
-    if (!iso) return;
-    const d = new Date(iso);
-    if (Number.isNaN(d.getTime())) return;
-    const pad = (n: number) => String(n).padStart(2, '0');
-    const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-    setScheduledLocal(local);
-    setMode('scheduled');
+    if (iso) {
+      const d = new Date(iso);
+      if (!Number.isNaN(d.getTime())) {
+        const pad = (n: number) => String(n).padStart(2, '0');
+        const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+        setScheduledLocal(local);
+        setMode('scheduled');
+      }
+    }
+    const listingParam = params.get('listing');
+    if (listingParam) setSelectedListingId(listingParam);
+    const variant = Number(params.get('variant') || '');
+    const variants = Number(params.get('variants') || '');
+    if (variant > 0 && variants > 1) {
+      const hint = `וריאציה ${variant} מתוך ${variants} — כתוב גרסה אחרת לחלוטין בזווית, פתיחה, מבנה וניסוח. אסור לחזור על משפטי פתיחה או על אותה ה-CTA של הוריאציות הקודמות.`;
+      setCustomInstructions((prev) => (prev && prev.includes(hint) ? prev : (prev ? `${prev}\n\n${hint}` : hint)));
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
