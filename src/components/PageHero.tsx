@@ -129,24 +129,39 @@ function CampaignsHeroCalendarButton() {
 
 function CampaignsHeroAddButton() {
   const [searchParams, setSearchParams] = useSearchParams();
-  const active = (searchParams.get('tab') ?? 'published') === 'create';
-  const toggle = () => {
+  const tab = searchParams.get('tab') ?? 'published';
+  const isCreate = tab === 'create';
+  const isCalendar = tab === 'calendar';
+  const handleClick = () => {
+    if (isCalendar) {
+      // Back to dashboard / published view from the calendar
+      const next = new URLSearchParams(searchParams);
+      next.set('tab', 'published');
+      next.delete('sub');
+      setSearchParams(next, { replace: true });
+      return;
+    }
     const next = new URLSearchParams(searchParams);
-    next.set('tab', active ? 'published' : 'create');
+    next.set('tab', isCreate ? 'published' : 'create');
     next.delete('sub');
     setSearchParams(next, { replace: true });
   };
+  const label = isCalendar
+    ? 'חזרה לדשבורד'
+    : isCreate
+      ? 'חזרה לקמפיינים'
+      : 'יצירת קמפיין חדש';
   return (
     <Button
       size="icon"
       variant="ghost"
-      onClick={toggle}
-      aria-label={active ? 'חזרה לקמפיינים' : 'יצירת קמפיין חדש'}
-      title={active ? 'חזרה לקמפיינים' : 'יצירת קמפיין חדש'}
+      onClick={handleClick}
+      aria-label={label}
+      title={label}
       className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white"
     >
-      {active ? (
-        <ArrowRight className="!h-5 !w-5 scale-x-[-1]" strokeWidth={2.5} />
+      {isCreate || isCalendar ? (
+        <ArrowLeft className="!h-5 !w-5" strokeWidth={2.5} />
       ) : (
         <Plus className="!h-5 !w-5" strokeWidth={2.5} />
       )}
@@ -204,12 +219,16 @@ export function PageHero() {
   const title = resolvePageTitle(location.pathname);
   const isPropertyDetail = /^\/properties\/[^/]+/.test(location.pathname);
   const propertySuffix = usePropertyHeroSuffix(location.pathname);
-  const isCampaignsCreate = location.pathname.startsWith('/campaigns') && (searchParams.get('tab') ?? 'published') === 'create';
+  const campaignsTab = searchParams.get('tab') ?? 'published';
+  const isCampaignsCreate = location.pathname.startsWith('/campaigns') && campaignsTab === 'create';
+  const isCampaignsCalendar = location.pathname.startsWith('/campaigns') && campaignsTab === 'calendar';
   const displayTitle = isCampaignsCreate
     ? 'פרסום פוסט חדש'
-    : isPropertyDetail && propertySuffix
-      ? `${title} - ${propertySuffix}`
-      : title;
+    : isCampaignsCalendar
+      ? 'פרסומים מתוזמנים'
+      : isPropertyDetail && propertySuffix
+        ? `${title} - ${propertySuffix}`
+        : title;
 
   // On /campaigns with a lead context, CampaignCenter renders its own
   // avatar+name hero — skip the default hero to avoid a stacked duplicate.

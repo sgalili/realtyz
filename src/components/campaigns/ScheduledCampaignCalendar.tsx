@@ -62,6 +62,10 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
   const [editBody, setEditBody] = useState('');
   const [editWhen, setEditWhen] = useState('');
   const [saving, setSaving] = useState(false);
+  const [scheduleDay, setScheduleDay] = useState<Date | null>(null);
+  const [winStart, setWinStart] = useState('09:00');
+  const [winEnd, setWinEnd] = useState('21:00');
+  const [winCount, setWinCount] = useState(3);
 
   const load = async () => {
     setLoading(true);
@@ -196,37 +200,6 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
 
   return (
     <div className="space-y-4" dir="rtl">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          {onClose && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              aria-label="חזור"
-              title="חזור"
-              className="h-9 w-9"
-            >
-              <ArrowRight className="h-5 w-5" />
-            </Button>
-          )}
-          <h2 className="text-lg font-bold text-foreground">לוח שנה — פרסומים מתוזמנים</h2>
-        </div>
-        <div className="flex items-center gap-2">
-          {onClose && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              aria-label="סגור לוח שנה"
-              title="סגור לוח שנה"
-              className="h-9 w-9"
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          )}
-        </div>
-      </div>
 
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
@@ -288,13 +261,23 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
             const isPast = day.getTime() < new Date(today.getFullYear(), today.getMonth(), today.getDate()).getTime();
             const key = `${day.getFullYear()}-${day.getMonth()}-${day.getDate()}`;
             const dayRows = rowsByDay.get(key) || [];
+            const openSchedule = () => {
+              if (isPast) return;
+              setScheduleDay(new Date(day));
+              setWinStart('09:00');
+              setWinEnd('21:00');
+              setWinCount(3);
+            };
             return (
               <div
                 key={idx}
+                onClick={openSchedule}
+                role={!isPast ? 'button' : undefined}
                 className={cn(
                   'group relative min-h-[110px] border-b border-l border-border p-1.5 flex flex-col gap-1',
                   !inMonth && 'bg-muted/20 text-muted-foreground',
                   isToday && 'bg-amber-50/50',
+                  !isPast && 'cursor-pointer hover:bg-muted/30 transition-colors',
                 )}
               >
                 <div className="flex items-center justify-between">
@@ -305,22 +288,13 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                     {day.getDate()}
                   </span>
                   {!isPast && (
-                    <button
-                      type="button"
-                      onClick={() => {
-                        const slot = new Date(day);
-                        slot.setHours(10, 0, 0, 0);
-                        if (slot.getTime() <= Date.now() + 60_000) {
-                          slot.setTime(Date.now() + 30 * 60_000);
-                        }
-                        onCreateAt(slot.toISOString());
-                      }}
+                    <span
                       className="opacity-0 group-hover:opacity-100 transition-opacity rounded-full bg-slate-900 text-white p-0.5"
-                      aria-label="הוסף פרסום מתוזמן"
+                      aria-hidden
                       title="הוסף פרסום מתוזמן"
                     >
                       <Plus className="h-3 w-3" />
-                    </button>
+                    </span>
                   )}
                 </div>
                 <div className="flex flex-col gap-1 overflow-hidden">
@@ -332,7 +306,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                       <button
                         key={r.id}
                         type="button"
-                        onClick={() => openEditor(r)}
+                        onClick={(e) => { e.stopPropagation(); openEditor(r); }}
                         className={cn(
                           'truncate text-right text-[11px] font-semibold rounded-md px-1.5 py-0.5 ring-1 hover:opacity-80 transition-opacity',
                           cls,
@@ -399,6 +373,84 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
             <Button onClick={saveEdit} disabled={saving}>
               <Pencil className="ml-1 h-4 w-4" />
               {saving ? 'שומר…' : 'שמור שינויים'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!scheduleDay} onOpenChange={(o) => { if (!o) setScheduleDay(null); }}>
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 justify-end">
+              <CalendarIcon className="h-4 w-4" />
+              תזמון פרסומים ליום {scheduleDay?.toLocaleDateString('he-IL')}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3">
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">משעה</label>
+                <Input type="time" value={winStart} onChange={(e) => setWinStart(e.target.value)} dir="ltr" />
+              </div>
+              <div>
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block">עד שעה</label>
+                <Input type="time" value={winEnd} onChange={(e) => setWinEnd(e.target.value)} dir="ltr" />
+              </div>
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-muted-foreground mb-1 block">כמות פוסטים לאותו יום</label>
+              <Input
+                type="number"
+                min={1}
+                max={20}
+                value={winCount}
+                onChange={(e) => setWinCount(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
+              />
+            </div>
+            <p className="text-[11px] text-muted-foreground">
+              המערכת תפזר את הפוסטים בשעות אקראיות בתוך החלון שבחרת. הראשון ייטען אוטומטית לעורך הפוסט; את הבאים תוכל לפרסם בזה אחר זה.
+            </p>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => setScheduleDay(null)}>ביטול</Button>
+            <Button
+              onClick={() => {
+                if (!scheduleDay) return;
+                const [sh, sm] = winStart.split(':').map(Number);
+                const [eh, em] = winEnd.split(':').map(Number);
+                const startMin = sh * 60 + (sm || 0);
+                const endMin = eh * 60 + (em || 0);
+                if (endMin <= startMin) {
+                  toast.error('שעת הסיום חייבת להיות אחרי שעת ההתחלה');
+                  return;
+                }
+                const n = Math.max(1, winCount);
+                const span = endMin - startMin;
+                const bucket = span / n;
+                const slots: Date[] = [];
+                for (let i = 0; i < n; i++) {
+                  const offset = startMin + i * bucket + Math.random() * bucket;
+                  const total = Math.floor(offset);
+                  const d = new Date(scheduleDay);
+                  d.setHours(Math.floor(total / 60), total % 60, Math.floor(Math.random() * 60), 0);
+                  if (d.getTime() <= Date.now() + 60_000) {
+                    d.setTime(Date.now() + (i + 1) * 5 * 60_000);
+                  }
+                  slots.push(d);
+                }
+                slots.sort((a, b) => a.getTime() - b.getTime());
+                try {
+                  sessionStorage.setItem(
+                    'rz-schedule-queue',
+                    JSON.stringify(slots.slice(1).map((d) => d.toISOString())),
+                  );
+                } catch {}
+                if (n > 1) toast.success(`נוצרו ${n} חלונות תזמון · הראשון נטען לעורך`);
+                setScheduleDay(null);
+                onCreateAt(slots[0].toISOString());
+              }}
+            >
+              צור וטען לעורך
             </Button>
           </DialogFooter>
         </DialogContent>
