@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Trash2, Pencil, Plus, Calendar as CalendarIcon, ArrowRight, X, Users } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2, Pencil, Plus, Calendar as CalendarIcon, ArrowRight, X, Users, Repeat } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
@@ -89,6 +89,11 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
   const [listingSearch, setListingSearch] = useState('');
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [groupsOpen, setGroupsOpen] = useState(false);
+  type Recurrence = 'none' | 'daily' | 'weekly' | 'monthly' | 'custom';
+  const [recurrence, setRecurrence] = useState<Recurrence>('none');
+  const [recurrenceDays, setRecurrenceDays] = useState<number[]>([]); // 0=Sun..6=Sat
+  const [recurrenceCount, setRecurrenceCount] = useState<number>(4); // iterations
+  const [recurrenceOpen, setRecurrenceOpen] = useState(false);
 
   useEffect(() => {
     if (!scheduleDay) return;
@@ -97,6 +102,10 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
     setListingSearch('');
     setSelectedListingIds([]);
     setSelectedGroupIds([]);
+    setRecurrence('none');
+    setRecurrenceDays([]);
+    setRecurrenceCount(4);
+    setRecurrenceOpen(false);
     (async () => {
       const { data, error } = await supabase
         .from('listings')
@@ -445,15 +454,103 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="grid grid-cols-2 gap-3">
-              <div>
+            <div className="flex items-end gap-2">
+              <div className="flex-1">
                 <label className="text-xs font-semibold text-muted-foreground mb-1 block">משעה</label>
                 <Input type="time" value={winStart} onChange={(e) => setWinStart(e.target.value)} dir="rtl" className="text-right [&::-webkit-calendar-picker-indicator]:mr-0 [&::-webkit-calendar-picker-indicator]:ml-auto" />
               </div>
-              <div>
+              <div className="flex-1">
                 <label className="text-xs font-semibold text-muted-foreground mb-1 block">עד שעה</label>
                 <Input type="time" value={winEnd} onChange={(e) => setWinEnd(e.target.value)} dir="rtl" className="text-right [&::-webkit-calendar-picker-indicator]:mr-0 [&::-webkit-calendar-picker-indicator]:ml-auto" />
               </div>
+              <Popover open={recurrenceOpen} onOpenChange={setRecurrenceOpen}>
+                <PopoverTrigger asChild>
+                  <button
+                    type="button"
+                    title="חזרתיות"
+                    aria-label="חזרתיות"
+                    className={cn(
+                      'relative inline-flex items-center justify-center h-9 w-9 rounded-md text-foreground hover:text-primary transition-colors',
+                      recurrence !== 'none' && 'text-primary',
+                    )}
+                  >
+                    <Repeat className="h-5 w-5" />
+                    {recurrence !== 'none' && (
+                      <span className="absolute -top-1 -right-1 h-2 w-2 rounded-full bg-primary" />
+                    )}
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent align="end" side="bottom" className="w-64 p-2" dir="rtl">
+                  <div className="text-xs font-semibold text-muted-foreground px-2 py-1">חזרתיות</div>
+                  <div className="flex flex-col">
+                    {([
+                      ['none', 'ללא חזרה'],
+                      ['daily', 'בכל יום'],
+                      ['weekly', 'בכל שבוע'],
+                      ['monthly', 'בכל חודש'],
+                      ['custom', 'ימים ושעות נבחרים'],
+                    ] as Array<[Recurrence, string]>).map(([key, label]) => (
+                      <button
+                        key={key}
+                        type="button"
+                        onClick={() => setRecurrence(key)}
+                        className={cn(
+                          'text-right text-sm rounded-md px-2 py-1.5 hover:bg-muted/60',
+                          recurrence === key && 'bg-primary/10 text-primary font-semibold',
+                        )}
+                      >
+                        {label}
+                      </button>
+                    ))}
+                  </div>
+                  {recurrence === 'custom' && (
+                    <div className="mt-2 border-t pt-2">
+                      <div className="text-[11px] text-muted-foreground mb-1 text-right">בחר ימי שבוע</div>
+                      <div className="flex flex-wrap gap-1 justify-end">
+                        {HEBREW_WEEKDAYS.map((d, i) => {
+                          const active = recurrenceDays.includes(i);
+                          return (
+                            <button
+                              key={i}
+                              type="button"
+                              onClick={() =>
+                                setRecurrenceDays((prev) =>
+                                  prev.includes(i) ? prev.filter((x) => x !== i) : [...prev, i],
+                                )
+                              }
+                              className={cn(
+                                'h-7 w-7 text-[11px] rounded-full border',
+                                active
+                                  ? 'bg-primary text-primary-foreground border-primary'
+                                  : 'bg-background text-foreground border-border hover:bg-muted/60',
+                              )}
+                            >
+                              {d}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                  {recurrence !== 'none' && (
+                    <div className="mt-2 border-t pt-2">
+                      <label className="text-[11px] text-muted-foreground block mb-1 text-right">
+                        {recurrence === 'weekly' || recurrence === 'custom'
+                          ? 'מספר שבועות'
+                          : recurrence === 'monthly' ? 'מספר חודשים' : 'מספר ימים'}
+                      </label>
+                      <Input
+                        type="number"
+                        min={1}
+                        max={52}
+                        value={recurrenceCount}
+                        onChange={(e) => setRecurrenceCount(Math.max(1, Math.min(52, Number(e.target.value) || 1)))}
+                        className="h-8 text-right"
+                      />
+                    </div>
+                  )}
+                </PopoverContent>
+              </Popover>
             </div>
             <div>
               <label className="text-xs font-semibold text-muted-foreground mb-1 block">כמות פוסטים לאותו יום</label>
@@ -574,18 +671,63 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                 const n = Math.max(1, winCount);
                 const span = endMin - startMin;
                 const bucket = span / n;
-                const slots: Date[] = [];
-                for (let i = 0; i < n; i++) {
-                  const offset = startMin + i * bucket + Math.random() * bucket;
-                  const total = Math.floor(offset);
-                  const d = new Date(scheduleDay);
-                  d.setHours(Math.floor(total / 60), total % 60, Math.floor(Math.random() * 60), 0);
-                  if (d.getTime() <= Date.now() + 60_000) {
-                    d.setTime(Date.now() + (i + 1) * 5 * 60_000);
+                // Build per-day slots within the time window
+                const buildDaySlots = (base: Date): Date[] => {
+                  const out: Date[] = [];
+                  for (let i = 0; i < n; i++) {
+                    const offset = startMin + i * bucket + Math.random() * bucket;
+                    const total = Math.floor(offset);
+                    const d = new Date(base);
+                    d.setHours(Math.floor(total / 60), total % 60, Math.floor(Math.random() * 60), 0);
+                    if (d.getTime() <= Date.now() + 60_000) {
+                      d.setTime(Date.now() + (i + 1) * 5 * 60_000);
+                    }
+                    out.push(d);
                   }
-                  slots.push(d);
+                  return out;
+                };
+
+                // Expand the base day across the chosen recurrence pattern.
+                const recurrenceDates: Date[] = [];
+                if (recurrence === 'none') {
+                  recurrenceDates.push(new Date(scheduleDay));
+                } else if (recurrence === 'daily') {
+                  for (let i = 0; i < recurrenceCount; i++) {
+                    const d = new Date(scheduleDay); d.setDate(d.getDate() + i);
+                    recurrenceDates.push(d);
+                  }
+                } else if (recurrence === 'weekly') {
+                  for (let i = 0; i < recurrenceCount; i++) {
+                    const d = new Date(scheduleDay); d.setDate(d.getDate() + i * 7);
+                    recurrenceDates.push(d);
+                  }
+                } else if (recurrence === 'monthly') {
+                  for (let i = 0; i < recurrenceCount; i++) {
+                    const d = new Date(scheduleDay); d.setMonth(d.getMonth() + i);
+                    recurrenceDates.push(d);
+                  }
+                } else if (recurrence === 'custom') {
+                  if (recurrenceDays.length === 0) {
+                    toast.error('בחר לפחות יום אחד בשבוע');
+                    return;
+                  }
+                  const weeks = Math.max(1, recurrenceCount);
+                  // Walk forward from scheduleDay across the chosen number of weeks
+                  for (let w = 0; w < weeks; w++) {
+                    for (let dow = 0; dow < 7; dow++) {
+                      if (!recurrenceDays.includes(dow)) continue;
+                      const base = new Date(scheduleDay);
+                      // Shift to start of week containing scheduleDay
+                      base.setDate(base.getDate() - base.getDay() + dow + w * 7);
+                      if (base.getTime() < new Date(scheduleDay.getFullYear(), scheduleDay.getMonth(), scheduleDay.getDate()).getTime()) continue;
+                      recurrenceDates.push(base);
+                    }
+                  }
                 }
-                slots.sort((a, b) => a.getTime() - b.getTime());
+
+                const slots: Date[] = recurrenceDates
+                  .flatMap((day) => buildDaySlots(day))
+                  .sort((a, b) => a.getTime() - b.getTime());
 
                 // Distribute properties across slots (round-robin) and compute
                 // per-listing variant index so the composer can synthesize

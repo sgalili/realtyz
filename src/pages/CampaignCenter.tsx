@@ -477,8 +477,24 @@ const InlineComposer = ({
     const variant = presetVariant ?? Number(params.get('variant') || '');
     const variants = presetVariants ?? Number(params.get('variants') || '');
     if (variant > 0 && variants > 1) {
-      const hint = `וריאציה ${variant} מתוך ${variants} — כתוב גרסה אחרת לחלוטין בזווית, פתיחה, מבנה וניסוח. אסור לחזור על משפטי פתיחה או על אותה ה-CTA של הוריאציות הקודמות.`;
-      setCustomInstructions((prev) => (prev && prev.includes(hint) ? prev : (prev ? `${prev}\n\n${hint}` : hint)));
+      // Anti-ban variation directive — Facebook/Ayrshare will throttle or
+      // shadow-block accounts that repost identical payloads. Every recurring
+      // variant must be a fully distinct human-written copy.
+      const structures = ['סיפור-פתיחה רגשי קצר', 'רשימת בולטים של יתרונות', 'וו-דחיפות עם CTA חד', 'נקודת מבט של תושב השכונה', 'שאלה פתוחה לקהל'];
+      const greetings = ['שלום', 'היי', 'בוקר טוב', 'ערב טוב', 'חברים'];
+      const ctas = ['השאירו פרטים בפרטי', 'מוזמנים להתקשר', 'תיאום ביקור בלינק', 'שלחו הודעה לפרטים נוספים', 'דברו איתי לפני שזה רץ'];
+      const pricingFrames = ['ציון מחיר ישיר', 'מחיר כיתרון יחס שכונתי', 'מחיר כסיפור הזדמנות', 'מחיר ללא קישוט עם הקשר שוק'];
+      const pick = <T,>(arr: T[]) => arr[Math.floor(Math.random() * arr.length)];
+      const hint = [
+        `וריאציה ${variant} מתוך ${variants} — כתוב גרסה אחרת לחלוטין בזווית, פתיחה, מבנה וניסוח. אסור לחזור על משפטי פתיחה או על אותה ה-CTA של הוריאציות הקודמות.`,
+        `מבנה נדרש לוריאציה זו: ${pick(structures)}.`,
+        `פתיחה: התחל ב"${pick(greetings)}…" (אל תחזור על פתיחה זהה בין וריאציות).`,
+        `הצגת מחיר: ${pick(pricingFrames)}.`,
+        `CTA לסיום: ${pick(ctas)}.`,
+        'טון אנושי וגולמי של מתווך אמיתי: ללא ניסוחים גנריים, ללא הצפת אמוג׳ים, ללא חתימה מלאכותית. אסור להעתיק משפטים שלמים מוריאציות אחרות.',
+        'אקראיות מבנית: ערבב סדר פסקאות, אורכי משפט, ובחירת אמוג׳ים (0–3 לכל הפוסט). אסור שתי וריאציות יחלקו מבנה פסקה זהה — חובה לעמוד במדיניות אנטי-ספאם של פייסבוק.',
+      ].join('\n');
+      setCustomInstructions((prev) => (prev && prev.includes('אנטי-ספאם') ? prev : (prev ? `${prev}\n\n${hint}` : hint)));
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
