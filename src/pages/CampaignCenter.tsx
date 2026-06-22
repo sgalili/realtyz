@@ -3153,8 +3153,6 @@ const CampaignCenter = () => {
   const remapped: TabValue =
     initial === 'campaigns' || initial === 'strategy' || initial === 'send' || initial === 'broadcast'
       ? 'create'
-      : initial === 'calendar'
-      ? 'published'
       : (initial as TabValue);
   const active: TabValue = TABS.some((t) => t.value === remapped) ? remapped : 'published';
 
