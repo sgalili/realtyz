@@ -132,9 +132,11 @@ function CampaignsHeroAddButton() {
   const tab = searchParams.get('tab') ?? 'published';
   const isCreate = tab === 'create';
   const isCalendar = tab === 'calendar';
+  // When the composer was launched from the calendar, the back arrow must
+  // strictly return there instead of the default sent feed.
+  const cameFromCalendar = isCreate && (searchParams.has('schedule') || searchParams.has('properties'));
   const handleClick = () => {
     if (isCalendar) {
-      // Back to dashboard / published view from the calendar
       const next = new URLSearchParams(searchParams);
       next.set('tab', 'published');
       next.delete('sub');
@@ -142,15 +144,22 @@ function CampaignsHeroAddButton() {
       return;
     }
     const next = new URLSearchParams(searchParams);
-    next.set('tab', isCreate ? 'published' : 'create');
+    if (isCreate && cameFromCalendar) {
+      next.set('tab', 'calendar');
+      // Strip composer-only params so the calendar doesn't re-trigger.
+      ['schedule', 'listing', 'properties', 'variant', 'variants'].forEach((k) => next.delete(k));
+    } else {
+      next.set('tab', isCreate ? 'published' : 'create');
+    }
     next.delete('sub');
     setSearchParams(next, { replace: true });
   };
   const label = isCalendar
     ? 'חזרה לדשבורד'
     : isCreate
-      ? 'חזרה לקמפיינים'
+      ? (cameFromCalendar ? 'חזרה ללוח השנה' : 'חזרה לקמפיינים')
       : 'יצירת קמפיין חדש';
+
   return (
     <Button
       size="icon"
