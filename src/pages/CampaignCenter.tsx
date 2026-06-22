@@ -181,11 +181,6 @@ const ChannelGrid = ({
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="w-full">
       <div className="flex items-center justify-between gap-3">
-        <CollapsibleTrigger asChild>
-          <Button variant="ghost" size="icon" className="h-8 w-8 text-foreground hover:bg-transparent hover:text-foreground focus-visible:text-foreground active:text-foreground">
-            {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
-          </Button>
-        </CollapsibleTrigger>
         <div className="flex items-center gap-4 overflow-x-auto scrollbar-none -mx-1 px-1 pb-1" dir="rtl">
           <button
             type="button"
