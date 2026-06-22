@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Trash2, Pencil, Plus, Calendar as CalendarIcon } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2, Pencil, Plus, Calendar as CalendarIcon, ArrowRight, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
@@ -47,7 +47,7 @@ const toLocalInput = (d: Date): string => {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
 };
 
-export function ScheduledCampaignCalendar({ onCreateAt }: { onCreateAt: (iso: string) => void }) {
+export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt: (iso: string) => void; onClose?: () => void }) {
   const [rows, setRows] = useState<ScheduledRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [cursor, setCursor] = useState<Date>(() => {
