@@ -96,7 +96,6 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
       const { data, error } = await supabase
         .from('listings')
         .select('id, property_title, city, neighborhood, address, asking_price, status, is_published, created_at')
-        .eq('is_archived', false)
         .order('created_at', { ascending: false })
         .limit(500);
       if (cancelled) return;
