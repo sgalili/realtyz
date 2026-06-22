@@ -285,6 +285,37 @@ function isKnowledgeCommand(text: string): boolean {
   return /^(\/kb|#knowledge)\b/i.test(text.trim());
 }
 
+// Pre-written signature from realtyz.co.il/r/:slug short links.
+// Example: "היי אודי, אני פונה אליך לגבי הדירה שפרסמת בנווה צדק, תל אביב במחיר 4.5 מיליון שקל. אשמח לקבל פרטים נוספים."
+const SHORTLINK_SIGNATURE_RE = /לגבי הדירה שפרסמת ב([^,\n]+?)(?:,\s*([^,\n]+?))?\s+במחיר/;
+
+async function resolveShortLinkListing(
+  admin: ReturnType<typeof createClient>,
+  inboundText: string,
+): Promise<{ listing_id: string; owner_id: string | null; deal_type: string | null; city: string | null; neighborhood: string | null } | null> {
+  const m = inboundText.match(SHORTLINK_SIGNATURE_RE);
+  if (!m) return null;
+  const neighborhood = m[1]?.trim() || "";
+  const city = m[2]?.trim() || "";
+  let query = admin
+    .from("listings")
+    .select("id,user_id,city,neighborhood,status,created_at,features")
+    .order("created_at", { ascending: false })
+    .limit(1);
+  if (neighborhood) query = query.ilike("neighborhood", `%${neighborhood}%`);
+  if (city) query = query.ilike("city", `%${city}%`);
+  const { data: listing } = await query.maybeSingle();
+  if (!listing) return null;
+  const dealType = (listing.features as any)?.deal_type || null;
+  return {
+    listing_id: listing.id,
+    owner_id: listing.user_id ?? null,
+    deal_type: dealType,
+    city: listing.city ?? null,
+    neighborhood: listing.neighborhood ?? null,
+  };
+}
+
 async function handleLeadInboxInbound(
   admin: ReturnType<typeof createClient>,
   supabaseUrl: string,
@@ -293,13 +324,54 @@ async function handleLeadInboxInbound(
   messageId: string | undefined,
   inboundText: string,
 ) {
-  const { data: lead, error: leadErr } = await admin
+  // Detect short-link signature so we can auto-create / tag the lead before lookup.
+  const shortLink = await resolveShortLinkListing(admin, inboundText);
+
+  let { data: lead, error: leadErr } = await admin
     .from("leads")
-    .select("id, full_name, ai_autopilot, phone_number")
+    .select("id, full_name, ai_autopilot, phone_number, assigned_to, interest_tag, deal_type")
     .eq("phone_number", senderPhone)
     .maybeSingle();
 
   if (leadErr) throw new Error(`lead lookup failed: ${leadErr.message}`);
+
+  // Auto-create lead from short-link inbound when none exists yet.
+  if (!lead?.id && shortLink) {
+    const dealType = (shortLink.deal_type === "rent" ? "rent" : "sale");
+    const category = dealType === "rent" ? "שוכר" : "קונה";
+    const { data: created, error: createErr } = await admin
+      .from("leads")
+      .insert({
+        phone_number: senderPhone,
+        full_name: null,
+        city: shortLink.city,
+        neighborhood: shortLink.neighborhood,
+        interest_tag: shortLink.listing_id,
+        deal_type: dealType,
+        lead_stage: "engaging",
+        loyalty_tier: "Hot Lead",
+        status: "contacted",
+        sentiment: "positive",
+        assigned_to: shortLink.owner_id,
+        preferences: { source: "shortlink", category, listing_id: shortLink.listing_id },
+        is_demo: false,
+      })
+      .select("id, full_name, ai_autopilot, phone_number, assigned_to, interest_tag, deal_type")
+      .maybeSingle();
+    if (createErr) throw new Error(`auto lead create failed: ${createErr.message}`);
+    lead = created as any;
+  } else if (lead?.id && shortLink && !lead.interest_tag) {
+    // Existing lead — tag with property + deal_type if missing.
+    await admin
+      .from("leads")
+      .update({
+        interest_tag: shortLink.listing_id,
+        deal_type: shortLink.deal_type || lead.deal_type,
+        last_interaction_at: new Date().toISOString(),
+      })
+      .eq("id", lead.id);
+  }
+
   if (!lead?.id) {
     console.warn("whatsapp-webhook no matching lead", { senderPhone, messageId });
     return { ok: true, ignored: "lead_not_found", phone: senderPhone };
