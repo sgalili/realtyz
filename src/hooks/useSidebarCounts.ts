@@ -31,12 +31,34 @@ export function useSidebarCounts() {
         }
       };
 
+      // Campaign count must match the published-feed grouping: one card per
+      // (campaign_name + channel + created_at) tuple. A raw row count would
+      // over-report (e.g. 10 rows that collapse to 8 cards).
+      const groupedCampaignCount = async (): Promise<number> => {
+        try {
+          const { data, error } = await (supabase as any)
+            .from('campaign_logs')
+            .select('campaign_name, channel, created_at')
+            .eq('is_archived', false)
+            .order('created_at', { ascending: false })
+            .limit(500);
+          if (error || !Array.isArray(data)) return 0;
+          const seen = new Set<string>();
+          for (const r of data) {
+            seen.add(`${r.campaign_name}|${r.channel}|${r.created_at}`);
+          }
+          return seen.size;
+        } catch {
+          return 0;
+        }
+      };
+
       const [leads, listings, chats, deals, campaigns] = await Promise.all([
         safeCount('leads'),
         safeCount('listings'),
         safeCount('messages'),
         safeCount('leads', (q) => q.not('lead_stage', 'is', null)),
-        safeCount('campaign_logs', (q) => q.eq('is_archived', false)),
+        groupedCampaignCount(),
       ]);
 
       return { leads, listings, chats, deals, campaigns };
