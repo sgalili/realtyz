@@ -196,37 +196,6 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
 
   return (
     <div className="space-y-4" dir="rtl">
-      <div className="flex items-center justify-between gap-2">
-        <div className="flex items-center gap-2">
-          {onClose && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              aria-label="חזור"
-              title="חזור"
-              className="h-9 w-9"
-            >
-              <ArrowRight className="h-5 w-5" />
-            </Button>
-          )}
-          <h2 className="text-lg font-bold text-foreground">לוח שנה — פרסומים מתוזמנים</h2>
-        </div>
-        <div className="flex items-center gap-2">
-          {onClose && (
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={onClose}
-              aria-label="סגור לוח שנה"
-              title="סגור לוח שנה"
-              className="h-9 w-9"
-            >
-              <X className="h-5 w-5" />
-            </Button>
-          )}
-        </div>
-      </div>
 
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-2">
