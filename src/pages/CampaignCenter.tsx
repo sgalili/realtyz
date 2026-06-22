@@ -216,7 +216,7 @@ const ChannelGrid = ({
                   aria-label={p.label}
                   className={cn('h-5 w-5', isConnected ? (BRAND_COLOR[p.id] ?? 'text-slate-600') : 'text-slate-500')}
                 />
-                <span className="text-sm font-bold tabular-nums text-slate-500" dir="ltr">{count}</span>
+                
               </button>
             );
           })}
