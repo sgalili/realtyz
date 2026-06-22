@@ -89,6 +89,11 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
   const [listingSearch, setListingSearch] = useState('');
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
   const [groupsOpen, setGroupsOpen] = useState(false);
+  type Recurrence = 'none' | 'daily' | 'weekly' | 'monthly' | 'custom';
+  const [recurrence, setRecurrence] = useState<Recurrence>('none');
+  const [recurrenceDays, setRecurrenceDays] = useState<number[]>([]); // 0=Sun..6=Sat
+  const [recurrenceCount, setRecurrenceCount] = useState<number>(4); // iterations
+  const [recurrenceOpen, setRecurrenceOpen] = useState(false);
 
   useEffect(() => {
     if (!scheduleDay) return;
