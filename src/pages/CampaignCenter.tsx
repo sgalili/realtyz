@@ -881,6 +881,27 @@ const InlineComposer = ({
     }
   };
 
+  // Auto-trigger AI generation when entered via calendar scheduling flow
+  // (presetListingId present + no existing body). Runs once after listings
+  // load so the property context can be enriched into the AI payload.
+  const autoGenTriggeredRef = useRef(false);
+  useEffect(() => {
+    if (autoGenTriggeredRef.current) return;
+    if (!presetListingId) return;
+    if (body.trim().length > 0) return; // honor draft restoration
+    if (listingsLoading) return;
+    autoGenTriggeredRef.current = true;
+    // Defer slightly so the variant-hint customInstructions effect (mount)
+    // is committed before the AI call snapshots `customInstructions`.
+    const t = setTimeout(() => { handleGenerate().catch(() => {}); }, 50);
+    return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presetListingId, listingsLoading]);
+
+  // True when this composer was launched from the scheduling calendar
+  // (the date is already locked in); we hide the standalone calendar
+  // toggle button in that case so the operator doesn't re-pick a date.
+  const isFromScheduling = !!presetScheduleIso;
 
   const hasBody = body.trim().length > 0;
   const count = body.length;
