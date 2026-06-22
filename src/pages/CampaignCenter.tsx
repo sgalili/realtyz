@@ -918,18 +918,8 @@ const InlineComposer = ({
       {/* Broker steering: custom instructions + property promotion picker */}
 
       <div className="space-y-2 rounded-xl border border-primary/15 bg-primary/[0.03] p-3">
-        <Input
-          id="custom-instructions"
-          value={customInstructions}
-          onChange={(e) => setCustomInstructions(e.target.value)}
-          placeholder="הנחיות ודגשים מיוחדים לפוסט"
-          className="text-right placeholder:text-muted-foreground/70"
-          maxLength={300}
-        />
-
-
         <div className="pt-1">
-          <Label className="text-xs font-semibold text-foreground">קדם נכס ספציפי מהמאגר</Label>
+          <Label className="font-semibold text-foreground" style={{ fontSize: 'calc(0.75rem + 3px)' }}>קדם נכס ספציפי מהמאגר</Label>
           <Popover open={listingPickerOpen} onOpenChange={setListingPickerOpen}>
             <PopoverTrigger asChild>
               <button type="button"
