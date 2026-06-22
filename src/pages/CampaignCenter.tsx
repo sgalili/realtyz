@@ -400,6 +400,23 @@ const InlineComposer = ({
   const [mode, setMode] = useState<'now' | 'scheduled'>('now');
   // Local datetime string in `YYYY-MM-DDTHH:mm` (input[type=datetime-local] format).
   const [scheduledLocal, setScheduledLocal] = useState<string>('');
+
+  // Preset from ?schedule=ISO so the calendar can deep-link the composer to
+  // a specific date tile. Run once per mount.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const params = new URLSearchParams(window.location.search);
+    const iso = params.get('schedule');
+    if (!iso) return;
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    const local = `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    setScheduledLocal(local);
+    setMode('scheduled');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Multi-select of connected Facebook Group IDs to fan-out a single post to.
   // Persisted to localStorage so a reload / background refresh doesn't wipe the selection.
   const [groupIds, setGroupIds] = useState<string[]>(() => {
