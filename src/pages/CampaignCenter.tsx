@@ -2122,20 +2122,34 @@ const PublishedFeed = () => {
                 </span>
                 <span className="text-sm font-semibold text-foreground truncate">{pageLabel}</span>
                 <span className="text-xs text-muted-foreground">·</span>
-                <span className="text-xs text-muted-foreground whitespace-nowrap">{dateStr}</span>
+                <span className={cn(
+                  'text-xs whitespace-nowrap',
+                  scheduled ? 'text-amber-700 font-semibold' : 'text-muted-foreground',
+                )}>
+                  {scheduled ? `מתוזמן ל-${dateStr}` : dateStr}
+                </span>
                 <span className="flex-1" />
-                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="תגובות">
-                  <MessageSquare className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
-                  <span className="tabular-nums">{commentDisplay}</span>
-                </span>
-                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="שיתופים">
-                  <Share2 className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
-                  <span className="tabular-nums">{r.share_count ?? 0}</span>
-                </span>
-                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="לייקים">
-                  <Heart className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
-                  <span className="tabular-nums">{r.like_count ?? 0}</span>
-                </span>
+                {scheduled ? (
+                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200">
+                    <CalendarIcon className="h-3 w-3" />
+                    מתוזמן
+                  </span>
+                ) : (
+                  <>
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="תגובות">
+                      <MessageSquare className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
+                      <span className="tabular-nums">{commentDisplay}</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="שיתופים">
+                      <Share2 className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
+                      <span className="tabular-nums">{r.share_count ?? 0}</span>
+                    </span>
+                    <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="לייקים">
+                      <Heart className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
+                      <span className="tabular-nums">{r.like_count ?? 0}</span>
+                    </span>
+                  </>
+                )}
                 <button onClick={(e) => { e.stopPropagation(); setExpanded((s) => ({ ...s, [r.id]: !isOpen })); }}
                         className="rounded-md p-1 text-muted-foreground hover:bg-muted shrink-0"
                         aria-label={isOpen ? 'כווץ' : 'הרחב'}>
