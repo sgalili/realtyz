@@ -3280,6 +3280,16 @@ const CampaignCenter = () => {
         <TabsContent value="published" className="mt-6">
           <PublishedFeed />
         </TabsContent>
+        <TabsContent value="calendar" className="mt-6">
+          <ScheduledCampaignCalendar
+            onCreateAt={(iso) => {
+              const next = new URLSearchParams(searchParams);
+              next.set('tab', 'create');
+              next.set('schedule', iso);
+              setSearchParams(next, { replace: false });
+            }}
+          />
+        </TabsContent>
       </Tabs>
 
       <ConfirmDispatchDialog
