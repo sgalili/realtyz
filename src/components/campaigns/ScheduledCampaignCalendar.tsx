@@ -1,12 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
-import { ChevronLeft, ChevronRight, Trash2, Pencil, Plus, Calendar as CalendarIcon, ArrowRight, X } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Trash2, Pencil, Plus, Calendar as CalendarIcon, ArrowRight, X, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
+import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { cn } from '@/lib/utils';
 
 type ScheduledRow = {
@@ -63,7 +65,7 @@ const listingLabel = (l: ListingLite) => {
   return `${loc}${price}`;
 };
 
-export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt: (iso: string, extras?: { listing?: string | null; variant?: number; totalVariants?: number }) => void; onClose?: () => void }) {
+export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt: (iso: string, extras?: { listing?: string | null; variant?: number; totalVariants?: number; groupIds?: string[] }) => void; onClose?: () => void }) {
   const queryClient = useQueryClient();
   const [rows, setRows] = useState<ScheduledRow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -85,6 +87,8 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
   const [listingsLoading, setListingsLoading] = useState(false);
   const [selectedListingIds, setSelectedListingIds] = useState<string[]>([]);
   const [listingSearch, setListingSearch] = useState('');
+  const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>([]);
+  const [groupsOpen, setGroupsOpen] = useState(false);
 
   useEffect(() => {
     if (!scheduleDay) return;
@@ -92,6 +96,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
     setListingsLoading(true);
     setListingSearch('');
     setSelectedListingIds([]);
+    setSelectedGroupIds([]);
     (async () => {
       const { data, error } = await supabase
         .from('listings')
@@ -443,11 +448,11 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-semibold text-muted-foreground mb-1 block">משעה</label>
-                <Input type="time" value={winStart} onChange={(e) => setWinStart(e.target.value)} dir="ltr" />
+                <Input type="time" value={winStart} onChange={(e) => setWinStart(e.target.value)} dir="rtl" className="text-right [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:mr-auto" />
               </div>
               <div>
                 <label className="text-xs font-semibold text-muted-foreground mb-1 block">עד שעה</label>
-                <Input type="time" value={winEnd} onChange={(e) => setWinEnd(e.target.value)} dir="ltr" />
+                <Input type="time" value={winEnd} onChange={(e) => setWinEnd(e.target.value)} dir="rtl" className="text-right [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:mr-auto" />
               </div>
             </div>
             <div>
@@ -529,8 +534,32 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
               )}
             </div>
           </div>
-          <DialogFooter className="flex flex-row justify-between sm:justify-between gap-2 w-full">
+          <DialogFooter className="flex flex-row justify-between sm:justify-between gap-2 w-full items-center">
             <Button variant="outline" onClick={() => setScheduleDay(null)}>ביטול</Button>
+            <Popover open={groupsOpen} onOpenChange={setGroupsOpen}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  title="בחר קבוצות פייסבוק לפרסום"
+                  aria-label="קבוצות פייסבוק"
+                  className="relative inline-flex items-center justify-center h-9 w-9 rounded-md text-foreground hover:text-primary transition-colors"
+                >
+                  <Users className="h-5 w-5" />
+                  {selectedGroupIds.length > 0 && (
+                    <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-primary text-primary-foreground text-[10px] font-bold flex items-center justify-center tabular-nums">
+                      {selectedGroupIds.length}
+                    </span>
+                  )}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="center" side="top" className="w-[360px] p-0" dir="rtl">
+                <CampaignGroupSelector
+                  selectedIds={selectedGroupIds}
+                  onChange={setSelectedGroupIds}
+                  className="border-0 shadow-none"
+                />
+              </PopoverContent>
+            </Popover>
             <Button
               onClick={() => {
                 if (!scheduleDay) return;
@@ -589,7 +618,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                 if (n > 1) toast.success(`נוצרו ${n} חלונות תזמון · הראשון נטען לעורך`);
                 setScheduleDay(null);
                 const first = assignments[0];
-                onCreateAt(first.iso, { listing: first.listing, variant: first.variant, totalVariants: first.totalVariants });
+                onCreateAt(first.iso, { listing: first.listing, variant: first.variant, totalVariants: first.totalVariants, groupIds: selectedGroupIds });
               }}
             >
               צור וטען לעורך
