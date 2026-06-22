@@ -1445,6 +1445,19 @@ type CampaignRow = {
   share_count?: number;
   view_count?: number;
   metrics_updated_at?: string | null;
+  status?: string | null;
+  sent_at?: string | null;
+};
+
+// A scheduled row is one whose status is "scheduled" AND whose execution time
+// (sent_at) is still in the future. This is the single source of truth for the
+// "מתוזמן" badge and the calendar view — never infer scheduling purely from
+// the presence of sent_at, because real sent posts also stamp sent_at.
+export const isScheduledRow = (r: Pick<CampaignRow, 'status' | 'sent_at'>): boolean => {
+  const status = String(r.status || '').toLowerCase();
+  if (status !== 'scheduled') return false;
+  if (!r.sent_at) return false;
+  return new Date(r.sent_at).getTime() > Date.now();
 };
 
 const extractFunctionError = async (error: any, fallback = 'שגיאת API חיצונית') => {
