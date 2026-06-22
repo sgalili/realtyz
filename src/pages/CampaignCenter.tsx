@@ -2036,6 +2036,7 @@ const PublishedFeed = () => {
       .lt('created_at', to);
     if (error) { toast.error('העברה לארכיון נכשלה: ' + error.message); return; }
     setRows((prev) => prev?.filter((x) => x.id !== r.id) ?? prev);
+    queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
     toast.success('הקמפיין הועבר לארכיון');
     load();
   };
