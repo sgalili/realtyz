@@ -450,6 +450,14 @@ async function handleLeadInboxInbound(
   }
 
   await admin.from("chat_history").insert({ lead_id: lead.id, role: "assistant", content: reply, is_demo: false });
+
+  // Fire-and-forget hot-match scoring → triggers broker notification when score ≥ threshold.
+  fetch(`${supabaseUrl}/functions/v1/match-and-alert`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
+    body: JSON.stringify({ lead_id: lead.id }),
+  }).catch((e) => console.warn("[match-and-alert] failed", e));
+
   return { ok: true, lead_id: lead.id, stored: true, auto_reply: "sent", message_id: sendJson?.message_id ?? null };
 }
 
