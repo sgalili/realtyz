@@ -186,6 +186,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
       .eq('channel', r.channel)
       .eq('sent_at', r.sent_at!);
     if (error) { toast.error('ביטול נכשל: ' + error.message); return; }
+    queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
     toast.success('הפרסום המתוזמן בוטל');
     load();
   };
