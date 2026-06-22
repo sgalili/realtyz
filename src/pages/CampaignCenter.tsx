@@ -789,10 +789,10 @@ const InlineComposer = ({
 
   const insertTag = (tag: string) => {
     const el = textareaRef.current;
-    if (!el) { setBody((b) => (b + ' ' + tag).slice(0, MAX_CHARS)); return; }
+    if (!el) { setBody((b) => cleanBody(b + ' ' + tag)); return; }
     const start = el.selectionStart ?? body.length;
     const end = el.selectionEnd ?? body.length;
-    const next = (body.slice(0, start) + tag + body.slice(end)).slice(0, MAX_CHARS);
+    const next = cleanBody(body.slice(0, start) + tag + body.slice(end));
     setBody(next);
     requestAnimationFrame(() => {
       el.focus();
