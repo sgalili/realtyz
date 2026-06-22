@@ -671,18 +671,63 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                 const n = Math.max(1, winCount);
                 const span = endMin - startMin;
                 const bucket = span / n;
-                const slots: Date[] = [];
-                for (let i = 0; i < n; i++) {
-                  const offset = startMin + i * bucket + Math.random() * bucket;
-                  const total = Math.floor(offset);
-                  const d = new Date(scheduleDay);
-                  d.setHours(Math.floor(total / 60), total % 60, Math.floor(Math.random() * 60), 0);
-                  if (d.getTime() <= Date.now() + 60_000) {
-                    d.setTime(Date.now() + (i + 1) * 5 * 60_000);
+                // Build per-day slots within the time window
+                const buildDaySlots = (base: Date): Date[] => {
+                  const out: Date[] = [];
+                  for (let i = 0; i < n; i++) {
+                    const offset = startMin + i * bucket + Math.random() * bucket;
+                    const total = Math.floor(offset);
+                    const d = new Date(base);
+                    d.setHours(Math.floor(total / 60), total % 60, Math.floor(Math.random() * 60), 0);
+                    if (d.getTime() <= Date.now() + 60_000) {
+                      d.setTime(Date.now() + (i + 1) * 5 * 60_000);
+                    }
+                    out.push(d);
                   }
-                  slots.push(d);
+                  return out;
+                };
+
+                // Expand the base day across the chosen recurrence pattern.
+                const recurrenceDates: Date[] = [];
+                if (recurrence === 'none') {
+                  recurrenceDates.push(new Date(scheduleDay));
+                } else if (recurrence === 'daily') {
+                  for (let i = 0; i < recurrenceCount; i++) {
+                    const d = new Date(scheduleDay); d.setDate(d.getDate() + i);
+                    recurrenceDates.push(d);
+                  }
+                } else if (recurrence === 'weekly') {
+                  for (let i = 0; i < recurrenceCount; i++) {
+                    const d = new Date(scheduleDay); d.setDate(d.getDate() + i * 7);
+                    recurrenceDates.push(d);
+                  }
+                } else if (recurrence === 'monthly') {
+                  for (let i = 0; i < recurrenceCount; i++) {
+                    const d = new Date(scheduleDay); d.setMonth(d.getMonth() + i);
+                    recurrenceDates.push(d);
+                  }
+                } else if (recurrence === 'custom') {
+                  if (recurrenceDays.length === 0) {
+                    toast.error('בחר לפחות יום אחד בשבוע');
+                    return;
+                  }
+                  const weeks = Math.max(1, recurrenceCount);
+                  // Walk forward from scheduleDay across the chosen number of weeks
+                  for (let w = 0; w < weeks; w++) {
+                    for (let dow = 0; dow < 7; dow++) {
+                      if (!recurrenceDays.includes(dow)) continue;
+                      const base = new Date(scheduleDay);
+                      // Shift to start of week containing scheduleDay
+                      base.setDate(base.getDate() - base.getDay() + dow + w * 7);
+                      if (base.getTime() < new Date(scheduleDay.getFullYear(), scheduleDay.getMonth(), scheduleDay.getDate()).getTime()) continue;
+                      recurrenceDates.push(base);
+                    }
+                  }
                 }
-                slots.sort((a, b) => a.getTime() - b.getTime());
+
+                const slots: Date[] = recurrenceDates
+                  .flatMap((day) => buildDaySlots(day))
+                  .sort((a, b) => a.getTime() - b.getTime());
 
                 // Distribute properties across slots (round-robin) and compute
                 // per-listing variant index so the composer can synthesize
