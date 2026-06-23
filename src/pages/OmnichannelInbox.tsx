@@ -640,7 +640,7 @@ const OmnichannelInbox = () => {
                       </div>
                       <div className="flex flex-row-reverse items-start gap-1 mt-0.5">
                         {lastMsg?.channel && <span className="shrink-0 mt-0.5"><ChannelIcon channel={lastMsg.channel} /></span>}
-                        <p className="text-xs text-muted-foreground flex-1 min-w-0 break-words leading-snug line-clamp-2">
+                        <p className="text-xs text-muted-foreground flex-1 min-w-0 max-w-full overflow-hidden break-all whitespace-pre-wrap leading-snug line-clamp-2">
                           {lastMsg?.content || 'אין הודעות'}
                         </p>
                       </div>
