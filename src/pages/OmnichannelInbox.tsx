@@ -132,6 +132,8 @@ const OmnichannelInbox = () => {
   const [delayMin, setDelayMin] = useState(7);
   const [delayMax, setDelayMax] = useState(23);
   const [manualTakeoverWarning, setManualTakeoverWarning] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isDeletingChat, setIsDeletingChat] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
