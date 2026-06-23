@@ -359,159 +359,233 @@ async function handleLeadInboxInbound(
   const shortLink = await resolveShortLinkListing(admin, inboundText);
   const hasShortLinkSignature = SHORTLINK_ANCHOR_RE.test(inboundText);
 
-  let { data: lead, error: leadErr } = await admin
-    .from("leads")
-    .select("id, full_name, ai_autopilot, phone_number, assigned_to, interest_tag, deal_type")
-    .eq("phone_number", senderPhone)
-    .maybeSingle();
-
-  if (leadErr) throw new Error(`lead lookup failed: ${leadErr.message}`);
+  // === RESILIENT PIPELINE ===
+  // Every DB mutation is wrapped in try/catch so a single failure (RLS,
+  // workspace scoping, constraint) NEVER halts the AI reply path.
+  // The inbox is restored by always inserting the message row with the
+  // sender_phone in metadata, even when lead resolution fails.
+  let lead: any = null;
+  try {
+    const r = await admin
+      .from("leads")
+      .select("id, full_name, ai_autopilot, phone_number, assigned_to, interest_tag, deal_type")
+      .eq("phone_number", senderPhone)
+      .maybeSingle();
+    lead = r.data;
+    if (r.error) console.warn("lead lookup soft-fail:", r.error.message);
+  } catch (e) {
+    console.warn("lead lookup threw:", e instanceof Error ? e.message : e);
+  }
 
   // Auto-create lead from short-link inbound when none exists yet.
-  // Fallback: if the message carries the short-link signature but we couldn't
-  // resolve the exact listing, still create a lead so Udi can engage them.
   if (!lead?.id && (shortLink || hasShortLinkSignature)) {
     const dealType = (shortLink?.deal_type === "rent" ? "rent" : "sale");
     const category = dealType === "rent" ? "שוכר" : "קונה";
-    // RLS scopes /inbox visibility by assigned_to / shares_workspace_with.
-    // If the short-link didn't resolve an owner, fall back to the first admin
-    // so the new lead + its messages show up in someone's inbox immediately.
     let assignTo: string | null = shortLink?.owner_id ?? null;
     if (!assignTo) {
-      const { data: adminRow } = await admin
-        .from("user_roles")
-        .select("user_id")
-        .in("role", ["super_admin", "admin"])
-        .limit(1)
-        .maybeSingle();
-      assignTo = (adminRow as any)?.user_id ?? null;
+      try {
+        const { data: adminRow } = await admin
+          .from("user_roles")
+          .select("user_id")
+          .in("role", ["super_admin", "admin"])
+          .limit(1)
+          .maybeSingle();
+        assignTo = (adminRow as any)?.user_id ?? null;
+      } catch (e) {
+        console.warn("admin lookup soft-fail:", e instanceof Error ? e.message : e);
+      }
     }
-    const { data: created, error: createErr } = await admin
-      .from("leads")
-      .insert({
-        phone_number: senderPhone,
-        full_name: null,
-        city: shortLink?.city ?? null,
-        neighborhood: shortLink?.neighborhood ?? null,
-        interest_tag: shortLink?.listing_id ?? null,
-        deal_type: dealType,
-        lead_stage: "engaging",
-        loyalty_tier: "Hot Lead",
-        status: "contacted",
-        sentiment: "positive",
-        assigned_to: assignTo,
-        preferences: {
-          source: "shortlink",
-          category,
-          listing_id: shortLink?.listing_id ?? null,
-          unresolved_listing: !shortLink,
-          inbound_excerpt: inboundText.slice(0, 240),
-        },
-        is_demo: false,
-      })
-      .select("id, full_name, ai_autopilot, phone_number, assigned_to, interest_tag, deal_type")
-      .maybeSingle();
-    if (createErr) throw new Error(`auto lead create failed: ${createErr.message}`);
-    lead = created as any;
+    try {
+      const { data: created, error: createErr } = await admin
+        .from("leads")
+        .insert({
+          phone_number: senderPhone,
+          full_name: null,
+          city: shortLink?.city ?? null,
+          neighborhood: shortLink?.neighborhood ?? null,
+          interest_tag: shortLink?.listing_id ?? null,
+          deal_type: dealType,
+          lead_stage: "engaging",
+          loyalty_tier: "Hot Lead",
+          status: "contacted",
+          sentiment: "positive",
+          assigned_to: assignTo,
+          preferences: {
+            source: "shortlink",
+            category,
+            listing_id: shortLink?.listing_id ?? null,
+            unresolved_listing: !shortLink,
+            inbound_excerpt: inboundText.slice(0, 240),
+          },
+          is_demo: false,
+        })
+        .select("id, full_name, ai_autopilot, phone_number, assigned_to, interest_tag, deal_type")
+        .maybeSingle();
+      if (createErr) console.warn("auto lead create soft-fail:", createErr.message);
+      else lead = created as any;
+    } catch (e) {
+      console.warn("auto lead create threw:", e instanceof Error ? e.message : e);
+    }
   } else if (lead?.id && shortLink && !lead.interest_tag) {
-    // Existing lead — tag with property + deal_type if missing.
-    await admin
-      .from("leads")
-      .update({
-        interest_tag: shortLink.listing_id,
-        deal_type: shortLink.deal_type || lead.deal_type,
-        last_interaction_at: new Date().toISOString(),
-      })
-      .eq("id", lead.id);
+    try {
+      await admin
+        .from("leads")
+        .update({
+          interest_tag: shortLink.listing_id,
+          deal_type: shortLink.deal_type || lead.deal_type,
+          last_interaction_at: new Date().toISOString(),
+        })
+        .eq("id", lead.id);
+    } catch (e) {
+      console.warn("lead tag update soft-fail:", e instanceof Error ? e.message : e);
+    }
   }
 
-  if (!lead?.id) {
-    console.warn("whatsapp-webhook no matching lead", { senderPhone, messageId });
-    return { ok: true, ignored: "lead_not_found", phone: senderPhone };
-  }
-
-  if (messageId) {
-    const { data: existing } = await admin
-      .from("messages")
-      .select("id")
-      .eq("lead_id", lead.id)
-      .eq("direction", "inbound")
-      .contains("metadata", { message_id: messageId })
-      .maybeSingle();
-    if (existing?.id) return { ok: true, duplicate: true, lead_id: lead.id };
+  // Duplicate guard (best-effort).
+  if (messageId && lead?.id) {
+    try {
+      const { data: existing } = await admin
+        .from("messages")
+        .select("id")
+        .eq("lead_id", lead.id)
+        .eq("direction", "inbound")
+        .contains("metadata", { message_id: messageId })
+        .maybeSingle();
+      if (existing?.id) return { ok: true, duplicate: true, lead_id: lead.id };
+    } catch (e) {
+      console.warn("dup-check soft-fail:", e instanceof Error ? e.message : e);
+    }
   }
 
   const now = new Date().toISOString();
-  const metadata = { provider: "GreenAPI", message_id: messageId ?? null, inbound_via: "whatsapp-webhook" };
+  const metadata = {
+    provider: "GreenAPI",
+    message_id: messageId ?? null,
+    inbound_via: "whatsapp-webhook",
+    sender_phone: senderPhone,
+    unresolved_lead: !lead?.id,
+    listing_id: shortLink?.listing_id ?? null,
+  };
 
-  const { error: insertErr } = await admin.from("messages").insert({
-    lead_id: lead.id,
-    channel: "whatsapp",
-    platform: "whatsapp",
-    content: inboundText,
-    direction: "inbound",
-    sender_type: "voter",
-    metadata,
-  });
-  if (insertErr) throw new Error(`inbound message insert failed: ${insertErr.message}`);
+  // ALWAYS persist the inbound message row, even if lead_id is null.
+  // The inbox UI falls back to a phone-anchored synthetic thread for these.
+  try {
+    const { error: insertErr } = await admin.from("messages").insert({
+      lead_id: lead?.id ?? null,
+      channel: "whatsapp",
+      platform: "whatsapp",
+      content: inboundText,
+      direction: "inbound",
+      sender_type: "voter",
+      metadata,
+    });
+    if (insertErr) console.warn("inbound message insert soft-fail:", insertErr.message);
+  } catch (e) {
+    console.warn("inbound message insert threw:", e instanceof Error ? e.message : e);
+  }
 
-  await Promise.all([
-    admin.from("chat_history").insert({ lead_id: lead.id, role: "user", content: inboundText, is_demo: false }),
-    admin.from("leads").update({ last_interaction_at: now, status: "contacted" }).eq("id", lead.id),
-  ]);
+  if (lead?.id) {
+    try {
+      await admin.from("chat_history").insert({ lead_id: lead.id, role: "user", content: inboundText, is_demo: false });
+    } catch (e) {
+      console.warn("chat_history insert soft-fail:", e instanceof Error ? e.message : e);
+    }
+    try {
+      await admin.from("leads").update({ last_interaction_at: now, status: "contacted" }).eq("id", lead.id);
+    } catch (e) {
+      console.warn("lead touch soft-fail:", e instanceof Error ? e.message : e);
+    }
+  }
+
+  // Without any lead row we cannot run autopilot (ai-agent + send require lead_id).
+  if (!lead?.id) {
+    console.warn("whatsapp-webhook stored inbound without lead row", { senderPhone, messageId });
+    return { ok: true, stored: true, lead_id: null, auto_reply: "no_lead_row" };
+  }
 
   if (lead.ai_autopilot === false) {
     return { ok: true, lead_id: lead.id, stored: true, auto_reply: "disabled" };
   }
 
-  const { data: hist } = await admin
-    .from("chat_history")
-    .select("role, content, created_at")
-    .eq("lead_id", lead.id)
-    .order("created_at", { ascending: false })
-    .limit(12);
-  const aiMessages = (hist ?? [])
-    .reverse()
-    .map((m: any) => ({ role: m.role === "assistant" ? "assistant" : "user", content: String(m.content ?? "") }))
-    .filter((m: any) => m.content.trim());
-
-  const aiRes = await fetch(`${supabaseUrl}/functions/v1/ai-agent`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
-    body: JSON.stringify({
-      lead_id: lead.id,
-      lead_name: lead.full_name,
-      mode: "deal_room_reply",
-      context: `Inbound WhatsApp reply from ${lead.full_name ?? "the lead"}: ${inboundText}`,
-      messages: aiMessages.length ? aiMessages : [{ role: "user", content: inboundText }],
-    }),
-  });
-  const aiJson = await aiRes.json().catch(() => ({}));
-  if (!aiRes.ok) throw new Error(`ai-agent failed ${aiRes.status}: ${JSON.stringify(aiJson).slice(0, 300)}`);
-
-  const reply = String(aiJson?.content ?? aiJson?.message ?? "").trim();
-  if (!reply) return { ok: true, lead_id: lead.id, stored: true, auto_reply: "empty_ai_reply" };
-
-  const sendRes = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
-    body: JSON.stringify({ lead_id: lead.id, message: reply, ai_assisted: true, disclosure_language: "he" }),
-  });
-  const sendJson = await sendRes.json().catch(() => ({}));
-  if (!sendRes.ok || sendJson?.success === false) {
-    throw new Error(`send-whatsapp failed ${sendRes.status}: ${JSON.stringify(sendJson).slice(0, 300)}`);
+  // Build context (best-effort).
+  let aiMessages: Array<{ role: string; content: string }> = [{ role: "user", content: inboundText }];
+  try {
+    const { data: hist } = await admin
+      .from("chat_history")
+      .select("role, content, created_at")
+      .eq("lead_id", lead.id)
+      .order("created_at", { ascending: false })
+      .limit(12);
+    const built = (hist ?? [])
+      .reverse()
+      .map((m: any) => ({ role: m.role === "assistant" ? "assistant" : "user", content: String(m.content ?? "") }))
+      .filter((m: any) => m.content.trim());
+    if (built.length) aiMessages = built;
+  } catch (e) {
+    console.warn("history fetch soft-fail:", e instanceof Error ? e.message : e);
   }
 
-  await admin.from("chat_history").insert({ lead_id: lead.id, role: "assistant", content: reply, is_demo: false });
+  // AI reply pipeline — runs even if storage above had issues.
+  let reply = "";
+  try {
+    const aiRes = await fetch(`${supabaseUrl}/functions/v1/ai-agent`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
+      body: JSON.stringify({
+        lead_id: lead.id,
+        lead_name: lead.full_name,
+        mode: "deal_room_reply",
+        context: `Inbound WhatsApp reply from ${lead.full_name ?? "the lead"}: ${inboundText}`,
+        messages: aiMessages,
+      }),
+    });
+    const aiJson = await aiRes.json().catch(() => ({}));
+    if (!aiRes.ok) {
+      console.warn(`ai-agent failed ${aiRes.status}:`, JSON.stringify(aiJson).slice(0, 300));
+    } else {
+      reply = String(aiJson?.content ?? aiJson?.message ?? "").trim();
+    }
+  } catch (e) {
+    console.warn("ai-agent call threw:", e instanceof Error ? e.message : e);
+  }
 
-  // Fire-and-forget hot-match scoring → triggers broker notification when score ≥ threshold.
+  if (!reply) return { ok: true, lead_id: lead.id, stored: true, auto_reply: "empty_ai_reply" };
+
+  let sendOk = false;
+  let sentMessageId: string | null = null;
+  try {
+    const sendRes = await fetch(`${supabaseUrl}/functions/v1/send-whatsapp`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
+      body: JSON.stringify({ lead_id: lead.id, message: reply, ai_assisted: true, disclosure_language: "he" }),
+    });
+    const sendJson = await sendRes.json().catch(() => ({}));
+    if (!sendRes.ok || sendJson?.success === false) {
+      console.warn(`send-whatsapp failed ${sendRes.status}:`, JSON.stringify(sendJson).slice(0, 300));
+    } else {
+      sendOk = true;
+      sentMessageId = sendJson?.message_id ?? null;
+    }
+  } catch (e) {
+    console.warn("send-whatsapp threw:", e instanceof Error ? e.message : e);
+  }
+
+  if (sendOk) {
+    try {
+      await admin.from("chat_history").insert({ lead_id: lead.id, role: "assistant", content: reply, is_demo: false });
+    } catch (e) {
+      console.warn("assistant chat_history insert soft-fail:", e instanceof Error ? e.message : e);
+    }
+  }
+
+  // Fire-and-forget hot-match scoring.
   fetch(`${supabaseUrl}/functions/v1/match-and-alert`, {
     method: "POST",
     headers: { "Content-Type": "application/json", Authorization: `Bearer ${serviceKey}` },
     body: JSON.stringify({ lead_id: lead.id }),
   }).catch((e) => console.warn("[match-and-alert] failed", e));
 
-  return { ok: true, lead_id: lead.id, stored: true, auto_reply: "sent", message_id: sendJson?.message_id ?? null };
+  return { ok: true, lead_id: lead.id, stored: true, auto_reply: sendOk ? "sent" : "send_failed", message_id: sentMessageId };
 }
 
 // ---------- main handler ----------
