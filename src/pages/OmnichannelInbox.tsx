@@ -801,7 +801,36 @@ const OmnichannelInbox = () => {
                     >
                       <Paperclip className="h-4 w-4" />
                     </button>
-                    <div className="flex min-w-0 flex-1 items-center gap-1 rounded-full bg-whatsapp-bubble-in px-3 shadow-sm">
+                    <div className="flex min-w-0 flex-1 items-center gap-1 rounded-full bg-whatsapp-bubble-in ps-2 pe-3 shadow-sm">
+                      <Select value={sendChannel} onValueChange={setSendChannel}>
+                        <SelectTrigger
+                          className="h-8 w-8 shrink-0 justify-center rounded-full border-0 bg-transparent p-0 shadow-none hover:bg-muted/60 focus:ring-0 [&>svg:last-child]:hidden"
+                          title="ערוץ שליחה"
+                          aria-label="ערוץ שליחה"
+                        >
+                          {(() => {
+                            const cfg = channelConfig[sendChannel] || channelConfig.whatsapp;
+                            return cfg.brand ? (
+                              <BrandIcon name={cfg.brand} className={`h-5 w-5 ${cfg.textClass}`} />
+                            ) : (
+                              <span className={cfg.textClass}>{cloneElement(cfg.icon!, { className: 'h-5 w-5' })}</span>
+                            );
+                          })()}
+                        </SelectTrigger>
+                        <SelectContent align="end" className="min-w-[12rem]">
+                          {Object.entries(channelConfig).map(([key, cfg]) => {
+                            const disabled = !availableChannels[key];
+                            return (
+                              <SelectItem key={key} value={key} disabled={disabled} title={cfg.label}>
+                                <div className={`flex items-center gap-2 ${disabled ? 'opacity-40' : ''}`}>
+                                  <ChannelIcon channel={key} />
+                                  <span className="text-xs">{cfg.label}</span>
+                                </div>
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
                       <Input
                         placeholder={attachment ? `מצורף: ${attachment.name}` : 'הקלד הודעה...'}
                         value={newMessage}
@@ -822,28 +851,6 @@ const OmnichannelInbox = () => {
                         </button>
                       )}
                     </div>
-                    <Select value={sendChannel} onValueChange={setSendChannel}>
-                      <SelectTrigger
-                        className="h-10 w-10 shrink-0 justify-center rounded-full border-0 bg-whatsapp-bubble-in p-0 shadow-sm hover:bg-muted focus:ring-0 [&>svg:last-child]:hidden"
-                        title="ערוץ שליחה"
-                        aria-label="ערוץ שליחה"
-                      >
-                        <ChannelIcon channel={sendChannel} size="md" />
-                      </SelectTrigger>
-                      <SelectContent align="end" className="min-w-[12rem]">
-                        {Object.entries(channelConfig).map(([key, cfg]) => {
-                          const disabled = !availableChannels[key];
-                          return (
-                            <SelectItem key={key} value={key} disabled={disabled} title={cfg.label}>
-                              <div className={`flex items-center gap-2 ${disabled ? 'opacity-40' : ''}`}>
-                                <ChannelIcon channel={key} />
-                                <span className="text-xs">{cfg.label}</span>
-                              </div>
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
                     <Button onClick={handleSend} disabled={(!newMessage.trim() && !attachment) || sendMessage.isPending} size="icon" title="שלח" className="h-11 w-11 shrink-0 rounded-full bg-whatsapp-header text-whatsapp-header-foreground hover:bg-whatsapp-header/90">
                       {newMessage.trim() || attachment ? <Send className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                     </Button>
