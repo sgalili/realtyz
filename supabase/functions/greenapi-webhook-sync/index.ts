@@ -33,17 +33,14 @@ function splitGreenApiKey(value: unknown): { instanceId: string; token: string }
   return { instanceId: instanceId.trim(), token };
 }
 
-async function requireAdmin(req: Request, supabaseUrl: string, anonKey: string, serviceKey: string) {
+async function requireAdmin(req: Request, supabaseUrl: string, serviceKey: string) {
   const token = authToken(req);
   if (!token) throw new Error("missing_authorization");
 
-  const authClient = createClient(supabaseUrl, anonKey, {
-    global: { headers: { Authorization: `Bearer ${token}` } },
-  });
-  const { data: userData, error: userError } = await authClient.auth.getUser(token);
+  const admin = createClient(supabaseUrl, serviceKey);
+  const { data: userData, error: userError } = await admin.auth.getUser(token);
   if (userError || !userData.user?.id) throw new Error("invalid_session");
 
-  const admin = createClient(supabaseUrl, serviceKey);
   const { data: roleOk, error: roleError } = await admin.rpc("is_admin_or_above", {
     _uid: userData.user.id,
   });
@@ -92,12 +89,11 @@ Deno.serve(async (req) => {
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-    if (!supabaseUrl || !anonKey || !serviceKey) return json({ error: "server_misconfigured" }, 500);
+    if (!supabaseUrl || !serviceKey) return json({ error: "server_misconfigured" }, 500);
 
     const webhookUrl = `${supabaseUrl}/functions/v1/${WEBHOOK_FUNCTION_NAME}`;
-    const { admin, userId } = await requireAdmin(req, supabaseUrl, anonKey, serviceKey);
+    const { admin, userId } = await requireAdmin(req, supabaseUrl, serviceKey);
     const creds = await resolveGreenCredentials(admin);
     if (!creds) {
       return json({
@@ -162,22 +158,26 @@ Deno.serve(async (req) => {
         .eq("id", creds.apiConfigId);
     }
 
-    await admin.from("audit_logs").insert({
-      actor_id: userId,
-      action: "greenapi_webhook_synced",
-      target_table: "api_configs",
-      target_id: creds.apiConfigId ?? null,
-      details: {
-        provider: "GreenAPI",
-        webhook_url: webhookUrl,
-        credential_source: creds.source,
-        requested_tracking_flags: {
-          incomingMessageReceived: true,
-          outboundMessageReceived: true,
-          statusMessageReceived: true,
+    try {
+      await admin.from("audit_logs").insert({
+        actor_id: userId,
+        action: "greenapi_webhook_synced",
+        target_table: "api_configs",
+        target_id: creds.apiConfigId ?? null,
+        details: {
+          provider: "GreenAPI",
+          webhook_url: webhookUrl,
+          credential_source: creds.source,
+          requested_tracking_flags: {
+            incomingMessageReceived: true,
+            outboundMessageReceived: true,
+            statusMessageReceived: true,
+          },
         },
-      },
-    }).catch((e) => console.warn("greenapi-webhook-sync audit failed", e));
+      });
+    } catch (e) {
+      console.warn("greenapi-webhook-sync audit failed", e);
+    }
 
     return json({
       ok: true,
