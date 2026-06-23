@@ -34,10 +34,24 @@ function stripStreet(rawAddress: string, city: string, neighborhood: string): st
 }
 
 function buildLocationPhrase(street: string, neighborhood: string, city: string): string {
+  if (street && neighborhood) {
+    return city
+      ? `ברחוב ${street} ב${neighborhood}, ${city}`
+      : `ברחוב ${street} ב${neighborhood}`;
+  }
   if (street) return city ? `ברחוב ${street}, ${city}` : `ברחוב ${street}`;
   if (neighborhood) return city ? `בשכונת ${neighborhood}, ${city}` : `בשכונת ${neighborhood}`;
   if (city) return `ב${city}`;
   return "בנכס";
+}
+
+function buildDealTypeToken(listing: any): string {
+  const raw = String(listing?.deal_type ?? listing?.status ?? "").toLowerCase();
+  const isRental =
+    listing?.is_rental === true ||
+    raw === "rent" || raw === "rental" || raw === "lease" ||
+    raw.includes("rent") || raw.includes("להשכרה");
+  return isRental ? "להשכרה" : "למכירה";
 }
 
 function buildShortlinkPayload(listing: any) {
@@ -45,12 +59,13 @@ function buildShortlinkPayload(listing: any) {
   const neighborhood = String(listing.neighborhood ?? "").trim();
   const street = stripStreet(String(listing.address ?? ""), city, neighborhood);
   const locationPhrase = buildLocationPhrase(street, neighborhood, city);
+  const dealToken = buildDealTypeToken(listing);
   const rooms = listing.rooms ? String(listing.rooms).trim() : "";
   const price = formatPrice(listing.asking_price as number | null);
-  const text = `היי אודי, אני פונה אליך לגבי הדירה שפרסמת ${locationPhrase}. דירת ${rooms} חדרים במחיר ${price}. אשמח לקבל פרטים נוספים.`;
+  const text = `היי אודי, אני פונה אליך לגבי הדירה ${dealToken} שפרסמת ${locationPhrase}. דירת ${rooms} חדרים במחיר ${price}. אשמח לקבל פרטים נוספים.`;
   const long_url = `https://api.whatsapp.com/send?phone=972537339533&text=${encodeURIComponent(text)}`;
 
-  return { street, neighborhood, city, locationPhrase, rooms, price, text, long_url };
+  return { street, neighborhood, city, locationPhrase, dealToken, rooms, price, text, long_url };
 }
 
 Deno.serve(async (req) => {
@@ -76,7 +91,7 @@ Deno.serve(async (req) => {
 
     const { data: listing, error: lerr } = await admin
       .from("listings")
-      .select("id,user_id,property_title,city,neighborhood,address,rooms,asking_price")
+      .select("id,user_id,property_title,city,neighborhood,address,rooms,asking_price,deal_type,status")
       .eq("id", property_id)
       .maybeSingle();
     if (lerr || !listing) return json(404, { error: "Listing not found" });

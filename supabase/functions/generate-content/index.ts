@@ -486,19 +486,33 @@ function stripListingStreet(rawAddress: string, city: string, neighborhood: stri
   return street.replace(/\s+\d+[א-ת]?\s*$/, "").trim();
 }
 function buildListingLocationPhrase(street: string, neighborhood: string, city: string): string {
+  if (street && neighborhood) {
+    return city
+      ? `ברחוב ${street} ב${neighborhood}, ${city}`
+      : `ברחוב ${street} ב${neighborhood}`;
+  }
   if (street) return city ? `ברחוב ${street}, ${city}` : `ברחוב ${street}`;
   if (neighborhood) return city ? `בשכונת ${neighborhood}, ${city}` : `בשכונת ${neighborhood}`;
   if (city) return `ב${city}`;
   return "בנכס";
+}
+function buildListingDealTypeToken(listing: any): string {
+  const raw = String(listing?.deal_type ?? listing?.status ?? "").toLowerCase();
+  const isRental =
+    listing?.is_rental === true ||
+    raw === "rent" || raw === "rental" || raw === "lease" ||
+    raw.includes("rent") || raw.includes("להשכרה");
+  return isRental ? "להשכרה" : "למכירה";
 }
 function buildListingShortlinkLongUrl(listing: any): { text: string; long_url: string } {
   const city = String(listing.city ?? "").trim();
   const neighborhood = String(listing.neighborhood ?? "").trim();
   const street = stripListingStreet(String(listing.address ?? ""), city, neighborhood);
   const locationPhrase = buildListingLocationPhrase(street, neighborhood, city);
+  const dealToken = buildListingDealTypeToken(listing);
   const rooms = listing.rooms ? String(listing.rooms).trim() : "";
   const price = formatListingPrice(listing.asking_price as number | null);
-  const text = `היי אודי, אני פונה אליך לגבי הדירה שפרסמת ${locationPhrase}. דירת ${rooms} חדרים במחיר ${price}. אשמח לקבל פרטים נוספים.`;
+  const text = `היי אודי, אני פונה אליך לגבי הדירה ${dealToken} שפרסמת ${locationPhrase}. דירת ${rooms} חדרים במחיר ${price}. אשמח לקבל פרטים נוספים.`;
   return {
     text,
     long_url: `https://api.whatsapp.com/send?phone=972537339533&text=${encodeURIComponent(text)}`,
