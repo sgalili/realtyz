@@ -476,47 +476,47 @@ function formatListingPrice(n: number | null | undefined): string {
   const v = Number(n);
   return `${v.toLocaleString("he-IL")} ₪`;
 }
+function escapeRegExp(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+function stripListingStreet(rawAddress: string, city: string, neighborhood: string): string {
+  let street = String(rawAddress ?? "").trim();
+  if (street && city) street = street.replace(new RegExp(`,?\\s*${escapeRegExp(city)}\\s*$`), "").trim();
+  if (street && neighborhood) street = street.replace(new RegExp(`,?\\s*${escapeRegExp(neighborhood)}\\s*$`), "").trim();
+  return street.replace(/\s+\d+[א-ת]?\s*$/, "").trim();
+}
+function buildListingShortlinkLongUrl(listing: any): { text: string; long_url: string } {
+  const city = String(listing.city ?? "").trim();
+  const neighborhood = String(listing.neighborhood ?? "").trim();
+  const street = stripListingStreet(String(listing.address ?? ""), city, neighborhood) || neighborhood || city || "הנכס";
+  const rooms = listing.rooms ? String(listing.rooms).trim() : "";
+  const price = formatListingPrice(listing.asking_price as number | null);
+  const text = `היי אודי, אני פונה אליך לגבי הדירה שפרסמת ברחוב ${street}, ${city}. דירת ${rooms} חדרים במחיר ${price}. אשמח לקבל פרטים נוספים.`;
+  return {
+    text,
+    long_url: `https://api.whatsapp.com/send?phone=972537339533&text=${encodeURIComponent(text)}`,
+  };
+}
 async function ensureListingShortlink(
   admin: any,
   listing: any,
   userId: string,
 ): Promise<string | null> {
-  // 1) Reuse existing slug for this property if present.
+  const { long_url } = buildListingShortlinkLongUrl(listing);
+
+  // 1) Reuse existing slug for this property if present, while force-refreshing
+  // the database row so old 7K/generic fallback URLs can never survive.
   const { data: existing } = await admin
     .from("short_urls")
     .select("slug")
     .eq("property_id", listing.id)
+    .order("created_at", { ascending: false })
     .limit(1)
     .maybeSingle();
-  if (existing?.slug) return existing.slug as string;
-
-  // Hard-routed to the dedicated Realtyz WhatsApp agent line.
-  const ownerId = listing.user_id ?? userId;
-  const brokerPhone = "972537339533";
-
-  const city = String(listing.city ?? "").trim();
-  const neighborhood = String(listing.neighborhood ?? "").trim();
-  const rawAddress = String(listing.address ?? "").trim();
-  let street = rawAddress;
-  if (street && city) street = street.replace(new RegExp(`,?\\s*${city}\\s*$`), "").trim();
-  if (street && neighborhood) street = street.replace(new RegExp(`,?\\s*${neighborhood}\\s*$`), "").trim();
-  street = street.replace(/\s+\d+[א-ת]?\s*$/, "").trim();
-
-  const price = formatListingPrice(listing.asking_price as number | null);
-  const rooms = listing.rooms ? String(listing.rooms) : "";
-  const roomsPart = rooms ? `דירת ${rooms} חדרים במחיר ${price}.` : `במחיר ${price}.`;
-
-  let locationPart: string;
-  if (street) {
-    locationPart = `ברחוב ${street}${city ? `, ${city}` : ""}`;
-  } else if (neighborhood) {
-    locationPart = `בשכונת ${neighborhood}${city && city !== neighborhood ? `, ${city}` : ""}`;
-  } else {
-    locationPart = `ב${city || "האזור"}`;
+  if (existing?.slug) {
+    await admin.from("short_urls").update({ long_url }).eq("slug", existing.slug);
+    return existing.slug as string;
   }
-
-  const text = `היי אודי, אני פונה אליך לגבי הדירה שפרסמת ${locationPart}. ${roomsPart} אשמח לקבל פרטים נוספים.`;
-  const long_url = `https://api.whatsapp.com/send?phone=${brokerPhone}&text=${encodeURIComponent(text)}`;
 
   for (let i = 0; i < 5; i++) {
     const slug = makeShortSlug();
