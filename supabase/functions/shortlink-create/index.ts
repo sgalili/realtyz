@@ -19,9 +19,7 @@ function makeSlug(len = 8) {
 function formatPrice(n: number | null | undefined): string {
   if (!n || !isFinite(Number(n))) return "המחיר המבוקש";
   const v = Number(n);
-  if (v >= 1_000_000) return `${(v / 1_000_000).toFixed(v % 1_000_000 === 0 ? 0 : 2).replace(/\.?0+$/, "")} מיליון שקל`;
-  if (v >= 1000) return `${Math.round(v / 1000).toLocaleString("he-IL")} אלף שקל`;
-  return `${v.toLocaleString("he-IL")} שקל`;
+  return `${v.toLocaleString("he-IL")} ₪`;
 }
 
 function normalizePhone(raw: string): string {
