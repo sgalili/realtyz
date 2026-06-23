@@ -798,7 +798,9 @@ Deno.serve(async (req) => {
         functionName: "whatsapp-webhook",
         errorMessage: message,
       });
-      return jsonResponse({ ok: false, error: message }, 500);
+      // Always 200 — never let an internal error trigger GreenAPI retry storms
+      // or hide the inbound from the operator's monitoring.
+      return jsonResponse({ ok: false, error: message, soft_fail: true }, 200);
     }
   }
 
