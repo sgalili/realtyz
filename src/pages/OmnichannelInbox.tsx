@@ -140,22 +140,38 @@ const OmnichannelInbox = () => {
   const { user } = useAuth();
 
   const handleDeleteChat = async (voterId: string) => {
-    if (!voterId || voterId.startsWith('phone:') || voterId.startsWith('demo-')) {
+    if (!voterId || voterId.startsWith('demo-')) {
       toast.error('לא ניתן למחוק שיחה זו');
       setDeleteTargetId(null);
       return;
     }
     setIsDeletingChat(true);
     try {
-      const { error } = await supabase.from('messages').delete().eq('lead_id', voterId);
-      if (error) throw error;
-      await supabase.from('chat_history').delete().eq('lead_id', voterId);
-      toast.success('השיחה נמחקה');
+      if (voterId.startsWith('phone:')) {
+        const phone = voterId.slice('phone:'.length);
+        const { error } = await supabase
+          .from('messages')
+          .delete()
+          .is('lead_id', null)
+          .filter('metadata->>sender_phone', 'eq', phone);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('messages').delete().eq('lead_id', voterId);
+        if (error) throw error;
+        await supabase.from('chat_history').delete().eq('lead_id', voterId);
+      }
+      toast.success('השיחה נמחקה לצמיתות');
       if (selectedVoterId === voterId) setSelectedVoterId(null);
-      queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
-      queryClient.invalidateQueries({ queryKey: ['last-messages'] });
-      queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['chat-messages'] }),
+        queryClient.invalidateQueries({ queryKey: ['last-messages'] }),
+        queryClient.invalidateQueries({ queryKey: ['inbox-leads'] }),
+        queryClient.invalidateQueries({ queryKey: ['messages'] }),
+        queryClient.invalidateQueries({ queryKey: ['inbox-chats'] }),
+        queryClient.invalidateQueries({ queryKey: ['lead-recent-msgs'] }),
+      ]);
     } catch (err: any) {
+      console.error('[delete-chat]', err);
       toast.error('מחיקת השיחה נכשלה');
     } finally {
       setIsDeletingChat(false);
