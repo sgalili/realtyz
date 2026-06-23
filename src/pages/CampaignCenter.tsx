@@ -443,7 +443,7 @@ const InlineComposer = ({
   // composers on the same page don't clobber each other's drafts. Persisted
   // to localStorage so dialog closes, route changes, and hard refreshes
   // never lose unfinished work. Cleared only on successful publish.
-  const draftKey = `rz-composer-draft:${channel.id}${instanceId ? `:${instanceId}` : ''}`;
+  const draftKey = `rz-composer-draft:v2:${channel.id}${instanceId ? `:${instanceId}` : ''}`;
   const readDraft = (): any => {
     if (typeof window === 'undefined') return null;
     try { return JSON.parse(localStorage.getItem(draftKey) || sessionStorage.getItem(draftKey) || 'null'); } catch { return null; }
@@ -3453,18 +3453,20 @@ const CampaignCenter = () => {
           setPickedChannel(null);
           setPickedChannelIds(new Set());
           if (publishedChannelId) {
-            const prefix = `rz-composer-draft:${publishedChannelId}`;
+            const prefixes = [`rz-composer-draft:v2:${publishedChannelId}`, `rz-composer-draft:${publishedChannelId}`];
             try {
-              sessionStorage.removeItem(prefix);
-              localStorage.removeItem(prefix);
-              // Sweep namespaced draft entries (replicated composers)
-              for (const store of [localStorage, sessionStorage]) {
-                const keys: string[] = [];
-                for (let i = 0; i < store.length; i++) {
-                  const k = store.key(i);
-                  if (k && k.startsWith(`${prefix}:`)) keys.push(k);
+              for (const prefix of prefixes) {
+                sessionStorage.removeItem(prefix);
+                localStorage.removeItem(prefix);
+                // Sweep namespaced draft entries (replicated composers)
+                for (const store of [localStorage, sessionStorage]) {
+                  const keys: string[] = [];
+                  for (let i = 0; i < store.length; i++) {
+                    const k = store.key(i);
+                    if (k && k.startsWith(`${prefix}:`)) keys.push(k);
+                  }
+                  keys.forEach((k) => store.removeItem(k));
                 }
-                keys.forEach((k) => store.removeItem(k));
               }
               sessionStorage.removeItem('rz-schedule-assignments');
             } catch {}
