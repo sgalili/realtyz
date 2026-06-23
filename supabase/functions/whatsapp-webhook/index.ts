@@ -465,6 +465,20 @@ async function resolveShortLinkListing(
   };
 }
 
+// Strip raw template markers / system prefixes that occasionally leak from the
+// LLM into customer-facing WhatsApp replies. Output must be pure conversational Hebrew.
+function sanitizeAiReply(raw: string): string {
+  let s = String(raw ?? "").trim();
+  if (!s) return "";
+  // Drop leading wrappers like:  תגובה:  / תשובה:  / Response:  / Reply:
+  s = s.replace(/^\s*(תגובה|תשובה|מענה|response|reply)\s*[:：-]\s*/i, "");
+  // Drop any stray quoted-prefix that wraps the whole reply in quotes.
+  s = s.replace(/^["'״׳`]+/, "").replace(/["'״׳`]+$/, "");
+  // Strip trailing template anomaly  ."!"  /  ."!".  /  !"."
+  s = s.replace(/[."'״׳]+\s*!?\s*[."'״׳]+\s*$/g, "").trim();
+  return s;
+}
+
 async function handleLeadInboxInbound(
   admin: ReturnType<typeof createClient>,
   supabaseUrl: string,
@@ -661,7 +675,7 @@ async function handleLeadInboxInbound(
     if (!aiRes.ok) {
       console.warn(`ai-agent failed ${aiRes.status}:`, JSON.stringify(aiJson).slice(0, 300));
     } else {
-      reply = String(aiJson?.content ?? aiJson?.message ?? "").trim();
+      reply = sanitizeAiReply(String(aiJson?.content ?? aiJson?.message ?? ""));
     }
   } catch (e) {
     console.warn("ai-agent call threw:", e instanceof Error ? e.message : e);
@@ -771,6 +785,34 @@ Deno.serve(async (req) => {
   const { senderPhone, messageId, extracted: msg } = extracted;
 
   if (msg.kind === "text" && !isKnowledgeCommand(msg.text)) {
+    // ============================================================
+    // CUSTOMER LEAD ANCHOR — if the text begins with the canonical
+    // short-link greeting, it is a property inquiry from a prospective
+    // client. Force-route it through the lead inbox pipeline and
+    // bypass the owner command router entirely (even if the sender's
+    // phone is whitelisted — common during broker self-tests).
+    // ============================================================
+    const LEAD_INQUIRY_ANCHOR = "היי אודי, אני פונה אליך לגבי הדירה";
+    const normalizedInbound = (msg.text || "").trim();
+    if (normalizedInbound.includes(LEAD_INQUIRY_ANCHOR)) {
+      console.log(`[LEAD ANCHOR] Customer inquiry detected from ${senderPhone} → lead pipeline`);
+      try {
+        const result = await handleLeadInboxInbound(
+          admin,
+          SUPABASE_URL,
+          SERVICE_KEY,
+          senderPhone,
+          messageId,
+          msg.text,
+        );
+        return jsonResponse({ ...result, classified_as: "customer_lead_inquiry" });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "unknown";
+        console.error("lead-anchor pipeline error:", message);
+        return jsonResponse({ ok: false, error: message, soft_fail: true }, 200);
+      }
+    }
+
     // ============================================================
     // GATEKEEPER — owner whitelist lookup runs FIRST and HARD BLOCKS
     // any lead/autopilot handling for whitelisted phones. A
@@ -895,7 +937,7 @@ Deno.serve(async (req) => {
         });
         const replyText = routed.handled
           ? routed.reply
-          : `לא זיהיתי פקודה ברורה. נסה למשל: "צור פוסט על הדירה ברחוב החליל בהרצליה" או "תגובה: תודה רבה!".`;
+          : `לא זיהיתי פקודה ברורה. נסה לנסח מחדש, למשל: צור פוסט על הדירה ברחוב החליל בהרצליה.`;
         await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, replyText);
         return jsonResponse({
           ok: true,
