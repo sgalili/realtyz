@@ -937,7 +937,7 @@ Deno.serve(async (req) => {
         });
         const replyText = routed.handled
           ? routed.reply
-          : `לא זיהיתי פקודה ברורה. נסה למשל: "צור פוסט על הדירה ברחוב החליל בהרצליה" או "תגובה: תודה רבה!".`;
+          : `לא זיהיתי פקודה ברורה. נסה לנסח מחדש, למשל: צור פוסט על הדירה ברחוב החליל בהרצליה.`;
         await sendRawWhatsApp(SUPABASE_URL, SERVICE_KEY, senderPhone, replyText);
         return jsonResponse({
           ok: true,
