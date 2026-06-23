@@ -357,6 +357,7 @@ async function handleLeadInboxInbound(
 ) {
   // Detect short-link signature so we can auto-create / tag the lead before lookup.
   const shortLink = await resolveShortLinkListing(admin, inboundText);
+  const hasShortLinkSignature = SHORTLINK_ANCHOR_RE.test(inboundText);
 
   let { data: lead, error: leadErr } = await admin
     .from("leads")
@@ -367,24 +368,32 @@ async function handleLeadInboxInbound(
   if (leadErr) throw new Error(`lead lookup failed: ${leadErr.message}`);
 
   // Auto-create lead from short-link inbound when none exists yet.
-  if (!lead?.id && shortLink) {
-    const dealType = (shortLink.deal_type === "rent" ? "rent" : "sale");
+  // Fallback: if the message carries the short-link signature but we couldn't
+  // resolve the exact listing, still create a lead so Udi can engage them.
+  if (!lead?.id && (shortLink || hasShortLinkSignature)) {
+    const dealType = (shortLink?.deal_type === "rent" ? "rent" : "sale");
     const category = dealType === "rent" ? "שוכר" : "קונה";
     const { data: created, error: createErr } = await admin
       .from("leads")
       .insert({
         phone_number: senderPhone,
         full_name: null,
-        city: shortLink.city,
-        neighborhood: shortLink.neighborhood,
-        interest_tag: shortLink.listing_id,
+        city: shortLink?.city ?? null,
+        neighborhood: shortLink?.neighborhood ?? null,
+        interest_tag: shortLink?.listing_id ?? null,
         deal_type: dealType,
         lead_stage: "engaging",
         loyalty_tier: "Hot Lead",
         status: "contacted",
         sentiment: "positive",
-        assigned_to: shortLink.owner_id,
-        preferences: { source: "shortlink", category, listing_id: shortLink.listing_id },
+        assigned_to: shortLink?.owner_id ?? null,
+        preferences: {
+          source: "shortlink",
+          category,
+          listing_id: shortLink?.listing_id ?? null,
+          unresolved_listing: !shortLink,
+          inbound_excerpt: inboundText.slice(0, 240),
+        },
         is_demo: false,
       })
       .select("id, full_name, ai_autopilot, phone_number, assigned_to, interest_tag, deal_type")
