@@ -91,7 +91,7 @@ Deno.serve(async (req) => {
 
     const { data: listing, error: lerr } = await admin
       .from("listings")
-      .select("id,user_id,property_title,city,neighborhood,address,rooms,asking_price")
+      .select("id,user_id,property_title,city,neighborhood,address,rooms,asking_price,deal_type,status")
       .eq("id", property_id)
       .maybeSingle();
     if (lerr || !listing) return json(404, { error: "Listing not found" });
