@@ -443,7 +443,7 @@ const InlineComposer = ({
   // composers on the same page don't clobber each other's drafts. Persisted
   // to localStorage so dialog closes, route changes, and hard refreshes
   // never lose unfinished work. Cleared only on successful publish.
-  const draftKey = `rz-composer-draft:${channel.id}${instanceId ? `:${instanceId}` : ''}`;
+  const draftKey = `rz-composer-draft:v2:${channel.id}${instanceId ? `:${instanceId}` : ''}`;
   const readDraft = (): any => {
     if (typeof window === 'undefined') return null;
     try { return JSON.parse(localStorage.getItem(draftKey) || sessionStorage.getItem(draftKey) || 'null'); } catch { return null; }
@@ -940,7 +940,11 @@ const InlineComposer = ({
                 className="mb-2 text-right"
               />
               {selectedListingId && (
-                <button type="button" onClick={() => { setSelectedListingId(null); setListingPickerOpen(false); }}
+                <button type="button" onClick={() => {
+                  setSelectedListingId(null);
+                  setBody((current) => cleanBody(current.replace(/\n*[^\n]*realtyz\.co\.il\/r\/[a-z0-9]+[^\n]*/gi, '')));
+                  setListingPickerOpen(false);
+                }}
                   className="mb-1 w-full rounded-md border border-dashed border-border px-3 py-2 text-right text-xs text-muted-foreground hover:bg-muted">
                   נקה בחירה — פוסט כללי
                 </button>
@@ -952,7 +956,11 @@ const InlineComposer = ({
                 <p className="px-3 py-4 text-center text-xs text-muted-foreground">לא נמצאו נכסים תואמים לחיפוש</p>
               ) : visibleListings.map((l) => (
                 <button key={l.id} type="button"
-                  onClick={() => { setSelectedListingId(l.id); setListingPickerOpen(false); }}
+                  onClick={() => {
+                    setSelectedListingId(l.id);
+                    setBody((current) => cleanBody(current.replace(/\n*[^\n]*realtyz\.co\.il\/r\/[a-z0-9]+[^\n]*/gi, '')));
+                    setListingPickerOpen(false);
+                  }}
                   className={cn(
                     'mb-1 w-full rounded-md px-3 py-2 text-right text-sm hover:bg-muted',
                     selectedListingId === l.id && 'bg-primary/10 text-primary',
@@ -1272,17 +1280,21 @@ const ConfirmDispatchDialog = ({
     const ownerScope = workspaceOwnerId ?? user.id;
     setSending(true);
     try {
-      // Auto-append branded WhatsApp short link CTA when a listing is attached.
-      // realtyz.co.il/r/:slug → wa.me with a pre-filled Hebrew intro.
+      // Force-refresh branded WhatsApp short link CTA when a listing is attached.
+      // Existing slug lines are replaced so stale persisted drafts cannot publish
+      // an old short_urls row for a different selected property.
       let bodyToPublish = body;
-      if (listingId && !/realtyz\.co\.il\/r\//.test(body)) {
+      if (listingId) {
         try {
           const { data: slugRes } = await supabase.functions.invoke('shortlink-create', {
             body: { property_id: listingId },
           });
           const slug = (slugRes as any)?.slug;
           if (slug) {
-            bodyToPublish = `${body.trim()}\n\nדברו איתנו עכשיו: realtyz.co.il/r/${slug}`;
+            const withoutStaleSlug = body
+              .replace(/\n*[^\n]*realtyz\.co\.il\/r\/[a-z0-9]+[^\n]*/gi, '')
+              .trim();
+            bodyToPublish = `${withoutStaleSlug}\n\nדברו איתנו עכשיו: realtyz.co.il/r/${slug}`;
           }
         } catch (e) {
           console.warn('[shortlink] generation failed', e);
@@ -3441,18 +3453,20 @@ const CampaignCenter = () => {
           setPickedChannel(null);
           setPickedChannelIds(new Set());
           if (publishedChannelId) {
-            const prefix = `rz-composer-draft:${publishedChannelId}`;
+            const prefixes = [`rz-composer-draft:v2:${publishedChannelId}`, `rz-composer-draft:${publishedChannelId}`];
             try {
-              sessionStorage.removeItem(prefix);
-              localStorage.removeItem(prefix);
-              // Sweep namespaced draft entries (replicated composers)
-              for (const store of [localStorage, sessionStorage]) {
-                const keys: string[] = [];
-                for (let i = 0; i < store.length; i++) {
-                  const k = store.key(i);
-                  if (k && k.startsWith(`${prefix}:`)) keys.push(k);
+              for (const prefix of prefixes) {
+                sessionStorage.removeItem(prefix);
+                localStorage.removeItem(prefix);
+                // Sweep namespaced draft entries (replicated composers)
+                for (const store of [localStorage, sessionStorage]) {
+                  const keys: string[] = [];
+                  for (let i = 0; i < store.length; i++) {
+                    const k = store.key(i);
+                    if (k && k.startsWith(`${prefix}:`)) keys.push(k);
+                  }
+                  keys.forEach((k) => store.removeItem(k));
                 }
-                keys.forEach((k) => store.removeItem(k));
               }
               sessionStorage.removeItem('rz-schedule-assignments');
             } catch {}
