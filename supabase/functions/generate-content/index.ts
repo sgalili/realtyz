@@ -494,11 +494,28 @@ async function ensureListingShortlink(
   const ownerId = listing.user_id ?? userId;
   const brokerPhone = "972537339533";
 
-  const neighborhood = String(listing.neighborhood ?? "").trim() || String(listing.city ?? "").trim() || "האזור";
   const city = String(listing.city ?? "").trim();
+  const neighborhood = String(listing.neighborhood ?? "").trim();
+  const rawAddress = String(listing.address ?? "").trim();
+  let street = rawAddress;
+  if (street && city) street = street.replace(new RegExp(`,?\\s*${city}\\s*$`), "").trim();
+  if (street && neighborhood) street = street.replace(new RegExp(`,?\\s*${neighborhood}\\s*$`), "").trim();
+  street = street.replace(/\s+\d+[א-ת]?\s*$/, "").trim();
+
   const price = formatListingPrice(listing.asking_price as number | null);
-  const text =
-    `היי אודי, אני פונה אליך לגבי הדירה שפרסמת ב${neighborhood}${city && city !== neighborhood ? ", " + city : ""} במחיר ${price}. אשמח לקבל פרטים נוספים.`;
+  const rooms = listing.rooms ? String(listing.rooms) : "";
+  const roomsPart = rooms ? `דירת ${rooms} חדרים במחיר ${price}.` : `במחיר ${price}.`;
+
+  let locationPart: string;
+  if (street) {
+    locationPart = `ברחוב ${street}${city ? `, ${city}` : ""}`;
+  } else if (neighborhood) {
+    locationPart = `בשכונת ${neighborhood}${city && city !== neighborhood ? `, ${city}` : ""}`;
+  } else {
+    locationPart = `ב${city || "האזור"}`;
+  }
+
+  const text = `היי אודי, אני פונה אליך לגבי הדירה שפרסמת ${locationPart}. ${roomsPart} אשמח לקבל פרטים נוספים.`;
   const long_url = `https://api.whatsapp.com/send?phone=${brokerPhone}&text=${encodeURIComponent(text)}`;
 
   for (let i = 0; i < 5; i++) {
