@@ -694,26 +694,34 @@ async function handleLeadInboxInbound(
 // ---------- main handler ----------
 
 Deno.serve(async (req) => {
+  console.log("Webhook hit raw body:", req.body);
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
-  if (req.method !== "POST") return jsonResponse({ error: "method_not_allowed" }, 405);
+  if (req.method !== "POST") return jsonResponse({ ok: true, ignored: "method_not_post" }, 200);
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
 
   if (!SUPABASE_URL || !SERVICE_KEY) return jsonResponse({ error: "server_misconfigured" }, 500);
-  if (!LOVABLE_API_KEY) return jsonResponse({ error: "LOVABLE_API_KEY missing" }, 500);
+  const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
   let payload: any;
+  let rawBody = "";
   try {
-    payload = await req.json();
+    rawBody = await req.text();
+    console.log("Webhook hit raw body text:", previewRawBody(rawBody));
+    payload = tryParseLooseJson(rawBody);
   } catch {
-    return jsonResponse({ error: "invalid_json" }, 400);
+    rawBody = "";
+  }
+  if (!payload) {
+    const recovery = await persistRawRecoveryMessage(admin, null, rawBody, "unparseable_payload");
+    return jsonResponse({ ok: true, ignored: "unparseable_payload", recovery }, 200);
   }
 
-  // Pin Realtyz AI Master to GreenAPI Instance 7103164675.
-  // Reject inbound traffic from any other instance so stale/test instances
-  // can't drive the live owner/tenant pipeline.
+  // Observe instance ID, but do not reject at the route threshold: GreenAPI
+  // payload variants can omit/change this field and the broker still needs the
+  // raw inbound saved to the inbox.
   const MASTER_INSTANCE_ID = "7103164675";
   const incomingInstance = String(
     payload?.instanceData?.idInstance ??
@@ -722,18 +730,18 @@ Deno.serve(async (req) => {
       "",
   ).replace(/\D/g, "");
   if (incomingInstance && incomingInstance !== MASTER_INSTANCE_ID) {
-    console.warn("whatsapp-webhook: rejecting non-master instance", incomingInstance);
-    return jsonResponse({ ok: true, ignored: "non_master_instance", instance: incomingInstance });
+    console.warn("whatsapp-webhook: non-master instance observed but accepted", incomingInstance);
   }
 
   const extracted = extractGreenApiMessage(payload);
   if (!extracted) {
-    // Acknowledge so GreenAPI does not retry (e.g. status receipts, group events).
-    return jsonResponse({ ok: true, ignored: "not_a_supported_inbound_message" });
+    // Acknowledge so GreenAPI does not retry, but store any recoverable raw
+    // sender/text payload so it appears in the orphan phone inbox feed.
+    const recovery = await persistRawRecoveryMessage(admin, payload, rawBody, "unsupported_payload_shape");
+    return jsonResponse({ ok: true, ignored: "not_a_supported_inbound_message", recovery });
   }
 
   const { senderPhone, messageId, extracted: msg } = extracted;
-  const admin = createClient(SUPABASE_URL, SERVICE_KEY);
 
   if (msg.kind === "text" && !isKnowledgeCommand(msg.text)) {
     // ============================================================
@@ -908,6 +916,10 @@ Deno.serve(async (req) => {
   }
 
   // 1. Whitelist check — only authorized Agents can feed the Strategy Bank.
+  if (!LOVABLE_API_KEY) {
+    await persistRawRecoveryMessage(admin, payload, rawBody, "lovable_api_key_missing");
+    return jsonResponse({ ok: true, stored: true, ignored: "LOVABLE_API_KEY missing for knowledge pipeline" }, 200);
+  }
   const { data: wl } = await admin
     .from("kb_whitelist")
     .select("user_id, label")
