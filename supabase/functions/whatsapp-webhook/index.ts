@@ -772,6 +772,34 @@ Deno.serve(async (req) => {
 
   if (msg.kind === "text" && !isKnowledgeCommand(msg.text)) {
     // ============================================================
+    // CUSTOMER LEAD ANCHOR — if the text begins with the canonical
+    // short-link greeting, it is a property inquiry from a prospective
+    // client. Force-route it through the lead inbox pipeline and
+    // bypass the owner command router entirely (even if the sender's
+    // phone is whitelisted — common during broker self-tests).
+    // ============================================================
+    const LEAD_INQUIRY_ANCHOR = "היי אודי, אני פונה אליך לגבי הדירה";
+    const normalizedInbound = (msg.text || "").trim();
+    if (normalizedInbound.includes(LEAD_INQUIRY_ANCHOR)) {
+      console.log(`[LEAD ANCHOR] Customer inquiry detected from ${senderPhone} → lead pipeline`);
+      try {
+        const result = await handleLeadInboxInbound(
+          admin,
+          SUPABASE_URL,
+          SERVICE_KEY,
+          senderPhone,
+          messageId,
+          msg.text,
+        );
+        return jsonResponse({ ...result, classified_as: "customer_lead_inquiry" });
+      } catch (e) {
+        const message = e instanceof Error ? e.message : "unknown";
+        console.error("lead-anchor pipeline error:", message);
+        return jsonResponse({ ok: false, error: message, soft_fail: true }, 200);
+      }
+    }
+
+    // ============================================================
     // GATEKEEPER — owner whitelist lookup runs FIRST and HARD BLOCKS
     // any lead/autopilot handling for whitelisted phones. A
     // whitelisted owner must NEVER be treated as a client lead.
