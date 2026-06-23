@@ -286,25 +286,56 @@ function isKnowledgeCommand(text: string): boolean {
 }
 
 // Pre-written signature from realtyz.co.il/r/:slug short links.
-// Example: "היי אודי, אני פונה אליך לגבי הדירה שפרסמת בנווה צדק, תל אביב במחיר 4.5 מיליון שקל. אשמח לקבל פרטים נוספים."
-const SHORTLINK_SIGNATURE_RE = /לגבי הדירה שפרסמת ב([^,\n]+?)(?:,\s*([^,\n]+?))?\s+במחיר/;
+// Matches BOTH the legacy and the refactored Hebrew templates:
+//   Legacy:    "...לגבי הדירה שפרסמת בנווה צדק, תל אביב במחיר 4.5 מיליון שקל..."
+//   Refactor:  "...לגבי הדירה שפרסמת ברחוב דיזנגוף, תל אביב. דירת 3 חדרים במחיר 6,500 ₪..."
+// We anchor only on the stable phrase "לגבי הדירה שפרסמת" and parse the rest
+// loosely so future copy tweaks don't break the parser.
+const SHORTLINK_ANCHOR_RE = /היי\s+אודי|לגבי\s+הדירה\s+שפרסמת/;
+const SHORTLINK_LOCATION_RE = /לגבי\s+הדירה\s+שפרסמת\s+ב(?:רחוב\s+|שכונת\s+)?([^,.\n]+?)(?:\s*,\s*([^,.\n]+?))?\s*(?:\.|במחיר|דירת|אשמח|$)/;
+const SHORTLINK_PRICE_RE = /במחיר\s+([\d.,]+)/;
+const SHORTLINK_ROOMS_RE = /דירת\s+(\d+(?:\.\d+)?)\s+חדרים/;
 
 async function resolveShortLinkListing(
   admin: ReturnType<typeof createClient>,
   inboundText: string,
 ): Promise<{ listing_id: string; owner_id: string | null; deal_type: string | null; city: string | null; neighborhood: string | null } | null> {
-  const m = inboundText.match(SHORTLINK_SIGNATURE_RE);
-  if (!m) return null;
-  const neighborhood = m[1]?.trim() || "";
-  const city = m[2]?.trim() || "";
-  let query = admin
-    .from("listings")
-    .select("id,user_id,city,neighborhood,status,created_at,features")
-    .order("created_at", { ascending: false })
-    .limit(1);
-  if (neighborhood) query = query.ilike("neighborhood", `%${neighborhood}%`);
-  if (city) query = query.ilike("city", `%${city}%`);
-  const { data: listing } = await query.maybeSingle();
+  if (!SHORTLINK_ANCHOR_RE.test(inboundText)) return null;
+  const m = inboundText.match(SHORTLINK_LOCATION_RE);
+  // First token might be a street OR a neighborhood; second is the city.
+  const firstToken = m?.[1]?.trim() || "";
+  const city = m?.[2]?.trim() || "";
+  const priceMatch = inboundText.match(SHORTLINK_PRICE_RE);
+  const roomsMatch = inboundText.match(SHORTLINK_ROOMS_RE);
+  const priceNum = priceMatch ? Number(priceMatch[1].replace(/,/g, "")) : null;
+  const roomsNum = roomsMatch ? Number(roomsMatch[1]) : null;
+
+  // Strategy: try multiple lookups in order of specificity. Return the first hit.
+  const baseSelect = "id,user_id,city,neighborhood,address,rooms,asking_price,status,created_at,features";
+  const runQuery = async (apply: (q: any) => any) => {
+    const q = apply(
+      admin.from("listings").select(baseSelect).order("created_at", { ascending: false }).limit(1),
+    );
+    const { data } = await q.maybeSingle();
+    return data as any;
+  };
+
+  let listing: any = null;
+  if (firstToken && city) {
+    listing = await runQuery((q) => q.ilike("address", `%${firstToken}%`).ilike("city", `%${city}%`));
+    if (!listing) listing = await runQuery((q) => q.ilike("neighborhood", `%${firstToken}%`).ilike("city", `%${city}%`));
+  }
+  if (!listing && firstToken) {
+    listing = await runQuery((q) => q.ilike("address", `%${firstToken}%`));
+    if (!listing) listing = await runQuery((q) => q.ilike("neighborhood", `%${firstToken}%`));
+  }
+  if (!listing && city) {
+    let q: any = admin.from("listings").select(baseSelect).ilike("city", `%${city}%`).order("created_at", { ascending: false }).limit(1);
+    if (priceNum) q = q.eq("asking_price", priceNum);
+    if (roomsNum) q = q.eq("rooms", roomsNum);
+    const { data } = await q.maybeSingle();
+    listing = data as any;
+  }
   if (!listing) return null;
   const dealType = (listing.features as any)?.deal_type || null;
   return {
@@ -326,6 +357,7 @@ async function handleLeadInboxInbound(
 ) {
   // Detect short-link signature so we can auto-create / tag the lead before lookup.
   const shortLink = await resolveShortLinkListing(admin, inboundText);
+  const hasShortLinkSignature = SHORTLINK_ANCHOR_RE.test(inboundText);
 
   let { data: lead, error: leadErr } = await admin
     .from("leads")
@@ -336,24 +368,32 @@ async function handleLeadInboxInbound(
   if (leadErr) throw new Error(`lead lookup failed: ${leadErr.message}`);
 
   // Auto-create lead from short-link inbound when none exists yet.
-  if (!lead?.id && shortLink) {
-    const dealType = (shortLink.deal_type === "rent" ? "rent" : "sale");
+  // Fallback: if the message carries the short-link signature but we couldn't
+  // resolve the exact listing, still create a lead so Udi can engage them.
+  if (!lead?.id && (shortLink || hasShortLinkSignature)) {
+    const dealType = (shortLink?.deal_type === "rent" ? "rent" : "sale");
     const category = dealType === "rent" ? "שוכר" : "קונה";
     const { data: created, error: createErr } = await admin
       .from("leads")
       .insert({
         phone_number: senderPhone,
         full_name: null,
-        city: shortLink.city,
-        neighborhood: shortLink.neighborhood,
-        interest_tag: shortLink.listing_id,
+        city: shortLink?.city ?? null,
+        neighborhood: shortLink?.neighborhood ?? null,
+        interest_tag: shortLink?.listing_id ?? null,
         deal_type: dealType,
         lead_stage: "engaging",
         loyalty_tier: "Hot Lead",
         status: "contacted",
         sentiment: "positive",
-        assigned_to: shortLink.owner_id,
-        preferences: { source: "shortlink", category, listing_id: shortLink.listing_id },
+        assigned_to: shortLink?.owner_id ?? null,
+        preferences: {
+          source: "shortlink",
+          category,
+          listing_id: shortLink?.listing_id ?? null,
+          unresolved_listing: !shortLink,
+          inbound_excerpt: inboundText.slice(0, 240),
+        },
         is_demo: false,
       })
       .select("id, full_name, ai_autopilot, phone_number, assigned_to, interest_tag, deal_type")
