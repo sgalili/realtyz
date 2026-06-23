@@ -163,11 +163,47 @@ const OmnichannelInbox = () => {
     },
   });
 
+  // === PHONE-ANCHORED FALLBACK ===
+  // Messages whose lead_id is null (or whose lead row is hidden by RLS) would
+  // otherwise vanish from the inbox. Surface them grouped by sender_phone so
+  // the broker never misses an inbound WhatsApp reply.
+  const { data: orphanThreads } = useQuery({
+    queryKey: ['orphan-phone-threads'],
+    enabled: !isDemoMode,
+    refetchInterval: 3000,
+    queryFn: async () => {
+      const { data } = await supabase
+        .from('messages')
+        .select('*')
+        .is('lead_id', null)
+        .order('created_at', { ascending: false })
+        .limit(200);
+      const map = new Map<string, any>();
+      (data ?? []).forEach((m: any) => {
+        const phone = (m.metadata as any)?.sender_phone;
+        if (!phone) return;
+        if (!map.has(phone)) map.set(phone, { phone, last: m, messages: [m] });
+        else map.get(phone).messages.push(m);
+      });
+      return Array.from(map.values());
+    },
+  });
+
   const { data: dbChatMessages } = useQuery({
     queryKey: ['chat-messages', selectedVoterId],
     enabled: !!selectedVoterId && !isDemoMode,
     refetchInterval: 3000,
     queryFn: async () => {
+      // Phone-anchored synthetic thread (id = "phone:9725...").
+      if (selectedVoterId?.startsWith('phone:')) {
+        const phone = selectedVoterId.slice('phone:'.length);
+        const { data } = await supabase
+          .from('messages')
+          .select('*')
+          .is('lead_id', null)
+          .order('created_at', { ascending: true });
+        return (data ?? []).filter((m: any) => (m.metadata as any)?.sender_phone === phone);
+      }
       const { data } = await supabase.from('messages').select('*').eq('lead_id', selectedVoterId!).order('created_at', { ascending: true });
       return data ?? [];
     },
@@ -233,29 +269,47 @@ const OmnichannelInbox = () => {
   }, [isDemoMode, selectedVoterId, demoVoters]);
 
   const voters = useMemo(() => {
-    if (isDemoMode) {
-      const real = dbVoters ?? [];
-      const demoIds = new Set(demoVoters.map((v) => v.id));
-      return [...liveDemoVoters, ...real.filter(v => !demoIds.has(v.id))];
-    }
-    return dbVoters ?? [];
-  }, [isDemoMode, dbVoters, demoVoters, liveDemoVoters]);
+    const base = isDemoMode
+      ? (() => {
+          const real = dbVoters ?? [];
+          const demoIds = new Set(demoVoters.map((v) => v.id));
+          return [...liveDemoVoters, ...real.filter(v => !demoIds.has(v.id))];
+        })()
+      : (dbVoters ?? []);
+    // Append phone-anchored synthetic voters for orphan inbound messages so
+    // the broker can still open the thread when the lead row is missing/hidden.
+    const knownPhones = new Set((base as any[]).map((v: any) => v.phone_number).filter(Boolean));
+    const synthetic = (orphanThreads ?? [])
+      .filter((t: any) => !knownPhones.has(t.phone))
+      .map((t: any) => ({
+        id: `phone:${t.phone}`,
+        full_name: null,
+        phone_number: t.phone,
+        last_interaction_at: t.last?.created_at ?? new Date().toISOString(),
+        sentiment: 'neutral',
+        loyalty_tier: 'Unassigned',
+        status: 'contacted',
+        _synthetic: true,
+      }));
+    return [...synthetic, ...(base as any[])];
+  }, [isDemoMode, dbVoters, demoVoters, liveDemoVoters, orphanThreads]);
 
   const lastMessages = useMemo(() => {
-    const base = dbLastMessages ?? new Map();
+    const base = new Map(dbLastMessages ?? new Map());
+    (orphanThreads ?? []).forEach((t: any) => {
+      base.set(`phone:${t.phone}`, t.last);
+    });
     if (isDemoMode) {
-      const merged = new Map(base);
       voters.slice(0, 50).forEach(v => {
         const msgs = demoMessages.filter(m => m.lead_id === v.id);
         if (msgs.length > 0) {
           const last = { ...msgs[msgs.length - 1], created_at: v.last_interaction_at };
-          merged.set(v.id, last as any);
+          base.set(v.id, last as any);
         }
       });
-      return merged;
     }
     return base;
-  }, [isDemoMode, dbLastMessages, voters, demoMessages]);
+  }, [isDemoMode, dbLastMessages, voters, demoMessages, orphanThreads]);
 
   const chatMessages = useMemo(() => {
     if (isDemoMode && selectedVoterId?.startsWith('demo-lead-')) {

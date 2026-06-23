@@ -669,7 +669,11 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
           + "\n\n" + stageHatBlock
           + "\n\n" + channelBlock
           + "\n\n" + compliance
-          + (matchingBlock ? "\n\n" + matchingBlock : ""));
+          + (matchingBlock ? "\n\n" + matchingBlock : "")
+          + "\n\n[GROUNDING + ADAPTIVE CROSS-SELL DIRECTIVE]\n"
+          + "1. BASELINE GROUNDING: Anchor the conversation on the specific property the lead asked about (parsed from the inbound short-link signature — street / neighborhood / city / rooms / price). Answer their direct questions about THIS property first, using the workspace KB and the listings block above. Never invent attributes.\n"
+          + "2. ADAPTIVE CROSS-SELL: The moment the lead signals friction (price too high / too low, wrong rooms, wrong area, asks for 'other options', 'משהו אחר', 'יותר זול', 'יקר מדי', 'אולי משהו דומה'), pivot smoothly and surface 1-2 alternatives from the MATCHING LISTINGS block — same deal_type only, within ±15% budget.\n"
+          + "3. MATCHMAKING GOAL: Keep the lead engaged turn after turn. After each answer, weave in ONE high-yield qualification question to tighten the match (timeline, budget ceiling, parking, floor, move-in date). Never interrogate — one question per reply, conversational.");
 
 
     // Persist WhatsApp Pivot agreement: if the Lead's latest inbound says "yes"
