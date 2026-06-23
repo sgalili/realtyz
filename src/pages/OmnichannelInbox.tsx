@@ -707,26 +707,6 @@ const OmnichannelInbox = () => {
                       setAiAutopilot(v);
                       if (v) setManualTakeoverWarning(false);
                     }} />
-                    <Select value={sendChannel} onValueChange={setSendChannel}>
-                      <SelectTrigger className="hidden h-10 w-32 rounded-full border-0 bg-whatsapp-bubble-in text-xs shadow-sm sm:flex">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {Object.entries(channelConfig).map(([key, cfg]) => {
-                          const disabled =
-                            (key === 'instagram' && !selectedVoter?.instagram_handle) ||
-                            (key === 'telegram' && !selectedVoter?.telegram_username);
-                          return (
-                            <SelectItem key={key} value={key} disabled={disabled}>
-                              <div className={`flex items-center gap-1.5 ${disabled ? 'opacity-40' : ''}`}>
-                                <ChannelIcon channel={key} />
-                                <span>{cfg.label}</span>
-                              </div>
-                            </SelectItem>
-                          );
-                        })}
-                      </SelectContent>
-                    </Select>
                     <div className="flex min-w-0 flex-1 items-center gap-1 rounded-full bg-whatsapp-bubble-in px-2 shadow-sm">
                       <input
                         ref={attachmentInputRef}
@@ -735,14 +715,29 @@ const OmnichannelInbox = () => {
                         className="hidden"
                         onChange={(e) => handleAttachmentSelect(e.target.files?.[0])}
                       />
-                      <button
-                        type="button"
-                        onClick={() => attachmentInputRef.current?.click()}
-                        className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                        title="צירוף קובץ"
-                      >
-                        <Paperclip className="h-4 w-4" />
-                      </button>
+                      <Select value={sendChannel} onValueChange={setSendChannel}>
+                        <SelectTrigger
+                          className="h-8 w-8 shrink-0 justify-center rounded-full border-0 bg-transparent p-0 shadow-none hover:bg-muted focus:ring-0 [&>svg:last-child]:hidden"
+                          title="ערוץ שליחה"
+                          aria-label="ערוץ שליחה"
+                        >
+                          <ChannelIcon channel={sendChannel} />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {Object.entries(channelConfig).map(([key, cfg]) => {
+                            const disabled =
+                              (key === 'instagram' && !selectedVoter?.instagram_handle) ||
+                              (key === 'telegram' && !selectedVoter?.telegram_username);
+                            return (
+                              <SelectItem key={key} value={key} disabled={disabled} title={cfg.label}>
+                                <div className={`flex items-center justify-center ${disabled ? 'opacity-40' : ''}`}>
+                                  <ChannelIcon channel={key} />
+                                </div>
+                              </SelectItem>
+                            );
+                          })}
+                        </SelectContent>
+                      </Select>
                       <Input
                         placeholder={attachment ? `מצורף: ${attachment.name}` : 'הקלד הודעה...'}
                         value={newMessage}
