@@ -763,7 +763,7 @@ const OmnichannelInbox = () => {
                               </Badge>
                               <ChannelIcon channel={msg.channel} />
                             </div>
-                            <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{msg.content}</p>
+                            <p className="max-w-full overflow-hidden whitespace-pre-wrap break-all text-sm leading-relaxed">{msg.content}</p>
                             <p className="mt-1 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
                               <span>{msg.created_at ? format(new Date(msg.created_at), 'HH:mm') : ''}</span>
                               <CheckMarks isOutbound={isOutbound} />
