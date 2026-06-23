@@ -610,8 +610,7 @@ const OmnichannelInbox = () => {
                       onClick={(event) => { event.stopPropagation(); setDeleteTargetId(voter.id); }}
                       aria-label="מחיקת שיחה"
                       title="מחיקת שיחה"
-                      className="absolute left-2 bottom-2 inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100 [.group:hover_&]:opacity-100"
-                      style={{ opacity: undefined }}
+                      className="absolute left-2 bottom-2 inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
