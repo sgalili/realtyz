@@ -331,6 +331,40 @@ const OmnichannelInbox = () => {
 
   const selectedVoter = voters?.find((v) => v.id === selectedVoterId);
 
+  // ---- Channel availability ----------------------------------------------
+  // A channel is enabled in the send-channel selector only when BOTH:
+  //   (a) the voter has a usable identifier for it in the CRM profile, AND
+  //   (b) the channel is "open" — either WhatsApp/SMS (broker-initiated by
+  //       phone) or we've already received an inbound message from this
+  //       voter on that channel (proxy for the channel being reachable).
+  const availableChannels = useMemo(() => {
+    const v = (selectedVoter ?? {}) as any;
+    const phone = !!v?.phone_number;
+    const inboundChannels = new Set<string>();
+    (chatMessages ?? []).forEach((m: any) => {
+      if (m?.direction === 'inbound' && m?.channel) inboundChannels.add(String(m.channel));
+    });
+    const handle = {
+      whatsapp: phone,
+      sms: phone,
+      instagram: !!v?.instagram_handle,
+      telegram: !!v?.telegram_username,
+      messenger: !!(v?.messenger_id || v?.facebook_user_id || v?.facebook_handle),
+      tiktok: !!(v?.tiktok_username || v?.tiktok_handle),
+      signal: phone,
+      x: !!(v?.x_username || v?.twitter_username),
+      facebook: !!(v?.facebook_user_id || v?.facebook_handle),
+    } as Record<string, boolean>;
+    const result: Record<string, boolean> = {};
+    Object.keys(channelConfig).forEach((key) => {
+      const hasHandle = !!handle[key];
+      const isOpen = key === 'whatsapp' || key === 'sms' || inboundChannels.has(key);
+      result[key] = hasHandle && isOpen;
+    });
+    return result;
+  }, [selectedVoter, chatMessages]);
+
+
   // The latest outbound AI/agent message in the current thread is the only one
   // eligible for "Undo & Regenerate". This keeps the affordance focused on the
   // most recent automated reply that Udi might want to retract.
