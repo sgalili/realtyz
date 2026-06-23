@@ -742,7 +742,7 @@ const OmnichannelInbox = () => {
                               textClassName="text-[10px]"
                             />
                           )}
-                          <div className={`relative min-w-0 max-w-[78%] rounded-lg px-3 py-2 shadow-sm sm:max-w-[72%] ${isOutbound ? 'bg-whatsapp-bubble-out text-foreground rounded-es-sm' : 'bg-whatsapp-bubble-in text-foreground rounded-ee-sm'}`}>
+                          <div className={`relative min-w-0 max-w-[78%] overflow-hidden rounded-lg px-3 py-2 shadow-sm sm:max-w-[72%] ${isOutbound ? 'bg-whatsapp-bubble-out text-foreground rounded-es-sm' : 'bg-whatsapp-bubble-in text-foreground rounded-ee-sm'}`}>
                             {msg.id === lastAiMessageId && selectedVoterId && (
                               <UndoLastAiMessage
                                 messageId={msg.id as string}
