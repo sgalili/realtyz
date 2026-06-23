@@ -17,6 +17,7 @@ import { he } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { useAuth } from '@/hooks/useAuth';
+import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 import VoterProfileSidebar from '@/components/inbox/VoterProfileSidebar';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { learnFromEdit } from '@/lib/learnFromEdit';
@@ -106,7 +107,15 @@ const OmnichannelInbox = () => {
     if (v) setSelectedVoterId(v);
   }, [searchParams]);
   const [search, setSearch] = useState('');
-  const [aiAutopilot, setAiAutopilot] = useState(true);
+  const { settings: _platformSettings, update: _updatePlatformSettings } = usePlatformSettings();
+  const aiAutopilot = _platformSettings.enable_ai_autopilot === true;
+  const setAiAutopilot = (next: boolean | ((prev: boolean) => boolean)) => {
+    const value = typeof next === 'function' ? (next as (p: boolean) => boolean)(aiAutopilot) : next;
+    if (value === aiAutopilot) return;
+    _updatePlatformSettings({ enable_ai_autopilot: value }).catch(() => {
+      toast.error('שמירת מצב המענה האוטומטי נכשלה');
+    });
+  };
   const [activeTab, setActiveTab] = useState<'all' | 'waiting' | 'handling'>('all');
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [newMessage, setNewMessage] = useState('');
@@ -381,12 +390,7 @@ const OmnichannelInbox = () => {
       queryClient.invalidateQueries({ queryKey: ['last-messages'] });
       queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
 
-      // Manual message → disable autopilot
-      if (aiAutopilot) {
-        setAiAutopilot(false);
-        setManualTakeoverWarning(true);
-        setTimeout(() => setManualTakeoverWarning(false), 5000);
-      }
+      // Autopilot status is owned by the user — never auto-disable on manual send.
 
       toast.success('ההודעה הועברה לתור אישור', {
         description: 'שום דבר לא נשלח עד שמפקח אנושי מאשר ומפעיל ידנית',

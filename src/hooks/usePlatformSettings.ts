@@ -21,7 +21,7 @@ const DEFAULTS: PlatformSettings = {
   enable_community_broadcasts: true,
   enable_client_portal: true,
   enable_broker_referrals: true,
-  enable_ai_autopilot: true,
+  enable_ai_autopilot: false,
   enable_voice_calls: false,
   enable_featured_listings: true,
   enable_pending_extraction: true,
