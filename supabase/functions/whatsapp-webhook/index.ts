@@ -661,7 +661,7 @@ async function handleLeadInboxInbound(
     if (!aiRes.ok) {
       console.warn(`ai-agent failed ${aiRes.status}:`, JSON.stringify(aiJson).slice(0, 300));
     } else {
-      reply = String(aiJson?.content ?? aiJson?.message ?? "").trim();
+      reply = sanitizeAiReply(String(aiJson?.content ?? aiJson?.message ?? ""));
     }
   } catch (e) {
     console.warn("ai-agent call threw:", e instanceof Error ? e.message : e);
