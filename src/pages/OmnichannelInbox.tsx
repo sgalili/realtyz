@@ -876,12 +876,12 @@ const OmnichannelInbox = () => {
               פעולה זו תמחק את כל ההודעות בשיחה לצמיתות. הליד עצמו יישאר ב-CRM. לא ניתן לשחזר את ההודעות.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel disabled={isDeletingChat}>ביטול</AlertDialogCancel>
+          <AlertDialogFooter className="flex-row justify-between gap-2 sm:flex-row sm:justify-between sm:space-x-0">
+            <AlertDialogCancel disabled={isDeletingChat} className="mt-0 flex-1">ביטול</AlertDialogCancel>
             <AlertDialogAction
               disabled={isDeletingChat}
               onClick={(e) => { e.preventDefault(); if (deleteTargetId) handleDeleteChat(deleteTargetId); }}
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {isDeletingChat ? 'מוחק...' : 'מחק שיחה'}
             </AlertDialogAction>
