@@ -727,18 +727,6 @@ const OmnichannelInbox = () => {
                         })}
                       </SelectContent>
                     </Select>
-                    {(sendChannel === 'whatsapp' || sendChannel === 'sms') && (
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <Button type="button" variant={dripEnabled ? 'default' : 'ghost'} size="icon" className="h-10 w-10 shrink-0 rounded-full" title="Drip Feed">
-                            <Clock className="h-4 w-4" />
-                          </Button>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-72 text-right" align="start">
-                          <DeliverySettings enabled={dripEnabled} onEnabledChange={setDripEnabled} dailyLimit={dailyLimit} onDailyLimitChange={setDailyLimit} windowStart={sendWindowStart} onWindowStartChange={setSendWindowStart} windowEnd={sendWindowEnd} onWindowEndChange={setSendWindowEnd} delayMin={delayMin} onDelayMinChange={setDelayMin} delayMax={delayMax} onDelayMaxChange={setDelayMax} compact />
-                        </PopoverContent>
-                      </Popover>
-                    )}
                     <div className="flex min-w-0 flex-1 items-center gap-1 rounded-full bg-whatsapp-bubble-in px-2 shadow-sm">
                       <input
                         ref={attachmentInputRef}
