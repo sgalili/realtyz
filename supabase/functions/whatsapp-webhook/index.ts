@@ -756,8 +756,29 @@ Deno.serve(async (req) => {
     rawBody = "";
   }
   if (!payload) {
-    const recovery = await persistRawRecoveryMessage(admin, null, rawBody, "unparseable_payload");
-    return jsonResponse({ ok: true, ignored: "unparseable_payload", recovery }, 200);
+    // Could not parse the body at all — ack with 200 but do NOT insert
+    // garbage rows. Only the typed inbound branch ever writes to messages.
+    console.warn("whatsapp-webhook: unparseable payload, raw preview:", previewRawBody(rawBody));
+    return jsonResponse({ ok: true, ignored: "unparseable_payload" }, 200);
+  }
+
+  // ================================================================
+  // TYPE-WEBHOOK GATE — GreenAPI fires many non-conversational events
+  // (stateInstanceChanged, outgoingMessageStatus, deviceInfo, …). These
+  // must never be persisted into `messages` / `chat_history` — they
+  // are infra telemetry, not human chat. Ack 200 and exit cleanly.
+  // ================================================================
+  const typeWebhook = String(payload?.typeWebhook ?? "").trim();
+  const ALLOWED_INBOUND_TYPES = new Set([
+    "incomingMessageReceived",
+    "incomingCall",
+    // Some GreenAPI variants nest text under a generic envelope; allow it
+    // through the extractor — extractor returns null if no message exists.
+    "",
+  ]);
+  if (!ALLOWED_INBOUND_TYPES.has(typeWebhook)) {
+    console.log(`whatsapp-webhook: discarding non-inbound typeWebhook='${typeWebhook}'`);
+    return jsonResponse({ ok: true, ignored: "non_inbound_type", typeWebhook }, 200);
   }
 
   // Observe instance ID, but do not reject at the route threshold: GreenAPI
