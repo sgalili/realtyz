@@ -60,22 +60,8 @@ Deno.serve(async (req) => {
     if (lerr || !listing) return json(404, { error: "Listing not found" });
 
     // Broker phone: GreenAPI provider config first, fallback to profile.phone
-    let brokerPhone = "";
-    const ownerId = listing.user_id ?? userId;
-    const { data: wa } = await admin
-      .from("wa_providers")
-      .select("config")
-      .eq("user_id", ownerId)
-      .eq("provider_name", "GreenAPI")
-      .eq("is_active", true)
-      .maybeSingle();
-    brokerPhone = (wa?.config as any)?.phoneNumber || (wa?.config as any)?.phone_number || "";
-    if (!brokerPhone) {
-      const { data: prof } = await admin.from("profiles").select("phone").eq("id", ownerId).maybeSingle();
-      brokerPhone = prof?.phone || "";
-    }
-    brokerPhone = normalizePhone(brokerPhone);
-    if (!brokerPhone) return json(400, { error: "Broker has no WhatsApp phone configured" });
+    // Hard-routed to the dedicated Realtyz WhatsApp agent line.
+    const brokerPhone = "972537339533";
 
     const neighborhood = listing.neighborhood?.trim() || listing.city?.trim() || "האזור";
     const city = listing.city?.trim() || "";

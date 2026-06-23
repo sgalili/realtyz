@@ -492,25 +492,9 @@ async function ensureListingShortlink(
     .maybeSingle();
   if (existing?.slug) return existing.slug as string;
 
-  // 2) Resolve broker WhatsApp phone (GreenAPI provider first, then profile).
+  // Hard-routed to the dedicated Realtyz WhatsApp agent line.
   const ownerId = listing.user_id ?? userId;
-  let brokerPhone = "";
-  try {
-    const { data: wa } = await admin
-      .from("wa_providers")
-      .select("config")
-      .eq("user_id", ownerId)
-      .eq("provider_name", "GreenAPI")
-      .eq("is_active", true)
-      .maybeSingle();
-    brokerPhone = (wa?.config as any)?.phoneNumber || (wa?.config as any)?.phone_number || "";
-  } catch { /* ignore */ }
-  if (!brokerPhone) {
-    const { data: prof } = await admin.from("profiles").select("phone").eq("id", ownerId).maybeSingle();
-    brokerPhone = (prof as any)?.phone || "";
-  }
-  brokerPhone = normalizeIsraeliPhone(brokerPhone);
-  if (!brokerPhone) return null;
+  const brokerPhone = "972537339533";
 
   const neighborhood = String(listing.neighborhood ?? "").trim() || String(listing.city ?? "").trim() || "האזור";
   const city = String(listing.city ?? "").trim();
