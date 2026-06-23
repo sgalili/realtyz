@@ -465,6 +465,20 @@ async function resolveShortLinkListing(
   };
 }
 
+// Strip raw template markers / system prefixes that occasionally leak from the
+// LLM into customer-facing WhatsApp replies. Output must be pure conversational Hebrew.
+function sanitizeAiReply(raw: string): string {
+  let s = String(raw ?? "").trim();
+  if (!s) return "";
+  // Drop leading wrappers like:  תגובה:  / תשובה:  / Response:  / Reply:
+  s = s.replace(/^\s*(תגובה|תשובה|מענה|response|reply)\s*[:：-]\s*/i, "");
+  // Drop any stray quoted-prefix that wraps the whole reply in quotes.
+  s = s.replace(/^["'״׳`]+/, "").replace(/["'״׳`]+$/, "");
+  // Strip trailing template anomaly  ."!"  /  ."!".  /  !"."
+  s = s.replace(/[."'״׳]+\s*!?\s*[."'״׳]+\s*$/g, "").trim();
+  return s;
+}
+
 async function handleLeadInboxInbound(
   admin: ReturnType<typeof createClient>,
   supabaseUrl: string,
