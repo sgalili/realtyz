@@ -373,6 +373,19 @@ async function handleLeadInboxInbound(
   if (!lead?.id && (shortLink || hasShortLinkSignature)) {
     const dealType = (shortLink?.deal_type === "rent" ? "rent" : "sale");
     const category = dealType === "rent" ? "שוכר" : "קונה";
+    // RLS scopes /inbox visibility by assigned_to / shares_workspace_with.
+    // If the short-link didn't resolve an owner, fall back to the first admin
+    // so the new lead + its messages show up in someone's inbox immediately.
+    let assignTo: string | null = shortLink?.owner_id ?? null;
+    if (!assignTo) {
+      const { data: adminRow } = await admin
+        .from("user_roles")
+        .select("user_id")
+        .in("role", ["super_admin", "admin"])
+        .limit(1)
+        .maybeSingle();
+      assignTo = (adminRow as any)?.user_id ?? null;
+    }
     const { data: created, error: createErr } = await admin
       .from("leads")
       .insert({
@@ -386,7 +399,7 @@ async function handleLeadInboxInbound(
         loyalty_tier: "Hot Lead",
         status: "contacted",
         sentiment: "positive",
-        assigned_to: shortLink?.owner_id ?? null,
+        assigned_to: assignTo,
         preferences: {
           source: "shortlink",
           category,
