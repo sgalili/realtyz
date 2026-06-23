@@ -17,6 +17,7 @@ import { he } from 'date-fns/locale';
 import { toast } from 'sonner';
 import { z } from 'zod';
 import { useAuth } from '@/hooks/useAuth';
+import { usePlatformSettings } from '@/hooks/usePlatformSettings';
 import VoterProfileSidebar from '@/components/inbox/VoterProfileSidebar';
 import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { learnFromEdit } from '@/lib/learnFromEdit';
