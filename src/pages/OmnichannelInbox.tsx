@@ -139,6 +139,30 @@ const OmnichannelInbox = () => {
   const queryClient = useQueryClient();
   const { user } = useAuth();
 
+  const handleDeleteChat = async (voterId: string) => {
+    if (!voterId || voterId.startsWith('phone:') || voterId.startsWith('demo-')) {
+      toast.error('לא ניתן למחוק שיחה זו');
+      setDeleteTargetId(null);
+      return;
+    }
+    setIsDeletingChat(true);
+    try {
+      const { error } = await supabase.from('messages').delete().eq('lead_id', voterId);
+      if (error) throw error;
+      await supabase.from('chat_history').delete().eq('lead_id', voterId);
+      toast.success('השיחה נמחקה');
+      if (selectedVoterId === voterId) setSelectedVoterId(null);
+      queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
+      queryClient.invalidateQueries({ queryKey: ['last-messages'] });
+      queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
+    } catch (err: any) {
+      toast.error('מחיקת השיחה נכשלה');
+    } finally {
+      setIsDeletingChat(false);
+      setDeleteTargetId(null);
+    }
+  };
+
   const { isDemoMode, demoCandidateId } = useDemoMode();
   const demoTicker = useDemoTicker();
   const blockDemoAction = useDemoGuard();
