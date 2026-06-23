@@ -331,6 +331,40 @@ const OmnichannelInbox = () => {
 
   const selectedVoter = voters?.find((v) => v.id === selectedVoterId);
 
+  // ---- Channel availability ----------------------------------------------
+  // A channel is enabled in the send-channel selector only when BOTH:
+  //   (a) the voter has a usable identifier for it in the CRM profile, AND
+  //   (b) the channel is "open" — either WhatsApp/SMS (broker-initiated by
+  //       phone) or we've already received an inbound message from this
+  //       voter on that channel (proxy for the channel being reachable).
+  const availableChannels = useMemo(() => {
+    const v = (selectedVoter ?? {}) as any;
+    const phone = !!v?.phone_number;
+    const inboundChannels = new Set<string>();
+    (chatMessages ?? []).forEach((m: any) => {
+      if (m?.direction === 'inbound' && m?.channel) inboundChannels.add(String(m.channel));
+    });
+    const handle = {
+      whatsapp: phone,
+      sms: phone,
+      instagram: !!v?.instagram_handle,
+      telegram: !!v?.telegram_username,
+      messenger: !!(v?.messenger_id || v?.facebook_user_id || v?.facebook_handle),
+      tiktok: !!(v?.tiktok_username || v?.tiktok_handle),
+      signal: phone,
+      x: !!(v?.x_username || v?.twitter_username),
+      facebook: !!(v?.facebook_user_id || v?.facebook_handle),
+    } as Record<string, boolean>;
+    const result: Record<string, boolean> = {};
+    Object.keys(channelConfig).forEach((key) => {
+      const hasHandle = !!handle[key];
+      const isOpen = key === 'whatsapp' || key === 'sms' || inboundChannels.has(key);
+      result[key] = hasHandle && isOpen;
+    });
+    return result;
+  }, [selectedVoter, chatMessages]);
+
+
   // The latest outbound AI/agent message in the current thread is the only one
   // eligible for "Undo & Regenerate". This keeps the affordance focused on the
   // most recent automated reply that Udi might want to retract.
@@ -707,37 +741,23 @@ const OmnichannelInbox = () => {
                       setAiAutopilot(v);
                       if (v) setManualTakeoverWarning(false);
                     }} />
-                    <div className="flex min-w-0 flex-1 items-center gap-1 rounded-full bg-whatsapp-bubble-in px-2 shadow-sm">
-                      <input
-                        ref={attachmentInputRef}
-                        type="file"
-                        accept={attachmentAccept}
-                        className="hidden"
-                        onChange={(e) => handleAttachmentSelect(e.target.files?.[0])}
-                      />
-                      <Select value={sendChannel} onValueChange={setSendChannel}>
-                        <SelectTrigger
-                          className="h-8 w-8 shrink-0 justify-center rounded-full border-0 bg-transparent p-0 shadow-none hover:bg-muted focus:ring-0 [&>svg:last-child]:hidden"
-                          title="ערוץ שליחה"
-                          aria-label="ערוץ שליחה"
-                        >
-                          <ChannelIcon channel={sendChannel} />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {Object.entries(channelConfig).map(([key, cfg]) => {
-                            const disabled =
-                              (key === 'instagram' && !selectedVoter?.instagram_handle) ||
-                              (key === 'telegram' && !selectedVoter?.telegram_username);
-                            return (
-                              <SelectItem key={key} value={key} disabled={disabled} title={cfg.label}>
-                                <div className={`flex items-center justify-center ${disabled ? 'opacity-40' : ''}`}>
-                                  <ChannelIcon channel={key} />
-                                </div>
-                              </SelectItem>
-                            );
-                          })}
-                        </SelectContent>
-                      </Select>
+                    <input
+                      ref={attachmentInputRef}
+                      type="file"
+                      accept={attachmentAccept}
+                      className="hidden"
+                      onChange={(e) => handleAttachmentSelect(e.target.files?.[0])}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => attachmentInputRef.current?.click()}
+                      className="inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-whatsapp-bubble-in text-muted-foreground shadow-sm transition-colors hover:bg-muted hover:text-foreground"
+                      title="צירוף קובץ"
+                      aria-label="צירוף קובץ"
+                    >
+                      <Paperclip className="h-4 w-4" />
+                    </button>
+                    <div className="flex min-w-0 flex-1 items-center gap-1 rounded-full bg-whatsapp-bubble-in px-3 shadow-sm">
                       <Input
                         placeholder={attachment ? `מצורף: ${attachment.name}` : 'הקלד הודעה...'}
                         value={newMessage}
@@ -758,6 +778,28 @@ const OmnichannelInbox = () => {
                         </button>
                       )}
                     </div>
+                    <Select value={sendChannel} onValueChange={setSendChannel}>
+                      <SelectTrigger
+                        className="h-10 w-10 shrink-0 justify-center rounded-full border-0 bg-whatsapp-bubble-in p-0 shadow-sm hover:bg-muted focus:ring-0 [&>svg:last-child]:hidden"
+                        title="ערוץ שליחה"
+                        aria-label="ערוץ שליחה"
+                      >
+                        <ChannelIcon channel={sendChannel} size="md" />
+                      </SelectTrigger>
+                      <SelectContent align="end" className="min-w-[12rem]">
+                        {Object.entries(channelConfig).map(([key, cfg]) => {
+                          const disabled = !availableChannels[key];
+                          return (
+                            <SelectItem key={key} value={key} disabled={disabled} title={cfg.label}>
+                              <div className={`flex items-center gap-2 ${disabled ? 'opacity-40' : ''}`}>
+                                <ChannelIcon channel={key} />
+                                <span className="text-xs">{cfg.label}</span>
+                              </div>
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
                     <Button onClick={handleSend} disabled={(!newMessage.trim() && !attachment) || sendMessage.isPending} size="icon" title="שלח" className="h-11 w-11 shrink-0 rounded-full bg-whatsapp-header text-whatsapp-header-foreground hover:bg-whatsapp-header/90">
                       {newMessage.trim() || attachment ? <Send className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                     </Button>
