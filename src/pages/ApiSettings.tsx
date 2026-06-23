@@ -15,7 +15,7 @@ import {
   MessageCircle, Sparkles, Shield, ShieldCheck, Lock,
   CheckCircle, XCircle, Activity, Clock, User, Database,
   KeyRound, Fingerprint, Megaphone, Home, Building, Brain,
-  Phone, Send, Inbox, Map,
+  Phone, Send, Inbox, Map, Copy, RefreshCw,
 } from 'lucide-react';
 import { supabase as supabaseClient } from '@/integrations/supabase/client';
 import { useState, useEffect, useMemo, createContext, useContext } from 'react';
@@ -418,6 +418,7 @@ const ApiSettings = () => {
   const [greenApiToken, setGreenApiToken] = useState('');
   const [wbaPhoneId, setWbaPhoneId] = useState('');
   const [wbaAccessToken, setWbaAccessToken] = useState('');
+  const [greenWebhookSync, setGreenWebhookSync] = useState<null | { ok: boolean; timestamp: string; message: string }>(null);
 
   // n8n state
   const [n8nWebhookUrl, setN8nWebhookUrl] = useState('');
@@ -510,6 +511,7 @@ const ApiSettings = () => {
 
 
   const edgeFnBase = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/manage-api-configs`;
+  const whatsappWebhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-webhook`;
   const edgeFnHeaders = {
     'Content-Type': 'application/json',
     Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
@@ -946,6 +948,29 @@ const ApiSettings = () => {
       }
     } catch { toast.error('❌ לא ניתן להתחבר ל-WhatsApp'); }
     finally { setTestingService(null); }
+  };
+
+  const handleSyncGreenApiWebhook = async () => {
+    setTestingService('green-webhook-sync');
+    setGreenWebhookSync(null);
+    try {
+      const { data, error } = await supabaseClient.functions.invoke('greenapi-webhook-sync', { body: {} });
+      if (error) throw error;
+      if (!(data as any)?.ok) throw new Error((data as any)?.error || 'sync_failed');
+      setGreenWebhookSync({
+        ok: true,
+        timestamp: new Date().toISOString(),
+        message: 'GreenAPI webhook synced to the live endpoint',
+      });
+      queryClient.invalidateQueries({ queryKey: ['api-configs'] });
+      toast.success('✅ GreenAPI Webhook סונכרן לכתובת החיה');
+    } catch (e: any) {
+      const message = e?.message || 'לא ניתן לסנכרן את GreenAPI';
+      setGreenWebhookSync({ ok: false, timestamp: new Date().toISOString(), message });
+      toast.error(`❌ סנכרון GreenAPI נכשל: ${message}`);
+    } finally {
+      setTestingService(null);
+    }
   };
 
   const handleTestSms = async () => {
@@ -1532,6 +1557,57 @@ const ApiSettings = () => {
             ) : null}
           </div>
         )}
+        <div className="rounded-lg border border-border/40 bg-muted/30 p-3 space-y-3">
+          <div className="flex items-center justify-between gap-3">
+            <div className="min-w-0">
+              <p className="text-xs font-medium">Live WhatsApp Webhook POST URL</p>
+              <p className="text-[11px] text-muted-foreground">הכתובת הזו פתוחה לקבלת POST מ-GreenAPI ללא Bearer token.</p>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="gap-2 shrink-0"
+              onClick={() => {
+                navigator.clipboard?.writeText(whatsappWebhookUrl);
+                toast.success('כתובת ה-Webhook הועתקה');
+              }}
+            >
+              <Copy className="h-3.5 w-3.5" />
+              העתק
+            </Button>
+          </div>
+          <div className="rounded-md border border-border/40 bg-background/70 px-3 py-2 text-[11px] font-mono break-all text-left" dir="ltr">
+            {whatsappWebhookUrl}
+          </div>
+          {existingGreen?.webhook_url && (
+            <div className="rounded-md border border-border/30 bg-background/50 px-3 py-2 text-[11px]">
+              <span className="text-muted-foreground">Saved mapping: </span>
+              <span className="font-mono break-all" dir="ltr">{existingGreen.webhook_url}</span>
+            </div>
+          )}
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+            <p className="text-[11px] text-muted-foreground">
+              Sync מפעיל ב-GreenAPI את incomingWebhook, outgoingWebhook, outgoingMessageWebhook ו-outgoingAPIMessageWebhook.
+            </p>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={handleSyncGreenApiWebhook}
+              disabled={testingService === 'green-webhook-sync' || waGateway !== 'green_api'}
+              className="gap-2 shrink-0"
+            >
+              {testingService === 'green-webhook-sync' ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              Sync GreenAPI Webhook
+            </Button>
+          </div>
+          {greenWebhookSync && (
+            <div className={`rounded-md border px-3 py-2 text-[11px] ${greenWebhookSync.ok ? 'border-emerald-500/30 bg-emerald-500/10' : 'border-destructive/30 bg-destructive/10'}`}>
+              {greenWebhookSync.ok ? '✅' : '❌'} {greenWebhookSync.message}
+            </div>
+          )}
+        </div>
         <RadioGroup value={waGateway} onValueChange={(v) => setWaGateway(v as WaGateway)} className="flex gap-4">
           <div className="flex items-center gap-2">
             <RadioGroupItem value="green_api" id="green_api" />
