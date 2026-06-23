@@ -674,6 +674,14 @@ const OmnichannelInbox = () => {
                     <DropdownMenuItem onClick={() => toast.info('השיחה סומנה למעקב')}>סימון למעקב</DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => toast.info('פרופיל הליד פתוח בצד')}>הצגת פרופיל מתעניין</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => selectedVoterId && setDeleteTargetId(selectedVoterId)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="ms-2 h-4 w-4" />
+                      מחיקת שיחה
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
