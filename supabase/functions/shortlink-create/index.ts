@@ -52,20 +52,37 @@ Deno.serve(async (req) => {
 
     const { data: listing, error: lerr } = await admin
       .from("listings")
-      .select("id,user_id,property_title,city,neighborhood,asking_price")
+      .select("id,user_id,property_title,city,neighborhood,address,rooms,asking_price")
       .eq("id", property_id)
       .maybeSingle();
     if (lerr || !listing) return json(404, { error: "Listing not found" });
 
-    // Broker phone: GreenAPI provider config first, fallback to profile.phone
     // Hard-routed to the dedicated Realtyz WhatsApp agent line.
     const brokerPhone = "972537339533";
 
-    const neighborhood = listing.neighborhood?.trim() || listing.city?.trim() || "האזור";
-    const city = listing.city?.trim() || "";
+    const city = String(listing.city ?? "").trim();
+    const neighborhood = String(listing.neighborhood ?? "").trim();
+    const rawAddress = String(listing.address ?? "").trim();
+    // Strip city/neighborhood tails and house number from address to get street.
+    let street = rawAddress;
+    if (street && city) street = street.replace(new RegExp(`,?\\s*${city}\\s*$`), "").trim();
+    if (street && neighborhood) street = street.replace(new RegExp(`,?\\s*${neighborhood}\\s*$`), "").trim();
+    street = street.replace(/\s+\d+[א-ת]?\s*$/, "").trim();
+
     const price = formatPrice(listing.asking_price as number | null);
-    const text =
-      `היי אודי, אני פונה אליך לגבי הדירה שפרסמת ב${neighborhood}${city && city !== neighborhood ? ", " + city : ""} במחיר ${price}. אשמח לקבל פרטים נוספים.`;
+    const rooms = listing.rooms ? String(listing.rooms) : "";
+    const roomsPart = rooms ? `דירת ${rooms} חדרים במחיר ${price}.` : `במחיר ${price}.`;
+
+    let locationPart: string;
+    if (street) {
+      locationPart = `ברחוב ${street}${city ? `, ${city}` : ""}`;
+    } else if (neighborhood) {
+      locationPart = `בשכונת ${neighborhood}${city && city !== neighborhood ? `, ${city}` : ""}`;
+    } else {
+      locationPart = `ב${city || "האזור"}`;
+    }
+
+    const text = `היי אודי, אני פונה אליך לגבי הדירה שפרסמת ${locationPart}. ${roomsPart} אשמח לקבל פרטים נוספים.`;
 
     const long_url = `https://api.whatsapp.com/send?phone=${brokerPhone}&text=${encodeURIComponent(text)}`;
 
