@@ -81,6 +81,97 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+function previewRawBody(raw: string): string {
+  return raw.length > 4000 ? `${raw.slice(0, 4000)}…` : raw;
+}
+
+function tryParseLooseJson(raw: string): any | null {
+  try {
+    return JSON.parse(raw);
+  } catch {
+    try {
+      const params = new URLSearchParams(raw);
+      const obj = Object.fromEntries(params.entries());
+      return Object.keys(obj).length ? obj : null;
+    } catch {
+      return null;
+    }
+  }
+}
+
+function extractRawSenderPhone(payload: any, raw = ""): string {
+  const direct =
+    payload?.senderData?.sender ??
+    payload?.senderData?.chatId ??
+    payload?.senderData?.senderContactName ??
+    payload?.messageData?.senderData?.sender ??
+    payload?.chatId ??
+    payload?.sender ??
+    payload?.from ??
+    payload?.phone ??
+    payload?.phoneNumber ??
+    "";
+  const normalized = normalizePhone(direct);
+  if (normalized) return normalized;
+  const match = raw.match(/(?:9725\d{8}|05\d{8})/);
+  return match ? normalizePhone(match[0]) : "";
+}
+
+function extractRawMessageText(payload: any, raw = ""): string {
+  const md = payload?.messageData ?? {};
+  const value =
+    md?.textMessageData?.textMessage ??
+    md?.extendedTextMessageData?.text ??
+    md?.extendedTextMessageData?.description ??
+    md?.quotedMessage?.textMessage ??
+    md?.text ??
+    payload?.textMessage ??
+    payload?.text ??
+    payload?.body ??
+    payload?.message ??
+    payload?.data?.text ??
+    "";
+  return String(value || raw || "").trim().slice(0, 4000);
+}
+
+async function persistRawRecoveryMessage(
+  admin: ReturnType<typeof createClient>,
+  payload: any,
+  rawBody: string,
+  reason: string,
+): Promise<{ stored: boolean; senderPhone: string | null }> {
+  const senderPhone = extractRawSenderPhone(payload, rawBody);
+  const content = extractRawMessageText(payload, rawBody);
+  if (!senderPhone && !content) return { stored: false, senderPhone: null };
+  try {
+    const { error } = await admin.from("messages").insert({
+      lead_id: null,
+      channel: "whatsapp",
+      platform: "whatsapp",
+      content: content || previewRawBody(rawBody) || "[raw webhook payload]",
+      direction: "inbound",
+      sender_type: "voter",
+      metadata: {
+        provider: "GreenAPI",
+        inbound_via: "whatsapp-webhook",
+        recovery: true,
+        recovery_reason: reason,
+        sender_phone: senderPhone || null,
+        message_id: payload?.idMessage ?? payload?.message_id ?? null,
+        raw_preview: previewRawBody(rawBody),
+      },
+    });
+    if (error) {
+      console.warn("raw recovery message insert failed:", error.message);
+      return { stored: false, senderPhone: senderPhone || null };
+    }
+    return { stored: true, senderPhone: senderPhone || null };
+  } catch (e) {
+    console.warn("raw recovery message insert threw:", e instanceof Error ? e.message : e);
+    return { stored: false, senderPhone: senderPhone || null };
+  }
+}
+
 async function fetchBinary(
   url: string,
 ): Promise<{ bytes: Uint8Array; contentType: string }> {
@@ -203,14 +294,19 @@ function extractGreenApiMessage(payload: any):
   | { senderPhone: string; messageId?: string; extracted: Extracted }
   | null {
   if (!payload) return null;
-  // Standard GreenAPI inbound notification.
-  const type = payload.typeWebhook;
-  if (type && type !== "incomingMessageReceived") return null;
+  // GreenAPI normally sends typeWebhook='incomingMessageReceived', but some
+  // gateway variants/proxies omit or rename it. Do not hard-block at entry;
+  // require only a sender plus readable message content/media below.
 
   const senderRaw =
     payload?.senderData?.sender ??
     payload?.senderData?.chatId ??
+    payload?.messageData?.senderData?.sender ??
+    payload?.chatId ??
+    payload?.sender ??
     payload?.from ??
+    payload?.phone ??
+    payload?.phoneNumber ??
     "";
   const senderPhone = normalizePhone(senderRaw);
   if (!senderPhone) return null;
@@ -222,7 +318,14 @@ function extractGreenApiMessage(payload: any):
   const textBody =
     md?.textMessageData?.textMessage ??
     md?.extendedTextMessageData?.text ??
+    md?.extendedTextMessageData?.description ??
+    md?.quotedMessage?.textMessage ??
+    md?.text ??
+    payload?.textMessage ??
     payload?.text ??
+    payload?.body ??
+    payload?.message ??
+    payload?.data?.text ??
     null;
   if (textBody && typeof textBody === "string" && textBody.trim()) {
     return { senderPhone, messageId, extracted: { kind: "text", text: textBody.trim() } };
