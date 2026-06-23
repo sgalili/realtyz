@@ -605,6 +605,16 @@ const OmnichannelInbox = () => {
                         </PopoverContent>
                       </Popover>
                     )}
+                    <button
+                      type="button"
+                      onClick={(event) => { event.stopPropagation(); setDeleteTargetId(voter.id); }}
+                      aria-label="מחיקת שיחה"
+                      title="מחיקת שיחה"
+                      className="absolute left-2 bottom-2 inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground opacity-0 transition-opacity hover:bg-destructive/10 hover:text-destructive focus-visible:opacity-100 group-hover:opacity-100 [.group:hover_&]:opacity-100"
+                      style={{ opacity: undefined }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                     <VoterAvatar fullName={voter.full_name} profilePictureUrl={(voter as any).profile_picture_url} className="h-10 w-10 shrink-0" textClassName="text-sm" />
                     <div className="flex-1 min-w-0 text-right">
                       <div className="flex min-w-0 flex-row-reverse items-center justify-between gap-2">
