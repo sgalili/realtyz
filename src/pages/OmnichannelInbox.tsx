@@ -140,22 +140,38 @@ const OmnichannelInbox = () => {
   const { user } = useAuth();
 
   const handleDeleteChat = async (voterId: string) => {
-    if (!voterId || voterId.startsWith('phone:') || voterId.startsWith('demo-')) {
+    if (!voterId || voterId.startsWith('demo-')) {
       toast.error('לא ניתן למחוק שיחה זו');
       setDeleteTargetId(null);
       return;
     }
     setIsDeletingChat(true);
     try {
-      const { error } = await supabase.from('messages').delete().eq('lead_id', voterId);
-      if (error) throw error;
-      await supabase.from('chat_history').delete().eq('lead_id', voterId);
-      toast.success('השיחה נמחקה');
+      if (voterId.startsWith('phone:')) {
+        const phone = voterId.slice('phone:'.length);
+        const { error } = await supabase
+          .from('messages')
+          .delete()
+          .is('lead_id', null)
+          .filter('metadata->>sender_phone', 'eq', phone);
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.from('messages').delete().eq('lead_id', voterId);
+        if (error) throw error;
+        await supabase.from('chat_history').delete().eq('lead_id', voterId);
+      }
+      toast.success('השיחה נמחקה לצמיתות');
       if (selectedVoterId === voterId) setSelectedVoterId(null);
-      queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
-      queryClient.invalidateQueries({ queryKey: ['last-messages'] });
-      queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['chat-messages'] }),
+        queryClient.invalidateQueries({ queryKey: ['last-messages'] }),
+        queryClient.invalidateQueries({ queryKey: ['inbox-leads'] }),
+        queryClient.invalidateQueries({ queryKey: ['messages'] }),
+        queryClient.invalidateQueries({ queryKey: ['inbox-chats'] }),
+        queryClient.invalidateQueries({ queryKey: ['lead-recent-msgs'] }),
+      ]);
     } catch (err: any) {
+      console.error('[delete-chat]', err);
       toast.error('מחיקת השיחה נכשלה');
     } finally {
       setIsDeletingChat(false);
@@ -624,7 +640,7 @@ const OmnichannelInbox = () => {
                       </div>
                       <div className="flex flex-row-reverse items-start gap-1 mt-0.5">
                         {lastMsg?.channel && <span className="shrink-0 mt-0.5"><ChannelIcon channel={lastMsg.channel} /></span>}
-                        <p className="text-xs text-muted-foreground flex-1 min-w-0 break-words leading-snug line-clamp-2">
+                        <p className="text-xs text-muted-foreground flex-1 min-w-0 max-w-full overflow-hidden break-all whitespace-pre-wrap leading-snug line-clamp-2">
                           {lastMsg?.content || 'אין הודעות'}
                         </p>
                       </div>
@@ -726,7 +742,7 @@ const OmnichannelInbox = () => {
                               textClassName="text-[10px]"
                             />
                           )}
-                          <div className={`relative min-w-0 max-w-[78%] rounded-lg px-3 py-2 shadow-sm sm:max-w-[72%] ${isOutbound ? 'bg-whatsapp-bubble-out text-foreground rounded-es-sm' : 'bg-whatsapp-bubble-in text-foreground rounded-ee-sm'}`}>
+                          <div className={`relative min-w-0 max-w-[78%] overflow-hidden rounded-lg px-3 py-2 shadow-sm sm:max-w-[72%] ${isOutbound ? 'bg-whatsapp-bubble-out text-foreground rounded-es-sm' : 'bg-whatsapp-bubble-in text-foreground rounded-ee-sm'}`}>
                             {msg.id === lastAiMessageId && selectedVoterId && (
                               <UndoLastAiMessage
                                 messageId={msg.id as string}
@@ -747,7 +763,7 @@ const OmnichannelInbox = () => {
                               </Badge>
                               <ChannelIcon channel={msg.channel} />
                             </div>
-                            <p className="whitespace-pre-wrap break-words text-sm leading-relaxed">{msg.content}</p>
+                            <p className="max-w-full overflow-hidden whitespace-pre-wrap break-all text-sm leading-relaxed">{msg.content}</p>
                             <p className="mt-1 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
                               <span>{msg.created_at ? format(new Date(msg.created_at), 'HH:mm') : ''}</span>
                               <CheckMarks isOutbound={isOutbound} />
@@ -876,7 +892,7 @@ const OmnichannelInbox = () => {
               פעולה זו תמחק את כל ההודעות בשיחה לצמיתות. הליד עצמו יישאר ב-CRM. לא ניתן לשחזר את ההודעות.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="flex-row justify-between gap-2 sm:flex-row sm:justify-between sm:space-x-0">
+          <AlertDialogFooter className="flex flex-row justify-between items-center w-full gap-4 mt-6 sm:flex-row sm:justify-between sm:space-x-0">
             <AlertDialogCancel disabled={isDeletingChat} className="mt-0 flex-1">ביטול</AlertDialogCancel>
             <AlertDialogAction
               disabled={isDeletingChat}
