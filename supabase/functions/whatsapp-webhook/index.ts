@@ -86,6 +86,7 @@ function previewRawBody(raw: string): string {
 }
 
 function tryParseLooseJson(raw: string): any | null {
+  if (!raw.trim()) return {};
   try {
     return JSON.parse(raw);
   } catch {
@@ -97,6 +98,20 @@ function tryParseLooseJson(raw: string): any | null {
       return null;
     }
   }
+}
+
+async function parseWebhookPayload(req: Request): Promise<{ payload: any | null; rawBody: string }> {
+  const contentType = (req.headers.get("content-type") ?? "").toLowerCase();
+  const rawBody = await req.text().catch(() => "");
+  if (!rawBody.trim()) return { payload: {}, rawBody };
+
+  const parsed = tryParseLooseJson(rawBody);
+  if (parsed) return { payload: parsed, rawBody };
+
+  if (contentType.includes("text/plain") || contentType.includes("application/octet-stream")) {
+    return { payload: { text: rawBody }, rawBody };
+  }
+  return { payload: null, rawBody };
 }
 
 function extractRawSenderPhone(payload: any, raw = ""): string {
@@ -694,8 +709,18 @@ async function handleLeadInboxInbound(
 // ---------- main handler ----------
 
 Deno.serve(async (req) => {
-  console.log("Webhook hit raw body:", req.body);
+  console.log("whatsapp-webhook hit", { method: req.method, contentType: req.headers.get("content-type") });
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+  if (req.method === "GET") {
+    const SUPABASE_URL = Deno.env.get("SUPABASE_URL") ?? "";
+    return jsonResponse({
+      ok: true,
+      webhook_url: `${SUPABASE_URL}/functions/v1/whatsapp-webhook`,
+      method: "POST",
+      auth_required: false,
+      accepts: ["application/json", "text/plain", "application/x-www-form-urlencoded", "application/octet-stream"],
+    });
+  }
   if (req.method !== "POST") return jsonResponse({ ok: true, ignored: "method_not_post" }, 200);
 
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
@@ -708,10 +733,12 @@ Deno.serve(async (req) => {
   let payload: any;
   let rawBody = "";
   try {
-    rawBody = await req.text();
+    const parsed = await parseWebhookPayload(req);
+    payload = parsed.payload;
+    rawBody = parsed.rawBody;
     console.log("Webhook hit raw body text:", previewRawBody(rawBody));
-    payload = tryParseLooseJson(rawBody);
-  } catch {
+  } catch (e) {
+    console.warn("whatsapp-webhook body parse threw:", e instanceof Error ? e.message : e);
     rawBody = "";
   }
   if (!payload) {
