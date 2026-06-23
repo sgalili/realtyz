@@ -11,7 +11,8 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Search, Send, Bot, MessageSquare, MessageCircle, Phone, AlertTriangle, Instagram, AtSign, MoreVertical, Paperclip, Mic, Facebook, Clock, Bookmark } from 'lucide-react';
+import { Search, Send, Bot, MessageSquare, MessageCircle, Phone, AlertTriangle, Instagram, AtSign, MoreVertical, Paperclip, Mic, Facebook, Clock, Bookmark, Trash2 } from 'lucide-react';
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { format, formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -131,10 +132,36 @@ const OmnichannelInbox = () => {
   const [delayMin, setDelayMin] = useState(7);
   const [delayMax, setDelayMax] = useState(23);
   const [manualTakeoverWarning, setManualTakeoverWarning] = useState(false);
+  const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
+  const [isDeletingChat, setIsDeletingChat] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
+
+  const handleDeleteChat = async (voterId: string) => {
+    if (!voterId || voterId.startsWith('phone:') || voterId.startsWith('demo-')) {
+      toast.error('לא ניתן למחוק שיחה זו');
+      setDeleteTargetId(null);
+      return;
+    }
+    setIsDeletingChat(true);
+    try {
+      const { error } = await supabase.from('messages').delete().eq('lead_id', voterId);
+      if (error) throw error;
+      await supabase.from('chat_history').delete().eq('lead_id', voterId);
+      toast.success('השיחה נמחקה');
+      if (selectedVoterId === voterId) setSelectedVoterId(null);
+      queryClient.invalidateQueries({ queryKey: ['chat-messages'] });
+      queryClient.invalidateQueries({ queryKey: ['last-messages'] });
+      queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
+    } catch (err: any) {
+      toast.error('מחיקת השיחה נכשלה');
+    } finally {
+      setIsDeletingChat(false);
+      setDeleteTargetId(null);
+    }
+  };
 
   const { isDemoMode, demoCandidateId } = useDemoMode();
   const demoTicker = useDemoTicker();
@@ -578,6 +605,15 @@ const OmnichannelInbox = () => {
                         </PopoverContent>
                       </Popover>
                     )}
+                    <button
+                      type="button"
+                      onClick={(event) => { event.stopPropagation(); setDeleteTargetId(voter.id); }}
+                      aria-label="מחיקת שיחה"
+                      title="מחיקת שיחה"
+                      className="absolute left-2 bottom-2 inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </button>
                     <VoterAvatar fullName={voter.full_name} profilePictureUrl={(voter as any).profile_picture_url} className="h-10 w-10 shrink-0" textClassName="text-sm" />
                     <div className="flex-1 min-w-0 text-right">
                       <div className="flex min-w-0 flex-row-reverse items-center justify-between gap-2">
@@ -638,6 +674,14 @@ const OmnichannelInbox = () => {
                     <DropdownMenuItem onClick={() => toast.info('השיחה סומנה למעקב')}>סימון למעקב</DropdownMenuItem>
                     <DropdownMenuSeparator />
                     <DropdownMenuItem onClick={() => toast.info('פרופיל הליד פתוח בצד')}>הצגת פרופיל מתעניין</DropdownMenuItem>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem
+                      onClick={() => selectedVoterId && setDeleteTargetId(selectedVoterId)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="ms-2 h-4 w-4" />
+                      מחיקת שיחה
+                    </DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -817,6 +861,26 @@ const OmnichannelInbox = () => {
           </div>
         )}
       </div>
+      <AlertDialog open={!!deleteTargetId} onOpenChange={(open) => { if (!open) setDeleteTargetId(null); }}>
+        <AlertDialogContent className="text-right" dir="rtl">
+          <AlertDialogHeader>
+            <AlertDialogTitle>למחוק את השיחה?</AlertDialogTitle>
+            <AlertDialogDescription>
+              פעולה זו תמחק את כל ההודעות בשיחה לצמיתות. הליד עצמו יישאר ב-CRM. לא ניתן לשחזר את ההודעות.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeletingChat}>ביטול</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isDeletingChat}
+              onClick={(e) => { e.preventDefault(); if (deleteTargetId) handleDeleteChat(deleteTargetId); }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeletingChat ? 'מוחק...' : 'מחק שיחה'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
