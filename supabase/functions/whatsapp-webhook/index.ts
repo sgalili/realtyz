@@ -797,10 +797,10 @@ Deno.serve(async (req) => {
 
   const extracted = extractGreenApiMessage(payload);
   if (!extracted) {
-    // Acknowledge so GreenAPI does not retry, but store any recoverable raw
-    // sender/text payload so it appears in the orphan phone inbox feed.
-    const recovery = await persistRawRecoveryMessage(admin, payload, rawBody, "unsupported_payload_shape");
-    return jsonResponse({ ok: true, ignored: "not_a_supported_inbound_message", recovery });
+    // Acknowledge but do NOT write a recovery row — only real human text
+    // messages (with a clean sender phone and decoded text) belong in the inbox.
+    console.warn("whatsapp-webhook: no extractable inbound message", { typeWebhook });
+    return jsonResponse({ ok: true, ignored: "not_a_supported_inbound_message" }, 200);
   }
 
   const { senderPhone, messageId, extracted: msg } = extracted;
