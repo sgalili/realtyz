@@ -115,14 +115,103 @@ async function fetchStream(guid: string, label: string): Promise<any[]> {
   }
 }
 
+const ALLOWED_AGENT = "אודי ויטמן";
+const ALLOWED_SIVUG = new Set(["משרד", "בלעדי"]);
+
+function normalizeHe(v: unknown): string {
+  return String(v ?? "").replace(/[\s\u200f\u200e"׳״']/g, "").trim();
+}
+
+// Pick agent name from any of the common Webtiv variants.
+function pickAgent(rec: Record<string, any>): string {
+  return String(
+    rec.agent ?? rec.Agent ?? rec.shiuh ?? rec.agentName ?? rec["סוכן"] ?? ""
+  ).trim();
+}
+
+// Pick "שיוך" — broker affiliation. Webtiv variants: sivug / shiuh / shiyuh / shiyukh.
+function pickSivug(rec: Record<string, any>): string {
+  const candidates = [
+    rec.sivug, rec.Sivug, rec.shiuh, rec.shiyuh, rec.shiyukh, rec.shiuch,
+    rec.belongTo, rec.belong, rec["שיוך"],
+  ];
+  for (const c of candidates) {
+    const s = String(c ?? "").trim();
+    if (s) return s;
+  }
+  return "";
+}
+
+// Pick original source ("מקור") of the lead/property — e.g. yad2, madlan, facebook.
+function pickMekor(rec: Record<string, any>): { name: string; url: string | null } {
+  const name = String(
+    rec.mekor ?? rec.Mekor ?? rec.source ?? rec.Source ?? rec["מקור"] ?? ""
+  ).trim().toLowerCase();
+  const url = strOrNull(
+    rec.mekorUrl ?? rec.sourceUrl ?? rec.url ?? rec.Url ?? rec.link ?? rec.Link ?? rec["קישור"]
+  );
+  return { name, url };
+}
+
+// Extract every image URL from common Webtiv photo containers.
+function pickPhotos(rec: Record<string, any>): string[] {
+  const out: string[] = [];
+  const push = (v: any) => {
+    if (typeof v === "string" && /^https?:\/\//.test(v)) out.push(v);
+    else if (v && typeof v === "object") {
+      const u = (v as any).url || (v as any).Url || (v as any).src || (v as any).Src || (v as any).path;
+      if (typeof u === "string" && /^https?:\/\//.test(u)) out.push(u);
+    }
+  };
+  for (const k of ["photos", "Photos", "images", "Images", "tmunot", "pics", "Pictures"]) {
+    const v = rec[k];
+    if (Array.isArray(v)) v.forEach(push);
+  }
+  // Also flat fields image1..image10
+  for (let i = 1; i <= 12; i++) {
+    push(rec[`image${i}`]); push(rec[`Image${i}`]); push(rec[`photo${i}`]); push(rec[`pic${i}`]);
+  }
+  return Array.from(new Set(out));
+}
+
+// Extract document/file URLs from common containers.
+function pickDocs(rec: Record<string, any>): string[] {
+  const out: string[] = [];
+  const push = (v: any) => {
+    if (typeof v === "string" && /^https?:\/\//.test(v)) out.push(v);
+    else if (v && typeof v === "object") {
+      const u = (v as any).url || (v as any).Url || (v as any).path;
+      if (typeof u === "string" && /^https?:\/\//.test(u)) out.push(u);
+    }
+  };
+  for (const k of ["documents", "Documents", "files", "Files", "kvatzim", "mismachim", "attachments", "Attachments"]) {
+    const v = rec[k];
+    if (Array.isArray(v)) v.forEach(push);
+  }
+  return Array.from(new Set(out));
+}
+
+// Apply the strict office filter: keep only records that belong to Udi's office.
+function passesFilter(rec: Record<string, any>, source: "buyers" | "sellers"): boolean {
+  if (source === "sellers") {
+    return ALLOWED_SIVUG.has(normalizeHe(pickSivug(rec)));
+  }
+  // buyers (incl. renters): agent must be Udi Witman
+  return normalizeHe(pickAgent(rec)) === normalizeHe(ALLOWED_AGENT);
+}
+
 function mapRecord(rec: Record<string, any>, source: "buyers" | "sellers", idx: number): HomelyLead | null {
   const phone = pickPhone(rec);
   const email = strOrNull(rec.email ?? rec.Email);
   if (!phone && !email) return null;
+  if (!passesFilter(rec, source)) return null;
 
   const fullName = pickName(rec);
   const city = strOrNull(rec.city ?? rec.City ?? rec.city1 ?? rec.ir ?? rec.Ir ?? rec["עיר"]);
   const tag = source === "sellers" ? "מוכר" : "קונה";
+  const mekor = pickMekor(rec);
+  const photos = pickPhotos(rec);
+  const docs = pickDocs(rec);
 
   return {
     external_id: String(rec.serial ?? rec.Serial ?? rec.id ?? rec.Id ?? `webtiv-${source}-${idx}`),
@@ -133,6 +222,8 @@ function mapRecord(rec: Record<string, any>, source: "buyers" | "sellers", idx: 
     interest_tag: tag,
     preferences: {
       source: "webtiv_stream",
+      source_origin: mekor.name || null,
+      source_url: mekor.url,
       stream: source,
       lead_kind: source === "sellers" ? "seller" : "buyer",
       neighborhood: strOrNull(rec.shcuna ?? rec.shcuna1),
@@ -141,7 +232,10 @@ function mapRecord(rec: Record<string, any>, source: "buyers" | "sellers", idx: 
       floor: strOrNull(rec.floor),
       built_sqm: strOrNull(rec.builtsqmr),
       price: strOrNull(rec.priceshekel),
-      agent: strOrNull(rec.agent),
+      agent: strOrNull(pickAgent(rec)),
+      sivug: strOrNull(pickSivug(rec)),
+      media_photos: photos,
+      media_documents: docs,
       raw: rec,
     },
   };
@@ -224,20 +318,74 @@ Deno.serve(async (req) => {
 
     if (dryRun) return json({ source: "homely", connected: true, imported: 0, leads: collected });
 
-    // 3) Upsert into leads (skip phones already in DB)
+    // 3) Upsert into leads (skip phones already in DB). For sellers stream,
+    // also create a `listings` row with the extracted media so it shows up
+    // under the Properties catalog.
     let imported = 0;
     let skipped = 0;
     let failed = 0;
+    let listingsInserted = 0;
     for (const p of collected) {
       const phone = p.phone_number;
       if (!phone) { skipped++; continue; }
+
+      const prefs = p.preferences as any;
+      const streamSource = prefs?.stream as string | undefined;
+      const dealType = streamSource === "sellers" ? "sell" : "sale";
+      const mekorOrigin = prefs?.source_origin as string | null;
+      const mekorUrl = prefs?.source_url as string | null;
+      const photos: string[] = Array.isArray(prefs?.media_photos) ? prefs.media_photos : [];
+      const docs: string[] = Array.isArray(prefs?.media_documents) ? prefs.media_documents : [];
+
+      // Optionally create a linked listing for sellers stream (office properties).
+      let linkedListingId: string | null = null;
+      if (streamSource === "sellers") {
+        const externalId = p.external_id;
+        const { data: existingListing } = await admin
+          .from("listings").select("id")
+          .eq("source", "webtiv").eq("external_id", externalId).maybeSingle();
+        if (existingListing?.id) {
+          linkedListingId = (existingListing as any).id;
+        } else {
+          const slug = `webtiv-${user.id.slice(0, 8)}-${externalId}`.toLowerCase().replace(/[^a-z0-9-]+/g, "-").slice(0, 100);
+          const title = p.full_name && p.full_name !== "לקוח הומלי"
+            ? `${prefs?.property_type ?? "נכס"} · ${p.city ?? ""} · ${p.full_name}`.trim()
+            : `${prefs?.property_type ?? "נכס"} · ${p.city ?? ""}`.trim();
+          const { data: ins, error: lErr } = await admin.from("listings").insert({
+            user_id: user.id,
+            slug,
+            property_title: title || "נכס",
+            description: "",
+            asking_price: Number(prefs?.price ?? 0) || 0,
+            city: p.city,
+            address: strOrNull(prefs?.raw?.street),
+            neighborhood: prefs?.neighborhood ?? null,
+            rooms: prefs?.rooms ? Number(prefs.rooms) || null : null,
+            sqm: prefs?.built_sqm ? Math.round(Number(prefs.built_sqm)) || null : null,
+            floor: prefs?.floor ? Number(prefs.floor) || null : null,
+            features: [{ listing_type: "sale" }],
+            status: "live",
+            is_published: true,
+            source: "webtiv",
+            external_id: externalId,
+            source_url: mekorUrl,
+            source_metadata: { provider: "webtiv", mekor: mekorOrigin, photos, documents: docs },
+            media_photos: photos,
+            media_documents: docs,
+          }).select("id").maybeSingle();
+          if (!lErr && ins?.id) {
+            linkedListingId = (ins as any).id;
+            listingsInserted += 1;
+          } else if (lErr) {
+            console.error("[STREAM-LISTING-ERROR]", externalId, lErr.message);
+          }
+        }
+      }
 
       const { data: existing } = await admin
         .from("leads").select("id").eq("phone_number", phone).maybeSingle();
       if (existing) { skipped++; continue; }
 
-      const streamSource = (p.preferences as any)?.stream as string | undefined;
-      const dealType = streamSource === "sellers" ? "sell" : "sale";
       const { error: insErr } = await admin.from("leads").insert({
         phone_number: phone,
         full_name: p.full_name,
@@ -249,6 +397,7 @@ Deno.serve(async (req) => {
         deal_type: dealType,
         assigned_to: user.id,
         is_demo: false,
+        linked_listing_id: linkedListingId,
       });
       if (!insErr) imported += 1;
       else {
@@ -257,8 +406,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`[STREAM-DONE] imported=${imported} skipped=${skipped} failed=${failed}`);
-    return json({ source: "homely", connected: true, imported, skipped, failed, total: collected.length });
+    console.log(`[STREAM-DONE] imported=${imported} skipped=${skipped} failed=${failed} listings=${listingsInserted}`);
+    return json({ source: "homely", connected: true, imported, skipped, failed, listings_inserted: listingsInserted, total: collected.length });
   } catch (e) {
     console.error("[homely-leads] fatal", e);
     return json({ error: (e as Error).message }, 500);
