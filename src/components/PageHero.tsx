@@ -80,34 +80,51 @@ function PropertiesHeroAddButton() {
 }
 
 function LeadsHeroAddButton() {
-  const dispatch = (action: 'manual' | 'import' | 'homely') =>
+  const [busy, setBusy] = React.useState(false);
+  React.useEffect(() => {
+    const on = () => setBusy(true);
+    const off = () => setBusy(false);
+    window.addEventListener('leads:busy:on', on);
+    window.addEventListener('leads:busy:off', off);
+    return () => {
+      window.removeEventListener('leads:busy:on', on);
+      window.removeEventListener('leads:busy:off', off);
+    };
+  }, []);
+  const dispatch = (action: 'manual' | 'import' | 'homely') => {
+    if (busy) return;
     window.dispatchEvent(new CustomEvent('leads:add', { detail: { action } }));
+  };
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button
           size="icon"
           variant="ghost"
-          className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white"
+          disabled={busy}
+          className="h-9 w-9 rounded-full text-white hover:bg-white/15 hover:text-white disabled:opacity-100"
           aria-label="הוספת מתעניין"
         >
-          <Plus className="!h-5 !w-5" strokeWidth={2.5} />
+          {busy
+            ? <Loader2 className="!h-5 !w-5 animate-spin" strokeWidth={2.5} />
+            : <Plus className="!h-5 !w-5" strokeWidth={2.5} />}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
-        <DropdownMenuItem onClick={() => dispatch('manual')} className="gap-2">
+        <DropdownMenuItem onClick={() => dispatch('manual')} className="gap-2" disabled={busy}>
           <User className="h-4 w-4" /> הוספת מתעניין
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => dispatch('import')} className="gap-2">
+        <DropdownMenuItem onClick={() => dispatch('import')} className="gap-2" disabled={busy}>
           <FileSpreadsheet className="h-4 w-4" /> ייבוא מתעניינים
         </DropdownMenuItem>
-        <DropdownMenuItem onClick={() => dispatch('homely')} className="gap-2">
+        <DropdownMenuItem onClick={() => dispatch('homely')} className="gap-2" disabled={busy}>
           <DownloadCloud className="h-4 w-4" /> משיכת אנשי קשר מ-Homely
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
   );
 }
+
 
 function CampaignsHeroCalendarButton() {
   const navigate = useNavigate();
