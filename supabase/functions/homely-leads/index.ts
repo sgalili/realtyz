@@ -509,11 +509,13 @@ Deno.serve(async (req) => {
       else {
         failed += 1;
         console.error("[STREAM-UPSERT-ERROR]", phone, insErr.message);
+        if (errors.length < 10) errors.push({ phone, message: insErr.message, stage: "lead" });
       }
     }
 
     console.log(`[STREAM-DONE] imported=${imported} skipped=${skipped} failed=${failed} listings=${listingsInserted}`);
-    return json({ source: "homely", connected: true, imported, skipped, failed, listings_inserted: listingsInserted, total: collected.length });
+    return json({ source: "homely", connected: true, imported, skipped, failed, listings_inserted: listingsInserted, total: collected.length, errors });
+
   } catch (e) {
     console.error("[homely-leads] fatal", e);
     return json({ error: (e as Error).message }, 500);
