@@ -27,6 +27,7 @@ type HomelyProperty = {
   photos?: string[];
   documents?: string[];
   property_type?: string;
+  transaction_type?: 'sale' | 'rent';
   agent?: string;
   sivug?: string;
   raw: unknown;
