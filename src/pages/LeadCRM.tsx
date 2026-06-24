@@ -1,5 +1,5 @@
 import { useQuery, useInfiniteQuery, useQueryClient } from '@tanstack/react-query';
-import { Link } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import { supabase } from '@/lib/supabaseClient';
 import { useRealtimeSubscription } from '@/hooks/useRealtimeSubscription';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -291,7 +291,16 @@ const LeadCRM = () => {
     try { localStorage.setItem('crm.compact', compactMode ? '1' : '0'); } catch {}
   }, [compactMode]);
   const freemium = useFreemiumStatus();
-  const [selectedVoterId, setSelectedVoterId] = useState<string | null>(null);
+  const { leadId: routeLeadId } = useParams<{ leadId?: string }>();
+  const navigate = useNavigate();
+  const [selectedVoterId, setSelectedVoterId] = useState<string | null>(routeLeadId ?? null);
+
+  // Sync sheet open-state with the URL param so /lead-crm/:id opens the profile.
+  useEffect(() => {
+    if (routeLeadId && routeLeadId !== selectedVoterId) setSelectedVoterId(routeLeadId);
+    if (!routeLeadId && selectedVoterId) setSelectedVoterId(null);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [routeLeadId]);
   const [statusInfoOpen, setStatusInfoOpen] = useState(false);
   const [pushingHomely, setPushingHomely] = useState(false);
   const pushLeadToHomely = useCallback(async (leadId: string, silent = false) => {
@@ -809,7 +818,9 @@ const LeadCRM = () => {
       await queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
       queryClient.invalidateQueries({ queryKey: ['leads-total'] });
       queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] });
-      setSelectedVoterId((data as any).id);
+      const newId = (data as any).id;
+      setSelectedVoterId(newId);
+      navigate(`/lead-crm/${newId}`);
       toast.success('פרופיל מתעניין נפתח — מלא את הפרטים');
     } catch (err: any) {
       const msg = String(err?.message || '');
@@ -1087,7 +1098,7 @@ const LeadCRM = () => {
       {/* Header */}
       <div>
         <div>
-          <h1 className="text-2xl font-bold tracking-tight text-primary">ניהול מתעניינים</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-primary">לקוחות</h1>
           <p className="text-muted-foreground text-sm">
             סה״כ אנשי קשר במערכת: <span className="font-semibold text-foreground">{(isDemoMode ? totalCount : realTotalCount).toLocaleString('he-IL')}</span>
           </p>
