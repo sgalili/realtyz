@@ -21,6 +21,16 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const WEBTIV_BASE = "https://webtivapi.webtiv.co.il";
 const LOGIN_URL = `${WEBTIV_BASE}/api/login/LoginNewByAgent`;
 
+// Optional proxy gateway (e.g. Cloudflare Worker) to bypass Supabase edge
+// runtime egress blocks against the Webtiv firewall. If set, all outbound
+// Webtiv URLs are rewritten to `${PROXY}?url=<encoded original url>`.
+const WEBTIV_PROXY_URL = Deno.env.get("WEBTIV_PROXY_URL")?.replace(/\/+$/, "") || "";
+function proxied(targetUrl: string): string {
+  if (!WEBTIV_PROXY_URL) return targetUrl;
+  const sep = WEBTIV_PROXY_URL.includes("?") ? "&" : "?";
+  return `${WEBTIV_PROXY_URL}${sep}url=${encodeURIComponent(targetUrl)}`;
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -29,7 +39,7 @@ function json(body: unknown, status = 200) {
 }
 
 async function webtivLogin(agency: string, username: string, password: string) {
-  const res = await fetch(LOGIN_URL, {
+  const res = await fetch(proxied(LOGIN_URL), {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({
@@ -125,7 +135,7 @@ async function getJson(url: string) {
   try {
     const ctl = new AbortController();
     const t = setTimeout(() => ctl.abort(), 20000);
-    const r = await fetch(url, {
+    const r = await fetch(proxied(url), {
       headers: { Accept: "application/json", "User-Agent": "Realtyz/1.0" },
       signal: ctl.signal,
     });

@@ -23,6 +23,16 @@ const HOMELY_URL = "https://webtivapi.webtiv.co.il/api/WebtivLid/WebtivLidPost";
 const STREAM_BASE = "https://webtivapi.webtiv.co.il/AutomaionJson/outJson.ashx";
 const PROVIDER = "RealtyZ";
 
+// Optional proxy gateway (Cloudflare Worker / similar) to bypass edge egress
+// blocks against the Webtiv firewall. When set, every outbound Webtiv URL is
+// rewritten to `${PROXY}?url=<encoded original url>`.
+const WEBTIV_PROXY_URL = Deno.env.get("WEBTIV_PROXY_URL")?.replace(/\/+$/, "") || "";
+function proxied(targetUrl: string): string {
+  if (!WEBTIV_PROXY_URL) return targetUrl;
+  const sep = WEBTIV_PROXY_URL.includes("?") ? "&" : "?";
+  return `${WEBTIV_PROXY_URL}${sep}url=${encodeURIComponent(targetUrl)}`;
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
@@ -54,7 +64,7 @@ function strOrUndef(v: unknown): string | undefined {
 
 async function fetchStream(guid: string): Promise<any[]> {
   try {
-    const res = await fetch(`${STREAM_BASE}?guid=${encodeURIComponent(guid)}`, {
+    const res = await fetch(proxied(`${STREAM_BASE}?guid=${encodeURIComponent(guid)}`), {
       headers: { "Accept": "application/json", "User-Agent": "Realtyz-Webtiv-Sync/1.0" },
     });
     if (!res.ok) return [];
@@ -108,7 +118,7 @@ function mapToHomelyPayload(
 
 async function pushToHomely(payload: Record<string, unknown>) {
   try {
-    const r = await fetch(HOMELY_URL, {
+    const r = await fetch(proxied(HOMELY_URL), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
