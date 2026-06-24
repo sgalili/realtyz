@@ -521,10 +521,11 @@ Deno.serve(async (req) => {
         if (!homelyId) continue;
         const photos = Array.isArray(p?.photos) && p.photos.length ? p.photos : (p?.photo ? [p.photo] : []);
         const documents = Array.isArray(p?.documents) ? p.documents : [];
-        const row = {
+        const row: Record<string, unknown> = {
           user_id: user.id,
           slug: `${slugify(String(p?.title || p?.address || "homely"))}-${homelyId}`,
           source: "homely",
+          source_url: p?.source_url ? String(p.source_url) : null,
           external_id: homelyId,
           property_title: String(p?.title || p?.address || `נכס ${homelyId}`),
           description: String(p?.description || ""),
@@ -538,6 +539,8 @@ Deno.serve(async (req) => {
           is_published: true,
           office_notes: p?.office_notes ? String(p.office_notes) : null,
           features: Array.isArray(p?.features) ? p.features : [],
+          media_photos: photos,
+          media_documents: documents,
           source_metadata: {
             homely_id: homelyId,
             property_type: p?.property_type || null,
@@ -545,11 +548,21 @@ Deno.serve(async (req) => {
             documents,
             media_count: photos.length + documents.length,
             office_notes: p?.office_notes || null,
+            agent: p?.agent || null,
+            source_origin: p?.source_origin || null,
+            source_url: p?.source_url || null,
+            source_updated_at: p?.source_updated_at || null,
+            balcony: p?.balcony || null,
+            elevator: p?.elevator || null,
+            transaction_type: p?.transaction_type || null,
             homely_raw: compactRaw(p?.raw),
             synced_at: new Date().toISOString(),
           },
-
         };
+        // When Webtiv ships a real modification timestamp, prefer it as
+        // the listing's updated_at instead of the sync clock. The DB
+        // trigger still bumps updated_at on subsequent local edits.
+        if (p?.source_updated_at) row.updated_at = p.source_updated_at;
         const { error } = await admin.from("listings").upsert(row as any, { onConflict: "source,external_id" });
         if (error) throw new Error(`listings#${homelyId}: ${error.message}`);
         propsCount++;
