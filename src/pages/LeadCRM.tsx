@@ -1234,24 +1234,6 @@ const LeadCRM = () => {
                 <SelectItem value="rent">שכירות / השכרה</SelectItem>
               </SelectContent>
             </Select>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={compactMode ? 'default' : 'outline'}
-                  size="sm"
-                  className="gap-1.5 h-8 shrink-0"
-                  onClick={() => setCompactMode((v) => !v)}
-                  aria-pressed={compactMode}
-                >
-                  {compactMode ? <Rows3 className="h-3.5 w-3.5" /> : <Rows className="h-3.5 w-3.5" />}
-                  {compactMode ? 'תצוגה מורחבת' : 'תצוגה צפופה'}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>החלפה בין שורות מורחבות לטבלה צפופה</TooltipContent>
-            </Tooltip>
-            <Button variant="outline" size="sm" className="gap-1.5 h-8 shrink-0" onClick={() => handleExportExcel('filtered')}>
-              <FileSpreadsheet className="h-3.5 w-3.5" /> ייצוא
-            </Button>
           </div>}
         </CardHeader>
         {selectedIds.size > 0 && (
