@@ -133,7 +133,7 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
             <Input
               type="email"
               value={email}
-              placeholder="name@example.com"
+              placeholder=""
               onChange={(e) => setEmail(e.target.value)}
               onBlur={() => {
                 const v = email.trim();
