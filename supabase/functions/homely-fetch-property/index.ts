@@ -659,7 +659,21 @@ Deno.serve(async (req) => {
 
     return json({ ok: true, listing_id, serial, endpoint: url, photo_count: mapped.photo ? 1 : 0, updated });
   } catch (e) {
-    console.error("[homely-fetch-property] fatal", e);
-    return json({ error: (e as Error).message }, 500);
+    const msg = (e as Error)?.message ?? String(e);
+    console.error("[homely-fetch-property] fatal", msg);
+    const isNetwork = /No route to host|tcp connect|EHOSTUNREACH|ECONNREFUSED|ETIMEDOUT|network|fetch failed|sending request/i.test(msg);
+    if (isNetwork) {
+      return json({
+        success: false,
+        ok: false,
+        imported: 0,
+        properties: [],
+        contacts: [],
+        empty: true,
+        error: "שגיאת תקשורת זמנית מול שרתי ובטיב. המערכת תנסה להתחבר מחדש באופן אוטומטי בעוד מספר דקות.",
+        upstream_error: msg.slice(0, 300),
+      }, 200);
+    }
+    return json({ success: false, error: msg }, 500);
   }
 });
