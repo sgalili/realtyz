@@ -235,38 +235,6 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
 
         {!collapsed && (
           <div className="mt-auto">
-            <SidebarGroup className="p-0 border-t border-slate-200">
-              <SidebarGroupContent className="px-3 py-3">
-                <div className="flex items-center gap-3">
-                  <button
-                    type="button"
-                    onClick={() => navigate('/profile')}
-                    className="flex flex-1 items-center gap-3 rounded-md px-1 py-1 text-right transition-colors hover:bg-slate-50 min-w-0"
-                  >
-                    <div className="w-10 h-10 min-w-[40px] min-h-[40px] rounded-lg overflow-hidden shrink-0 ring-1 ring-slate-200">
-                      {officeLogoUrl ? (
-                        <img
-                          src={officeLogoUrl}
-                          alt={officeName}
-                          className="w-10 h-10 rounded-lg object-cover block"
-                        />
-                      ) : (
-                        <div className="flex h-full w-full items-center justify-center rounded-lg bg-slate-900 text-xs font-bold text-white">
-                          {officeInitial}
-                        </div>
-                      )}
-                    </div>
-                    <div className="min-w-0 flex-1 text-right">
-                      <div className="truncate text-sm font-bold text-slate-900">{officeName}</div>
-                      <div className="truncate text-[11px] text-slate-500">
-                        חשבון המתווך · ניהול נכסים, משרד ובו...
-                      </div>
-                    </div>
-                  </button>
-                </div>
-              </SidebarGroupContent>
-            </SidebarGroup>
-
             <SidebarGroup className="p-0">
               <SidebarGroupContent className="p-0">
                 <SidebarIntelInput />
