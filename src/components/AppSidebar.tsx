@@ -174,7 +174,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
                 </div>
                 <div className="min-w-0 flex-1 text-right">
                   <div className="truncate text-sm font-bold text-slate-900">{userDisplayName}</div>
-                  <div className="truncate text-[11px] text-slate-500">הפרופיל שלי</div>
+                  <div className="truncate text-[11px] text-slate-500">{officeName}</div>
                 </div>
               </button>
             </SidebarGroupContent>
