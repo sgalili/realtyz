@@ -88,6 +88,12 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
         toast.message('יש לחבר תחילה את חשבון Homely', { description: 'עברו ל-הגדרות ← חיבורים והזינו קוד משרד, משתמש וסיסמה.' });
         return;
       }
+      // Graceful upstream-failure payload from edge function
+      if (payload?.success === false && payload?.error) {
+        toast.warning(payload.error);
+        if (isProps) setProperties([]); else setContacts([]);
+        return;
+      }
       if (payload?.error && !payload?.empty) throw new Error(payload.error);
       if (isProps) {
         const list: HomelyProperty[] = payload.properties ?? [];
