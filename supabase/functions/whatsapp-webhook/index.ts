@@ -663,6 +663,10 @@ async function handleLeadInboxInbound(
     } catch (e) {
       console.warn("lead touch soft-fail:", e instanceof Error ? e.message : e);
     }
+    // Fire-and-forget AI metadata extraction from inbound text.
+    extractAndApplyLeadMetadata(admin, lead, inboundText).catch((e) =>
+      console.warn("[lead-metadata-extract] failed:", e instanceof Error ? e.message : e),
+    );
   }
 
   // Without any lead row we cannot run autopilot (ai-agent + send require lead_id).
