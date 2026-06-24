@@ -384,6 +384,11 @@ Deno.serve(async (req) => {
       );
       const dealType = streamSource === "sellers" ? "sell" : (isRent ? "rent" : "sale");
       if (isRent) p.interest_tag = "שוכר";
+      const mekorOrigin = prefs?.source_origin as string | null;
+      const mekorUrl = prefs?.source_url as string | null;
+      const photos: string[] = Array.isArray(prefs?.media_photos) ? prefs.media_photos : [];
+      const docs: string[] = Array.isArray(prefs?.media_documents) ? prefs.media_documents : [];
+
 
 
       // Optionally create a linked listing for sellers stream (office properties).
