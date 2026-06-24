@@ -812,7 +812,7 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
               <SortableTh sortKey="floor" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">קומה</SortableTh>
               <SortableTh sortKey="size_sqm" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">מ"ר</SortableTh>
               <SortableTh sortKey="property_type" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">סוג נכס</SortableTh>
-              <SortableTh sortKey="created_at" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">עדכון</SortableTh>
+              <SortableTh sortKey="updated_at" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">עודכן</SortableTh>
               <th className="px-2 py-2 font-semibold whitespace-nowrap">מקור</th>
               <th className="px-2 py-2 font-semibold whitespace-nowrap text-left">פעולות</th>
             </tr>
