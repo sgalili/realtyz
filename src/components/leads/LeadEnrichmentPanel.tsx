@@ -16,6 +16,8 @@ import {
   ChevronDown, ChevronUp, Plus, Trash2, Globe,
   AtSign, MapPin, Building2,
 } from 'lucide-react';
+import { IsraeliCityPicker } from '@/components/IsraeliCityPicker';
+
 
 
 interface Props {
