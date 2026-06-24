@@ -233,15 +233,6 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
           </SidebarGroup>
         )}
 
-        {!collapsed && (
-          <div className="mt-auto">
-            <SidebarGroup className="p-0">
-              <SidebarGroupContent className="p-0">
-                <SidebarIntelInput />
-              </SidebarGroupContent>
-            </SidebarGroup>
-          </div>
-        )}
       </SidebarContent>
     </Sidebar>
   );
