@@ -325,6 +325,28 @@ const LeadCRM = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [newLeadOpen, setNewLeadOpen] = useState(false);
   const [homelyContactsSyncOpen, setHomelyContactsSyncOpen] = useState(false);
+  const [homelySyncing, setHomelySyncing] = useState(false);
+
+  const handleHomelySync = async () => {
+    if (homelySyncing) return;
+    setHomelySyncing(true);
+    const t = toast.loading('מסנכרן מתעניינים מהומלי...');
+    try {
+      const { data, error } = await supabase.functions.invoke('homely-leads', { body: {} });
+      if (error) throw error;
+      toast.success('הסנכרון מול Homely הושלם בהצלחה!', { id: t, description: data?.imported ? `נוספו/עודכנו ${data.imported} רשומות` : undefined });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }),
+        queryClient.invalidateQueries({ queryKey: ['leads-total'] }),
+        queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] }),
+        queryClient.invalidateQueries({ queryKey: ['inbox-chats'] }),
+      ]);
+    } catch (e: any) {
+      toast.error('סנכרון Homely נכשל', { id: t, description: e?.message ?? String(e) });
+    } finally {
+      setHomelySyncing(false);
+    }
+  };
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
