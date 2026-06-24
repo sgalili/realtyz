@@ -267,7 +267,50 @@ function mapRecord(rec: Record<string, any>, source: "buyers" | "sellers", idx: 
   };
 }
 
+// Same as mapRecord but skips the strict agent/affiliation gate. Used when the
+// dashboard sends bypass_filter:true so we can confirm the proxy payload is
+// reaching the upsert layer regardless of office-filter rules.
+function mapRecordNoFilter(rec: Record<string, any>, source: "buyers" | "sellers", idx: number): HomelyLead | null {
+  const phone = pickPhone(rec);
+  const email = strOrNull(rec.email ?? rec.Email);
+  if (!phone && !email) return null;
+  const fullName = pickName(rec);
+  const city = strOrNull(rec.city ?? rec.City ?? rec.city1 ?? rec.ir ?? rec.Ir ?? rec["עיר"]);
+  const tag = source === "sellers" ? "מוכר" : "קונה";
+  const mekor = pickMekor(rec);
+  const photos = pickPhotos(rec);
+  const docs = pickDocs(rec);
+  return {
+    external_id: String(rec.serial ?? rec.Serial ?? rec.id ?? rec.Id ?? `webtiv-${source}-${idx}`),
+    full_name: fullName,
+    phone_number: phone,
+    email,
+    city,
+    interest_tag: tag,
+    preferences: {
+      source: "webtiv_stream",
+      source_origin: mekor.name || null,
+      source_url: mekor.url,
+      stream: source,
+      lead_kind: source === "sellers" ? "seller" : "buyer",
+      neighborhood: strOrNull(rec.shcuna ?? rec.shcuna1),
+      property_type: strOrNull(rec.objectresidence),
+      rooms: strOrNull(rec.room),
+      floor: strOrNull(rec.floor),
+      built_sqm: strOrNull(rec.builtsqmr),
+      price: strOrNull(rec.priceshekel),
+      agent: strOrNull(pickAgent(rec)),
+      sivug: strOrNull(pickSivug(rec)),
+      media_photos: photos,
+      media_documents: docs,
+      raw: rec,
+      _filter_bypassed: true,
+    },
+  };
+}
+
 Deno.serve(async (req) => {
+
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
@@ -283,6 +326,8 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
     const body = await req.json().catch(() => ({}));
     const dryRun = Boolean((body as any)?.dry_run);
+    const bypassFilter = Boolean((body as any)?.bypass_filter);
+
 
     // 1) Validate GUID retrieval
     let { data: state } = await admin
@@ -345,7 +390,9 @@ Deno.serve(async (req) => {
       let passed = 0;
       let dropped = 0;
       records.forEach((rec, i) => {
-        const m = mapRecord(rec, s.key, i);
+        const m = bypassFilter
+          ? mapRecordNoFilter(rec, s.key, i)
+          : mapRecord(rec, s.key, i);
         if (!m) { dropped++; return; }
         const key = m.phone_number || m.email || m.external_id;
         if (key && seen.has(key)) { dropped++; return; }
@@ -353,7 +400,8 @@ Deno.serve(async (req) => {
         collected.push(m);
         passed++;
       });
-      console.log(`[STREAM-FILTER-GATE] ${s.key}: raw=${records.length} passed=${passed} dropped=${dropped}`);
+      console.log(`[STREAM-FILTER-GATE] ${s.key}: raw=${records.length} passed=${passed} dropped=${dropped} bypass=${bypassFilter}`);
+
     }
 
     console.log(`[STREAM-MAPPED] total=${collected.length}`);
@@ -367,6 +415,8 @@ Deno.serve(async (req) => {
     let skipped = 0;
     let failed = 0;
     let listingsInserted = 0;
+    const errors: Array<{ phone: string; message: string; stage: string }> = [];
+
     for (const p of collected) {
       const phone = p.phone_number;
       if (!phone) { skipped++; continue; }
@@ -382,7 +432,7 @@ Deno.serve(async (req) => {
         /להשכרה|השכרה|שכירות|\brent\b|\blease\b/i.test(rawAll + ' ' + propType)
         || (priceNum > 0 && priceNum < 30_000)
       );
-      const dealType = streamSource === "sellers" ? "sell" : (isRent ? "rent" : "sale");
+      const dealType = streamSource === "sellers" ? "sale" : (isRent ? "rent" : "sale");
       if (isRent) p.interest_tag = "שוכר";
       const mekorOrigin = prefs?.source_origin as string | null;
       const mekorUrl = prefs?.source_url as string | null;
@@ -432,7 +482,9 @@ Deno.serve(async (req) => {
             listingsInserted += 1;
           } else if (lErr) {
             console.error("[STREAM-LISTING-ERROR]", externalId, lErr.message);
+            if (errors.length < 10) errors.push({ phone: externalId, message: lErr.message, stage: "listing" });
           }
+
         }
       }
 
@@ -457,11 +509,13 @@ Deno.serve(async (req) => {
       else {
         failed += 1;
         console.error("[STREAM-UPSERT-ERROR]", phone, insErr.message);
+        if (errors.length < 10) errors.push({ phone, message: insErr.message, stage: "lead" });
       }
     }
 
     console.log(`[STREAM-DONE] imported=${imported} skipped=${skipped} failed=${failed} listings=${listingsInserted}`);
-    return json({ source: "homely", connected: true, imported, skipped, failed, listings_inserted: listingsInserted, total: collected.length });
+    return json({ source: "homely", connected: true, imported, skipped, failed, listings_inserted: listingsInserted, total: collected.length, errors });
+
   } catch (e) {
     console.error("[homely-leads] fatal", e);
     return json({ error: (e as Error).message }, 500);

@@ -163,18 +163,24 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
     })),
     [properties],
   );
-  const saleCount = useMemo(() => propertiesWithTx.filter((p) => p.transaction_type === 'sale').length, [propertiesWithTx]);
-  const rentCount = useMemo(() => propertiesWithTx.filter((p) => p.transaction_type === 'rent').length, [propertiesWithTx]);
-
-
-  const filteredProps = useMemo(() => propertiesWithTx.filter(p => {
-    if (fDeal !== 'all' && p.transaction_type !== fDeal) return false;
+  // Pills reflect the currently-active non-deal filters (city/type/rooms/agent),
+  // so when the user narrows by agent the pill totals shrink to match.
+  const filteredExceptDeal = useMemo(() => propertiesWithTx.filter(p => {
     if (fCities.size && !fCities.has(p.city)) return false;
     if (fType && (p.property_type || '') !== fType) return false;
     if (fRooms && Number(p.rooms) !== Number(fRooms)) return false;
     if (fAgent && (p.agent || '') !== fAgent) return false;
     return true;
-  }), [propertiesWithTx, fDeal, fCities, fType, fRooms, fAgent]);
+  }), [propertiesWithTx, fCities, fType, fRooms, fAgent]);
+  const allCount = filteredExceptDeal.length;
+  const saleCount = useMemo(() => filteredExceptDeal.filter((p) => p.transaction_type === 'sale').length, [filteredExceptDeal]);
+  const rentCount = useMemo(() => filteredExceptDeal.filter((p) => p.transaction_type === 'rent').length, [filteredExceptDeal]);
+
+  const filteredProps = useMemo(() => filteredExceptDeal.filter(p => {
+    if (fDeal !== 'all' && p.transaction_type !== fDeal) return false;
+    return true;
+  }), [filteredExceptDeal, fDeal]);
+
   const filteredContacts = useMemo(() => contacts.filter(c => {
     if (fCities.size && !fCities.has(c.city)) return false;
     if (fAgent && (c.agent || '') !== fAgent) return false;
@@ -324,7 +330,7 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
             {properties.length > 0 && (
               <div dir="rtl" className="flex items-center gap-1.5 mb-2">
                 {([
-                  { id: 'all', label: 'הכל', count: propertiesWithTx.length },
+                  { id: 'all', label: 'הכל', count: allCount },
                   { id: 'sale', label: 'למכירה', count: saleCount },
                   { id: 'rent', label: 'להשכרה', count: rentCount },
                 ] as const).map(({ id, label, count }) => (
