@@ -386,7 +386,7 @@ const LeadCRM = () => {
     window.dispatchEvent(new Event('leads:busy:on'));
     const t = toast.loading('מסנכרן מתעניינים מהומלי...');
     try {
-      const { data, error } = await supabase.functions.invoke('homely-leads', { body: {} });
+      const { data, error } = await supabase.functions.invoke('homely-leads', { body: { wipe_first: true } });
       if (error) throw error;
       const imported = (data as any)?.imported ?? 0;
       const note = (data as any)?.note;
