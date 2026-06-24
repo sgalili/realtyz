@@ -560,7 +560,9 @@ const InlineComposer = ({
       const editedBeforeFinal = edited;
       const next = cleanBody(finalText);
       setBody(next);
+      setBodyManuallyEdited(false);
       setOriginalAiBody(next);
+
       learnFromEdit({
         context: `campaign_post_finalize:${channel.id}`,
         pairs: [
