@@ -360,7 +360,7 @@ const LeadCRM = () => {
   useEffect(() => {
     const handler = (e: Event) => {
       const action = (e as CustomEvent<{ action: 'manual' | 'import' }>).detail?.action;
-      if (action === 'manual') setAddVoterOpen(true);
+      if (action === 'manual') createBlankLeadAndOpen();
       else if (action === 'import') fileInputRef.current?.click();
     };
     window.addEventListener('leads:add', handler);
@@ -763,6 +763,43 @@ const LeadCRM = () => {
     toast.success(`${ids.length} מתעניינים נוספו לקמפיין`);
     setAddToCampaignOpen(false);
     setSelectedIds(new Set());
+  };
+
+  /**
+   * Create a blank lead row and immediately open its profile sheet so the
+   * broker can fill every field (name, phone, email, age/gender, deal type,
+   * budget…) inside the unified CRM workspace. Replaces the legacy modal
+   * popups for "add lead".
+   */
+  const createBlankLeadAndOpen = async () => {
+    if (blockDemoAction('add-lead')) return;
+    try {
+      const { data, error } = await supabase
+        .from('leads')
+        .insert({
+          full_name: 'מתעניין חדש',
+          lead_stage: 'new',
+          status: 'new',
+        } as any)
+        .select('id')
+        .single();
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-total'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] });
+      setSelectedVoterId((data as any).id);
+      toast.success('פרופיל מתעניין נפתח — מלא את הפרטים');
+    } catch (err: any) {
+      const msg = String(err?.message || '');
+      if (msg.includes('TRIAL_RECORD_LIMIT')) {
+        toast.error('מסלול הניסיון מוגבל ל-100 רשומות. שדרג עכשיו', {
+          duration: 8000,
+          action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/upgrade') },
+        });
+      } else {
+        toast.error('יצירת מתעניין נכשלה: ' + (err?.message || 'שגיאה'));
+      }
+    }
   };
 
   const handleAddVoter = async () => {
@@ -1169,7 +1206,7 @@ const LeadCRM = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-[220px]">
-                <DropdownMenuItem onClick={() => setNewLeadOpen(true)} className="gap-2 cursor-pointer">
+                <DropdownMenuItem onClick={() => createBlankLeadAndOpen()} className="gap-2 cursor-pointer">
                   <UserPlus className="h-4 w-4 text-primary" /> מתעניין חדש
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="gap-2 cursor-pointer">
@@ -2102,50 +2139,8 @@ const LeadCRM = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Add Lead Dialog */}
-      <Dialog open={addVoterOpen} onOpenChange={setAddVoterOpen}>
-        <DialogContent className="sm:max-w-md" dir="rtl">
-          <DialogHeader>
-            <DialogTitle>הוספת מתעניין חדש</DialogTitle>
-            <DialogDescription>הזן את פרטי הליד להוספה ידנית למערכת</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm font-medium">שם מלא *</label>
-              <Input value={newVoter.full_name} onChange={e => setNewVoter(p => ({ ...p, full_name: e.target.value }))} placeholder="ישראל ישראלי" />
-            </div>
-            <div>
-              <label className="text-sm font-medium">טלפון *</label>
-              <Input value={newVoter.phone_number} onChange={e => setNewVoter(p => ({ ...p, phone_number: e.target.value }))} placeholder="050-1234567" dir="ltr" className="text-right" />
-            </div>
-            <div>
-              <label className="text-sm font-medium">עיר</label>
-              <Input value={newVoter.city} onChange={e => setNewVoter(p => ({ ...p, city: e.target.value }))} placeholder="תל אביב" />
-            </div>
-            <div>
-              <label className="text-sm font-medium">מספר זהות</label>
-              <Input value={newVoter.identity_number} onChange={e => setNewVoter(p => ({ ...p, identity_number: e.target.value }))} placeholder="000000000" dir="ltr" className="text-right" />
-            </div>
-            <div>
-              <label className="text-sm font-medium">ידית אינסטגרם</label>
-              <Input value={newVoter.instagram_handle} onChange={e => setNewVoter(p => ({ ...p, instagram_handle: e.target.value }))} placeholder="@username" dir="ltr" className="text-right" />
-            </div>
-            <div>
-              <label className="text-sm font-medium">יוזר טלגרם</label>
-              <Input value={newVoter.telegram_username} onChange={e => setNewVoter(p => ({ ...p, telegram_username: e.target.value }))} placeholder="@username" dir="ltr" className="text-right" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddVoterOpen(false)}>ביטול</Button>
-            <Button onClick={handleAddVoter} disabled={addingVoter}>
-              {addingVoter ? 'מוסיף...' : 'הוסף מתעניין'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Lead — deal_type-aware dynamic form (Sale vs Rent pipeline) */}
-      <NewLeadDialog open={newLeadOpen} onOpenChange={setNewLeadOpen} />
+      {/* Add-Lead modals deprecated — clicking "+" now creates a blank lead
+          and opens its CRM profile directly via createBlankLeadAndOpen(). */}
       <HomelyBulkSyncDialog
         open={homelyContactsSyncOpen}
         onOpenChange={setHomelyContactsSyncOpen}
