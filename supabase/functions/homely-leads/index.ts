@@ -393,7 +393,6 @@ Deno.serve(async (req) => {
         city: p.city,
         interest_tag: p.interest_tag,
         preferences: p.preferences as any,
-        source: mekorOrigin || "webtiv_stream",
         lead_stage: "new_lead",
         deal_type: dealType,
         assigned_to: user.id,
