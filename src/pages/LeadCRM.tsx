@@ -1847,14 +1847,6 @@ const LeadCRM = () => {
                           }}
                         />
                       </div>
-                      <button
-                        type="button"
-                        onClick={() => setStatusInfoOpen(true)}
-                        className={`border text-xs rounded-md px-2.5 py-1 font-medium transition-opacity hover:opacity-80 cursor-pointer ${getLoyalty(selectedVoter.status).color}`}
-                        aria-label="פרטי סטטוס תקשורת"
-                      >
-                        {getLoyalty(selectedVoter.status).label}
-                      </button>
                     </div>
                   </SheetTitle>
                 </SheetHeader>
