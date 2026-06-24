@@ -156,9 +156,16 @@ const OmnichannelInbox = () => {
           .filter('metadata->>sender_phone', 'eq', phone);
         if (error) throw error;
       } else {
-        const { error } = await supabase.from('messages').delete().eq('lead_id', voterId);
-        if (error) throw error;
+        // Delete child rows first, then the lead row itself so the conversation
+        // actually disappears from the inbox (the inbox is driven off the leads table).
         await supabase.from('chat_history').delete().eq('lead_id', voterId);
+        await supabase.from('messages').delete().eq('lead_id', voterId);
+        const { error } = await supabase.rpc('gdpr_delete_lead', { _lead_id: voterId });
+        if (error) {
+          // Fallback: try a plain delete on leads if the RPC is unavailable
+          const { error: delErr } = await supabase.from('leads').delete().eq('id', voterId);
+          if (delErr) throw delErr;
+        }
       }
       toast.success('השיחה נמחקה לצמיתות');
       if (selectedVoterId === voterId) setSelectedVoterId(null);
