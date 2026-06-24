@@ -544,27 +544,31 @@ Deno.serve(async (req) => {
 
       if (action === "fetchAllProperties") {
         const discardedSamples: any[] = [];
+        // Simplified, exhaustive filter — independent of transaction_type field,
+        // since the Webtiv sellers stream does NOT include a normalized
+        // transaction_type key. We accept a record when EITHER:
+        //   • affiliation (exclusive / שיוך / etc.) contains "משרד" or "בלעדי"  → office sale
+        //   • agent (any agent variant) contains "אודי ויטמן"                  → Udi rental
         const finalFilteredProperties = items.filter((item: any) => {
-          const transactionText = [
-            item?.transaction_type,
-            item?.["סוג_עסקה"],
-            item?.sale_f3,
-            item?.objectresidence,
-          ].map((v) => normalizeStreamText(v)).filter(Boolean).join(" ");
-          const affiliation = normalizeStreamText(item?.exclusive || item?.["שיוך"] || pickSivugName(item));
-          const agent = normalizeStreamText(item?.agent || item?.["סוכן"] || pickAgentName(item));
-          const isRent = transactionText.includes("להשכרה") || looksLikeRental(item);
-          const isSale = transactionText.includes("מכירה") || (!isRent && affiliation.length > 0);
-          const ok = isSale
-            ? (affiliation.includes("משרד") || affiliation.includes("בלעדי"))
-            : (isRent ? agent.includes(ALLOWED_AGENT_SUBSTR) : false);
+          const affiliation = pickSivugName(item);
+          const agent = pickAgentName(item);
+          const sivugOk = ALLOWED_SIVUG_SUBSTRS.some((s) => affiliation.includes(s));
+          const agentOk = agent.includes(ALLOWED_AGENT_SUBSTR);
+          const ok = sivugOk || agentOk;
           if (!ok && discardedSamples.length < 3) {
-            discardedSamples.push({ rawAgent: item?.agent, rawExclusive: item?.exclusive, rawSivug: item?.sivug, pickedAgent: pickAgentName(item), pickedSivug: pickSivugName(item), keys: Object.keys(item || {}) });
+            discardedSamples.push({
+              rawAgent: item?.agent,
+              rawExclusive: item?.exclusive,
+              pickedAgent: agent,
+              pickedSivug: affiliation,
+              keys: Object.keys(item || {}),
+            });
           }
           return ok;
         });
         if (discardedSamples.length) console.log("[homely-fetch] sellers discarded samples:", JSON.stringify(discardedSamples));
         const properties = finalFilteredProperties.map(mapStreamProperty);
+        console.log(`[homely-fetch] SERVER FILTER GATE: raw=${items.length} filtered=${finalFilteredProperties.length} returning=${properties.length}`);
         return json({
           ok: true,
           source: "AutomaionJson.sellers",
