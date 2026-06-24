@@ -122,11 +122,23 @@ function extractAgentId(session: any, fallback = "6617303"): string {
 }
 
 async function getJson(url: string) {
-  const r = await fetch(url, { headers: { Accept: "application/json", "User-Agent": "Realtyz/1.0" } });
-  const text = await r.text();
-  let data: any = null;
-  try { data = JSON.parse(text); } catch { /* HTML/IIS error */ }
-  return { status: r.status, data, sample: text.slice(0, 200) };
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 20000);
+    const r = await fetch(url, {
+      headers: { Accept: "application/json", "User-Agent": "Realtyz/1.0" },
+      signal: ctl.signal,
+    });
+    clearTimeout(t);
+    const text = await r.text();
+    let data: any = null;
+    try { data = JSON.parse(text); } catch { /* HTML/IIS error */ }
+    return { status: r.status, data, sample: text.slice(0, 200) };
+  } catch (e) {
+    const msg = (e as Error)?.message ?? String(e);
+    console.error("[homely-fetch-property] getJson failed", url, msg);
+    return { status: 0, data: null, sample: `fetch_failed: ${msg}`.slice(0, 200), error: msg };
+  }
 }
 
 function asArray(x: any): any[] {
