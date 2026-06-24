@@ -2606,6 +2606,7 @@ export type Database = {
       }
       leads: {
         Row: {
+          address: string | null
           ai_autopilot: boolean | null
           assigned_to: string | null
           city: string | null
@@ -2648,6 +2649,7 @@ export type Database = {
           telegram_username: string | null
         }
         Insert: {
+          address?: string | null
           ai_autopilot?: boolean | null
           assigned_to?: string | null
           city?: string | null
@@ -2690,6 +2692,7 @@ export type Database = {
           telegram_username?: string | null
         }
         Update: {
+          address?: string | null
           ai_autopilot?: boolean | null
           assigned_to?: string | null
           city?: string | null
