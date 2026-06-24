@@ -266,70 +266,77 @@ function normalizeStreamText(v: unknown): string {
     .trim();
 }
 
-function firstStreamText(it: any, keys: string[]): string {
-  for (const k of keys) {
-    const s = normalizeStreamText(it?.[k]);
-    if (s) return s;
+// Defensive case-insensitive deep pick: scans every key on the object and
+// returns the first non-empty value whose key matches (case-insensitively)
+// any of the supplied aliases. Webtiv payloads are inconsistent (PascalCase /
+// lower / Hebrew), so this is the only safe way.
+function deepPickText(obj: any, aliases: string[]): string {
+  if (!obj || typeof obj !== "object") return "";
+  const lowered = aliases.map((a) => a.toLowerCase());
+  for (const [k, v] of Object.entries(obj)) {
+    if (lowered.includes(k.toLowerCase())) {
+      const s = normalizeStreamText(v);
+      if (s) return s;
+    }
   }
   return "";
 }
 
+function firstStreamText(it: any, keys: string[]): string {
+  return deepPickText(it, keys);
+}
+
 function pickAgentName(it: any): string {
-  return firstStreamText(it, [
-    "agent", "Agent", "agentName", "AgentName", "BrokerName", "brokerName", "Broker", "broker",
-    "User", "user", "WorkerName", "workerName", "send_by", "shiuh", "סוכן",
+  return deepPickText(it, [
+    "agent", "agentname", "agent_name", "brokername", "broker_name", "broker",
+    "user", "workername", "worker_name", "send_by", "shiuh", "סוכן",
   ]);
 }
 function pickSivugName(it: any): string {
-  return firstStreamText(it, [
-    // Webtiv seller stream stores office allocation/exclusivity here, e.g. "בטיפול,משרד" / "בלעדי,משרד".
-    "exclusive", "Exclusive",
-    "StatusName", "statusName", "status", "Status",
-    "OfficeAllocation", "officeAllocation", "allocation", "Allocation",
-    "sivug", "Sivug", "shiuh", "shiyuh", "shiyukh", "shiuch", "belongTo", "belong", "שיוך",
+  return deepPickText(it, [
+    "exclusive", "statusname", "status_name", "status",
+    "officeallocation", "office_allocation", "allocation",
+    "sivug", "shiuh", "shiyuh", "shiyukh", "shiuch",
+    "belongto", "belong", "affiliation", "שיוך",
   ]);
 }
-// Per-stream filter rules (kept independent on purpose — do NOT cross-contaminate):
-//   • sellers  (מכירה / נכסי משרד): office allocation flag only. ANY office agent counts. No Udi restriction.
-//   • rentals  (להשכרה sub-set of sellers stream): office flag + agent must include "אודי ויטמן".
-//   • buyers   (קונים / שוכרים contact stream): agent must include "אודי ויטמן".
-//
-// Webtiv's transaction-type field varies per export: numeric codes (1=sale,
-// 2=rent), text variants ('מכירה', 'להשכרה', 'השכרה', 'שכירות', 'rent',
-// 'sale'), or hints buried in objectresidence/sale_f3/comments. Normalize
-// across all of them so server + client agree on a single 'sale' | 'rent'
-// label per record.
-function normalizeTxType(it: any): "sale" | "rent" {
-  const explicit = firstStreamText(it, [
-    "transaction_type", "transactionType", "TransactionType",
-    "deal_type", "dealType", "DealType",
-    "type", "Type",
-    "saleRent", "sale_rent", "SaleRent",
-  ]);
-  const numeric = Number(it?.transaction_type ?? it?.TransactionType ?? it?.type ?? it?.Type ?? NaN);
-  if (Number.isFinite(numeric)) {
-    if (numeric === 2) return "rent";
-    if (numeric === 1) return "sale";
+// Per-stream filter rules:
+//   • sale  → affiliation must include 'משרד' or 'בלעדי' (ANY office agent).
+//   • rent  → agent must include 'אודי ויטמן'.
+function normalizeTxType(it: any): "sale" | "rent" | "unknown" {
+  // Numeric code first (1=sale, 2=rent) via case-insensitive deep pick.
+  const numericRaw = deepPickText(it, ["transaction_type", "transactiontype", "deal_type", "dealtype", "type", "סוג_עסקה"]);
+  const n = Number(numericRaw);
+  if (Number.isFinite(n)) {
+    if (n === 2) return "rent";
+    if (n === 1) return "sale";
   }
-  const hay = `${explicit} ${normalizeStreamText(it?.objectresidence)} ${normalizeStreamText(it?.sale_f3)} ${normalizeStreamText(it?.more)} ${normalizeStreamText(it?.comments1)}`;
-  if (/להשכרה|השכרה|שכירות|\brent\b|\bלהשכיר\b/i.test(hay)) return "rent";
-  return "sale";
+  const fields = [
+    deepPickText(it, ["transaction_type", "transactiontype", "deal_type", "dealtype", "type", "salerent", "sale_rent", "status", "statusname", "סוג_עסקה"]),
+    normalizeStreamText(it?.objectresidence),
+    normalizeStreamText(it?.sale_f3),
+    normalizeStreamText(it?.more),
+    normalizeStreamText(it?.comments1),
+    normalizeStreamText(it?.comments2),
+    normalizeStreamText(it?.exclusive),
+  ];
+  const hay = fields.join(" ").toLowerCase();
+  if (/להשכרה|השכרה|שכירות|להשכיר|\brent\b|\brental\b/i.test(hay)) return "rent";
+  if (/למכירה|מכירה|למכור|\bsale\b|\bsell\b/i.test(hay)) return "sale";
+  return "unknown";
 }
 function looksLikeRental(it: any): boolean {
   return normalizeTxType(it) === "rent";
 }
 function passesOfficeFilter(it: any, source: "sellers" | "buyers"): boolean {
   if (source === "sellers") {
-    // Condition B: rentals — agent must be אודי ויטמן (no affiliation requirement).
-    if (looksLikeRental(it)) {
-      return pickAgentName(it).includes(ALLOWED_AGENT_SUBSTR);
-    }
-    // Condition A: sales — affiliation must include משרד or בלעדי (any office agent).
+    const tx = normalizeTxType(it);
+    if (tx === "rent") return pickAgentName(it).toLowerCase().includes(ALLOWED_AGENT_SUBSTR.toLowerCase());
     const aff = pickSivugName(it);
     return ALLOWED_SIVUG_SUBSTRS.some((s) => aff.includes(s));
   }
-  // buyers / renter-seekers contact stream
-  return pickAgentName(it).includes(ALLOWED_AGENT_SUBSTR);
+  // buyers / renter-seekers — loose case-insensitive agent check.
+  return pickAgentName(it).toLowerCase().includes(ALLOWED_AGENT_SUBSTR.toLowerCase());
 }
 
 function streamFieldAudit(items: any[], limit = 5) {
