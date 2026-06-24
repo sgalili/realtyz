@@ -232,13 +232,14 @@ function pickDocs(rec: Record<string, any>): string[] {
 // Apply the strict office filter using PERMISSIVE substring matching — the
 // raw Webtiv values are concatenated strings like "בטיפול,משרד" or
 // "בלעדי,משרד", so equality checks miss everything.
-function passesFilter(rec: Record<string, any>, source: "buyers" | "sellers"): boolean {
-  if (source === "sellers") {
-    const aff = pickSivug(rec).toLowerCase();
-    return ALLOWED_SIVUG_SUBSTRS.some((s) => aff.includes(s.toLowerCase()));
-  }
-  // buyers (incl. renter-seekers): agent name must loosely include "אודי ויטמן"
-  return pickAgent(rec).toLowerCase().includes(ALLOWED_AGENT_SUBSTR.toLowerCase());
+// Strict office filter — Udi's contacts ONLY. Applied to both buyers and
+// sellers streams: a record is kept only when its mapped agent loosely
+// includes "אודי ויטמן". Sellers also accept the office affiliation tags
+// ("משרד" / "בלעדי") as an additional pass for listings, but contact
+// ingestion still requires the agent match below.
+function passesFilter(rec: Record<string, any>, _source: "buyers" | "sellers"): boolean {
+  const agent = pickAgent(rec).toLowerCase();
+  return agent.includes(ALLOWED_AGENT_SUBSTR.toLowerCase());
 }
 
 function mapRecord(rec: Record<string, any>, source: "buyers" | "sellers", idx: number): HomelyLead | null {
