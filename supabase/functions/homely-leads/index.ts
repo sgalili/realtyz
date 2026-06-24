@@ -347,7 +347,9 @@ Deno.serve(async (req) => {
       let passed = 0;
       let dropped = 0;
       records.forEach((rec, i) => {
-        const m = mapRecord(rec, s.key, i);
+        const m = bypassFilter
+          ? mapRecordNoFilter(rec, s.key, i)
+          : mapRecord(rec, s.key, i);
         if (!m) { dropped++; return; }
         const key = m.phone_number || m.email || m.external_id;
         if (key && seen.has(key)) { dropped++; return; }
@@ -355,7 +357,8 @@ Deno.serve(async (req) => {
         collected.push(m);
         passed++;
       });
-      console.log(`[STREAM-FILTER-GATE] ${s.key}: raw=${records.length} passed=${passed} dropped=${dropped}`);
+      console.log(`[STREAM-FILTER-GATE] ${s.key}: raw=${records.length} passed=${passed} dropped=${dropped} bypass=${bypassFilter}`);
+
     }
 
     console.log(`[STREAM-MAPPED] total=${collected.length}`);
