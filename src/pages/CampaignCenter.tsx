@@ -3016,114 +3016,126 @@ const CampaignCenter = () => {
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { if (!cancelled) { setConnectedChannels(EMPTY_CONNECTED); setSocialAccountProfiles([]); } return; }
-
-      const { data: wsp } = await supabase
-        .from('workspace_social_profile')
-        .select('ayrshare_profile_key, facebook_page_name')
-        .maybeSingle();
-      const hasOwnProfile = !!(wsp as any)?.ayrshare_profile_key;
-      if (!hasOwnProfile) {
-        if (!cancelled) {
-          clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
-        }
-        return;
-      }
-      const fbName = (wsp as any)?.facebook_page_name as string | null;
-      if (fbName && !cancelled) {
-        setChannelAccountNames((prev) => ({ ...prev, facebook: fbName }));
-      }
-
-      // Auto-sync Ayrshare → social_connections so freshly linked pages appear
-      // as connected without requiring a manual "Import accounts" click.
-      // Best-effort only: if the sync fails (network, 401, rate-limit) we still
-      // honor any previously persisted social_connections rows below, so the
-      // workspace's existing connected channels never silently disappear.
       try {
-        await supabase.functions.invoke('ayrshare-sync-accounts', { body: {} });
-      } catch {
-        // swallow — fall through to DB read
+        const { data: userRes } = await supabase.auth.getUser();
+        const user = userRes?.user ?? null;
+        if (!user) {
+          if (!cancelled) { setConnectedChannels(EMPTY_CONNECTED); setSocialAccountProfiles([]); }
+          return;
+        }
+
+        const { data: wsp } = await supabase
+          .from('workspace_social_profile')
+          .select('ayrshare_profile_key, facebook_page_name')
+          .maybeSingle();
+        const hasOwnProfile = !!(wsp as any)?.ayrshare_profile_key;
+        if (!hasOwnProfile) {
+          if (!cancelled) clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
+          // continue — still derive direct channels (IVR/email) below
+        } else {
+          const fbName = (wsp as any)?.facebook_page_name as string | null;
+          if (fbName && !cancelled) {
+            setChannelAccountNames((prev) => ({ ...prev, facebook: fbName }));
+          }
+
+          // Best-effort sync. Never let a failure tear down the component.
+          try {
+            await supabase.functions.invoke('ayrshare-sync-accounts', { body: {} });
+          } catch (e) {
+            console.warn('[CampaignCenter] ayrshare-sync-accounts failed (non-fatal):', (e as Error)?.message);
+          }
+        }
+        if (cancelled) return;
+
+        const set = new Set<string>();
+
+        if (hasOwnProfile) {
+          const { data: conns, error: connsErr } = await supabase
+            .from('social_connections')
+            .select('platform, is_connected')
+            .eq('created_by', user.id)
+            .eq('is_connected', true);
+          const { data: accountRows, error: accountRowsErr } = await supabase
+            .from('ayrshare_social_accounts')
+            .select('id, platform, account_ref, profile_key, display_name, account_username, username, avatar_url, profile_url, connected, is_active')
+            .eq('user_id', user.id)
+            .eq('connected', true)
+            .eq('is_active', true);
+          if (cancelled) return;
+
+          if (connsErr || accountRowsErr) {
+            console.warn('[CampaignCenter] social conn fetch error:', connsErr?.message || accountRowsErr?.message);
+          } else {
+            const profiles = ((accountRows as any[]) || []).map((r) => ({
+              id: r?.id,
+              platform: String(r?.platform || '').toLowerCase(),
+              accountRef: r?.account_ref || '',
+              profileKey: r?.profile_key || null,
+              name: r?.display_name || r?.account_username || r?.username || r?.account_ref || 'Facebook',
+              username: r?.account_username || r?.username || null,
+              avatar: r?.avatar_url || null,
+              profileUrl: r?.profile_url || (r?.account_ref ? buildAccountUrl(String(r?.platform || '').toLowerCase(), r.account_ref) : null),
+            }));
+            profiles.forEach((p) => {
+              if (p.platform.startsWith('facebook')) set.add('facebook');
+            });
+            if (!cancelled) setSocialAccountProfiles(profiles);
+            (conns || []).forEach((c: any) => {
+              const p = String(c?.platform || '').toLowerCase();
+              if (p.startsWith('facebook')) set.add('facebook');
+              else if (p.startsWith('instagram')) set.add('instagram');
+              else if (p === 'x' || p === 'twitter') set.add('x');
+              else if (p.startsWith('youtube')) set.add('youtube');
+              else if (p.startsWith('linkedin')) set.add('linkedin');
+              else if (p.startsWith('tiktok')) set.add('tiktok');
+            });
+          }
+        }
+
+        // Direct (non-social) channels — always safe to derive.
+        const [profRes, cfgsRes] = await Promise.all([
+          supabase.from('profiles').select('direct_channels, email_alias, full_name').eq('id', user.id).maybeSingle(),
+          supabase.from('api_configs').select('service_name, is_active'),
+        ]);
+        if (cancelled) return;
+
+        const prof = profRes?.data ?? null;
+        const cfgs = cfgsRes?.data ?? [];
+        const direct = ((prof as any)?.direct_channels ?? {}) as Record<string, boolean>;
+        const alias = (prof as any)?.email_alias as string | null;
+        const activeServices = new Set(
+          (cfgs || []).filter((r: any) => r?.is_active).map((r: any) => String(r?.service_name || '').toLowerCase()),
+        );
+        const hasVapi = activeServices.has('vapi');
+        const hasTwilio = activeServices.has('twilio');
+        const hasResend = activeServices.has('resend');
+        const voiceReady = hasVapi && hasTwilio;
+
+        if (direct?.ivr || voiceReady) set.add('ivr');
+        if (direct?.['ai-call'] || hasVapi) set.add('ai-call');
+        if ((direct?.email && alias) || alias || hasResend) set.add('email');
+
+        if (!cancelled) {
+          setChannelAccountNames((prev) => ({
+            ...prev,
+            ...(alias ? { email: `${alias}@realtyz.co.il` } : hasResend ? { email: 'Resend · אימייל מותג' } : {}),
+            ...(voiceReady || direct?.ivr ? { ivr: VOICE_DIAL_NUMBER } : {}),
+            ...(hasVapi || direct?.['ai-call'] ? { 'ai-call': VOICE_DIAL_NUMBER } : {}),
+          }));
+          setConnectedChannels(set);
+        }
+      } catch (err) {
+        console.error('[CampaignCenter] integration context load failed:', err);
+        if (!cancelled) {
+          // Fail-safe: never crash the publishing workspace. Leave channels
+          // empty so cards render their "חבר" state instead of unmounting.
+          setConnectedChannels((prev) => prev ?? EMPTY_CONNECTED);
+        }
       }
-      if (cancelled) return;
-
-      const { data: conns, error: connsErr } = await supabase
-        .from('social_connections')
-        .select('platform, is_connected')
-        .eq('created_by', user.id)
-        .eq('is_connected', true);
-      const { data: accountRows, error: accountRowsErr } = await supabase
-        .from('ayrshare_social_accounts')
-        .select('id, platform, account_ref, profile_key, display_name, account_username, username, avatar_url, profile_url, connected, is_active')
-        .eq('user_id', user.id)
-        .eq('connected', true)
-        .eq('is_active', true);
-      if (cancelled) return;
-      if (connsErr || accountRowsErr) {
-        clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
-        return;
-      }
-      const set = new Set<string>();
-      const profiles = ((accountRows as any[]) || []).map((r) => ({
-        id: r.id,
-        platform: String(r.platform || '').toLowerCase(),
-        accountRef: r.account_ref || '',
-        profileKey: r.profile_key || null,
-        name: r.display_name || r.account_username || r.username || r.account_ref || 'Facebook',
-        username: r.account_username || r.username || null,
-        avatar: r.avatar_url || null,
-        profileUrl: r.profile_url || (r.account_ref ? buildAccountUrl(String(r.platform || '').toLowerCase(), r.account_ref) : null),
-      }));
-      profiles.forEach((p) => {
-        if (p.platform.startsWith('facebook')) set.add('facebook');
-      });
-      setSocialAccountProfiles(profiles);
-      (conns || []).forEach((c: any) => {
-        const p = String(c.platform || '').toLowerCase();
-        if (p.startsWith('facebook')) set.add('facebook');
-        else if (p.startsWith('instagram')) set.add('instagram');
-        else if (p === 'x' || p === 'twitter') set.add('x');
-        else if (p.startsWith('youtube')) set.add('youtube');
-        else if (p.startsWith('linkedin')) set.add('linkedin');
-        else if (p.startsWith('tiktok')) set.add('tiktok');
-      });
-
-      // Direct (non-social) channels: IVR / AI-Call / Email live on profiles
-      // AND are auto-derived from api_configs (Vapi/Twilio/Resend) so brokers
-      // who configured credentials see them as connected without an extra click.
-      const [{ data: prof }, { data: cfgs }] = await Promise.all([
-        supabase.from('profiles').select('direct_channels, email_alias, full_name').eq('id', user.id).maybeSingle(),
-        supabase.from('api_configs').select('service_name, is_active'),
-      ]);
-      if (cancelled) return;
-
-      const direct = ((prof as any)?.direct_channels ?? {}) as Record<string, boolean>;
-      const alias = (prof as any)?.email_alias as string | null;
-      const activeServices = new Set(
-        (cfgs || []).filter((r: any) => r.is_active).map((r: any) => String(r.service_name || '').toLowerCase()),
-      );
-      const hasVapi = activeServices.has('vapi');
-      const hasTwilio = activeServices.has('twilio');
-      const hasResend = activeServices.has('resend');
-      const voiceReady = hasVapi && hasTwilio;
-
-      if (direct.ivr || voiceReady) set.add('ivr');
-      if (direct['ai-call'] || hasVapi) set.add('ai-call');
-      if ((direct.email && alias) || alias || hasResend) set.add('email');
-
-      if (!cancelled) {
-        setChannelAccountNames((prev) => ({
-          ...prev,
-          ...(alias ? { email: `${alias}@realtyz.co.il` } : hasResend ? { email: 'Resend · אימייל מותג' } : {}),
-          ...(voiceReady || direct.ivr ? { ivr: VOICE_DIAL_NUMBER } : {}),
-          ...(hasVapi || direct['ai-call'] ? { 'ai-call': VOICE_DIAL_NUMBER } : {}),
-        }));
-      }
-
-      setConnectedChannels(set);
     })();
     return () => { cancelled = true; };
   }, []);
+
 
   const handleConnectChannel = async (c: ChannelCard) => {
     // Direct (non-social) outbound channels — verify creds, then flip
