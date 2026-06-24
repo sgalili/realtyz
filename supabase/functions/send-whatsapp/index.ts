@@ -212,6 +212,37 @@ async function sendViaGreenApi(
   }
   const chatId = `${phone}@c.us`;
 
+  // Anti-ban humanization: set "composing" (typing...) state, then sleep a
+  // human-like duration proportional to message length before sending.
+  try {
+    await fetch(
+      `https://api.green-api.com/waInstance${instanceId}/sendChatStateTyping/${token}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatId }),
+      },
+    );
+  } catch (_e) {
+    // Non-fatal — typing indicator is best-effort.
+  }
+
+  const charDelay = Math.min(message.length * 15, 6000);
+  const jitter = 3000 + Math.floor(Math.random() * 3000); // 3000–6000ms
+  const humanDelayMs = Math.max(charDelay, jitter);
+  await new Promise((r) => setTimeout(r, humanDelayMs));
+
+  try {
+    await fetch(
+      `https://api.green-api.com/waInstance${instanceId}/sendChatStatePause/${token}`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ chatId }),
+      },
+    );
+  } catch (_e) { /* ignore */ }
+
   // Text first.
   const textRes = await fetch(
     `https://api.green-api.com/waInstance${instanceId}/sendMessage/${token}`,
@@ -221,6 +252,7 @@ async function sendViaGreenApi(
       body: JSON.stringify({ chatId, message }),
     },
   );
+
   const textJson = await textRes.json().catch(() => ({}));
   if (!textRes.ok || !textJson?.idMessage) {
     return {
