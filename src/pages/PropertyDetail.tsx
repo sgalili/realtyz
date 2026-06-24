@@ -109,6 +109,7 @@ export default function PropertyDetail() {
       const meta = isRecord(row.source_metadata) ? row.source_metadata : {};
 
       const photoSources: unknown[] = [
+        ...(Array.isArray((row as any).media_photos) ? ((row as any).media_photos as unknown[]) : []),
         ...(Array.isArray(meta?.photos) ? (meta.photos as unknown[]) : []),
         ...(Array.isArray(meta?.images) ? (meta.images as unknown[]) : []),
       ];
@@ -117,6 +118,24 @@ export default function PropertyDetail() {
       const photos = Array.from(
         new Set(photoSources.map(photoUrlFrom).filter((s): s is string => !!s))
       );
+
+      const docsRaw: unknown[] = [
+        ...(Array.isArray((row as any).media_documents) ? ((row as any).media_documents as unknown[]) : []),
+        ...(Array.isArray((meta as any)?.documents) ? ((meta as any).documents as unknown[]) : []),
+      ];
+      const documents = Array.from(new Set(
+        docsRaw
+          .map((d: any) => {
+            if (typeof d === 'string') return { url: d, name: d.split('/').pop() || 'מסמך' };
+            if (d && typeof d === 'object') {
+              const url = d.url || d.Url || d.path || d.href;
+              if (typeof url === 'string') return { url, name: String(d.name || d.title || url.split('/').pop() || 'מסמך') };
+            }
+            return null;
+          })
+          .filter((x): x is { url: string; name: string } => !!x && /^https?:\/\//.test(x.url))
+          .map((x) => JSON.stringify(x))
+      )).map((s) => JSON.parse(s) as { url: string; name: string });
 
       const priceNum = Number(row.asking_price) || 0;
       const dealType = String((meta as JsonRecord).deal_type ?? (meta as JsonRecord).listing_type ?? '').toLowerCase();
