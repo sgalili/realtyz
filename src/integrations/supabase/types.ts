@@ -2769,6 +2769,8 @@ export type Database = {
           is_investment_opportunity: boolean
           is_promoted: boolean
           is_published: boolean
+          media_documents: Json
+          media_photos: Json
           neighborhood: string | null
           office_notes: string | null
           parking: boolean | null
@@ -2806,6 +2808,8 @@ export type Database = {
           is_investment_opportunity?: boolean
           is_promoted?: boolean
           is_published?: boolean
+          media_documents?: Json
+          media_photos?: Json
           neighborhood?: string | null
           office_notes?: string | null
           parking?: boolean | null
@@ -2843,6 +2847,8 @@ export type Database = {
           is_investment_opportunity?: boolean
           is_promoted?: boolean
           is_published?: boolean
+          media_documents?: Json
+          media_photos?: Json
           neighborhood?: string | null
           office_notes?: string | null
           parking?: boolean | null
