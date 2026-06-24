@@ -6,6 +6,28 @@ import { installDemoToastFilter } from "./lib/demoToastFilter";
 enableGlobalSilentMode();
 installDemoToastFilter();
 
+// Stale-chunk recovery: after a redeploy, the cached index.html may reference
+// hashed JS chunks that no longer exist on the CDN. Force one reload so the
+// browser pulls the fresh manifest instead of showing a blank screen.
+const STALE_CHUNK_RELOAD_KEY = "__stale_chunk_reloaded_at";
+function isChunkLoadError(err: unknown): boolean {
+  const msg = err instanceof Error ? err.message : String(err ?? "");
+  return /Failed to fetch dynamically imported module|Importing a module script failed|ChunkLoadError|error loading dynamically imported module/i.test(msg);
+}
+function maybeReloadForStaleChunk(err: unknown) {
+  if (!isChunkLoadError(err)) return;
+  try {
+    const last = Number(sessionStorage.getItem(STALE_CHUNK_RELOAD_KEY) || 0);
+    if (Date.now() - last < 10_000) return; // avoid reload loop
+    sessionStorage.setItem(STALE_CHUNK_RELOAD_KEY, String(Date.now()));
+  } catch {
+    // ignore storage failures
+  }
+  window.location.reload();
+}
+window.addEventListener("error", (e) => maybeReloadForStaleChunk(e.error ?? e.message));
+window.addEventListener("unhandledrejection", (e) => maybeReloadForStaleChunk(e.reason));
+
 const rootEl = document.getElementById("root")!;
 
 function renderOAuthBridge() {
