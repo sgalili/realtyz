@@ -63,10 +63,13 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
   const [summary, setSummary] = useState<{ properties: number; contacts: number } | null>(null);
 
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [fCity, setFCity] = useState('');
+  const [fCities, setFCities] = useState<Set<string>>(new Set());
   const [fRooms, setFRooms] = useState('');
   const [fType, setFType] = useState('');
+  const [fAgent, setFAgent] = useState('');
+  const [cityPopOpen, setCityPopOpen] = useState(false);
   const fetchedOnce = useRef<{ properties: boolean; contacts: boolean }>({ properties: false, contacts: false });
+
 
   async function fetchAction(action: 'fetchAllProperties' | 'fetchAllContacts') {
     const now = Date.now();
