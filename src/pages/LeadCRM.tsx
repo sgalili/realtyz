@@ -893,24 +893,30 @@ const LeadCRM = () => {
   const createBlankLeadAndOpen = async () => {
     if (blockDemoAction('add-lead')) return;
     try {
+      const { data: userResp, error: userErr } = await supabase.auth.getUser();
+      if (userErr || !userResp?.user) throw userErr || new Error('not_authenticated');
+      const uid = userResp.user.id;
       const { data, error } = await supabase
         .from('leads')
         .insert({
           full_name: 'מתעניין חדש',
           lead_stage: 'new',
           status: 'new',
+          assigned_to: uid,
         } as any)
         .select('id')
         .single();
       if (error) throw error;
+      const newId = (data as any)?.id;
+      if (!newId) throw new Error('insert_returned_no_row');
       await queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
       queryClient.invalidateQueries({ queryKey: ['leads-total'] });
       queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] });
-      const newId = (data as any).id;
       setSelectedVoterId(newId);
       navigate(`/lead-crm/${newId}`);
       toast.success('פרופיל מתעניין נפתח — מלא את הפרטים');
     } catch (err: any) {
+      console.error('[createBlankLeadAndOpen] failed', err);
       const msg = String(err?.message || '');
       if (msg.includes('TRIAL_RECORD_LIMIT')) {
         toast.error('מסלול הניסיון מוגבל ל-100 רשומות. שדרג עכשיו', {
