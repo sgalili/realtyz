@@ -2630,6 +2630,7 @@ export type Database = {
           is_voted: boolean | null
           last_interaction_at: string | null
           lead_stage: string
+          linked_listing_id: string | null
           loss_reason: string | null
           loss_reason_note: string | null
           loyalty_tier: string | null
@@ -2673,6 +2674,7 @@ export type Database = {
           is_voted?: boolean | null
           last_interaction_at?: string | null
           lead_stage?: string
+          linked_listing_id?: string | null
           loss_reason?: string | null
           loss_reason_note?: string | null
           loyalty_tier?: string | null
@@ -2716,6 +2718,7 @@ export type Database = {
           is_voted?: boolean | null
           last_interaction_at?: string | null
           lead_stage?: string
+          linked_listing_id?: string | null
           loss_reason?: string | null
           loss_reason_note?: string | null
           loyalty_tier?: string | null
@@ -2734,7 +2737,15 @@ export type Database = {
           status?: string | null
           telegram_username?: string | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "leads_linked_listing_id_fkey"
+            columns: ["linked_listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       listings: {
         Row: {

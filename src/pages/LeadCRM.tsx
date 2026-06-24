@@ -50,6 +50,50 @@ import { Rows, Rows3, Home, Building2, Plus, Upload as UploadIcon, UserRoundPlus
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { HomelyBulkSyncDialog } from '@/components/properties/HomelyBulkSyncDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import OwnerPropertyGrid from '@/components/leads/OwnerPropertyGrid';
+
+/**
+ * isOwnerLead — Sellers and Landlords are property OWNERS, not seekers.
+ * Their profile must show property data (the 13 Homely columns) instead
+ * of buyer/renter preferences like preferred area or requested budget.
+ */
+function isOwnerLead(lead: any): boolean {
+  const kind = lead?.preferences?.lead_kind;
+  if (kind === 'seller' || kind === 'landlord') return true;
+  // deal_type 'sell' = listing for sale by owner
+  if (lead?.deal_type === 'sell') return true;
+  return false;
+}
+
+/** Hebrew display dictionary for the "ערוץ הגעה" (source) dropdown. */
+const SOURCE_LABEL_HE: Record<string, string> = {
+  webtiv_stream: 'סטרים ובטיב',
+  webtiv: 'ובטיב',
+  homely: 'הומלי',
+  shortlink: 'פוסט פייסבוק',
+  facebook: 'פייסבוק',
+  facebook_groups: 'פייסבוק קבוצות',
+  instagram: 'אינסטגרם',
+  whatsapp: 'וואטסאפ',
+  inbound_call: 'שיחה נכנסת',
+  yad2: 'יד2',
+  website: 'אתר',
+  manual: 'הוזן ידנית',
+};
+
+/** Hebrew display dictionary for the "סטטוס לקוח" (lead_stage) dropdown. */
+const STAGE_LABEL_HE: Record<string, string> = {
+  new: 'מתעניין חדש',
+  new_lead: 'מתעניין חדש',
+  contacted: 'יצר קשר',
+  engaging: 'בטיפול',
+  cold: 'מתעניין קר',
+  qualified: 'מתעניין מוסמך',
+  touring: 'בסיור נכסים',
+  offer_pending: 'ממתין להצעה',
+  negotiation: 'במשא ומתן',
+  closed: 'סגר עסקה',
+};
 
 // Strict Israeli mobile cleaner. Returns 9725XXXXXXXX (12 digits) for storage, or null if invalid.
 // Rules per spec:
@@ -491,7 +535,49 @@ const LeadCRM = () => {
       .map(([k]) => k);
   }, [leads]);
   const baseColCount = 6;
-  const totalColCount = baseColCount + extraColumns.length;
+
+  // Owner-only Homely columns. Only injected when the agent has filtered the
+  // table to sellers or landlords (property owners). Each column is rendered
+  // from the linked `listings` row referenced by `leads.linked_listing_id`.
+  const isOwnerView = leadKindFilter === 'seller' || leadKindFilter === 'landlord';
+  const HOMELY_OWNER_COLUMNS: { key: string; label: string; render: (l: any) => string }[] = [
+    { key: 'serial',    label: 'סידורי', render: (l) => l.__listing?.external_id ?? '-' },
+    { key: 'agent',     label: 'סוכן',   render: (l) => l.__listing?.source_metadata?.agent ?? '-' },
+    { key: 'ptype',     label: 'נכס',    render: (l) => l.__listing?.features?.property_type ?? '-' },
+    { key: 'rooms',     label: 'חדרים',  render: (l) => l.__listing?.rooms != null ? String(l.__listing.rooms) : '-' },
+    { key: 'price',     label: 'מחיר',   render: (l) => l.__listing?.asking_price != null ? Number(l.__listing.asking_price).toLocaleString('he-IL') : '-' },
+    { key: 'city',      label: 'עיר',    render: (l) => l.__listing?.city ?? '-' },
+    { key: 'area',      label: 'אזור',   render: (l) => l.__listing?.neighborhood ?? '-' },
+    { key: 'street',    label: 'רחוב',   render: (l) => l.__listing?.address ?? '-' },
+    { key: 'house_no',  label: 'מס׳',    render: (l) => l.__listing?.source_metadata?.house_number ?? '-' },
+    { key: 'floor',     label: 'קומה',   render: (l) => l.__listing?.floor != null ? String(l.__listing.floor) : '-' },
+    { key: 'elevator',  label: 'מעלית',  render: (l) => l.__listing?.elevator === true ? 'כן' : l.__listing?.elevator === false ? 'לא' : '-' },
+    { key: 'opened',    label: 'פתיחה',  render: (l) => l.__listing?.created_at ? format(new Date(l.__listing.created_at), 'dd/MM/yy') : '-' },
+    { key: 'updated',   label: 'עדכון',  render: (l) => l.__listing?.updated_at ? format(new Date(l.__listing.updated_at), 'dd/MM/yy') : '-' },
+  ];
+
+  // Hydrate the visible owner leads with their linked listing rows in ONE query.
+  const ownerLinkedIds = useMemo(() => {
+    if (!isOwnerView) return [] as string[];
+    const ids = new Set<string>();
+    for (const l of leads as any[]) if (l?.linked_listing_id) ids.add(l.linked_listing_id);
+    return Array.from(ids);
+  }, [isOwnerView, leads]);
+  const { data: ownerListings } = useQuery({
+    queryKey: ['owner-listings-bulk', ownerLinkedIds.sort().join(',')],
+    enabled: ownerLinkedIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('listings').select('*').in('id', ownerLinkedIds);
+      if (error) throw error;
+      const map: Record<string, any> = {};
+      for (const row of data ?? []) map[row.id] = row;
+      return map;
+    },
+    staleTime: 30_000,
+  });
+  const listingsById: Record<string, any> = ownerListings ?? {};
+
+  const totalColCount = baseColCount + extraColumns.length + (isOwnerView ? HOMELY_OWNER_COLUMNS.length : 0);
 
   // Lightweight query for filter options (distinct values)
   const { data: filterOptions } = useQuery({
@@ -1389,6 +1475,9 @@ const LeadCRM = () => {
                   {extraColumns.map((col) => (
                     <TableHead key={`h-${col}`} className="w-auto font-semibold text-xs text-center">{col}</TableHead>
                   ))}
+                  {isOwnerView && HOMELY_OWNER_COLUMNS.map((col) => (
+                    <TableHead key={`oh-${col.key}`} className="w-auto font-semibold text-xs text-center bg-blue-50/60">{col.label}</TableHead>
+                  ))}
                   <TableHead className="w-10 text-center">
                     <Checkbox checked={allFilteredSelected} onCheckedChange={toggleAll} />
                   </TableHead>
@@ -1536,6 +1625,21 @@ const LeadCRM = () => {
                             </TableCell>
                           );
                         })}
+                        {isOwnerView && (() => {
+                          const linked = (lead as any).linked_listing_id ? listingsById[(lead as any).linked_listing_id] : null;
+                          const hydrated = { ...(lead as any), __listing: linked };
+                          return HOMELY_OWNER_COLUMNS.map((col) => {
+                            const val = col.render(hydrated);
+                            return (
+                              <TableCell key={`oc-${lead.id}-${col.key}`}
+                                className="text-[11px] text-center text-slate-700 bg-blue-50/30"
+                                onClick={() => setSelectedVoterId(lead.id)}
+                                title={String(val)}>
+                                <span className="inline-block max-w-[140px] truncate align-middle">{val}</span>
+                              </TableCell>
+                            );
+                          });
+                        })()}
                         <TableCell className="w-10 text-center" onClick={(e) => e.stopPropagation()}>
                           <Checkbox checked={selectedIds.has(lead.id)} onCheckedChange={() => toggleOne(lead.id)} />
                         </TableCell>
@@ -1907,18 +2011,22 @@ const LeadCRM = () => {
                       { v: '10000000+',       l: 'מעל 10M ₪' },
                     ];
                     const stageOpts = [
-                      { v: 'new', l: 'חדש' }, { v: 'contacted', l: 'יצר קשר' },
+                      { v: 'new', l: 'מתעניין חדש' },
+                      { v: 'new_lead', l: 'מתעניין חדש' },
+                      { v: 'contacted', l: 'יצר קשר' },
                       { v: 'engaging', l: 'בטיפול' },
-                      { v: 'cold', l: 'מתעניין קר' }, { v: 'qualified', l: 'ליד מוסמך' },
+                      { v: 'cold', l: 'מתעניין קר' }, { v: 'qualified', l: 'מתעניין מוסמך' },
                       { v: 'touring', l: 'בסיור נכסים' }, { v: 'offer_pending', l: 'ממתין להצעה' },
                       { v: 'negotiation', l: 'במשא ומתן' }, { v: 'closed', l: 'סגר עסקה' },
                     ];
                     const sourceOpts = [
+                      { v: 'webtiv_stream', l: 'סטרים ובטיב' },
+                      { v: 'homely', l: 'הומלי' },
                       { v: 'shortlink', l: 'פוסט פייסבוק' },
                       { v: 'facebook_groups', l: 'פייסבוק קבוצות' }, { v: 'facebook', l: 'פייסבוק' },
                       { v: 'instagram', l: 'אינסטגרם' }, { v: 'whatsapp', l: 'וואטסאפ' },
                       { v: 'inbound_call', l: 'שיחה נכנסת' }, { v: 'yad2', l: 'יד2' },
-                      { v: 'website', l: 'אתר' }, { v: 'homely', l: 'Homely' },
+                      { v: 'website', l: 'אתר' },
                       { v: 'manual', l: 'הוזן ידנית' },
                     ];
                     const areaOpts = [
@@ -1944,10 +2052,13 @@ const LeadCRM = () => {
                     }: { icon: JSX.Element; label: string; value: string; placeholder: string; options: { v: string; l: string }[]; onChange: (v: string) => void }) => {
                       // If AI/DB value is not in the preset list, inject it at top so the
                       // dropdown actually shows the selected value instead of going blank.
+                      // The injected label uses the global Hebrew dictionaries so legacy
+                      // tokens like `webtiv_stream` / `new_lead` never leak through.
                       const hasMatch = !!value && options.some((o) => o.v === value);
+                      const dictLabel = SOURCE_LABEL_HE[value] || STAGE_LABEL_HE[value] || value;
                       const mergedOptions = !value || hasMatch
                         ? options
-                        : [{ v: value, l: value }, ...options];
+                        : [{ v: value, l: dictLabel }, ...options];
                       return (
                         <div className="p-3 rounded-lg bg-slate-100 border border-slate-200 space-y-1.5">
                           <p className="text-xs font-bold text-slate-900 flex items-center gap-1.5">{icon}{label}</p>
@@ -1963,15 +2074,27 @@ const LeadCRM = () => {
                       );
                     };
 
+                    const ownerLead = isOwnerLead(selectedVoter);
 
                     return (
-                      <div className="grid grid-cols-2 gap-3">
-                        <SelectCell icon={<Tag className="h-3.5 w-3.5 text-slate-700" />} label="סוג עסקה" value={dealType} placeholder="בחר עסקה" options={dealTypeOpts} onChange={(v) => saveLead({ deal_type: v })} />
-                        <SelectCell icon={<Radio className="h-3.5 w-3.5 text-slate-700" />} label="ערוץ הגעה" value={source} placeholder="בחר ערוץ" options={sourceOpts} onChange={(v) => savePref({ source: v })} />
-                        <SelectCell icon={<Wallet className="h-3.5 w-3.5 text-slate-700" />} label="תקציב מבוקש" value={budgetRange} placeholder="בחר תקציב" options={budgetOpts} onChange={(v) => savePref({ budget_range: v })} />
-                        <SelectCell icon={<Target className="h-3.5 w-3.5 text-slate-700" />} label="סטטוס לקוח" value={stage} placeholder="בחר סטטוס" options={stageOpts} onChange={(v) => saveLead({ lead_stage: v })} />
-                        <SelectCell icon={<HomeIcon className="h-3.5 w-3.5 text-slate-700" />} label="סוג נכס מועדף" value={propertyType} placeholder="בחר נכס" options={propertyOpts} onChange={(v) => savePref({ property_type: v })} />
-                        <SelectCell icon={<Compass className="h-3.5 w-3.5 text-slate-700" />} label="אזור ביקוש מועדף" value={area} placeholder="בחר אזור" options={areaOpts.map((c) => ({ v: c, l: c }))} onChange={(v) => saveLead({ neighborhood: v })} />
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <SelectCell icon={<Tag className="h-3.5 w-3.5 text-slate-700" />} label="סוג עסקה" value={dealType} placeholder="בחר עסקה" options={dealTypeOpts} onChange={(v) => saveLead({ deal_type: v })} />
+                          <SelectCell icon={<Radio className="h-3.5 w-3.5 text-slate-700" />} label="ערוץ הגעה" value={source} placeholder="בחר ערוץ" options={sourceOpts} onChange={(v) => savePref({ source: v })} />
+                          <SelectCell icon={<Target className="h-3.5 w-3.5 text-slate-700" />} label="סטטוס לקוח" value={stage} placeholder="בחר סטטוס" options={stageOpts} onChange={(v) => saveLead({ lead_stage: v })} />
+                          {/* Buyer/renter preference fields — hidden entirely for property owners */}
+                          {!ownerLead && (
+                            <>
+                              <SelectCell icon={<Wallet className="h-3.5 w-3.5 text-slate-700" />} label="תקציב מבוקש" value={budgetRange} placeholder="בחר תקציב" options={budgetOpts} onChange={(v) => savePref({ budget_range: v })} />
+                              <SelectCell icon={<HomeIcon className="h-3.5 w-3.5 text-slate-700" />} label="סוג נכס מועדף" value={propertyType} placeholder="בחר נכס" options={propertyOpts} onChange={(v) => savePref({ property_type: v })} />
+                              <SelectCell icon={<Compass className="h-3.5 w-3.5 text-slate-700" />} label="אזור ביקוש מועדף" value={area} placeholder="בחר אזור" options={areaOpts.map((c) => ({ v: c, l: c }))} onChange={(v) => saveLead({ neighborhood: v })} />
+                            </>
+                          )}
+                        </div>
+                        {/* Owner-only: 13 Homely-style property fields, backed by the linked listing */}
+                        {ownerLead && (
+                          <OwnerPropertyGrid lead={selectedVoter as any} />
+                        )}
                       </div>
                     );
                   })()}
