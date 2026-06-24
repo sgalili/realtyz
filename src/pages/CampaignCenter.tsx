@@ -583,6 +583,8 @@ const InlineComposer = ({
   const [listingsLoading, setListingsLoading] = useState(false);
   const [selectedListingId, setSelectedListingId] = useState<string | null>(initial.selectedListingId ?? null);
   const [listingPickerOpen, setListingPickerOpen] = useState(false);
+  const [bodyManuallyEdited, setBodyManuallyEdited] = useState(false);
+
 
   // Attachment / media state
   const galleryInputRef = useRef<HTMLInputElement>(null);
