@@ -193,6 +193,7 @@ export default function PropertyDetail() {
   const projectName = data?.projectName ?? null;
   const sourceUrl = data?.sourceUrl ?? null;
   const amenities = data?.amenities;
+  const documents = data?.documents ?? [];
 
   // Initialize edit form when entering edit mode
   useEffect(() => {
