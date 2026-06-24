@@ -39,7 +39,7 @@ function json(body: unknown, status = 200) {
 }
 
 async function webtivLogin(agency: string, username: string, password: string) {
-  const res = await fetch(LOGIN_URL, {
+  const res = await fetch(proxied(LOGIN_URL), {
     method: "POST",
     headers: { "Content-Type": "application/json", Accept: "application/json" },
     body: JSON.stringify({
