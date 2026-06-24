@@ -64,7 +64,7 @@ function strOrUndef(v: unknown): string | undefined {
 
 async function fetchStream(guid: string): Promise<any[]> {
   try {
-    const res = await fetch(`${STREAM_BASE}?guid=${encodeURIComponent(guid)}`, {
+    const res = await fetch(proxied(`${STREAM_BASE}?guid=${encodeURIComponent(guid)}`), {
       headers: { "Accept": "application/json", "User-Agent": "Realtyz-Webtiv-Sync/1.0" },
     });
     if (!res.ok) return [];
