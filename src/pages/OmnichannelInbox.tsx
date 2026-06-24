@@ -335,9 +335,17 @@ const OmnichannelInbox = () => {
           return [...liveDemoVoters, ...real.filter(v => !demoIds.has(v.id))];
         })()
       : (dbVoters ?? []);
+    // INBOX MUST SHOW CONVERSATIONS ONLY: hide every contact that has zero
+    // exchanged messages. We keep a row only when there is a corresponding
+    // last-message entry (i.e. `messages` contains a row for this lead).
+    const msgIds = new Set<string>((dbLastMessages ? Array.from((dbLastMessages as Map<string, any>).keys()) : []));
+    const conversational = (base as any[]).filter((v: any) => {
+      if (isDemoMode && String(v?.id ?? '').startsWith('demo-lead-')) return true;
+      return v?.id && msgIds.has(v.id);
+    });
     // Append phone-anchored synthetic voters for orphan inbound messages so
     // the broker can still open the thread when the lead row is missing/hidden.
-    const knownPhones = new Set((base as any[]).map((v: any) => v.phone_number).filter(Boolean));
+    const knownPhones = new Set(conversational.map((v: any) => v.phone_number).filter(Boolean));
     const synthetic = (orphanThreads ?? [])
       .filter((t: any) => !knownPhones.has(t.phone))
       .map((t: any) => ({
@@ -350,8 +358,9 @@ const OmnichannelInbox = () => {
         status: 'contacted',
         _synthetic: true,
       }));
-    return [...synthetic, ...(base as any[])];
-  }, [isDemoMode, dbVoters, demoVoters, liveDemoVoters, orphanThreads]);
+    return [...synthetic, ...conversational];
+  }, [isDemoMode, dbVoters, demoVoters, liveDemoVoters, orphanThreads, dbLastMessages]);
+
 
   const lastMessages = useMemo(() => {
     const base = new Map(dbLastMessages ?? new Map());
