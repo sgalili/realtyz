@@ -135,7 +135,7 @@ async function getJson(url: string) {
   try {
     const ctl = new AbortController();
     const t = setTimeout(() => ctl.abort(), 20000);
-    const r = await fetch(url, {
+    const r = await fetch(proxied(url), {
       headers: { Accept: "application/json", "User-Agent": "Realtyz/1.0" },
       signal: ctl.signal,
     });
