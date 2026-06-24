@@ -775,14 +775,6 @@ const OmnichannelInbox = () => {
                       setAiAutopilot(v);
                       if (v) setManualTakeoverWarning(false);
                     }} />
-                    <button
-                      type="button"
-                      onClick={() => setAiAutopilot(false)}
-                      className="inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-whatsapp-header text-whatsapp-header-foreground transition-colors hover:bg-whatsapp-header/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      aria-label="כיבוי טייס אוטומטי"
-                    >
-                      <Bot className="h-4 w-4" />
-                    </button>
                     <span className="text-xs font-medium">טייס אוטומטי פעיל - ה-AI עונה באופן אוטומטי</span>
                   </div>
                 ) : (
