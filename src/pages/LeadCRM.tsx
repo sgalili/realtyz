@@ -1521,15 +1521,13 @@ const LeadCRM = () => {
               </TableBody>
             </Table>
           </div>
-          {/* Record count */}
-          <div className="px-4 py-2 text-xs text-muted-foreground border-t flex items-center justify-between">
-              <span>מוצגים {leads.length} מתוך {totalCount.toLocaleString()} מתעניינים</span>
-              {hasNextPage && (
-                <Button variant="ghost" size="sm" className="text-xs h-6" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
-                  טען עוד
-                </Button>
-              )}
-          </div>
+          {hasNextPage && (
+            <div className="px-4 py-2 border-t flex justify-center">
+              <Button variant="ghost" size="sm" className="text-xs h-6" onClick={() => fetchNextPage()} disabled={isFetchingNextPage}>
+                טען עוד
+              </Button>
+            </div>
+          )}
         </CardContent>
       </Card>
 
