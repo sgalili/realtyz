@@ -134,6 +134,7 @@ function mapRecord(rec: Record<string, any>, source: "buyers" | "sellers", idx: 
     preferences: {
       source: "webtiv_stream",
       stream: source,
+      lead_kind: source === "sellers" ? "seller" : "buyer",
       neighborhood: strOrNull(rec.shcuna ?? rec.shcuna1),
       property_type: strOrNull(rec.objectresidence),
       rooms: strOrNull(rec.room),
@@ -236,7 +237,7 @@ Deno.serve(async (req) => {
       if (existing) { skipped++; continue; }
 
       const streamSource = (p.preferences as any)?.stream as string | undefined;
-      const dealType = streamSource === "sellers" ? "sell" : "buy";
+      const dealType = streamSource === "sellers" ? "sell" : "sale";
       const { error: insErr } = await admin.from("leads").insert({
         phone_number: phone,
         full_name: p.full_name,
