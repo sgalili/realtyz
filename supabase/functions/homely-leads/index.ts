@@ -125,28 +125,43 @@ async function fetchStream(guid: string, label: string): Promise<any[]> {
   }
 }
 
-const ALLOWED_AGENT = "אודי ויטמן";
-const ALLOWED_SIVUG = new Set(["משרד", "בלעדי"]);
+const ALLOWED_AGENT_SUBSTR = "אודי ויטמן";
+const ALLOWED_SIVUG_SUBSTRS = ["משרד", "בלעדי"];
 
 function normalizeHe(v: unknown): string {
-  return String(v ?? "").replace(/[\s\u200f\u200e"׳״']/g, "").trim();
+  return String(v ?? "")
+    .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
 }
 
-// Pick agent name from any of the common Webtiv variants.
+// Pick agent name from any of the common Webtiv variants (broadened to mirror
+// homely-fetch-property/pickAgentName so contact streams resolve the same way).
 function pickAgent(rec: Record<string, any>): string {
-  return String(
-    rec.agent ?? rec.Agent ?? rec.shiuh ?? rec.agentName ?? rec["סוכן"] ?? ""
-  ).trim();
+  const candidates = [
+    rec.agent, rec.Agent, rec.agentName, rec.AgentName,
+    rec.BrokerName, rec.brokerName, rec.Broker, rec.broker,
+    rec.User, rec.user, rec.WorkerName, rec.workerName, rec.send_by,
+    rec.shiuh, rec["סוכן"],
+  ];
+  for (const c of candidates) {
+    const s = normalizeHe(c);
+    if (s) return s;
+  }
+  return "";
 }
 
 // Pick "שיוך" — broker affiliation. Webtiv variants: sivug / shiuh / shiyuh / shiyukh.
 function pickSivug(rec: Record<string, any>): string {
   const candidates = [
+    rec.exclusive, rec.Exclusive,
+    rec.StatusName, rec.statusName, rec.status, rec.Status,
+    rec.OfficeAllocation, rec.officeAllocation, rec.allocation, rec.Allocation,
     rec.sivug, rec.Sivug, rec.shiuh, rec.shiyuh, rec.shiyukh, rec.shiuch,
     rec.belongTo, rec.belong, rec["שיוך"],
   ];
   for (const c of candidates) {
-    const s = String(c ?? "").trim();
+    const s = normalizeHe(c);
     if (s) return s;
   }
   return "";
@@ -201,13 +216,16 @@ function pickDocs(rec: Record<string, any>): string[] {
   return Array.from(new Set(out));
 }
 
-// Apply the strict office filter: keep only records that belong to Udi's office.
+// Apply the strict office filter using PERMISSIVE substring matching — the
+// raw Webtiv values are concatenated strings like "בטיפול,משרד" or
+// "בלעדי,משרד", so equality checks miss everything.
 function passesFilter(rec: Record<string, any>, source: "buyers" | "sellers"): boolean {
   if (source === "sellers") {
-    return ALLOWED_SIVUG.has(normalizeHe(pickSivug(rec)));
+    const aff = pickSivug(rec);
+    return ALLOWED_SIVUG_SUBSTRS.some((s) => aff.includes(s));
   }
-  // buyers (incl. renters): agent must be Udi Witman
-  return normalizeHe(pickAgent(rec)) === normalizeHe(ALLOWED_AGENT);
+  // buyers (incl. renter-seekers): agent name must include "אודי ויטמן"
+  return pickAgent(rec).includes(ALLOWED_AGENT_SUBSTR);
 }
 
 function mapRecord(rec: Record<string, any>, source: "buyers" | "sellers", idx: number): HomelyLead | null {
