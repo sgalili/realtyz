@@ -1630,6 +1630,33 @@ const LeadCRM = () => {
               });
             });
 
+            // Dedupe: drop events whose normalized content+direction matches another
+            // event within a 30s window (covers messages mirrored into chat_history).
+            const norm = (s: string) => (s || '').replace(/\s+/g, ' ').trim().slice(0, 60).toLowerCase();
+            const sideOf = (t: TimelineEvent['type']) =>
+              t === 'message_out' || t === 'chat_ai' ? 'out' :
+              t === 'message_in' || t === 'chat_user' ? 'in' : 'other';
+            const seen: { key: string; ts: number; preferMsg: boolean }[] = [];
+            const deduped: TimelineEvent[] = [];
+            for (const e of events) {
+              const ts = e.date ? new Date(e.date).getTime() : 0;
+              const key = `${sideOf(e.type)}::${norm(e.detail)}`;
+              const isMsg = e.type === 'message_in' || e.type === 'message_out';
+              const dup = seen.find(s => s.key === key && Math.abs(s.ts - ts) < 30000);
+              if (dup) {
+                // prefer the messages-table row over the chat_history mirror
+                if (isMsg && !dup.preferMsg) {
+                  const idx = deduped.findIndex(x => `${sideOf(x.type)}::${norm(x.detail)}` === key);
+                  if (idx >= 0) deduped[idx] = e;
+                  dup.preferMsg = true;
+                }
+                continue;
+              }
+              seen.push({ key, ts, preferMsg: isMsg });
+              deduped.push(e);
+            }
+            events.length = 0;
+            events.push(...deduped);
             events.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
 
             const getEventIcon = (type: TimelineEvent['type']) => {
@@ -1862,40 +1889,8 @@ const LeadCRM = () => {
                   <LeadEnrichmentPanel lead={selectedVoter} hideEnrichmentButton />
 
 
-                  <Separator />
 
-                  {/* Property Intent Score + Tours/Interactions side by side */}
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="text-center space-y-2">
-                      <h3 className="text-sm font-semibold flex items-center justify-center gap-1.5">
-                        <Heart className="h-3.5 w-3.5 text-destructive" /> מדד רצינות לקוח
-                      </h3>
-                      <div className="relative w-20 h-20 mx-auto">
-                        <svg className="w-full h-full -rotate-90" viewBox="0 0 100 100">
-                          <circle cx="50" cy="50" r="38" fill="none" stroke="hsl(var(--muted))" strokeWidth="7" />
-                          <circle cx="50" cy="50" r="38" fill="none" stroke="currentColor"
-                            className={healthColor} strokeWidth="7"
-                            strokeDasharray={2 * Math.PI * 38}
-                            strokeDashoffset={2 * Math.PI * 38 - (healthScore / 100) * 2 * Math.PI * 38}
-                            strokeLinecap="round" style={{ transition: 'all 0.7s' }} />
-                        </svg>
-                        <div className="absolute inset-0 flex flex-col items-center justify-center">
-                          <span className={`text-xl font-bold ${healthColor}`}>{healthScore}</span>
-                        </div>
-                      </div>
-                      <p className="text-[10px] text-muted-foreground">{userReplies} תגובות מתוך {totalMessages} הודעות</p>
-                    </div>
 
-                    <div className="text-center space-y-2">
-                      <h3 className="text-sm font-semibold">אינטראקציות וסיורים</h3>
-                      <CircularScore score={selectedVoter.engagement_score ?? 0} />
-                      <p className="text-[10px] text-muted-foreground">
-                        {selectedVoter.last_interaction_at ? format(new Date(selectedVoter.last_interaction_at), 'dd/MM/yyyy') : 'אף פעם'}
-                      </p>
-                    </div>
-                  </div>
-
-                  <Separator />
 
                   {/* City Map Card */}
                   {selectedVoter.city && (
@@ -1918,12 +1913,10 @@ const LeadCRM = () => {
                           </div>
                         </div>
                       </div>
-                      <Separator />
                     </>
                   )}
 
 
-                  <Separator />
 
                   {/* Imported file columns — every column from the original
                       upload, including the ones we don't have a dedicated field
@@ -1952,7 +1945,7 @@ const LeadCRM = () => {
                     );
                   })()}
 
-                  <Separator />
+                  
 
 
                   {/* Full History Timeline */}
