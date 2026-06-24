@@ -65,11 +65,20 @@ async function webtivLogin(agency: string, username: string, password: string) {
     }),
   });
   const text = await res.text();
+  try {
+    console.log(`[HOMELY-AUTH-RAW] status=${res.status} body:`, text.substring(0, 1000));
+  } catch (e) {
+    console.warn("[HOMELY-AUTH-RAW] log failed:", (e as Error).message);
+  }
   let data: any = null;
   try { data = JSON.parse(text); } catch { /* */ }
+  if (data && typeof data === "object") {
+    try { console.log("[HOMELY-AUTH-KEYS]:", Object.keys(data)); } catch { /* */ }
+  }
   if (!res.ok || !data || data.db === 0 || data.db === "0") {
     return { ok: false as const, status: res.status, note: text.slice(0, 200) };
   }
+  console.log(`[HOMELY-AUTH-OK] db=${data.db ?? data.Db} hasToken=${Boolean(data.token ?? data.Token ?? data.accessToken)}`);
   return { ok: true as const, session: data };
 }
 
@@ -122,12 +131,24 @@ async function fetchWebtivLeads(session: any): Promise<HomelyLead[]> {
         init = { method: "GET", headers };
       }
       const r = await fetch(url, init);
+      const rawText = await r.text();
+      try {
+        console.log(`[HOMELY-SWEEP-RAW] Path: ${path} (${method}) page=${page} | Status: ${r.status}:`, rawText.substring(0, 500));
+      } catch { /* */ }
       if (!r.ok) return null;
-      const payload = await r.json().catch(() => null);
+      let payload: any = null;
+      try { payload = JSON.parse(rawText); } catch {
+        console.warn(`[HOMELY-SWEEP] ${path} (${method}) returned non-JSON`);
+        return null;
+      }
       if (!payload) return null;
+      if (payload && typeof payload === "object" && !Array.isArray(payload)) {
+        try { console.log(`[HOMELY-KEYS] ${path} (${method}):`, Object.keys(payload)); } catch { /* */ }
+      }
       const items: any[] = Array.isArray(payload)
         ? payload
-        : payload?.results || payload?.data || payload?.leads || payload?.Items || payload?.items || payload?.lidim || payload?.Lidim || payload?.records || payload?.Records || [];
+        : payload?.results || payload?.data || payload?.leads || payload?.Items || payload?.items || payload?.lidim || payload?.Lidim || payload?.records || payload?.Records || payload?.result?.leads || payload?.result?.data || payload?.result?.items || [];
+      console.log(`[HOMELY-SWEEP-PARSED] ${path} (${method}) page=${page} -> ${items.length} items (payloadType=${Array.isArray(payload) ? "array" : typeof payload})`);
       return items;
     } catch (e) {
       console.warn(`[homely-leads] ${path} (${method}) page=${page} failed:`, (e as Error).message);
