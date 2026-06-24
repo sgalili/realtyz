@@ -23,6 +23,16 @@ const HOMELY_URL = "https://webtivapi.webtiv.co.il/api/WebtivLid/WebtivLidPost";
 const STREAM_BASE = "https://webtivapi.webtiv.co.il/AutomaionJson/outJson.ashx";
 const PROVIDER = "RealtyZ";
 
+// Optional proxy gateway (Cloudflare Worker / similar) to bypass edge egress
+// blocks against the Webtiv firewall. When set, every outbound Webtiv URL is
+// rewritten to `${PROXY}?url=<encoded original url>`.
+const WEBTIV_PROXY_URL = Deno.env.get("WEBTIV_PROXY_URL")?.replace(/\/+$/, "") || "";
+function proxied(targetUrl: string): string {
+  if (!WEBTIV_PROXY_URL) return targetUrl;
+  const sep = WEBTIV_PROXY_URL.includes("?") ? "&" : "?";
+  return `${WEBTIV_PROXY_URL}${sep}url=${encodeURIComponent(targetUrl)}`;
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
