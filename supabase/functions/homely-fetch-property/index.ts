@@ -236,13 +236,36 @@ function buildOfficeNotes(it: any): string {
 // ---- Office filter (mirror of homely-leads ingestion rules) ----
 const ALLOWED_AGENT_SUBSTR = "אודי ויטמן";
 const ALLOWED_SIVUG_SUBSTRS = ["משרד", "בלעדי"];
+
+function normalizeStreamText(v: unknown): string {
+  return String(v ?? "")
+    .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function firstStreamText(it: any, keys: string[]): string {
+  for (const k of keys) {
+    const s = normalizeStreamText(it?.[k]);
+    if (s) return s;
+  }
+  return "";
+}
+
 function pickAgentName(it: any): string {
-  return String(it?.agent ?? it?.Agent ?? it?.agentName ?? it?.shiuh ?? it?.["סוכן"] ?? "").trim();
+  return firstStreamText(it, [
+    "agent", "Agent", "agentName", "AgentName", "BrokerName", "brokerName", "Broker", "broker",
+    "User", "user", "WorkerName", "workerName", "send_by", "shiuh", "סוכן",
+  ]);
 }
 function pickSivugName(it: any): string {
-  const cands = [it?.sivug, it?.Sivug, it?.shiuh, it?.shiyuh, it?.shiyukh, it?.shiuch, it?.belongTo, it?.belong, it?.["שיוך"]];
-  for (const c of cands) { const s = String(c ?? "").trim(); if (s) return s; }
-  return "";
+  return firstStreamText(it, [
+    // Webtiv seller stream stores office allocation/exclusivity here, e.g. "בטיפול,משרד" / "בלעדי,משרד".
+    "exclusive", "Exclusive",
+    "StatusName", "statusName", "status", "Status",
+    "OfficeAllocation", "officeAllocation", "allocation", "Allocation",
+    "sivug", "Sivug", "shiuh", "shiyuh", "shiyukh", "shiuch", "belongTo", "belong", "שיוך",
+  ]);
 }
 function passesOfficeFilter(it: any, source: "sellers" | "buyers"): boolean {
   if (source === "sellers") {
@@ -251,6 +274,18 @@ function passesOfficeFilter(it: any, source: "sellers" | "buyers"): boolean {
   }
   const agent = pickAgentName(it);
   return agent.includes(ALLOWED_AGENT_SUBSTR);
+}
+
+function streamFieldAudit(items: any[], limit = 5) {
+  return items.slice(0, limit).map((it, index) => ({
+    index: index + 1,
+    keys: it && typeof it === "object" ? Object.keys(it) : [],
+    agent: pickAgentName(it),
+    officeAllocation: pickSivugName(it),
+    rawAgent: it?.agent ?? it?.Agent ?? it?.AgentName ?? it?.BrokerName ?? null,
+    rawExclusive: it?.exclusive ?? it?.Exclusive ?? null,
+    rawStatusName: it?.StatusName ?? it?.statusName ?? null,
+  }));
 }
 
 
