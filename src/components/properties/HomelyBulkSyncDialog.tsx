@@ -126,7 +126,7 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
       setPickedProps(new Set());
       setPickedContacts(new Set());
       setFiltersOpen(false);
-      setFCity(''); setFRooms(''); setFType('');
+      setFCities(new Set()); setFRooms(''); setFType(''); setFAgent('');
     }
   }, [open]);
 
@@ -141,17 +141,24 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
     return Array.from(new Set(src.filter(Boolean))).sort();
   }, [tab, properties, contacts]);
   const typeOptions = useMemo(() => Array.from(new Set(properties.map(p => p.property_type || '').filter(Boolean))).sort(), [properties]);
+  const agentOptions = useMemo(() => {
+    const src = tab === 'properties' ? properties.map(p => p.agent || '') : contacts.map(c => c.agent || '');
+    return Array.from(new Set(src.filter(Boolean))).sort();
+  }, [tab, properties, contacts]);
 
   const filteredProps = useMemo(() => properties.filter(p => {
-    if (fCity && p.city !== fCity) return false;
+    if (fCities.size && !fCities.has(p.city)) return false;
     if (fType && (p.property_type || '') !== fType) return false;
     if (fRooms && Number(p.rooms) !== Number(fRooms)) return false;
+    if (fAgent && (p.agent || '') !== fAgent) return false;
     return true;
-  }), [properties, fCity, fType, fRooms]);
+  }), [properties, fCities, fType, fRooms, fAgent]);
   const filteredContacts = useMemo(() => contacts.filter(c => {
-    if (fCity && c.city !== fCity) return false;
+    if (fCities.size && !fCities.has(c.city)) return false;
+    if (fAgent && (c.agent || '') !== fAgent) return false;
     return true;
-  }), [contacts, fCity]);
+  }), [contacts, fCities, fAgent]);
+
 
   async function handleImport() {
     setImporting(true);
