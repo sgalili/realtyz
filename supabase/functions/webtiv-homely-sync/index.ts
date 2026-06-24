@@ -118,7 +118,7 @@ function mapToHomelyPayload(
 
 async function pushToHomely(payload: Record<string, unknown>) {
   try {
-    const r = await fetch(HOMELY_URL, {
+    const r = await fetch(proxied(HOMELY_URL), {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
