@@ -234,11 +234,8 @@ function buildOfficeNotes(it: any): string {
   return parts.join("\n");
 }
 // ---- Office filter (mirror of homely-leads ingestion rules) ----
-const ALLOWED_AGENT = "אודי ויטמן";
-const ALLOWED_SIVUG = new Set(["משרד", "בלעדי"]);
-function normalizeHe(v: unknown): string {
-  return String(v ?? "").replace(/[\s\u200f\u200e"׳״']/g, "").trim();
-}
+const ALLOWED_AGENT_SUBSTR = "אודי ויטמן";
+const ALLOWED_SIVUG_SUBSTRS = ["משרד", "בלעדי"];
 function pickAgentName(it: any): string {
   return String(it?.agent ?? it?.Agent ?? it?.agentName ?? it?.shiuh ?? it?.["סוכן"] ?? "").trim();
 }
@@ -248,9 +245,14 @@ function pickSivugName(it: any): string {
   return "";
 }
 function passesOfficeFilter(it: any, source: "sellers" | "buyers"): boolean {
-  if (source === "sellers") return ALLOWED_SIVUG.has(normalizeHe(pickSivugName(it)));
-  return normalizeHe(pickAgentName(it)) === normalizeHe(ALLOWED_AGENT);
+  if (source === "sellers") {
+    const aff = pickSivugName(it);
+    return ALLOWED_SIVUG_SUBSTRS.some((s) => aff.includes(s));
+  }
+  const agent = pickAgentName(it);
+  return agent.includes(ALLOWED_AGENT_SUBSTR);
 }
+
 
 function mapStreamProperty(it: any, idx: number) {
   const serial = String(it?.serial ?? it?.Serial ?? `row-${idx + 1}`);
