@@ -710,8 +710,8 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const queryClient = useQueryClient();
-  type SortKey = 'created_at' | 'listing_type' | 'title' | 'price' | 'city' | 'address' | 'rooms' | 'floor' | 'size_sqm' | 'property_type';
-  const { sort, toggle } = useTableSort<SortKey>({ key: 'created_at', dir: 'desc' });
+  type SortKey = 'created_at' | 'updated_at' | 'listing_type' | 'title' | 'price' | 'city' | 'address' | 'rooms' | 'floor' | 'size_sqm' | 'property_type';
+  const { sort, toggle } = useTableSort<SortKey>({ key: 'updated_at', dir: 'desc' });
   const sorted = useMemo(() => sortRows(properties, sort, (row, key) => {
     switch (key) {
       case 'created_at': return row.created_at ? new Date(row.created_at) : null;
