@@ -352,6 +352,46 @@ function streamFieldAudit(items: any[], limit = 5) {
 }
 
 
+function pickSourceOrigin(it: any): string {
+  const raw = deepPickText(it, [
+    "mekor", "source", "sourcename", "source_name", "origin", "provider",
+    "publisher", "publishedfrom", "fromsite", "site", "מקור",
+  ]).toLowerCase();
+  if (!raw) return "";
+  if (/yad ?2|יד ?2/.test(raw)) return "yad2";
+  if (/madlan|מדלן/.test(raw)) return "madlan";
+  if (/fomo|פומו/.test(raw)) return "fomo";
+  if (/facebook|פייסבוק/.test(raw)) return "facebook";
+  if (/winwin|וינווין/.test(raw)) return "winwin";
+  if (/homeless|הומלס/.test(raw)) return "homeless";
+  return raw.split(/[\s,;\/]+/)[0] || raw;
+}
+function pickSourceUrl(it: any): string {
+  const u = deepPickText(it, [
+    "url", "link", "mekorurl", "sourceurl", "source_url", "externalurl",
+    "external_url", "ad_url", "adurl", "linktosource", "קישור",
+  ]);
+  return /^https?:\/\//i.test(u) ? u : "";
+}
+function pickUpdatedAt(it: any): string {
+  const raw = deepPickText(it, [
+    "update_date", "updatedate", "updated_at", "updatedat", "update",
+    "lastupdate", "last_update", "modifydate", "modify_date", "modified",
+    "date_modified", "תאריך_עדכון",
+  ]);
+  if (!raw) return "";
+  // Webtiv often returns "DD/MM/YYYY" or "DD/MM/YYYY HH:mm"
+  const m = raw.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (m) {
+    const [, d, mo, y, h = "0", mi = "0", s = "0"] = m;
+    const year = y.length === 2 ? Number(y) + 2000 : Number(y);
+    const iso = new Date(Date.UTC(year, Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s))).toISOString();
+    return iso;
+  }
+  const d = new Date(raw);
+  return Number.isFinite(d.getTime()) ? d.toISOString() : "";
+}
+
 function mapStreamProperty(it: any, idx: number) {
   const serial = String(it?.serial ?? it?.Serial ?? `row-${idx + 1}`);
   const street = [it?.street, it?.number, it?.flatnumber].filter((v) => v && String(v).trim()).join(" ").trim();
@@ -360,10 +400,16 @@ function mapStreamProperty(it: any, idx: number) {
   const office_notes = buildOfficeNotes(it);
   const notes = [owner ? `בעלים: ${owner}` : "", office_notes].filter(Boolean).join("\n");
   const media = collectMedia(it);
+  const sourceOrigin = pickSourceOrigin(it);
+  const sourceUrl = pickSourceUrl(it);
+  const sourceUpdatedAt = pickUpdatedAt(it);
+  const balcony = deepPickText(it, ["balcony", "mirpeset", "balconies", "מרפסת"]);
+  const elevator = deepPickText(it, ["elevator", "lift", "maalit", "מעלית"]);
+  const description = deepPickText(it, ["description", "tiur", "remarks", "comments1", "comments2", "more", "תיאור", "הערות"]);
   return {
     homely_id: serial,
     title: title || `נכס ${serial}`,
-    description: notes,
+    description: description || notes,
     office_notes,
 
     price: Number(it?.priceshekel ?? 0) || 0,
@@ -379,6 +425,11 @@ function mapStreamProperty(it: any, idx: number) {
     transaction_type: (normalizeTxType(it) === "rent" ? "rent" : "sale") as "sale" | "rent",
     agent: pickAgentName(it),
     sivug: pickSivugName(it),
+    source_origin: sourceOrigin,
+    source_url: sourceUrl,
+    source_updated_at: sourceUpdatedAt,
+    balcony,
+    elevator,
     raw: it,
   };
 }
