@@ -19,6 +19,7 @@ import {
 import VoterAvatar from '@/components/VoterAvatar';
 import {
   Sparkles,
+  Send,
   Clock,
   UserPlus,
   Megaphone,
@@ -26,6 +27,9 @@ import {
   CheckCircle2,
   Database,
   PenLine,
+  Pencil,
+  Check,
+  ShieldCheck,
   Home,
   SlidersHorizontal,
   Search,
