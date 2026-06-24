@@ -227,7 +227,7 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
         </div>
       </div>
 
-      <Separator />
+
 
       {/* Social Profiles — collapsed by default */}
       <div className="rounded-lg border border-slate-200 bg-slate-50/60">
