@@ -576,10 +576,21 @@ export default function DealRoom() {
                     </div>
                   )}
 
-                  {items.map((p) => (
+                  {items.map((p) => {
+                    const stageLabel = stageColumns.find((c) => c.key === bucketFor(p.lead_stage))?.title ?? 'פעיל';
+                    return (
                     <Card
                       key={p.id}
-                      className="p-3 hover:shadow-md transition-shadow border bg-background"
+                      role="button"
+                      tabIndex={0}
+                      onClick={() => navigate(`/lead-crm/${p.id}`)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          navigate(`/lead-crm/${p.id}`);
+                        }
+                      }}
+                      className="p-3 cursor-pointer hover:shadow-md hover:border-primary/40 transition-all border bg-background"
                     >
                       <div className="flex items-start gap-3">
                         <VoterAvatar
@@ -587,132 +598,37 @@ export default function DealRoom() {
                           profilePictureUrl={p.profile_picture_url}
                           className="h-10 w-10 shrink-0"
                         />
-                        <div className="min-w-0 flex-1">
-                          <div className="flex items-start justify-between gap-2">
+                        <div className="min-w-0 flex-1 space-y-1">
+                          <div className="flex items-center justify-between gap-2">
                             <div className="font-medium text-sm truncate min-w-0 flex-1">
                               {p.full_name || 'מתעניין ללא שם'}
                             </div>
-                            <PriorityScoreBadge
-                              score={p.priority_score ?? 0}
-                              components={p.priority_score_components}
-                              previousScore={p.previous_priority_score ?? undefined}
-                              className="shrink-0"
-                            />
+                            <Badge variant="secondary" className="text-[10px] font-normal shrink-0">
+                              {stageLabel}
+                            </Badge>
                           </div>
-                          <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
+                          <div className="flex items-center gap-1 text-xs text-muted-foreground">
                             <Clock className="h-3 w-3" />
                             <span className="truncate">{timeAgo(p.last_interaction_at)}</span>
                           </div>
                           {p.city && (
-                            <div className="text-xs text-muted-foreground/80 mt-0.5 truncate">
-                              {p.city}
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                              <MapPin className="h-3 w-3" />
+                              <span className="truncate">{p.city}</span>
                             </div>
                           )}
-                          {p.interaction_outcome && (
-                            <div className="mt-1.5">
-                              <OutcomeBadge value={p.interaction_outcome} className="text-[10px] py-0" />
+                          {p.phone_number && (
+                            <div className="flex items-center gap-1 text-xs text-muted-foreground" dir="ltr">
+                              <Phone className="h-3 w-3" />
+                              <span className="truncate">{p.phone_number}</span>
                             </div>
                           )}
                         </div>
                       </div>
-
-                      <div className={`grid ${settings.enable_broker_referrals ? 'grid-cols-4' : 'grid-cols-3'} gap-1 mt-3`}>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-1 h-11 sm:h-9 text-xs px-1 sm:px-2 min-w-0"
-                          onClick={() => openSmartReply(p)}
-                        >
-                          <Sparkles className="h-3.5 w-3.5 text-primary shrink-0" />
-                          <span className="truncate">תשובה</span>
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-1 h-11 sm:h-9 text-xs px-1 sm:px-2 min-w-0"
-                          onClick={() => setMatchmakerLead(p)}
-                        >
-                          <Home className="h-3.5 w-3.5 text-success shrink-0" />
-                          <span className="truncate">מצא</span>
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="gap-1 h-11 sm:h-9 text-xs px-1 sm:px-2 min-w-0"
-                          onClick={() => {
-                            setOutreachLeadId(p.id);
-                            setOutreachOpen(true);
-                          }}
-                        >
-                          <Megaphone className="h-3.5 w-3.5 text-warning shrink-0" />
-                          <span className="truncate">פנייה</span>
-                        </Button>
-                        {settings.enable_broker_referrals && (
-                          <ReferralButton
-                            subject={{
-                              kind: 'lead',
-                              id: p.id,
-                              label: `${p.full_name ?? 'מתעניין'}${p.city ? ' · ' + p.city : ''}`,
-                            }}
-                            className="h-11 sm:h-9 text-xs px-1 sm:px-2 min-w-0 gap-1 [&_svg]:h-3.5 [&_svg]:w-3.5 [&_svg]:shrink-0"
-                          />
-                        )}
-                      </div>
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="text-[11px] text-muted-foreground shrink-0">תוצאה</span>
-                        <OutcomePicker
-                          leadId={p.id}
-                          value={p.interaction_outcome ?? null}
-                        />
-                      </div>
-                      {/* Commission tracker — admin/broker monetization signal */}
-                      <div className="mt-2">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-8 text-xs gap-1 px-2 text-muted-foreground hover:text-primary"
-                          onClick={() => setCommissionLead(p)}
-                        >
-                          <Wallet className="h-3.5 w-3.5" />
-                          {p.commission_amount != null && p.commission_amount > 0
-                            ? `עמלה: ₪${Number(p.commission_amount).toLocaleString('he-IL')}`
-                            : 'הוסף עמלה צפויה'}
-                        </Button>
-                      </div>
-                      {settings.enable_client_portal && ['negotiation', 'awaiting_signature', 'closed'].includes(bucketFor(p.lead_stage)) && (
-                        <div className="mt-2">
-                          <ClientPortalShareButton
-                            leadId={p.id}
-                            leadName={p.full_name}
-                            leadPhone={p.phone_number}
-                            className="w-full h-9 text-xs"
-                          />
-                        </div>
-                      )}
-                      {canAssignLeads && (
-                        <div className="mt-2 flex items-center gap-2">
-                          <span className="text-[11px] text-muted-foreground shrink-0">הקצה ל</span>
-                          <Select
-                            value={p.assigned_to ?? '__unassigned__'}
-                            onValueChange={(v) =>
-                              assignLead(p.id, v === '__unassigned__' ? null : v)
-                            }
-                          >
-                            <SelectTrigger className="h-7 text-[11px]">
-                              <SelectValue placeholder="לא מוקצה" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="__unassigned__">לא מוקצה</SelectItem>
-                              {teamMembers.map((m) => (
-                                <SelectItem key={m.user_id} value={m.user_id}>
-                                  {m.user_id.slice(0, 8)}… · {m.role.replace('_', ' ')}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      )}
                     </Card>
+                    );
+                  })}
+
                   ))}
                 </div>
               </ScrollArea>
