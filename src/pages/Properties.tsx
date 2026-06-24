@@ -132,9 +132,10 @@ export default function Properties() {
   // Listen for hero-emitted add events (the '+' button lives in PageHero now).
   useEffect(() => {
     const handler = (e: Event) => {
-      const action = (e as CustomEvent<{ action: 'manual' | 'import' }>).detail?.action;
+      const action = (e as CustomEvent<{ action: 'manual' | 'import' | 'homely' }>).detail?.action;
       if (action === 'manual') setAddOpen(true);
       else if (action === 'import') setImportOpen(true);
+      else if (action === 'homely') setHomelyBulkOpen(true);
     };
     window.addEventListener('properties:add', handler);
     return () => window.removeEventListener('properties:add', handler);
