@@ -284,8 +284,9 @@ export default function Properties() {
       listing_type: (r.listing_type ?? 'sale') as ListingType,
       extras: (r.extras ?? {}) as Record<string, string>,
       created_at: (r as any).created_at ?? null,
+      updated_at: (r as any).updated_at ?? null,
     }));
-    return live as Array<HomelyProperty & { extras?: Record<string, string>; created_at?: string | null }>;
+    return live as Array<HomelyProperty & { extras?: Record<string, string>; created_at?: string | null; updated_at?: string | null }>;
   }, [liveResults, sourceTab]);
 
   const filtered = useMemo(() => {
