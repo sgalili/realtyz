@@ -154,13 +154,30 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
     return Array.from(new Set(src.filter(Boolean))).sort();
   }, [tab, properties, contacts]);
 
-  const filteredProps = useMemo(() => properties.filter(p => {
+  // Normalize transaction type client-side too (defensive: older payloads may
+  // not yet carry the server-stamped `transaction_type`).
+  const normalizeClientTx = (p: HomelyProperty): 'sale' | 'rent' => {
+    if (p.transaction_type === 'sale' || p.transaction_type === 'rent') return p.transaction_type;
+    const hay = `${p.property_type ?? ''} ${p.title ?? ''} ${p.description ?? ''}`;
+    if (/להשכרה|השכרה|שכירות|\brent\b/i.test(hay)) return 'rent';
+    if (p.price && p.price > 0 && p.price < 50_000) return 'rent';
+    return 'sale';
+  };
+  const propertiesWithTx = useMemo(
+    () => properties.map((p) => ({ ...p, transaction_type: normalizeClientTx(p) as 'sale' | 'rent' })),
+    [properties],
+  );
+  const saleCount = useMemo(() => propertiesWithTx.filter((p) => p.transaction_type === 'sale').length, [propertiesWithTx]);
+  const rentCount = useMemo(() => propertiesWithTx.filter((p) => p.transaction_type === 'rent').length, [propertiesWithTx]);
+
+  const filteredProps = useMemo(() => propertiesWithTx.filter(p => {
+    if (fDeal !== 'all' && p.transaction_type !== fDeal) return false;
     if (fCities.size && !fCities.has(p.city)) return false;
     if (fType && (p.property_type || '') !== fType) return false;
     if (fRooms && Number(p.rooms) !== Number(fRooms)) return false;
     if (fAgent && (p.agent || '') !== fAgent) return false;
     return true;
-  }), [properties, fCities, fType, fRooms, fAgent]);
+  }), [propertiesWithTx, fDeal, fCities, fType, fRooms, fAgent]);
   const filteredContacts = useMemo(() => contacts.filter(c => {
     if (fCities.size && !fCities.has(c.city)) return false;
     if (fAgent && (c.agent || '') !== fAgent) return false;
