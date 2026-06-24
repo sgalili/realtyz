@@ -157,8 +157,11 @@ function timeAgo(iso: string | null): string {
 
 export default function DealRoom() {
   const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   const [activeLead, setActiveLead] = useState<Lead | null>(null);
+  const [searchText, setSearchText] = useState('');
+  const [filtersOpen, setFiltersOpen] = useState(false);
   const [outreachLeadId, setOutreachLeadId] = useState<string | null>(null);
   const [outreachOpen, setOutreachOpen] = useState(false);
   const [smartReply, setSmartReply] = useState<string>('');
