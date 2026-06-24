@@ -604,6 +604,26 @@ async function handleLeadInboxInbound(
     }
   }
 
+  // Content-signature dedup: drop identical inbound text from the same lead
+  // within a 5-second window (provider retries, double webhooks, etc.).
+  if (lead?.id && inboundText) {
+    try {
+      const since = new Date(Date.now() - 5000).toISOString();
+      const { data: recent } = await admin
+        .from("messages")
+        .select("id")
+        .eq("lead_id", lead.id)
+        .eq("direction", "inbound")
+        .eq("content", inboundText)
+        .gte("created_at", since)
+        .limit(1)
+        .maybeSingle();
+      if (recent?.id) return { ok: true, duplicate: true, lead_id: lead.id };
+    } catch (e) {
+      console.warn("content-dedup soft-fail:", e instanceof Error ? e.message : e);
+    }
+  }
+
   const now = new Date().toISOString();
   const metadata = {
     provider: "GreenAPI",
@@ -613,6 +633,7 @@ async function handleLeadInboxInbound(
     unresolved_lead: !lead?.id,
     listing_id: shortLink?.listing_id ?? null,
   };
+
 
   // ALWAYS persist the inbound message row, even if lead_id is null.
   // The inbox UI falls back to a phone-anchored synthetic thread for these.
