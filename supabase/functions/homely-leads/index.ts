@@ -1,19 +1,13 @@
 // Homely (Webtiv) Leads Importer — real data only.
 //
-// The Webtiv REST API (/api/WebtivLid/*, /api/Lid/*, /api/Leads/*, /api/Contacts/*)
-// does NOT exist on webtivapi.webtiv.co.il — every variant returns HTML 404.
-// Login at /api/login/LoginNewByAgent succeeds but returns NO token, only a
-// `db` id + agent metadata. The only live data channel on this host is the
-// AutomaionJson stream feed:
+// Pulls live JSON from the AutomaionJson stream feed:
 //   https://webtivapi.webtiv.co.il/AutomaionJson/outJson.ashx?guid=<GUID>
+// (Webtiv has no working REST endpoints — every /api/* variant returns HTML 404.)
 //
 // Each broker has two stream GUIDs stored in `webtiv_sync_state`
-// (buyers_guid / sellers_guid). This function:
-//   1. loads the broker's two GUIDs,
-//   2. fetches both streams,
-//   3. maps records → leads,
-//   4. dedups against existing leads by normalized phone,
-//   5. upserts new rows into `public.leads` assigned to the calling user.
+// (buyers_guid / sellers_guid). If the row is missing, we auto-seed the
+// public sample GUIDs the dashboard ships with so first-run actually returns
+// data; the broker can override these later in Settings.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -23,6 +17,8 @@ const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
 const STREAM_BASE = "https://webtivapi.webtiv.co.il/AutomaionJson/outJson.ashx";
+const DEFAULT_BUYERS_GUID = "b6bb7f44-571b-4551-8de9-e075b8a89128";
+const DEFAULT_SELLERS_GUID = "32dc79a4-88ba-49a4-816e-f1fc43024c2f";
 
 type HomelyLead = {
   external_id: string;
@@ -41,20 +37,40 @@ function json(body: unknown, status = 200) {
   });
 }
 
-function normalizePhone(raw: unknown): string {
-  const digits = String(raw ?? "").replace(/\D/g, "");
-  if (!digits) return "";
-  if (digits.startsWith("972")) return digits;
-  if (digits.startsWith("0")) return "972" + digits.slice(1);
-  return digits;
+// Strip every non-digit, then normalize to leading 0 if it looks Israeli (+972 / 972).
+function cleanPhone(raw: unknown): string {
+  let d = String(raw ?? "").replace(/\D/g, "");
+  if (!d) return "";
+  if (d.startsWith("972")) d = "0" + d.slice(3);
+  return d;
 }
 
-function firstPhone(rec: Record<string, unknown>): string {
-  for (const k of ["tel1", "tel2", "tel3", "tel4", "tel5", "phone", "Pelephone", "telephone"]) {
-    const v = normalizePhone(rec[k]);
-    if (v && v.length >= 11) return v;
+// Scan a wide list of common/localized key variants for the first usable phone.
+function pickPhone(rec: Record<string, any>): string {
+  const variants = [
+    rec.Phone1, rec.phone1, rec.tel1,
+    rec.Phone, rec.phone,
+    rec.Mobile, rec.mobile,
+    rec.Cellular, rec.cellular,
+    rec.tel2, rec.tel3, rec.tel4, rec.tel5,
+    rec.Pelephone, rec.telephone,
+    rec["טלפון"], rec["נייד"], rec["סלולרי"],
+  ];
+  for (const v of variants) {
+    const c = cleanPhone(v);
+    if (c && c.length >= 9) return c;
   }
   return "";
+}
+
+function pickName(rec: Record<string, any>): string {
+  const name = rec.Fullname || rec.fullname || rec.FullName
+    || rec.name || rec.Name || rec.ContactName
+    || rec["שם"] || rec["שם מלא"]
+    || [rec.name, rec.family].filter(Boolean).join(" ").trim()
+    || [rec.Name, rec.Family].filter(Boolean).join(" ").trim();
+  const s = String(name ?? "").trim();
+  return s || "לקוח הומלי";
 }
 
 function strOrNull(v: unknown): string | null {
@@ -63,45 +79,49 @@ function strOrNull(v: unknown): string | null {
   return s ? s : null;
 }
 
-async function fetchStream(guid: string): Promise<any[]> {
+async function fetchStream(guid: string, label: string): Promise<any[]> {
   try {
     const url = `${STREAM_BASE}?guid=${encodeURIComponent(guid)}`;
-    const r = await fetch(url, {
+    const res = await fetch(url, {
       headers: { Accept: "application/json", "User-Agent": "Realtyz-Homely/1.0" },
     });
-    const text = await r.text();
-    console.log(`[HOMELY-STREAM] guid=${guid.slice(0, 8)}… status=${r.status} bytes=${text.length} preview=${text.slice(0, 200)}`);
-    if (!r.ok) return [];
-    let payload: any = null;
-    try { payload = JSON.parse(text); } catch {
-      console.warn(`[HOMELY-STREAM] non-JSON for guid=${guid.slice(0, 8)}…`);
+    const status = res.status;
+    const raw = await res.clone().text();
+    console.log(`[STREAM-RAW-RESPONSE] ${label} status=${status} bytes=${raw.length} preview=${raw.substring(0, 600)}`);
+    if (!res.ok) {
+      console.error(`[STREAM-FETCH-ERROR] ${label} status=${status}`);
       return [];
     }
-    if (Array.isArray(payload)) return payload;
-    if (payload && typeof payload === "object") {
-      console.log(`[HOMELY-STREAM-KEYS] guid=${guid.slice(0, 8)}…`, Object.keys(payload));
-      const candidates = ["data", "rows", "result", "results", "items", "Items", "leads", "Leads", "records", "Records", "lidim", "Lidim", "list", "List"];
-      for (const k of candidates) {
-        if (Array.isArray((payload as any)[k])) return (payload as any)[k];
+
+    let parsed: any = null;
+    try { parsed = JSON.parse(raw); } catch (e) {
+      console.error(`[STREAM-PARSE-ERROR] ${label}:`, (e as Error).message);
+      return [];
+    }
+
+    if (Array.isArray(parsed)) return parsed;
+    if (parsed && typeof parsed === "object") {
+      console.log(`[STREAM-KEYS] ${label}:`, Object.keys(parsed));
+      const envelopes = ["Data", "data", "Root", "root", "rows", "Rows", "result", "Result", "results", "Results", "items", "Items", "leads", "Leads", "records", "Records", "lidim", "Lidim", "list", "List"];
+      for (const k of envelopes) {
+        if (Array.isArray((parsed as any)[k])) return (parsed as any)[k];
       }
     }
+    console.warn(`[STREAM-NO-ARRAY] ${label} — could not locate a records array`);
     return [];
   } catch (e) {
-    console.warn("[HOMELY-STREAM] fetch failed:", (e as Error).message);
+    console.error(`[STREAM-FETCH-CRASH] ${label}:`, (e as Error).message);
     return [];
   }
 }
 
 function mapRecord(rec: Record<string, any>, source: "buyers" | "sellers", idx: number): HomelyLead | null {
-  const phone = firstPhone(rec);
+  const phone = pickPhone(rec);
   const email = strOrNull(rec.email ?? rec.Email);
   if (!phone && !email) return null;
 
-  const name = strOrNull(rec.name ?? rec.Name ?? rec.shemMale) ?? "";
-  const family = strOrNull(rec.family ?? rec.Family ?? rec.lastName) ?? "";
-  const fullName = `${name} ${family}`.trim() || "—";
-
-  const city = strOrNull(rec.city ?? rec.city1 ?? rec.ir ?? rec.Ir);
+  const fullName = pickName(rec);
+  const city = strOrNull(rec.city ?? rec.City ?? rec.city1 ?? rec.ir ?? rec.Ir ?? rec["עיר"]);
   const tag = source === "sellers" ? "מוכר" : "קונה";
 
   return {
@@ -143,36 +163,52 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const dryRun = Boolean((body as any)?.dry_run);
 
-    // Load broker's stream GUIDs
-    const { data: state } = await admin
+    // 1) Validate GUID retrieval
+    let { data: state } = await admin
       .from("webtiv_sync_state")
       .select("buyers_guid, sellers_guid")
       .eq("user_id", user.id)
       .maybeSingle();
 
-    const buyersGuid = (state as any)?.buyers_guid as string | null;
-    const sellersGuid = (state as any)?.sellers_guid as string | null;
+    let buyerGuid = (state as any)?.buyers_guid as string | null;
+    let sellerGuid = (state as any)?.sellers_guid as string | null;
+    console.log("[STREAM-GUID-CHECK]:", { user_id: user.id, buyerGuid, sellerGuid });
 
-    if (!buyersGuid && !sellersGuid) {
+    // Auto-seed defaults if missing so first-run still ingests
+    if (!state) {
+      console.log("[STREAM-GUID-SEED]: inserting default GUIDs for", user.id);
+      await admin.from("webtiv_sync_state").insert({
+        user_id: user.id,
+        buyers_guid: DEFAULT_BUYERS_GUID,
+        sellers_guid: DEFAULT_SELLERS_GUID,
+        enabled: true,
+      });
+      buyerGuid = DEFAULT_BUYERS_GUID;
+      sellerGuid = DEFAULT_SELLERS_GUID;
+    } else if (!buyerGuid && !sellerGuid) {
+      console.warn("[STREAM-GUID-MISSING]: row exists but both GUIDs are null");
       return json({
         source: "homely",
         connected: false,
         imported: 0,
         leads: [],
-        note: "no_stream_guids — configure buyers_guid/sellers_guid in webtiv_sync_state",
+        note: "missing_guids",
+        error: "תצורת סנכרון Webtiv חסרה — אין GUID של קונים/מוכרים. עדכן בהגדרות.",
       });
     }
 
+    // 2) Fetch each stream and map
     const collected: HomelyLead[] = [];
     const seen = new Set<string>();
     const sources: Array<{ key: "buyers" | "sellers"; guid: string | null }> = [
-      { key: "buyers", guid: buyersGuid },
-      { key: "sellers", guid: sellersGuid },
+      { key: "buyers", guid: buyerGuid },
+      { key: "sellers", guid: sellerGuid },
     ];
+
     for (const s of sources) {
       if (!s.guid) continue;
-      const records = await fetchStream(s.guid);
-      console.log(`[HOMELY-STREAM] ${s.key}: ${records.length} records`);
+      const records = await fetchStream(s.guid, s.key);
+      console.log(`[STREAM-COUNT] ${s.key}: ${records.length} raw records`);
       records.forEach((rec, i) => {
         const m = mapRecord(rec, s.key, i);
         if (!m) return;
@@ -183,15 +219,22 @@ Deno.serve(async (req) => {
       });
     }
 
+    console.log(`[STREAM-MAPPED] total=${collected.length}`);
+
     if (dryRun) return json({ source: "homely", connected: true, imported: 0, leads: collected });
 
+    // 3) Upsert into leads (skip phones already in DB)
     let imported = 0;
+    let skipped = 0;
+    let failed = 0;
     for (const p of collected) {
       const phone = p.phone_number;
-      if (!phone) continue;
+      if (!phone) { skipped++; continue; }
+
       const { data: existing } = await admin
         .from("leads").select("id").eq("phone_number", phone).maybeSingle();
-      if (existing) continue;
+      if (existing) { skipped++; continue; }
+
       const { error: insErr } = await admin.from("leads").insert({
         phone_number: phone,
         full_name: p.full_name,
@@ -204,10 +247,14 @@ Deno.serve(async (req) => {
         is_demo: false,
       });
       if (!insErr) imported += 1;
-      else console.warn("[homely-leads] insert failed:", insErr.message);
+      else {
+        failed += 1;
+        console.error("[STREAM-UPSERT-ERROR]", phone, insErr.message);
+      }
     }
 
-    return json({ source: "homely", connected: true, imported, leads: collected });
+    console.log(`[STREAM-DONE] imported=${imported} skipped=${skipped} failed=${failed}`);
+    return json({ source: "homely", connected: true, imported, skipped, failed, total: collected.length });
   } catch (e) {
     console.error("[homely-leads] fatal", e);
     return json({ error: (e as Error).message }, 500);

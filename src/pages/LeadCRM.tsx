@@ -347,9 +347,15 @@ const LeadCRM = () => {
       const imported = (data as any)?.imported ?? 0;
       const note = (data as any)?.note;
       if (!(data as any)?.connected) {
-        toast.error('Homely לא מחובר', { id: t, description: note === 'no_credentials' ? 'הגדר אישורי Homely בהגדרות API' : note === 'no_password' ? 'סיסמת Homely חסרה' : (data as any)?.error || 'בדוק אישורים בהגדרות' });
+        const desc = note === 'no_credentials' ? 'הגדר אישורי Homely בהגדרות API'
+          : note === 'no_password' ? 'סיסמת Homely חסרה'
+          : note === 'missing_guids' ? 'תצורת סנכרון Webtiv חסרה — אין GUID של קונים/מוכרים. עדכן בהגדרות.'
+          : (data as any)?.error || 'בדוק אישורים בהגדרות';
+        toast.error('Homely לא מחובר', { id: t, description: desc });
       } else {
-        toast.success('הסנכרון מול Homely הושלם בהצלחה!', { id: t, description: imported ? `נוספו ${imported} רשומות` : 'אין רשומות חדשות' });
+        const total = (data as any)?.total ?? 0;
+        const skipped = (data as any)?.skipped ?? 0;
+        toast.success('הסנכרון מול Homely הושלם בהצלחה!', { id: t, description: imported ? `נוספו ${imported} רשומות (סה"כ ${total}, דילוג ${skipped})` : `אין רשומות חדשות (נסרקו ${total})` });
       }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }),
