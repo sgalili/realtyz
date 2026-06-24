@@ -544,15 +544,27 @@ Deno.serve(async (req) => {
 
       if (action === "fetchAllProperties") {
         const discardedSamples: any[] = [];
-        const filtered = items.filter((it: any) => {
-          const ok = passesOfficeFilter(it, "sellers");
+        const finalFilteredProperties = items.filter((item: any) => {
+          const transactionText = [
+            item?.transaction_type,
+            item?.["סוג_עסקה"],
+            item?.sale_f3,
+            item?.objectresidence,
+          ].map((v) => normalizeStreamText(v)).filter(Boolean).join(" ");
+          const affiliation = normalizeStreamText(item?.exclusive || item?.["שיוך"] || pickSivugName(item));
+          const agent = normalizeStreamText(item?.agent || item?.["סוכן"] || pickAgentName(item));
+          const isRent = transactionText.includes("להשכרה") || looksLikeRental(item);
+          const isSale = transactionText.includes("מכירה") || (!isRent && affiliation.length > 0);
+          const ok = isSale
+            ? (affiliation.includes("משרד") || affiliation.includes("בלעדי"))
+            : (isRent ? agent.includes(ALLOWED_AGENT_SUBSTR) : false);
           if (!ok && discardedSamples.length < 3) {
-            discardedSamples.push({ rawAgent: it?.agent, rawExclusive: it?.exclusive, rawSivug: it?.sivug, pickedAgent: pickAgentName(it), pickedSivug: pickSivugName(it), keys: Object.keys(it || {}) });
+            discardedSamples.push({ rawAgent: item?.agent, rawExclusive: item?.exclusive, rawSivug: item?.sivug, pickedAgent: pickAgentName(item), pickedSivug: pickSivugName(item), keys: Object.keys(item || {}) });
           }
           return ok;
         });
         if (discardedSamples.length) console.log("[homely-fetch] sellers discarded samples:", JSON.stringify(discardedSamples));
-        const properties = filtered.map(mapStreamProperty);
+        const properties = finalFilteredProperties.map(mapStreamProperty);
         return json({
           ok: true,
           source: "AutomaionJson.sellers",
