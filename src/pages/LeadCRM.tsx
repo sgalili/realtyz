@@ -2139,50 +2139,8 @@ const LeadCRM = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Add Lead Dialog */}
-      <Dialog open={addVoterOpen} onOpenChange={setAddVoterOpen}>
-        <DialogContent className="sm:max-w-md" dir="rtl">
-          <DialogHeader>
-            <DialogTitle>הוספת מתעניין חדש</DialogTitle>
-            <DialogDescription>הזן את פרטי הליד להוספה ידנית למערכת</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-3">
-            <div>
-              <label className="text-sm font-medium">שם מלא *</label>
-              <Input value={newVoter.full_name} onChange={e => setNewVoter(p => ({ ...p, full_name: e.target.value }))} placeholder="ישראל ישראלי" />
-            </div>
-            <div>
-              <label className="text-sm font-medium">טלפון *</label>
-              <Input value={newVoter.phone_number} onChange={e => setNewVoter(p => ({ ...p, phone_number: e.target.value }))} placeholder="050-1234567" dir="ltr" className="text-right" />
-            </div>
-            <div>
-              <label className="text-sm font-medium">עיר</label>
-              <Input value={newVoter.city} onChange={e => setNewVoter(p => ({ ...p, city: e.target.value }))} placeholder="תל אביב" />
-            </div>
-            <div>
-              <label className="text-sm font-medium">מספר זהות</label>
-              <Input value={newVoter.identity_number} onChange={e => setNewVoter(p => ({ ...p, identity_number: e.target.value }))} placeholder="000000000" dir="ltr" className="text-right" />
-            </div>
-            <div>
-              <label className="text-sm font-medium">ידית אינסטגרם</label>
-              <Input value={newVoter.instagram_handle} onChange={e => setNewVoter(p => ({ ...p, instagram_handle: e.target.value }))} placeholder="@username" dir="ltr" className="text-right" />
-            </div>
-            <div>
-              <label className="text-sm font-medium">יוזר טלגרם</label>
-              <Input value={newVoter.telegram_username} onChange={e => setNewVoter(p => ({ ...p, telegram_username: e.target.value }))} placeholder="@username" dir="ltr" className="text-right" />
-            </div>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddVoterOpen(false)}>ביטול</Button>
-            <Button onClick={handleAddVoter} disabled={addingVoter}>
-              {addingVoter ? 'מוסיף...' : 'הוסף מתעניין'}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Add Lead — deal_type-aware dynamic form (Sale vs Rent pipeline) */}
-      <NewLeadDialog open={newLeadOpen} onOpenChange={setNewLeadOpen} />
+      {/* Add-Lead modals deprecated — clicking "+" now creates a blank lead
+          and opens its CRM profile directly via createBlankLeadAndOpen(). */}
       <HomelyBulkSyncDialog
         open={homelyContactsSyncOpen}
         onOpenChange={setHomelyContactsSyncOpen}
