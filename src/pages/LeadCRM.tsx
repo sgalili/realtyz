@@ -46,7 +46,7 @@ import NewLeadDialog from '@/components/leads/NewLeadDialog';
 import LeadEnrichmentPanel, { LeadEnrichmentButton } from '@/components/leads/LeadEnrichmentPanel';
 import { useFreemiumStatus } from '@/hooks/useFreemiumStatus';
 import { PriceTag } from '@/components/PriceTag';
-import { Rows, Rows3, Home, Building2, Plus, Upload as UploadIcon, UserRoundPlus } from 'lucide-react';
+import { Rows, Rows3, Home, Building2, Plus, Upload as UploadIcon, UserRoundPlus, DownloadCloud } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { HomelyBulkSyncDialog } from '@/components/properties/HomelyBulkSyncDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -1235,8 +1235,9 @@ const LeadCRM = () => {
                   <UploadIcon className="h-4 w-4 text-primary" /> ייבוא מקובץ
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setHomelyContactsSyncOpen(true)} className="gap-2 cursor-pointer">
-                  <UserRoundPlus className="h-4 w-4 text-primary" /> סנכרון מתעניינים מהומלי
+                <DropdownMenuItem onClick={handleHomelySync} disabled={homelySyncing} className="gap-2 cursor-pointer">
+                  {homelySyncing ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <DownloadCloud className="h-4 w-4 text-primary" />}
+                  {homelySyncing ? 'מסנכרן מהומלי...' : 'סנכרון מתעניינים מהומלי'}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
