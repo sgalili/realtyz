@@ -802,9 +802,9 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
             <tr className="text-right">
               <th className="px-2 py-2 w-8">
                 <Checkbox
-                  checked={allMineSelected ? true : someMineSelected ? 'indeterminate' : false}
+                  checked={allFilteredSelected ? true : someSelected ? 'indeterminate' : false}
                   onCheckedChange={toggleAll}
-                  disabled={mineRows.length === 0}
+                  disabled={sorted.length === 0}
                   aria-label="בחר הכל"
                 />
               </th>
