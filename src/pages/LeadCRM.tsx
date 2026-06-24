@@ -1475,6 +1475,9 @@ const LeadCRM = () => {
                   {extraColumns.map((col) => (
                     <TableHead key={`h-${col}`} className="w-auto font-semibold text-xs text-center">{col}</TableHead>
                   ))}
+                  {isOwnerView && HOMELY_OWNER_COLUMNS.map((col) => (
+                    <TableHead key={`oh-${col.key}`} className="w-auto font-semibold text-xs text-center bg-blue-50/60">{col.label}</TableHead>
+                  ))}
                   <TableHead className="w-10 text-center">
                     <Checkbox checked={allFilteredSelected} onCheckedChange={toggleAll} />
                   </TableHead>
