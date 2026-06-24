@@ -158,7 +158,7 @@ export default function Properties() {
           for (let from = 0; ; from += pageSize) {
             let query = supabase
               .from('listings')
-              .select('id, property_title, description, asking_price, city, address, neighborhood, rooms, sqm, floor, features, source_metadata, source, source_url, created_at')
+              .select('id, property_title, description, asking_price, city, address, neighborhood, rooms, sqm, floor, features, source_metadata, source, source_url, created_at, updated_at')
               .eq('status', 'live')
               .eq('is_published', true)
               .order('created_at', { ascending: false })
@@ -237,6 +237,7 @@ export default function Properties() {
                 listing_type: extractListingType(row.features),
                 extras: (meta.extras ?? {}) as Record<string, string>,
                 created_at: row.created_at ?? null,
+                updated_at: row.updated_at ?? null,
               };
             })),
           };
@@ -283,8 +284,9 @@ export default function Properties() {
       listing_type: (r.listing_type ?? 'sale') as ListingType,
       extras: (r.extras ?? {}) as Record<string, string>,
       created_at: (r as any).created_at ?? null,
+      updated_at: (r as any).updated_at ?? null,
     }));
-    return live as Array<HomelyProperty & { extras?: Record<string, string>; created_at?: string | null }>;
+    return live as Array<HomelyProperty & { extras?: Record<string, string>; created_at?: string | null; updated_at?: string | null }>;
   }, [liveResults, sourceTab]);
 
   const filtered = useMemo(() => {
@@ -708,11 +710,12 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const queryClient = useQueryClient();
-  type SortKey = 'created_at' | 'listing_type' | 'title' | 'price' | 'city' | 'address' | 'rooms' | 'floor' | 'size_sqm' | 'property_type';
-  const { sort, toggle } = useTableSort<SortKey>({ key: 'created_at', dir: 'desc' });
+  type SortKey = 'created_at' | 'updated_at' | 'listing_type' | 'title' | 'price' | 'city' | 'address' | 'rooms' | 'floor' | 'size_sqm' | 'property_type';
+  const { sort, toggle } = useTableSort<SortKey>({ key: 'updated_at', dir: 'desc' });
   const sorted = useMemo(() => sortRows(properties, sort, (row, key) => {
     switch (key) {
       case 'created_at': return row.created_at ? new Date(row.created_at) : null;
+      case 'updated_at': return (row as any).updated_at ? new Date((row as any).updated_at) : (row.created_at ? new Date(row.created_at) : null);
       case 'listing_type': return LISTING_TYPE_LABELS_HE[row.listing_type ?? 'sale'];
       case 'title': return row.title;
       case 'price': return Number(row.price ?? 0);
@@ -810,7 +813,7 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
               <SortableTh sortKey="floor" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">קומה</SortableTh>
               <SortableTh sortKey="size_sqm" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">מ"ר</SortableTh>
               <SortableTh sortKey="property_type" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">סוג נכס</SortableTh>
-              <SortableTh sortKey="created_at" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">עדכון</SortableTh>
+              <SortableTh sortKey="updated_at" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">עודכן</SortableTh>
               <th className="px-2 py-2 font-semibold whitespace-nowrap">מקור</th>
               <th className="px-2 py-2 font-semibold whitespace-nowrap text-left">פעולות</th>
             </tr>
@@ -823,9 +826,8 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
               const sourceLabel: string =
                 p.source === 'yad2' ? 'yad2'
                 : p.source === 'madlan' ? 'madlan'
-                : p.source === 'homely' ? 'homely'
-                : p.source === 'mine' ? 'משרד'
-                : String(p.source ?? '—');
+                : (p.source as string) === 'fomo' ? 'fomo'
+                : 'manual entry';
               return (
                 <tr key={p.id} className={`border-t hover:bg-muted/30 ${selectedIds.has(p.id) ? 'bg-destructive/5' : ''}`}>
                   <td className="px-2 py-1.5 w-8">
@@ -853,7 +855,7 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
                   <td className="px-2 py-1.5 whitespace-nowrap">{p.floor ?? '—'}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{p.size_sqm || '—'}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{PROPERTY_TYPE_LABELS_HE[p.property_type] || '—'}</td>
-                  <td className="px-2 py-1.5 whitespace-nowrap text-muted-foreground">{p.created_at ? new Date(p.created_at).toLocaleDateString('he-IL') : '—'}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap text-muted-foreground">{(p as any).updated_at ? new Date((p as any).updated_at).toLocaleDateString('he-IL') : (p.created_at ? new Date(p.created_at).toLocaleDateString('he-IL') : '—')}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">
                     {sourceUrl ? (
                       <a

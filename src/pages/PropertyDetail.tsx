@@ -101,7 +101,7 @@ export default function PropertyDetail() {
     queryFn: async () => {
       const { data: row } = await supabase
         .from('listings')
-        .select('id, property_title, description, asking_price, features, slug, source_metadata, city, neighborhood, address, rooms, sqm, floor, parking, elevator, status, source_url, source, project_name')
+        .select('id, property_title, description, asking_price, features, slug, source_metadata, city, neighborhood, address, rooms, sqm, floor, parking, elevator, status, source_url, source, project_name, media_photos, media_documents, updated_at')
         .eq('id', id!)
         .maybeSingle();
       if (!row) return null;
@@ -109,6 +109,7 @@ export default function PropertyDetail() {
       const meta = isRecord(row.source_metadata) ? row.source_metadata : {};
 
       const photoSources: unknown[] = [
+        ...(Array.isArray((row as any).media_photos) ? ((row as any).media_photos as unknown[]) : []),
         ...(Array.isArray(meta?.photos) ? (meta.photos as unknown[]) : []),
         ...(Array.isArray(meta?.images) ? (meta.images as unknown[]) : []),
       ];
@@ -117,6 +118,24 @@ export default function PropertyDetail() {
       const photos = Array.from(
         new Set(photoSources.map(photoUrlFrom).filter((s): s is string => !!s))
       );
+
+      const docsRaw: unknown[] = [
+        ...(Array.isArray((row as any).media_documents) ? ((row as any).media_documents as unknown[]) : []),
+        ...(Array.isArray((meta as any)?.documents) ? ((meta as any).documents as unknown[]) : []),
+      ];
+      const documents = Array.from(new Set(
+        docsRaw
+          .map((d: any) => {
+            if (typeof d === 'string') return { url: d, name: d.split('/').pop() || 'מסמך' };
+            if (d && typeof d === 'object') {
+              const url = d.url || d.Url || d.path || d.href;
+              if (typeof url === 'string') return { url, name: String(d.name || d.title || url.split('/').pop() || 'מסמך') };
+            }
+            return null;
+          })
+          .filter((x): x is { url: string; name: string } => !!x && /^https?:\/\//.test(x.url))
+          .map((x) => JSON.stringify(x))
+      )).map((s) => JSON.parse(s) as { url: string; name: string });
 
       const priceNum = Number(row.asking_price) || 0;
       const dealType = String((meta as JsonRecord).deal_type ?? (meta as JsonRecord).listing_type ?? '').toLowerCase();
@@ -163,6 +182,7 @@ export default function PropertyDetail() {
         neighborhood: row.neighborhood,
         projectName: row.project_name,
         sourceUrl: row.source_url,
+        documents,
       };
     },
   });
@@ -173,6 +193,7 @@ export default function PropertyDetail() {
   const projectName = data?.projectName ?? null;
   const sourceUrl = data?.sourceUrl ?? null;
   const amenities = data?.amenities;
+  const documents = data?.documents ?? [];
 
   // Initialize edit form when entering edit mode
   useEffect(() => {
@@ -489,6 +510,36 @@ export default function PropertyDetail() {
               ) : (
                 <p className="text-sm leading-relaxed text-foreground/80 whitespace-pre-line">{property.description}</p>
               )}
+            </Card>
+          )}
+
+          {!editMode && documents.length > 0 && (
+            <Card className="p-4 sm:p-5">
+              <h2 className="text-base font-bold text-primary mb-3">מסמכים</h2>
+              <ul className="space-y-2">
+                {documents.map((d, i) => (
+                  <li key={`${d.url}-${i}`} className="flex items-center justify-between gap-3 rounded-md border border-border/60 px-3 py-2 hover:bg-muted/40">
+                    <span className="text-sm text-foreground truncate">{d.name}</span>
+                    <div className="flex items-center gap-2">
+                      <a
+                        href={d.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-xs font-semibold text-primary hover:underline"
+                      >
+                        צפה
+                      </a>
+                      <a
+                        href={d.url}
+                        download
+                        className="text-xs font-semibold text-primary hover:underline"
+                      >
+                        הורד
+                      </a>
+                    </div>
+                  </li>
+                ))}
+              </ul>
             </Card>
           )}
 
