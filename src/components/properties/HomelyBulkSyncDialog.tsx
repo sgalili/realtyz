@@ -27,6 +27,8 @@ type HomelyProperty = {
   photos?: string[];
   documents?: string[];
   property_type?: string;
+  agent?: string;
+  sivug?: string;
   raw: unknown;
 };
 
@@ -37,8 +39,11 @@ type HomelyContact = {
   email: string;
   city: string;
   notes: string;
+  agent?: string;
+  sivug?: string;
   raw: unknown;
 };
+
 
 export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'properties' }: {
   open: boolean;
