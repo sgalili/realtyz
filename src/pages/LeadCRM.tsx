@@ -550,6 +550,84 @@ const LeadCRM = () => {
   const activeVoterChatHistory = isDemoMode && selectedVoterId?.startsWith('demo-lead-')
     ? demoMessages.filter((m) => m.lead_id === selectedVoterId)
     : voterChatHistory;
+
+  // Auto-fill lead dropdowns from messages + chat history (heuristic, runs once per lead)
+  const autoFilledRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!selectedVoter?.id) return;
+    if (autoFilledRef.current.has(selectedVoter.id)) return;
+    const msgs = (activeVoterMessages ?? []).map((m: any) => String(m?.content ?? ''));
+    const chats = (activeVoterChatHistory ?? []).map((c: any) => String(c?.content ?? ''));
+    const corpus = [...msgs, ...chats].join(' \n ').toLowerCase();
+    if (!corpus.trim()) return;
+
+    const prefs = ((selectedVoter as any).preferences ?? {}) as Record<string, any>;
+    const patch: Record<string, any> = {};
+    const prefPatch: Record<string, any> = {};
+
+    // deal_type
+    if (!(selectedVoter as any).deal_type) {
+      if (/(שכירות|להשכרה|לשכור|שוכר)/.test(corpus)) patch.deal_type = 'rent';
+      else if (/(להשקעה|תשואה|השקעה)/.test(corpus)) patch.deal_type = 'investment';
+      else if (/(למכור|מוכר|מכירה)/.test(corpus)) patch.deal_type = 'sell';
+      else if (/(לקנות|קונה|רכישה|לרכוש|קנייה)/.test(corpus)) patch.deal_type = 'sale';
+    }
+    // source
+    if (!prefs.source && !prefs.lead_source && !(selectedVoter as any).source) {
+      if (/yad2|יד2/.test(corpus)) prefPatch.source = 'yad2';
+      else if (/instagram|אינסטגרם/.test(corpus)) prefPatch.source = 'instagram';
+      else if (/facebook|פייסבוק/.test(corpus)) prefPatch.source = 'facebook';
+      else if (/whatsapp|וואטסאפ|וואצאפ/.test(corpus)) prefPatch.source = 'whatsapp';
+    }
+    // property_type
+    if (!prefs.property_type && !prefs.listing_type) {
+      if (/פנטהאוז|penthouse/.test(corpus)) prefPatch.property_type = 'penthouse';
+      else if (/קוטג|cottage/.test(corpus)) prefPatch.property_type = 'cottage';
+      else if (/בית פרטי|וילה|villa/.test(corpus)) prefPatch.property_type = 'house';
+      else if (/סטודיו|studio/.test(corpus)) prefPatch.property_type = 'studio';
+      else if (/משרד|office/.test(corpus)) prefPatch.property_type = 'office';
+      else if (/דירה|apartment/.test(corpus)) prefPatch.property_type = 'apartment';
+    }
+    // budget_range — extract first numeric amount with ₪/שקל/מיליון/k context
+    if (!prefs.budget_range) {
+      let amount = 0;
+      const m1 = corpus.match(/(\d+(?:[.,]\d+)?)\s*(?:מיליון|m\b|מ׳)/);
+      const m2 = corpus.match(/(\d{6,9})/);
+      if (m1) amount = parseFloat(m1[1].replace(',', '.')) * 1_000_000;
+      else if (m2) amount = parseInt(m2[1], 10);
+      if (amount > 0) {
+        prefPatch.budget_range =
+          amount < 1_500_000 ? '0-1500000' :
+          amount < 2_500_000 ? '1500000-2500000' :
+          amount < 4_000_000 ? '2500000-4000000' :
+          amount < 6_000_000 ? '4000000-6000000' :
+          amount < 10_000_000 ? '6000000-10000000' : '10000000+';
+      }
+    }
+    // neighborhood / city
+    if (!(selectedVoter as any).neighborhood) {
+      const cities = ['תל אביב','רמת גן','גבעתיים','הרצליה','רעננה','כפר סבא','נתניה','ראשון לציון','חיפה','ירושלים','באר שבע','צמרות','הרצליה הצעירה'];
+      const hit = cities.find(c => corpus.includes(c.toLowerCase()));
+      if (hit) patch.neighborhood = hit;
+    }
+    // lead_stage — escalate if scheduling/negotiation talk appears
+    if (!(selectedVoter as any).lead_stage) {
+      if (/(חוזה|עורך דין|הצעת מחיר|מ"מ|משא ומתן)/.test(corpus)) patch.lead_stage = 'negotiation';
+      else if (/(סיור|לראות|לבקר|פגישה|תיאום)/.test(corpus)) patch.lead_stage = 'touring';
+      else if (msgs.length + chats.length >= 3) patch.lead_stage = 'qualified';
+    }
+
+    if (Object.keys(prefPatch).length) patch.preferences = { ...prefs, ...prefPatch };
+    if (!Object.keys(patch).length) { autoFilledRef.current.add(selectedVoter.id); return; }
+
+    autoFilledRef.current.add(selectedVoter.id);
+    (async () => {
+      const { error } = await supabase.from('leads').update(patch as any).eq('id', selectedVoter.id);
+      if (!error) queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+    })();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedVoter?.id, activeVoterMessages?.length, activeVoterChatHistory?.length]);
+
   const filtered = useMemo(() => {
     if (!leads) return leads;
     if (profileFilter === 'all') return leads;
