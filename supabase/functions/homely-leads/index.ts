@@ -415,6 +415,8 @@ Deno.serve(async (req) => {
     let skipped = 0;
     let failed = 0;
     let listingsInserted = 0;
+    const errors: Array<{ phone: string; message: string; stage: string }> = [];
+
     for (const p of collected) {
       const phone = p.phone_number;
       if (!phone) { skipped++; continue; }
