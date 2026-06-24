@@ -554,7 +554,22 @@ async function handleLeadInboxInbound(
         .select("id, full_name, ai_autopilot, phone_number, assigned_to, interest_tag, deal_type")
         .maybeSingle();
       if (createErr) console.warn("auto lead create soft-fail:", createErr.message);
-      else lead = created as any;
+      else {
+        lead = created as any;
+        // Fire-and-forget: pull the WhatsApp avatar via fetch-wa-avatars so
+        // the new lead shows their real profile picture across the dashboard.
+        try {
+          const fnUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/fetch-wa-avatars`;
+          fetch(fnUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            },
+            body: JSON.stringify({ lead_ids: [(created as any).id], force: true }),
+          }).catch(() => { /* swallow */ });
+        } catch { /* swallow */ }
+      }
     } catch (e) {
       console.warn("auto lead create threw:", e instanceof Error ? e.message : e);
     }
