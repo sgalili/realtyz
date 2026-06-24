@@ -8,7 +8,7 @@ import { formatPhoneDisplay } from '@/lib/formatPhone';
 
 const QUICK_LINKS = [
   { label: 'לוח בקרה', path: '/', icon: LayoutDashboard },
-  { label: 'ניהול מתעניינים', path: '/lead-crm', icon: User },
+  { label: 'לקוחות', path: '/lead-crm', icon: User },
   { label: 'נכסים', path: '/properties', icon: Building2 },
   { label: 'תיבת הודעות', path: '/inbox', icon: MessageSquare },
   { label: 'שידור לקהילה', path: '/broadcast', icon: Radio },
