@@ -65,11 +65,20 @@ async function webtivLogin(agency: string, username: string, password: string) {
     }),
   });
   const text = await res.text();
+  try {
+    console.log(`[HOMELY-AUTH-RAW] status=${res.status} body:`, text.substring(0, 1000));
+  } catch (e) {
+    console.warn("[HOMELY-AUTH-RAW] log failed:", (e as Error).message);
+  }
   let data: any = null;
   try { data = JSON.parse(text); } catch { /* */ }
+  if (data && typeof data === "object") {
+    try { console.log("[HOMELY-AUTH-KEYS]:", Object.keys(data)); } catch { /* */ }
+  }
   if (!res.ok || !data || data.db === 0 || data.db === "0") {
     return { ok: false as const, status: res.status, note: text.slice(0, 200) };
   }
+  console.log(`[HOMELY-AUTH-OK] db=${data.db ?? data.Db} hasToken=${Boolean(data.token ?? data.Token ?? data.accessToken)}`);
   return { ok: true as const, session: data };
 }
 
