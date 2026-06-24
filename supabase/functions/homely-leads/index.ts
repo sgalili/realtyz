@@ -115,14 +115,103 @@ async function fetchStream(guid: string, label: string): Promise<any[]> {
   }
 }
 
+const ALLOWED_AGENT = "אודי ויטמן";
+const ALLOWED_SIVUG = new Set(["משרד", "בלעדי"]);
+
+function normalizeHe(v: unknown): string {
+  return String(v ?? "").replace(/[\s\u200f\u200e"׳״']/g, "").trim();
+}
+
+// Pick agent name from any of the common Webtiv variants.
+function pickAgent(rec: Record<string, any>): string {
+  return String(
+    rec.agent ?? rec.Agent ?? rec.shiuh ?? rec.agentName ?? rec["סוכן"] ?? ""
+  ).trim();
+}
+
+// Pick "שיוך" — broker affiliation. Webtiv variants: sivug / shiuh / shiyuh / shiyukh.
+function pickSivug(rec: Record<string, any>): string {
+  const candidates = [
+    rec.sivug, rec.Sivug, rec.shiuh, rec.shiyuh, rec.shiyukh, rec.shiuch,
+    rec.belongTo, rec.belong, rec["שיוך"],
+  ];
+  for (const c of candidates) {
+    const s = String(c ?? "").trim();
+    if (s) return s;
+  }
+  return "";
+}
+
+// Pick original source ("מקור") of the lead/property — e.g. yad2, madlan, facebook.
+function pickMekor(rec: Record<string, any>): { name: string; url: string | null } {
+  const name = String(
+    rec.mekor ?? rec.Mekor ?? rec.source ?? rec.Source ?? rec["מקור"] ?? ""
+  ).trim().toLowerCase();
+  const url = strOrNull(
+    rec.mekorUrl ?? rec.sourceUrl ?? rec.url ?? rec.Url ?? rec.link ?? rec.Link ?? rec["קישור"]
+  );
+  return { name, url };
+}
+
+// Extract every image URL from common Webtiv photo containers.
+function pickPhotos(rec: Record<string, any>): string[] {
+  const out: string[] = [];
+  const push = (v: any) => {
+    if (typeof v === "string" && /^https?:\/\//.test(v)) out.push(v);
+    else if (v && typeof v === "object") {
+      const u = (v as any).url || (v as any).Url || (v as any).src || (v as any).Src || (v as any).path;
+      if (typeof u === "string" && /^https?:\/\//.test(u)) out.push(u);
+    }
+  };
+  for (const k of ["photos", "Photos", "images", "Images", "tmunot", "pics", "Pictures"]) {
+    const v = rec[k];
+    if (Array.isArray(v)) v.forEach(push);
+  }
+  // Also flat fields image1..image10
+  for (let i = 1; i <= 12; i++) {
+    push(rec[`image${i}`]); push(rec[`Image${i}`]); push(rec[`photo${i}`]); push(rec[`pic${i}`]);
+  }
+  return Array.from(new Set(out));
+}
+
+// Extract document/file URLs from common containers.
+function pickDocs(rec: Record<string, any>): string[] {
+  const out: string[] = [];
+  const push = (v: any) => {
+    if (typeof v === "string" && /^https?:\/\//.test(v)) out.push(v);
+    else if (v && typeof v === "object") {
+      const u = (v as any).url || (v as any).Url || (v as any).path;
+      if (typeof u === "string" && /^https?:\/\//.test(u)) out.push(u);
+    }
+  };
+  for (const k of ["documents", "Documents", "files", "Files", "kvatzim", "mismachim", "attachments", "Attachments"]) {
+    const v = rec[k];
+    if (Array.isArray(v)) v.forEach(push);
+  }
+  return Array.from(new Set(out));
+}
+
+// Apply the strict office filter: keep only records that belong to Udi's office.
+function passesFilter(rec: Record<string, any>, source: "buyers" | "sellers"): boolean {
+  if (source === "sellers") {
+    return ALLOWED_SIVUG.has(normalizeHe(pickSivug(rec)));
+  }
+  // buyers (incl. renters): agent must be Udi Witman
+  return normalizeHe(pickAgent(rec)) === normalizeHe(ALLOWED_AGENT);
+}
+
 function mapRecord(rec: Record<string, any>, source: "buyers" | "sellers", idx: number): HomelyLead | null {
   const phone = pickPhone(rec);
   const email = strOrNull(rec.email ?? rec.Email);
   if (!phone && !email) return null;
+  if (!passesFilter(rec, source)) return null;
 
   const fullName = pickName(rec);
   const city = strOrNull(rec.city ?? rec.City ?? rec.city1 ?? rec.ir ?? rec.Ir ?? rec["עיר"]);
   const tag = source === "sellers" ? "מוכר" : "קונה";
+  const mekor = pickMekor(rec);
+  const photos = pickPhotos(rec);
+  const docs = pickDocs(rec);
 
   return {
     external_id: String(rec.serial ?? rec.Serial ?? rec.id ?? rec.Id ?? `webtiv-${source}-${idx}`),
@@ -133,6 +222,8 @@ function mapRecord(rec: Record<string, any>, source: "buyers" | "sellers", idx: 
     interest_tag: tag,
     preferences: {
       source: "webtiv_stream",
+      source_origin: mekor.name || null,
+      source_url: mekor.url,
       stream: source,
       lead_kind: source === "sellers" ? "seller" : "buyer",
       neighborhood: strOrNull(rec.shcuna ?? rec.shcuna1),
@@ -141,7 +232,10 @@ function mapRecord(rec: Record<string, any>, source: "buyers" | "sellers", idx: 
       floor: strOrNull(rec.floor),
       built_sqm: strOrNull(rec.builtsqmr),
       price: strOrNull(rec.priceshekel),
-      agent: strOrNull(rec.agent),
+      agent: strOrNull(pickAgent(rec)),
+      sivug: strOrNull(pickSivug(rec)),
+      media_photos: photos,
+      media_documents: docs,
       raw: rec,
     },
   };
