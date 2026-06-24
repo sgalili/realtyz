@@ -267,13 +267,27 @@ function pickSivugName(it: any): string {
     "sivug", "Sivug", "shiuh", "shiyuh", "shiyukh", "shiuch", "belongTo", "belong", "שיוך",
   ]);
 }
+// Per-stream filter rules (kept independent on purpose — do NOT cross-contaminate):
+//   • sellers  (מכירה / נכסי משרד): office allocation flag only. ANY office agent counts. No Udi restriction.
+//   • rentals  (להשכרה sub-set of sellers stream): office flag + agent must include "אודי ויטמן".
+//   • buyers   (קונים / שוכרים contact stream): agent must include "אודי ויטמן".
+function looksLikeRental(it: any): boolean {
+  const hay = `${normalizeStreamText(it?.objectresidence)} ${normalizeStreamText(it?.sale_f3)} ${normalizeStreamText(it?.more)} ${normalizeStreamText(it?.comments1)}`;
+  return /להשכרה|השכרה|שכירות|rent/i.test(hay);
+}
 function passesOfficeFilter(it: any, source: "sellers" | "buyers"): boolean {
   if (source === "sellers") {
     const aff = pickSivugName(it);
-    return ALLOWED_SIVUG_SUBSTRS.some((s) => aff.includes(s));
+    const officeOk = ALLOWED_SIVUG_SUBSTRS.some((s) => aff.includes(s));
+    if (!officeOk) return false;
+    // Rentals carved out of the seller stream require the Udi agent restriction.
+    if (looksLikeRental(it)) {
+      return pickAgentName(it).includes(ALLOWED_AGENT_SUBSTR);
+    }
+    return true; // every other office property passes regardless of which agent owns it
   }
-  const agent = pickAgentName(it);
-  return agent.includes(ALLOWED_AGENT_SUBSTR);
+  // buyers / renter-seekers contact stream
+  return pickAgentName(it).includes(ALLOWED_AGENT_SUBSTR);
 }
 
 function streamFieldAudit(items: any[], limit = 5) {
