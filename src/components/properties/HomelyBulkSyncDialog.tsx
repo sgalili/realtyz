@@ -324,6 +324,24 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
 
 
           <TabsContent value="properties" className="mt-3 flex-1 min-h-0 data-[state=active]:flex flex-col">
+            {properties.length > 0 && (
+              <div dir="rtl" className="flex items-center gap-1.5 mb-2">
+                {([
+                  { id: 'all', label: 'הכל', count: propertiesWithTx.length },
+                  { id: 'sale', label: 'למכירה', count: saleCount },
+                  { id: 'rent', label: 'להשכרה', count: rentCount },
+                ] as const).map(({ id, label, count }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setFDeal(id)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${fDeal === id ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted border-border text-foreground'}`}
+                  >
+                    {label} <span className="tabular-nums opacity-80">({count})</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <div dir="rtl" className="flex-1 min-h-0 overflow-y-auto space-y-2 pl-1">
               {loadingProps ? (
                 Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
