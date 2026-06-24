@@ -332,14 +332,30 @@ Deno.serve(async (req) => {
       if (!s.guid) continue;
       const records = await fetchStream(s.guid, s.key);
       console.log(`[STREAM-COUNT] ${s.key}: ${records.length} raw records`);
+      // KEY AUDIT — print the actual JSON keys + resolved agent/affiliation
+      // for the first 3 rows so we can verify Webtiv's payload shape.
+      const audit = records.slice(0, 3).map((rec: any, i: number) => ({
+        row: i,
+        keys: rec && typeof rec === "object" ? Object.keys(rec) : [],
+        pickedAgent: pickAgent(rec || {}),
+        pickedSivug: pickSivug(rec || {}),
+        rawAgent: rec?.agent ?? rec?.Agent ?? rec?.AgentName ?? null,
+        rawExclusive: rec?.exclusive ?? rec?.Exclusive ?? null,
+      }));
+      console.log(`[STREAM-KEY-AUDIT] ${s.key}:`, JSON.stringify(audit));
+
+      let passed = 0;
+      let dropped = 0;
       records.forEach((rec, i) => {
         const m = mapRecord(rec, s.key, i);
-        if (!m) return;
+        if (!m) { dropped++; return; }
         const key = m.phone_number || m.email || m.external_id;
-        if (key && seen.has(key)) return;
+        if (key && seen.has(key)) { dropped++; return; }
         if (key) seen.add(key);
         collected.push(m);
+        passed++;
       });
+      console.log(`[STREAM-FILTER-GATE] ${s.key}: raw=${records.length} passed=${passed} dropped=${dropped}`);
     }
 
     console.log(`[STREAM-MAPPED] total=${collected.length}`);
