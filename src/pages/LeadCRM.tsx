@@ -1716,8 +1716,6 @@ const LeadCRM = () => {
                           </svg>
                         );
                         const channels: { key: string; href?: string; onClick?: () => void; icon: JSX.Element; label: string; active: boolean; accent?: string }[] = [
-                          { key: 'chat',    onClick: () => { setSelectedVoterId(null); window.location.assign(`/omnichannel-inbox?lead=${selectedVoter.id}`); }, icon: <MessageCircle className="h-4 w-4" strokeWidth={1.8} />, label: 'צ׳אט', active: true },
-                          { key: 'ai',      onClick: undefined, icon: <Bot className="h-4 w-4" strokeWidth={1.8} />, label: aiOn ? 'AI פעיל' : 'AI כבוי', active: aiOn, accent: aiOn ? 'text-emerald-600' : 'text-slate-400' },
                           { key: 'call',    href: phoneDigits ? `tel:+${phoneDigits}` : undefined, icon: <PhoneIcon className="h-4 w-4" strokeWidth={1.8} />, label: 'חיוג', active: !!phoneDigits },
                           { key: 'email',   href: email ? `mailto:${email}` : undefined, icon: <Mail className="h-4 w-4" strokeWidth={1.8} />, label: 'דוא״ל', active: !!email },
                           { key: 'whatsapp',href: phoneDigits ? `https://wa.me/${phoneDigits}` : undefined, icon: WhatsAppIcon, label: 'WhatsApp', active: !!phoneDigits, accent: phoneDigits ? 'text-emerald-600' : '' },
@@ -1747,46 +1745,40 @@ const LeadCRM = () => {
                         );
                       })()}
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => setStatusInfoOpen(true)}
-                      className={`border text-xs rounded-md px-2.5 py-1 font-medium transition-opacity hover:opacity-80 cursor-pointer ${getLoyalty(selectedVoter.status).color}`}
-                      aria-label="פרטי סטטוס תקשורת"
-                    >
-                      {getLoyalty(selectedVoter.status).label}
-                    </button>
+                    <div className="flex flex-col items-end gap-1.5">
+                      <div className="flex items-center gap-1.5">
+                        <Bot className="h-4 w-4 text-primary" />
+                        <Switch
+                          checked={!!selectedVoter.ai_autopilot}
+                          onCheckedChange={async (checked) => {
+                            const { error } = await supabase
+                              .from('leads')
+                              .update({ ai_autopilot: checked } as any)
+                              .eq('id', selectedVoter.id);
+                            if (error) {
+                              toast.error('שגיאה בעדכון הסוכן הדיגיטלי');
+                              return;
+                            }
+                            toast.success(checked ? 'הסוכן הדיגיטלי הופעל' : 'הסוכן הדיגיטלי כובה');
+                            queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+                          }}
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setStatusInfoOpen(true)}
+                        className={`border text-xs rounded-md px-2.5 py-1 font-medium transition-opacity hover:opacity-80 cursor-pointer ${getLoyalty(selectedVoter.status).color}`}
+                        aria-label="פרטי סטטוס תקשורת"
+                      >
+                        {getLoyalty(selectedVoter.status).label}
+                      </button>
+                    </div>
                   </SheetTitle>
                 </SheetHeader>
 
 
                 <div className="mt-6 space-y-6">
-                  {/* AI Personal Digital Agent Toggle */}
-                  <div className="rounded-lg border border-primary/30 bg-gradient-to-l from-primary/10 to-transparent p-3 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <Bot className="h-5 w-5 text-primary shrink-0" />
-                      <div className="min-w-0">
-                        <p className="text-sm font-semibold">סוכן דיגיטלי אישי</p>
-                        <p className="text-[10px] text-muted-foreground">מנהל את הקשר, שולח הצעות ותיאומי סיורים</p>
-                      </div>
-                    </div>
-                    <Switch
-                      checked={!!selectedVoter.ai_autopilot}
-                      onCheckedChange={async (checked) => {
-                        const { error } = await supabase
-                          .from('leads')
-                          .update({ ai_autopilot: checked } as any)
-                          .eq('id', selectedVoter.id);
-                        if (error) {
-                          toast.error('שגיאה בעדכון הסוכן הדיגיטלי');
-                          return;
-                        }
-                        toast.success(checked ? 'הסוכן הדיגיטלי הופעל' : 'הסוכן הדיגיטלי כובה');
-                        queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
-                      }}
-                    />
-                  </div>
-
-                  {/* Profile data enrichment — now sits directly under the AI master switch */}
+                  {/* Profile data enrichment */}
                   <LeadEnrichmentButton lead={selectedVoter} />
 
                   {/* Real Estate Sales Closer Grid — editable dropdowns, high-contrast labels */}
