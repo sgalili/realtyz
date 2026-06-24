@@ -69,7 +69,8 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
   const isRent = Number(property.price) < 50_000;
   const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
   const transactionHe = isRent ? 'להשכרה' : 'למכירה';
-  const headline = `${propertyTypeHe} ${transactionHe}, ${neighborhood || property.address || 'שכונה'}, ${property.city || 'עיר'}`;
+  const locationParts = [property.address, neighborhood, property.city].filter((p) => p && String(p).trim());
+  const headline = `${propertyTypeHe} ${transactionHe}, ${locationParts.length ? locationParts.join(', ') : 'שכונה'}`;
   const pricePerMeter = property.size_sqm ? Math.round(property.price / property.size_sqm).toLocaleString('he-IL') : null;
 
   const vaadBayit = Number(meta.vaad_bayit ?? meta.vaad_monthly ?? 200) || 200;
@@ -166,6 +167,7 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
             <Spec icon={Home} label="סוג נכס" value={propertyTypeHe} />
             <Spec icon={MapPin} label="עיר" value={property.city || '—'} />
             <Spec icon={MapPin} label="שכונה" value={neighborhood || '—'} />
+            <Spec icon={MapPin} label="כתובת" value={property.address || '—'} />
 
             <Spec icon={Receipt} label="ועד בית (לחודש)" value={`${vaadBayit.toLocaleString('he-IL')} ₪`} />
             <Spec icon={Receipt} label="ארנונה (לחודשיים)" value={`${arnonaBimonthly.toLocaleString('he-IL')} ₪`} />
