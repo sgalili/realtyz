@@ -219,11 +219,11 @@ function pickDocs(rec: Record<string, any>): string[] {
 // "בלעדי,משרד", so equality checks miss everything.
 function passesFilter(rec: Record<string, any>, source: "buyers" | "sellers"): boolean {
   if (source === "sellers") {
-    const aff = pickSivug(rec);
-    return ALLOWED_SIVUG_SUBSTRS.some((s) => aff.includes(s));
+    const aff = pickSivug(rec).toLowerCase();
+    return ALLOWED_SIVUG_SUBSTRS.some((s) => aff.includes(s.toLowerCase()));
   }
-  // buyers (incl. renter-seekers): agent name must include "אודי ויטמן"
-  return pickAgent(rec).includes(ALLOWED_AGENT_SUBSTR);
+  // buyers (incl. renter-seekers): agent name must loosely include "אודי ויטמן"
+  return pickAgent(rec).toLowerCase().includes(ALLOWED_AGENT_SUBSTR.toLowerCase());
 }
 
 function mapRecord(rec: Record<string, any>, source: "buyers" | "sellers", idx: number): HomelyLead | null {
