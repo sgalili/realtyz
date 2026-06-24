@@ -1992,10 +1992,13 @@ const LeadCRM = () => {
                     }: { icon: JSX.Element; label: string; value: string; placeholder: string; options: { v: string; l: string }[]; onChange: (v: string) => void }) => {
                       // If AI/DB value is not in the preset list, inject it at top so the
                       // dropdown actually shows the selected value instead of going blank.
+                      // The injected label uses the global Hebrew dictionaries so legacy
+                      // tokens like `webtiv_stream` / `new_lead` never leak through.
                       const hasMatch = !!value && options.some((o) => o.v === value);
+                      const dictLabel = SOURCE_LABEL_HE[value] || STAGE_LABEL_HE[value] || value;
                       const mergedOptions = !value || hasMatch
                         ? options
-                        : [{ v: value, l: value }, ...options];
+                        : [{ v: value, l: dictLabel }, ...options];
                       return (
                         <div className="p-3 rounded-lg bg-slate-100 border border-slate-200 space-y-1.5">
                           <p className="text-xs font-bold text-slate-900 flex items-center gap-1.5">{icon}{label}</p>
@@ -2011,15 +2014,27 @@ const LeadCRM = () => {
                       );
                     };
 
+                    const ownerLead = isOwnerLead(selectedVoter);
 
                     return (
-                      <div className="grid grid-cols-2 gap-3">
-                        <SelectCell icon={<Tag className="h-3.5 w-3.5 text-slate-700" />} label="סוג עסקה" value={dealType} placeholder="בחר עסקה" options={dealTypeOpts} onChange={(v) => saveLead({ deal_type: v })} />
-                        <SelectCell icon={<Radio className="h-3.5 w-3.5 text-slate-700" />} label="ערוץ הגעה" value={source} placeholder="בחר ערוץ" options={sourceOpts} onChange={(v) => savePref({ source: v })} />
-                        <SelectCell icon={<Wallet className="h-3.5 w-3.5 text-slate-700" />} label="תקציב מבוקש" value={budgetRange} placeholder="בחר תקציב" options={budgetOpts} onChange={(v) => savePref({ budget_range: v })} />
-                        <SelectCell icon={<Target className="h-3.5 w-3.5 text-slate-700" />} label="סטטוס לקוח" value={stage} placeholder="בחר סטטוס" options={stageOpts} onChange={(v) => saveLead({ lead_stage: v })} />
-                        <SelectCell icon={<HomeIcon className="h-3.5 w-3.5 text-slate-700" />} label="סוג נכס מועדף" value={propertyType} placeholder="בחר נכס" options={propertyOpts} onChange={(v) => savePref({ property_type: v })} />
-                        <SelectCell icon={<Compass className="h-3.5 w-3.5 text-slate-700" />} label="אזור ביקוש מועדף" value={area} placeholder="בחר אזור" options={areaOpts.map((c) => ({ v: c, l: c }))} onChange={(v) => saveLead({ neighborhood: v })} />
+                      <div className="space-y-3">
+                        <div className="grid grid-cols-2 gap-3">
+                          <SelectCell icon={<Tag className="h-3.5 w-3.5 text-slate-700" />} label="סוג עסקה" value={dealType} placeholder="בחר עסקה" options={dealTypeOpts} onChange={(v) => saveLead({ deal_type: v })} />
+                          <SelectCell icon={<Radio className="h-3.5 w-3.5 text-slate-700" />} label="ערוץ הגעה" value={source} placeholder="בחר ערוץ" options={sourceOpts} onChange={(v) => savePref({ source: v })} />
+                          <SelectCell icon={<Target className="h-3.5 w-3.5 text-slate-700" />} label="סטטוס לקוח" value={stage} placeholder="בחר סטטוס" options={stageOpts} onChange={(v) => saveLead({ lead_stage: v })} />
+                          {/* Buyer/renter preference fields — hidden entirely for property owners */}
+                          {!ownerLead && (
+                            <>
+                              <SelectCell icon={<Wallet className="h-3.5 w-3.5 text-slate-700" />} label="תקציב מבוקש" value={budgetRange} placeholder="בחר תקציב" options={budgetOpts} onChange={(v) => savePref({ budget_range: v })} />
+                              <SelectCell icon={<HomeIcon className="h-3.5 w-3.5 text-slate-700" />} label="סוג נכס מועדף" value={propertyType} placeholder="בחר נכס" options={propertyOpts} onChange={(v) => savePref({ property_type: v })} />
+                              <SelectCell icon={<Compass className="h-3.5 w-3.5 text-slate-700" />} label="אזור ביקוש מועדף" value={area} placeholder="בחר אזור" options={areaOpts.map((c) => ({ v: c, l: c }))} onChange={(v) => saveLead({ neighborhood: v })} />
+                            </>
+                          )}
+                        </div>
+                        {/* Owner-only: 13 Homely-style property fields, backed by the linked listing */}
+                        {ownerLead && (
+                          <OwnerPropertyGrid lead={selectedVoter as any} />
+                        )}
                       </div>
                     );
                   })()}
