@@ -370,3 +370,44 @@ export function LeadEnrichmentButton({ lead }: { lead: any }) {
     </Button>
   );
 }
+
+/* Compact icon-only variant: lives inside the contact action bar
+   (Call / Email / WhatsApp / Homely) so the broker can trigger the
+   network enrichment scan without the legacy full-width CTA. */
+export function LeadEnrichmentIconButton({ lead }: { lead: any }) {
+  const qc = useQueryClient();
+  const [enriching, setEnriching] = useState(false);
+  async function runEnrichment() {
+    setEnriching(true);
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-wa-avatars', {
+        body: { lead_ids: [lead.id], force: true },
+      });
+      if (error) throw error;
+      const updated = (data as any)?.updated ?? 0;
+      const failed = (data as any)?.failed ?? 0;
+      if (updated > 0)      toast.success('תמונת פרופיל סונכרנה מוואטסאפ');
+      else if (failed > 0)  toast.warning('לא נמצאה תמונת פרופיל פעילה לאיש קשר זה');
+      else                  toast.info('סריקה הושלמה — אין נתונים חדשים להעשרה');
+      qc.invalidateQueries({ queryKey: ['leads-infinite'] });
+    } catch (e: any) {
+      toast.error(e?.message ?? 'שגיאה בסריקה');
+    } finally {
+      setEnriching(false);
+    }
+  }
+  return (
+    <button
+      type="button"
+      onClick={runEnrichment}
+      disabled={enriching}
+      aria-label="סריקת מידע והעשרת פרופיל"
+      title="סריקת מידע והעשרת פרופיל"
+      className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent text-indigo-600 hover:bg-indigo-50 transition-colors disabled:opacity-50"
+    >
+      {enriching
+        ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.8} />
+        : <Sparkles className="h-4 w-4" strokeWidth={1.8} />}
+    </button>
+  );
+}
