@@ -958,9 +958,10 @@ const InlineComposer = ({
                 <button key={l.id} type="button"
                   onClick={() => {
                     setSelectedListingId(l.id);
-                    setBody((current) => cleanBody(current.replace(/\n*[^\n]*realtyz\.co\.il\/r\/[a-z0-9]+[^\n]*/gi, '')));
+                    setBody('');
                     setListingPickerOpen(false);
                   }}
+
                   className={cn(
                     'mb-1 w-full rounded-md px-3 py-2 text-right text-sm hover:bg-muted',
                     selectedListingId === l.id && 'bg-primary/10 text-primary',
