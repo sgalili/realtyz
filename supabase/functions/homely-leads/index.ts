@@ -17,9 +17,17 @@ const WEBTIV_BASE = "https://webtivapi.webtiv.co.il";
 const LOGIN_URL = `${WEBTIV_BASE}/api/login/LoginNewByAgent`;
 const LEAD_ENDPOINTS = [
   "/api/WebtivLid/GetLidim",
-  "/api/Lid/GetLidim",
-  "/api/Leads/GetAll",
+  "/api/WebtivLid/GetAll",
   "/api/WebtivLid/Search",
+  "/api/WebtivLid/List",
+  "/api/Lid/GetLidim",
+  "/api/Lid/GetAll",
+  "/api/Lid/Search",
+  "/api/Leads/GetAll",
+  "/api/Leads/Search",
+  "/api/Leads/List",
+  "/api/Contacts/GetAll",
+  "/api/Contacts/Search",
 ];
 
 type HomelyLead = {
