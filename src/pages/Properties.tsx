@@ -768,13 +768,34 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
     const ids = Array.from(selectedIds);
     if (ids.length === 0) return;
     setBulkDeleting(true);
-    const { error } = await supabase.from('listings').delete().in('id', ids);
+    // Chunk to keep the URL/`in(...)` list within PostgREST limits on large selections.
+    const CHUNK = 200;
+    let removed = 0;
+    let firstError: string | null = null;
+    for (let i = 0; i < ids.length; i += CHUNK) {
+      const slice = ids.slice(i, i + CHUNK);
+      const { data, error } = await supabase
+        .from('listings')
+        .delete()
+        .in('id', slice)
+        .select('id');
+      if (error) { firstError = error.message; break; }
+      removed += data?.length ?? 0;
+    }
     setBulkDeleting(false);
-    if (error) {
-      toast.error('מחיקה מרובה נכשלה: ' + error.message);
+    if (firstError) {
+      toast.error('מחיקה מרובה נכשלה: ' + firstError);
       return;
     }
-    toast.success(`${ids.length} נכסים נמחקו`);
+    if (removed === 0) {
+      toast.error('לא ניתן למחוק את הנכסים שנבחרו (אין הרשאה)');
+      return;
+    }
+    if (removed < ids.length) {
+      toast.success(`${removed} מתוך ${ids.length} נכסים נמחקו (שאר הרשומות חסומות בהרשאות)`);
+    } else {
+      toast.success(`${removed} נכסים נמחקו`);
+    }
     setSelectedIds(new Set());
     setBulkDeleteOpen(false);
     queryClient.invalidateQueries({ queryKey: ['properties-search'] });
