@@ -1955,29 +1955,6 @@ const LeadCRM = () => {
 
 
 
-                  {/* City Map Card */}
-                  {selectedVoter.city && (
-                    <>
-                      <div>
-                        <h3 className="text-sm font-semibold flex items-center gap-2 mb-3">
-                          <Map className="h-4 w-4" /> מיקום גיאוגרפי
-                        </h3>
-                        <div className="rounded-xl overflow-hidden border border-border/50 bg-muted/20">
-                          <img
-                            src={`https://maps.googleapis.com/maps/api/staticmap?center=${encodeURIComponent(selectedVoter.city + ', Israel')}&zoom=12&size=400x180&scale=2&maptype=roadmap&style=feature:all|saturation:-80&markers=color:0x1E3A8A|${encodeURIComponent(selectedVoter.city + ', Israel')}&key=`}
-                            alt={`מפת ${selectedVoter.city}`}
-                            className="w-full h-[140px] object-cover bg-muted"
-                            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
-                          />
-                          <div className="px-3 py-2 flex items-center gap-2">
-                            <MapPin className="h-3.5 w-3.5 text-primary" />
-                            <span className="text-sm font-medium">{selectedVoter.city}</span>
-                            <span className="text-xs text-muted-foreground mr-auto">ישראל</span>
-                          </div>
-                        </div>
-                      </div>
-                    </>
-                  )}
 
 
 
