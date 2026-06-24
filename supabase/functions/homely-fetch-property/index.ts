@@ -598,6 +598,8 @@ Deno.serve(async (req) => {
           source: "AutomaionJson.sellers",
           endpoint: url,
           count: properties.length,
+          saleCount,
+          rentCount,
           rawCount: items.length,
           properties,
           empty: properties.length === 0,
