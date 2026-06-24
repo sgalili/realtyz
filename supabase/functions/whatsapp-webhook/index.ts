@@ -554,7 +554,22 @@ async function handleLeadInboxInbound(
         .select("id, full_name, ai_autopilot, phone_number, assigned_to, interest_tag, deal_type")
         .maybeSingle();
       if (createErr) console.warn("auto lead create soft-fail:", createErr.message);
-      else lead = created as any;
+      else {
+        lead = created as any;
+        // Fire-and-forget: pull the WhatsApp avatar via fetch-wa-avatars so
+        // the new lead shows their real profile picture across the dashboard.
+        try {
+          const fnUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/fetch-wa-avatars`;
+          fetch(fnUrl, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+            },
+            body: JSON.stringify({ lead_ids: [(created as any).id], force: true }),
+          }).catch(() => { /* swallow */ });
+        } catch { /* swallow */ }
+      }
     } catch (e) {
       console.warn("auto lead create threw:", e instanceof Error ? e.message : e);
     }
@@ -589,6 +604,26 @@ async function handleLeadInboxInbound(
     }
   }
 
+  // Content-signature dedup: drop identical inbound text from the same lead
+  // within a 5-second window (provider retries, double webhooks, etc.).
+  if (lead?.id && inboundText) {
+    try {
+      const since = new Date(Date.now() - 5000).toISOString();
+      const { data: recent } = await admin
+        .from("messages")
+        .select("id")
+        .eq("lead_id", lead.id)
+        .eq("direction", "inbound")
+        .eq("content", inboundText)
+        .gte("created_at", since)
+        .limit(1)
+        .maybeSingle();
+      if (recent?.id) return { ok: true, duplicate: true, lead_id: lead.id };
+    } catch (e) {
+      console.warn("content-dedup soft-fail:", e instanceof Error ? e.message : e);
+    }
+  }
+
   const now = new Date().toISOString();
   const metadata = {
     provider: "GreenAPI",
@@ -598,6 +633,7 @@ async function handleLeadInboxInbound(
     unresolved_lead: !lead?.id,
     listing_id: shortLink?.listing_id ?? null,
   };
+
 
   // ALWAYS persist the inbound message row, even if lead_id is null.
   // The inbox UI falls back to a phone-anchored synthetic thread for these.

@@ -117,18 +117,19 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
 
       <Separator />
 
-      {/* Demographics */}
+      {/* Demographics — age + gender side-by-side */}
       <div>
         <h3 className="text-sm font-bold text-slate-900 mb-3">דמוגרפיה</h3>
-        <div className="space-y-2">
-          <div className="grid grid-cols-[110px_1fr_auto] items-center gap-2">
-            <Label className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+        <div className="grid grid-cols-2 gap-3">
+          <div className="space-y-1">
+            <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
               <User className="h-3.5 w-3.5 text-slate-700" /> גיל
+              {savingField === 'age' && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
             </Label>
             <Input
               type="number"
               value={age}
-              placeholder=""
+              placeholder="—"
               onChange={(e) => setAge(e.target.value)}
               onBlur={() => {
                 const n = age.trim() === '' ? null : Number(age);
@@ -140,11 +141,11 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
               className="h-8 text-sm"
               dir="ltr"
             />
-            {savingField === 'age' ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : <span className="w-3.5" />}
           </div>
-          <div className="grid grid-cols-[110px_1fr_auto] items-center gap-2">
-            <Label className="text-sm font-bold text-slate-900 flex items-center gap-1.5">
+          <div className="space-y-1">
+            <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
               <GenderIcon className="h-3.5 w-3.5 text-slate-700" /> מגדר
+              {savingField === 'gender' && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
             </Label>
             <Select
               value={gender || undefined}
@@ -157,7 +158,6 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
                 <SelectItem value="other">אחר</SelectItem>
               </SelectContent>
             </Select>
-            {savingField === 'gender' ? <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground" /> : <span className="w-3.5" />}
           </div>
         </div>
       </div>
