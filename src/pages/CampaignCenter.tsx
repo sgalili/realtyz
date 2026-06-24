@@ -3037,19 +3037,13 @@ const CampaignCenter = () => {
 
       // Auto-sync Ayrshare → social_connections so freshly linked pages appear
       // as connected without requiring a manual "Import accounts" click.
+      // Best-effort only: if the sync fails (network, 401, rate-limit) we still
+      // honor any previously persisted social_connections rows below, so the
+      // workspace's existing connected channels never silently disappear.
       try {
-        const { data: syncData, error: syncError } = await supabase.functions.invoke('ayrshare-sync-accounts', { body: {} });
-        const rejected = !!syncError || ['ayrshare_rejected', 'no_workspace_profile_key'].includes(String((syncData as any)?.reason || ''));
-        const details = (syncData as any)?.details ?? {};
-        const status = Number((syncError as any)?.context?.status ?? details?.status ?? details?.code ?? 0);
-        const message = String((syncError as any)?.message ?? details?.message ?? details?.error ?? '');
-        if (rejected || status === 401 || status === 403 || /unauthor|forbidden|suspended|profile key/i.test(message)) {
-          if (!cancelled) clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
-          return;
-        }
+        await supabase.functions.invoke('ayrshare-sync-accounts', { body: {} });
       } catch {
-        if (!cancelled) clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
-        return;
+        // swallow — fall through to DB read
       }
       if (cancelled) return;
 
