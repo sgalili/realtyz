@@ -861,7 +861,9 @@ const InlineComposer = ({
       const text = cleanBody(data?.content || data?.text || '').toString();
       if (text) {
         setBody(text);
+        setBodyManuallyEdited(false);
         setOriginalAiBody(text);
+
         // so subsequent manual edits + media updates flow into the same record.
         try {
           const { data: { user } } = await supabase.auth.getUser();
