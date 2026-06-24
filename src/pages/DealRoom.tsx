@@ -271,10 +271,19 @@ export default function DealRoom() {
     return dt === 'rent' ? 'rent' : 'sale';
   }
 
-  const visibleLeads = useMemo(
-    () => (leads || []).filter((l) => resolveDealType(l) === activeDealType),
-    [leads, activeDealType],
-  );
+  // Only active, in-progress leads — exclude untouched (new_lead) and closed.
+  const ACTIVE_STAGES: LeadStage[] = ['listing_outreach', 'negotiation', 'awaiting_signature'];
+  const visibleLeads = useMemo(() => {
+    const q = searchText.trim().toLowerCase();
+    return (leads || []).filter((l) => {
+      if (resolveDealType(l) !== activeDealType) return false;
+      if (!ACTIVE_STAGES.includes(bucketFor(l.lead_stage))) return false;
+      if (!q) return true;
+      const hay = [l.full_name, l.phone_number, l.city, l.interest_tag]
+        .filter(Boolean).join(' ').toLowerCase();
+      return hay.includes(q);
+    });
+  }, [leads, activeDealType, searchText]);
 
   const saleCount = useMemo(
     () => (leads || []).filter((l) => resolveDealType(l) === 'sale').length,
