@@ -1,10 +1,19 @@
 // Homely (Webtiv) Leads Importer — real data only.
 //
-// Logs into webtivapi.webtiv.co.il with the broker's stored credentials, then
-// posts to candidate Webtiv lead endpoints. Imports unique leads (phone as
-// natural key) into the `leads` table assigned to the calling user. No mock
-// fallback — when there is no connection or zero leads we return an empty
-// result so the UI does not show fake data.
+// The Webtiv REST API (/api/WebtivLid/*, /api/Lid/*, /api/Leads/*, /api/Contacts/*)
+// does NOT exist on webtivapi.webtiv.co.il — every variant returns HTML 404.
+// Login at /api/login/LoginNewByAgent succeeds but returns NO token, only a
+// `db` id + agent metadata. The only live data channel on this host is the
+// AutomaionJson stream feed:
+//   https://webtivapi.webtiv.co.il/AutomaionJson/outJson.ashx?guid=<GUID>
+//
+// Each broker has two stream GUIDs stored in `webtiv_sync_state`
+// (buyers_guid / sellers_guid). This function:
+//   1. loads the broker's two GUIDs,
+//   2. fetches both streams,
+//   3. maps records → leads,
+//   4. dedups against existing leads by normalized phone,
+//   5. upserts new rows into `public.leads` assigned to the calling user.
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/cors.ts";
@@ -13,22 +22,7 @@ const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
 const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 
-const WEBTIV_BASE = "https://webtivapi.webtiv.co.il";
-const LOGIN_URL = `${WEBTIV_BASE}/api/login/LoginNewByAgent`;
-const LEAD_ENDPOINTS = [
-  "/api/WebtivLid/GetLidim",
-  "/api/WebtivLid/GetAll",
-  "/api/WebtivLid/Search",
-  "/api/WebtivLid/List",
-  "/api/Lid/GetLidim",
-  "/api/Lid/GetAll",
-  "/api/Lid/Search",
-  "/api/Leads/GetAll",
-  "/api/Leads/Search",
-  "/api/Leads/List",
-  "/api/Contacts/GetAll",
-  "/api/Contacts/Search",
-];
+const STREAM_BASE = "https://webtivapi.webtiv.co.il/AutomaionJson/outJson.ashx";
 
 type HomelyLead = {
   external_id: string;
@@ -47,148 +41,89 @@ function json(body: unknown, status = 200) {
   });
 }
 
-function normalizePhone(raw: string): string {
-  const digits = String(raw || "").replace(/\D/g, "");
+function normalizePhone(raw: unknown): string {
+  const digits = String(raw ?? "").replace(/\D/g, "");
+  if (!digits) return "";
   if (digits.startsWith("972")) return digits;
   if (digits.startsWith("0")) return "972" + digits.slice(1);
   return digits;
 }
 
-async function webtivLogin(agency: string, username: string, password: string) {
-  const res = await fetch(LOGIN_URL, {
-    method: "POST",
-    headers: { "Content-Type": "application/json", Accept: "application/json" },
-    body: JSON.stringify({
-      client: agency, username, password,
-      theme: "", version: "realtyz-1.0",
-      deviceInfo: { DeviceType: "server", UserAgent: "Realtyz/1.0", Os: "deno", Platform: "edge-function" },
-    }),
-  });
-  const text = await res.text();
-  try {
-    console.log(`[HOMELY-AUTH-RAW] status=${res.status} body:`, text.substring(0, 1000));
-  } catch (e) {
-    console.warn("[HOMELY-AUTH-RAW] log failed:", (e as Error).message);
+function firstPhone(rec: Record<string, unknown>): string {
+  for (const k of ["tel1", "tel2", "tel3", "tel4", "tel5", "phone", "Pelephone", "telephone"]) {
+    const v = normalizePhone(rec[k]);
+    if (v && v.length >= 11) return v;
   }
-  let data: any = null;
-  try { data = JSON.parse(text); } catch { /* */ }
-  if (data && typeof data === "object") {
-    try { console.log("[HOMELY-AUTH-KEYS]:", Object.keys(data)); } catch { /* */ }
-  }
-  if (!res.ok || !data || data.db === 0 || data.db === "0") {
-    return { ok: false as const, status: res.status, note: text.slice(0, 200) };
-  }
-  console.log(`[HOMELY-AUTH-OK] db=${data.db ?? data.Db} hasToken=${Boolean(data.token ?? data.Token ?? data.accessToken)}`);
-  return { ok: true as const, session: data };
+  return "";
 }
 
-async function fetchWebtivLeads(session: any): Promise<HomelyLead[]> {
-  const token = session?.token || session?.Token || session?.accessToken;
-  const db = session?.db ?? session?.Db;
-  const headers: Record<string, string> = {
-    "Content-Type": "application/json",
-    Accept: "application/json",
-  };
-  if (token) headers["Authorization"] = `Bearer ${token}`;
-  const PAGE_SIZE = 500;
-  const MAX_PAGES = 100; // hard ceiling -> 50k leads
-  const seen = new Set<string>();
-  const mapItem = (it: any, i: number): HomelyLead => ({
-    external_id: String(it?.id ?? it?.Id ?? it?.lidId ?? it?.LidId ?? `homely-${i}`),
-    full_name: it?.full_name ?? it?.fullName ?? it?.name ?? it?.shemMale ?? it?.ShemMale ?? "—",
-    phone_number: normalizePhone(it?.phone ?? it?.phoneNumber ?? it?.telephone ?? it?.Telephone ?? it?.Pelephone ?? ""),
-    email: it?.email ?? it?.Email ?? null,
-    city: it?.city ?? it?.ir ?? it?.Ir ?? null,
-    interest_tag: it?.interest ?? it?.tag ?? it?.interestTag ?? null,
-    preferences: (it?.preferences as Record<string, unknown>) ?? { homely_raw: it, source: "homely" },
-  });
+function strOrNull(v: unknown): string | null {
+  if (v === null || v === undefined) return null;
+  const s = String(v).trim();
+  return s ? s : null;
+}
 
-  const allCollected: HomelyLead[] = [];
-
-  const tryFetch = async (path: string, method: "POST" | "GET", page: number): Promise<any[] | null> => {
-    try {
-      let url = `${WEBTIV_BASE}${path}`;
-      let init: RequestInit;
-      if (method === "POST") {
-        init = {
-          method: "POST",
-          headers,
-          body: JSON.stringify({
-            db, token,
-            page, Page: page, pageNumber: page, PageNumber: page,
-            pageSize: PAGE_SIZE, PageSize: PAGE_SIZE, limit: PAGE_SIZE, Limit: PAGE_SIZE,
-            take: PAGE_SIZE, skip: (page - 1) * PAGE_SIZE,
-            from: (page - 1) * PAGE_SIZE, size: PAGE_SIZE,
-            includeAll: true, all: true, status: null, filter: null,
-          }),
-        };
-      } else {
-        const qs = new URLSearchParams({
-          page: String(page), pageSize: String(PAGE_SIZE), limit: String(PAGE_SIZE),
-          db: String(db ?? ""), token: String(token ?? ""),
-        });
-        url = `${url}?${qs.toString()}`;
-        init = { method: "GET", headers };
-      }
-      const r = await fetch(url, init);
-      const rawText = await r.text();
-      try {
-        console.log(`[HOMELY-SWEEP-RAW] Path: ${path} (${method}) page=${page} | Status: ${r.status}:`, rawText.substring(0, 500));
-      } catch { /* */ }
-      if (!r.ok) return null;
-      let payload: any = null;
-      try { payload = JSON.parse(rawText); } catch {
-        console.warn(`[HOMELY-SWEEP] ${path} (${method}) returned non-JSON`);
-        return null;
-      }
-      if (!payload) return null;
-      if (payload && typeof payload === "object" && !Array.isArray(payload)) {
-        try { console.log(`[HOMELY-KEYS] ${path} (${method}):`, Object.keys(payload)); } catch { /* */ }
-      }
-      const items: any[] = Array.isArray(payload)
-        ? payload
-        : payload?.results || payload?.data || payload?.leads || payload?.Items || payload?.items || payload?.lidim || payload?.Lidim || payload?.records || payload?.Records || payload?.result?.leads || payload?.result?.data || payload?.result?.items || [];
-      console.log(`[HOMELY-SWEEP-PARSED] ${path} (${method}) page=${page} -> ${items.length} items (payloadType=${Array.isArray(payload) ? "array" : typeof payload})`);
-      return items;
-    } catch (e) {
-      console.warn(`[homely-leads] ${path} (${method}) page=${page} failed:`, (e as Error).message);
-      return null;
+async function fetchStream(guid: string): Promise<any[]> {
+  try {
+    const url = `${STREAM_BASE}?guid=${encodeURIComponent(guid)}`;
+    const r = await fetch(url, {
+      headers: { Accept: "application/json", "User-Agent": "Realtyz-Homely/1.0" },
+    });
+    const text = await r.text();
+    console.log(`[HOMELY-STREAM] guid=${guid.slice(0, 8)}… status=${r.status} bytes=${text.length} preview=${text.slice(0, 200)}`);
+    if (!r.ok) return [];
+    let payload: any = null;
+    try { payload = JSON.parse(text); } catch {
+      console.warn(`[HOMELY-STREAM] non-JSON for guid=${guid.slice(0, 8)}…`);
+      return [];
     }
-  };
-
-  for (const path of LEAD_ENDPOINTS) {
-    for (const method of ["POST", "GET"] as const) {
-      let page = 1;
-      let endpointWorks = false;
-      let pagesWithData = 0;
-      while (page <= MAX_PAGES) {
-        const items = await tryFetch(path, method, page);
-        if (items === null) {
-          if (!endpointWorks) break;
-          break;
-        }
-        console.log(`[homely-leads] ${path} (${method}) page=${page} -> ${items.length} items`);
-        if (items.length === 0) break;
-        endpointWorks = true;
-        pagesWithData += 1;
-        let novel = 0;
-        for (const it of items) {
-          const m = mapItem(it, allCollected.length);
-          const key = m.external_id || m.phone_number;
-          if (key && seen.has(key)) continue;
-          if (key) seen.add(key);
-          allCollected.push(m);
-          novel += 1;
-        }
-        // Stop paginating if API ignores pagination and returns same set
-        if (novel === 0 && pagesWithData > 1) break;
-        if (items.length < PAGE_SIZE) break;
-        page += 1;
+    if (Array.isArray(payload)) return payload;
+    if (payload && typeof payload === "object") {
+      console.log(`[HOMELY-STREAM-KEYS] guid=${guid.slice(0, 8)}…`, Object.keys(payload));
+      const candidates = ["data", "rows", "result", "results", "items", "Items", "leads", "Leads", "records", "Records", "lidim", "Lidim", "list", "List"];
+      for (const k of candidates) {
+        if (Array.isArray((payload as any)[k])) return (payload as any)[k];
       }
-      if (endpointWorks) break; // don't try GET if POST worked
     }
+    return [];
+  } catch (e) {
+    console.warn("[HOMELY-STREAM] fetch failed:", (e as Error).message);
+    return [];
   }
-  return allCollected;
+}
+
+function mapRecord(rec: Record<string, any>, source: "buyers" | "sellers", idx: number): HomelyLead | null {
+  const phone = firstPhone(rec);
+  const email = strOrNull(rec.email ?? rec.Email);
+  if (!phone && !email) return null;
+
+  const name = strOrNull(rec.name ?? rec.Name ?? rec.shemMale) ?? "";
+  const family = strOrNull(rec.family ?? rec.Family ?? rec.lastName) ?? "";
+  const fullName = `${name} ${family}`.trim() || "—";
+
+  const city = strOrNull(rec.city ?? rec.city1 ?? rec.ir ?? rec.Ir);
+  const tag = source === "sellers" ? "מוכר" : "קונה";
+
+  return {
+    external_id: String(rec.serial ?? rec.Serial ?? rec.id ?? rec.Id ?? `webtiv-${source}-${idx}`),
+    full_name: fullName,
+    phone_number: phone,
+    email,
+    city,
+    interest_tag: tag,
+    preferences: {
+      source: "webtiv_stream",
+      stream: source,
+      neighborhood: strOrNull(rec.shcuna ?? rec.shcuna1),
+      property_type: strOrNull(rec.objectresidence),
+      rooms: strOrNull(rec.room),
+      floor: strOrNull(rec.floor),
+      built_sqm: strOrNull(rec.builtsqmr),
+      price: strOrNull(rec.priceshekel),
+      agent: strOrNull(rec.agent),
+      raw: rec,
+    },
+  };
 }
 
 Deno.serve(async (req) => {
@@ -208,32 +143,51 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const dryRun = Boolean((body as any)?.dry_run);
 
-    // Load broker credentials
-    const { data: cred } = await admin
-      .from("homely_broker_credentials")
-      .select("homely_agency, homely_username")
+    // Load broker's stream GUIDs
+    const { data: state } = await admin
+      .from("webtiv_sync_state")
+      .select("buyers_guid, sellers_guid")
       .eq("user_id", user.id)
       .maybeSingle();
 
-    if (!cred?.homely_agency || !cred?.homely_username) {
-      return json({ source: "homely", connected: false, imported: 0, leads: [], note: "no_credentials" });
-    }
-    const { data: pw } = await admin.rpc("get_homely_password", { _user_id: user.id });
-    if (!pw) {
-      return json({ source: "homely", connected: false, imported: 0, leads: [], note: "no_password" });
+    const buyersGuid = (state as any)?.buyers_guid as string | null;
+    const sellersGuid = (state as any)?.sellers_guid as string | null;
+
+    if (!buyersGuid && !sellersGuid) {
+      return json({
+        source: "homely",
+        connected: false,
+        imported: 0,
+        leads: [],
+        note: "no_stream_guids — configure buyers_guid/sellers_guid in webtiv_sync_state",
+      });
     }
 
-    const login = await webtivLogin(String(cred.homely_agency), String(cred.homely_username), pw as unknown as string);
-    if (!login.ok) {
-      return json({ source: "homely", connected: false, imported: 0, leads: [], error: `login_failed:${login.status}:${login.note}` });
+    const collected: HomelyLead[] = [];
+    const seen = new Set<string>();
+    const sources: Array<{ key: "buyers" | "sellers"; guid: string | null }> = [
+      { key: "buyers", guid: buyersGuid },
+      { key: "sellers", guid: sellersGuid },
+    ];
+    for (const s of sources) {
+      if (!s.guid) continue;
+      const records = await fetchStream(s.guid);
+      console.log(`[HOMELY-STREAM] ${s.key}: ${records.length} records`);
+      records.forEach((rec, i) => {
+        const m = mapRecord(rec, s.key, i);
+        if (!m) return;
+        const key = m.phone_number || m.email || m.external_id;
+        if (key && seen.has(key)) return;
+        if (key) seen.add(key);
+        collected.push(m);
+      });
     }
 
-    const leads = await fetchWebtivLeads(login.session);
-    if (dryRun) return json({ source: "homely", connected: true, imported: 0, leads });
+    if (dryRun) return json({ source: "homely", connected: true, imported: 0, leads: collected });
 
     let imported = 0;
-    for (const p of leads) {
-      const phone = normalizePhone(p.phone_number);
+    for (const p of collected) {
+      const phone = p.phone_number;
       if (!phone) continue;
       const { data: existing } = await admin
         .from("leads").select("id").eq("phone_number", phone).maybeSingle();
@@ -253,7 +207,7 @@ Deno.serve(async (req) => {
       else console.warn("[homely-leads] insert failed:", insErr.message);
     }
 
-    return json({ source: "homely", connected: true, imported, leads });
+    return json({ source: "homely", connected: true, imported, leads: collected });
   } catch (e) {
     console.error("[homely-leads] fatal", e);
     return json({ error: (e as Error).message }, 500);
