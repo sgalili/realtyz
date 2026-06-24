@@ -390,9 +390,10 @@ const LeadCRM = () => {
   // Listen for hero-emitted add events (the '+' button lives in PageHero now).
   useEffect(() => {
     const handler = (e: Event) => {
-      const action = (e as CustomEvent<{ action: 'manual' | 'import' }>).detail?.action;
+      const action = (e as CustomEvent<{ action: 'manual' | 'import' | 'homely' }>).detail?.action;
       if (action === 'manual') createBlankLeadAndOpen();
       else if (action === 'import') fileInputRef.current?.click();
+      else if (action === 'homely') handleHomelySync();
     };
     window.addEventListener('leads:add', handler);
     return () => window.removeEventListener('leads:add', handler);
@@ -1173,35 +1174,8 @@ const LeadCRM = () => {
 
   return (
     <div className="space-y-4 relative pb-20 pt-5">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight text-primary">לקוחות</h1>
-          <p className="text-muted-foreground text-sm">
-            סה״כ אנשי קשר במערכת: <span className="font-semibold text-foreground">{(isDemoMode ? totalCount : realTotalCount).toLocaleString('he-IL')}</span>
-          </p>
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button size="icon" className="h-9 w-9 shrink-0 rounded-full" disabled={freemium.isBlocked} aria-label="הוסף">
-              <Plus className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="min-w-[220px]">
-            <DropdownMenuItem onClick={() => createBlankLeadAndOpen()} className="gap-2 cursor-pointer">
-              <UserPlus className="h-4 w-4 text-primary" /> מתעניין חדש
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="gap-2 cursor-pointer">
-              <UploadIcon className="h-4 w-4 text-primary" /> ייבוא מקובץ
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={handleHomelySync} disabled={homelySyncing} className="gap-2 cursor-pointer">
-              {homelySyncing ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <DownloadCloud className="h-4 w-4 text-primary" />}
-              {homelySyncing ? 'מסנכרן מהומלי...' : 'סנכרון מתעניינים מהומלי'}
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
+      {/* Header + add menu live in the global PageHero (top bar) */}
+
 
       <input type="file" ref={fileInputRef} className="hidden" onChange={handleFileSelect} />
       {freemium.isTrial && (

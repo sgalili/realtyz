@@ -10,7 +10,7 @@
  * Mounted once at the layout level to avoid per-route hero "jumps".
  */
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Menu, Plus, FileSpreadsheet, User, ArrowLeft, ArrowRight, Calendar as CalendarIcon, History } from 'lucide-react';
+import { Menu, Plus, FileSpreadsheet, User, ArrowLeft, ArrowRight, Calendar as CalendarIcon, History, DownloadCloud } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { RealtyzWave } from '@/components/RealtyzWave';
 // CreditBalancePill moved to /billing (Packages & Payments page).
@@ -80,7 +80,7 @@ function PropertiesHeroAddButton() {
 }
 
 function LeadsHeroAddButton() {
-  const dispatch = (action: 'manual' | 'import') =>
+  const dispatch = (action: 'manual' | 'import' | 'homely') =>
     window.dispatchEvent(new CustomEvent('leads:add', { detail: { action } }));
   return (
     <DropdownMenu>
@@ -100,6 +100,9 @@ function LeadsHeroAddButton() {
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => dispatch('import')} className="gap-2">
           <FileSpreadsheet className="h-4 w-4" /> ייבוא מתעניינים
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => dispatch('homely')} className="gap-2">
+          <DownloadCloud className="h-4 w-4" /> משיכת אנשי קשר מ-Homely
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
