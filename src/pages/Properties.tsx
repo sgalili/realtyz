@@ -738,8 +738,8 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
   const someSelected = sorted.some((p) => selectedIds.has(p.id));
 
   const toggleAll = () => {
-    if (allMineSelected) setSelectedIds(new Set());
-    else setSelectedIds(new Set(mineRows.map((p) => p.id)));
+    if (allFilteredSelected) setSelectedIds(new Set());
+    else setSelectedIds(new Set(sorted.map((p) => p.id)));
   };
   const toggleOne = (id: string) => {
     setSelectedIds((prev) => {
