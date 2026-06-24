@@ -53,17 +53,40 @@ export function useSidebarCounts() {
         }
       };
 
+      // Chats = distinct leads that have at least one row in `messages`.
+      // We never want to mirror the contacts/leads table length here.
+      const distinctChatLeads = async (): Promise<number> => {
+        try {
+          const { data, error } = await (supabase as any)
+            .from('messages')
+            .select('lead_id')
+            .not('lead_id', 'is', null)
+            .limit(5000);
+          if (error || !Array.isArray(data)) return 0;
+          const seen = new Set<string>();
+          for (const r of data) if (r.lead_id) seen.add(r.lead_id);
+          return seen.size;
+        } catch { return 0; }
+      };
+
+      // Deals = leads whose pipeline stage has progressed past "new_lead".
+      // A raw leads count would mirror the contacts table — explicitly excluded.
+      const activeDealsCount = async (): Promise<number> => {
+        return safeCount('leads', (q) =>
+          q.not('lead_stage', 'is', null).neq('lead_stage', 'new_lead'),
+        );
+      };
+
       const [leads, listings, chats, deals, campaigns] = await Promise.all([
         safeCount('leads'),
         safeCount('listings'),
-        // Inbox shows one row per lead that has messages — count distinct
-        // leads with any interaction, NOT the raw message row count.
-        safeCount('leads', (q) => q.not('last_interaction_at', 'is', null)),
-        safeCount('leads', (q) => q.not('lead_stage', 'is', null)),
+        distinctChatLeads(),
+        activeDealsCount(),
         groupedCampaignCount(),
       ]);
 
       return { leads, listings, chats, deals, campaigns };
+
     },
   });
 }

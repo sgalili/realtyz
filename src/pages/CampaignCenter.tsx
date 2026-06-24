@@ -716,8 +716,11 @@ const InlineComposer = ({
           const { data, error } = await supabase
             .from('listings')
             .select('id, property_title, description, city, neighborhood, address, rooms, sqm, floor, asking_price, features, source_metadata, status, is_published, created_at')
+            .eq('status', 'live')
+            .eq('is_published', true)
             .order('created_at', { ascending: false })
             .range(from, from + pageSize - 1);
+
           if (error) throw error;
           const page = (data as CampaignListing[]) || [];
           rows.push(...page);
