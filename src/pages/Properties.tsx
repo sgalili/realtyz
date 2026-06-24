@@ -237,6 +237,7 @@ export default function Properties() {
                 listing_type: extractListingType(row.features),
                 extras: (meta.extras ?? {}) as Record<string, string>,
                 created_at: row.created_at ?? null,
+                updated_at: row.updated_at ?? null,
               };
             })),
           };
