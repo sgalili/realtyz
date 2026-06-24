@@ -15,7 +15,7 @@ import { SidebarTrigger } from '@/components/ui/sidebar';
 
 const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/(dashboard)?$/, title: 'לוח בקרה' },
-  { match: /^\/lead-crm/, title: 'ניהול מתעניינים' },
+  { match: /^\/lead-crm/, title: 'לקוחות' },
   { match: /^\/inbox/, title: 'תיבת הודעות' },
   { match: /^\/deal-room/, title: 'עסקאות' },
   { match: /^\/properties\/[^/]+/, title: 'פרטי נכס' },
