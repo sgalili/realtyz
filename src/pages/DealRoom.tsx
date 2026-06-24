@@ -19,22 +19,18 @@ import {
 import VoterAvatar from '@/components/VoterAvatar';
 import {
   Sparkles,
-  Send,
   Clock,
   UserPlus,
   Megaphone,
   Handshake,
   CheckCircle2,
-  
   Database,
   PenLine,
-  Pencil,
-  Check,
-  ShieldCheck,
   Home,
-  Flame,
-  ArrowDownUp,
-  RefreshCw,
+  SlidersHorizontal,
+  Search,
+  Phone,
+  MapPin,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
