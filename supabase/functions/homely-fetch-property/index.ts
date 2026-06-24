@@ -233,6 +233,25 @@ function buildOfficeNotes(it: any): string {
   push("מכירה", it?.sale_f3);
   return parts.join("\n");
 }
+// ---- Office filter (mirror of homely-leads ingestion rules) ----
+const ALLOWED_AGENT = "אודי ויטמן";
+const ALLOWED_SIVUG = new Set(["משרד", "בלעדי"]);
+function normalizeHe(v: unknown): string {
+  return String(v ?? "").replace(/[\s\u200f\u200e"׳״']/g, "").trim();
+}
+function pickAgentName(it: any): string {
+  return String(it?.agent ?? it?.Agent ?? it?.agentName ?? it?.shiuh ?? it?.["סוכן"] ?? "").trim();
+}
+function pickSivugName(it: any): string {
+  const cands = [it?.sivug, it?.Sivug, it?.shiuh, it?.shiyuh, it?.shiyukh, it?.shiuch, it?.belongTo, it?.belong, it?.["שיוך"]];
+  for (const c of cands) { const s = String(c ?? "").trim(); if (s) return s; }
+  return "";
+}
+function passesOfficeFilter(it: any, source: "sellers" | "buyers"): boolean {
+  if (source === "sellers") return ALLOWED_SIVUG.has(normalizeHe(pickSivugName(it)));
+  return normalizeHe(pickAgentName(it)) === normalizeHe(ALLOWED_AGENT);
+}
+
 function mapStreamProperty(it: any, idx: number) {
   const serial = String(it?.serial ?? it?.Serial ?? `row-${idx + 1}`);
   const street = [it?.street, it?.number, it?.flatnumber].filter((v) => v && String(v).trim()).join(" ").trim();
@@ -257,6 +276,8 @@ function mapStreamProperty(it: any, idx: number) {
     photos: media.photos,
     documents: media.documents,
     property_type: String(it?.objectresidence ?? ""),
+    agent: pickAgentName(it),
+    sivug: pickSivugName(it),
     raw: it,
   };
 }
@@ -274,9 +295,12 @@ function mapStreamContact(it: any, idx: number) {
     email: String(it?.email ?? ""),
     city: String(it?.city1 ?? it?.city ?? ""),
     notes: [wants, it?.comments1].filter(Boolean).join("\n"),
+    agent: pickAgentName(it),
+    sivug: pickSivugName(it),
     raw: it,
   };
 }
+
 
 function normalizeIlPhone(raw: unknown): string {
   const digits = String(raw ?? "").replace(/\D/g, "");
@@ -445,27 +469,32 @@ Deno.serve(async (req) => {
       }];
 
       if (action === "fetchAllProperties") {
-        const properties = items.map(mapStreamProperty);
+        const filtered = items.filter((it: any) => passesOfficeFilter(it, "sellers"));
+        const properties = filtered.map(mapStreamProperty);
         return json({
           ok: true,
           source: "AutomaionJson.sellers",
           endpoint: url,
           count: properties.length,
+          rawCount: items.length,
           properties,
           empty: properties.length === 0,
           debug,
         });
       }
-      const contacts = items.map(mapStreamContact);
+      const filtered = items.filter((it: any) => passesOfficeFilter(it, "buyers"));
+      const contacts = filtered.map(mapStreamContact);
       return json({
         ok: true,
         source: "AutomaionJson.buyers",
         endpoint: url,
         count: contacts.length,
+        rawCount: items.length,
         contacts,
         empty: contacts.length === 0,
         debug,
       });
+
     }
 
 
