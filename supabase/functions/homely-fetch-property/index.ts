@@ -471,7 +471,15 @@ Deno.serve(async (req) => {
       }];
 
       if (action === "fetchAllProperties") {
-        const filtered = items.filter((it: any) => passesOfficeFilter(it, "sellers"));
+        const discardedSamples: any[] = [];
+        const filtered = items.filter((it: any) => {
+          const ok = passesOfficeFilter(it, "sellers");
+          if (!ok && discardedSamples.length < 3) {
+            discardedSamples.push({ rawAgent: it?.agent, rawSivug: it?.sivug, pickedAgent: pickAgentName(it), pickedSivug: pickSivugName(it) });
+          }
+          return ok;
+        });
+        if (discardedSamples.length) console.log("[homely-fetch] sellers discarded samples:", JSON.stringify(discardedSamples));
         const properties = filtered.map(mapStreamProperty);
         return json({
           ok: true,
@@ -484,7 +492,15 @@ Deno.serve(async (req) => {
           debug,
         });
       }
-      const filtered = items.filter((it: any) => passesOfficeFilter(it, "buyers"));
+      const discardedSamples: any[] = [];
+      const filtered = items.filter((it: any) => {
+        const ok = passesOfficeFilter(it, "buyers");
+        if (!ok && discardedSamples.length < 3) {
+          discardedSamples.push({ rawAgent: it?.agent, rawSivug: it?.sivug, pickedAgent: pickAgentName(it), pickedSivug: pickSivugName(it) });
+        }
+        return ok;
+      });
+      if (discardedSamples.length) console.log("[homely-fetch] buyers discarded samples:", JSON.stringify(discardedSamples));
       const contacts = filtered.map(mapStreamContact);
       return json({
         ok: true,
@@ -496,6 +512,7 @@ Deno.serve(async (req) => {
         empty: contacts.length === 0,
         debug,
       });
+
 
     }
 
