@@ -27,6 +27,7 @@ type HomelyProperty = {
   photos?: string[];
   documents?: string[];
   property_type?: string;
+  transaction_type?: 'sale' | 'rent';
   agent?: string;
   sivug?: string;
   raw: unknown;
@@ -67,6 +68,7 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
   const [fRooms, setFRooms] = useState('');
   const [fType, setFType] = useState('');
   const [fAgent, setFAgent] = useState('');
+  const [fDeal, setFDeal] = useState<'all' | 'sale' | 'rent'>('all');
   const [cityPopOpen, setCityPopOpen] = useState(false);
   const fetchedOnce = useRef<{ properties: boolean; contacts: boolean }>({ properties: false, contacts: false });
 
@@ -132,7 +134,7 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
       setPickedProps(new Set());
       setPickedContacts(new Set());
       setFiltersOpen(false);
-      setFCities(new Set()); setFRooms(''); setFType(''); setFAgent('');
+      setFCities(new Set()); setFRooms(''); setFType(''); setFAgent(''); setFDeal('all');
     }
   }, [open]);
 
@@ -152,13 +154,30 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
     return Array.from(new Set(src.filter(Boolean))).sort();
   }, [tab, properties, contacts]);
 
-  const filteredProps = useMemo(() => properties.filter(p => {
+  // Normalize transaction type client-side too (defensive: older payloads may
+  // not yet carry the server-stamped `transaction_type`).
+  const normalizeClientTx = (p: HomelyProperty): 'sale' | 'rent' => {
+    if (p.transaction_type === 'sale' || p.transaction_type === 'rent') return p.transaction_type;
+    const hay = `${p.property_type ?? ''} ${p.title ?? ''} ${p.description ?? ''}`;
+    if (/להשכרה|השכרה|שכירות|\brent\b/i.test(hay)) return 'rent';
+    if (p.price && p.price > 0 && p.price < 50_000) return 'rent';
+    return 'sale';
+  };
+  const propertiesWithTx = useMemo(
+    () => properties.map((p) => ({ ...p, transaction_type: normalizeClientTx(p) as 'sale' | 'rent' })),
+    [properties],
+  );
+  const saleCount = useMemo(() => propertiesWithTx.filter((p) => p.transaction_type === 'sale').length, [propertiesWithTx]);
+  const rentCount = useMemo(() => propertiesWithTx.filter((p) => p.transaction_type === 'rent').length, [propertiesWithTx]);
+
+  const filteredProps = useMemo(() => propertiesWithTx.filter(p => {
+    if (fDeal !== 'all' && p.transaction_type !== fDeal) return false;
     if (fCities.size && !fCities.has(p.city)) return false;
     if (fType && (p.property_type || '') !== fType) return false;
     if (fRooms && Number(p.rooms) !== Number(fRooms)) return false;
     if (fAgent && (p.agent || '') !== fAgent) return false;
     return true;
-  }), [properties, fCities, fType, fRooms, fAgent]);
+  }), [propertiesWithTx, fDeal, fCities, fType, fRooms, fAgent]);
   const filteredContacts = useMemo(() => contacts.filter(c => {
     if (fCities.size && !fCities.has(c.city)) return false;
     if (fAgent && (c.agent || '') !== fAgent) return false;
@@ -305,6 +324,24 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
 
 
           <TabsContent value="properties" className="mt-3 flex-1 min-h-0 data-[state=active]:flex flex-col">
+            {properties.length > 0 && (
+              <div dir="rtl" className="flex items-center gap-1.5 mb-2">
+                {([
+                  { id: 'all', label: 'הכל', count: propertiesWithTx.length },
+                  { id: 'sale', label: 'למכירה', count: saleCount },
+                  { id: 'rent', label: 'להשכרה', count: rentCount },
+                ] as const).map(({ id, label, count }) => (
+                  <button
+                    key={id}
+                    type="button"
+                    onClick={() => setFDeal(id)}
+                    className={`px-3 py-1 rounded-full text-xs font-semibold border transition-colors ${fDeal === id ? 'bg-primary text-primary-foreground border-primary' : 'bg-background hover:bg-muted border-border text-foreground'}`}
+                  >
+                    {label} <span className="tabular-nums opacity-80">({count})</span>
+                  </button>
+                ))}
+              </div>
+            )}
             <div dir="rtl" className="flex-1 min-h-0 overflow-y-auto space-y-2 pl-1">
               {loadingProps ? (
                 Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
