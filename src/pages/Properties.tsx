@@ -132,9 +132,10 @@ export default function Properties() {
   // Listen for hero-emitted add events (the '+' button lives in PageHero now).
   useEffect(() => {
     const handler = (e: Event) => {
-      const action = (e as CustomEvent<{ action: 'manual' | 'import' }>).detail?.action;
+      const action = (e as CustomEvent<{ action: 'manual' | 'import' | 'homely' }>).detail?.action;
       if (action === 'manual') setAddOpen(true);
       else if (action === 'import') setImportOpen(true);
+      else if (action === 'homely') setHomelyBulkOpen(true);
     };
     window.addEventListener('properties:add', handler);
     return () => window.removeEventListener('properties:add', handler);
@@ -360,16 +361,8 @@ export default function Properties() {
               {SOURCE_LABELS[t]}
             </button>
           ))}
-          {sourceTab === 'homely' && (
-            <button
-              type="button"
-              onClick={() => setHomelyBulkOpen(true)}
-              className="ml-1 inline-flex items-center gap-1 px-2.5 py-2 text-xs font-semibold rounded-lg text-primary hover:bg-primary/10 transition-colors"
-              title="סנכרון מלא מהומלי — נכסים ואנשי קשר"
-            >
-              סנכרון מלא מהומלי
-            </button>
-          )}
+
+
 
         </div>
       </div>

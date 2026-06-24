@@ -54,7 +54,7 @@ function usePropertyHeroSuffix(pathname: string): string {
 
 
 function PropertiesHeroAddButton() {
-  const dispatch = (action: 'manual' | 'import') =>
+  const dispatch = (action: 'manual' | 'import' | 'homely') =>
     window.dispatchEvent(new CustomEvent('properties:add', { detail: { action } }));
   return (
     <DropdownMenu>
@@ -74,6 +74,9 @@ function PropertiesHeroAddButton() {
         </DropdownMenuItem>
         <DropdownMenuItem onClick={() => dispatch('import')} className="gap-2">
           <FileSpreadsheet className="h-4 w-4" /> יבוא נכסים מאקסל
+        </DropdownMenuItem>
+        <DropdownMenuItem onClick={() => dispatch('homely')} className="gap-2">
+          <FileSpreadsheet className="h-4 w-4" /> סנכרון מלא מהומלי
         </DropdownMenuItem>
       </DropdownMenuContent>
     </DropdownMenu>
