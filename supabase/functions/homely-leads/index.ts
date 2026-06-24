@@ -150,10 +150,25 @@ function deepPick(rec: Record<string, any>, aliases: string[]): string {
 }
 
 function pickAgent(rec: Record<string, any>): string {
-  return deepPick(rec, [
-    "agent", "agentname", "agent_name", "brokername", "broker_name", "broker",
-    "user", "workername", "worker_name", "send_by", "shiuh", "סוכן",
+  // Deep, case-insensitive scan across every known agent-name key variant.
+  const direct = deepPick(rec, [
+    "agent", "agentname", "agent_name", "agentfullname", "agent_full_name",
+    "broker", "brokername", "broker_name",
+    "user", "username", "user_name",
+    "workername", "worker_name", "worker",
+    "send_by", "sendby", "sent_by",
+    "shiuh", "shiyuh",
+    "סוכן", "שם סוכן", "סוכן מטפל",
   ]);
+  if (direct) return direct;
+  // Fallback: scan ALL string values on the record for the canonical name.
+  if (rec && typeof rec === "object") {
+    for (const v of Object.values(rec)) {
+      const s = normalizeHe(v).toLowerCase();
+      if (s.includes("אודי ויטמן") || s.includes("אודי וייטמן")) return normalizeHe(v);
+    }
+  }
+  return "";
 }
 
 function pickSivug(rec: Record<string, any>): string {
@@ -217,13 +232,14 @@ function pickDocs(rec: Record<string, any>): string[] {
 // Apply the strict office filter using PERMISSIVE substring matching — the
 // raw Webtiv values are concatenated strings like "בטיפול,משרד" or
 // "בלעדי,משרד", so equality checks miss everything.
-function passesFilter(rec: Record<string, any>, source: "buyers" | "sellers"): boolean {
-  if (source === "sellers") {
-    const aff = pickSivug(rec).toLowerCase();
-    return ALLOWED_SIVUG_SUBSTRS.some((s) => aff.includes(s.toLowerCase()));
-  }
-  // buyers (incl. renter-seekers): agent name must loosely include "אודי ויטמן"
-  return pickAgent(rec).toLowerCase().includes(ALLOWED_AGENT_SUBSTR.toLowerCase());
+// Strict office filter — Udi's contacts ONLY. Applied to both buyers and
+// sellers streams: a record is kept only when its mapped agent loosely
+// includes "אודי ויטמן". Sellers also accept the office affiliation tags
+// ("משרד" / "בלעדי") as an additional pass for listings, but contact
+// ingestion still requires the agent match below.
+function passesFilter(rec: Record<string, any>, _source: "buyers" | "sellers"): boolean {
+  const agent = pickAgent(rec).toLowerCase();
+  return agent.includes(ALLOWED_AGENT_SUBSTR.toLowerCase());
 }
 
 function mapRecord(rec: Record<string, any>, source: "buyers" | "sellers", idx: number): HomelyLead | null {
@@ -327,6 +343,19 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const dryRun = Boolean((body as any)?.dry_run);
     const bypassFilter = Boolean((body as any)?.bypass_filter);
+    const wipeFirst = Boolean((body as any)?.wipe_first);
+
+    // Optional pre-sync wipe: clear prior webtiv_stream contacts for THIS user
+    // so the agent-calibrated filter produces a clean, deduplicated count.
+    if (wipeFirst && !dryRun) {
+      const { error: delErr, count: delCount } = await admin
+        .from("leads")
+        .delete({ count: "exact" })
+        .eq("assigned_to", user.id)
+        .filter("preferences->>source", "eq", "webtiv_stream");
+      console.log(`[STREAM-WIPE] removed=${delCount ?? 0} err=${delErr?.message ?? "none"}`);
+    }
+
 
 
     // 1) Validate GUID retrieval
