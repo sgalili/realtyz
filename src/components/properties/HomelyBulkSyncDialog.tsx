@@ -237,18 +237,7 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
           </div>
 
           {filtersOpen && (
-            <div dir="rtl" className="grid grid-cols-1 sm:grid-cols-3 gap-2 rounded-lg border bg-muted/30 p-2 text-right">
-              <div>
-                <label className="text-[10px] text-muted-foreground block mb-1">עיר</label>
-                <select className="w-full h-8 rounded-md border bg-background px-2 text-xs text-right" value={fCity} onChange={(e) => setFCity(e.target.value)}>
-                  <option value="">הכל</option>
-                  {cityOptions.map(c => <option key={c} value={c}>{c}</option>)}
-                </select>
-              </div>
-              <div>
-                <label className="text-[10px] text-muted-foreground block mb-1">חדרים</label>
-                <Input type="number" min={1} step={0.5} value={fRooms} onChange={(e) => setFRooms(e.target.value)} className="h-8 text-xs text-right" placeholder="הכל" />
-              </div>
+            <div dir="rtl" className="grid grid-cols-1 sm:grid-cols-2 gap-2 rounded-lg border bg-muted/30 p-2 text-right">
               <div>
                 <label className="text-[10px] text-muted-foreground block mb-1">סוג נכס</label>
                 <select className="w-full h-8 rounded-md border bg-background px-2 text-xs text-right" value={fType} onChange={(e) => setFType(e.target.value)}>
@@ -256,8 +245,58 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
                   {typeOptions.map(t => <option key={t} value={t}>{t}</option>)}
                 </select>
               </div>
+              <div>
+                <label className="text-[10px] text-muted-foreground block mb-1">סוכן</label>
+                <select className="w-full h-8 rounded-md border bg-background px-2 text-xs text-right" value={fAgent} onChange={(e) => setFAgent(e.target.value)}>
+                  <option value="">הכל</option>
+                  {agentOptions.map(a => <option key={a} value={a}>{a}</option>)}
+                </select>
+              </div>
+              <div className="sm:col-span-2 relative">
+                <label className="text-[10px] text-muted-foreground block mb-1">עיר (בחירה מרובה)</label>
+                <button
+                  type="button"
+                  onClick={() => setCityPopOpen(v => !v)}
+                  className="w-full h-8 rounded-md border bg-background px-2 text-xs text-right flex items-center justify-between gap-2"
+                >
+                  <span className="truncate">
+                    {fCities.size === 0 ? 'הכל' : Array.from(fCities).join(', ')}
+                  </span>
+                  <span className="text-muted-foreground">{fCities.size ? `(${fCities.size})` : ''}</span>
+                </button>
+                {cityPopOpen && (
+                  <div className="absolute z-50 mt-1 w-full max-h-56 overflow-y-auto rounded-md border bg-background shadow-md p-2 text-right">
+                    <div className="flex items-center justify-between mb-1.5 text-[11px]">
+                      <button type="button" className="text-primary hover:underline" onClick={() => setFCities(new Set())}>נקה</button>
+                      <button type="button" className="text-muted-foreground hover:underline" onClick={() => setCityPopOpen(false)}>סגור</button>
+                    </div>
+                    {cityOptions.length === 0 ? (
+                      <div className="text-[11px] text-muted-foreground p-2">אין ערים זמינות</div>
+                    ) : cityOptions.map(c => {
+                      const checked = fCities.has(c);
+                      return (
+                        <label key={c} className="flex items-center gap-2 text-xs py-1 cursor-pointer hover:bg-muted/40 rounded px-1">
+                          <Checkbox checked={checked} onCheckedChange={() => {
+                            const next = new Set(fCities);
+                            checked ? next.delete(c) : next.add(c);
+                            setFCities(next);
+                          }} />
+                          <span className="flex-1 text-right">{c}</span>
+                        </label>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+              {tab === 'properties' && (
+                <div>
+                  <label className="text-[10px] text-muted-foreground block mb-1">חדרים</label>
+                  <Input type="number" min={1} step={0.5} value={fRooms} onChange={(e) => setFRooms(e.target.value)} className="h-8 text-xs text-right" placeholder="הכל" />
+                </div>
+              )}
             </div>
           )}
+
 
           <TabsContent value="properties" className="mt-3 flex-1 min-h-0 data-[state=active]:flex flex-col">
             <div dir="rtl" className="flex-1 min-h-0 overflow-y-auto space-y-2 pl-1">
