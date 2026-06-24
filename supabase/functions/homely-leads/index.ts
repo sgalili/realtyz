@@ -92,7 +92,7 @@ function strOrNull(v: unknown): string | null {
 async function fetchStream(guid: string, label: string): Promise<any[]> {
   try {
     const url = `${STREAM_BASE}?guid=${encodeURIComponent(guid)}`;
-    const res = await fetch(url, {
+    const res = await fetch(proxied(url), {
       headers: { Accept: "application/json", "User-Agent": "Realtyz-Homely/1.0" },
     });
     const status = res.status;
