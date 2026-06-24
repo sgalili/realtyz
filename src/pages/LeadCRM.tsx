@@ -1344,7 +1344,7 @@ const LeadCRM = () => {
                   className={`px-3 h-7 rounded-full text-xs font-medium border transition-colors ${
                     leadKindFilter === t.v
                       ? 'bg-primary text-primary-foreground border-primary'
-                      : 'bg-background text-muted-foreground border-border hover:bg-accent'
+                      : 'bg-background text-muted-foreground border-border hover:bg-primary hover:text-primary-foreground hover:border-primary'
                   }`}
                 >
                   {t.label}
