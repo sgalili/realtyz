@@ -469,27 +469,32 @@ Deno.serve(async (req) => {
       }];
 
       if (action === "fetchAllProperties") {
-        const properties = items.map(mapStreamProperty);
+        const filtered = items.filter((it: any) => passesOfficeFilter(it, "sellers"));
+        const properties = filtered.map(mapStreamProperty);
         return json({
           ok: true,
           source: "AutomaionJson.sellers",
           endpoint: url,
           count: properties.length,
+          rawCount: items.length,
           properties,
           empty: properties.length === 0,
           debug,
         });
       }
-      const contacts = items.map(mapStreamContact);
+      const filtered = items.filter((it: any) => passesOfficeFilter(it, "buyers"));
+      const contacts = filtered.map(mapStreamContact);
       return json({
         ok: true,
         source: "AutomaionJson.buyers",
         endpoint: url,
         count: contacts.length,
+        rawCount: items.length,
         contacts,
         empty: contacts.length === 0,
         debug,
       });
+
     }
 
 
