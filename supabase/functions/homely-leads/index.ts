@@ -94,45 +94,80 @@ async function fetchWebtivLeads(session: any): Promise<HomelyLead[]> {
     preferences: (it?.preferences as Record<string, unknown>) ?? { homely_raw: it, source: "homely" },
   });
 
-  for (const path of LEAD_ENDPOINTS) {
-    const collected: HomelyLead[] = [];
-    let page = 1;
-    let endpointWorks = false;
-    while (page <= MAX_PAGES) {
-      try {
-        const r = await fetch(`${WEBTIV_BASE}${path}`, {
+  const allCollected: HomelyLead[] = [];
+
+  const tryFetch = async (path: string, method: "POST" | "GET", page: number): Promise<any[] | null> => {
+    try {
+      let url = `${WEBTIV_BASE}${path}`;
+      let init: RequestInit;
+      if (method === "POST") {
+        init = {
           method: "POST",
           headers,
-          body: JSON.stringify({ db, token, page, pageSize: PAGE_SIZE, PageSize: PAGE_SIZE, Page: page }),
+          body: JSON.stringify({
+            db, token,
+            page, Page: page, pageNumber: page, PageNumber: page,
+            pageSize: PAGE_SIZE, PageSize: PAGE_SIZE, limit: PAGE_SIZE, Limit: PAGE_SIZE,
+            take: PAGE_SIZE, skip: (page - 1) * PAGE_SIZE,
+            from: (page - 1) * PAGE_SIZE, size: PAGE_SIZE,
+            includeAll: true, all: true, status: null, filter: null,
+          }),
+        };
+      } else {
+        const qs = new URLSearchParams({
+          page: String(page), pageSize: String(PAGE_SIZE), limit: String(PAGE_SIZE),
+          db: String(db ?? ""), token: String(token ?? ""),
         });
-        if (!r.ok) {
-          if (!endpointWorks) break; // try next endpoint
+        url = `${url}?${qs.toString()}`;
+        init = { method: "GET", headers };
+      }
+      const r = await fetch(url, init);
+      if (!r.ok) return null;
+      const payload = await r.json().catch(() => null);
+      if (!payload) return null;
+      const items: any[] = Array.isArray(payload)
+        ? payload
+        : payload?.results || payload?.data || payload?.leads || payload?.Items || payload?.items || payload?.lidim || payload?.Lidim || payload?.records || payload?.Records || [];
+      return items;
+    } catch (e) {
+      console.warn(`[homely-leads] ${path} (${method}) page=${page} failed:`, (e as Error).message);
+      return null;
+    }
+  };
+
+  for (const path of LEAD_ENDPOINTS) {
+    for (const method of ["POST", "GET"] as const) {
+      let page = 1;
+      let endpointWorks = false;
+      let pagesWithData = 0;
+      while (page <= MAX_PAGES) {
+        const items = await tryFetch(path, method, page);
+        if (items === null) {
+          if (!endpointWorks) break;
           break;
         }
-        const payload = await r.json().catch(() => null);
-        const items: any[] = Array.isArray(payload)
-          ? payload
-          : payload?.results || payload?.data || payload?.leads || payload?.Items || payload?.lidim || payload?.Lidim || [];
-        console.log(`[homely-leads] ${path} page=${page} -> ${items.length} items`);
+        console.log(`[homely-leads] ${path} (${method}) page=${page} -> ${items.length} items`);
         if (items.length === 0) break;
         endpointWorks = true;
+        pagesWithData += 1;
+        let novel = 0;
         for (const it of items) {
-          const m = mapItem(it, collected.length);
+          const m = mapItem(it, allCollected.length);
           const key = m.external_id || m.phone_number;
           if (key && seen.has(key)) continue;
           if (key) seen.add(key);
-          collected.push(m);
+          allCollected.push(m);
+          novel += 1;
         }
-        if (items.length < PAGE_SIZE) break; // last page
+        // Stop paginating if API ignores pagination and returns same set
+        if (novel === 0 && pagesWithData > 1) break;
+        if (items.length < PAGE_SIZE) break;
         page += 1;
-      } catch (e) {
-        console.warn(`[homely-leads] ${path} page=${page} failed:`, (e as Error).message);
-        break;
       }
+      if (endpointWorks) break; // don't try GET if POST worked
     }
-    if (collected.length > 0) return collected;
   }
-  return [];
+  return allCollected;
 }
 
 Deno.serve(async (req) => {
