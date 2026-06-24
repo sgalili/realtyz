@@ -150,10 +150,25 @@ function deepPick(rec: Record<string, any>, aliases: string[]): string {
 }
 
 function pickAgent(rec: Record<string, any>): string {
-  return deepPick(rec, [
-    "agent", "agentname", "agent_name", "brokername", "broker_name", "broker",
-    "user", "workername", "worker_name", "send_by", "shiuh", "סוכן",
+  // Deep, case-insensitive scan across every known agent-name key variant.
+  const direct = deepPick(rec, [
+    "agent", "agentname", "agent_name", "agentfullname", "agent_full_name",
+    "broker", "brokername", "broker_name",
+    "user", "username", "user_name",
+    "workername", "worker_name", "worker",
+    "send_by", "sendby", "sent_by",
+    "shiuh", "shiyuh",
+    "סוכן", "שם סוכן", "סוכן מטפל",
   ]);
+  if (direct) return direct;
+  // Fallback: scan ALL string values on the record for the canonical name.
+  if (rec && typeof rec === "object") {
+    for (const v of Object.values(rec)) {
+      const s = normalizeHe(v).toLowerCase();
+      if (s.includes("אודי ויטמן") || s.includes("אודי וייטמן")) return normalizeHe(v);
+    }
+  }
+  return "";
 }
 
 function pickSivug(rec: Record<string, any>): string {
