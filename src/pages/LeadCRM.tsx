@@ -1922,19 +1922,28 @@ const LeadCRM = () => {
 
                     const SelectCell = ({
                       icon, label, value, placeholder, options, onChange,
-                    }: { icon: JSX.Element; label: string; value: string; placeholder: string; options: { v: string; l: string }[]; onChange: (v: string) => void }) => (
-                      <div className="p-3 rounded-lg bg-slate-100 border border-slate-200 space-y-1.5">
-                        <p className="text-xs font-bold text-slate-900 flex items-center gap-1.5">{icon}{label}</p>
-                        <Select value={value || undefined} onValueChange={onChange}>
-                          <SelectTrigger className="h-8 text-sm font-semibold text-slate-900 bg-white">
-                            <SelectValue placeholder={placeholder} />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {options.map((o) => <SelectItem key={o.v} value={o.v}>{o.l}</SelectItem>)}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    );
+                    }: { icon: JSX.Element; label: string; value: string; placeholder: string; options: { v: string; l: string }[]; onChange: (v: string) => void }) => {
+                      // If AI/DB value is not in the preset list, inject it at top so the
+                      // dropdown actually shows the selected value instead of going blank.
+                      const hasMatch = !!value && options.some((o) => o.v === value);
+                      const mergedOptions = !value || hasMatch
+                        ? options
+                        : [{ v: value, l: value }, ...options];
+                      return (
+                        <div className="p-3 rounded-lg bg-slate-100 border border-slate-200 space-y-1.5">
+                          <p className="text-xs font-bold text-slate-900 flex items-center gap-1.5">{icon}{label}</p>
+                          <Select value={value || undefined} onValueChange={onChange}>
+                            <SelectTrigger className="h-8 text-sm font-semibold text-slate-900 bg-white">
+                              <SelectValue placeholder={placeholder} />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {mergedOptions.map((o) => <SelectItem key={o.v} value={o.v}>{o.l}</SelectItem>)}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      );
+                    };
+
 
                     return (
                       <div className="grid grid-cols-2 gap-3">

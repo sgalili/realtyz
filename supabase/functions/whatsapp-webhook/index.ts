@@ -629,12 +629,14 @@ async function handleLeadInboxInbound(
           sentiment: "positive",
           assigned_to: assignTo,
           preferences: {
-            source: "shortlink",
+            source: "whatsapp",
+            shortlink_origin: shortLink ? "shortlink" : null,
             category,
             listing_id: shortLink?.listing_id ?? null,
             unresolved_listing: !shortLink,
             inbound_excerpt: inboundText.slice(0, 240),
           },
+
           is_demo: false,
         })
         .select("id, full_name, ai_autopilot, phone_number, assigned_to, interest_tag, deal_type")
