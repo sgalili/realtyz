@@ -854,7 +854,7 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
                   <td className="px-2 py-1.5 whitespace-nowrap">{p.floor ?? '—'}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{p.size_sqm || '—'}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{PROPERTY_TYPE_LABELS_HE[p.property_type] || '—'}</td>
-                  <td className="px-2 py-1.5 whitespace-nowrap text-muted-foreground">{p.created_at ? new Date(p.created_at).toLocaleDateString('he-IL') : '—'}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap text-muted-foreground">{(p as any).updated_at ? new Date((p as any).updated_at).toLocaleDateString('he-IL') : (p.created_at ? new Date(p.created_at).toLocaleDateString('he-IL') : '—')}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">
                     {sourceUrl ? (
                       <a
