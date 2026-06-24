@@ -604,29 +604,12 @@ const OmnichannelInbox = () => {
                     onClick={() => setSelectedVoterId(isActive ? null : voter.id)}
                     className={`relative flex min-w-0 flex-row-reverse items-start gap-3 overflow-hidden px-3 py-3 ps-8 cursor-pointer border-b border-border/30 transition-colors ${isActive ? 'bg-accent' : 'hover:bg-muted/50'}`}
                   >
-                    {voter.status && (
-                      <Popover>
-                        <PopoverTrigger asChild onClick={(event) => event.stopPropagation()}>
-                          <button
-                            type="button"
-                            className="absolute left-2 top-2 inline-flex h-5 w-5 items-center justify-center rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                            aria-label={statusHebrew[voter.status] || voter.status}
-                          >
-                            <span className={`h-2.5 w-2.5 rounded-full ring-4 ${statusLed[voter.status]?.dot || 'bg-muted-foreground'} ${statusLed[voter.status]?.ring || 'ring-muted'}`} />
-                          </button>
-                        </PopoverTrigger>
-                        <PopoverContent side="left" align="start" className="w-48 text-right" onClick={(event) => event.stopPropagation()}>
-                          <p className="text-sm font-semibold">{statusHebrew[voter.status] || voter.status}</p>
-                          <p className="mt-1 text-xs text-muted-foreground">{statusLed[voter.status]?.note || 'סטטוס מתעניין'}</p>
-                        </PopoverContent>
-                      </Popover>
-                    )}
                     <button
                       type="button"
                       onClick={(event) => { event.stopPropagation(); setDeleteTargetId(voter.id); }}
                       aria-label="מחיקת שיחה"
                       title="מחיקת שיחה"
-                      className="absolute left-2 bottom-2 inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
+                      className="absolute left-2 top-2 inline-flex h-6 w-6 items-center justify-center rounded-md text-muted-foreground hover:bg-destructive/10 hover:text-destructive"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
