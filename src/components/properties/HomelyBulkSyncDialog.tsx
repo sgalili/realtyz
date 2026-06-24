@@ -68,6 +68,7 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
   const [fRooms, setFRooms] = useState('');
   const [fType, setFType] = useState('');
   const [fAgent, setFAgent] = useState('');
+  const [fDeal, setFDeal] = useState<'all' | 'sale' | 'rent'>('all');
   const [cityPopOpen, setCityPopOpen] = useState(false);
   const fetchedOnce = useRef<{ properties: boolean; contacts: boolean }>({ properties: false, contacts: false });
 
