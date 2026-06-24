@@ -135,36 +135,34 @@ function normalizeHe(v: unknown): string {
     .trim();
 }
 
-// Pick agent name from any of the common Webtiv variants (broadened to mirror
-// homely-fetch-property/pickAgentName so contact streams resolve the same way).
-function pickAgent(rec: Record<string, any>): string {
-  const candidates = [
-    rec.agent, rec.Agent, rec.agentName, rec.AgentName,
-    rec.BrokerName, rec.brokerName, rec.Broker, rec.broker,
-    rec.User, rec.user, rec.WorkerName, rec.workerName, rec.send_by,
-    rec.shiuh, rec["סוכן"],
-  ];
-  for (const c of candidates) {
-    const s = normalizeHe(c);
-    if (s) return s;
+// Case-insensitive deep pick across all keys on the record. Webtiv payloads
+// vary wildly in casing/locale, so we never rely on a fixed key list.
+function deepPick(rec: Record<string, any>, aliases: string[]): string {
+  if (!rec || typeof rec !== "object") return "";
+  const lowered = aliases.map((a) => a.toLowerCase());
+  for (const [k, v] of Object.entries(rec)) {
+    if (lowered.includes(k.toLowerCase())) {
+      const s = normalizeHe(v);
+      if (s) return s;
+    }
   }
   return "";
 }
 
-// Pick "שיוך" — broker affiliation. Webtiv variants: sivug / shiuh / shiyuh / shiyukh.
+function pickAgent(rec: Record<string, any>): string {
+  return deepPick(rec, [
+    "agent", "agentname", "agent_name", "brokername", "broker_name", "broker",
+    "user", "workername", "worker_name", "send_by", "shiuh", "סוכן",
+  ]);
+}
+
 function pickSivug(rec: Record<string, any>): string {
-  const candidates = [
-    rec.exclusive, rec.Exclusive,
-    rec.StatusName, rec.statusName, rec.status, rec.Status,
-    rec.OfficeAllocation, rec.officeAllocation, rec.allocation, rec.Allocation,
-    rec.sivug, rec.Sivug, rec.shiuh, rec.shiyuh, rec.shiyukh, rec.shiuch,
-    rec.belongTo, rec.belong, rec["שיוך"],
-  ];
-  for (const c of candidates) {
-    const s = normalizeHe(c);
-    if (s) return s;
-  }
-  return "";
+  return deepPick(rec, [
+    "exclusive", "statusname", "status_name", "status",
+    "officeallocation", "office_allocation", "allocation",
+    "sivug", "shiuh", "shiyuh", "shiyukh", "shiuch",
+    "belongto", "belong", "affiliation", "שיוך",
+  ]);
 }
 
 // Pick original source ("מקור") of the lead/property — e.g. yad2, madlan, facebook.
