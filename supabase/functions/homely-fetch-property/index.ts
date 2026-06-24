@@ -293,9 +293,30 @@ function pickSivugName(it: any): string {
 //   • sellers  (מכירה / נכסי משרד): office allocation flag only. ANY office agent counts. No Udi restriction.
 //   • rentals  (להשכרה sub-set of sellers stream): office flag + agent must include "אודי ויטמן".
 //   • buyers   (קונים / שוכרים contact stream): agent must include "אודי ויטמן".
+//
+// Webtiv's transaction-type field varies per export: numeric codes (1=sale,
+// 2=rent), text variants ('מכירה', 'להשכרה', 'השכרה', 'שכירות', 'rent',
+// 'sale'), or hints buried in objectresidence/sale_f3/comments. Normalize
+// across all of them so server + client agree on a single 'sale' | 'rent'
+// label per record.
+function normalizeTxType(it: any): "sale" | "rent" {
+  const explicit = firstStreamText(it, [
+    "transaction_type", "transactionType", "TransactionType",
+    "deal_type", "dealType", "DealType",
+    "type", "Type",
+    "saleRent", "sale_rent", "SaleRent",
+  ]);
+  const numeric = Number(it?.transaction_type ?? it?.TransactionType ?? it?.type ?? it?.Type ?? NaN);
+  if (Number.isFinite(numeric)) {
+    if (numeric === 2) return "rent";
+    if (numeric === 1) return "sale";
+  }
+  const hay = `${explicit} ${normalizeStreamText(it?.objectresidence)} ${normalizeStreamText(it?.sale_f3)} ${normalizeStreamText(it?.more)} ${normalizeStreamText(it?.comments1)}`;
+  if (/להשכרה|השכרה|שכירות|\brent\b|\bלהשכיר\b/i.test(hay)) return "rent";
+  return "sale";
+}
 function looksLikeRental(it: any): boolean {
-  const hay = `${normalizeStreamText(it?.objectresidence)} ${normalizeStreamText(it?.sale_f3)} ${normalizeStreamText(it?.more)} ${normalizeStreamText(it?.comments1)}`;
-  return /להשכרה|השכרה|שכירות|rent/i.test(hay);
+  return normalizeTxType(it) === "rent";
 }
 function passesOfficeFilter(it: any, source: "sellers" | "buyers"): boolean {
   if (source === "sellers") {
