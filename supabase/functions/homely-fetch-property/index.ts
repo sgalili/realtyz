@@ -369,6 +369,7 @@ function mapStreamProperty(it: any, idx: number) {
     photos: media.photos,
     documents: media.documents,
     property_type: String(it?.objectresidence ?? ""),
+    transaction_type: normalizeTxType(it),
     agent: pickAgentName(it),
     sivug: pickSivugName(it),
     raw: it,
