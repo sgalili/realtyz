@@ -733,9 +733,9 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
     }
   }), [properties, sort]);
 
-  const mineRows = useMemo(() => sorted.filter((p) => p.source === 'mine'), [sorted]);
-  const allMineSelected = mineRows.length > 0 && mineRows.every((p) => selectedIds.has(p.id));
-  const someMineSelected = mineRows.some((p) => selectedIds.has(p.id));
+  // Bulk-delete applies to every loaded property — local DB only, never round-trips to Homely.
+  const allFilteredSelected = sorted.length > 0 && sorted.every((p) => selectedIds.has(p.id));
+  const someSelected = sorted.some((p) => selectedIds.has(p.id));
 
   const toggleAll = () => {
     if (allMineSelected) setSelectedIds(new Set());
