@@ -629,7 +629,7 @@ export default function DealRoom() {
                     );
                   })}
 
-                  ))}
+
                 </div>
               </ScrollArea>
             </section>
