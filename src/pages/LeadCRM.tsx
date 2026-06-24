@@ -1206,7 +1206,7 @@ const LeadCRM = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="min-w-[220px]">
-                <DropdownMenuItem onClick={() => setNewLeadOpen(true)} className="gap-2 cursor-pointer">
+                <DropdownMenuItem onClick={() => createBlankLeadAndOpen()} className="gap-2 cursor-pointer">
                   <UserPlus className="h-4 w-4 text-primary" /> מתעניין חדש
                 </DropdownMenuItem>
                 <DropdownMenuItem onClick={() => fileInputRef.current?.click()} className="gap-2 cursor-pointer">
