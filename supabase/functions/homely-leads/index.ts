@@ -283,6 +283,8 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
     const body = await req.json().catch(() => ({}));
     const dryRun = Boolean((body as any)?.dry_run);
+    const bypassFilter = Boolean((body as any)?.bypass_filter);
+
 
     // 1) Validate GUID retrieval
     let { data: state } = await admin
