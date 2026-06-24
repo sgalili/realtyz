@@ -1056,19 +1056,34 @@ const InlineComposer = ({
           </Popover>
         </div>
 
-        <button
-          type="button"
-          onClick={() => handleGenerate()}
-          disabled={generating}
-          className={cn(
-            'inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold shadow-md transition',
-            'bg-[#FFD600] text-[#E11D2A] hover:bg-[#FFC400] hover:shadow-lg',
-            'disabled:opacity-60 disabled:cursor-not-allowed',
+        <div className="flex items-center gap-2">
+          {hasBody && (
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={finalizingBody || generating}
+              onClick={finalizeBody}
+              className="h-9"
+              title="לטשטוש מספרי בית, הוספת חתימת רישיון תיווך ושיוף הניסוח"
+            >
+              {finalizingBody ? 'מנסח גרסה סופית...' : 'גרסה סופית'}
+            </Button>
           )}
-        >
-          <RefreshCw className={cn('h-4 w-4', generating && 'animate-spin')} />
-          {generating ? 'מחולל תוכן…' : 'חולל תוכן עם AI'}
-        </button>
+          <button
+            type="button"
+            onClick={() => handleGenerate()}
+            disabled={generating}
+            className={cn(
+              'inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold shadow-md transition',
+              'bg-[#FFD600] text-[#E11D2A] hover:bg-[#FFC400] hover:shadow-lg',
+              'disabled:opacity-60 disabled:cursor-not-allowed',
+            )}
+          >
+            <RefreshCw className={cn('h-4 w-4', generating && 'animate-spin')} />
+            {generating ? 'מחולל תוכן…' : 'חולל תוכן עם AI'}
+          </button>
+        </div>
+
       </div>
 
 
