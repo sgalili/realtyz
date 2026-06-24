@@ -825,9 +825,7 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
               const sourceLabel: string =
                 p.source === 'yad2' ? 'yad2'
                 : p.source === 'madlan' ? 'madlan'
-                : p.source === 'fomo' ? 'fomo'
-                : (p.source === 'homely' || (p as any).source === 'webtiv') ? 'manual entry'
-                : p.source === 'mine' ? 'manual entry'
+                : (p.source as string) === 'fomo' ? 'fomo'
                 : 'manual entry';
               return (
                 <tr key={p.id} className={`border-t hover:bg-muted/30 ${selectedIds.has(p.id) ? 'bg-destructive/5' : ''}`}>
