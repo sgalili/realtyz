@@ -994,21 +994,8 @@ const InlineComposer = ({
         </span>
       </div>
 
-      {hasBody && (
-        <div className="flex justify-end">
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={finalizingBody || generating}
-            onClick={finalizeBody}
-            className="h-8"
-            title="לטשטוש מספרי בית, הוספת חתימת רישיון תיווך ושיוף הניסוח"
-          >
-            <Sparkles className={cn('h-3.5 w-3.5 ml-1', finalizingBody && 'animate-pulse')} />
-            {finalizingBody ? 'מנסח גרסה סופית...' : 'גרסה סופית'}
-          </Button>
-        </div>
-      )}
+
+
 
 
       {/* Hidden inputs */}
