@@ -488,6 +488,7 @@ export default function PropertyDetail() {
                 <Spec icon={Car} label="חניות" value={`${amenities?.parking ?? 0}`} />
                 <Spec icon={Calendar} label="תאריך כניסה" value={entryDate} />
                 {amenities?.elevator && <Spec icon={ArrowUpCircle} label="מעלית" value="כן" />}
+                {amenities?.balcony != null && <Spec icon={Sun} label="מרפסת" value={amenities.balcony ? 'כן' : 'לא'} />}
                 {amenities?.ac && <Spec icon={Wind} label="מיזוג" value="כן" />}
                 {amenities?.shelter && <Spec icon={Shield} label='ממ"ד / מקלט' value="כן" />}
                 {amenities?.solar && <Spec icon={Sun} label="דוד שמש" value="כן" />}
