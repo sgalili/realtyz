@@ -896,13 +896,18 @@ const LeadCRM = () => {
       const { data: userResp, error: userErr } = await supabase.auth.getUser();
       if (userErr || !userResp?.user) throw userErr || new Error('not_authenticated');
       const uid = userResp.user.id;
+      // phone_number is NOT NULL + UNIQUE — generate a unique placeholder the user can edit
+      const placeholderPhone = `new-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
       const { data, error } = await supabase
         .from('leads')
         .insert({
-          full_name: 'מתעניין חדש',
+          full_name: 'לקוח חדש',
+          phone_number: placeholderPhone,
           lead_stage: 'new',
           status: 'new',
+          interest_tag: 'manual',
           assigned_to: uid,
+          is_demo: false,
         } as any)
         .select('id')
         .single();
@@ -913,8 +918,18 @@ const LeadCRM = () => {
       queryClient.invalidateQueries({ queryKey: ['leads-total'] });
       queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] });
       setSelectedVoterId(newId);
-      navigate(`/lead-crm/${newId}`);
       toast.success('פרופיל מתעניין נפתח — מלא את הפרטים');
+      try {
+        navigate(`/lead-crm/${newId}`);
+        // Hard fallback in case dropdown portal swallows the router transition
+        setTimeout(() => {
+          if (!window.location.pathname.includes(newId)) {
+            window.location.href = `/lead-crm/${newId}`;
+          }
+        }, 250);
+      } catch {
+        window.location.href = `/lead-crm/${newId}`;
+      }
     } catch (err: any) {
       console.error('[createBlankLeadAndOpen] failed', err);
       const msg = String(err?.message || '');
