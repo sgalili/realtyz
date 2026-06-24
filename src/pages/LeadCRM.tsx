@@ -1822,6 +1822,7 @@ const LeadCRM = () => {
                                 ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.8} />
                                 : <UploadCloud className="h-4 w-4" strokeWidth={1.8} />}
                             </button>
+                            <LeadEnrichmentIconButton lead={selectedVoter} />
                           </div>
                         );
                       })()}
