@@ -1951,18 +1951,22 @@ const LeadCRM = () => {
                       { v: '10000000+',       l: 'מעל 10M ₪' },
                     ];
                     const stageOpts = [
-                      { v: 'new', l: 'חדש' }, { v: 'contacted', l: 'יצר קשר' },
+                      { v: 'new', l: 'מתעניין חדש' },
+                      { v: 'new_lead', l: 'מתעניין חדש' },
+                      { v: 'contacted', l: 'יצר קשר' },
                       { v: 'engaging', l: 'בטיפול' },
-                      { v: 'cold', l: 'מתעניין קר' }, { v: 'qualified', l: 'ליד מוסמך' },
+                      { v: 'cold', l: 'מתעניין קר' }, { v: 'qualified', l: 'מתעניין מוסמך' },
                       { v: 'touring', l: 'בסיור נכסים' }, { v: 'offer_pending', l: 'ממתין להצעה' },
                       { v: 'negotiation', l: 'במשא ומתן' }, { v: 'closed', l: 'סגר עסקה' },
                     ];
                     const sourceOpts = [
+                      { v: 'webtiv_stream', l: 'סטרים ובטיב' },
+                      { v: 'homely', l: 'הומלי' },
                       { v: 'shortlink', l: 'פוסט פייסבוק' },
                       { v: 'facebook_groups', l: 'פייסבוק קבוצות' }, { v: 'facebook', l: 'פייסבוק' },
                       { v: 'instagram', l: 'אינסטגרם' }, { v: 'whatsapp', l: 'וואטסאפ' },
                       { v: 'inbound_call', l: 'שיחה נכנסת' }, { v: 'yad2', l: 'יד2' },
-                      { v: 'website', l: 'אתר' }, { v: 'homely', l: 'Homely' },
+                      { v: 'website', l: 'אתר' },
                       { v: 'manual', l: 'הוזן ידנית' },
                     ];
                     const areaOpts = [
