@@ -315,7 +315,7 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
 
       {!hideEnrichmentButton && (
         <>
-          <Separator />
+
           <Button
             type="button"
             onClick={runEnrichment}
