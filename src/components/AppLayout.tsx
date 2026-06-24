@@ -47,7 +47,7 @@ const TUTORIAL_STEPS = [
 
 const QUICK_LINKS = [
   { label: 'לוח בקרה', path: '/', icon: LayoutDashboard },
-  { label: 'ניהול מתעניינים', path: '/lead-crm', icon: User },
+  { label: 'לקוחות', path: '/lead-crm', icon: User },
   { label: 'הפצת SMS', path: '/sms-blast', icon: Radio },
 ];
 
