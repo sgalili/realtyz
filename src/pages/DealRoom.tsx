@@ -467,75 +467,40 @@ export default function DealRoom() {
 
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6" dir="rtl">
-      <header className="flex items-start justify-between gap-3 flex-wrap">
-        <div className="min-w-0">
+      <header className="space-y-3">
+        <div className="flex items-baseline justify-between gap-3">
           <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
             עסקאות
           </h1>
-          <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-            תצוגת ניהול מתעניינים של כל המתעניינים — גרור כוונה לפעולה.
-          </p>
-        </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto flex-wrap">
-          <Badge variant="secondary" className="text-sm">
-            {visibleLeads.length} {activeDealType === 'rent' ? 'מתעניינים בהשכרה' : 'מתעניינים במכירה'}
+          <Badge variant="secondary" className="text-xs">
+            {visibleLeads.length} {activeDealType === 'rent' ? 'בהשכרה' : 'במכירה'}
           </Badge>
-          <Button
-            variant={sortMode === 'priority' ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => setSortMode((m) => (m === 'priority' ? 'recent' : 'priority'))}
-            className="gap-1.5 h-11"
-            title="מיון לפי ציון מתעניין חזוי"
-          >
-            {sortMode === 'priority' ? (
-              <Flame className="h-4 w-4" />
-            ) : (
-              <ArrowDownUp className="h-4 w-4" />
-            )}
-            <span className="hidden sm:inline">
-              {sortMode === 'priority' ? 'ממויין לפי עדיפות' : 'מיין לפי עדיפות'}
-            </span>
-            <span className="sm:hidden">
-              {sortMode === 'priority' ? 'עדיפות' : 'מיין'}
-            </span>
-          </Button>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              value={searchText}
+              onChange={(e) => setSearchText(e.target.value)}
+              placeholder="חיפוש חופשי..."
+              className="pr-9 h-11 bg-background"
+              dir="rtl"
+            />
+          </div>
           <Button
             variant="outline"
-            size="sm"
-            onClick={recomputeAllScores}
-            disabled={recomputing}
-            className="gap-1.5 h-11"
-            title="חשב מחדש את כל ציוני המתעניינים"
+            size="icon"
+            className="h-11 w-11 shrink-0"
+            onClick={() => setFiltersOpen((v) => !v)}
+            title="סינון מתקדם"
+            aria-pressed={filtersOpen}
           >
-            <RefreshCw className={cn('h-4 w-4', recomputing && 'animate-spin')} />
-            <span className="hidden md:inline">חשב מחדש ציונים</span>
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={importHomelyLeads}
-            disabled={importing}
-            className="gap-1.5 h-11"
-            title="ייבוא מתעניינים חדשים מ-Homely"
-          >
-            <UserPlus className={cn('h-4 w-4', importing && 'animate-pulse')} />
-            <span className="hidden md:inline">{importing ? 'מייבא...' : 'ייבוא מתעניינים'}</span>
-          </Button>
-          <Button
-            onClick={() => {
-              setOutreachLeadId(null);
-              setOutreachOpen(true);
-            }}
-            className="gap-1.5 h-11 flex-1 sm:flex-none"
-          >
-            <Megaphone className="h-4 w-4" />
-            <span className="hidden sm:inline">פנייה אקטיבית חדשה</span>
-            <span className="sm:hidden">פנייה חדשה</span>
+            <SlidersHorizontal className="h-4 w-4" />
           </Button>
         </div>
       </header>
 
-      <ActionItemsPanel onUseDraft={openFromSuggestion} />
+
 
       {/* Hard pipeline separation: Sale (מכירה) vs Rent (השכרה) — only one
           pipeline is visible at a time. The selected pipeline is mirrored in
