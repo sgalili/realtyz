@@ -73,32 +73,56 @@ async function fetchWebtivLeads(session: any): Promise<HomelyLead[]> {
     Accept: "application/json",
   };
   if (token) headers["Authorization"] = `Bearer ${token}`;
-  const filters = { db, token, page: 1, pageSize: 200 };
+  const PAGE_SIZE = 500;
+  const MAX_PAGES = 100; // hard ceiling -> 50k leads
+  const seen = new Set<string>();
+  const mapItem = (it: any, i: number): HomelyLead => ({
+    external_id: String(it?.id ?? it?.Id ?? it?.lidId ?? it?.LidId ?? `homely-${i}`),
+    full_name: it?.full_name ?? it?.fullName ?? it?.name ?? it?.shemMale ?? it?.ShemMale ?? "—",
+    phone_number: normalizePhone(it?.phone ?? it?.phoneNumber ?? it?.telephone ?? it?.Telephone ?? it?.Pelephone ?? ""),
+    email: it?.email ?? it?.Email ?? null,
+    city: it?.city ?? it?.ir ?? it?.Ir ?? null,
+    interest_tag: it?.interest ?? it?.tag ?? it?.interestTag ?? null,
+    preferences: (it?.preferences as Record<string, unknown>) ?? { homely_raw: it, source: "homely" },
+  });
 
   for (const path of LEAD_ENDPOINTS) {
-    try {
-      const r = await fetch(`${WEBTIV_BASE}${path}`, {
-        method: "POST", headers, body: JSON.stringify(filters),
-      });
-      if (!r.ok) continue;
-      const payload = await r.json().catch(() => null);
-      const items: any[] = Array.isArray(payload)
-        ? payload
-        : payload?.results || payload?.data || payload?.leads || payload?.Items || payload?.lidim || [];
-      console.log(`[homely-leads] ${path} -> ${items.length} items`);
-      if (items.length === 0) continue;
-      return items.map((it: any, i: number) => ({
-        external_id: String(it?.id ?? it?.Id ?? it?.lidId ?? `homely-${i}`),
-        full_name: it?.full_name ?? it?.fullName ?? it?.name ?? it?.shemMale ?? "—",
-        phone_number: normalizePhone(it?.phone ?? it?.phoneNumber ?? it?.telephone ?? ""),
-        email: it?.email ?? null,
-        city: it?.city ?? it?.ir ?? null,
-        interest_tag: it?.interest ?? it?.tag ?? it?.interestTag ?? null,
-        preferences: (it?.preferences as Record<string, unknown>) ?? {},
-      }));
-    } catch (e) {
-      console.warn(`[homely-leads] ${path} failed:`, (e as Error).message);
+    const collected: HomelyLead[] = [];
+    let page = 1;
+    let endpointWorks = false;
+    while (page <= MAX_PAGES) {
+      try {
+        const r = await fetch(`${WEBTIV_BASE}${path}`, {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ db, token, page, pageSize: PAGE_SIZE, PageSize: PAGE_SIZE, Page: page }),
+        });
+        if (!r.ok) {
+          if (!endpointWorks) break; // try next endpoint
+          break;
+        }
+        const payload = await r.json().catch(() => null);
+        const items: any[] = Array.isArray(payload)
+          ? payload
+          : payload?.results || payload?.data || payload?.leads || payload?.Items || payload?.lidim || payload?.Lidim || [];
+        console.log(`[homely-leads] ${path} page=${page} -> ${items.length} items`);
+        if (items.length === 0) break;
+        endpointWorks = true;
+        for (const it of items) {
+          const m = mapItem(it, collected.length);
+          const key = m.external_id || m.phone_number;
+          if (key && seen.has(key)) continue;
+          if (key) seen.add(key);
+          collected.push(m);
+        }
+        if (items.length < PAGE_SIZE) break; // last page
+        page += 1;
+      } catch (e) {
+        console.warn(`[homely-leads] ${path} page=${page} failed:`, (e as Error).message);
+        break;
+      }
     }
+    if (collected.length > 0) return collected;
   }
   return [];
 }
