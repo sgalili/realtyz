@@ -535,7 +535,49 @@ const LeadCRM = () => {
       .map(([k]) => k);
   }, [leads]);
   const baseColCount = 6;
-  const totalColCount = baseColCount + extraColumns.length;
+
+  // Owner-only Homely columns. Only injected when the agent has filtered the
+  // table to sellers or landlords (property owners). Each column is rendered
+  // from the linked `listings` row referenced by `leads.linked_listing_id`.
+  const isOwnerView = leadKindFilter === 'seller' || leadKindFilter === 'landlord';
+  const HOMELY_OWNER_COLUMNS: { key: string; label: string; render: (l: any) => string }[] = [
+    { key: 'serial',    label: 'סידורי', render: (l) => l.__listing?.external_id ?? '-' },
+    { key: 'agent',     label: 'סוכן',   render: (l) => l.__listing?.source_metadata?.agent ?? '-' },
+    { key: 'ptype',     label: 'נכס',    render: (l) => l.__listing?.features?.property_type ?? '-' },
+    { key: 'rooms',     label: 'חדרים',  render: (l) => l.__listing?.rooms != null ? String(l.__listing.rooms) : '-' },
+    { key: 'price',     label: 'מחיר',   render: (l) => l.__listing?.asking_price != null ? Number(l.__listing.asking_price).toLocaleString('he-IL') : '-' },
+    { key: 'city',      label: 'עיר',    render: (l) => l.__listing?.city ?? '-' },
+    { key: 'area',      label: 'אזור',   render: (l) => l.__listing?.neighborhood ?? '-' },
+    { key: 'street',    label: 'רחוב',   render: (l) => l.__listing?.address ?? '-' },
+    { key: 'house_no',  label: 'מס׳',    render: (l) => l.__listing?.source_metadata?.house_number ?? '-' },
+    { key: 'floor',     label: 'קומה',   render: (l) => l.__listing?.floor != null ? String(l.__listing.floor) : '-' },
+    { key: 'elevator',  label: 'מעלית',  render: (l) => l.__listing?.elevator === true ? 'כן' : l.__listing?.elevator === false ? 'לא' : '-' },
+    { key: 'opened',    label: 'פתיחה',  render: (l) => l.__listing?.created_at ? format(new Date(l.__listing.created_at), 'dd/MM/yy') : '-' },
+    { key: 'updated',   label: 'עדכון',  render: (l) => l.__listing?.updated_at ? format(new Date(l.__listing.updated_at), 'dd/MM/yy') : '-' },
+  ];
+
+  // Hydrate the visible owner leads with their linked listing rows in ONE query.
+  const ownerLinkedIds = useMemo(() => {
+    if (!isOwnerView) return [] as string[];
+    const ids = new Set<string>();
+    for (const l of leads as any[]) if (l?.linked_listing_id) ids.add(l.linked_listing_id);
+    return Array.from(ids);
+  }, [isOwnerView, leads]);
+  const { data: ownerListings } = useQuery({
+    queryKey: ['owner-listings-bulk', ownerLinkedIds.sort().join(',')],
+    enabled: ownerLinkedIds.length > 0,
+    queryFn: async () => {
+      const { data, error } = await supabase.from('listings').select('*').in('id', ownerLinkedIds);
+      if (error) throw error;
+      const map: Record<string, any> = {};
+      for (const row of data ?? []) map[row.id] = row;
+      return map;
+    },
+    staleTime: 30_000,
+  });
+  const listingsById: Record<string, any> = ownerListings ?? {};
+
+  const totalColCount = baseColCount + extraColumns.length + (isOwnerView ? HOMELY_OWNER_COLUMNS.length : 0);
 
   // Lightweight query for filter options (distinct values)
   const { data: filterOptions } = useQuery({
