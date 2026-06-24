@@ -339,11 +339,18 @@ const LeadCRM = () => {
   const handleHomelySync = async () => {
     if (homelySyncing) return;
     setHomelySyncing(true);
+    window.dispatchEvent(new Event('leads:busy:on'));
     const t = toast.loading('מסנכרן מתעניינים מהומלי...');
     try {
       const { data, error } = await supabase.functions.invoke('homely-leads', { body: {} });
       if (error) throw error;
-      toast.success('הסנכרון מול Homely הושלם בהצלחה!', { id: t, description: data?.imported ? `נוספו/עודכנו ${data.imported} רשומות` : undefined });
+      const imported = (data as any)?.imported ?? 0;
+      const note = (data as any)?.note;
+      if (!(data as any)?.connected) {
+        toast.error('Homely לא מחובר', { id: t, description: note === 'no_credentials' ? 'הגדר אישורי Homely בהגדרות API' : note === 'no_password' ? 'סיסמת Homely חסרה' : (data as any)?.error || 'בדוק אישורים בהגדרות' });
+      } else {
+        toast.success('הסנכרון מול Homely הושלם בהצלחה!', { id: t, description: imported ? `נוספו ${imported} רשומות` : 'אין רשומות חדשות' });
+      }
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }),
         queryClient.invalidateQueries({ queryKey: ['leads-total'] }),
@@ -354,8 +361,10 @@ const LeadCRM = () => {
       toast.error('סנכרון Homely נכשל', { id: t, description: e?.message ?? String(e) });
     } finally {
       setHomelySyncing(false);
+      window.dispatchEvent(new Event('leads:busy:off'));
     }
   };
+
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
