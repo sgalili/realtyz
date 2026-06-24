@@ -560,7 +560,9 @@ const InlineComposer = ({
       const editedBeforeFinal = edited;
       const next = cleanBody(finalText);
       setBody(next);
+      setBodyManuallyEdited(false);
       setOriginalAiBody(next);
+
       learnFromEdit({
         context: `campaign_post_finalize:${channel.id}`,
         pairs: [
@@ -583,6 +585,8 @@ const InlineComposer = ({
   const [listingsLoading, setListingsLoading] = useState(false);
   const [selectedListingId, setSelectedListingId] = useState<string | null>(initial.selectedListingId ?? null);
   const [listingPickerOpen, setListingPickerOpen] = useState(false);
+  const [bodyManuallyEdited, setBodyManuallyEdited] = useState(false);
+
 
   // Attachment / media state
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -859,7 +863,9 @@ const InlineComposer = ({
       const text = cleanBody(data?.content || data?.text || '').toString();
       if (text) {
         setBody(text);
+        setBodyManuallyEdited(false);
         setOriginalAiBody(text);
+
         // so subsequent manual edits + media updates flow into the same record.
         try {
           const { data: { user } } = await supabase.auth.getUser();
@@ -985,7 +991,7 @@ const InlineComposer = ({
           rows={6}
           value={body}
           maxLength={MAX_CHARS}
-          onChange={(e) => setBody(cleanBody(e.target.value))}
+          onChange={(e) => { setBody(cleanBody(e.target.value)); setBodyManuallyEdited(true); }}
           placeholder="תוכן ההודעה — כתוב כאן או חולל באמצעות AI"
           className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-10 pb-7"
         />
@@ -1057,7 +1063,7 @@ const InlineComposer = ({
         </div>
 
         <div className="flex items-center gap-2">
-          {hasBody && (
+          {hasBody && bodyManuallyEdited && (
             <Button
               size="sm"
               variant="secondary"
