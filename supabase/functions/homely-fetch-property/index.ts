@@ -299,14 +299,13 @@ function looksLikeRental(it: any): boolean {
 }
 function passesOfficeFilter(it: any, source: "sellers" | "buyers"): boolean {
   if (source === "sellers") {
-    const aff = pickSivugName(it);
-    const officeOk = ALLOWED_SIVUG_SUBSTRS.some((s) => aff.includes(s));
-    if (!officeOk) return false;
-    // Rentals carved out of the seller stream require the Udi agent restriction.
+    // Condition B: rentals — agent must be אודי ויטמן (no affiliation requirement).
     if (looksLikeRental(it)) {
       return pickAgentName(it).includes(ALLOWED_AGENT_SUBSTR);
     }
-    return true; // every other office property passes regardless of which agent owns it
+    // Condition A: sales — affiliation must include משרד or בלעדי (any office agent).
+    const aff = pickSivugName(it);
+    return ALLOWED_SIVUG_SUBSTRS.some((s) => aff.includes(s));
   }
   // buyers / renter-seekers contact stream
   return pickAgentName(it).includes(ALLOWED_AGENT_SUBSTR);
