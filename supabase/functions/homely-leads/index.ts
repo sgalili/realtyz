@@ -343,6 +343,19 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const dryRun = Boolean((body as any)?.dry_run);
     const bypassFilter = Boolean((body as any)?.bypass_filter);
+    const wipeFirst = Boolean((body as any)?.wipe_first);
+
+    // Optional pre-sync wipe: clear prior webtiv_stream contacts for THIS user
+    // so the agent-calibrated filter produces a clean, deduplicated count.
+    if (wipeFirst && !dryRun) {
+      const { error: delErr, count: delCount } = await admin
+        .from("leads")
+        .delete({ count: "exact" })
+        .eq("assigned_to", user.id)
+        .filter("preferences->>source", "eq", "webtiv_stream");
+      console.log(`[STREAM-WIPE] removed=${delCount ?? 0} err=${delErr?.message ?? "none"}`);
+    }
+
 
 
     // 1) Validate GUID retrieval
