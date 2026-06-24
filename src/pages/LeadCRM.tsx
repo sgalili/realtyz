@@ -1625,6 +1625,21 @@ const LeadCRM = () => {
                             </TableCell>
                           );
                         })}
+                        {isOwnerView && (() => {
+                          const linked = (lead as any).linked_listing_id ? listingsById[(lead as any).linked_listing_id] : null;
+                          const hydrated = { ...(lead as any), __listing: linked };
+                          return HOMELY_OWNER_COLUMNS.map((col) => {
+                            const val = col.render(hydrated);
+                            return (
+                              <TableCell key={`oc-${lead.id}-${col.key}`}
+                                className="text-[11px] text-center text-slate-700 bg-blue-50/30"
+                                onClick={() => setSelectedVoterId(lead.id)}
+                                title={String(val)}>
+                                <span className="inline-block max-w-[140px] truncate align-middle">{val}</span>
+                              </TableCell>
+                            );
+                          });
+                        })()}
                         <TableCell className="w-10 text-center" onClick={(e) => e.stopPropagation()}>
                           <Checkbox checked={selectedIds.has(lead.id)} onCheckedChange={() => toggleOne(lead.id)} />
                         </TableCell>
