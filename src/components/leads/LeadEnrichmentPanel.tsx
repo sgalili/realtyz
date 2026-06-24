@@ -151,17 +151,16 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
                 <Building2 className="h-3.5 w-3.5 text-slate-700" /> עיר
                 {savingField === 'city' && <Loader2 className="h-3 w-3 animate-spin text-muted-foreground" />}
               </Label>
-              <Input
+              <IsraeliCityPicker
                 value={city}
                 placeholder="—"
-                onChange={(e) => setCity(e.target.value)}
-                onBlur={() => {
-                  const v = city.trim();
+                onChange={(v) => {
+                  setCity(v);
                   if ((v || null) !== (lead.city ?? null)) persist({ col: { city: v || null } }, 'city');
                 }}
                 className="h-8 text-sm"
-                maxLength={100}
               />
+
             </div>
             <div className="space-y-1">
               <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
