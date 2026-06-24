@@ -218,9 +218,14 @@ export default function Properties() {
               const metaPhotos = Array.isArray(meta.photos)
                 ? meta.photos.filter((p: any) => typeof p === 'string')
                 : [];
+              const originRaw = String(meta.source_origin ?? '').toLowerCase();
+              const originSource = originRaw && originRaw !== 'homely' && originRaw !== 'webtiv' && originRaw !== 'manual'
+                ? originRaw
+                : (row.source === 'homely' || row.source === 'webtiv' ? 'homely' : row.source === 'yad2' ? 'yad2' : row.source === 'madlan' ? 'madlan' : 'mine');
+              const sourceUpdated = typeof meta.source_updated_at === 'string' ? meta.source_updated_at : null;
               return {
                 id: row.id,
-                source: row.source === 'homely' ? 'homely' : row.source === 'yad2' ? 'yad2' : row.source === 'madlan' ? 'madlan' : 'mine',
+                source: originSource as any,
                 title: row.property_title || 'נכס',
                 description: row.description || '',
                 price: Number(row.asking_price ?? 0),
@@ -232,12 +237,12 @@ export default function Properties() {
                 floor: row.floor != null ? Number(row.floor) : (meta.floor != null ? Number(meta.floor) : undefined),
                 property_type: detectPropertyType(`${row.property_title ?? ''} ${row.description ?? ''}`),
                 photos: metaPhotos,
-                url: row.source_url ?? null,
+                url: row.source_url ?? meta.source_url ?? null,
                 features: Array.isArray(row.features) ? row.features.filter((f: any) => typeof f === 'string') : [],
                 listing_type: extractListingType(row.features),
                 extras: (meta.extras ?? {}) as Record<string, string>,
                 created_at: row.created_at ?? null,
-                updated_at: row.updated_at ?? null,
+                updated_at: sourceUpdated ?? row.updated_at ?? null,
               };
             })),
           };
@@ -827,7 +832,10 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
                 p.source === 'yad2' ? 'yad2'
                 : p.source === 'madlan' ? 'madlan'
                 : (p.source as string) === 'fomo' ? 'fomo'
-                : 'manual entry';
+                : (p.source as string) === 'facebook' ? 'facebook'
+                : (p.source as string) === 'winwin' ? 'winwin'
+                : (p.source as string) === 'homely' ? 'homely'
+                : (p.source as string) || 'הזנה ידנית';
               return (
                 <tr key={p.id} className={`border-t hover:bg-muted/30 ${selectedIds.has(p.id) ? 'bg-destructive/5' : ''}`}>
                   <td className="px-2 py-1.5 w-8">

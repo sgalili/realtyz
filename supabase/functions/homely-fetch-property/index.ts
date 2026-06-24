@@ -352,6 +352,46 @@ function streamFieldAudit(items: any[], limit = 5) {
 }
 
 
+function pickSourceOrigin(it: any): string {
+  const raw = deepPickText(it, [
+    "mekor", "source", "sourcename", "source_name", "origin", "provider",
+    "publisher", "publishedfrom", "fromsite", "site", "מקור",
+  ]).toLowerCase();
+  if (!raw) return "";
+  if (/yad ?2|יד ?2/.test(raw)) return "yad2";
+  if (/madlan|מדלן/.test(raw)) return "madlan";
+  if (/fomo|פומו/.test(raw)) return "fomo";
+  if (/facebook|פייסבוק/.test(raw)) return "facebook";
+  if (/winwin|וינווין/.test(raw)) return "winwin";
+  if (/homeless|הומלס/.test(raw)) return "homeless";
+  return raw.split(/[\s,;\/]+/)[0] || raw;
+}
+function pickSourceUrl(it: any): string {
+  const u = deepPickText(it, [
+    "url", "link", "mekorurl", "sourceurl", "source_url", "externalurl",
+    "external_url", "ad_url", "adurl", "linktosource", "קישור",
+  ]);
+  return /^https?:\/\//i.test(u) ? u : "";
+}
+function pickUpdatedAt(it: any): string {
+  const raw = deepPickText(it, [
+    "update_date", "updatedate", "updated_at", "updatedat", "update",
+    "lastupdate", "last_update", "modifydate", "modify_date", "modified",
+    "date_modified", "תאריך_עדכון",
+  ]);
+  if (!raw) return "";
+  // Webtiv often returns "DD/MM/YYYY" or "DD/MM/YYYY HH:mm"
+  const m = raw.match(/^(\d{1,2})[\/.\-](\d{1,2})[\/.\-](\d{2,4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?/);
+  if (m) {
+    const [, d, mo, y, h = "0", mi = "0", s = "0"] = m;
+    const year = y.length === 2 ? Number(y) + 2000 : Number(y);
+    const iso = new Date(Date.UTC(year, Number(mo) - 1, Number(d), Number(h), Number(mi), Number(s))).toISOString();
+    return iso;
+  }
+  const d = new Date(raw);
+  return Number.isFinite(d.getTime()) ? d.toISOString() : "";
+}
+
 function mapStreamProperty(it: any, idx: number) {
   const serial = String(it?.serial ?? it?.Serial ?? `row-${idx + 1}`);
   const street = [it?.street, it?.number, it?.flatnumber].filter((v) => v && String(v).trim()).join(" ").trim();
@@ -360,10 +400,16 @@ function mapStreamProperty(it: any, idx: number) {
   const office_notes = buildOfficeNotes(it);
   const notes = [owner ? `בעלים: ${owner}` : "", office_notes].filter(Boolean).join("\n");
   const media = collectMedia(it);
+  const sourceOrigin = pickSourceOrigin(it);
+  const sourceUrl = pickSourceUrl(it);
+  const sourceUpdatedAt = pickUpdatedAt(it);
+  const balcony = deepPickText(it, ["balcony", "mirpeset", "balconies", "מרפסת"]);
+  const elevator = deepPickText(it, ["elevator", "lift", "maalit", "מעלית"]);
+  const description = deepPickText(it, ["description", "tiur", "remarks", "comments1", "comments2", "more", "תיאור", "הערות"]);
   return {
     homely_id: serial,
     title: title || `נכס ${serial}`,
-    description: notes,
+    description: description || notes,
     office_notes,
 
     price: Number(it?.priceshekel ?? 0) || 0,
@@ -379,6 +425,11 @@ function mapStreamProperty(it: any, idx: number) {
     transaction_type: (normalizeTxType(it) === "rent" ? "rent" : "sale") as "sale" | "rent",
     agent: pickAgentName(it),
     sivug: pickSivugName(it),
+    source_origin: sourceOrigin,
+    source_url: sourceUrl,
+    source_updated_at: sourceUpdatedAt,
+    balcony,
+    elevator,
     raw: it,
   };
 }
@@ -470,10 +521,11 @@ Deno.serve(async (req) => {
         if (!homelyId) continue;
         const photos = Array.isArray(p?.photos) && p.photos.length ? p.photos : (p?.photo ? [p.photo] : []);
         const documents = Array.isArray(p?.documents) ? p.documents : [];
-        const row = {
+        const row: Record<string, unknown> = {
           user_id: user.id,
           slug: `${slugify(String(p?.title || p?.address || "homely"))}-${homelyId}`,
           source: "homely",
+          source_url: p?.source_url ? String(p.source_url) : null,
           external_id: homelyId,
           property_title: String(p?.title || p?.address || `נכס ${homelyId}`),
           description: String(p?.description || ""),
@@ -487,6 +539,8 @@ Deno.serve(async (req) => {
           is_published: true,
           office_notes: p?.office_notes ? String(p.office_notes) : null,
           features: Array.isArray(p?.features) ? p.features : [],
+          media_photos: photos,
+          media_documents: documents,
           source_metadata: {
             homely_id: homelyId,
             property_type: p?.property_type || null,
@@ -494,11 +548,21 @@ Deno.serve(async (req) => {
             documents,
             media_count: photos.length + documents.length,
             office_notes: p?.office_notes || null,
+            agent: p?.agent || null,
+            source_origin: p?.source_origin || null,
+            source_url: p?.source_url || null,
+            source_updated_at: p?.source_updated_at || null,
+            balcony: p?.balcony || null,
+            elevator: p?.elevator || null,
+            transaction_type: p?.transaction_type || null,
             homely_raw: compactRaw(p?.raw),
             synced_at: new Date().toISOString(),
           },
-
         };
+        // When Webtiv ships a real modification timestamp, prefer it as
+        // the listing's updated_at instead of the sync clock. The DB
+        // trigger still bumps updated_at on subsequent local edits.
+        if (p?.source_updated_at) row.updated_at = p.source_updated_at;
         const { error } = await admin.from("listings").upsert(row as any, { onConflict: "source,external_id" });
         if (error) throw new Error(`listings#${homelyId}: ${error.message}`);
         propsCount++;
