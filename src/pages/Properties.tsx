@@ -361,16 +361,8 @@ export default function Properties() {
               {SOURCE_LABELS[t]}
             </button>
           ))}
-          {sourceTab === 'homely' && (
-            <button
-              type="button"
-              onClick={() => setHomelyBulkOpen(true)}
-              className="ml-1 inline-flex items-center gap-1 px-2.5 py-2 text-xs font-semibold rounded-lg text-primary hover:bg-primary/10 transition-colors"
-              title="סנכרון מלא מהומלי — נכסים ואנשי קשר"
-            >
-              סנכרון מלא מהומלי
-            </button>
-          )}
+
+
 
         </div>
       </div>
