@@ -318,20 +318,74 @@ Deno.serve(async (req) => {
 
     if (dryRun) return json({ source: "homely", connected: true, imported: 0, leads: collected });
 
-    // 3) Upsert into leads (skip phones already in DB)
+    // 3) Upsert into leads (skip phones already in DB). For sellers stream,
+    // also create a `listings` row with the extracted media so it shows up
+    // under the Properties catalog.
     let imported = 0;
     let skipped = 0;
     let failed = 0;
+    let listingsInserted = 0;
     for (const p of collected) {
       const phone = p.phone_number;
       if (!phone) { skipped++; continue; }
+
+      const prefs = p.preferences as any;
+      const streamSource = prefs?.stream as string | undefined;
+      const dealType = streamSource === "sellers" ? "sell" : "sale";
+      const mekorOrigin = prefs?.source_origin as string | null;
+      const mekorUrl = prefs?.source_url as string | null;
+      const photos: string[] = Array.isArray(prefs?.media_photos) ? prefs.media_photos : [];
+      const docs: string[] = Array.isArray(prefs?.media_documents) ? prefs.media_documents : [];
+
+      // Optionally create a linked listing for sellers stream (office properties).
+      let linkedListingId: string | null = null;
+      if (streamSource === "sellers") {
+        const externalId = p.external_id;
+        const { data: existingListing } = await admin
+          .from("listings").select("id")
+          .eq("source", "webtiv").eq("external_id", externalId).maybeSingle();
+        if (existingListing?.id) {
+          linkedListingId = (existingListing as any).id;
+        } else {
+          const slug = `webtiv-${user.id.slice(0, 8)}-${externalId}`.toLowerCase().replace(/[^a-z0-9-]+/g, "-").slice(0, 100);
+          const title = p.full_name && p.full_name !== "לקוח הומלי"
+            ? `${prefs?.property_type ?? "נכס"} · ${p.city ?? ""} · ${p.full_name}`.trim()
+            : `${prefs?.property_type ?? "נכס"} · ${p.city ?? ""}`.trim();
+          const { data: ins, error: lErr } = await admin.from("listings").insert({
+            user_id: user.id,
+            slug,
+            property_title: title || "נכס",
+            description: "",
+            asking_price: Number(prefs?.price ?? 0) || 0,
+            city: p.city,
+            address: strOrNull(prefs?.raw?.street),
+            neighborhood: prefs?.neighborhood ?? null,
+            rooms: prefs?.rooms ? Number(prefs.rooms) || null : null,
+            sqm: prefs?.built_sqm ? Math.round(Number(prefs.built_sqm)) || null : null,
+            floor: prefs?.floor ? Number(prefs.floor) || null : null,
+            features: [{ listing_type: "sale" }],
+            status: "live",
+            is_published: true,
+            source: "webtiv",
+            external_id: externalId,
+            source_url: mekorUrl,
+            source_metadata: { provider: "webtiv", mekor: mekorOrigin, photos, documents: docs },
+            media_photos: photos,
+            media_documents: docs,
+          }).select("id").maybeSingle();
+          if (!lErr && ins?.id) {
+            linkedListingId = (ins as any).id;
+            listingsInserted += 1;
+          } else if (lErr) {
+            console.error("[STREAM-LISTING-ERROR]", externalId, lErr.message);
+          }
+        }
+      }
 
       const { data: existing } = await admin
         .from("leads").select("id").eq("phone_number", phone).maybeSingle();
       if (existing) { skipped++; continue; }
 
-      const streamSource = (p.preferences as any)?.stream as string | undefined;
-      const dealType = streamSource === "sellers" ? "sell" : "sale";
       const { error: insErr } = await admin.from("leads").insert({
         phone_number: phone,
         full_name: p.full_name,
@@ -339,10 +393,12 @@ Deno.serve(async (req) => {
         city: p.city,
         interest_tag: p.interest_tag,
         preferences: p.preferences as any,
+        source: mekorOrigin || "webtiv_stream",
         lead_stage: "new_lead",
         deal_type: dealType,
         assigned_to: user.id,
         is_demo: false,
+        linked_listing_id: linkedListingId,
       });
       if (!insErr) imported += 1;
       else {
@@ -351,8 +407,8 @@ Deno.serve(async (req) => {
       }
     }
 
-    console.log(`[STREAM-DONE] imported=${imported} skipped=${skipped} failed=${failed}`);
-    return json({ source: "homely", connected: true, imported, skipped, failed, total: collected.length });
+    console.log(`[STREAM-DONE] imported=${imported} skipped=${skipped} failed=${failed} listings=${listingsInserted}`);
+    return json({ source: "homely", connected: true, imported, skipped, failed, listings_inserted: listingsInserted, total: collected.length });
   } catch (e) {
     console.error("[homely-leads] fatal", e);
     return json({ error: (e as Error).message }, 500);
