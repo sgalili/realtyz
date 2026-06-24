@@ -715,6 +715,7 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
   const sorted = useMemo(() => sortRows(properties, sort, (row, key) => {
     switch (key) {
       case 'created_at': return row.created_at ? new Date(row.created_at) : null;
+      case 'updated_at': return (row as any).updated_at ? new Date((row as any).updated_at) : (row.created_at ? new Date(row.created_at) : null);
       case 'listing_type': return LISTING_TYPE_LABELS_HE[row.listing_type ?? 'sale'];
       case 'title': return row.title;
       case 'price': return Number(row.price ?? 0);
