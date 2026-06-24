@@ -134,7 +134,7 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
       setPickedProps(new Set());
       setPickedContacts(new Set());
       setFiltersOpen(false);
-      setFCities(new Set()); setFRooms(''); setFType(''); setFAgent('');
+      setFCities(new Set()); setFRooms(''); setFType(''); setFAgent(''); setFDeal('all');
     }
   }, [open]);
 
