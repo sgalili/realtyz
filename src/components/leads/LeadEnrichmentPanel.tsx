@@ -119,11 +119,9 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
   return (
     <div className="space-y-3">
 
-      <Separator />
-
       {/* Contact & Location — email full-width, city + address side-by-side */}
       <div>
-        <h3 className="text-sm font-bold text-slate-900 mb-3">פרטי התקשרות ומגורים</h3>
+
         <div className="space-y-3">
           <div className="space-y-1">
             <Label className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
