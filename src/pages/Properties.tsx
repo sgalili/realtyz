@@ -818,6 +818,7 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
               <SortableTh sortKey="size_sqm" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">מ"ר</SortableTh>
               <SortableTh sortKey="property_type" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">סוג נכס</SortableTh>
               <SortableTh sortKey="created_at" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">עדכון</SortableTh>
+              <th className="px-2 py-2 font-semibold whitespace-nowrap">מקור</th>
               <th className="px-2 py-2 font-semibold whitespace-nowrap text-left">פעולות</th>
             </tr>
           </thead>
@@ -825,16 +826,21 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
             {sorted.map((p) => {
               const isRent = p.listing_type === 'rent';
               const isMine = p.source === 'mine';
+              const sourceUrl: string | null = (p as any).url ?? null;
+              const sourceLabel: string =
+                p.source === 'yad2' ? 'yad2'
+                : p.source === 'madlan' ? 'madlan'
+                : p.source === 'homely' ? 'homely'
+                : p.source === 'mine' ? 'משרד'
+                : String(p.source ?? '—');
               return (
                 <tr key={p.id} className={`border-t hover:bg-muted/30 ${selectedIds.has(p.id) ? 'bg-destructive/5' : ''}`}>
                   <td className="px-2 py-1.5 w-8">
-                    {isMine ? (
-                      <Checkbox
-                        checked={selectedIds.has(p.id)}
-                        onCheckedChange={() => toggleOne(p.id)}
-                        aria-label="בחר נכס"
-                      />
-                    ) : null}
+                    <Checkbox
+                      checked={selectedIds.has(p.id)}
+                      onCheckedChange={() => toggleOne(p.id)}
+                      aria-label="בחר נכס"
+                    />
                   </td>
                   <td className="px-2 py-1.5 max-w-[220px] truncate">
                     <Link to={`/properties/${p.id}`} className="hover:underline">{p.title}</Link>
@@ -855,6 +861,21 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
                   <td className="px-2 py-1.5 whitespace-nowrap">{p.size_sqm || '—'}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{PROPERTY_TYPE_LABELS_HE[p.property_type] || '—'}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap text-muted-foreground">{p.created_at ? new Date(p.created_at).toLocaleDateString('he-IL') : '—'}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap">
+                    {sourceUrl ? (
+                      <a
+                        href={sourceUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-primary hover:underline text-xs font-semibold"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        {sourceLabel}
+                      </a>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">{sourceLabel}</span>
+                    )}
+                  </td>
                   <td className="px-2 py-1.5 whitespace-nowrap text-left">
                     <div className="inline-flex items-center gap-1.5">
                       <Button size="sm" variant="outline" onClick={() => setShareTarget(p)} className="gap-1.5">
@@ -872,18 +893,16 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
                           <Pencil className="h-3.5 w-3.5" />
                         </Button>
                       )}
-                      {isMine && (
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => setDeleteTarget(p)}
-                          className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
-                          title="מחק נכס"
-                          aria-label="מחק נכס"
-                        >
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      )}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => setDeleteTarget(p)}
+                        className="gap-1.5 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        title="מחק נכס"
+                        aria-label="מחק נכס"
+                      >
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
                     </div>
                   </td>
                 </tr>
