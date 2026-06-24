@@ -237,7 +237,7 @@ Deno.serve(async (req) => {
       if (existing) { skipped++; continue; }
 
       const streamSource = (p.preferences as any)?.stream as string | undefined;
-      const dealType = streamSource === "sellers" ? "sell" : "buy";
+      const dealType = streamSource === "sellers" ? "sell" : "sale";
       const { error: insErr } = await admin.from("leads").insert({
         phone_number: phone,
         full_name: p.full_name,
