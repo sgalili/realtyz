@@ -482,7 +482,9 @@ Deno.serve(async (req) => {
             listingsInserted += 1;
           } else if (lErr) {
             console.error("[STREAM-LISTING-ERROR]", externalId, lErr.message);
+            if (errors.length < 10) errors.push({ phone: externalId, message: lErr.message, stage: "listing" });
           }
+
         }
       }
 
