@@ -56,7 +56,9 @@ export function useSidebarCounts() {
       const [leads, listings, chats, deals, campaigns] = await Promise.all([
         safeCount('leads'),
         safeCount('listings'),
-        safeCount('messages'),
+        // Inbox shows one row per lead that has messages — count distinct
+        // leads with any interaction, NOT the raw message row count.
+        safeCount('leads', (q) => q.not('last_interaction_at', 'is', null)),
         safeCount('leads', (q) => q.not('lead_stage', 'is', null)),
         groupedCampaignCount(),
       ]);
