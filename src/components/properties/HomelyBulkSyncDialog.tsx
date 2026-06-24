@@ -154,13 +154,16 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
     return Array.from(new Set(src.filter(Boolean))).sort();
   }, [tab, properties, contacts]);
 
-  // Normalize transaction type client-side too (defensive: older payloads may
-  // not yet carry the server-stamped `transaction_type`).
+  // Trust the server-stamped transaction_type. Only fall back when the server
+  // did not stamp anything (legacy payloads) — and use ONLY explicit signals,
+  // never assume "sale" for everything (that's what created bogus 1022 counts).
   const normalizeClientTx = (p: HomelyProperty): 'sale' | 'rent' => {
     if (p.transaction_type === 'sale' || p.transaction_type === 'rent') return p.transaction_type;
-    const hay = `${p.property_type ?? ''} ${p.title ?? ''} ${p.description ?? ''}`;
+    const hay = `${p.property_type ?? ''} ${p.title ?? ''} ${p.description ?? ''}`.toLowerCase();
     if (/להשכרה|השכרה|שכירות|\brent\b/i.test(hay)) return 'rent';
-    if (p.price && p.price > 0 && p.price < 50_000) return 'rent';
+    if (/למכירה|מכירה|\bsale\b/i.test(hay)) return 'sale';
+    // Price-based heuristic: monthly rent typically < 30k₪.
+    if (p.price && p.price > 0 && p.price < 30_000) return 'rent';
     return 'sale';
   };
   const propertiesWithTx = useMemo(
