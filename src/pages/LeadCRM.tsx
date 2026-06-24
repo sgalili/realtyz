@@ -50,6 +50,50 @@ import { Rows, Rows3, Home, Building2, Plus, Upload as UploadIcon, UserRoundPlus
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { HomelyBulkSyncDialog } from '@/components/properties/HomelyBulkSyncDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import OwnerPropertyGrid from '@/components/leads/OwnerPropertyGrid';
+
+/**
+ * isOwnerLead — Sellers and Landlords are property OWNERS, not seekers.
+ * Their profile must show property data (the 13 Homely columns) instead
+ * of buyer/renter preferences like preferred area or requested budget.
+ */
+function isOwnerLead(lead: any): boolean {
+  const kind = lead?.preferences?.lead_kind;
+  if (kind === 'seller' || kind === 'landlord') return true;
+  // deal_type 'sell' = listing for sale by owner
+  if (lead?.deal_type === 'sell') return true;
+  return false;
+}
+
+/** Hebrew display dictionary for the "ערוץ הגעה" (source) dropdown. */
+const SOURCE_LABEL_HE: Record<string, string> = {
+  webtiv_stream: 'סטרים ובטיב',
+  webtiv: 'ובטיב',
+  homely: 'הומלי',
+  shortlink: 'פוסט פייסבוק',
+  facebook: 'פייסבוק',
+  facebook_groups: 'פייסבוק קבוצות',
+  instagram: 'אינסטגרם',
+  whatsapp: 'וואטסאפ',
+  inbound_call: 'שיחה נכנסת',
+  yad2: 'יד2',
+  website: 'אתר',
+  manual: 'הוזן ידנית',
+};
+
+/** Hebrew display dictionary for the "סטטוס לקוח" (lead_stage) dropdown. */
+const STAGE_LABEL_HE: Record<string, string> = {
+  new: 'מתעניין חדש',
+  new_lead: 'מתעניין חדש',
+  contacted: 'יצר קשר',
+  engaging: 'בטיפול',
+  cold: 'מתעניין קר',
+  qualified: 'מתעניין מוסמך',
+  touring: 'בסיור נכסים',
+  offer_pending: 'ממתין להצעה',
+  negotiation: 'במשא ומתן',
+  closed: 'סגר עסקה',
+};
 
 // Strict Israeli mobile cleaner. Returns 9725XXXXXXXX (12 digits) for storage, or null if invalid.
 // Rules per spec:
