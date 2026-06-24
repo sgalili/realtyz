@@ -9,6 +9,7 @@
  * Background: solid primary blue with the white RealtyzWave at the bottom.
  * Mounted once at the layout level to avoid per-route hero "jumps".
  */
+import * as React from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { Menu, Plus, FileSpreadsheet, User, ArrowLeft, ArrowRight, Calendar as CalendarIcon, History, DownloadCloud, Loader2 } from 'lucide-react';
 import { SidebarTrigger } from '@/components/ui/sidebar';
