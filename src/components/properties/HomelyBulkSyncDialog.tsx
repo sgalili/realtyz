@@ -154,24 +154,18 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
     return Array.from(new Set(src.filter(Boolean))).sort();
   }, [tab, properties, contacts]);
 
-  // Trust the server-stamped transaction_type. Only fall back when the server
-  // did not stamp anything (legacy payloads) — and use ONLY explicit signals,
-  // never assume "sale" for everything (that's what created bogus 1022 counts).
-  const normalizeClientTx = (p: HomelyProperty): 'sale' | 'rent' => {
-    if (p.transaction_type === 'sale' || p.transaction_type === 'rent') return p.transaction_type;
-    const hay = `${p.property_type ?? ''} ${p.title ?? ''} ${p.description ?? ''}`.toLowerCase();
-    if (/להשכרה|השכרה|שכירות|\brent\b/i.test(hay)) return 'rent';
-    if (/למכירה|מכירה|\bsale\b/i.test(hay)) return 'sale';
-    // Price-based heuristic: monthly rent typically < 30k₪.
-    if (p.price && p.price > 0 && p.price < 30_000) return 'rent';
-    return 'sale';
-  };
+  // Strict server-binding: pills/filters use ONLY the server-stamped transaction_type.
+  // No client-side fallback that bias-defaults to "sale".
   const propertiesWithTx = useMemo(
-    () => properties.map((p) => ({ ...p, transaction_type: normalizeClientTx(p) as 'sale' | 'rent' })),
+    () => properties.map((p) => ({
+      ...p,
+      transaction_type: (p.transaction_type === 'rent' ? 'rent' : p.transaction_type === 'sale' ? 'sale' : null) as 'sale' | 'rent' | null,
+    })),
     [properties],
   );
   const saleCount = useMemo(() => propertiesWithTx.filter((p) => p.transaction_type === 'sale').length, [propertiesWithTx]);
   const rentCount = useMemo(() => propertiesWithTx.filter((p) => p.transaction_type === 'rent').length, [propertiesWithTx]);
+
 
   const filteredProps = useMemo(() => propertiesWithTx.filter(p => {
     if (fDeal !== 'all' && p.transaction_type !== fDeal) return false;
