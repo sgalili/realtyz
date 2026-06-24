@@ -1421,7 +1421,9 @@ const LeadCRM = () => {
                             <div className="flex flex-col min-w-0">
                               <span className="min-w-0 truncate whitespace-nowrap text-sm font-semibold">{lead.full_name || '-'}</span>
                               <div className="flex items-center gap-1.5">
-                                <Badge variant="outline" className={`text-[10px] font-normal h-4 px-1.5 ${sourceCls}`}>{sourceLabel}</Badge>
+                                {(prefs.homely_id || prefs.source === 'homely') && (
+                                  <Badge variant="outline" className={`text-[10px] font-normal h-4 px-1.5 ${sourceCls}`}>{sourceLabel}</Badge>
+                                )}
                                 {homelyId && (
                                   <a
                                     href={`/properties?homely=${encodeURIComponent(homelyId)}`}
