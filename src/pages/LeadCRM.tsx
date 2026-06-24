@@ -765,6 +765,43 @@ const LeadCRM = () => {
     setSelectedIds(new Set());
   };
 
+  /**
+   * Create a blank lead row and immediately open its profile sheet so the
+   * broker can fill every field (name, phone, email, age/gender, deal type,
+   * budget…) inside the unified CRM workspace. Replaces the legacy modal
+   * popups for "add lead".
+   */
+  const createBlankLeadAndOpen = async () => {
+    if (blockDemoAction('add-lead')) return;
+    try {
+      const { data, error } = await supabase
+        .from('leads')
+        .insert({
+          full_name: 'מתעניין חדש',
+          lead_stage: 'new',
+          status: 'new',
+        } as any)
+        .select('id')
+        .single();
+      if (error) throw error;
+      await queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+      queryClient.invalidateQueries({ queryKey: ['leads-total'] });
+      queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] });
+      setSelectedVoterId((data as any).id);
+      toast.success('פרופיל מתעניין נפתח — מלא את הפרטים');
+    } catch (err: any) {
+      const msg = String(err?.message || '');
+      if (msg.includes('TRIAL_RECORD_LIMIT')) {
+        toast.error('מסלול הניסיון מוגבל ל-100 רשומות. שדרג עכשיו', {
+          duration: 8000,
+          action: { label: 'שדרג עכשיו', onClick: () => window.location.assign('/upgrade') },
+        });
+      } else {
+        toast.error('יצירת מתעניין נכשלה: ' + (err?.message || 'שגיאה'));
+      }
+    }
+  };
+
   const handleAddVoter = async () => {
     if (blockDemoAction('add-lead')) return;
     if (!newVoter.full_name.trim() || !newVoter.phone_number.trim()) {
