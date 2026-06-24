@@ -832,7 +832,10 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
                 p.source === 'yad2' ? 'yad2'
                 : p.source === 'madlan' ? 'madlan'
                 : (p.source as string) === 'fomo' ? 'fomo'
-                : 'manual entry';
+                : (p.source as string) === 'facebook' ? 'facebook'
+                : (p.source as string) === 'winwin' ? 'winwin'
+                : (p.source as string) === 'homely' ? 'homely'
+                : (p.source as string) || 'הזנה ידנית';
               return (
                 <tr key={p.id} className={`border-t hover:bg-muted/30 ${selectedIds.has(p.id) ? 'bg-destructive/5' : ''}`}>
                   <td className="px-2 py-1.5 w-8">
