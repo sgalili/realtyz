@@ -149,6 +149,92 @@ function extractRawMessageText(payload: any, raw = ""): string {
   return String(value || raw || "").trim().slice(0, 4000);
 }
 
+// ---------- AI metadata auto-fill ----------
+// Uses Lovable AI Gateway (Gemini) to parse a free-text inbound message into
+// structured lead fields, then merges the result into the master lead row.
+async function extractAndApplyLeadMetadata(
+  admin: ReturnType<typeof createClient>,
+  lead: any,
+  inboundText: string,
+): Promise<void> {
+  if (!lead?.id || !inboundText || inboundText.trim().length < 4) return;
+  const apiKey = Deno.env.get("LOVABLE_API_KEY");
+  if (!apiKey) return;
+
+  const system = [
+    "אתה מחלץ מידע מובנה מהודעות וואטסאפ של מתעניינים בנדל\"ן בישראל.",
+    "החזר אך ורק JSON תקין במבנה הבא, ללא טקסט נוסף:",
+    '{"deal_type": "קנייה|מכירה|שכירות|השכרה|null", "budget": <number|null>, "property_type": "דירה|פנטהאוז|בית פרטי|דופלקס|גן|מסחרי|null", "area": "<string|null>"}',
+    "אם פרט לא הוזכר במפורש, החזר null. אל תמציא ערכים.",
+  ].join("\n");
+
+  let parsed: any = null;
+  try {
+    const aiRes = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+      method: "POST",
+      headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
+      body: JSON.stringify({
+        model: "google/gemini-2.5-flash",
+        messages: [
+          { role: "system", content: system },
+          { role: "user", content: inboundText },
+        ],
+        response_format: { type: "json_object" },
+      }),
+    });
+    if (!aiRes.ok) {
+      console.warn("[metadata-extract] gateway", aiRes.status, (await aiRes.text()).slice(0, 200));
+      return;
+    }
+    const aiJson = await aiRes.json();
+    const content = aiJson?.choices?.[0]?.message?.content ?? "{}";
+    parsed = JSON.parse(typeof content === "string" ? content : JSON.stringify(content));
+  } catch (e) {
+    console.warn("[metadata-extract] threw", e instanceof Error ? e.message : e);
+    return;
+  }
+  if (!parsed || typeof parsed !== "object") return;
+
+  const dealMap: Record<string, "sale" | "rent"> = {
+    "קנייה": "sale", "מכירה": "sale", "שכירות": "rent", "השכרה": "rent",
+  };
+  const update: Record<string, any> = {};
+  const prevPrefs = (lead.preferences && typeof lead.preferences === "object") ? lead.preferences : {};
+  const newPrefs: Record<string, any> = { ...prevPrefs };
+  let prefsChanged = false;
+
+  const dealRaw = typeof parsed.deal_type === "string" ? parsed.deal_type.trim() : null;
+  if (dealRaw && dealMap[dealRaw] && !lead.deal_type) update.deal_type = dealMap[dealRaw];
+
+  const budget = typeof parsed.budget === "number" ? parsed.budget
+    : (typeof parsed.budget === "string" ? Number(String(parsed.budget).replace(/[^\d.]/g, "")) : null);
+  if (budget && Number.isFinite(budget) && budget > 0 && prevPrefs.budget_max == null) {
+    newPrefs.budget_max = Math.round(budget); prefsChanged = true;
+  }
+
+  const propType = typeof parsed.property_type === "string" ? parsed.property_type.trim() : null;
+  if (propType && !prevPrefs.property_type) { newPrefs.property_type = propType; prefsChanged = true; }
+
+  const area = typeof parsed.area === "string" ? parsed.area.trim() : null;
+  if (area) {
+    if (!lead.city) update.city = area;
+    if (!prevPrefs.area) { newPrefs.area = area; prefsChanged = true; }
+  }
+
+  if (prefsChanged) update.preferences = newPrefs;
+
+  // Shift status to בטיפול (in-progress) once we have new structured info.
+  if (Object.keys(update).length > 0) {
+    update.status = "בטיפול";
+    update.lead_stage = lead.lead_stage && lead.lead_stage !== "new" ? lead.lead_stage : "engaging";
+    try {
+      await admin.from("leads").update(update).eq("id", lead.id);
+    } catch (e) {
+      console.warn("[metadata-extract] lead update soft-fail", e instanceof Error ? e.message : e);
+    }
+  }
+}
+
 async function persistRawRecoveryMessage(
   admin: ReturnType<typeof createClient>,
   payload: any,
