@@ -267,7 +267,50 @@ function mapRecord(rec: Record<string, any>, source: "buyers" | "sellers", idx: 
   };
 }
 
+// Same as mapRecord but skips the strict agent/affiliation gate. Used when the
+// dashboard sends bypass_filter:true so we can confirm the proxy payload is
+// reaching the upsert layer regardless of office-filter rules.
+function mapRecordNoFilter(rec: Record<string, any>, source: "buyers" | "sellers", idx: number): HomelyLead | null {
+  const phone = pickPhone(rec);
+  const email = strOrNull(rec.email ?? rec.Email);
+  if (!phone && !email) return null;
+  const fullName = pickName(rec);
+  const city = strOrNull(rec.city ?? rec.City ?? rec.city1 ?? rec.ir ?? rec.Ir ?? rec["עיר"]);
+  const tag = source === "sellers" ? "מוכר" : "קונה";
+  const mekor = pickMekor(rec);
+  const photos = pickPhotos(rec);
+  const docs = pickDocs(rec);
+  return {
+    external_id: String(rec.serial ?? rec.Serial ?? rec.id ?? rec.Id ?? `webtiv-${source}-${idx}`),
+    full_name: fullName,
+    phone_number: phone,
+    email,
+    city,
+    interest_tag: tag,
+    preferences: {
+      source: "webtiv_stream",
+      source_origin: mekor.name || null,
+      source_url: mekor.url,
+      stream: source,
+      lead_kind: source === "sellers" ? "seller" : "buyer",
+      neighborhood: strOrNull(rec.shcuna ?? rec.shcuna1),
+      property_type: strOrNull(rec.objectresidence),
+      rooms: strOrNull(rec.room),
+      floor: strOrNull(rec.floor),
+      built_sqm: strOrNull(rec.builtsqmr),
+      price: strOrNull(rec.priceshekel),
+      agent: strOrNull(pickAgent(rec)),
+      sivug: strOrNull(pickSivug(rec)),
+      media_photos: photos,
+      media_documents: docs,
+      raw: rec,
+      _filter_bypassed: true,
+    },
+  };
+}
+
 Deno.serve(async (req) => {
+
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
   try {
