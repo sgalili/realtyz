@@ -21,6 +21,16 @@ const SERVICE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const WEBTIV_BASE = "https://webtivapi.webtiv.co.il";
 const LOGIN_URL = `${WEBTIV_BASE}/api/login/LoginNewByAgent`;
 
+// Optional proxy gateway (e.g. Cloudflare Worker) to bypass Supabase edge
+// runtime egress blocks against the Webtiv firewall. If set, all outbound
+// Webtiv URLs are rewritten to `${PROXY}?url=<encoded original url>`.
+const WEBTIV_PROXY_URL = Deno.env.get("WEBTIV_PROXY_URL")?.replace(/\/+$/, "") || "";
+function proxied(targetUrl: string): string {
+  if (!WEBTIV_PROXY_URL) return targetUrl;
+  const sep = WEBTIV_PROXY_URL.includes("?") ? "&" : "?";
+  return `${WEBTIV_PROXY_URL}${sep}url=${encodeURIComponent(targetUrl)}`;
+}
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
