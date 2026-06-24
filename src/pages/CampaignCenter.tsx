@@ -1030,17 +1030,6 @@ const InlineComposer = ({
       {/* Tag pills + action icons */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
-          <button type="button" onClick={recording ? stopRecording : startRecording}
-            className={cn(
-              'rounded-lg border p-2 transition',
-              recording
-                ? 'border-destructive bg-destructive/10 text-destructive animate-pulse'
-                : 'border-border bg-background text-muted-foreground hover:text-foreground',
-            )}
-            aria-label={recording ? 'עצור הקלטה' : 'הקלטה'}>
-            {recording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-          </button>
-
           <Popover>
             <PopoverTrigger asChild>
               <button type="button" className="rounded-lg border border-border bg-background p-2 text-muted-foreground hover:text-foreground" aria-label="גלריה">
@@ -1065,12 +1054,8 @@ const InlineComposer = ({
               </button>
             </PopoverContent>
           </Popover>
-
-          <button type="button" onClick={() => fileInputRef.current?.click()}
-            className="rounded-lg border border-border bg-background p-2 text-muted-foreground hover:text-foreground" aria-label="קובץ מצורף">
-            <Paperclip className="h-4 w-4" />
-          </button>
         </div>
+
         <button
           type="button"
           onClick={() => handleGenerate()}
