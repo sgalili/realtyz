@@ -659,6 +659,65 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
       }
     }
 
+    // ───────────────────────────────────────────────────────────────────────
+    // PROPERTY ANCHOR EXTRACTION (HARD GROUNDING)
+    // Parse street / city / rooms / price / deal-type directly from the
+    // latest inbound text. Even if the DB lookup returns null, the AI MUST
+    // treat these regex hits as ground truth and lead the response with them.
+    // No "I'll check the system" fallbacks allowed.
+    // ───────────────────────────────────────────────────────────────────────
+    const lastUserTextForAnchor = String(
+      [...(messages as Array<{ role: string; content: string }>)]
+        .reverse().find((m) => m.role === "user")?.content ?? "",
+    );
+    const anchor: Record<string, string> = {};
+    {
+      const txt = lastUserTextForAnchor;
+      const street = txt.match(/(?:רחוב|רח'|ברחוב)\s+([\u0590-\u05FFA-Za-z'״"\-]+(?:\s+[\u0590-\u05FFA-Za-z'״"\-]+){0,2})/);
+      if (street) anchor.street = street[1].trim();
+      const cityList = ["הרצליה","תל אביב","תל-אביב","רמת גן","רמת-גן","רעננה","כפר סבא","נתניה","חיפה","ירושלים","ראשון לציון","חולון","בת ים","פתח תקווה","גבעתיים","אשדוד","אשקלון","באר שבע","מודיעין","רחובות","הוד השרון","רמת השרון"];
+      for (const c of cityList) { if (txt.includes(c)) { anchor.city = c; break; } }
+      const rooms = txt.match(/(\d+(?:\.\d+)?)\s*חדרים/);
+      if (rooms) anchor.rooms = rooms[1];
+      const price = txt.match(/([\d][\d,\.]{2,})\s*(?:₪|ש"ח|ש״ח|שח|שקל)/);
+      if (price) anchor.price = price[1].replace(/\./g, "").replace(/,/g, ",");
+      if (/למכירה/.test(txt)) anchor.deal = "למכירה";
+      else if (/להשכרה|לשכירות/.test(txt)) anchor.deal = "להשכרה";
+    }
+    const hasAnchor = Object.keys(anchor).length > 0;
+    const propertyAnchorBlock = hasAnchor
+      ? [
+          "[PROPERTY ANCHOR — GROUND TRUTH PARSED FROM THE LEAD'S MESSAGE]",
+          "These facts came directly from the lead. Treat them as 100% verified.",
+          anchor.deal   ? `- סטטוס עסקה: ${anchor.deal}` : "",
+          anchor.rooms  ? `- חדרים: ${anchor.rooms}` : "",
+          anchor.street ? `- רחוב: ${anchor.street}` : "",
+          anchor.city   ? `- עיר: ${anchor.city}` : "",
+          anchor.price  ? `- מחיר: ${anchor.price} ₪` : "",
+          "MANDATE: פתח את התשובה באישור הפרטים האלה במשפט אחד טבעי, בגוף ראשון, כסוכן המכיר את הנכס מצוין.",
+        ].filter(Boolean).join("\n")
+      : "";
+
+    const noFallbackBlock = [
+      "[ABSOLUTE BAN ON 'I DON'T KNOW' FALLBACKS — HIGHEST PRIORITY]",
+      "אסור בתכלית האיסור להשתמש בביטויים הבאים או בכל וריאציה שלהם:",
+      "- \"אין לי פרטים\" / \"אין לי מידע ספציפי\" / \"אין לי את הפרטים\"",
+      "- \"אני צריך לבדוק במערכת\" / \"אבדוק במערכת\" / \"תן לי לבדוק\"",
+      "- \"אחזור אליך עם פרטים\" / \"אחזור אליך אחר כך\"",
+      "- \"לא מוצא את הדירה\" / \"הנכס לא מופיע אצלי\" / \"לא מצאתי את הנכס\"",
+      "אתה הסוכן שמכיר את הנכס הזה הכי טוב בעולם. גם אם חיפוש ה-DB לא החזיר רשומה,",
+      "השתמש בנתונים מ-PROPERTY ANCHOR (נחשבים אמת מוחלטת) כדי לעגן את התשובה בביטחון.",
+      "",
+      "מבנה חובה לתשובה הראשונה לפנייה על נכס:",
+      "1) אישור והדהוד: משפט קצר שמאשר את הנכס לפי הנתונים (חדרים, רחוב, עיר, מחיר, מכירה/השכרה) ומשדר התרגשות מקצועית, ללא אימוג'ים וללא מילים באנגלית.",
+      "   דוגמה: \"היי, בשמחה! מדובר בדירת 3.5 חדרים מצוינת ברחוב צמרות שבהרצליה, נכס מעולה במיקום מבוקש במחיר של 3,590,000 ₪.\"",
+      "2) גילוי ערך פרואקטיבי: שאלה אחת ממוקדת על מה בדיוק הלקוח רוצה לדעת (כיווני אוויר, פינוי, מימון, מצב הנכס, שכנים).",
+      "   דוגמה: \"כדי שאוכל לתת לך את המענה המקצועי והמדויק ביותר, מה בדיוק תרצה לדעת לגבי הדירה או תנאי העסקה? (למשל כיווני אוויר, פינוי, או אופציות מימון?)\"",
+      "3) קריאה לפעולה: הצעה לתאם סיור קצר בנכס בימים הקרובים.",
+      "   דוגמה: \"בנוסף, אם תרצה, נוכל לתאם סיור קצר בנכס כבר בימים הקרובים כדי שתוכל להתרשם מקרוב.\"",
+      "כתוב עברית טבעית בלבד, בלי אימוג'ים, בלי מילים באנגלית, בלי כוכביות או מרקדאון.",
+    ].join("\n");
+
     const systemPrompt = (systemRulesBlock ? systemRulesBlock + "\n\n" : "") + (isInternalDashboard
       ? MASTER_AGENT_PROMPT
       : SCHEMA_CONTEXT
@@ -670,8 +729,10 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
           + "\n\n" + channelBlock
           + "\n\n" + compliance
           + (matchingBlock ? "\n\n" + matchingBlock : "")
+          + (propertyAnchorBlock ? "\n\n" + propertyAnchorBlock : "")
+          + "\n\n" + noFallbackBlock
           + "\n\n[GROUNDING + ADAPTIVE CROSS-SELL DIRECTIVE]\n"
-          + "1. BASELINE GROUNDING: Anchor the conversation on the specific property the lead asked about (parsed from the inbound short-link signature — street / neighborhood / city / rooms / price). Answer their direct questions about THIS property first, using the workspace KB and the listings block above. Never invent attributes.\n"
+          + "1. BASELINE GROUNDING: Anchor the conversation on the specific property the lead asked about. Use the PROPERTY ANCHOR block as ground truth — never say you need to 'check the system'. Answer their direct questions about THIS property first, using the workspace KB and the listings block above. Never invent attributes that aren't in the anchor, KB, or listings table.\n"
           + "2. ADAPTIVE CROSS-SELL: The moment the lead signals friction (price too high / too low, wrong rooms, wrong area, asks for 'other options', 'משהו אחר', 'יותר זול', 'יקר מדי', 'אולי משהו דומה'), pivot smoothly and surface 1-2 alternatives from the MATCHING LISTINGS block — same deal_type only, within ±15% budget.\n"
           + "3. MATCHMAKING GOAL: Keep the lead engaged turn after turn. After each answer, weave in ONE high-yield qualification question to tighten the match (timeline, budget ceiling, parking, floor, move-in date). Never interrogate — one question per reply, conversational.");
 
