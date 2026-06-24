@@ -69,7 +69,8 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
   const isRent = Number(property.price) < 50_000;
   const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
   const transactionHe = isRent ? 'להשכרה' : 'למכירה';
-  const headline = `${propertyTypeHe} ${transactionHe}, ${neighborhood || property.address || 'שכונה'}, ${property.city || 'עיר'}`;
+  const locationParts = [property.address, neighborhood, property.city].filter((p) => p && String(p).trim());
+  const headline = `${propertyTypeHe} ${transactionHe}, ${locationParts.length ? locationParts.join(', ') : 'שכונה'}`;
   const pricePerMeter = property.size_sqm ? Math.round(property.price / property.size_sqm).toLocaleString('he-IL') : null;
 
   const vaadBayit = Number(meta.vaad_bayit ?? meta.vaad_monthly ?? 200) || 200;
