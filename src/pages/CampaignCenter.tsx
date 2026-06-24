@@ -987,7 +987,7 @@ const InlineComposer = ({
           rows={6}
           value={body}
           maxLength={MAX_CHARS}
-          onChange={(e) => setBody(cleanBody(e.target.value))}
+          onChange={(e) => { setBody(cleanBody(e.target.value)); setBodyManuallyEdited(true); }}
           placeholder="תוכן ההודעה — כתוב כאן או חולל באמצעות AI"
           className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-10 pb-7"
         />
