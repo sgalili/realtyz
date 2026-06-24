@@ -235,6 +235,8 @@ Deno.serve(async (req) => {
         .from("leads").select("id").eq("phone_number", phone).maybeSingle();
       if (existing) { skipped++; continue; }
 
+      const streamSource = (p.preferences as any)?.stream as string | undefined;
+      const dealType = streamSource === "sellers" ? "sell" : "buy";
       const { error: insErr } = await admin.from("leads").insert({
         phone_number: phone,
         full_name: p.full_name,
@@ -243,6 +245,7 @@ Deno.serve(async (req) => {
         interest_tag: p.interest_tag,
         preferences: p.preferences as any,
         lead_stage: "new_lead",
+        deal_type: dealType,
         assigned_to: user.id,
         is_demo: false,
       });
