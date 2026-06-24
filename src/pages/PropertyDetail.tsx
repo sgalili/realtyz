@@ -182,6 +182,7 @@ export default function PropertyDetail() {
         neighborhood: row.neighborhood,
         projectName: row.project_name,
         sourceUrl: row.source_url,
+        documents,
       };
     },
   });
