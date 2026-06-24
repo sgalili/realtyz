@@ -158,7 +158,7 @@ export default function Properties() {
           for (let from = 0; ; from += pageSize) {
             let query = supabase
               .from('listings')
-              .select('id, property_title, description, asking_price, city, address, neighborhood, rooms, sqm, floor, features, source_metadata, source, source_url, created_at')
+              .select('id, property_title, description, asking_price, city, address, neighborhood, rooms, sqm, floor, features, source_metadata, source, source_url, created_at, updated_at')
               .eq('status', 'live')
               .eq('is_published', true)
               .order('created_at', { ascending: false })
