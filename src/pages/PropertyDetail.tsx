@@ -166,9 +166,22 @@ export default function PropertyDetail() {
         features: Array.from(new Set(textFeatures)),
       } as HomelyProperty;
 
+      const balconyRaw = meta.balcony ?? meta.mirpeset;
+      const balcony = balconyRaw == null || balconyRaw === ''
+        ? null
+        : typeof balconyRaw === 'boolean'
+          ? balconyRaw
+          : /^(0|לא|no|false|אין)$/i.test(String(balconyRaw).trim()) ? false : true;
+      const elevatorVal = row.elevator ?? meta.elevator ?? meta.maalit;
+      const elevator = elevatorVal == null || elevatorVal === ''
+        ? false
+        : typeof elevatorVal === 'boolean'
+          ? elevatorVal
+          : !/^(0|לא|no|false|אין)$/i.test(String(elevatorVal).trim());
       const amenities = {
         parking: Number(meta.parking ?? row.parking ?? 0) || 0,
-        elevator: Boolean(row.elevator ?? meta.elevator ?? false),
+        elevator,
+        balcony,
         ac: Boolean(meta.ac ?? meta.air_conditioning ?? false),
         shelter: Boolean(meta.shelter ?? meta.mamad ?? false),
         solar: Boolean(meta.solar_heater ?? meta.solar ?? false),
