@@ -46,7 +46,7 @@ import NewLeadDialog from '@/components/leads/NewLeadDialog';
 import LeadEnrichmentPanel, { LeadEnrichmentButton } from '@/components/leads/LeadEnrichmentPanel';
 import { useFreemiumStatus } from '@/hooks/useFreemiumStatus';
 import { PriceTag } from '@/components/PriceTag';
-import { Rows, Rows3, Home, Building2, Plus, Upload as UploadIcon, UserRoundPlus } from 'lucide-react';
+import { Rows, Rows3, Home, Building2, Plus, Upload as UploadIcon, UserRoundPlus, DownloadCloud } from 'lucide-react';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { HomelyBulkSyncDialog } from '@/components/properties/HomelyBulkSyncDialog';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
@@ -325,6 +325,28 @@ const LeadCRM = () => {
   const [importDialogOpen, setImportDialogOpen] = useState(false);
   const [newLeadOpen, setNewLeadOpen] = useState(false);
   const [homelyContactsSyncOpen, setHomelyContactsSyncOpen] = useState(false);
+  const [homelySyncing, setHomelySyncing] = useState(false);
+
+  const handleHomelySync = async () => {
+    if (homelySyncing) return;
+    setHomelySyncing(true);
+    const t = toast.loading('מסנכרן מתעניינים מהומלי...');
+    try {
+      const { data, error } = await supabase.functions.invoke('homely-leads', { body: {} });
+      if (error) throw error;
+      toast.success('הסנכרון מול Homely הושלם בהצלחה!', { id: t, description: data?.imported ? `נוספו/עודכנו ${data.imported} רשומות` : undefined });
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['leads-infinite'] }),
+        queryClient.invalidateQueries({ queryKey: ['leads-total'] }),
+        queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] }),
+        queryClient.invalidateQueries({ queryKey: ['inbox-chats'] }),
+      ]);
+    } catch (e: any) {
+      toast.error('סנכרון Homely נכשל', { id: t, description: e?.message ?? String(e) });
+    } finally {
+      setHomelySyncing(false);
+    }
+  };
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [deleting, setDeleting] = useState(false);
@@ -1213,8 +1235,9 @@ const LeadCRM = () => {
                   <UploadIcon className="h-4 w-4 text-primary" /> ייבוא מקובץ
                 </DropdownMenuItem>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => setHomelyContactsSyncOpen(true)} className="gap-2 cursor-pointer">
-                  <UserRoundPlus className="h-4 w-4 text-primary" /> סנכרון מתעניינים מהומלי
+                <DropdownMenuItem onClick={handleHomelySync} disabled={homelySyncing} className="gap-2 cursor-pointer">
+                  {homelySyncing ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : <DownloadCloud className="h-4 w-4 text-primary" />}
+                  {homelySyncing ? 'מסנכרן מהומלי...' : 'סנכרון מתעניינים מהומלי'}
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
