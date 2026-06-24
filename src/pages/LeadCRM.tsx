@@ -1851,8 +1851,7 @@ const LeadCRM = () => {
 
 
                 <div className="mt-6 space-y-6">
-                  {/* Profile data enrichment */}
-                  <LeadEnrichmentButton lead={selectedVoter} />
+
 
                   {/* Real Estate Sales Closer Grid — editable dropdowns, high-contrast labels */}
                   {(() => {
