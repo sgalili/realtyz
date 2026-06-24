@@ -184,7 +184,7 @@ function CampaignsHeroAddButton() {
 
 const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/(dashboard)?$/, title: 'לוח בקרה' },
-  { match: /^\/lead-crm/, title: 'ניהול מתעניינים' },
+  { match: /^\/lead-crm/, title: 'לקוחות' },
   { match: /^\/inbox/, title: 'צ׳אטים בכל הערוצים' },
   { match: /^\/communication/, title: 'צ׳אטים בכל הערוצים' },
   { match: /^\/deal-room/, title: 'עסקאות' },
