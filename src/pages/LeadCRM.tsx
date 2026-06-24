@@ -1608,8 +1608,43 @@ const LeadCRM = () => {
                   <SheetTitle className="flex items-center gap-3">
                     <VoterAvatar fullName={selectedVoter.full_name} profilePictureUrl={(selectedVoter as any).profile_picture_url} className="h-16 w-16 shadow-lg" textClassName="text-xl" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-lg font-bold truncate">{selectedVoter.full_name || 'מתעניין לא ידוע'}</p>
-                      <p className="text-sm text-muted-foreground font-normal" dir="ltr">{formatPhoneDisplay(selectedVoter.phone_number)}</p>
+                      <EditableInlineText
+                        value={selectedVoter.full_name || ''}
+                        placeholder="מתעניין לא ידוע"
+                        ariaLabel="ערוך שם מלא"
+                        className="text-lg font-bold max-w-full"
+                        onSave={async (next) => {
+                          const { error } = await supabase.from('leads').update({ full_name: next || null }).eq('id', selectedVoter.id);
+                          if (error) throw error;
+                          await queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+                          toast.success('השם עודכן');
+                        }}
+                      />
+                      <EditableInlineText
+                        value={formatPhoneDisplay(selectedVoter.phone_number) === '-' ? '' : formatPhoneDisplay(selectedVoter.phone_number)}
+                        placeholder="הוסף טלפון"
+                        ariaLabel="ערוך טלפון"
+                        inputMode="tel"
+                        dir="ltr"
+                        className="text-sm text-muted-foreground font-normal"
+                        validate={(v) => {
+                          if (!v) return null;
+                          const digits = v.replace(/\D/g, '');
+                          if (digits.length < 9) return 'מספר טלפון לא תקין';
+                          return null;
+                        }}
+                        onSave={async (next) => {
+                          let normalized: string | null = null;
+                          if (next) {
+                            const digits = next.replace(/\D/g, '');
+                            normalized = digits.startsWith('0') ? '972' + digits.slice(1) : digits.startsWith('972') ? digits : digits;
+                          }
+                          const { error } = await supabase.from('leads').update({ phone_number: normalized }).eq('id', selectedVoter.id);
+                          if (error) throw error;
+                          await queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+                          toast.success('הטלפון עודכן');
+                        }}
+                      />
                       {(() => {
                         const phoneDigits = (selectedVoter.phone_number || '').replace(/\D/g, '');
                         const email = (selectedVoter as any).email as string | undefined;
