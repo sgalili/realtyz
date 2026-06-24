@@ -994,21 +994,8 @@ const InlineComposer = ({
         </span>
       </div>
 
-      {hasBody && (
-        <div className="flex justify-end">
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={finalizingBody || generating}
-            onClick={finalizeBody}
-            className="h-8"
-            title="לטשטוש מספרי בית, הוספת חתימת רישיון תיווך ושיוף הניסוח"
-          >
-            <Sparkles className={cn('h-3.5 w-3.5 ml-1', finalizingBody && 'animate-pulse')} />
-            {finalizingBody ? 'מנסח גרסה סופית...' : 'גרסה סופית'}
-          </Button>
-        </div>
-      )}
+
+
 
 
       {/* Hidden inputs */}
@@ -1043,17 +1030,6 @@ const InlineComposer = ({
       {/* Tag pills + action icons */}
       <div className="flex items-center justify-between gap-2 flex-wrap">
         <div className="flex items-center gap-2">
-          <button type="button" onClick={recording ? stopRecording : startRecording}
-            className={cn(
-              'rounded-lg border p-2 transition',
-              recording
-                ? 'border-destructive bg-destructive/10 text-destructive animate-pulse'
-                : 'border-border bg-background text-muted-foreground hover:text-foreground',
-            )}
-            aria-label={recording ? 'עצור הקלטה' : 'הקלטה'}>
-            {recording ? <Square className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-          </button>
-
           <Popover>
             <PopoverTrigger asChild>
               <button type="button" className="rounded-lg border border-border bg-background p-2 text-muted-foreground hover:text-foreground" aria-label="גלריה">
@@ -1078,25 +1054,36 @@ const InlineComposer = ({
               </button>
             </PopoverContent>
           </Popover>
+        </div>
 
-          <button type="button" onClick={() => fileInputRef.current?.click()}
-            className="rounded-lg border border-border bg-background p-2 text-muted-foreground hover:text-foreground" aria-label="קובץ מצורף">
-            <Paperclip className="h-4 w-4" />
+        <div className="flex items-center gap-2">
+          {hasBody && (
+            <Button
+              size="sm"
+              variant="secondary"
+              disabled={finalizingBody || generating}
+              onClick={finalizeBody}
+              className="h-9"
+              title="לטשטוש מספרי בית, הוספת חתימת רישיון תיווך ושיוף הניסוח"
+            >
+              {finalizingBody ? 'מנסח גרסה סופית...' : 'גרסה סופית'}
+            </Button>
+          )}
+          <button
+            type="button"
+            onClick={() => handleGenerate()}
+            disabled={generating}
+            className={cn(
+              'inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold shadow-md transition',
+              'bg-[#FFD600] text-[#E11D2A] hover:bg-[#FFC400] hover:shadow-lg',
+              'disabled:opacity-60 disabled:cursor-not-allowed',
+            )}
+          >
+            <RefreshCw className={cn('h-4 w-4', generating && 'animate-spin')} />
+            {generating ? 'מחולל תוכן…' : 'חולל תוכן עם AI'}
           </button>
         </div>
-        <button
-          type="button"
-          onClick={() => handleGenerate()}
-          disabled={generating}
-          className={cn(
-            'inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold shadow-md transition',
-            'bg-[#FFD600] text-[#E11D2A] hover:bg-[#FFC400] hover:shadow-lg',
-            'disabled:opacity-60 disabled:cursor-not-allowed',
-          )}
-        >
-          <RefreshCw className={cn('h-4 w-4', generating && 'animate-spin')} />
-          {generating ? 'מחולל תוכן…' : 'חולל תוכן עם AI'}
-        </button>
+
       </div>
 
 
