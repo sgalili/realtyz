@@ -565,23 +565,23 @@ Deno.serve(async (req) => {
 
       if (action === "fetchAllProperties") {
         const discardedSamples: any[] = [];
-        // Simplified, exhaustive filter — independent of transaction_type field,
-        // since the Webtiv sellers stream does NOT include a normalized
-        // transaction_type key. We accept a record when EITHER:
-        //   • affiliation (exclusive / שיוך / etc.) contains "משרד" or "בלעדי"  → office sale
-        //   • agent (any agent variant) contains "אודי ויטמן"                  → Udi rental
+        // Per-record rule (uses normalized transaction_type):
+        //   • sale  → office allocation (משרד / בלעדי) — ANY office agent counts.
+        //   • rent  → agent must include "אודי ויטמן".
         const finalFilteredProperties = items.filter((item: any) => {
           const affiliation = pickSivugName(item);
           const agent = pickAgentName(item);
+          const tx = normalizeTxType(item);
           const sivugOk = ALLOWED_SIVUG_SUBSTRS.some((s) => affiliation.includes(s));
           const agentOk = agent.includes(ALLOWED_AGENT_SUBSTR);
-          const ok = sivugOk || agentOk;
+          const ok = tx === "rent" ? agentOk : (sivugOk || agentOk);
           if (!ok && discardedSamples.length < 3) {
             discardedSamples.push({
               rawAgent: item?.agent,
               rawExclusive: item?.exclusive,
               pickedAgent: agent,
               pickedSivug: affiliation,
+              tx,
               keys: Object.keys(item || {}),
             });
           }
@@ -589,7 +589,9 @@ Deno.serve(async (req) => {
         });
         if (discardedSamples.length) console.log("[homely-fetch] sellers discarded samples:", JSON.stringify(discardedSamples));
         const properties = finalFilteredProperties.map(mapStreamProperty);
-        console.log(`[homely-fetch] SERVER FILTER GATE: raw=${items.length} filtered=${finalFilteredProperties.length} returning=${properties.length}`);
+        const saleCount = properties.filter((p: any) => p.transaction_type === "sale").length;
+        const rentCount = properties.filter((p: any) => p.transaction_type === "rent").length;
+        console.log(`[homely-fetch] SERVER FILTER GATE: raw=${items.length} filtered=${finalFilteredProperties.length} sale=${saleCount} rent=${rentCount}`);
         return json({
           ok: true,
           source: "AutomaionJson.sellers",
