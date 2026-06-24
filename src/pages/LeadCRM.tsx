@@ -1816,36 +1816,34 @@ const LeadCRM = () => {
                               disabled={pushingHomely}
                               aria-label="סנכרן להומלי"
                               title="סנכרן להומלי"
-                              className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent text-emerald-700 hover:bg-emerald-50 transition-colors disabled:opacity-50"
+                              className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent text-slate-700 hover:bg-slate-100 transition-colors disabled:opacity-50"
                             >
                               {pushingHomely
                                 ? <Loader2 className="h-4 w-4 animate-spin" strokeWidth={1.8} />
                                 : <UploadCloud className="h-4 w-4" strokeWidth={1.8} />}
                             </button>
                             <LeadEnrichmentIconButton lead={selectedVoter} />
+                            <div className="flex items-center gap-1.5 mr-auto ps-2">
+                              <Bot className="h-4 w-4 text-primary" />
+                              <Switch
+                                checked={!!selectedVoter.ai_autopilot}
+                                onCheckedChange={async (checked) => {
+                                  const { error } = await supabase
+                                    .from('leads')
+                                    .update({ ai_autopilot: checked } as any)
+                                    .eq('id', selectedVoter.id);
+                                  if (error) {
+                                    toast.error('שגיאה בעדכון הסוכן הדיגיטלי');
+                                    return;
+                                  }
+                                  toast.success(checked ? 'הסוכן הדיגיטלי הופעל' : 'הסוכן הדיגיטלי כובה');
+                                  queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+                                }}
+                              />
+                            </div>
                           </div>
                         );
                       })()}
-                    </div>
-                    <div className="flex flex-col items-end gap-1.5">
-                      <div className="flex items-center gap-1.5">
-                        <Bot className="h-4 w-4 text-primary" />
-                        <Switch
-                          checked={!!selectedVoter.ai_autopilot}
-                          onCheckedChange={async (checked) => {
-                            const { error } = await supabase
-                              .from('leads')
-                              .update({ ai_autopilot: checked } as any)
-                              .eq('id', selectedVoter.id);
-                            if (error) {
-                              toast.error('שגיאה בעדכון הסוכן הדיגיטלי');
-                              return;
-                            }
-                            toast.success(checked ? 'הסוכן הדיגיטלי הופעל' : 'הסוכן הדיגיטלי כובה');
-                            queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
-                          }}
-                        />
-                      </div>
                     </div>
                   </SheetTitle>
                 </SheetHeader>
