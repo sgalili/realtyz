@@ -382,7 +382,7 @@ Deno.serve(async (req) => {
         /להשכרה|השכרה|שכירות|\brent\b|\blease\b/i.test(rawAll + ' ' + propType)
         || (priceNum > 0 && priceNum < 30_000)
       );
-      const dealType = streamSource === "sellers" ? "sell" : (isRent ? "rent" : "sale");
+      const dealType = streamSource === "sellers" ? "sale" : (isRent ? "rent" : "sale");
       if (isRent) p.interest_tag = "שוכר";
       const mekorOrigin = prefs?.source_origin as string | null;
       const mekorUrl = prefs?.source_url as string | null;
