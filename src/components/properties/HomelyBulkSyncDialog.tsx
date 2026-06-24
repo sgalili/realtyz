@@ -330,7 +330,7 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
             {properties.length > 0 && (
               <div dir="rtl" className="flex items-center gap-1.5 mb-2">
                 {([
-                  { id: 'all', label: 'הכל', count: propertiesWithTx.length },
+                  { id: 'all', label: 'הכל', count: allCount },
                   { id: 'sale', label: 'למכירה', count: saleCount },
                   { id: 'rent', label: 'להשכרה', count: rentCount },
                 ] as const).map(({ id, label, count }) => (
