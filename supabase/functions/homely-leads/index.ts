@@ -20,6 +20,16 @@ const STREAM_BASE = "https://webtivapi.webtiv.co.il/AutomaionJson/outJson.ashx";
 const DEFAULT_BUYERS_GUID = "b6bb7f44-571b-4551-8de9-e075b8a89128";
 const DEFAULT_SELLERS_GUID = "32dc79a4-88ba-49a4-816e-f1fc43024c2f";
 
+// Route outbound Webtiv calls through the Cloudflare proxy worker to bypass
+// the upstream firewall block on Supabase edge IPs. Mirrors the wrapper used
+// in homely-fetch-property + webtiv-homely-sync.
+const WEBTIV_PROXY_URL = Deno.env.get("WEBTIV_PROXY_URL")?.replace(/\/+$/, "") || "";
+function proxied(targetUrl: string): string {
+  if (!WEBTIV_PROXY_URL) return targetUrl;
+  const sep = WEBTIV_PROXY_URL.includes("?") ? "&" : "?";
+  return `${WEBTIV_PROXY_URL}${sep}url=${encodeURIComponent(targetUrl)}`;
+}
+
 type HomelyLead = {
   external_id: string;
   full_name: string;
@@ -82,7 +92,7 @@ function strOrNull(v: unknown): string | null {
 async function fetchStream(guid: string, label: string): Promise<any[]> {
   try {
     const url = `${STREAM_BASE}?guid=${encodeURIComponent(guid)}`;
-    const res = await fetch(url, {
+    const res = await fetch(proxied(url), {
       headers: { Accept: "application/json", "User-Agent": "Realtyz-Homely/1.0" },
     });
     const status = res.status;
