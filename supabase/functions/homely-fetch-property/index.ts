@@ -503,14 +503,16 @@ Deno.serve(async (req) => {
         topKeys: r.data && typeof r.data === "object" && !Array.isArray(r.data) ? Object.keys(r.data).slice(0, 10) : null,
         sampleKeys: items[0] && typeof items[0] === "object" ? Object.keys(items[0]).slice(0, 20) : null,
         count: items.length,
+        fieldAudit: streamFieldAudit(items),
       }];
+      console.log(`[homely-fetch] ${action} first records field audit:`, JSON.stringify(streamFieldAudit(items)));
 
       if (action === "fetchAllProperties") {
         const discardedSamples: any[] = [];
         const filtered = items.filter((it: any) => {
           const ok = passesOfficeFilter(it, "sellers");
           if (!ok && discardedSamples.length < 3) {
-            discardedSamples.push({ rawAgent: it?.agent, rawSivug: it?.sivug, pickedAgent: pickAgentName(it), pickedSivug: pickSivugName(it) });
+            discardedSamples.push({ rawAgent: it?.agent, rawExclusive: it?.exclusive, rawSivug: it?.sivug, pickedAgent: pickAgentName(it), pickedSivug: pickSivugName(it), keys: Object.keys(it || {}) });
           }
           return ok;
         });
@@ -531,7 +533,7 @@ Deno.serve(async (req) => {
       const filtered = items.filter((it: any) => {
         const ok = passesOfficeFilter(it, "buyers");
         if (!ok && discardedSamples.length < 3) {
-          discardedSamples.push({ rawAgent: it?.agent, rawSivug: it?.sivug, pickedAgent: pickAgentName(it), pickedSivug: pickSivugName(it) });
+          discardedSamples.push({ rawAgent: it?.agent, rawExclusive: it?.exclusive, rawSivug: it?.sivug, pickedAgent: pickAgentName(it), pickedSivug: pickSivugName(it), keys: Object.keys(it || {}) });
         }
         return ok;
       });
