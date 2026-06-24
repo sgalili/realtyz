@@ -22,7 +22,7 @@ import {
   Users, Download, Megaphone, Trash2, X, Sparkles, Eye, SlidersHorizontal,
   Heart, MessageCircle, UserPlus, Bot, Map, Smile, Meh, Frown,
   Wallet, Compass, Radio, Target, Home as HomeIcon, Phone as PhoneIcon, Mail,
-  UploadCloud, Loader2
+  UploadCloud, Loader2, Pencil, Check
 } from 'lucide-react';
 import { Switch } from '@/components/ui/switch';
 import { useState, useRef, useMemo, useCallback, useEffect } from 'react';
@@ -179,6 +179,87 @@ const CircularScore = ({ score }: { score: number }) => {
 };
 
 const PAGE_SIZE = 50;
+
+function EditableInlineText({
+  value,
+  placeholder,
+  onSave,
+  validate,
+  inputMode,
+  dir,
+  className,
+  ariaLabel,
+}: {
+  value: string;
+  placeholder: string;
+  onSave: (next: string) => Promise<void> | void;
+  validate?: (v: string) => string | null;
+  inputMode?: 'text' | 'tel' | 'email';
+  dir?: 'rtl' | 'ltr';
+  className?: string;
+  ariaLabel: string;
+}) {
+  const [editing, setEditing] = useState(false);
+  const [draft, setDraft] = useState(value);
+  const [saving, setSaving] = useState(false);
+  useEffect(() => { if (!editing) setDraft(value); }, [value, editing]);
+
+  const commit = async () => {
+    const trimmed = draft.trim();
+    if (trimmed === value.trim()) { setEditing(false); return; }
+    const err = validate?.(trimmed);
+    if (err) { toast.error(err); return; }
+    setSaving(true);
+    try {
+      await onSave(trimmed);
+      setEditing(false);
+    } catch (e: any) {
+      toast.error(e?.message || 'שמירה נכשלה');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (editing) {
+    return (
+      <div className="flex items-center gap-1">
+        <Input
+          autoFocus
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={(e) => {
+            if (e.key === 'Enter') { e.preventDefault(); commit(); }
+            if (e.key === 'Escape') { e.preventDefault(); setEditing(false); setDraft(value); }
+          }}
+          inputMode={inputMode}
+          dir={dir}
+          placeholder={placeholder}
+          className={`h-7 text-sm ${className || ''}`}
+        />
+        <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-emerald-600" onClick={commit} disabled={saving} aria-label="שמור">
+          {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+        </Button>
+        <Button type="button" size="icon" variant="ghost" className="h-6 w-6 text-muted-foreground" onClick={() => { setEditing(false); setDraft(value); }} aria-label="ביטול">
+          <X className="h-3.5 w-3.5" />
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={(e) => { e.stopPropagation(); setEditing(true); }}
+      className={`group inline-flex items-center gap-1 text-right hover:text-primary transition-colors ${className || ''}`}
+      aria-label={ariaLabel}
+      dir={dir}
+    >
+      <span className="truncate">{value || placeholder}</span>
+      <Pencil className="h-3 w-3 opacity-0 group-hover:opacity-70 transition-opacity shrink-0" />
+    </button>
+  );
+}
+
 
 const LeadCRM = () => {
   const { user } = useAuth();
@@ -1527,8 +1608,43 @@ const LeadCRM = () => {
                   <SheetTitle className="flex items-center gap-3">
                     <VoterAvatar fullName={selectedVoter.full_name} profilePictureUrl={(selectedVoter as any).profile_picture_url} className="h-16 w-16 shadow-lg" textClassName="text-xl" />
                     <div className="flex-1 min-w-0">
-                      <p className="text-lg font-bold truncate">{selectedVoter.full_name || 'מתעניין לא ידוע'}</p>
-                      <p className="text-sm text-muted-foreground font-normal" dir="ltr">{formatPhoneDisplay(selectedVoter.phone_number)}</p>
+                      <EditableInlineText
+                        value={selectedVoter.full_name || ''}
+                        placeholder="מתעניין לא ידוע"
+                        ariaLabel="ערוך שם מלא"
+                        className="text-lg font-bold max-w-full"
+                        onSave={async (next) => {
+                          const { error } = await supabase.from('leads').update({ full_name: next || null }).eq('id', selectedVoter.id);
+                          if (error) throw error;
+                          await queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+                          toast.success('השם עודכן');
+                        }}
+                      />
+                      <EditableInlineText
+                        value={formatPhoneDisplay(selectedVoter.phone_number) === '-' ? '' : formatPhoneDisplay(selectedVoter.phone_number)}
+                        placeholder="הוסף טלפון"
+                        ariaLabel="ערוך טלפון"
+                        inputMode="tel"
+                        dir="ltr"
+                        className="text-sm text-muted-foreground font-normal"
+                        validate={(v) => {
+                          if (!v) return null;
+                          const digits = v.replace(/\D/g, '');
+                          if (digits.length < 9) return 'מספר טלפון לא תקין';
+                          return null;
+                        }}
+                        onSave={async (next) => {
+                          let normalized: string | null = null;
+                          if (next) {
+                            const digits = next.replace(/\D/g, '');
+                            normalized = digits.startsWith('0') ? '972' + digits.slice(1) : digits.startsWith('972') ? digits : digits;
+                          }
+                          const { error } = await supabase.from('leads').update({ phone_number: normalized }).eq('id', selectedVoter.id);
+                          if (error) throw error;
+                          await queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
+                          toast.success('הטלפון עודכן');
+                        }}
+                      />
                       {(() => {
                         const phoneDigits = (selectedVoter.phone_number || '').replace(/\D/g, '');
                         const email = (selectedVoter as any).email as string | undefined;
