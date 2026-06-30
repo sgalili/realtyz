@@ -213,6 +213,9 @@ Deno.serve(async (req) => {
       }
     } catch (wspErr) {
       console.warn("[ayrshare-sync-accounts] workspace_social_profile backfill failed", wspErr);
+    }
+
+
 
     // Mirror to workspace-wide social_connections
     try {
