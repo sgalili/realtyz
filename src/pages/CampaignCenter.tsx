@@ -1712,6 +1712,8 @@ const GlobalSocialFeed = ({
 const FEED_ROWS_CACHE = new Map<string, CampaignRow[]>();
 const CAMPAIGNS_COUNT_SESSION_KEY = 'realtyz.campaigns.total_count';
 const EXPECTED_NATIVE_FACEBOOK_POSTS = 150;
+const FIRST_VISIT_IMPORT_KEY_VERSION = 'v4_persistent_live_import';
+const FIRST_VISIT_METRICS_KEY_VERSION = 'v4_live_counts_full_tree';
 
 const PublishedFeed = () => {
   const { settings } = useWhiteLabel();
@@ -1837,7 +1839,7 @@ const PublishedFeed = () => {
     // session per workspace. The edge function UPSERTS into campaign_logs and
     // never deletes or shrinks old rows, so a later provider page returning 10
     // records cannot reset the 150 persisted campaign cards.
-    const importKey = `realtyz.fb_native_import.v1.${ownerScope}`;
+    const importKey = `realtyz.fb_native_import.${FIRST_VISIT_IMPORT_KEY_VERSION}.${ownerScope}`;
     let shouldImport = opts.forceFb === true;
     try { shouldImport = shouldImport || sessionStorage.getItem(importKey) !== '1'; } catch { shouldImport = true; }
     if (shouldImport) {
@@ -1935,13 +1937,13 @@ const PublishedFeed = () => {
     // Run the comments sync (nested replies + Like reactions) and the
     // headline analytics in parallel — neither blocks the other.
     const syncPromise = supabase.functions.invoke('ayrshare-sync-comments', {
-      body: { force_live: true, cache_bust: cacheBust },
+      body: { force_live: true, cache_bust: cacheBust, user_id: workspaceOwnerId ?? userId },
     }).catch((err) => { console.warn('[refreshMetrics] sync-comments failed (non-fatal)', err); return null; });
 
     try {
       const [{ data, error }] = await Promise.all([
         supabase.functions.invoke('ayrshare-analytics', {
-          body: { force_live: true, cache_bust: cacheBust },
+          body: { force_live: true, cache_bust: cacheBust, user_id: workspaceOwnerId ?? userId },
         }),
         syncPromise,
       ]);
@@ -2027,7 +2029,7 @@ const PublishedFeed = () => {
       load({ forceFb: !!cached && cached.length > 0 && cached.length < EXPECTED_NATIVE_FACEBOOK_POSTS });
     }
     if (!workspaceOwnerId) return;
-    const sessionKey = `realtyz.feed_metrics_fetched.v2.${workspaceOwnerId}`;
+    const sessionKey = `realtyz.feed_metrics_fetched.${FIRST_VISIT_METRICS_KEY_VERSION}.${workspaceOwnerId}`;
     let alreadyFetched = false;
     try { alreadyFetched = sessionStorage.getItem(sessionKey) === '1'; } catch { /* noop */ }
     if (!alreadyFetched) {

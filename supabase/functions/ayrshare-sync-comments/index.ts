@@ -28,7 +28,18 @@ Deno.serve(async (req) => {
   }
   let body: any = {};
   try { body = await req.json(); } catch { /* noop */ }
+  const callerId = userId;
   if (!userId && body?.user_id) userId = String(body.user_id);
+  if (callerId && body?.user_id && String(body.user_id) !== callerId) {
+    const requestedOwner = String(body.user_id);
+    const { data: member } = await admin
+      .from("workspace_memberships")
+      .select("user_id")
+      .eq("workspace_owner_id", requestedOwner)
+      .eq("user_id", callerId)
+      .maybeSingle();
+    if (!member) userId = callerId;
+  }
   if (!userId) return json({ error: "user_id required" }, 401);
 
   const { data: rows, error } = await admin
@@ -37,7 +48,7 @@ Deno.serve(async (req) => {
     .eq("user_id", userId)
     .eq("is_archived", false)
     .order("created_at", { ascending: false })
-    .limit(500);
+    .limit(1000);
 
   if (error) return json({ success: false, error: error.message, targets: 0, dispatched: [] }, 200);
 
@@ -70,15 +81,37 @@ Deno.serve(async (req) => {
   }
 
   const postIds = Array.from(ids).slice(0, 500);
+  let childResult: any = null;
   if (postIds.length > 0) {
     const p = fetch(`${SUPABASE_URL}/functions/v1/ayrshare-comments-fetch`, {
       method: "POST",
       headers: { Authorization: `Bearer ${SERVICE}`, "Content-Type": "application/json" },
       body: JSON.stringify({ user_id: userId, post_ids: postIds, platform: "facebook" }),
-    }).catch((e) => console.error("[ayrshare-sync-comments] direct Meta fanout failed", e));
-    // @ts-ignore Deno-specific background task API.
-    if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) EdgeRuntime.waitUntil(p);
+    }).then(async (r) => {
+      const text = await r.text();
+      try { return text ? JSON.parse(text) : {}; } catch { return { raw: text }; }
+    }).catch((e) => {
+      console.error("[ayrshare-sync-comments] comments fetch failed", e);
+      return { success: false, error: e instanceof Error ? e.message : String(e) };
+    });
+    childResult = body?.async === true
+      ? null
+      : await p;
+    if (body?.async === true) {
+      // @ts-ignore Deno-specific background task API.
+      if (typeof EdgeRuntime !== "undefined" && EdgeRuntime?.waitUntil) EdgeRuntime.waitUntil(p);
+    }
   }
 
-  return json({ success: true, targets: postIds.length, api_errors: [], dispatched: [{ platform: "facebook", count: postIds.length }], queued: postIds.length > 0 }, 200);
+  return json({
+    success: true,
+    targets: postIds.length,
+    api_errors: childResult?.api_errors ?? [],
+    mapping_errors: childResult?.mapping_errors ?? [],
+    persisted: childResult?.persisted ?? 0,
+    skipped: childResult?.skipped ?? 0,
+    dispatched: [{ platform: "facebook", count: postIds.length }],
+    queued: postIds.length > 0 && body?.async === true,
+    completed: body?.async !== true,
+  }, 200);
 });

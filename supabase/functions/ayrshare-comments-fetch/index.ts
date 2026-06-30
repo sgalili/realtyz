@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
         .eq("user_id", userId)
         .eq("is_archived", false)
         .order("created_at", { ascending: false })
-        .limit(200);
+        .limit(1000);
       if (campaignErr) {
         console.error("[ayrshare-comments-fetch] campaign lookup failed", campaignErr.message);
       }
@@ -470,8 +470,16 @@ Deno.serve(async (req) => {
       return { ok: false, status: primary.status || 500, resolvedPostId: null, comments: [], outerMetrics: { likes: null, shares: null, comments: null }, attempts };
     };
 
-    await Promise.all(
-      Array.from(targets.values()).map(async (target) => {
+    const runWithConcurrency = async <T>(items: T[], concurrency: number, worker: (item: T) => Promise<void>) => {
+      for (let i = 0; i < items.length; i += concurrency) {
+        await Promise.all(items.slice(i, i + concurrency).map(worker));
+      }
+    };
+
+    await runWithConcurrency(
+      Array.from(targets.values()),
+      8,
+      async (target) => {
         const { fetchPostId, nativePostId, platform } = target;
         const activeRefId = "ayrshare_comments_native";
         try {
@@ -629,7 +637,7 @@ Deno.serve(async (req) => {
           errors[nativePostId] = err instanceof Error ? err.message : String(err);
           results[nativePostId] = [];
         }
-      }),
+      },
     );
 
     // Persist into engagement_events (dedup by user_id + external_id).

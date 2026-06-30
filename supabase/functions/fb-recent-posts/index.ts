@@ -351,7 +351,7 @@ Deno.serve(async (req) => {
     );
     const { data: ws } = await admin
       .from("workspace_social_profile")
-      .select("ayrshare_profile_key, facebook_page_id, facebook_page_name")
+      .select("ayrshare_profile_key, ayrshare_ref_id, facebook_page_id, facebook_page_name")
       .eq("id", WORKSPACE_ID)
       .maybeSingle();
     const profileKey = (ws?.ayrshare_profile_key?.toString().trim()) ||
@@ -410,11 +410,37 @@ Deno.serve(async (req) => {
       if (profileKey) {
         push({
           profileKey,
-          refId: null,
+          refId: ws?.ayrshare_ref_id ?? null,
           fbId: ws?.facebook_page_id ?? null,
           fbName: ws?.facebook_page_name ?? null,
           label: "workspace",
         });
+      }
+
+      // Stored per-user account rows are our only recoverable source of actual
+      // Profile-Key values because Ayrshare intentionally never returns profile
+      // keys from GET /profiles. Always try them before public/account fallbacks.
+      try {
+        const { data: storedAccounts } = await admin
+          .from("ayrshare_social_accounts")
+          .select("profile_key, account_ref, display_name")
+          .eq("platform", "facebook")
+          .eq("connected", true)
+          .eq("is_active", true)
+          .limit(50);
+        for (const row of storedAccounts ?? []) {
+          const pk = asText((row as any)?.profile_key);
+          if (!pk) continue;
+          push({
+            profileKey: pk,
+            refId: null,
+            fbId: asText((row as any)?.account_ref) || ws?.facebook_page_id || null,
+            fbName: asText((row as any)?.display_name) || ws?.facebook_page_name || null,
+            label: "stored_social_account",
+          });
+        }
+      } catch (storedErr) {
+        console.warn("[fb-recent-posts] stored account discovery failed", storedErr);
       }
 
       try {
@@ -492,6 +518,10 @@ Deno.serve(async (req) => {
         const qs = new URLSearchParams({
           limit: String(pageSize),
           dataType: "posts",
+          // Critical: Ayrshare defaults can return only a short recent slice.
+          // lastDays=0 means full available history for the connected native
+          // Facebook Page, which is required to recover the full ~150-post feed.
+          lastDays: "0",
           skipAnalytics: "true",
         });
         if (typeof pagePublished === "boolean") {
