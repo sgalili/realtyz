@@ -2045,12 +2045,18 @@ const PublishedFeed = () => {
 
 
   useEffect(() => {
-    // Hydrate cached DB rows immediately, then — on the first visit per
-    // browser session per workspace — pull fresh live counters + comments
-    // from Ayrshare so collapsed cards show real numbers without requiring
-    // a manual click. A background interval keeps new likes / comments /
-    // replies trickling in every 2 minutes while the page is open.
-    load();
+    // Session cache: on the first /campaigns visit per workspace per browser
+    // session, load the unified feed (DB campaign_logs + native FB) once.
+    // Subsequent navigations into /campaigns reuse the in-memory cache and
+    // skip both the DB query and the fb-recent-posts call entirely. New
+    // local campaign inserts append via the realtime INSERT handler below.
+    const wsKey = workspaceOwnerId ?? 'anon';
+    const cached = FEED_ROWS_CACHE.get(wsKey);
+    if (cached && cached.length > 0) {
+      setRows(cached);
+    } else {
+      load();
+    }
     if (!workspaceOwnerId) return;
     const sessionKey = `realtyz.feed_metrics_fetched.v2.${workspaceOwnerId}`;
     let alreadyFetched = false;
@@ -2066,6 +2072,7 @@ const PublishedFeed = () => {
     return () => { window.clearInterval(intervalId); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceOwnerId]);
+
 
 
 
