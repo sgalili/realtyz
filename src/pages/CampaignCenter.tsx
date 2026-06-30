@@ -1670,12 +1670,10 @@ const GlobalSocialFeed = ({
 };
 
 
-// Session-level caches so re-entering /campaigns doesn't refetch the merged
-// feed (DB campaign_logs + native Facebook posts). New local posts appended
-// via realtime INSERT reuse the cached native FB list — natives are fetched
-// only once per browser session per workspace.
+// Session-level cache so re-entering /campaigns doesn't refetch the persisted
+// campaign_logs feed. Native Facebook posts are imported once into the database
+// and then read only from campaign_logs, never kept as transient synthetic rows.
 const FEED_ROWS_CACHE = new Map<string, CampaignRow[]>();
-const FB_POSTS_CACHE = new Map<string, any[]>();
 const CAMPAIGNS_COUNT_SESSION_KEY = 'realtyz.campaigns.total_count';
 
 const PublishedFeed = () => {
@@ -1797,19 +1795,64 @@ const PublishedFeed = () => {
     const ownerScope = workspaceOwnerId ?? user.id;
     const scopedUserIds = await getCampaignWorkspaceUserIds(ownerScope, user.id);
     setCampaignUserIds(scopedUserIds);
+
+    // Permanently import native Facebook Page posts exactly once per browser
+    // session per workspace. The edge function UPSERTS into campaign_logs and
+    // never deletes or shrinks old rows, so a later provider page returning 10
+    // records cannot reset the 150 persisted campaign cards.
+    const importKey = `realtyz.fb_native_import.v1.${ownerScope}`;
+    let shouldImport = opts.forceFb === true;
+    try { shouldImport = shouldImport || sessionStorage.getItem(importKey) !== '1'; } catch { shouldImport = true; }
+    if (shouldImport) {
+      try {
+        const { data: importData, error: importError } = await supabase.functions.invoke('fb-recent-posts', {
+          body: { lastRecords: 500, pageSize: 100, user_id: ownerScope, persist: true },
+        });
+        if (importError) {
+          console.warn('[PublishedFeed] fb persistent import failed (non-fatal)', importError);
+        } else if ((importData as any)?.ok === false) {
+          console.warn('[PublishedFeed] fb persistent import returned error', importData);
+        } else {
+          try { sessionStorage.setItem(importKey, '1'); } catch { /* quota */ }
+        }
+      } catch (err) {
+        console.warn('[PublishedFeed] fb persistent import crashed (non-fatal)', err);
+      }
+    }
+
     const { data } = await supabase
       .from('campaign_logs')
       .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at, status, sent_at')
       .in('user_id', scopedUserIds)
       .eq('is_archived', false)
       .order('created_at', { ascending: false })
-      .limit(500);
+      .limit(1000);
+
+    const normalizeStoredRow = (r: any): CampaignRow => {
+      const pr = r?.provider_response ?? {};
+      const media = Array.isArray(pr?.media_urls)
+        ? pr.media_urls
+        : Array.isArray(pr?.media)
+          ? pr.media
+          : [];
+      const externalUrl =
+        (typeof pr?.external_url === 'string' && pr.external_url) ||
+        (Array.isArray(pr?.postIds)
+          ? pr.postIds.find((p: any) => String(p?.platform || '').toLowerCase() === String(r?.channel || '').toLowerCase())?.postUrl
+          : null) ||
+        null;
+      return {
+        ...r,
+        media_urls: media.filter((u: any) => typeof u === 'string' && /^https?:\/\//i.test(u)),
+        external_url: externalUrl,
+      };
+    };
+
     const grouped = new Map<string, CampaignRow>();
-    (data || []).forEach((r: any) => {
+    (data || []).forEach((raw: any) => {
+      const r = normalizeStoredRow(raw);
       // Use the FULL created_at timestamp (not minute-precision) so distinct
       // campaigns published in the same minute don't collapse into one row.
-      // Previously this was sliced to 16 chars, which silently merged ~2 of
-      // every 10 fresh campaigns on screen.
       const key = `${r.campaign_name}|${r.channel}|${r.created_at}`;
       const existing = grouped.get(key);
       if (existing) {
@@ -1817,6 +1860,8 @@ const PublishedFeed = () => {
         if (!existing.provider_message_id && r.provider_message_id) {
           existing.provider_message_id = r.provider_message_id;
         }
+        existing.media_urls = existing.media_urls?.length ? existing.media_urls : r.media_urls;
+        existing.external_url = existing.external_url || r.external_url || null;
         existing.like_count = Math.max(existing.like_count || 0, r.like_count || 0);
         existing.comment_count = Math.max(existing.comment_count || 0, r.comment_count || 0);
         existing.share_count = Math.max(existing.share_count || 0, r.share_count || 0);
@@ -1825,134 +1870,16 @@ const PublishedFeed = () => {
         grouped.set(key, { ...r, recipient_count: 1 });
       }
     });
-    const merged = Array.from(grouped.values());
-
-    // Merge live Facebook posts (from Ayrshare /history) so the published feed
-    // shows every post on the page — historical native posts as well as ones
-    // dispatched from the system. Attach media URLs to existing campaign rows
-    // when their provider_message_id matches a fetched FB post; inject
-    // synthetic external rows for any FB post we don't already have locally.
-    try {
-      const wsKey = workspaceOwnerId ?? 'anon';
-      let fbPosts: any[] = FB_POSTS_CACHE.get(wsKey) ?? [];
-      if (opts.forceFb || fbPosts.length === 0) {
-        const { data: fbData } = await supabase.functions.invoke('fb-recent-posts', {
-          body: { lastRecords: 500, pageSize: 100 },
-        });
-        fbPosts = (fbData as any)?.ok ? ((fbData as any).posts ?? []) : [];
-        if (fbPosts.length > 0) FB_POSTS_CACHE.set(wsKey, fbPosts);
-      }
-
-      if (fbPosts.length > 0) {
-        const normText = (s: any) => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 220);
-        const collectFbPostKeys = (post: any) => Array.from(new Set([
-          post?.fb_post_id,
-          post?.id,
-          ...(Array.isArray(post?.post_ids) ? post.post_ids : []),
-        ].map((v) => String(v || '').trim()).filter(Boolean)));
-        const byFbId = new Map<string, any>();
-        const byText = new Map<string, any>();
-        for (const p of fbPosts) {
-          collectFbPostKeys(p).forEach((k) => byFbId.set(k, p));
-          const t = normText(p.text);
-          if (t) byText.set(t, p);
-        }
-        // Attach media + external URL to existing facebook rows; dedupe by id OR text.
-        for (const row of merged) {
-          if (String(row.channel || '').toLowerCase() !== 'facebook') continue;
-          const ids = new Set<string>([
-            row.provider_message_id,
-            ...getCampaignPostIds(row),
-          ].map((v) => String(v || '').trim()).filter(Boolean));
-          let match: any = null;
-          for (const pid of ids) {
-            if (byFbId.has(pid)) {
-              match = byFbId.get(pid);
-              break;
-            }
-          }
-          if (!match) {
-            const t = normText(row.message_body || row.campaign_name);
-            if (t && byText.has(t)) {
-              match = byText.get(t);
-              byText.delete(t);
-            }
-          }
-          if (match) {
-            const matchIds = collectFbPostKeys(match);
-            matchIds.forEach((mk) => byFbId.delete(mk));
-            row.provider_message_id = row.provider_message_id || match.fb_post_id || match.id || matchIds[0] || null;
-            row.media_urls = Array.isArray(match.media) ? match.media.filter((u: any) => typeof u === 'string' && /^https?:\/\//i.test(u)) : [];
-            if (match.url) row.external_url = match.url;
-            if (typeof match.like_count === 'number') row.like_count = Math.max(row.like_count || 0, match.like_count);
-            if (typeof match.comment_count === 'number') row.comment_count = Math.max(row.comment_count || 0, match.comment_count);
-            if (typeof match.share_count === 'number') row.share_count = Math.max(row.share_count || 0, match.share_count);
-            if (typeof match.view_count === 'number') row.view_count = Math.max(row.view_count || 0, match.view_count);
-            if (match.like_count !== null || match.comment_count !== null || match.share_count !== null || match.view_count !== null) {
-              row.metrics_updated_at = row.metrics_updated_at || new Date().toISOString();
-            }
-          }
-        }
-        // Inject synthetic rows for native FB posts not already represented.
-        const seenTexts = new Set<string>();
-        for (const row of merged) {
-          if (String(row.channel || '').toLowerCase() !== 'facebook') continue;
-          const t = normText(row.message_body || row.campaign_name);
-          if (t) seenTexts.add(t);
-        }
-        const externalRows: CampaignRow[] = [];
-        const uniqueNativePosts = Array.from(new Map(Array.from(byFbId.values()).map((p) => [collectFbPostKeys(p)[0] || crypto.randomUUID(), p])).values());
-        for (const p of uniqueNativePosts) {
-          const t = normText(p.text);
-          if (t && seenTexts.has(t)) continue;
-          if (t) seenTexts.add(t);
-          const postKeys = collectFbPostKeys(p);
-          const primaryId = p.fb_post_id || p.id || postKeys[0] || crypto.randomUUID();
-          const id = `fb:${primaryId}`;
-          // If Ayrshare returns no usable date, fall back to NOW so the post
-          // surfaces interleaved at the top of the unified feed rather than
-          // being banished to a "1970" cluster at the bottom (which looks
-          // like a separate section).
-          let createdIso = p.created_at as string | null;
-          if (!createdIso || isNaN(new Date(createdIso).getTime())) {
-            createdIso = new Date().toISOString();
-          }
-          externalRows.push({
-            id,
-            campaign_name: (String(p.text || '').trim().split('\n')[0] || 'פוסט פייסבוק').slice(0, 80),
-            channel: 'facebook',
-            message_body: p.text || '',
-            created_at: createdIso,
-            provider_message_id: primaryId,
-            provider_response: { postIds: postKeys.map((postId) => ({ platform: 'facebook', id: postId, postUrl: p.url || null })) },
-            recipient_count: 1,
-            media_urls: Array.isArray(p.media) ? p.media.filter((u: any) => typeof u === 'string' && /^https?:\/\//i.test(u)) : [],
-            external_url: p.url || null,
-            like_count: typeof p.like_count === 'number' ? p.like_count : 0,
-            comment_count: typeof p.comment_count === 'number' ? p.comment_count : 0,
-            share_count: typeof p.share_count === 'number' ? p.share_count : 0,
-            view_count: typeof p.view_count === 'number' ? p.view_count : 0,
-            metrics_updated_at: (p.like_count !== null || p.comment_count !== null || p.share_count !== null || p.view_count !== null) ? new Date().toISOString() : null,
-            is_external: true,
-          });
-        }
-        merged.push(...externalRows);
-        merged.sort((a, b) => {
-          const ta = new Date(a.created_at).getTime();
-          const tb = new Date(b.created_at).getTime();
-          const sa = isNaN(ta) ? 0 : ta;
-          const sb = isNaN(tb) ? 0 : tb;
-          return sb - sa;
-        });
-      }
-    } catch (err) {
-      console.warn('[PublishedFeed] fb-recent-posts merge failed (non-fatal)', err);
-    }
+    const merged = Array.from(grouped.values()).sort((a, b) => {
+      const ta = new Date(a.created_at).getTime();
+      const tb = new Date(b.created_at).getTime();
+      return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0);
+    });
 
     setRows(merged);
     FEED_ROWS_CACHE.set(workspaceOwnerId ?? 'anon', merged);
     try { sessionStorage.setItem(CAMPAIGNS_COUNT_SESSION_KEY, String(merged.length)); } catch { /* quota */ }
-    // Nudge the sidebar to repaint the campaigns badge with the unified count.
+    // Nudge the sidebar to repaint the campaigns badge with the persisted DB count.
     try { queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] }); } catch { /* no-op */ }
   };
 
