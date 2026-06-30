@@ -1235,11 +1235,11 @@ const ConfirmDispatchDialog = ({
         const { data } = await supabase
           .from('ayrshare_social_accounts')
           .select('id, platform, account_ref, profile_key, display_name, account_username, username, avatar_url, profile_url, is_active, connected')
-          .eq('user_id', user.id)
           .eq('platform', channel.id)
+          .eq('connected', true)
+          .eq('is_active', true)
           .order('updated_at', { ascending: false });
-        const rows = (data || [])
-          .filter((r: any) => r.is_active !== false && r.connected !== false)
+        let rows = (data || [])
           .map((r: any) => ({
             id: r.id,
             platform: r.platform,
@@ -1250,6 +1250,33 @@ const ConfirmDispatchDialog = ({
             avatar: r.avatar_url || null,
             profileUrl: r.profile_url || (r.account_ref ? buildAccountUrl(channel.id, r.account_ref) : null),
           }));
+        const seen = new Set<string>();
+        rows = rows.filter((p) => {
+          const key = `${p.platform}:${p.accountRef || p.profileKey || p.id}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        if (channel.id === 'facebook' && rows.length === 0) {
+          const { data: wsp } = await supabase
+            .from('workspace_social_profile')
+            .select('ayrshare_profile_key, facebook_page_id, facebook_page_name')
+            .maybeSingle();
+          const fbId = String((wsp as any)?.facebook_page_id || '').trim();
+          const profileKey = String((wsp as any)?.ayrshare_profile_key || '').trim();
+          if (fbId && profileKey) {
+            rows = [{
+              id: `workspace-facebook:${fbId}`,
+              platform: 'facebook',
+              accountRef: fbId,
+              profileKey,
+              name: (wsp as any)?.facebook_page_name || 'Facebook',
+              username: null,
+              avatar: null,
+              profileUrl: buildAccountUrl('facebook', fbId),
+            }];
+          }
+        }
         setPages(rows);
       } finally {
         setPagesLoading(false);
@@ -1340,12 +1367,21 @@ const ConfirmDispatchDialog = ({
             const resp = (error as any)?.context?.response;
             if (resp && typeof resp.json === 'function') {
               const body = await resp.json();
-              friendly = body?.error || body?.message || null;
+              friendly = body?.message || body?.error || null;
             }
           } catch { /* ignore */ }
           throw new Error(friendly || error.message || 'שגיאת רשת');
         }
         if ((firstFailure?.data as any)?.error) throw new Error((firstFailure.data as any)?.message || (firstFailure.data as any).error);
+        const unverified = results.find((r) => {
+          const payload: any = r.data;
+          if (scheduledAt) return false;
+          return payload?.success === false || payload?.verified === false;
+        });
+        if (unverified) {
+          const payload: any = unverified.data;
+          throw new Error(payload?.message || payload?.error || 'פייסבוק לא אישר שהפוסט פורסם בפועל');
+        }
         const groupFailures: any[] = results.flatMap((r) => Array.isArray((r.data as any)?.group_failures) ? (r.data as any).group_failures : []);
         if (scheduledAt) {
           const when = new Date(scheduledAt).toLocaleString('he-IL');
@@ -1675,6 +1711,7 @@ const GlobalSocialFeed = ({
 // and then read only from campaign_logs, never kept as transient synthetic rows.
 const FEED_ROWS_CACHE = new Map<string, CampaignRow[]>();
 const CAMPAIGNS_COUNT_SESSION_KEY = 'realtyz.campaigns.total_count';
+const EXPECTED_NATIVE_FACEBOOK_POSTS = 150;
 
 const PublishedFeed = () => {
   const { settings } = useWhiteLabel();
@@ -1812,10 +1849,10 @@ const PublishedFeed = () => {
           console.warn('[PublishedFeed] fb persistent import failed (non-fatal)', importError);
         } else if ((importData as any)?.ok === false) {
           console.warn('[PublishedFeed] fb persistent import returned error', importData);
-        } else if ((Number((importData as any)?.upserted) || 0) > 0 || (Number((importData as any)?.count) || 0) > 0) {
+        } else if ((Number((importData as any)?.count) || 0) >= EXPECTED_NATIVE_FACEBOOK_POSTS) {
           try { sessionStorage.setItem(importKey, '1'); } catch { /* quota */ }
         } else {
-          console.warn('[PublishedFeed] fb persistent import returned no posts; will retry next entry', importData);
+          console.warn('[PublishedFeed] fb persistent import returned a partial set; will retry next entry', importData);
         }
       } catch (err) {
         console.warn('[PublishedFeed] fb persistent import crashed (non-fatal)', err);
@@ -1984,10 +2021,10 @@ const PublishedFeed = () => {
     // local campaign inserts append via the realtime INSERT handler below.
     const wsKey = workspaceOwnerId ?? 'anon';
     const cached = FEED_ROWS_CACHE.get(wsKey);
-    if (cached && cached.length >= 50) {
+    if (cached && cached.length >= EXPECTED_NATIVE_FACEBOOK_POSTS) {
       setRows(cached);
     } else {
-      load({ forceFb: !!cached && cached.length > 0 && cached.length < 50 });
+      load({ forceFb: !!cached && cached.length > 0 && cached.length < EXPECTED_NATIVE_FACEBOOK_POSTS });
     }
     if (!workspaceOwnerId) return;
     const sessionKey = `realtyz.feed_metrics_fetched.v2.${workspaceOwnerId}`;
