@@ -32,24 +32,17 @@ export function useSidebarCounts() {
       };
 
       // Campaign count must match the published-feed grouping: one card per
-      // (campaign_name + channel + created_at) tuple, PLUS any native Facebook
-      // posts injected by /campaigns. The published feed writes its final
-      // merged count to sessionStorage so the sidebar mirrors what the user
-      // actually sees on /campaigns (DB campaigns + native FB posts), without
-      // re-fetching Ayrshare from the sidebar.
+      // (campaign_name + channel + created_at) tuple. Native Facebook posts are
+      // now permanently imported into campaign_logs, so never trust a stale
+      // sessionStorage value here — the database is the source of truth.
       const groupedCampaignCount = async (): Promise<number> => {
-        try {
-          const cached = sessionStorage.getItem('realtyz.campaigns.total_count');
-          const parsed = cached ? Number(cached) : NaN;
-          if (Number.isFinite(parsed) && parsed > 0) return parsed;
-        } catch { /* no-op */ }
         try {
           const { data, error } = await (supabase as any)
             .from('campaign_logs')
             .select('campaign_name, channel, created_at')
             .eq('is_archived', false)
             .order('created_at', { ascending: false })
-            .limit(500);
+            .limit(1000);
           if (error || !Array.isArray(data)) return 0;
           const seen = new Set<string>();
           for (const r of data) {
