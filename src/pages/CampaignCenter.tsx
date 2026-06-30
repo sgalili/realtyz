@@ -2386,14 +2386,12 @@ const PublishedFeed = () => {
                     <ExternalLink className="ml-1 h-4 w-4" />
                     פתח פוסט
                   </Button>
-                  {!r.is_external && (
-                    <Button variant="outline" size="sm"
-                            disabled={!!refreshingIds[r.id]}
-                            onClick={(e) => { e.stopPropagation(); bumpRefresh(r.id); }}>
-                      <RefreshCw className={cn('ml-1 h-4 w-4', refreshingIds[r.id] && 'animate-spin')} />
-                      {refreshingIds[r.id] ? 'מרענן…' : 'רענן תגובות'}
-                    </Button>
-                  )}
+                  <Button variant="outline" size="sm"
+                          disabled={!!refreshingIds[r.id]}
+                          onClick={(e) => { e.stopPropagation(); bumpRefresh(r.id); }}>
+                    <RefreshCw className={cn('ml-1 h-4 w-4', refreshingIds[r.id] && 'animate-spin')} />
+                    {refreshingIds[r.id] ? 'מרענן…' : 'רענן תגובות'}
+                  </Button>
                   {!r.is_external && (
                     <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
                             className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
@@ -2403,39 +2401,37 @@ const PublishedFeed = () => {
                   )}
                 </div>
                 {!r.is_external && (
-                  <>
-                    <CampaignGroupBreakdown
-                      workspaceOwnerId={workspaceOwnerId}
-                      campaignBody={bodyText}
-                      campaignCreatedAt={r.created_at}
-                    />
-                    <div className="border-t border-border bg-muted/30 px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      {userId ? (
-                        <CampaignCommentsStream
-                          userId={userId}
-                          campaign={r}
-                          commentCount={typeof liveCount === 'number' ? Math.max(liveCount, dbComments) : dbComments}
-                          onLiveCountResolved={updateLiveCount}
-                          refreshSignal={refreshSignals[r.id] ?? 0}
-                          onCountersResolved={(campaignId, counters) => {
-                            const pickNum = (v: unknown) => (typeof v === 'number' ? v : 0);
-                            const max = (a: unknown, b: unknown) => Math.max(pickNum(a), pickNum(b));
-                            setRows((prev) => prev?.map((row) => row.id === campaignId ? {
-                              ...row,
-                              like_count: counters.force ? pickNum(counters.like_count) : max(counters.like_count, row.like_count),
-                              share_count: counters.force ? pickNum(counters.share_count) : max(counters.share_count, row.share_count),
-                              comment_count: counters.force ? pickNum(counters.comment_count) : max(counters.comment_count, row.comment_count),
-                              metrics_updated_at: new Date().toISOString(),
-                            } : row) ?? prev);
-                          }}
-                          onRefreshComplete={handleRefreshComplete}
-                        />
-                      ) : (
-                        <p className="text-xs text-muted-foreground text-right">נדרשת התחברות לצפייה בתגובות</p>
-                      )}
-                    </div>
-                  </>
+                  <CampaignGroupBreakdown
+                    workspaceOwnerId={workspaceOwnerId}
+                    campaignBody={bodyText}
+                    campaignCreatedAt={r.created_at}
+                  />
                 )}
+                <div className="border-t border-border bg-muted/30 px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  {userId ? (
+                    <CampaignCommentsStream
+                      userId={userId}
+                      campaign={r}
+                      commentCount={typeof liveCount === 'number' ? Math.max(liveCount, dbComments) : dbComments}
+                      onLiveCountResolved={updateLiveCount}
+                      refreshSignal={refreshSignals[r.id] ?? 0}
+                      onCountersResolved={(campaignId, counters) => {
+                        const pickNum = (v: unknown) => (typeof v === 'number' ? v : 0);
+                        const max = (a: unknown, b: unknown) => Math.max(pickNum(a), pickNum(b));
+                        setRows((prev) => prev?.map((row) => row.id === campaignId ? {
+                          ...row,
+                          like_count: counters.force ? pickNum(counters.like_count) : max(counters.like_count, row.like_count),
+                          share_count: counters.force ? pickNum(counters.share_count) : max(counters.share_count, row.share_count),
+                          comment_count: counters.force ? pickNum(counters.comment_count) : max(counters.comment_count, row.comment_count),
+                          metrics_updated_at: new Date().toISOString(),
+                        } : row) ?? prev);
+                      }}
+                      onRefreshComplete={handleRefreshComplete}
+                    />
+                  ) : (
+                    <p className="text-xs text-muted-foreground text-right">נדרשת התחברות לצפייה בתגובות</p>
+                  )}
+                </div>
               </>
             )}
           </article>
