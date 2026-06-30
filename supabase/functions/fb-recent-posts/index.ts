@@ -59,11 +59,17 @@ const collectMediaUrls = (it: any): string[] => {
     addUrl(urls, node.media?.image?.src);
     addUrl(urls, node.media?.source);
     addUrl(urls, node.image?.src);
+    addUrl(urls, node.full_picture);
+    addUrl(urls, node.permalink_url);
+    visitMedia(node.data);
+    visitMedia(node.attachments);
+    visitMedia(node.subattachments);
   };
 
   visitMedia(it?.mediaUrls);
   visitMedia(it?.media);
   visitMedia(it?.attachments);
+  visitMedia(it?.subattachments);
   return Array.from(urls);
 };
 
@@ -118,7 +124,7 @@ const pickNativeFacebookPostId = (it: any): string | null => {
   return null;
 };
 
-type RawPost = { item: any; source: "platform" | "generic"; profileKey?: string; refId?: string | null; fbId?: string | null; fbName?: string | null };
+type RawPost = { item: any; source: "platform" | "generic" | "graph"; profileKey?: string; refId?: string | null; fbId?: string | null; fbName?: string | null };
 type ProfileCandidate = { profileKey: string; refId: string | null; fbId: string | null; fbName: string | null; label: string };
 
 const pickNumber = (...values: unknown[]): number | null => {
@@ -161,7 +167,7 @@ const normalizePost = (raw: RawPost) => {
   const ids = Array.from(new Set([nativeId, ...collectPostIds(it, raw.source === "platform")].filter(Boolean) as string[]));
   const primaryId = nativeId || ids[0] || null;
   if (!primaryId) return null;
-  const text = String(it.post || it.message || it.text || it.caption || it.description || "");
+  const text = String(it.post || it.message || it.story || it.text || it.caption || it.description || "");
   const createdAt = firstValidDate(
     it.created, it.createdAt, it.created_time, it.createdTime,
     it.publishedAt, it.published_at, it.scheduleDate, it.scheduledFor,
@@ -180,9 +186,9 @@ const normalizePost = (raw: RawPost) => {
     status: it.status || it.statusType || it.platforms?.facebook?.status || null,
     url,
     media,
-    like_count: reactionTotal(it.reactions) ?? pickNumber(it.likeCount, it.likes, it.reactionsCount, it.reactionsByType),
-    comment_count: pickNumber(it.commentsCount, it.commentCount, it.comments, it.totalFirstLevelComments),
-    share_count: pickNumber(it.shareCount, it.shares, it.sharesCount),
+    like_count: reactionTotal(it.reactions) ?? pickNumber(it.likeCount, it.likes?.summary?.total_count, it.likes, it.reactionsCount, it.reactionsByType),
+    comment_count: pickNumber(it.commentsCount, it.commentCount, it.comments?.summary?.total_count, it.comments, it.totalFirstLevelComments),
+    share_count: pickNumber(it.shareCount, it.shares?.count, it.shares, it.sharesCount),
     view_count: pickNumber(it.impressionsUnique, it.impressionCount, it.impressions, it.videoViews, it.viewCount),
     _profile_key: raw.profileKey ?? null,
     _profile_ref_id: raw.refId ?? null,
