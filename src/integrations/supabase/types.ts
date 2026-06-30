@@ -4801,6 +4801,7 @@ export type Database = {
         Returns: boolean
       }
       is_admin_or_above: { Args: { _uid: string }; Returns: boolean }
+      is_ai_autopilot_enabled: { Args: { _user_id: string }; Returns: boolean }
       is_ai_paused: { Args: { _user_id: string }; Returns: boolean }
       is_broker_or_admin: { Args: { _user_id: string }; Returns: boolean }
       is_junior_agent: { Args: { _user_id: string }; Returns: boolean }
