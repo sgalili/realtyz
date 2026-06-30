@@ -1987,7 +1987,7 @@ const PublishedFeed = () => {
     if (cached && cached.length >= 50) {
       setRows(cached);
     } else {
-      load({ forceFb: cached.length > 0 && cached.length < 50 });
+      load({ forceFb: !!cached && cached.length > 0 && cached.length < 50 });
     }
     if (!workspaceOwnerId) return;
     const sessionKey = `realtyz.feed_metrics_fetched.v2.${workspaceOwnerId}`;
