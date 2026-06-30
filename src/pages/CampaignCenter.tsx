@@ -42,6 +42,7 @@ import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import { IvrBroadcastDialog } from '@/components/campaigns/IvrBroadcastDialog';
 import { EmailAliasSetupDialog } from '@/components/campaigns/EmailAliasSetupDialog';
 import { ScheduledCampaignCalendar } from '@/components/campaigns/ScheduledCampaignCalendar';
+import { FacebookRecentPostsPanel } from '@/components/campaigns/FacebookRecentPostsPanel';
 import { getCampaignWorkspaceUserIds } from '@/lib/campaignWorkspace';
 
 
@@ -3399,6 +3400,7 @@ const CampaignCenter = () => {
 
         </TabsContent>
         <TabsContent value="published" className="mt-6">
+          <FacebookRecentPostsPanel />
           <PublishedFeed />
         </TabsContent>
         <TabsContent value="calendar" className="mt-6">
