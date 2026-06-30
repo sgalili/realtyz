@@ -1812,8 +1812,10 @@ const PublishedFeed = () => {
           console.warn('[PublishedFeed] fb persistent import failed (non-fatal)', importError);
         } else if ((importData as any)?.ok === false) {
           console.warn('[PublishedFeed] fb persistent import returned error', importData);
-        } else {
+        } else if ((Number((importData as any)?.upserted) || 0) > 0 || (Number((importData as any)?.count) || 0) > 0) {
           try { sessionStorage.setItem(importKey, '1'); } catch { /* quota */ }
+        } else {
+          console.warn('[PublishedFeed] fb persistent import returned no posts; will retry next entry', importData);
         }
       } catch (err) {
         console.warn('[PublishedFeed] fb persistent import crashed (non-fatal)', err);
@@ -1982,10 +1984,10 @@ const PublishedFeed = () => {
     // local campaign inserts append via the realtime INSERT handler below.
     const wsKey = workspaceOwnerId ?? 'anon';
     const cached = FEED_ROWS_CACHE.get(wsKey);
-    if (cached && cached.length > 0) {
+    if (cached && cached.length >= 50) {
       setRows(cached);
     } else {
-      load();
+      load({ forceFb: cached.length > 0 && cached.length < 50 });
     }
     if (!workspaceOwnerId) return;
     const sessionKey = `realtyz.feed_metrics_fetched.v2.${workspaceOwnerId}`;
