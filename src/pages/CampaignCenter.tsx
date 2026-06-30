@@ -1820,7 +1820,7 @@ const PublishedFeed = () => {
     // synthetic external rows for any FB post we don't already have locally.
     try {
       const { data: fbData } = await supabase.functions.invoke('fb-recent-posts', {
-        body: { lastRecords: 30 },
+        body: { lastRecords: 500, pageSize: 100 },
       });
       const fbPosts: any[] = (fbData as any)?.ok ? ((fbData as any).posts ?? []) : [];
       if (fbPosts.length > 0) {
