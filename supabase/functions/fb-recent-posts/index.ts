@@ -195,11 +195,26 @@ Deno.serve(async (req) => {
       if (since) qs.set("since", since);
       if (until) qs.set("until", until);
       if (nextCursor) qs.set("next", nextCursor);
-      const resp = await fetch(`${AYR_BASE}/history/facebook?${qs.toString()}`, {
+      let resp = await fetch(`${AYR_BASE}/history/facebook?${qs.toString()}`, {
         headers: { Authorization: `Bearer ${KEY}`, "Profile-Key": profileKey },
       });
       lastStatus = resp.status;
-      const json = await resp.json().catch(() => ({} as any));
+      let json = await resp.json().catch(() => ({} as any));
+      // Some Ayrshare profiles reject the platform-specific native endpoint
+      // even while the generic history endpoint still returns the workspace's
+      // stored Facebook history. Fall back without deleting/shrinking anything.
+      if (!resp.ok) {
+        const genericQs = new URLSearchParams({
+          platforms: "facebook",
+          lastRecords: String(lastRecords),
+          pagePublished: "true",
+        });
+        resp = await fetch(`${AYR_BASE}/history?${genericQs.toString()}`, {
+          headers: { Authorization: `Bearer ${KEY}`, "Profile-Key": profileKey },
+        });
+        lastStatus = resp.status;
+        json = await resp.json().catch(() => ({} as any));
+      }
       if (!resp.ok) { lastError = json; break; }
       const items: any[] = Array.isArray(json) ? json : (json.posts || json.history || json.data || []);
       if (!items.length) break;
