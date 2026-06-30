@@ -4,7 +4,6 @@
 export const AYR_BASE = "https://api.ayrshare.com/api";
 export const MISSING_TENANT_KEY = "MISSING_TENANT_KEY";
 export const MISSING_TENANT_KEY_MESSAGE = "נא לחבר מחדש את פרופיל המדיה החברתית בהגדרות המשרד";
-const ACTIVE_WORKSPACE_REF_ID = "66743d525e0cd68404f38e954f3d016ee1a509c4";
 
 export function cleanProfileKey(value: unknown): string {
   return typeof value === "string" ? value.trim().replace(/^[`'\"]+|[`'\"]+$/g, "") : "";
@@ -27,25 +26,14 @@ export function isAyrshareInvalidProfileKey(status: number, payload: any): boole
 
 export async function clearStaleAyrshareConnection(admin: any, reason = "stale_ayrshare_profile") {
   const now = new Date().toISOString();
-  await admin
-    .from("workspace_social_profile")
-    .update({
-      ayrshare_profile_key: null,
-      ayrshare_ref_id: null,
-      facebook_page_id: null,
-      facebook_page_name: null,
-      updated_at: now,
-    })
-    .eq("id", "00000000-0000-0000-0000-000000000001")
-    .neq("ayrshare_ref_id", ACTIVE_WORKSPACE_REF_ID);
-  await admin
-    .from("ayrshare_social_accounts")
-    .update({ connected: false, is_active: false, updated_at: now })
-    .eq("platform", "facebook");
+  // Do not wipe the singleton workspace binding automatically. Ayrshare can
+  // return short-lived 401/403/"missing tenant" errors during token refresh or
+  // profile drift, and clearing this row hides the connected Facebook page from
+  // every workspace user and blocks native history recovery. Keep the profile
+  // and cached accounts intact; sync/recovery functions will auto-heal the key.
   await admin
     .from("social_connections")
     .update({
-      is_connected: false,
       last_test_status: "failed",
       last_test_message: reason,
       updated_at: now,
