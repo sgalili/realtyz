@@ -1866,12 +1866,20 @@ const PublishedFeed = () => {
           if (t && seenTexts.has(t)) continue;
           if (t) seenTexts.add(t);
           const id = `fb:${p.fb_post_id || p.id || crypto.randomUUID()}`;
+          // If Ayrshare returns no usable date, fall back to NOW so the post
+          // surfaces interleaved at the top of the unified feed rather than
+          // being banished to a "1970" cluster at the bottom (which looks
+          // like a separate section).
+          let createdIso = p.created_at as string | null;
+          if (!createdIso || isNaN(new Date(createdIso).getTime())) {
+            createdIso = new Date().toISOString();
+          }
           externalRows.push({
             id,
             campaign_name: (String(p.text || '').trim().split('\n')[0] || 'פוסט פייסבוק').slice(0, 80),
             channel: 'facebook',
             message_body: p.text || '',
-            created_at: p.created_at || new Date().toISOString(),
+            created_at: createdIso,
             provider_message_id: p.fb_post_id || p.id || null,
             recipient_count: 1,
             media_urls: Array.isArray(p.media) ? p.media : [],
@@ -1880,7 +1888,13 @@ const PublishedFeed = () => {
           });
         }
         merged.push(...externalRows);
-        merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        merged.sort((a, b) => {
+          const ta = new Date(a.created_at).getTime();
+          const tb = new Date(b.created_at).getTime();
+          const sa = isNaN(ta) ? 0 : ta;
+          const sb = isNaN(tb) ? 0 : tb;
+          return sb - sa;
+        });
       }
     } catch (err) {
       console.warn('[PublishedFeed] fb-recent-posts merge failed (non-fatal)', err);
