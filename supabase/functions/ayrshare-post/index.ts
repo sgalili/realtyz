@@ -275,9 +275,31 @@ Deno.serve(async (req) => {
         attempts.push({ method, status: res.status, payload });
         return { ok: res.ok, status: res.status, payload };
       };
+      const callHistory = async () => {
+        if (platform !== "facebook" || !nativeId) return { ok: false, status: 0, payload: null as any };
+        const qs = new URLSearchParams({ limit: "25", dataType: "posts", skipAnalytics: "true" });
+        const res = await fetch(`https://api.ayrshare.com/api/history/facebook?${qs.toString()}`, {
+          headers: { Authorization: `Bearer ${AYRSHARE_API_KEY}`, "Cache-Control": "no-cache" },
+        });
+        const text = await res.text();
+        let payload: any = {};
+        try { payload = text ? JSON.parse(text) : {}; } catch { payload = { rawText: text }; }
+        attempts.push({ method: "history/facebook", status: res.status, payload: res.ok ? { scanned: true } : payload });
+        const items: any[] = Array.isArray(payload) ? payload : (payload.posts || payload.history || payload.data || []);
+        const found = items.some((it) => {
+          const ids = [it?.fbId, it?.postId, it?.post_id, it?.platforms?.facebook?.id, it?.postIds?.facebook];
+          if (Array.isArray(it?.postIds)) {
+            ids.push(...it.postIds.map((p: any) => p?.id ?? p?.postId ?? p?.post_id));
+          }
+          return ids.map((v) => String(v ?? "").trim()).includes(nativeId);
+        });
+        return { ok: res.ok && found, status: res.status, payload };
+      };
 
       for (let i = 0; i < 3; i++) {
         if (i > 0) await wait(900);
+        const history = await callHistory();
+        if (history.ok) return { verified: true, method: "history/facebook", status: history.status, payload: { found: true } };
         if (nativeId) {
           const social = await call("analytics/social", "https://api.ayrshare.com/api/analytics/social", { id: nativeId, platform });
           if (social.ok) return { verified: true, method: "analytics/social", status: social.status, payload: social.payload };
