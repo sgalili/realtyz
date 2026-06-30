@@ -1,8 +1,8 @@
 // Realtyz auto-engagement-process — for a new inbound comment/DM:
 //  1. Run sentiment + KB-grounded analysis via Lovable AI.
 //  2. Persist sentiment + draft into engagement_events (creating row if needed).
-//  3. ALWAYS dispatch a private Messenger DM to the commenter (dual-funnel) so
-//     the conversation moves into a private loop, regardless of toggle.
+//  3. Dispatch private DM / auto-like only when the relevant auto-reply switch
+//     and global AI autopilot switch are enabled.
 //  4. If the workspace has auto_reply_positive/negative enabled AND sentiment
 //     matches, ALSO auto-publish the public reply via ayrshare-comment-reply.
 //     Otherwise leave the row in `pending_approval` for the human queue.
@@ -178,6 +178,8 @@ Deno.serve(async (req) => {
       .maybeSingle();
     const autoReplyPositive = Boolean(profileRow?.auto_reply_positive);
     const autoReplyNegative = Boolean(profileRow?.auto_reply_negative);
+    const { data: globalAutopilot } = await admin.rpc("is_ai_autopilot_enabled", { _user_id: user_id });
+    const aiAutopilotEnabled = Boolean(globalAutopilot);
 
     // STRICT POST→LISTING RESOLUTION. The reply MUST be scoped to the exact
     // post the commenter is responding to and ONLY the property linked to
@@ -278,8 +280,10 @@ Deno.serve(async (req) => {
     }
 
     const willAutoReply =
-      (analysis.sentiment === "positive" && autoReplyPositive) ||
-      (analysis.sentiment === "negative" && autoReplyNegative);
+      aiAutopilotEnabled && (
+        (analysis.sentiment === "positive" && autoReplyPositive) ||
+        (analysis.sentiment === "negative" && autoReplyNegative)
+      );
 
     const targetStatus = willAutoReply ? "sending" : "pending_approval";
     const aiAction = willAutoReply ? "auto_reply" : "draft";
@@ -359,7 +363,7 @@ Deno.serve(async (req) => {
     //    public reply pipeline.
     let private_dm: any = null;
     let auto_like: any = null;
-    if (event_type === "comment" && external_id && AYRSHARE_API_KEY) {
+    if (willAutoReply && event_type === "comment" && external_id && AYRSHARE_API_KEY) {
       try {
         const { profileKey } = await resolveWorkspaceProfileKey(admin);
         if (profileKey) {
@@ -424,6 +428,7 @@ Deno.serve(async (req) => {
       row_id: rowId,
       sentiment: analysis.sentiment,
       auto_reply: willAutoReply,
+      ai_autopilot_enabled: aiAutopilotEnabled,
       dispatch,
       private_dm,
       auto_like,
