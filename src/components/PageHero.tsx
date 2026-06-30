@@ -305,6 +305,7 @@ export function PageHero() {
           {location.pathname === '/properties' && <PropertiesHeroAddButton />}
           {location.pathname.startsWith('/lead-crm') && <LeadsHeroAddButton />}
           {location.pathname.startsWith('/campaigns') && <CampaignsHeroCalendarButton />}
+          {location.pathname.startsWith('/campaigns') && <CampaignsHeroAddButton />}
           {isPropertyDetail && (
             <Button
               size="icon"
