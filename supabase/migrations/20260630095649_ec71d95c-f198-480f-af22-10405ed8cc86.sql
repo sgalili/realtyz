@@ -1,0 +1,1 @@
+update public.workspace_social_profile set ayrshare_profile_key='68EB0FD4-3B2D44C1-97F7CFEF-841F58A2', updated_at=now() where id='00000000-0000-0000-0000-000000000001';
