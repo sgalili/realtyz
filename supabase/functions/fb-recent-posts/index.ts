@@ -379,19 +379,29 @@ Deno.serve(async (req) => {
       if (bestResult.posts.length >= lastRecords) break;
     }
 
-    if (all.length === 0) {
-      const accountResult = await fetchPlatformHistory(null, undefined);
-      lastStatus = accountResult.status;
-      lastError = accountResult.error;
-      all = accountResult.posts;
-      winningProfile = null;
+    // The platform-specific history endpoint has changed behavior across
+    // Ayrshare versions/plans: some tenants return the full native Page history
+    // with only the API key, while sub-profile calls can return a short recent
+    // slice. Always compare both routes and keep the richest result.
+    if (all.length < Math.min(150, lastRecords)) {
+      const accountPublished = await fetchPlatformHistory(null, true);
+      const accountBroad = accountPublished.posts.length < Math.min(150, lastRecords)
+        ? await fetchPlatformHistory(null, undefined)
+        : accountPublished;
+      const accountBest = accountBroad.posts.length > accountPublished.posts.length ? accountBroad : accountPublished;
+      lastStatus = accountBest.status || lastStatus;
+      lastError = accountBest.error ?? lastError;
+      if (accountBest.posts.length > all.length) {
+        all = accountBest.posts;
+        winningProfile = null;
+      }
     }
 
-    if (all.length === 0) {
+    if (all.length < Math.min(150, lastRecords)) {
       const genericResult = await fetchGenericHistory();
-      lastStatus = genericResult.status;
-      lastError = genericResult.error;
-      all = genericResult.posts;
+      lastStatus = genericResult.status || lastStatus;
+      lastError = genericResult.error ?? lastError;
+      if (genericResult.posts.length > all.length) all = genericResult.posts;
     }
 
     if (winningProfile?.profileKey && winningProfile.profileKey !== profileKey) {
