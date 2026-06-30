@@ -87,6 +87,37 @@ const collectPostIds = (it: any, includeDirectId = true): string[] => {
   return Array.from(ids);
 };
 
+const looksLikeNativeFacebookPostId = (value: unknown) => {
+  const v = asText(value);
+  // Native Facebook page posts commonly arrive as PAGEID_POSTID. Keep this
+  // broad enough for Meta variants while excluding Ayrshare history UUIDs/ids.
+  return /^\d{5,}(_\d{5,})?$/.test(v);
+};
+
+const pickNativeFacebookPostId = (it: any): string | null => {
+  const candidates: unknown[] = [
+    it?.fbId,
+    it?.postId,
+    it?.post_id,
+    it?.platforms?.facebook?.id,
+    it?.postIds?.facebook,
+  ];
+  const postIds = Array.isArray(it?.postIds) ? it.postIds : [];
+  for (const p of postIds) {
+    const platform = asText(p?.platform).toLowerCase();
+    if (!platform || platform === "facebook") candidates.push(p?.id ?? p?.postId ?? p?.post_id);
+  }
+  for (const c of candidates) {
+    const v = asText(c);
+    if (looksLikeNativeFacebookPostId(v)) return v;
+  }
+  for (const c of candidates) {
+    const v = asText(c);
+    if (v) return v;
+  }
+  return null;
+};
+
 type RawPost = { item: any; source: "platform" | "generic"; profileKey?: string; refId?: string | null; fbId?: string | null; fbName?: string | null };
 type ProfileCandidate = { profileKey: string; refId: string | null; fbId: string | null; fbName: string | null; label: string };
 
@@ -126,8 +157,9 @@ const normalizePost = (raw: RawPost) => {
   if (String(it?.status || "").toLowerCase() === "error") return null;
   if (Array.isArray(it?.errors) && it.errors.length > 0) return null;
 
-  const ids = collectPostIds(it, raw.source === "platform");
-  const primaryId = ids[0] || null;
+  const nativeId = pickNativeFacebookPostId(it);
+  const ids = Array.from(new Set([nativeId, ...collectPostIds(it, raw.source === "platform")].filter(Boolean) as string[]));
+  const primaryId = nativeId || ids[0] || null;
   if (!primaryId) return null;
   const text = String(it.post || it.message || it.text || it.caption || it.description || "");
   const createdAt = firstValidDate(
@@ -190,7 +222,6 @@ Deno.serve(async (req) => {
       .maybeSingle();
     const profileKey = (ws?.ayrshare_profile_key?.toString().trim()) ||
       Deno.env.get("AYRSHARE_PROFILE_KEY")?.trim().replace(/^["']|["']$/g, "") || "";
-    if (!profileKey) throw new Error("workspace ayrshare_profile_key missing");
 
     const discoverProfiles = async (): Promise<ProfileCandidate[]> => {
       const candidates: ProfileCandidate[] = [];
@@ -201,13 +232,15 @@ Deno.serve(async (req) => {
         candidates.push(c);
       };
 
-      push({
-        profileKey,
-        refId: null,
-        fbId: ws?.facebook_page_id ?? null,
-        fbName: ws?.facebook_page_name ?? null,
-        label: "workspace",
-      });
+      if (profileKey) {
+        push({
+          profileKey,
+          refId: null,
+          fbId: ws?.facebook_page_id ?? null,
+          fbName: ws?.facebook_page_name ?? null,
+          label: "workspace",
+        });
+      }
 
       try {
         const listRes = await fetch(`${AYR_BASE}/profiles`, { headers: { Authorization: `Bearer ${KEY}` } });
@@ -277,7 +310,7 @@ Deno.serve(async (req) => {
         for (const it of items) {
           if (String(it?.status || "").toLowerCase() === "error" || (Array.isArray(it?.errors) && it.errors.length > 0)) continue;
           const ids = collectPostIds(it, true);
-          const id = ids[0] || JSON.stringify(it).slice(0, 96);
+          const id = pickNativeFacebookPostId(it) || ids[0] || JSON.stringify(it).slice(0, 96);
           if (seenIds.has(id)) continue;
           seenIds.add(id);
           rows.push({
@@ -301,6 +334,7 @@ Deno.serve(async (req) => {
     };
 
     const fetchGenericHistory = async (): Promise<{ posts: RawPost[]; status: number; error: any }> => {
+      if (!profileKey) return { posts: [], status: 0, error: "workspace ayrshare_profile_key missing" };
       const genericQs = new URLSearchParams({
         platforms: "facebook",
         lastRecords: String(lastRecords),
@@ -342,7 +376,7 @@ Deno.serve(async (req) => {
         all = bestResult.posts;
         winningProfile = candidate;
       }
-      if (bestResult.posts.length >= Math.min(50, lastRecords)) break;
+      if (bestResult.posts.length >= lastRecords) break;
     }
 
     if (all.length === 0) {
@@ -374,7 +408,13 @@ Deno.serve(async (req) => {
         .eq("id", WORKSPACE_ID);
     }
 
-    const posts = all.slice(0, lastRecords).map(normalizePost).filter((p): p is NonNullable<ReturnType<typeof normalizePost>> => !!p);
+    const normalized = all.map(normalizePost).filter((p): p is NonNullable<ReturnType<typeof normalizePost>> => !!p);
+    const byNativeId = new Map<string, NonNullable<ReturnType<typeof normalizePost>>>();
+    for (const p of normalized) {
+      const existing = byNativeId.get(p.fb_post_id);
+      if (!existing || (!existing.media.length && p.media.length)) byNativeId.set(p.fb_post_id, p);
+    }
+    const posts = Array.from(byNativeId.values()).slice(0, lastRecords);
 
     let upserted = 0;
     let persistError: string | null = null;
@@ -395,8 +435,8 @@ Deno.serve(async (req) => {
             imported_native_facebook: true,
             imported_at: new Date().toISOString(),
             ayrshare_profile_ref_id: p._profile_ref_id,
-            facebook_page_id: ws?.facebook_page_id ?? null,
-            facebook_page_name: ws?.facebook_page_name ?? null,
+            facebook_page_id: p._profile_fb_id ?? ws?.facebook_page_id ?? null,
+            facebook_page_name: p._profile_fb_name ?? ws?.facebook_page_name ?? null,
             postIds: p.post_ids.map((id: string) => ({ platform: "facebook", id, postUrl: p.url || null })),
             media_urls: p.media,
             external_url: p.url,
