@@ -492,6 +492,10 @@ Deno.serve(async (req) => {
         const qs = new URLSearchParams({
           limit: String(pageSize),
           dataType: "posts",
+          // Critical: Ayrshare defaults can return only a short recent slice.
+          // lastDays=0 means full available history for the connected native
+          // Facebook Page, which is required to recover the full ~150-post feed.
+          lastDays: "0",
           skipAnalytics: "true",
         });
         if (typeof pagePublished === "boolean") {

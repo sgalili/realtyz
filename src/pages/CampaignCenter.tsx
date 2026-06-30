@@ -1935,13 +1935,13 @@ const PublishedFeed = () => {
     // Run the comments sync (nested replies + Like reactions) and the
     // headline analytics in parallel — neither blocks the other.
     const syncPromise = supabase.functions.invoke('ayrshare-sync-comments', {
-      body: { force_live: true, cache_bust: cacheBust },
+      body: { force_live: true, cache_bust: cacheBust, user_id: workspaceOwnerId ?? userId },
     }).catch((err) => { console.warn('[refreshMetrics] sync-comments failed (non-fatal)', err); return null; });
 
     try {
       const [{ data, error }] = await Promise.all([
         supabase.functions.invoke('ayrshare-analytics', {
-          body: { force_live: true, cache_bust: cacheBust },
+          body: { force_live: true, cache_bust: cacheBust, user_id: workspaceOwnerId ?? userId },
         }),
         syncPromise,
       ]);

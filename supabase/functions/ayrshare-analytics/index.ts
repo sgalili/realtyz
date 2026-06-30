@@ -164,10 +164,25 @@ Deno.serve(async (req) => {
   const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return json({ error: "unauthorized" }, 401);
   const { data: authData } = await admin.auth.getUser(token);
-  const userId = authData?.user?.id;
-  if (!userId) return json({ error: "unauthorized" }, 401);
+  const callerId = authData?.user?.id;
+  if (!callerId) return json({ error: "unauthorized" }, 401);
 
   const body = await req.json().catch(() => ({}));
+  const requestedOwnerId = typeof body?.user_id === "string"
+    ? body.user_id.trim()
+    : typeof body?.workspace_owner_id === "string"
+    ? body.workspace_owner_id.trim()
+    : "";
+  let userId = callerId;
+  if (requestedOwnerId && requestedOwnerId !== callerId) {
+    const { data: member } = await admin
+      .from("workspace_memberships")
+      .select("user_id")
+      .eq("workspace_owner_id", requestedOwnerId)
+      .eq("user_id", callerId)
+      .maybeSingle();
+    if (member) userId = requestedOwnerId;
+  }
   const limit = Math.min(500, Math.max(1, Number(body?.limit) || 500));
   const cacheBust = String(body?.cache_bust ?? `${Date.now()}`);
   const forceLive = body?.force_live !== false;
