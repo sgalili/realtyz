@@ -3,28 +3,44 @@
 
 export const AYR_BASE = "https://api.ayrshare.com/api";
 export const MISSING_TENANT_KEY = "MISSING_TENANT_KEY";
-export const MISSING_TENANT_KEY_MESSAGE = "נא לחבר מחדש את פרופיל המדיה החברתית בהגדרות המשרד";
+export const MISSING_TENANT_KEY_MESSAGE =
+  "נא לחבר מחדש את פרופיל המדיה החברתית בהגדרות המשרד";
 
 export function cleanProfileKey(value: unknown): string {
-  return typeof value === "string" ? value.trim().replace(/^[`'\"]+|[`'\"]+$/g, "") : "";
+  return typeof value === "string"
+    ? value.trim().replace(/^[`'\"]+|[`'\"]+$/g, "")
+    : "";
 }
 
-export function isAyrshareInvalidProfileKey(status: number, payload: any): boolean {
-  const code = payload?.code ?? payload?.raw?.code ?? payload?.errors?.[0]?.code;
-  const message = String(payload?.message ?? payload?.error ?? payload?.raw?.message ?? payload?.errors?.[0]?.message ?? "");
+export function isAyrshareInvalidProfileKey(
+  status: number,
+  payload: any,
+): boolean {
+  const code = payload?.code ?? payload?.raw?.code ??
+    payload?.errors?.[0]?.code;
+  const message = String(
+    payload?.message ?? payload?.error ?? payload?.raw?.message ??
+      payload?.errors?.[0]?.message ?? "",
+  );
   // Self-heal on ANY 401 (unauthorized) or 403 (suspended/forbidden) — auto-clear
   // the stale workspace profile so the UI immediately flips to a disconnected
   // state instead of looping on a zombie connection.
   if (status === 401) return true;
   if (status === 403) {
     if (Number(code) === 144 || Number(code) === 276) return true;
-    if (/profile key is invalid|account has been suspended|unauthor|forbidden|suspended/i.test(message)) return true;
+    if (
+      /profile key is invalid|account has been suspended|unauthor|forbidden|suspended/i
+        .test(message)
+    ) return true;
     return true; // any 403 from Ayrshare → treat as invalid profile and self-heal
   }
   return false;
 }
 
-export async function clearStaleAyrshareConnection(admin: any, reason = "stale_ayrshare_profile") {
+export async function clearStaleAyrshareConnection(
+  admin: any,
+  reason = "stale_ayrshare_profile",
+) {
   const now = new Date().toISOString();
   // Do not wipe the singleton workspace binding automatically. Ayrshare can
   // return short-lived 401/403/"missing tenant" errors during token refresh or
@@ -44,16 +60,25 @@ export async function clearStaleAyrshareConnection(admin: any, reason = "stale_a
 export async function verifyWorkspaceProfileKey(params: {
   apiKey: string;
   profileKey: string;
-}): Promise<{ ok: boolean; missingTenantKey: boolean; status?: number; payload?: any }> {
+}): Promise<
+  { ok: boolean; missingTenantKey: boolean; status?: number; payload?: any }
+> {
   const profileKey = cleanProfileKey(params.profileKey);
   if (!profileKey) return { ok: false, missingTenantKey: true };
   try {
     const res = await fetch(`${AYR_BASE}/user`, {
-      headers: { Authorization: `Bearer ${params.apiKey}`, "Profile-Key": profileKey },
+      headers: {
+        Authorization: `Bearer ${params.apiKey}`,
+        "Profile-Key": profileKey,
+      },
     });
     const text = await res.text();
     let payload: any = {};
-    try { payload = text ? JSON.parse(text) : {}; } catch { payload = { rawText: text }; }
+    try {
+      payload = text ? JSON.parse(text) : {};
+    } catch {
+      payload = { rawText: text };
+    }
     return {
       ok: res.ok,
       missingTenantKey: isAyrshareInvalidProfileKey(res.status, payload),
@@ -61,7 +86,11 @@ export async function verifyWorkspaceProfileKey(params: {
       payload,
     };
   } catch (e) {
-    return { ok: false, missingTenantKey: false, payload: { message: e instanceof Error ? e.message : String(e) } };
+    return {
+      ok: false,
+      missingTenantKey: false,
+      payload: { message: e instanceof Error ? e.message : String(e) },
+    };
   }
 }
 
@@ -90,8 +119,12 @@ export async function resolveOwnPageIdentity(
     .eq("id", "00000000-0000-0000-0000-000000000001")
     .maybeSingle();
   return {
-    pageId: typeof data?.facebook_page_id === "string" ? data.facebook_page_id.trim() : null,
-    pageName: typeof data?.facebook_page_name === "string" ? data.facebook_page_name.trim() : null,
+    pageId: typeof data?.facebook_page_id === "string"
+      ? data.facebook_page_id.trim()
+      : null,
+    pageName: typeof data?.facebook_page_name === "string"
+      ? data.facebook_page_name.trim()
+      : null,
   };
 }
 
@@ -126,19 +159,29 @@ export function isSelfAuthoredComment(args: {
 // Inline conservative street-number scrubber (mirrors owner-laws.ts so we
 // don't pull a circular import). HARD LAW #1: never expose building numbers.
 const _STREET_KW = /(רחוב|רח['׳]?|שדרות|שד['׳]?|דרך|טיילת|סמטת|סמטה|ככר|כיכר)/;
-const _TRAILING_UNITS = /(?:חדרים|חדר|מ["׳']?\s*ר|מטר|ק["׳']?\s*מ|קומה|קומות|דקות|שעות|שנה|שנים|אחוז|%|₪|ש["׳']?\s*ח|דולר|\$|€)/;
+const _TRAILING_UNITS =
+  /(?:חדרים|חדר|מ["׳']?\s*ר|מטר|ק["׳']?\s*מ|קומה|קומות|דקות|שעות|שנה|שנים|אחוז|%|₪|ש["׳']?\s*ח|דולר|\$|€)/;
 function _stripStreetNumbersInline(s: string): string {
   let out = s;
   out = out.replace(
-    new RegExp(`(${_STREET_KW.source})\\s+([\\u0590-\\u05FF][\\u0590-\\u05FF״"׳'\\-\\s]{1,40}?)\\s+\\d{1,4}[א-ת]?\\b`, "g"),
+    new RegExp(
+      `(${_STREET_KW.source})\\s+([\\u0590-\\u05FF][\\u0590-\\u05FF״"׳'\\-\\s]{1,40}?)\\s+\\d{1,4}[א-ת]?\\b`,
+      "g",
+    ),
     (_m, kw, name) => `${kw} ${String(name).trim()}`,
   );
   out = out.replace(
     /(^|[^\d:=״"׳'\u05F4\u05F3])([\u0590-\u05FF]{3,}(?:[\u0590-\u05FF״"׳'-]*[\u0590-\u05FF])?)\s+(\d{1,4})[א-ת]?\b/g,
     (m, pre, word, _num, offset, full) => {
-      const after = String(full).slice(offset + m.length, offset + m.length + 24);
+      const after = String(full).slice(
+        offset + m.length,
+        offset + m.length + 24,
+      );
       if (_TRAILING_UNITS.test(after.trim())) return m;
-      if (/^(שנת|שנה|גיל|טלפון|נייד|מספר|דירה|קומה|בנין|בניין|פרויקט|פרוייקט)$/.test(word)) return m;
+      if (
+        /^(שנת|שנה|גיל|טלפון|נייד|מספר|דירה|קומה|בנין|בניין|פרויקט|פרוייקט)$/
+          .test(word)
+      ) return m;
       return `${pre}${word}`;
     },
   );
@@ -168,7 +211,10 @@ export function sanitizeOutboundText(input: string): string {
 export function stripMarkdownEmphasis(input: string): string {
   let out = String(input ?? "");
   // Bold: **text** or __text__  →  text
-  out = out.replace(/\*\*([^*\n]+?)\*\*/g, "$1").replace(/__([^_\n]+?)__/g, "$1");
+  out = out.replace(/\*\*([^*\n]+?)\*\*/g, "$1").replace(
+    /__([^_\n]+?)__/g,
+    "$1",
+  );
   // Italics: *text* or _text_  →  text  (avoid touching lone * already gone)
   out = out.replace(/(^|[^*])\*([^*\n]+?)\*(?!\*)/g, "$1$2");
   out = out.replace(/(^|[^_])_([^_\n]+?)_(?!_)/g, "$1$2");
@@ -178,7 +224,6 @@ export function stripMarkdownEmphasis(input: string): string {
   out = out.replace(/`+([^`\n]+?)`+/g, "$1").replace(/^\s{0,3}#{1,6}\s+/gm, "");
   return out.replace(/[ \t]{2,}/g, " ").trim();
 }
-
 
 export function detectDominantLanguage(text: string): "he" | "en" | "other" {
   const s = String(text || "");
@@ -197,7 +242,9 @@ export async function likeNativeComment(params: {
   profileKey: string;
   platform: string;
   commentId: string;
-}): Promise<{ ok: boolean; status?: number; response?: unknown; error?: string }> {
+}): Promise<
+  { ok: boolean; status?: number; response?: unknown; error?: string }
+> {
   const { apiKey, profileKey, platform, commentId } = params;
   if (!apiKey || !profileKey || !commentId) {
     return { ok: false, error: "missing_params" };
@@ -218,7 +265,9 @@ export async function likeNativeComment(params: {
       });
       const t = await r.text();
       let p: unknown = t;
-      try { p = t ? JSON.parse(t) : null; } catch { /* keep raw */ }
+      try {
+        p = t ? JSON.parse(t) : null;
+      } catch { /* keep raw */ }
       return { ok: r.ok, status: r.status, response: p };
     };
 
@@ -230,11 +279,14 @@ export async function likeNativeComment(params: {
     });
     if (!result.ok && result.status === 404) {
       // Fallback: per-id path variant.
-      result = await tryRequest(`${AYR_BASE}/comments/${encodeURIComponent(commentId)}`, {
-        action: "like",
-        platforms: [platform],
-        searchPlatformId: true,
-      });
+      result = await tryRequest(
+        `${AYR_BASE}/comments/${encodeURIComponent(commentId)}`,
+        {
+          action: "like",
+          platforms: [platform],
+          searchPlatformId: true,
+        },
+      );
     }
     return result;
   } catch (e) {
