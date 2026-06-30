@@ -1670,12 +1670,26 @@ const GlobalSocialFeed = ({
 };
 
 
+// Session-level caches so re-entering /campaigns doesn't refetch the merged
+// feed (DB campaign_logs + native Facebook posts). New local posts appended
+// via realtime INSERT reuse the cached native FB list — natives are fetched
+// only once per browser session per workspace.
+const FEED_ROWS_CACHE = new Map<string, CampaignRow[]>();
+const FB_POSTS_CACHE = new Map<string, any[]>();
+const CAMPAIGNS_COUNT_SESSION_KEY = 'realtyz.campaigns.total_count';
+
 const PublishedFeed = () => {
   const { settings } = useWhiteLabel();
   const ownerName = settings?.agency_name || 'אודי ויטמן';
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const queryClient = useQueryClient();
-  const [rows, setRows] = useState<CampaignRow[] | null>(null);
+  const [rows, setRows] = useState<CampaignRow[] | null>(() => {
+    // Hydrate synchronously from any prior in-session cache so the UI never
+    // flashes empty when navigating back to /campaigns within the same tab.
+    for (const cached of FEED_ROWS_CACHE.values()) return cached;
+    return null;
+  });
+
   const [userId, setUserId] = useState<string | null>(null);
   const [campaignUserIds, setCampaignUserIds] = useState<string[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
