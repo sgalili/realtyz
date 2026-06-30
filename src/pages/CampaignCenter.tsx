@@ -2382,7 +2382,7 @@ const PublishedFeed = () => {
                 <div className="flex items-center justify-between gap-2 px-4 pb-4" dir="rtl" onClick={(e) => e.stopPropagation()}>
                   <Button variant="outline" size="sm"
                           disabled={!postUrl}
-                          onClick={(e) => { e.stopPropagation(); postUrl && window.open(postUrl, '_blank', 'noopener,noreferrer'); }}>
+                          onClick={(e) => { e.stopPropagation(); if (postUrl) window.open(postUrl, '_blank', 'noopener,noreferrer'); }}>
                     <ExternalLink className="ml-1 h-4 w-4" />
                     פתח פוסט
                   </Button>
