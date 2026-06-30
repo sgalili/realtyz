@@ -1555,6 +1555,7 @@ const firstPipelineError = (data: any): string | null => {
 // Derive the live native post URL from Ayrshare provider response, or build
 // a best-effort fallback URL from the platform + native post id.
 const derivePostUrl = (r: CampaignRow): string | null => {
+  if (r.external_url) return r.external_url;
   const ids = (r.provider_response as any)?.postIds;
   if (Array.isArray(ids)) {
     const ch = String(r.channel || '').toLowerCase();
