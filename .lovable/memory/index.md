@@ -38,6 +38,7 @@
 - [No Demo Mode](mem://constraints/no-demo-mode) — Demo mode scoped to SmsBlastSimulator only; no demo branches elsewhere.
 - [Super-admin Workspaces](mem://features/super-admin-workspaces) — `super-admin-create-user` edge fn + `SuperAdminCreateUserCard` in /super-admin Users tab. profiles.is_unlimited / created_by_super_admin / workspace_owner_id. enforce_trial_lead_cap skips when is_unlimited. New users get 1000 NIS, managing_broker role, optional WA invite via GreenAPI.
 - [No Markdown Asterisks](mem://constraints/no-markdown-asterisks) — Strip `*`/`**` from all AI-generated posts, comments, replies, email, SMS via `stripMarkdownEmphasis()`. Exception: WhatsApp Green API keeps `*bold*` (native WA syntax).
+- [Campaigns Unified Sent Feed](mem://features/campaigns-unified-feed) — /campaigns must show UI-posted and native Facebook posts in one global sent-post card list, never separate sections.
 
 
 - [Owner Rules Enforcement](mem://features/owner-rules-enforcement) — Every AI generator (ai-agent, generate-content, generate-outreach-message, outreach-suggest, fb-engagement-draft, suggest-comment-reply, master-research) MUST inject fetchSystemRulesBlock so owner standing orders override persona/template defaults. System prompt block is framed HIGHEST PRIORITY + a user-prompt reminder enforces silent rewrite-to-comply.
