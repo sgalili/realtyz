@@ -250,6 +250,46 @@ Deno.serve(async (req) => {
       return fallback;
     };
 
+    const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+    const isNativeId = (value: unknown) => /^\d{5,}(_\d{5,})?$/.test(String(value ?? "").trim());
+
+    const verifyPublishedPost = async (platform: string, nativeId: string | null, ayrshareId: string | null) => {
+      if (scheduledIso) return { verified: true, method: "scheduled", status: 202, payload: null as any };
+      if (!nativeId && !ayrshareId) return { verified: false, method: "missing_id", status: 0, payload: null as any };
+
+      const attempts: Array<{ method: string; status: number; payload: any }> = [];
+      const call = async (method: string, url: string, body: Record<string, unknown>) => {
+        const res = await fetch(url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+            "Profile-Key": profileKey,
+            "Content-Type": "application/json",
+            "Cache-Control": "no-cache",
+          },
+          body: JSON.stringify(body),
+        });
+        const text = await res.text();
+        let payload: any = {};
+        try { payload = text ? JSON.parse(text) : {}; } catch { payload = { rawText: text }; }
+        attempts.push({ method, status: res.status, payload });
+        return { ok: res.ok, status: res.status, payload };
+      };
+
+      for (let i = 0; i < 3; i++) {
+        if (i > 0) await wait(900);
+        if (nativeId) {
+          const social = await call("analytics/social", "https://api.ayrshare.com/api/analytics/social", { id: nativeId, platform });
+          if (social.ok) return { verified: true, method: "analytics/social", status: social.status, payload: social.payload };
+        }
+        if (ayrshareId) {
+          const post = await call("analytics/post", "https://api.ayrshare.com/api/analytics/post", { id: ayrshareId, platforms: [platform] });
+          if (post.ok) return { verified: true, method: "analytics/post", status: post.status, payload: post.payload };
+        }
+      }
+      return { verified: false, method: "verification_failed", status: attempts.at(-1)?.status ?? 0, payload: { attempts } };
+    };
+
     // Fire a single Ayrshare /post call. Used for the main page post and for
     // each selected Facebook Group fan-out target.
     const firePost = async (extra: Record<string, unknown>, label: string) => {
@@ -328,17 +368,60 @@ Deno.serve(async (req) => {
     const groupFailures = groupResults.filter((g) => !g.ok);
 
     // Per-platform results from main page post.
+    const ayrshareTopId: string | null = typeof ayrJson?.id === "string"
+      ? ayrJson.id
+      : Array.isArray(ayrJson?.posts) && typeof ayrJson.posts[0]?.id === "string"
+        ? ayrJson.posts[0].id
+        : null;
     const rawPostIds: any[] = Array.isArray(ayrJson?.postIds)
       ? ayrJson.postIds
       : Array.isArray(ayrJson?.posts)
         ? ayrJson.posts.flatMap((p: any) => Array.isArray(p?.postIds) ? p.postIds : [])
         : [];
-    const postIds: Array<{ platform: string; id: string | null; status: string | null }> =
+    const postIds: Array<{ platform: string; id: string | null; status: string | null; verified?: boolean; verify_method?: string | null }> =
       rawPostIds.map((p: any) => ({
         platform: String(p?.platform ?? "").toLowerCase(),
         id: p?.id ?? p?.postId ?? null,
         status: p?.status ?? null,
       }));
+
+    const verificationResults: Array<{ platform: string; id: string | null; verified: boolean; method: string | null; status: number; payload?: any }> = [];
+    if (!skipPagePost) {
+      for (const platform of platforms) {
+        const match = postIds.find((p) => p.platform === platform);
+        const nativeId = match?.id ? String(match.id) : null;
+        const verify = await verifyPublishedPost(platform, nativeId, ayrshareTopId);
+        verificationResults.push({ platform, id: nativeId, verified: verify.verified, method: verify.method, status: verify.status, payload: verify.payload });
+        if (match) {
+          match.verified = verify.verified;
+          match.verify_method = verify.method;
+        }
+      }
+      const failedVerification = verificationResults.find((v) => !v.verified || !v.id || (v.id && !isNativeId(v.id)));
+      if (failedVerification && !scheduledIso) {
+        const failureRows = rawChannels.map((ch) => ({
+          user_id: ownerUserId,
+          campaign_name: campaignName,
+          channel: String(ch).toLowerCase(),
+          message_body: finalPostText,
+          status: "failed",
+          provider_message_id: null,
+          provider_response: { ayrshare: ayrJson ?? {}, verification_results: verificationResults, error: "facebook_publish_not_verified" },
+          sent_at: new Date().toISOString(),
+          source_account: "ayrshare",
+        } as any));
+        await admin.from("campaign_logs").insert(failureRows);
+        return json({
+          success: false,
+          error: "facebook_publish_not_verified",
+          message: "פייסבוק לא אישר שהפוסט באמת פורסם בדף. לא סימנתי אותו כנשלח.",
+          published_channels: platforms,
+          post_ids: postIds,
+          verification_results: verificationResults,
+          ayrshare: ayrJson,
+        }, 502);
+      }
+    }
 
     // One campaign_logs row per requested internal channel (page post) plus
     // one per fanned-out Facebook Group.
@@ -351,9 +434,9 @@ Deno.serve(async (req) => {
         campaign_name: campaignName,
         channel: lc,
         message_body: finalPostText,
-        status: scheduledIso ? "scheduled" : (match?.status === "success" || ayrRes.ok ? "sent" : "queued"),
+        status: scheduledIso ? "scheduled" : (match?.verified ? "sent" : "failed"),
         provider_message_id: match?.id ?? null,
-        provider_response: ayrJson ?? {},
+        provider_response: { ...(ayrJson ?? {}), verification_results: verificationResults },
         sent_at: scheduledIso ?? new Date().toISOString(),
         source_account: "ayrshare",
       } as any;
@@ -380,6 +463,8 @@ Deno.serve(async (req) => {
       success: groupFailures.length === 0,
       published_channels: platforms,
       post_ids: postIds,
+      verified: scheduledIso ? true : verificationResults.every((v) => v.verified),
+      verification_results: verificationResults,
       group_results: groupResults,
       group_failures: groupFailures,
       ayrshare: ayrJson,
