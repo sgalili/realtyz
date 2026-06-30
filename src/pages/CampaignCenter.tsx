@@ -2371,8 +2371,19 @@ const PublishedFeed = () => {
                 {r.media_urls && r.media_urls.length > 0 && (
                   <div className="mx-4 mb-3 flex gap-2 overflow-x-auto">
                     {r.media_urls.slice(0, 6).map((src, i) => (
-                      <img key={i} src={src} alt="" loading="lazy"
-                           className="h-32 w-32 shrink-0 rounded-lg object-cover border border-border" />
+                      <div key={i} className="relative shrink-0 group">
+                        <img src={src} alt="" loading="lazy"
+                             className="h-32 w-32 rounded-lg object-cover border border-border" />
+                        <button
+                          type="button"
+                          title="הסר תמונה"
+                          aria-label="הסר תמונה"
+                          onClick={(e) => { e.stopPropagation(); removeMediaAt(r.id, i); }}
+                          className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white opacity-90 transition hover:bg-destructive"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     ))}
                   </div>
                 )}
@@ -2392,13 +2403,11 @@ const PublishedFeed = () => {
                     <RefreshCw className={cn('ml-1 h-4 w-4', refreshingIds[r.id] && 'animate-spin')} />
                     {refreshingIds[r.id] ? 'מרענן…' : 'רענן תגובות'}
                   </Button>
-                  {!r.is_external && (
-                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
-                            className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
-                      <Trash2 className="ml-1 h-4 w-4" />
-                      מחק פוסט
-                    </Button>
-                  )}
+                  <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
+                          className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
+                    <Trash2 className="ml-1 h-4 w-4" />
+                    מחק פוסט
+                  </Button>
                 </div>
                 {!r.is_external && (
                   <CampaignGroupBreakdown
