@@ -66,14 +66,30 @@ Deno.serve(async (req) => {
       if (all.length >= lastRecords) break;
     }
 
+    const pickDate = (it: any): string | null => {
+      const candidates = [
+        it.created, it.createdAt, it.created_time, it.createdTime,
+        it.scheduleDate, it.scheduledFor, it.publishedAt, it.published_at,
+        it.lastUpdated, it.updated, it.updatedAt, it.timestamp,
+        it.platforms?.facebook?.created, it.platforms?.facebook?.createdTime,
+        it.platforms?.facebook?.publishedAt, it.platforms?.facebook?.created_time,
+      ];
+      for (const c of candidates) {
+        if (!c) continue;
+        const d = new Date(c);
+        if (!isNaN(d.getTime())) return d.toISOString();
+      }
+      return null;
+    };
     const posts = all.map((it: any) => ({
       id: it.id || it.postId || it.platforms?.facebook?.id || null,
       fb_post_id: it.platforms?.facebook?.id || it.postIds?.facebook || null,
       text: it.post || it.message || it.text || it.caption || "",
-      created_at: it.created || it.createdAt || it.scheduleDate || null,
+      created_at: pickDate(it),
       status: it.status || it.platforms?.facebook?.status || null,
       url: it.platforms?.facebook?.postUrl || it.postUrl || null,
       media: it.mediaUrls || it.media || [],
+      _raw_keys: Object.keys(it || {}),
     }));
 
     return new Response(
