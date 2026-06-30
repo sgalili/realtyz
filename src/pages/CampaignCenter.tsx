@@ -2222,6 +2222,17 @@ const PublishedFeed = () => {
     load();
   };
 
+  // Remove a single image from a post card. Local-only (the card's media list
+  // is rebuilt from Ayrshare on each load, so this hides it for the session).
+  const removeMediaAt = (campaignId: string, index: number) => {
+    setRows((prev) => prev?.map((row) => {
+      if (row.id !== campaignId) return row;
+      const next = Array.isArray(row.media_urls) ? [...row.media_urls] : [];
+      next.splice(index, 1);
+      return { ...row, media_urls: next };
+    }) ?? prev);
+  };
+
 
 
   const filteredRows = useMemo(() => {
