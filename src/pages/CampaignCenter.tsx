@@ -1950,7 +1950,10 @@ const PublishedFeed = () => {
     }
 
     setRows(merged);
+    FEED_ROWS_CACHE.set(workspaceOwnerId ?? 'anon', merged);
+    try { sessionStorage.setItem(CAMPAIGNS_COUNT_SESSION_KEY, String(merged.length)); } catch { /* quota */ }
   };
+
 
   // Ask the backend to (a) refresh live Ayrshare analytics — likes/comments/shares/views
   // land back on campaign_logs and stream in via the realtime subscription below — and
