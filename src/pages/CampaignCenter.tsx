@@ -1670,12 +1670,26 @@ const GlobalSocialFeed = ({
 };
 
 
+// Session-level caches so re-entering /campaigns doesn't refetch the merged
+// feed (DB campaign_logs + native Facebook posts). New local posts appended
+// via realtime INSERT reuse the cached native FB list — natives are fetched
+// only once per browser session per workspace.
+const FEED_ROWS_CACHE = new Map<string, CampaignRow[]>();
+const FB_POSTS_CACHE = new Map<string, any[]>();
+const CAMPAIGNS_COUNT_SESSION_KEY = 'realtyz.campaigns.total_count';
+
 const PublishedFeed = () => {
   const { settings } = useWhiteLabel();
   const ownerName = settings?.agency_name || 'אודי ויטמן';
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const queryClient = useQueryClient();
-  const [rows, setRows] = useState<CampaignRow[] | null>(null);
+  const [rows, setRows] = useState<CampaignRow[] | null>(() => {
+    // Hydrate synchronously from any prior in-session cache so the UI never
+    // flashes empty when navigating back to /campaigns within the same tab.
+    for (const cached of FEED_ROWS_CACHE.values()) return cached;
+    return null;
+  });
+
   const [userId, setUserId] = useState<string | null>(null);
   const [campaignUserIds, setCampaignUserIds] = useState<string[]>([]);
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
@@ -1775,7 +1789,7 @@ const PublishedFeed = () => {
 
 
 
-  const load = async () => {
+  const load = async (opts: { forceFb?: boolean } = {}) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setRows([]); return; }
     setUserId(user.id);
@@ -1819,10 +1833,16 @@ const PublishedFeed = () => {
     // when their provider_message_id matches a fetched FB post; inject
     // synthetic external rows for any FB post we don't already have locally.
     try {
-      const { data: fbData } = await supabase.functions.invoke('fb-recent-posts', {
-        body: { lastRecords: 500, pageSize: 100 },
-      });
-      const fbPosts: any[] = (fbData as any)?.ok ? ((fbData as any).posts ?? []) : [];
+      const wsKey = workspaceOwnerId ?? 'anon';
+      let fbPosts: any[] = FB_POSTS_CACHE.get(wsKey) ?? [];
+      if (opts.forceFb || fbPosts.length === 0) {
+        const { data: fbData } = await supabase.functions.invoke('fb-recent-posts', {
+          body: { lastRecords: 500, pageSize: 100 },
+        });
+        fbPosts = (fbData as any)?.ok ? ((fbData as any).posts ?? []) : [];
+        if (fbPosts.length > 0) FB_POSTS_CACHE.set(wsKey, fbPosts);
+      }
+
       if (fbPosts.length > 0) {
         const normText = (s: any) => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 220);
         const collectFbPostKeys = (post: any) => Array.from(new Set([
@@ -1930,7 +1950,13 @@ const PublishedFeed = () => {
     }
 
     setRows(merged);
+    FEED_ROWS_CACHE.set(workspaceOwnerId ?? 'anon', merged);
+    try { sessionStorage.setItem(CAMPAIGNS_COUNT_SESSION_KEY, String(merged.length)); } catch { /* quota */ }
+    // Nudge the sidebar to repaint the campaigns badge with the unified count.
+    try { queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] }); } catch { /* no-op */ }
   };
+
+
 
   // Ask the backend to (a) refresh live Ayrshare analytics — likes/comments/shares/views
   // land back on campaign_logs and stream in via the realtime subscription below — and
@@ -2022,12 +2048,18 @@ const PublishedFeed = () => {
 
 
   useEffect(() => {
-    // Hydrate cached DB rows immediately, then — on the first visit per
-    // browser session per workspace — pull fresh live counters + comments
-    // from Ayrshare so collapsed cards show real numbers without requiring
-    // a manual click. A background interval keeps new likes / comments /
-    // replies trickling in every 2 minutes while the page is open.
-    load();
+    // Session cache: on the first /campaigns visit per workspace per browser
+    // session, load the unified feed (DB campaign_logs + native FB) once.
+    // Subsequent navigations into /campaigns reuse the in-memory cache and
+    // skip both the DB query and the fb-recent-posts call entirely. New
+    // local campaign inserts append via the realtime INSERT handler below.
+    const wsKey = workspaceOwnerId ?? 'anon';
+    const cached = FEED_ROWS_CACHE.get(wsKey);
+    if (cached && cached.length > 0) {
+      setRows(cached);
+    } else {
+      load();
+    }
     if (!workspaceOwnerId) return;
     const sessionKey = `realtyz.feed_metrics_fetched.v2.${workspaceOwnerId}`;
     let alreadyFetched = false;
@@ -2043,6 +2075,7 @@ const PublishedFeed = () => {
     return () => { window.clearInterval(intervalId); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceOwnerId]);
+
 
 
 
