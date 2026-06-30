@@ -42,7 +42,7 @@ import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import { IvrBroadcastDialog } from '@/components/campaigns/IvrBroadcastDialog';
 import { EmailAliasSetupDialog } from '@/components/campaigns/EmailAliasSetupDialog';
 import { ScheduledCampaignCalendar } from '@/components/campaigns/ScheduledCampaignCalendar';
-import { FacebookRecentPostsPanel } from '@/components/campaigns/FacebookRecentPostsPanel';
+
 import { getCampaignWorkspaceUserIds } from '@/lib/campaignWorkspace';
 
 
