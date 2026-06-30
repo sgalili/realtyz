@@ -67,13 +67,13 @@ const collectMediaUrls = (it: any): string[] => {
   return Array.from(urls);
 };
 
-const collectPostIds = (it: any): string[] => {
+const collectPostIds = (it: any, includeDirectId = true): string[] => {
   const ids = new Set<string>();
   const add = (value: unknown) => {
     const v = asText(value);
     if (v) ids.add(v);
   };
-  add(it?.id);
+  if (includeDirectId) add(it?.id);
   add(it?.fbId);
   add(it?.postId);
   add(it?.post_id);
@@ -86,6 +86,9 @@ const collectPostIds = (it: any): string[] => {
   }
   return Array.from(ids);
 };
+
+type RawPost = { item: any; source: "platform" | "generic"; profileKey?: string; refId?: string | null; fbId?: string | null; fbName?: string | null };
+type ProfileCandidate = { profileKey: string; refId: string | null; fbId: string | null; fbName: string | null; label: string };
 
 const pickNumber = (...values: unknown[]): number | null => {
   for (const value of values) {
@@ -118,9 +121,14 @@ const reactionTotal = (value: any): number | null => {
   return null;
 };
 
-const normalizePost = (it: any) => {
-  const ids = collectPostIds(it);
+const normalizePost = (raw: RawPost) => {
+  const it = raw.item;
+  if (String(it?.status || "").toLowerCase() === "error") return null;
+  if (Array.isArray(it?.errors) && it.errors.length > 0) return null;
+
+  const ids = collectPostIds(it, raw.source === "platform");
   const primaryId = ids[0] || null;
+  if (!primaryId) return null;
   const text = String(it.post || it.message || it.text || it.caption || it.description || "");
   const createdAt = firstValidDate(
     it.created, it.createdAt, it.created_time, it.createdTime,
@@ -144,6 +152,10 @@ const normalizePost = (it: any) => {
     comment_count: pickNumber(it.commentsCount, it.commentCount, it.comments, it.totalFirstLevelComments),
     share_count: pickNumber(it.shareCount, it.shares, it.sharesCount),
     view_count: pickNumber(it.impressionsUnique, it.impressionCount, it.impressions, it.videoViews, it.viewCount),
+    _profile_key: raw.profileKey ?? null,
+    _profile_ref_id: raw.refId ?? null,
+    _profile_fb_id: raw.fbId ?? null,
+    _profile_fb_name: raw.fbName ?? null,
     _raw_keys: Object.keys(it || {}),
     _raw: it,
   };
@@ -180,61 +192,189 @@ Deno.serve(async (req) => {
       Deno.env.get("AYRSHARE_PROFILE_KEY")?.trim().replace(/^["']|["']$/g, "") || "";
     if (!profileKey) throw new Error("workspace ayrshare_profile_key missing");
 
-    const seenIds = new Set<string>();
-    const all: any[] = [];
-    let lastStatus = 0;
-    let lastError: any = null;
-    let nextCursor: string | null = null;
+    const discoverProfiles = async (): Promise<ProfileCandidate[]> => {
+      const candidates: ProfileCandidate[] = [];
+      const seen = new Set<string>();
+      const push = (c: ProfileCandidate) => {
+        if (!c.profileKey || seen.has(c.profileKey)) return;
+        seen.add(c.profileKey);
+        candidates.push(c);
+      };
 
-    for (let page = 0; page < maxPages; page++) {
-      const qs = new URLSearchParams({
-        limit: String(pageSize),
-        dataType: "posts",
-        pagePublished: "true",
+      push({
+        profileKey,
+        refId: null,
+        fbId: ws?.facebook_page_id ?? null,
+        fbName: ws?.facebook_page_name ?? null,
+        label: "workspace",
       });
-      if (since) qs.set("since", since);
-      if (until) qs.set("until", until);
-      if (nextCursor) qs.set("next", nextCursor);
-      let resp = await fetch(`${AYR_BASE}/history/facebook?${qs.toString()}`, {
+
+      try {
+        const listRes = await fetch(`${AYR_BASE}/profiles`, { headers: { Authorization: `Bearer ${KEY}` } });
+        const listJson = await listRes.json().catch(() => ({} as any));
+        const profiles: any[] = Array.isArray(listJson?.profiles) ? listJson.profiles : Array.isArray(listJson) ? listJson : [];
+        for (const p of profiles.slice(0, 500)) {
+          const pk = asText(p?.profileKey);
+          if (!pk) continue;
+          try {
+            const userRes = await fetch(`${AYR_BASE}/user`, {
+              headers: { Authorization: `Bearer ${KEY}`, "Profile-Key": pk },
+            });
+            const userJson = await userRes.json().catch(() => ({} as any));
+            if (!userRes.ok) continue;
+            const active = Array.isArray(userJson?.activeSocialAccounts)
+              ? userJson.activeSocialAccounts.map((v: any) => String(v || "").toLowerCase())
+              : [];
+            const displayNames = Array.isArray(userJson?.displayNames) ? userJson.displayNames : [];
+            const fb = displayNames.find((a: any) => String(a?.platform || "").toLowerCase() === "facebook");
+            const hasFacebook = active.includes("facebook") || !!fb;
+            if (!hasFacebook) continue;
+            const fbId = asText(fb?.id ?? fb?.pageId) || null;
+            const fbName = asText(fb?.displayName ?? fb?.username ?? fb?.name) || null;
+            push({ profileKey: pk, refId: asText(p?.refId) || null, fbId, fbName, label: asText(p?.title) || "profile" });
+          } catch (_profileErr) {
+            // Keep scanning other profiles. One suspended profile must not stop the import.
+          }
+        }
+      } catch (profileListErr) {
+        console.warn("[fb-recent-posts] profile discovery failed", profileListErr);
+      }
+
+      const targetFbId = asText(ws?.facebook_page_id);
+      return candidates.sort((a, b) => {
+        const aMatch = targetFbId && a.fbId === targetFbId ? 0 : 1;
+        const bMatch = targetFbId && b.fbId === targetFbId ? 0 : 1;
+        return aMatch - bMatch;
+      });
+    };
+
+    const fetchPlatformHistory = async (candidate: ProfileCandidate | null, pagePublished?: boolean): Promise<{ posts: RawPost[]; status: number; error: any }> => {
+      const seenIds = new Set<string>();
+      const rows: RawPost[] = [];
+      let status = 0;
+      let error: any = null;
+      let nextCursor: string | null = null;
+
+      for (let page = 0; page < maxPages; page++) {
+        const qs = new URLSearchParams({
+          limit: String(pageSize),
+          dataType: "posts",
+          skipAnalytics: "true",
+        });
+        if (typeof pagePublished === "boolean") qs.set("pagePublished", String(pagePublished));
+        if (since) qs.set("since", since);
+        if (until) qs.set("until", until);
+        if (nextCursor) qs.set("next", nextCursor);
+        const headers: Record<string, string> = { Authorization: `Bearer ${KEY}` };
+        if (candidate?.profileKey) headers["Profile-Key"] = candidate.profileKey;
+        const resp = await fetch(`${AYR_BASE}/history/facebook?${qs.toString()}`, { headers });
+        status = resp.status;
+        const json = await resp.json().catch(() => ({} as any));
+        if (!resp.ok) { error = json; break; }
+        const items: any[] = Array.isArray(json) ? json : (json.posts || json.history || json.data || []);
+        if (!items.length) break;
+        let added = 0;
+        for (const it of items) {
+          if (String(it?.status || "").toLowerCase() === "error" || (Array.isArray(it?.errors) && it.errors.length > 0)) continue;
+          const ids = collectPostIds(it, true);
+          const id = ids[0] || JSON.stringify(it).slice(0, 96);
+          if (seenIds.has(id)) continue;
+          seenIds.add(id);
+          rows.push({
+            item: it,
+            source: "platform",
+            profileKey: candidate?.profileKey,
+            refId: candidate?.refId ?? null,
+            fbId: candidate?.fbId ?? null,
+            fbName: candidate?.fbName ?? null,
+          });
+          added++;
+        }
+        nextCursor = json?.meta?.pagination?.next || json?.next || json?.nextToken || json?.next_token || json?.pageToken || null;
+        const hasMore = Boolean(json?.meta?.pagination?.hasMore || nextCursor);
+        if (!hasMore && added === 0) break;
+        if (!hasMore) break;
+        if (rows.length >= lastRecords) break;
+      }
+
+      return { posts: rows, status, error };
+    };
+
+    const fetchGenericHistory = async (): Promise<{ posts: RawPost[]; status: number; error: any }> => {
+      const genericQs = new URLSearchParams({
+        platforms: "facebook",
+        lastRecords: String(lastRecords),
+      });
+      const resp = await fetch(`${AYR_BASE}/history?${genericQs.toString()}`, {
         headers: { Authorization: `Bearer ${KEY}`, "Profile-Key": profileKey },
       });
-      lastStatus = resp.status;
-      let json = await resp.json().catch(() => ({} as any));
-      // Some Ayrshare profiles reject the platform-specific native endpoint
-      // even while the generic history endpoint still returns the workspace's
-      // stored Facebook history. Fall back without deleting/shrinking anything.
-      if (!resp.ok) {
-        const genericQs = new URLSearchParams({
-          platforms: "facebook",
-          lastRecords: String(lastRecords),
-          pagePublished: "true",
-        });
-        resp = await fetch(`${AYR_BASE}/history?${genericQs.toString()}`, {
-          headers: { Authorization: `Bearer ${KEY}`, "Profile-Key": profileKey },
-        });
-        lastStatus = resp.status;
-        json = await resp.json().catch(() => ({} as any));
-      }
-      if (!resp.ok) { lastError = json; break; }
+      const json = await resp.json().catch(() => ({} as any));
+      if (!resp.ok) return { posts: [], status: resp.status, error: json };
       const items: any[] = Array.isArray(json) ? json : (json.posts || json.history || json.data || []);
-      if (!items.length) break;
-      let added = 0;
+      const seenIds = new Set<string>();
+      const rows: RawPost[] = [];
       for (const it of items) {
-        const ids = collectPostIds(it);
-        const id = ids[0] || it.refId || JSON.stringify(it).slice(0, 64);
-        if (seenIds.has(id)) continue;
+        if (String(it?.status || "").toLowerCase() === "error" || (Array.isArray(it?.errors) && it.errors.length > 0)) continue;
+        const ids = collectPostIds(it, false);
+        const id = ids[0];
+        if (!id || seenIds.has(id)) continue;
         seenIds.add(id);
-        all.push(it);
-        added++;
+        rows.push({ item: it, source: "generic", profileKey });
       }
-      nextCursor = json?.meta?.pagination?.next || json?.next || json?.nextToken || json?.next_token || json?.pageToken || null;
-      const hasMore = Boolean(json?.meta?.pagination?.hasMore || nextCursor);
-      if (!hasMore && added === 0) break;
-      if (!hasMore) break;
-      if (all.length >= lastRecords) break;
+      return { posts: rows, status: resp.status, error: null };
+    };
+
+    const candidates = await discoverProfiles();
+    let all: RawPost[] = [];
+    let lastStatus = 0;
+    let lastError: any = null;
+    let winningProfile: ProfileCandidate | null = null;
+
+    for (const candidate of candidates) {
+      const result = await fetchPlatformHistory(candidate, true);
+      const broadResult = result.posts.length < Math.min(50, lastRecords)
+        ? await fetchPlatformHistory(candidate, undefined)
+        : result;
+      const bestResult = broadResult.posts.length > result.posts.length ? broadResult : result;
+      lastStatus = bestResult.status;
+      lastError = bestResult.error;
+      if (bestResult.posts.length > all.length) {
+        all = bestResult.posts;
+        winningProfile = candidate;
+      }
+      if (bestResult.posts.length >= Math.min(50, lastRecords)) break;
     }
 
-    const posts = all.slice(0, lastRecords).map(normalizePost);
+    if (all.length === 0) {
+      const accountResult = await fetchPlatformHistory(null, undefined);
+      lastStatus = accountResult.status;
+      lastError = accountResult.error;
+      all = accountResult.posts;
+      winningProfile = null;
+    }
+
+    if (all.length === 0) {
+      const genericResult = await fetchGenericHistory();
+      lastStatus = genericResult.status;
+      lastError = genericResult.error;
+      all = genericResult.posts;
+    }
+
+    if (winningProfile?.profileKey && winningProfile.profileKey !== profileKey) {
+      await admin
+        .from("workspace_social_profile")
+        .update({
+          ayrshare_profile_key: winningProfile.profileKey,
+          ayrshare_ref_id: winningProfile.refId,
+          facebook_page_id: winningProfile.fbId ?? ws?.facebook_page_id ?? null,
+          facebook_page_name: winningProfile.fbName ?? ws?.facebook_page_name ?? null,
+          connected_platforms: ["facebook"],
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", WORKSPACE_ID);
+    }
+
+    const posts = all.slice(0, lastRecords).map(normalizePost).filter((p): p is NonNullable<ReturnType<typeof normalizePost>> => !!p);
 
     let upserted = 0;
     let persistError: string | null = null;
@@ -254,7 +394,7 @@ Deno.serve(async (req) => {
           provider_response: {
             imported_native_facebook: true,
             imported_at: new Date().toISOString(),
-            ayrshare_profile_key: profileKey,
+            ayrshare_profile_ref_id: p._profile_ref_id,
             facebook_page_id: ws?.facebook_page_id ?? null,
             facebook_page_name: ws?.facebook_page_name ?? null,
             postIds: p.post_ids.map((id: string) => ({ platform: "facebook", id, postUrl: p.url || null })),
