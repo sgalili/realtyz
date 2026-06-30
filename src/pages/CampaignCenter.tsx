@@ -2236,10 +2236,20 @@ const PublishedFeed = () => {
               onClick={() => setExpanded((s) => ({ ...s, [r.id]: !isOpen }))}
             >
 
-              {/* Row 1: post title */}
-              <h3 className={cn('font-semibold text-foreground truncate', alignClass)} dir={dirAttr}>
-                {(bodyText.trim().split('\n')[0] || r.campaign_name)}
-              </h3>
+              {/* Row 1: thumbnail + post title */}
+              <div className={cn('flex items-center gap-3', isHe ? 'flex-row' : 'flex-row-reverse')}>
+                {r.media_urls?.[0] ? (
+                  <img
+                    src={r.media_urls[0]}
+                    alt=""
+                    loading="lazy"
+                    className="h-12 w-12 shrink-0 rounded-lg object-cover border border-border"
+                  />
+                ) : null}
+                <h3 className={cn('flex-1 font-semibold text-foreground truncate', alignClass)} dir={dirAttr}>
+                  {(bodyText.trim().split('\n')[0] || r.campaign_name)}
+                </h3>
+              </div>
 
               {/* Row 2 (single combined row): logo · page · date  ........  comments · shares · likes · chevron */}
               <div className={cn('flex items-center gap-2', isHe ? 'flex-row' : 'flex-row-reverse')}>
@@ -2293,6 +2303,14 @@ const PublishedFeed = () => {
 
             {isOpen && (
               <>
+                {r.media_urls && r.media_urls.length > 0 && (
+                  <div className="mx-4 mb-3 flex gap-2 overflow-x-auto">
+                    {r.media_urls.slice(0, 6).map((src, i) => (
+                      <img key={i} src={src} alt="" loading="lazy"
+                           className="h-32 w-32 shrink-0 rounded-lg object-cover border border-border" />
+                    ))}
+                  </div>
+                )}
                 <div className={cn('mx-4 mb-3 rounded-xl border border-border bg-background p-4 text-sm text-foreground whitespace-pre-wrap', alignClass)} dir={dirAttr}>
                   {bodyText || <span className="text-muted-foreground">אין תוכן הודעה</span>}
                 </div>
@@ -2303,53 +2321,56 @@ const PublishedFeed = () => {
                     <ExternalLink className="ml-1 h-4 w-4" />
                     פתח פוסט
                   </Button>
-                  <Button variant="outline" size="sm"
-                          disabled={!!refreshingIds[r.id]}
-                          onClick={(e) => { e.stopPropagation(); bumpRefresh(r.id); }}>
-                    <RefreshCw className={cn('ml-1 h-4 w-4', refreshingIds[r.id] && 'animate-spin')} />
-                    {refreshingIds[r.id] ? 'מרענן…' : 'רענן תגובות'}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
-                          className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
-                    <Trash2 className="ml-1 h-4 w-4" />
-                    מחק פוסט
-                  </Button>
-                </div>
-                <CampaignGroupBreakdown
-                  workspaceOwnerId={workspaceOwnerId}
-                  campaignBody={bodyText}
-                  campaignCreatedAt={r.created_at}
-                />
-                <div className="border-t border-border bg-muted/30 px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                  {userId ? (
-                    <CampaignCommentsStream
-                      userId={userId}
-                      campaign={r}
-                      commentCount={typeof liveCount === 'number' ? Math.max(liveCount, dbComments) : dbComments}
-                      onLiveCountResolved={updateLiveCount}
-                      refreshSignal={refreshSignals[r.id] ?? 0}
-                      onCountersResolved={(campaignId, counters) => {
-                        // Force-overwrite when the child explicitly signals a
-                        // manual refresh — that breaks the deadlock where a
-                        // previously stored >0 counter masked the fresh
-                        // healthy-profile integers. Otherwise keep the max so a
-                        // transient 0 can't collapse a real count.
-                        const pickNum = (v: unknown) => (typeof v === 'number' ? v : 0);
-                        const max = (a: unknown, b: unknown) => Math.max(pickNum(a), pickNum(b));
-                        setRows((prev) => prev?.map((row) => row.id === campaignId ? {
-                          ...row,
-                          like_count: counters.force ? pickNum(counters.like_count) : max(counters.like_count, row.like_count),
-                          share_count: counters.force ? pickNum(counters.share_count) : max(counters.share_count, row.share_count),
-                          comment_count: counters.force ? pickNum(counters.comment_count) : max(counters.comment_count, row.comment_count),
-                          metrics_updated_at: new Date().toISOString(),
-                        } : row) ?? prev);
-                      }}
-                      onRefreshComplete={handleRefreshComplete}
-                    />
-                  ) : (
-                    <p className="text-xs text-muted-foreground text-right">נדרשת התחברות לצפייה בתגובות</p>
+                  {!r.is_external && (
+                    <Button variant="outline" size="sm"
+                            disabled={!!refreshingIds[r.id]}
+                            onClick={(e) => { e.stopPropagation(); bumpRefresh(r.id); }}>
+                      <RefreshCw className={cn('ml-1 h-4 w-4', refreshingIds[r.id] && 'animate-spin')} />
+                      {refreshingIds[r.id] ? 'מרענן…' : 'רענן תגובות'}
+                    </Button>
+                  )}
+                  {!r.is_external && (
+                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
+                            className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
+                      <Trash2 className="ml-1 h-4 w-4" />
+                      מחק פוסט
+                    </Button>
                   )}
                 </div>
+                {!r.is_external && (
+                  <>
+                    <CampaignGroupBreakdown
+                      workspaceOwnerId={workspaceOwnerId}
+                      campaignBody={bodyText}
+                      campaignCreatedAt={r.created_at}
+                    />
+                    <div className="border-t border-border bg-muted/30 px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      {userId ? (
+                        <CampaignCommentsStream
+                          userId={userId}
+                          campaign={r}
+                          commentCount={typeof liveCount === 'number' ? Math.max(liveCount, dbComments) : dbComments}
+                          onLiveCountResolved={updateLiveCount}
+                          refreshSignal={refreshSignals[r.id] ?? 0}
+                          onCountersResolved={(campaignId, counters) => {
+                            const pickNum = (v: unknown) => (typeof v === 'number' ? v : 0);
+                            const max = (a: unknown, b: unknown) => Math.max(pickNum(a), pickNum(b));
+                            setRows((prev) => prev?.map((row) => row.id === campaignId ? {
+                              ...row,
+                              like_count: counters.force ? pickNum(counters.like_count) : max(counters.like_count, row.like_count),
+                              share_count: counters.force ? pickNum(counters.share_count) : max(counters.share_count, row.share_count),
+                              comment_count: counters.force ? pickNum(counters.comment_count) : max(counters.comment_count, row.comment_count),
+                              metrics_updated_at: new Date().toISOString(),
+                            } : row) ?? prev);
+                          }}
+                          onRefreshComplete={handleRefreshComplete}
+                        />
+                      ) : (
+                        <p className="text-xs text-muted-foreground text-right">נדרשת התחברות לצפייה בתגובות</p>
+                      )}
+                    </div>
+                  </>
+                )}
               </>
             )}
           </article>
