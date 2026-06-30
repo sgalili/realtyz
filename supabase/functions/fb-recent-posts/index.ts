@@ -351,7 +351,7 @@ Deno.serve(async (req) => {
     );
     const { data: ws } = await admin
       .from("workspace_social_profile")
-      .select("ayrshare_profile_key, facebook_page_id, facebook_page_name")
+      .select("ayrshare_profile_key, ayrshare_ref_id, facebook_page_id, facebook_page_name")
       .eq("id", WORKSPACE_ID)
       .maybeSingle();
     const profileKey = (ws?.ayrshare_profile_key?.toString().trim()) ||
