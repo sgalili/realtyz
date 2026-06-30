@@ -248,7 +248,7 @@ Deno.serve(async (req) => {
       });
     };
 
-    const fetchPlatformHistory = async (candidate: ProfileCandidate | null): Promise<{ posts: RawPost[]; status: number; error: any }> => {
+    const fetchPlatformHistory = async (candidate: ProfileCandidate | null, pagePublished?: boolean): Promise<{ posts: RawPost[]; status: number; error: any }> => {
       const seenIds = new Set<string>();
       const rows: RawPost[] = [];
       let status = 0;
@@ -259,8 +259,9 @@ Deno.serve(async (req) => {
         const qs = new URLSearchParams({
           limit: String(pageSize),
           dataType: "posts",
-          pagePublished: "true",
+          skipAnalytics: "true",
         });
+        if (typeof pagePublished === "boolean") qs.set("pagePublished", String(pagePublished));
         if (since) qs.set("since", since);
         if (until) qs.set("until", until);
         if (nextCursor) qs.set("next", nextCursor);
@@ -303,7 +304,6 @@ Deno.serve(async (req) => {
       const genericQs = new URLSearchParams({
         platforms: "facebook",
         lastRecords: String(lastRecords),
-        pagePublished: "true",
       });
       const resp = await fetch(`${AYR_BASE}/history?${genericQs.toString()}`, {
         headers: { Authorization: `Bearer ${KEY}`, "Profile-Key": profileKey },
@@ -331,18 +331,22 @@ Deno.serve(async (req) => {
     let winningProfile: ProfileCandidate | null = null;
 
     for (const candidate of candidates) {
-      const result = await fetchPlatformHistory(candidate);
-      lastStatus = result.status;
-      lastError = result.error;
-      if (result.posts.length > all.length) {
-        all = result.posts;
+      const result = await fetchPlatformHistory(candidate, true);
+      const broadResult = result.posts.length < Math.min(50, lastRecords)
+        ? await fetchPlatformHistory(candidate, undefined)
+        : result;
+      const bestResult = broadResult.posts.length > result.posts.length ? broadResult : result;
+      lastStatus = bestResult.status;
+      lastError = bestResult.error;
+      if (bestResult.posts.length > all.length) {
+        all = bestResult.posts;
         winningProfile = candidate;
       }
-      if (result.posts.length >= Math.min(50, lastRecords)) break;
+      if (bestResult.posts.length >= Math.min(50, lastRecords)) break;
     }
 
     if (all.length === 0) {
-      const accountResult = await fetchPlatformHistory(null);
+      const accountResult = await fetchPlatformHistory(null, undefined);
       lastStatus = accountResult.status;
       lastError = accountResult.error;
       all = accountResult.posts;
