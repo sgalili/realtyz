@@ -48,7 +48,7 @@ Deno.serve(async (req) => {
     .eq("user_id", userId)
     .eq("is_archived", false)
     .order("created_at", { ascending: false })
-    .limit(500);
+    .limit(1000);
 
   if (error) return json({ success: false, error: error.message, targets: 0, dispatched: [] }, 200);
 

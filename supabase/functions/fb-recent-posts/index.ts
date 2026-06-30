@@ -410,11 +410,37 @@ Deno.serve(async (req) => {
       if (profileKey) {
         push({
           profileKey,
-          refId: null,
+          refId: ws?.ayrshare_ref_id ?? null,
           fbId: ws?.facebook_page_id ?? null,
           fbName: ws?.facebook_page_name ?? null,
           label: "workspace",
         });
+      }
+
+      // Stored per-user account rows are our only recoverable source of actual
+      // Profile-Key values because Ayrshare intentionally never returns profile
+      // keys from GET /profiles. Always try them before public/account fallbacks.
+      try {
+        const { data: storedAccounts } = await admin
+          .from("ayrshare_social_accounts")
+          .select("profile_key, account_ref, display_name")
+          .eq("platform", "facebook")
+          .eq("connected", true)
+          .eq("is_active", true)
+          .limit(50);
+        for (const row of storedAccounts ?? []) {
+          const pk = asText((row as any)?.profile_key);
+          if (!pk) continue;
+          push({
+            profileKey: pk,
+            refId: null,
+            fbId: asText((row as any)?.account_ref) || ws?.facebook_page_id || null,
+            fbName: asText((row as any)?.display_name) || ws?.facebook_page_name || null,
+            label: "stored_social_account",
+          });
+        }
+      } catch (storedErr) {
+        console.warn("[fb-recent-posts] stored account discovery failed", storedErr);
       }
 
       try {
