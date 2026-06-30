@@ -1952,7 +1952,10 @@ const PublishedFeed = () => {
     setRows(merged);
     FEED_ROWS_CACHE.set(workspaceOwnerId ?? 'anon', merged);
     try { sessionStorage.setItem(CAMPAIGNS_COUNT_SESSION_KEY, String(merged.length)); } catch { /* quota */ }
+    // Nudge the sidebar to repaint the campaigns badge with the unified count.
+    try { queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] }); } catch { /* no-op */ }
   };
+
 
 
   // Ask the backend to (a) refresh live Ayrshare analytics — likes/comments/shares/views
