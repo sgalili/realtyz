@@ -49,7 +49,6 @@ const collectMediaUrls = (it: any): string[] => {
     }
     if (typeof node !== "object") return;
     addUrl(urls, node.mediaUrl);
-    addUrl(urls, node.url);
     addUrl(urls, node.src);
     addUrl(urls, node.thumbnailUrl);
     addUrl(urls, node.fullPicture);
