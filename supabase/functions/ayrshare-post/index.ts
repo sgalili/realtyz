@@ -520,7 +520,7 @@ Deno.serve(async (req) => {
         platforms: extra.platforms ?? platforms,
         profileKey,
         ...(targetAccountRef
-          ? { facebookOptions: { pageId: targetAccountRef } }
+          ? { faceBookOptions: { pageId: targetAccountRef } }
           : {}),
         ...extra,
       };
