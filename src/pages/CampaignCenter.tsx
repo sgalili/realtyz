@@ -3222,16 +3222,17 @@ const CampaignCenter = () => {
 
         const { data: wsp } = await supabase
           .from('workspace_social_profile')
-          .select('ayrshare_profile_key, facebook_page_name')
+          .select('ayrshare_profile_key, facebook_page_id, facebook_page_name')
           .maybeSingle();
         const hasOwnProfile = !!(wsp as any)?.ayrshare_profile_key;
+        const wspFbId = (wsp as any)?.facebook_page_id as string | null;
+        const wspFbName = (wsp as any)?.facebook_page_name as string | null;
         if (!hasOwnProfile) {
           if (!cancelled) clearSocialConnectionState([...SOCIAL_CHANNEL_IDS]);
           // continue — still derive direct channels (IVR/email) below
         } else {
-          const fbName = (wsp as any)?.facebook_page_name as string | null;
-          if (fbName && !cancelled) {
-            setChannelAccountNames((prev) => ({ ...prev, facebook: fbName }));
+          if (wspFbName && !cancelled) {
+            setChannelAccountNames((prev) => ({ ...prev, facebook: wspFbName }));
           }
 
           // Best-effort sync. Never let a failure tear down the component.
@@ -3246,15 +3247,17 @@ const CampaignCenter = () => {
         const set = new Set<string>();
 
         if (hasOwnProfile) {
+          // WORKSPACE-SHARED connection state — every workspace member sees the
+          // same connected channels (owner / super-admin / managers / tenants).
+          // No `created_by` / `user_id` filters here; RLS allows read for all
+          // authenticated members.
           const { data: conns, error: connsErr } = await supabase
             .from('social_connections')
             .select('platform, is_connected')
-            .eq('created_by', user.id)
             .eq('is_connected', true);
           const { data: accountRows, error: accountRowsErr } = await supabase
             .from('ayrshare_social_accounts')
             .select('id, platform, account_ref, profile_key, display_name, account_username, username, avatar_url, profile_url, connected, is_active')
-            .eq('user_id', user.id)
             .eq('connected', true)
             .eq('is_active', true);
           if (cancelled) return;
@@ -3262,16 +3265,26 @@ const CampaignCenter = () => {
           if (connsErr || accountRowsErr) {
             console.warn('[CampaignCenter] social conn fetch error:', connsErr?.message || accountRowsErr?.message);
           } else {
-            const profiles = ((accountRows as any[]) || []).map((r) => ({
-              id: r?.id,
-              platform: String(r?.platform || '').toLowerCase(),
-              accountRef: r?.account_ref || '',
-              profileKey: r?.profile_key || null,
-              name: r?.display_name || r?.account_username || r?.username || r?.account_ref || 'Facebook',
-              username: r?.account_username || r?.username || null,
-              avatar: r?.avatar_url || null,
-              profileUrl: r?.profile_url || (r?.account_ref ? buildAccountUrl(String(r?.platform || '').toLowerCase(), r.account_ref) : null),
-            }));
+            // Dedupe by platform+account_ref so duplicate Ayrshare rows from
+            // older imports don't render the same page twice on the FB card.
+            const seenAcct = new Set<string>();
+            const profiles = ((accountRows as any[]) || [])
+              .map((r) => ({
+                id: r?.id,
+                platform: String(r?.platform || '').toLowerCase(),
+                accountRef: r?.account_ref || '',
+                profileKey: r?.profile_key || null,
+                name: r?.display_name || r?.account_username || r?.username || r?.account_ref || 'Facebook',
+                username: r?.account_username || r?.username || null,
+                avatar: r?.avatar_url || null,
+                profileUrl: r?.profile_url || (r?.account_ref ? buildAccountUrl(String(r?.platform || '').toLowerCase(), r.account_ref) : null),
+              }))
+              .filter((p) => {
+                const k = `${p.platform}:${p.accountRef}`;
+                if (seenAcct.has(k)) return false;
+                seenAcct.add(k);
+                return true;
+              });
             profiles.forEach((p) => {
               if (p.platform.startsWith('facebook')) set.add('facebook');
             });
@@ -3285,8 +3298,13 @@ const CampaignCenter = () => {
               else if (p.startsWith('linkedin')) set.add('linkedin');
               else if (p.startsWith('tiktok')) set.add('tiktok');
             });
+            // Workspace fallback — if the singleton workspace profile has a
+            // connected Facebook Page on record, trust it for every member
+            // even before the sync/upsert finishes.
+            if (wspFbId) set.add('facebook');
           }
         }
+
 
         // Direct (non-social) channels — always safe to derive.
         const [profRes, cfgsRes] = await Promise.all([
