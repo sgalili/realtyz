@@ -94,7 +94,14 @@ Deno.serve(async (req) => {
       .select("id,user_id,property_title,city,neighborhood,address,rooms,asking_price,deal_type,status")
       .eq("id", property_id)
       .maybeSingle();
-    if (lerr || !listing) return json(404, { error: "Listing not found" });
+    if (lerr || !listing) {
+      // Return 200 + fallback so callers don't blank-screen on a stale/missing listing id.
+      return json(200, {
+        error: "LISTING_NOT_FOUND",
+        fallback: true,
+        long_url: "https://api.whatsapp.com/send?phone=972537339533",
+      });
+    }
 
     const { text, long_url } = buildShortlinkPayload(listing);
 
