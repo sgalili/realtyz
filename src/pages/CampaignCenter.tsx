@@ -1837,7 +1837,7 @@ const PublishedFeed = () => {
     // session per workspace. The edge function UPSERTS into campaign_logs and
     // never deletes or shrinks old rows, so a later provider page returning 10
     // records cannot reset the 150 persisted campaign cards.
-    const importKey = `realtyz.fb_native_import.v1.${ownerScope}`;
+    const importKey = `realtyz.fb_native_import.v2_full_history.${ownerScope}`;
     let shouldImport = opts.forceFb === true;
     try { shouldImport = shouldImport || sessionStorage.getItem(importKey) !== '1'; } catch { shouldImport = true; }
     if (shouldImport) {
@@ -2027,7 +2027,7 @@ const PublishedFeed = () => {
       load({ forceFb: !!cached && cached.length > 0 && cached.length < EXPECTED_NATIVE_FACEBOOK_POSTS });
     }
     if (!workspaceOwnerId) return;
-    const sessionKey = `realtyz.feed_metrics_fetched.v2.${workspaceOwnerId}`;
+    const sessionKey = `realtyz.feed_metrics_fetched.v3_full_tree.${workspaceOwnerId}`;
     let alreadyFetched = false;
     try { alreadyFetched = sessionStorage.getItem(sessionKey) === '1'; } catch { /* noop */ }
     if (!alreadyFetched) {
