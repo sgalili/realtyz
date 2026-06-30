@@ -1824,25 +1824,47 @@ const PublishedFeed = () => {
       });
       const fbPosts: any[] = (fbData as any)?.ok ? ((fbData as any).posts ?? []) : [];
       if (fbPosts.length > 0) {
+        const normText = (s: any) => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 160);
         const byFbId = new Map<string, any>();
+        const byText = new Map<string, any>();
         for (const p of fbPosts) {
           const k = String(p.fb_post_id || p.id || '').trim();
           if (k) byFbId.set(k, p);
+          const t = normText(p.text);
+          if (t) byText.set(t, p);
         }
-        // Attach media to existing facebook rows.
+        // Attach media + external URL to existing facebook rows; dedupe by id OR text.
         for (const row of merged) {
           if (String(row.channel || '').toLowerCase() !== 'facebook') continue;
           const pid = String(row.provider_message_id || '').trim();
-          if (pid && byFbId.has(pid)) {
-            const p = byFbId.get(pid);
-            row.media_urls = Array.isArray(p.media) ? p.media : [];
-            if (p.url) row.external_url = p.url;
-            byFbId.delete(pid);
+          let match: any = null;
+          if (pid && byFbId.has(pid)) { match = byFbId.get(pid); byFbId.delete(pid); }
+          if (!match) {
+            const t = normText(row.message_body || row.campaign_name);
+            if (t && byText.has(t)) {
+              match = byText.get(t);
+              const mk = String(match.fb_post_id || match.id || '').trim();
+              if (mk) byFbId.delete(mk);
+              byText.delete(t);
+            }
+          }
+          if (match) {
+            row.media_urls = Array.isArray(match.media) ? match.media : [];
+            if (match.url) row.external_url = match.url;
           }
         }
-        // Inject synthetic rows for native FB posts not in campaign_logs.
+        // Inject synthetic rows for native FB posts not already represented.
+        const seenTexts = new Set<string>();
+        for (const row of merged) {
+          if (String(row.channel || '').toLowerCase() !== 'facebook') continue;
+          const t = normText(row.message_body || row.campaign_name);
+          if (t) seenTexts.add(t);
+        }
         const externalRows: CampaignRow[] = [];
         for (const p of byFbId.values()) {
+          const t = normText(p.text);
+          if (t && seenTexts.has(t)) continue;
+          if (t) seenTexts.add(t);
           const id = `fb:${p.fb_post_id || p.id || crypto.randomUUID()}`;
           externalRows.push({
             id,
