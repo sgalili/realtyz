@@ -1684,6 +1684,7 @@ const GlobalSocialFeed = ({
 // and then read only from campaign_logs, never kept as transient synthetic rows.
 const FEED_ROWS_CACHE = new Map<string, CampaignRow[]>();
 const CAMPAIGNS_COUNT_SESSION_KEY = 'realtyz.campaigns.total_count';
+const EXPECTED_NATIVE_FACEBOOK_POSTS = 150;
 
 const PublishedFeed = () => {
   const { settings } = useWhiteLabel();
@@ -1821,10 +1822,10 @@ const PublishedFeed = () => {
           console.warn('[PublishedFeed] fb persistent import failed (non-fatal)', importError);
         } else if ((importData as any)?.ok === false) {
           console.warn('[PublishedFeed] fb persistent import returned error', importData);
-        } else if ((Number((importData as any)?.upserted) || 0) > 0 || (Number((importData as any)?.count) || 0) > 0) {
+        } else if ((Number((importData as any)?.count) || 0) >= EXPECTED_NATIVE_FACEBOOK_POSTS) {
           try { sessionStorage.setItem(importKey, '1'); } catch { /* quota */ }
         } else {
-          console.warn('[PublishedFeed] fb persistent import returned no posts; will retry next entry', importData);
+          console.warn('[PublishedFeed] fb persistent import returned a partial set; will retry next entry', importData);
         }
       } catch (err) {
         console.warn('[PublishedFeed] fb persistent import crashed (non-fatal)', err);
@@ -1993,10 +1994,10 @@ const PublishedFeed = () => {
     // local campaign inserts append via the realtime INSERT handler below.
     const wsKey = workspaceOwnerId ?? 'anon';
     const cached = FEED_ROWS_CACHE.get(wsKey);
-    if (cached && cached.length >= 50) {
+    if (cached && cached.length >= EXPECTED_NATIVE_FACEBOOK_POSTS) {
       setRows(cached);
     } else {
-      load({ forceFb: !!cached && cached.length > 0 && cached.length < 50 });
+      load({ forceFb: !!cached && cached.length > 0 && cached.length < EXPECTED_NATIVE_FACEBOOK_POSTS });
     }
     if (!workspaceOwnerId) return;
     const sessionKey = `realtyz.feed_metrics_fetched.v2.${workspaceOwnerId}`;
