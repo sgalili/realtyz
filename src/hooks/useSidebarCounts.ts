@@ -32,9 +32,17 @@ export function useSidebarCounts() {
       };
 
       // Campaign count must match the published-feed grouping: one card per
-      // (campaign_name + channel + created_at) tuple. A raw row count would
-      // over-report (e.g. 10 rows that collapse to 8 cards).
+      // (campaign_name + channel + created_at) tuple, PLUS any native Facebook
+      // posts injected by /campaigns. The published feed writes its final
+      // merged count to sessionStorage so the sidebar mirrors what the user
+      // actually sees on /campaigns (DB campaigns + native FB posts), without
+      // re-fetching Ayrshare from the sidebar.
       const groupedCampaignCount = async (): Promise<number> => {
+        try {
+          const cached = sessionStorage.getItem('realtyz.campaigns.total_count');
+          const parsed = cached ? Number(cached) : NaN;
+          if (Number.isFinite(parsed) && parsed > 0) return parsed;
+        } catch { /* no-op */ }
         try {
           const { data, error } = await (supabase as any)
             .from('campaign_logs')
@@ -52,6 +60,7 @@ export function useSidebarCounts() {
           return 0;
         }
       };
+
 
       // Chats = distinct leads that have at least one row in `messages`.
       // We never want to mirror the contacts/leads table length here.
