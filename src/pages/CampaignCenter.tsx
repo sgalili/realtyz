@@ -1824,33 +1824,53 @@ const PublishedFeed = () => {
       });
       const fbPosts: any[] = (fbData as any)?.ok ? ((fbData as any).posts ?? []) : [];
       if (fbPosts.length > 0) {
-        const normText = (s: any) => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 160);
+        const normText = (s: any) => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 220);
+        const collectFbPostKeys = (post: any) => Array.from(new Set([
+          post?.fb_post_id,
+          post?.id,
+          ...(Array.isArray(post?.post_ids) ? post.post_ids : []),
+        ].map((v) => String(v || '').trim()).filter(Boolean)));
         const byFbId = new Map<string, any>();
         const byText = new Map<string, any>();
         for (const p of fbPosts) {
-          const k = String(p.fb_post_id || p.id || '').trim();
-          if (k) byFbId.set(k, p);
+          collectFbPostKeys(p).forEach((k) => byFbId.set(k, p));
           const t = normText(p.text);
           if (t) byText.set(t, p);
         }
         // Attach media + external URL to existing facebook rows; dedupe by id OR text.
         for (const row of merged) {
           if (String(row.channel || '').toLowerCase() !== 'facebook') continue;
-          const pid = String(row.provider_message_id || '').trim();
+          const ids = new Set<string>([
+            row.provider_message_id,
+            ...getCampaignPostIds(row),
+          ].map((v) => String(v || '').trim()).filter(Boolean));
           let match: any = null;
-          if (pid && byFbId.has(pid)) { match = byFbId.get(pid); byFbId.delete(pid); }
+          for (const pid of ids) {
+            if (byFbId.has(pid)) {
+              match = byFbId.get(pid);
+              break;
+            }
+          }
           if (!match) {
             const t = normText(row.message_body || row.campaign_name);
             if (t && byText.has(t)) {
               match = byText.get(t);
-              const mk = String(match.fb_post_id || match.id || '').trim();
-              if (mk) byFbId.delete(mk);
               byText.delete(t);
             }
           }
           if (match) {
-            row.media_urls = Array.isArray(match.media) ? match.media : [];
+            const matchIds = collectFbPostKeys(match);
+            matchIds.forEach((mk) => byFbId.delete(mk));
+            row.provider_message_id = row.provider_message_id || match.fb_post_id || match.id || matchIds[0] || null;
+            row.media_urls = Array.isArray(match.media) ? match.media.filter((u: any) => typeof u === 'string' && /^https?:\/\//i.test(u)) : [];
             if (match.url) row.external_url = match.url;
+            if (typeof match.like_count === 'number') row.like_count = Math.max(row.like_count || 0, match.like_count);
+            if (typeof match.comment_count === 'number') row.comment_count = Math.max(row.comment_count || 0, match.comment_count);
+            if (typeof match.share_count === 'number') row.share_count = Math.max(row.share_count || 0, match.share_count);
+            if (typeof match.view_count === 'number') row.view_count = Math.max(row.view_count || 0, match.view_count);
+            if (match.like_count !== null || match.comment_count !== null || match.share_count !== null || match.view_count !== null) {
+              row.metrics_updated_at = row.metrics_updated_at || new Date().toISOString();
+            }
           }
         }
         // Inject synthetic rows for native FB posts not already represented.
@@ -1861,11 +1881,14 @@ const PublishedFeed = () => {
           if (t) seenTexts.add(t);
         }
         const externalRows: CampaignRow[] = [];
-        for (const p of byFbId.values()) {
+        const uniqueNativePosts = Array.from(new Map(Array.from(byFbId.values()).map((p) => [collectFbPostKeys(p)[0] || crypto.randomUUID(), p])).values());
+        for (const p of uniqueNativePosts) {
           const t = normText(p.text);
           if (t && seenTexts.has(t)) continue;
           if (t) seenTexts.add(t);
-          const id = `fb:${p.fb_post_id || p.id || crypto.randomUUID()}`;
+          const postKeys = collectFbPostKeys(p);
+          const primaryId = p.fb_post_id || p.id || postKeys[0] || crypto.randomUUID();
+          const id = `fb:${primaryId}`;
           // If Ayrshare returns no usable date, fall back to NOW so the post
           // surfaces interleaved at the top of the unified feed rather than
           // being banished to a "1970" cluster at the bottom (which looks
@@ -1880,10 +1903,16 @@ const PublishedFeed = () => {
             channel: 'facebook',
             message_body: p.text || '',
             created_at: createdIso,
-            provider_message_id: p.fb_post_id || p.id || null,
+            provider_message_id: primaryId,
+            provider_response: { postIds: postKeys.map((postId) => ({ platform: 'facebook', id: postId, postUrl: p.url || null })) },
             recipient_count: 1,
-            media_urls: Array.isArray(p.media) ? p.media : [],
+            media_urls: Array.isArray(p.media) ? p.media.filter((u: any) => typeof u === 'string' && /^https?:\/\//i.test(u)) : [],
             external_url: p.url || null,
+            like_count: typeof p.like_count === 'number' ? p.like_count : 0,
+            comment_count: typeof p.comment_count === 'number' ? p.comment_count : 0,
+            share_count: typeof p.share_count === 'number' ? p.share_count : 0,
+            view_count: typeof p.view_count === 'number' ? p.view_count : 0,
+            metrics_updated_at: (p.like_count !== null || p.comment_count !== null || p.share_count !== null || p.view_count !== null) ? new Date().toISOString() : null,
             is_external: true,
           });
         }
@@ -2353,18 +2382,16 @@ const PublishedFeed = () => {
                 <div className="flex items-center justify-between gap-2 px-4 pb-4" dir="rtl" onClick={(e) => e.stopPropagation()}>
                   <Button variant="outline" size="sm"
                           disabled={!postUrl}
-                          onClick={(e) => { e.stopPropagation(); postUrl && window.open(postUrl, '_blank', 'noopener,noreferrer'); }}>
+                          onClick={(e) => { e.stopPropagation(); if (postUrl) window.open(postUrl, '_blank', 'noopener,noreferrer'); }}>
                     <ExternalLink className="ml-1 h-4 w-4" />
                     פתח פוסט
                   </Button>
-                  {!r.is_external && (
-                    <Button variant="outline" size="sm"
-                            disabled={!!refreshingIds[r.id]}
-                            onClick={(e) => { e.stopPropagation(); bumpRefresh(r.id); }}>
-                      <RefreshCw className={cn('ml-1 h-4 w-4', refreshingIds[r.id] && 'animate-spin')} />
-                      {refreshingIds[r.id] ? 'מרענן…' : 'רענן תגובות'}
-                    </Button>
-                  )}
+                  <Button variant="outline" size="sm"
+                          disabled={!!refreshingIds[r.id]}
+                          onClick={(e) => { e.stopPropagation(); bumpRefresh(r.id); }}>
+                    <RefreshCw className={cn('ml-1 h-4 w-4', refreshingIds[r.id] && 'animate-spin')} />
+                    {refreshingIds[r.id] ? 'מרענן…' : 'רענן תגובות'}
+                  </Button>
                   {!r.is_external && (
                     <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
                             className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
@@ -2374,39 +2401,37 @@ const PublishedFeed = () => {
                   )}
                 </div>
                 {!r.is_external && (
-                  <>
-                    <CampaignGroupBreakdown
-                      workspaceOwnerId={workspaceOwnerId}
-                      campaignBody={bodyText}
-                      campaignCreatedAt={r.created_at}
-                    />
-                    <div className="border-t border-border bg-muted/30 px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                      {userId ? (
-                        <CampaignCommentsStream
-                          userId={userId}
-                          campaign={r}
-                          commentCount={typeof liveCount === 'number' ? Math.max(liveCount, dbComments) : dbComments}
-                          onLiveCountResolved={updateLiveCount}
-                          refreshSignal={refreshSignals[r.id] ?? 0}
-                          onCountersResolved={(campaignId, counters) => {
-                            const pickNum = (v: unknown) => (typeof v === 'number' ? v : 0);
-                            const max = (a: unknown, b: unknown) => Math.max(pickNum(a), pickNum(b));
-                            setRows((prev) => prev?.map((row) => row.id === campaignId ? {
-                              ...row,
-                              like_count: counters.force ? pickNum(counters.like_count) : max(counters.like_count, row.like_count),
-                              share_count: counters.force ? pickNum(counters.share_count) : max(counters.share_count, row.share_count),
-                              comment_count: counters.force ? pickNum(counters.comment_count) : max(counters.comment_count, row.comment_count),
-                              metrics_updated_at: new Date().toISOString(),
-                            } : row) ?? prev);
-                          }}
-                          onRefreshComplete={handleRefreshComplete}
-                        />
-                      ) : (
-                        <p className="text-xs text-muted-foreground text-right">נדרשת התחברות לצפייה בתגובות</p>
-                      )}
-                    </div>
-                  </>
+                  <CampaignGroupBreakdown
+                    workspaceOwnerId={workspaceOwnerId}
+                    campaignBody={bodyText}
+                    campaignCreatedAt={r.created_at}
+                  />
                 )}
+                <div className="border-t border-border bg-muted/30 px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                  {userId ? (
+                    <CampaignCommentsStream
+                      userId={userId}
+                      campaign={r}
+                      commentCount={typeof liveCount === 'number' ? Math.max(liveCount, dbComments) : dbComments}
+                      onLiveCountResolved={updateLiveCount}
+                      refreshSignal={refreshSignals[r.id] ?? 0}
+                      onCountersResolved={(campaignId, counters) => {
+                        const pickNum = (v: unknown) => (typeof v === 'number' ? v : 0);
+                        const max = (a: unknown, b: unknown) => Math.max(pickNum(a), pickNum(b));
+                        setRows((prev) => prev?.map((row) => row.id === campaignId ? {
+                          ...row,
+                          like_count: counters.force ? pickNum(counters.like_count) : max(counters.like_count, row.like_count),
+                          share_count: counters.force ? pickNum(counters.share_count) : max(counters.share_count, row.share_count),
+                          comment_count: counters.force ? pickNum(counters.comment_count) : max(counters.comment_count, row.comment_count),
+                          metrics_updated_at: new Date().toISOString(),
+                        } : row) ?? prev);
+                      }}
+                      onRefreshComplete={handleRefreshComplete}
+                    />
+                  ) : (
+                    <p className="text-xs text-muted-foreground text-right">נדרשת התחברות לצפייה בתגובות</p>
+                  )}
+                </div>
               </>
             )}
           </article>
