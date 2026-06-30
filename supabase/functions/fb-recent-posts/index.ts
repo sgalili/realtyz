@@ -201,6 +201,20 @@ const normalizePost = (raw: RawPost) => {
 
 const titleFromText = (text: string) => (text.trim().split("\n")[0] || "פוסט פייסבוק").slice(0, 120);
 
+const parseMetaCredential = (raw: unknown): { token: string; pageId: string | null } => {
+  const s = asText(raw);
+  if (!s) return { token: "", pageId: null };
+  try {
+    const parsed = JSON.parse(s);
+    return {
+      token: asText(parsed?.page_access_token) || asText(parsed?.access_token),
+      pageId: asText(parsed?.page_id) || asText(parsed?.facebook_page_id) || null,
+    };
+  } catch {
+    return { token: s, pageId: null };
+  }
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
@@ -228,6 +242,23 @@ Deno.serve(async (req) => {
       .maybeSingle();
     const profileKey = (ws?.ayrshare_profile_key?.toString().trim()) ||
       Deno.env.get("AYRSHARE_PROFILE_KEY")?.trim().replace(/^["']|["']$/g, "") || "";
+    const facebookPageId = asText(ws?.facebook_page_id) || asText(body?.facebook_page_id ?? url.searchParams.get("facebook_page_id")) || "729806313557785";
+
+    const resolveGraphCredential = async (): Promise<{ token: string; pageId: string | null; source: string | null }> => {
+      const env = parseMetaCredential(Deno.env.get("FB_PAGE_ACCESS_TOKEN") || Deno.env.get("FACEBOOK_PAGE_ACCESS_TOKEN") || Deno.env.get("META_ACCESS_TOKEN"));
+      if (env.token) return { ...env, pageId: env.pageId || facebookPageId, source: "env" };
+      const { data: cfgRows } = await admin
+        .from("api_configs")
+        .select("api_key, service_name")
+        .in("service_name", ["Meta Marketing API", "Facebook Graph API", "Facebook Page Access Token"])
+        .eq("is_active", true)
+        .limit(5);
+      for (const row of cfgRows ?? []) {
+        const parsed = parseMetaCredential((row as any)?.api_key);
+        if (parsed.token) return { ...parsed, pageId: parsed.pageId || facebookPageId, source: (row as any)?.service_name ?? "api_configs" };
+      }
+      return { token: "", pageId: facebookPageId || null, source: null };
+    };
 
     const discoverProfiles = async (): Promise<ProfileCandidate[]> => {
       const candidates: ProfileCandidate[] = [];
@@ -343,7 +374,8 @@ Deno.serve(async (req) => {
       if (!profileKey) return { posts: [], status: 0, error: "workspace ayrshare_profile_key missing" };
       const genericQs = new URLSearchParams({
         platforms: "facebook",
-        lastRecords: String(lastRecords),
+        limit: String(Math.min(1000, Math.max(lastRecords, 150))),
+        lastDays: "0",
       });
       const resp = await fetch(`${AYR_BASE}/history?${genericQs.toString()}`, {
         headers: { Authorization: `Bearer ${KEY}`, "Profile-Key": profileKey },
@@ -362,6 +394,55 @@ Deno.serve(async (req) => {
         rows.push({ item: it, source: "generic", profileKey });
       }
       return { posts: rows, status: resp.status, error: null };
+    };
+
+    const fetchGraphHistory = async (): Promise<{ posts: RawPost[]; status: number; error: any; source: string | null }> => {
+      const cred = await resolveGraphCredential();
+      if (!cred.token || !cred.pageId) return { posts: [], status: 0, error: "facebook_page_access_token_missing", source: cred.source };
+      const fields = [
+        "id",
+        "message",
+        "story",
+        "created_time",
+        "full_picture",
+        "permalink_url",
+        "attachments{media,url,type,subattachments{media,url,type}}",
+        "likes.summary(true).limit(0)",
+        "comments.summary(true).limit(0)",
+        "shares",
+      ].join(",");
+      let nextUrl = `${new URL(`${cred.pageId}/posts`, "https://graph.facebook.com/v20.0/").toString()}?${new URLSearchParams({
+        fields,
+        limit: String(Math.min(100, Math.max(10, pageSize))),
+        access_token: cred.token,
+      }).toString()}`;
+      const rows: RawPost[] = [];
+      const seen = new Set<string>();
+      let status = 0;
+      let error: any = null;
+      for (let page = 0; page < maxPages && nextUrl && rows.length < lastRecords; page++) {
+        const resp = await fetch(nextUrl);
+        status = resp.status;
+        const json = await resp.json().catch(() => ({} as any));
+        if (!resp.ok) { error = json?.error ?? json; break; }
+        const items: any[] = Array.isArray(json?.data) ? json.data : [];
+        if (!items.length) break;
+        for (const it of items) {
+          const id = asText(it?.id);
+          if (!id || seen.has(id)) continue;
+          seen.add(id);
+          rows.push({
+            item: { ...it, post: it.message ?? it.story ?? "", fbId: id, postId: id, created: it.created_time, postUrl: it.permalink_url },
+            source: "graph",
+            profileKey,
+            refId: null,
+            fbId: cred.pageId,
+            fbName: ws?.facebook_page_name ?? null,
+          });
+        }
+        nextUrl = typeof json?.paging?.next === "string" ? json.paging.next : "";
+      }
+      return { posts: rows, status, error, source: cred.source };
     };
 
     const candidates = await discoverProfiles();
@@ -408,6 +489,15 @@ Deno.serve(async (req) => {
       lastStatus = genericResult.status || lastStatus;
       lastError = genericResult.error ?? lastError;
       if (genericResult.posts.length > all.length) all = genericResult.posts;
+    }
+
+    let graphSource: string | null = null;
+    if (all.length < Math.min(150, lastRecords)) {
+      const graphResult = await fetchGraphHistory();
+      graphSource = graphResult.source;
+      lastStatus = graphResult.status || lastStatus;
+      lastError = graphResult.error ?? lastError;
+      if (graphResult.posts.length > all.length) all = graphResult.posts;
     }
 
     if (winningProfile?.profileKey && winningProfile.profileKey !== profileKey) {
@@ -478,7 +568,7 @@ Deno.serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ ok: true, count: posts.length, posts, persisted: persist, upserted, persist_error: persistError, owner_id: ownerId, raw_status: lastStatus, raw_error: lastError }),
+      JSON.stringify({ ok: true, count: posts.length, posts, persisted: persist, upserted, persist_error: persistError, owner_id: ownerId, raw_status: lastStatus, raw_error: lastError, graph_source: graphSource }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {
