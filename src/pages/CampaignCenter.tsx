@@ -1811,7 +1811,60 @@ const PublishedFeed = () => {
         grouped.set(key, { ...r, recipient_count: 1 });
       }
     });
-    setRows(Array.from(grouped.values()));
+    const merged = Array.from(grouped.values());
+
+    // Merge live Facebook posts (from Ayrshare /history) so the published feed
+    // shows every post on the page — historical native posts as well as ones
+    // dispatched from the system. Attach media URLs to existing campaign rows
+    // when their provider_message_id matches a fetched FB post; inject
+    // synthetic external rows for any FB post we don't already have locally.
+    try {
+      const { data: fbData } = await supabase.functions.invoke('fb-recent-posts', {
+        body: { lastRecords: 30 },
+      });
+      const fbPosts: any[] = (fbData as any)?.ok ? ((fbData as any).posts ?? []) : [];
+      if (fbPosts.length > 0) {
+        const byFbId = new Map<string, any>();
+        for (const p of fbPosts) {
+          const k = String(p.fb_post_id || p.id || '').trim();
+          if (k) byFbId.set(k, p);
+        }
+        // Attach media to existing facebook rows.
+        for (const row of merged) {
+          if (String(row.channel || '').toLowerCase() !== 'facebook') continue;
+          const pid = String(row.provider_message_id || '').trim();
+          if (pid && byFbId.has(pid)) {
+            const p = byFbId.get(pid);
+            row.media_urls = Array.isArray(p.media) ? p.media : [];
+            if (p.url) row.external_url = p.url;
+            byFbId.delete(pid);
+          }
+        }
+        // Inject synthetic rows for native FB posts not in campaign_logs.
+        const externalRows: CampaignRow[] = [];
+        for (const p of byFbId.values()) {
+          const id = `fb:${p.fb_post_id || p.id || crypto.randomUUID()}`;
+          externalRows.push({
+            id,
+            campaign_name: (String(p.text || '').trim().split('\n')[0] || 'פוסט פייסבוק').slice(0, 80),
+            channel: 'facebook',
+            message_body: p.text || '',
+            created_at: p.created_at || new Date().toISOString(),
+            provider_message_id: p.fb_post_id || p.id || null,
+            recipient_count: 1,
+            media_urls: Array.isArray(p.media) ? p.media : [],
+            external_url: p.url || null,
+            is_external: true,
+          });
+        }
+        merged.push(...externalRows);
+        merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      }
+    } catch (err) {
+      console.warn('[PublishedFeed] fb-recent-posts merge failed (non-fatal)', err);
+    }
+
+    setRows(merged);
   };
 
   // Ask the backend to (a) refresh live Ayrshare analytics — likes/comments/shares/views
