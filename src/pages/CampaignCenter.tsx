@@ -3400,6 +3400,7 @@ const CampaignCenter = () => {
 
         </TabsContent>
         <TabsContent value="published" className="mt-6">
+          <FacebookRecentPostsPanel />
           <PublishedFeed />
         </TabsContent>
         <TabsContent value="calendar" className="mt-6">
