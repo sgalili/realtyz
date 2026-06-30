@@ -1517,6 +1517,9 @@ type CampaignRow = {
   metrics_updated_at?: string | null;
   status?: string | null;
   sent_at?: string | null;
+  media_urls?: string[];
+  external_url?: string | null;
+  is_external?: boolean;
 };
 
 // A scheduled row is one whose status is "scheduled" AND whose execution time
