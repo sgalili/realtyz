@@ -1833,10 +1833,16 @@ const PublishedFeed = () => {
     // when their provider_message_id matches a fetched FB post; inject
     // synthetic external rows for any FB post we don't already have locally.
     try {
-      const { data: fbData } = await supabase.functions.invoke('fb-recent-posts', {
-        body: { lastRecords: 500, pageSize: 100 },
-      });
-      const fbPosts: any[] = (fbData as any)?.ok ? ((fbData as any).posts ?? []) : [];
+      const wsKey = workspaceOwnerId ?? 'anon';
+      let fbPosts: any[] = FB_POSTS_CACHE.get(wsKey) ?? [];
+      if (opts.forceFb || fbPosts.length === 0) {
+        const { data: fbData } = await supabase.functions.invoke('fb-recent-posts', {
+          body: { lastRecords: 500, pageSize: 100 },
+        });
+        fbPosts = (fbData as any)?.ok ? ((fbData as any).posts ?? []) : [];
+        if (fbPosts.length > 0) FB_POSTS_CACHE.set(wsKey, fbPosts);
+      }
+
       if (fbPosts.length > 0) {
         const normText = (s: any) => String(s || '').replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 220);
         const collectFbPostKeys = (post: any) => Array.from(new Set([
