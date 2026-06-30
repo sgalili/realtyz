@@ -196,6 +196,27 @@ Deno.serve(async (req) => {
       // user disconnect action should mark a platform inactive.
     }
 
+    // Backfill the singleton workspace_social_profile with the live Facebook
+    // page id + name so every workspace member (owner, super admin, managers,
+    // tenants) sees the connection without depending on per-user rows.
+    try {
+      const fbAcct = accounts.find((a) => a.platform === "facebook" && a.account_ref && !a.account_ref.startsWith("default:"));
+      if (fbAcct) {
+        await admin
+          .from("workspace_social_profile")
+          .update({
+            facebook_page_id: fbAcct.account_ref,
+            facebook_page_name: fbAcct.display_name ?? null,
+            updated_at: now,
+          })
+          .eq("id", "00000000-0000-0000-0000-000000000001");
+      }
+    } catch (wspErr) {
+      console.warn("[ayrshare-sync-accounts] workspace_social_profile backfill failed", wspErr);
+    }
+
+
+
     // Mirror to workspace-wide social_connections
     try {
       const active: string[] = Array.isArray(ayrBody?.activeSocialAccounts)
