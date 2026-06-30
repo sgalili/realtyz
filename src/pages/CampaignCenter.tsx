@@ -1235,11 +1235,11 @@ const ConfirmDispatchDialog = ({
         const { data } = await supabase
           .from('ayrshare_social_accounts')
           .select('id, platform, account_ref, profile_key, display_name, account_username, username, avatar_url, profile_url, is_active, connected')
-          .eq('user_id', user.id)
           .eq('platform', channel.id)
+          .eq('connected', true)
+          .eq('is_active', true)
           .order('updated_at', { ascending: false });
-        const rows = (data || [])
-          .filter((r: any) => r.is_active !== false && r.connected !== false)
+        let rows = (data || [])
           .map((r: any) => ({
             id: r.id,
             platform: r.platform,
@@ -1250,6 +1250,33 @@ const ConfirmDispatchDialog = ({
             avatar: r.avatar_url || null,
             profileUrl: r.profile_url || (r.account_ref ? buildAccountUrl(channel.id, r.account_ref) : null),
           }));
+        const seen = new Set<string>();
+        rows = rows.filter((p) => {
+          const key = `${p.platform}:${p.accountRef || p.profileKey || p.id}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        if (channel.id === 'facebook' && rows.length === 0) {
+          const { data: wsp } = await supabase
+            .from('workspace_social_profile')
+            .select('ayrshare_profile_key, facebook_page_id, facebook_page_name')
+            .maybeSingle();
+          const fbId = String((wsp as any)?.facebook_page_id || '').trim();
+          const profileKey = String((wsp as any)?.ayrshare_profile_key || '').trim();
+          if (fbId && profileKey) {
+            rows = [{
+              id: `workspace-facebook:${fbId}`,
+              platform: 'facebook',
+              accountRef: fbId,
+              profileKey,
+              name: (wsp as any)?.facebook_page_name || 'Facebook',
+              username: null,
+              avatar: null,
+              profileUrl: buildAccountUrl('facebook', fbId),
+            }];
+          }
+        }
         setPages(rows);
       } finally {
         setPagesLoading(false);
