@@ -1340,12 +1340,21 @@ const ConfirmDispatchDialog = ({
             const resp = (error as any)?.context?.response;
             if (resp && typeof resp.json === 'function') {
               const body = await resp.json();
-              friendly = body?.error || body?.message || null;
+              friendly = body?.message || body?.error || null;
             }
           } catch { /* ignore */ }
           throw new Error(friendly || error.message || 'שגיאת רשת');
         }
         if ((firstFailure?.data as any)?.error) throw new Error((firstFailure.data as any)?.message || (firstFailure.data as any).error);
+        const unverified = results.find((r) => {
+          const payload: any = r.data;
+          if (scheduledAt) return false;
+          return payload?.success === false || payload?.verified === false;
+        });
+        if (unverified) {
+          const payload: any = unverified.data;
+          throw new Error(payload?.message || payload?.error || 'פייסבוק לא אישר שהפוסט פורסם בפועל');
+        }
         const groupFailures: any[] = results.flatMap((r) => Array.isArray((r.data as any)?.group_failures) ? (r.data as any).group_failures : []);
         if (scheduledAt) {
           const when = new Date(scheduledAt).toLocaleString('he-IL');
