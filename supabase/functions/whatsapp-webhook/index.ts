@@ -767,6 +767,22 @@ async function handleLeadInboxInbound(
     return { ok: true, lead_id: lead.id, stored: true, auto_reply: "disabled" };
   }
 
+  // Chat autopilot requires BOTH switches: the contact-level autopilot and the
+  // global AI autopilot switch for the owning/assigned workspace user.
+  const aiOwnerId = lead.assigned_to ? String(lead.assigned_to) : "";
+  if (!aiOwnerId) {
+    return { ok: true, lead_id: lead.id, stored: true, auto_reply: "missing_owner_for_ai_autopilot" };
+  }
+  try {
+    const { data: globalAutopilot } = await admin.rpc("is_ai_autopilot_enabled", { _user_id: aiOwnerId });
+    if (!globalAutopilot) {
+      return { ok: true, lead_id: lead.id, stored: true, auto_reply: "global_ai_autopilot_disabled" };
+    }
+  } catch (e) {
+    console.warn("global AI autopilot check failed:", e instanceof Error ? e.message : e);
+    return { ok: true, lead_id: lead.id, stored: true, auto_reply: "global_ai_autopilot_check_failed" };
+  }
+
   // Build context (best-effort).
   let aiMessages: Array<{ role: string; content: string }> = [{ role: "user", content: inboundText }];
   try {

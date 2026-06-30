@@ -37,7 +37,7 @@ Deno.serve(async (req) => {
     .eq("user_id", userId)
     .eq("is_archived", false)
     .order("created_at", { ascending: false })
-    .limit(200);
+    .limit(500);
 
   if (error) return json({ success: false, error: error.message, targets: 0, dispatched: [] }, 200);
 
@@ -69,7 +69,7 @@ Deno.serve(async (req) => {
       .forEach((post: any) => add(post?.id ?? post?.postId ?? post?.post_id));
   }
 
-  const postIds = Array.from(ids).slice(0, 50);
+  const postIds = Array.from(ids).slice(0, 500);
   if (postIds.length > 0) {
     const p = fetch(`${SUPABASE_URL}/functions/v1/ayrshare-comments-fetch`, {
       method: "POST",

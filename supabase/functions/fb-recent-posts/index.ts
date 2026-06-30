@@ -1,5 +1,6 @@
-// Fetch Facebook Page posts via Ayrshare's platform history endpoint.
-// This endpoint includes native Facebook posts, not only posts created by Ayrshare.
+// Fetch Facebook Page posts via Ayrshare's platform history endpoint and persist
+// every native Page post into campaign_logs. The browser feed must never depend
+// on transient Ayrshare pages; campaign_logs is the permanent source of truth.
 import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
@@ -9,7 +10,7 @@ const corsHeaders = {
 };
 
 const WORKSPACE_ID = "00000000-0000-0000-0000-000000000001";
-
+const DEFAULT_OWNER_ID = "8f66ac1a-070a-4485-ac3b-07697d6c4b9e";
 const AYR_BASE = "https://api.ayrshare.com/api";
 
 const asText = (value: unknown) => (typeof value === "string" ? value.trim() : "");
@@ -50,6 +51,8 @@ const collectMediaUrls = (it: any): string[] => {
     if (typeof node !== "object") return;
     addUrl(urls, node.mediaUrl);
     addUrl(urls, node.src);
+    addUrl(urls, node.url);
+    addUrl(urls, node.href);
     addUrl(urls, node.thumbnailUrl);
     addUrl(urls, node.fullPicture);
     addUrl(urls, node.coverImageUrl);
@@ -115,6 +118,39 @@ const reactionTotal = (value: any): number | null => {
   return null;
 };
 
+const normalizePost = (it: any) => {
+  const ids = collectPostIds(it);
+  const primaryId = ids[0] || null;
+  const text = String(it.post || it.message || it.text || it.caption || it.description || "");
+  const createdAt = firstValidDate(
+    it.created, it.createdAt, it.created_time, it.createdTime,
+    it.publishedAt, it.published_at, it.scheduleDate, it.scheduledFor,
+    it.lastUpdated, it.updated, it.updatedAt, it.timestamp,
+    it.platforms?.facebook?.created, it.platforms?.facebook?.createdTime,
+    it.platforms?.facebook?.publishedAt, it.platforms?.facebook?.created_time,
+  ) ?? new Date().toISOString();
+  const media = collectMediaUrls(it);
+  const url = it.postUrl || it.permalink_url || it.platforms?.facebook?.postUrl || null;
+  return {
+    id: primaryId,
+    fb_post_id: primaryId,
+    post_ids: ids,
+    text,
+    created_at: createdAt,
+    status: it.status || it.statusType || it.platforms?.facebook?.status || null,
+    url,
+    media,
+    like_count: reactionTotal(it.reactions) ?? pickNumber(it.likeCount, it.likes, it.reactionsCount, it.reactionsByType),
+    comment_count: pickNumber(it.commentsCount, it.commentCount, it.comments, it.totalFirstLevelComments),
+    share_count: pickNumber(it.shareCount, it.shares, it.sharesCount),
+    view_count: pickNumber(it.impressionsUnique, it.impressionCount, it.impressions, it.videoViews, it.viewCount),
+    _raw_keys: Object.keys(it || {}),
+    _raw: it,
+  };
+};
+
+const titleFromText = (text: string) => (text.trim().split("\n")[0] || "פוסט פייסבוק").slice(0, 120);
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
@@ -128,6 +164,8 @@ Deno.serve(async (req) => {
     const maxPages = Math.max(1, Math.ceil(lastRecords / pageSize));
     const since = asText(body?.since ?? url.searchParams.get("since"));
     const until = asText(body?.until ?? url.searchParams.get("until"));
+    const persist = body?.persist !== false && url.searchParams.get("persist") !== "false";
+    const ownerId = asText(body?.user_id ?? body?.owner_id ?? url.searchParams.get("user_id")) || DEFAULT_OWNER_ID;
 
     const KEY = Deno.env.get("AYRSHARE_API_KEY")?.trim().replace(/^["']|["']$/g, "");
     if (!KEY) throw new Error("AYRSHARE_API_KEY missing");
@@ -135,7 +173,7 @@ Deno.serve(async (req) => {
     const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!);
     const { data: ws } = await admin
       .from("workspace_social_profile")
-      .select("ayrshare_profile_key")
+      .select("ayrshare_profile_key, facebook_page_id, facebook_page_name")
       .eq("id", WORKSPACE_ID)
       .maybeSingle();
     const profileKey = (ws?.ayrshare_profile_key?.toString().trim()) ||
@@ -157,11 +195,26 @@ Deno.serve(async (req) => {
       if (since) qs.set("since", since);
       if (until) qs.set("until", until);
       if (nextCursor) qs.set("next", nextCursor);
-      const resp = await fetch(`${AYR_BASE}/history/facebook?${qs.toString()}`, {
+      let resp = await fetch(`${AYR_BASE}/history/facebook?${qs.toString()}`, {
         headers: { Authorization: `Bearer ${KEY}`, "Profile-Key": profileKey },
       });
       lastStatus = resp.status;
-      const json = await resp.json().catch(() => ({} as any));
+      let json = await resp.json().catch(() => ({} as any));
+      // Some Ayrshare profiles reject the platform-specific native endpoint
+      // even while the generic history endpoint still returns the workspace's
+      // stored Facebook history. Fall back without deleting/shrinking anything.
+      if (!resp.ok) {
+        const genericQs = new URLSearchParams({
+          platforms: "facebook",
+          lastRecords: String(lastRecords),
+          pagePublished: "true",
+        });
+        resp = await fetch(`${AYR_BASE}/history?${genericQs.toString()}`, {
+          headers: { Authorization: `Bearer ${KEY}`, "Profile-Key": profileKey },
+        });
+        lastStatus = resp.status;
+        json = await resp.json().catch(() => ({} as any));
+      }
       if (!resp.ok) { lastError = json; break; }
       const items: any[] = Array.isArray(json) ? json : (json.posts || json.history || json.data || []);
       if (!items.length) break;
@@ -181,34 +234,55 @@ Deno.serve(async (req) => {
       if (all.length >= lastRecords) break;
     }
 
-    const posts = all.slice(0, lastRecords).map((it: any) => {
-      const ids = collectPostIds(it);
-      const primaryId = ids[0] || null;
-      return {
-        id: primaryId,
-        fb_post_id: primaryId,
-        post_ids: ids,
-        text: it.post || it.message || it.text || it.caption || it.description || "",
-        created_at: firstValidDate(
-          it.created, it.createdAt, it.created_time, it.createdTime,
-          it.publishedAt, it.published_at, it.scheduleDate, it.scheduledFor,
-          it.lastUpdated, it.updated, it.updatedAt, it.timestamp,
-          it.platforms?.facebook?.created, it.platforms?.facebook?.createdTime,
-          it.platforms?.facebook?.publishedAt, it.platforms?.facebook?.created_time,
-        ),
-        status: it.status || it.statusType || it.platforms?.facebook?.status || null,
-        url: it.postUrl || it.permalink_url || it.platforms?.facebook?.postUrl || null,
-        media: collectMediaUrls(it),
-        like_count: reactionTotal(it.reactions) ?? pickNumber(it.likeCount, it.likes, it.reactionsCount, it.reactionsByType),
-        comment_count: pickNumber(it.commentsCount, it.commentCount, it.comments, it.totalFirstLevelComments),
-        share_count: pickNumber(it.shareCount, it.shares, it.sharesCount),
-        view_count: pickNumber(it.impressionsUnique, it.impressionCount, it.impressions, it.videoViews, it.viewCount),
-        _raw_keys: Object.keys(it || {}),
-      };
-    });
+    const posts = all.slice(0, lastRecords).map(normalizePost);
+
+    let upserted = 0;
+    let persistError: string | null = null;
+    if (persist && posts.length > 0) {
+      const rows = posts
+        .filter((p) => p.fb_post_id)
+        .map((p) => ({
+          user_id: ownerId,
+          campaign_name: titleFromText(p.text),
+          channel: "facebook",
+          message_body: p.text || titleFromText(p.text),
+          created_at: p.created_at,
+          sent_at: p.created_at,
+          status: "sent",
+          is_archived: false,
+          provider_message_id: String(p.fb_post_id),
+          provider_response: {
+            imported_native_facebook: true,
+            imported_at: new Date().toISOString(),
+            ayrshare_profile_key: profileKey,
+            facebook_page_id: ws?.facebook_page_id ?? null,
+            facebook_page_name: ws?.facebook_page_name ?? null,
+            postIds: p.post_ids.map((id: string) => ({ platform: "facebook", id, postUrl: p.url || null })),
+            media_urls: p.media,
+            external_url: p.url,
+            native_status: p.status,
+            raw_keys: p._raw_keys,
+            raw: p._raw,
+          },
+          like_count: p.like_count ?? 0,
+          comment_count: p.comment_count ?? 0,
+          share_count: p.share_count ?? 0,
+          view_count: p.view_count ?? 0,
+          metrics_updated_at: new Date().toISOString(),
+        }));
+
+      if (rows.length > 0) {
+        const { data, error } = await admin
+          .from("campaign_logs")
+          .upsert(rows, { onConflict: "user_id,provider_message_id" })
+          .select("id");
+        if (error) persistError = error.message;
+        else upserted = data?.length ?? rows.length;
+      }
+    }
 
     return new Response(
-      JSON.stringify({ ok: true, count: posts.length, posts, raw_status: lastStatus, raw_error: lastError }),
+      JSON.stringify({ ok: true, count: posts.length, posts, persisted: persist, upserted, persist_error: persistError, owner_id: ownerId, raw_status: lastStatus, raw_error: lastError }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
   } catch (e) {

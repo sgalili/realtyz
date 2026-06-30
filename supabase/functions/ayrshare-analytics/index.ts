@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
   if (!userId) return json({ error: "unauthorized" }, 401);
 
   const body = await req.json().catch(() => ({}));
-  const limit = Math.min(200, Math.max(1, Number(body?.limit) || 100));
+  const limit = Math.min(500, Math.max(1, Number(body?.limit) || 500));
   const cacheBust = String(body?.cache_bust ?? `${Date.now()}`);
   const forceLive = body?.force_live !== false;
   const requestedIds = new Set<string>([

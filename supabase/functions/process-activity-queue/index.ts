@@ -70,11 +70,32 @@ Deno.serve(async (req) => {
   const perWsCount = new Map<string, number>();
   const touchedWorkspaces = new Set<string>();
   const results: any[] = [];
+  const autopilotEnabledCache = new Map<string, boolean>();
+  async function isAutopilotEnabled(userId: string): Promise<boolean> {
+    if (!userId) return false;
+    if (autopilotEnabledCache.has(userId)) return autopilotEnabledCache.get(userId)!;
+    const { data } = await admin.rpc("is_ai_autopilot_enabled", { _user_id: userId });
+    const enabled = Boolean(data);
+    autopilotEnabledCache.set(userId, enabled);
+    return enabled;
+  }
 
   for (const row of due ?? []) {
     const ws = row.workspace_owner_id as string;
     const used = perWsCount.get(ws) ?? 0;
     if (used >= BATCH_SIZE) continue;
+    if (!(await isAutopilotEnabled(ws))) {
+      await admin
+        .from("campaign_activity_queue")
+        .update({
+          scheduled_for: new Date(Date.now() + 5 * 60_000).toISOString(),
+          last_error: "ai_autopilot_disabled",
+        })
+        .eq("id", row.id)
+        .eq("status", "pending");
+      results.push({ id: row.id, status: "skipped", reason: "ai_autopilot_disabled", workspace: ws });
+      continue;
+    }
 
     const { data: locked, error: lockErr } = await admin
       .from("campaign_activity_queue")
