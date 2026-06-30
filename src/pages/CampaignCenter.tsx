@@ -3422,12 +3422,10 @@ const CampaignCenter = () => {
 
   // Default landing view = sent campaigns feed. The composer panel is now
   // opened on demand via the "+" button in the page hero (see PageHero).
+  // The "create" composer view is disabled — it was blocking publishing.
+  // Always land on the published feed; only allow explicit calendar view.
   const initial = (searchParams.get('tab') as string) ?? 'published';
-  const remapped: TabValue =
-    initial === 'campaigns' || initial === 'strategy' || initial === 'send' || initial === 'broadcast'
-      ? 'create'
-      : (initial as TabValue);
-  const active: TabValue = TABS.some((t) => t.value === remapped) ? remapped : 'published';
+  const active: TabValue = initial === 'calendar' ? 'calendar' : 'published';
 
   const handleChange = (value: string) => {
     const next = new URLSearchParams(searchParams);
