@@ -213,7 +213,7 @@ Deno.serve(async (req) => {
         const listRes = await fetch(`${AYR_BASE}/profiles`, { headers: { Authorization: `Bearer ${KEY}` } });
         const listJson = await listRes.json().catch(() => ({} as any));
         const profiles: any[] = Array.isArray(listJson?.profiles) ? listJson.profiles : Array.isArray(listJson) ? listJson : [];
-        for (const p of profiles.slice(0, 50)) {
+        for (const p of profiles.slice(0, 500)) {
           const pk = asText(p?.profileKey);
           if (!pk) continue;
           try {
