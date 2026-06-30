@@ -1789,7 +1789,7 @@ const PublishedFeed = () => {
 
 
 
-  const load = async () => {
+  const load = async (opts: { forceFb?: boolean } = {}) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setRows([]); return; }
     setUserId(user.id);
