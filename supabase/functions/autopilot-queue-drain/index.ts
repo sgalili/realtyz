@@ -40,16 +40,25 @@ Deno.serve(async (req) => {
     });
   }
 
-  let sent = 0, failed = 0, retried = 0, paused = 0;
+  let sent = 0, failed = 0, retried = 0, paused = 0, disabled = 0;
 
-  // Cache per-tenant pause state to avoid one RPC call per job.
+  // Cache per-tenant switch state to avoid one RPC call per job.
   const pauseCache = new Map<string, boolean>();
+  const enabledCache = new Map<string, boolean>();
   async function isPaused(userId: string): Promise<boolean> {
     if (!userId) return false;
     if (pauseCache.has(userId)) return pauseCache.get(userId)!;
     const { data } = await sb.rpc("is_ai_paused", { _user_id: userId });
     const v = Boolean(data);
     pauseCache.set(userId, v);
+    return v;
+  }
+  async function isAutopilotEnabled(userId: string): Promise<boolean> {
+    if (!userId) return false;
+    if (enabledCache.has(userId)) return enabledCache.get(userId)!;
+    const { data } = await sb.rpc("is_ai_autopilot_enabled", { _user_id: userId });
+    const v = Boolean(data);
+    enabledCache.set(userId, v);
     return v;
   }
 
@@ -66,6 +75,20 @@ Deno.serve(async (req) => {
           last_error: "ai_paused_by_owner",
         }).eq("id", job.id);
         paused++;
+        continue;
+      }
+
+      // Autopilot sends must only run when the global AI autopilot switch is ON.
+      if (!(await isAutopilotEnabled(job.user_id))) {
+        const nextAt = new Date(Date.now() + 5 * 60_000).toISOString();
+        await sb.from("autopilot_queue").update({
+          status: "pending",
+          scheduled_at: nextAt,
+          locked_at: null,
+          locked_by: null,
+          last_error: "ai_autopilot_disabled",
+        }).eq("id", job.id);
+        disabled++;
         continue;
       }
 
@@ -145,7 +168,7 @@ Deno.serve(async (req) => {
     }
   }
 
-  return new Response(JSON.stringify({ processed: list.length, sent, failed, retried, paused }), {
+  return new Response(JSON.stringify({ processed: list.length, sent, failed, retried, paused, disabled }), {
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 });
