@@ -42,7 +42,7 @@ import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import { IvrBroadcastDialog } from '@/components/campaigns/IvrBroadcastDialog';
 import { EmailAliasSetupDialog } from '@/components/campaigns/EmailAliasSetupDialog';
 import { ScheduledCampaignCalendar } from '@/components/campaigns/ScheduledCampaignCalendar';
-import { FacebookRecentPostsPanel } from '@/components/campaigns/FacebookRecentPostsPanel';
+
 import { getCampaignWorkspaceUserIds } from '@/lib/campaignWorkspace';
 
 
@@ -1517,6 +1517,9 @@ type CampaignRow = {
   metrics_updated_at?: string | null;
   status?: string | null;
   sent_at?: string | null;
+  media_urls?: string[];
+  external_url?: string | null;
+  is_external?: boolean;
 };
 
 // A scheduled row is one whose status is "scheduled" AND whose execution time
@@ -1552,6 +1555,7 @@ const firstPipelineError = (data: any): string | null => {
 // Derive the live native post URL from Ayrshare provider response, or build
 // a best-effort fallback URL from the platform + native post id.
 const derivePostUrl = (r: CampaignRow): string | null => {
+  if (r.external_url) return r.external_url;
   const ids = (r.provider_response as any)?.postIds;
   if (Array.isArray(ids)) {
     const ch = String(r.channel || '').toLowerCase();
@@ -1807,7 +1811,60 @@ const PublishedFeed = () => {
         grouped.set(key, { ...r, recipient_count: 1 });
       }
     });
-    setRows(Array.from(grouped.values()));
+    const merged = Array.from(grouped.values());
+
+    // Merge live Facebook posts (from Ayrshare /history) so the published feed
+    // shows every post on the page — historical native posts as well as ones
+    // dispatched from the system. Attach media URLs to existing campaign rows
+    // when their provider_message_id matches a fetched FB post; inject
+    // synthetic external rows for any FB post we don't already have locally.
+    try {
+      const { data: fbData } = await supabase.functions.invoke('fb-recent-posts', {
+        body: { lastRecords: 30 },
+      });
+      const fbPosts: any[] = (fbData as any)?.ok ? ((fbData as any).posts ?? []) : [];
+      if (fbPosts.length > 0) {
+        const byFbId = new Map<string, any>();
+        for (const p of fbPosts) {
+          const k = String(p.fb_post_id || p.id || '').trim();
+          if (k) byFbId.set(k, p);
+        }
+        // Attach media to existing facebook rows.
+        for (const row of merged) {
+          if (String(row.channel || '').toLowerCase() !== 'facebook') continue;
+          const pid = String(row.provider_message_id || '').trim();
+          if (pid && byFbId.has(pid)) {
+            const p = byFbId.get(pid);
+            row.media_urls = Array.isArray(p.media) ? p.media : [];
+            if (p.url) row.external_url = p.url;
+            byFbId.delete(pid);
+          }
+        }
+        // Inject synthetic rows for native FB posts not in campaign_logs.
+        const externalRows: CampaignRow[] = [];
+        for (const p of byFbId.values()) {
+          const id = `fb:${p.fb_post_id || p.id || crypto.randomUUID()}`;
+          externalRows.push({
+            id,
+            campaign_name: (String(p.text || '').trim().split('\n')[0] || 'פוסט פייסבוק').slice(0, 80),
+            channel: 'facebook',
+            message_body: p.text || '',
+            created_at: p.created_at || new Date().toISOString(),
+            provider_message_id: p.fb_post_id || p.id || null,
+            recipient_count: 1,
+            media_urls: Array.isArray(p.media) ? p.media : [],
+            external_url: p.url || null,
+            is_external: true,
+          });
+        }
+        merged.push(...externalRows);
+        merged.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+      }
+    } catch (err) {
+      console.warn('[PublishedFeed] fb-recent-posts merge failed (non-fatal)', err);
+    }
+
+    setRows(merged);
   };
 
   // Ask the backend to (a) refresh live Ayrshare analytics — likes/comments/shares/views
@@ -2179,10 +2236,20 @@ const PublishedFeed = () => {
               onClick={() => setExpanded((s) => ({ ...s, [r.id]: !isOpen }))}
             >
 
-              {/* Row 1: post title */}
-              <h3 className={cn('font-semibold text-foreground truncate', alignClass)} dir={dirAttr}>
-                {(bodyText.trim().split('\n')[0] || r.campaign_name)}
-              </h3>
+              {/* Row 1: thumbnail + post title */}
+              <div className={cn('flex items-center gap-3', isHe ? 'flex-row' : 'flex-row-reverse')}>
+                {r.media_urls?.[0] ? (
+                  <img
+                    src={r.media_urls[0]}
+                    alt=""
+                    loading="lazy"
+                    className="h-12 w-12 shrink-0 rounded-lg object-cover border border-border"
+                  />
+                ) : null}
+                <h3 className={cn('flex-1 font-semibold text-foreground truncate', alignClass)} dir={dirAttr}>
+                  {(bodyText.trim().split('\n')[0] || r.campaign_name)}
+                </h3>
+              </div>
 
               {/* Row 2 (single combined row): logo · page · date  ........  comments · shares · likes · chevron */}
               <div className={cn('flex items-center gap-2', isHe ? 'flex-row' : 'flex-row-reverse')}>
@@ -2236,6 +2303,14 @@ const PublishedFeed = () => {
 
             {isOpen && (
               <>
+                {r.media_urls && r.media_urls.length > 0 && (
+                  <div className="mx-4 mb-3 flex gap-2 overflow-x-auto">
+                    {r.media_urls.slice(0, 6).map((src, i) => (
+                      <img key={i} src={src} alt="" loading="lazy"
+                           className="h-32 w-32 shrink-0 rounded-lg object-cover border border-border" />
+                    ))}
+                  </div>
+                )}
                 <div className={cn('mx-4 mb-3 rounded-xl border border-border bg-background p-4 text-sm text-foreground whitespace-pre-wrap', alignClass)} dir={dirAttr}>
                   {bodyText || <span className="text-muted-foreground">אין תוכן הודעה</span>}
                 </div>
@@ -2246,53 +2321,56 @@ const PublishedFeed = () => {
                     <ExternalLink className="ml-1 h-4 w-4" />
                     פתח פוסט
                   </Button>
-                  <Button variant="outline" size="sm"
-                          disabled={!!refreshingIds[r.id]}
-                          onClick={(e) => { e.stopPropagation(); bumpRefresh(r.id); }}>
-                    <RefreshCw className={cn('ml-1 h-4 w-4', refreshingIds[r.id] && 'animate-spin')} />
-                    {refreshingIds[r.id] ? 'מרענן…' : 'רענן תגובות'}
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
-                          className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
-                    <Trash2 className="ml-1 h-4 w-4" />
-                    מחק פוסט
-                  </Button>
-                </div>
-                <CampaignGroupBreakdown
-                  workspaceOwnerId={workspaceOwnerId}
-                  campaignBody={bodyText}
-                  campaignCreatedAt={r.created_at}
-                />
-                <div className="border-t border-border bg-muted/30 px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                  {userId ? (
-                    <CampaignCommentsStream
-                      userId={userId}
-                      campaign={r}
-                      commentCount={typeof liveCount === 'number' ? Math.max(liveCount, dbComments) : dbComments}
-                      onLiveCountResolved={updateLiveCount}
-                      refreshSignal={refreshSignals[r.id] ?? 0}
-                      onCountersResolved={(campaignId, counters) => {
-                        // Force-overwrite when the child explicitly signals a
-                        // manual refresh — that breaks the deadlock where a
-                        // previously stored >0 counter masked the fresh
-                        // healthy-profile integers. Otherwise keep the max so a
-                        // transient 0 can't collapse a real count.
-                        const pickNum = (v: unknown) => (typeof v === 'number' ? v : 0);
-                        const max = (a: unknown, b: unknown) => Math.max(pickNum(a), pickNum(b));
-                        setRows((prev) => prev?.map((row) => row.id === campaignId ? {
-                          ...row,
-                          like_count: counters.force ? pickNum(counters.like_count) : max(counters.like_count, row.like_count),
-                          share_count: counters.force ? pickNum(counters.share_count) : max(counters.share_count, row.share_count),
-                          comment_count: counters.force ? pickNum(counters.comment_count) : max(counters.comment_count, row.comment_count),
-                          metrics_updated_at: new Date().toISOString(),
-                        } : row) ?? prev);
-                      }}
-                      onRefreshComplete={handleRefreshComplete}
-                    />
-                  ) : (
-                    <p className="text-xs text-muted-foreground text-right">נדרשת התחברות לצפייה בתגובות</p>
+                  {!r.is_external && (
+                    <Button variant="outline" size="sm"
+                            disabled={!!refreshingIds[r.id]}
+                            onClick={(e) => { e.stopPropagation(); bumpRefresh(r.id); }}>
+                      <RefreshCw className={cn('ml-1 h-4 w-4', refreshingIds[r.id] && 'animate-spin')} />
+                      {refreshingIds[r.id] ? 'מרענן…' : 'רענן תגובות'}
+                    </Button>
+                  )}
+                  {!r.is_external && (
+                    <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
+                            className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
+                      <Trash2 className="ml-1 h-4 w-4" />
+                      מחק פוסט
+                    </Button>
                   )}
                 </div>
+                {!r.is_external && (
+                  <>
+                    <CampaignGroupBreakdown
+                      workspaceOwnerId={workspaceOwnerId}
+                      campaignBody={bodyText}
+                      campaignCreatedAt={r.created_at}
+                    />
+                    <div className="border-t border-border bg-muted/30 px-4 py-3" onClick={(e) => e.stopPropagation()}>
+                      {userId ? (
+                        <CampaignCommentsStream
+                          userId={userId}
+                          campaign={r}
+                          commentCount={typeof liveCount === 'number' ? Math.max(liveCount, dbComments) : dbComments}
+                          onLiveCountResolved={updateLiveCount}
+                          refreshSignal={refreshSignals[r.id] ?? 0}
+                          onCountersResolved={(campaignId, counters) => {
+                            const pickNum = (v: unknown) => (typeof v === 'number' ? v : 0);
+                            const max = (a: unknown, b: unknown) => Math.max(pickNum(a), pickNum(b));
+                            setRows((prev) => prev?.map((row) => row.id === campaignId ? {
+                              ...row,
+                              like_count: counters.force ? pickNum(counters.like_count) : max(counters.like_count, row.like_count),
+                              share_count: counters.force ? pickNum(counters.share_count) : max(counters.share_count, row.share_count),
+                              comment_count: counters.force ? pickNum(counters.comment_count) : max(counters.comment_count, row.comment_count),
+                              metrics_updated_at: new Date().toISOString(),
+                            } : row) ?? prev);
+                          }}
+                          onRefreshComplete={handleRefreshComplete}
+                        />
+                      ) : (
+                        <p className="text-xs text-muted-foreground text-right">נדרשת התחברות לצפייה בתגובות</p>
+                      )}
+                    </div>
+                  </>
+                )}
               </>
             )}
           </article>
@@ -3400,7 +3478,7 @@ const CampaignCenter = () => {
 
         </TabsContent>
         <TabsContent value="published" className="mt-6">
-          <FacebookRecentPostsPanel />
+          
           <PublishedFeed />
         </TabsContent>
         <TabsContent value="calendar" className="mt-6">
