@@ -1563,7 +1563,7 @@ const ConfirmDispatchDialog = ({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent dir="rtl" className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-center text-lg">אישור דיוור</DialogTitle>
+          <DialogTitle className="text-center text-lg">אישור פרסום</DialogTitle>
           <DialogDescription className="text-center">
             קמפיין "{summaryTitle}" · ערוצים: {channel.label}
           </DialogDescription>
@@ -1607,7 +1607,12 @@ const ConfirmDispatchDialog = ({
         <DialogFooter className="!justify-between gap-2 sm:gap-2 flex-row-reverse">
           <Button onClick={handleConfirm} disabled={sending}
             className="bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)]">
-            {sending ? 'מפרסם ברשתות החברתיות...' : 'אישור ושידור'}
+            {sending ? (
+              <span className="inline-flex items-center gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                מפרסם ברשתות החברתיות...
+              </span>
+            ) : 'אישור ושידור'}
           </Button>
           <Button variant="outline" onClick={onClose} disabled={sending}>ביטול</Button>
         </DialogFooter>

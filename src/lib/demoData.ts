@@ -48,7 +48,7 @@ export const DEMO_SUMMARY = {
 };
 
 export const DEMO_CAMPAIGNS = [
-  { id: '1', name: 'גיוס מתעניינים, דירות 3 חדרים תל אביב', description: 'דיוור לקונים פוטנציאליים בת״א', status: 'active', total_sent: 45_200, total_clicks: 12_800, created_at: '2025-01-15' },
+  { id: '1', name: 'גיוס מתעניינים, דירות 3 חדרים תל אביב', description: 'פרסום לקונים פוטנציאליים בת״א', status: 'active', total_sent: 45_200, total_clicks: 12_800, created_at: '2025-01-15' },
   { id: '2', name: 'שכירות סטודנטים, ירושלים', description: 'מבצע השכרות לקראת תחילת שנה', status: 'completed', total_sent: 120_000, total_clicks: 38_400, created_at: '2024-12-01' },
   { id: '3', name: 'יד שנייה, ראשון לציון', description: 'נכסים יד שנייה לזוגות צעירים', status: 'active', total_sent: 28_600, total_clicks: 9_100, created_at: '2025-02-10' },
   { id: '4', name: 'משקיעים, נדל"ן מניב בירושלים', description: 'הזדמנויות השקעה לנכסים מניבים', status: 'paused', total_sent: 65_000, total_clicks: 18_200, created_at: '2024-11-20' },
@@ -346,7 +346,7 @@ export const DEMO_SOCIAL_METRICS = [
 export const DEMO_LIVE_ACTIONS = [
   'שיחת AI Voice הסתיימה עם דני כהן · סווג כמתעניין חם למכירה',
   'מתעניין חדש מאינסטגרם נכנס לניהול מתעניינים השכרות בת״א',
-  'דיוור WhatsApp לדירת 3 חד׳ ברמת גן הגיע ל-85% מסירה',
+  'פרסום WhatsApp לדירת 3 חד׳ ברמת גן הגיע ל-85% מסירה',
   'ה-AI ענה אוטומטית ל-14 שאלות לגבי משכנתא וזכאות',
   'בקשת סיור התקבלה מפייסבוק · נכס למכירה בראשון לציון',
 ];
