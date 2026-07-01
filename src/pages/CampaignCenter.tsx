@@ -1175,6 +1175,7 @@ const InlineComposer = ({
                 scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
                 group_ids: channel.id === 'facebook' ? groupIds : [],
                 selected_profile_ids: channel.id === 'facebook' ? selectedProfileIds : [],
+                attach_wa_link: attachWaLink,
               })}
               disabled={!canSend}
               className={cn(
