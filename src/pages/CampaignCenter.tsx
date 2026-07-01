@@ -2343,11 +2343,16 @@ const PublishedFeed = () => {
                     loading="lazy"
                     className="h-12 w-12 shrink-0 rounded-lg object-cover border border-border"
                   />
-                ) : null}
+                ) : (
+                  <div className="h-12 w-12 shrink-0 rounded-lg border border-border bg-muted flex items-center justify-center text-muted-foreground">
+                    <ImageIcon className="h-5 w-5" />
+                  </div>
+                )}
                 <h3 className={cn('flex-1 font-semibold text-foreground truncate', alignClass)} dir={dirAttr}>
                   {(bodyText.trim().split('\n')[0] || r.campaign_name)}
                 </h3>
               </div>
+
 
               {/* Row 2 (single combined row): logo · page · date  ........  comments · shares · likes · chevron */}
               <div className={cn('flex items-center gap-2', isHe ? 'flex-row' : 'flex-row-reverse')}>
