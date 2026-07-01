@@ -227,7 +227,21 @@ Deno.serve(async (req) => {
     };
     const pickText = (item: any): string | null =>
       pickStr(item?.comment, item?.text, item?.message, item?.commentString, item?.textContent, item?.body);
-    const resolveAuthorPicture = (_comment: any): string | null => null;
+    const resolveAuthorPicture = (comment: any): string | null => {
+      const c = comment ?? {};
+      const from = c?.from ?? c?.author ?? {};
+      const direct = c?.profile_image ?? c?.profile_picture_url ?? c?.picture ??
+        from?.picture?.data?.url ?? from?.profile_image ?? from?.picture ?? null;
+      if (typeof direct === "string" && direct.trim().startsWith("http")) return direct.trim();
+      // Fall back to the Graph picture redirect endpoint keyed on the (app-
+      // scoped) sender id. Returns a CDN URL for FB users and Pages alike.
+      const sid = c?.from?.id ?? c?.author?.id ?? c?.sender_id ?? c?.user_id ?? c?.userId ?? null;
+      if (typeof sid === "string" && /^\d{5,}$/.test(sid)) {
+        return `https://graph.facebook.com/${sid}/picture?type=normal`;
+      }
+      return null;
+    };
+
 
 
     const results: Record<string, any[]> = {};
