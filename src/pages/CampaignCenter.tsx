@@ -3858,6 +3858,11 @@ const CampaignCenter = () => {
           setConfirmPayload(null);
           setPickedChannel(null);
           setPickedChannelIds(new Set());
+          // Force-remount InlineComposer so body + selected property + media
+          // fully reset, then jump to the sent-campaigns feed so the user
+          // immediately sees the freshly logged row.
+          setComposerResetTick((t) => t + 1);
+          handleChange('published');
           if (publishedChannelId) {
             const prefixes = [`rz-composer-draft:v2:${publishedChannelId}`, `rz-composer-draft:${publishedChannelId}`];
             try {
