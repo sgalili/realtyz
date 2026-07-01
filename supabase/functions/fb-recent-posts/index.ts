@@ -950,7 +950,9 @@ Deno.serve(async (req) => {
         posts,
         persisted: persist,
         upserted,
+        enriched_media: enrichedMedia,
         persist_error: persistError,
+
         owner_id: ownerId,
         raw_status: lastStatus,
         raw_error: lastError,
