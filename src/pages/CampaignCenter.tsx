@@ -1609,25 +1609,14 @@ const ConfirmDispatchDialog = ({
             onClick={async (e) => {
               e.preventDefault();
               e.stopPropagation();
-              window.alert("DIAGNOSTIC TRAP: Button execution layer reached successfully!");
               if (isBroadcasting) return;
-              setIsBroadcasting(true);
               try {
-                window.alert(
-                  "Payload preview → channel=" + channel.id +
-                  " | targets=" + (publishTargets?.length ?? 0) +
-                  " | media=" + (mediaUrls?.length ?? 0) +
-                  " | scheduled=" + (scheduledAt || 'now')
-                );
                 await handleConfirm();
-                window.alert("Fetch sequence completed without throwing.");
-              } catch (error: any) {
+              } catch (error) {
                 console.error("Broadcast failed:", error);
-                window.alert("CRITICAL ERROR CAUGHT: " + (error?.message || JSON.stringify(error)));
-              } finally {
-                setIsBroadcasting(false);
               }
             }}
+
 
           >
             {isBroadcasting ? (
