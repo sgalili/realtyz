@@ -3553,7 +3553,7 @@ const CampaignCenter = () => {
             connected={connectedChannels}
             accountNames={channelAccountNames}
             socialProfiles={socialAccountProfiles}
-            onAddFacebookPage={(w) => handleConnectChannel(CHANNEL_CARDS.find((c) => c.id === 'facebook')!, w)}
+            onAddFacebookPage={(w) => { void handleConnectChannel(CHANNEL_CARDS.find((c) => c.id === 'facebook')!, w); }}
           />
           {pickedChannel && (() => {
             const propertiesParam = searchParams.get('properties') || '';
