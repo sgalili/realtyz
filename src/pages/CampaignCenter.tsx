@@ -1476,26 +1476,10 @@ const ConfirmDispatchDialog = ({
     setIsBroadcasting(true);
     try {
       // WhatsApp CTA is OPT-IN via the "הוסף קישור לוואטסאפ" checkbox. When
-      // unchecked the outgoing payload stays completely clean of any CTA or
-      // tracking short-link — regardless of whether a listing is attached.
-      let bodyToPublish = body;
-      if (attachWaLink && listingId) {
-        try {
-          const { data: slugRes } = await supabase.functions.invoke('shortlink-create', {
-            body: { property_id: listingId },
-          });
-          const slug = (slugRes as any)?.slug;
-          if (slug) {
-            const withoutStaleSlug = body
-              .replace(/\n*[^\n]*realtyz\.co\.il\/r\/[a-z0-9]+[^\n]*/gi, '')
-              .replace(/\n*[^\n]*דברו איתנו עכשיו[^\n]*/g, '')
-              .trim();
-            bodyToPublish = `${withoutStaleSlug}\n\nדברו איתנו עכשיו: realtyz.co.il/r/${slug}`;
-          }
-        } catch (e) {
-          console.warn('[shortlink] generation failed', e);
-        }
-      }
+      // checked, the composer has ALREADY inlined a rotating first-person opener
+      // ("דברו איתי…") + a real WA link (branded shortlink or wa.me fallback)
+      // into `body`, so we ship it as-is. When unchecked we transmit clean text.
+      const bodyToPublish = body;
       const campaignName = `${brandName} · ${channel.label}`;
 
       if (SOCIAL_CHANNELS.has(channel.id)) {
