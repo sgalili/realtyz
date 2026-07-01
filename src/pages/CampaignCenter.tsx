@@ -1976,12 +1976,12 @@ const PublishedFeed = () => {
       try {
         const { data: eventRows } = await supabase
           .from('engagement_events')
-          .select('external_post_id')
+          .select('external_post_id, is_archived')
           .in('user_id', scopedUserIds)
-          .eq('is_archived', false)
           .in('external_post_id', postIdsForCounts);
         const savedCountByPostId = new Map<string, number>();
         for (const ev of eventRows ?? []) {
+          if ((ev as any)?.is_archived === true) continue;
           const pid = String((ev as any)?.external_post_id || '');
           if (!pid) continue;
           savedCountByPostId.set(pid, (savedCountByPostId.get(pid) ?? 0) + 1);
@@ -2221,7 +2221,6 @@ const PublishedFeed = () => {
             .from('engagement_events')
             .select('id', { count: 'exact', head: true })
             .in('user_id', campaignUserIds)
-            .eq('is_archived', false)
             .eq('external_post_id', externalPostId);
           if (typeof count === 'number') {
             setRows((prev) => prev?.map((r) => (
