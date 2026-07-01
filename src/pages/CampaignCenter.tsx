@@ -3423,10 +3423,15 @@ const CampaignCenter = () => {
       }
       const url = (data as any)?.url;
       if (!url) {
+        if (preOpened) { try { preOpened.close(); } catch { /* ignore */ } }
         toast.error((data as any)?.error || 'לא התקבל קישור חיבור מ-Ayrshare');
         return;
       }
-      window.open(url, '_blank', 'noopener,noreferrer');
+      if (preOpened && !preOpened.closed) {
+        try { preOpened.location.href = url; } catch { window.open(url, '_blank', 'noopener,noreferrer'); }
+      } else {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
     } catch (e: any) {
       toast.dismiss('ayr-connect');
       toast.error(e?.message ?? 'יצירת חיבור נכשלה');
