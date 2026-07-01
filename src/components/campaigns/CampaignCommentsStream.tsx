@@ -1111,6 +1111,12 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
     </div>
   );
 
+  const openQuickDm = (r: EngagementRow) => {
+    setSendPublic(false);
+    setSendDm(true);
+    setReplyOpen(r);
+  };
+
   const renderCommentNode = (node: CommentRow, depth = 0): React.ReactNode => {
     const replies = childrenByParent.get(node.id) ?? [];
     return (
@@ -1125,6 +1131,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
         <CommentBubble
           row={node}
           onToggleEditor={(r) => setReplyOpen(replyOpen?.id === r.id ? null : r)}
+          onQuickDm={openQuickDm}
           expanded={replyOpen?.id === node.id}
           editor={replyOpen?.id === node.id ? renderEditor(node) : null}
           onRegenerate={regenerateInline}
@@ -1145,6 +1152,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
       </div>
     );
   };
+
 
 
   const topLevelCount = rootComments.length;
