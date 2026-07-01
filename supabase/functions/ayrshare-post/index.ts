@@ -19,7 +19,7 @@ import { enforceOwnerLaws, fetchOwnerBranding } from "../_shared/owner-laws.ts";
 const AYR_POST_URL = "https://api.ayrshare.com/api/post";
 
 const PROVIDER_RATE_LIMIT_MESSAGE =
-  "מערכת הפרסום חסומה זמנית למספר דקות עקב עומס בקשות מצד חברת המדיה. אנא המתן 5 דקות מלאות לפני לחיצה חוזרת.";
+  "המערכת הגיעה למגבלת קצב זמנית. אנא המתן מספר דקות לפני ניסיון נוסף.";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
@@ -52,7 +52,7 @@ const providerFailure = (
   const rateLimited = isProviderRateLimited(status, payload, errors);
   return {
     success: false,
-    error: rateLimited ? "rate_limited" : "provider_error",
+    error: rateLimited ? "rate_limit_exceeded" : "provider_error",
     message: rateLimited ? PROVIDER_RATE_LIMIT_MESSAGE : providerMessage(payload, errors, fallback),
     code: providerCode(payload, errors) || null,
     status,
