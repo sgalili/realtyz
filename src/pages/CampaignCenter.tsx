@@ -2644,7 +2644,7 @@ const PublishedFeed = () => {
                       <AlertTriangle className="h-3.5 w-3.5" />
                       <span>הפרסום הושהה זמנית - המערכת במצב הגנה</span>
                       {hasCountdown && (
-                        <span className={`ms-auto tabular-nums rounded ${tone.badge} text-white px-1.5 py-0.5 text-[10px]`}>
+                        <span className={`ms-auto tabular-nums rounded ${tone.badge} px-1.5 py-0.5 text-[10px]`}>
                           {formatCountdown(remainingMs)}
                         </span>
                       )}
