@@ -1062,6 +1062,17 @@ const InlineComposer = ({
         </span>
       </div>
 
+      {/* Opt-in WhatsApp CTA — appended at publish time only when checked. */}
+      <label className="flex items-center gap-2 text-sm text-foreground select-none cursor-pointer" dir="rtl">
+        <Checkbox
+          checked={attachWaLink}
+          onCheckedChange={(v) => setAttachWaLink(v === true)}
+          aria-label="הוסף קישור לוואטסאפ"
+        />
+        <span>הוסף קישור לוואטסאפ</span>
+      </label>
+
+
 
 
 
