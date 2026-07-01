@@ -722,20 +722,22 @@ Deno.serve(async (req) => {
           skipped += 1;
           const currentMeta = ((exists as any).metadata && typeof (exists as any).metadata === "object") ? (exists as any).metadata : {};
           const currentAuthor = (currentMeta.author && typeof currentMeta.author === "object") ? currentMeta.author : {};
+          const nextAvatar = safeStr(authorPicture, 1000) ?? currentMeta.sender_avatar_url ?? currentMeta.profile_image ?? null;
           const nextMetadata = {
             ...currentMeta,
             parent_id: safeStr(parentId) ?? currentMeta.parent_id ?? null,
             self_authored: selfAuthored || currentMeta.self_authored === true,
             author_type: selfAuthored ? "workspace_page" : currentMeta.author_type ?? "audience",
             sender_id: safeStr(senderId) ?? currentMeta.sender_id ?? null,
-            profile_image: null,
-            sender_avatar_url: null,
+            profile_image: nextAvatar,
+            sender_avatar_url: nextAvatar,
             author: {
               ...currentAuthor,
               name: safeStr(sender, 200) ?? currentAuthor.name ?? null,
-              profile_image: null,
+              profile_image: nextAvatar,
             },
           };
+
           await admin
             .from("engagement_events")
             .update({
