@@ -542,6 +542,42 @@ export type Database = {
           },
         ]
       }
+      ayrshare_action_log: {
+        Row: {
+          action_type: string
+          block_reason: string | null
+          content_hash: string | null
+          content_preview: string | null
+          created_at: string
+          id: string
+          platform: string | null
+          status: string
+          target_id: string | null
+        }
+        Insert: {
+          action_type: string
+          block_reason?: string | null
+          content_hash?: string | null
+          content_preview?: string | null
+          created_at?: string
+          id?: string
+          platform?: string | null
+          status?: string
+          target_id?: string | null
+        }
+        Update: {
+          action_type?: string
+          block_reason?: string | null
+          content_hash?: string | null
+          content_preview?: string | null
+          created_at?: string
+          id?: string
+          platform?: string | null
+          status?: string
+          target_id?: string | null
+        }
+        Relationships: []
+      }
       ayrshare_social_accounts: {
         Row: {
           account_ref: string
