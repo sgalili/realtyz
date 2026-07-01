@@ -1125,8 +1125,8 @@ const InlineComposer = ({
           <div className="flex flex-row items-center gap-3 w-full mt-4">
             <Popover>
               <PopoverTrigger asChild>
-                <button type="button" className="shrink-0 rounded-lg border border-border bg-background p-2.5 text-muted-foreground hover:text-foreground" aria-label="גלריה">
-                  <ImageIcon className="h-4 w-4" />
+                <button type="button" className="shrink-0 rounded-lg border border-border bg-background p-2.5 text-muted-foreground hover:text-foreground" aria-label="צירוף מדיה">
+                  <Paperclip className="h-4 w-4" />
                 </button>
               </PopoverTrigger>
               <PopoverContent align="start" className="w-44 p-1" dir="rtl">
