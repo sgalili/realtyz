@@ -1081,64 +1081,96 @@ const InlineComposer = ({
         </div>
       )}
 
-      {/* Tag pills + action icons */}
-      <div className="flex items-center justify-between gap-2 flex-wrap">
-        <div className="flex items-center gap-2">
-          <Popover>
-            <PopoverTrigger asChild>
-              <button type="button" className="rounded-lg border border-border bg-background p-2 text-muted-foreground hover:text-foreground" aria-label="גלריה">
-                <ImageIcon className="h-4 w-4" />
-              </button>
-            </PopoverTrigger>
-            <PopoverContent align="start" className="w-44 p-1" dir="rtl">
-              <button type="button" onClick={() => galleryInputRef.current?.click()}
-                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
-                <span>גלריה</span>
-                <ImageIcon className="h-4 w-4 text-muted-foreground" />
-              </button>
-              <button type="button" onClick={() => cameraInputRef.current?.click()}
-                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
-                <span>מצלמה</span>
-                <Camera className="h-4 w-4 text-muted-foreground" />
-              </button>
-              <button type="button" onClick={handleAIImage} disabled={generatingImage}
-                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-60">
-                <span>{generatingImage ? 'מחולל…' : 'תמונת AI'}</span>
-                <Sparkles className="h-4 w-4 text-primary" />
-              </button>
-            </PopoverContent>
-          </Popover>
-        </div>
+      {/* Unified action row: image · AI · publish (single line) */}
+      {(() => {
+        const scheduledDate = scheduledLocal ? new Date(scheduledLocal) : null;
+        const scheduledValid = mode === 'now' || (!!scheduledDate && scheduledDate.getTime() > Date.now());
+        const hasSelectedPages = channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
+        const canSend = hasBody && scheduledValid && hasSelectedPages;
+        return (
+          <div className="flex flex-row items-center gap-3 w-full mt-4">
+            <Popover>
+              <PopoverTrigger asChild>
+                <button type="button" className="shrink-0 rounded-lg border border-border bg-background p-2.5 text-muted-foreground hover:text-foreground" aria-label="גלריה">
+                  <ImageIcon className="h-4 w-4" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-44 p-1" dir="rtl">
+                <button type="button" onClick={() => galleryInputRef.current?.click()}
+                  className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
+                  <span>גלריה</span>
+                  <ImageIcon className="h-4 w-4 text-muted-foreground" />
+                </button>
+                <button type="button" onClick={() => cameraInputRef.current?.click()}
+                  className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
+                  <span>מצלמה</span>
+                  <Camera className="h-4 w-4 text-muted-foreground" />
+                </button>
+                <button type="button" onClick={handleAIImage} disabled={generatingImage}
+                  className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-60">
+                  <span>{generatingImage ? 'מחולל…' : 'תמונת AI'}</span>
+                  <Sparkles className="h-4 w-4 text-primary" />
+                </button>
+              </PopoverContent>
+            </Popover>
 
-        <div className="flex items-center gap-2">
-          {hasBody && bodyManuallyEdited && (
-            <Button
-              size="sm"
-              variant="secondary"
-              disabled={finalizingBody || generating}
-              onClick={finalizeBody}
-              className="h-9"
-              title="לטשטוש מספרי בית, הוספת חתימת רישיון תיווך ושיוף הניסוח"
+            <button
+              type="button"
+              onClick={() => handleGenerate()}
+              disabled={generating}
+              className={cn(
+                'flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold shadow-md transition',
+                'bg-[#FFD600] text-[#E11D2A] hover:bg-[#FFC400] hover:shadow-lg',
+                'disabled:opacity-60 disabled:cursor-not-allowed',
+              )}
             >
-              {finalizingBody ? 'מנסח גרסה סופית...' : 'גרסה סופית'}
-            </Button>
-          )}
-          <button
-            type="button"
-            onClick={() => handleGenerate()}
-            disabled={generating}
-            className={cn(
-              'inline-flex items-center gap-2 rounded-full px-5 py-2.5 text-sm font-bold shadow-md transition',
-              'bg-[#FFD600] text-[#E11D2A] hover:bg-[#FFC400] hover:shadow-lg',
-              'disabled:opacity-60 disabled:cursor-not-allowed',
-            )}
-          >
-            <RefreshCw className={cn('h-4 w-4', generating && 'animate-spin')} />
-            {generating ? 'מחולל תוכן…' : 'חולל תוכן עם AI'}
-          </button>
-        </div>
+              <RefreshCw className={cn('h-4 w-4', generating && 'animate-spin')} />
+              {generating ? 'מחולל תוכן…' : 'חולל תוכן עם AI'}
+            </button>
 
-      </div>
+            <button
+              type="button"
+              onClick={() => canSend && onConfirm({
+                body,
+                original_ai_body: originalAiBody,
+                listing_id: selectedListingId || null,
+                mode,
+                media_urls: attachments
+                  .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
+                  .map((a) => a.url as string),
+                scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
+                group_ids: channel.id === 'facebook' ? groupIds : [],
+                selected_profile_ids: channel.id === 'facebook' ? selectedProfileIds : [],
+              })}
+              disabled={!canSend}
+              className={cn(
+                'flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition',
+                canSend
+                  ? 'bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)] shadow-md'
+                  : 'bg-muted text-muted-foreground/80 cursor-not-allowed',
+              )}
+            >
+              <Send className="h-4 w-4 -scale-x-100" />
+              {mode === 'scheduled' ? 'תזמן פרסום' : 'פרסם קמפיין'}
+            </button>
+          </div>
+        );
+      })()}
+
+      {hasBody && bodyManuallyEdited && (
+        <div className="flex justify-end">
+          <Button
+            size="sm"
+            variant="secondary"
+            disabled={finalizingBody || generating}
+            onClick={finalizeBody}
+            className="h-9"
+            title="לטשטוש מספרי בית, הוספת חתימת רישיון תיווך ושיוף הניסוח"
+          >
+            {finalizingBody ? 'מנסח גרסה סופית...' : 'גרסה סופית'}
+          </Button>
+        </div>
+      )}
 
 
 
@@ -1204,40 +1236,6 @@ const InlineComposer = ({
         );
       })()}
 
-      {(() => {
-        const scheduledDate = scheduledLocal ? new Date(scheduledLocal) : null;
-        const scheduledValid = mode === 'now' || (!!scheduledDate && scheduledDate.getTime() > Date.now());
-        const hasSelectedPages = channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
-        const canSend = hasBody && scheduledValid && hasSelectedPages;
-        return (
-          /* Dispatch CTA + inline schedule toggle */
-          <div className="flex items-stretch gap-2">
-            <button type="button"
-              onClick={() => canSend && onConfirm({
-                body,
-                original_ai_body: originalAiBody,
-                listing_id: selectedListingId || null,
-                mode,
-                media_urls: attachments
-                  .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
-                  .map((a) => a.url as string),
-                scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
-                group_ids: channel.id === 'facebook' ? groupIds : [],
-                selected_profile_ids: channel.id === 'facebook' ? selectedProfileIds : [],
-              })}
-              disabled={!canSend}
-              className={cn(
-                'flex-1 rounded-xl px-4 py-3 text-sm font-bold transition flex items-center justify-center gap-2',
-                canSend
-                  ? 'bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)] shadow-md'
-                  : 'bg-muted text-muted-foreground/80 cursor-not-allowed',
-              )}>
-              <Send className="h-4 w-4 -scale-x-100" />
-              {mode === 'scheduled' ? 'תזמן פרסום' : 'פרסם קמפיין'}
-            </button>
-          </div>
-        );
-      })()}
 
     </div>
   );
@@ -1604,8 +1602,10 @@ const ConfirmDispatchDialog = ({
             type="button"
             disabled={isBroadcasting}
             className="bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)]"
-            onClick={async () => {
-              console.log("EMERGENCY AUDIT: Broadcast button clicked successfully.");
+            onClick={async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              window.alert("DIAGNOSTIC TRAP: Button execution layer reached successfully!");
               if (isBroadcasting) return;
               try {
                 await handleConfirm();
