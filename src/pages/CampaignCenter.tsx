@@ -1054,7 +1054,13 @@ const InlineComposer = ({
           rows={6}
           value={body}
           maxLength={MAX_CHARS}
-          onChange={(e) => { setBody(cleanBody(e.target.value)); setBodyManuallyEdited(true); }}
+          onChange={(e) => {
+            // While the WA CTA opt-in is active, keep the composed CTA in the
+            // textarea (don't strip it via cleanBody). Once unchecked, strip.
+            const raw = e.target.value.replace(/^[\s\u200f\u200e]+/g, '').slice(0, MAX_CHARS);
+            setBody(attachWaLink ? raw : cleanBody(raw));
+            setBodyManuallyEdited(true);
+          }}
           placeholder="תוכן ההודעה — כתוב כאן או חולל באמצעות AI"
           className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-10 pb-7"
         />
@@ -1063,11 +1069,52 @@ const InlineComposer = ({
         </span>
       </div>
 
-      {/* Opt-in WhatsApp CTA — appended at publish time only when checked. */}
+      {/* Opt-in WhatsApp CTA — checking this immediately inlines the branded
+          short-link + "דברו איתנו עכשיו:" at the bottom of the textarea and
+          scrolls to it; unchecking cleanly strips it. */}
       <label className="flex items-center gap-2 text-sm text-foreground select-none cursor-pointer" dir="rtl">
         <Checkbox
           checked={attachWaLink}
-          onCheckedChange={(v) => setAttachWaLink(v === true)}
+          onCheckedChange={async (v) => {
+            const next = v === true;
+            setAttachWaLink(next);
+            if (!next) {
+              // Strip immediately on uncheck.
+              setBody((prev) => stripWaCta(prev));
+              return;
+            }
+            // Compose the CTA line. Try to mint a branded short-link when a
+            // listing is attached; fall back to a plain CTA otherwise.
+            let ctaLine = 'דברו איתנו עכשיו בוואטסאפ';
+            if (selectedListingId) {
+              try {
+                const { data: slugRes } = await supabase.functions.invoke('shortlink-create', {
+                  body: { property_id: selectedListingId },
+                });
+                const slug = (slugRes as any)?.slug;
+                if (slug) ctaLine = `דברו איתנו עכשיו: realtyz.co.il/r/${slug}`;
+              } catch (err) {
+                console.warn('[shortlink] preview generation failed', err);
+              }
+            }
+            setBody((prev) => {
+              const clean = stripWaCta(prev);
+              const merged = `${clean}\n\n${ctaLine}`.slice(0, MAX_CHARS);
+              // Auto-scroll the textarea to reveal the appended CTA.
+              requestAnimationFrame(() => {
+                const el = textareaRef.current;
+                if (el) {
+                  el.scrollTop = el.scrollHeight;
+                  try {
+                    el.focus({ preventScroll: true });
+                    el.setSelectionRange(merged.length, merged.length);
+                  } catch { /* noop */ }
+                }
+              });
+              return merged;
+            });
+            setBodyManuallyEdited(true);
+          }}
           aria-label="הוסף קישור לוואטסאפ"
         />
         <span>הוסף קישור לוואטסאפ</span>
