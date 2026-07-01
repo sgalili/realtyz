@@ -87,6 +87,31 @@ type ConfirmPayload = {
   selected_profile_ids: string[];
 };
 
+const isRenderablePostMediaUrl = (value: unknown): value is string => {
+  if (typeof value !== 'string') return false;
+  const url = value.trim();
+  if (!/^https?:\/\//i.test(url)) return false;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    const path = parsed.pathname.toLowerCase();
+    const facebookPagePaths = ['/photo.php', '/permalink.php', '/share/', '/posts/', '/videos/', '/watch'];
+    if ((host === 'facebook.com' || host.endsWith('.facebook.com')) && facebookPagePaths.some((p) => path.startsWith(p))) {
+      return false;
+    }
+    return /\.(jpg|jpeg|png|webp|gif|avif|mp4|mov|m4v)(\?|$)/i.test(url)
+      || host.includes('fbcdn.net')
+      || host.includes('cdninstagram.com');
+  } catch {
+    return false;
+  }
+};
+
+const normalizePostMediaUrls = (value: unknown): string[] => {
+  const source = Array.isArray(value) ? value : [];
+  return Array.from(new Set(source.filter(isRenderablePostMediaUrl)));
+};
+
 // Top row (RTL): Facebook → Instagram → X
 // Middle row (RTL): IVR → Email → AI Voice
 // Bottom row (RTL): YouTube → LinkedIn → TikTok
@@ -1885,7 +1910,7 @@ const PublishedFeed = () => {
         null;
       return {
         ...r,
-        media_urls: media.filter((u: any) => typeof u === 'string' && /^https?:\/\//i.test(u)),
+        media_urls: normalizePostMediaUrls(media),
         external_url: externalUrl,
       };
     };
