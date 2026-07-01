@@ -3757,6 +3757,7 @@ const CampaignCenter = () => {
             if (propertyIds.length <= 1) {
               return (
                 <InlineComposer
+                  key={`composer-${pickedChannel?.id ?? 'none'}-${composerResetTick}`}
                   channel={pickedChannel}
                   brandName={brandName}
                   socialProfiles={socialAccountProfiles}
