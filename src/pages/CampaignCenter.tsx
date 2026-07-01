@@ -2416,10 +2416,14 @@ const PublishedFeed = () => {
                           type="button"
                           title="הסר תמונה"
                           aria-label="הסר תמונה"
-                          onClick={(e) => { e.stopPropagation(); removeMediaAt(r.id, i); }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (window.confirm('להסיר את התמונה מהפוסט?')) removeMediaAt(r.id, i);
+                          }}
                           className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white opacity-90 transition hover:bg-destructive"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
+
                         </button>
                       </div>
                     ))}
