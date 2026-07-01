@@ -250,8 +250,8 @@ const ChannelGrid = ({
                   <span
                     role="button"
                     tabIndex={0}
-                    onClick={(e) => { e.stopPropagation(); onAddFacebookPage?.(); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onAddFacebookPage?.(); } }}
+                    onClick={(e) => { e.stopPropagation(); const w = window.open('about:blank', '_blank', 'noopener,noreferrer'); onAddFacebookPage?.(w); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); const w = window.open('about:blank', '_blank', 'noopener,noreferrer'); onAddFacebookPage?.(w); } }}
                     className="absolute left-1 top-1 z-10 inline-flex h-5 w-5 items-center justify-center rounded-full text-[#0a2540] hover:text-[#0a2540]/80"
                     title="הוסף עמוד נוסף"
                     aria-label="הוסף עמוד נוסף"
