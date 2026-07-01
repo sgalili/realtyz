@@ -2634,23 +2634,25 @@ const PublishedFeed = () => {
               {isPaused && (() => {
                 const remainingMs = circuitUntilMs ? circuitUntilMs - nowMs : 0;
                 const hasCountdown = remainingMs > 0;
+                const isUrgent = remainingMs > 5 * 60_000;
+                const tone = isUrgent
+                  ? { border: 'border-red-300', bg: 'bg-red-50', text: 'text-red-700', badge: 'bg-red-600' }
+                  : { border: 'border-orange-300', bg: 'bg-orange-50', text: 'text-orange-700', badge: 'bg-orange-500' };
                 return (
-                  <div className="rounded-md border border-red-300 bg-red-50 px-2.5 py-2 space-y-1">
-                    <div className="flex items-center gap-1.5 text-[11px] font-bold text-red-700">
+                  <div className={`rounded-md border ${tone.border} ${tone.bg} px-2.5 py-2`}>
+                    <div className={`flex items-center gap-1.5 text-[11px] font-bold ${tone.text}`}>
                       <AlertTriangle className="h-3.5 w-3.5" />
                       <span>הפרסום הושהה זמנית - המערכת במצב הגנה</span>
                       {hasCountdown && (
-                        <span className="ms-auto tabular-nums rounded bg-red-600 text-white px-1.5 py-0.5 text-[10px]">
+                        <span className={`ms-auto tabular-nums rounded ${tone.badge} text-white px-1.5 py-0.5 text-[10px]`}>
                           {formatCountdown(remainingMs)}
                         </span>
                       )}
                     </div>
-                    <p className="text-[11px] leading-relaxed text-red-800/90">
-                      חשבון הפרסום שלכם הגיע למגבלת הקצב היומית של הרשת החברתית. הפרסום יעלה אוטומטית ברגע שהמגבלה תתאפס{hasCountdown ? ` (בעוד ${formatCountdown(remainingMs)})` : ''}.
-                    </p>
                   </div>
                 );
               })()}
+
 
             </header>
 
