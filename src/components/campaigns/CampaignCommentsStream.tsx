@@ -3,7 +3,7 @@
 // user_id (RLS also enforces it). Matches on external_post_id when the
 // campaign log has a provider_message_id, otherwise falls back to a time-
 // windowed lookup around the campaign's created_at.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -278,7 +278,7 @@ const writeDraftCache = (campaignId: string, map: DraftMap) => {
   try { sessionStorage.setItem(draftKey(campaignId), JSON.stringify(map)); } catch { /* quota */ }
 };
 
-export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveCountResolved, onCountersResolved, refreshSignal, hideHeader, onRefreshComplete }: Props) {
+function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCountResolved, onCountersResolved, refreshSignal, hideHeader, onRefreshComplete }: Props) {
   const commentOwnerId = campaign.user_id || userId;
   const cached = readCache(campaign.id);
   const [rows, setRows] = useState<EngagementRow[] | null>(cached);
@@ -645,15 +645,11 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
       }
       await load();
 
-      // Auto-refresh on the first card expand in the browser session, even if
-      // an old provider lock exists from a previous empty attempt. Later opens
-      // respect the 15-minute lock and keep the cached tree visible.
-      let firstExpandFetch = false;
-      try { firstExpandFetch = sessionStorage.getItem(autoFetchKey(campaign.id)) !== "1"; } catch { firstExpandFetch = true; }
-      if (postIds.length > 0 && (firstExpandFetch || !isProviderFetchLocked(postIds))) {
-        try { sessionStorage.setItem(autoFetchKey(campaign.id), "1"); } catch { /* quota */ }
-        void forceRefresh({ manual: true });
-      }
+      // AUTO-REFRESH DISABLED: provider (Ayrshare/Meta) hits NEVER happen
+      // automatically on card expand. The user must click "רענן תגובות"
+      // explicitly. This eliminates the loop that was silently re-rendering
+      // sibling components and wiping the media-upload state on the composer.
+
 
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1392,5 +1388,19 @@ function CommentBubble({
     </div>
   );
 }
+
+// Wrap in React.memo so parent re-renders (composer state, media uploads,
+// counter bubbles) can never force a re-render of the comment tree that would
+// re-execute mount effects and stomp on sibling upload state.
+export const CampaignCommentsStream = memo(CampaignCommentsStreamInner, (prev, next) => {
+  return (
+    prev.userId === next.userId &&
+    prev.campaign.id === next.campaign.id &&
+    prev.commentCount === next.commentCount &&
+    prev.refreshSignal === next.refreshSignal &&
+    prev.hideHeader === next.hideHeader
+  );
+});
+
 
 

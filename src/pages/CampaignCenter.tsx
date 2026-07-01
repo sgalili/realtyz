@@ -1053,9 +1053,9 @@ const InlineComposer = ({
 
 
       {/* Hidden inputs */}
-      <input ref={galleryInputRef} type="file" accept="image/*" multiple className="hidden"
+      <input ref={galleryInputRef} type="file" accept="image/*,video/*" multiple className="hidden"
         onChange={(e) => { handleFiles(e.target.files, 'image'); e.target.value = ''; }} />
-      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
+      <input ref={cameraInputRef} type="file" accept="image/*,video/*" capture="environment" className="hidden"
         onChange={(e) => { handleFiles(e.target.files, 'image'); e.target.value = ''; }} />
 
       <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" multiple className="hidden"
@@ -1064,20 +1064,28 @@ const InlineComposer = ({
       {/* Attachments preview */}
       {attachments.length > 0 && (
         <div className="flex flex-wrap gap-2">
-          {attachments.map((att, i) => (
-            <div key={i} className="inline-flex items-center gap-2 rounded-lg border border-border bg-background px-2 py-1 text-xs">
-              {att.kind === 'image' && att.url ? (
+          {attachments.map((att, i) => {
+            const isVideo = !!att.url && (/\.(mp4|mov|m4v|webm|3gp)(\?|$)/i.test(att.url) || /^video\//i.test((att as any).mimeType || ''));
+            return (
+            <div key={i} className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/5 px-2 py-1 text-xs">
+              {att.kind === 'image' && att.url && !isVideo ? (
                 <img src={att.url} alt={att.name} className="h-8 w-8 rounded object-cover" />
+              ) : isVideo ? (
+                <video src={att.url} className="h-8 w-8 rounded object-cover bg-black" muted playsInline />
               ) : att.kind === 'audio' ? (
                 <Mic className="h-3.5 w-3.5 text-primary" />
               ) : (
                 <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
               )}
               <span className="max-w-[140px] truncate">{att.name}</span>
+              {att.url && /^https?:\/\//i.test(att.url) && (
+                <span className="text-[10px] font-semibold text-emerald-600">✓ הועלה</span>
+              )}
               <button type="button" onClick={() => setAttachments((a) => a.filter((_, j) => j !== i))}
                 className="text-muted-foreground hover:text-destructive">×</button>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
