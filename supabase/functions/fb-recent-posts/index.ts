@@ -602,33 +602,58 @@ Deno.serve(async (req) => {
           error: "workspace ayrshare_profile_key missing",
         };
       }
-      const genericQs = new URLSearchParams({
-        platforms: "facebook",
-        limit: String(Math.min(1000, Math.max(lastRecords, 150))),
-        lastDays: "0",
-      });
-      const resp = await fetch(`${AYR_BASE}/history?${genericQs.toString()}`, {
-        headers: { Authorization: `Bearer ${KEY}`, "Profile-Key": profileKey },
-      });
-      const json = await resp.json().catch(() => ({} as any));
-      if (!resp.ok) return { posts: [], status: resp.status, error: json };
-      const items: any[] = Array.isArray(json)
-        ? json
-        : (json.posts || json.history || json.data || []);
       const seenIds = new Set<string>();
       const rows: RawPost[] = [];
-      for (const it of items) {
-        if (
-          String(it?.status || "").toLowerCase() === "error" ||
-          (Array.isArray(it?.errors) && it.errors.length > 0)
-        ) continue;
-        const ids = collectPostIds(it, false);
-        const id = ids[0];
-        if (!id || seenIds.has(id)) continue;
-        seenIds.add(id);
-        rows.push({ item: it, source: "generic", profileKey });
+      let status = 0;
+      let error: any = null;
+      let nextCursor: string | null = null;
+
+      for (let page = 0; page < maxPages && rows.length < lastRecords; page++) {
+        const genericQs = new URLSearchParams({
+          platforms: "facebook",
+          limit: String(pageSize),
+          lastRecords: String(lastRecords),
+          lastDays: "0",
+          dataType: "all",
+        });
+        if (nextCursor) {
+          genericQs.set("next", nextCursor);
+          genericQs.set("lastId", nextCursor);
+        }
+        const resp = await fetch(`${AYR_BASE}/history?${genericQs.toString()}`, {
+          headers: { Authorization: `Bearer ${KEY}`, "Profile-Key": profileKey },
+        });
+        status = resp.status;
+        const json = await resp.json().catch(() => ({} as any));
+        if (!resp.ok) {
+          error = json;
+          break;
+        }
+        const items: any[] = Array.isArray(json)
+          ? json
+          : (json.posts || json.history || json.data || []);
+        if (!items.length) break;
+        for (const it of items) {
+          if (
+            String(it?.status || "").toLowerCase() === "error" ||
+            (Array.isArray(it?.errors) && it.errors.length > 0)
+          ) continue;
+          const ids = collectPostIds(it, true);
+          const id = pickNativeFacebookPostId(it) || ids[0];
+          if (!id || seenIds.has(id)) continue;
+          seenIds.add(id);
+          rows.push({ item: it, source: "generic", profileKey });
+        }
+        const lastItem = items[items.length - 1];
+        const fallbackCursor = asText(lastItem?.id) ||
+          pickNativeFacebookPostId(lastItem) ||
+          collectPostIds(lastItem, true)[0] || null;
+        nextCursor = json?.lastId || json?.meta?.pagination?.next || json?.next ||
+          json?.nextToken || json?.next_token || json?.pageToken ||
+          (items.length >= pageSize ? fallbackCursor : null);
+        if (!nextCursor) break;
       }
-      return { posts: rows, status: resp.status, error: null };
+      return { posts: rows, status, error };
     };
 
     const fetchGraphHistory = async (): Promise<
