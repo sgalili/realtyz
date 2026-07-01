@@ -1351,20 +1351,33 @@ function CommentBubble({
           )
         ) : isSelfAuthored ? null : (
           <>
-            <button
-              type="button"
-              onClick={() => onToggleEditor(row)}
-              className="inline-flex items-center gap-1 text-[14px] font-medium text-[hsl(220,70%,25%)] hover:underline"
-              aria-expanded={expanded}
-            >
-              <Bot className="h-3.5 w-3.5" />
-              {toggleLabel}
-              {expanded ? (
-                <ChevronUp className="h-3.5 w-3.5" />
-              ) : (
-                <ChevronDown className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-3 flex-wrap">
+              <button
+                type="button"
+                onClick={() => onToggleEditor(row)}
+                className="inline-flex items-center gap-1 text-[14px] font-medium text-[hsl(220,70%,25%)] hover:underline"
+                aria-expanded={expanded}
+              >
+                <Bot className="h-3.5 w-3.5" />
+                {toggleLabel}
+                {expanded ? (
+                  <ChevronUp className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                )}
+              </button>
+              {onQuickDm && (
+                <button
+                  type="button"
+                  onClick={() => onQuickDm(row)}
+                  className="inline-flex items-center gap-1 text-[13px] font-medium text-emerald-700 hover:underline"
+                  title="שלח הודעה פרטית"
+                >
+                  <MessageCircleMore className="h-3.5 w-3.5" />
+                  שלח DM פרטי
+                </button>
               )}
-            </button>
+            </div>
             {expanded && (
               <div className="mt-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
                 {editor}
@@ -1372,6 +1385,7 @@ function CommentBubble({
             )}
           </>
         )}
+
       </div>
     </div>
   );
