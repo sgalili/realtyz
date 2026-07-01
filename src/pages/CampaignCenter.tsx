@@ -1562,12 +1562,16 @@ const ConfirmDispatchDialog = ({
       onConfirmed();
       onClose();
     } catch (e: any) {
-      console.error("Broadcast failed:", e);
+      console.error("CRITICAL BROADCAST FAILURE:", e);
+      try {
+        window.alert("BROADCAST EXCEPTION CAUGHT: " + (e?.message || JSON.stringify(e)));
+      } catch { /* ignore */ }
       toast.error('פרסום נכשל: ' + (e?.message ?? 'שגיאה לא ידועה'));
     } finally {
       setIsBroadcasting(false);
     }
   };
+
 
 
   return (
