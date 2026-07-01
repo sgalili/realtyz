@@ -377,7 +377,18 @@ Deno.serve(async (req) => {
       auto_like: likeOutcome,
     });
   } catch (e) {
+    const msg = e instanceof Error ? e.message : "unknown";
     console.error("[ayrshare-comment-reply] error:", e);
-    return json({ error: e instanceof Error ? e.message : "unknown" }, 500);
+    // Crash-proof envelope: return 200 with structured fallback so the client
+    // never sees a 502. If the error text hints at "not linked" surface the
+    // Hebrew social_not_linked message.
+    if (/not.*linked|code\s*156|social.*network.*not.*linked/i.test(msg)) {
+      return json({
+        success: false,
+        error: "social_not_linked",
+        message: "הפרופיל אינו מחובר לפייסבוק. אנא ודא חיבור בעמוד הגדרות החשבון.",
+      }, 200);
+    }
+    return json({ success: false, error: "SERVICE_FAILED", fallback: true, details: msg }, 200);
   }
 });
