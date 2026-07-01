@@ -1053,9 +1053,9 @@ const InlineComposer = ({
 
 
       {/* Hidden inputs */}
-      <input ref={galleryInputRef} type="file" accept="image/*" multiple className="hidden"
+      <input ref={galleryInputRef} type="file" accept="image/*,video/*" multiple className="hidden"
         onChange={(e) => { handleFiles(e.target.files, 'image'); e.target.value = ''; }} />
-      <input ref={cameraInputRef} type="file" accept="image/*" capture="environment" className="hidden"
+      <input ref={cameraInputRef} type="file" accept="image/*,video/*" capture="environment" className="hidden"
         onChange={(e) => { handleFiles(e.target.files, 'image'); e.target.value = ''; }} />
 
       <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" multiple className="hidden"
