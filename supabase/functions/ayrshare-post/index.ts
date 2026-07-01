@@ -12,6 +12,7 @@ import {
   stripMarkdownEmphasis,
   verifyWorkspaceProfileKey,
 } from "../_shared/ayrshare-helpers.ts";
+import { guardOutboundAction, recordAyrshareAction } from "../_shared/ayrshare-safety.ts";
 import { enforceOwnerLaws, fetchOwnerBranding } from "../_shared/owner-laws.ts";
 
 const AYR_POST_URL = "https://api.ayrshare.com/api/post";
@@ -532,6 +533,16 @@ Deno.serve(async (req) => {
         scheduleDate: scheduledIso,
         groupId: (payload as any)?.faceBookOptions?.groupId ?? null,
       });
+      const guard = await guardOutboundAction({
+        admin,
+        actionType: "post",
+        platform: Array.isArray(payload.platforms) ? String((payload.platforms as any[])[0] ?? "") : undefined,
+        content: finalPostText,
+      });
+      if (!guard.allowed) {
+        console.warn(`[ayrshare-post] BLOCKED by safety guard (${label}): ${guard.reason}`);
+        return { ok: false, status: 429, body: { blocked: true, reason: guard.reason }, errors: [{ code: "safety_guard", message: guard.reason ?? "blocked" }] };
+      }
       const r = await fetch(AYR_POST_URL, {
         method: "POST",
         headers: {
@@ -549,12 +560,16 @@ Deno.serve(async (req) => {
         j = { raw: t };
       }
       const errs = collectErrors(j);
-      return {
-        ok: r.ok && errs.length === 0,
-        status: r.status,
-        body: j,
-        errors: errs,
-      };
+      const ok = r.ok && errs.length === 0;
+      if (ok) {
+        await recordAyrshareAction(admin, {
+          actionType: "post",
+          platform: Array.isArray(payload.platforms) ? String((payload.platforms as any[])[0] ?? "") : undefined,
+          content: finalPostText,
+          contentHash: guard.contentHash,
+        });
+      }
+      return { ok, status: r.status, body: j, errors: errs };
     };
 
     // ---- Main page post (skipped only when caller targets groups exclusively

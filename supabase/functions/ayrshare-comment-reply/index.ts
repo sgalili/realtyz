@@ -4,6 +4,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { sanitizeOutboundText, resolveWorkspaceProfileKey, likeNativeComment } from "../_shared/ayrshare-helpers.ts";
+import { guardOutboundAction, recordAyrshareAction } from "../_shared/ayrshare-safety.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 
 const AYR_REPLY_URL = "https://api.ayrshare.com/api/comments/reply";
@@ -97,6 +98,16 @@ Deno.serve(async (req) => {
 
     let ayrPayload: any = null;
     if (!skipPublicReply) {
+      const guard = await guardOutboundAction({
+        admin,
+        actionType: "comment_reply",
+        platform,
+        targetId: nativeCommentId,
+        content: sanitized,
+      });
+      if (!guard.allowed) {
+        return json({ ok: false, blocked: true, reason: guard.reason, message: "Ayrshare safety guard blocked this reply." }, 200);
+      }
       const ayrRes = await fetch(AYR_REPLY_URL, {
         method: "POST",
         headers: {
@@ -136,6 +147,7 @@ Deno.serve(async (req) => {
           suspended: ayrRes.status === 403,
         }, 200);
       }
+      await recordAyrshareAction(admin, { actionType: "comment_reply", platform, targetId: nativeCommentId, content: sanitized });
     }
 
     // STRICT SEQUENTIAL EXECUTION:
