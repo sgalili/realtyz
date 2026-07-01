@@ -890,28 +890,34 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Media enrichment: for stored native FB posts lacking media_urls, batch
-    // fetch full_picture + attachments from Graph and patch provider_response.
+    // Full Graph enrichment: for every stored native FB post, batch-fetch
+    // full_picture + attachments (thumbnails), live engagement counters
+    // (reactions/comments/shares) AND the true native created_time. This
+    // guarantees UI cards show the real photo, real counters, and the
+    // original publish date — never the import moment or a zero counter.
     let enrichedMedia = 0;
+    let enrichedCounters = 0;
+    let enrichedDates = 0;
     try {
       const cred = await resolveGraphCredential();
       if (cred.token) {
-        const { data: needsMedia } = await admin
+        const { data: allFbPosts } = await admin
           .from("campaign_logs")
-          .select("id, provider_message_id, provider_response")
+          .select("id, provider_message_id, provider_response, created_at, like_count, comment_count, share_count")
           .eq("channel", "facebook")
           .eq("user_id", ownerId)
           .eq("is_archived", false)
           .not("provider_message_id", "is", null)
           .limit(500);
-        const targets = (needsMedia || []).filter((r: any) => {
-          const m = r?.provider_response?.media_urls;
-          return !Array.isArray(m) || m.length === 0;
-        });
+        const targets = (allFbPosts || []).filter((r: any) =>
+          /^\d{5,}(_\d{5,})?$/.test(String(r.provider_message_id || ""))
+        );
+        const graphFields =
+          "full_picture,attachments{media,subattachments{media}},reactions.summary(true).limit(0),likes.summary(true).limit(0),comments.summary(true).limit(0),shares,created_time";
         for (let i = 0; i < targets.length; i += 40) {
           const chunk = targets.slice(i, i + 40);
           const ids = chunk.map((t: any) => String(t.provider_message_id)).join(",");
-          const url = `https://graph.facebook.com/v20.0/?ids=${encodeURIComponent(ids)}&fields=full_picture,attachments{media,subattachments{media}}&access_token=${encodeURIComponent(cred.token)}`;
+          const url = `https://graph.facebook.com/v20.0/?ids=${encodeURIComponent(ids)}&fields=${encodeURIComponent(graphFields)}&access_token=${encodeURIComponent(cred.token)}`;
           const resp = await fetch(url);
           if (!resp.ok) continue;
           const json: any = await resp.json().catch(() => ({}));
@@ -919,6 +925,8 @@ Deno.serve(async (req) => {
             const pid = String(t.provider_message_id);
             const entry = json?.[pid];
             if (!entry) continue;
+
+            // Media URLs
             const urls: string[] = [];
             const push = (u: any) => { if (typeof u === "string" && /^https?:\/\//.test(u) && !urls.includes(u)) urls.push(u); };
             push(entry.full_picture);
@@ -930,15 +938,51 @@ Deno.serve(async (req) => {
               if (node.subattachments?.data) visit(node.subattachments.data);
             };
             if (entry.attachments?.data) visit(entry.attachments.data);
-            if (urls.length === 0) continue;
-            const nextPr = { ...(t.provider_response || {}), media_urls: urls };
-            await admin.from("campaign_logs").update({ provider_response: nextPr }).eq("id", t.id);
-            enrichedMedia++;
+
+            // Live engagement counters
+            const likeCount = pickNumber(
+              entry?.reactions?.summary?.total_count,
+              entry?.likes?.summary?.total_count,
+            );
+            const commentCount = pickNumber(entry?.comments?.summary?.total_count);
+            const shareCount = pickNumber(entry?.shares?.count);
+
+            // True native created_time
+            const nativeCreatedAt = firstValidDate(entry?.created_time);
+
+            const existingMedia = Array.isArray((t as any).provider_response?.media_urls)
+              ? (t as any).provider_response.media_urls
+              : [];
+            const mergedMedia = urls.length > 0 ? urls : existingMedia;
+
+            const updatePayload: Record<string, unknown> = {
+              provider_response: {
+                ...((t as any).provider_response || {}),
+                media_urls: mergedMedia,
+                graph_enriched_at: new Date().toISOString(),
+                native_created_time: entry?.created_time ?? null,
+              },
+            };
+            if (urls.length > 0) { enrichedMedia++; }
+            if (likeCount !== null) updatePayload.like_count = likeCount;
+            if (commentCount !== null) updatePayload.comment_count = commentCount;
+            if (shareCount !== null) updatePayload.share_count = shareCount;
+            if (likeCount !== null || commentCount !== null || shareCount !== null) {
+              updatePayload.metrics_updated_at = new Date().toISOString();
+              enrichedCounters++;
+            }
+            if (nativeCreatedAt) {
+              updatePayload.created_at = nativeCreatedAt;
+              updatePayload.sent_at = nativeCreatedAt;
+              enrichedDates++;
+            }
+
+            await admin.from("campaign_logs").update(updatePayload).eq("id", (t as any).id);
           }
         }
       }
     } catch (enrichErr) {
-      console.warn("[fb-recent-posts] media enrichment failed", enrichErr);
+      console.warn("[fb-recent-posts] graph enrichment failed", enrichErr);
     }
 
 
@@ -951,6 +995,8 @@ Deno.serve(async (req) => {
         persisted: persist,
         upserted,
         enriched_media: enrichedMedia,
+        enriched_counters: enrichedCounters,
+        enriched_dates: enrichedDates,
         persist_error: persistError,
 
         owner_id: ownerId,
