@@ -1147,15 +1147,25 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
   };
 
 
+  const topLevelCount = rootComments.length;
+  const repliesCount = childReplies.length;
+
   return (
     <div className="space-y-2 text-right" dir="rtl">
       {!hideHeader && (
-        <div className="flex items-center justify-end">
-          <p className="text-xs font-semibold text-foreground">
-            תגובות לקמפיין ({Math.max(0, rows ? new Set(rows.map((r) => r.id)).size : 0)})
+        <div className="flex items-center justify-start gap-3 flex-wrap">
+          <p className="text-xs font-semibold text-foreground inline-flex items-center gap-1.5">
+            <MessageSquare className="h-3.5 w-3.5 text-primary" />
+            תגובות לקמפיין ({topLevelCount})
+          </p>
+          <span className="text-muted-foreground/50">|</span>
+          <p className="text-xs font-semibold text-foreground inline-flex items-center gap-1.5">
+            <CornerDownLeft className="h-3.5 w-3.5 text-primary" />
+            תגובות המשך ({repliesCount})
           </p>
         </div>
       )}
+
 
       {fbSessionExpired && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2.5 text-xs text-amber-700 dark:text-amber-400 flex items-start gap-2">
