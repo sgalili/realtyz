@@ -1879,6 +1879,40 @@ const PublishedFeed = () => {
     }));
   }, [rows]);
 
+  // Circuit-breaker countdown: fetch until-ms from campaign_settings so paused
+  // cards can show the exact time remaining until Ayrshare resumes.
+  const [circuitUntilMs, setCircuitUntilMs] = useState<number | null>(null);
+  const [nowMs, setNowMs] = useState<number>(() => Date.now());
+  useEffect(() => {
+    let cancelled = false;
+    const load = async () => {
+      try {
+        const { data } = await supabase
+          .from('campaign_settings')
+          .select('value')
+          .eq('key', 'ayrshare_circuit_state')
+          .maybeSingle();
+        if (cancelled) return;
+        const parsed = data?.value ? JSON.parse(String(data.value)) : null;
+        setCircuitUntilMs(parsed?.until_ms ?? null);
+      } catch { /* ignore */ }
+    };
+    load();
+    const poll = setInterval(load, 60_000);
+    const tick = setInterval(() => setNowMs(Date.now()), 1000);
+    return () => { cancelled = true; clearInterval(poll); clearInterval(tick); };
+  }, []);
+  const formatCountdown = (ms: number) => {
+    const s = Math.max(0, Math.floor(ms / 1000));
+    const h = Math.floor(s / 3600);
+    const m = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    const pad = (n: number) => String(n).padStart(2, '0');
+    return h > 0 ? `${h}:${pad(m)}:${pad(sec)}` : `${pad(m)}:${pad(sec)}`;
+  };
+
+
+
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [liveCommentCounts, setLiveCommentCounts] = useState<Record<string, number>>(() => {
     try {
