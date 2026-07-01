@@ -107,9 +107,28 @@ const isRenderablePostMediaUrl = (value: unknown): value is string => {
   }
 };
 
+const mediaDedupeKey = (url: string): string => {
+  try {
+    const u = new URL(url);
+    const filename = u.pathname.split('/').pop() || u.pathname;
+    return filename.toLowerCase();
+  } catch {
+    return url.split('?')[0].toLowerCase();
+  }
+};
+
 const normalizePostMediaUrls = (value: unknown): string[] => {
   const source = Array.isArray(value) ? value : [];
-  return Array.from(new Set(source.filter(isRenderablePostMediaUrl)));
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of source) {
+    if (!isRenderablePostMediaUrl(item)) continue;
+    const key = mediaDedupeKey(item);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(item);
+  }
+  return out;
 };
 
 // Top row (RTL): Facebook → Instagram → X
