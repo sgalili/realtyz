@@ -2055,9 +2055,8 @@ const PublishedFeed = () => {
       } catch { /* ignore */ }
     };
     load();
-    const poll = setInterval(load, 60_000);
     const tick = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => { cancelled = true; clearInterval(poll); clearInterval(tick); };
+    return () => { cancelled = true; clearInterval(tick); };
   }, []);
 
   const formatCountdown = (ms: number) => {
