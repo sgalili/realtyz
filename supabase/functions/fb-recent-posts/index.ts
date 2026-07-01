@@ -13,6 +13,8 @@ const corsHeaders = {
 const WORKSPACE_ID = "00000000-0000-0000-0000-000000000001";
 const DEFAULT_OWNER_ID = "8f66ac1a-070a-4485-ac3b-07697d6c4b9e";
 const AYR_BASE = "https://api.ayrshare.com/api";
+const MIN_SAFE_PURGE_POSTS = 50;
+const PROVIDER_COOLDOWN_MINUTES = 15;
 
 const asText = (
   value: unknown,
@@ -400,18 +402,47 @@ Deno.serve(async (req) => {
         body?.facebook_page_id ?? url.searchParams.get("facebook_page_id"),
       ) || "729806313557785";
 
-    if (purge && persist) {
-      await admin
-        .from("engagement_events")
-        .delete()
-        .eq("user_id", ownerId)
-        .eq("platform", "facebook");
-      await admin
-        .from("campaign_logs")
-        .delete()
-        .eq("user_id", ownerId)
-        .eq("channel", "facebook");
+    const cooldownKey = `facebook_native_import_blocked_until:${ownerId}`;
+    if (body?.force_provider_probe !== true) {
+      try {
+        const { data: cooldown } = await admin
+          .from("campaign_settings")
+          .select("value")
+          .eq("key", cooldownKey)
+          .maybeSingle();
+        const blockedUntil = cooldown?.value ? new Date(String(cooldown.value)).getTime() : 0;
+        if (Number.isFinite(blockedUntil) && blockedUntil > Date.now()) {
+          return new Response(
+            JSON.stringify({
+              ok: false,
+              count: 0,
+              posts: [],
+              persisted: false,
+              purged: false,
+              skipped_reason: "provider_cooldown_active",
+              blocked_until: new Date(blockedUntil).toISOString(),
+            }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+      } catch (_cooldownErr) {
+        // Non-fatal: campaign_settings may not exist in local/dev databases.
+      }
     }
+
+    const rememberProviderCooldown = async (reason: string) => {
+      try {
+        const blockedUntil = new Date(Date.now() + PROVIDER_COOLDOWN_MINUTES * 60_000).toISOString();
+        await admin.from("campaign_settings").upsert({
+          key: cooldownKey,
+          value: blockedUntil,
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "key" });
+        diagnostics.push({ source: "safety", status: "cooldown_set", reason, blocked_until: blockedUntil });
+      } catch (_cooldownErr) {
+        // Non-fatal.
+      }
+    };
 
     const resolveGraphCredential = async (): Promise<
       { token: string; pageId: string | null; source: string | null }
@@ -822,13 +853,23 @@ Deno.serve(async (req) => {
     let lastError: any = null;
     let winningProfile: ProfileCandidate | null = null;
 
+    let providerBlocked = false;
     for (const candidate of candidates) {
+      if (providerBlocked) break;
       const result = await fetchPlatformHistory(candidate, true);
       diagnostics.push({ source: "history/facebook", profile: candidate.label, profileKey: candidate.profileKey.slice(0, 8), pagePublished: true, status: result.status, count: result.posts.length, error: result.error });
+      if (result.status === 403 || result.status === 429) {
+        providerBlocked = true;
+        await rememberProviderCooldown(result.status === 403 ? "profile_suspended_or_forbidden" : "provider_rate_limited");
+      }
       const broadResult = result.posts.length < Math.min(50, lastRecords)
-        ? await fetchPlatformHistory(candidate, undefined)
+        ? (providerBlocked ? result : await fetchPlatformHistory(candidate, undefined))
         : result;
       if (broadResult !== result) diagnostics.push({ source: "history/facebook", profile: candidate.label, profileKey: candidate.profileKey.slice(0, 8), pagePublished: null, status: broadResult.status, count: broadResult.posts.length, error: broadResult.error });
+      if (broadResult.status === 403 || broadResult.status === 429) {
+        providerBlocked = true;
+        await rememberProviderCooldown(broadResult.status === 403 ? "profile_suspended_or_forbidden" : "provider_rate_limited");
+      }
       const bestResult = broadResult.posts.length > result.posts.length
         ? broadResult
         : result;
@@ -846,12 +887,16 @@ Deno.serve(async (req) => {
     // Ayrshare versions/plans: some tenants return the full native Page history
     // with only the API key, while sub-profile calls can return a short recent
     // slice. Always compare both routes and keep the richest result.
-    if (allById.size < Math.min(150, lastRecords)) {
+    if (!providerBlocked && allById.size < Math.min(150, lastRecords)) {
       const accountPublished = await fetchPlatformHistory(null, true);
       diagnostics.push({ source: "history/facebook", profile: "account", pagePublished: true, status: accountPublished.status, count: accountPublished.posts.length, error: accountPublished.error });
+      if (accountPublished.status === 403 || accountPublished.status === 429) {
+        providerBlocked = true;
+        await rememberProviderCooldown(accountPublished.status === 403 ? "account_forbidden" : "provider_rate_limited");
+      }
       const accountBroad =
         accountPublished.posts.length < Math.min(150, lastRecords)
-          ? await fetchPlatformHistory(null, undefined)
+          ? (providerBlocked ? accountPublished : await fetchPlatformHistory(null, undefined))
           : accountPublished;
       if (accountBroad !== accountPublished) diagnostics.push({ source: "history/facebook", profile: "account", pagePublished: null, status: accountBroad.status, count: accountBroad.posts.length, error: accountBroad.error });
       const accountBest =
@@ -865,9 +910,13 @@ Deno.serve(async (req) => {
       if (accountBest.posts.length > 0) winningProfile = null;
     }
 
-    if (allById.size < Math.min(150, lastRecords)) {
+    if (!providerBlocked && allById.size < Math.min(150, lastRecords)) {
       const genericResult = await fetchGenericHistory();
       diagnostics.push({ source: "history", profile: "workspace", status: genericResult.status, count: genericResult.posts.length, error: genericResult.error });
+      if (genericResult.status === 403 || genericResult.status === 429) {
+        providerBlocked = true;
+        await rememberProviderCooldown(genericResult.status === 403 ? "profile_suspended_or_forbidden" : "provider_rate_limited");
+      }
       lastStatus = genericResult.status || lastStatus;
       lastError = genericResult.error ?? lastError;
       mergePosts(genericResult.posts);
@@ -909,10 +958,10 @@ Deno.serve(async (req) => {
     const isUuidLike = (value: string) =>
       /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 
-    await enrichSparseWithSocialHistory();
+    if (!providerBlocked) await enrichSparseWithSocialHistory();
 
     let graphSource: string | null = null;
-    if (allById.size < Math.min(150, lastRecords)) {
+    if (!providerBlocked && allById.size < Math.min(150, lastRecords)) {
       const graphResult = await fetchGraphHistory();
       diagnostics.push({ source: "graph", profile: graphResult.source, status: graphResult.status, count: graphResult.posts.length, error: graphResult.error });
       graphSource = graphResult.source;
@@ -956,7 +1005,26 @@ Deno.serve(async (req) => {
 
     let upserted = 0;
     let persistError: string | null = null;
+    let purgeApplied = false;
+    let purgeSkippedReason: string | null = null;
     if (persist && posts.length > 0) {
+      if (purge) {
+        if (posts.length >= MIN_SAFE_PURGE_POSTS) {
+          await admin
+            .from("engagement_events")
+            .delete()
+            .eq("user_id", ownerId)
+            .eq("platform", "facebook");
+          await admin
+            .from("campaign_logs")
+            .delete()
+            .eq("user_id", ownerId)
+            .eq("channel", "facebook");
+          purgeApplied = true;
+        } else {
+          purgeSkippedReason = `provider_returned_too_few_posts:${posts.length}/${MIN_SAFE_PURGE_POSTS}`;
+        }
+      }
       const rows = posts
         .filter((p) => p.fb_post_id)
         .map((p) => ({
@@ -1008,8 +1076,8 @@ Deno.serve(async (req) => {
     if (persist && syncComments && posts.length > 0) {
       const postIds = posts.map((p) => p.fb_post_id).filter(Boolean);
       const syncTask = (async () => {
-        for (let i = 0; i < postIds.length; i += 12) {
-          const chunk = postIds.slice(i, i + 12);
+        for (let i = 0; i < postIds.length; i += 2) {
+          const chunk = postIds.slice(i, i + 2);
           try {
             await fetch(`${Deno.env.get("SUPABASE_URL")!}/functions/v1/ayrshare-comments-fetch`, {
               method: "POST",
@@ -1027,7 +1095,7 @@ Deno.serve(async (req) => {
           } catch (_commentErr) {
             // Keep processing subsequent chunks.
           }
-          await delay(1_500);
+          await delay(7_000);
         }
       })();
       const edgeRuntime = (globalThis as any).EdgeRuntime;
@@ -1144,7 +1212,9 @@ Deno.serve(async (req) => {
         enriched_counters: enrichedCounters,
         enriched_dates: enrichedDates,
         comment_sync_queued: commentSyncQueued,
-        purged: purge && persist,
+        purged: purgeApplied,
+        purge_requested: purge && persist,
+        purge_skipped_reason: purgeSkippedReason,
         persist_error: persistError,
 
         owner_id: ownerId,
