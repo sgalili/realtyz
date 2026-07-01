@@ -3349,7 +3349,7 @@ const CampaignCenter = () => {
   }, []);
 
 
-  const handleConnectChannel = async (c: ChannelCard) => {
+  const handleConnectChannel = async (c: ChannelCard, preOpened?: Window | null) => {
     // Direct (non-social) outbound channels — verify creds, then flip
     // the per-broker flag stored on profiles.direct_channels.
     if (c.id === 'ivr' || c.id === 'ai-call') {
