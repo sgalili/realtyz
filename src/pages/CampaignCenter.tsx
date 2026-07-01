@@ -2567,11 +2567,20 @@ const PublishedFeed = () => {
                       {remaining > 0 ? `מפרסם בפייסבוק · ${remaining}ש׳` : 'ממתין לאישור פייסבוק…'}
                     </span>
                   );
-                })() : scheduled ? (
+                })() : isPaused ? (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900 ring-1 ring-amber-300"
+                    title="חשבון הפרסום שלכם הגיע למגבלת הקצב היומית של הרשת החברתית. הפרסום יעלה אוטומטית ברגע שהמגבלה תתאפס."
+                  >
+                    <AlertTriangle className="h-3 w-3" />
+                    הפרסום הושהה זמנית - המערכת במצב הגנה
+                  </span>
+                ) : scheduled ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200">
                     <CalendarIcon className="h-3 w-3" />
                     מתוזמן
                   </span>
+
                 ) : (
                   <>
                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="תגובות">
