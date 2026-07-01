@@ -1415,25 +1415,9 @@ const ConfirmDispatchDialog = ({
               target_profile_key: target?.profileKey ?? null,
             },
           });
-          // DIAGNOSTIC: surface raw invoke response so silent failures cannot hide.
-          try {
-            const status = (error as any)?.context?.response?.status ?? (data ? 200 : 'unknown');
-            let rawBody: any = null;
-            try {
-              const resp = (error as any)?.context?.response;
-              if (resp && typeof resp.clone === 'function') {
-                rawBody = await resp.clone().text();
-              }
-            } catch { /* ignore */ }
-            window.alert(
-              `SERVER RESPONSE RECEIVED: Status ${status}\n` +
-              `data: ${data ? JSON.stringify(data).slice(0, 400) : 'null'}\n` +
-              `error: ${error ? (error as any).message : 'null'}\n` +
-              `body: ${rawBody ? String(rawBody).slice(0, 400) : 'n/a'}`
-            );
-          } catch { /* ignore diag */ }
           results.push({ data, error, target });
         }
+
 
         // Circuit-breaker short-circuit: the backend is intentionally pausing
         // outbound Ayrshare traffic. Persist a "paused" campaign row so the
