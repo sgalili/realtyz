@@ -85,6 +85,7 @@ type ConfirmPayload = {
   scheduled_at: string | null;
   group_ids: string[];
   selected_profile_ids: string[];
+  attach_wa_link: boolean;
 };
 
 const isRenderablePostMediaUrl = (value: unknown): value is string => {
