@@ -499,13 +499,45 @@ const InlineComposer = ({
   // is appended at publish-time only.
   const stripWaCta = (s: string) =>
     s
-      .replace(/\n*[^\n]*דברו איתנו עכשיו[^\n]*/g, '')
+      // Any line that opens with "דברו איתי/איתנו" (with or without emoji/lead)
+      .replace(/\n*[^\n]*דברו אית(?:י|נו)[^\n]*/g, '')
+      // Common variation openers we cycle through — strip them too so re-toggle
+      // doesn't leave the previous variant behind.
+      .replace(/\n*[^\n]*(?:לפרטים נוספים|מוזמנים לפנות|רוצה לשמוע עוד|לתיאום ביקור|שולחים הודעה|קופצים לוואטסאפ|הכי מהיר בוואטסאפ)[^\n]*/g, '')
       .replace(/\n*[^\n]*realtyz\.co\.il\/r\/[a-z0-9]+[^\n]*/gi, '')
+      .replace(/\n*[^\n]*wa\.me\/[0-9]+[^\n]*/gi, '')
       .replace(/[ \t]+\n/g, '\n')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
   const cleanBody = (s: string) =>
     stripWaCta(s).replace(/^[\s\u200f\u200e]+/g, '').slice(0, MAX_CHARS);
+
+  // Rotating CTA copy pool — never reuse the same opener twice in a row so
+  // Facebook's anti-spam heuristics don't flag repetitive posting patterns.
+  // Always in first-person ("דברו איתי") per brand voice.
+  const WA_CTA_VARIANTS = [
+    'דברו איתי בוואטסאפ 👇',
+    'לפרטים נוספים — דברו איתי כאן:',
+    'מוזמנים לפנות אליי ישירות בוואטסאפ:',
+    'רוצה לשמוע עוד? דברו איתי:',
+    'לתיאום ביקור — דברו איתי בוואטסאפ:',
+    'שולחים הודעה ומדברים איתי:',
+    'קופצים לוואטסאפ ומדברים איתי:',
+    'הכי מהיר בוואטסאפ — דברו איתי:',
+  ] as const;
+  const pickWaCtaOpener = () => {
+    try {
+      const lastKey = 'rz:last-wa-cta';
+      const last = typeof window !== 'undefined' ? window.localStorage.getItem(lastKey) : null;
+      const pool = WA_CTA_VARIANTS.filter((v) => v !== last);
+      const pick = pool[Math.floor(Math.random() * pool.length)] || WA_CTA_VARIANTS[0];
+      if (typeof window !== 'undefined') window.localStorage.setItem(lastKey, pick);
+      return pick;
+    } catch {
+      return WA_CTA_VARIANTS[Math.floor(Math.random() * WA_CTA_VARIANTS.length)];
+    }
+  };
+
   const initial = readDraft() || {};
 
   const [body, setBody] = useState<string>(cleanBody(initial.body || ''));
