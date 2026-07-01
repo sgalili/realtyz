@@ -483,7 +483,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
   // throttle (in addition to the 15-min localStorage lock) blocks rapid
   // re-clicks even when manual=true.
   const lastManualRefreshAtRef = useRef<number>(0);
-  const forceRefresh = async ({ manual = false }: { manual?: boolean } = {}) => {
+  const forceRefresh = async ({ manual = false, wipeCache = false }: { manual?: boolean; wipeCache?: boolean } = {}) => {
     if (!manual) {
       // HARD RULE (post-suspension): non-manual callers are NEVER allowed to
       // hit Ayrshare. Provider data only loads on an explicit user click.
@@ -501,10 +501,10 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
       onRefreshComplete?.(campaign.id, { ok: false, count: treeCount(rowsRef.current), error: 'הספק נעול זמנית להגנת החשבון' });
       return;
     }
-    // HARD RESET on manual click: evict every per-post cache + lock entry so
-    // the next provider hit bypasses every stale-failure cached state from
-    // the previously suspended Ayrshare token.
-    if (manual) {
+    // Only wipe caches when the caller opts in (e.g. HARD RESET after an
+    // Ayrshare token was suspended). Regular expand/refresh keeps the cached
+    // tree so new rows are merged in without ever resetting existing comments.
+    if (wipeCache) {
       for (const pid of postIds) {
         try {
           localStorage.removeItem(`realtyz_fb_comments_cache_${pid}`);
@@ -514,6 +514,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
       COMMENT_CACHE.delete(campaign.id);
       try { sessionStorage.removeItem(cacheKey(campaign.id)); } catch { /* quota */ }
     }
+
     stampProviderFetch(postIds);
 
     setManualRefreshing(true);
@@ -639,15 +640,14 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
       }
       await load();
 
-      // Session-scoped first-expand provider fetch (one per campaign per tab).
-      try {
-        const sentinelKey = `realtyz.first_expand_fetched.${campaign.id}`;
-        const alreadyFetched = sessionStorage.getItem(sentinelKey) === '1';
-        if (!alreadyFetched && postIds.length > 0 && !isProviderFetchLocked(postIds)) {
-          sessionStorage.setItem(sentinelKey, '1');
-          void forceRefresh({ manual: true });
-        }
-      } catch { /* quota / private mode */ }
+      // Auto-refresh on every card expand. Cache is never wiped, so any
+      // existing comment tree stays intact and only new comments/replies
+      // are merged in. The 60s manual-debounce + provider lock throttle
+      // still protect against Ayrshare spam.
+      if (postIds.length > 0 && !isProviderFetchLocked(postIds)) {
+        void forceRefresh({ manual: true });
+      }
+
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaign.id, postIdsKey, campaign.channel]);
