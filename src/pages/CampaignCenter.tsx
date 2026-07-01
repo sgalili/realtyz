@@ -2603,7 +2603,13 @@ const PublishedFeed = () => {
                   {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </button>
               </div>
+              {isPaused && (
+                <p className="text-[11px] leading-relaxed text-amber-800/90 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
+                  חשבון הפרסום שלכם הגיע למגבלת הקצב היומית של הרשת החברתית. הפרסום יעלה אוטומטית ברגע שהמגבלה תתאפס.
+                </p>
+              )}
             </header>
+
 
 
             {isOpen && (
