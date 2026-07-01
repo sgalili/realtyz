@@ -645,15 +645,11 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
       }
       await load();
 
-      // Auto-refresh on the first card expand in the browser session, even if
-      // an old provider lock exists from a previous empty attempt. Later opens
-      // respect the 15-minute lock and keep the cached tree visible.
-      let firstExpandFetch = false;
-      try { firstExpandFetch = sessionStorage.getItem(autoFetchKey(campaign.id)) !== "1"; } catch { firstExpandFetch = true; }
-      if (postIds.length > 0 && (firstExpandFetch || !isProviderFetchLocked(postIds))) {
-        try { sessionStorage.setItem(autoFetchKey(campaign.id), "1"); } catch { /* quota */ }
-        void forceRefresh({ manual: true });
-      }
+      // AUTO-REFRESH DISABLED: provider (Ayrshare/Meta) hits NEVER happen
+      // automatically on card expand. The user must click "רענן תגובות"
+      // explicitly. This eliminates the loop that was silently re-rendering
+      // sibling components and wiping the media-upload state on the composer.
+
 
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
