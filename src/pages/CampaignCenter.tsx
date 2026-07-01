@@ -1263,11 +1263,7 @@ const ConfirmDispatchDialog = ({
 }) => {
   const { user } = useAuth();
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
-  const [sending, setSending] = useState(false);
-  // Instant re-entry lock — useState updates are async, so a fast double-click
-  // can fire handleConfirm twice before `sending` flips. A ref blocks it the
-  // moment the first click lands and guarantees the publish path runs ONCE.
-  const inFlightRef = useRef(false);
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [pages, setPages] = useState<SocialAccountProfile[]>([]);
   const [pagesLoading, setPagesLoading] = useState(false);
 
@@ -1355,12 +1351,11 @@ const ConfirmDispatchDialog = ({
   const SOCIAL_CHANNELS = new Set(['facebook', 'instagram', 'x', 'twitter', 'linkedin', 'youtube', 'tiktok']);
 
   const handleConfirm = async () => {
+    console.log("EMERGENCY AUDIT: Broadcast button clicked successfully.");
     if (!user) { toast.error('יש להתחבר'); return; }
-    // Hard idempotency guard — prevents accidental duplicate dispatches.
-    if (inFlightRef.current || sending) return;
-    inFlightRef.current = true;
+    if (isBroadcasting) return;
     const ownerScope = workspaceOwnerId ?? user.id;
-    setSending(true);
+    setIsBroadcasting(true);
     try {
       // Force-refresh branded WhatsApp short link CTA when a listing is attached.
       // Existing slug lines are replaced so stale persisted drafts cannot publish
@@ -1551,10 +1546,10 @@ const ConfirmDispatchDialog = ({
       onConfirmed();
       onClose();
     } catch (e: any) {
+      console.error("Broadcast failed:", e);
       toast.error('פרסום נכשל: ' + (e?.message ?? 'שגיאה לא ידועה'));
     } finally {
-      setSending(false);
-      inFlightRef.current = false;
+      setIsBroadcasting(false);
     }
   };
 
@@ -1605,16 +1600,28 @@ const ConfirmDispatchDialog = ({
 
 
         <DialogFooter className="!justify-between gap-2 sm:gap-2 flex-row-reverse">
-          <Button onClick={handleConfirm} disabled={sending}
-            className="bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)]">
-            {sending ? (
+          <Button
+            type="button"
+            disabled={isBroadcasting}
+            className="bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)]"
+            onClick={async () => {
+              console.log("EMERGENCY AUDIT: Broadcast button clicked successfully.");
+              if (isBroadcasting) return;
+              try {
+                await handleConfirm();
+              } catch (err) {
+                console.error("Broadcast failed:", err);
+              }
+            }}
+          >
+            {isBroadcasting ? (
               <span className="inline-flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 מפרסם ברשתות החברתיות...
               </span>
             ) : 'אישור ושידור'}
           </Button>
-          <Button variant="outline" onClick={onClose} disabled={sending}>ביטול</Button>
+          <Button variant="outline" onClick={onClose} disabled={isBroadcasting}>ביטול</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
