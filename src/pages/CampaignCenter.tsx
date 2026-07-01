@@ -3434,6 +3434,7 @@ const CampaignCenter = () => {
       }
     } catch (e: any) {
       toast.dismiss('ayr-connect');
+      if (preOpened && !preOpened.closed) { try { preOpened.close(); } catch { /* ignore */ } }
       toast.error(e?.message ?? 'יצירת חיבור נכשלה');
     }
   };
