@@ -1795,16 +1795,22 @@ const PublishedFeed = () => {
   const [refreshingIds, setRefreshingIds] = useState<Record<string, boolean>>({});
   const bumpRefresh = (campaignId: string) => {
     if (refreshingIds[campaignId]) return;
-    // Purge any stale per-campaign cache blocks before the child fires its
-    // network cycle, so the new Ayrshare integers can land without contention.
-    try {
-      sessionStorage.removeItem(`realtyz.comments.${campaignId}`);
-      sessionStorage.removeItem(`realtyz.live_comment_counts`);
-    } catch { /* quota */ }
+    // Do NOT purge the cached comments/counters — persistent cache is the
+    // whole point of "smart caching". Refresh only merges deltas on top.
     setRefreshingIds((prev) => ({ ...prev, [campaignId]: true }));
     toast.loading('מרענן תגובות חיות מפייסבוק…', { id: `refresh-${campaignId}` });
     setRefreshSignals((prev) => ({ ...prev, [campaignId]: (prev[campaignId] ?? 0) + 1 }));
+    // Safety net: even if the child never calls onRefreshComplete, clear the
+    // spinner after 45s so the button is never trapped in an infinite loop.
+    setTimeout(() => {
+      setRefreshingIds((prev) => {
+        if (!prev[campaignId]) return prev;
+        const n = { ...prev }; delete n[campaignId]; return n;
+      });
+      toast.dismiss(`refresh-${campaignId}`);
+    }, 45_000);
   };
+
   const handleRefreshComplete = (campaignId: string, result: { ok: boolean; count: number; error?: string }) => {
     setRefreshingIds((prev) => { const n = { ...prev }; delete n[campaignId]; return n; });
     toast.dismiss(`refresh-${campaignId}`);
