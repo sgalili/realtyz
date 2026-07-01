@@ -18,14 +18,38 @@ const asText = (
   value: unknown,
 ) => (typeof value === "string" ? value.trim() : "");
 
+const coerceDateValue = (value: unknown): string | null => {
+  if (!value) return null;
+  if (typeof value === "object") {
+    const obj = value as Record<string, unknown>;
+    const nested = coerceDateValue(
+      obj.utc ?? obj.iso ?? obj.date ?? obj.created_time ?? obj.createdAt,
+    );
+    if (nested) return nested;
+    const seconds = typeof obj._seconds === "number"
+      ? obj._seconds
+      : typeof obj.seconds === "number"
+      ? obj.seconds
+      : null;
+    if (seconds !== null) {
+      const d = new Date(seconds * 1000);
+      if (!Number.isNaN(d.getTime())) return d.toISOString();
+    }
+    return null;
+  }
+  const d = new Date(String(value));
+  return Number.isNaN(d.getTime()) ? null : d.toISOString();
+};
+
 const firstValidDate = (...values: unknown[]): string | null => {
   for (const value of values) {
-    if (!value) continue;
-    const d = new Date(String(value));
-    if (!Number.isNaN(d.getTime())) return d.toISOString();
+    const parsed = coerceDateValue(value);
+    if (parsed) return parsed;
   }
   return null;
 };
+
+const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const addUrl = (set: Set<string>, value: unknown) => {
   const url = asText(value);
@@ -35,11 +59,13 @@ const addUrl = (set: Set<string>, value: unknown) => {
 const collectMediaUrls = (it: any): string[] => {
   const urls = new Set<string>();
   addUrl(urls, it?.fullPicture);
+  addUrl(urls, it?.full_picture);
   addUrl(urls, it?.picture);
   addUrl(urls, it?.imageUrl);
   addUrl(urls, it?.thumbnailUrl);
   addUrl(urls, it?.coverImageUrl);
   addUrl(urls, it?.mediaUrl);
+  addUrl(urls, it?.source);
 
   const visitMedia = (node: any) => {
     if (!node) return;
@@ -73,6 +99,7 @@ const collectMediaUrls = (it: any): string[] => {
   visitMedia(it?.media);
   visitMedia(it?.attachments);
   visitMedia(it?.subattachments);
+  visitMedia(it?.attachments?.data);
   return Array.from(urls);
 };
 
@@ -326,13 +353,20 @@ Deno.serve(async (req) => {
     // Ayrshare may silently cap very large page sizes; keep our request at a
     // pagination-friendly size so maxPages is high enough to walk history.
     const pageSize = Math.min(
-      100,
+      50,
       Math.max(
         10,
-        Number(body?.pageSize ?? url.searchParams.get("pageSize") ?? 500),
+        Number(body?.pageSize ?? url.searchParams.get("pageSize") ?? 50),
       ),
     );
     const maxPages = Math.max(1, Math.ceil(lastRecords / pageSize));
+    const dataType = asText(body?.dataType ?? url.searchParams.get("dataType")) ||
+      "posts";
+    const skipAnalytics = body?.skipAnalytics === true ||
+      url.searchParams.get("skipAnalytics") === "true";
+    const purge = body?.purge === true || url.searchParams.get("purge") === "true";
+    const syncComments = body?.sync_comments === true ||
+      url.searchParams.get("sync_comments") === "true";
     const since = asText(body?.since ?? url.searchParams.get("since"));
     const until = asText(body?.until ?? url.searchParams.get("until"));
     const persist = body?.persist !== false &&
@@ -365,6 +399,19 @@ Deno.serve(async (req) => {
       asText(
         body?.facebook_page_id ?? url.searchParams.get("facebook_page_id"),
       ) || "729806313557785";
+
+    if (purge && persist) {
+      await admin
+        .from("engagement_events")
+        .delete()
+        .eq("user_id", ownerId)
+        .eq("platform", "facebook");
+      await admin
+        .from("campaign_logs")
+        .delete()
+        .eq("user_id", ownerId)
+        .eq("channel", "facebook");
+    }
 
     const resolveGraphCredential = async (): Promise<
       { token: string; pageId: string | null; source: string | null }
@@ -521,13 +568,13 @@ Deno.serve(async (req) => {
         const qs = new URLSearchParams({
           limit: String(pageSize),
           lastRecords: String(lastRecords),
-          dataType: "all",
+          dataType,
           // Critical: Ayrshare defaults can return only a short recent slice.
           // lastDays=0 means full available history for the connected native
-          // Facebook Page, which is required to recover the full ~150-post feed.
+          // Facebook Page, which is required to recover the full native feed.
           lastDays: "0",
-          skipAnalytics: "true",
         });
+        if (skipAnalytics) qs.set("skipAnalytics", "true");
         if (typeof pagePublished === "boolean") {
           qs.set("pagePublished", String(pagePublished));
         }
@@ -614,8 +661,9 @@ Deno.serve(async (req) => {
           limit: String(pageSize),
           lastRecords: String(lastRecords),
           lastDays: "0",
-          dataType: "all",
+          dataType,
         });
+        if (skipAnalytics) genericQs.set("skipAnalytics", "true");
         if (nextCursor) {
           genericQs.set("next", nextCursor);
           genericQs.set("lastId", nextCursor);
@@ -737,13 +785,34 @@ Deno.serve(async (req) => {
 
     const candidates = await discoverProfiles();
     const allById = new Map<string, RawPost>();
+    const mediaScore = (post: RawPost) => collectMediaUrls(post.item).length;
+    const qualityScore = (post: RawPost) => {
+      const it = post.item;
+      const hasDate = firstValidDate(
+        it?.created,
+        it?.createdAt,
+        it?.created_time,
+        it?.createDate,
+        it?.publishedAt,
+        it?.scheduleDate,
+      ) ? 1 : 0;
+      const hasCounters = pickNumber(
+        it?.likeCount,
+        it?.commentsCount,
+        it?.commentCount,
+        it?.shareCount,
+        it?.shares?.count,
+      ) !== null ? 1 : 0;
+      return mediaScore(post) * 100 + hasDate * 20 + hasCounters * 10 +
+        (post.source === "graph" ? 5 : 0);
+    };
     const mergePosts = (posts: RawPost[]) => {
       for (const post of posts) {
         const id = pickNativeFacebookPostId(post.item) ||
           collectPostIds(post.item, true)[0] ||
           JSON.stringify(post.item).slice(0, 96);
         const existing = allById.get(id);
-        if (!existing || collectMediaUrls(post.item).length > collectMediaUrls(existing.item).length) {
+        if (!existing || qualityScore(post) > qualityScore(existing)) {
           allById.set(id, post);
         }
       }
@@ -797,6 +866,44 @@ Deno.serve(async (req) => {
       lastError = genericResult.error ?? lastError;
       mergePosts(genericResult.posts);
     }
+
+    // Ayrshare's list endpoint can occasionally return a sparse row
+    // (`id/isPopular/post`) for older native Facebook posts. Hydrate those rows
+    // through the Social Post ID endpoint so every stored card gets the native
+    // created date, mediaUrls/fullPicture, and live counters when available.
+    const enrichSparseWithSocialHistory = async () => {
+      const entries = Array.from(allById.entries()).filter(([, raw]) => {
+        const normalized = normalizePost(raw);
+        return !normalized || normalized.media.length === 0 ||
+          !firstValidDate(raw.item?.created, raw.item?.created_time, raw.item?.createDate) ||
+          normalized.like_count === null || normalized.comment_count === null;
+      });
+      for (let i = 0; i < entries.length; i += 4) {
+        await Promise.all(entries.slice(i, i + 4).map(async ([id, raw]) => {
+          const nativeId = pickNativeFacebookPostId(raw.item) || id;
+          if (!nativeId || isUuidLike(nativeId)) return;
+          const headers: Record<string, string> = { Authorization: `Bearer ${KEY}` };
+          if (raw.profileKey) headers["Profile-Key"] = raw.profileKey;
+          const detailUrl = `${AYR_BASE}/history/${encodeURIComponent(nativeId)}?searchPlatformId=true&platform=facebook`;
+          try {
+            const resp = await fetch(detailUrl, { headers, signal: AbortSignal.timeout(12_000) });
+            if (!resp.ok) return;
+            const json = await resp.json().catch(() => null);
+            const detail = Array.isArray(json) ? json[0] : json;
+            if (!detail || typeof detail !== "object") return;
+            mergePosts([{ ...raw, item: { ...raw.item, ...detail } }]);
+          } catch (_detailErr) {
+            // Non-fatal: keep the list result if the detail endpoint throttles.
+          }
+        }));
+        await delay(250);
+      }
+    };
+
+    const isUuidLike = (value: string) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+
+    await enrichSparseWithSocialHistory();
 
     let graphSource: string | null = null;
     if (allById.size < Math.min(150, lastRecords)) {
@@ -888,6 +995,38 @@ Deno.serve(async (req) => {
         if (error) persistError = error.message;
         else upserted = data?.length ?? rows.length;
       }
+    }
+
+    let commentSyncQueued = false;
+    if (persist && syncComments && posts.length > 0) {
+      const postIds = posts.map((p) => p.fb_post_id).filter(Boolean);
+      const syncTask = (async () => {
+        for (let i = 0; i < postIds.length; i += 12) {
+          const chunk = postIds.slice(i, i + 12);
+          try {
+            await fetch(`${Deno.env.get("SUPABASE_URL")!}/functions/v1/ayrshare-comments-fetch`, {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!}`,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                user_id: ownerId,
+                post_ids: chunk,
+                platform: "facebook",
+                force_refresh: true,
+              }),
+            }).catch(() => null);
+          } catch (_commentErr) {
+            // Keep processing subsequent chunks.
+          }
+          await delay(1_500);
+        }
+      })();
+      const edgeRuntime = (globalThis as any).EdgeRuntime;
+      if (edgeRuntime?.waitUntil) edgeRuntime.waitUntil(syncTask);
+      else await syncTask;
+      commentSyncQueued = true;
     }
 
     // Full Graph enrichment: for every stored native FB post, batch-fetch
@@ -997,6 +1136,8 @@ Deno.serve(async (req) => {
         enriched_media: enrichedMedia,
         enriched_counters: enrichedCounters,
         enriched_dates: enrichedDates,
+        comment_sync_queued: commentSyncQueued,
+        purged: purge && persist,
         persist_error: persistError,
 
         owner_id: ownerId,
