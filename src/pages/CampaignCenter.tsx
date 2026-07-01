@@ -1331,7 +1331,20 @@ const ConfirmDispatchDialog = ({
   if (!channel) return null;
 
   const selectedPages = pages.filter((p) => selectedProfileIds.includes(p.id));
-  const publishTargets = selectedPages.length > 0 ? selectedPages : pages.slice(0, 1);
+  // Deduplicate by profile key / account ref / normalized name so the same
+  // Facebook page never renders as two stacked cards for the מתעניין flow.
+  const dedupePages = (rows: typeof pages) => {
+    const seen = new Set<string>();
+    const out: typeof pages = [];
+    for (const p of rows) {
+      const key = (p.profileKey || p.accountRef || (p.name || '').trim().toLowerCase()).toString();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(p);
+    }
+    return out;
+  };
+  const publishTargets = dedupePages(selectedPages.length > 0 ? selectedPages : pages.slice(0, 1));
   const selectedPage = publishTargets[0] || null;
   const profileLabel = selectedPage
     ? `${selectedPage.name}${selectedPage.username ? ` · @${selectedPage.username}` : ''}`
@@ -1410,6 +1423,17 @@ const ConfirmDispatchDialog = ({
             },
           });
           results.push({ data, error, target });
+        }
+        // Circuit-breaker short-circuit: if the backend is intentionally
+        // pausing outbound Ayrshare traffic, close the dialog and surface a
+        // calm Hebrew explanation instead of freezing on "מפרסם…".
+        const circuitTripped = results.find((r) => (r.data as any)?.circuit_open === true);
+        if (circuitTripped) {
+          const msg = (circuitTripped.data as any)?.message
+            || 'פרסום מושהה זמנית להגנה על הנכס החברתי. ננסה שוב אוטומטית בעוד כמה דקות.';
+          toast.error(msg);
+          onClose();
+          return;
         }
         const firstFailure = results.find((r) => r.error || (r.data as any)?.error);
         const data = results[0]?.data;
@@ -1537,7 +1561,7 @@ const ConfirmDispatchDialog = ({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent dir="rtl" className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-center text-lg">אישור דיוור וסיכום תקציב</DialogTitle>
+          <DialogTitle className="text-center text-lg">אישור דיוור</DialogTitle>
           <DialogDescription className="text-center">
             קמפיין "{summaryTitle}" · ערוצים: {channel.label}
           </DialogDescription>
