@@ -529,7 +529,7 @@ Deno.serve(async (req) => {
         }
         if (since) qs.set("since", since);
         if (until) qs.set("until", until);
-        if (nextCursor) qs.set("next", nextCursor);
+        if (nextCursor) { qs.set("next", nextCursor); qs.set("lastId", nextCursor); }
         const headers: Record<string, string> = {
           Authorization: `Bearer ${KEY}`,
         };
@@ -571,7 +571,7 @@ Deno.serve(async (req) => {
           });
           added++;
         }
-        nextCursor = json?.meta?.pagination?.next || json?.next ||
+        nextCursor = json?.lastId || json?.meta?.pagination?.next || json?.next ||
           json?.nextToken || json?.next_token || json?.pageToken || null;
         const hasMore = Boolean(json?.meta?.pagination?.hasMore || nextCursor);
         if (!hasMore && added === 0) break;
