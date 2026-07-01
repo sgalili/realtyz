@@ -83,7 +83,7 @@ Deno.serve(async (req) => {
     try {
       const AYRSHARE_API_KEY = Deno.env.get("AYRSHARE_API_KEY");
       if (!AYRSHARE_API_KEY) {
-        return json({ error: "AYRSHARE_API_KEY not configured" }, 500);
+        return json({ success: false, error: "service_unavailable", message: "שירות הפרסום אינו מוגדר כרגע." }, 200);
       }
       const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
       const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -172,7 +172,7 @@ Deno.serve(async (req) => {
   try {
     const AYRSHARE_API_KEY = Deno.env.get("AYRSHARE_API_KEY");
     if (!AYRSHARE_API_KEY) {
-      return json({ error: "AYRSHARE_API_KEY not configured" }, 500);
+      return json({ success: false, error: "service_unavailable", message: "שירות הפרסום אינו מוגדר כרגע." }, 200);
     }
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
