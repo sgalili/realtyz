@@ -324,10 +324,10 @@ Deno.serve(async (req) => {
       ),
     );
     const pageSize = Math.min(
-      100,
+      500,
       Math.max(
         10,
-        Number(body?.pageSize ?? url.searchParams.get("pageSize") ?? 100),
+        Number(body?.pageSize ?? url.searchParams.get("pageSize") ?? 500),
       ),
     );
     const maxPages = Math.max(1, Math.ceil(lastRecords / pageSize));
@@ -579,7 +579,7 @@ Deno.serve(async (req) => {
         if (rows.length >= lastRecords) break;
       }
 
-      return { posts: rows, status, error };
+      return { posts: rows, status, error, reachedEnd: !Boolean(json?.meta?.pagination?.hasMore || nextCursor) };
     };
 
     const fetchGenericHistory = async (): Promise<

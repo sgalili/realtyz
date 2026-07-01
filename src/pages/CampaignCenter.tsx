@@ -1993,7 +1993,8 @@ const PublishedFeed = () => {
       }
 
       if (byId.size === 0 && commentCountByPostId.size === 0) return true;
-      setRows((prev) => prev?.map((r) => {
+      setRows((prev) => {
+        const next = prev?.map((r) => {
         const hit = byId.get(r.id);
         const nativeId = hit?.native_post_id ? String(hit.native_post_id) : (r.provider_message_id ?? null);
         const nestedComments = nativeId ? (commentCountByPostId.get(nativeId) ?? 0) : 0;
@@ -2012,10 +2013,9 @@ const PublishedFeed = () => {
           view_count: hit.counts.views,
           metrics_updated_at: hit.metrics_updated_at ?? new Date().toISOString(),
         };
-      }).map((r) => r) ?? prev);
-      setRows((latest) => {
-        if (latest) FEED_ROWS_CACHE.set(metricsOwner, latest);
-        return latest;
+        }) ?? prev;
+        if (next) FEED_ROWS_CACHE.set(metricsOwner, next);
+        return next;
       });
       return true;
     } catch (err) {
