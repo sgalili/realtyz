@@ -895,13 +895,12 @@ Deno.serve(async (req) => {
         // transient empty Ayrshare payload can never collapse a real count to 0.
         let dbCommentCount = 0;
         try {
-          const { count } = await admin
+          const { data: savedEvents } = await admin
             .from("engagement_events")
-            .select("id", { count: "exact", head: true })
+            .select("id, is_archived")
             .eq("user_id", userId)
-            .eq("is_archived", false)
             .eq("external_post_id", nativePostId);
-          if (typeof count === "number") dbCommentCount = count;
+          dbCommentCount = (savedEvents ?? []).filter((row: any) => row?.is_archived !== true).length;
         } catch { /* non-fatal */ }
         // Authoritative total: full walked tree, floored by analytics integer
         // and the persisted DB rows — whichever reflects the most reality.
