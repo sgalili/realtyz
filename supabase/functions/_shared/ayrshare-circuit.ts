@@ -21,22 +21,13 @@ export interface CircuitState {
   opened_at: number;
 }
 
-export async function readCircuit(admin: any): Promise<CircuitState | null> {
-  try {
-    const { data } = await admin
-      .from("campaign_settings")
-      .select("value")
-      .eq("key", KEY)
-      .maybeSingle();
-    if (!data?.value) return null;
-    const parsed = JSON.parse(String(data.value)) as CircuitState;
-    if (!parsed?.until_ms) return null;
-    if (parsed.until_ms <= Date.now()) return null;
-    return parsed;
-  } catch {
-    return null;
-  }
+export async function readCircuit(_admin: any): Promise<CircuitState | null> {
+  // EMERGENCY OVERRIDE: circuit breaker force-disabled for live testing.
+  // Every outbound Ayrshare call now proceeds regardless of prior suspension
+  // or rate-limit state persisted in campaign_settings.ayrshare_circuit_state.
+  return null;
 }
+
 
 export async function tripCircuit(
   admin: any,
