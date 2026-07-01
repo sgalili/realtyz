@@ -3777,7 +3777,7 @@ const CampaignCenter = () => {
                   נוצרו <span className="font-bold">{blocks.length}</span> טיוטות פוסט עבור <span className="font-bold">{propertyIds.length}</span> נכסים. ערוך, אשר ושגר כל אחת בנפרד.
                 </div>
                 {blocks.map((b, idx) => (
-                  <div key={`${b.listing || 'na'}-${b.iso}-${idx}`} className="space-y-2">
+                  <div key={`${b.listing || 'na'}-${b.iso}-${idx}-${composerResetTick}`} className="space-y-2">
                     <div className="text-xs font-semibold text-muted-foreground" dir="rtl">
                       טיוטה #{idx + 1} · {new Date(b.iso).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
                       {b.totalVariants > 1 ? ` · וריאציה ${b.variant}/${b.totalVariants}` : ''}
