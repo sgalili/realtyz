@@ -1590,7 +1590,7 @@ const ConfirmDispatchDialog = ({
           throw new Error(friendly || error.message || 'שגיאת רשת');
         }
         const failurePayload = firstFailure?.data as any;
-        if (failurePayload?.error === 'rate_limited' || failurePayload?.status === 429 || failurePayload?.code === 105) {
+        if (failurePayload?.error === 'rate_limit_exceeded' || failurePayload?.error === 'rate_limited' || failurePayload?.status === 429 || failurePayload?.code === 105) {
           toast.warning(failurePayload?.message || 'מערכת הפרסום חסומה זמנית. נסה שוב בעוד 5 דקות.');
           return;
         }
@@ -1956,10 +1956,11 @@ const GlobalSocialFeed = ({
 // campaign_logs feed. Native Facebook posts are imported once into the database
 // and then read only from campaign_logs, never kept as transient synthetic rows.
 const FEED_ROWS_CACHE = new Map<string, CampaignRow[]>();
+const FEED_LOAD_PROMISE_CACHE = new Map<string, Promise<{ rows: CampaignRow[]; ownerScope: string | null; importedCount: number; importComplete: boolean }>>();
 const CAMPAIGNS_COUNT_SESSION_KEY = 'realtyz.campaigns.total_count';
 const EXPECTED_NATIVE_FACEBOOK_POSTS = 150;
 const FIRST_VISIT_IMPORT_KEY_VERSION = 'v5_persistent_live_import_no_partial_cache';
-const FIRST_VISIT_METRICS_KEY_VERSION = 'v5_live_counts_full_tree_after_load';
+const CAMPAIGN_CACHE_MS = 5 * 60_000;
 
 const PublishedFeed = () => {
   const { settings } = useWhiteLabel();
@@ -2054,9 +2055,8 @@ const PublishedFeed = () => {
       } catch { /* ignore */ }
     };
     load();
-    const poll = setInterval(load, 60_000);
     const tick = setInterval(() => setNowMs(Date.now()), 1000);
-    return () => { cancelled = true; clearInterval(poll); clearInterval(tick); };
+    return () => { cancelled = true; clearInterval(tick); };
   }, []);
 
   const formatCountdown = (ms: number) => {
@@ -2188,11 +2188,15 @@ const PublishedFeed = () => {
     // records cannot reset the 150 persisted campaign cards.
     const importKey = `realtyz.fb_native_import.${FIRST_VISIT_IMPORT_KEY_VERSION}.${ownerScope}`;
     let shouldImport = opts.forceFb === true;
-    try { shouldImport = shouldImport || sessionStorage.getItem(importKey) !== '1'; } catch { shouldImport = true; }
+    try {
+      const raw = sessionStorage.getItem(importKey);
+      const importedAt = raw ? Number(raw) : 0;
+      shouldImport = shouldImport || !Number.isFinite(importedAt) || Date.now() - importedAt > CAMPAIGN_CACHE_MS;
+    } catch { shouldImport = true; }
     if (shouldImport) {
       try {
         const { data: importData, error: importError } = await supabase.functions.invoke('fb-recent-posts', {
-          body: { lastRecords: 500, pageSize: 500, user_id: ownerScope, persist: true, force_full_scan: true },
+          body: { lastRecords: 500, pageSize: 500, user_id: ownerScope, persist: true, force_full_scan: false },
         });
         const importedCount = Number((importData as any)?.count) || 0;
         if (importError) {
@@ -2200,7 +2204,7 @@ const PublishedFeed = () => {
         } else if ((importData as any)?.ok === false) {
           console.warn('[PublishedFeed] fb persistent import returned error', importData);
         } else if (importedCount >= EXPECTED_NATIVE_FACEBOOK_POSTS) {
-          try { sessionStorage.setItem(importKey, '1'); } catch { /* quota */ }
+          try { sessionStorage.setItem(importKey, String(Date.now())); } catch { /* quota */ }
         } else {
           console.warn('[PublishedFeed] fb persistent import returned a partial set; will retry next entry', importData);
         }
@@ -2414,7 +2418,12 @@ const PublishedFeed = () => {
         setRows(cached);
         loaded = { rows: cached, ownerScope: wsKey, importedCount: 0, importComplete: true };
       } else {
-        loaded = await load({ forceFb: !!cached && cached.length > 0 && cached.length < EXPECTED_NATIVE_FACEBOOK_POSTS });
+        let pending = FEED_LOAD_PROMISE_CACHE.get(wsKey);
+        if (!pending) {
+          pending = load({ forceFb: false }).finally(() => FEED_LOAD_PROMISE_CACHE.delete(wsKey));
+          FEED_LOAD_PROMISE_CACHE.set(wsKey, pending);
+        }
+        loaded = await pending;
       }
       if (cancelled) return;
       // Do NOT auto-invoke Ayrshare on page mount. Displayed counters come
@@ -2474,7 +2483,21 @@ const PublishedFeed = () => {
         { event: 'INSERT', schema: 'public', table: 'campaign_logs' },
         (payload) => {
           const inserted: any = payload.new;
-          if (campaignUserIds.includes(inserted?.user_id)) load();
+          if (campaignUserIds.includes(inserted?.user_id)) {
+            setRows((prev) => {
+              if (!prev) return prev;
+              if (prev.some((row) => row.id === inserted.id)) return prev;
+              const provider = inserted.provider_response ?? {};
+              const normalized = {
+                ...inserted,
+                media_urls: normalizePostMediaUrls(provider.media_urls ?? provider.media ?? []),
+                external_url: null,
+              } as CampaignRow;
+              const next = [normalized, ...prev];
+              FEED_ROWS_CACHE.set(workspaceOwnerId ?? inserted.user_id, next);
+              return next;
+            });
+          }
         },
       )
       .on(
@@ -2545,10 +2568,14 @@ const PublishedFeed = () => {
       .gte('created_at', from)
       .lt('created_at', to);
     if (error) { toast.error('העברה לארכיון נכשלה: ' + error.message); return; }
-    setRows((prev) => prev?.filter((x) => x.id !== r.id) ?? prev);
+    setRows((prev) => {
+      const next = prev?.filter((x) => x.id !== r.id) ?? prev;
+      const scopeKey = workspaceOwnerId ?? userId ?? '';
+      if (next && scopeKey) FEED_ROWS_CACHE.set(scopeKey, next);
+      return next;
+    });
     queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
     toast.success('הקמפיין הועבר לארכיון');
-    load();
   };
 
   const deleteCampaign = async (r: CampaignRow) => {
@@ -2598,14 +2625,18 @@ const PublishedFeed = () => {
       .gte('created_at', from)
       .lt('created_at', to);
     if (error) { toast.error('מחיקה נכשלה: ' + error.message); return; }
-    setRows((prev) => prev?.filter((x) => x.id !== r.id) ?? prev);
+    setRows((prev) => {
+      const next = prev?.filter((x) => x.id !== r.id) ?? prev;
+      const scopeKey = workspaceOwnerId ?? userId ?? '';
+      if (next && scopeKey) FEED_ROWS_CACHE.set(scopeKey, next);
+      return next;
+    });
     queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
     toast.success(
       externalIds.length > 0
         ? `הפוסט נמחק בהצלחה מפייסבוק ומהמערכת${typeof count === 'number' ? ` (${count} רשומות)` : ''}`
         : `הפוסט נמחק מהמערכת${typeof count === 'number' ? ` (${count} רשומות)` : ''}`,
     );
-    load();
   };
 
   // Remove a single image from a post card. Local-only (the card's media list
@@ -3583,7 +3614,6 @@ const CampaignCenter = () => {
         sessionStorage.setItem('rz-connected-channel-names', JSON.stringify(parsed));
       }
     } catch { /* ignore */ }
-    queryClient.invalidateQueries();
     queryClient.invalidateQueries({ queryKey: ['social-connections'] });
     queryClient.invalidateQueries({ queryKey: ['workspace-social-profile'] });
     queryClient.invalidateQueries({ queryKey: ['ayrshare-social-accounts'] });
@@ -3643,9 +3673,15 @@ const CampaignCenter = () => {
             setChannelAccountNames((prev) => ({ ...prev, facebook: wspFbName }));
           }
 
-          // Best-effort sync. Never let a failure tear down the component.
+          // Best-effort sync, throttled per browser session so route changes
+          // don't repeatedly call the external account endpoint.
           try {
-            await supabase.functions.invoke('ayrshare-sync-accounts', { body: {} });
+            const syncKey = 'realtyz.ayrshare_accounts_sync_at';
+            const lastSyncAt = Number(sessionStorage.getItem(syncKey) || 0);
+            if (!Number.isFinite(lastSyncAt) || Date.now() - lastSyncAt > CAMPAIGN_CACHE_MS) {
+              await supabase.functions.invoke('ayrshare-sync-accounts', { body: {} });
+              sessionStorage.setItem(syncKey, String(Date.now()));
+            }
           } catch (e) {
             console.warn('[CampaignCenter] ayrshare-sync-accounts failed (non-fatal):', (e as Error)?.message);
           }
