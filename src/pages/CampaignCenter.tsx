@@ -1115,20 +1115,25 @@ const InlineComposer = ({
               setBody((prev) => stripWaCta(prev));
               return;
             }
-            // Compose the CTA line. Try to mint a branded short-link when a
-            // listing is attached; fall back to a plain CTA otherwise.
-            let ctaLine = 'דברו איתנו עכשיו בוואטסאפ';
+            // Compose a fresh CTA line every time: rotating first-person opener
+            // + a real WhatsApp link. Prefer the branded short-link when a
+            // listing is attached; otherwise fall back to wa.me with a
+            // pre-filled Hebrew intro so the link is NEVER missing.
+            const opener = pickWaCtaOpener();
+            const fallbackText = 'היי אודי, ראיתי את הפוסט שלך ואשמח לפרטים נוספים.';
+            let linkPart = `https://wa.me/972537339533?text=${encodeURIComponent(fallbackText)}`;
             if (selectedListingId) {
               try {
                 const { data: slugRes } = await supabase.functions.invoke('shortlink-create', {
                   body: { property_id: selectedListingId },
                 });
                 const slug = (slugRes as any)?.slug;
-                if (slug) ctaLine = `דברו איתנו עכשיו: realtyz.co.il/r/${slug}`;
+                if (slug) linkPart = `realtyz.co.il/r/${slug}`;
               } catch (err) {
                 console.warn('[shortlink] preview generation failed', err);
               }
             }
+            const ctaLine = `${opener}\n${linkPart}`;
             setBody((prev) => {
               const clean = stripWaCta(prev);
               const merged = `${clean}\n\n${ctaLine}`.slice(0, MAX_CHARS);
