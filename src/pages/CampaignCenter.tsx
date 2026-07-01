@@ -1351,12 +1351,11 @@ const ConfirmDispatchDialog = ({
   const SOCIAL_CHANNELS = new Set(['facebook', 'instagram', 'x', 'twitter', 'linkedin', 'youtube', 'tiktok']);
 
   const handleConfirm = async () => {
+    console.log("EMERGENCY AUDIT: Broadcast button clicked successfully.");
     if (!user) { toast.error('יש להתחבר'); return; }
-    // Hard idempotency guard — prevents accidental duplicate dispatches.
-    if (inFlightRef.current || sending) return;
-    inFlightRef.current = true;
+    if (isBroadcasting) return;
     const ownerScope = workspaceOwnerId ?? user.id;
-    setSending(true);
+    setIsBroadcasting(true);
     try {
       // Force-refresh branded WhatsApp short link CTA when a listing is attached.
       // Existing slug lines are replaced so stale persisted drafts cannot publish
