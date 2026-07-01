@@ -192,6 +192,7 @@ const writeCache = (campaignId: string, rows: EngagementRow[], postIds: string[]
 // across page reloads inside the same browser session.
 const PROVIDER_FETCH_LOCK_MS = 15 * 60 * 1000; // 15 minutes
 const providerLockKey = (pid: string) => `realtyz_fb_comments_lock_${pid}`;
+const autoFetchKey = (campaignId: string) => `realtyz_fb_comments_first_expand_fetch_${campaignId}`;
 const purgeEmptyPerPostCacheBlocks = (pids: string[]): boolean => {
   let purged = false;
   for (const pid of pids) {
@@ -644,11 +645,13 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
       }
       await load();
 
-      // Auto-refresh on every card expand. Cache is never wiped, so any
-      // existing comment tree stays intact and only new comments/replies
-      // are merged in. The 60s manual-debounce + provider lock throttle
-      // still protect against Ayrshare spam.
-      if (postIds.length > 0 && !isProviderFetchLocked(postIds)) {
+      // Auto-refresh on the first card expand in the browser session, even if
+      // an old provider lock exists from a previous empty attempt. Later opens
+      // respect the 15-minute lock and keep the cached tree visible.
+      let firstExpandFetch = false;
+      try { firstExpandFetch = sessionStorage.getItem(autoFetchKey(campaign.id)) !== "1"; } catch { firstExpandFetch = true; }
+      if (postIds.length > 0 && (firstExpandFetch || !isProviderFetchLocked(postIds))) {
+        try { sessionStorage.setItem(autoFetchKey(campaign.id), "1"); } catch { /* quota */ }
         void forceRefresh({ manual: true });
       }
 
