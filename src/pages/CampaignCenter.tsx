@@ -1600,16 +1600,28 @@ const ConfirmDispatchDialog = ({
 
 
         <DialogFooter className="!justify-between gap-2 sm:gap-2 flex-row-reverse">
-          <Button onClick={handleConfirm} disabled={sending}
-            className="bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)]">
-            {sending ? (
+          <Button
+            type="button"
+            disabled={isBroadcasting}
+            className="bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)]"
+            onClick={async () => {
+              console.log("EMERGENCY AUDIT: Broadcast button clicked successfully.");
+              if (isBroadcasting) return;
+              try {
+                await handleConfirm();
+              } catch (err) {
+                console.error("Broadcast failed:", err);
+              }
+            }}
+          >
+            {isBroadcasting ? (
               <span className="inline-flex items-center gap-2">
                 <Loader2 className="h-4 w-4 animate-spin" />
                 מפרסם ברשתות החברתיות...
               </span>
             ) : 'אישור ושידור'}
           </Button>
-          <Button variant="outline" onClick={onClose} disabled={sending}>ביטול</Button>
+          <Button variant="outline" onClick={onClose} disabled={isBroadcasting}>ביטול</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
