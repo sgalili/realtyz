@@ -995,6 +995,8 @@ Deno.serve(async (req) => {
         persisted: persist,
         upserted,
         enriched_media: enrichedMedia,
+        enriched_counters: enrichedCounters,
+        enriched_dates: enrichedDates,
         persist_error: persistError,
 
         owner_id: ownerId,
