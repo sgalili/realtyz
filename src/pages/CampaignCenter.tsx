@@ -1331,7 +1331,20 @@ const ConfirmDispatchDialog = ({
   if (!channel) return null;
 
   const selectedPages = pages.filter((p) => selectedProfileIds.includes(p.id));
-  const publishTargets = selectedPages.length > 0 ? selectedPages : pages.slice(0, 1);
+  // Deduplicate by profile key / account ref / normalized name so the same
+  // Facebook page never renders as two stacked cards for the מתעניין flow.
+  const dedupePages = (rows: typeof pages) => {
+    const seen = new Set<string>();
+    const out: typeof pages = [];
+    for (const p of rows) {
+      const key = (p.profileKey || p.accountRef || (p.name || '').trim().toLowerCase()).toString();
+      if (!key || seen.has(key)) continue;
+      seen.add(key);
+      out.push(p);
+    }
+    return out;
+  };
+  const publishTargets = dedupePages(selectedPages.length > 0 ? selectedPages : pages.slice(0, 1));
   const selectedPage = publishTargets[0] || null;
   const profileLabel = selectedPage
     ? `${selectedPage.name}${selectedPage.username ? ` · @${selectedPage.username}` : ''}`
