@@ -495,8 +495,7 @@ const InlineComposer = ({
   };
   // Strip any auto-generated WhatsApp CTA line the AI (or a stale draft) may
   // emit. The CTA is now opt-in via the "הוסף קישור לוואטסאפ" checkbox and
-  // is appended at publish-time only. Also strip house/apartment numbers so
-  // the public post never leaks a full street address (privacy rule).
+  // is appended at publish-time only.
   const stripWaCta = (s: string) =>
     s
       .replace(/\n*[^\n]*דברו איתנו עכשיו[^\n]*/g, '')
@@ -504,11 +503,8 @@ const InlineComposer = ({
       .replace(/[ \t]+\n/g, '\n')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
-  const stripStreetNumbers = (s: string) =>
-    // Remove trailing house/apt numbers after a street name (Hebrew or Latin).
-    s.replace(/([\u0590-\u05FFA-Za-z"'׳״]+)\s+\d+[א-ת]?(?:\s*\/\s*\d+)?/g, '$1');
   const cleanBody = (s: string) =>
-    stripStreetNumbers(stripWaCta(s)).replace(/^[\s\u200f\u200e]+/g, '').slice(0, MAX_CHARS);
+    stripWaCta(s).replace(/^[\s\u200f\u200e]+/g, '').slice(0, MAX_CHARS);
   const initial = readDraft() || {};
 
   const [body, setBody] = useState<string>(cleanBody(initial.body || ''));
