@@ -1279,7 +1279,7 @@ const InlineComposer = ({
 /* ───────────── Dispatch confirmation modal ───────────── */
 
 const ConfirmDispatchDialog = ({
-  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds, selectedProfileIds, onConfirmed,
+  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds, selectedProfileIds, attachWaLink, onConfirmed,
 }: {
   open: boolean;
   onClose: () => void;
@@ -1292,6 +1292,7 @@ const ConfirmDispatchDialog = ({
   scheduledAt: string | null;
   groupIds: string[];
   selectedProfileIds: string[];
+  attachWaLink: boolean;
   onConfirmed: () => void;
 }) => {
   const { user } = useAuth();
