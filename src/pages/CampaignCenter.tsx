@@ -2636,8 +2636,8 @@ const PublishedFeed = () => {
                 const hasCountdown = remainingMs > 0;
                 const isUrgent = remainingMs > 5 * 60_000;
                 const tone = isUrgent
-                  ? { border: 'border-red-300', bg: 'bg-red-50', text: 'text-red-700', badge: 'bg-red-600' }
-                  : { border: 'border-orange-300', bg: 'bg-orange-50', text: 'text-orange-700', badge: 'bg-orange-500' };
+                  ? { border: 'border-red-300', bg: 'bg-red-50', text: 'text-red-700', badge: 'bg-red-600 text-yellow-300' }
+                  : { border: 'border-orange-300', bg: 'bg-orange-50', text: 'text-orange-700', badge: 'bg-yellow-300 text-red-700' };
                 return (
                   <div className={`rounded-md border ${tone.border} ${tone.bg} px-2.5 py-2`}>
                     <div className={`flex items-center gap-1.5 text-[11px] font-bold ${tone.text}`}>
