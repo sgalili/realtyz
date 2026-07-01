@@ -147,6 +147,7 @@ Deno.serve(async (req) => {
           suspended: ayrRes.status === 403,
         }, 200);
       }
+      await recordAyrshareAction(admin, { actionType: "comment_reply", platform, targetId: nativeCommentId, content: sanitized });
     }
 
     // STRICT SEQUENTIAL EXECUTION:
