@@ -560,12 +560,16 @@ Deno.serve(async (req) => {
         j = { raw: t };
       }
       const errs = collectErrors(j);
-      return {
-        ok: r.ok && errs.length === 0,
-        status: r.status,
-        body: j,
-        errors: errs,
-      };
+      const ok = r.ok && errs.length === 0;
+      if (ok) {
+        await recordAyrshareAction(admin, {
+          actionType: "post",
+          platform: Array.isArray(payload.platforms) ? String((payload.platforms as any[])[0] ?? "") : undefined,
+          content: finalPostText,
+          contentHash: guard.contentHash,
+        });
+      }
+      return { ok, status: r.status, body: j, errors: errs };
     };
 
     // ---- Main page post (skipped only when caller targets groups exclusively
