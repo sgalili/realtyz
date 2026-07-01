@@ -640,15 +640,14 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
       }
       await load();
 
-      // Session-scoped first-expand provider fetch (one per campaign per tab).
-      try {
-        const sentinelKey = `realtyz.first_expand_fetched.${campaign.id}`;
-        const alreadyFetched = sessionStorage.getItem(sentinelKey) === '1';
-        if (!alreadyFetched && postIds.length > 0 && !isProviderFetchLocked(postIds)) {
-          sessionStorage.setItem(sentinelKey, '1');
-          void forceRefresh({ manual: true });
-        }
-      } catch { /* quota / private mode */ }
+      // Auto-refresh on every card expand. Cache is never wiped, so any
+      // existing comment tree stays intact and only new comments/replies
+      // are merged in. The 60s manual-debounce + provider lock throttle
+      // still protect against Ayrshare spam.
+      if (postIds.length > 0 && !isProviderFetchLocked(postIds)) {
+        void forceRefresh({ manual: true });
+      }
+
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [campaign.id, postIdsKey, campaign.channel]);
