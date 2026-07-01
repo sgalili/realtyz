@@ -135,8 +135,22 @@ Deno.serve(async (req) => {
             .eq("id", rowId)
             .eq("user_id", ownerUserId);
         }
+        // Ayrshare error code 156 → Facebook social network is not linked to
+        // the active profile. Return a clean structured payload so the UI can
+        // display an instructive alert instead of a 502 crash.
+        const errCode = Number(
+          (ayrPayload as any)?.code ??
+          (ayrPayload as any)?.errors?.[0]?.code ??
+          (ayrPayload as any)?.raw?.code ?? 0,
+        );
+        if (errCode === 156) {
+          return json({
+            success: false,
+            error: "social_not_linked",
+            message: "הפרופיל אינו מחובר לפייסבוק. אנא ודא חיבור בעמוד הגדרות החשבון.",
+          }, 200);
+        }
         // Hard-stop: 429 / 403 means Ayrshare wants us to back off NOW.
-        // Surface `halt` so the client immediately freezes — no retries.
         const halt = ayrRes.status === 429 || ayrRes.status === 403;
         return json({
           error: ayrRes.status === 429 ? "RATE_LIMIT_EXCEEDED" : "ayrshare reply failed",
@@ -147,6 +161,7 @@ Deno.serve(async (req) => {
           suspended: ayrRes.status === 403,
         }, 200);
       }
+
       await recordAyrshareAction(admin, { actionType: "comment_reply", platform, targetId: nativeCommentId, content: sanitized });
     }
 
