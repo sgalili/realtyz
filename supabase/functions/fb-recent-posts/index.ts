@@ -72,9 +72,29 @@ const isRenderableMediaUrl = (value: unknown): value is string => {
   }
 };
 
+const mediaDedupeKey = (url: string): string => {
+  try {
+    const u = new URL(url);
+    const filename = u.pathname.split('/').pop() || u.pathname;
+    return filename.toLowerCase();
+  } catch {
+    return String(url).split('?')[0].toLowerCase();
+  }
+};
+
 const normalizeMediaUrls = (value: unknown): string[] => {
   const input = Array.isArray(value) ? value : [];
-  return Array.from(new Set(input.filter(isRenderableMediaUrl)));
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const item of input) {
+    if (!isRenderableMediaUrl(item)) continue;
+    const text = asText(item);
+    const key = mediaDedupeKey(text);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(text);
+  }
+  return out;
 };
 
 const addUrl = (set: Set<string>, value: unknown) => {
