@@ -79,7 +79,9 @@ const queryClient = new QueryClient({
     queries: {
       retry: 2,
       retryDelay: (attempt) => Math.min(1000 * 2 ** attempt, 10000),
-      staleTime: 30_000,
+      staleTime: 5 * 60_000,
+      gcTime: 5 * 60_000,
+      refetchOnWindowFocus: false,
     },
     // Mutations handle their own errors with context-specific messages.
     // No global error toast - it was masking real failures.
