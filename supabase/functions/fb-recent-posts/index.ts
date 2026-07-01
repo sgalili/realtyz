@@ -785,6 +785,7 @@ Deno.serve(async (req) => {
 
     const candidates = await discoverProfiles();
     const allById = new Map<string, RawPost>();
+    const diagnostics: any[] = [];
     const mediaScore = (post: RawPost) => collectMediaUrls(post.item).length;
     const qualityScore = (post: RawPost) => {
       const it = post.item;
@@ -823,9 +824,11 @@ Deno.serve(async (req) => {
 
     for (const candidate of candidates) {
       const result = await fetchPlatformHistory(candidate, true);
+      diagnostics.push({ source: "history/facebook", profile: candidate.label, profileKey: candidate.profileKey.slice(0, 8), pagePublished: true, status: result.status, count: result.posts.length, error: result.error });
       const broadResult = result.posts.length < Math.min(50, lastRecords)
         ? await fetchPlatformHistory(candidate, undefined)
         : result;
+      if (broadResult !== result) diagnostics.push({ source: "history/facebook", profile: candidate.label, profileKey: candidate.profileKey.slice(0, 8), pagePublished: null, status: broadResult.status, count: broadResult.posts.length, error: broadResult.error });
       const bestResult = broadResult.posts.length > result.posts.length
         ? broadResult
         : result;
@@ -845,10 +848,12 @@ Deno.serve(async (req) => {
     // slice. Always compare both routes and keep the richest result.
     if (allById.size < Math.min(150, lastRecords)) {
       const accountPublished = await fetchPlatformHistory(null, true);
+      diagnostics.push({ source: "history/facebook", profile: "account", pagePublished: true, status: accountPublished.status, count: accountPublished.posts.length, error: accountPublished.error });
       const accountBroad =
         accountPublished.posts.length < Math.min(150, lastRecords)
           ? await fetchPlatformHistory(null, undefined)
           : accountPublished;
+      if (accountBroad !== accountPublished) diagnostics.push({ source: "history/facebook", profile: "account", pagePublished: null, status: accountBroad.status, count: accountBroad.posts.length, error: accountBroad.error });
       const accountBest =
         accountBroad.posts.length > accountPublished.posts.length
           ? accountBroad
@@ -862,6 +867,7 @@ Deno.serve(async (req) => {
 
     if (allById.size < Math.min(150, lastRecords)) {
       const genericResult = await fetchGenericHistory();
+      diagnostics.push({ source: "history", profile: "workspace", status: genericResult.status, count: genericResult.posts.length, error: genericResult.error });
       lastStatus = genericResult.status || lastStatus;
       lastError = genericResult.error ?? lastError;
       mergePosts(genericResult.posts);
@@ -908,6 +914,7 @@ Deno.serve(async (req) => {
     let graphSource: string | null = null;
     if (allById.size < Math.min(150, lastRecords)) {
       const graphResult = await fetchGraphHistory();
+      diagnostics.push({ source: "graph", profile: graphResult.source, status: graphResult.status, count: graphResult.posts.length, error: graphResult.error });
       graphSource = graphResult.source;
       lastStatus = graphResult.status || lastStatus;
       lastError = graphResult.error ?? lastError;
@@ -1144,6 +1151,7 @@ Deno.serve(async (req) => {
         raw_status: lastStatus,
         raw_error: lastError,
         graph_source: graphSource,
+        diagnostics,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
