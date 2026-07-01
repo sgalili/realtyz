@@ -323,8 +323,10 @@ Deno.serve(async (req) => {
         ),
       ),
     );
+    // Ayrshare may silently cap very large page sizes; keep our request at a
+    // pagination-friendly size so maxPages is high enough to walk history.
     const pageSize = Math.min(
-      500,
+      100,
       Math.max(
         10,
         Number(body?.pageSize ?? url.searchParams.get("pageSize") ?? 500),
@@ -518,6 +520,7 @@ Deno.serve(async (req) => {
       for (let page = 0; page < maxPages; page++) {
         const qs = new URLSearchParams({
           limit: String(pageSize),
+          lastRecords: String(lastRecords),
           dataType: "all",
           // Critical: Ayrshare defaults can return only a short recent slice.
           // lastDays=0 means full available history for the connected native
@@ -572,8 +575,13 @@ Deno.serve(async (req) => {
           });
           added++;
         }
+        const lastItem = items[items.length - 1];
+        const fallbackCursor = asText(lastItem?.id) ||
+          pickNativeFacebookPostId(lastItem) ||
+          collectPostIds(lastItem, true)[0] || null;
         nextCursor = json?.lastId || json?.meta?.pagination?.next || json?.next ||
-          json?.nextToken || json?.next_token || json?.pageToken || null;
+          json?.nextToken || json?.next_token || json?.pageToken ||
+          (items.length >= pageSize ? fallbackCursor : null);
         const hasMore = Boolean(json?.meta?.pagination?.hasMore || nextCursor);
         reachedEnd = !hasMore;
         if (!hasMore && added === 0) break;
@@ -703,7 +711,18 @@ Deno.serve(async (req) => {
     };
 
     const candidates = await discoverProfiles();
-    let all: RawPost[] = [];
+    const allById = new Map<string, RawPost>();
+    const mergePosts = (posts: RawPost[]) => {
+      for (const post of posts) {
+        const id = pickNativeFacebookPostId(post.item) ||
+          collectPostIds(post.item, true)[0] ||
+          JSON.stringify(post.item).slice(0, 96);
+        const existing = allById.get(id);
+        if (!existing || collectMediaUrls(post.item).length > collectMediaUrls(existing.item).length) {
+          allById.set(id, post);
+        }
+      }
+    };
     let lastStatus = 0;
     let lastError: any = null;
     let winningProfile: ProfileCandidate | null = null;
@@ -718,18 +737,19 @@ Deno.serve(async (req) => {
         : result;
       lastStatus = bestResult.status;
       lastError = bestResult.error;
-      if (bestResult.posts.length > all.length) {
-        all = bestResult.posts;
+      mergePosts(result.posts);
+      if (broadResult !== result) mergePosts(broadResult.posts);
+      if (bestResult.posts.length > (winningProfile ? 0 : -1)) {
         winningProfile = candidate;
       }
-      if (bestResult.posts.length >= lastRecords) break;
+      if (allById.size >= lastRecords) break;
     }
 
     // The platform-specific history endpoint has changed behavior across
     // Ayrshare versions/plans: some tenants return the full native Page history
     // with only the API key, while sub-profile calls can return a short recent
     // slice. Always compare both routes and keep the richest result.
-    if (all.length < Math.min(150, lastRecords)) {
+    if (allById.size < Math.min(150, lastRecords)) {
       const accountPublished = await fetchPlatformHistory(null, true);
       const accountBroad =
         accountPublished.posts.length < Math.min(150, lastRecords)
@@ -741,26 +761,25 @@ Deno.serve(async (req) => {
           : accountPublished;
       lastStatus = accountBest.status || lastStatus;
       lastError = accountBest.error ?? lastError;
-      if (accountBest.posts.length > all.length) {
-        all = accountBest.posts;
-        winningProfile = null;
-      }
+      mergePosts(accountPublished.posts);
+      if (accountBroad !== accountPublished) mergePosts(accountBroad.posts);
+      if (accountBest.posts.length > 0) winningProfile = null;
     }
 
-    if (all.length < Math.min(150, lastRecords)) {
+    if (allById.size < Math.min(150, lastRecords)) {
       const genericResult = await fetchGenericHistory();
       lastStatus = genericResult.status || lastStatus;
       lastError = genericResult.error ?? lastError;
-      if (genericResult.posts.length > all.length) all = genericResult.posts;
+      mergePosts(genericResult.posts);
     }
 
     let graphSource: string | null = null;
-    if (all.length < Math.min(150, lastRecords)) {
+    if (allById.size < Math.min(150, lastRecords)) {
       const graphResult = await fetchGraphHistory();
       graphSource = graphResult.source;
       lastStatus = graphResult.status || lastStatus;
       lastError = graphResult.error ?? lastError;
-      if (graphResult.posts.length > all.length) all = graphResult.posts;
+      mergePosts(graphResult.posts);
     }
 
     if (
@@ -780,6 +799,7 @@ Deno.serve(async (req) => {
         .eq("id", WORKSPACE_ID);
     }
 
+    const all = Array.from(allById.values());
     const normalized = all.map(normalizePost).filter((
       p,
     ): p is NonNullable<ReturnType<typeof normalizePost>> => !!p);
