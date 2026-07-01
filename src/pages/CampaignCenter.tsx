@@ -2348,8 +2348,7 @@ const PublishedFeed = () => {
         const dirAttr: 'rtl' | 'ltr' = isHe ? 'rtl' : 'ltr';
         const alignClass = isHe ? 'text-right' : 'text-left';
         const preview = bodyText.trim().slice(0, 100) + (bodyText.trim().length > 100 ? '…' : '');
-        const hasMetrics = !!r.metrics_updated_at;
-        const fmt = (v: number | null | undefined) => (hasMetrics && typeof v === 'number' ? v : '–');
+        const fmt = (v: number | null | undefined) => (typeof v === 'number' ? v : 0);
         const liveCount = liveCommentCounts[r.id];
         // The truth is the tree: the badge bypasses the lagging analytics
         // integer whenever the rendered comment tree (top-level + nested
