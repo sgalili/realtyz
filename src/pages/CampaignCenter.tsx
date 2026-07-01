@@ -2826,23 +2826,29 @@ const PublishedFeed = () => {
                   {bodyText || <span className="text-muted-foreground">אין תוכן הודעה</span>}
                 </div>
                 <div className="flex items-center justify-between gap-2 px-4 pb-4" dir="rtl" onClick={(e) => e.stopPropagation()}>
-                  <Button variant="outline" size="sm"
-                          disabled={!postUrl}
-                          onClick={(e) => { e.stopPropagation(); if (postUrl) window.open(postUrl, '_blank', 'noopener,noreferrer'); }}>
-                    <ExternalLink className="ml-1 h-4 w-4" />
-                    פתח פוסט
-                  </Button>
-                  <Button variant="outline" size="sm"
-                          disabled={!!refreshingIds[r.id]}
-                          onClick={(e) => { e.stopPropagation(); bumpRefresh(r.id); }}>
-                    <RefreshCw className={cn('ml-1 h-4 w-4', refreshingIds[r.id] && 'animate-spin')} />
-                    {refreshingIds[r.id] ? 'מרענן…' : 'רענן תגובות'}
-                  </Button>
                   <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
                           className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
                     <Trash2 className="ml-1 h-4 w-4" />
                     מחק פוסט
                   </Button>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm"
+                            disabled={!postUrl}
+                            onClick={(e) => { e.stopPropagation(); if (postUrl) window.open(postUrl, '_blank', 'noopener,noreferrer'); }}>
+                      <ExternalLink className="ml-1 h-4 w-4" />
+                      פתח פוסט
+                    </Button>
+                    <Button variant="outline" size="sm"
+                            disabled={!!refreshingIds[r.id]}
+                            onClick={(e) => { e.stopPropagation(); bumpRefresh(r.id); }}>
+                      <RefreshCw className="ml-1 h-4 w-4" />
+                      {refreshingIds[r.id] ? 'מרענן…' : 'רענן תגובות'}
+                    </Button>
+                    <Button variant="outline" size="sm" disabled className="gap-1 opacity-90">
+                      <Paperclip className="ml-1 h-4 w-4" />
+                      {Array.isArray(r.media_urls) ? r.media_urls.length : 0}
+                    </Button>
+                  </div>
                 </div>
                 {!r.is_external && (
                   <CampaignGroupBreakdown
