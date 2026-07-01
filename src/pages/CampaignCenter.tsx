@@ -1388,11 +1388,11 @@ const ConfirmDispatchDialog = ({
     const ownerScope = workspaceOwnerId ?? user.id;
     setIsBroadcasting(true);
     try {
-      // Force-refresh branded WhatsApp short link CTA when a listing is attached.
-      // Existing slug lines are replaced so stale persisted drafts cannot publish
-      // an old short_urls row for a different selected property.
+      // WhatsApp CTA is OPT-IN via the "הוסף קישור לוואטסאפ" checkbox. When
+      // unchecked the outgoing payload stays completely clean of any CTA or
+      // tracking short-link — regardless of whether a listing is attached.
       let bodyToPublish = body;
-      if (listingId) {
+      if (attachWaLink && listingId) {
         try {
           const { data: slugRes } = await supabase.functions.invoke('shortlink-create', {
             body: { property_id: listingId },
@@ -1401,6 +1401,7 @@ const ConfirmDispatchDialog = ({
           if (slug) {
             const withoutStaleSlug = body
               .replace(/\n*[^\n]*realtyz\.co\.il\/r\/[a-z0-9]+[^\n]*/gi, '')
+              .replace(/\n*[^\n]*דברו איתנו עכשיו[^\n]*/g, '')
               .trim();
             bodyToPublish = `${withoutStaleSlug}\n\nדברו איתנו עכשיו: realtyz.co.il/r/${slug}`;
           }
