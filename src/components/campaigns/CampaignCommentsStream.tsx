@@ -1389,4 +1389,18 @@ function CommentBubble({
   );
 }
 
+// Wrap in React.memo so parent re-renders (composer state, media uploads,
+// counter bubbles) can never force a re-render of the comment tree that would
+// re-execute mount effects and stomp on sibling upload state.
+export const CampaignCommentsStream = memo(CampaignCommentsStreamInner, (prev, next) => {
+  return (
+    prev.userId === next.userId &&
+    prev.campaign.id === next.campaign.id &&
+    prev.commentCount === next.commentCount &&
+    prev.refreshSignal === next.refreshSignal &&
+    prev.hideHeader === next.hideHeader
+  );
+});
+
+
 
