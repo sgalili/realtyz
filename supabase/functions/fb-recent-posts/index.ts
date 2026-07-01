@@ -53,9 +53,32 @@ const firstValidDate = (...values: unknown[]): string | null => {
 
 const delay = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const addUrl = (set: Set<string>, value: unknown) => {
+const isRenderableMediaUrl = (value: unknown): value is string => {
   const url = asText(value);
-  if (/^https?:\/\//i.test(url)) set.add(url);
+  if (!/^https?:\/\//i.test(url)) return false;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname.toLowerCase();
+    const path = parsed.pathname.toLowerCase();
+    const facebookPagePaths = ["/photo.php", "/permalink.php", "/share/", "/posts/", "/videos/", "/watch"];
+    if ((host === "facebook.com" || host.endsWith(".facebook.com")) && facebookPagePaths.some((p) => path.startsWith(p))) {
+      return false;
+    }
+    return /\.(jpg|jpeg|png|webp|gif|avif|mp4|mov|m4v)(\?|$)/i.test(url) ||
+      host.includes("fbcdn.net") ||
+      host.includes("cdninstagram.com");
+  } catch (_err) {
+    return false;
+  }
+};
+
+const normalizeMediaUrls = (value: unknown): string[] => {
+  const input = Array.isArray(value) ? value : [];
+  return Array.from(new Set(input.filter(isRenderableMediaUrl)));
+};
+
+const addUrl = (set: Set<string>, value: unknown) => {
+  if (isRenderableMediaUrl(value)) set.add(asText(value));
 };
 
 const collectMediaUrls = (it: any): string[] => {
@@ -1147,7 +1170,7 @@ Deno.serve(async (req) => {
 
             // Media URLs
             const urls: string[] = [];
-            const push = (u: any) => { if (typeof u === "string" && /^https?:\/\//.test(u) && !urls.includes(u)) urls.push(u); };
+            const push = (u: any) => { if (isRenderableMediaUrl(u) && !urls.includes(u)) urls.push(u.trim()); };
             push(entry.full_picture);
             const visit = (node: any) => {
               if (!node) return;
@@ -1169,9 +1192,7 @@ Deno.serve(async (req) => {
             // True native created_time
             const nativeCreatedAt = firstValidDate(entry?.created_time);
 
-            const existingMedia = Array.isArray((t as any).provider_response?.media_urls)
-              ? (t as any).provider_response.media_urls
-              : [];
+            const existingMedia = normalizeMediaUrls((t as any).provider_response?.media_urls);
             const mergedMedia = urls.length > 0 ? urls : existingMedia;
 
             const updatePayload: Record<string, unknown> = {
