@@ -507,12 +507,13 @@ Deno.serve(async (req) => {
     const fetchPlatformHistory = async (
       candidate: ProfileCandidate | null,
       pagePublished?: boolean,
-    ): Promise<{ posts: RawPost[]; status: number; error: any }> => {
+    ): Promise<{ posts: RawPost[]; status: number; error: any; reachedEnd: boolean }> => {
       const seenIds = new Set<string>();
       const rows: RawPost[] = [];
       let status = 0;
       let error: any = null;
       let nextCursor: string | null = null;
+      let reachedEnd = false;
 
       for (let page = 0; page < maxPages; page++) {
         const qs = new URLSearchParams({
@@ -574,12 +575,13 @@ Deno.serve(async (req) => {
         nextCursor = json?.lastId || json?.meta?.pagination?.next || json?.next ||
           json?.nextToken || json?.next_token || json?.pageToken || null;
         const hasMore = Boolean(json?.meta?.pagination?.hasMore || nextCursor);
+        reachedEnd = !hasMore;
         if (!hasMore && added === 0) break;
         if (!hasMore) break;
         if (rows.length >= lastRecords) break;
       }
 
-      return { posts: rows, status, error, reachedEnd: !Boolean(json?.meta?.pagination?.hasMore || nextCursor) };
+      return { posts: rows, status, error, reachedEnd };
     };
 
     const fetchGenericHistory = async (): Promise<
