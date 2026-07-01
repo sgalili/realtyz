@@ -1208,6 +1208,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
 function CommentBubble({
   row,
   onToggleEditor,
+  onQuickDm,
   expanded,
   editor,
   onRegenerate,
@@ -1222,6 +1223,7 @@ function CommentBubble({
 }: {
   row: EngagementRow;
   onToggleEditor: (r: EngagementRow) => void;
+  onQuickDm?: (r: EngagementRow) => void;
   expanded: boolean;
   editor?: React.ReactNode;
   onRegenerate?: (r: EngagementRow) => void;
@@ -1234,6 +1236,7 @@ function CommentBubble({
   onToggleThread?: () => void;
   embedded?: boolean;
 }) {
+
   const dt = new Date(row.created_at);
   const when = dt.toLocaleString("he-IL", {
     day: "2-digit",
