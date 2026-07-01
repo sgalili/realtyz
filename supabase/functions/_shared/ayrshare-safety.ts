@@ -148,7 +148,8 @@ export async function guardOutboundAction(params: {
     if (BANNED_PATTERNS.some((rx) => rx.test(text))) {
       return blocked("banned_pattern");
     }
-    if (tooManyEmojis(text)) return blocked("excessive_emoji");
+    // Emoji density guard disabled — Hebrew marketing posts legitimately use many emojis.
+    // if (tooManyEmojis(text)) return blocked("excessive_emoji");
     if (shoutingLatin(text)) return blocked("all_caps");
     hash = await sha256(text.toLowerCase().replace(/\s+/g, " "));
 
