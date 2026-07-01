@@ -654,13 +654,12 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
 
 
 
-  // When the parent's counter bumps (analytics realtime patch on
-  // campaign_logs), immediately pull the new comments into the tree.
-  useEffect(() => {
-    if (typeof commentCount !== "number") return;
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [commentCount]);
+  // NOTE: we intentionally do NOT re-run load() on every `commentCount`
+  // prop change. Doing so combined with onLiveCountResolved bubbling counts
+  // back up to the parent was causing a fetch feedback loop that never
+  // resolved the manual refresh spinner. Fresh data now arrives via the
+  // realtime subscription and the explicit refresh button.
+
 
 
   useEffect(() => {
