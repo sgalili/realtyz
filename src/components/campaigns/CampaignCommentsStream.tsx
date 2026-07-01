@@ -99,6 +99,7 @@ type Props = {
   userId: string;
   campaign: {
     id: string;
+    user_id?: string | null;
     campaign_name: string;
     channel: string;
     message_body?: string | null;
@@ -277,6 +278,7 @@ const writeDraftCache = (campaignId: string, map: DraftMap) => {
 };
 
 export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveCountResolved, onCountersResolved, refreshSignal, hideHeader, onRefreshComplete }: Props) {
+  const commentOwnerId = campaign.user_id || userId;
   const cached = readCache(campaign.id);
   const [rows, setRows] = useState<EngagementRow[] | null>(cached);
 
@@ -293,8 +295,10 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
   useEffect(() => {
     if (!onLiveCountResolved) return;
     if (!Array.isArray(rows)) return;
-    onLiveCountResolved(campaign.id, treeCount(rows));
-  }, [rows, campaign.id, onLiveCountResolved]);
+    // Never publish a lower zero over a saved non-zero card counter. The DB
+    // counter is the floor until the full comment tree is actually loaded.
+    onLiveCountResolved(campaign.id, Math.max(treeCount(rows), Number(commentCount ?? 0) || 0));
+  }, [rows, campaign.id, commentCount, onLiveCountResolved]);
 
   const [loading, setLoading] = useState(false);
   const [manualRefreshing, setManualRefreshing] = useState(false);
@@ -414,7 +418,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
       .select(
         "id, user_id, platform, sender_handle, inbound_text, ai_reply_text, status, sentiment, external_id, external_post_id, metadata, created_at, is_archived",
       )
-      .eq("user_id", userId)
+      .eq("user_id", commentOwnerId)
       // NOTE: do NOT filter on is_archived — incoming comments are not
       // guaranteed to be initialized to false, and archived AI rows still
       // belong on the thread for full visibility.
@@ -534,9 +538,9 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
         })),
         withTimeout(postIds.length > 0
           ? supabase.functions.invoke("ayrshare-comments-fetch", {
-              body: { post_ids: postIds, platform: platformForCampaignChannel(campaign.channel), campaign_body: campaign.message_body ?? null, force_refresh: manual },
+              body: { user_id: commentOwnerId, post_ids: postIds, platform: platformForCampaignChannel(campaign.channel), campaign_body: campaign.message_body ?? null, force_refresh: manual },
             })
-          : supabase.functions.invoke("ayrshare-sync-comments", { body: {} })),
+          : supabase.functions.invoke("ayrshare-sync-comments", { body: { user_id: commentOwnerId } })),
       ]);
       let sawSessionExpired = false;
       let sawHalt = false;
@@ -576,7 +580,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
           const { data: rows } = await supabase
             .from("campaign_logs")
             .select("like_count, share_count, comment_count, provider_message_id, metrics_updated_at")
-            .eq("user_id", userId)
+            .eq("user_id", commentOwnerId)
             .in("provider_message_id", postIds)
             .order("metrics_updated_at", { ascending: false, nullsFirst: false })
             .limit(1);
@@ -664,10 +668,10 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
 
   useEffect(() => {
     const channel = supabase
-      .channel(`engagement_events:${userId}:${campaign.id}`)
+      .channel(`engagement_events:${commentOwnerId}:${campaign.id}`)
       .on(
         "postgres_changes",
-        { event: "*", schema: "public", table: "engagement_events", filter: `user_id=eq.${userId}` },
+        { event: "*", schema: "public", table: "engagement_events", filter: `user_id=eq.${commentOwnerId}` },
         (payload) => {
           const changed = (payload.new || payload.old) as Partial<EngagementRow> | null;
           if (!changed || !campaignMatchesExternalPost(campaign, changed.external_post_id)) return;
@@ -693,7 +697,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
       .subscribe();
 
     return () => { supabase.removeChannel(channel); };
-  }, [userId, campaign.id, postIdsKey, campaign.channel]);
+  }, [commentOwnerId, campaign.id, postIdsKey, campaign.channel]);
 
   const comments = useMemo<CommentRow[]>(() => {
     const all = rows ?? [];
@@ -778,7 +782,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
               inbound_text: replyOpen.inbound_text,
               platform: replyOpen.platform,
               sender_handle: replyOpen.sender_handle,
-              user_id: userId,
+              user_id: commentOwnerId,
               campaign_context: [
                 `Campaign: ${campaign.campaign_name}`,
                 campaign.message_body ? `Published post:\n${campaign.message_body}` : null,
@@ -825,7 +829,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
             inbound_text: row.inbound_text,
             platform: row.platform,
             sender_handle: row.sender_handle,
-            user_id: userId,
+            user_id: commentOwnerId,
             campaign_context: [
               `Campaign: ${campaign.campaign_name}`,
               campaign.message_body ? `Published post:\n${campaign.message_body}` : null,
@@ -867,7 +871,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
           inbound_text: row.inbound_text,
           platform: row.platform,
           sender_handle: row.sender_handle,
-          user_id: userId,
+          user_id: commentOwnerId,
           campaign_context: [
             `Campaign: ${campaign.campaign_name}`,
             campaign.message_body ? `Published post:\n${campaign.message_body}` : null,
@@ -890,7 +894,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
         .from("engagement_events")
         .update({ ai_reply_text: next })
         .eq("id", row.id)
-        .eq("user_id", userId);
+        .eq("user_id", commentOwnerId);
       if (upErr) throw upErr;
       setRows((prev) =>
         (prev ?? []).map((r) => (r.id === row.id ? { ...r, ai_reply_text: next } : r)),
@@ -937,7 +941,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
         {
           body: {
             event_id: replyOpen.id,
-            user_id: userId,
+            user_id: commentOwnerId,
             comment: finalPublic || undefined,
             platform: replyOpen.platform,
             comment_id: replyOpen.external_id,
@@ -1155,7 +1159,8 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
 
 
 
-  const topLevelCount = rootComments.length;
+  const savedCommentFloor = Math.max(0, Number(commentCount ?? 0) || 0);
+  const topLevelCount = rows?.length ? rootComments.length : Math.max(rootComments.length, savedCommentFloor);
   const repliesCount = childReplies.length;
 
   return (
@@ -1187,7 +1192,11 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
         </div>
       )}
 
-      {(!rows || rows.length === 0) && !fbSessionExpired && (
+      {(!rows || rows.length === 0) && !fbSessionExpired && savedCommentFloor > 0 && (
+        <p className="text-xs text-muted-foreground">טוען את עץ התגובות המלא ({savedCommentFloor})…</p>
+      )}
+
+      {(!rows || rows.length === 0) && !fbSessionExpired && savedCommentFloor === 0 && (
         <p className="text-xs text-muted-foreground">אין תגובות עדיין לקמפיין זה</p>
       )}
 
