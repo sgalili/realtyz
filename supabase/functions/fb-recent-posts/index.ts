@@ -324,10 +324,10 @@ Deno.serve(async (req) => {
       ),
     );
     const pageSize = Math.min(
-      100,
+      500,
       Math.max(
         10,
-        Number(body?.pageSize ?? url.searchParams.get("pageSize") ?? 100),
+        Number(body?.pageSize ?? url.searchParams.get("pageSize") ?? 500),
       ),
     );
     const maxPages = Math.max(1, Math.ceil(lastRecords / pageSize));
@@ -507,17 +507,18 @@ Deno.serve(async (req) => {
     const fetchPlatformHistory = async (
       candidate: ProfileCandidate | null,
       pagePublished?: boolean,
-    ): Promise<{ posts: RawPost[]; status: number; error: any }> => {
+    ): Promise<{ posts: RawPost[]; status: number; error: any; reachedEnd: boolean }> => {
       const seenIds = new Set<string>();
       const rows: RawPost[] = [];
       let status = 0;
       let error: any = null;
       let nextCursor: string | null = null;
+      let reachedEnd = false;
 
       for (let page = 0; page < maxPages; page++) {
         const qs = new URLSearchParams({
           limit: String(pageSize),
-          dataType: "posts",
+          dataType: "all",
           // Critical: Ayrshare defaults can return only a short recent slice.
           // lastDays=0 means full available history for the connected native
           // Facebook Page, which is required to recover the full ~150-post feed.
@@ -529,7 +530,7 @@ Deno.serve(async (req) => {
         }
         if (since) qs.set("since", since);
         if (until) qs.set("until", until);
-        if (nextCursor) qs.set("next", nextCursor);
+        if (nextCursor) { qs.set("next", nextCursor); qs.set("lastId", nextCursor); }
         const headers: Record<string, string> = {
           Authorization: `Bearer ${KEY}`,
         };
@@ -571,15 +572,16 @@ Deno.serve(async (req) => {
           });
           added++;
         }
-        nextCursor = json?.meta?.pagination?.next || json?.next ||
+        nextCursor = json?.lastId || json?.meta?.pagination?.next || json?.next ||
           json?.nextToken || json?.next_token || json?.pageToken || null;
         const hasMore = Boolean(json?.meta?.pagination?.hasMore || nextCursor);
+        reachedEnd = !hasMore;
         if (!hasMore && added === 0) break;
         if (!hasMore) break;
         if (rows.length >= lastRecords) break;
       }
 
-      return { posts: rows, status, error };
+      return { posts: rows, status, error, reachedEnd };
     };
 
     const fetchGenericHistory = async (): Promise<

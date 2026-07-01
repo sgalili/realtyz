@@ -1712,8 +1712,8 @@ const GlobalSocialFeed = ({
 const FEED_ROWS_CACHE = new Map<string, CampaignRow[]>();
 const CAMPAIGNS_COUNT_SESSION_KEY = 'realtyz.campaigns.total_count';
 const EXPECTED_NATIVE_FACEBOOK_POSTS = 150;
-const FIRST_VISIT_IMPORT_KEY_VERSION = 'v4_persistent_live_import';
-const FIRST_VISIT_METRICS_KEY_VERSION = 'v4_live_counts_full_tree';
+const FIRST_VISIT_IMPORT_KEY_VERSION = 'v5_persistent_live_import_no_partial_cache';
+const FIRST_VISIT_METRICS_KEY_VERSION = 'v5_live_counts_full_tree_after_load';
 
 const PublishedFeed = () => {
   const { settings } = useWhiteLabel();
@@ -1828,7 +1828,7 @@ const PublishedFeed = () => {
 
   const load = async (opts: { forceFb?: boolean } = {}) => {
     const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setRows([]); return; }
+    if (!user) { setRows([]); return { rows: [], ownerScope: null as string | null, importedCount: 0, importComplete: false }; }
     setUserId(user.id);
     // Scope by active workspace, not by the tenant's personal user id.
     const ownerScope = workspaceOwnerId ?? user.id;
@@ -1845,13 +1845,14 @@ const PublishedFeed = () => {
     if (shouldImport) {
       try {
         const { data: importData, error: importError } = await supabase.functions.invoke('fb-recent-posts', {
-          body: { lastRecords: 500, pageSize: 100, user_id: ownerScope, persist: true },
+          body: { lastRecords: 500, pageSize: 500, user_id: ownerScope, persist: true, force_full_scan: true },
         });
+        const importedCount = Number((importData as any)?.count) || 0;
         if (importError) {
           console.warn('[PublishedFeed] fb persistent import failed (non-fatal)', importError);
         } else if ((importData as any)?.ok === false) {
           console.warn('[PublishedFeed] fb persistent import returned error', importData);
-        } else if ((Number((importData as any)?.count) || 0) >= EXPECTED_NATIVE_FACEBOOK_POSTS) {
+        } else if (importedCount >= EXPECTED_NATIVE_FACEBOOK_POSTS) {
           try { sessionStorage.setItem(importKey, '1'); } catch { /* quota */ }
         } else {
           console.warn('[PublishedFeed] fb persistent import returned a partial set; will retry next entry', importData);
@@ -1918,10 +1919,11 @@ const PublishedFeed = () => {
     });
 
     setRows(merged);
-    FEED_ROWS_CACHE.set(workspaceOwnerId ?? 'anon', merged);
+    FEED_ROWS_CACHE.set(ownerScope, merged);
     try { sessionStorage.setItem(CAMPAIGNS_COUNT_SESSION_KEY, String(merged.length)); } catch { /* quota */ }
     // Nudge the sidebar to repaint the campaigns badge with the persisted DB count.
     try { queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] }); } catch { /* no-op */ }
+    return { rows: merged, ownerScope, importedCount: shouldImport ? merged.length : 0, importComplete: merged.length >= EXPECTED_NATIVE_FACEBOOK_POSTS };
   };
 
 
@@ -1930,20 +1932,22 @@ const PublishedFeed = () => {
   // land back on campaign_logs and stream in via the realtime subscription below — and
   // (b) pull fresh inbound comments into engagement_events so the per-card comments tree
   // updates without a manual refresh.
-  const refreshMetrics = async () => {
+  const refreshMetrics = async (ownerOverride?: string | null): Promise<boolean> => {
+    const metricsOwner = ownerOverride ?? workspaceOwnerId ?? userId;
+    if (!metricsOwner) return false;
     // Force a direct live page fetch every time — bypass any cached counters
     // so the UI mirrors the exact real-time Meta payload via Ayrshare.
     const cacheBust = `${Date.now()}-${crypto.randomUUID()}`;
     // Run the comments sync (nested replies + Like reactions) and the
     // headline analytics in parallel — neither blocks the other.
     const syncPromise = supabase.functions.invoke('ayrshare-sync-comments', {
-      body: { force_live: true, cache_bust: cacheBust, user_id: workspaceOwnerId ?? userId },
+      body: { force_live: true, cache_bust: cacheBust, user_id: metricsOwner },
     }).catch((err) => { console.warn('[refreshMetrics] sync-comments failed (non-fatal)', err); return null; });
 
     try {
       const [{ data, error }] = await Promise.all([
         supabase.functions.invoke('ayrshare-analytics', {
-          body: { force_live: true, cache_bust: cacheBust, user_id: workspaceOwnerId ?? userId },
+          body: { force_live: true, cache_bust: cacheBust, user_id: metricsOwner },
         }),
         syncPromise,
       ]);
@@ -1951,7 +1955,7 @@ const PublishedFeed = () => {
         const msg = await extractFunctionError(error, 'רענון מדדי פייסבוק נכשל');
         console.error('[refreshMetrics] analytics invoke error', { error, message: msg });
         toast.error(msg);
-        return;
+        return false;
       }
       const surfacedError = firstPipelineError(data);
       if (surfacedError) {
@@ -1988,8 +1992,9 @@ const PublishedFeed = () => {
         }
       }
 
-      if (byId.size === 0 && commentCountByPostId.size === 0) return;
-      setRows((prev) => prev?.map((r) => {
+      if (byId.size === 0 && commentCountByPostId.size === 0) return true;
+      setRows((prev) => {
+        const next = prev?.map((r) => {
         const hit = byId.get(r.id);
         const nativeId = hit?.native_post_id ? String(hit.native_post_id) : (r.provider_message_id ?? null);
         const nestedComments = nativeId ? (commentCountByPostId.get(nativeId) ?? 0) : 0;
@@ -2008,9 +2013,14 @@ const PublishedFeed = () => {
           view_count: hit.counts.views,
           metrics_updated_at: hit.metrics_updated_at ?? new Date().toISOString(),
         };
-      }) ?? prev);
+        }) ?? prev;
+        if (next) FEED_ROWS_CACHE.set(metricsOwner, next);
+        return next;
+      });
+      return true;
     } catch (err) {
       console.warn('[refreshMetrics] analytics crashed (non-fatal)', err);
+      return false;
     }
   };
 
@@ -2023,24 +2033,35 @@ const PublishedFeed = () => {
     // local campaign inserts append via the realtime INSERT handler below.
     const wsKey = workspaceOwnerId ?? 'anon';
     const cached = FEED_ROWS_CACHE.get(wsKey);
-    if (cached && cached.length >= EXPECTED_NATIVE_FACEBOOK_POSTS) {
-      setRows(cached);
-    } else {
-      load({ forceFb: !!cached && cached.length > 0 && cached.length < EXPECTED_NATIVE_FACEBOOK_POSTS });
-    }
-    if (!workspaceOwnerId) return;
-    const sessionKey = `realtyz.feed_metrics_fetched.${FIRST_VISIT_METRICS_KEY_VERSION}.${workspaceOwnerId}`;
-    let alreadyFetched = false;
-    try { alreadyFetched = sessionStorage.getItem(sessionKey) === '1'; } catch { /* noop */ }
-    if (!alreadyFetched) {
-      try { sessionStorage.setItem(sessionKey, '1'); } catch { /* quota */ }
-      // Defer a tick so `load()` finishes hydrating rows before we patch counters.
-      setTimeout(() => { void refreshMetrics(); }, 500);
-    }
+    let cancelled = false;
+    const hydrateAndRefresh = async () => {
+      let loaded: Awaited<ReturnType<typeof load>> | null = null;
+      if (cached && cached.length >= EXPECTED_NATIVE_FACEBOOK_POSTS) {
+        setRows(cached);
+        loaded = { rows: cached, ownerScope: wsKey, importedCount: 0, importComplete: true };
+      } else {
+        loaded = await load({ forceFb: !!cached && cached.length > 0 && cached.length < EXPECTED_NATIVE_FACEBOOK_POSTS });
+      }
+      if (cancelled) return;
+      const ownerForMetrics = loaded?.ownerScope ?? workspaceOwnerId ?? userId;
+      if (!ownerForMetrics) return;
+      const sessionKey = `realtyz.feed_metrics_fetched.${FIRST_VISIT_METRICS_KEY_VERSION}.${ownerForMetrics}`;
+      let alreadyFetched = false;
+      try { alreadyFetched = sessionStorage.getItem(sessionKey) === '1'; } catch { /* noop */ }
+      const rowCount = loaded?.rows.length ?? cached?.length ?? 0;
+      const mustRefreshNow = !alreadyFetched || rowCount < EXPECTED_NATIVE_FACEBOOK_POSTS;
+      if (mustRefreshNow) {
+        const ok = await refreshMetrics(ownerForMetrics);
+        if (ok && rowCount >= EXPECTED_NATIVE_FACEBOOK_POSTS) {
+          try { sessionStorage.setItem(sessionKey, '1'); } catch { /* quota */ }
+        }
+      }
+    };
+    void hydrateAndRefresh();
     // Background polling: 2-minute cadence picks up new comments/replies/reactions
     // without the broker having to refresh the page.
-    const intervalId = window.setInterval(() => { void refreshMetrics(); }, 2 * 60 * 1000);
-    return () => { window.clearInterval(intervalId); };
+    const intervalId = window.setInterval(() => { void refreshMetrics(workspaceOwnerId ?? userId); }, 2 * 60 * 1000);
+    return () => { cancelled = true; window.clearInterval(intervalId); };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceOwnerId]);
 
