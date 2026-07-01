@@ -3615,7 +3615,6 @@ const CampaignCenter = () => {
         sessionStorage.setItem('rz-connected-channel-names', JSON.stringify(parsed));
       }
     } catch { /* ignore */ }
-    queryClient.invalidateQueries();
     queryClient.invalidateQueries({ queryKey: ['social-connections'] });
     queryClient.invalidateQueries({ queryKey: ['workspace-social-profile'] });
     queryClient.invalidateQueries({ queryKey: ['ayrshare-social-accounts'] });
@@ -3675,9 +3674,15 @@ const CampaignCenter = () => {
             setChannelAccountNames((prev) => ({ ...prev, facebook: wspFbName }));
           }
 
-          // Best-effort sync. Never let a failure tear down the component.
+          // Best-effort sync, throttled per browser session so route changes
+          // don't repeatedly call the external account endpoint.
           try {
-            await supabase.functions.invoke('ayrshare-sync-accounts', { body: {} });
+            const syncKey = 'realtyz.ayrshare_accounts_sync_at';
+            const lastSyncAt = Number(sessionStorage.getItem(syncKey) || 0);
+            if (!Number.isFinite(lastSyncAt) || Date.now() - lastSyncAt > CAMPAIGN_CACHE_MS) {
+              await supabase.functions.invoke('ayrshare-sync-accounts', { body: {} });
+              sessionStorage.setItem(syncKey, String(Date.now()));
+            }
           } catch (e) {
             console.warn('[CampaignCenter] ayrshare-sync-accounts failed (non-fatal):', (e as Error)?.message);
           }
