@@ -517,7 +517,7 @@ Deno.serve(async (req) => {
       for (let page = 0; page < maxPages; page++) {
         const qs = new URLSearchParams({
           limit: String(pageSize),
-          dataType: "posts",
+          dataType: "all",
           // Critical: Ayrshare defaults can return only a short recent slice.
           // lastDays=0 means full available history for the connected native
           // Facebook Page, which is required to recover the full ~150-post feed.
