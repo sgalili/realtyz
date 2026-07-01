@@ -890,6 +890,59 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Media enrichment: for stored native FB posts lacking media_urls, batch
+    // fetch full_picture + attachments from Graph and patch provider_response.
+    let enrichedMedia = 0;
+    try {
+      const cred = await resolveGraphCredential();
+      if (cred.token) {
+        const { data: needsMedia } = await admin
+          .from("campaign_logs")
+          .select("id, provider_message_id, provider_response")
+          .eq("channel", "facebook")
+          .eq("user_id", ownerId)
+          .eq("is_archived", false)
+          .not("provider_message_id", "is", null)
+          .limit(500);
+        const targets = (needsMedia || []).filter((r: any) => {
+          const m = r?.provider_response?.media_urls;
+          return !Array.isArray(m) || m.length === 0;
+        });
+        for (let i = 0; i < targets.length; i += 40) {
+          const chunk = targets.slice(i, i + 40);
+          const ids = chunk.map((t: any) => String(t.provider_message_id)).join(",");
+          const url = `https://graph.facebook.com/v20.0/?ids=${encodeURIComponent(ids)}&fields=full_picture,attachments{media,subattachments{media}}&access_token=${encodeURIComponent(cred.token)}`;
+          const resp = await fetch(url);
+          if (!resp.ok) continue;
+          const json: any = await resp.json().catch(() => ({}));
+          for (const t of chunk) {
+            const pid = String(t.provider_message_id);
+            const entry = json?.[pid];
+            if (!entry) continue;
+            const urls: string[] = [];
+            const push = (u: any) => { if (typeof u === "string" && /^https?:\/\//.test(u) && !urls.includes(u)) urls.push(u); };
+            push(entry.full_picture);
+            const visit = (node: any) => {
+              if (!node) return;
+              if (Array.isArray(node)) { node.forEach(visit); return; }
+              push(node?.media?.image?.src);
+              push(node?.media?.source);
+              if (node.subattachments?.data) visit(node.subattachments.data);
+            };
+            if (entry.attachments?.data) visit(entry.attachments.data);
+            if (urls.length === 0) continue;
+            const nextPr = { ...(t.provider_response || {}), media_urls: urls };
+            await admin.from("campaign_logs").update({ provider_response: nextPr }).eq("id", t.id);
+            enrichedMedia++;
+          }
+        }
+      }
+    } catch (enrichErr) {
+      console.warn("[fb-recent-posts] media enrichment failed", enrichErr);
+    }
+
+
+
     return new Response(
       JSON.stringify({
         ok: true,
