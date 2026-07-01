@@ -1263,11 +1263,7 @@ const ConfirmDispatchDialog = ({
 }) => {
   const { user } = useAuth();
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
-  const [sending, setSending] = useState(false);
-  // Instant re-entry lock — useState updates are async, so a fast double-click
-  // can fire handleConfirm twice before `sending` flips. A ref blocks it the
-  // moment the first click lands and guarantees the publish path runs ONCE.
-  const inFlightRef = useRef(false);
+  const [isBroadcasting, setIsBroadcasting] = useState(false);
   const [pages, setPages] = useState<SocialAccountProfile[]>([]);
   const [pagesLoading, setPagesLoading] = useState(false);
 
