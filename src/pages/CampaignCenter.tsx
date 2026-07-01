@@ -1968,6 +1968,33 @@ const PublishedFeed = () => {
       return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0);
     });
 
+    // Saved comment rows are the safest floor for default card counters.
+    // Hydrate them before first render so collapsed cards never show 0/old
+    // values while comments already exist in the database.
+    const postIdsForCounts = Array.from(new Set(merged.map((r) => r.provider_message_id).filter((v): v is string => !!v)));
+    if (postIdsForCounts.length > 0) {
+      try {
+        const { data: eventRows } = await supabase
+          .from('engagement_events')
+          .select('external_post_id, is_archived')
+          .in('user_id', scopedUserIds)
+          .in('external_post_id', postIdsForCounts);
+        const savedCountByPostId = new Map<string, number>();
+        for (const ev of eventRows ?? []) {
+          if ((ev as any)?.is_archived === true) continue;
+          const pid = String((ev as any)?.external_post_id || '');
+          if (!pid) continue;
+          savedCountByPostId.set(pid, (savedCountByPostId.get(pid) ?? 0) + 1);
+        }
+        for (const row of merged) {
+          const saved = row.provider_message_id ? (savedCountByPostId.get(row.provider_message_id) ?? 0) : 0;
+          if (saved > (Number(row.comment_count ?? 0) || 0)) row.comment_count = saved;
+        }
+      } catch (err) {
+        console.warn('[PublishedFeed] saved comment count hydration failed', err);
+      }
+    }
+
     setRows(merged);
     FEED_ROWS_CACHE.set(ownerScope, merged);
     try { sessionStorage.setItem(CAMPAIGNS_COUNT_SESSION_KEY, String(merged.length)); } catch { /* quota */ }
@@ -2057,10 +2084,10 @@ const PublishedFeed = () => {
         }
         return {
           ...r,
-          like_count: hit.counts.likes,
-          comment_count: Math.max(hit.counts.comments, nestedComments),
-          share_count: hit.counts.shares,
-          view_count: hit.counts.views,
+          like_count: Math.max(Number(r.like_count ?? 0) || 0, Number(hit.counts.likes ?? 0) || 0),
+          comment_count: Math.max(Number(r.comment_count ?? 0) || 0, hit.counts.comments, nestedComments),
+          share_count: Math.max(Number(r.share_count ?? 0) || 0, Number(hit.counts.shares ?? 0) || 0),
+          view_count: Math.max(Number(r.view_count ?? 0) || 0, Number(hit.counts.views ?? 0) || 0),
           metrics_updated_at: hit.metrics_updated_at ?? new Date().toISOString(),
         };
         }) ?? prev;
@@ -2194,12 +2221,11 @@ const PublishedFeed = () => {
             .from('engagement_events')
             .select('id', { count: 'exact', head: true })
             .in('user_id', campaignUserIds)
-            .eq('is_archived', false)
             .eq('external_post_id', externalPostId);
           if (typeof count === 'number') {
             setRows((prev) => prev?.map((r) => (
               campaignMatchesExternalPost(r, externalPostId)
-                ? { ...r, comment_count: count, metrics_updated_at: r.metrics_updated_at ?? new Date().toISOString() }
+                ? { ...r, comment_count: Math.max(Number(r.comment_count ?? 0) || 0, count), metrics_updated_at: r.metrics_updated_at ?? new Date().toISOString() }
                 : r
             )) ?? prev);
           }
@@ -2348,8 +2374,7 @@ const PublishedFeed = () => {
         const dirAttr: 'rtl' | 'ltr' = isHe ? 'rtl' : 'ltr';
         const alignClass = isHe ? 'text-right' : 'text-left';
         const preview = bodyText.trim().slice(0, 100) + (bodyText.trim().length > 100 ? '…' : '');
-        const hasMetrics = !!r.metrics_updated_at;
-        const fmt = (v: number | null | undefined) => (hasMetrics && typeof v === 'number' ? v : '–');
+        const fmt = (v: number | null | undefined) => (typeof v === 'number' ? v : 0);
         const liveCount = liveCommentCounts[r.id];
         // The truth is the tree: the badge bypasses the lagging analytics
         // integer whenever the rendered comment tree (top-level + nested
@@ -2520,9 +2545,9 @@ const PublishedFeed = () => {
                       const max = (a: unknown, b: unknown) => Math.max(pickNum(a), pickNum(b));
                       setRows((prev) => prev?.map((row) => row.id === campaignId ? {
                         ...row,
-                        like_count: counters.force ? pickNum(counters.like_count) : max(counters.like_count, row.like_count),
-                        share_count: counters.force ? pickNum(counters.share_count) : max(counters.share_count, row.share_count),
-                        comment_count: counters.force ? pickNum(counters.comment_count) : max(counters.comment_count, row.comment_count),
+                        like_count: max(counters.like_count, row.like_count),
+                        share_count: max(counters.share_count, row.share_count),
+                        comment_count: max(counters.comment_count, row.comment_count),
                         metrics_updated_at: new Date().toISOString(),
                       } : row) ?? prev);
                     }}
