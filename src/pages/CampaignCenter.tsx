@@ -869,10 +869,40 @@ const InlineComposer = ({
           return { placeholder: p, url: row.public_url };
         }),
       );
-      setAttachments((curr) => curr.map((att) => {
-        const hit = uploaded.find((u) => u.placeholder.url === att.url);
-        return hit ? { name: att.name, kind: att.kind, url: hit.url } : att;
-      }));
+      let nextAttachments: typeof attachments = [];
+      setAttachments((curr) => {
+        nextAttachments = curr.map((att) => {
+          const hit = uploaded.find((u) => u.placeholder.url === att.url);
+          return hit ? { name: att.name, kind: att.kind, url: hit.url } : att;
+        });
+        return nextAttachments;
+      });
+      // Synchronous persistence: as soon as the public URL is available,
+      // write it into the ai_content_logs row so the media stays bound to
+      // the record even if the view refreshes before the debounced autosave
+      // fires.
+      try {
+        const durableMedia = nextAttachments
+          .filter((a) => a.url && !a.url.startsWith('blob:'))
+          .map((a) => ({ name: a.name, kind: a.kind, url: a.url }));
+        if (logId) {
+          await supabase.from('ai_content_logs')
+            .update({ media_urls: durableMedia, updated_at: new Date().toISOString() })
+            .eq('id', logId);
+        } else {
+          const { data: inserted } = await supabase.from('ai_content_logs').insert({
+            topic: (body.trim().slice(0, 80) || 'טיוטה').slice(0, 500),
+            generated_text: body.slice(0, MAX_CHARS),
+            platform: channel.id,
+            created_by: user.id,
+            media_urls: durableMedia,
+            listing_id: selectedListingId,
+          }).select('id').single();
+          if (inserted?.id) setLogId(inserted.id);
+        }
+      } catch (persistErr) {
+        console.warn('[CampaignCenter] immediate media persist failed', persistErr);
+      }
     } catch (err: any) {
       console.error('[CampaignCenter] media upload failed', err);
       toast.error('העלאת הקובץ נכשלה — לא יישמר בטיוטה');
