@@ -2503,30 +2503,27 @@ const PublishedFeed = () => {
                   />
                 )}
                 <div className="border-t border-border bg-muted/30 px-4 py-3" onClick={(e) => e.stopPropagation()}>
-                  {userId ? (
-                    <CampaignCommentsStream
-                      userId={userId}
-                      campaign={r}
-                      commentCount={typeof liveCount === 'number' ? Math.max(liveCount, dbComments) : dbComments}
-                      onLiveCountResolved={updateLiveCount}
-                      refreshSignal={refreshSignals[r.id] ?? 0}
-                      onCountersResolved={(campaignId, counters) => {
-                        const pickNum = (v: unknown) => (typeof v === 'number' ? v : 0);
-                        const max = (a: unknown, b: unknown) => Math.max(pickNum(a), pickNum(b));
-                        setRows((prev) => prev?.map((row) => row.id === campaignId ? {
-                          ...row,
-                          like_count: counters.force ? pickNum(counters.like_count) : max(counters.like_count, row.like_count),
-                          share_count: counters.force ? pickNum(counters.share_count) : max(counters.share_count, row.share_count),
-                          comment_count: counters.force ? pickNum(counters.comment_count) : max(counters.comment_count, row.comment_count),
-                          metrics_updated_at: new Date().toISOString(),
-                        } : row) ?? prev);
-                      }}
-                      onRefreshComplete={handleRefreshComplete}
-                    />
-                  ) : (
-                    <p className="text-xs text-muted-foreground text-right">נדרשת התחברות לצפייה בתגובות</p>
-                  )}
+                  <CampaignCommentsStream
+                    userId={userId ?? ''}
+                    campaign={r}
+                    commentCount={typeof liveCount === 'number' ? Math.max(liveCount, dbComments) : dbComments}
+                    onLiveCountResolved={updateLiveCount}
+                    refreshSignal={refreshSignals[r.id] ?? 0}
+                    onCountersResolved={(campaignId, counters) => {
+                      const pickNum = (v: unknown) => (typeof v === 'number' ? v : 0);
+                      const max = (a: unknown, b: unknown) => Math.max(pickNum(a), pickNum(b));
+                      setRows((prev) => prev?.map((row) => row.id === campaignId ? {
+                        ...row,
+                        like_count: counters.force ? pickNum(counters.like_count) : max(counters.like_count, row.like_count),
+                        share_count: counters.force ? pickNum(counters.share_count) : max(counters.share_count, row.share_count),
+                        comment_count: counters.force ? pickNum(counters.comment_count) : max(counters.comment_count, row.comment_count),
+                        metrics_updated_at: new Date().toISOString(),
+                      } : row) ?? prev);
+                    }}
+                    onRefreshComplete={handleRefreshComplete}
+                  />
                 </div>
+
               </>
             )}
           </article>
