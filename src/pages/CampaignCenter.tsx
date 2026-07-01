@@ -1415,25 +1415,9 @@ const ConfirmDispatchDialog = ({
               target_profile_key: target?.profileKey ?? null,
             },
           });
-          // DIAGNOSTIC: surface raw invoke response so silent failures cannot hide.
-          try {
-            const status = (error as any)?.context?.response?.status ?? (data ? 200 : 'unknown');
-            let rawBody: any = null;
-            try {
-              const resp = (error as any)?.context?.response;
-              if (resp && typeof resp.clone === 'function') {
-                rawBody = await resp.clone().text();
-              }
-            } catch { /* ignore */ }
-            window.alert(
-              `SERVER RESPONSE RECEIVED: Status ${status}\n` +
-              `data: ${data ? JSON.stringify(data).slice(0, 400) : 'null'}\n` +
-              `error: ${error ? (error as any).message : 'null'}\n` +
-              `body: ${rawBody ? String(rawBody).slice(0, 400) : 'n/a'}`
-            );
-          } catch { /* ignore diag */ }
           results.push({ data, error, target });
         }
+
 
         // Circuit-breaker short-circuit: the backend is intentionally pausing
         // outbound Ayrshare traffic. Persist a "paused" campaign row so the
@@ -1562,15 +1546,13 @@ const ConfirmDispatchDialog = ({
       onConfirmed();
       onClose();
     } catch (e: any) {
-      console.error("CRITICAL BROADCAST FAILURE:", e);
-      try {
-        window.alert("BROADCAST EXCEPTION CAUGHT: " + (e?.message || JSON.stringify(e)));
-      } catch { /* ignore */ }
+      console.error("Broadcast failed:", e);
       toast.error('פרסום נכשל: ' + (e?.message ?? 'שגיאה לא ידועה'));
     } finally {
       setIsBroadcasting(false);
     }
   };
+
 
 
 
@@ -1627,25 +1609,14 @@ const ConfirmDispatchDialog = ({
             onClick={async (e) => {
               e.preventDefault();
               e.stopPropagation();
-              window.alert("DIAGNOSTIC TRAP: Button execution layer reached successfully!");
               if (isBroadcasting) return;
-              setIsBroadcasting(true);
               try {
-                window.alert(
-                  "Payload preview → channel=" + channel.id +
-                  " | targets=" + (publishTargets?.length ?? 0) +
-                  " | media=" + (mediaUrls?.length ?? 0) +
-                  " | scheduled=" + (scheduledAt || 'now')
-                );
                 await handleConfirm();
-                window.alert("Fetch sequence completed without throwing.");
-              } catch (error: any) {
+              } catch (error) {
                 console.error("Broadcast failed:", error);
-                window.alert("CRITICAL ERROR CAUGHT: " + (error?.message || JSON.stringify(error)));
-              } finally {
-                setIsBroadcasting(false);
               }
             }}
+
 
           >
             {isBroadcasting ? (
