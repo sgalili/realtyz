@@ -19,7 +19,7 @@ import {
   ArrowRight, Plus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
   ChevronDown, ChevronUp, Send, Mic, Image as ImageIcon, Paperclip,
   ChevronDown as ChevronDownIcon, Plug, Camera, Sparkles, Square,
-  Trash2, ExternalLink, CheckCircle2, Play, RefreshCw, Calendar as CalendarIcon, Loader2,
+  Trash2, ExternalLink, CheckCircle2, Play, RefreshCw, Calendar as CalendarIcon, Loader2, AlertTriangle,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -2472,7 +2472,10 @@ const PublishedFeed = () => {
 
         const isOpen = expanded[r.id] ?? false;
         const scheduled = isScheduledRow(r);
+        const isPaused = String(r.status || '').toLowerCase() === 'paused'
+          || String((r as any).failure_reason || '').toLowerCase() === 'ayrshare_circuit_open';
         const dt = scheduled && r.sent_at ? new Date(r.sent_at) : new Date(r.created_at);
+
         const dateStr = dt.toLocaleDateString('he-IL') + ', ' + dt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
         const platformMeta = FEED_PLATFORMS.find((p) => p.id === String(r.channel || '').toLowerCase());
         const postUrl = derivePostUrl(r);
@@ -2564,11 +2567,20 @@ const PublishedFeed = () => {
                       {remaining > 0 ? `מפרסם בפייסבוק · ${remaining}ש׳` : 'ממתין לאישור פייסבוק…'}
                     </span>
                   );
-                })() : scheduled ? (
+                })() : isPaused ? (
+                  <span
+                    className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-900 ring-1 ring-amber-300"
+                    title="חשבון הפרסום שלכם הגיע למגבלת הקצב היומית של הרשת החברתית. הפרסום יעלה אוטומטית ברגע שהמגבלה תתאפס."
+                  >
+                    <AlertTriangle className="h-3 w-3" />
+                    הפרסום הושהה זמנית - המערכת במצב הגנה
+                  </span>
+                ) : scheduled ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200">
                     <CalendarIcon className="h-3 w-3" />
                     מתוזמן
                   </span>
+
                 ) : (
                   <>
                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="תגובות">
@@ -2591,7 +2603,13 @@ const PublishedFeed = () => {
                   {isOpen ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                 </button>
               </div>
+              {isPaused && (
+                <p className="text-[11px] leading-relaxed text-amber-800/90 bg-amber-50 border border-amber-200 rounded-md px-2 py-1.5">
+                  חשבון הפרסום שלכם הגיע למגבלת הקצב היומית של הרשת החברתית. הפרסום יעלה אוטומטית ברגע שהמגבלה תתאפס.
+                </p>
+              )}
             </header>
+
 
 
             {isOpen && (
