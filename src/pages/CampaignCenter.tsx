@@ -499,13 +499,45 @@ const InlineComposer = ({
   // is appended at publish-time only.
   const stripWaCta = (s: string) =>
     s
-      .replace(/\n*[^\n]*דברו איתנו עכשיו[^\n]*/g, '')
+      // Any line that opens with "דברו איתי/איתנו" (with or without emoji/lead)
+      .replace(/\n*[^\n]*דברו אית(?:י|נו)[^\n]*/g, '')
+      // Common variation openers we cycle through — strip them too so re-toggle
+      // doesn't leave the previous variant behind.
+      .replace(/\n*[^\n]*(?:לפרטים נוספים|מוזמנים לפנות|רוצה לשמוע עוד|לתיאום ביקור|שולחים הודעה|קופצים לוואטסאפ|הכי מהיר בוואטסאפ)[^\n]*/g, '')
       .replace(/\n*[^\n]*realtyz\.co\.il\/r\/[a-z0-9]+[^\n]*/gi, '')
+      .replace(/\n*[^\n]*wa\.me\/[0-9]+[^\n]*/gi, '')
       .replace(/[ \t]+\n/g, '\n')
       .replace(/\n{3,}/g, '\n\n')
       .trim();
   const cleanBody = (s: string) =>
     stripWaCta(s).replace(/^[\s\u200f\u200e]+/g, '').slice(0, MAX_CHARS);
+
+  // Rotating CTA copy pool — never reuse the same opener twice in a row so
+  // Facebook's anti-spam heuristics don't flag repetitive posting patterns.
+  // Always in first-person ("דברו איתי") per brand voice.
+  const WA_CTA_VARIANTS = [
+    'דברו איתי בוואטסאפ 👇',
+    'לפרטים נוספים — דברו איתי כאן:',
+    'מוזמנים לפנות אליי ישירות בוואטסאפ:',
+    'רוצה לשמוע עוד? דברו איתי:',
+    'לתיאום ביקור — דברו איתי בוואטסאפ:',
+    'שולחים הודעה ומדברים איתי:',
+    'קופצים לוואטסאפ ומדברים איתי:',
+    'הכי מהיר בוואטסאפ — דברו איתי:',
+  ] as const;
+  const pickWaCtaOpener = () => {
+    try {
+      const lastKey = 'rz:last-wa-cta';
+      const last = typeof window !== 'undefined' ? window.localStorage.getItem(lastKey) : null;
+      const pool = WA_CTA_VARIANTS.filter((v) => v !== last);
+      const pick = pool[Math.floor(Math.random() * pool.length)] || WA_CTA_VARIANTS[0];
+      if (typeof window !== 'undefined') window.localStorage.setItem(lastKey, pick);
+      return pick;
+    } catch {
+      return WA_CTA_VARIANTS[Math.floor(Math.random() * WA_CTA_VARIANTS.length)];
+    }
+  };
+
   const initial = readDraft() || {};
 
   const [body, setBody] = useState<string>(cleanBody(initial.body || ''));
@@ -1083,20 +1115,25 @@ const InlineComposer = ({
               setBody((prev) => stripWaCta(prev));
               return;
             }
-            // Compose the CTA line. Try to mint a branded short-link when a
-            // listing is attached; fall back to a plain CTA otherwise.
-            let ctaLine = 'דברו איתנו עכשיו בוואטסאפ';
+            // Compose a fresh CTA line every time: rotating first-person opener
+            // + a real WhatsApp link. Prefer the branded short-link when a
+            // listing is attached; otherwise fall back to wa.me with a
+            // pre-filled Hebrew intro so the link is NEVER missing.
+            const opener = pickWaCtaOpener();
+            const fallbackText = 'היי אודי, ראיתי את הפוסט שלך ואשמח לפרטים נוספים.';
+            let linkPart = `https://wa.me/972537339533?text=${encodeURIComponent(fallbackText)}`;
             if (selectedListingId) {
               try {
                 const { data: slugRes } = await supabase.functions.invoke('shortlink-create', {
                   body: { property_id: selectedListingId },
                 });
                 const slug = (slugRes as any)?.slug;
-                if (slug) ctaLine = `דברו איתנו עכשיו: realtyz.co.il/r/${slug}`;
+                if (slug) linkPart = `realtyz.co.il/r/${slug}`;
               } catch (err) {
                 console.warn('[shortlink] preview generation failed', err);
               }
             }
+            const ctaLine = `${opener}\n${linkPart}`;
             setBody((prev) => {
               const clean = stripWaCta(prev);
               const merged = `${clean}\n\n${ctaLine}`.slice(0, MAX_CHARS);
@@ -1439,26 +1476,10 @@ const ConfirmDispatchDialog = ({
     setIsBroadcasting(true);
     try {
       // WhatsApp CTA is OPT-IN via the "הוסף קישור לוואטסאפ" checkbox. When
-      // unchecked the outgoing payload stays completely clean of any CTA or
-      // tracking short-link — regardless of whether a listing is attached.
-      let bodyToPublish = body;
-      if (attachWaLink && listingId) {
-        try {
-          const { data: slugRes } = await supabase.functions.invoke('shortlink-create', {
-            body: { property_id: listingId },
-          });
-          const slug = (slugRes as any)?.slug;
-          if (slug) {
-            const withoutStaleSlug = body
-              .replace(/\n*[^\n]*realtyz\.co\.il\/r\/[a-z0-9]+[^\n]*/gi, '')
-              .replace(/\n*[^\n]*דברו איתנו עכשיו[^\n]*/g, '')
-              .trim();
-            bodyToPublish = `${withoutStaleSlug}\n\nדברו איתנו עכשיו: realtyz.co.il/r/${slug}`;
-          }
-        } catch (e) {
-          console.warn('[shortlink] generation failed', e);
-        }
-      }
+      // checked, the composer has ALREADY inlined a rotating first-person opener
+      // ("דברו איתי…") + a real WA link (branded shortlink or wa.me fallback)
+      // into `body`, so we ship it as-is. When unchecked we transmit clean text.
+      const bodyToPublish = body;
       const campaignName = `${brandName} · ${channel.label}`;
 
       if (SOCIAL_CHANNELS.has(channel.id)) {
