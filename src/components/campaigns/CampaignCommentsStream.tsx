@@ -998,7 +998,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
 
   const renderEditor = (r: EngagementRow) => (
     <div className="w-full space-y-4 text-right">
-      <div className="flex items-center gap-4 justify-end text-xs font-medium">
+      <div className="flex items-center gap-4 justify-start text-xs font-medium">
         <label className="inline-flex items-center gap-1.5 cursor-pointer select-none">
           <input
             type="checkbox"
@@ -1378,18 +1378,8 @@ function CommentBubble({
                   <ChevronDown className="h-3.5 w-3.5" />
                 )}
               </button>
-              {onQuickDm && (
-                <button
-                  type="button"
-                  onClick={() => onQuickDm(row)}
-                  className="inline-flex items-center gap-1 text-[13px] font-medium text-emerald-700 hover:underline"
-                  title="שלח הודעה פרטית"
-                >
-                  <MessageCircleMore className="h-3.5 w-3.5" />
-                  שלח DM פרטי
-                </button>
-              )}
             </div>
+
             {expanded && (
               <div className="mt-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
                 {editor}
