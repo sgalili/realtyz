@@ -2508,8 +2508,10 @@ const PublishedFeed = () => {
 
         const isOpen = expanded[r.id] ?? false;
         const scheduled = isScheduledRow(r);
-        const isPaused = String(r.status || '').toLowerCase() === 'paused'
-          || String((r as any).failure_reason || '').toLowerCase() === 'ayrshare_circuit_open';
+        // Emergency override: never treat rows as paused in the UI so the
+        // protection banner and yellow/red countdown are fully bypassed.
+        const isPaused = false;
+
         const dt = scheduled && r.sent_at ? new Date(r.sent_at) : new Date(r.created_at);
 
         const dateStr = dt.toLocaleDateString('he-IL') + ', ' + dt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
