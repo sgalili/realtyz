@@ -19,7 +19,7 @@ import {
   ArrowRight, Plus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
   ChevronDown, ChevronUp, Send, Mic, Image as ImageIcon, Paperclip,
   ChevronDown as ChevronDownIcon, Plug, Camera, Sparkles, Square,
-  Trash2, ExternalLink, CheckCircle2, Play, RefreshCw, Calendar as CalendarIcon,
+  Trash2, ExternalLink, CheckCircle2, Play, RefreshCw, Calendar as CalendarIcon, Loader2,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -1382,6 +1382,19 @@ const ConfirmDispatchDialog = ({
         const targets = channel.id === 'facebook' && publishTargets.length > 0 ? publishTargets : [null];
         const results = [] as any[];
         for (const target of targets) {
+          // Optimistic pill in the sent-posts feed while Ayrshare verifies.
+          if (!scheduledAt) {
+            try {
+              window.dispatchEvent(new CustomEvent('rz:campaign-optimistic', {
+                detail: {
+                  channel: channel.id,
+                  body: bodyToPublish,
+                  media_urls: mediaUrls,
+                  campaign_name: target ? `${campaignName} · ${target.name}` : campaignName,
+                },
+              }));
+            } catch { /* noop */ }
+          }
           const { data, error } = await supabase.functions.invoke('ayrshare-post', {
             body: {
               post: bodyToPublish,
@@ -1773,6 +1786,56 @@ const PublishedFeed = () => {
 
   const [userId, setUserId] = useState<string | null>(null);
   const [campaignUserIds, setCampaignUserIds] = useState<string[]>([]);
+  // Optimistic rows for immediate publish — prepended to the feed with a
+  // countdown pill while Ayrshare finishes verifying the FB publish.
+  const [optimisticRows, setOptimisticRows] = useState<Array<CampaignRow & { _optimistic: true; _eta_ms: number }>>([]);
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      const detail = (ev as CustomEvent).detail || {};
+      const now = Date.now();
+      const row: CampaignRow & { _optimistic: true; _eta_ms: number } = {
+        id: `optimistic-${now}-${Math.random().toString(36).slice(2, 8)}`,
+        campaign_name: String(detail.campaign_name || 'Campaign'),
+        channel: String(detail.channel || 'facebook').toLowerCase(),
+        message_body: String(detail.body || ''),
+        created_at: new Date(now).toISOString(),
+        provider_message_id: null,
+        media_urls: Array.isArray(detail.media_urls) ? detail.media_urls : [],
+        status: 'publishing',
+        sent_at: null,
+        like_count: 0,
+        comment_count: 0,
+        share_count: 0,
+        _optimistic: true,
+        _eta_ms: now + 15_000,
+      };
+      setOptimisticRows((prev) => [row, ...prev]);
+      // Auto-cleanup after 60s regardless — reconciliation via real DB row
+      // will normally remove it earlier.
+      setTimeout(() => {
+        setOptimisticRows((prev) => prev.filter((r) => r.id !== row.id));
+      }, 60_000);
+    };
+    window.addEventListener('rz:campaign-optimistic', handler as EventListener);
+    return () => window.removeEventListener('rz:campaign-optimistic', handler as EventListener);
+  }, []);
+  // Force re-render each second so the countdown pill ticks.
+  const [, setTick] = useState(0);
+  useEffect(() => {
+    if (optimisticRows.length === 0) return;
+    const t = setInterval(() => setTick((n) => n + 1), 1000);
+    return () => clearInterval(t);
+  }, [optimisticRows.length]);
+  // When a real row lands with matching body, drop the optimistic entry.
+  useEffect(() => {
+    if (!rows || optimisticRows.length === 0) return;
+    setOptimisticRows((prev) => prev.filter((opt) => {
+      const bodyKey = String(opt.message_body || '').trim().slice(0, 80);
+      const match = rows.find((r) => String(r.message_body || '').trim().slice(0, 80) === bodyKey && String(r.channel).toLowerCase() === opt.channel);
+      return !match;
+    }));
+  }, [rows]);
+
   const [expanded, setExpanded] = useState<Record<string, boolean>>({});
   const [liveCommentCounts, setLiveCommentCounts] = useState<Record<string, number>>(() => {
     try {
@@ -2334,10 +2397,11 @@ const PublishedFeed = () => {
 
 
   const filteredRows = useMemo(() => {
-    if (!rows) return rows;
-    if (activeChannel === 'all') return rows;
-    return rows.filter((r) => String(r.channel || '').toLowerCase() === activeChannel);
-  }, [rows, activeChannel]);
+    const base = rows ?? [];
+    const merged: CampaignRow[] = [...optimisticRows, ...base];
+    if (activeChannel === 'all') return merged;
+    return merged.filter((r) => String(r.channel || '').toLowerCase() === activeChannel);
+  }, [rows, activeChannel, optimisticRows]);
 
   if (rows === null) {
     return <div className="rounded-2xl border border-border/60 bg-card p-10 text-center text-sm text-muted-foreground">טוען…</div>;
@@ -2449,7 +2513,15 @@ const PublishedFeed = () => {
                   {scheduled ? `מתוזמן ל-${dateStr}` : dateStr}
                 </span>
                 <span className="flex-1" />
-                {scheduled ? (
+                {(r as any)._optimistic ? (() => {
+                  const remaining = Math.max(0, Math.ceil((((r as any)._eta_ms as number) - Date.now()) / 1000));
+                  return (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-800 ring-1 ring-blue-200">
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                      {remaining > 0 ? `מפרסם בפייסבוק · ${remaining}ש׳` : 'ממתין לאישור פייסבוק…'}
+                    </span>
+                  );
+                })() : scheduled ? (
                   <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200">
                     <CalendarIcon className="h-3 w-3" />
                     מתוזמן

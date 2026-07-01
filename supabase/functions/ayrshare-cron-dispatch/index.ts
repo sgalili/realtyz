@@ -11,6 +11,16 @@ Deno.serve(async (req) => {
   const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const admin = createClient(SUPABASE_URL, SERVICE);
 
+  // Circuit breaker: skip ALL comment refresh work when Ayrshare is blocked.
+  const { readCircuit, circuitOpenPayload } = await import("../_shared/ayrshare-circuit.ts");
+  const _circuit = await readCircuit(admin);
+  if (_circuit) {
+    return new Response(
+      JSON.stringify({ ok: false, dispatched: 0, ...circuitOpenPayload(_circuit) }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+    );
+  }
+
   const since = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
   const { data: rows, error } = await admin
     .from("campaign_logs")
@@ -19,7 +29,7 @@ Deno.serve(async (req) => {
     .eq("is_archived", false)
     .gte("created_at", since)
     .order("created_at", { ascending: false })
-    .limit(200);
+    .limit(40); // hard cap to keep total Ayrshare calls per run well under quota
 
   if (error) {
     return new Response(JSON.stringify({ ok: false, error: error.message }), {

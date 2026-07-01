@@ -430,6 +430,15 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
+    // Circuit breaker: bail if Ayrshare provider is currently blocked.
+    const { readCircuit, circuitOpenPayload } = await import("../_shared/ayrshare-circuit.ts");
+    const _circuit = await readCircuit(admin);
+    if (_circuit) {
+      return new Response(
+        JSON.stringify({ ...circuitOpenPayload(_circuit), imported: 0, saved: 0, purged: 0, feed: [] }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+      );
+    }
     const { data: ws } = await admin
       .from("workspace_social_profile")
       .select("ayrshare_profile_key, ayrshare_ref_id, facebook_page_id, facebook_page_name")

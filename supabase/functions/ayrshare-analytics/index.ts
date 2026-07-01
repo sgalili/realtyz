@@ -160,6 +160,10 @@ Deno.serve(async (req) => {
   const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
   const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const admin = createClient(SUPABASE_URL, SERVICE, { auth: { persistSession: false } });
+  const { readCircuit, circuitOpenResponse } = await import("../_shared/ayrshare-circuit.ts");
+  const _circuit = await readCircuit(admin);
+  if (_circuit) return circuitOpenResponse(_circuit, corsHeaders);
+
 
   const token = (req.headers.get("Authorization") ?? "").replace(/^Bearer\s+/i, "").trim();
   if (!token) return json({ error: "unauthorized" }, 401);

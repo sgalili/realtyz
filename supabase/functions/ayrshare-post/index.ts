@@ -13,6 +13,7 @@ import {
   verifyWorkspaceProfileKey,
 } from "../_shared/ayrshare-helpers.ts";
 import { guardOutboundAction, recordAyrshareAction } from "../_shared/ayrshare-safety.ts";
+import { circuitOpenResponse, readCircuit, tripOnAyrshareFailure } from "../_shared/ayrshare-circuit.ts";
 import { enforceOwnerLaws, fetchOwnerBranding } from "../_shared/owner-laws.ts";
 
 const AYR_POST_URL = "https://api.ayrshare.com/api/post";
@@ -53,6 +54,8 @@ Deno.serve(async (req) => {
       const admin = createClient(SUPABASE_URL, SERVICE, {
         auth: { persistSession: false },
       });
+      const circuitDel = await readCircuit(admin);
+      if (circuitDel) return circuitOpenResponse(circuitDel, corsHeaders);
 
       const token = (req.headers.get("Authorization") ?? "").replace(
         /^Bearer\s+/i,
@@ -140,6 +143,8 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE, {
       auth: { persistSession: false },
     });
+    const circuit = await readCircuit(admin);
+    if (circuit) return circuitOpenResponse(circuit, corsHeaders);
 
     const body = await req.json().catch(() => ({}));
     const postText: string = stripMarkdownEmphasis(
@@ -568,6 +573,11 @@ Deno.serve(async (req) => {
           content: finalPostText,
           contentHash: guard.contentHash,
         });
+      } else {
+        // Trip circuit on suspension / rate-limit so we stop hammering Ayrshare.
+        const errCode = errs[0]?.code ?? j?.code;
+        const errMsg = errs[0]?.message ?? j?.message ?? j?.error;
+        await tripOnAyrshareFailure(admin, r.status, { code: errCode, message: errMsg, raw: j }, `post:${label}`);
       }
       return { ok, status: r.status, body: j, errors: errs };
     };
