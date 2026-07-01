@@ -98,6 +98,16 @@ Deno.serve(async (req) => {
 
     let ayrPayload: any = null;
     if (!skipPublicReply) {
+      const guard = await guardOutboundAction({
+        admin,
+        actionType: "comment_reply",
+        platform,
+        targetId: nativeCommentId,
+        content: sanitized,
+      });
+      if (!guard.allowed) {
+        return json({ ok: false, blocked: true, reason: guard.reason, message: "Ayrshare safety guard blocked this reply." }, 200);
+      }
       const ayrRes = await fetch(AYR_REPLY_URL, {
         method: "POST",
         headers: {
