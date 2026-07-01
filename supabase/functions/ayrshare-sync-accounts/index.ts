@@ -159,6 +159,10 @@ Deno.serve(async (req) => {
       if (isAyrshareInvalidProfileKey(Number((ayrBody as any)?.status ?? 0) || 403, ayrBody)) {
         await clearStaleAyrshareConnection(admin, "ayrshare_profile_rejected_during_sync");
       }
+      try {
+        const { tripOnAyrshareFailure } = await import("../_shared/ayrshare-circuit.ts");
+        await tripOnAyrshareFailure(admin, 403, ayrBody, "sync-accounts");
+      } catch { /* noop */ }
       return json({ accounts: [], synced: 0, reason: "ayrshare_rejected", details: ayrBody });
     }
 

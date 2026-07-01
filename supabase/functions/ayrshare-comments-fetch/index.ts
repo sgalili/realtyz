@@ -41,6 +41,10 @@ Deno.serve(async (req) => {
       auth: { persistSession: false, autoRefreshToken: false },
     });
 
+    const { readCircuit, circuitOpenResponse } = await import("../_shared/ayrshare-circuit.ts");
+    const _circuit = await readCircuit(admin);
+    if (_circuit) return circuitOpenResponse(_circuit, corsHeaders);
+
     const { profileKey } = await resolveWorkspaceProfileKey(admin);
     if (!profileKey) return json({ error: "workspace_ayrshare_profile_not_linked" }, 200);
 
