@@ -1424,14 +1424,33 @@ const ConfirmDispatchDialog = ({
           });
           results.push({ data, error, target });
         }
-        // Circuit-breaker short-circuit: if the backend is intentionally
-        // pausing outbound Ayrshare traffic, close the dialog and surface a
-        // calm Hebrew explanation instead of freezing on "מפרסם…".
+        // Circuit-breaker short-circuit: the backend is intentionally pausing
+        // outbound Ayrshare traffic. Persist a "paused" campaign row so the
+        // user sees the attempt in "קמפיינים שנשלחו" instead of it vanishing,
+        // then close the dialog with a calm Hebrew notice.
         const circuitTripped = results.find((r) => (r.data as any)?.circuit_open === true);
         if (circuitTripped) {
           const msg = (circuitTripped.data as any)?.message
             || 'פרסום מושהה זמנית להגנה על הנכס החברתי. ננסה שוב אוטומטית בעוד כמה דקות.';
-          toast.error(msg);
+          try {
+            const pausedRows = (channel.id === 'facebook' && publishTargets.length > 0 ? publishTargets : [null]).map((t) => ({
+              user_id: ownerScope,
+              campaign_name: t ? `${campaignName} · ${t.name}` : campaignName,
+              channel: channel.id,
+              message_body: bodyToPublish,
+              status: 'paused' as const,
+              failure_reason: 'ayrshare_circuit_open',
+              provider_response: { circuit_open: true, message: msg } as any,
+              source_account: t?.profileKey || t?.accountRef || null,
+            }));
+            if (pausedRows.length > 0) {
+              await supabase.from('campaign_logs').insert(pausedRows);
+            }
+          } catch (logErr) {
+            console.warn('[circuit] failed to persist paused campaign row', logErr);
+          }
+          toast.error(msg + ' — הפוסט נשמר ברשימה בסטטוס "הושהה זמנית".');
+          onConfirmed();
           onClose();
           return;
         }
@@ -3304,6 +3323,9 @@ const CampaignCenter = () => {
   const [ivrOpen, setIvrOpen] = useState(false);
   const [emailSetupOpen, setEmailSetupOpen] = useState(false);
   const [confirmPayload, setConfirmPayload] = useState<ConfirmPayload | null>(null);
+  // Bump to force-remount the InlineComposer so its body/selectedListingId/media
+  // state fully clear after a successful (or paused) dispatch.
+  const [composerResetTick, setComposerResetTick] = useState(0);
   const [alsoEmail, setAlsoEmail] = useState(false);
   // Hydrate connection state from sessionStorage so a page refresh doesn't
   // visually "disconnect" channels while the async verification re-runs.
@@ -3735,6 +3757,7 @@ const CampaignCenter = () => {
             if (propertyIds.length <= 1) {
               return (
                 <InlineComposer
+                  key={`composer-${pickedChannel?.id ?? 'none'}-${composerResetTick}`}
                   channel={pickedChannel}
                   brandName={brandName}
                   socialProfiles={socialAccountProfiles}
@@ -3754,7 +3777,7 @@ const CampaignCenter = () => {
                   נוצרו <span className="font-bold">{blocks.length}</span> טיוטות פוסט עבור <span className="font-bold">{propertyIds.length}</span> נכסים. ערוך, אשר ושגר כל אחת בנפרד.
                 </div>
                 {blocks.map((b, idx) => (
-                  <div key={`${b.listing || 'na'}-${b.iso}-${idx}`} className="space-y-2">
+                  <div key={`${b.listing || 'na'}-${b.iso}-${idx}-${composerResetTick}`} className="space-y-2">
                     <div className="text-xs font-semibold text-muted-foreground" dir="rtl">
                       טיוטה #{idx + 1} · {new Date(b.iso).toLocaleString('he-IL', { dateStyle: 'short', timeStyle: 'short' })}
                       {b.totalVariants > 1 ? ` · וריאציה ${b.variant}/${b.totalVariants}` : ''}
@@ -3835,6 +3858,11 @@ const CampaignCenter = () => {
           setConfirmPayload(null);
           setPickedChannel(null);
           setPickedChannelIds(new Set());
+          // Force-remount InlineComposer so body + selected property + media
+          // fully reset, then jump to the sent-campaigns feed so the user
+          // immediately sees the freshly logged row.
+          setComposerResetTick((t) => t + 1);
+          handleChange('published');
           if (publishedChannelId) {
             const prefixes = [`rz-composer-draft:v2:${publishedChannelId}`, `rz-composer-draft:${publishedChannelId}`];
             try {
