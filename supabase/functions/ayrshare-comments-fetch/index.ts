@@ -227,7 +227,21 @@ Deno.serve(async (req) => {
     };
     const pickText = (item: any): string | null =>
       pickStr(item?.comment, item?.text, item?.message, item?.commentString, item?.textContent, item?.body);
-    const resolveAuthorPicture = (_comment: any): string | null => null;
+    const resolveAuthorPicture = (comment: any): string | null => {
+      const c = comment ?? {};
+      const from = c?.from ?? c?.author ?? {};
+      const direct = c?.profile_image ?? c?.profile_picture_url ?? c?.picture ??
+        from?.picture?.data?.url ?? from?.profile_image ?? from?.picture ?? null;
+      if (typeof direct === "string" && direct.trim().startsWith("http")) return direct.trim();
+      // Fall back to the Graph picture redirect endpoint keyed on the (app-
+      // scoped) sender id. Returns a CDN URL for FB users and Pages alike.
+      const sid = c?.from?.id ?? c?.author?.id ?? c?.sender_id ?? c?.user_id ?? c?.userId ?? null;
+      if (typeof sid === "string" && /^\d{5,}$/.test(sid)) {
+        return `https://graph.facebook.com/${sid}/picture?type=normal`;
+      }
+      return null;
+    };
+
 
 
     const results: Record<string, any[]> = {};
@@ -708,20 +722,22 @@ Deno.serve(async (req) => {
           skipped += 1;
           const currentMeta = ((exists as any).metadata && typeof (exists as any).metadata === "object") ? (exists as any).metadata : {};
           const currentAuthor = (currentMeta.author && typeof currentMeta.author === "object") ? currentMeta.author : {};
+          const nextAvatar = safeStr(authorPicture, 1000) ?? currentMeta.sender_avatar_url ?? currentMeta.profile_image ?? null;
           const nextMetadata = {
             ...currentMeta,
             parent_id: safeStr(parentId) ?? currentMeta.parent_id ?? null,
             self_authored: selfAuthored || currentMeta.self_authored === true,
             author_type: selfAuthored ? "workspace_page" : currentMeta.author_type ?? "audience",
             sender_id: safeStr(senderId) ?? currentMeta.sender_id ?? null,
-            profile_image: null,
-            sender_avatar_url: null,
+            profile_image: nextAvatar,
+            sender_avatar_url: nextAvatar,
             author: {
               ...currentAuthor,
               name: safeStr(sender, 200) ?? currentAuthor.name ?? null,
-              profile_image: null,
+              profile_image: nextAvatar,
             },
           };
+
           await admin
             .from("engagement_events")
             .update({

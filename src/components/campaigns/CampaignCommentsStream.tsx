@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Bot, ChevronDown, ChevronUp, RefreshCw, Send, Smile, Meh, Frown, Sparkles } from "lucide-react";
+import { Bot, ChevronDown, ChevronUp, RefreshCw, Send, Smile, Meh, Frown, Sparkles, MessageSquare, CornerDownLeft, MessageCircleMore } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -654,13 +654,12 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
 
 
 
-  // When the parent's counter bumps (analytics realtime patch on
-  // campaign_logs), immediately pull the new comments into the tree.
-  useEffect(() => {
-    if (typeof commentCount !== "number") return;
-    load();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [commentCount]);
+  // NOTE: we intentionally do NOT re-run load() on every `commentCount`
+  // prop change. Doing so combined with onLiveCountResolved bubbling counts
+  // back up to the parent was causing a fetch feedback loop that never
+  // resolved the manual refresh spinner. Fresh data now arrives via the
+  // realtime subscription and the explicit refresh button.
+
 
 
   useEffect(() => {
@@ -1112,6 +1111,12 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
     </div>
   );
 
+  const openQuickDm = (r: EngagementRow) => {
+    setSendPublic(false);
+    setSendDm(true);
+    setReplyOpen(r);
+  };
+
   const renderCommentNode = (node: CommentRow, depth = 0): React.ReactNode => {
     const replies = childrenByParent.get(node.id) ?? [];
     return (
@@ -1126,6 +1131,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
         <CommentBubble
           row={node}
           onToggleEditor={(r) => setReplyOpen(replyOpen?.id === r.id ? null : r)}
+          onQuickDm={openQuickDm}
           expanded={replyOpen?.id === node.id}
           editor={replyOpen?.id === node.id ? renderEditor(node) : null}
           onRegenerate={regenerateInline}
@@ -1148,15 +1154,26 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
   };
 
 
+
+  const topLevelCount = rootComments.length;
+  const repliesCount = childReplies.length;
+
   return (
     <div className="space-y-2 text-right" dir="rtl">
       {!hideHeader && (
-        <div className="flex items-center justify-end">
-          <p className="text-xs font-semibold text-foreground">
-            תגובות לקמפיין ({Math.max(0, rows ? new Set(rows.map((r) => r.id)).size : 0)})
+        <div className="flex items-center justify-start gap-3 flex-wrap">
+          <p className="text-xs font-semibold text-foreground inline-flex items-center gap-1.5">
+            <MessageSquare className="h-3.5 w-3.5 text-primary" />
+            תגובות לקמפיין ({topLevelCount})
+          </p>
+          <span className="text-muted-foreground/50">|</span>
+          <p className="text-xs font-semibold text-foreground inline-flex items-center gap-1.5">
+            <CornerDownLeft className="h-3.5 w-3.5 text-primary" />
+            תגובות המשך ({repliesCount})
           </p>
         </div>
       )}
+
 
       {fbSessionExpired && (
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2.5 text-xs text-amber-700 dark:text-amber-400 flex items-start gap-2">
@@ -1191,6 +1208,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
 function CommentBubble({
   row,
   onToggleEditor,
+  onQuickDm,
   expanded,
   editor,
   onRegenerate,
@@ -1205,6 +1223,7 @@ function CommentBubble({
 }: {
   row: EngagementRow;
   onToggleEditor: (r: EngagementRow) => void;
+  onQuickDm?: (r: EngagementRow) => void;
   expanded: boolean;
   editor?: React.ReactNode;
   onRegenerate?: (r: EngagementRow) => void;
@@ -1217,6 +1236,7 @@ function CommentBubble({
   onToggleThread?: () => void;
   embedded?: boolean;
 }) {
+
   const dt = new Date(row.created_at);
   const when = dt.toLocaleString("he-IL", {
     day: "2-digit",
@@ -1331,20 +1351,33 @@ function CommentBubble({
           )
         ) : isSelfAuthored ? null : (
           <>
-            <button
-              type="button"
-              onClick={() => onToggleEditor(row)}
-              className="inline-flex items-center gap-1 text-[14px] font-medium text-[hsl(220,70%,25%)] hover:underline"
-              aria-expanded={expanded}
-            >
-              <Bot className="h-3.5 w-3.5" />
-              {toggleLabel}
-              {expanded ? (
-                <ChevronUp className="h-3.5 w-3.5" />
-              ) : (
-                <ChevronDown className="h-3.5 w-3.5" />
+            <div className="flex items-center gap-3 flex-wrap">
+              <button
+                type="button"
+                onClick={() => onToggleEditor(row)}
+                className="inline-flex items-center gap-1 text-[14px] font-medium text-[hsl(220,70%,25%)] hover:underline"
+                aria-expanded={expanded}
+              >
+                <Bot className="h-3.5 w-3.5" />
+                {toggleLabel}
+                {expanded ? (
+                  <ChevronUp className="h-3.5 w-3.5" />
+                ) : (
+                  <ChevronDown className="h-3.5 w-3.5" />
+                )}
+              </button>
+              {onQuickDm && (
+                <button
+                  type="button"
+                  onClick={() => onQuickDm(row)}
+                  className="inline-flex items-center gap-1 text-[13px] font-medium text-emerald-700 hover:underline"
+                  title="שלח הודעה פרטית"
+                >
+                  <MessageCircleMore className="h-3.5 w-3.5" />
+                  שלח DM פרטי
+                </button>
               )}
-            </button>
+            </div>
             {expanded && (
               <div className="mt-2 rounded-lg border border-primary/30 bg-primary/5 p-3">
                 {editor}
@@ -1352,6 +1385,7 @@ function CommentBubble({
             )}
           </>
         )}
+
       </div>
     </div>
   );
