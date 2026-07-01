@@ -3323,6 +3323,9 @@ const CampaignCenter = () => {
   const [ivrOpen, setIvrOpen] = useState(false);
   const [emailSetupOpen, setEmailSetupOpen] = useState(false);
   const [confirmPayload, setConfirmPayload] = useState<ConfirmPayload | null>(null);
+  // Bump to force-remount the InlineComposer so its body/selectedListingId/media
+  // state fully clear after a successful (or paused) dispatch.
+  const [composerResetTick, setComposerResetTick] = useState(0);
   const [alsoEmail, setAlsoEmail] = useState(false);
   // Hydrate connection state from sessionStorage so a page refresh doesn't
   // visually "disconnect" channels while the async verification re-runs.
