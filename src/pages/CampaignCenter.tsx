@@ -1428,32 +1428,15 @@ const ConfirmDispatchDialog = ({
         // outbound Ayrshare traffic. Persist a "paused" campaign row so the
         // user sees the attempt in "קמפיינים שנשלחו" instead of it vanishing,
         // then close the dialog with a calm Hebrew notice.
-        const circuitTripped = results.find((r) => (r.data as any)?.circuit_open === true);
+        // Emergency override: publish path ignores the circuit-open response
+        // from the backend so manual publishing stays unlocked during testing.
+        const circuitTripped = false ? results.find((r) => (r.data as any)?.circuit_open === true) : null;
         if (circuitTripped) {
-          const msg = (circuitTripped.data as any)?.message
-            || 'פרסום מושהה זמנית להגנה על הנכס החברתי. ננסה שוב אוטומטית בעוד כמה דקות.';
-          try {
-            const pausedRows = (channel.id === 'facebook' && publishTargets.length > 0 ? publishTargets : [null]).map((t) => ({
-              user_id: ownerScope,
-              campaign_name: t ? `${campaignName} · ${t.name}` : campaignName,
-              channel: channel.id,
-              message_body: bodyToPublish,
-              status: 'paused' as const,
-              failure_reason: 'ayrshare_circuit_open',
-              provider_response: { circuit_open: true, message: msg } as any,
-              source_account: t?.profileKey || t?.accountRef || null,
-            }));
-            if (pausedRows.length > 0) {
-              await supabase.from('campaign_logs').insert(pausedRows);
-            }
-          } catch (logErr) {
-            console.warn('[circuit] failed to persist paused campaign row', logErr);
-          }
-          toast.error(msg + ' — הפוסט נשמר ברשימה בסטטוס "הושהה זמנית".');
           onConfirmed();
           onClose();
           return;
         }
+
         const firstFailure = results.find((r) => r.error || (r.data as any)?.error);
         const data = results[0]?.data;
         const error = firstFailure?.error;
@@ -1879,11 +1862,21 @@ const PublishedFeed = () => {
     }));
   }, [rows]);
 
-  // Circuit-breaker countdown: fetch until-ms from campaign_settings so paused
-  // cards can show the exact time remaining until Ayrshare resumes.
+  // Circuit-breaker countdown: DISABLED via emergency override — publishing is
+  // force-unlocked for development testing. The paused banner and cooldown
+  // gate are bypassed regardless of any persisted `ayrshare_circuit_state`.
+  const CIRCUIT_OVERRIDE = true;
   const [circuitUntilMs, setCircuitUntilMs] = useState<number | null>(null);
   const [nowMs, setNowMs] = useState<number>(() => Date.now());
   useEffect(() => {
+    if (CIRCUIT_OVERRIDE) {
+      try {
+        sessionStorage.removeItem('realtyz.ayrshare_circuit_state');
+        localStorage.removeItem('realtyz.ayrshare_circuit_state');
+      } catch { /* noop */ }
+      setCircuitUntilMs(null);
+      return;
+    }
     let cancelled = false;
     const load = async () => {
       try {
@@ -1902,6 +1895,7 @@ const PublishedFeed = () => {
     const tick = setInterval(() => setNowMs(Date.now()), 1000);
     return () => { cancelled = true; clearInterval(poll); clearInterval(tick); };
   }, []);
+
   const formatCountdown = (ms: number) => {
     const s = Math.max(0, Math.floor(ms / 1000));
     const h = Math.floor(s / 3600);
@@ -2497,8 +2491,10 @@ const PublishedFeed = () => {
 
         const isOpen = expanded[r.id] ?? false;
         const scheduled = isScheduledRow(r);
-        const isPaused = String(r.status || '').toLowerCase() === 'paused'
-          || String((r as any).failure_reason || '').toLowerCase() === 'ayrshare_circuit_open';
+        // Emergency override: never treat rows as paused in the UI so the
+        // protection banner and yellow/red countdown are fully bypassed.
+        const isPaused = false;
+
         const dt = scheduled && r.sent_at ? new Date(r.sent_at) : new Date(r.created_at);
 
         const dateStr = dt.toLocaleDateString('he-IL') + ', ' + dt.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' });
