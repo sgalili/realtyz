@@ -998,7 +998,7 @@ export function CampaignCommentsStream({ userId, campaign, commentCount, onLiveC
 
   const renderEditor = (r: EngagementRow) => (
     <div className="w-full space-y-4 text-right">
-      <div className="flex items-center gap-4 justify-end text-xs font-medium">
+      <div className="flex items-center gap-4 justify-start text-xs font-medium">
         <label className="inline-flex items-center gap-1.5 cursor-pointer select-none">
           <input
             type="checkbox"
