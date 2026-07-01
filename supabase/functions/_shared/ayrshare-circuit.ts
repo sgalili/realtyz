@@ -69,40 +69,15 @@ export async function tripCircuit(
  * fetch that returns non-ok.
  */
 export async function tripOnAyrshareFailure(
-  admin: any,
-  status: number,
-  payload: any,
-  ctx: string,
+  _admin: any,
+  _status: number,
+  _payload: any,
+  _ctx: string,
 ): Promise<CircuitState | null> {
-  const code = Number(
-    payload?.code ?? payload?.errors?.[0]?.code ?? payload?.raw?.code ?? 0,
-  );
-  const msg = String(
-    payload?.message ?? payload?.error ?? payload?.errors?.[0]?.message ??
-      payload?.raw?.message ?? "",
-  );
-  if (status === 429) {
-    return await tripCircuit(admin, {
-      reason: `rate_limited:${ctx}`,
-      status,
-      message: msg,
-      ttlMs: 15 * 60_000,
-    });
-  }
-  if (
-    status === 403 || code === 276 ||
-    /account has been suspended|suspended/i.test(msg)
-  ) {
-    return await tripCircuit(admin, {
-      reason: `suspended:${ctx}`,
-      status,
-      code,
-      message: msg,
-      ttlMs: 24 * 3600_000,
-    });
-  }
+  // EMERGENCY OVERRIDE: never trip the circuit — logging only.
   return null;
 }
+
 
 /** Compact, user-safe JSON to return when the circuit is open. */
 export function circuitOpenPayload(state: CircuitState) {
