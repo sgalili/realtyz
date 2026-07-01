@@ -1546,10 +1546,10 @@ const ConfirmDispatchDialog = ({
       onConfirmed();
       onClose();
     } catch (e: any) {
+      console.error("Broadcast failed:", e);
       toast.error('פרסום נכשל: ' + (e?.message ?? 'שגיאה לא ידועה'));
     } finally {
-      setSending(false);
-      inFlightRef.current = false;
+      setIsBroadcasting(false);
     }
   };
 
