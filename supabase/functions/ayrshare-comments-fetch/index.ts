@@ -931,38 +931,40 @@ Deno.serve(async (req) => {
         // previously-confirmed count.
         let prevLikeHigh = 0;
         let prevShareHigh = 0;
+        let prevCommentHigh = 0;
         try {
           const { data: prevRows } = await admin
             .from("campaign_logs")
-            .select("like_count, share_count")
+            .select("like_count, share_count, comment_count")
             .eq("user_id", userId)
             .in("provider_message_id", idAliases);
           for (const r of prevRows ?? []) {
             prevLikeHigh = Math.max(prevLikeHigh, Number((r as any)?.like_count ?? 0) || 0);
             prevShareHigh = Math.max(prevShareHigh, Number((r as any)?.share_count ?? 0) || 0);
+            prevCommentHigh = Math.max(prevCommentHigh, Number((r as any)?.comment_count ?? 0) || 0);
           }
         } catch { /* non-fatal */ }
+
+        const finalComments = Math.max(liveComments, prevCommentHigh);
 
         const providerLikes = typeof outer.likes === "number" ? outer.likes : null;
         // Safety floor: when the provider returns a suspiciously low like
         // count (0/1) on a post that demonstrably has comments, keep the
         // previous high-water mark instead of regressing the badge.
         const likeSuspicious = providerLikes !== null && providerLikes <= 1 && liveComments > 1;
-        const finalLikes = likeSuspicious
-          ? Math.max(providerLikes, prevLikeHigh)
-          : (providerLikes ?? (forceRefresh ? prevLikeHigh : prevLikeHigh));
+        const finalLikes = Math.max(providerLikes ?? 0, prevLikeHigh);
         const providerShares = typeof outer.shares === "number" ? outer.shares : null;
-        const finalShares = providerShares !== null ? Math.max(providerShares, 0) : prevShareHigh;
+        const finalShares = Math.max(providerShares ?? 0, prevShareHigh);
 
         const patch: Record<string, unknown> = {
-          comment_count: liveComments,
+          comment_count: finalComments,
           like_count: finalLikes,
           share_count: finalShares,
           metrics_updated_at: new Date().toISOString(),
         };
         console.log("[ayrshare-comments-fetch] counters overwrite", {
           stored: nativePostId, treeCount, analyticsComments: outer.comments, dbCommentCount,
-          providerLikes, prevLikeHigh, final: { comments: liveComments, likes: finalLikes, shares: finalShares },
+          providerLikes, prevLikeHigh, prevCommentHigh, final: { comments: finalComments, likes: finalLikes, shares: finalShares },
         });
         let updateQuery = admin
           .from("campaign_logs")
