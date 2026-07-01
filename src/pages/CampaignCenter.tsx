@@ -1968,6 +1968,33 @@ const PublishedFeed = () => {
       return (Number.isFinite(tb) ? tb : 0) - (Number.isFinite(ta) ? ta : 0);
     });
 
+    // Saved comment rows are the safest floor for default card counters.
+    // Hydrate them before first render so collapsed cards never show 0/old
+    // values while comments already exist in the database.
+    const postIdsForCounts = Array.from(new Set(merged.map((r) => r.provider_message_id).filter((v): v is string => !!v)));
+    if (postIdsForCounts.length > 0) {
+      try {
+        const { data: eventRows } = await supabase
+          .from('engagement_events')
+          .select('external_post_id')
+          .in('user_id', scopedUserIds)
+          .eq('is_archived', false)
+          .in('external_post_id', postIdsForCounts);
+        const savedCountByPostId = new Map<string, number>();
+        for (const ev of eventRows ?? []) {
+          const pid = String((ev as any)?.external_post_id || '');
+          if (!pid) continue;
+          savedCountByPostId.set(pid, (savedCountByPostId.get(pid) ?? 0) + 1);
+        }
+        for (const row of merged) {
+          const saved = row.provider_message_id ? (savedCountByPostId.get(row.provider_message_id) ?? 0) : 0;
+          if (saved > (Number(row.comment_count ?? 0) || 0)) row.comment_count = saved;
+        }
+      } catch (err) {
+        console.warn('[PublishedFeed] saved comment count hydration failed', err);
+      }
+    }
+
     setRows(merged);
     FEED_ROWS_CACHE.set(ownerScope, merged);
     try { sessionStorage.setItem(CAMPAIGNS_COUNT_SESSION_KEY, String(merged.length)); } catch { /* quota */ }
