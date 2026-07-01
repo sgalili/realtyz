@@ -174,7 +174,7 @@ const ChannelGrid = ({
   connected?: Set<string>;
   accountNames?: Record<string, string>;
   socialProfiles?: SocialAccountProfile[];
-  onAddFacebookPage?: () => void;
+  onAddFacebookPage?: (preOpened: Window | null) => void;
 }) => {
   const [open, setOpen] = useState(false);
   const selectedCount = selectedIds.size;
