@@ -1236,40 +1236,6 @@ const InlineComposer = ({
         );
       })()}
 
-      {(() => {
-        const scheduledDate = scheduledLocal ? new Date(scheduledLocal) : null;
-        const scheduledValid = mode === 'now' || (!!scheduledDate && scheduledDate.getTime() > Date.now());
-        const hasSelectedPages = channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
-        const canSend = hasBody && scheduledValid && hasSelectedPages;
-        return (
-          /* Dispatch CTA + inline schedule toggle */
-          <div className="flex items-stretch gap-2">
-            <button type="button"
-              onClick={() => canSend && onConfirm({
-                body,
-                original_ai_body: originalAiBody,
-                listing_id: selectedListingId || null,
-                mode,
-                media_urls: attachments
-                  .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
-                  .map((a) => a.url as string),
-                scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
-                group_ids: channel.id === 'facebook' ? groupIds : [],
-                selected_profile_ids: channel.id === 'facebook' ? selectedProfileIds : [],
-              })}
-              disabled={!canSend}
-              className={cn(
-                'flex-1 rounded-xl px-4 py-3 text-sm font-bold transition flex items-center justify-center gap-2',
-                canSend
-                  ? 'bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)] shadow-md'
-                  : 'bg-muted text-muted-foreground/80 cursor-not-allowed',
-              )}>
-              <Send className="h-4 w-4 -scale-x-100" />
-              {mode === 'scheduled' ? 'תזמן פרסום' : 'פרסם קמפיין'}
-            </button>
-          </div>
-        );
-      })()}
 
     </div>
   );
