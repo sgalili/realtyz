@@ -1567,7 +1567,7 @@ const ConfirmDispatchDialog = ({
           return;
         }
 
-        const firstFailure = results.find((r) => r.error || (r.data as any)?.error);
+        const firstFailure = results.find((r) => r.error || (r.data as any)?.error || (r.data as any)?.success === false);
         const data = results[0]?.data;
         const error = firstFailure?.error;
         // When the edge function returns a non-2xx, supabase-js sets a generic
@@ -1583,9 +1583,20 @@ const ConfirmDispatchDialog = ({
               friendly = body?.message || body?.error || null;
             }
           } catch { /* ignore */ }
+          if ((friendly || '').includes('חסומה זמנית') || (friendly || '').includes('עומס בקשות')) {
+            toast.warning(friendly);
+            return;
+          }
           throw new Error(friendly || error.message || 'שגיאת רשת');
         }
-        if ((firstFailure?.data as any)?.error) throw new Error((firstFailure.data as any)?.message || (firstFailure.data as any).error);
+        const failurePayload = firstFailure?.data as any;
+        if (failurePayload?.error === 'rate_limited' || failurePayload?.status === 429 || failurePayload?.code === 105) {
+          toast.warning(failurePayload?.message || 'מערכת הפרסום חסומה זמנית. נסה שוב בעוד 5 דקות.');
+          return;
+        }
+        if (failurePayload?.error || failurePayload?.success === false) {
+          throw new Error(failurePayload?.message || failurePayload?.error || 'פרסום נכשל');
+        }
         const unverified = results.find((r) => {
           const payload: any = r.data;
           if (scheduledAt) return false;

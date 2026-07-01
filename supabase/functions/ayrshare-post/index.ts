@@ -18,11 +18,47 @@ import { enforceOwnerLaws, fetchOwnerBranding } from "../_shared/owner-laws.ts";
 
 const AYR_POST_URL = "https://api.ayrshare.com/api/post";
 
+const PROVIDER_RATE_LIMIT_MESSAGE =
+  "מערכת הפרסום חסומה זמנית למספר דקות עקב עומס בקשות מצד חברת המדיה. אנא המתן 5 דקות מלאות לפני לחיצה חוזרת.";
+
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
     status: s,
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
+
+const providerCode = (payload: any, errors: any[] = []) =>
+  Number(errors[0]?.code ?? payload?.code ?? payload?.raw?.code ?? 0);
+
+const providerMessage = (payload: any, errors: any[] = [], fallback = "שגיאת פרסום") =>
+  String(
+    errors[0]?.message ??
+      payload?.errors?.[0]?.message ??
+      payload?.message ??
+      payload?.error ??
+      payload?.raw?.message ??
+      fallback,
+  );
+
+const isProviderRateLimited = (status: number, payload: any, errors: any[] = []) =>
+  status === 429 || status === 502 || providerCode(payload, errors) === 105;
+
+const providerFailure = (
+  status: number,
+  payload: any,
+  errors: any[] = [],
+  fallback = "שגיאת פרסום",
+) => {
+  const rateLimited = isProviderRateLimited(status, payload, errors);
+  return {
+    success: false,
+    error: rateLimited ? "rate_limited" : "provider_error",
+    message: rateLimited ? PROVIDER_RATE_LIMIT_MESSAGE : providerMessage(payload, errors, fallback),
+    code: providerCode(payload, errors) || null,
+    status,
+    details: payload,
+  };
+};
 
 // Map our internal channel ids → Ayrshare platform ids
 const PLATFORM_MAP: Record<string, string> = {
@@ -118,15 +154,16 @@ Deno.serve(async (req) => {
         }, 200);
       }
       if (!r.ok && !idempotent404) {
-        return json(
-          { error: j?.message ?? `Ayrshare ${r.status}`, details: j },
-          502,
-        );
+        return json(providerFailure(r.status, j, [], `Ayrshare ${r.status}`), 200);
       }
       return json({ success: true, ayrshare: j, idempotent: idempotent404 });
     } catch (e) {
       console.error("[ayrshare-post DELETE] error:", e);
-      return json({ error: e instanceof Error ? e.message : "unknown" }, 500);
+      return json({
+        success: false,
+        error: "service_failed",
+        message: e instanceof Error ? e.message : "שגיאה לא ידועה",
+      }, 200);
     }
   }
 
@@ -616,12 +653,12 @@ Deno.serve(async (req) => {
             message: MISSING_TENANT_KEY_MESSAGE,
           }, 200);
         }
-        return json({
-          error: friendlyFromCode(code, rawMsg),
-          code: code ?? null,
-          status: ayrRes.status,
-          details: ayrRes.body,
-        }, 502);
+        return json(providerFailure(
+          ayrRes.status,
+          ayrRes.body,
+          ayrRes.errors,
+          friendlyFromCode(code, rawMsg),
+        ), 200);
       }
     }
     const ayrJson = ayrRes.body;
@@ -747,7 +784,7 @@ Deno.serve(async (req) => {
           post_ids: postIds,
           verification_results: verificationResults,
           ayrshare: ayrJson,
-        }, 502);
+        }, 200);
       }
     }
 
@@ -812,6 +849,10 @@ Deno.serve(async (req) => {
     });
   } catch (e) {
     console.error("[ayrshare-post] error:", e);
-    return json({ error: e instanceof Error ? e.message : "unknown" }, 500);
+    return json({
+      success: false,
+      error: "service_failed",
+      message: e instanceof Error ? e.message : "שגיאת פרסום לא צפויה. נסה שוב מאוחר יותר.",
+    }, 200);
   }
 });
