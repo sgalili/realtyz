@@ -174,7 +174,7 @@ const ChannelGrid = ({
   connected?: Set<string>;
   accountNames?: Record<string, string>;
   socialProfiles?: SocialAccountProfile[];
-  onAddFacebookPage?: () => void;
+  onAddFacebookPage?: (preOpened: Window | null) => void;
 }) => {
   const [open, setOpen] = useState(false);
   const selectedCount = selectedIds.size;
@@ -250,8 +250,8 @@ const ChannelGrid = ({
                   <span
                     role="button"
                     tabIndex={0}
-                    onClick={(e) => { e.stopPropagation(); onAddFacebookPage?.(); }}
-                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); onAddFacebookPage?.(); } }}
+                    onClick={(e) => { e.stopPropagation(); const w = window.open('about:blank', '_blank', 'noopener,noreferrer'); onAddFacebookPage?.(w); }}
+                    onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); e.stopPropagation(); const w = window.open('about:blank', '_blank', 'noopener,noreferrer'); onAddFacebookPage?.(w); } }}
                     className="absolute left-1 top-1 z-10 inline-flex h-5 w-5 items-center justify-center rounded-full text-[#0a2540] hover:text-[#0a2540]/80"
                     title="הוסף עמוד נוסף"
                     aria-label="הוסף עמוד נוסף"
@@ -3349,7 +3349,7 @@ const CampaignCenter = () => {
   }, []);
 
 
-  const handleConnectChannel = async (c: ChannelCard) => {
+  const handleConnectChannel = async (c: ChannelCard, preOpened?: Window | null) => {
     // Direct (non-social) outbound channels — verify creds, then flip
     // the per-broker flag stored on profiles.direct_channels.
     if (c.id === 'ivr' || c.id === 'ai-call') {
@@ -3423,12 +3423,18 @@ const CampaignCenter = () => {
       }
       const url = (data as any)?.url;
       if (!url) {
+        if (preOpened) { try { preOpened.close(); } catch { /* ignore */ } }
         toast.error((data as any)?.error || 'לא התקבל קישור חיבור מ-Ayrshare');
         return;
       }
-      window.open(url, '_blank', 'noopener,noreferrer');
+      if (preOpened && !preOpened.closed) {
+        try { preOpened.location.href = url; } catch { window.open(url, '_blank', 'noopener,noreferrer'); }
+      } else {
+        window.open(url, '_blank', 'noopener,noreferrer');
+      }
     } catch (e: any) {
       toast.dismiss('ayr-connect');
+      if (preOpened && !preOpened.closed) { try { preOpened.close(); } catch { /* ignore */ } }
       toast.error(e?.message ?? 'יצירת חיבור נכשלה');
     }
   };
@@ -3547,7 +3553,7 @@ const CampaignCenter = () => {
             connected={connectedChannels}
             accountNames={channelAccountNames}
             socialProfiles={socialAccountProfiles}
-            onAddFacebookPage={() => handleConnectChannel(CHANNEL_CARDS.find((c) => c.id === 'facebook')!)}
+            onAddFacebookPage={(w) => { void handleConnectChannel(CHANNEL_CARDS.find((c) => c.id === 'facebook')!, w); }}
           />
           {pickedChannel && (() => {
             const propertiesParam = searchParams.get('properties') || '';
