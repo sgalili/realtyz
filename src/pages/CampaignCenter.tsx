@@ -2626,14 +2626,18 @@ const PublishedFeed = () => {
       .gte('created_at', from)
       .lt('created_at', to);
     if (error) { toast.error('מחיקה נכשלה: ' + error.message); return; }
-    setRows((prev) => prev?.filter((x) => x.id !== r.id) ?? prev);
+    setRows((prev) => {
+      const next = prev?.filter((x) => x.id !== r.id) ?? prev;
+      const scopeKey = workspaceOwnerId ?? userId ?? '';
+      if (next && scopeKey) FEED_ROWS_CACHE.set(scopeKey, next);
+      return next;
+    });
     queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
     toast.success(
       externalIds.length > 0
         ? `הפוסט נמחק בהצלחה מפייסבוק ומהמערכת${typeof count === 'number' ? ` (${count} רשומות)` : ''}`
         : `הפוסט נמחק מהמערכת${typeof count === 'number' ? ` (${count} רשומות)` : ''}`,
     );
-    load();
   };
 
   // Remove a single image from a post card. Local-only (the card's media list
