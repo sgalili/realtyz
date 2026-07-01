@@ -508,6 +508,9 @@ const InlineComposer = ({
   const initial = readDraft() || {};
 
   const [body, setBody] = useState<string>(cleanBody(initial.body || ''));
+  // Opt-in WhatsApp CTA: when checked, the branded short link + "דברו איתנו עכשיו:"
+  // line is appended to the outgoing payload in handleConfirm. Default = off.
+  const [attachWaLink, setAttachWaLink] = useState<boolean>(false);
   // Tracks the last AI-generated body so manual edits before publish can be
   // shipped to learn-from-edit on success. Reset on send.
   const [originalAiBody, setOriginalAiBody] = useState<string>('');
