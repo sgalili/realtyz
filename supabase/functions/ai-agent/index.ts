@@ -426,10 +426,10 @@ serve(async (req) => {
                 .limit(25),
               userClient.from("leads")
                 .select("id, full_name, city, interest_tag, engagement_score, status, lead_stage, deal_type, sentiment, preferences, last_interaction_at")
-                .eq("user_id", uid)
+                .eq("assigned_to", uid)
                 .order("last_interaction_at", { ascending: false, nullsFirst: false })
                 .limit(25),
-              userClient.from("leads").select("id", { count: "exact", head: true }).eq("user_id", uid),
+              userClient.from("leads").select("id", { count: "exact", head: true }).eq("assigned_to", uid),
               userClient.from("listings").select("id", { count: "exact", head: true }).eq("user_id", uid),
             ]);
             const listingsArr = (listingsRes.data ?? []) as any[];
