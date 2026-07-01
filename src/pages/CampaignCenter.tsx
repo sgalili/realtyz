@@ -1424,6 +1424,17 @@ const ConfirmDispatchDialog = ({
           });
           results.push({ data, error, target });
         }
+        // Circuit-breaker short-circuit: if the backend is intentionally
+        // pausing outbound Ayrshare traffic, close the dialog and surface a
+        // calm Hebrew explanation instead of freezing on "מפרסם…".
+        const circuitTripped = results.find((r) => (r.data as any)?.circuit_open === true);
+        if (circuitTripped) {
+          const msg = (circuitTripped.data as any)?.message
+            || 'פרסום מושהה זמנית להגנה על הנכס החברתי. ננסה שוב אוטומטית בעוד כמה דקות.';
+          toast.error(msg);
+          onClose();
+          return;
+        }
         const firstFailure = results.find((r) => r.error || (r.data as any)?.error);
         const data = results[0]?.data;
         const error = firstFailure?.error;
