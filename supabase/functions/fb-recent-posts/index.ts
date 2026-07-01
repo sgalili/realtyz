@@ -859,8 +859,12 @@ Deno.serve(async (req) => {
       const result = await fetchPlatformHistory(candidate, true);
       diagnostics.push({ source: "history/facebook", profile: candidate.label, profileKey: candidate.profileKey.slice(0, 8), pagePublished: true, status: result.status, count: result.posts.length, error: result.error });
       if (result.status === 403 || result.status === 429) {
+        // 403 can be profile-specific (a suspended old profile); keep trying
+        // other stored profiles in this same invocation. 429 means the provider
+        // is actively rate-limiting us, so stop immediately.
         providerBlocked = true;
         await rememberProviderCooldown(result.status === 403 ? "profile_suspended_or_forbidden" : "provider_rate_limited");
+        if (result.status === 403) providerBlocked = false;
       }
       const broadResult = result.posts.length < Math.min(50, lastRecords)
         ? (providerBlocked ? result : await fetchPlatformHistory(candidate, undefined))
@@ -869,6 +873,7 @@ Deno.serve(async (req) => {
       if (broadResult.status === 403 || broadResult.status === 429) {
         providerBlocked = true;
         await rememberProviderCooldown(broadResult.status === 403 ? "profile_suspended_or_forbidden" : "provider_rate_limited");
+        if (broadResult.status === 403) providerBlocked = false;
       }
       const bestResult = broadResult.posts.length > result.posts.length
         ? broadResult
