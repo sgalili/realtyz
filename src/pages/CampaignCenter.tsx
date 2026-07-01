@@ -869,10 +869,40 @@ const InlineComposer = ({
           return { placeholder: p, url: row.public_url };
         }),
       );
-      setAttachments((curr) => curr.map((att) => {
-        const hit = uploaded.find((u) => u.placeholder.url === att.url);
-        return hit ? { name: att.name, kind: att.kind, url: hit.url } : att;
-      }));
+      let nextAttachments: typeof attachments = [];
+      setAttachments((curr) => {
+        nextAttachments = curr.map((att) => {
+          const hit = uploaded.find((u) => u.placeholder.url === att.url);
+          return hit ? { name: att.name, kind: att.kind, url: hit.url } : att;
+        });
+        return nextAttachments;
+      });
+      // Synchronous persistence: as soon as the public URL is available,
+      // write it into the ai_content_logs row so the media stays bound to
+      // the record even if the view refreshes before the debounced autosave
+      // fires.
+      try {
+        const durableMedia = nextAttachments
+          .filter((a) => a.url && !a.url.startsWith('blob:'))
+          .map((a) => ({ name: a.name, kind: a.kind, url: a.url }));
+        if (logId) {
+          await supabase.from('ai_content_logs')
+            .update({ media_urls: durableMedia, updated_at: new Date().toISOString() })
+            .eq('id', logId);
+        } else {
+          const { data: inserted } = await supabase.from('ai_content_logs').insert({
+            topic: (body.trim().slice(0, 80) || 'טיוטה').slice(0, 500),
+            generated_text: body.slice(0, MAX_CHARS),
+            platform: channel.id,
+            created_by: user.id,
+            media_urls: durableMedia,
+            listing_id: selectedListingId,
+          }).select('id').single();
+          if (inserted?.id) setLogId(inserted.id);
+        }
+      } catch (persistErr) {
+        console.warn('[CampaignCenter] immediate media persist failed', persistErr);
+      }
     } catch (err: any) {
       console.error('[CampaignCenter] media upload failed', err);
       toast.error('העלאת הקובץ נכשלה — לא יישמר בטיוטה');
@@ -2796,23 +2826,29 @@ const PublishedFeed = () => {
                   {bodyText || <span className="text-muted-foreground">אין תוכן הודעה</span>}
                 </div>
                 <div className="flex items-center justify-between gap-2 px-4 pb-4" dir="rtl" onClick={(e) => e.stopPropagation()}>
-                  <Button variant="outline" size="sm"
-                          disabled={!postUrl}
-                          onClick={(e) => { e.stopPropagation(); if (postUrl) window.open(postUrl, '_blank', 'noopener,noreferrer'); }}>
-                    <ExternalLink className="ml-1 h-4 w-4" />
-                    פתח פוסט
-                  </Button>
-                  <Button variant="outline" size="sm"
-                          disabled={!!refreshingIds[r.id]}
-                          onClick={(e) => { e.stopPropagation(); bumpRefresh(r.id); }}>
-                    <RefreshCw className={cn('ml-1 h-4 w-4', refreshingIds[r.id] && 'animate-spin')} />
-                    {refreshingIds[r.id] ? 'מרענן…' : 'רענן תגובות'}
-                  </Button>
                   <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
                           className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
                     <Trash2 className="ml-1 h-4 w-4" />
                     מחק פוסט
                   </Button>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm"
+                            disabled={!postUrl}
+                            onClick={(e) => { e.stopPropagation(); if (postUrl) window.open(postUrl, '_blank', 'noopener,noreferrer'); }}>
+                      <ExternalLink className="ml-1 h-4 w-4" />
+                      פתח פוסט
+                    </Button>
+                    <Button variant="outline" size="sm"
+                            disabled={!!refreshingIds[r.id]}
+                            onClick={(e) => { e.stopPropagation(); bumpRefresh(r.id); }}>
+                      <RefreshCw className="ml-1 h-4 w-4" />
+                      {refreshingIds[r.id] ? 'מרענן…' : 'רענן תגובות'}
+                    </Button>
+                    <Button variant="outline" size="sm" disabled className="gap-1 opacity-90">
+                      <Paperclip className="ml-1 h-4 w-4" />
+                      {Array.isArray(r.media_urls) ? r.media_urls.length : 0}
+                    </Button>
+                  </div>
                 </div>
                 {!r.is_external && (
                   <CampaignGroupBreakdown
