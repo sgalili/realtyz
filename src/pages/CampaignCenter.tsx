@@ -1550,7 +1550,7 @@ const ConfirmDispatchDialog = ({
     <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
       <DialogContent dir="rtl" className="max-w-md">
         <DialogHeader>
-          <DialogTitle className="text-center text-lg">אישור דיוור וסיכום תקציב</DialogTitle>
+          <DialogTitle className="text-center text-lg">אישור דיוור</DialogTitle>
           <DialogDescription className="text-center">
             קמפיין "{summaryTitle}" · ערוצים: {channel.label}
           </DialogDescription>
