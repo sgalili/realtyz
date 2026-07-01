@@ -533,6 +533,16 @@ Deno.serve(async (req) => {
         scheduleDate: scheduledIso,
         groupId: (payload as any)?.faceBookOptions?.groupId ?? null,
       });
+      const guard = await guardOutboundAction({
+        admin,
+        actionType: "post",
+        platform: Array.isArray(payload.platforms) ? String((payload.platforms as any[])[0] ?? "") : undefined,
+        content: finalPostText,
+      });
+      if (!guard.allowed) {
+        console.warn(`[ayrshare-post] BLOCKED by safety guard (${label}): ${guard.reason}`);
+        return { ok: false, status: 429, body: { blocked: true, reason: guard.reason }, errors: [{ code: "safety_guard", message: guard.reason ?? "blocked" }] };
+      }
       const r = await fetch(AYR_POST_URL, {
         method: "POST",
         headers: {
