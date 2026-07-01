@@ -1602,8 +1602,10 @@ const ConfirmDispatchDialog = ({
             type="button"
             disabled={isBroadcasting}
             className="bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)]"
-            onClick={async () => {
-              console.log("EMERGENCY AUDIT: Broadcast button clicked successfully.");
+            onClick={async (e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              window.alert("DIAGNOSTIC TRAP: Button execution layer reached successfully!");
               if (isBroadcasting) return;
               try {
                 await handleConfirm();
