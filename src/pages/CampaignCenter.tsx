@@ -2260,27 +2260,18 @@ const PublishedFeed = () => {
         loaded = await load({ forceFb: !!cached && cached.length > 0 && cached.length < EXPECTED_NATIVE_FACEBOOK_POSTS });
       }
       if (cancelled) return;
-      const ownerForMetrics = loaded?.ownerScope ?? workspaceOwnerId ?? userId;
-      if (!ownerForMetrics) return;
-      const sessionKey = `realtyz.feed_metrics_fetched.${FIRST_VISIT_METRICS_KEY_VERSION}.${ownerForMetrics}`;
-      let alreadyFetched = false;
-      try { alreadyFetched = sessionStorage.getItem(sessionKey) === '1'; } catch { /* noop */ }
-      const rowCount = loaded?.rows.length ?? cached?.length ?? 0;
-      const mustRefreshNow = !alreadyFetched || rowCount < EXPECTED_NATIVE_FACEBOOK_POSTS;
-      if (mustRefreshNow) {
-        const ok = await refreshMetrics(ownerForMetrics);
-        if (ok && rowCount >= EXPECTED_NATIVE_FACEBOOK_POSTS) {
-          try { sessionStorage.setItem(sessionKey, '1'); } catch { /* quota */ }
-        }
-      }
+      // Do NOT auto-invoke Ayrshare on page mount. Displayed counters come
+      // from the persisted campaign_logs / engagement_events rows. Fresh
+      // provider data is fetched ONLY when the מתעניין explicitly expands a
+      // post card (see CampaignCommentsStream).
     };
     void hydrateAndRefresh();
-    // Background polling: 2-minute cadence picks up new comments/replies/reactions
-    // without the broker having to refresh the page.
-    const intervalId = window.setInterval(() => { void refreshMetrics(workspaceOwnerId ?? userId); }, 2 * 60 * 1000);
-    return () => { cancelled = true; window.clearInterval(intervalId); };
+    // Automatic comment/analytics polling permanently disabled — was burning
+    // Ayrshare quota and triggering suspensions. Refresh is expand-driven.
+    return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceOwnerId]);
+
 
 
 
