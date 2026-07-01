@@ -2057,10 +2057,10 @@ const PublishedFeed = () => {
         }
         return {
           ...r,
-          like_count: hit.counts.likes,
-          comment_count: Math.max(hit.counts.comments, nestedComments),
-          share_count: hit.counts.shares,
-          view_count: hit.counts.views,
+          like_count: Math.max(Number(r.like_count ?? 0) || 0, Number(hit.counts.likes ?? 0) || 0),
+          comment_count: Math.max(Number(r.comment_count ?? 0) || 0, hit.counts.comments, nestedComments),
+          share_count: Math.max(Number(r.share_count ?? 0) || 0, Number(hit.counts.shares ?? 0) || 0),
+          view_count: Math.max(Number(r.view_count ?? 0) || 0, Number(hit.counts.views ?? 0) || 0),
           metrics_updated_at: hit.metrics_updated_at ?? new Date().toISOString(),
         };
         }) ?? prev;
@@ -2199,7 +2199,7 @@ const PublishedFeed = () => {
           if (typeof count === 'number') {
             setRows((prev) => prev?.map((r) => (
               campaignMatchesExternalPost(r, externalPostId)
-                ? { ...r, comment_count: count, metrics_updated_at: r.metrics_updated_at ?? new Date().toISOString() }
+                ? { ...r, comment_count: Math.max(Number(r.comment_count ?? 0) || 0, count), metrics_updated_at: r.metrics_updated_at ?? new Date().toISOString() }
                 : r
             )) ?? prev);
           }
@@ -2520,9 +2520,9 @@ const PublishedFeed = () => {
                       const max = (a: unknown, b: unknown) => Math.max(pickNum(a), pickNum(b));
                       setRows((prev) => prev?.map((row) => row.id === campaignId ? {
                         ...row,
-                        like_count: counters.force ? pickNum(counters.like_count) : max(counters.like_count, row.like_count),
-                        share_count: counters.force ? pickNum(counters.share_count) : max(counters.share_count, row.share_count),
-                        comment_count: counters.force ? pickNum(counters.comment_count) : max(counters.comment_count, row.comment_count),
+                        like_count: max(counters.like_count, row.like_count),
+                        share_count: max(counters.share_count, row.share_count),
+                        comment_count: max(counters.comment_count, row.comment_count),
                         metrics_updated_at: new Date().toISOString(),
                       } : row) ?? prev);
                     }}
