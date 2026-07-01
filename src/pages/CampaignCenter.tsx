@@ -85,6 +85,7 @@ type ConfirmPayload = {
   scheduled_at: string | null;
   group_ids: string[];
   selected_profile_ids: string[];
+  attach_wa_link: boolean;
 };
 
 const isRenderablePostMediaUrl = (value: unknown): value is string => {
@@ -493,10 +494,24 @@ const InlineComposer = ({
     if (typeof window === 'undefined') return null;
     try { return JSON.parse(localStorage.getItem(draftKey) || sessionStorage.getItem(draftKey) || 'null'); } catch { return null; }
   };
-  const cleanBody = (s: string) => s.replace(/^[\s\u200f\u200e]+/g, '').slice(0, MAX_CHARS);
+  // Strip any auto-generated WhatsApp CTA line the AI (or a stale draft) may
+  // emit. The CTA is now opt-in via the "הוסף קישור לוואטסאפ" checkbox and
+  // is appended at publish-time only.
+  const stripWaCta = (s: string) =>
+    s
+      .replace(/\n*[^\n]*דברו איתנו עכשיו[^\n]*/g, '')
+      .replace(/\n*[^\n]*realtyz\.co\.il\/r\/[a-z0-9]+[^\n]*/gi, '')
+      .replace(/[ \t]+\n/g, '\n')
+      .replace(/\n{3,}/g, '\n\n')
+      .trim();
+  const cleanBody = (s: string) =>
+    stripWaCta(s).replace(/^[\s\u200f\u200e]+/g, '').slice(0, MAX_CHARS);
   const initial = readDraft() || {};
 
   const [body, setBody] = useState<string>(cleanBody(initial.body || ''));
+  // Opt-in WhatsApp CTA: when checked, the branded short link + "דברו איתנו עכשיו:"
+  // line is appended to the outgoing payload in handleConfirm. Default = off.
+  const [attachWaLink, setAttachWaLink] = useState<boolean>(false);
   // Tracks the last AI-generated body so manual edits before publish can be
   // shipped to learn-from-edit on success. Reset on send.
   const [originalAiBody, setOriginalAiBody] = useState<string>('');
@@ -1048,6 +1063,17 @@ const InlineComposer = ({
         </span>
       </div>
 
+      {/* Opt-in WhatsApp CTA — appended at publish time only when checked. */}
+      <label className="flex items-center gap-2 text-sm text-foreground select-none cursor-pointer" dir="rtl">
+        <Checkbox
+          checked={attachWaLink}
+          onCheckedChange={(v) => setAttachWaLink(v === true)}
+          aria-label="הוסף קישור לוואטסאפ"
+        />
+        <span>הוסף קישור לוואטסאפ</span>
+      </label>
+
+
 
 
 
@@ -1099,8 +1125,8 @@ const InlineComposer = ({
           <div className="flex flex-row items-center gap-3 w-full mt-4">
             <Popover>
               <PopoverTrigger asChild>
-                <button type="button" className="shrink-0 rounded-lg border border-border bg-background p-2.5 text-muted-foreground hover:text-foreground" aria-label="גלריה">
-                  <ImageIcon className="h-4 w-4" />
+                <button type="button" className="shrink-0 rounded-lg border border-border bg-background p-2.5 text-muted-foreground hover:text-foreground" aria-label="צירוף מדיה">
+                  <Paperclip className="h-4 w-4" />
                 </button>
               </PopoverTrigger>
               <PopoverContent align="start" className="w-44 p-1" dir="rtl">
@@ -1149,6 +1175,7 @@ const InlineComposer = ({
                 scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
                 group_ids: channel.id === 'facebook' ? groupIds : [],
                 selected_profile_ids: channel.id === 'facebook' ? selectedProfileIds : [],
+                attach_wa_link: attachWaLink,
               })}
               disabled={!canSend}
               className={cn(
@@ -1252,7 +1279,7 @@ const InlineComposer = ({
 /* ───────────── Dispatch confirmation modal ───────────── */
 
 const ConfirmDispatchDialog = ({
-  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds, selectedProfileIds, onConfirmed,
+  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds, selectedProfileIds, attachWaLink, onConfirmed,
 }: {
   open: boolean;
   onClose: () => void;
@@ -1265,6 +1292,7 @@ const ConfirmDispatchDialog = ({
   scheduledAt: string | null;
   groupIds: string[];
   selectedProfileIds: string[];
+  attachWaLink: boolean;
   onConfirmed: () => void;
 }) => {
   const { user } = useAuth();
@@ -1363,11 +1391,11 @@ const ConfirmDispatchDialog = ({
     const ownerScope = workspaceOwnerId ?? user.id;
     setIsBroadcasting(true);
     try {
-      // Force-refresh branded WhatsApp short link CTA when a listing is attached.
-      // Existing slug lines are replaced so stale persisted drafts cannot publish
-      // an old short_urls row for a different selected property.
+      // WhatsApp CTA is OPT-IN via the "הוסף קישור לוואטסאפ" checkbox. When
+      // unchecked the outgoing payload stays completely clean of any CTA or
+      // tracking short-link — regardless of whether a listing is attached.
       let bodyToPublish = body;
-      if (listingId) {
+      if (attachWaLink && listingId) {
         try {
           const { data: slugRes } = await supabase.functions.invoke('shortlink-create', {
             body: { property_id: listingId },
@@ -1376,6 +1404,7 @@ const ConfirmDispatchDialog = ({
           if (slug) {
             const withoutStaleSlug = body
               .replace(/\n*[^\n]*realtyz\.co\.il\/r\/[a-z0-9]+[^\n]*/gi, '')
+              .replace(/\n*[^\n]*דברו איתנו עכשיו[^\n]*/g, '')
               .trim();
             bodyToPublish = `${withoutStaleSlug}\n\nדברו איתנו עכשיו: realtyz.co.il/r/${slug}`;
           }
@@ -3927,6 +3956,7 @@ const CampaignCenter = () => {
         scheduledAt={confirmPayload?.scheduled_at ?? null}
         groupIds={confirmPayload?.group_ids ?? []}
         selectedProfileIds={confirmPayload?.selected_profile_ids ?? []}
+        attachWaLink={confirmPayload?.attach_wa_link ?? false}
         onConfirmed={async () => {
           const body = confirmPayload?.body ?? '';
           const shouldEmail = alsoEmail && pickedChannel?.id !== 'email' && connectedChannels.has('email') && body.trim().length > 0;
