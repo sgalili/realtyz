@@ -4,6 +4,7 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 import { sanitizeOutboundText, resolveWorkspaceProfileKey, likeNativeComment } from "../_shared/ayrshare-helpers.ts";
+import { guardOutboundAction, recordAyrshareAction } from "../_shared/ayrshare-safety.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 
 const AYR_REPLY_URL = "https://api.ayrshare.com/api/comments/reply";
