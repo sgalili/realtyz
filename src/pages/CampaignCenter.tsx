@@ -1629,12 +1629,24 @@ const ConfirmDispatchDialog = ({
               e.stopPropagation();
               window.alert("DIAGNOSTIC TRAP: Button execution layer reached successfully!");
               if (isBroadcasting) return;
+              setIsBroadcasting(true);
               try {
+                window.alert(
+                  "Payload preview → channel=" + channel.id +
+                  " | targets=" + (publishTargets?.length ?? 0) +
+                  " | media=" + (mediaUrls?.length ?? 0) +
+                  " | scheduled=" + (scheduledAt || 'now')
+                );
                 await handleConfirm();
-              } catch (err) {
-                console.error("Broadcast failed:", err);
+                window.alert("Fetch sequence completed without throwing.");
+              } catch (error: any) {
+                console.error("Broadcast failed:", error);
+                window.alert("CRITICAL ERROR CAUGHT: " + (error?.message || JSON.stringify(error)));
+              } finally {
+                setIsBroadcasting(false);
               }
             }}
+
           >
             {isBroadcasting ? (
               <span className="inline-flex items-center gap-2">
