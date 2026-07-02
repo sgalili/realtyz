@@ -2199,7 +2199,7 @@ const PublishedFeed = () => {
 
 
 
-  const load = async (opts: { forceFb?: boolean } = {}) => {
+  const load = async (opts: { forceFb?: boolean; skipFbImport?: boolean } = {}) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setRows([]); return { rows: [], ownerScope: null as string | null, importedCount: 0, importComplete: false }; }
     setUserId(user.id);
@@ -2208,37 +2208,9 @@ const PublishedFeed = () => {
     const scopedUserIds = await getCampaignWorkspaceUserIds(ownerScope, user.id);
     setCampaignUserIds(scopedUserIds);
 
-    // Permanently import native Facebook Page posts exactly once per browser
-    // session per workspace. The edge function UPSERTS into campaign_logs and
-    // never deletes or shrinks old rows, so a later provider page returning 10
-    // records cannot reset the 150 persisted campaign cards.
-    const importKey = `realtyz.fb_native_import.${FIRST_VISIT_IMPORT_KEY_VERSION}.${ownerScope}`;
-    let shouldImport = opts.forceFb === true;
-    try {
-      const raw = sessionStorage.getItem(importKey);
-      const importedAt = raw ? Number(raw) : 0;
-      shouldImport = shouldImport || !Number.isFinite(importedAt) || Date.now() - importedAt > CAMPAIGN_CACHE_MS;
-    } catch { shouldImport = true; }
-    if (shouldImport) {
-      try {
-        const { data: importData, error: importError } = await supabase.functions.invoke('fb-recent-posts', {
-          body: { lastRecords: 500, pageSize: 500, user_id: ownerScope, persist: true, force_full_scan: false },
-        });
-        const importedCount = Number((importData as any)?.count) || 0;
-        if (importError) {
-          console.warn('[PublishedFeed] fb persistent import failed (non-fatal)', importError);
-        } else if ((importData as any)?.ok === false) {
-          console.warn('[PublishedFeed] fb persistent import returned error', importData);
-        } else if (importedCount >= EXPECTED_NATIVE_FACEBOOK_POSTS) {
-          try { sessionStorage.setItem(importKey, String(Date.now())); } catch { /* quota */ }
-        } else {
-          console.warn('[PublishedFeed] fb persistent import returned a partial set; will retry next entry', importData);
-        }
-      } catch (err) {
-        console.warn('[PublishedFeed] fb persistent import crashed (non-fatal)', err);
-      }
-    }
-
+    // DB-first: read the persisted campaign_logs feed BEFORE any Ayrshare
+    // import. This is the whole point of the cache — the user should see
+    // instantly whatever was previously stored, never waiting on the provider.
     const { data } = await supabase
       .from('campaign_logs')
       .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at, status, sent_at')
@@ -2324,9 +2296,48 @@ const PublishedFeed = () => {
 
     setRows(merged);
     FEED_ROWS_CACHE.set(ownerScope, merged);
+    setColdLoading(false);
     try { sessionStorage.setItem(CAMPAIGNS_COUNT_SESSION_KEY, String(merged.length)); } catch { /* quota */ }
     // Nudge the sidebar to repaint the campaigns badge with the persisted DB count.
     try { queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] }); } catch { /* no-op */ }
+
+    // Background Ayrshare import — never blocks the DB paint above. Only runs
+    // when the caller explicitly forces it OR the persisted feed is thin
+    // enough that we still need to backfill from the provider. The import
+    // UPSERTS into campaign_logs; the realtime INSERT handler streams new
+    // rows into the UI as they land.
+    const importKey = `realtyz.fb_native_import.${FIRST_VISIT_IMPORT_KEY_VERSION}.${ownerScope}`;
+    let shouldImport = opts.forceFb === true;
+    if (!opts.skipFbImport) {
+      if (!shouldImport && merged.length < EXPECTED_NATIVE_FACEBOOK_POSTS) {
+        try {
+          const raw = sessionStorage.getItem(importKey);
+          const importedAt = raw ? Number(raw) : 0;
+          shouldImport = !Number.isFinite(importedAt) || Date.now() - importedAt > CAMPAIGN_CACHE_MS;
+        } catch { shouldImport = true; }
+      }
+      if (shouldImport) {
+        // Fire-and-forget — the DB is already painted; we never await this.
+        void (async () => {
+          try {
+            const { data: importData, error: importError } = await supabase.functions.invoke('fb-recent-posts', {
+              body: { lastRecords: 500, pageSize: 500, user_id: ownerScope, persist: true, force_full_scan: false },
+            });
+            const importedCount = Number((importData as any)?.count) || 0;
+            if (importError) {
+              console.warn('[PublishedFeed] fb persistent import failed (non-fatal)', importError);
+            } else if ((importData as any)?.ok === false) {
+              console.warn('[PublishedFeed] fb persistent import returned error', importData);
+            } else if (importedCount >= EXPECTED_NATIVE_FACEBOOK_POSTS) {
+              try { sessionStorage.setItem(importKey, String(Date.now())); } catch { /* quota */ }
+            }
+          } catch (err) {
+            console.warn('[PublishedFeed] fb persistent import crashed (non-fatal)', err);
+          }
+        })();
+      }
+    }
+
     return { rows: merged, ownerScope, importedCount: shouldImport ? merged.length : 0, importComplete: merged.length >= EXPECTED_NATIVE_FACEBOOK_POSTS };
   };
 
@@ -2439,19 +2450,16 @@ const PublishedFeed = () => {
     const cached = FEED_ROWS_CACHE.get(wsKey);
     let cancelled = false;
     const hydrateAndRefresh = async () => {
-      // 1) INSTANT paint from cache — never block on the network for rows
-      //    the user has already seen in this session. Any freshness delta is
-      //    merged in silently by the background load() below.
+      // 1) INSTANT paint from in-memory cache (same-session re-entry).
       if (cached && cached.length > 0) {
         setRows(cached);
         setColdLoading(false);
       }
 
-      // 2) Silent background sync. Only reflect a blocking loader on the
-      //    truly cold path (no cache for this workspace AND no prior rows).
-      const needsFullReload = !cached || cached.length < EXPECTED_NATIVE_FACEBOOK_POSTS;
-      if (!needsFullReload) return;
-
+      // 2) Always run a DB-only read so cross-session re-entries paint
+      //    instantly from campaign_logs without waiting on Ayrshare. The
+      //    fb-recent-posts import is fired inside load() as a background
+      //    task — it never blocks the DB paint.
       let pending = FEED_LOAD_PROMISE_CACHE.get(wsKey);
       if (!pending) {
         pending = load({ forceFb: false }).finally(() => FEED_LOAD_PROMISE_CACHE.delete(wsKey));
@@ -2462,9 +2470,6 @@ const PublishedFeed = () => {
       } finally {
         if (!cancelled) setColdLoading(false);
       }
-      // Note: no auto-invoke of Ayrshare on mount. Fresh provider data is
-      // fetched ONLY when the מתעניין explicitly expands a post card
-      // (see CampaignCommentsStream).
     };
     void hydrateAndRefresh();
     return () => { cancelled = true; };
