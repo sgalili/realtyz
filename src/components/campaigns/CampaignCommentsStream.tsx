@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { campaignMatchesExternalPost, getCampaignPostIds, platformForCampaignChannel } from "@/lib/campaignPostIds";
 import { learnFromEdit } from "@/lib/learnFromEdit";
+import { t as i18n } from "@/i18n/strings";
 
 const extractFunctionError = async (error: any, fallback = "שגיאת API חיצונית") => {
   const status = error?.context?.status ?? error?.status;
@@ -302,6 +303,7 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
   }, [rows, campaign.id, commentCount, onLiveCountResolved]);
 
   const [loading, setLoading] = useState(false);
+  const [initialLoadDone, setInitialLoadDone] = useState<boolean>(Array.isArray(cached));
   const [manualRefreshing, setManualRefreshing] = useState(false);
   const [providerWarning, setProviderWarning] = useState<string | null>(null);
   const [fbSessionExpired, setFbSessionExpired] = useState(false);
@@ -473,11 +475,16 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
       // Never blow away an existing cached tree on a transient fetch failure —
       // only seed an empty list when there was nothing to render in the first place.
       if (!hasCached) {
-        toast.error(e?.message ?? "טעינת תגובות נכשלה");
+        toast.error(e?.message ?? i18n("commentLoadFailed"));
         setRows([]);
       }
     } finally {
+      // Always clear the initial-load spinner AND mark the initial load as
+      // finished — the render layer relies on `initialLoadDone` to decide
+      // between the "loading tree" and "no comments yet" copy, so this must
+      // fire on both the success and failure paths to avoid a hung loader.
       if (!hasCached) setLoading(false);
+      setInitialLoadDone(true);
     }
   };
 
@@ -1183,25 +1190,34 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
         <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 px-3 py-2.5 text-xs text-amber-700 dark:text-amber-400 flex items-start gap-2">
           <span aria-hidden className="mt-0.5">⚠️</span>
           <div className="space-y-1 flex-1">
-            <div className="font-semibold">חיבור פייסבוק זמני פקע</div>
+            <div className="font-semibold">{i18n("fbSessionExpiredTitle")}</div>
             <div className="text-amber-700/90 dark:text-amber-300/90">
-              יש לחדש את החיבור דרך הגדרות הערוצים. תגובות שכבר נטענו מוצגות מהזיכרון המקומי.
+              {i18n("fbSessionExpiredBody")}
             </div>
           </div>
         </div>
       )}
 
-      {(!rows || rows.length === 0) && !fbSessionExpired && savedCommentFloor > 0 && (
-        <p className="text-xs text-muted-foreground">טוען את עץ התגובות המלא ({savedCommentFloor})…</p>
+      {/* Only show the "loading tree" copy while an actual fetch is in flight.
+          Once the initial local-DB read (or a manual refresh) has finished, we
+          switch to the empty-state copy so the loader can never hang forever,
+          even if savedCommentFloor (analytics counter) is > 0 but the tree
+          truly holds zero rows. */}
+      {(!rows || rows.length === 0) && !fbSessionExpired && (loading || manualRefreshing) && (
+        <p className="text-xs text-muted-foreground">
+          {savedCommentFloor > 0
+            ? i18n("loadingCommentTreeWithCount", { count: savedCommentFloor })
+            : i18n("loadingCommentTree")}
+        </p>
       )}
 
-      {(!rows || rows.length === 0) && !fbSessionExpired && savedCommentFloor === 0 && (
-        <p className="text-xs text-muted-foreground">אין תגובות עדיין לקמפיין זה</p>
+      {(!rows || rows.length === 0) && !fbSessionExpired && !loading && !manualRefreshing && initialLoadDone && (
+        <p className="text-xs text-muted-foreground">{i18n("noCommentsYet")}</p>
       )}
 
       {providerWarning && !fbSessionExpired && (
         <p className="rounded-lg border border-destructive/25 bg-destructive/5 px-3 py-2 text-xs text-destructive">
-          החיבור לפייסבוק חסום כרגע: {providerWarning}
+          {i18n("providerBlocked", { reason: providerWarning })}
         </p>
       )}
 
