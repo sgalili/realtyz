@@ -2903,7 +2903,7 @@ const PublishedFeed = () => {
                   <CampaignCommentsStream
                     userId={userId ?? ''}
                     campaign={r}
-                    commentCount={typeof liveCount === 'number' ? Math.max(liveCount, dbComments) : dbComments}
+                    commentCount={typeof liveCount === 'number' ? liveCount : dbComments}
                     onLiveCountResolved={updateLiveCount}
                     refreshSignal={refreshSignals[r.id] ?? 0}
                     onCountersResolved={(campaignId, counters) => {
