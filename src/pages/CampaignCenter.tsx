@@ -2692,7 +2692,11 @@ const PublishedFeed = () => {
     return merged.filter((r) => String(r.channel || '').toLowerCase() === activeChannel);
   }, [rows, activeChannel, optimisticRows]);
 
-  if (rows === null) {
+  // Blocking loader ONLY on a true cold start: no cached rows in memory AND
+  // the initial background load is still in-flight. As soon as we have any
+  // rows (cached or freshly-loaded, even zero-length after settle), we render
+  // the feed shell instead of hiding it behind "טוען…".
+  if (rows === null && coldLoading) {
     return <div className="rounded-2xl border border-border/60 bg-card p-10 text-center text-sm text-muted-foreground">טוען…</div>;
   }
 
