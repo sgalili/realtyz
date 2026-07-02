@@ -84,10 +84,49 @@ Deno.serve(async (req) => {
     if (!claims?.claims?.sub) return json(401, { error: "Unauthorized" });
     const userId = claims.claims.sub as string;
 
-    const { property_id } = await req.json().catch(() => ({}));
-    if (!property_id) return json(400, { error: "property_id required" });
+    const { property_id, long_url: rawLongUrl } = await req.json().catch(() => ({}));
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+
+    // Ad-hoc shortener path: no listing attached, caller just wants a clean
+    // realtyz.co.il/r/<slug> alias for an arbitrary long URL (e.g. the WA CTA
+    // in the post composer). Reuse an existing slug for the same long_url so
+    // rotating the composer checkbox doesn't spam rows.
+    if (!property_id) {
+      if (!rawLongUrl || typeof rawLongUrl !== "string" || !/^https?:\/\//i.test(rawLongUrl)) {
+        return json(400, { error: "property_id or long_url required" });
+      }
+      const { data: existingAdhoc } = await admin
+        .from("short_urls")
+        .select("slug")
+        .is("property_id", null)
+        .eq("long_url", rawLongUrl)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+      if (existingAdhoc?.slug) {
+        return json(200, {
+          slug: existingAdhoc.slug,
+          short_url: `https://realtyz.co.il/r/${existingAdhoc.slug}`,
+          long_url: rawLongUrl,
+          reused: true,
+        });
+      }
+      let adhocSlug = "";
+      for (let i = 0; i < 5; i++) {
+        adhocSlug = makeSlug();
+        const { error: ierr } = await admin
+          .from("short_urls")
+          .insert({ slug: adhocSlug, property_id: null, long_url: rawLongUrl, created_by: userId });
+        if (!ierr) break;
+        if (i === 4) return json(500, { error: "Could not allocate slug" });
+      }
+      return json(200, {
+        slug: adhocSlug,
+        short_url: `https://realtyz.co.il/r/${adhocSlug}`,
+        long_url: rawLongUrl,
+      });
+    }
 
     const { data: listing, error: lerr } = await admin
       .from("listings")
