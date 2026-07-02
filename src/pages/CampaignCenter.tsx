@@ -2701,12 +2701,12 @@ const PublishedFeed = () => {
         const preview = bodyText.trim().slice(0, 100) + (bodyText.trim().length > 100 ? '…' : '');
         const fmt = (v: number | null | undefined) => (typeof v === 'number' ? v : 0);
         const liveCount = liveCommentCounts[r.id];
-        // The truth is the tree: the badge bypasses the lagging analytics
-        // integer whenever the rendered comment tree (top-level + nested
-        // replies) holds more rows. Math.max(0, ...) keeps true zero posts at 0.
+        // Once the comment tree has been loaded (even once), it is the
+        // authoritative count — top-level + follow-up replies. Never mix in
+        // the inflated Ayrshare aggregate (dbComments); it double-counts.
         const dbComments = Math.max(0, typeof r.comment_count === 'number' ? r.comment_count : 0);
         const commentDisplay = typeof liveCount === 'number'
-          ? Math.max(0, liveCount, dbComments)
+          ? liveCount
           : fmt(r.comment_count);
 
         // Strip Ayrshare workspace decorations ("Realtyz Workspace - … - 6200",
