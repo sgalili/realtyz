@@ -2296,9 +2296,48 @@ const PublishedFeed = () => {
 
     setRows(merged);
     FEED_ROWS_CACHE.set(ownerScope, merged);
+    setColdLoading(false);
     try { sessionStorage.setItem(CAMPAIGNS_COUNT_SESSION_KEY, String(merged.length)); } catch { /* quota */ }
     // Nudge the sidebar to repaint the campaigns badge with the persisted DB count.
     try { queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] }); } catch { /* no-op */ }
+
+    // Background Ayrshare import — never blocks the DB paint above. Only runs
+    // when the caller explicitly forces it OR the persisted feed is thin
+    // enough that we still need to backfill from the provider. The import
+    // UPSERTS into campaign_logs; the realtime INSERT handler streams new
+    // rows into the UI as they land.
+    const importKey = `realtyz.fb_native_import.${FIRST_VISIT_IMPORT_KEY_VERSION}.${ownerScope}`;
+    let shouldImport = opts.forceFb === true;
+    if (!opts.skipFbImport) {
+      if (!shouldImport && merged.length < EXPECTED_NATIVE_FACEBOOK_POSTS) {
+        try {
+          const raw = sessionStorage.getItem(importKey);
+          const importedAt = raw ? Number(raw) : 0;
+          shouldImport = !Number.isFinite(importedAt) || Date.now() - importedAt > CAMPAIGN_CACHE_MS;
+        } catch { shouldImport = true; }
+      }
+      if (shouldImport) {
+        // Fire-and-forget — the DB is already painted; we never await this.
+        void (async () => {
+          try {
+            const { data: importData, error: importError } = await supabase.functions.invoke('fb-recent-posts', {
+              body: { lastRecords: 500, pageSize: 500, user_id: ownerScope, persist: true, force_full_scan: false },
+            });
+            const importedCount = Number((importData as any)?.count) || 0;
+            if (importError) {
+              console.warn('[PublishedFeed] fb persistent import failed (non-fatal)', importError);
+            } else if ((importData as any)?.ok === false) {
+              console.warn('[PublishedFeed] fb persistent import returned error', importData);
+            } else if (importedCount >= EXPECTED_NATIVE_FACEBOOK_POSTS) {
+              try { sessionStorage.setItem(importKey, String(Date.now())); } catch { /* quota */ }
+            }
+          } catch (err) {
+            console.warn('[PublishedFeed] fb persistent import crashed (non-fatal)', err);
+          }
+        })();
+      }
+    }
+
     return { rows: merged, ownerScope, importedCount: shouldImport ? merged.length : 0, importComplete: merged.length >= EXPECTED_NATIVE_FACEBOOK_POSTS };
   };
 
