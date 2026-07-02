@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { campaignMatchesExternalPost, getCampaignPostIds, platformForCampaignChannel } from "@/lib/campaignPostIds";
 import { learnFromEdit } from "@/lib/learnFromEdit";
+import { t as i18n } from "@/i18n/strings";
 
 const extractFunctionError = async (error: any, fallback = "שגיאת API חיצונית") => {
   const status = error?.context?.status ?? error?.status;
