@@ -2450,19 +2450,16 @@ const PublishedFeed = () => {
     const cached = FEED_ROWS_CACHE.get(wsKey);
     let cancelled = false;
     const hydrateAndRefresh = async () => {
-      // 1) INSTANT paint from cache — never block on the network for rows
-      //    the user has already seen in this session. Any freshness delta is
-      //    merged in silently by the background load() below.
+      // 1) INSTANT paint from in-memory cache (same-session re-entry).
       if (cached && cached.length > 0) {
         setRows(cached);
         setColdLoading(false);
       }
 
-      // 2) Silent background sync. Only reflect a blocking loader on the
-      //    truly cold path (no cache for this workspace AND no prior rows).
-      const needsFullReload = !cached || cached.length < EXPECTED_NATIVE_FACEBOOK_POSTS;
-      if (!needsFullReload) return;
-
+      // 2) Always run a DB-only read so cross-session re-entries paint
+      //    instantly from campaign_logs without waiting on Ayrshare. The
+      //    fb-recent-posts import is fired inside load() as a background
+      //    task — it never blocks the DB paint.
       let pending = FEED_LOAD_PROMISE_CACHE.get(wsKey);
       if (!pending) {
         pending = load({ forceFb: false }).finally(() => FEED_LOAD_PROMISE_CACHE.delete(wsKey));
@@ -2473,9 +2470,6 @@ const PublishedFeed = () => {
       } finally {
         if (!cancelled) setColdLoading(false);
       }
-      // Note: no auto-invoke of Ayrshare on mount. Fresh provider data is
-      // fetched ONLY when the מתעניין explicitly expands a post card
-      // (see CampaignCommentsStream).
     };
     void hydrateAndRefresh();
     return () => { cancelled = true; };
