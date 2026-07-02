@@ -475,11 +475,16 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
       // Never blow away an existing cached tree on a transient fetch failure —
       // only seed an empty list when there was nothing to render in the first place.
       if (!hasCached) {
-        toast.error(e?.message ?? "טעינת תגובות נכשלה");
+        toast.error(e?.message ?? i18n("commentLoadFailed"));
         setRows([]);
       }
     } finally {
+      // Always clear the initial-load spinner AND mark the initial load as
+      // finished — the render layer relies on `initialLoadDone` to decide
+      // between the "loading tree" and "no comments yet" copy, so this must
+      // fire on both the success and failure paths to avoid a hung loader.
       if (!hasCached) setLoading(false);
+      setInitialLoadDone(true);
     }
   };
 
