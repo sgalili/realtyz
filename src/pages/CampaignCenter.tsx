@@ -2705,7 +2705,7 @@ const PublishedFeed = () => {
   return (
     <div className="space-y-3">
       <GlobalSocialFeed
-        rows={rows}
+        rows={rows ?? []}
         activeChannel={activeChannel}
         onChannelChange={setActiveChannel}
         connectedChannels={connectedChannels}
