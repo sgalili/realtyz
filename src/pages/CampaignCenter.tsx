@@ -2439,27 +2439,34 @@ const PublishedFeed = () => {
     const cached = FEED_ROWS_CACHE.get(wsKey);
     let cancelled = false;
     const hydrateAndRefresh = async () => {
-      let loaded: Awaited<ReturnType<typeof load>> | null = null;
-      if (cached && cached.length >= EXPECTED_NATIVE_FACEBOOK_POSTS) {
+      // 1) INSTANT paint from cache — never block on the network for rows
+      //    the user has already seen in this session. Any freshness delta is
+      //    merged in silently by the background load() below.
+      if (cached && cached.length > 0) {
         setRows(cached);
-        loaded = { rows: cached, ownerScope: wsKey, importedCount: 0, importComplete: true };
-      } else {
-        let pending = FEED_LOAD_PROMISE_CACHE.get(wsKey);
-        if (!pending) {
-          pending = load({ forceFb: false }).finally(() => FEED_LOAD_PROMISE_CACHE.delete(wsKey));
-          FEED_LOAD_PROMISE_CACHE.set(wsKey, pending);
-        }
-        loaded = await pending;
+        setColdLoading(false);
       }
-      if (cancelled) return;
-      // Do NOT auto-invoke Ayrshare on page mount. Displayed counters come
-      // from the persisted campaign_logs / engagement_events rows. Fresh
-      // provider data is fetched ONLY when the מתעניין explicitly expands a
-      // post card (see CampaignCommentsStream).
+
+      // 2) Silent background sync. Only reflect a blocking loader on the
+      //    truly cold path (no cache for this workspace AND no prior rows).
+      const needsFullReload = !cached || cached.length < EXPECTED_NATIVE_FACEBOOK_POSTS;
+      if (!needsFullReload) return;
+
+      let pending = FEED_LOAD_PROMISE_CACHE.get(wsKey);
+      if (!pending) {
+        pending = load({ forceFb: false }).finally(() => FEED_LOAD_PROMISE_CACHE.delete(wsKey));
+        FEED_LOAD_PROMISE_CACHE.set(wsKey, pending);
+      }
+      try {
+        await pending;
+      } finally {
+        if (!cancelled) setColdLoading(false);
+      }
+      // Note: no auto-invoke of Ayrshare on mount. Fresh provider data is
+      // fetched ONLY when the מתעניין explicitly expands a post card
+      // (see CampaignCommentsStream).
     };
     void hydrateAndRefresh();
-    // Automatic comment/analytics polling permanently disabled — was burning
-    // Ayrshare quota and triggering suspensions. Refresh is expand-driven.
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceOwnerId]);
