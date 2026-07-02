@@ -2199,7 +2199,7 @@ const PublishedFeed = () => {
 
 
 
-  const load = async (opts: { forceFb?: boolean } = {}) => {
+  const load = async (opts: { forceFb?: boolean; skipFbImport?: boolean } = {}) => {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setRows([]); return { rows: [], ownerScope: null as string | null, importedCount: 0, importComplete: false }; }
     setUserId(user.id);
@@ -2208,37 +2208,9 @@ const PublishedFeed = () => {
     const scopedUserIds = await getCampaignWorkspaceUserIds(ownerScope, user.id);
     setCampaignUserIds(scopedUserIds);
 
-    // Permanently import native Facebook Page posts exactly once per browser
-    // session per workspace. The edge function UPSERTS into campaign_logs and
-    // never deletes or shrinks old rows, so a later provider page returning 10
-    // records cannot reset the 150 persisted campaign cards.
-    const importKey = `realtyz.fb_native_import.${FIRST_VISIT_IMPORT_KEY_VERSION}.${ownerScope}`;
-    let shouldImport = opts.forceFb === true;
-    try {
-      const raw = sessionStorage.getItem(importKey);
-      const importedAt = raw ? Number(raw) : 0;
-      shouldImport = shouldImport || !Number.isFinite(importedAt) || Date.now() - importedAt > CAMPAIGN_CACHE_MS;
-    } catch { shouldImport = true; }
-    if (shouldImport) {
-      try {
-        const { data: importData, error: importError } = await supabase.functions.invoke('fb-recent-posts', {
-          body: { lastRecords: 500, pageSize: 500, user_id: ownerScope, persist: true, force_full_scan: false },
-        });
-        const importedCount = Number((importData as any)?.count) || 0;
-        if (importError) {
-          console.warn('[PublishedFeed] fb persistent import failed (non-fatal)', importError);
-        } else if ((importData as any)?.ok === false) {
-          console.warn('[PublishedFeed] fb persistent import returned error', importData);
-        } else if (importedCount >= EXPECTED_NATIVE_FACEBOOK_POSTS) {
-          try { sessionStorage.setItem(importKey, String(Date.now())); } catch { /* quota */ }
-        } else {
-          console.warn('[PublishedFeed] fb persistent import returned a partial set; will retry next entry', importData);
-        }
-      } catch (err) {
-        console.warn('[PublishedFeed] fb persistent import crashed (non-fatal)', err);
-      }
-    }
-
+    // DB-first: read the persisted campaign_logs feed BEFORE any Ayrshare
+    // import. This is the whole point of the cache — the user should see
+    // instantly whatever was previously stored, never waiting on the provider.
     const { data } = await supabase
       .from('campaign_logs')
       .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at, status, sent_at')
