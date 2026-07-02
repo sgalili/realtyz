@@ -1982,10 +1982,22 @@ const PublishedFeed = () => {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const queryClient = useQueryClient();
   const [rows, setRows] = useState<CampaignRow[] | null>(() => {
-    // Hydrate synchronously from any prior in-session cache so the UI never
-    // flashes empty when navigating back to /campaigns within the same tab.
-    for (const cached of FEED_ROWS_CACHE.values()) return cached;
+    // Optimistic hydration: on every mount, immediately seed from any prior
+    // in-session cache so re-entering /campaigns never flashes the blocking
+    // "טוען…" placeholder over posts we already loaded once this session.
+    for (const cached of FEED_ROWS_CACHE.values()) {
+      if (Array.isArray(cached) && cached.length > 0) return cached;
+    }
     return null;
+  });
+  // True only during the very first cold load (no in-session cache anywhere).
+  // The blocking loader is gated on this — a background refresh must never
+  // hide already-rendered cached rows.
+  const [coldLoading, setColdLoading] = useState<boolean>(() => {
+    for (const cached of FEED_ROWS_CACHE.values()) {
+      if (Array.isArray(cached) && cached.length > 0) return false;
+    }
+    return true;
   });
 
   const [userId, setUserId] = useState<string | null>(null);
