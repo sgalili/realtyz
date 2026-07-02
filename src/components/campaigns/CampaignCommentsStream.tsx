@@ -303,6 +303,7 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
   }, [rows, campaign.id, commentCount, onLiveCountResolved]);
 
   const [loading, setLoading] = useState(false);
+  const [initialLoadDone, setInitialLoadDone] = useState<boolean>(Array.isArray(cached));
   const [manualRefreshing, setManualRefreshing] = useState(false);
   const [providerWarning, setProviderWarning] = useState<string | null>(null);
   const [fbSessionExpired, setFbSessionExpired] = useState(false);
