@@ -1982,10 +1982,22 @@ const PublishedFeed = () => {
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const queryClient = useQueryClient();
   const [rows, setRows] = useState<CampaignRow[] | null>(() => {
-    // Hydrate synchronously from any prior in-session cache so the UI never
-    // flashes empty when navigating back to /campaigns within the same tab.
-    for (const cached of FEED_ROWS_CACHE.values()) return cached;
+    // Optimistic hydration: on every mount, immediately seed from any prior
+    // in-session cache so re-entering /campaigns never flashes the blocking
+    // "טוען…" placeholder over posts we already loaded once this session.
+    for (const cached of FEED_ROWS_CACHE.values()) {
+      if (Array.isArray(cached) && cached.length > 0) return cached;
+    }
     return null;
+  });
+  // True only during the very first cold load (no in-session cache anywhere).
+  // The blocking loader is gated on this — a background refresh must never
+  // hide already-rendered cached rows.
+  const [coldLoading, setColdLoading] = useState<boolean>(() => {
+    for (const cached of FEED_ROWS_CACHE.values()) {
+      if (Array.isArray(cached) && cached.length > 0) return false;
+    }
+    return true;
   });
 
   const [userId, setUserId] = useState<string | null>(null);
@@ -2427,27 +2439,34 @@ const PublishedFeed = () => {
     const cached = FEED_ROWS_CACHE.get(wsKey);
     let cancelled = false;
     const hydrateAndRefresh = async () => {
-      let loaded: Awaited<ReturnType<typeof load>> | null = null;
-      if (cached && cached.length >= EXPECTED_NATIVE_FACEBOOK_POSTS) {
+      // 1) INSTANT paint from cache — never block on the network for rows
+      //    the user has already seen in this session. Any freshness delta is
+      //    merged in silently by the background load() below.
+      if (cached && cached.length > 0) {
         setRows(cached);
-        loaded = { rows: cached, ownerScope: wsKey, importedCount: 0, importComplete: true };
-      } else {
-        let pending = FEED_LOAD_PROMISE_CACHE.get(wsKey);
-        if (!pending) {
-          pending = load({ forceFb: false }).finally(() => FEED_LOAD_PROMISE_CACHE.delete(wsKey));
-          FEED_LOAD_PROMISE_CACHE.set(wsKey, pending);
-        }
-        loaded = await pending;
+        setColdLoading(false);
       }
-      if (cancelled) return;
-      // Do NOT auto-invoke Ayrshare on page mount. Displayed counters come
-      // from the persisted campaign_logs / engagement_events rows. Fresh
-      // provider data is fetched ONLY when the מתעניין explicitly expands a
-      // post card (see CampaignCommentsStream).
+
+      // 2) Silent background sync. Only reflect a blocking loader on the
+      //    truly cold path (no cache for this workspace AND no prior rows).
+      const needsFullReload = !cached || cached.length < EXPECTED_NATIVE_FACEBOOK_POSTS;
+      if (!needsFullReload) return;
+
+      let pending = FEED_LOAD_PROMISE_CACHE.get(wsKey);
+      if (!pending) {
+        pending = load({ forceFb: false }).finally(() => FEED_LOAD_PROMISE_CACHE.delete(wsKey));
+        FEED_LOAD_PROMISE_CACHE.set(wsKey, pending);
+      }
+      try {
+        await pending;
+      } finally {
+        if (!cancelled) setColdLoading(false);
+      }
+      // Note: no auto-invoke of Ayrshare on mount. Fresh provider data is
+      // fetched ONLY when the מתעניין explicitly expands a post card
+      // (see CampaignCommentsStream).
     };
     void hydrateAndRefresh();
-    // Automatic comment/analytics polling permanently disabled — was burning
-    // Ayrshare quota and triggering suspensions. Refresh is expand-driven.
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [workspaceOwnerId]);
@@ -2673,7 +2692,11 @@ const PublishedFeed = () => {
     return merged.filter((r) => String(r.channel || '').toLowerCase() === activeChannel);
   }, [rows, activeChannel, optimisticRows]);
 
-  if (rows === null) {
+  // Blocking loader ONLY on a true cold start: no cached rows in memory AND
+  // the initial background load is still in-flight. As soon as we have any
+  // rows (cached or freshly-loaded, even zero-length after settle), we render
+  // the feed shell instead of hiding it behind "טוען…".
+  if (rows === null && coldLoading) {
     return <div className="rounded-2xl border border-border/60 bg-card p-10 text-center text-sm text-muted-foreground">טוען…</div>;
   }
 
@@ -2682,7 +2705,7 @@ const PublishedFeed = () => {
   return (
     <div className="space-y-3">
       <GlobalSocialFeed
-        rows={rows}
+        rows={rows ?? []}
         activeChannel={activeChannel}
         onChannelChange={setActiveChannel}
         connectedChannels={connectedChannels}
