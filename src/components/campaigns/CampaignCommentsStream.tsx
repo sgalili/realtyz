@@ -297,10 +297,11 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
   useEffect(() => {
     if (!onLiveCountResolved) return;
     if (!Array.isArray(rows)) return;
-    // Never publish a lower zero over a saved non-zero card counter. The DB
-    // counter is the floor until the full comment tree is actually loaded.
-    onLiveCountResolved(campaign.id, Math.max(treeCount(rows), Number(commentCount ?? 0) || 0));
-  }, [rows, campaign.id, commentCount, onLiveCountResolved]);
+    // Publish the exact rendered tree size (top-level + nested replies, deduped).
+    // This is the single source of truth for the collapsed card badge — it
+    // must match "תגובות לקמפיין (N) + תגובות המשך (M)" that the user sees.
+    onLiveCountResolved(campaign.id, treeCount(rows));
+  }, [rows, campaign.id, onLiveCountResolved]);
 
   const [loading, setLoading] = useState(false);
   const [initialLoadDone, setInitialLoadDone] = useState<boolean>(Array.isArray(cached));

@@ -1145,22 +1145,36 @@ const InlineComposer = ({
               setBody((prev) => stripWaCta(prev));
               return;
             }
-            // Compose a fresh CTA line every time: rotating first-person opener
-            // + a real WhatsApp link. Prefer the branded short-link when a
-            // listing is attached; otherwise fall back to wa.me with a
-            // pre-filled Hebrew intro so the link is NEVER missing.
-            const opener = pickWaCtaOpener();
+            // Compose a fresh CTA line every time: fixed Hebrew opener +
+            // a CLEAN branded shortlink. We NEVER inline a raw wa.me URL with
+            // a percent-encoded ?text= payload — it's ugly and unreadable.
+            const opener = 'לתיאום ביקור — דברו איתי בוואטסאפ:';
             const fallbackText = 'היי אודי, ראיתי את הפוסט שלך ואשמח לפרטים נוספים.';
-            let linkPart = `https://wa.me/972537339533?text=${encodeURIComponent(fallbackText)}`;
+            const fallbackLongUrl = `https://wa.me/972537339533?text=${encodeURIComponent(fallbackText)}`;
+            let linkPart = '';
             if (selectedListingId) {
               try {
                 const { data: slugRes } = await supabase.functions.invoke('shortlink-create', {
                   body: { property_id: selectedListingId },
                 });
                 const slug = (slugRes as any)?.slug;
-                if (slug) linkPart = `realtyz.co.il/r/${slug}`;
+                if (slug) linkPart = `https://realtyz.co.il/r/${slug}`;
               } catch (err) {
                 console.warn('[shortlink] preview generation failed', err);
+              }
+            }
+            if (!linkPart) {
+              // Ad-hoc shortlink for the generic WA fallback so the composer
+              // never shows the raw percent-encoded wa.me URL to the user.
+              try {
+                const { data: adhoc } = await supabase.functions.invoke('shortlink-create', {
+                  body: { long_url: fallbackLongUrl },
+                });
+                const slug = (adhoc as any)?.slug;
+                linkPart = slug ? `https://realtyz.co.il/r/${slug}` : fallbackLongUrl;
+              } catch (err) {
+                console.warn('[shortlink] ad-hoc generation failed', err);
+                linkPart = fallbackLongUrl;
               }
             }
             const ctaLine = `${opener}\n${linkPart}`;
@@ -2701,12 +2715,12 @@ const PublishedFeed = () => {
         const preview = bodyText.trim().slice(0, 100) + (bodyText.trim().length > 100 ? '…' : '');
         const fmt = (v: number | null | undefined) => (typeof v === 'number' ? v : 0);
         const liveCount = liveCommentCounts[r.id];
-        // The truth is the tree: the badge bypasses the lagging analytics
-        // integer whenever the rendered comment tree (top-level + nested
-        // replies) holds more rows. Math.max(0, ...) keeps true zero posts at 0.
+        // Once the comment tree has been loaded (even once), it is the
+        // authoritative count — top-level + follow-up replies. Never mix in
+        // the inflated Ayrshare aggregate (dbComments); it double-counts.
         const dbComments = Math.max(0, typeof r.comment_count === 'number' ? r.comment_count : 0);
         const commentDisplay = typeof liveCount === 'number'
-          ? Math.max(0, liveCount, dbComments)
+          ? liveCount
           : fmt(r.comment_count);
 
         // Strip Ayrshare workspace decorations ("Realtyz Workspace - … - 6200",
@@ -2903,7 +2917,7 @@ const PublishedFeed = () => {
                   <CampaignCommentsStream
                     userId={userId ?? ''}
                     campaign={r}
-                    commentCount={typeof liveCount === 'number' ? Math.max(liveCount, dbComments) : dbComments}
+                    commentCount={typeof liveCount === 'number' ? liveCount : dbComments}
                     onLiveCountResolved={updateLiveCount}
                     refreshSignal={refreshSignals[r.id] ?? 0}
                     onCountersResolved={(campaignId, counters) => {
