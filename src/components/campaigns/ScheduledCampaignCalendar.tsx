@@ -454,9 +454,9 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
         <DialogContent dir="rtl" className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 justify-end">
-              <CalendarIcon className="h-4 w-4" />
               תזמון פרסומים ליום {scheduleDay?.toLocaleDateString('he-IL')}
             </DialogTitle>
+
           </DialogHeader>
           <div className="space-y-3">
             <div className="flex items-end gap-2 flex-row-reverse">
