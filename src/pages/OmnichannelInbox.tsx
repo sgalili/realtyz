@@ -118,6 +118,7 @@ const OmnichannelInbox = () => {
     });
   };
   const [activeTab, setActiveTab] = useState<'all' | 'waiting' | 'handling'>('all');
+  const [channelFilter, setChannelFilter] = useState<'all' | 'whatsapp' | 'telegram' | 'messenger'>('all');
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   // Tracks the last AI-generated draft (e.g. from Undo & Regenerate) so manual
