@@ -512,13 +512,27 @@ Deno.serve(async (req) => {
       }, 400);
     }
 
+    // Per-workspace primary provider preference. If profile.whatsapp_provider='meta_wab',
+    // we try Meta WBA first (via env-based secrets) and silently fall back to GreenAPI
+    // on any non-2xx / rate-limit / network error.
+    let profilePref: "meta_wab" | "greenapi" | null = null;
+    if (userId) {
+      const { data: prof } = await admin
+        .from("profiles")
+        .select("whatsapp_provider")
+        .eq("id", userId)
+        .maybeSingle();
+      const v = (prof as { whatsapp_provider?: string } | null)?.whatsapp_provider;
+      if (v === "meta_wab" || v === "greenapi") profilePref = v;
+    }
+
     const provider = await resolveProvider(
       admin,
       userId,
       parsed.data.tenant_id ?? null,
       parsed.data.force_provider,
     );
-    if (!provider) {
+    if (!provider && profilePref !== "meta_wab") {
       return json({
         success: false,
         provider: "GreenAPI",
@@ -550,13 +564,62 @@ Deno.serve(async (req) => {
         }
       : undefined;
 
+    // Build env-based Meta WBA config when the workspace prefers meta_wab.
+    const metaPhoneNumberId = Deno.env.get("META_WA_PHONE_NUMBER_ID") ?? "";
+    const metaAccessToken = Deno.env.get("META_WA_ACCESS_TOKEN") ?? "";
+    const metaEnvConfig = {
+      phone_number_id: metaPhoneNumberId,
+      access_token: metaAccessToken,
+      api_version: "v20.0",
+    };
+    const metaEnvReady = !!(metaPhoneNumberId && metaAccessToken);
+
     let result: StdResponse;
-    if (provider.name === "WBA") {
+    const tryMetaFirst =
+      !parsed.data.force_provider &&
+      profilePref === "meta_wab" &&
+      metaEnvReady;
+
+    if (tryMetaFirst) {
+      result = await sendViaWba(metaEnvConfig, phone, outboundMessage, parsed.data.file, template);
+      if (!result.success) {
+        // Silent fallback to GreenAPI. Log the Hebrew status string per policy.
+        try {
+          await logIntegrationError({
+            integration: "whatsapp",
+            functionName: "send-whatsapp",
+            errorMessage: "נכשל בערוץ Meta — הועבר ל-GreenAPI",
+            metadata: {
+              meta_error: result.error,
+              meta_details: result.details,
+              phone_last4: phone.slice(-4),
+              user_id: userId,
+            },
+          });
+        } catch (_e) { /* best-effort */ }
+
+        // Resolve a GreenAPI provider (workspace-scoped, then legacy fallbacks).
+        const greenProv =
+          provider?.name === "GreenAPI"
+            ? provider
+            : await resolveProvider(admin, userId, parsed.data.tenant_id ?? null, "GreenAPI");
+        if (greenProv) {
+          const text = outboundMessage ?? `[${parsed.data.template_id}]`;
+          result = await sendViaGreenApi(greenProv.config, phone, text, parsed.data.file);
+        }
+      }
+    } else if (provider?.name === "WBA") {
       result = await sendViaWba(provider.config, phone, outboundMessage, parsed.data.file, template);
-    } else {
-      // GreenAPI doesn't support templates — fall back to text.
+    } else if (provider?.name === "GreenAPI") {
       const text = outboundMessage ?? `[${parsed.data.template_id}]`;
       result = await sendViaGreenApi(provider.config, phone, text, parsed.data.file);
+    } else {
+      return json({
+        success: false,
+        provider: "GreenAPI",
+        message_id: null,
+        error: "No active WhatsApp provider configured",
+      }, 500);
     }
 
     // Compliance audit + message-row logging. Best-effort; never blocks the send.
