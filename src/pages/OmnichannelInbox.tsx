@@ -394,6 +394,17 @@ const OmnichannelInbox = () => {
 
   const selectedVoter = voters?.find((v) => v.id === selectedVoterId);
 
+  // Fire-and-forget: fetch WhatsApp profile picture for the selected lead
+  // if it's missing. The edge function updates leads.profile_picture_url
+  // and the next voters refetch will pick it up automatically.
+  useEffect(() => {
+    const v = selectedVoter as any;
+    if (!v?.id) return;
+    if (v?.profile_picture_url) return;
+    if (!v?.phone_number) return;
+    supabase.functions.invoke('fetch-wa-avatars', { body: { lead_ids: [v.id] } }).catch(() => {});
+  }, [selectedVoter?.id]);
+
   // ---- Channel availability ----------------------------------------------
   // A channel is enabled in the send-channel selector only when BOTH:
   //   (a) the voter has a usable identifier for it in the CRM profile, AND
@@ -665,10 +676,25 @@ const OmnichannelInbox = () => {
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
-                    <VoterAvatar fullName={voter.full_name} profilePictureUrl={(voter as any).profile_picture_url} className="h-10 w-10 shrink-0" textClassName="text-sm" />
+                    <button
+                      type="button"
+                      onClick={(event) => { event.stopPropagation(); navigate(`/lead-crm/${voter.id}`); }}
+                      className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      title="פתיחת כרטיס מתעניין"
+                      aria-label="פתיחת כרטיס מתעניין"
+                    >
+                      <VoterAvatar fullName={voter.full_name} profilePictureUrl={(voter as any).profile_picture_url} className="h-10 w-10 shrink-0" textClassName="text-sm" />
+                    </button>
                     <div className="flex-1 min-w-0 text-right">
                       <div className="flex min-w-0 flex-row-reverse items-center justify-between gap-2">
-                        <p className="text-sm font-medium truncate min-w-0">{voter.full_name || formatPhoneDisplay(voter.phone_number)}</p>
+                        <button
+                          type="button"
+                          onClick={(event) => { event.stopPropagation(); navigate(`/lead-crm/${voter.id}`); }}
+                          className="text-sm font-medium truncate min-w-0 hover:underline text-right"
+                          title="פתיחת כרטיס מתעניין"
+                        >
+                          {voter.full_name || formatPhoneDisplay(voter.phone_number)}
+                        </button>
                         <span className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap">
                           {voter.last_interaction_at ? formatDistanceToNow(new Date(voter.last_interaction_at), { addSuffix: true, locale: he }) : ''}
                         </span>
@@ -709,9 +735,24 @@ const OmnichannelInbox = () => {
                   <Button variant="ghost" size="icon" className="h-9 w-9 text-whatsapp-header-foreground hover:bg-whatsapp-header-foreground/10 lg:hidden" onClick={() => setSelectedVoterId(null)}>
                     <span className="text-xl leading-none scale-x-[-1]">›</span>
                   </Button>
-                  <VoterAvatar fullName={selectedVoter?.full_name} profilePictureUrl={(selectedVoter as any)?.profile_picture_url} className="h-9 w-9" textClassName="text-xs" />
-                  <div>
-                    <p className="truncate text-sm font-semibold">{selectedVoter?.full_name || formatPhoneDisplay(selectedVoter?.phone_number || '')}</p>
+                  <button
+                    type="button"
+                    onClick={() => selectedVoterId && navigate(`/lead-crm/${selectedVoterId}`)}
+                    className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-white/50"
+                    title="פתיחת כרטיס מתעניין"
+                    aria-label="פתיחת כרטיס מתעניין"
+                  >
+                    <VoterAvatar fullName={selectedVoter?.full_name} profilePictureUrl={(selectedVoter as any)?.profile_picture_url} className="h-9 w-9" textClassName="text-xs" />
+                  </button>
+                  <div className="min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => selectedVoterId && navigate(`/lead-crm/${selectedVoterId}`)}
+                      className="block truncate text-sm font-semibold hover:underline text-right"
+                      title="פתיחת כרטיס מתעניין"
+                    >
+                      {selectedVoter?.full_name || formatPhoneDisplay(selectedVoter?.phone_number || '')}
+                    </button>
                     <p className="text-[10px] text-whatsapp-header-foreground/75">{selectedVoter?.city || 'WhatsApp Business'}</p>
                   </div>
                 </div>
