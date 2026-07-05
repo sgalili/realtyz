@@ -57,11 +57,10 @@ const maskKey = (key: string) => {
 };
 
 /* Legacy decorative panels (SecureConnectionBanner, EncryptionStatusCard,
-   AuditLogCard, DbAccessLog) removed — they were unused visual noise. */
-
- *     these helpers don't get a fresh component identity on every parent
- *     render — which would unmount their <Input>s and steal focus on every
- *     keystroke). ─── */
+   AuditLogCard, DbAccessLog) removed — unused visual noise.
+   Shared context for ServiceCard / FeatureRow (kept at module scope so these
+   helpers don't get a fresh identity per parent render — that would unmount
+   their <Input>s and steal focus on every keystroke). */
 type ApiSettingsCtxValue = {
   isServiceEnabled: (key: string, fallback?: boolean) => boolean;
   toggleService: { mutate: (vars: { key: string; enabled: boolean }) => void };
