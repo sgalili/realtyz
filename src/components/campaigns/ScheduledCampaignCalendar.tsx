@@ -555,7 +555,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                   value={winEnd}
                   onChange={(e) => setWinEnd(e.target.value)}
                   dir="ltr"
-                  className="text-right [&::-webkit-datetime-edit]:text-right [&::-webkit-datetime-edit-fields-wrapper]:justify-end [&::-webkit-datetime-edit-fields-wrapper]:w-full [&::-webkit-calendar-picker-indicator]:mr-0 [&::-webkit-calendar-picker-indicator]:ml-auto"
+                  className="text-right [&::-webkit-datetime-edit]:text-right [&::-webkit-datetime-edit-fields-wrapper]:justify-end [&::-webkit-datetime-edit-fields-wrapper]:w-full [&::-webkit-calendar-picker-indicator]:order-first [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:mr-0"
                 />
               </div>
               <div className="flex-1">
@@ -565,32 +565,12 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                   value={winStart}
                   onChange={(e) => setWinStart(e.target.value)}
                   dir="ltr"
-                  className="text-right [&::-webkit-datetime-edit]:text-right [&::-webkit-datetime-edit-fields-wrapper]:justify-end [&::-webkit-datetime-edit-fields-wrapper]:w-full [&::-webkit-calendar-picker-indicator]:mr-0 [&::-webkit-calendar-picker-indicator]:ml-auto"
+                  className="text-right [&::-webkit-datetime-edit]:text-right [&::-webkit-datetime-edit-fields-wrapper]:justify-end [&::-webkit-datetime-edit-fields-wrapper]:w-full [&::-webkit-calendar-picker-indicator]:order-first [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:mr-0"
                 />
               </div>
 
             </div>
-            <div className="flex items-stretch gap-2">
-              <label className="flex-1 flex items-center justify-between gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 cursor-pointer">
-                <div className="flex flex-col text-right">
-                  <span className="text-xs font-semibold text-foreground">פוסט תדמיתי</span>
-
-                </div>
-                <input
-                  type="checkbox"
-                  checked={brandingPost}
-                  onChange={(e) => {
-                    const on = e.target.checked;
-                    setBrandingPost(on);
-                    if (on) {
-                      setSelectedListingIds([]);
-                      setPropertiesOpen(false);
-                      setListingsPopoverOpen(false);
-                    }
-                  }}
-                  className="h-4 w-4 accent-slate-900"
-                />
-              </label>
+            <div className="flex items-end gap-2 flex-row-reverse">
               <div className="w-28">
                 <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">כמות פוסטים</label>
                 <Input
@@ -602,9 +582,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                   className="text-right"
                 />
               </div>
-            </div>
-            {!brandingPost && (
-              <div>
+              <div className="flex-1">
                 <Popover open={listingsPopoverOpen} onOpenChange={setListingsPopoverOpen}>
                   <PopoverTrigger asChild>
                     <button
@@ -614,11 +592,10 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                       className="w-full h-9 flex items-center justify-between rounded-md border border-input bg-background px-3 text-sm text-right hover:bg-muted/40"
                     >
                       <span className={cn('truncate', selectedListingIds.length === 0 && 'text-muted-foreground')}>
-                        נכסים לשיוך{selectedListingIds.length > 0 ? ` (${selectedListingIds.length})` : ''}
+                        {selectedListingIds.length === 0 ? 'פוסט תדמיתי' : `נכסים נבחרו (${selectedListingIds.length})`}
                       </span>
                       <ChevronLeft className={cn('h-4 w-4 text-muted-foreground transition-transform shrink-0', listingsPopoverOpen && '-rotate-90')} />
                     </button>
-
                   </PopoverTrigger>
                   <PopoverContent
                     align="start"
@@ -630,7 +607,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                     <div className="sticky top-0 z-10 p-2 border-b border-border bg-card">
                       <Input
                         autoFocus
-                        placeholder="חיפוש לפי עיר, שכונה, רחוב או מחיר…"
+                        placeholder="חיפוש נכס..."
                         value={listingSearch}
                         onChange={(e) => setListingSearch(e.target.value)}
                         className="h-8 text-right"
@@ -656,9 +633,11 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                                 type="checkbox"
                                 checked={checked}
                                 onChange={(e) => {
-                                  setSelectedListingIds((prev) =>
-                                    e.target.checked ? [...prev, l.id] : prev.filter((id) => id !== l.id),
-                                  );
+                                  setSelectedListingIds((prev) => {
+                                    const next = e.target.checked ? [...prev, l.id] : prev.filter((id) => id !== l.id);
+                                    setBrandingPost(next.length === 0);
+                                    return next;
+                                  });
                                 }}
                                 className="h-3.5 w-3.5 accent-slate-900"
                               />
@@ -681,7 +660,11 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                           <span className="truncate max-w-[160px]">{listingLabel(l)}</span>
                           <button
                             type="button"
-                            onClick={() => setSelectedListingIds((prev) => prev.filter((x) => x !== id))}
+                            onClick={() => setSelectedListingIds((prev) => {
+                              const next = prev.filter((x) => x !== id);
+                              setBrandingPost(next.length === 0);
+                              return next;
+                            })}
                             className="opacity-60 hover:opacity-100"
                             aria-label="הסר"
                           >
@@ -693,7 +676,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                   </div>
                 )}
               </div>
-            )}
+            </div>
 
 
 
