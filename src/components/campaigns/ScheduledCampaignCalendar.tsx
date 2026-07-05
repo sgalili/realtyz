@@ -82,7 +82,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
   const [scheduleDay, setScheduleDay] = useState<Date | null>(null);
   const [winStart, setWinStart] = useState('09:00');
   const [winEnd, setWinEnd] = useState('21:00');
-  const [winCount, setWinCount] = useState(3);
+  const [winCount, setWinCount] = useState(1);
   const [listings, setListings] = useState<ListingLite[]>([]);
   const [listingsLoading, setListingsLoading] = useState(false);
   const [selectedListingIds, setSelectedListingIds] = useState<string[]>([]);
@@ -96,6 +96,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
   const [recurrenceOpen, setRecurrenceOpen] = useState(false);
   const [brandingPost, setBrandingPost] = useState(false);
   const [propertiesOpen, setPropertiesOpen] = useState(false);
+  const [listingsPopoverOpen, setListingsPopoverOpen] = useState(false);
 
   useEffect(() => {
     if (!scheduleDay) return;
@@ -337,7 +338,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
               setScheduleDay(new Date(day));
               setWinStart('09:00');
               setWinEnd('21:00');
-              setWinCount(3);
+              setWinCount(1);
             };
             return (
               <div
@@ -458,27 +459,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="flex items-end gap-2 flex-row-reverse">
-              <div className="flex-1">
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">משעה</label>
-                <Input
-                  type="time"
-                  value={winStart}
-                  onChange={(e) => setWinStart(e.target.value)}
-                  dir="ltr"
-                  className="text-right [&::-webkit-datetime-edit]:text-right [&::-webkit-datetime-edit-fields-wrapper]:justify-end [&::-webkit-datetime-edit-fields-wrapper]:w-full [&::-webkit-calendar-picker-indicator]:mr-0 [&::-webkit-calendar-picker-indicator]:ml-auto"
-                />
-              </div>
-              <div className="flex-1">
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">עד שעה</label>
-                <Input
-                  type="time"
-                  value={winEnd}
-                  onChange={(e) => setWinEnd(e.target.value)}
-                  dir="ltr"
-                  className="text-right [&::-webkit-datetime-edit]:text-right [&::-webkit-datetime-edit-fields-wrapper]:justify-end [&::-webkit-datetime-edit-fields-wrapper]:w-full [&::-webkit-calendar-picker-indicator]:mr-0 [&::-webkit-calendar-picker-indicator]:ml-auto"
-                />
-              </div>
+            <div className="flex items-end gap-2">
               <Popover open={recurrenceOpen} onOpenChange={setRecurrenceOpen}>
                 <PopoverTrigger asChild>
                   <button
@@ -567,117 +548,144 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                   )}
                 </PopoverContent>
               </Popover>
-            </div>
-            <div>
-              <label className="text-xs font-semibold text-muted-foreground mb-1 block">כמות פוסטים לאותו יום</label>
-              <Input
-                type="number"
-                min={1}
-                max={20}
-                value={winCount}
-                onChange={(e) => setWinCount(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
-              />
-            </div>
-            <label className="flex items-center justify-between gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 cursor-pointer">
-              <div className="flex flex-col text-right">
-                <span className="text-xs font-semibold text-foreground">פוסט תדמיתי</span>
-                <span className="text-[11px] text-muted-foreground">ללא שיוך לנכס — תוכן מיתוגי כללי</span>
+              <div className="flex-1">
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">משעה</label>
+                <Input
+                  type="time"
+                  value={winStart}
+                  onChange={(e) => setWinStart(e.target.value)}
+                  dir="ltr"
+                  className="text-left [&::-webkit-datetime-edit]:text-left [&::-webkit-datetime-edit-fields-wrapper]:justify-start [&::-webkit-datetime-edit-fields-wrapper]:w-full [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:mr-auto"
+                />
               </div>
-              <input
-                type="checkbox"
-                checked={brandingPost}
-                onChange={(e) => {
-                  const on = e.target.checked;
-                  setBrandingPost(on);
-                  if (on) {
-                    setSelectedListingIds([]);
-                    setPropertiesOpen(false);
-                  }
-                }}
-                className="h-4 w-4 accent-slate-900"
-              />
-            </label>
+              <div className="flex-1">
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">עד שעה</label>
+                <Input
+                  type="time"
+                  value={winEnd}
+                  onChange={(e) => setWinEnd(e.target.value)}
+                  dir="ltr"
+                  className="text-left [&::-webkit-datetime-edit]:text-left [&::-webkit-datetime-edit-fields-wrapper]:justify-start [&::-webkit-datetime-edit-fields-wrapper]:w-full [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:mr-auto"
+                />
+              </div>
+            </div>
+            <div className="flex items-stretch gap-2">
+              <label className="flex-1 flex items-center justify-between gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 cursor-pointer">
+                <div className="flex flex-col text-right">
+                  <span className="text-xs font-semibold text-foreground">פוסט תדמיתי</span>
+                  <span className="text-[11px] text-muted-foreground">ללא שיוך לנכס</span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={brandingPost}
+                  onChange={(e) => {
+                    const on = e.target.checked;
+                    setBrandingPost(on);
+                    if (on) {
+                      setSelectedListingIds([]);
+                      setPropertiesOpen(false);
+                      setListingsPopoverOpen(false);
+                    }
+                  }}
+                  className="h-4 w-4 accent-slate-900"
+                />
+              </label>
+              <div className="w-28">
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">כמות פוסטים</label>
+                <Input
+                  type="number"
+                  min={1}
+                  max={20}
+                  value={winCount}
+                  onChange={(e) => setWinCount(Math.max(1, Math.min(20, Number(e.target.value) || 1)))}
+                  className="text-right"
+                />
+              </div>
+            </div>
             {!brandingPost && (
               <div>
-                <button
-                  type="button"
-                  onClick={() => setPropertiesOpen((v) => !v)}
-                  className="w-full flex items-center justify-between gap-2 text-xs font-semibold text-muted-foreground mb-1 hover:text-foreground"
-                >
-                  <span>{propertiesOpen ? '▲' : '▼'}</span>
-                  <span>
-                    נכסים לשיוך {selectedListingIds.length > 0 && <span className="text-foreground">({selectedListingIds.length})</span>}
-                  </span>
-                </button>
-                {propertiesOpen && (
-                  <>
-                    <div className="rounded-md border border-border bg-card">
-                      <div className="sticky top-0 z-10 p-2 border-b border-border bg-card">
-                        <Input
-                          placeholder="חיפוש לפי עיר, שכונה, רחוב או מחיר…"
-                          value={listingSearch}
-                          onChange={(e) => setListingSearch(e.target.value)}
-                          className="h-8 text-right"
-                        />
-                      </div>
-                      <div className="max-h-48 overflow-y-auto p-1">
-                        {listingsLoading ? (
-                          <div className="px-2 py-3 text-xs text-muted-foreground text-center">טוען נכסים…</div>
-                        ) : filteredListings.length === 0 ? (
-                          <div className="px-2 py-3 text-xs text-muted-foreground text-center">לא נמצאו נכסים</div>
-                        ) : (
-                          filteredListings.map((l) => {
-                            const checked = selectedListingIds.includes(l.id);
-                            return (
-                              <label
-                                key={l.id}
-                                className={cn(
-                                  'flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-muted/60 text-xs',
-                                  checked && 'bg-muted/80',
-                                )}
-                              >
-                                <input
-                                  type="checkbox"
-                                  checked={checked}
-                                  onChange={(e) => {
-                                    setSelectedListingIds((prev) =>
-                                      e.target.checked ? [...prev, l.id] : prev.filter((id) => id !== l.id),
-                                    );
-                                  }}
-                                  className="h-3.5 w-3.5 accent-slate-900"
-                                />
-                                <span className="truncate text-right flex-1">{listingLabel(l)}</span>
-                              </label>
-                            );
-                          })
-                        )}
-                      </div>
-                    </div>
-                    {selectedListingIds.length > 0 && (
-                      <div className="flex flex-wrap gap-1 mt-2">
-                        {selectedListingIds.map((id) => {
-                          const l = listings.find((x) => x.id === id);
-                          if (!l) return null;
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">
+                  נכסים לשיוך {selectedListingIds.length > 0 && <span className="text-foreground">({selectedListingIds.length})</span>}
+                </label>
+                <Popover open={listingsPopoverOpen} onOpenChange={setListingsPopoverOpen}>
+                  <PopoverTrigger asChild>
+                    <Input
+                      placeholder="חיפוש לפי עיר, שכונה, רחוב או מחיר…"
+                      value={listingSearch}
+                      onChange={(e) => {
+                        setListingSearch(e.target.value);
+                        if (!listingsPopoverOpen) setListingsPopoverOpen(true);
+                      }}
+                      onFocus={() => setListingsPopoverOpen(true)}
+                      className="h-9 text-right"
+                    />
+                  </PopoverTrigger>
+                  <PopoverContent
+                    align="start"
+                    side="bottom"
+                    className="p-0 w-[--radix-popover-trigger-width]"
+                    dir="rtl"
+                    onOpenAutoFocus={(e) => e.preventDefault()}
+                  >
+                    <div className="max-h-56 overflow-y-auto p-1">
+                      {listingsLoading ? (
+                        <div className="px-2 py-3 text-xs text-muted-foreground text-center">טוען נכסים…</div>
+                      ) : filteredListings.length === 0 ? (
+                        <div className="px-2 py-3 text-xs text-muted-foreground text-center">לא נמצאו נכסים</div>
+                      ) : (
+                        filteredListings.map((l) => {
+                          const checked = selectedListingIds.includes(l.id);
                           return (
-                            <span key={id} className="inline-flex items-center gap-1 rounded-full bg-slate-100 text-slate-800 ring-1 ring-slate-200 px-2 py-0.5 text-[11px]">
-                              <span className="truncate max-w-[160px]">{listingLabel(l)}</span>
-                              <button
-                                type="button"
-                                onClick={() => setSelectedListingIds((prev) => prev.filter((x) => x !== id))}
-                                className="opacity-60 hover:opacity-100"
-                                aria-label="הסר"
-                              >
-                                <X className="h-3 w-3" />
-                              </button>
-                            </span>
+                            <label
+                              key={l.id}
+                              className={cn(
+                                'flex items-center gap-2 px-2 py-1.5 rounded-md cursor-pointer hover:bg-muted/60 text-xs',
+                                checked && 'bg-muted/80',
+                              )}
+                            >
+                              <input
+                                type="checkbox"
+                                checked={checked}
+                                onChange={(e) => {
+                                  setSelectedListingIds((prev) =>
+                                    e.target.checked ? [...prev, l.id] : prev.filter((id) => id !== l.id),
+                                  );
+                                }}
+                                className="h-3.5 w-3.5 accent-slate-900"
+                              />
+                              <span className="truncate text-right flex-1">{listingLabel(l)}</span>
+                            </label>
                           );
-                        })}
-                      </div>
-                    )}
-                  </>
+                        })
+                      )}
+                    </div>
+                  </PopoverContent>
+                </Popover>
+                {selectedListingIds.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {selectedListingIds.map((id) => {
+                      const l = listings.find((x) => x.id === id);
+                      if (!l) return null;
+                      return (
+                        <span key={id} className="inline-flex items-center gap-1 rounded-full bg-slate-100 text-slate-800 ring-1 ring-slate-200 px-2 py-0.5 text-[11px]">
+                          <span className="truncate max-w-[160px]">{listingLabel(l)}</span>
+                          <button
+                            type="button"
+                            onClick={() => setSelectedListingIds((prev) => prev.filter((x) => x !== id))}
+                            className="opacity-60 hover:opacity-100"
+                            aria-label="הסר"
+                          >
+                            <X className="h-3 w-3" />
+                          </button>
+                        </span>
+                      );
+                    })}
+                  </div>
                 )}
               </div>
             )}
+
+
 
           </div>
           <DialogFooter className="flex flex-row justify-between sm:justify-between gap-2 w-full items-center">
