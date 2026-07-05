@@ -72,7 +72,8 @@ const senderBadge: Record<string, { label: string; className: string }> = {
 
 const channelConfig: Record<string, { brand?: string; icon?: ReactElement; label: string; bgClass: string; textClass: string }> = {
   whatsapp: { brand: 'whatsapp', label: 'WhatsApp', bgClass: 'bg-social-whatsapp', textClass: 'text-social-whatsapp' },
-  sms: { icon: <Phone />, label: 'SMS', bgClass: 'bg-social-sms', textClass: 'text-social-sms' },
+  sms: { icon: <MessageSquare />, label: 'SMS', bgClass: 'bg-social-sms', textClass: 'text-social-sms' },
+  email: { icon: <Mail />, label: 'Email', bgClass: 'bg-social-email', textClass: 'text-social-email' },
   instagram: { brand: 'instagram', label: 'Instagram', bgClass: 'bg-social-instagram', textClass: 'text-social-instagram' },
   telegram: { brand: 'telegram', label: 'Telegram', bgClass: 'bg-social-telegram', textClass: 'text-social-telegram' },
   messenger: { brand: 'messenger', label: 'Messenger', bgClass: 'bg-social-messenger', textClass: 'text-social-messenger' },
