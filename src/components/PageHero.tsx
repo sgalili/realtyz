@@ -11,7 +11,9 @@
  */
 import * as React from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { Menu, Plus, FileSpreadsheet, User, ArrowLeft, ArrowRight, Calendar as CalendarIcon, History, DownloadCloud, Loader2 } from 'lucide-react';
+import { Menu, Plus, FileSpreadsheet, User, ArrowLeft, ArrowRight, Calendar as CalendarIcon, History, DownloadCloud, Loader2, Bot } from 'lucide-react';
+import { usePlatformSettings } from '@/hooks/usePlatformSettings';
+import { toast } from 'sonner';
 import { SidebarTrigger } from '@/components/ui/sidebar';
 import { RealtyzWave } from '@/components/RealtyzWave';
 // CreditBalancePill moved to /billing (Packages & Payments page).
@@ -203,6 +205,42 @@ function CampaignsHeroAddButton() {
 }
 
 
+function InboxAutopilotToggle() {
+  const { settings, update } = usePlatformSettings();
+  const on = settings.enable_ai_autopilot === true;
+  const toggle = () => {
+    update({ enable_ai_autopilot: !on }).catch(() => {
+      toast.error('שמירת מצב המענה האוטומטי נכשלה');
+    });
+  };
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={on}
+      onClick={toggle}
+      dir="ltr"
+      title={on ? 'AI Autopilot פועל' : 'AI Autopilot כבוי'}
+      aria-label="AI Autopilot"
+      className={cn(
+        'relative inline-flex h-7 w-14 shrink-0 items-center rounded-full border border-white/30 transition-colors',
+        on ? 'bg-emerald-500' : 'bg-white/15'
+      )}
+    >
+      <span
+        className={cn(
+          'inline-flex h-6 w-6 items-center justify-center rounded-full bg-white shadow transition-transform',
+          on ? 'translate-x-[30px]' : 'translate-x-[2px]',
+          on ? 'text-emerald-600' : 'text-slate-500'
+        )}
+      >
+        <Bot className="h-4 w-4" strokeWidth={2.5} />
+      </span>
+    </button>
+  );
+}
+
+
 const ROUTE_TITLES: Array<{ match: RegExp; title: string }> = [
   { match: /^\/(dashboard)?$/, title: 'לוח בקרה' },
   { match: /^\/lead-crm/, title: 'לקוחות' },
@@ -304,6 +342,7 @@ export function PageHero() {
         <div className="flex items-center justify-end gap-2" style={{ marginLeft: '-5px' }}>
           {location.pathname === '/properties' && <PropertiesHeroAddButton />}
           {location.pathname.startsWith('/lead-crm') && <LeadsHeroAddButton />}
+          {location.pathname.startsWith('/inbox') && <InboxAutopilotToggle />}
           {location.pathname.startsWith('/campaigns') && <CampaignsHeroCalendarButton />}
           {location.pathname.startsWith('/campaigns') && <CampaignsHeroAddButton />}
           {isPropertyDetail && (
