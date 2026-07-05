@@ -3094,6 +3094,36 @@ export type Database = {
           },
         ]
       }
+      messenger_page_bindings: {
+        Row: {
+          created_at: string
+          id: string
+          owner_id: string
+          page_access_token: string
+          page_id: string
+          page_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          owner_id: string
+          page_access_token: string
+          page_id: string
+          page_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          owner_id?: string
+          page_access_token?: string
+          page_id?: string
+          page_name?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       meta_ad_campaigns: {
         Row: {
           audience_type: string
@@ -4043,6 +4073,39 @@ export type Database = {
           invited_by?: string
           role?: Database["public"]["Enums"]["app_role"]
           status?: string
+        }
+        Relationships: []
+      }
+      telegram_bindings: {
+        Row: {
+          bound_at: string
+          chat_id: string
+          created_at: string
+          first_name: string | null
+          handle: string | null
+          id: string
+          owner_id: string
+          updated_at: string
+        }
+        Insert: {
+          bound_at?: string
+          chat_id: string
+          created_at?: string
+          first_name?: string | null
+          handle?: string | null
+          id?: string
+          owner_id: string
+          updated_at?: string
+        }
+        Update: {
+          bound_at?: string
+          chat_id?: string
+          created_at?: string
+          first_name?: string | null
+          handle?: string | null
+          id?: string
+          owner_id?: string
+          updated_at?: string
         }
         Relationships: []
       }
