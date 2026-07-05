@@ -894,7 +894,7 @@ const InlineComposer = ({
         } else {
           const { data: inserted } = await supabase.from('ai_content_logs').insert({
             topic: (body.trim().slice(0, 80) || 'טיוטה').slice(0, 500),
-            generated_text: body.slice(0, MAX_CHARS),
+            generated_text: body,
             platform: channel.id,
             created_by: user.id,
             media_urls: durableMedia,
