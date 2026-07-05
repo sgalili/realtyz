@@ -510,7 +510,8 @@ const InlineComposer = ({
       .replace(/\n{3,}/g, '\n\n')
       .trim();
   const cleanBody = (s: string) =>
-    stripWaCta(s).replace(/^[\s\u200f\u200e]+/g, '').slice(0, MAX_CHARS);
+    stripWaCta(s).replace(/^[\s\u200f\u200e]+/g, '');
+
 
   // Rotating CTA copy pool — never reuse the same opener twice in a row so
   // Facebook's anti-spam heuristics don't flag repetitive posting patterns.
