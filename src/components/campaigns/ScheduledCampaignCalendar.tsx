@@ -554,8 +554,8 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                   type="time"
                   value={winEnd}
                   onChange={(e) => setWinEnd(e.target.value)}
-                  dir="ltr"
-                  className="text-right [&::-webkit-datetime-edit]:text-right [&::-webkit-datetime-edit-fields-wrapper]:justify-end [&::-webkit-datetime-edit-fields-wrapper]:w-full [&::-webkit-calendar-picker-indicator]:order-first [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:mr-0"
+                  dir="rtl"
+                  className="text-left [&::-webkit-datetime-edit]:text-left [&::-webkit-datetime-edit-fields-wrapper]:justify-start [&::-webkit-datetime-edit-fields-wrapper]:w-full [&::-webkit-calendar-picker-indicator]:order-last [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:mr-0"
                 />
               </div>
               <div className="flex-1">
@@ -564,8 +564,8 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                   type="time"
                   value={winStart}
                   onChange={(e) => setWinStart(e.target.value)}
-                  dir="ltr"
-                  className="text-right [&::-webkit-datetime-edit]:text-right [&::-webkit-datetime-edit-fields-wrapper]:justify-end [&::-webkit-datetime-edit-fields-wrapper]:w-full [&::-webkit-calendar-picker-indicator]:order-first [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:mr-0"
+                  dir="rtl"
+                  className="text-left [&::-webkit-datetime-edit]:text-left [&::-webkit-datetime-edit-fields-wrapper]:justify-start [&::-webkit-datetime-edit-fields-wrapper]:w-full [&::-webkit-calendar-picker-indicator]:order-last [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:mr-0"
                 />
               </div>
 
