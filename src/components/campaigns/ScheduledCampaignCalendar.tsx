@@ -108,6 +108,8 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
     setRecurrenceDays([]);
     setRecurrenceCount(4);
     setRecurrenceOpen(false);
+    setBrandingPost(false);
+    setPropertiesOpen(false);
     (async () => {
       const { data, error } = await supabase
         .from('listings')
