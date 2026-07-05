@@ -56,214 +56,11 @@ const maskKey = (key: string) => {
   return key.slice(0, 4) + '••••••••' + key.slice(-4);
 };
 
-/* ─── Secure Connection Banner ─── */
-const SecureConnectionBanner = ({ isVerified, isLoading }: { isVerified: boolean; isLoading: boolean }) => (
-  <div className={`rounded-xl border p-4 flex items-center gap-4 transition-all duration-700 ${
-    isLoading
-      ? 'border-amber-500/30 bg-amber-500/5'
-      : isVerified
-        ? 'border-emerald-500/30 bg-emerald-500/5'
-        : 'border-red-500/30 bg-red-500/5'
-  }`}>
-    <div className={`h-12 w-12 rounded-xl flex items-center justify-center ${
-      isLoading ? 'bg-amber-500/15' : isVerified ? 'bg-emerald-500/15' : 'bg-red-500/15'
-    }`}>
-      {isLoading ? (
-        <Loader2 className="h-6 w-6 text-amber-500 animate-spin" />
-      ) : isVerified ? (
-        <ShieldCheck className="h-6 w-6 text-emerald-500" />
-      ) : (
-        <XCircle className="h-6 w-6 text-red-500" />
-      )}
-    </div>
-    <div>
-      <p className="font-semibold text-sm">
-        {isLoading ? 'מאמת חיבור מאובטח...' : isVerified ? 'Secure Connection Verified' : 'Connection Error'}
-      </p>
-      <p className="text-xs text-muted-foreground">
-        {isLoading
-          ? 'מאמת הצפנה TLS 1.3 והרשאות גישה...'
-          : isVerified
-            ? 'TLS 1.3 · AES-256 Encryption · RLS Active · RBAC Enforced'
-            : 'לא ניתן לאמת את החיבור למסד הנתונים'}
-      </p>
-    </div>
-    {isVerified && (
-      <div className="mr-auto flex items-center gap-1.5">
-        <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-        <span className="text-[10px] text-emerald-600 font-mono">LIVE</span>
-      </div>
-    )}
-  </div>
-);
-
-/* ─── Encryption Status Card ─── */
-const EncryptionStatusCard = () => {
-  const checks = [
-    { label: 'הצפנת נתונים במנוחה', detail: 'AES-256-GCM', active: true },
-    { label: 'הצפנת תעבורה', detail: 'TLS 1.3', active: true },
-    { label: 'Row-Level Security', detail: 'כל הטבלאות מוגנות', active: true },
-    { label: 'RBAC הרשאות', detail: 'admin / moderator / user', active: true },
-    { label: 'בדיקת סיסמאות דלופות', detail: 'HIBP Check', active: true },
-    { label: 'מפתחות API מוצפנים', detail: 'Vault Encrypted', active: true },
-  ];
-
-  return (
-    <Card className="border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 to-transparent">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Shield className="h-4 w-4 text-emerald-500" />
-          סטטוס הצפנה ואבטחה
-        </CardTitle>
-        <CardDescription className="text-xs">כל שכבות ההגנה פעילות</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-          {checks.map((c) => (
-            <div key={c.label} className="flex items-center gap-2.5 p-2.5 rounded-lg border border-border/30 bg-background/50">
-              <Lock className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-              <div className="min-w-0 flex-1">
-                <p className="text-xs font-medium truncate">{c.label}</p>
-                <p className="text-[10px] text-muted-foreground font-mono">{c.detail}</p>
-              </div>
-              <CheckCircle className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
-            </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
-  );
-};
-
-/* ─── Audit Log ─── */
-interface AuditEntry {
-  id: string;
-  timestamp: string;
-  user_email: string;
-  action: string;
-  target: string;
-}
-
-const AuditLogCard = () => {
-  // Generate audit entries from real config update timestamps + simulated access logs
-  const { data: configs } = useQuery({
-    queryKey: ['api-configs-audit'],
-    queryFn: async () => {
-      const edgeFnBase = `https://${import.meta.env.VITE_SUPABASE_PROJECT_ID}.supabase.co/functions/v1/manage-api-configs`;
-      const res = await fetch(edgeFnBase, {
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY}`,
-        },
-      });
-      if (!res.ok) return [];
-      return (await res.json()) as ApiConfig[];
-    },
-  });
-
-  const { data: voterAccess } = useQuery({
-    queryKey: ['audit-lead-access'],
-    queryFn: async () => {
-      // Get last 10 lead interactions as a proxy for "access"
-      const { data } = await supabase
-        .from('messages')
-        .select('id, created_at, sender_type, lead_id')
-        .order('created_at', { ascending: false })
-        .limit(10);
-      return data ?? [];
-    },
-  });
-
-  const { user } = useAuth();
-
-  const auditEntries = useMemo(() => {
-    const entries: AuditEntry[] = [];
-    const email = user?.email || 'admin@realtyz.ai';
-
-    // Config changes
-    configs?.forEach((c) => {
-      if (c.updated_at) {
-        entries.push({
-          id: `cfg-${c.id}`,
-          timestamp: c.updated_at,
-          user_email: email,
-          action: 'עדכון הגדרה',
-          target: c.service_name,
-        });
-      }
-    });
-
-    // Lead data access (from messages)
-    voterAccess?.forEach((m) => {
-      if (m.created_at) {
-        entries.push({
-          id: `msg-${m.id}`,
-          timestamp: m.created_at,
-          user_email: m.sender_type === 'system' ? 'system@realtyz.ai' : email,
-          action: m.sender_type === 'system' ? 'שליחת הודעה אוטומטית' : 'גישה למאגר מתעניינים',
-          target: `lead:${(m.lead_id || '').slice(0, 8)}...`,
-        });
-      }
-    });
-
-    return entries.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()).slice(0, 15);
-  }, [configs, voterAccess, user]);
-
-  return (
-    <Card className="border-border/50">
-      <CardHeader className="pb-3">
-        <CardTitle className="text-base flex items-center gap-2">
-          <Activity className="h-4 w-4 text-primary" />
-          יומן פעילות (Audit Log)
-        </CardTitle>
-        <CardDescription className="text-xs">מי ניגש למאגר המתעניינים, מתי, ואיזו פעולה בוצעה</CardDescription>
-      </CardHeader>
-      <CardContent>
-        {auditEntries.length === 0 ? (
-          <p className="text-sm text-muted-foreground text-center py-6">אין פעילות מתועדת עדיין</p>
-        ) : (
-          <ScrollArea className="h-[300px]">
-            <div className="space-y-1">
-              {auditEntries.map((entry) => (
-                <div key={entry.id} className="flex items-start gap-3 p-2.5 rounded-lg hover:bg-muted/50 transition-colors border border-transparent hover:border-border/30">
-                  <div className="h-7 w-7 rounded-lg bg-muted flex items-center justify-center mt-0.5 shrink-0">
-                    {entry.action.includes('גישה') ? (
-                      <Database className="h-3.5 w-3.5 text-primary" />
-                    ) : entry.action.includes('הודעה') ? (
-                      <MessageCircle className="h-3.5 w-3.5 text-emerald-500" />
-                    ) : (
-                      <KeyRound className="h-3.5 w-3.5 text-amber-500" />
-                    )}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-medium">{entry.action}</span>
-                      <Badge variant="outline" className="text-[9px] px-1.5 py-0">{entry.target}</Badge>
-                    </div>
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <User className="h-2.5 w-2.5 text-muted-foreground" />
-                      <span className="text-[10px] text-muted-foreground font-mono">{entry.user_email}</span>
-                      <Clock className="h-2.5 w-2.5 text-muted-foreground" />
-                      <span className="text-[10px] text-muted-foreground">
-                        {format(new Date(entry.timestamp), 'dd/MM/yy HH:mm')}
-                      </span>
-                    </div>
-                  </div>
-                  <Fingerprint className="h-3.5 w-3.5 text-muted-foreground/30 shrink-0 mt-1" />
-                </div>
-              ))}
-            </div>
-          </ScrollArea>
-        )}
-      </CardContent>
-    </Card>
-  );
-};
-
-/* ─── Shared context for ServiceCard / FeatureRow (kept at module scope so
- *     these helpers don't get a fresh component identity on every parent
- *     render — which would unmount their <Input>s and steal focus on every
- *     keystroke). ─── */
+/* Legacy decorative panels (SecureConnectionBanner, EncryptionStatusCard,
+   AuditLogCard, DbAccessLog) removed — unused visual noise.
+   Shared context for ServiceCard / FeatureRow (kept at module scope so these
+   helpers don't get a fresh identity per parent render — that would unmount
+   their <Input>s and steal focus on every keystroke). */
 type ApiSettingsCtxValue = {
   isServiceEnabled: (key: string, fallback?: boolean) => boolean;
   toggleService: { mutate: (vars: { key: string; enabled: boolean }) => void };
@@ -398,6 +195,32 @@ const ServiceCard = ({
         </AccordionContent>
       )}
     </AccordionItem>
+  );
+};
+
+/* ─── Collapsible section shell (closed by default) ─── */
+const SectionShell = ({
+  title, subtitle, defaultOpen = false, children,
+}: {
+  title: string; subtitle?: string; defaultOpen?: boolean; children: React.ReactNode;
+}) => {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <Card className="border-border/50 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-right hover:bg-muted/30 transition-colors"
+        aria-expanded={open}
+      >
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold truncate">{title}</p>
+          {subtitle && <p className="text-[11px] text-muted-foreground truncate mt-0.5">{subtitle}</p>}
+        </div>
+        <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && <div className="px-4 pb-4 pt-1 border-t border-border/40 space-y-3">{children}</div>}
+    </Card>
   );
 };
 
@@ -1014,82 +837,40 @@ const ApiSettings = () => {
 
   return (
     <ApiSettingsCtx.Provider value={{ isServiceEnabled, toggleService, savingKey, testingService }}>
-    <div className="space-y-6" dir="rtl">
+    <div className="space-y-3" dir="rtl">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-primary">הגדרות מערכת</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          {isSuperAdmin
-            ? 'ניהול מפתחות API, חיבורים, הצפנה ויומן גישה'
-            : 'הפעלה וכיבוי של שירותים פעילים בחשבון'}
+        <h1 className="text-xl font-bold tracking-tight text-primary">הגדרות מערכת</h1>
+        <p className="text-muted-foreground text-xs mt-0.5">
+          הפעל/י שירותים, נהל/י מפתחות והגדרות פלטפורמה. כל הכרטיסים סגורים כברירת מחדל — לחצ/י על כרטיס לפתיחה.
         </p>
       </div>
 
-      {/* ── Usage Meter ── */}
       <UsageMeterPanel />
 
-      {/* ── Data Privacy ── */}
-      <Card dir="rtl">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <ShieldCheck className="h-5 w-5 text-primary" aria-hidden="true" />
-            פרטיות נתונים
-          </CardTitle>
-          <CardDescription>
-            מסכת PII אוטומטית ומחיקת היסטוריה לעמידה בדרישות GDPR ופרטיות בישראל.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-2">
-            <div className="flex items-start gap-2">
-              <Badge variant="outline" className="shrink-0">מסכת PII</Badge>
-              <span className="text-muted-foreground">
-                ת.ז., כרטיסי אשראי, IBAN, אימיילים וטלפונים מוסתרים אוטומטית בכל
-                כתיבה לבנק האסטרטגיה (<code className="text-xs">knowledge_documents</code>),
-                להערות חדר העסקאות (<code className="text-xs">deal_room_comments</code>),
-                ולפני כל קריאה ל-AI.
-              </span>
-            </div>
-            <div className="flex items-start gap-2">
-              <Badge variant="outline" className="shrink-0">ביקורת</Badge>
-              <span className="text-muted-foreground">
-                כל ייצוא או מחיקה של מתעניין נרשמים ביומן הביקורת הבלתי-ניתן-לעריכה.
-              </span>
-            </div>
-            <div className="flex items-start gap-2">
-              <Badge variant="outline" className="shrink-0">מחיקת GDPR</Badge>
-              <span className="text-muted-foreground">
-                "מחיקה לצמיתות" מוחקת את הליד וכל ההיסטוריה הקשורה (הודעות, צ'אטים,
-                שיחות, פגישות, התראות) ללא אפשרות שחזור.
-              </span>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button asChild variant="default" size="sm">
-              <a href="/privacy">
-                <ShieldCheck className="h-4 w-4 ms-1.5" aria-hidden="true" />
-                פתח מרכז פרטיות ומחיקת מתעניין
-              </a>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <a href="/privacy">
-                ייצוא נתוני מתעניין (GDPR)
-              </a>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ── Section A: Platform Features ── */}
-      <div className="space-y-2">
-        <div>
-          <h2 className="text-sm font-bold tracking-tight">תכונות פלטפורמה</h2>
-          <p className="text-xs text-muted-foreground">Platform Features — מתגי On/Off פנימיים</p>
+      <SectionShell title="פרטיות ו-GDPR" subtitle="מסכת PII, ביקורת ומחיקת מתעניין לצמיתות">
+        <p className="text-xs text-muted-foreground">
+          נתונים אישיים (ת.ז., אימיילים, טלפונים) מוסתרים אוטומטית לפני שליחה ל-AI וביומני הצוות.
+          כל ייצוא/מחיקה של מתעניין נרשם ביומן ביקורת בלתי-ניתן-לעריכה.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="default" size="sm">
+            <a href="/privacy">
+              <ShieldCheck className="h-4 w-4 ms-1.5" aria-hidden="true" />
+              מרכז פרטיות ומחיקה
+            </a>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <a href="/privacy">ייצוא נתוני מתעניין</a>
+          </Button>
         </div>
+      </SectionShell>
+
+      <SectionShell title="תכונות פלטפורמה" subtitle="מתגי On/Off לשירותי AI פנימיים">
         <div className="rounded-lg overflow-hidden">
           <FeatureRow
             title="AI Touchpoint (שיחות AI)"
             description="בוט קולי שמתקשר למתעניינים חמים"
-            learnMore="AI Touchpoint מפעיל בוט קולי שמתקשר באופן יזום למתעניינים חמים, מנהל שיחה קצרה, מסווג עניין ומעדכן את ה-CRM. שימושי כדי לזהות במהירות מתעניינים בשלים לפנייה אנושית."
+            learnMore="AI Touchpoint מפעיל בוט קולי שמתקשר באופן יזום למתעניינים חמים, מנהל שיחה קצרה, מסווג עניין ומעדכן את ה-CRM."
             icon={Phone}
             iconColor="text-blue-500"
             serviceKey="ai_voice"
@@ -1097,7 +878,7 @@ const ApiSettings = () => {
           <FeatureRow
             title="מחולל תוכן AI"
             description="יצירת פוסטים, סלוגנים ותגובות"
-            learnMore="מחולל התוכן יוצר טיוטות לפוסטים, סלוגנים, תגובות ומסרים אישיים בהתבסס על הטון והמיתוג שהגדרת. כל תוצר ניתן לעריכה לפני שליחה או פרסום."
+            learnMore="מחולל התוכן יוצר טיוטות לפוסטים, סלוגנים ותגובות בהתבסס על הטון והמיתוג שהגדרת."
             icon={Sparkles}
             iconColor="text-amber-500"
             serviceKey="ai_content"
@@ -1105,86 +886,45 @@ const ApiSettings = () => {
           <FeatureRow
             title="תיבת Omnichannel"
             description="איחוד כל הערוצים לתיבה אחת"
-            learnMore="תיבת ה-Omnichannel מאחדת WhatsApp, SMS, Messenger, Instagram ועוד לתיבה אחת. כל הודעה נקשרת אוטומטית לכרטיס הליד הרלוונטי כולל היסטוריית שיחה מלאה."
+            learnMore="תיבת ה-Omnichannel מאחדת WhatsApp, SMS, Messenger, Instagram ועוד לתיבה אחת."
             icon={Inbox}
             iconColor="text-teal-500"
             serviceKey="omnichannel_inbox"
           />
         </div>
-      </div>
+      </SectionShell>
 
-      {/* ── Section A.4: Virtual Twin Persona ── */}
-      <div className="space-y-2">
-        <div>
-          <h2 className="text-sm font-bold tracking-tight">Virtual Twin · התאומה הדיגיטלית</h2>
-          <p className="text-xs text-muted-foreground">הגדר/י טון, ביו ופילוסופיית מכירה — ה-AI ינסח כמוך בכל הודעה.</p>
-        </div>
+      <SectionShell title="Virtual Twin · התאומה הדיגיטלית" subtitle="טון, ביו ופילוסופיית מכירה — ה-AI ינסח כמוך">
         <AgentPersonaPanel />
-      </div>
+      </SectionShell>
 
-      {/* ── Section A.0: Production Prep ── */}
-      <div className="space-y-2">
-        <div>
-          <h2 className="text-sm font-bold tracking-tight">הכנה לפרודקשן · Production Readiness</h2>
-          <p className="text-xs text-muted-foreground">דומיין מותאם, סביבת דמו, ייצוא נתונים ומחיקת פרטים אישיים — הכל במקום אחד.</p>
-        </div>
+      <SectionShell title="הכנה לפרודקשן" subtitle="דומיין, סביבת דמו, ייצוא נתונים ומחיקת PII">
         <ProductionPrepPanel />
-        {isSuperAdmin && <AyrshareProfilePurgeCard />}
-        {isSuperAdmin && <AyrshareBulkPurgeCard />}
-      </div>
+      </SectionShell>
 
-      {/* ── Section A.0b: Social Channels (Ayrshare dynamic grid) ── */}
-      <div className="space-y-2">
-        <div>
-          <h2 className="text-sm font-bold tracking-tight">רשתות חברתיות · Social Channels</h2>
-          <p className="text-xs text-muted-foreground">פרופיל Ayrshare ייעודי לסביבת העבודה (נוצר דינמית, לא משותף בין סוכנים), קטלוג ערוצים חי וייבוא חשבונות בלחיצה.</p>
-        </div>
+      <SectionShell title="רשתות חברתיות" subtitle="Ayrshare, קטלוג ערוצים חי וקבוצות מותאמות">
         <SocialChannelsGrid />
         <CustomGroupsManager />
-      </div>
+      </SectionShell>
 
-      {/* ── Section A.4-fine-tune: AI Fine-Tuning ── */}
-      <div className="space-y-2">
-        <div>
-          <h2 className="text-sm font-bold tracking-tight">AI Fine-Tuning · כיול סגנון מהשיחות שלך</h2>
-          <p className="text-xs text-muted-foreground">העלה ייצואי WhatsApp / מיילים, ה-AI ילמד את הקול שלך, ותוכל לבדוק זאת לפני שהוא יוצא לאוויר.</p>
-        </div>
+      <SectionShell title="AI Fine-Tuning" subtitle="כיול סגנון מהשיחות שלך">
         <PersonaCalibrationPanel />
-      </div>
+      </SectionShell>
 
-      {/* ── Section A.4a: Area of Expertise (Hyper-local) ── */}
-      <div className="space-y-2">
-        <div>
-          <h2 className="text-sm font-bold tracking-tight">אזור התמחות · Hyper-Local Expert</h2>
-          <p className="text-xs text-muted-foreground">הגדר/י ערים ושכונות שאת/ה מתמחה בהן — ה-AI, הדשבורד והעסקאות יותאמו לאזור שלך.</p>
-        </div>
+      <SectionShell title="אזור התמחות" subtitle="ערים ושכונות שאת/ה מתמחה בהן">
         <ServiceAreasPanel />
-      </div>
+      </SectionShell>
 
-      {/* ── Section A.4b: AI Voice Agent ── */}
-      <div className="space-y-2">
-        <div>
-          <h2 className="text-sm font-bold tracking-tight">AI Voice Agent · עוזר טלפוני</h2>
-          <p className="text-xs text-muted-foreground">עונה לשיחות כשאת/ה לא זמין/ה, מתמלל הכל לעסקאות ושולח התראת חזרה אליך.</p>
-        </div>
+      <SectionShell title="AI Voice Agent" subtitle="עוזר טלפוני שעונה כשאת/ה לא זמין/ה">
         <VoiceAgentPanel />
-      </div>
+      </SectionShell>
 
-      {/* ── Section A.5: Notification Preferences ── */}
-      <div className="space-y-2">
-        <div>
-          <h2 className="text-sm font-bold tracking-tight">העדפות התראות חכמות</h2>
-          <p className="text-xs text-muted-foreground">Smart Notifications — אירועים קריטיים נשלחים אליך ב-WhatsApp עם קישור ישיר לעסקאות</p>
-        </div>
+      <SectionShell title="התראות חכמות" subtitle="Smart Notifications ב-WhatsApp על אירועים קריטיים">
         <NotificationPreferencesPanel />
-      </div>
+      </SectionShell>
 
-      {/* ── Section B: Integrations ── */}
-      <div className="space-y-2">
-        <div>
-          <h2 className="text-sm font-bold tracking-tight">אינטגרציות חיצוניות</h2>
-          <p className="text-xs text-muted-foreground">Integrations — דורשות מפתחות API והגדרות</p>
-        </div>
+      <SectionShell title="אינטגרציות חיצוניות · מפתחות API" subtitle="Homely, Gemini, Meta, WhatsApp, n8n, SMS, Mapbox">
+
         <Accordion type="multiple" className="-space-y-px">
 
       {/* Homely API */}
@@ -1767,98 +1507,20 @@ const ApiSettings = () => {
       </ServiceCard>
 
         </Accordion>
-      </div>
+      </SectionShell>
+
+      {isSuperAdmin && (
+        <SectionShell title="מידע לסופר-אדמין · Super Admin" subtitle="ניקוי Ayrshare וכלי אבחון פנימיים">
+          <AyrshareProfilePurgeCard />
+          <AyrshareBulkPurgeCard />
+        </SectionShell>
+      )}
     </div>
     </ApiSettingsCtx.Provider>
   );
 };
 
-/* ─── DB Access Log (last 5) ─── */
-const DbAccessLog = () => {
-  const { user } = useAuth();
-  const { data: accessLogs } = useQuery({
-    queryKey: ['db-access-log'],
-    queryFn: async () => {
-      // Combine recent lead reads + message activity as access events
-      const [{ data: voterReads }, { data: msgActivity }] = await Promise.all([
-        supabase.from('leads').select('id, full_name, created_at').order('created_at', { ascending: false }).limit(3),
-        supabase.from('messages').select('id, created_at, sender_type, lead_id').order('created_at', { ascending: false }).limit(3),
-      ]);
 
-      type LogEntry = { id: string; timestamp: string; actor: string; action: string; resource: string; verified: boolean };
-      const entries: LogEntry[] = [];
-      const email = user?.email || 'admin@realtyz.ai';
 
-      voterReads?.forEach((v) => {
-        entries.push({
-          id: `va-${v.id}`,
-          timestamp: v.created_at || new Date().toISOString(),
-          actor: email,
-          action: 'READ',
-          resource: `leads/${(v.full_name || v.id).slice(0, 20)}`,
-          verified: true,
-        });
-      });
-
-      msgActivity?.forEach((m) => {
-        entries.push({
-          id: `ma-${m.id}`,
-          timestamp: m.created_at || new Date().toISOString(),
-          actor: m.sender_type === 'system' ? 'system@realtyz.ai' : email,
-          action: 'WRITE',
-          resource: `messages/${(m.lead_id || '').slice(0, 8)}`,
-          verified: true,
-        });
-      });
-
-      return entries
-        .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
-        .slice(0, 5);
-    },
-    refetchInterval: 30_000,
-  });
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full text-xs">
-        <thead>
-          <tr className="border-b border-emerald-500/20">
-            <th className="text-right py-2 px-2 text-muted-foreground font-mono font-medium">TIMESTAMP</th>
-            <th className="text-right py-2 px-2 text-muted-foreground font-mono font-medium">ACTOR</th>
-            <th className="text-right py-2 px-2 text-muted-foreground font-mono font-medium">ACTION</th>
-            <th className="text-right py-2 px-2 text-muted-foreground font-mono font-medium">RESOURCE</th>
-            <th className="text-right py-2 px-2 text-muted-foreground font-mono font-medium">STATUS</th>
-          </tr>
-        </thead>
-        <tbody>
-          {(!accessLogs || accessLogs.length === 0) ? (
-            <tr>
-              <td colSpan={5} className="text-center py-6 text-muted-foreground">אין פעילות מתועדת</td>
-            </tr>
-          ) : accessLogs.map((log) => (
-            <tr key={log.id} className="border-b border-border/20 hover:bg-emerald-500/[0.03] transition-colors">
-              <td className="py-2 px-2 font-mono text-muted-foreground">{format(new Date(log.timestamp), 'dd/MM HH:mm:ss')}</td>
-              <td className="py-2 px-2 font-mono truncate max-w-[140px]">{log.actor}</td>
-              <td className="py-2 px-2">
-                <span className={`px-1.5 py-0.5 rounded font-mono text-[10px] font-bold ${
-                  log.action === 'READ' ? 'bg-primary/15 text-primary' : 'bg-[hsl(var(--gold))]/15 text-[hsl(var(--gold))]'
-                }`}>
-                  {log.action}
-                </span>
-              </td>
-              <td className="py-2 px-2 font-mono text-muted-foreground">{log.resource}</td>
-              <td className="py-2 px-2">
-                <div className="flex items-center gap-1">
-                  <CheckCircle className="h-3 w-3 text-emerald-500" />
-                  <span className="font-mono text-emerald-500 text-[10px]">VERIFIED</span>
-                </div>
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
-    </div>
-  );
-};
 
 export default ApiSettings;

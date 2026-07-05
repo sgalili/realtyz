@@ -229,9 +229,8 @@ function InboxAutopilotToggle() {
     >
       <span
         className={cn(
-          'inline-flex h-6 w-6 items-center justify-center rounded-full bg-white shadow transition-transform',
-          on ? 'translate-x-[30px]' : 'translate-x-[2px]',
-          on ? 'text-emerald-600' : 'text-slate-500'
+          'inline-flex h-6 w-6 items-center justify-center rounded-full shadow transition-transform',
+          on ? 'translate-x-[30px] bg-emerald-600 text-white' : 'translate-x-[2px] bg-white text-slate-500'
         )}
       >
         <Bot className="h-4 w-4" strokeWidth={2.5} />
@@ -314,7 +313,7 @@ export function PageHero() {
     <div
       dir="rtl"
       data-page-hero
-      className="relative w-full shrink-0 overflow-hidden text-white print:hidden"
+      className="relative w-full shrink-0 overflow-hidden text-white print:hidden pb-[10px]"
       style={{ backgroundColor: '#0b3982' }}
     >
       {/* 3-zone toolbar — title is absolutely centered to the viewport so it
