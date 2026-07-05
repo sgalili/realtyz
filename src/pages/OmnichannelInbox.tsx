@@ -141,6 +141,7 @@ const OmnichannelInbox = () => {
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const handleDeleteChat = async (voterId: string) => {
     if (!voterId || voterId.startsWith('demo-')) {
