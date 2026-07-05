@@ -454,9 +454,9 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
         <DialogContent dir="rtl" className="max-w-md">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2 justify-end">
-              <CalendarIcon className="h-4 w-4" />
               תזמון פרסומים ליום {scheduleDay?.toLocaleDateString('he-IL')}
             </DialogTitle>
+
           </DialogHeader>
           <div className="space-y-3">
             <div className="flex items-end gap-2 flex-row-reverse">
@@ -549,25 +549,26 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                 </PopoverContent>
               </Popover>
               <div className="flex-1">
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">משעה</label>
-                <Input
-                  type="time"
-                  value={winStart}
-                  onChange={(e) => setWinStart(e.target.value)}
-                  dir="ltr"
-                  className="text-left [&::-webkit-datetime-edit]:text-left [&::-webkit-datetime-edit-fields-wrapper]:justify-start [&::-webkit-datetime-edit-fields-wrapper]:w-full [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:mr-auto"
-                />
-              </div>
-              <div className="flex-1">
                 <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">עד שעה</label>
                 <Input
                   type="time"
                   value={winEnd}
                   onChange={(e) => setWinEnd(e.target.value)}
                   dir="ltr"
-                  className="text-left [&::-webkit-datetime-edit]:text-left [&::-webkit-datetime-edit-fields-wrapper]:justify-start [&::-webkit-datetime-edit-fields-wrapper]:w-full [&::-webkit-calendar-picker-indicator]:ml-0 [&::-webkit-calendar-picker-indicator]:mr-auto"
+                  className="text-right [&::-webkit-datetime-edit]:text-right [&::-webkit-datetime-edit-fields-wrapper]:justify-end [&::-webkit-datetime-edit-fields-wrapper]:w-full [&::-webkit-calendar-picker-indicator]:mr-0 [&::-webkit-calendar-picker-indicator]:ml-auto"
                 />
               </div>
+              <div className="flex-1">
+                <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">משעה</label>
+                <Input
+                  type="time"
+                  value={winStart}
+                  onChange={(e) => setWinStart(e.target.value)}
+                  dir="ltr"
+                  className="text-right [&::-webkit-datetime-edit]:text-right [&::-webkit-datetime-edit-fields-wrapper]:justify-end [&::-webkit-datetime-edit-fields-wrapper]:w-full [&::-webkit-calendar-picker-indicator]:mr-0 [&::-webkit-calendar-picker-indicator]:ml-auto"
+                />
+              </div>
+
             </div>
             <div className="flex items-stretch gap-2">
               <label className="flex-1 flex items-center justify-between gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 cursor-pointer">
