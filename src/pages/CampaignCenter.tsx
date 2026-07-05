@@ -1184,7 +1184,7 @@ const InlineComposer = ({
             const ctaLine = `${opener}\n${linkPart}`;
             setBody((prev) => {
               const clean = stripWaCta(prev);
-              const merged = `${clean}\n\n${ctaLine}`.slice(0, MAX_CHARS);
+              const merged = `${clean}\n\n${ctaLine}`;
               // Auto-scroll the textarea to reveal the appended CTA.
               requestAnimationFrame(() => {
                 const el = textareaRef.current;
