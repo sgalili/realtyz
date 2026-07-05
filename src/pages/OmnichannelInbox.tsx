@@ -665,10 +665,25 @@ const OmnichannelInbox = () => {
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </button>
-                    <VoterAvatar fullName={voter.full_name} profilePictureUrl={(voter as any).profile_picture_url} className="h-10 w-10 shrink-0" textClassName="text-sm" />
+                    <button
+                      type="button"
+                      onClick={(event) => { event.stopPropagation(); navigate(`/lead-crm/${voter.id}`); }}
+                      className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-primary/50"
+                      title="פתיחת כרטיס מתעניין"
+                      aria-label="פתיחת כרטיס מתעניין"
+                    >
+                      <VoterAvatar fullName={voter.full_name} profilePictureUrl={(voter as any).profile_picture_url} className="h-10 w-10 shrink-0" textClassName="text-sm" />
+                    </button>
                     <div className="flex-1 min-w-0 text-right">
                       <div className="flex min-w-0 flex-row-reverse items-center justify-between gap-2">
-                        <p className="text-sm font-medium truncate min-w-0">{voter.full_name || formatPhoneDisplay(voter.phone_number)}</p>
+                        <button
+                          type="button"
+                          onClick={(event) => { event.stopPropagation(); navigate(`/lead-crm/${voter.id}`); }}
+                          className="text-sm font-medium truncate min-w-0 hover:underline text-right"
+                          title="פתיחת כרטיס מתעניין"
+                        >
+                          {voter.full_name || formatPhoneDisplay(voter.phone_number)}
+                        </button>
                         <span className="text-[10px] text-muted-foreground shrink-0 whitespace-nowrap">
                           {voter.last_interaction_at ? formatDistanceToNow(new Date(voter.last_interaction_at), { addSuffix: true, locale: he }) : ''}
                         </span>
