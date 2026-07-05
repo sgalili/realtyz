@@ -518,6 +518,7 @@ const OmnichannelInbox = () => {
       (v.phone_number || '').includes(search);
     if (!matchesSearch) return false;
     const m: any = lastMessages?.get(v.id);
+    if (channelFilter !== 'all' && String(m?.channel || '') !== channelFilter) return false;
     if (activeTab === 'waiting') return m?.direction === 'inbound';
     if (activeTab === 'handling') return m?.direction === 'outbound' && (m?.sender_type === 'ai' || m?.ai_assisted);
     if (bookmarkedOnly) return (v as any).is_bookmarked === true;
