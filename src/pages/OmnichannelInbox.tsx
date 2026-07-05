@@ -394,6 +394,17 @@ const OmnichannelInbox = () => {
 
   const selectedVoter = voters?.find((v) => v.id === selectedVoterId);
 
+  // Fire-and-forget: fetch WhatsApp profile picture for the selected lead
+  // if it's missing. The edge function updates leads.profile_picture_url
+  // and the next voters refetch will pick it up automatically.
+  useEffect(() => {
+    const v = selectedVoter as any;
+    if (!v?.id) return;
+    if (v?.profile_picture_url) return;
+    if (!v?.phone_number) return;
+    supabase.functions.invoke('fetch-wa-avatars', { body: { lead_ids: [v.id] } }).catch(() => {});
+  }, [selectedVoter?.id]);
+
   // ---- Channel availability ----------------------------------------------
   // A channel is enabled in the send-channel selector only when BOTH:
   //   (a) the voter has a usable identifier for it in the CRM profile, AND
