@@ -94,6 +94,8 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
   const [recurrenceDays, setRecurrenceDays] = useState<number[]>([]); // 0=Sun..6=Sat
   const [recurrenceCount, setRecurrenceCount] = useState<number>(4); // iterations
   const [recurrenceOpen, setRecurrenceOpen] = useState(false);
+  const [brandingPost, setBrandingPost] = useState(false);
+  const [propertiesOpen, setPropertiesOpen] = useState(false);
 
   useEffect(() => {
     if (!scheduleDay) return;
