@@ -337,7 +337,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
               setScheduleDay(new Date(day));
               setWinStart('09:00');
               setWinEnd('21:00');
-              setWinCount(3);
+              setWinCount(1);
             };
             return (
               <div
