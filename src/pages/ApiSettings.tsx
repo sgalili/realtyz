@@ -198,6 +198,32 @@ const ServiceCard = ({
   );
 };
 
+/* ─── Collapsible section shell (closed by default) ─── */
+const SectionShell = ({
+  title, subtitle, defaultOpen = false, children,
+}: {
+  title: string; subtitle?: string; defaultOpen?: boolean; children: React.ReactNode;
+}) => {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <Card className="border-border/50 overflow-hidden">
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center justify-between gap-3 px-4 py-3 text-right hover:bg-muted/30 transition-colors"
+        aria-expanded={open}
+      >
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-bold truncate">{title}</p>
+          {subtitle && <p className="text-[11px] text-muted-foreground truncate mt-0.5">{subtitle}</p>}
+        </div>
+        <ChevronDown className={`h-4 w-4 text-muted-foreground shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && <div className="px-4 pb-4 pt-1 border-t border-border/40 space-y-3">{children}</div>}
+    </Card>
+  );
+};
+
 /* ─── Main Settings Page ─── */
 const ApiSettings = () => {
   const queryClient = useQueryClient();
