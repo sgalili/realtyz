@@ -1507,11 +1507,19 @@ const ApiSettings = () => {
       </ServiceCard>
 
         </Accordion>
-      </div>
+      </SectionShell>
+
+      {isSuperAdmin && (
+        <SectionShell title="מידע לסופר-אדמין · Super Admin" subtitle="ניקוי Ayrshare וכלי אבחון פנימיים">
+          <AyrshareProfilePurgeCard />
+          <AyrshareBulkPurgeCard />
+        </SectionShell>
+      )}
     </div>
     </ApiSettingsCtx.Provider>
   );
 };
+
 
 /* ─── DB Access Log (last 5) ─── */
 const DbAccessLog = () => {
