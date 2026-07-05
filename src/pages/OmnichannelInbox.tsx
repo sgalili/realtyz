@@ -546,18 +546,6 @@ const OmnichannelInbox = () => {
 
   return (
     <div dir="rtl" className="space-y-3">
-      {/* Autopilot toggle bar */}
-      <div className="rounded-xl border border-primary/20 bg-primary/5 px-4 py-3 flex items-center justify-between gap-3">
-        <div className="text-sm font-semibold text-foreground">
-          מענה אוטומטי: כלל הערוצים
-        </div>
-        <Switch
-          checked={aiAutopilot}
-          onCheckedChange={setAiAutopilot}
-          aria-label="מענה אוטומטי"
-        />
-      </div>
-
       {/* Filter pills + bookmark */}
       <div className="flex items-center gap-2">
         <div className="flex flex-1 flex-row-reverse items-center gap-2 overflow-x-auto">
@@ -594,13 +582,15 @@ const OmnichannelInbox = () => {
         </button>
       </div>
 
-      {/* Channel filter chips */}
-      <div className="flex flex-row-reverse items-center gap-2 overflow-x-auto">
+      {/* Channel filter — icons only, no pill background */}
+      <div className="flex items-center gap-2 overflow-x-auto">
         {([
           { key: 'all', label: 'הכל' },
           { key: 'whatsapp', label: 'WhatsApp' },
           { key: 'telegram', label: 'Telegram' },
           { key: 'messenger', label: 'Messenger' },
+          { key: 'sms', label: 'SMS' },
+          { key: 'email', label: 'Email' },
         ] as const).map((c) => {
           const active = channelFilter === c.key;
           return (
@@ -608,14 +598,31 @@ const OmnichannelInbox = () => {
               key={c.key}
               type="button"
               onClick={() => setChannelFilter(c.key)}
-              className={`h-8 inline-flex flex-row-reverse items-center gap-1.5 rounded-full px-3 text-xs font-medium whitespace-nowrap border transition-colors ${active ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-foreground border-border hover:bg-muted/50'}`}
+              aria-label={c.label}
+              title={c.label}
+              aria-pressed={active}
+              className={`h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-full transition-all ${active ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : 'opacity-60 hover:opacity-100'}`}
             >
-              {c.key !== 'all' && <ChannelIcon channel={c.key} />}
-              <span>{c.label}</span>
+              {c.key === 'all'
+                ? <InboxIcon className="h-5 w-5 text-foreground" />
+                : <ChannelIcon channel={c.key} size="md" />}
             </button>
           );
         })}
+        <div className="ms-auto" />
+        <button
+          type="button"
+          onClick={() => navigate('/api-settings')}
+          aria-label="הגדרות חיבור ערוצים"
+          title="הגדרות חיבור ערוצים"
+          className="h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50"
+        >
+          <Plug className="h-5 w-5" />
+        </button>
       </div>
+
+
+
 
 
       <div className="grid h-[calc(100svh-300px)] min-h-[480px] w-full grid-cols-1 overflow-hidden rounded-xl border border-border/50 bg-card shadow-soft lg:h-[calc(100vh-340px)] lg:grid-cols-[20rem_minmax(0,1fr)] xl:grid-cols-[20rem_minmax(0,1fr)_18rem]">
