@@ -313,7 +313,7 @@ export function PageHero() {
     <div
       dir="rtl"
       data-page-hero
-      className="relative w-full shrink-0 overflow-hidden text-white print:hidden"
+      className="relative w-full shrink-0 overflow-hidden text-white print:hidden pb-[10px]"
       style={{ backgroundColor: '#0b3982' }}
     >
       {/* 3-zone toolbar — title is absolutely centered to the viewport so it
