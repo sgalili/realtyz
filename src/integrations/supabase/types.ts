@@ -3591,6 +3591,7 @@ export type Database = {
           trial_start_date: string
           updated_at: string
           wallet_balance_agorot: number
+          whatsapp_provider: string
           workspace_owner_id: string | null
         }
         Insert: {
@@ -3621,6 +3622,7 @@ export type Database = {
           trial_start_date?: string
           updated_at?: string
           wallet_balance_agorot?: number
+          whatsapp_provider?: string
           workspace_owner_id?: string | null
         }
         Update: {
@@ -3651,6 +3653,7 @@ export type Database = {
           trial_start_date?: string
           updated_at?: string
           wallet_balance_agorot?: number
+          whatsapp_provider?: string
           workspace_owner_id?: string | null
         }
         Relationships: []
