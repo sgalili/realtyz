@@ -459,7 +459,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
             </DialogTitle>
           </DialogHeader>
           <div className="space-y-3">
-            <div className="flex items-end gap-2">
+            <div className="flex items-end gap-2 flex-row-reverse">
               <Popover open={recurrenceOpen} onOpenChange={setRecurrenceOpen}>
                 <PopoverTrigger asChild>
                   <button
