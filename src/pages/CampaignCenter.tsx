@@ -760,7 +760,8 @@ const InlineComposer = ({
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
         const payload = {
-          generated_text: body.slice(0, MAX_CHARS),
+          generated_text: body,
+
           // Persist only durable https URLs — local blob: previews die on reload
           // and would render as empty file chips after restoring from history.
           media_urls: attachments
