@@ -837,82 +837,40 @@ const ApiSettings = () => {
 
   return (
     <ApiSettingsCtx.Provider value={{ isServiceEnabled, toggleService, savingKey, testingService }}>
-    <div className="space-y-6" dir="rtl">
+    <div className="space-y-3" dir="rtl">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight text-primary">הגדרות מערכת</h1>
-        <p className="text-muted-foreground text-sm mt-1">
-          {isSuperAdmin
-            ? 'ניהול מפתחות API, חיבורים, הצפנה ויומן גישה'
-            : 'הפעלה וכיבוי של שירותים פעילים בחשבון'}
+        <h1 className="text-xl font-bold tracking-tight text-primary">הגדרות מערכת</h1>
+        <p className="text-muted-foreground text-xs mt-0.5">
+          הפעל/י שירותים, נהל/י מפתחות והגדרות פלטפורמה. כל הכרטיסים סגורים כברירת מחדל — לחצ/י על כרטיס לפתיחה.
         </p>
       </div>
 
-      {/* ── Usage Meter ── */}
       <UsageMeterPanel />
 
-      {/* ── Data Privacy ── */}
-      <Card dir="rtl">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <ShieldCheck className="h-5 w-5 text-primary" aria-hidden="true" />
-            פרטיות נתונים
-          </CardTitle>
-          <CardDescription>
-            מסכת PII אוטומטית ומחיקת היסטוריה לעמידה בדרישות GDPR ופרטיות בישראל.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-3">
-          <div className="rounded-md border bg-muted/30 p-3 text-sm space-y-2">
-            <div className="flex items-start gap-2">
-              <Badge variant="outline" className="shrink-0">מסכת PII</Badge>
-              <span className="text-muted-foreground">
-                ת.ז., כרטיסי אשראי, IBAN, אימיילים וטלפונים מוסתרים אוטומטית בכל
-                כתיבה לבנק האסטרטגיה (<code className="text-xs">knowledge_documents</code>),
-                להערות חדר העסקאות (<code className="text-xs">deal_room_comments</code>),
-                ולפני כל קריאה ל-AI.
-              </span>
-            </div>
-            <div className="flex items-start gap-2">
-              <Badge variant="outline" className="shrink-0">ביקורת</Badge>
-              <span className="text-muted-foreground">
-                כל ייצוא או מחיקה של מתעניין נרשמים ביומן הביקורת הבלתי-ניתן-לעריכה.
-              </span>
-            </div>
-            <div className="flex items-start gap-2">
-              <Badge variant="outline" className="shrink-0">מחיקת GDPR</Badge>
-              <span className="text-muted-foreground">
-                "מחיקה לצמיתות" מוחקת את הליד וכל ההיסטוריה הקשורה (הודעות, צ'אטים,
-                שיחות, פגישות, התראות) ללא אפשרות שחזור.
-              </span>
-            </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <Button asChild variant="default" size="sm">
-              <a href="/privacy">
-                <ShieldCheck className="h-4 w-4 ms-1.5" aria-hidden="true" />
-                פתח מרכז פרטיות ומחיקת מתעניין
-              </a>
-            </Button>
-            <Button asChild variant="outline" size="sm">
-              <a href="/privacy">
-                ייצוא נתוני מתעניין (GDPR)
-              </a>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* ── Section A: Platform Features ── */}
-      <div className="space-y-2">
-        <div>
-          <h2 className="text-sm font-bold tracking-tight">תכונות פלטפורמה</h2>
-          <p className="text-xs text-muted-foreground">Platform Features — מתגי On/Off פנימיים</p>
+      <SectionShell title="פרטיות ו-GDPR" subtitle="מסכת PII, ביקורת ומחיקת מתעניין לצמיתות">
+        <p className="text-xs text-muted-foreground">
+          נתונים אישיים (ת.ז., אימיילים, טלפונים) מוסתרים אוטומטית לפני שליחה ל-AI וביומני הצוות.
+          כל ייצוא/מחיקה של מתעניין נרשם ביומן ביקורת בלתי-ניתן-לעריכה.
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Button asChild variant="default" size="sm">
+            <a href="/privacy">
+              <ShieldCheck className="h-4 w-4 ms-1.5" aria-hidden="true" />
+              מרכז פרטיות ומחיקה
+            </a>
+          </Button>
+          <Button asChild variant="outline" size="sm">
+            <a href="/privacy">ייצוא נתוני מתעניין</a>
+          </Button>
         </div>
+      </SectionShell>
+
+      <SectionShell title="תכונות פלטפורמה" subtitle="מתגי On/Off לשירותי AI פנימיים">
         <div className="rounded-lg overflow-hidden">
           <FeatureRow
             title="AI Touchpoint (שיחות AI)"
             description="בוט קולי שמתקשר למתעניינים חמים"
-            learnMore="AI Touchpoint מפעיל בוט קולי שמתקשר באופן יזום למתעניינים חמים, מנהל שיחה קצרה, מסווג עניין ומעדכן את ה-CRM. שימושי כדי לזהות במהירות מתעניינים בשלים לפנייה אנושית."
+            learnMore="AI Touchpoint מפעיל בוט קולי שמתקשר באופן יזום למתעניינים חמים, מנהל שיחה קצרה, מסווג עניין ומעדכן את ה-CRM."
             icon={Phone}
             iconColor="text-blue-500"
             serviceKey="ai_voice"
@@ -920,7 +878,7 @@ const ApiSettings = () => {
           <FeatureRow
             title="מחולל תוכן AI"
             description="יצירת פוסטים, סלוגנים ותגובות"
-            learnMore="מחולל התוכן יוצר טיוטות לפוסטים, סלוגנים, תגובות ומסרים אישיים בהתבסס על הטון והמיתוג שהגדרת. כל תוצר ניתן לעריכה לפני שליחה או פרסום."
+            learnMore="מחולל התוכן יוצר טיוטות לפוסטים, סלוגנים ותגובות בהתבסס על הטון והמיתוג שהגדרת."
             icon={Sparkles}
             iconColor="text-amber-500"
             serviceKey="ai_content"
@@ -928,86 +886,45 @@ const ApiSettings = () => {
           <FeatureRow
             title="תיבת Omnichannel"
             description="איחוד כל הערוצים לתיבה אחת"
-            learnMore="תיבת ה-Omnichannel מאחדת WhatsApp, SMS, Messenger, Instagram ועוד לתיבה אחת. כל הודעה נקשרת אוטומטית לכרטיס הליד הרלוונטי כולל היסטוריית שיחה מלאה."
+            learnMore="תיבת ה-Omnichannel מאחדת WhatsApp, SMS, Messenger, Instagram ועוד לתיבה אחת."
             icon={Inbox}
             iconColor="text-teal-500"
             serviceKey="omnichannel_inbox"
           />
         </div>
-      </div>
+      </SectionShell>
 
-      {/* ── Section A.4: Virtual Twin Persona ── */}
-      <div className="space-y-2">
-        <div>
-          <h2 className="text-sm font-bold tracking-tight">Virtual Twin · התאומה הדיגיטלית</h2>
-          <p className="text-xs text-muted-foreground">הגדר/י טון, ביו ופילוסופיית מכירה — ה-AI ינסח כמוך בכל הודעה.</p>
-        </div>
+      <SectionShell title="Virtual Twin · התאומה הדיגיטלית" subtitle="טון, ביו ופילוסופיית מכירה — ה-AI ינסח כמוך">
         <AgentPersonaPanel />
-      </div>
+      </SectionShell>
 
-      {/* ── Section A.0: Production Prep ── */}
-      <div className="space-y-2">
-        <div>
-          <h2 className="text-sm font-bold tracking-tight">הכנה לפרודקשן · Production Readiness</h2>
-          <p className="text-xs text-muted-foreground">דומיין מותאם, סביבת דמו, ייצוא נתונים ומחיקת פרטים אישיים — הכל במקום אחד.</p>
-        </div>
+      <SectionShell title="הכנה לפרודקשן" subtitle="דומיין, סביבת דמו, ייצוא נתונים ומחיקת PII">
         <ProductionPrepPanel />
-        {isSuperAdmin && <AyrshareProfilePurgeCard />}
-        {isSuperAdmin && <AyrshareBulkPurgeCard />}
-      </div>
+      </SectionShell>
 
-      {/* ── Section A.0b: Social Channels (Ayrshare dynamic grid) ── */}
-      <div className="space-y-2">
-        <div>
-          <h2 className="text-sm font-bold tracking-tight">רשתות חברתיות · Social Channels</h2>
-          <p className="text-xs text-muted-foreground">פרופיל Ayrshare ייעודי לסביבת העבודה (נוצר דינמית, לא משותף בין סוכנים), קטלוג ערוצים חי וייבוא חשבונות בלחיצה.</p>
-        </div>
+      <SectionShell title="רשתות חברתיות" subtitle="Ayrshare, קטלוג ערוצים חי וקבוצות מותאמות">
         <SocialChannelsGrid />
         <CustomGroupsManager />
-      </div>
+      </SectionShell>
 
-      {/* ── Section A.4-fine-tune: AI Fine-Tuning ── */}
-      <div className="space-y-2">
-        <div>
-          <h2 className="text-sm font-bold tracking-tight">AI Fine-Tuning · כיול סגנון מהשיחות שלך</h2>
-          <p className="text-xs text-muted-foreground">העלה ייצואי WhatsApp / מיילים, ה-AI ילמד את הקול שלך, ותוכל לבדוק זאת לפני שהוא יוצא לאוויר.</p>
-        </div>
+      <SectionShell title="AI Fine-Tuning" subtitle="כיול סגנון מהשיחות שלך">
         <PersonaCalibrationPanel />
-      </div>
+      </SectionShell>
 
-      {/* ── Section A.4a: Area of Expertise (Hyper-local) ── */}
-      <div className="space-y-2">
-        <div>
-          <h2 className="text-sm font-bold tracking-tight">אזור התמחות · Hyper-Local Expert</h2>
-          <p className="text-xs text-muted-foreground">הגדר/י ערים ושכונות שאת/ה מתמחה בהן — ה-AI, הדשבורד והעסקאות יותאמו לאזור שלך.</p>
-        </div>
+      <SectionShell title="אזור התמחות" subtitle="ערים ושכונות שאת/ה מתמחה בהן">
         <ServiceAreasPanel />
-      </div>
+      </SectionShell>
 
-      {/* ── Section A.4b: AI Voice Agent ── */}
-      <div className="space-y-2">
-        <div>
-          <h2 className="text-sm font-bold tracking-tight">AI Voice Agent · עוזר טלפוני</h2>
-          <p className="text-xs text-muted-foreground">עונה לשיחות כשאת/ה לא זמין/ה, מתמלל הכל לעסקאות ושולח התראת חזרה אליך.</p>
-        </div>
+      <SectionShell title="AI Voice Agent" subtitle="עוזר טלפוני שעונה כשאת/ה לא זמין/ה">
         <VoiceAgentPanel />
-      </div>
+      </SectionShell>
 
-      {/* ── Section A.5: Notification Preferences ── */}
-      <div className="space-y-2">
-        <div>
-          <h2 className="text-sm font-bold tracking-tight">העדפות התראות חכמות</h2>
-          <p className="text-xs text-muted-foreground">Smart Notifications — אירועים קריטיים נשלחים אליך ב-WhatsApp עם קישור ישיר לעסקאות</p>
-        </div>
+      <SectionShell title="התראות חכמות" subtitle="Smart Notifications ב-WhatsApp על אירועים קריטיים">
         <NotificationPreferencesPanel />
-      </div>
+      </SectionShell>
 
-      {/* ── Section B: Integrations ── */}
-      <div className="space-y-2">
-        <div>
-          <h2 className="text-sm font-bold tracking-tight">אינטגרציות חיצוניות</h2>
-          <p className="text-xs text-muted-foreground">Integrations — דורשות מפתחות API והגדרות</p>
-        </div>
+      <SectionShell title="אינטגרציות חיצוניות · מפתחות API" subtitle="Homely, Gemini, Meta, WhatsApp, n8n, SMS, Mapbox">
+
         <Accordion type="multiple" className="-space-y-px">
 
       {/* Homely API */}
