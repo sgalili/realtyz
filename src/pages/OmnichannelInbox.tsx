@@ -675,7 +675,9 @@ const OmnichannelInbox = () => {
               })}
             </AnimatePresence>
             {filteredVoters?.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-8">אין שיחות</p>
+              <p className="text-sm text-muted-foreground text-center py-8">
+                {channelFilter === 'all' ? 'אין שיחות' : 'אין הודעות בערוץ זה'}
+              </p>
             )}
           </ScrollArea>
         </div>
