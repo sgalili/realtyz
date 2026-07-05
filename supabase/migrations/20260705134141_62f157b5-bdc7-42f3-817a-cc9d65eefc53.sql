@@ -1,0 +1,1 @@
+UPDATE public.profiles SET whatsapp_provider = 'greenapi' WHERE id = '8f66ac1a-070a-4485-ac3b-07697d6c4b9e';
