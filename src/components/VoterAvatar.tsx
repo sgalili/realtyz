@@ -57,6 +57,15 @@ const VoterAvatar = ({
   const realPicture = profilePictureUrl?.trim() || null;
   const imageUrl = realPicture || (isDemoMode ? getDemoHeadshot(fullName) : null);
 
+  const initials = (fullName || '')
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word.charAt(0))
+    .join('')
+    .toUpperCase();
+
   return (
     <Avatar className={cn('shrink-0', className)}>
       {imageUrl ? (
@@ -68,8 +77,12 @@ const VoterAvatar = ({
           className="aspect-square h-full w-full object-cover"
         />
       ) : (
-        <AvatarFallback className={cn('bg-muted text-muted-foreground', fallbackClassName)}>
-          <User className={cn('h-1/2 w-1/2', textClassName)} strokeWidth={1.5} />
+        <AvatarFallback className={cn('bg-primary/10 text-primary font-semibold', fallbackClassName)}>
+          {initials ? (
+            <span className={cn('leading-none', textClassName)}>{initials}</span>
+          ) : (
+            <User className={cn('h-1/2 w-1/2', textClassName)} strokeWidth={1.5} />
+          )}
         </AvatarFallback>
       )}
     </Avatar>
