@@ -589,7 +589,7 @@ Deno.serve(async (req) => {
             integration: "whatsapp",
             functionName: "send-whatsapp",
             errorMessage: "נכשל בערוץ Meta — הועבר ל-GreenAPI",
-            metadata: {
+            context: {
               meta_error: result.error,
               meta_details: result.details,
               phone_last4: phone.slice(-4),
