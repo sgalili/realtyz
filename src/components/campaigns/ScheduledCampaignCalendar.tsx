@@ -573,7 +573,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
               <label className="flex-1 flex items-center justify-between gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 cursor-pointer">
                 <div className="flex flex-col text-right">
                   <span className="text-xs font-semibold text-foreground">פוסט תדמיתי</span>
-                  <span className="text-[11px] text-muted-foreground">ללא שיוך לנכס</span>
+
                 </div>
                 <input
                   type="checkbox"
