@@ -608,14 +608,16 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                   <PopoverTrigger asChild>
                     <button
                       type="button"
+                      dir="rtl"
                       onClick={() => setListingsPopoverOpen((v) => !v)}
                       className="w-full h-9 flex items-center justify-between rounded-md border border-input bg-background px-3 text-sm text-right hover:bg-muted/40"
                     >
-                      <ChevronLeft className={cn('h-4 w-4 text-muted-foreground transition-transform', listingsPopoverOpen && '-rotate-90')} />
                       <span className={cn('truncate', selectedListingIds.length === 0 && 'text-muted-foreground')}>
                         נכסים לשיוך{selectedListingIds.length > 0 ? ` (${selectedListingIds.length})` : ''}
                       </span>
+                      <ChevronLeft className={cn('h-4 w-4 text-muted-foreground transition-transform shrink-0', listingsPopoverOpen && '-rotate-90')} />
                     </button>
+
                   </PopoverTrigger>
                   <PopoverContent
                     align="start"
