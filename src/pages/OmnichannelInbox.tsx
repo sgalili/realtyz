@@ -118,6 +118,7 @@ const OmnichannelInbox = () => {
     });
   };
   const [activeTab, setActiveTab] = useState<'all' | 'waiting' | 'handling'>('all');
+  const [channelFilter, setChannelFilter] = useState<'all' | 'whatsapp' | 'telegram' | 'messenger'>('all');
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   // Tracks the last AI-generated draft (e.g. from Undo & Regenerate) so manual
@@ -517,6 +518,7 @@ const OmnichannelInbox = () => {
       (v.phone_number || '').includes(search);
     if (!matchesSearch) return false;
     const m: any = lastMessages?.get(v.id);
+    if (channelFilter !== 'all' && String(m?.channel || '') !== channelFilter) return false;
     if (activeTab === 'waiting') return m?.direction === 'inbound';
     if (activeTab === 'handling') return m?.direction === 'outbound' && (m?.sender_type === 'ai' || m?.ai_assisted);
     if (bookmarkedOnly) return (v as any).is_bookmarked === true;
@@ -589,6 +591,30 @@ const OmnichannelInbox = () => {
         </button>
       </div>
 
+      {/* Channel filter chips */}
+      <div className="flex flex-row-reverse items-center gap-2 overflow-x-auto">
+        {([
+          { key: 'all', label: 'הכל' },
+          { key: 'whatsapp', label: 'WhatsApp' },
+          { key: 'telegram', label: 'Telegram' },
+          { key: 'messenger', label: 'Messenger' },
+        ] as const).map((c) => {
+          const active = channelFilter === c.key;
+          return (
+            <button
+              key={c.key}
+              type="button"
+              onClick={() => setChannelFilter(c.key)}
+              className={`h-8 inline-flex flex-row-reverse items-center gap-1.5 rounded-full px-3 text-xs font-medium whitespace-nowrap border transition-colors ${active ? 'bg-primary text-primary-foreground border-primary' : 'bg-card text-foreground border-border hover:bg-muted/50'}`}
+            >
+              {c.key !== 'all' && <ChannelIcon channel={c.key} />}
+              <span>{c.label}</span>
+            </button>
+          );
+        })}
+      </div>
+
+
       <div className="grid h-[calc(100svh-300px)] min-h-[480px] w-full grid-cols-1 overflow-hidden rounded-xl border border-border/50 bg-card shadow-soft lg:h-[calc(100vh-340px)] lg:grid-cols-[20rem_minmax(0,1fr)] xl:grid-cols-[20rem_minmax(0,1fr)_18rem]">
         {/* Right panel - Contact List */}
         <div className={`${selectedVoterId ? 'hidden lg:flex' : 'flex'} min-w-0 flex-col border-l bg-card`}>
@@ -649,7 +675,9 @@ const OmnichannelInbox = () => {
               })}
             </AnimatePresence>
             {filteredVoters?.length === 0 && (
-              <p className="text-sm text-muted-foreground text-center py-8">אין שיחות</p>
+              <p className="text-sm text-muted-foreground text-center py-8">
+                {channelFilter === 'all' ? 'אין שיחות' : 'אין הודעות בערוץ זה'}
+              </p>
             )}
           </ScrollArea>
         </div>
