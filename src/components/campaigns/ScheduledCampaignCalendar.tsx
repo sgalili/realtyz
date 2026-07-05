@@ -82,7 +82,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
   const [scheduleDay, setScheduleDay] = useState<Date | null>(null);
   const [winStart, setWinStart] = useState('09:00');
   const [winEnd, setWinEnd] = useState('21:00');
-  const [winCount, setWinCount] = useState(3);
+  const [winCount, setWinCount] = useState(1);
   const [listings, setListings] = useState<ListingLite[]>([]);
   const [listingsLoading, setListingsLoading] = useState(false);
   const [selectedListingIds, setSelectedListingIds] = useState<string[]>([]);
