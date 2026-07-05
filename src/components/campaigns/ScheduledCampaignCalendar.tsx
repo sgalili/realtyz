@@ -96,6 +96,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
   const [recurrenceOpen, setRecurrenceOpen] = useState(false);
   const [brandingPost, setBrandingPost] = useState(false);
   const [propertiesOpen, setPropertiesOpen] = useState(false);
+  const [listingsPopoverOpen, setListingsPopoverOpen] = useState(false);
 
   useEffect(() => {
     if (!scheduleDay) return;
