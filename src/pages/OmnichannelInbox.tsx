@@ -601,10 +601,10 @@ const OmnichannelInbox = () => {
               aria-label={c.label}
               title={c.label}
               aria-pressed={active}
-              className={`h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-full transition-all ${active ? 'ring-2 ring-primary ring-offset-2 ring-offset-background' : 'opacity-60 hover:opacity-100'}`}
+              className={`h-9 shrink-0 inline-flex items-center justify-center transition-opacity ${c.key === 'all' ? 'px-2' : 'w-9'} ${active ? 'opacity-100' : 'opacity-50 hover:opacity-100'}`}
             >
               {c.key === 'all'
-                ? <InboxIcon className="h-5 w-5 text-foreground" />
+                ? <span className={`text-sm font-semibold ${active ? 'text-primary' : 'text-foreground'}`}>הכל</span>
                 : <ChannelIcon channel={c.key} size="md" />}
             </button>
           );
