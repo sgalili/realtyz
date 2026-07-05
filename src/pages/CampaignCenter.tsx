@@ -510,7 +510,8 @@ const InlineComposer = ({
       .replace(/\n{3,}/g, '\n\n')
       .trim();
   const cleanBody = (s: string) =>
-    stripWaCta(s).replace(/^[\s\u200f\u200e]+/g, '').slice(0, MAX_CHARS);
+    stripWaCta(s).replace(/^[\s\u200f\u200e]+/g, '');
+
 
   // Rotating CTA copy pool — never reuse the same opener twice in a row so
   // Facebook's anti-spam heuristics don't flag repetitive posting patterns.
@@ -759,7 +760,8 @@ const InlineComposer = ({
         const { data: { user } } = await supabase.auth.getUser();
         if (!user) return;
         const payload = {
-          generated_text: body.slice(0, MAX_CHARS),
+          generated_text: body,
+
           // Persist only durable https URLs — local blob: previews die on reload
           // and would render as empty file chips after restoring from history.
           media_urls: attachments
@@ -892,7 +894,7 @@ const InlineComposer = ({
         } else {
           const { data: inserted } = await supabase.from('ai_content_logs').insert({
             topic: (body.trim().slice(0, 80) || 'טיוטה').slice(0, 500),
-            generated_text: body.slice(0, MAX_CHARS),
+            generated_text: body,
             platform: channel.id,
             created_by: user.id,
             media_urls: durableMedia,
@@ -1115,20 +1117,22 @@ const InlineComposer = ({
           ref={textareaRef}
           rows={6}
           value={body}
-          maxLength={MAX_CHARS}
           onChange={(e) => {
             // While the WA CTA opt-in is active, keep the composed CTA in the
             // textarea (don't strip it via cleanBody). Once unchecked, strip.
-            const raw = e.target.value.replace(/^[\s\u200f\u200e]+/g, '').slice(0, MAX_CHARS);
+            const raw = e.target.value.replace(/^[\s\u200f\u200e]+/g, '');
             setBody(attachWaLink ? raw : cleanBody(raw));
             setBodyManuallyEdited(true);
           }}
           placeholder="תוכן ההודעה — כתוב כאן או חולל באמצעות AI"
           className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-10 pb-7"
         />
-        <span className="pointer-events-none absolute left-2 bottom-2 text-[11px] tabular-nums text-muted-foreground/80" dir="ltr">
-          {count}/{MAX_CHARS}
-        </span>
+        {count > 0 && (
+          <span className="pointer-events-none absolute left-2 bottom-2 text-[11px] tabular-nums text-muted-foreground/80" dir="ltr">
+            {count}
+          </span>
+        )}
+
       </div>
 
       {/* Opt-in WhatsApp CTA — checking this immediately inlines the branded
@@ -1180,7 +1184,7 @@ const InlineComposer = ({
             const ctaLine = `${opener}\n${linkPart}`;
             setBody((prev) => {
               const clean = stripWaCta(prev);
-              const merged = `${clean}\n\n${ctaLine}`.slice(0, MAX_CHARS);
+              const merged = `${clean}\n\n${ctaLine}`;
               // Auto-scroll the textarea to reveal the appended CTA.
               requestAnimationFrame(() => {
                 const el = textareaRef.current;
