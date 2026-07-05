@@ -604,21 +604,18 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
             </div>
             {!brandingPost && (
               <div>
-                <label className="text-xs font-semibold text-muted-foreground mb-1 block text-right">
-                  נכסים לשיוך {selectedListingIds.length > 0 && <span className="text-foreground">({selectedListingIds.length})</span>}
-                </label>
                 <Popover open={listingsPopoverOpen} onOpenChange={setListingsPopoverOpen}>
                   <PopoverTrigger asChild>
-                    <Input
-                      placeholder="חיפוש לפי עיר, שכונה, רחוב או מחיר…"
-                      value={listingSearch}
-                      onChange={(e) => {
-                        setListingSearch(e.target.value);
-                        if (!listingsPopoverOpen) setListingsPopoverOpen(true);
-                      }}
-                      onFocus={() => setListingsPopoverOpen(true)}
-                      className="h-9 text-right"
-                    />
+                    <button
+                      type="button"
+                      onClick={() => setListingsPopoverOpen((v) => !v)}
+                      className="w-full h-9 flex items-center justify-between rounded-md border border-input bg-background px-3 text-sm text-right hover:bg-muted/40"
+                    >
+                      <ChevronLeft className={cn('h-4 w-4 text-muted-foreground transition-transform', listingsPopoverOpen && '-rotate-90')} />
+                      <span className={cn('truncate', selectedListingIds.length === 0 && 'text-muted-foreground')}>
+                        נכסים לשיוך{selectedListingIds.length > 0 ? ` (${selectedListingIds.length})` : ''}
+                      </span>
+                    </button>
                   </PopoverTrigger>
                   <PopoverContent
                     align="start"
@@ -627,6 +624,15 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                     dir="rtl"
                     onOpenAutoFocus={(e) => e.preventDefault()}
                   >
+                    <div className="sticky top-0 z-10 p-2 border-b border-border bg-card">
+                      <Input
+                        autoFocus
+                        placeholder="חיפוש לפי עיר, שכונה, רחוב או מחיר…"
+                        value={listingSearch}
+                        onChange={(e) => setListingSearch(e.target.value)}
+                        className="h-8 text-right"
+                      />
+                    </div>
                     <div className="max-h-56 overflow-y-auto p-1">
                       {listingsLoading ? (
                         <div className="px-2 py-3 text-xs text-muted-foreground text-center">טוען נכסים…</div>
@@ -661,6 +667,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
                     </div>
                   </PopoverContent>
                 </Popover>
+
                 {selectedListingIds.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-2">
                     {selectedListingIds.map((id) => {
