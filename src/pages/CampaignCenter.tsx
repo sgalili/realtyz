@@ -1115,20 +1115,22 @@ const InlineComposer = ({
           ref={textareaRef}
           rows={6}
           value={body}
-          maxLength={MAX_CHARS}
           onChange={(e) => {
             // While the WA CTA opt-in is active, keep the composed CTA in the
             // textarea (don't strip it via cleanBody). Once unchecked, strip.
-            const raw = e.target.value.replace(/^[\s\u200f\u200e]+/g, '').slice(0, MAX_CHARS);
+            const raw = e.target.value.replace(/^[\s\u200f\u200e]+/g, '');
             setBody(attachWaLink ? raw : cleanBody(raw));
             setBodyManuallyEdited(true);
           }}
           placeholder="תוכן ההודעה — כתוב כאן או חולל באמצעות AI"
           className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-10 pb-7"
         />
-        <span className="pointer-events-none absolute left-2 bottom-2 text-[11px] tabular-nums text-muted-foreground/80" dir="ltr">
-          {count}/{MAX_CHARS}
-        </span>
+        {count > 0 && (
+          <span className="pointer-events-none absolute left-2 bottom-2 text-[11px] tabular-nums text-muted-foreground/80" dir="ltr">
+            {count}
+          </span>
+        )}
+
       </div>
 
       {/* Opt-in WhatsApp CTA — checking this immediately inlines the branded
