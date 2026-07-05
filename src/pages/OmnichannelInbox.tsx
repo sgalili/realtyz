@@ -724,9 +724,24 @@ const OmnichannelInbox = () => {
                   <Button variant="ghost" size="icon" className="h-9 w-9 text-whatsapp-header-foreground hover:bg-whatsapp-header-foreground/10 lg:hidden" onClick={() => setSelectedVoterId(null)}>
                     <span className="text-xl leading-none scale-x-[-1]">›</span>
                   </Button>
-                  <VoterAvatar fullName={selectedVoter?.full_name} profilePictureUrl={(selectedVoter as any)?.profile_picture_url} className="h-9 w-9" textClassName="text-xs" />
-                  <div>
-                    <p className="truncate text-sm font-semibold">{selectedVoter?.full_name || formatPhoneDisplay(selectedVoter?.phone_number || '')}</p>
+                  <button
+                    type="button"
+                    onClick={() => selectedVoterId && navigate(`/lead-crm/${selectedVoterId}`)}
+                    className="shrink-0 rounded-full focus:outline-none focus:ring-2 focus:ring-white/50"
+                    title="פתיחת כרטיס מתעניין"
+                    aria-label="פתיחת כרטיס מתעניין"
+                  >
+                    <VoterAvatar fullName={selectedVoter?.full_name} profilePictureUrl={(selectedVoter as any)?.profile_picture_url} className="h-9 w-9" textClassName="text-xs" />
+                  </button>
+                  <div className="min-w-0">
+                    <button
+                      type="button"
+                      onClick={() => selectedVoterId && navigate(`/lead-crm/${selectedVoterId}`)}
+                      className="block truncate text-sm font-semibold hover:underline text-right"
+                      title="פתיחת כרטיס מתעניין"
+                    >
+                      {selectedVoter?.full_name || formatPhoneDisplay(selectedVoter?.phone_number || '')}
+                    </button>
                     <p className="text-[10px] text-whatsapp-header-foreground/75">{selectedVoter?.city || 'WhatsApp Business'}</p>
                   </div>
                 </div>
