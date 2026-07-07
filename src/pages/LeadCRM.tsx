@@ -1774,7 +1774,17 @@ const LeadCRM = () => {
       </Dialog>
 
       {/* Full Lead Profile Sheet */}
-      <Sheet open={!!selectedVoterId} onOpenChange={(open) => !open && setSelectedVoterId(null)}>
+      <Sheet open={!!selectedVoterId} onOpenChange={(open) => {
+        if (!open) {
+          setSelectedVoterId(null);
+          if (routeLeadId) {
+            // Came in via /lead-crm/:id deep-link — return to the previous screen (inbox, dashboard, etc.)
+            if (window.history.length > 1) navigate(-1);
+            else navigate('/lead-crm');
+          }
+        }
+      }}>
+
         <SheetContent className="w-full sm:max-w-xl overflow-y-auto" side="right">
           {selectedVoter && (() => {
             // Health Score: based on user replies in chat_history
