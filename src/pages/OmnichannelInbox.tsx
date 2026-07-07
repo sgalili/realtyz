@@ -402,8 +402,32 @@ const OmnichannelInbox = () => {
     if (!v?.id) return;
     if (v?.profile_picture_url) return;
     if (!v?.phone_number) return;
-    supabase.functions.invoke('fetch-wa-avatars', { body: { lead_ids: [v.id] } }).catch(() => {});
-  }, [selectedVoter?.id]);
+    supabase.functions
+      .invoke('fetch-wa-avatars', { body: { lead_ids: [v.id] } })
+      .then(() => {
+        queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
+      })
+      .catch(() => {});
+  }, [selectedVoter?.id, queryClient]);
+
+  // Batch-hydrate avatars for every visible lead in the sidebar list that's
+  // still missing one. Runs once per list change; the edge function itself
+  // skips rows that already have a URL so this is safe & idempotent.
+  useEffect(() => {
+    if (!voters?.length) return;
+    const missing = voters
+      .filter((v: any) => !v.profile_picture_url && v.phone_number)
+      .map((v: any) => v.id);
+    if (!missing.length) return;
+    const flagKey = `wa-avatar-batch:${missing.slice(0, 20).join(',')}`;
+    if (sessionStorage.getItem(flagKey)) return;
+    sessionStorage.setItem(flagKey, '1');
+    supabase.functions
+      .invoke('fetch-wa-avatars', { body: { lead_ids: missing.slice(0, 50) } })
+      .then(() => queryClient.invalidateQueries({ queryKey: ['inbox-leads'] }))
+      .catch(() => {});
+  }, [voters, queryClient]);
+
 
   // ---- Channel availability ----------------------------------------------
   // A channel is enabled in the send-channel selector only when BOTH:
