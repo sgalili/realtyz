@@ -224,17 +224,19 @@ function InboxAutopilotToggle() {
       aria-label="AI Autopilot"
       className={cn(
         'relative inline-flex h-7 w-14 shrink-0 items-center rounded-full border border-white/30 transition-colors',
-        on ? 'bg-emerald-500' : 'bg-white/15'
       )}
+      style={{ backgroundColor: on ? '#10b981' : 'rgba(255,255,255,0.15)' }}
     >
       <span
         className={cn(
           'inline-flex h-6 w-6 items-center justify-center rounded-full shadow transition-transform',
-          on ? 'translate-x-[30px] bg-emerald-500 text-white' : 'translate-x-[2px] bg-white text-slate-500'
+          on ? 'translate-x-[30px]' : 'translate-x-[2px]'
         )}
+        style={{ backgroundColor: on ? '#059669' : '#ffffff', color: on ? '#ffffff' : '#64748b' }}
       >
         <Bot className="h-4 w-4" strokeWidth={2.5} />
       </span>
+
     </button>
   );
 }
