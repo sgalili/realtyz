@@ -208,6 +208,39 @@ export default function PropertyDetail() {
   const amenities = data?.amenities;
   const documents = data?.documents ?? [];
 
+  // ─── Homely image hydration & cache ────────────────────────────────────
+  // If this listing came from Homely/Webtiv and we haven't cached photos in
+  // our DB yet (media_photos empty), fire ONE background call to
+  // `homely-fetch-property` which pulls the full property record + media
+  // URLs and writes them to listings.media_photos. Subsequent visits read
+  // straight from Postgres — no more Homely API traffic. A sessionStorage
+  // flag per-listing prevents accidental re-invocations from React
+  // StrictMode remounts.
+  useEffect(() => {
+    if (!id || !data) return;
+    const row: any = data.row;
+    const src = String(row?.source ?? '').toLowerCase();
+    if (src !== 'homely' && src !== 'webtiv') return;
+    const cached = Array.isArray(row?.media_photos) ? row.media_photos : [];
+    if (cached.length > 0) return;
+    const flagKey = `homely-hydrate:${id}`;
+    if (sessionStorage.getItem(flagKey)) return;
+    sessionStorage.setItem(flagKey, '1');
+    (async () => {
+      try {
+        const { error } = await supabase.functions.invoke('homely-fetch-property', {
+          body: { listing_id: id },
+        });
+        if (!error) {
+          qc.invalidateQueries({ queryKey: ['property-detail', id] });
+        }
+      } catch {
+        /* silent — user will just see the placeholder for now */
+      }
+    })();
+  }, [id, data, qc]);
+
+
   // Initialize edit form when entering edit mode
   useEffect(() => {
     if (editMode && property && !form) {
