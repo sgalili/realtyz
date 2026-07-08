@@ -29,8 +29,21 @@ async function ensureBucket() {
   }
 }
 
-async function firecrawlScrape(url: string): Promise<{ ogImage: string | null; images: string[] }> {
-  if (!FIRECRAWL_API_KEY) return { ogImage: null, images: [] };
+function sanitizeUrl(url: string): string {
+  // Strip tracking / query params and fragments — Firecrawl (and Ayrshare)
+  // occasionally reject share URLs that carry oversized query strings (code 438).
+  try {
+    const u = new URL(url);
+    u.search = "";
+    u.hash = "";
+    return u.toString();
+  } catch {
+    return url.split("?")[0].split("#")[0];
+  }
+}
+
+async function firecrawlScrapeOnce(url: string): Promise<{ ok: boolean; status: number; errCode: number | null; errMsg: string; ogImage: string | null; images: string[] }> {
+  if (!FIRECRAWL_API_KEY) return { ok: false, status: 0, errCode: null, errMsg: "no_api_key", ogImage: null, images: [] };
   const resp = await fetch("https://api.firecrawl.dev/v1/scrape", {
     method: "POST",
     headers: {
@@ -45,16 +58,24 @@ async function firecrawlScrape(url: string): Promise<{ ogImage: string | null; i
       timeout: 25000,
     }),
   });
+  const rawText = await resp.text().catch(() => "");
   if (!resp.ok) {
-    console.warn("[resolve-post-og-image] firecrawl HTTP", resp.status, await resp.text().catch(() => ""));
-    return { ogImage: null, images: [] };
+    // Try to extract provider error code (Ayrshare-style 438/331 or Firecrawl code fields)
+    let errCode: number | null = null;
+    let errMsg = rawText.slice(0, 500);
+    try {
+      const j = JSON.parse(rawText);
+      errCode = Number(j?.code ?? j?.error_code ?? j?.status) || null;
+      errMsg = j?.message || j?.error || errMsg;
+    } catch { /* not JSON */ }
+    console.warn(`[resolve-post-og-image] firecrawl failed HTTP=${resp.status} code=${errCode ?? "n/a"} msg=${errMsg}`);
+    return { ok: false, status: resp.status, errCode, errMsg, ogImage: null, images: [] };
   }
-  const json: any = await resp.json().catch(() => ({}));
+  const json: any = JSON.parse(rawText || "{}");
   const md = json?.data?.metadata ?? {};
   const html: string = json?.data?.html ?? "";
   const ogImage: string | null = md.ogImage || md["og:image"] || md.image || null;
   const images: string[] = [];
-  // Fallback: pull first few <img src=...> from the HTML for carousel-style posts.
   if (html) {
     const re = /<img[^>]+src=["']([^"']+)["']/gi;
     let m: RegExpExecArray | null;
@@ -65,8 +86,34 @@ async function firecrawlScrape(url: string): Promise<{ ogImage: string | null; i
       }
     }
   }
-  return { ogImage, images };
+  return { ok: true, status: 200, errCode: null, errMsg: "", ogImage, images };
 }
+
+async function firecrawlScrape(url: string): Promise<{ ogImage: string | null; images: string[] }> {
+  let attempt = await firecrawlScrapeOnce(url);
+  if (attempt.ok) return { ogImage: attempt.ogImage, images: attempt.images };
+
+  // 438 = rejected input → retry with a sanitized (stripped) URL.
+  if (attempt.errCode === 438) {
+    const clean = sanitizeUrl(url);
+    if (clean !== url) {
+      console.log(`[resolve-post-og-image] code=438 retrying with sanitized url=${clean}`);
+      attempt = await firecrawlScrapeOnce(clean);
+      if (attempt.ok) return { ogImage: attempt.ogImage, images: attempt.images };
+    }
+  }
+
+  // 331 = provider-side processing failure → single backoff retry.
+  if (attempt.errCode === 331 || attempt.status === 502 || attempt.status === 503 || attempt.status === 504) {
+    console.log(`[resolve-post-og-image] code=${attempt.errCode ?? attempt.status} retrying after 1200ms`);
+    await new Promise((r) => setTimeout(r, 1200));
+    attempt = await firecrawlScrapeOnce(url);
+    if (attempt.ok) return { ogImage: attempt.ogImage, images: attempt.images };
+  }
+
+  return { ogImage: null, images: [] };
+}
+
 
 async function mirrorToStorage(imageUrl: string, key: string): Promise<string | null> {
   try {
@@ -95,6 +142,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const campaignLogId: string | null = body?.campaign_log_id ?? null;
     const postUrl: string | null = body?.post_url ?? null;
+    const force: boolean = body?.force === true;
     if (!postUrl || typeof postUrl !== "string") {
       return new Response(JSON.stringify({ error: "post_url required" }), {
         status: 400,
@@ -105,8 +153,10 @@ Deno.serve(async (req) => {
     await ensureBucket();
 
     // Fast path: if we already cached a mirrored URL for this post_url in
-    // campaign_logs, return it without hitting Firecrawl again.
-    if (campaignLogId) {
+    // campaign_logs, return it without hitting Firecrawl again — unless
+    // `force: true` was passed to bypass the cache.
+    if (campaignLogId && !force) {
+
       const { data: existing } = await admin
         .from("campaign_logs")
         .select("provider_response")
