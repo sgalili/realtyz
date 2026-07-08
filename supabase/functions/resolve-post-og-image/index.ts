@@ -8,7 +8,8 @@
 // campaign card has no media_urls yet. A per-URL sentinel in localStorage
 // prevents re-invocation for the same post — no spamming.
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "npm:@supabase/supabase-js@2/cors";
+import { corsHeaders } from "../_shared/cors.ts";
+
 
 const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY") ?? "";
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
