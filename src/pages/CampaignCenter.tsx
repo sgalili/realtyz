@@ -2488,7 +2488,20 @@ const PublishedFeed = () => {
         FEED_LOAD_PROMISE_CACHE.set(wsKey, pending);
       }
       try {
-        await pending;
+        const result = await pending;
+        const ownerForMetrics = result?.ownerScope ?? workspaceOwnerId ?? userId;
+        if (ownerForMetrics && !cancelled) {
+          try {
+            const metricsKey = `realtyz.fb_live_metrics.${FIRST_VISIT_IMPORT_KEY_VERSION}.${ownerForMetrics}`;
+            const last = Number(sessionStorage.getItem(metricsKey) || 0);
+            if (!Number.isFinite(last) || Date.now() - last > CAMPAIGN_CACHE_MS) {
+              sessionStorage.setItem(metricsKey, String(Date.now()));
+              void refreshMetrics(ownerForMetrics);
+            }
+          } catch {
+            void refreshMetrics(ownerForMetrics);
+          }
+        }
       } finally {
         if (!cancelled) setColdLoading(false);
       }
