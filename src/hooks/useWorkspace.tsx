@@ -75,7 +75,9 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
       const profileActive = (profile as any)?.active_workspace_owner_id as string | null | undefined;
       const validProfile = profileActive && rows.some((r) => r.workspace_owner_id === profileActive) ? profileActive : null;
       const fallback = rows.find((r) => r.is_self)?.workspace_owner_id ?? rows[0]?.workspace_owner_id ?? user.id;
-      const nextActive = validStored ?? validProfile ?? fallback;
+      // Server/profile selection wins over stale browser storage so tenants
+      // always land in the workspace they were authenticated/assigned into.
+      const nextActive = validProfile ?? validStored ?? fallback;
       setActiveWorkspaceId(nextActive);
       if (nextActive && (validStored || validProfile || rows.length <= 1)) {
         window.localStorage.setItem(workspaceStorageKey(user.id), nextActive);
