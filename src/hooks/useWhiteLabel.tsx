@@ -1,5 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, ReactNode, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { useWorkspace } from '@/hooks/useWorkspace';
 
 export interface WhiteLabelSettings {
   id?: string;
@@ -79,21 +80,33 @@ function applyTheme(s: WhiteLabelSettings | null) {
 export const WhiteLabelProvider = ({ children }: { children: ReactNode }) => {
   const [settings, setSettings] = useState<WhiteLabelSettings | null>(null);
   const [loading, setLoading] = useState(true);
+  const { activeWorkspaceId, activeWorkspace } = useWorkspace();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      // Read any active branding row - team members share the broker's brand.
-      // Prefer current user's row; fall back to most recent row in workspace.
+      // Workspace-first branding: tenants/managers should see the owner's
+      // shared office details, not their personal empty branding row.
       const { data: { user } } = await supabase.auth.getUser();
       let row: any = null;
-      if (user) {
-        const { data: own } = await supabase
+      const ownerId = activeWorkspaceId ?? user?.id ?? null;
+      if (ownerId) {
+        const { data: workspaceBrand } = await supabase
           .from('white_label_settings')
           .select('*')
-          .eq('user_id', user.id)
+          .eq('user_id', ownerId)
           .maybeSingle();
-        row = own;
+        row = workspaceBrand;
+      }
+      if (!row && activeWorkspace) {
+        row = {
+          user_id: activeWorkspace.workspace_owner_id,
+          agency_name: activeWorkspace.workspace_name,
+          logo_url: activeWorkspace.workspace_logo_url,
+          primary_color: null,
+          primary_foreground_color: null,
+          hide_kalpiz_branding: false,
+        };
       }
       if (!row) {
         const { data: any } = await supabase
@@ -112,7 +125,7 @@ export const WhiteLabelProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeWorkspaceId, activeWorkspace]);
 
   useEffect(() => {
     load();
