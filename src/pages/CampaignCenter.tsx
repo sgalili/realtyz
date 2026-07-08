@@ -2744,19 +2744,29 @@ const PublishedFeed = () => {
     );
     if (targets.length === 0) return;
 
+    // Force re-scrape for a specific post URL that was previously stuck without media.
+    const FORCE_RESCRAPE_URLS = new Set<string>([
+      'https://www.facebook.com/share/p/18vJVtCQEQ/',
+    ]);
+
     let cancelled = false;
     (async () => {
       for (const r of targets) {
         if (cancelled) return;
         const postUrl = (r as any).external_url as string;
         const sentinel = `realtyz_og_image_${btoa(unescape(encodeURIComponent(postUrl))).slice(0, 40)}`;
+        const forced = FORCE_RESCRAPE_URLS.has(postUrl);
         try {
-          if (localStorage.getItem(sentinel)) continue;
+          if (forced) {
+            localStorage.removeItem(sentinel);
+          } else if (localStorage.getItem(sentinel)) {
+            continue;
+          }
           localStorage.setItem(sentinel, String(Date.now()));
         } catch { /* quota */ }
         try {
           const { data } = await supabase.functions.invoke('resolve-post-og-image', {
-            body: { campaign_log_id: r.id, post_url: postUrl },
+            body: { campaign_log_id: r.id, post_url: postUrl, force: forced },
           });
           const media = (data as any)?.media_urls;
           if (Array.isArray(media) && media.length > 0) {
@@ -2775,6 +2785,7 @@ const PublishedFeed = () => {
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [rows?.length]);
+
 
 
 
