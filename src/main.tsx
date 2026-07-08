@@ -2,9 +2,11 @@ import { createRoot } from "react-dom/client";
 import "./index.css";
 import { enableGlobalSilentMode } from "./lib/silentMode";
 import { installDemoToastFilter } from "./lib/demoToastFilter";
+import { installRealtimeAuthSync } from "./lib/realtimeAuth";
 
 enableGlobalSilentMode();
 installDemoToastFilter();
+installRealtimeAuthSync();
 
 // Stale-chunk recovery: after a redeploy, the cached index.html may reference
 // hashed JS chunks that no longer exist on the CDN. Force one reload so the
