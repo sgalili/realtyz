@@ -2693,6 +2693,52 @@ const PublishedFeed = () => {
   };
 
 
+  // Backfill missing post images (og:image) via Firecrawl once per post_url.
+  // Persists into campaign_logs.provider_response.media_urls so subsequent
+  // page loads render instantly from the DB — never re-scraping.
+  useEffect(() => {
+    if (!Array.isArray(rows) || rows.length === 0) return;
+    const targets = rows.filter((r) =>
+      (!Array.isArray(r.media_urls) || r.media_urls.length === 0) &&
+      typeof (r as any).external_url === 'string' &&
+      (r as any).external_url,
+    );
+    if (targets.length === 0) return;
+
+    let cancelled = false;
+    (async () => {
+      for (const r of targets) {
+        if (cancelled) return;
+        const postUrl = (r as any).external_url as string;
+        const sentinel = `realtyz_og_image_${btoa(unescape(encodeURIComponent(postUrl))).slice(0, 40)}`;
+        try {
+          if (localStorage.getItem(sentinel)) continue;
+          localStorage.setItem(sentinel, String(Date.now()));
+        } catch { /* quota */ }
+        try {
+          const { data } = await supabase.functions.invoke('resolve-post-og-image', {
+            body: { campaign_log_id: r.id, post_url: postUrl },
+          });
+          const media = (data as any)?.media_urls;
+          if (Array.isArray(media) && media.length > 0) {
+            setRows((prev) => prev?.map((row) => row.id === r.id
+              ? { ...row, media_urls: media }
+              : row,
+            ) ?? prev);
+          }
+        } catch (err) {
+          console.warn('[og-image] resolve failed', err);
+        }
+        // Gentle spacing between scrapes to keep Firecrawl usage low.
+        await new Promise((res) => setTimeout(res, 800));
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rows?.length]);
+
+
+
 
   const filteredRows = useMemo(() => {
     const base = rows ?? [];
