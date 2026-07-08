@@ -695,6 +695,15 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
 
 
   useEffect(() => {
+    let cancelled = false;
+    // Ensure the Realtime socket has a fresh JWT before we subscribe —
+    // otherwise RLS drops every postgres_changes payload silently.
+    void supabase.auth.getSession().then(({ data }) => {
+      const token = data.session?.access_token;
+      if (token && !cancelled) {
+        try { (supabase as any).realtime.setAuth(token); } catch { /* noop */ }
+      }
+    });
     const channel = supabase
       .channel(`engagement_events:${commentOwnerId}:${campaign.id}`)
       .on(
@@ -724,7 +733,7 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { cancelled = true; supabase.removeChannel(channel); };
   }, [commentOwnerId, campaign.id, postIdsKey, campaign.channel]);
 
   const comments = useMemo<CommentRow[]>(() => {
