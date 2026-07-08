@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { ArrowLeftRight, Building2, Camera, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,6 +31,11 @@ export function ConnectedWorkspaceCard() {
   const [name, setName] = useState(activeWorkspace?.workspace_name ?? '');
   const [accountType, setAccountType] = useState(activeWorkspace?.account_type ?? 'real_estate');
   const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    setName(activeWorkspace?.workspace_name ?? '');
+    setAccountType(activeWorkspace?.account_type ?? 'real_estate');
+  }, [activeWorkspace?.workspace_name, activeWorkspace?.account_type]);
 
   if (!activeWorkspace) return null;
 

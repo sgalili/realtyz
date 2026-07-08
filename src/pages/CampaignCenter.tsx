@@ -1977,7 +1977,7 @@ const FEED_ROWS_CACHE = new Map<string, CampaignRow[]>();
 const FEED_LOAD_PROMISE_CACHE = new Map<string, Promise<{ rows: CampaignRow[]; ownerScope: string | null; importedCount: number; importComplete: boolean }>>();
 const CAMPAIGNS_COUNT_SESSION_KEY = 'realtyz.campaigns.total_count';
 const EXPECTED_NATIVE_FACEBOOK_POSTS = 150;
-const FIRST_VISIT_IMPORT_KEY_VERSION = 'v5_persistent_live_import_no_partial_cache';
+const FIRST_VISIT_IMPORT_KEY_VERSION = 'v6_recent_media_comment_refresh';
 const CAMPAIGN_CACHE_MS = 5 * 60_000;
 
 const PublishedFeed = () => {
@@ -2313,7 +2313,18 @@ const PublishedFeed = () => {
     const importKey = `realtyz.fb_native_import.${FIRST_VISIT_IMPORT_KEY_VERSION}.${ownerScope}`;
     let shouldImport = opts.forceFb === true;
     if (!opts.skipFbImport) {
+      const recentRowsNeedNativeRefresh = merged.slice(0, 20).some((r) =>
+        String(r.channel || '').toLowerCase() === 'facebook' &&
+        (!Array.isArray(r.media_urls) || r.media_urls.length === 0 || !r.external_url),
+      );
       if (!shouldImport && merged.length < EXPECTED_NATIVE_FACEBOOK_POSTS) {
+        try {
+          const raw = sessionStorage.getItem(importKey);
+          const importedAt = raw ? Number(raw) : 0;
+          shouldImport = !Number.isFinite(importedAt) || Date.now() - importedAt > CAMPAIGN_CACHE_MS;
+        } catch { shouldImport = true; }
+      }
+      if (!shouldImport && recentRowsNeedNativeRefresh) {
         try {
           const raw = sessionStorage.getItem(importKey);
           const importedAt = raw ? Number(raw) : 0;
@@ -2325,7 +2336,14 @@ const PublishedFeed = () => {
         void (async () => {
           try {
             const { data: importData, error: importError } = await supabase.functions.invoke('fb-recent-posts', {
-              body: { lastRecords: 500, pageSize: 500, user_id: ownerScope, persist: true, force_full_scan: false },
+              body: {
+                lastRecords: 500,
+                pageSize: 50,
+                user_id: ownerScope,
+                persist: true,
+                sync_comments: true,
+                force_provider_probe: true,
+              },
             });
             const importedCount = Number((importData as any)?.count) || 0;
             if (importError) {
@@ -2470,7 +2488,20 @@ const PublishedFeed = () => {
         FEED_LOAD_PROMISE_CACHE.set(wsKey, pending);
       }
       try {
-        await pending;
+        const result = await pending;
+        const ownerForMetrics = result?.ownerScope ?? workspaceOwnerId ?? userId;
+        if (ownerForMetrics && !cancelled) {
+          try {
+            const metricsKey = `realtyz.fb_live_metrics.${FIRST_VISIT_IMPORT_KEY_VERSION}.${ownerForMetrics}`;
+            const last = Number(sessionStorage.getItem(metricsKey) || 0);
+            if (!Number.isFinite(last) || Date.now() - last > CAMPAIGN_CACHE_MS) {
+              sessionStorage.setItem(metricsKey, String(Date.now()));
+              void refreshMetrics(ownerForMetrics);
+            }
+          } catch {
+            void refreshMetrics(ownerForMetrics);
+          }
+        }
       } finally {
         if (!cancelled) setColdLoading(false);
       }
@@ -2490,6 +2521,12 @@ const PublishedFeed = () => {
   useEffect(() => {
     const scope = workspaceOwnerId ?? userId;
     if (!scope || campaignUserIds.length === 0) return;
+    void supabase.auth.getSession().then(({ data }) => {
+      const token = data.session?.access_token;
+      if (token) {
+        try { (supabase as any).realtime.setAuth(token); } catch { /* noop */ }
+      }
+    });
     const channel = supabase
       .channel(`campaign_logs:${scope}`)
       .on(
@@ -2511,6 +2548,8 @@ const PublishedFeed = () => {
             return {
               ...r,
               provider_message_id: r.provider_message_id || updated.provider_message_id,
+              media_urls: normalizePostMediaUrls(updated.provider_response?.media_urls ?? updated.provider_response?.media ?? r.media_urls ?? []),
+              external_url: updated.provider_response?.external_url || r.external_url || null,
               like_count: keepMax(updated.like_count, r.like_count),
               comment_count: keepMax(updated.comment_count, r.comment_count),
               share_count: keepMax(updated.share_count, r.share_count),
@@ -2533,7 +2572,7 @@ const PublishedFeed = () => {
               const normalized = {
                 ...inserted,
                 media_urls: normalizePostMediaUrls(provider.media_urls ?? provider.media ?? []),
-                external_url: null,
+                external_url: provider.external_url || (Array.isArray(provider.postIds) ? provider.postIds[0]?.postUrl : null) || null,
               } as CampaignRow;
               const next = [normalized, ...prev];
               FEED_ROWS_CACHE.set(workspaceOwnerId ?? inserted.user_id, next);

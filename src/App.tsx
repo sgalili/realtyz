@@ -155,11 +155,11 @@ const App = () => (
         {/* Toasts disabled app-wide per user request */}
         <BrowserRouter>
           <AuthProvider>
+            <WorkspaceProvider>
             <WhiteLabelProvider>
             <DemoModeProvider>
             <ElectionTypeProvider>
             <MandateProvider>
-            <WorkspaceProvider>
             <WorkspaceSelectorModal />
             <Routes>
               <Route path="/auth" element={<AuthRoute />} />
@@ -230,11 +230,11 @@ const App = () => (
               <Route path="/contact" element={<Suspense fallback={<PageLoader />}><ContactForm /></Suspense>} />
               <Route path="*" element={<Suspense fallback={<PageLoader />}><NotFound /></Suspense>} />
             </Routes>
-            </WorkspaceProvider>
             </MandateProvider>
             </ElectionTypeProvider>
             </DemoModeProvider>
             </WhiteLabelProvider>
+            </WorkspaceProvider>
           </AuthProvider>
         </BrowserRouter>
       </TooltipProvider>
