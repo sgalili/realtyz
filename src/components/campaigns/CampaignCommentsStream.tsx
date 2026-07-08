@@ -733,7 +733,7 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
       )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
+    return () => { cancelled = true; supabase.removeChannel(channel); };
   }, [commentOwnerId, campaign.id, postIdsKey, campaign.channel]);
 
   const comments = useMemo<CommentRow[]>(() => {
