@@ -142,6 +142,7 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const campaignLogId: string | null = body?.campaign_log_id ?? null;
     const postUrl: string | null = body?.post_url ?? null;
+    const force: boolean = body?.force === true;
     if (!postUrl || typeof postUrl !== "string") {
       return new Response(JSON.stringify({ error: "post_url required" }), {
         status: 400,
@@ -152,8 +153,10 @@ Deno.serve(async (req) => {
     await ensureBucket();
 
     // Fast path: if we already cached a mirrored URL for this post_url in
-    // campaign_logs, return it without hitting Firecrawl again.
-    if (campaignLogId) {
+    // campaign_logs, return it without hitting Firecrawl again — unless
+    // `force: true` was passed to bypass the cache.
+    if (campaignLogId && !force) {
+
       const { data: existing } = await admin
         .from("campaign_logs")
         .select("provider_response")
