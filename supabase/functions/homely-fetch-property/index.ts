@@ -845,6 +845,38 @@ Deno.serve(async (req) => {
     }
 
     const mapped = mapProperty(detail, 0);
+
+    // Try richer per-property endpoints for full pic1..picN / file1..fileN.
+    // First non-empty media wins; summary row is the fallback.
+    const detailEndpoints = [
+      `${WEBTIV_BASE}/api/report/getNechesFullDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serialStr)}`,
+      `${WEBTIV_BASE}/api/report/getNechesData/${encodeURIComponent(hash)}/${encodeURIComponent(serialStr)}`,
+      `${WEBTIV_BASE}/api/report/getPropertyDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serialStr)}`,
+    ];
+    let fullDetail: any = null;
+    for (const ep of detailEndpoints) {
+      const dr = await getJson(ep);
+      if (dr.status >= 200 && dr.status < 300 && dr.data) {
+        const candidate = Array.isArray(dr.data)
+          ? (dr.data.find((x: any) => x && typeof x === "object") ?? dr.data[0])
+          : (dr.data?.result ?? dr.data?.data ?? dr.data);
+        if (candidate && typeof candidate === "object") {
+          const m = collectMedia(candidate);
+          if (m.photos.length || m.documents.length) { fullDetail = candidate; break; }
+          if (!fullDetail) fullDetail = candidate;
+        }
+      }
+    }
+    const richest = fullDetail ?? detail;
+    const media = collectMedia(richest);
+    const summaryPhoto = mapped.photo ? [mapped.photo] : [];
+    const rawPhotos = media.photos.length ? media.photos : summaryPhoto;
+    const rawDocs = media.documents;
+
+    // Mirror media once into homely-media bucket and store signed URLs
+    const cachedPhotos = await mirrorAll(admin, String(listing_id), rawPhotos, 40);
+    const cachedDocs = await mirrorAll(admin, String(listing_id), rawDocs, 20);
+
     const updated = {
       property_title: mapped.title || listing.property_title,
       description: mapped.description || listing.description,
@@ -855,10 +887,15 @@ Deno.serve(async (req) => {
       sqm: mapped.sqm || listing.sqm,
       floor: mapped.floor || listing.floor,
       external_id: String(serial),
+      media_photos: cachedPhotos,
+      media_documents: cachedDocs,
       source_metadata: {
         ...meta,
-        photos: mapped.photo ? [mapped.photo] : (meta.photos ?? []),
-        homely_raw: detail,
+        photos: cachedPhotos,
+        documents: cachedDocs,
+        photos_origin: rawPhotos,
+        documents_origin: rawDocs,
+        homely_raw: richest,
         synced_at: new Date().toISOString(),
         endpoint: url,
       },
@@ -867,7 +904,16 @@ Deno.serve(async (req) => {
     const { error: upErr } = await admin.from("listings").update(updated).eq("id", listing_id);
     if (upErr) return json({ error: `db_update_failed:${upErr.message}` }, 500);
 
-    return json({ ok: true, listing_id, serial, endpoint: url, photo_count: mapped.photo ? 1 : 0, updated });
+    return json({
+      ok: true,
+      listing_id,
+      serial,
+      endpoint: url,
+      photo_count: cachedPhotos.length,
+      document_count: cachedDocs.length,
+      raw_photo_count: rawPhotos.length,
+      raw_document_count: rawDocs.length,
+    });
   } catch (e) {
     const msg = (e as Error)?.message ?? String(e);
     console.error("[homely-fetch-property] fatal", msg);
