@@ -228,14 +228,18 @@ export default function PropertyDetail() {
     sessionStorage.setItem(flagKey, '1');
     (async () => {
       try {
-        const { error } = await supabase.functions.invoke('homely-fetch-property', {
+        const { data: fnData, error } = await supabase.functions.invoke('homely-fetch-property', {
           body: { listing_id: id },
         });
+        if (error || (fnData && (fnData as any).ok === false)) {
+          // allow another attempt on the next visit
+          sessionStorage.removeItem(flagKey);
+        }
         if (!error) {
           qc.invalidateQueries({ queryKey: ['property-detail', id] });
         }
       } catch {
-        /* silent — user will just see the placeholder for now */
+        sessionStorage.removeItem(flagKey);
       }
     })();
   }, [id, data, qc]);

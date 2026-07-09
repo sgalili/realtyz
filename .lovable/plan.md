@@ -1,29 +1,53 @@
-## Plan
+## Problem
 
-1. **Restore the shared Facebook workspace connection**
-   - Stop any automatic code path from clearing the workspace Facebook profile/page binding during transient provider failures.
-   - Use the existing profile discovery/sync paths to re-bind the workspace to the active Ayrshare/Facebook profile instead of leaving `workspace_social_profile` empty.
-   - Keep the shared connected Facebook page visible for all workspace users.
+Rachel's property (and any single Homely listing) never shows its photos/docs because the single-listing branch of `homely-fetch-property` is broken in three ways:
 
-2. **Import and persist all native Facebook posts**
-   - Refactor `fb-recent-posts` so it fetches the full available Facebook page history with robust pagination and higher scan limits.
-   - Remove the early stop that quits after finding only 50 posts.
-   - Deduplicate by the real native Facebook post id, not Ayrshare history ids, so the same post is not saved twice.
-   - Persist every valid native page post into `campaign_logs` with media URLs, native post ids, timestamps, engagement counters, and the raw provider payload.
-   - Add a safe one-time recovery import trigger from `/campaigns` that retries until the database has the expected full feed, instead of marking the browser session complete after a partial 12-post import.
+1. It only reads the **summary row** from `getInterestingAdminByAgent` (which carries at most a single thumbnail) and never calls Homely's per-property detail endpoint, so `pic1…picN` and file fields are never seen.
+2. Even the one thumbnail it does find is written into `source_metadata.photos` — but the UI (`src/pages/PropertyDetail.tsx`) reads from the top-level `listings.media_photos` / `media_documents` columns. So the image is fetched and then dropped on the floor.
+3. Nothing is persisted off Homely's CDN — every visit re-hits their API, which is exactly the spam/ban risk you called out. The existing `collectMedia()` helper is only used by the bulk sync path.
 
-3. **Fix the Add New Post publishing bug**
-   - Harden `ayrshare-post` so a publish is only considered successful when Ayrshare returns a real Facebook post id with a success/published status.
-   - After immediate publishing, perform a verification lookup against Ayrshare/Facebook history or post analytics/comments endpoint to confirm the post actually exists on the connected Facebook page.
-   - If verification fails, return a clear failure response and do not show a success toast.
-   - Persist `campaign_logs.status` as `sent` only after verified success; otherwise store `failed` with the provider error/details.
+## Fix
 
-4. **Fix frontend status display**
-   - Update `CampaignCenter.tsx` so the success toast and return to the sent-post list happen only when every selected Facebook target returns `verified: true` or is explicitly scheduled.
-   - Show the real failure message when Facebook/Ayrshare rejects or fails to verify the post.
-   - Refresh the campaign feed after verified publish/import so newly persisted posts appear in the global sent-post cards.
+### 1. `supabase/functions/homely-fetch-property/index.ts` — single-listing branch (lines ~706‑782)
 
-5. **Validate with backend data and function calls**
-   - Call the import function and confirm `campaign_logs` contains the recovered native Facebook posts beyond the current 12.
-   - Test a publish response path to ensure unverified posts fail visibly and verified posts save with a provider id.
-   - Recheck `/campaigns` loads from database-backed rows for later sessions.
+- After locating the matching `detail` in the broker's active list, call the property‑detail endpoints Homely's web app uses (same pattern the bulk sync already uses) to get the full record with `pic1…picN`, `file1…`, `doc1…` fields. Endpoints to try in order, first non-empty wins:
+  - `/api/report/getNechesFullDetail/{hash}/{serial}`
+  - `/api/report/getNechesData/{hash}/{serial}`
+  - `/api/hashData/getAllKeys/{hash}` (POST) with `{ id: serial }`
+  - Fallback: the summary `detail` itself.
+- Run `collectMedia(fullDetail)` → `{ photos[], documents[] }`.
+- **Persist each URL to Supabase Storage once** (new public bucket `homely-media`, path `listing/{listing_id}/{sha1(url)}.{ext}`). Skip download if the storage object already exists. Replace the array entries with the public storage URL. This guarantees instant loads and zero re-hits to Homely.
+- Write the resolved arrays into the top-level columns the UI reads:
+  ```
+  media_photos: <storage urls>
+  media_documents: <storage urls>
+  source_metadata: { ...meta, homely_raw: fullDetail, photos_origin: <originals>, synced_at }
+  ```
+- Guard the whole persist step behind a 10‑second timeout per file and a hard cap (e.g. 40 photos, 20 docs) so a bad listing can't stall the function.
+
+### 2. New migration: create the `homely-media` storage bucket
+
+- Public bucket, RLS: public SELECT, INSERT/UPDATE/DELETE restricted to `service_role` (only the edge function writes to it).
+
+### 3. `src/pages/PropertyDetail.tsx` — client hydration
+
+- Extend the existing `sessionStorage` sentinel (`homely-hydrate:{id}`) so it clears itself if the invoke fails, allowing a retry on the next visit but never spamming inside a session.
+- No longer relevant to re-fetch once `media_photos.length > 0` — that guard is already in place; keep it.
+- Also read `media_documents` into the docs panel (already partly wired via `data.documents`, confirm the merge includes the new column).
+
+### 4. Manual re-hydration path
+
+- Add a small `force: true` flag on the edge function so the "Refresh from Homely" button in `PropertyDetailView` can bypass the cache. Everything else still uses the cache-first flow.
+
+## Result
+
+- First visit to Rachel's property: one call to Homely → all photos + docs downloaded once → copies land in Storage → arrays saved to `listings.media_photos` / `media_documents`.
+- Every subsequent visit for any user: images render instantly from our Storage CDN, zero Homely traffic, zero ban risk.
+- Bulk sync path is untouched (already correct).
+
+## Files touched
+
+- `supabase/functions/homely-fetch-property/index.ts` (single-listing branch + new `mirrorToStorage()` helper)
+- `supabase/migrations/<ts>_homely_media_bucket.sql` (bucket + storage policies)
+- `src/pages/PropertyDetail.tsx` (sentinel cleanup on failure, docs read)
+- `src/components/properties/PropertyDetailView.tsx` (wire `force:true` refresh button — small)

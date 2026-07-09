@@ -481,6 +481,94 @@ function slugify(s: string): string {
     .slice(0, 60) || "homely";
 }
 
+// ─── Media mirror helpers ──────────────────────────────────────────────
+// Downloads remote Homely/Webtiv media once and stashes it in the
+// `homely-media` Storage bucket, then returns a long-lived signed URL so
+// the CRM can render images/docs instantly without re-hitting Homely.
+async function sha1Hex(input: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+function extFromUrlOrType(url: string, contentType: string | null): string {
+  const m = url.match(/\.([a-z0-9]{2,5})(?:\?|#|$)/i);
+  if (m) return m[1].toLowerCase();
+  const ct = (contentType || "").toLowerCase();
+  if (ct.includes("jpeg")) return "jpg";
+  if (ct.includes("png")) return "png";
+  if (ct.includes("webp")) return "webp";
+  if (ct.includes("gif")) return "gif";
+  if (ct.includes("pdf")) return "pdf";
+  if (ct.includes("msword")) return "doc";
+  if (ct.includes("officedocument.wordprocessingml")) return "docx";
+  return "bin";
+}
+
+async function mirrorOne(
+  admin: ReturnType<typeof createClient>,
+  listingId: string,
+  originalUrl: string,
+): Promise<string | null> {
+  try {
+    if (!/^https?:\/\//i.test(originalUrl)) return originalUrl || null;
+    // Already mirrored? → return as-is.
+    if (originalUrl.includes("/storage/v1/object/") && originalUrl.includes("/homely-media/")) {
+      return originalUrl;
+    }
+    const key = await sha1Hex(originalUrl);
+    // Fetch once
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 10000);
+    let resp: Response;
+    try {
+      resp = await fetch(proxied(originalUrl), {
+        headers: { "User-Agent": "Realtyz/1.0", Accept: "*/*" },
+        signal: ctl.signal,
+      });
+    } finally { clearTimeout(t); }
+    if (!resp.ok) return null;
+    const contentType = resp.headers.get("content-type") || "application/octet-stream";
+    const ext = extFromUrlOrType(originalUrl, contentType);
+    const path = `listing/${listingId}/${key}.${ext}`;
+    const bytes = new Uint8Array(await resp.arrayBuffer());
+    // Upload (idempotent — upsert)
+    const { error: upErr } = await admin.storage
+      .from("homely-media")
+      .upload(path, bytes, { contentType, upsert: true, cacheControl: "31536000" });
+    if (upErr && !/exists/i.test(upErr.message)) {
+      console.error("[mirrorOne] upload failed", upErr.message, path);
+      return null;
+    }
+    // 10-year signed URL for embedding in DB
+    const { data: signed, error: signErr } = await admin.storage
+      .from("homely-media")
+      .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
+    if (signErr || !signed?.signedUrl) {
+      console.error("[mirrorOne] sign failed", signErr?.message, path);
+      return null;
+    }
+    return signed.signedUrl;
+  } catch (e) {
+    console.error("[mirrorOne] err", (e as Error).message, originalUrl.slice(0, 120));
+    return null;
+  }
+}
+
+async function mirrorAll(
+  admin: ReturnType<typeof createClient>,
+  listingId: string,
+  urls: string[],
+  cap: number,
+): Promise<string[]> {
+  const uniq = Array.from(new Set((urls || []).filter((u) => typeof u === "string" && u))).slice(0, cap);
+  const out: string[] = [];
+  for (const u of uniq) {
+    const mirrored = await mirrorOne(admin, listingId, u);
+    if (mirrored) out.push(mirrored);
+  }
+  return out;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -757,6 +845,38 @@ Deno.serve(async (req) => {
     }
 
     const mapped = mapProperty(detail, 0);
+
+    // Try richer per-property endpoints for full pic1..picN / file1..fileN.
+    // First non-empty media wins; summary row is the fallback.
+    const detailEndpoints = [
+      `${WEBTIV_BASE}/api/report/getNechesFullDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serialStr)}`,
+      `${WEBTIV_BASE}/api/report/getNechesData/${encodeURIComponent(hash)}/${encodeURIComponent(serialStr)}`,
+      `${WEBTIV_BASE}/api/report/getPropertyDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serialStr)}`,
+    ];
+    let fullDetail: any = null;
+    for (const ep of detailEndpoints) {
+      const dr = await getJson(ep);
+      if (dr.status >= 200 && dr.status < 300 && dr.data) {
+        const candidate = Array.isArray(dr.data)
+          ? (dr.data.find((x: any) => x && typeof x === "object") ?? dr.data[0])
+          : (dr.data?.result ?? dr.data?.data ?? dr.data);
+        if (candidate && typeof candidate === "object") {
+          const m = collectMedia(candidate);
+          if (m.photos.length || m.documents.length) { fullDetail = candidate; break; }
+          if (!fullDetail) fullDetail = candidate;
+        }
+      }
+    }
+    const richest = fullDetail ?? detail;
+    const media = collectMedia(richest);
+    const summaryPhoto = mapped.photo ? [mapped.photo] : [];
+    const rawPhotos = media.photos.length ? media.photos : summaryPhoto;
+    const rawDocs = media.documents;
+
+    // Mirror media once into homely-media bucket and store signed URLs
+    const cachedPhotos = await mirrorAll(admin, String(listing_id), rawPhotos, 40);
+    const cachedDocs = await mirrorAll(admin, String(listing_id), rawDocs, 20);
+
     const updated = {
       property_title: mapped.title || listing.property_title,
       description: mapped.description || listing.description,
@@ -767,10 +887,15 @@ Deno.serve(async (req) => {
       sqm: mapped.sqm || listing.sqm,
       floor: mapped.floor || listing.floor,
       external_id: String(serial),
+      media_photos: cachedPhotos,
+      media_documents: cachedDocs,
       source_metadata: {
         ...meta,
-        photos: mapped.photo ? [mapped.photo] : (meta.photos ?? []),
-        homely_raw: detail,
+        photos: cachedPhotos,
+        documents: cachedDocs,
+        photos_origin: rawPhotos,
+        documents_origin: rawDocs,
+        homely_raw: richest,
         synced_at: new Date().toISOString(),
         endpoint: url,
       },
@@ -779,7 +904,16 @@ Deno.serve(async (req) => {
     const { error: upErr } = await admin.from("listings").update(updated).eq("id", listing_id);
     if (upErr) return json({ error: `db_update_failed:${upErr.message}` }, 500);
 
-    return json({ ok: true, listing_id, serial, endpoint: url, photo_count: mapped.photo ? 1 : 0, updated });
+    return json({
+      ok: true,
+      listing_id,
+      serial,
+      endpoint: url,
+      photo_count: cachedPhotos.length,
+      document_count: cachedDocs.length,
+      raw_photo_count: rawPhotos.length,
+      raw_document_count: rawDocs.length,
+    });
   } catch (e) {
     const msg = (e as Error)?.message ?? String(e);
     console.error("[homely-fetch-property] fatal", msg);
