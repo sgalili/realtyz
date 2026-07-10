@@ -59,6 +59,18 @@ function formatMetaValue(key: string, value: unknown): string {
   return String(value);
 }
 
+function boolFromMeta(value: unknown): boolean | null {
+  if (value == null || value === '') return null;
+  if (typeof value === 'boolean') return value;
+  const s = String(value).trim();
+  if (/^(1|true|yes|כן|יש|y)$/i.test(s)) return true;
+  if (/^(0|false|no|לא|אין|n)$/i.test(s)) return false;
+  const n = Number(s.replace(/[^\d.-]/g, ''));
+  if (Number.isFinite(n)) return n > 0;
+  if (/מרפסת|balcony/i.test(s)) return true;
+  return null;
+}
+
 const PROPERTY_TYPE_OPTIONS: PropertyType[] = [
   'apartment', 'penthouse', 'garden_apt', 'duplex', 'house', 'cottage', 'studio', 'commercial', 'land', 'other'
 ] as PropertyType[];
@@ -144,6 +156,9 @@ export default function PropertyDetail() {
       else if (priceNum >= 500_000) listingType = 'sale';
       else listingType = dealType === 'rent' ? 'rent' : 'sale';
       const textFeatures = features.filter((f): f is string => typeof f === 'string');
+      const balconyRaw = meta.balcony ?? meta.mirpeset ?? (isRecord(meta.homely_raw) ? meta.homely_raw.mirpesetShemeshYN ?? meta.homely_raw.balcony : null);
+      const balcony = boolFromMeta(balconyRaw) ?? (textFeatures.some((f) => /מרפסת|balcony/i.test(f)) ? true : null);
+      const enrichedFeatures = Array.from(new Set([...textFeatures, ...(balcony === true ? ['מרפסת'] : [])]));
 
       const property = {
         id: String(row.id),
@@ -163,15 +178,9 @@ export default function PropertyDetail() {
         listing_type: listingType,
         photos,
         url: row.source_url || (row.slug ? `/listing/${row.slug}` : null),
-        features: Array.from(new Set(textFeatures)),
+        features: enrichedFeatures,
       } as HomelyProperty;
 
-      const balconyRaw = meta.balcony ?? meta.mirpeset;
-      const balcony = balconyRaw == null || balconyRaw === ''
-        ? null
-        : typeof balconyRaw === 'boolean'
-          ? balconyRaw
-          : /^(0|לא|no|false|אין)$/i.test(String(balconyRaw).trim()) ? false : true;
       const elevatorVal = row.elevator ?? meta.elevator ?? meta.maalit;
       const elevator = elevatorVal == null || elevatorVal === ''
         ? false
@@ -227,7 +236,8 @@ export default function PropertyDetail() {
       ...(Array.isArray((meta as any).photos) ? (meta as any).photos : []),
     ].filter(Boolean);
     const hasYad2Url = String(row?.source_url ?? (meta as any).source_url ?? '').includes('yad2.co.il');
-    if (cached.length > 0 && hasYad2Url) return;
+    const hasBalcony = meta.balcony != null || (Array.isArray(row?.features) && row.features.some((f: any) => typeof f === 'string' && /מרפסת|balcony/i.test(f)));
+    if (cached.length > 0 && hasYad2Url && hasBalcony) return;
     const flagKey = `homely-hydrate:${id}`;
     if (sessionStorage.getItem(flagKey)) return;
     sessionStorage.setItem(flagKey, '1');

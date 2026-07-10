@@ -242,6 +242,8 @@ function collectMedia(it: any): { photos: string[]; documents: string[] } {
   const toUrl = (v: any): string | null => {
     if (typeof v !== "string") return null;
     const s = v.trim().replace(/\\\//g, "/");
+    const embedded = s.match(/https?:\/\/[^\s"'<>]+/i)?.[0];
+    if (embedded) return embedded;
     if (/^https?:\/\//i.test(s)) return s;
     if (/^www\./i.test(s)) return `https://${s}`;
     if (/^\/\//.test(s)) return `https:${s}`;
@@ -407,6 +409,7 @@ function normalizeTxType(it: any): "sale" | "rent" | "unknown" {
     deepPickText(it, ["transaction_type", "transactiontype", "deal_type", "dealtype", "type", "salerent", "sale_rent", "status", "statusname", "סוג_עסקה"]),
     normalizeStreamText(it?.objectresidence),
     normalizeStreamText(it?.sale_f3),
+    deepPickText(it, ["property_status", "propstatus", "transaction", "asset_status", "neches_status", "status_text"]),
     normalizeStreamText(it?.more),
     normalizeStreamText(it?.comments1),
     normalizeStreamText(it?.comments2),
@@ -490,6 +493,32 @@ function pickSourceUrl(it: any): string {
   walk(it);
   return yad2 || fallback;
 }
+function booleanFeatureFrom(value: unknown): boolean | null {
+  const s = normalizeStreamText(value);
+  if (!s) return null;
+  if (/^(1|true|yes|כן|יש|y)$/i.test(s)) return true;
+  if (/^(0|false|no|לא|אין|n)$/i.test(s)) return false;
+  const n = Number(s.replace(/[^\d.-]/g, ""));
+  if (Number.isFinite(n)) return n > 0;
+  if (/מרפסת|balcon/i.test(s)) return true;
+  return null;
+}
+function pickBalcony(it: any): boolean | null {
+  const raw = deepPickText(it, [
+    "balcony", "balconies", "mirpeset", "mirpesetyn", "mirpesetshemeshyn",
+    "balconyyn", "sunbalcony", "sun_balcony", "terrace", "terraceyn",
+    "מרפסת", "מרפסת_שמש",
+  ]);
+  const direct = booleanFeatureFrom(raw);
+  if (direct !== null) return direct;
+  const hay = [it?.comments1, it?.comments2, it?.more, it?.description, it?.remarks]
+    .map(normalizeStreamText)
+    .join(" ");
+  return /מרפסת|balcony|terrace/i.test(hay) ? true : null;
+}
+function hasYad2Signal(...values: any[]): boolean {
+  return values.some((v) => /yad ?2|יד ?2|yad2\.co\.il/i.test(JSON.stringify(v ?? "")));
+}
 function pickUpdatedAt(it: any): string {
   const raw = deepPickText(it, [
     "update_date", "updatedate", "updated_at", "updatedat", "update",
@@ -509,10 +538,11 @@ function pickUpdatedAt(it: any): string {
   return Number.isFinite(d.getTime()) ? d.toISOString() : "";
 }
 
-function buildYad2FallbackUrl(city: unknown, address: unknown): string {
+function buildYad2FallbackUrl(city: unknown, address: unknown, tx: unknown = "sale"): string {
   const parts = [city, address].map((v) => String(v ?? "").trim()).filter(Boolean);
   if (!parts.length) return "";
-  return `https://www.yad2.co.il/realestate/forsale?text=${encodeURIComponent(parts.join(" "))}`;
+  const segment = tx === "rent" ? "rent" : "forsale";
+  return `https://www.yad2.co.il/realestate/${segment}?text=${encodeURIComponent(parts.join(" "))}`;
 }
 
 function mapStreamProperty(it: any, idx: number) {
@@ -526,7 +556,7 @@ function mapStreamProperty(it: any, idx: number) {
   const sourceOrigin = pickSourceOrigin(it);
   const sourceUrl = pickSourceUrl(it);
   const sourceUpdatedAt = pickUpdatedAt(it);
-  const balcony = deepPickText(it, ["balcony", "mirpeset", "balconies", "מרפסת"]);
+  const balcony = pickBalcony(it);
   const elevator = deepPickText(it, ["elevator", "lift", "maalit", "מעלית"]);
   const description = deepPickText(it, ["description", "tiur", "remarks", "comments1", "comments2", "more", "תיאור", "הערות"]);
   return {
@@ -736,7 +766,8 @@ async function enrichFromYad2(
     const city = String(property?.city ?? "").trim();
     const address = normForMatch(property?.address || [property?.raw?.street, property?.raw?.number].filter(Boolean).join(" "));
     if (!city && !address) return null;
-    const url = new URL("https://gw.yad2.co.il/realestate-feed/forsale/map");
+    const tx = property?.transaction_type === "rent" ? "rent" : "forsale";
+    const url = new URL(`https://gw.yad2.co.il/realestate-feed/${tx}/map`);
     if (city) url.searchParams.set("city", city);
     if (property?.price) {
       const price = Number(property.price);
@@ -858,8 +889,11 @@ Deno.serve(async (req) => {
           }
         }
         const richMedia = collectMedia(richRecord);
-        const richSourceOrigin = pickSourceOrigin(richRecord) || p?.source_origin || null;
-        const yad2Enrichment = richSourceOrigin === "yad2" ? await enrichFromYad2(admin, workspaceOwnerId, p) : null;
+        const rawSourceOrigin = pickSourceOrigin(richRecord) || p?.source_origin || null;
+        const sourceIsYad2 = rawSourceOrigin === "yad2" || hasYad2Signal(richRecord, p?.raw, p?.source_url, rawSourceOrigin);
+        const richSourceOrigin = sourceIsYad2 ? "yad2" : rawSourceOrigin;
+        const yad2Enrichment = sourceIsYad2 ? await enrichFromYad2(admin, workspaceOwnerId, p) : null;
+        const balcony = pickBalcony(richRecord) ?? booleanFeatureFrom(p?.balcony);
         const rawPhotos = richMedia.photos.length
           ? richMedia.photos
           : (Array.isArray(p?.photos) && p.photos.length ? p.photos : (p?.photo ? [p.photo] : yad2Enrichment?.photos ?? []));
@@ -867,7 +901,11 @@ Deno.serve(async (req) => {
         const richSourceUrl = pickSourceUrl(richRecord)
           || yad2Enrichment?.url
           || (p?.source_url ? String(p.source_url) : "")
-          || (richSourceOrigin === "yad2" ? buildYad2FallbackUrl(p?.city, p?.address) : "");
+          || (richSourceOrigin === "yad2" ? buildYad2FallbackUrl(p?.city, p?.address, p?.transaction_type) : "");
+        const features = Array.from(new Set([
+          ...(Array.isArray(p?.features) ? p.features.filter((f: any) => typeof f === "string") : []),
+          ...(balcony === true ? ["מרפסת"] : []),
+        ]));
         const row: Record<string, unknown> = {
           user_id: workspaceOwnerId,
           slug: `${slugify(String(p?.title || p?.address || "homely"))}-${homelyId}`,
@@ -885,7 +923,7 @@ Deno.serve(async (req) => {
           status: "live",
           is_published: true,
           office_notes: p?.office_notes ? String(p.office_notes) : null,
-          features: Array.isArray(p?.features) ? p.features : [],
+          features,
           media_photos: rawPhotos,
           media_documents: rawDocuments,
           source_metadata: {
@@ -899,7 +937,7 @@ Deno.serve(async (req) => {
             source_origin: richSourceOrigin,
             source_url: richSourceUrl || null,
             source_updated_at: p?.source_updated_at || null,
-            balcony: p?.balcony || null,
+            balcony,
             elevator: p?.elevator || null,
             transaction_type: p?.transaction_type || null,
             homely_raw: compactRaw(richRecord),
@@ -1013,16 +1051,14 @@ Deno.serve(async (req) => {
 
       if (action === "fetchAllProperties") {
         const discardedSamples: any[] = [];
-        // Per-record rule (uses normalized transaction_type):
-        //   • sale  → office allocation (משרד / בלעדי) — ANY office agent counts.
-        //   • rent  → agent must include "אודי ויטמן".
+        // Per-record rule: include office-owned listings for both sale and rent.
         const finalFilteredProperties = items.filter((item: any) => {
           const affiliation = pickSivugName(item);
           const agent = pickAgentName(item);
           const tx = normalizeTxType(item);
           const sivugOk = ALLOWED_SIVUG_SUBSTRS.some((s) => affiliation.includes(s));
           const agentOk = agent.includes(ALLOWED_AGENT_SUBSTR);
-          const ok = tx === "rent" ? agentOk : (sivugOk || agentOk);
+          const ok = sivugOk || agentOk;
           if (!ok && discardedSamples.length < 3) {
             discardedSamples.push({
               rawAgent: item?.agent,
@@ -1139,15 +1175,17 @@ Deno.serve(async (req) => {
     const summaryPhoto = mapped.photo ? [mapped.photo] : [];
     const rawPhotos = media.photos.length ? media.photos : summaryPhoto;
     const rawDocs = media.documents;
-    const sourceOrigin = pickSourceOrigin(richest) || pickSourceOrigin(detail) || meta.source_origin || null;
-    const mappedForEnrichment = { ...mapped, raw: richest, source_origin: sourceOrigin };
+    const rawSourceOrigin = pickSourceOrigin(richest) || pickSourceOrigin(detail) || meta.source_origin || null;
+    const sourceOrigin = rawSourceOrigin === "yad2" || hasYad2Signal(richest, detail, meta.source_url, rawSourceOrigin) ? "yad2" : rawSourceOrigin;
+    const mappedForEnrichment = { ...mapped, raw: richest, source_origin: sourceOrigin, transaction_type: meta.transaction_type };
     const yad2Enrichment = sourceOrigin === "yad2" ? await enrichFromYad2(admin, workspaceOwnerId, mappedForEnrichment) : null;
+    const balcony = pickBalcony(richest) ?? pickBalcony(detail) ?? booleanFeatureFrom(meta.balcony ?? meta.mirpeset);
     const finalRawPhotos = rawPhotos.length ? rawPhotos : (yad2Enrichment?.photos ?? []);
     const sourceUrl = pickSourceUrl(richest)
       || pickSourceUrl(detail)
       || yad2Enrichment?.url
       || (typeof meta.source_url === "string" ? meta.source_url : "")
-      || (sourceOrigin === "yad2" ? buildYad2FallbackUrl(mapped.city || listing.city, mapped.address || listing.address) : "");
+      || (sourceOrigin === "yad2" ? buildYad2FallbackUrl(mapped.city || listing.city, mapped.address || listing.address, meta.transaction_type) : "");
 
     // Mirror media once into homely-media bucket and store signed URLs
     const cachedPhotos = await mirrorAll(admin, String(listing_id), finalRawPhotos, 40);
@@ -1164,16 +1202,21 @@ Deno.serve(async (req) => {
       floor: mapped.floor || listing.floor,
       external_id: String(serial),
       source_url: sourceUrl || null,
-      media_photos: cachedPhotos,
-      media_documents: cachedDocs,
+      media_photos: cachedPhotos.length ? cachedPhotos : finalRawPhotos,
+      media_documents: cachedDocs.length ? cachedDocs : rawDocs,
+      features: Array.from(new Set([
+        ...(Array.isArray(listing.features) ? listing.features.filter((f: any) => typeof f === "string") : []),
+        ...(balcony === true ? ["מרפסת"] : []),
+      ])),
       source_metadata: {
         ...meta,
         source_origin: sourceOrigin,
         source_url: sourceUrl || null,
-        photos: cachedPhotos,
-        documents: cachedDocs,
+        photos: cachedPhotos.length ? cachedPhotos : finalRawPhotos,
+        documents: cachedDocs.length ? cachedDocs : rawDocs,
         photos_origin: finalRawPhotos,
         documents_origin: rawDocs,
+        balcony,
         homely_raw: richest,
         synced_at: new Date().toISOString(),
         endpoint: rich.endpoint ?? url,

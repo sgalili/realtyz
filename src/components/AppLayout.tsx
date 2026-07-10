@@ -6,6 +6,8 @@ import { AppSidebar } from '@/components/AppSidebar';
 import { Search, Bot, User, LayoutDashboard, Radio, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, CornerDownLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
+import { useWhiteLabel } from '@/hooks/useWhiteLabel';
+import { useWorkspace } from '@/hooks/useWorkspace';
 
 import { MandateSelector } from '@/components/dashboard/MandateSelector';
 import { MagicMandateSelector } from '@/components/dashboard/MagicMandateSelector';
@@ -31,9 +33,6 @@ import { toast } from 'sonner';
 import { DEMO_CANDIDATES, getDemoCandidateCrisisAlerts, type DemoCandidateId } from '@/lib/demoData';
 import { TrialQuickStartWizard } from '@/components/TrialQuickStartWizard';
 import { useTrialStatus } from '@/hooks/useTrialStatus';
-
-import { HeaderProfileMenu } from '@/components/header/HeaderProfileMenu';
-
 
 // DemoModeToggle removed from app
 import { PageHero } from '@/components/PageHero';
@@ -176,7 +175,7 @@ function SearchExpandable() {
 
   return (
     <div ref={containerRef} className="relative flex items-center">
-      <Button variant="ghost" size="icon" className="h-9 w-9 p-0 shrink-0" onClick={() => setOpen(prev => !prev)}>
+      <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setOpen(prev => !prev)}>
         {open ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
       </Button>
       {open && (
@@ -223,6 +222,42 @@ function SearchExpandable() {
         </div>
       )}
     </div>
+  );
+}
+
+function HeaderProfileLink() {
+  const { user } = useAuth();
+  const { settings } = useWhiteLabel();
+  const { activeWorkspace } = useWorkspace();
+  const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!user?.id) { setAvatarUrl(null); return; }
+    supabase
+      .from('profiles')
+      .select('avatar_url')
+      .eq('id', user.id)
+      .maybeSingle()
+      .then(({ data }) => setAvatarUrl((data as any)?.avatar_url ?? null));
+  }, [user?.id]);
+
+  if (!user) return null;
+  const meta = (user.user_metadata ?? {}) as Record<string, any>;
+  const displayName = meta.full_name || meta.name || user.email || (user as any).phone || 'משתמש';
+  const initial = displayName.slice(0, 1);
+  const workspaceLogo = settings?.logo_url || activeWorkspace?.workspace_logo_url || '';
+
+  return (
+    <Link to="/profile" aria-label="מעבר לפרופיל" className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-visible rounded-full bg-primary text-xs font-bold text-primary-foreground ring-1 ring-border transition hover:opacity-90">
+      <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full">
+        {avatarUrl ? <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" /> : initial}
+      </span>
+      {workspaceLogo && (
+        <span className="absolute -bottom-1 -left-1 flex h-5 w-5 items-center justify-center overflow-hidden rounded-[4px] bg-background ring-1 ring-border shadow-sm">
+          <img src={workspaceLogo} alt="לוגו משרד" className="h-full w-full object-contain" />
+        </span>
+      )}
+    </Link>
   );
 }
 
@@ -310,7 +345,7 @@ function HeaderCrisisAlert() {
           size="icon"
           aria-label="פתח התראת משבר"
           aria-expanded={open}
-          className="relative h-9 w-9 border-0 bg-transparent p-0 text-primary-foreground shadow-none hover:bg-transparent hover:text-primary-foreground focus-visible:ring-primary-foreground/40"
+            className="relative h-9 w-9 border-0 bg-transparent p-0 text-destructive shadow-none hover:bg-destructive/10 hover:text-destructive focus-visible:ring-destructive/40"
         >
           <ShieldAlert className="h-5 w-5" />
           <span className="absolute right-0 top-0 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-destructive px-1 text-[10px] font-bold text-destructive-foreground">
@@ -396,6 +431,8 @@ function DemoSidebarPeek() {
 
 export function AppLayout({ children }: { children: ReactNode }) {
   const { user } = useAuth();
+  const { settings: brand } = useWhiteLabel();
+  const { activeWorkspace } = useWorkspace();
   const navigate = useNavigate();
   const location = useLocation();
   const { isDemoMode, setDemoMode, demoCandidateId, setDemoCandidateId } = useDemoMode();
@@ -577,6 +614,8 @@ export function AppLayout({ children }: { children: ReactNode }) {
   };
 
   const activeTutorialStep = tutorialStep === null ? null : TUTORIAL_STEPS[tutorialStep];
+  const headerLogo = brand?.landscape_logo_url || brand?.logo_url || activeWorkspace?.workspace_logo_url || '';
+  const headerName = brand?.agency_name || activeWorkspace?.workspace_name || 'Realtyz AI';
   const advanceTutorial = () => {
     if (tutorialStep === null) return;
     const nextStep = tutorialStep + 1;
@@ -594,27 +633,24 @@ export function AppLayout({ children }: { children: ReactNode }) {
       <div className="realtyz-app-shell h-screen overflow-hidden flex w-full bg-background">
         <AppSidebar tutorialHighlightPath={activeTutorialStep?.path} />
         <div className="flex-1 flex h-screen min-w-0 flex-col overflow-hidden">
-          <header className="h-16 text-foreground backdrop-blur-md flex items-center px-4 gap-2 shrink-0 sticky top-0 z-30 relative" style={{ backgroundColor: '#fdf251' }} dir="rtl">
+          <header className="h-16 border-b border-border bg-background text-foreground flex items-center px-4 gap-2 shrink-0 sticky top-0 z-30 relative" dir="rtl">
             {/* Profile avatar on visual right (RTL start) — bell sits right next to it */}
             <div className="flex items-center gap-2">
-              <HeaderProfileMenu />
+              <HeaderProfileLink />
               <NotificationCenter />
             </div>
 
             <div className="flex-1" />
 
-            {/* Centered Realtyz AI logo — absolutely centered */}
-            <a
-              href="/"
-              aria-label="Realtyz AI - דף הבית"
-              className="realtyz-logo absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 inline-flex items-center"
+            {/* Centered active workspace brand */}
+            <Link
+              to="/"
+              aria-label={`${headerName} - דף הבית`}
+              className="absolute left-1/2 top-1/2 inline-flex max-w-[48vw] -translate-x-1/2 -translate-y-1/2 items-center gap-2 overflow-hidden text-center"
             >
-              <img
-                src="/__l5e/assets-v1/7b8296aa-d889-4a49-8ce2-c42daf3014fc/realtyz-logo-trans.png"
-                alt="Realtyz AI"
-                className="h-[63px] w-auto object-contain"
-              />
-            </a>
+              {headerLogo && <img src={headerLogo} alt={headerName} className="h-10 max-w-[160px] object-contain" />}
+              <span className="truncate text-sm font-bold text-foreground">{headerName}</span>
+            </Link>
 
             {/* Action buttons on visual left (RTL end) */}
             <div className="flex items-center gap-1.5">
@@ -623,7 +659,7 @@ export function AppLayout({ children }: { children: ReactNode }) {
               <Button
                 variant="ghost"
                 size="icon"
-                className="h-9 w-9 p-0 text-foreground hover:bg-foreground/10 hover:text-foreground"
+                className="h-9 w-9 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
                 onClick={() => window.dispatchEvent(new Event('open-ai-drawer'))}
                 aria-label="פתח עוזר AI"
               >

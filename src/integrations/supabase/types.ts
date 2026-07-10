@@ -4641,6 +4641,7 @@ export type Database = {
           created_at: string
           hide_kalpiz_branding: boolean
           id: string
+          landscape_logo_url: string | null
           logo_url: string | null
           primary_color: string | null
           primary_foreground_color: string | null
@@ -4652,6 +4653,7 @@ export type Database = {
           created_at?: string
           hide_kalpiz_branding?: boolean
           id?: string
+          landscape_logo_url?: string | null
           logo_url?: string | null
           primary_color?: string | null
           primary_foreground_color?: string | null
@@ -4663,6 +4665,7 @@ export type Database = {
           created_at?: string
           hide_kalpiz_branding?: boolean
           id?: string
+          landscape_logo_url?: string | null
           logo_url?: string | null
           primary_color?: string | null
           primary_foreground_color?: string | null
