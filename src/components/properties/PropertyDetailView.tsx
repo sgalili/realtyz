@@ -189,16 +189,16 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
             {amenities?.solar && <Spec icon={Sun} label="דוד שמש" value="כן" />}
           </div>
 
-          {resolvedUrl && (
+          {yad2Url && (
             <div className="mt-5 pt-4 border-t border-border/60">
               <a
-                href={resolvedUrl}
+                href={yad2Url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
               >
                 <ExternalLink className="h-4 w-4" />
-                🔗 מעבר למקור המודעה
+                🔗 מעבר למודעה ביד2
               </a>
             </div>
           )}
