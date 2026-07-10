@@ -208,8 +208,10 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
     try {
       const selectedPropertyIds = Array.from(pickedProps);
       const selectedContactIds = Array.from(pickedContacts);
+      const selectedProperties = properties.filter((p) => pickedProps.has(p.homely_id));
+      const selectedContacts = contacts.filter((c) => pickedContacts.has(c.homely_id));
       const { data, error } = await supabase.functions.invoke('homely-fetch-property', {
-        body: { action: 'importOutJson', propertyIds: selectedPropertyIds, contactIds: selectedContactIds },
+        body: { action: 'importOutJson', propertyIds: selectedPropertyIds, contactIds: selectedContactIds, properties: selectedProperties, contacts: selectedContacts },
       });
       if (error) throw error;
       const payload = data as any;
