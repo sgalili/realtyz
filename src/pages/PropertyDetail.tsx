@@ -221,8 +221,13 @@ export default function PropertyDetail() {
     const row: any = data.row;
     const src = String(row?.source ?? '').toLowerCase();
     if (src !== 'homely' && src !== 'webtiv') return;
-    const cached = Array.isArray(row?.media_photos) ? row.media_photos : [];
-    if (cached.length > 0) return;
+    const meta = (row?.source_metadata && typeof row.source_metadata === 'object') ? row.source_metadata as JsonRecord : {};
+    const cached = [
+      ...(Array.isArray(row?.media_photos) ? row.media_photos : []),
+      ...(Array.isArray((meta as any).photos) ? (meta as any).photos : []),
+    ].filter(Boolean);
+    const hasYad2Url = String(row?.source_url ?? (meta as any).source_url ?? '').includes('yad2.co.il');
+    if (cached.length > 0 && hasYad2Url) return;
     const flagKey = `homely-hydrate:${id}`;
     if (sessionStorage.getItem(flagKey)) return;
     sessionStorage.setItem(flagKey, '1');
