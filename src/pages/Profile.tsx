@@ -12,6 +12,7 @@ import {
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
+import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { supabase } from '@/integrations/supabase/client';
 import { IsraeliCityPicker } from '@/components/IsraeliCityPicker';
 import { WhatsAppGatewayCard } from '@/components/profile/WhatsAppGatewayCard';
@@ -404,6 +405,7 @@ function PersonalTab() {
 function WorkspaceTab() {
   const { user } = useAuth();
   const { activeWorkspace, activeWorkspaceId } = useWorkspace();
+  const { refresh: refreshBrand } = useWhiteLabel();
   const ownerId = activeWorkspaceId ?? user?.id ?? null;
   const isOwner = !!user?.id && !!ownerId && user.id === ownerId;
 
@@ -470,6 +472,7 @@ function WorkspaceTab() {
         } as any, { onConflict: 'user_id' });
       if (wlErr) throw wlErr;
       if (kind === 'square') { try { window.localStorage.setItem(LOGO_STORAGE_KEY, pub.publicUrl); } catch {} }
+      await refreshBrand();
       toast.success('הלוגו הועלה ושותף לכל חברי המשרד');
     } catch (err: any) {
       toast.error(err?.message || 'שגיאה בהעלאת הלוגו');
@@ -491,6 +494,7 @@ function WorkspaceTab() {
         landscape_logo_url: kind === 'landscape' ? null : landscapeLogoUrl || null,
       } as any, { onConflict: 'user_id' });
     if (kind === 'square') { try { window.localStorage.removeItem(LOGO_STORAGE_KEY); } catch {} }
+    await refreshBrand();
     toast.success('הלוגו הוסר');
   };
 
@@ -506,6 +510,7 @@ function WorkspaceTab() {
       await supabase.from('profiles').update({ service_areas: serviceAreas } as any).eq('id', user.id);
       await supabase.auth.updateUser({ data: { agency_name: agencyName, service_areas: serviceAreas } });
       try { window.localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify({ agency_name: agencyName, service_areas: serviceAreas })); } catch {}
+      await refreshBrand();
       toast.success('פרטי המשרד נשמרו ושותפו לכל חברי המשרד');
     } catch (err: any) {
       toast.error(err?.message || 'שמירה נכשלה');
