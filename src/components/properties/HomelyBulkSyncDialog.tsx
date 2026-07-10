@@ -273,7 +273,7 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
         <Tabs value={tab} onValueChange={(v) => setTab(v as 'properties' | 'contacts')} className="flex flex-col min-h-0 flex-1">
           <div dir="rtl" className="flex flex-wrap items-center justify-between gap-2">
             <TabsList className="h-auto flex-wrap">
-              {mode === 'properties' && <TabsTrigger value="properties" className="text-xs sm:text-sm">נכסים {properties.length ? `(${filteredProps.length})` : ''}</TabsTrigger>}
+              {mode === 'properties' && <TabsTrigger value="properties" className="text-xs sm:text-sm">{properties.length ? `(${filteredProps.length})` : ' '}</TabsTrigger>}
               {mode === 'contacts' && <TabsTrigger value="contacts" className="text-xs sm:text-sm">אנשי קשר {contacts.length ? `(${filteredContacts.length})` : ''}</TabsTrigger>}
             </TabsList>
 
