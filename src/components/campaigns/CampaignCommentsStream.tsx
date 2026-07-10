@@ -970,6 +970,37 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
       return;
     }
     setSending(true);
+    const optimisticReplyId = crypto.randomUUID();
+    const optimisticReply: EngagementRow | null = sendPublic && replyDraft.trim()
+      ? {
+          id: optimisticReplyId,
+          user_id: commentOwnerId,
+          platform: replyOpen.platform,
+          sender_handle: "התגובה שלך",
+          inbound_text: replyDraft.trim(),
+          ai_reply_text: null,
+          status: "sent",
+          sentiment: null,
+          external_id: null,
+          external_post_id: replyOpen.external_post_id,
+          metadata: {
+            parent_id: replyOpen.external_id ?? replyOpen.id,
+            parent_event_id: replyOpen.id,
+            self_authored: true,
+            author_type: "workspace_page",
+            optimistic: true,
+          },
+          created_at: new Date().toISOString(),
+          is_archived: false,
+        }
+      : null;
+    if (optimisticReply) {
+      setRows((prev) => {
+        const next = [...(prev ?? []), optimisticReply].sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        writeCache(campaign.id, next, postIds);
+        return next;
+      });
+    }
     try {
       const dmText = sendDm ? dmDraft.trim() : "";
       const finalPublic = sendPublic ? replyDraft.trim() : "";
@@ -989,10 +1020,16 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
       );
       if (error) throw error;
       if ((data as any)?.halt === true || (data as any)?.rate_limited === true) {
+        if (optimisticReply) setRows((prev) => (prev ?? []).filter((r) => r.id !== optimisticReplyId));
         toast.error("מערכת הסנכרון בהפסקה זמנית להגנת החשבון");
         return;
       }
-      if ((data as any)?.error) throw new Error((data as any).error);
+      if ((data as any)?.error) throw new Error((data as any).message || (data as any).error);
+      if (optimisticReply && (data as any)?.reply_comment_id) {
+        setRows((prev) => (prev ?? []).map((r) => r.id === optimisticReplyId
+          ? { ...r, external_id: String((data as any).reply_comment_id), metadata: { ...(r.metadata ?? {}), optimistic: false, ayrshare_reply: (data as any).ayrshare } }
+          : r));
+      }
       const dmSent = Boolean((data as any)?.private_dm_sent);
       if (sendPublic && dmText && dmSent) {
         toast.success("התגובה פורסמה והודעה פרטית נשלחה בהצלחה למסנג'ר!");
@@ -1018,8 +1055,9 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
       setDmDraft("");
       setOriginalReply("");
       setOriginalDm("");
-      await load();
+      void load();
     } catch (e: any) {
+      if (optimisticReply) setRows((prev) => (prev ?? []).filter((r) => r.id !== optimisticReplyId));
       toast.error(e?.message ?? "פרסום נכשל");
     } finally {
       setSending(false);

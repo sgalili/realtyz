@@ -1069,12 +1069,52 @@ Deno.serve(async (req) => {
           },
         };
         if (p?.source_updated_at) row.updated_at = p.source_updated_at;
-        const { data: upserted, error } = await admin
+        let upserted: any = null;
+        const { data: existingByExternal } = await admin
           .from("listings")
-          .upsert(row as any, { onConflict: "source,external_id" })
           .select("id")
-          .single();
-        if (error) throw new Error(`listings#${homelyId}: ${error.message}`);
+          .eq("source", "homely")
+          .eq("external_id", homelyId)
+          .maybeSingle();
+        if (existingByExternal?.id) {
+          const { data: updatedExisting, error } = await admin
+            .from("listings")
+            .update(row as any)
+            .eq("id", existingByExternal.id)
+            .select("id")
+            .single();
+          if (error) throw new Error(`listings#${homelyId}: ${error.message}`);
+          upserted = updatedExisting;
+        } else {
+          const { data: inserted, error } = await admin
+            .from("listings")
+            .insert(row as any)
+            .select("id")
+            .single();
+          if (error && richSourceUrl) {
+            const { data: existingByUrl } = await admin
+              .from("listings")
+              .select("id")
+              .eq("source_url", richSourceUrl)
+              .maybeSingle();
+            if (existingByUrl?.id) {
+              const { data: updatedByUrl, error: updateByUrlErr } = await admin
+                .from("listings")
+                .update(row as any)
+                .eq("id", existingByUrl.id)
+                .select("id")
+                .single();
+              if (updateByUrlErr) throw new Error(`listings#${homelyId}: ${updateByUrlErr.message}`);
+              upserted = updatedByUrl;
+            } else {
+              throw new Error(`listings#${homelyId}: ${error.message}`);
+            }
+          } else if (error) {
+            throw new Error(`listings#${homelyId}: ${error.message}`);
+          } else {
+            upserted = inserted;
+          }
+        }
         propsCount++;
 
         // Mirror media into homely-media bucket so images render instantly
