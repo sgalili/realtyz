@@ -509,6 +509,12 @@ function pickUpdatedAt(it: any): string {
   return Number.isFinite(d.getTime()) ? d.toISOString() : "";
 }
 
+function buildYad2FallbackUrl(city: unknown, address: unknown): string {
+  const parts = [city, address].map((v) => String(v ?? "").trim()).filter(Boolean);
+  if (!parts.length) return "";
+  return `https://www.yad2.co.il/realestate/forsale?text=${encodeURIComponent(parts.join(" "))}`;
+}
+
 function mapStreamProperty(it: any, idx: number) {
   const serial = String(it?.serial ?? it?.Serial ?? `row-${idx + 1}`);
   const street = [it?.street, it?.number, it?.flatnumber].filter((v) => v && String(v).trim()).join(" ").trim();
@@ -720,17 +726,52 @@ Deno.serve(async (req) => {
       }
       let propsCount = 0;
       let contactsCount = 0;
+      let richHash: string | null = null;
+      if (properties.length > 0) {
+        try {
+          const { data: cred } = await admin
+            .from("homely_broker_credentials")
+            .select("homely_agency, homely_username")
+            .eq("user_id", user.id)
+            .maybeSingle();
+          const { data: pw } = await admin.rpc("get_homely_password", { _user_id: user.id });
+          if (cred?.homely_agency && cred?.homely_username && pw) {
+            const login = await webtivLogin(String(cred.homely_agency), String(cred.homely_username), pw as unknown as string);
+            if (login.ok) richHash = extractHash(login.session);
+          }
+        } catch (e) {
+          console.warn("[importOutJson] rich detail login skipped", (e as Error).message);
+        }
+      }
 
       for (const p of properties) {
         const homelyId = String(p?.homely_id ?? "").trim();
         if (!homelyId) continue;
-        const rawPhotos = Array.isArray(p?.photos) && p.photos.length ? p.photos : (p?.photo ? [p.photo] : []);
-        const rawDocuments = Array.isArray(p?.documents) ? p.documents : [];
+        let richRecord = p?.raw ?? p;
+        let richEndpoint: string | null = null;
+        if (richHash) {
+          try {
+            const rich = await fetchRichPropertyDetail(richHash, homelyId, richRecord);
+            richRecord = rich.record ?? richRecord;
+            richEndpoint = rich.endpoint;
+          } catch (e) {
+            console.warn(`[importOutJson] rich detail skipped for ${homelyId}`, (e as Error).message);
+          }
+        }
+        const richMedia = collectMedia(richRecord);
+        const rawPhotos = richMedia.photos.length
+          ? richMedia.photos
+          : (Array.isArray(p?.photos) && p.photos.length ? p.photos : (p?.photo ? [p.photo] : []));
+        const rawDocuments = richMedia.documents.length ? richMedia.documents : (Array.isArray(p?.documents) ? p.documents : []);
+        const richSourceOrigin = pickSourceOrigin(richRecord) || p?.source_origin || null;
+        const richSourceUrl = pickSourceUrl(richRecord)
+          || (p?.source_url ? String(p.source_url) : "")
+          || (richSourceOrigin === "yad2" ? buildYad2FallbackUrl(p?.city, p?.address) : "");
         const row: Record<string, unknown> = {
           user_id: user.id,
           slug: `${slugify(String(p?.title || p?.address || "homely"))}-${homelyId}`,
           source: "homely",
-          source_url: p?.source_url ? String(p.source_url) : null,
+          source_url: richSourceUrl || null,
           external_id: homelyId,
           property_title: String(p?.title || p?.address || `נכס ${homelyId}`),
           description: String(p?.description || ""),
@@ -754,13 +795,14 @@ Deno.serve(async (req) => {
             media_count: rawPhotos.length + rawDocuments.length,
             office_notes: p?.office_notes || null,
             agent: p?.agent || null,
-            source_origin: p?.source_origin || null,
-            source_url: p?.source_url || null,
+            source_origin: richSourceOrigin,
+            source_url: richSourceUrl || null,
             source_updated_at: p?.source_updated_at || null,
             balcony: p?.balcony || null,
             elevator: p?.elevator || null,
             transaction_type: p?.transaction_type || null,
-            homely_raw: compactRaw(p?.raw),
+            homely_raw: compactRaw(richRecord),
+            detail_endpoint: richEndpoint,
             synced_at: new Date().toISOString(),
           },
         };
@@ -990,33 +1032,17 @@ Deno.serve(async (req) => {
     }
 
     const mapped = mapProperty(detail, 0);
-
-    // Try richer per-property endpoints for full pic1..picN / file1..fileN.
-    // First non-empty media wins; summary row is the fallback.
-    const detailEndpoints = [
-      `${WEBTIV_BASE}/api/report/getNechesFullDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serialStr)}`,
-      `${WEBTIV_BASE}/api/report/getNechesData/${encodeURIComponent(hash)}/${encodeURIComponent(serialStr)}`,
-      `${WEBTIV_BASE}/api/report/getPropertyDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serialStr)}`,
-    ];
-    let fullDetail: any = null;
-    for (const ep of detailEndpoints) {
-      const dr = await getJson(ep);
-      if (dr.status >= 200 && dr.status < 300 && dr.data) {
-        const candidate = Array.isArray(dr.data)
-          ? (dr.data.find((x: any) => x && typeof x === "object") ?? dr.data[0])
-          : (dr.data?.result ?? dr.data?.data ?? dr.data);
-        if (candidate && typeof candidate === "object") {
-          const m = collectMedia(candidate);
-          if (m.photos.length || m.documents.length) { fullDetail = candidate; break; }
-          if (!fullDetail) fullDetail = candidate;
-        }
-      }
-    }
-    const richest = fullDetail ?? detail;
+    const rich = await fetchRichPropertyDetail(hash, serialStr, detail);
+    const richest = rich.record ?? detail;
     const media = collectMedia(richest);
     const summaryPhoto = mapped.photo ? [mapped.photo] : [];
     const rawPhotos = media.photos.length ? media.photos : summaryPhoto;
     const rawDocs = media.documents;
+    const sourceOrigin = pickSourceOrigin(richest) || pickSourceOrigin(detail) || meta.source_origin || null;
+    const sourceUrl = pickSourceUrl(richest)
+      || pickSourceUrl(detail)
+      || (typeof meta.source_url === "string" ? meta.source_url : "")
+      || (sourceOrigin === "yad2" ? buildYad2FallbackUrl(mapped.city || listing.city, mapped.address || listing.address) : "");
 
     // Mirror media once into homely-media bucket and store signed URLs
     const cachedPhotos = await mirrorAll(admin, String(listing_id), rawPhotos, 40);
@@ -1032,17 +1058,20 @@ Deno.serve(async (req) => {
       sqm: mapped.sqm || listing.sqm,
       floor: mapped.floor || listing.floor,
       external_id: String(serial),
+      source_url: sourceUrl || null,
       media_photos: cachedPhotos,
       media_documents: cachedDocs,
       source_metadata: {
         ...meta,
+        source_origin: sourceOrigin,
+        source_url: sourceUrl || null,
         photos: cachedPhotos,
         documents: cachedDocs,
         photos_origin: rawPhotos,
         documents_origin: rawDocs,
         homely_raw: richest,
         synced_at: new Date().toISOString(),
-        endpoint: url,
+        endpoint: rich.endpoint ?? url,
       },
     };
 
