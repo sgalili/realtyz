@@ -687,10 +687,22 @@ function extFromUrlOrType(url: string, contentType: string | null): string {
   return "bin";
 }
 
+function looksLikeImageBytes(bytes: Uint8Array): boolean {
+  if (bytes.length < 12) return false;
+  // jpg / png / gif / webp / bmp / heic-ish ftyp
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return true;
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return true;
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) return true;
+  if (bytes[0] === 0x42 && bytes[1] === 0x4d) return true;
+  const ascii = new TextDecoder().decode(bytes.slice(0, 32));
+  return /RIFF.{4}WEBP|ftyp(heic|heix|mif1|msf1)/i.test(ascii);
+}
+
 async function mirrorOne(
   admin: ReturnType<typeof createClient>,
   listingId: string,
   originalUrl: string,
+  expected: "image" | "document" | "any" = "any",
 ): Promise<string | null> {
   try {
     if (!/^https?:\/\//i.test(originalUrl)) return originalUrl || null;
@@ -711,16 +723,22 @@ async function mirrorOne(
     } finally { clearTimeout(t); }
     if (!resp.ok) return null;
     const contentType = resp.headers.get("content-type") || "application/octet-stream";
+    const lowerContentType = contentType.toLowerCase();
+    if (/text\/html|application\/json|text\/plain/i.test(lowerContentType)) return null;
     const ext = extFromUrlOrType(originalUrl, contentType);
     const path = `listing/${listingId}/${key}.${ext}`;
     const bytes = new Uint8Array(await resp.arrayBuffer());
+    if (expected === "image" && !lowerContentType.startsWith("image/") && !looksLikeImageBytes(bytes)) {
+      return null;
+    }
+    if (expected === "image" && bytes.byteLength < 64) return null;
     // Upload (idempotent — upsert)
     const { error: upErr } = await admin.storage
       .from("homely-media")
       .upload(path, bytes, { contentType, upsert: true, cacheControl: "31536000" });
     if (upErr && !/exists/i.test(upErr.message)) {
       console.error("[mirrorOne] upload failed", upErr.message, path);
-      return null;
+      return expected === "image" ? originalUrl : null;
     }
     // 10-year signed URL for embedding in DB
     const { data: signed, error: signErr } = await admin.storage
@@ -728,7 +746,7 @@ async function mirrorOne(
       .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
     if (signErr || !signed?.signedUrl) {
       console.error("[mirrorOne] sign failed", signErr?.message, path);
-      return null;
+      return expected === "image" ? originalUrl : null;
     }
     return signed.signedUrl;
   } catch (e) {
@@ -742,11 +760,12 @@ async function mirrorAll(
   listingId: string,
   urls: string[],
   cap: number,
+  expected: "image" | "document" | "any" = "any",
 ): Promise<string[]> {
   const uniq = Array.from(new Set((urls || []).filter((u) => typeof u === "string" && u))).slice(0, cap);
   const out: string[] = [];
   for (const u of uniq) {
-    const mirrored = await mirrorOne(admin, listingId, u);
+    const mirrored = await mirrorOne(admin, listingId, u, expected);
     if (mirrored) out.push(mirrored);
   }
   return out;
@@ -953,6 +972,46 @@ Deno.serve(async (req) => {
     const action = (body as any)?.action as string | undefined;
     const listing_id = (body as any)?.listing_id;
 
+    if (action === "cleanBrokenImages") {
+      const targetListingId = (body as any)?.listing_id;
+      const baseQuery = admin
+        .from("listings")
+        .select("id, media_photos, media_documents, source_metadata")
+        .eq("user_id", workspaceOwnerId);
+      const { data: listingRows, error: listErr } = targetListingId
+        ? await baseQuery.eq("id", targetListingId)
+        : await baseQuery.or("source.eq.homely,source.eq.webtiv").limit(1000);
+      if (listErr) return json({ ok: false, error: listErr.message }, 200);
+      let scanned = 0;
+      let removed = 0;
+      let updated = 0;
+      for (const row of listingRows ?? []) {
+        const meta = ((row as any).source_metadata && typeof (row as any).source_metadata === "object") ? (row as any).source_metadata : {};
+        const candidates = Array.from(new Set([
+          ...((Array.isArray((row as any).media_photos) ? (row as any).media_photos : []) as unknown[]),
+          ...((Array.isArray(meta.photos) ? meta.photos : []) as unknown[]),
+          ...((Array.isArray(meta.images) ? meta.images : []) as unknown[]),
+        ].filter((u): u is string => typeof u === "string" && /^https?:\/\//i.test(u))));
+        scanned += candidates.length;
+        const valid = await mirrorAll(admin, String((row as any).id), candidates, 80, "image");
+        removed += Math.max(0, candidates.length - valid.length);
+        const docs = Array.isArray((row as any).media_documents) ? (row as any).media_documents : (Array.isArray(meta.documents) ? meta.documents : []);
+        await admin.from("listings").update({
+          media_photos: valid,
+          source_metadata: {
+            ...meta,
+            photos: valid,
+            images: valid,
+            documents: docs,
+            broken_images_removed_at: new Date().toISOString(),
+            broken_images_removed_count: Math.max(0, candidates.length - valid.length),
+          },
+        }).eq("id", (row as any).id).eq("user_id", workspaceOwnerId);
+        updated++;
+      }
+      return json({ ok: true, scanned, removed, updated });
+    }
+
     if (action === "importOutJson") {
       const propertyIds = new Set(((body as any)?.propertyIds ?? []).map((v: unknown) => String(v)));
       const contactIds = new Set(((body as any)?.contactIds ?? []).map((v: unknown) => String(v)));
@@ -1122,19 +1181,21 @@ Deno.serve(async (req) => {
         try {
           const listingId = String((upserted as any)?.id ?? "");
           if (listingId) {
-            const mirroredPhotos = await mirrorAll(admin, listingId, rawPhotos, 40);
-            const mirroredDocs = await mirrorAll(admin, listingId, rawDocuments, 20);
-            if (mirroredPhotos.length || mirroredDocs.length) {
+            const mirroredPhotos = await mirrorAll(admin, listingId, rawPhotos, 40, "image");
+            const mirroredDocs = await mirrorAll(admin, listingId, rawDocuments, 20, "document");
+            if (mirroredPhotos.length || rawPhotos.length || mirroredDocs.length || rawDocuments.length) {
               const meta = row.source_metadata as Record<string, unknown>;
               await admin.from("listings").update({
-                media_photos: mirroredPhotos.length ? mirroredPhotos : rawPhotos,
+                media_photos: mirroredPhotos,
                 media_documents: mirroredDocs.length ? mirroredDocs : rawDocuments,
                 source_metadata: {
                   ...meta,
-                  photos: mirroredPhotos.length ? mirroredPhotos : rawPhotos,
+                  photos: mirroredPhotos,
+                  images: mirroredPhotos,
                   documents: mirroredDocs.length ? mirroredDocs : rawDocuments,
                   photos_original: rawPhotos,
                   documents_original: rawDocuments,
+                  broken_images_removed_count: Math.max(0, rawPhotos.length - mirroredPhotos.length),
                   media_mirrored_at: new Date().toISOString(),
                 },
               }).eq("id", listingId);
@@ -1408,8 +1469,8 @@ Deno.serve(async (req) => {
       || (sourceOrigin === "yad2" ? buildYad2FallbackUrl(mapped.city || listing.city, mapped.address || listing.address, meta.transaction_type, serialStr) : "");
 
     // Mirror media once into homely-media bucket and store signed URLs
-    const cachedPhotos = await mirrorAll(admin, String(listing_id), finalRawPhotos, 40);
-    const cachedDocs = await mirrorAll(admin, String(listing_id), rawDocs, 20);
+    const cachedPhotos = await mirrorAll(admin, String(listing_id), finalRawPhotos, 40, "image");
+    const cachedDocs = await mirrorAll(admin, String(listing_id), rawDocs, 20, "document");
 
     const updated = {
       property_title: mapped.title || listing.property_title,
@@ -1422,7 +1483,7 @@ Deno.serve(async (req) => {
       floor: mapped.floor || listing.floor,
       external_id: String(serial),
       source_url: sourceUrl || null,
-      media_photos: cachedPhotos.length ? cachedPhotos : finalRawPhotos,
+      media_photos: cachedPhotos,
       media_documents: cachedDocs.length ? cachedDocs : rawDocs,
       features: Array.from(new Set([
         ...(Array.isArray(listing.features) ? listing.features.filter((f: any) => typeof f === "string") : []),
@@ -1434,10 +1495,12 @@ Deno.serve(async (req) => {
         source_url: sourceUrl || null,
         yad2_search_url: !yad2Enrichment?.exact && yad2Enrichment?.url ? yad2Enrichment.url : null,
         yad2_exact_match: yad2Enrichment?.exact ?? null,
-        photos: cachedPhotos.length ? cachedPhotos : finalRawPhotos,
+        photos: cachedPhotos,
+        images: cachedPhotos,
         documents: cachedDocs.length ? cachedDocs : rawDocs,
         photos_origin: finalRawPhotos,
         documents_origin: rawDocs,
+        broken_images_removed_count: Math.max(0, finalRawPhotos.length - cachedPhotos.length),
         balcony,
         homely_raw: richest,
         synced_at: new Date().toISOString(),

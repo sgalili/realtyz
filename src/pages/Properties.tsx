@@ -48,6 +48,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
 import { isInServiceArea } from '@/lib/serviceAreas';
 import { SortableTh, useTableSort, sortRows } from '@/components/ui/sortable-th';
+import { normalizeImageUrls, useVisibleImageUrls } from '@/lib/imageHealth';
 
 const PRICE_MIN = 0;
 const PRICE_MAX = 10_000_000;
@@ -237,10 +238,11 @@ export default function Properties() {
             connected: true,
             results: dedupeProperties(scoped.map((row: any) => {
               const meta = row.source_metadata && typeof row.source_metadata === 'object' ? row.source_metadata : {};
-              const metaPhotos = Array.from(new Set([
+              const metaPhotos = normalizeImageUrls([
                 ...(Array.isArray(row.media_photos) ? row.media_photos.filter((p: any) => typeof p === 'string') : []),
                 ...(Array.isArray(meta.photos) ? meta.photos.filter((p: any) => typeof p === 'string') : []),
-              ]));
+                ...(Array.isArray(meta.images) ? meta.images.filter((p: any) => typeof p === 'string') : []),
+              ]);
               const originRaw = String(meta.source_origin ?? '').toLowerCase();
               const sourceUrlRaw = String(row.source_url ?? meta.source_url ?? '').toLowerCase();
               const originSource = /yad2\.co\.il/.test(sourceUrlRaw) ? 'yad2' : originRaw && originRaw !== 'homely' && originRaw !== 'webtiv' && originRaw !== 'manual'
@@ -289,6 +291,20 @@ export default function Properties() {
   const liveResults = liveResponse?.results ?? [];
   const externalConnected = liveResponse?.connected !== false;
 
+  useEffect(() => {
+    if (isLoading) return;
+    if (!liveResults.some((r: any) => r.source === 'homely')) return;
+    const key = 'realtyz.clean-homely-broken-images.v1';
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+    supabase.functions.invoke('homely-fetch-property', { body: { action: 'cleanBrokenImages' } })
+      .then(({ data, error }) => {
+        const removed = Number((data as any)?.removed ?? 0);
+        if (!error && removed > 0) queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+      })
+      .catch(() => sessionStorage.removeItem(key));
+  }, [isLoading, liveResults, queryClient]);
+
   const cityOptions = useMemo(() => {
     const cities = new Set<string>(CITY_OPTIONS as readonly string[]);
     liveResults.forEach((result) => {
@@ -311,7 +327,7 @@ export default function Properties() {
       size_sqm: Number(r.size_sqm ?? 0),
       floor: r.floor != null ? Number(r.floor) : undefined,
       property_type: (r.property_type ?? 'apartment') as PropertyType,
-      photos: Array.isArray(r.photos) ? r.photos as string[] : [],
+      photos: Array.isArray(r.photos) ? normalizeImageUrls(r.photos as string[]) : [],
       url: r.url ?? null,
       features: Array.isArray(r.features) ? r.features as string[] : [],
       listing_type: (r.listing_type ?? 'sale') as ListingType,
@@ -644,7 +660,8 @@ export default function Properties() {
 }
 
 function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare: () => void }) {
-  const photo = property.photos[0];
+  const { visible: photos, markBroken } = useVisibleImageUrls(property.photos || []);
+  const photo = photos[0];
   const isRent = property.listing_type === 'rent';
   return (
     <Card className="overflow-hidden flex flex-col group hover:shadow-lg transition-shadow">
@@ -656,6 +673,7 @@ function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare
               alt={property.title}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
+              onError={() => markBroken(photo)}
             />
           ) : (
             <div className="h-full w-full flex items-center justify-center text-muted-foreground text-sm">

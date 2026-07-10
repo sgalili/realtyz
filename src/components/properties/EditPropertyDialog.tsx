@@ -28,6 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
+import { normalizeImageUrls, useVisibleImageUrls } from '@/lib/imageHealth';
 
 const CONDITION_OPTIONS: { value: string; label: string }[] = [
   { value: 'new', label: 'חדש מקבלן' },
@@ -106,8 +107,14 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
     setFurnished(Boolean(extras.furnished));
     setBars(Boolean(extras.bars));
     const existingPhotos = p.photos ?? meta.photos;
-    setPhotos(Array.isArray(existingPhotos) ? existingPhotos.filter((x: any) => typeof x === 'string') : []);
+    setPhotos(Array.isArray(existingPhotos) ? normalizeImageUrls(existingPhotos) : []);
   };
+
+  const { visible: visiblePhotos, markBroken } = useVisibleImageUrls(photos);
+
+  useEffect(() => {
+    if (visiblePhotos.length !== photos.length) setPhotos(visiblePhotos);
+  }, [visiblePhotos, photos.length]);
 
   useEffect(() => {
     if (!property || !open) return;
@@ -282,17 +289,18 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
             </Button>
           </div>
 
-          {photos.length > 0 && (
+          {visiblePhotos.length > 0 && (
             <div className="space-y-1.5">
-              <Label className="text-xs font-semibold">תמונות ({photos.length})</Label>
+              <Label className="text-xs font-semibold">תמונות ({visiblePhotos.length})</Label>
               <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto">
-                {photos.map((url, i) => (
+                {visiblePhotos.map((url, i) => (
                   <img
                     key={`${url}-${i}`}
                     src={url}
                     alt={`photo-${i}`}
                     className="aspect-square object-cover rounded-md border"
                     loading="lazy"
+                    onError={() => markBroken(url)}
                   />
                 ))}
               </div>

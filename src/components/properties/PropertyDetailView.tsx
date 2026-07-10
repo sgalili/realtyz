@@ -5,6 +5,7 @@ import {
   Car, ArrowUpCircle, Wind, Shield, Sun, ExternalLink,
 } from 'lucide-react';
 import { PROPERTY_TYPE_LABELS_HE, type HomelyProperty } from '@/lib/homelyMockProperties';
+import { useVisibleImageUrls } from '@/lib/imageHealth';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -57,7 +58,7 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
     ...asStringArray(property.images),
     ...asStringArray(previewPhotos),
   ];
-  const photos = Array.from(new Set(resolvedPhotos));
+  const { visible: photos, markBroken } = useVisibleImageUrls(resolvedPhotos);
   const resolvedUrl = firstString(
     property.source_url,
     sourceMetadata.source_url,
@@ -143,6 +144,7 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
                     alt={headline}
                     className="h-full w-full min-w-full object-cover block snap-center"
                     loading={index === 0 ? 'eager' : 'lazy'}
+                    onError={() => markBroken(src)}
                   />
                 ))}
               </div>
@@ -160,7 +162,7 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
                   i === activePhoto ? 'border-primary' : 'border-transparent opacity-70 hover:opacity-100'
                 }`}
               >
-                <img src={p} alt="" className="h-full w-full object-cover" />
+                <img src={p} alt="" className="h-full w-full object-cover" onError={() => markBroken(p)} />
               </button>
             ))}
           </div>

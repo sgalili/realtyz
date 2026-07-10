@@ -22,6 +22,7 @@ import {
 import { ShareWithLeadDialog } from '@/components/properties/ShareWithLeadDialog';
 import { ProjectAlternativesCard } from '@/components/properties/ProjectAlternativesCard';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
+import { normalizeImageUrls, useVisibleImageUrls } from '@/lib/imageHealth';
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
@@ -140,9 +141,7 @@ export default function PropertyDetail() {
       ];
       if (typeof meta?.image === 'string') photoSources.push(meta.image);
       if (typeof meta?.image_url === 'string') photoSources.push(meta.image_url);
-      const photos = Array.from(
-        new Set(photoSources.map(photoUrlFrom).filter((s): s is string => !!s))
-      );
+      const photos = normalizeImageUrls(photoSources.map(photoUrlFrom).filter((s): s is string => !!s));
 
       const docsRaw: unknown[] = [
         ...(Array.isArray((row as any).media_documents) ? ((row as any).media_documents as unknown[]) : []),
@@ -231,6 +230,7 @@ export default function PropertyDetail() {
   const sourceUrl = data?.sourceUrl ?? null;
   const amenities = data?.amenities;
   const documents = data?.documents ?? [];
+  const { visible: visiblePropertyPhotos, markBroken: markBrokenPropertyPhoto } = useVisibleImageUrls(property?.photos || []);
 
   // ─── Homely image hydration & cache ────────────────────────────────────
   // If this listing came from Homely/Webtiv and we haven't cached photos in
@@ -274,6 +274,23 @@ export default function PropertyDetail() {
     })();
   }, [id, data, qc]);
 
+  useEffect(() => {
+    if (!id || !data) return;
+    const row: any = data.row;
+    const src = String(row?.source ?? '').toLowerCase();
+    if (src !== 'homely' && src !== 'webtiv') return;
+    const flagKey = `homely-clean-images:${id}`;
+    if (sessionStorage.getItem(flagKey)) return;
+    sessionStorage.setItem(flagKey, '1');
+    supabase.functions.invoke('homely-fetch-property', {
+      body: { action: 'cleanBrokenImages', listing_id: id },
+    }).then(({ data: cleanData, error }) => {
+      if (!error && Number((cleanData as any)?.removed ?? 0) > 0) {
+        qc.invalidateQueries({ queryKey: ['property-detail', id] });
+      }
+    }).catch(() => sessionStorage.removeItem(flagKey));
+  }, [id, data, qc]);
+
 
   // Initialize edit form when entering edit mode
   useEffect(() => {
@@ -302,12 +319,12 @@ export default function PropertyDetail() {
         shelter: Boolean(amenities?.shelter),
         solar: Boolean(amenities?.solar),
         source_url: sourceUrl || (typeof meta.source_url === 'string' ? meta.source_url : ''),
-        photos: Array.isArray(property.photos) ? property.photos : [],
+        photos: visiblePropertyPhotos,
         photo_url_draft: '',
       });
     }
     if (!editMode) setForm(null);
-  }, [editMode, property, neighborhood, meta, amenities, sourceUrl, form]);
+  }, [editMode, property, neighborhood, meta, amenities, sourceUrl, form, visiblePropertyPhotos]);
 
   const handleSave = async () => {
     if (!form || !id) return;
@@ -395,7 +412,7 @@ export default function PropertyDetail() {
   }
 
   const isRent = property.price < 50_000;
-  const photos = editMode && form ? form.photos : (property.photos || []);
+  const photos = editMode && form ? form.photos : visiblePropertyPhotos;
   const main = photos[activePhoto];
 
   const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
@@ -427,10 +444,15 @@ export default function PropertyDetail() {
   const setPhotos = (updater: (photos: string[]) => string[]) =>
     setForm((f) => {
       if (!f) return f;
-      const nextPhotos = updater(f.photos).map((p) => p.trim()).filter(Boolean);
+      const nextPhotos = normalizeImageUrls(updater(f.photos));
       setActivePhoto((current) => Math.max(0, Math.min(current, Math.max(nextPhotos.length - 1, 0))));
       return { ...f, photos: nextPhotos };
     });
+
+  const removeBrokenPhoto = (url: string) => {
+    markBrokenPropertyPhoto(url);
+    if (editMode) setPhotos((list) => list.filter((item) => item !== url));
+  };
 
   const addPhotoUrl = () => {
     if (!form?.photo_url_draft.trim()) return;
@@ -579,7 +601,7 @@ export default function PropertyDetail() {
             <Card className="overflow-hidden">
               <div className="aspect-[16/10] bg-muted relative">
                 {main ? (
-                  <img src={main} alt={dynamicHeadline} className="h-full w-full object-cover" />
+                  <img src={main} alt={dynamicHeadline} className="h-full w-full object-cover" onError={() => removeBrokenPhoto(main)} />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-muted-foreground">
                     <ImageIcon className="h-10 w-10" />
@@ -599,7 +621,7 @@ export default function PropertyDetail() {
                     i === activePhoto ? 'border-primary' : 'border-transparent opacity-70 hover:opacity-100'
                   }`}
                 >
-                  <img src={p} alt="" className="h-full w-full object-cover" />
+                  <img src={p} alt="" className="h-full w-full object-cover" onError={() => removeBrokenPhoto(p)} />
                   {editMode && (
                     <span
                       role="button"

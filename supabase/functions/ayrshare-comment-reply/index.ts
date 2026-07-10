@@ -110,20 +110,35 @@ Deno.serve(async (req) => {
       if (!guard.allowed) {
         return json({ ok: false, blocked: true, reason: guard.reason, message: "Ayrshare safety guard blocked this reply." }, 200);
       }
-      const ayrRes = await fetch(`${AYR_REPLY_URL}/${encodeURIComponent(nativeCommentId)}`, {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-          "Profile-Key": profileKey,
-          "Content-Type": "application/json",
+      const replyAttempts = [
+        {
+          url: AYR_REPLY_URL,
+          body: { commentId: nativeCommentId, platforms: [platform], comment: sanitized, searchPlatformId: true },
+          mode: "body_comment_id",
         },
-        body: JSON.stringify({
-          platforms: [platform],
-          comment: sanitized,
-          searchPlatformId: true,
-        }),
-      });
-      const ayrText = await ayrRes.text();
+        {
+          url: `${AYR_REPLY_URL}/${encodeURIComponent(nativeCommentId)}`,
+          body: { platforms: [platform], comment: sanitized, searchPlatformId: true },
+          mode: "path_comment_id",
+        },
+      ];
+      let ayrRes: Response | null = null;
+      let ayrText = "";
+      for (const attempt of replyAttempts) {
+        ayrRes = await fetch(attempt.url, {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+            "Profile-Key": profileKey,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(attempt.body),
+        });
+        ayrText = await ayrRes.text();
+        console.log("[ayrshare-comment-reply] public reply attempt", { mode: attempt.mode, status: ayrRes.status, raw: ayrText.slice(0, 500) });
+        if (ayrRes.ok) break;
+      }
+      if (!ayrRes) return json({ error: "reply_request_not_started" }, 200);
       try { ayrPayload = ayrText ? JSON.parse(ayrText) : null; } catch { ayrPayload = { raw: ayrText }; }
 
       if (!ayrRes.ok) {
@@ -222,14 +237,11 @@ Deno.serve(async (req) => {
           (rowMetadata as any)?.from?.id ??
           "",
         ).trim();
-        const attempts = senderId
-          ? [
-              { url: `${AYR_MESSAGES_URL}/facebook`, body: { recipientId: senderId, message: sanitizedDm }, mode: "recipient" },
-              { url: AYR_MESSAGES_URL, body: { commentId: dmParentId, text: sanitizedDm, platform: "facebook" }, mode: "private_reply" },
-            ]
-          : [
-              { url: AYR_MESSAGES_URL, body: { commentId: dmParentId, text: sanitizedDm, platform: "facebook" }, mode: "private_reply" },
-            ];
+        const attempts = [
+          { url: AYR_MESSAGES_URL, body: { commentId: dmParentId, platforms: ["facebook"], message: sanitizedDm }, mode: "private_reply_message" },
+          { url: AYR_MESSAGES_URL, body: { commentId: dmParentId, text: sanitizedDm, platform: "facebook" }, mode: "private_reply_text" },
+          ...(senderId ? [{ url: `${AYR_MESSAGES_URL}/facebook`, body: { recipientId: senderId, message: sanitizedDm }, mode: "recipient" }] : []),
+        ];
         console.log("[MESSENGER PIPELINE] Ayrshare DM request", {
           commentId: dmParentId,
           senderId: senderId || "none",
