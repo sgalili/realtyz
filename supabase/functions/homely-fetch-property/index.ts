@@ -953,8 +953,9 @@ Deno.serve(async (req) => {
         const richMedia = collectMedia(richRecord);
         const rawSourceOrigin = pickSourceOrigin(richRecord) || p?.source_origin || null;
         const sourceIsYad2 = rawSourceOrigin === "yad2" || hasYad2Signal(richRecord, p?.raw, p?.source_url, rawSourceOrigin);
-        const richSourceOrigin = sourceIsYad2 ? "yad2" : rawSourceOrigin;
-        const yad2Enrichment = sourceIsYad2 ? await enrichFromYad2(admin, workspaceOwnerId, p) : null;
+        const shouldProbeYad2 = sourceIsYad2 || (!p?.source_url && p?.transaction_type === "sale");
+        const yad2Enrichment = shouldProbeYad2 ? await enrichFromYad2(admin, workspaceOwnerId, p) : null;
+        const richSourceOrigin = sourceIsYad2 || yad2Enrichment?.exact ? "yad2" : rawSourceOrigin;
         const balcony = pickBalcony(richRecord) ?? booleanFeatureFrom(p?.balcony);
         const rawPhotos = richMedia.photos.length
           ? richMedia.photos
@@ -997,6 +998,8 @@ Deno.serve(async (req) => {
             office_notes: p?.office_notes || null,
             agent: p?.agent || null,
             source_origin: richSourceOrigin,
+            yad2_search_url: !yad2Enrichment?.exact && yad2Enrichment?.url ? yad2Enrichment.url : null,
+            yad2_exact_match: yad2Enrichment?.exact ?? null,
             source_url: richSourceUrl || null,
             source_updated_at: p?.source_updated_at || null,
             balcony,
@@ -1239,9 +1242,11 @@ Deno.serve(async (req) => {
     const rawPhotos = media.photos.length ? media.photos : summaryPhoto;
     const rawDocs = media.documents;
     const rawSourceOrigin = pickSourceOrigin(richest) || pickSourceOrigin(detail) || meta.source_origin || null;
-    const sourceOrigin = rawSourceOrigin === "yad2" || hasYad2Signal(richest, detail, meta.source_url, rawSourceOrigin) ? "yad2" : rawSourceOrigin;
+    const sourceOriginRaw = rawSourceOrigin === "yad2" || hasYad2Signal(richest, detail, meta.source_url, rawSourceOrigin) ? "yad2" : rawSourceOrigin;
     const mappedForEnrichment = { ...mapped, raw: richest, source_origin: sourceOrigin, transaction_type: meta.transaction_type };
-    const yad2Enrichment = sourceOrigin === "yad2" ? await enrichFromYad2(admin, workspaceOwnerId, mappedForEnrichment) : null;
+    const shouldProbeYad2 = sourceOriginRaw === "yad2" || (!meta.source_url && meta.transaction_type === "sale");
+    const yad2Enrichment = shouldProbeYad2 ? await enrichFromYad2(admin, workspaceOwnerId, mappedForEnrichment) : null;
+    const sourceOrigin = sourceOriginRaw === "yad2" || yad2Enrichment?.exact ? "yad2" : sourceOriginRaw;
     const balcony = pickBalcony(richest) ?? pickBalcony(detail) ?? booleanFeatureFrom(meta.balcony ?? meta.mirpeset);
     const finalRawPhotos = rawPhotos.length ? rawPhotos : (yad2Enrichment?.photos ?? []);
     const sourceUrl = pickSourceUrl(richest)
@@ -1275,6 +1280,8 @@ Deno.serve(async (req) => {
         ...meta,
         source_origin: sourceOrigin,
         source_url: sourceUrl || null,
+        yad2_search_url: !yad2Enrichment?.exact && yad2Enrichment?.url ? yad2Enrichment.url : null,
+        yad2_exact_match: yad2Enrichment?.exact ?? null,
         photos: cachedPhotos.length ? cachedPhotos : finalRawPhotos,
         documents: cachedDocs.length ? cachedDocs : rawDocs,
         photos_origin: finalRawPhotos,
