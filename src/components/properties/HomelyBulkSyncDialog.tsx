@@ -117,18 +117,23 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
     }
   }
 
-  // Auto-fetch ONLY once per tab when dialog opens. No intervals, no polling, no refocus refetch.
+  // Auto-fetch is DISABLED to avoid spamming Homely on every open. The
+  // user pulls fresh data explicitly via the Refresh button. Search or
+  // filter changes on an empty list trigger a single implicit fetch so
+  // the user isn't stuck with a blank panel.
   useEffect(() => {
     if (!open) return;
-    if (tab === 'properties' && !fetchedOnce.current.properties) {
+    const hasSearchOrFilter = !!(fSearch.trim() || fCities.size || fRooms || fType || fAgent || fDeal !== 'all');
+    if (!hasSearchOrFilter) return;
+    if (tab === 'properties' && !fetchedOnce.current.properties && !loadingProps && properties.length === 0) {
       fetchedOnce.current.properties = true;
       fetchAction('fetchAllProperties');
-    } else if (tab === 'contacts' && !fetchedOnce.current.contacts) {
+    } else if (tab === 'contacts' && !fetchedOnce.current.contacts && !loadingContacts && contacts.length === 0) {
       fetchedOnce.current.contacts = true;
       fetchAction('fetchAllContacts');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, tab]);
+  }, [open, tab, fSearch, fCities, fRooms, fType, fAgent, fDeal]);
 
   useEffect(() => {
     if (!open) {
