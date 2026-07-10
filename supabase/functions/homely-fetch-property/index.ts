@@ -1175,15 +1175,17 @@ Deno.serve(async (req) => {
     const summaryPhoto = mapped.photo ? [mapped.photo] : [];
     const rawPhotos = media.photos.length ? media.photos : summaryPhoto;
     const rawDocs = media.documents;
-    const sourceOrigin = pickSourceOrigin(richest) || pickSourceOrigin(detail) || meta.source_origin || null;
-    const mappedForEnrichment = { ...mapped, raw: richest, source_origin: sourceOrigin };
+    const rawSourceOrigin = pickSourceOrigin(richest) || pickSourceOrigin(detail) || meta.source_origin || null;
+    const sourceOrigin = rawSourceOrigin === "yad2" || hasYad2Signal(richest, detail, meta.source_url, rawSourceOrigin) ? "yad2" : rawSourceOrigin;
+    const mappedForEnrichment = { ...mapped, raw: richest, source_origin: sourceOrigin, transaction_type: meta.transaction_type };
     const yad2Enrichment = sourceOrigin === "yad2" ? await enrichFromYad2(admin, workspaceOwnerId, mappedForEnrichment) : null;
+    const balcony = pickBalcony(richest) ?? pickBalcony(detail) ?? booleanFeatureFrom(meta.balcony ?? meta.mirpeset);
     const finalRawPhotos = rawPhotos.length ? rawPhotos : (yad2Enrichment?.photos ?? []);
     const sourceUrl = pickSourceUrl(richest)
       || pickSourceUrl(detail)
       || yad2Enrichment?.url
       || (typeof meta.source_url === "string" ? meta.source_url : "")
-      || (sourceOrigin === "yad2" ? buildYad2FallbackUrl(mapped.city || listing.city, mapped.address || listing.address) : "");
+      || (sourceOrigin === "yad2" ? buildYad2FallbackUrl(mapped.city || listing.city, mapped.address || listing.address, meta.transaction_type) : "");
 
     // Mirror media once into homely-media bucket and store signed URLs
     const cachedPhotos = await mirrorAll(admin, String(listing_id), finalRawPhotos, 40);
@@ -1202,6 +1204,10 @@ Deno.serve(async (req) => {
       source_url: sourceUrl || null,
       media_photos: cachedPhotos,
       media_documents: cachedDocs,
+      features: Array.from(new Set([
+        ...(Array.isArray(listing.features) ? listing.features.filter((f: any) => typeof f === "string") : []),
+        ...(balcony === true ? ["מרפסת"] : []),
+      ])),
       source_metadata: {
         ...meta,
         source_origin: sourceOrigin,
@@ -1210,6 +1216,7 @@ Deno.serve(async (req) => {
         documents: cachedDocs,
         photos_origin: finalRawPhotos,
         documents_origin: rawDocs,
+        balcony,
         homely_raw: richest,
         synced_at: new Date().toISOString(),
         endpoint: rich.endpoint ?? url,
