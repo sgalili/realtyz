@@ -1218,12 +1218,29 @@ Deno.serve(async (req) => {
     const r = await getJson(url);
     const list = asArray(r.data);
     const serialStr = String(serial);
-    const detail = list.find((it: any) => {
+    let detail = list.find((it: any) => {
       const ids = [it?.id, it?.Id, it?.nechesId, it?.NechesId, it?.sidur, it?.Sidur, it?.serial, it?.Serial, it?.propertyId, it?.PropertyId]
         .filter((v) => v !== undefined && v !== null)
         .map(String);
       return ids.includes(serialStr);
     });
+    let detailIsStreamShape = false;
+    if (!detail) {
+      const cachedRaw = meta?.homely_raw && typeof meta.homely_raw === "object" ? meta.homely_raw : null;
+      const cachedSerial = cachedRaw ? String(cachedRaw?.serial ?? cachedRaw?.Serial ?? cachedRaw?.sidur ?? cachedRaw?.Sidur ?? "") : "";
+      if (cachedRaw && cachedSerial === serialStr) {
+        detail = cachedRaw;
+        detailIsStreamShape = true;
+      }
+    }
+    if (!detail) {
+      const SELLERS_GUID = Deno.env.get("HOMELY_SELLERS_GUID") || "32dc79a4-88ba-49a4-816e-f1fc43024c2f";
+      const customPropertiesFeedUrl = await configuredHomelyFeedUrl(admin, workspaceOwnerId);
+      const stream = await getJson(customPropertiesFeedUrl || `${WEBTIV_BASE}/AutomaionJson/outJson.ashx?guid=${SELLERS_GUID}`);
+      const streamItems = asArray(stream.data);
+      detail = streamItems.find((it: any) => String(it?.serial ?? it?.Serial ?? it?.sidur ?? it?.Sidur ?? "") === serialStr) ?? null;
+      detailIsStreamShape = !!detail;
+    }
     if (!detail) {
       return json({
         ok: false,
@@ -1234,7 +1251,7 @@ Deno.serve(async (req) => {
       }, 200);
     }
 
-    const mapped = mapProperty(detail, 0);
+    const mapped = detailIsStreamShape ? mapStreamProperty(detail, 0) : mapProperty(detail, 0);
     const rich = await fetchRichPropertyDetail(hash, serialStr, detail);
     const richest = rich.record ?? detail;
     const media = collectMedia(richest);
