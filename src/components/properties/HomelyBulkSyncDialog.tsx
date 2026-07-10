@@ -389,8 +389,13 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
               {loadingProps ? (
                 Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
               ) : filteredProps.length === 0 ? (
-                <div className="text-center text-sm text-muted-foreground py-10">
-                  {properties.length === 0 ? 'אין נכסים פעילים בחשבון הומלי המחובר' : 'אין תוצאות שתואמות לסינון'}
+                <div className="text-center text-sm text-muted-foreground py-10 space-y-2">
+                  <div>{properties.length === 0 ? 'לחצו על "רענון" כדי לטעון נכסים מהומלי' : 'אין תוצאות שתואמות לסינון'}</div>
+                  {properties.length === 0 && (
+                    <Button variant="outline" size="sm" onClick={() => fetchAction('fetchAllProperties')} disabled={loading} className="gap-1.5 mx-auto">
+                      <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> טעינת נכסים
+                    </Button>
+                  )}
                 </div>
               ) : (
                 filteredProps.map((p) => {
@@ -447,8 +452,13 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
               {loadingContacts ? (
                 Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)
               ) : filteredContacts.length === 0 ? (
-                <div className="text-center text-sm text-muted-foreground py-10">
-                  {contacts.length === 0 ? 'אין אנשי קשר פעילים בחשבון הומלי המחובר' : 'אין תוצאות שתואמות לסינון'}
+                <div className="text-center text-sm text-muted-foreground py-10 space-y-2">
+                  <div>{contacts.length === 0 ? 'לחצו על "רענון" כדי לטעון אנשי קשר מהומלי' : 'אין תוצאות שתואמות לסינון'}</div>
+                  {contacts.length === 0 && (
+                    <Button variant="outline" size="sm" onClick={() => fetchAction('fetchAllContacts')} disabled={loading} className="gap-1.5 mx-auto">
+                      <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> טעינת אנשי קשר
+                    </Button>
+                  )}
                 </div>
               ) : (
                 filteredContacts.map((c) => {
