@@ -136,7 +136,8 @@ Deno.serve(async (req) => {
         const upserts = allResults.slice(0, 50).map((r) => ({
           user_id: user.id,
           source: "yad2",
-          source_external_id: r.id,
+          external_id: r.id,
+          source_url: r.url,
           property_title: r.title,
           description: r.description,
           asking_price: r.price,
@@ -146,12 +147,13 @@ Deno.serve(async (req) => {
           sqm: r.size_sqm,
           status: "live",
           is_published: true,
-          source_metadata: { photos: r.photos, floor: r.floor, url: r.url, cities: targetCities },
+          media_photos: r.photos,
+          source_metadata: { photos: r.photos, floor: r.floor, url: r.url, source_url: r.url, source_origin: "yad2", cities: targetCities },
           updated_at: new Date().toISOString(),
         }));
         await admin
           .from("listings")
-          .upsert(upserts as any, { onConflict: "source,source_external_id" });
+          .upsert(upserts as any, { onConflict: "source,external_id" });
       } catch (e) {
         console.warn("[yad2-search] upsert failed", (e as Error).message);
       }
