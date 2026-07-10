@@ -947,7 +947,7 @@ Deno.serve(async (req) => {
         const richSourceUrl = pickSourceUrl(richRecord)
           || yad2Enrichment?.url
           || (p?.source_url ? String(p.source_url) : "")
-          || (richSourceOrigin === "yad2" ? buildYad2FallbackUrl(p?.city, p?.address, p?.transaction_type) : "");
+          || (richSourceOrigin === "yad2" ? buildYad2FallbackUrl(p?.city, p?.address, p?.transaction_type, homelyId) : "");
         const features = Array.from(new Set([
           ...(Array.isArray(p?.features) ? p.features.filter((f: any) => typeof f === "string") : []),
           ...(balcony === true ? ["מרפסת"] : []),
@@ -1231,7 +1231,7 @@ Deno.serve(async (req) => {
       || pickSourceUrl(detail)
       || yad2Enrichment?.url
       || (typeof meta.source_url === "string" ? meta.source_url : "")
-      || (sourceOrigin === "yad2" ? buildYad2FallbackUrl(mapped.city || listing.city, mapped.address || listing.address, meta.transaction_type) : "");
+      || (sourceOrigin === "yad2" ? buildYad2FallbackUrl(mapped.city || listing.city, mapped.address || listing.address, meta.transaction_type, serialStr) : "");
 
     // Mirror media once into homely-media bucket and store signed URLs
     const cachedPhotos = await mirrorAll(admin, String(listing_id), finalRawPhotos, 40);
