@@ -96,6 +96,32 @@ export function WorkspaceProvider({ children }: { children: ReactNode }) {
     refresh();
   }, [refresh]);
 
+  // Ayrshare profile-key sentinel: if the shared workspace_social_profile has
+  // no key we surface a "Reconnect Social Profile" toast (one-shot) so brokers
+  // aren't left wondering why outbound replies/DMs silently fail with 500.
+  const relinkWarnedRef = useRef(false);
+  useEffect(() => {
+    if (!user || loading) return;
+    if (relinkWarnedRef.current) return;
+    (async () => {
+      const { data } = await supabase
+        .from('workspace_social_profile')
+        .select('ayrshare_profile_key')
+        .maybeSingle();
+      const key = (data as any)?.ayrshare_profile_key?.toString().trim();
+      if (!key) {
+        relinkWarnedRef.current = true;
+        toast.error('חיבור הרשתות החברתיות אינו תקין — יש לחדש חיבור בהגדרות', {
+          duration: 8000,
+          action: {
+            label: 'חבר מחדש',
+            onClick: () => { window.location.href = '/settings/social'; },
+          },
+        });
+      }
+    })().catch(() => {});
+  }, [user, loading]);
+
   const setActiveWorkspace = useCallback(async (ownerId: string) => {
     if (!user) return;
     setActiveWorkspaceId(ownerId);
