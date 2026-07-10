@@ -24,7 +24,7 @@ export function looksLikeImageUrl(url: string): boolean {
 export function useVisibleImageUrls(urls: unknown[]) {
   const [broken, setBroken] = useState<Set<string>>(() => new Set());
   const visible = useMemo(
-    () => normalizeImageUrls(urls).filter((url) => !broken.has(url) && looksLikeImageUrl(url)),
+    () => normalizeImageUrls(urls).filter((url) => !broken.has(url)),
     [urls, broken],
   );
   const markBroken = useCallback((url: string) => {
