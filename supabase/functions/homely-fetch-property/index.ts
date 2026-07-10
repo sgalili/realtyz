@@ -867,6 +867,16 @@ async function resolveWorkspaceOwnerId(admin: ReturnType<typeof createClient>, u
   return membership ? owner : fallback;
 }
 
+async function configuredHomelyFeedUrl(admin: ReturnType<typeof createClient>, ownerId: string): Promise<string> {
+  const { data } = await admin
+    .from("homely_broker_credentials")
+    .select("homely_feed_url")
+    .eq("user_id", ownerId)
+    .maybeSingle();
+  const raw = String((data as any)?.homely_feed_url ?? "").trim();
+  return /^https?:\/\//i.test(raw) ? raw : "";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -890,8 +900,9 @@ Deno.serve(async (req) => {
       let contacts = Array.isArray((body as any)?.contacts) ? (body as any).contacts : [];
       const SELLERS_GUID = Deno.env.get("HOMELY_SELLERS_GUID") || "32dc79a4-88ba-49a4-816e-f1fc43024c2f";
       const BUYERS_GUID  = Deno.env.get("HOMELY_BUYERS_GUID")  || "b6bb7f44-571b-4551-8de9-e075b8a89128";
+      const customPropertiesFeedUrl = await configuredHomelyFeedUrl(admin, workspaceOwnerId);
       if (propertyIds.size && properties.length === 0) {
-        const r = await getJson(`${WEBTIV_BASE}/AutomaionJson/outJson.ashx?guid=${SELLERS_GUID}`);
+        const r = await getJson(customPropertiesFeedUrl || `${WEBTIV_BASE}/AutomaionJson/outJson.ashx?guid=${SELLERS_GUID}`);
         if (r.status < 200 || r.status >= 300) throw new Error(`properties_stream_http_${r.status}`);
         properties = asArray(r.data).map(mapStreamProperty).filter((p) => propertyIds.has(String(p.homely_id)));
       }
@@ -1070,7 +1081,8 @@ Deno.serve(async (req) => {
       const SELLERS_GUID = Deno.env.get("HOMELY_SELLERS_GUID") || "32dc79a4-88ba-49a4-816e-f1fc43024c2f";
       const BUYERS_GUID  = Deno.env.get("HOMELY_BUYERS_GUID")  || "b6bb7f44-571b-4551-8de9-e075b8a89128";
       const guid = action === "fetchAllProperties" ? SELLERS_GUID : BUYERS_GUID;
-      const url = `${WEBTIV_BASE}/AutomaionJson/outJson.ashx?guid=${guid}`;
+      const customPropertiesFeedUrl = action === "fetchAllProperties" ? await configuredHomelyFeedUrl(admin, workspaceOwnerId) : "";
+      const url = customPropertiesFeedUrl || `${WEBTIV_BASE}/AutomaionJson/outJson.ashx?guid=${guid}`;
 
       const r = await getJson(url);
       console.log(`[homely-fetch-property] GET ${url} → ${r.status}, bytes-sample=${r.sample.length}`);
