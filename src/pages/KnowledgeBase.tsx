@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { Card, CardContent } from '@/components/ui/card';
@@ -22,6 +23,7 @@ type Filter = 'all' | 'images' | 'videos' | 'docs';
 
 export default function KnowledgeBase() {
   const { user } = useAuth();
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const { settings } = useWhiteLabel();
   const blockDemoAction = useDemoGuard();
   const qc = useQueryClient();
@@ -209,13 +211,13 @@ export default function KnowledgeBase() {
 
   /* ── Documents list ── */
   const { data: documents = [], isLoading: docsLoading } = useQuery({
-    queryKey: ['kb-documents', user?.id],
-    enabled: !!user?.id,
+    queryKey: ['kb-documents', workspaceOwnerId],
+    enabled: !!workspaceOwnerId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('knowledge_documents')
         .select('id, title, source_type, chunk_count, created_at, raw_text, source_metadata')
-        .eq('user_id', user!.id)
+        .eq('user_id', workspaceOwnerId!)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
       if (error) throw error;

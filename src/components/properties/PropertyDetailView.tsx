@@ -65,6 +65,12 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
     sourceUrl,
     property.url,
   );
+  // Only surface the "open source ad" link when Homely reports the property is
+  // syndicated to Yad2 (source_origin === 'yad2' or the URL points to yad2).
+  const sourceOrigin = String(sourceMetadata.source_origin ?? '').toLowerCase();
+  const isYad2Listing = sourceOrigin === 'yad2'
+    || (typeof resolvedUrl === 'string' && /yad2\.co\.il/i.test(resolvedUrl));
+  const yad2Url = isYad2Listing ? resolvedUrl : null;
 
   const isRent = Number(property.price) < 50_000;
   const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
@@ -98,15 +104,18 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
 
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3 order-2">
-            <a
-              href={resolvedUrl || '#'}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`text-slate-600 hover:text-blue-600 block z-50 cursor-pointer ${!resolvedUrl ? 'pointer-events-none opacity-40' : ''}`}
-              style={{ display: 'block', visibility: 'visible' }}
-            >
-              <ExternalLink className="w-6 h-6" />
-            </a>
+            {yad2Url ? (
+              <a
+                href={yad2Url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="פתח בעמוד יד2"
+                title="פתח בעמוד יד2"
+                className="text-slate-600 hover:text-blue-600 block z-50 cursor-pointer"
+              >
+                <ExternalLink className="w-6 h-6" />
+              </a>
+            ) : null}
           </div>
           <div className="flex items-baseline gap-3 flex-wrap order-1">
             <span className="text-3xl font-extrabold text-success tabular-nums">
@@ -180,16 +189,16 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
             {amenities?.solar && <Spec icon={Sun} label="דוד שמש" value="כן" />}
           </div>
 
-          {resolvedUrl && (
+          {yad2Url && (
             <div className="mt-5 pt-4 border-t border-border/60">
               <a
-                href={resolvedUrl}
+                href={yad2Url}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
               >
                 <ExternalLink className="h-4 w-4" />
-                🔗 מעבר למקור המודעה
+                🔗 מעבר למודעה ביד2
               </a>
             </div>
           )}

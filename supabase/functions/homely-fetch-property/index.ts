@@ -607,8 +607,8 @@ Deno.serve(async (req) => {
       for (const p of properties) {
         const homelyId = String(p?.homely_id ?? "").trim();
         if (!homelyId) continue;
-        const photos = Array.isArray(p?.photos) && p.photos.length ? p.photos : (p?.photo ? [p.photo] : []);
-        const documents = Array.isArray(p?.documents) ? p.documents : [];
+        const rawPhotos = Array.isArray(p?.photos) && p.photos.length ? p.photos : (p?.photo ? [p.photo] : []);
+        const rawDocuments = Array.isArray(p?.documents) ? p.documents : [];
         const row: Record<string, unknown> = {
           user_id: user.id,
           slug: `${slugify(String(p?.title || p?.address || "homely"))}-${homelyId}`,
@@ -627,14 +627,14 @@ Deno.serve(async (req) => {
           is_published: true,
           office_notes: p?.office_notes ? String(p.office_notes) : null,
           features: Array.isArray(p?.features) ? p.features : [],
-          media_photos: photos,
-          media_documents: documents,
+          media_photos: rawPhotos,
+          media_documents: rawDocuments,
           source_metadata: {
             homely_id: homelyId,
             property_type: p?.property_type || null,
-            photos,
-            documents,
-            media_count: photos.length + documents.length,
+            photos: rawPhotos,
+            documents: rawDocuments,
+            media_count: rawPhotos.length + rawDocuments.length,
             office_notes: p?.office_notes || null,
             agent: p?.agent || null,
             source_origin: p?.source_origin || null,
@@ -647,13 +647,41 @@ Deno.serve(async (req) => {
             synced_at: new Date().toISOString(),
           },
         };
-        // When Webtiv ships a real modification timestamp, prefer it as
-        // the listing's updated_at instead of the sync clock. The DB
-        // trigger still bumps updated_at on subsequent local edits.
         if (p?.source_updated_at) row.updated_at = p.source_updated_at;
-        const { error } = await admin.from("listings").upsert(row as any, { onConflict: "source,external_id" });
+        const { data: upserted, error } = await admin
+          .from("listings")
+          .upsert(row as any, { onConflict: "source,external_id" })
+          .select("id")
+          .single();
         if (error) throw new Error(`listings#${homelyId}: ${error.message}`);
         propsCount++;
+
+        // Mirror media into homely-media bucket so images render instantly
+        // and Homely's CDN is only hit once per file.
+        try {
+          const listingId = String((upserted as any)?.id ?? "");
+          if (listingId) {
+            const mirroredPhotos = await mirrorAll(admin, listingId, rawPhotos, 40);
+            const mirroredDocs = await mirrorAll(admin, listingId, rawDocuments, 20);
+            if (mirroredPhotos.length || mirroredDocs.length) {
+              const meta = row.source_metadata as Record<string, unknown>;
+              await admin.from("listings").update({
+                media_photos: mirroredPhotos.length ? mirroredPhotos : rawPhotos,
+                media_documents: mirroredDocs.length ? mirroredDocs : rawDocuments,
+                source_metadata: {
+                  ...meta,
+                  photos: mirroredPhotos.length ? mirroredPhotos : rawPhotos,
+                  documents: mirroredDocs.length ? mirroredDocs : rawDocuments,
+                  photos_original: rawPhotos,
+                  documents_original: rawDocuments,
+                  media_mirrored_at: new Date().toISOString(),
+                },
+              }).eq("id", listingId);
+            }
+          }
+        } catch (mirrorErr) {
+          console.error(`[importOutJson] mirror failed for ${homelyId}:`, (mirrorErr as Error).message);
+        }
       }
 
       for (const c of contacts) {
