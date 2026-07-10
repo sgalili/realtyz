@@ -858,12 +858,14 @@ Deno.serve(async (req) => {
           }
         }
         const richMedia = collectMedia(richRecord);
+        const richSourceOrigin = pickSourceOrigin(richRecord) || p?.source_origin || null;
+        const yad2Enrichment = richSourceOrigin === "yad2" ? await enrichFromYad2(admin, workspaceOwnerId, p) : null;
         const rawPhotos = richMedia.photos.length
           ? richMedia.photos
-          : (Array.isArray(p?.photos) && p.photos.length ? p.photos : (p?.photo ? [p.photo] : []));
+          : (Array.isArray(p?.photos) && p.photos.length ? p.photos : (p?.photo ? [p.photo] : yad2Enrichment?.photos ?? []));
         const rawDocuments = richMedia.documents.length ? richMedia.documents : (Array.isArray(p?.documents) ? p.documents : []);
-        const richSourceOrigin = pickSourceOrigin(richRecord) || p?.source_origin || null;
         const richSourceUrl = pickSourceUrl(richRecord)
+          || yad2Enrichment?.url
           || (p?.source_url ? String(p.source_url) : "")
           || (richSourceOrigin === "yad2" ? buildYad2FallbackUrl(p?.city, p?.address) : "");
         const row: Record<string, unknown> = {
@@ -1138,13 +1140,17 @@ Deno.serve(async (req) => {
     const rawPhotos = media.photos.length ? media.photos : summaryPhoto;
     const rawDocs = media.documents;
     const sourceOrigin = pickSourceOrigin(richest) || pickSourceOrigin(detail) || meta.source_origin || null;
+    const mappedForEnrichment = { ...mapped, raw: richest, source_origin: sourceOrigin };
+    const yad2Enrichment = sourceOrigin === "yad2" ? await enrichFromYad2(admin, workspaceOwnerId, mappedForEnrichment) : null;
+    const finalRawPhotos = rawPhotos.length ? rawPhotos : (yad2Enrichment?.photos ?? []);
     const sourceUrl = pickSourceUrl(richest)
       || pickSourceUrl(detail)
+      || yad2Enrichment?.url
       || (typeof meta.source_url === "string" ? meta.source_url : "")
       || (sourceOrigin === "yad2" ? buildYad2FallbackUrl(mapped.city || listing.city, mapped.address || listing.address) : "");
 
     // Mirror media once into homely-media bucket and store signed URLs
-    const cachedPhotos = await mirrorAll(admin, String(listing_id), rawPhotos, 40);
+    const cachedPhotos = await mirrorAll(admin, String(listing_id), finalRawPhotos, 40);
     const cachedDocs = await mirrorAll(admin, String(listing_id), rawDocs, 20);
 
     const updated = {
@@ -1166,7 +1172,7 @@ Deno.serve(async (req) => {
         source_url: sourceUrl || null,
         photos: cachedPhotos,
         documents: cachedDocs,
-        photos_origin: rawPhotos,
+        photos_origin: finalRawPhotos,
         documents_origin: rawDocs,
         homely_raw: richest,
         synced_at: new Date().toISOString(),
@@ -1184,7 +1190,7 @@ Deno.serve(async (req) => {
       endpoint: url,
       photo_count: cachedPhotos.length,
       document_count: cachedDocs.length,
-      raw_photo_count: rawPhotos.length,
+      raw_photo_count: finalRawPhotos.length,
       raw_document_count: rawDocs.length,
     });
   } catch (e) {
