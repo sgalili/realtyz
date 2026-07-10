@@ -3,7 +3,6 @@ import { useSearchParams } from 'react-router-dom';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
@@ -14,7 +13,6 @@ import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
 import { useWorkspace } from '@/hooks/useWorkspace';
 import { supabase } from '@/integrations/supabase/client';
-import { useQuery } from '@tanstack/react-query';
 import { IsraeliCityPicker } from '@/components/IsraeliCityPicker';
 import { WhatsAppGatewayCard } from '@/components/profile/WhatsAppGatewayCard';
 import { ListingPortalsCard } from '@/components/profile/ListingPortalsCard';
@@ -424,7 +422,7 @@ function WorkspaceTab() {
     (async () => {
       setLoading(true);
       try {
-        const { data } = await supabase
+        const { data } = await (supabase as any)
           .from('white_label_settings')
           .select('agency_name, logo_url, landscape_logo_url')
           .eq('user_id', ownerId)
@@ -462,7 +460,7 @@ function WorkspaceTab() {
       const { data: pub } = supabase.storage.from('agency-logos').getPublicUrl(path);
       if (kind === 'square') setLogoUrl(pub.publicUrl);
       else setLandscapeLogoUrl(pub.publicUrl);
-      const { error: wlErr } = await supabase
+      const { error: wlErr } = await (supabase as any)
         .from('white_label_settings')
         .upsert({
           user_id: user.id,
@@ -485,7 +483,7 @@ function WorkspaceTab() {
     if (!isOwner || !user?.id) return;
     if (kind === 'square') setLogoUrl('');
     else setLandscapeLogoUrl('');
-    await supabase
+    await (supabase as any)
       .from('white_label_settings')
       .upsert({
         user_id: user.id,
@@ -500,7 +498,7 @@ function WorkspaceTab() {
     if (!isOwner || !user?.id) { toast.error('רק בעל החשבון יכול לשמור את פרטי המשרד'); return; }
     setSaving(true);
     try {
-      const { error } = await supabase
+      const { error } = await (supabase as any)
         .from('white_label_settings')
           .upsert({ user_id: user.id, agency_name: agencyName || null, logo_url: logoUrl || null, landscape_logo_url: landscapeLogoUrl || null } as any, { onConflict: 'user_id' });
       if (error) throw error;
