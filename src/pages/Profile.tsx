@@ -179,7 +179,6 @@ function PersonalTab() {
   const [city, setCity] = useState('');
   const [gender, setGender] = useState<string>('');
   const [brokerLicense, setBrokerLicense] = useState<string>('');
-  const [brokerByline, setBrokerByline] = useState<string>('');
   const [editing, setEditing] = useState<Record<string, boolean>>({});
   const [hydrated, setHydrated] = useState(false);
 
@@ -203,7 +202,7 @@ function PersonalTab() {
       try {
         const { data } = await supabase
           .from('profiles')
-          .select('email, full_name, phone, city, gender, broker_license_number, broker_byline')
+          .select('email, full_name, phone, city, gender, broker_license_number')
           .eq('id', user!.id)
           .maybeSingle();
         let local: any = null;
@@ -229,9 +228,6 @@ function PersonalTab() {
           if (typeof (data as any).broker_license_number === 'string') {
             setBrokerLicense((data as any).broker_license_number ?? '');
           }
-          if (typeof (data as any).broker_byline === 'string') {
-            setBrokerByline((data as any).broker_byline ?? '');
-          }
         }
       } catch { /* ignore */ }
       setHydrated(true);
@@ -256,7 +252,6 @@ function PersonalTab() {
           phone: primaryPhone,
           full_name: fullName,
           broker_license_number: brokerLicense.trim() || null,
-          broker_byline: brokerByline.trim() || null,
         })
         .eq('id', user!.id);
       toast.success('הפרופיל נשמר');
@@ -363,22 +358,6 @@ function PersonalTab() {
             className="text-right"
           />
         </div>
-
-        <div className="space-y-1" dir="rtl">
-          <label className="text-xs font-medium text-muted-foreground">חתימת מותג (תוצג מעל מספר הרישיון בתחתית כל פוסט מכירה)</label>
-          <Input
-            dir="rtl"
-            value={brokerByline}
-            onChange={(e) => setBrokerByline(e.target.value)}
-            placeholder={'לדוגמה: אודי ויטמן, אנגלו-סכסון, הרצליה/רמה״ש'}
-            className="text-right"
-          />
-          <p className="text-[11px] text-muted-foreground/80">משמש כחתימה הבלעדית; הפלטפורמה תסיר אוטומטית כל תואר כמו "נדל״ן" / "Real Estate" שיומצא ע״י ה-AI.</p>
-        </div>
-
-
-
-
 
         <div className="flex items-center justify-between pt-1">
           <button type="button" className="inline-flex items-center gap-1.5 rounded-full border-2 border-dashed border-muted-foreground/30 px-3 py-1.5 text-xs font-medium hover:bg-muted/40">

@@ -23,6 +23,26 @@ function json(body: unknown, status = 200) {
   });
 }
 
+const YAD2_CITY_CODES: Record<string, { area: string; city: string }> = {
+  "הרצליה": { area: "18", city: "6400" },
+  "רמת השרון": { area: "18", city: "2650" },
+  "תל אביב": { area: "2", city: "5000" },
+  "תל אביב-יפו": { area: "2", city: "5000" },
+  "חיפה": { area: "75", city: "4000" },
+  "ירושלים": { area: "1", city: "3000" },
+  "נתניה": { area: "19", city: "7400" },
+  "כפר סבא": { area: "18", city: "6900" },
+  "רעננה": { area: "18", city: "8700" },
+  "פתח תקווה": { area: "3", city: "7900" },
+  "ראשון לציון": { area: "5", city: "8300" },
+  "באר שבע": { area: "7", city: "9000" },
+};
+
+function yad2CityConfig(value: unknown) {
+  const city = String(value ?? "").replace(/\s+/g, " ").trim();
+  return YAD2_CITY_CODES[city] ?? null;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -91,10 +111,17 @@ Deno.serve(async (req) => {
     for (const targetCity of targetCities) {
       try {
         const url = new URL("https://gw.yad2.co.il/realestate-feed/forsale/map");
-        url.searchParams.set("city", targetCity);
-        if (min_price) url.searchParams.set("price_min", String(min_price));
-        if (max_price) url.searchParams.set("price_max", String(max_price));
-        if (rooms) url.searchParams.set("rooms_min", String(rooms));
+        const cfg = yad2CityConfig(targetCity);
+        if (cfg) {
+          url.searchParams.set("region", cfg.area);
+          url.searchParams.set("area", cfg.area);
+          url.searchParams.set("city", cfg.city);
+        } else {
+          url.searchParams.set("region", "18");
+          url.searchParams.set("city", targetCity);
+        }
+        if (min_price || max_price) url.searchParams.set("price", `${min_price || 0}-${max_price || ""}`);
+        if (rooms) url.searchParams.set("rooms", `${rooms}-${rooms}`);
         const upstream = await fetch(url.toString(), {
           headers: { Authorization: `Bearer ${key.yad2_api_key}`, Accept: "application/json" },
         });
@@ -102,8 +129,13 @@ Deno.serve(async (req) => {
           lastError = `${targetCity}:HTTP ${upstream.status}`;
           continue;
         }
+        const contentType = upstream.headers.get("content-type") || "";
+        if (!/json/i.test(contentType)) {
+          lastError = `${targetCity}:non_json_response`;
+          continue;
+        }
         const payload = await upstream.json().catch(() => ({} as any));
-        const items: any[] = Array.isArray(payload) ? payload : payload?.data?.markers || payload?.results || [];
+        const items: any[] = Array.isArray(payload) ? payload : payload?.data?.markers || payload?.data?.items || payload?.feed?.feed_items || payload?.results || [];
         for (let i = 0; i < items.length; i++) {
           const it = items[i];
           allResults.push({

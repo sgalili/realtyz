@@ -227,8 +227,6 @@ function SearchExpandable() {
 
 function HeaderProfileLink() {
   const { user } = useAuth();
-  const { settings } = useWhiteLabel();
-  const { activeWorkspace } = useWorkspace();
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
 
   useEffect(() => {
@@ -245,18 +243,12 @@ function HeaderProfileLink() {
   const meta = (user.user_metadata ?? {}) as Record<string, any>;
   const displayName = meta.full_name || meta.name || user.email || (user as any).phone || 'משתמש';
   const initial = displayName.slice(0, 1);
-  const workspaceLogo = settings?.logo_url || activeWorkspace?.workspace_logo_url || '';
 
   return (
     <Link to="/profile" aria-label="מעבר לפרופיל" className="relative inline-flex h-9 w-9 shrink-0 items-center justify-center overflow-visible rounded-full bg-primary text-xs font-bold text-primary-foreground ring-1 ring-border transition hover:opacity-90">
       <span className="flex h-9 w-9 items-center justify-center overflow-hidden rounded-full">
         {avatarUrl ? <img src={avatarUrl} alt={displayName} className="h-full w-full object-cover" /> : initial}
       </span>
-      {workspaceLogo && (
-        <span className="absolute -bottom-1 -left-1 flex h-5 w-5 items-center justify-center overflow-hidden rounded-[4px] bg-background ring-1 ring-border shadow-sm">
-          <img src={workspaceLogo} alt="לוגו משרד" className="h-full w-full object-contain" />
-        </span>
-      )}
     </Link>
   );
 }

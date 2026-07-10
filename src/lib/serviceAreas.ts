@@ -35,6 +35,10 @@ export const CURATED_SERVICE_AREAS: ReadonlyArray<{ city: string; neighborhoods:
     neighborhoods: ['מרכז', 'הרצליה פיתוח', 'נוף ים', 'יד התשעה', 'גבעת הפרחים'],
   },
   {
+    city: 'רמת השרון',
+    neighborhoods: ['מרכז', 'נווה מגן', 'מורשה', 'נווה רום', 'אלון'],
+  },
+  {
     city: 'רמת גן',
     neighborhoods: ['מרכז', 'נווה יהושע', 'רמת חן', 'מרום נווה', 'הלל'],
   },

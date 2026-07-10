@@ -538,11 +538,41 @@ function pickUpdatedAt(it: any): string {
   return Number.isFinite(d.getTime()) ? d.toISOString() : "";
 }
 
-function buildYad2FallbackUrl(city: unknown, address: unknown, tx: unknown = "sale"): string {
-  const parts = [city, address].map((v) => String(v ?? "").trim()).filter(Boolean);
-  if (!parts.length) return "";
+const YAD2_CITY_CODES: Record<string, { area: string; city: string; path: string }> = {
+  "הרצליה": { area: "18", city: "6400", path: "center-and-sharon" },
+  "הרצליה ": { area: "18", city: "6400", path: "center-and-sharon" },
+  "רמת השרון": { area: "18", city: "2650", path: "center-and-sharon" },
+  "תל אביב": { area: "2", city: "5000", path: "tel-aviv" },
+  "תל אביב-יפו": { area: "2", city: "5000", path: "tel-aviv" },
+  "חיפה": { area: "75", city: "4000", path: "haifa-and-north" },
+  "ירושלים": { area: "1", city: "3000", path: "jerusalem" },
+  "נתניה": { area: "19", city: "7400", path: "center-and-sharon" },
+  "כפר סבא": { area: "18", city: "6900", path: "center-and-sharon" },
+  "רעננה": { area: "18", city: "8700", path: "center-and-sharon" },
+  "פתח תקווה": { area: "3", city: "7900", path: "petah-tikva-and-rosh-haayin" },
+  "ראשון לציון": { area: "5", city: "8300", path: "rishon-lezion-and-ness-ziona" },
+  "באר שבע": { area: "7", city: "9000", path: "beer-sheva-and-south" },
+};
+
+function yad2CityConfig(city: unknown) {
+  const normalized = normalizeStreamText(city).replace(/\s+/g, " ").trim();
+  return YAD2_CITY_CODES[normalized] ?? null;
+}
+
+function buildYad2FallbackUrl(city: unknown, address: unknown, tx: unknown = "sale", serial: unknown = ""): string {
   const segment = tx === "rent" ? "rent" : "forsale";
-  return `https://www.yad2.co.il/realestate/${segment}?text=${encodeURIComponent(parts.join(" "))}`;
+  const cfg = yad2CityConfig(city);
+  const text = [city, address].map((v) => String(v ?? "").trim()).filter(Boolean).join(" ");
+  const path = cfg ? `/realestate/${segment}/${cfg.path}` : `/realestate/${segment}`;
+  const url = new URL(`https://www.yad2.co.il${path}`);
+  if (cfg) {
+    url.searchParams.set("area", cfg.area);
+    url.searchParams.set("city", cfg.city);
+  }
+  if (text) url.searchParams.set("text", text);
+  url.searchParams.set("utm_source", "realtyz");
+  if (serial) url.searchParams.set("utm_content", String(serial));
+  return url.toString();
 }
 
 function mapStreamProperty(it: any, idx: number) {
@@ -732,14 +762,21 @@ function normForMatch(value: unknown): string {
 }
 
 function collectYad2Photos(it: any): string[] {
-  const values = [it?.images, it?.image, it?.photos, it?.media, it?.coverImage, it?.mainImage];
   const out = new Set<string>();
-  const push = (v: any) => {
+  const seen = new Set<any>();
+  const push = (v: any, key = "") => {
     if (!v) return;
-    if (typeof v === "string" && /^https?:\/\//i.test(v)) out.add(v);
-    else if (typeof v === "object") push(v.src ?? v.url ?? v.image ?? v.link);
+    if (typeof v === "string") {
+      const url = v.match(/https?:\/\/[^\s"'<>]+/i)?.[0] ?? (/^\/\//.test(v) ? `https:${v}` : "");
+      if (url && (/(image|img|photo|pic|media|cover|gallery|src|url)/i.test(key) || /\.(jpe?g|png|webp|gif)(\?|#|$)/i.test(url))) out.add(url);
+      return;
+    }
+    if (Array.isArray(v)) { v.forEach((x) => push(x, key)); return; }
+    if (typeof v !== "object" || seen.has(v)) return;
+    seen.add(v);
+    for (const [k, val] of Object.entries(v)) push(val, k);
   };
-  values.forEach((v) => Array.isArray(v) ? v.forEach(push) : push(v));
+  push(it);
   return Array.from(out);
 }
 
@@ -767,20 +804,29 @@ async function enrichFromYad2(
     const address = normForMatch(property?.address || [property?.raw?.street, property?.raw?.number].filter(Boolean).join(" "));
     if (!city && !address) return null;
     const tx = property?.transaction_type === "rent" ? "rent" : "forsale";
+    const cityCfg = yad2CityConfig(city);
     const url = new URL(`https://gw.yad2.co.il/realestate-feed/${tx}/map`);
-    if (city) url.searchParams.set("city", city);
+    if (cityCfg) {
+      url.searchParams.set("region", cityCfg.area);
+      url.searchParams.set("area", cityCfg.area);
+      url.searchParams.set("city", cityCfg.city);
+    } else if (city) {
+      url.searchParams.set("region", "18");
+      url.searchParams.set("city", city);
+    }
     if (property?.price) {
       const price = Number(property.price);
       if (Number.isFinite(price) && price > 0) {
-        url.searchParams.set("price_min", String(Math.max(0, Math.round(price * 0.85))));
-        url.searchParams.set("price_max", String(Math.round(price * 1.15)));
+        url.searchParams.set("price", `${Math.max(0, Math.round(price * 0.85))}-${Math.round(price * 1.15)}`);
       }
     }
-    if (property?.rooms) url.searchParams.set("rooms_min", String(property.rooms));
+    if (property?.rooms) url.searchParams.set("rooms", `${property.rooms}-${property.rooms}`);
     const upstream = await fetch(url.toString(), { headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" } });
     if (!upstream.ok) return null;
+    const contentType = upstream.headers.get("content-type") || "";
+    if (!/json/i.test(contentType)) return null;
     const payload = await upstream.json().catch(() => null);
-    const items: any[] = Array.isArray(payload) ? payload : payload?.data?.markers || payload?.results || [];
+    const items: any[] = Array.isArray(payload) ? payload : payload?.data?.markers || payload?.data?.items || payload?.feed?.feed_items || payload?.results || [];
     let best: any = null;
     let bestScore = 0;
     for (const it of items) {
@@ -821,6 +867,16 @@ async function resolveWorkspaceOwnerId(admin: ReturnType<typeof createClient>, u
   return membership ? owner : fallback;
 }
 
+async function configuredHomelyFeedUrl(admin: ReturnType<typeof createClient>, ownerId: string): Promise<string> {
+  const { data } = await admin
+    .from("homely_broker_credentials")
+    .select("homely_feed_url")
+    .eq("user_id", ownerId)
+    .maybeSingle();
+  const raw = String((data as any)?.homely_feed_url ?? "").trim();
+  return /^https?:\/\//i.test(raw) ? raw : "";
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -844,8 +900,9 @@ Deno.serve(async (req) => {
       let contacts = Array.isArray((body as any)?.contacts) ? (body as any).contacts : [];
       const SELLERS_GUID = Deno.env.get("HOMELY_SELLERS_GUID") || "32dc79a4-88ba-49a4-816e-f1fc43024c2f";
       const BUYERS_GUID  = Deno.env.get("HOMELY_BUYERS_GUID")  || "b6bb7f44-571b-4551-8de9-e075b8a89128";
+      const customPropertiesFeedUrl = await configuredHomelyFeedUrl(admin, workspaceOwnerId);
       if (propertyIds.size && properties.length === 0) {
-        const r = await getJson(`${WEBTIV_BASE}/AutomaionJson/outJson.ashx?guid=${SELLERS_GUID}`);
+        const r = await getJson(customPropertiesFeedUrl || `${WEBTIV_BASE}/AutomaionJson/outJson.ashx?guid=${SELLERS_GUID}`);
         if (r.status < 200 || r.status >= 300) throw new Error(`properties_stream_http_${r.status}`);
         properties = asArray(r.data).map(mapStreamProperty).filter((p) => propertyIds.has(String(p.homely_id)));
       }
@@ -901,7 +958,7 @@ Deno.serve(async (req) => {
         const richSourceUrl = pickSourceUrl(richRecord)
           || yad2Enrichment?.url
           || (p?.source_url ? String(p.source_url) : "")
-          || (richSourceOrigin === "yad2" ? buildYad2FallbackUrl(p?.city, p?.address, p?.transaction_type) : "");
+          || (richSourceOrigin === "yad2" ? buildYad2FallbackUrl(p?.city, p?.address, p?.transaction_type, homelyId) : "");
         const features = Array.from(new Set([
           ...(Array.isArray(p?.features) ? p.features.filter((f: any) => typeof f === "string") : []),
           ...(balcony === true ? ["מרפסת"] : []),
@@ -1024,7 +1081,8 @@ Deno.serve(async (req) => {
       const SELLERS_GUID = Deno.env.get("HOMELY_SELLERS_GUID") || "32dc79a4-88ba-49a4-816e-f1fc43024c2f";
       const BUYERS_GUID  = Deno.env.get("HOMELY_BUYERS_GUID")  || "b6bb7f44-571b-4551-8de9-e075b8a89128";
       const guid = action === "fetchAllProperties" ? SELLERS_GUID : BUYERS_GUID;
-      const url = `${WEBTIV_BASE}/AutomaionJson/outJson.ashx?guid=${guid}`;
+      const customPropertiesFeedUrl = action === "fetchAllProperties" ? await configuredHomelyFeedUrl(admin, workspaceOwnerId) : "";
+      const url = customPropertiesFeedUrl || `${WEBTIV_BASE}/AutomaionJson/outJson.ashx?guid=${guid}`;
 
       const r = await getJson(url);
       console.log(`[homely-fetch-property] GET ${url} → ${r.status}, bytes-sample=${r.sample.length}`);
@@ -1185,7 +1243,7 @@ Deno.serve(async (req) => {
       || pickSourceUrl(detail)
       || yad2Enrichment?.url
       || (typeof meta.source_url === "string" ? meta.source_url : "")
-      || (sourceOrigin === "yad2" ? buildYad2FallbackUrl(mapped.city || listing.city, mapped.address || listing.address, meta.transaction_type) : "");
+      || (sourceOrigin === "yad2" ? buildYad2FallbackUrl(mapped.city || listing.city, mapped.address || listing.address, meta.transaction_type, serialStr) : "");
 
     // Mirror media once into homely-media bucket and store signed URLs
     const cachedPhotos = await mirrorAll(admin, String(listing_id), finalRawPhotos, 40);

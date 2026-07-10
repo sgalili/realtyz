@@ -124,7 +124,7 @@ const CORE_CHANNEL_IDS: ChannelId[] = ['whatsapp', 'sms', 'voice', 'ivr', 'email
 const PERSONALIZATION_TAGS = ['[שם_פרטי]', '[עיר]', '[נכס]'];
 const CREDIT_RATE = 420 / 15420;
 
-const DEMO_CITIES = ['ירושלים', 'תל אביב-יפו', 'חיפה', 'ראשון לציון', 'פתח תקווה', 'אשדוד', 'נתניה', 'באר שבע', 'בני ברק', 'חולון', 'רמת גן', 'אשקלון', 'רחובות', 'בת ים', 'הרצליה', 'כפר סבא', 'מודיעין', 'נצרת', 'רעננה', 'לוד'];
+const DEMO_CITIES = ['ירושלים', 'תל אביב-יפו', 'חיפה', 'ראשון לציון', 'פתח תקווה', 'אשדוד', 'נתניה', 'באר שבע', 'בני ברק', 'חולון', 'רמת גן', 'אשקלון', 'רחובות', 'בת ים', 'הרצליה', 'רמת השרון', 'כפר סבא', 'מודיעין', 'נצרת', 'רעננה', 'לוד'];
 const DEMO_TAGS = ['קנייה', 'מכירה', 'שכירות', 'השקעה', 'דירת גן', 'פנטהאוז', 'דופלקס', 'וילה', '3 חדרים', '4 חדרים', '5 חדרים', 'מסחרי'];
 const DEMO_LOYALTY = ['חם מאוד', 'חם', 'פושר', 'מתלבט', 'קר', 'לא רלוונטי'];
 const DEMO_TOTAL_VOTERS = 12_500;
@@ -139,7 +139,7 @@ const BroadcastSchema = z.object({
 const TestPhoneSchema = z.string().trim().regex(/^(05\d-?\d{7}|\+9725\d{8})$/, 'מספר בדיקה חייב להיות בפורמט 05X-XXXXXXX או +9725XXXXXXXX');
 
 function generateFakeLog(total: number, channels: ChannelId[]): SimLogEntry[] {
-  const cities = ['ירושלים', 'תל אביב', 'חיפה', 'באר שבע', 'ראשון לציון', 'אשדוד', 'פתח תקווה', 'נתניה'];
+  const cities = ['ירושלים', 'תל אביב', 'חיפה', 'באר שבע', 'ראשון לציון', 'אשדוד', 'פתח תקווה', 'נתניה', 'רמת השרון'];
   const statuses: SimLogEntry['status'][] = ['sent', 'sent', 'sent', 'sent', 'sent', 'sent', 'sent', 'pending', 'failed'];
   const count = Math.min(total, 200);
   return Array.from({ length: count }, (_, i) => ({
