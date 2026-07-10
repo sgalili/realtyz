@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import {
   Plus, Trash2, Pencil, Mail, Phone, MessageCircle, MapPin, User as UserIcon,
-  Building2, Upload, ImageIcon, Share2,
+  Building2, ImageIcon, Share2, LogOut,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '@/hooks/useAuth';
@@ -22,9 +22,8 @@ import { VoiceGatewayCard } from '@/components/profile/VoiceGatewayCard';
 import { EmailAliasCard } from '@/components/profile/EmailAliasCard';
 import { ProfileAvatarUploader } from '@/components/profile/ProfileAvatarUploader';
 import { ManagersTab } from '@/components/profile/ManagersTab';
-import { ServiceAreasPanel } from '@/components/settings/ServiceAreasPanel';
-import { ConnectedWorkspaceCard } from '@/components/workspace/ConnectedWorkspaceCard';
 import { cn } from '@/lib/utils';
+import { DEMO_EXIT_PENDING_KEY } from '@/lib/demoGuard';
 
 type Row = { id: string; value: string };
 const newRow = (value = ''): Row => ({ id: crypto.randomUUID(), value });
@@ -173,7 +172,7 @@ function ProfileArrayRows({
 }
 
 function PersonalTab() {
-  const { user } = useAuth();
+  const { user, signOut } = useAuth();
   const [emails, setEmails] = useState<Row[]>([newRow(user?.email ?? '')]);
   const [whatsapps, setWhatsapps] = useState<Row[]>([newRow('')]);
   const [phones, setPhones] = useState<Row[]>([newRow('')]);
@@ -265,6 +264,14 @@ function PersonalTab() {
     } catch (err: any) {
       toast.error('שמירה לשרת נכשלה: ' + (err?.message ?? 'שגיאה'));
     }
+  };
+
+  const handleSignOut = async () => {
+    window.localStorage.setItem(DEMO_EXIT_PENDING_KEY, 'true');
+    window.localStorage.setItem('realtyz-demo-mode', 'false');
+    window.localStorage.setItem('realtyz-authenticated-session', 'false');
+    await signOut();
+    window.location.replace('/auth');
   };
 
   return (
@@ -386,6 +393,10 @@ function PersonalTab() {
         </div>
 
         <Button onClick={save} size="lg" className="w-full mt-2">שמירת הפרופיל</Button>
+        <Button type="button" onClick={handleSignOut} variant="outline" size="lg" className="w-full border-destructive/30 text-destructive hover:bg-destructive/10">
+          <LogOut className="h-4 w-4" />
+          התנתקות
+        </Button>
 
       </CardContent>
     </Card>
@@ -399,8 +410,9 @@ function WorkspaceTab() {
   const isOwner = !!user?.id && !!ownerId && user.id === ownerId;
 
   const [agencyName, setAgencyName] = useState('');
-  const [serviceAreas, setServiceAreas] = useState('');
   const [logoUrl, setLogoUrl] = useState('');
+  const [landscapeLogoUrl, setLandscapeLogoUrl] = useState('');
+  const [serviceAreaRows, setServiceAreaRows] = useState<Row[]>([newRow('')]);
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -414,21 +426,21 @@ function WorkspaceTab() {
       try {
         const { data } = await supabase
           .from('white_label_settings')
-          .select('agency_name, logo_url')
+          .select('agency_name, logo_url, landscape_logo_url')
           .eq('user_id', ownerId)
           .maybeSingle();
         if (cancelled) return;
         setAgencyName((data as any)?.agency_name || activeWorkspace?.workspace_name || 'ריאלטיז נדל"ן');
         setLogoUrl((data as any)?.logo_url || activeWorkspace?.workspace_logo_url || '');
+        setLandscapeLogoUrl((data as any)?.landscape_logo_url || '');
 
-        // service_areas isn't on white_label_settings; pull from owner's user_metadata via profiles fallback
         const { data: ownerProfile } = await supabase
           .from('profiles')
-          .select('city')
+          .select('city, service_areas')
           .eq('id', ownerId)
           .maybeSingle();
         if (cancelled) return;
-        setServiceAreas((ownerProfile as any)?.city || 'מרכז הארץ');
+        setServiceAreaRows(rowList((ownerProfile as any)?.service_areas, [(ownerProfile as any)?.city || ''].filter(Boolean)));
       } finally {
         if (!cancelled) setLoading(false);
       }
@@ -436,7 +448,7 @@ function WorkspaceTab() {
     return () => { cancelled = true; };
   }, [ownerId, activeWorkspace?.workspace_name, activeWorkspace?.workspace_logo_url]);
 
-  const onLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const onLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>, kind: 'square' | 'landscape') => {
     const file = e.target.files?.[0];
     if (!file || !user?.id) return;
     if (!isOwner) { toast.error('רק בעל החשבון יכול לעדכן את לוגו המשרד'); return; }
@@ -444,16 +456,22 @@ function WorkspaceTab() {
     setUploading(true);
     try {
       const ext = file.name.split('.').pop()?.toLowerCase() || 'png';
-      const path = `${user.id}/logo-${Date.now()}.${ext}`;
+      const path = `${user.id}/${kind}-logo-${Date.now()}.${ext}`;
       const { error: upErr } = await supabase.storage.from('agency-logos').upload(path, file, { upsert: true, contentType: file.type });
       if (upErr) throw upErr;
       const { data: pub } = supabase.storage.from('agency-logos').getPublicUrl(path);
-      setLogoUrl(pub.publicUrl);
+      if (kind === 'square') setLogoUrl(pub.publicUrl);
+      else setLandscapeLogoUrl(pub.publicUrl);
       const { error: wlErr } = await supabase
         .from('white_label_settings')
-        .upsert({ user_id: user.id, logo_url: pub.publicUrl, agency_name: agencyName || null } as any, { onConflict: 'user_id' });
+        .upsert({
+          user_id: user.id,
+          agency_name: agencyName || null,
+          logo_url: kind === 'square' ? pub.publicUrl : logoUrl || null,
+          landscape_logo_url: kind === 'landscape' ? pub.publicUrl : landscapeLogoUrl || null,
+        } as any, { onConflict: 'user_id' });
       if (wlErr) throw wlErr;
-      try { window.localStorage.setItem(LOGO_STORAGE_KEY, pub.publicUrl); } catch {}
+      if (kind === 'square') { try { window.localStorage.setItem(LOGO_STORAGE_KEY, pub.publicUrl); } catch {} }
       toast.success('הלוגו הועלה ושותף לכל חברי המשרד');
     } catch (err: any) {
       toast.error(err?.message || 'שגיאה בהעלאת הלוגו');
@@ -463,13 +481,18 @@ function WorkspaceTab() {
     }
   };
 
-  const removeLogo = async () => {
+  const removeLogo = async (kind: 'square' | 'landscape') => {
     if (!isOwner || !user?.id) return;
-    setLogoUrl('');
+    if (kind === 'square') setLogoUrl('');
+    else setLandscapeLogoUrl('');
     await supabase
       .from('white_label_settings')
-      .upsert({ user_id: user.id, logo_url: null } as any, { onConflict: 'user_id' });
-    try { window.localStorage.removeItem(LOGO_STORAGE_KEY); } catch {}
+      .upsert({
+        user_id: user.id,
+        logo_url: kind === 'square' ? null : logoUrl || null,
+        landscape_logo_url: kind === 'landscape' ? null : landscapeLogoUrl || null,
+      } as any, { onConflict: 'user_id' });
+    if (kind === 'square') { try { window.localStorage.removeItem(LOGO_STORAGE_KEY); } catch {} }
     toast.success('הלוגו הוסר');
   };
 
@@ -479,8 +502,10 @@ function WorkspaceTab() {
     try {
       const { error } = await supabase
         .from('white_label_settings')
-        .upsert({ user_id: user.id, agency_name: agencyName || null, logo_url: logoUrl || null } as any, { onConflict: 'user_id' });
+          .upsert({ user_id: user.id, agency_name: agencyName || null, logo_url: logoUrl || null, landscape_logo_url: landscapeLogoUrl || null } as any, { onConflict: 'user_id' });
       if (error) throw error;
+      const serviceAreas = serviceAreaRows.map((r) => r.value.trim()).filter(Boolean);
+      await supabase.from('profiles').update({ service_areas: serviceAreas } as any).eq('id', user.id);
       await supabase.auth.updateUser({ data: { agency_name: agencyName, service_areas: serviceAreas } });
       try { window.localStorage.setItem(WORKSPACE_STORAGE_KEY, JSON.stringify({ agency_name: agencyName, service_areas: serviceAreas })); } catch {}
       toast.success('פרטי המשרד נשמרו ושותפו לכל חברי המשרד');
@@ -502,37 +527,10 @@ function WorkspaceTab() {
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="rounded-lg border bg-card/40 p-3 text-right">
-          <div className="mb-2 flex items-center gap-2 text-xs text-muted-foreground">
-            <ImageIcon className="h-3.5 w-3.5" />
-            <span>לוגו המשרד</span>
+        <div className="grid grid-cols-2 gap-3 rounded-lg border bg-card/40 p-3 text-right">
+          <LogoBox title="לוגו ריבוע" url={logoUrl} disabled={!isOwner || uploading} aspect="square" onUpload={(e) => onLogoUpload(e, 'square')} onRemove={() => removeLogo('square')} />
+          <LogoBox title="לוגו מלבן" url={landscapeLogoUrl} disabled={!isOwner || uploading} aspect="landscape" onUpload={(e) => onLogoUpload(e, 'landscape')} onRemove={() => removeLogo('landscape')} />
           </div>
-          <div className="flex items-center gap-3 flex-row-reverse">
-            <div className="flex h-20 w-20 shrink-0 items-center justify-center overflow-hidden rounded-lg border bg-background">
-              {logoUrl ? <img src={logoUrl} alt="לוגו המשרד" className="h-full w-full object-contain" /> : <ImageIcon className="h-7 w-7 text-muted-foreground/50" />}
-            </div>
-            {isOwner ? (
-              <div className="flex flex-1 flex-col gap-2">
-                <label className="inline-flex">
-                  <input type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={onLogoUpload} disabled={uploading} />
-                  <span className={cn('inline-flex items-center justify-center gap-1.5 rounded-md border bg-background px-3 py-2 text-sm font-medium cursor-pointer hover:bg-accent transition-colors', uploading && 'opacity-50 pointer-events-none')}>
-                    <Upload className="h-3.5 w-3.5" />
-                    {uploading ? 'מעלה...' : logoUrl ? 'החלפת לוגו' : 'העלאת לוגו'}
-                  </span>
-                </label>
-                {logoUrl && (
-                  <Button type="button" variant="ghost" size="sm" onClick={removeLogo} className="text-destructive hover:bg-destructive/10 self-start">
-                    <Trash2 className="h-3.5 w-3.5 ml-1" />
-                    הסר לוגו
-                  </Button>
-                )}
-                <p className="text-xs text-muted-foreground">PNG, JPG, WEBP או SVG. עד 5MB.</p>
-              </div>
-            ) : (
-              <p className="flex-1 text-xs text-muted-foreground">לוגו המשרד מנוהל ע״י בעל החשבון.</p>
-            )}
-          </div>
-        </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           <div className="rounded-lg border bg-card/40 p-3 text-right">
@@ -547,11 +545,27 @@ function WorkspaceTab() {
             <div className="mb-1.5 flex items-center gap-2 text-xs text-muted-foreground">
               <MapPin className="h-3.5 w-3.5" />
               <span>אזורי שירות</span>
+              {isOwner && (
+                <Button type="button" variant="ghost" size="icon" className="h-6 w-6 text-primary" onClick={() => setServiceAreaRows([...serviceAreaRows, newRow('')])} aria-label="הוסף אזור שירות">
+                  <Plus className="h-3.5 w-3.5" />
+                </Button>
+              )}
             </div>
             {isOwner ? (
-              <IsraeliCityPicker value={serviceAreas} onChange={(v) => setServiceAreas(v)} placeholder="בחר עיר / אזור" />
+              <div className="space-y-2">
+                {serviceAreaRows.map((row) => (
+                  <div key={row.id} className="flex items-center gap-1.5">
+                    <IsraeliCityPicker value={row.value} onChange={(v) => setServiceAreaRows(serviceAreaRows.map((r) => r.id === row.id ? { ...r, value: v } : r))} placeholder="בחר עיר / אזור" />
+                    {serviceAreaRows.length > 1 && (
+                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setServiceAreaRows(serviceAreaRows.filter((r) => r.id !== row.id))} aria-label="הסר אזור שירות">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
+                  </div>
+                ))}
+              </div>
             ) : (
-              <Input dir="rtl" value={serviceAreas} disabled className="h-9 text-right text-sm" />
+              <Input dir="rtl" value={serviceAreaRows.map((r) => r.value).filter(Boolean).join(', ')} disabled className="h-9 text-right text-sm" />
             )}
           </div>
         </div>
@@ -562,6 +576,33 @@ function WorkspaceTab() {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+function LogoBox({ title, url, disabled, aspect, onUpload, onRemove }: {
+  title: string;
+  url: string;
+  disabled: boolean;
+  aspect: 'square' | 'landscape';
+  onUpload: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onRemove: () => void;
+}) {
+  const inputId = useMemo(() => `logo-${aspect}-${crypto.randomUUID()}`, [aspect]);
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between gap-2">
+        <label htmlFor={inputId} className="text-xs font-bold text-muted-foreground">{title}</label>
+        {url && !disabled && (
+          <button type="button" onClick={onRemove} className="text-destructive hover:bg-destructive/10 rounded-sm p-1" aria-label={`מחק ${title}`}>
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        )}
+      </div>
+      <label className={cn('flex cursor-pointer items-center justify-center overflow-hidden rounded-md border bg-background transition hover:bg-accent/40', aspect === 'square' ? 'aspect-square' : 'aspect-[16/7]', disabled && 'pointer-events-none opacity-60')} htmlFor={inputId}>
+        {url ? <img src={url} alt={title} className="h-full w-full object-contain" /> : <ImageIcon className="h-7 w-7 text-muted-foreground/50" />}
+      </label>
+      <input id={inputId} type="file" accept="image/png,image/jpeg,image/webp,image/svg+xml" className="hidden" onChange={onUpload} disabled={disabled} />
+    </div>
   );
 }
 
@@ -592,7 +633,6 @@ export default function Profile() {
         </TabsContent>
         <TabsContent value="workspace" className="mt-[20px] space-y-4">
           <WorkspaceTab />
-          <ServiceAreasPanel />
         </TabsContent>
         <TabsContent value="connections" className="mt-[20px] space-y-4">
           <WhatsAppGatewayCard />
