@@ -1472,6 +1472,17 @@ function CommentBubble({
                   <ChevronDown className="h-3.5 w-3.5" />
                 )}
               </button>
+              {senderId && /^\d{5,}$/.test(String(senderId)) && String(row.platform).toLowerCase() === "facebook" && (
+                <a
+                  href={`https://m.me/${senderId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[13px] font-medium text-[hsl(220,70%,25%)] hover:underline"
+                  title="פתח צ'אט Messenger ישירות"
+                >
+                  💬 פתח צ'אט
+                </a>
+              )}
             </div>
 
             {expanded && (
