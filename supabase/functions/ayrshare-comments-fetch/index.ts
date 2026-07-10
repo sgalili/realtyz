@@ -717,9 +717,10 @@ Deno.serve(async (req) => {
           const trimmed = s.trim();
           return trimmed ? trimmed.slice(0, max) : null;
         };
-        // No secondary avatar/profile HTTP calls. Keep avatars null so the edge
-        // function performs only the single Ayrshare comments request per target.
-        const authorPicture = resolveAuthorPicture(c);
+        // No secondary avatar/profile HTTP calls. Use the Graph picture
+        // redirect URL from the sender id when Ayrshare doesn't include a
+        // direct CDN avatar in the comment payload.
+        const authorPicture = resolveAuthorPicture(c) ?? (/^\d{5,}$/.test(String(senderId ?? "")) ? `https://graph.facebook.com/${senderId}/picture?type=normal` : null);
 
         const { data: exists } = await admin
           .from("engagement_events")
