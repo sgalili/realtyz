@@ -3039,11 +3039,30 @@ const PublishedFeed = () => {
                             onClick={(e) => { e.stopPropagation(); if (postUrl) window.open(postUrl, '_blank', 'noopener,noreferrer'); }}>
                       <ExternalLink className="h-4 w-4" />
                     </Button>
-                    <Button variant="outline" size="icon" title="רענן תגובות" aria-label="רענן תגובות"
-                            disabled={!!refreshingIds[r.id]}
-                            onClick={(e) => { e.stopPropagation(); bumpRefresh(r.id); }}>
-                      <RefreshCw className="h-4 w-4" />
-                    </Button>
+                    {(() => {
+                      const isRefreshing = !!refreshingIds[r.id];
+                      const cooldownSecs = getCooldownSeconds(r.id);
+                      const onCooldown = !isRefreshing && cooldownSecs > 0;
+                      const label = isRefreshing
+                        ? 'מרענן…'
+                        : onCooldown
+                          ? `ממתין: ${formatCooldown(cooldownSecs)}`
+                          : 'רענן תגובות';
+                      return (
+                        <Button
+                          variant="outline"
+                          size={onCooldown ? 'sm' : 'icon'}
+                          title={label}
+                          aria-label={label}
+                          disabled={isRefreshing || onCooldown}
+                          onClick={(e) => { e.stopPropagation(); bumpRefresh(r.id); }}
+                          className={cn(onCooldown && 'opacity-50 cursor-not-allowed gap-1 tabular-nums text-xs')}
+                        >
+                          <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
+                          {onCooldown && <span>ממתין: {formatCooldown(cooldownSecs)}</span>}
+                        </Button>
+                      );
+                    })()}
                     <Button variant="outline" size="icon" disabled className="opacity-90"
                             title={`מדיה מצורפת: ${Array.isArray(r.media_urls) ? r.media_urls.length : 0}`}
                             aria-label="מדיה מצורפת">
