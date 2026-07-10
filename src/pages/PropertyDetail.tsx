@@ -12,6 +12,7 @@ import {
   BedDouble, Ruler, MapPin, ArrowRight, Phone, Mail,
   Calendar, Layers, Send, Home, User, Receipt,
   Car, ArrowUpCircle, Wind, Shield, Sun, ExternalLink, Pencil, Save, X,
+  Trash2, Plus, Upload, Image as ImageIcon,
 } from 'lucide-react';
 import {
   PROPERTY_TYPE_LABELS_HE,
@@ -20,6 +21,7 @@ import {
 } from '@/lib/homelyMockProperties';
 import { ShareWithLeadDialog } from '@/components/properties/ShareWithLeadDialog';
 import { ProjectAlternativesCard } from '@/components/properties/ProjectAlternativesCard';
+import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
@@ -76,6 +78,7 @@ const PROPERTY_TYPE_OPTIONS: PropertyType[] = [
 ] as PropertyType[];
 
 type EditableFields = {
+  title: string;
   city: string;
   neighborhood: string;
   address: string;
@@ -91,6 +94,15 @@ type EditableFields = {
   payments: string;
   entry_date: string;
   description: string;
+  parking: string;
+  elevator: boolean;
+  balcony: boolean;
+  ac: boolean;
+  shelter: boolean;
+  solar: boolean;
+  source_url: string;
+  photos: string[];
+  photo_url_draft: string;
 };
 
 export default function PropertyDetail() {
@@ -101,6 +113,7 @@ export default function PropertyDetail() {
   const [shareOpen, setShareOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [form, setForm] = useState<EditableFields | null>(null);
 
   const { data, isLoading } = useQuery({
@@ -156,7 +169,9 @@ export default function PropertyDetail() {
       else if (priceNum >= 500_000) listingType = 'sale';
       else listingType = dealType === 'rent' ? 'rent' : 'sale';
       const textFeatures = features.filter((f): f is string => typeof f === 'string');
-      const balconyRaw = meta.balcony ?? meta.mirpeset ?? (isRecord(meta.homely_raw) ? meta.homely_raw.mirpesetShemeshYN ?? meta.homely_raw.balcony : null);
+      const featuresObject = features.find((f): f is JsonRecord => isRecord(f)) ?? {};
+      const extras = isRecord(featuresObject.extras) ? featuresObject.extras : {};
+      const balconyRaw = meta.balcony ?? meta.mirpeset ?? extras.balcony ?? (isRecord(meta.homely_raw) ? meta.homely_raw.mirpesetShemeshYN ?? meta.homely_raw.balcony : null);
       const balcony = boolFromMeta(balconyRaw) ?? (textFeatures.some((f) => /מרפסת|balcony/i.test(f)) ? true : null);
       const enrichedFeatures = Array.from(new Set([...textFeatures, ...(balcony === true ? ['מרפסת'] : [])]));
 
@@ -181,7 +196,7 @@ export default function PropertyDetail() {
         features: enrichedFeatures,
       } as HomelyProperty;
 
-      const elevatorVal = row.elevator ?? meta.elevator ?? meta.maalit;
+      const elevatorVal = row.elevator ?? meta.elevator ?? meta.maalit ?? extras.elevator;
       const elevator = elevatorVal == null || elevatorVal === ''
         ? false
         : typeof elevatorVal === 'boolean'
@@ -191,8 +206,8 @@ export default function PropertyDetail() {
         parking: Number(meta.parking ?? row.parking ?? 0) || 0,
         elevator,
         balcony,
-        ac: Boolean(meta.ac ?? meta.air_conditioning ?? false),
-        shelter: Boolean(meta.shelter ?? meta.mamad ?? false),
+        ac: Boolean(meta.ac ?? meta.air_conditioning ?? extras.air_conditioning ?? false),
+        shelter: Boolean(meta.shelter ?? meta.mamad ?? extras.safe_room ?? false),
         solar: Boolean(meta.solar_heater ?? meta.solar ?? false),
       };
 
@@ -264,6 +279,7 @@ export default function PropertyDetail() {
   useEffect(() => {
     if (editMode && property && !form) {
       setForm({
+        title: property.title || '',
         city: property.city || '',
         neighborhood: neighborhood || '',
         address: property.address || '',
@@ -279,10 +295,19 @@ export default function PropertyDetail() {
         payments: String(meta.payments ?? meta.payment_count ?? ''),
         entry_date: String(meta.entry_date ?? meta.delivery_date ?? ''),
         description: property.description || '',
+        parking: String(amenities?.parking ?? meta.parking ?? ''),
+        elevator: Boolean(amenities?.elevator),
+        balcony: Boolean(amenities?.balcony),
+        ac: Boolean(amenities?.ac),
+        shelter: Boolean(amenities?.shelter),
+        solar: Boolean(amenities?.solar),
+        source_url: sourceUrl || (typeof meta.source_url === 'string' ? meta.source_url : ''),
+        photos: Array.isArray(property.photos) ? property.photos : [],
+        photo_url_draft: '',
       });
     }
     if (!editMode) setForm(null);
-  }, [editMode, property, neighborhood, meta, form]);
+  }, [editMode, property, neighborhood, meta, amenities, sourceUrl, form]);
 
   const handleSave = async () => {
     if (!form || !id) return;
@@ -297,16 +322,44 @@ export default function PropertyDetail() {
         total_floors: form.total_floors ? Number(form.total_floors) : null,
         year_built: form.year_built ? Number(form.year_built) : null,
         property_type: form.property_type,
+        parking: form.parking ? Number(form.parking) : 0,
+        elevator: form.elevator,
+        balcony: form.balcony,
+        ac: form.ac,
+        air_conditioning: form.ac,
+        shelter: form.shelter,
+        mamad: form.shelter,
+        solar: form.solar,
+        solar_heater: form.solar,
+        photos: form.photos,
+        images: form.photos,
+        source_url: form.source_url || null,
       };
+      const baseFeatures = Array.isArray(data?.row?.features)
+        ? (data.row.features as unknown[]).filter((f): f is string => typeof f === 'string' && !['מרפסת', 'מעלית', 'מיזוג', 'ממ"ד', 'מקלט', 'דוד שמש'].includes(f))
+        : [];
+      const featureLabels = [
+        form.balcony ? 'מרפסת' : null,
+        form.elevator ? 'מעלית' : null,
+        form.ac ? 'מיזוג' : null,
+        form.shelter ? 'ממ"ד' : null,
+        form.solar ? 'דוד שמש' : null,
+      ].filter((v): v is string => !!v);
       const { error } = await supabase.from('listings').update({
+        property_title: form.title || null,
         city: form.city || null,
         neighborhood: form.neighborhood || null,
         address: form.address || null,
         rooms: form.rooms ? Number(form.rooms) : null,
         sqm: form.sqm ? Number(form.sqm) : null,
         floor: form.floor ? Number(form.floor) : null,
+        parking: form.parking ? Number(form.parking) : 0,
+        elevator: form.elevator,
         asking_price: form.price ? Number(form.price) : 0,
         description: form.description || null,
+        source_url: form.source_url || null,
+        media_photos: form.photos,
+        features: Array.from(new Set([...baseFeatures, ...featureLabels])) as never,
         source_metadata: newMeta as never,
       }).eq('id', id);
       if (error) throw error;
