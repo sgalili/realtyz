@@ -242,7 +242,8 @@ export default function Properties() {
                 ...(Array.isArray(meta.photos) ? meta.photos.filter((p: any) => typeof p === 'string') : []),
               ]));
               const originRaw = String(meta.source_origin ?? '').toLowerCase();
-              const originSource = originRaw && originRaw !== 'homely' && originRaw !== 'webtiv' && originRaw !== 'manual'
+              const sourceUrlRaw = String(row.source_url ?? meta.source_url ?? '').toLowerCase();
+              const originSource = /yad2\.co\.il/.test(sourceUrlRaw) ? 'yad2' : originRaw && originRaw !== 'homely' && originRaw !== 'webtiv' && originRaw !== 'manual'
                 ? originRaw
                 : (row.source === 'homely' || row.source === 'webtiv' ? 'homely' : row.source === 'yad2' ? 'yad2' : row.source === 'madlan' ? 'madlan' : 'mine');
               const sourceUpdated = typeof meta.source_updated_at === 'string' ? meta.source_updated_at : null;
