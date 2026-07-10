@@ -10,6 +10,32 @@ const json = (b: unknown, s = 200) =>
     headers: { ...corsHeaders, "Content-Type": "application/json" },
   });
 
+const collectFacebookPostAliases = (root: any): string[] => {
+  const ids = new Set<string>();
+  const seen = new Set<any>();
+  const add = (value: unknown) => {
+    const s = typeof value === "string" ? value.trim() : "";
+    if (!s) return;
+    if (/^\d{5,}_\d{5,}$/.test(s) || /^pfbid[0-9A-Za-z]+$/.test(s)) ids.add(s);
+    for (const m of s.matchAll(/pfbid[0-9A-Za-z]+/g)) if (m[0]) ids.add(m[0]);
+    for (const m of s.matchAll(/facebook\.com\/share\/p\/([^/?#\s"'<]+)/gi)) {
+      const token = decodeURIComponent(String(m[1] || "")).replace(/\/+$/, "").trim();
+      if (/^[0-9A-Za-z_-]{5,}$/.test(token)) ids.add(token);
+    }
+  };
+  const visit = (node: any) => {
+    if (node == null || seen.has(node)) return;
+    if (typeof node === "string") { add(node); return; }
+    if (typeof node !== "object") return;
+    seen.add(node);
+    add(node.id); add(node.fbId); add(node.postId); add(node.post_id); add(node.refId);
+    if (Array.isArray(node)) node.forEach(visit);
+    else Object.values(node).forEach(visit);
+  };
+  visit(root);
+  return Array.from(ids);
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "method" }, 405);
@@ -78,6 +104,7 @@ Deno.serve(async (req) => {
     [...flatPostIds, ...wrappedPostIds]
       .filter((post: any) => String(post?.platform || "").toLowerCase() === "facebook")
       .forEach((post: any) => add(post?.id ?? post?.postId ?? post?.post_id));
+    collectFacebookPostAliases(response).forEach(add);
   }
 
   const postIds = Array.from(ids).slice(0, 500);
