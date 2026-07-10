@@ -291,6 +291,20 @@ export default function Properties() {
   const liveResults = liveResponse?.results ?? [];
   const externalConnected = liveResponse?.connected !== false;
 
+  useEffect(() => {
+    if (isLoading) return;
+    if (!liveResults.some((r: any) => r.source === 'homely')) return;
+    const key = 'realtyz.clean-homely-broken-images.v1';
+    if (sessionStorage.getItem(key)) return;
+    sessionStorage.setItem(key, '1');
+    supabase.functions.invoke('homely-fetch-property', { body: { action: 'cleanBrokenImages' } })
+      .then(({ data, error }) => {
+        const removed = Number((data as any)?.removed ?? 0);
+        if (!error && removed > 0) queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+      })
+      .catch(() => sessionStorage.removeItem(key));
+  }, [isLoading, liveResults, queryClient]);
+
   const cityOptions = useMemo(() => {
     const cities = new Set<string>(CITY_OPTIONS as readonly string[]);
     liveResults.forEach((result) => {
