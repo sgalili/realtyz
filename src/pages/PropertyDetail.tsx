@@ -307,7 +307,7 @@ export default function PropertyDetail() {
       });
     }
     if (!editMode) setForm(null);
-  }, [editMode, property, neighborhood, meta, amenities, sourceUrl, form]);
+  }, [editMode, property, neighborhood, meta, amenities, sourceUrl, form, visiblePropertyPhotos]);
 
   const handleSave = async () => {
     if (!form || !id) return;
