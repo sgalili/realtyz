@@ -274,6 +274,23 @@ export default function PropertyDetail() {
     })();
   }, [id, data, qc]);
 
+  useEffect(() => {
+    if (!id || !data) return;
+    const row: any = data.row;
+    const src = String(row?.source ?? '').toLowerCase();
+    if (src !== 'homely' && src !== 'webtiv') return;
+    const flagKey = `homely-clean-images:${id}`;
+    if (sessionStorage.getItem(flagKey)) return;
+    sessionStorage.setItem(flagKey, '1');
+    supabase.functions.invoke('homely-fetch-property', {
+      body: { action: 'cleanBrokenImages', listing_id: id },
+    }).then(({ data: cleanData, error }) => {
+      if (!error && Number((cleanData as any)?.removed ?? 0) > 0) {
+        qc.invalidateQueries({ queryKey: ['property-detail', id] });
+      }
+    }).catch(() => sessionStorage.removeItem(flagKey));
+  }, [id, data, qc]);
+
 
   // Initialize edit form when entering edit mode
   useEffect(() => {
