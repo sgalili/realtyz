@@ -1353,7 +1353,6 @@ function CommentBubble({
             <AvatarFallback className="bg-primary/15 text-primary text-[10px] font-semibold">{isPageAuthored ? "★" : initials}</AvatarFallback>
           </Avatar>
           <span className="truncate font-medium text-foreground">{isPageAuthored ? "התגובה שלך" : senderName}</span>
-          </span>
         </div>
         <span className="shrink-0">{when}</span>
       </div>
