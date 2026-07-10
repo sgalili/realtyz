@@ -9,6 +9,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
 import { RefreshCw, MapPin, Phone, Mail, Home, SlidersHorizontal, Loader2, CheckCircle2, Building2, Users, Search } from 'lucide-react';
 import { toast } from 'sonner';
+import { normalizeImageUrls, useVisibleImageUrls } from '@/lib/imageHealth';
 
 // 60s client-side debounce shared across both fetch actions to protect Homely.
 const lastCallRef = { ts: 0 };
@@ -112,7 +113,10 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
       }
       if (payload?.error && !payload?.empty) throw new Error(payload.error);
       if (isProps) {
-        const list: HomelyProperty[] = payload.properties ?? [];
+        const list: HomelyProperty[] = (payload.properties ?? []).map((p: HomelyProperty) => {
+          const photos = normalizeImageUrls([...(Array.isArray(p.photos) ? p.photos : []), p.photo].filter(Boolean));
+          return { ...p, photos, photo: photos[0] ?? null };
+        });
         setProperties(list);
         if (!list.length) toast.info(payload.message ?? 'התחברות הצליחה, לא נמצאו נכסים חדשים בחשבון הומלי המחובר.');
         else toast.success(isSearch ? `נמצאו ${list.length} נכסים מהומלי` : `נטענו ${list.length} נכסים מהומלי`);
@@ -414,42 +418,14 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
                   )}
                 </div>
               ) : (
-                filteredProps.map((p) => {
-                  const checked = pickedProps.has(p.homely_id);
-                  const mediaCount = (p.photos?.length ?? (p.photo ? 1 : 0)) + (p.documents?.length ?? 0);
-                  return (
-                    <label
-                      key={p.homely_id}
-                      dir="rtl"
-                      className={`flex items-start gap-2 sm:gap-3 rounded-lg border p-2 sm:p-3 cursor-pointer transition-colors text-right ${checked ? 'border-primary bg-primary/5' : 'hover:bg-muted/40'}`}
-                    >
-                      <Checkbox checked={checked} onCheckedChange={() => toggle(pickedProps, p.homely_id, setPickedProps)} className="mt-1 shrink-0" />
-                      <div className="h-12 w-16 sm:h-14 sm:w-20 rounded-md bg-muted overflow-hidden flex-shrink-0">
-                        {p.photo ? (
-                          <img src={p.photo} alt="" className="h-full w-full object-cover" loading="lazy" />
-                        ) : (
-                          <div className="h-full w-full flex items-center justify-center text-muted-foreground">
-                            <Home className="h-5 w-5" />
-                          </div>
-                        )}
-                      </div>
-                      <div dir="rtl" className="flex-1 min-w-0 text-right">
-                        <div dir="rtl" className="flex items-center gap-2 justify-start flex-wrap text-right">
-                          <h4 className="font-semibold text-xs sm:text-sm truncate text-right">{p.title || p.address || 'ללא כותרת'}</h4>
-                          <Badge variant="outline" className="text-[10px]">#{p.homely_id}</Badge>
-                          {mediaCount > 0 && <Badge variant="secondary" className="text-[10px]">{mediaCount} קבצים</Badge>}
-                        </div>
-                        <div dir="rtl" className="text-[11px] sm:text-xs text-muted-foreground flex items-center gap-2 sm:gap-3 justify-start mt-1 flex-wrap break-words text-right">
-                          {p.city && (<span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{p.city}{p.address ? ` · ${p.address}` : ''}</span>)}
-                          {p.rooms ? <span>{p.rooms} חד׳</span> : null}
-                          {p.sqm ? <span>{p.sqm} מ״ר</span> : null}
-                          {p.price ? <span dir="rtl" className="font-semibold text-foreground">₪{p.price.toLocaleString('he-IL')}</span> : null}
-                        </div>
-                      </div>
-
-                    </label>
-                  );
-                })
+                filteredProps.map((p) => (
+                  <PropertySyncRow
+                    key={p.homely_id}
+                    property={p}
+                    checked={pickedProps.has(p.homely_id)}
+                    onToggle={() => toggle(pickedProps, p.homely_id, setPickedProps)}
+                  />
+                ))
               )}
             </div>
           </TabsContent>
@@ -545,6 +521,42 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
       </DialogContent>
     </Dialog>
     </>
+  );
+}
+
+function PropertySyncRow({ property: p, checked, onToggle }: { property: HomelyProperty; checked: boolean; onToggle: () => void }) {
+  const { visible: photos, markBroken } = useVisibleImageUrls([...(p.photos || []), p.photo].filter(Boolean));
+  const photo = photos[0];
+  const mediaCount = photos.length + (p.documents?.length ?? 0);
+  return (
+    <label
+      dir="rtl"
+      className={`flex items-start gap-2 sm:gap-3 rounded-lg border p-2 sm:p-3 cursor-pointer transition-colors text-right ${checked ? 'border-primary bg-primary/5' : 'hover:bg-muted/40'}`}
+    >
+      <Checkbox checked={checked} onCheckedChange={onToggle} className="mt-1 shrink-0" />
+      <div className="h-12 w-16 sm:h-14 sm:w-20 rounded-md bg-muted overflow-hidden flex-shrink-0">
+        {photo ? (
+          <img src={photo} alt="" className="h-full w-full object-cover" loading="lazy" onError={() => markBroken(photo)} />
+        ) : (
+          <div className="h-full w-full flex items-center justify-center text-muted-foreground">
+            <Home className="h-5 w-5" />
+          </div>
+        )}
+      </div>
+      <div dir="rtl" className="flex-1 min-w-0 text-right">
+        <div dir="rtl" className="flex items-center gap-2 justify-start flex-wrap text-right">
+          <h4 className="font-semibold text-xs sm:text-sm truncate text-right">{p.title || p.address || 'ללא כותרת'}</h4>
+          <Badge variant="outline" className="text-[10px]">#{p.homely_id}</Badge>
+          {mediaCount > 0 && <Badge variant="secondary" className="text-[10px]">{mediaCount} קבצים</Badge>}
+        </div>
+        <div dir="rtl" className="text-[11px] sm:text-xs text-muted-foreground flex items-center gap-2 sm:gap-3 justify-start mt-1 flex-wrap break-words text-right">
+          {p.city && (<span className="inline-flex items-center gap-1"><MapPin className="h-3 w-3" />{p.city}{p.address ? ` · ${p.address}` : ''}</span>)}
+          {p.rooms ? <span>{p.rooms} חד׳</span> : null}
+          {p.sqm ? <span>{p.sqm} מ״ר</span> : null}
+          {p.price ? <span dir="rtl" className="font-semibold text-foreground">₪{p.price.toLocaleString('he-IL')}</span> : null}
+        </div>
+      </div>
+    </label>
   );
 }
 
