@@ -687,10 +687,22 @@ function extFromUrlOrType(url: string, contentType: string | null): string {
   return "bin";
 }
 
+function looksLikeImageBytes(bytes: Uint8Array): boolean {
+  if (bytes.length < 12) return false;
+  // jpg / png / gif / webp / bmp / heic-ish ftyp
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return true;
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return true;
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) return true;
+  if (bytes[0] === 0x42 && bytes[1] === 0x4d) return true;
+  const ascii = new TextDecoder().decode(bytes.slice(0, 32));
+  return /RIFF.{4}WEBP|ftyp(heic|heix|mif1|msf1)/i.test(ascii);
+}
+
 async function mirrorOne(
   admin: ReturnType<typeof createClient>,
   listingId: string,
   originalUrl: string,
+  expected: "image" | "document" | "any" = "any",
 ): Promise<string | null> {
   try {
     if (!/^https?:\/\//i.test(originalUrl)) return originalUrl || null;
@@ -711,16 +723,22 @@ async function mirrorOne(
     } finally { clearTimeout(t); }
     if (!resp.ok) return null;
     const contentType = resp.headers.get("content-type") || "application/octet-stream";
+    const lowerContentType = contentType.toLowerCase();
+    if (/text\/html|application\/json|text\/plain/i.test(lowerContentType)) return null;
     const ext = extFromUrlOrType(originalUrl, contentType);
     const path = `listing/${listingId}/${key}.${ext}`;
     const bytes = new Uint8Array(await resp.arrayBuffer());
+    if (expected === "image" && !lowerContentType.startsWith("image/") && !looksLikeImageBytes(bytes)) {
+      return null;
+    }
+    if (expected === "image" && bytes.byteLength < 64) return null;
     // Upload (idempotent — upsert)
     const { error: upErr } = await admin.storage
       .from("homely-media")
       .upload(path, bytes, { contentType, upsert: true, cacheControl: "31536000" });
     if (upErr && !/exists/i.test(upErr.message)) {
       console.error("[mirrorOne] upload failed", upErr.message, path);
-      return null;
+      return expected === "image" ? originalUrl : null;
     }
     // 10-year signed URL for embedding in DB
     const { data: signed, error: signErr } = await admin.storage
@@ -728,7 +746,7 @@ async function mirrorOne(
       .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
     if (signErr || !signed?.signedUrl) {
       console.error("[mirrorOne] sign failed", signErr?.message, path);
-      return null;
+      return expected === "image" ? originalUrl : null;
     }
     return signed.signedUrl;
   } catch (e) {
@@ -742,11 +760,12 @@ async function mirrorAll(
   listingId: string,
   urls: string[],
   cap: number,
+  expected: "image" | "document" | "any" = "any",
 ): Promise<string[]> {
   const uniq = Array.from(new Set((urls || []).filter((u) => typeof u === "string" && u))).slice(0, cap);
   const out: string[] = [];
   for (const u of uniq) {
-    const mirrored = await mirrorOne(admin, listingId, u);
+    const mirrored = await mirrorOne(admin, listingId, u, expected);
     if (mirrored) out.push(mirrored);
   }
   return out;
