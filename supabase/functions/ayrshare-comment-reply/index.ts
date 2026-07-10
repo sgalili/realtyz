@@ -333,7 +333,9 @@ Deno.serve(async (req) => {
             event_type: "critical_question",
             title: "Messenger DM permission blocked",
             body: `${MESSENGER_RELINK_MESSAGE}\nRaw Ayrshare response: ${(dmText || JSON.stringify(privateDmResult)).slice(0, 700)}`,
-            deep_link: `${Deno.env.get("APP_PUBLIC_URL") || "https://realtyz.co.il"}/campaigns?tab=create`,
+            // deep_link intentionally omitted: we no longer redirect the broker
+            // to the CRM on a Messenger permission block — the UI surfaces a
+            // toast + Open Chat affordance instead.
             channel: "system",
             delivered: false,
             delivery_result: { source: "ayrshare-comment-reply", relink_required: true, status: privateDmStatus },
@@ -344,6 +346,15 @@ Deno.serve(async (req) => {
             message: MESSENGER_RELINK_MESSAGE,
             fallback: true,
             relink_required: true,
+            permission_block: true,
+          };
+        }
+        if (privateDmDuplicate) {
+          privateDmResult = {
+            ...(privateDmResult && typeof privateDmResult === "object" ? privateDmResult : { raw: dmText }),
+            error_type: "MESSENGER_DUPLICATE_OR_WINDOW",
+            message: "לא ניתן לשלוח הודעה פרטית (הזמן עבר או שהודעה כבר נשלחה)",
+            duplicate_or_window: true,
           };
         }
         const ayrStatus = (privateDmResult && typeof privateDmResult === "object")
