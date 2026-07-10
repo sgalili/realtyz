@@ -89,7 +89,7 @@ function extractListingType(features: unknown, meta?: Record<string, any>, price
   if (/sale|מכירה|למכירה/.test(raw)) return 'sale';
   if (Array.isArray(features)) {
     const typed = features.find((f) => typeof f === 'object' && f && 'listing_type' in f) as { listing_type?: ListingType } | undefined;
-    return typed?.listing_type === 'rent' ? 'rent' : 'sale';
+    if (typed?.listing_type === 'rent' || typed?.listing_type === 'sale') return typed.listing_type;
   }
   if (price && price > 0 && price < 50_000) return 'rent';
   return 'sale';
