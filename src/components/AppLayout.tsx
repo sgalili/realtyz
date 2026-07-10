@@ -644,7 +644,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
 
             {/* Centered active workspace brand */}
             <Link
-              href="/"
               to="/"
               aria-label={`${headerName} - דף הבית`}
               className="absolute left-1/2 top-1/2 inline-flex max-w-[48vw] -translate-x-1/2 -translate-y-1/2 items-center gap-2 overflow-hidden text-center"
