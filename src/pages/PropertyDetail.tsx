@@ -169,7 +169,7 @@ export default function PropertyDetail() {
       else if (priceNum >= 500_000) listingType = 'sale';
       else listingType = dealType === 'rent' ? 'rent' : 'sale';
       const textFeatures = features.filter((f): f is string => typeof f === 'string');
-      const featuresObject = features.find((f): f is JsonRecord => isRecord(f)) ?? {};
+      const featuresObject = ((features as unknown[]).find(isRecord) ?? {}) as JsonRecord;
       const extras = isRecord(featuresObject.extras) ? featuresObject.extras : {};
       const balconyRaw = meta.balcony ?? meta.mirpeset ?? extras.balcony ?? (isRecord(meta.homely_raw) ? meta.homely_raw.mirpesetShemeshYN ?? meta.homely_raw.balcony : null);
       const balcony = boolFromMeta(balconyRaw) ?? (textFeatures.some((f) => /מרפסת|balcony/i.test(f)) ? true : null);
@@ -322,7 +322,7 @@ export default function PropertyDetail() {
         total_floors: form.total_floors ? Number(form.total_floors) : null,
         year_built: form.year_built ? Number(form.year_built) : null,
         property_type: form.property_type,
-        parking: form.parking ? Number(form.parking) : 0,
+        parking: form.parking ? Number(form.parking) > 0 : false,
         elevator: form.elevator,
         balcony: form.balcony,
         ac: form.ac,
