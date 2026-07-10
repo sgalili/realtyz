@@ -65,6 +65,12 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
     sourceUrl,
     property.url,
   );
+  // Only surface the "open source ad" link when Homely reports the property is
+  // syndicated to Yad2 (source_origin === 'yad2' or the URL points to yad2).
+  const sourceOrigin = String(sourceMetadata.source_origin ?? '').toLowerCase();
+  const isYad2Listing = sourceOrigin === 'yad2'
+    || (typeof resolvedUrl === 'string' && /yad2\.co\.il/i.test(resolvedUrl));
+  const yad2Url = isYad2Listing ? resolvedUrl : null;
 
   const isRent = Number(property.price) < 50_000;
   const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
