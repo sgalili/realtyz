@@ -1085,11 +1085,24 @@ Deno.serve(async (req) => {
     // Homely web app uses for the "נכסים" and "אנשי קשר" reports — they
     // always contain real data, unlike the per-agent /api/report/* routes
     // that depend on the agent's personal "interesting" filter.
-    if (action === "fetchAllProperties" || action === "fetchAllContacts") {
+    if (["fetchAllProperties", "fetchAllContacts", "searchProperties", "searchContacts"].includes(action || "")) {
+      const isSearchAction = action === "searchProperties" || action === "searchContacts";
+      const filters = ((body as any)?.filters && typeof (body as any).filters === "object") ? (body as any).filters : {};
+      const searchText = normalizeStreamText(filters.search).toLowerCase();
+      const filterCities = Array.isArray(filters.cities) ? new Set(filters.cities.map((c: unknown) => normalizeStreamText(c)).filter(Boolean)) : new Set<string>();
+      const filterRooms = normalizeStreamText(filters.rooms);
+      const filterType = normalizeStreamText(filters.type);
+      const filterAgent = normalizeStreamText(filters.agent);
+      const filterDeal = normalizeStreamText(filters.deal);
+      const hasServerFilter = !!(searchText || filterCities.size || filterRooms || filterType || filterAgent || (filterDeal && filterDeal !== "all"));
+      if (isSearchAction && !hasServerFilter) {
+        return json({ ok: true, source: "AutomaionJson.search", count: 0, rawCount: 0, properties: [], contacts: [], empty: true });
+      }
       const SELLERS_GUID = Deno.env.get("HOMELY_SELLERS_GUID") || "32dc79a4-88ba-49a4-816e-f1fc43024c2f";
       const BUYERS_GUID  = Deno.env.get("HOMELY_BUYERS_GUID")  || "b6bb7f44-571b-4551-8de9-e075b8a89128";
-      const guid = action === "fetchAllProperties" ? SELLERS_GUID : BUYERS_GUID;
-      const customPropertiesFeedUrl = action === "fetchAllProperties" ? await configuredHomelyFeedUrl(admin, workspaceOwnerId) : "";
+      const isPropertiesAction = action === "fetchAllProperties" || action === "searchProperties";
+      const guid = isPropertiesAction ? SELLERS_GUID : BUYERS_GUID;
+      const customPropertiesFeedUrl = isPropertiesAction ? await configuredHomelyFeedUrl(admin, workspaceOwnerId) : "";
       const url = customPropertiesFeedUrl || `${WEBTIV_BASE}/AutomaionJson/outJson.ashx?guid=${guid}`;
 
       const r = await getJson(url);
@@ -1115,7 +1128,7 @@ Deno.serve(async (req) => {
       }];
       console.log(`[homely-fetch] ${action} first records field audit:`, JSON.stringify(streamFieldAudit(items)));
 
-      if (action === "fetchAllProperties") {
+      if (isPropertiesAction) {
         const discardedSamples: any[] = [];
         // Per-record rule: include office-owned listings for both sale and rent.
         const finalFilteredProperties = items.filter((item: any) => {
@@ -1138,13 +1151,26 @@ Deno.serve(async (req) => {
           return ok;
         });
         if (discardedSamples.length) console.log("[homely-fetch] sellers discarded samples:", JSON.stringify(discardedSamples));
-        const properties = finalFilteredProperties.map(mapStreamProperty);
+        const properties = finalFilteredProperties.map(mapStreamProperty).filter((p: any) => {
+          if (filterDeal && filterDeal !== "all" && p.transaction_type !== filterDeal) return false;
+          if (filterCities.size && !filterCities.has(normalizeStreamText(p.city))) return false;
+          if (filterType && normalizeStreamText(p.property_type) !== filterType) return false;
+          if (filterRooms && Number(p.rooms) !== Number(filterRooms)) return false;
+          if (filterAgent && normalizeStreamText(p.agent) !== filterAgent) return false;
+          if (searchText) {
+            const hay = [p.title, p.city, p.address, p.agent, p.sivug, p.homely_id, p.description, p.property_type]
+              .map((v) => normalizeStreamText(v).toLowerCase())
+              .join(" ");
+            if (!hay.includes(searchText)) return false;
+          }
+          return true;
+        });
         const saleCount = properties.filter((p: any) => p.transaction_type === "sale").length;
         const rentCount = properties.filter((p: any) => p.transaction_type === "rent").length;
         console.log(`[homely-fetch] SERVER FILTER GATE: raw=${items.length} filtered=${finalFilteredProperties.length} sale=${saleCount} rent=${rentCount}`);
         return json({
           ok: true,
-          source: "AutomaionJson.sellers",
+          source: isSearchAction ? "AutomaionJson.sellers.search" : "AutomaionJson.sellers",
           endpoint: url,
           count: properties.length,
           saleCount,
@@ -1164,10 +1190,20 @@ Deno.serve(async (req) => {
         return ok;
       });
       if (discardedSamples.length) console.log("[homely-fetch] buyers discarded samples:", JSON.stringify(discardedSamples));
-      const contacts = filtered.map(mapStreamContact);
+      const contacts = filtered.map(mapStreamContact).filter((c: any) => {
+        if (filterCities.size && !filterCities.has(normalizeStreamText(c.city))) return false;
+        if (filterAgent && normalizeStreamText(c.agent) !== filterAgent) return false;
+        if (searchText) {
+          const hay = [c.full_name, c.city, c.phone, c.email, c.agent, c.sivug, c.homely_id, c.notes]
+            .map((v) => normalizeStreamText(v).toLowerCase())
+            .join(" ");
+          if (!hay.includes(searchText)) return false;
+        }
+        return true;
+      });
       return json({
         ok: true,
-        source: "AutomaionJson.buyers",
+        source: isSearchAction ? "AutomaionJson.buyers.search" : "AutomaionJson.buyers",
         endpoint: url,
         count: contacts.length,
         rawCount: items.length,
