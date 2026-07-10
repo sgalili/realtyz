@@ -335,6 +335,7 @@ export default function PropertyDetail() {
   // Dynamic headline — NO hardcoded fallbacks like "נווה עובד"/"הרצליה הירוקה".
   const headlineParts = [
     `${propertyTypeHe} ${transactionHe}`,
+    property.address || null,
     neighborhood || null,
     property.city || null,
   ].filter(Boolean);
@@ -358,6 +359,9 @@ export default function PropertyDetail() {
     sourceUrl ||
     (typeof (meta as JsonRecord).source_url === 'string' ? (meta as JsonRecord).source_url as string : '') ||
     '';
+  const sourceOrigin = String((meta as JsonRecord).source_origin ?? '').toLowerCase();
+  const isYad2Listing = sourceOrigin === 'yad2' || /yad2\.co\.il/i.test(resolvedSourceUrl);
+  const yad2Url = isYad2Listing ? resolvedSourceUrl : '';
 
   return (
     <div className="p-3 sm:p-6 space-y-6" dir="rtl">
@@ -387,17 +391,19 @@ export default function PropertyDetail() {
                 >
                   <Pencil className="h-5 w-5" />
                 </button>
-                <a
-                  href={resolvedSourceUrl || '#'}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  aria-label="מעבר למקור המודעה"
-                  title={resolvedSourceUrl || 'אין קישור מקור'}
-                  className="text-slate-600 hover:text-blue-600 block z-50 cursor-pointer"
-                  style={{ display: 'block', visibility: 'visible', pointerEvents: 'auto' }}
-                >
-                  <ExternalLink className="w-6 h-6" />
-                </a>
+                {yad2Url && (
+                  <a
+                    href={yad2Url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    aria-label="פתח בעמוד יד2"
+                    title="פתח בעמוד יד2"
+                    className="text-slate-600 hover:text-blue-600 block z-50 cursor-pointer"
+                    style={{ display: 'block', visibility: 'visible', pointerEvents: 'auto' }}
+                  >
+                    <ExternalLink className="w-6 h-6" />
+                  </a>
+                )}
               </>
             ) : (
               <>
@@ -519,6 +525,7 @@ export default function PropertyDetail() {
                 <Spec icon={Home} label="סוג נכס" value={propertyTypeHe} />
                 <Spec icon={MapPin} label="עיר" value={property.city || '—'} />
                 <Spec icon={MapPin} label="שכונה" value={neighborhood || '—'} />
+                <Spec icon={MapPin} label="כתובת" value={property.address || '—'} />
                 <Spec icon={Receipt} label="ועד בית (לחודש)" value={vaadBayit ? `${vaadBayit.toLocaleString('he-IL')} ₪` : '—'} />
                 <Spec icon={Receipt} label="ארנונה (לחודשיים)" value={arnonaBimonthly ? `${arnonaBimonthly.toLocaleString('he-IL')} ₪` : '—'} />
                 <Spec icon={Receipt} label="מספר תשלומים" value={payments ? `${payments}` : '—'} />
@@ -532,16 +539,16 @@ export default function PropertyDetail() {
               </div>
             )}
 
-            {sourceUrl && !editMode && (
+            {yad2Url && !editMode && (
               <div className="mt-5 pt-4 border-t border-border/60">
                 <a
-                  href={sourceUrl}
+                  href={yad2Url}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
                 >
                   <ExternalLink className="h-4 w-4" />
-                  🔗 מעבר למקור המודעה
+                  מעבר למודעה ביד2
                 </a>
               </div>
             )}
@@ -665,10 +672,10 @@ export default function PropertyDetail() {
 function Spec({ icon: Icon, label, value }: { icon: typeof BedDouble; label: string; value: string }) {
   return (
     <div className="flex items-start gap-2">
-      <Icon className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+      <Icon className="h-[19px] w-[19px] text-primary mt-0.5 shrink-0" />
       <div className="min-w-0">
-        <p className="text-[11px] text-muted-foreground uppercase tracking-wide">{label}</p>
-        <p className="text-sm font-semibold text-foreground truncate">{value}</p>
+        <p className="text-[14px] text-muted-foreground uppercase tracking-wide">{label}</p>
+        <p className="text-[17px] font-semibold text-foreground truncate">{value}</p>
       </div>
     </div>
   );
@@ -677,7 +684,7 @@ function Spec({ icon: Icon, label, value }: { icon: typeof BedDouble; label: str
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
   return (
     <div className="space-y-1">
-      <label className="text-[11px] text-muted-foreground uppercase tracking-wide block">{label}</label>
+      <label className="text-[14px] text-muted-foreground uppercase tracking-wide block">{label}</label>
       {children}
     </div>
   );
