@@ -1051,16 +1051,14 @@ Deno.serve(async (req) => {
 
       if (action === "fetchAllProperties") {
         const discardedSamples: any[] = [];
-        // Per-record rule (uses normalized transaction_type):
-        //   • sale  → office allocation (משרד / בלעדי) — ANY office agent counts.
-        //   • rent  → agent must include "אודי ויטמן".
+        // Per-record rule: include office-owned listings for both sale and rent.
         const finalFilteredProperties = items.filter((item: any) => {
           const affiliation = pickSivugName(item);
           const agent = pickAgentName(item);
           const tx = normalizeTxType(item);
           const sivugOk = ALLOWED_SIVUG_SUBSTRS.some((s) => affiliation.includes(s));
           const agentOk = agent.includes(ALLOWED_AGENT_SUBSTR);
-          const ok = tx === "rent" ? agentOk : (sivugOk || agentOk);
+          const ok = sivugOk || agentOk;
           if (!ok && discardedSamples.length < 3) {
             discardedSamples.push({
               rawAgent: item?.agent,
