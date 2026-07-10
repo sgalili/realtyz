@@ -1243,7 +1243,7 @@ Deno.serve(async (req) => {
     const rawDocs = media.documents;
     const rawSourceOrigin = pickSourceOrigin(richest) || pickSourceOrigin(detail) || meta.source_origin || null;
     const sourceOriginRaw = rawSourceOrigin === "yad2" || hasYad2Signal(richest, detail, meta.source_url, rawSourceOrigin) ? "yad2" : rawSourceOrigin;
-    const mappedForEnrichment = { ...mapped, raw: richest, source_origin: sourceOrigin, transaction_type: meta.transaction_type };
+    const mappedForEnrichment = { ...mapped, raw: richest, source_origin: sourceOriginRaw, transaction_type: meta.transaction_type };
     const shouldProbeYad2 = sourceOriginRaw === "yad2" || (!meta.source_url && meta.transaction_type === "sale");
     const yad2Enrichment = shouldProbeYad2 ? await enrichFromYad2(admin, workspaceOwnerId, mappedForEnrichment) : null;
     const sourceOrigin = sourceOriginRaw === "yad2" || yad2Enrichment?.exact ? "yad2" : sourceOriginRaw;
