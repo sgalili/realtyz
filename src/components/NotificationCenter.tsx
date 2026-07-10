@@ -144,7 +144,7 @@ export default function NotificationCenter() {
           variant="ghost"
           size="icon"
           aria-label="מרכז התראות"
-          className="relative h-9 w-9 p-0"
+          className="relative h-9 w-9 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
         >
           <Bell className="h-4 w-4" />
           <span className="absolute right-0 top-0 h-4 min-w-[16px] px-1 rounded-full bg-destructive text-destructive-foreground text-[10px] font-bold flex items-center justify-center">

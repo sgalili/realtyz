@@ -160,7 +160,7 @@ export function AppSidebar({ tutorialHighlightPath }: { tutorialHighlightPath?: 
             <SidebarGroupContent className="px-3 py-3">
               <button
                 type="button"
-                onClick={() => navigate('/profile')}
+                onClick={() => { if (isMobile) setOpenMobile(false); navigate('/profile'); }}
                 className="flex w-full items-center gap-3 rounded-md px-1 py-1 text-right transition-colors hover:bg-slate-50 min-w-0"
               >
                 <div className="w-10 h-10 min-w-[40px] rounded-full overflow-hidden shrink-0 ring-1 ring-slate-200">

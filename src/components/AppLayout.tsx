@@ -175,7 +175,7 @@ function SearchExpandable() {
 
   return (
     <div ref={containerRef} className="relative flex items-center">
-      <Button variant="ghost" size="icon" className="h-9 w-9 p-0 shrink-0" onClick={() => setOpen(prev => !prev)}>
+      <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setOpen(prev => !prev)}>
         {open ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
       </Button>
       {open && (
