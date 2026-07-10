@@ -692,6 +692,85 @@ async function mirrorAll(
   return out;
 }
 
+function normForMatch(value: unknown): string {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, " ")
+    .replace(/[^\w\u0590-\u05FF]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function collectYad2Photos(it: any): string[] {
+  const values = [it?.images, it?.image, it?.photos, it?.media, it?.coverImage, it?.mainImage];
+  const out = new Set<string>();
+  const push = (v: any) => {
+    if (!v) return;
+    if (typeof v === "string" && /^https?:\/\//i.test(v)) out.add(v);
+    else if (typeof v === "object") push(v.src ?? v.url ?? v.image ?? v.link);
+  };
+  values.forEach((v) => Array.isArray(v) ? v.forEach(push) : push(v));
+  return Array.from(out);
+}
+
+function yad2UrlFromItem(it: any): string {
+  const direct = it?.link_url ?? it?.linkUrl ?? it?.url ?? it?.permalink;
+  if (typeof direct === "string" && /^https?:\/\//i.test(direct)) return direct;
+  const id = it?.id ?? it?.orderId ?? it?.itemId;
+  return id ? `https://www.yad2.co.il/realestate/item/${id}` : "";
+}
+
+async function enrichFromYad2(
+  admin: ReturnType<typeof createClient>,
+  ownerId: string,
+  property: any,
+): Promise<{ photos: string[]; url: string } | null> {
+  try {
+    const { data: key } = await admin
+      .from("user_api_keys")
+      .select("yad2_api_key")
+      .eq("user_id", ownerId)
+      .maybeSingle();
+    const apiKey = String((key as any)?.yad2_api_key ?? "").trim();
+    if (!apiKey || apiKey === "test_pending") return null;
+    const city = String(property?.city ?? "").trim();
+    const address = normForMatch(property?.address || [property?.raw?.street, property?.raw?.number].filter(Boolean).join(" "));
+    if (!city && !address) return null;
+    const url = new URL("https://gw.yad2.co.il/realestate-feed/forsale/map");
+    if (city) url.searchParams.set("city", city);
+    if (property?.price) {
+      const price = Number(property.price);
+      if (Number.isFinite(price) && price > 0) {
+        url.searchParams.set("price_min", String(Math.max(0, Math.round(price * 0.85))));
+        url.searchParams.set("price_max", String(Math.round(price * 1.15)));
+      }
+    }
+    if (property?.rooms) url.searchParams.set("rooms_min", String(property.rooms));
+    const upstream = await fetch(url.toString(), { headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" } });
+    if (!upstream.ok) return null;
+    const payload = await upstream.json().catch(() => null);
+    const items: any[] = Array.isArray(payload) ? payload : payload?.data?.markers || payload?.results || [];
+    let best: any = null;
+    let bestScore = 0;
+    for (const it of items) {
+      const itemAddress = normForMatch(it?.address?.text || it?.street || it?.title || it?.merchandise?.title);
+      const itemCity = normForMatch(it?.city || it?.address?.city?.text);
+      let score = 0;
+      if (city && itemCity.includes(normForMatch(city))) score += 2;
+      if (address && (itemAddress.includes(address) || address.includes(itemAddress))) score += 5;
+      if (property?.rooms && Number(it?.rooms ?? it?.additionalDetails?.roomsCount) === Number(property.rooms)) score += 1;
+      if (score > bestScore) { best = it; bestScore = score; }
+    }
+    if (!best || bestScore < 4) return null;
+    const photos = collectYad2Photos(best);
+    const itemUrl = yad2UrlFromItem(best);
+    return photos.length || itemUrl ? { photos, url: itemUrl } : null;
+  } catch (e) {
+    console.warn("[homely-fetch] yad2 enrichment failed", (e as Error).message);
+    return null;
+  }
+}
+
 async function resolveWorkspaceOwnerId(admin: ReturnType<typeof createClient>, userId: string): Promise<string> {
   const { data: profile } = await admin
     .from("profiles")
