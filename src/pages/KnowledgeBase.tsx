@@ -211,13 +211,13 @@ export default function KnowledgeBase() {
 
   /* ── Documents list ── */
   const { data: documents = [], isLoading: docsLoading } = useQuery({
-    queryKey: ['kb-documents', user?.id],
-    enabled: !!user?.id,
+    queryKey: ['kb-documents', workspaceOwnerId],
+    enabled: !!workspaceOwnerId,
     queryFn: async () => {
       const { data, error } = await supabase
         .from('knowledge_documents')
         .select('id, title, source_type, chunk_count, created_at, raw_text, source_metadata')
-        .eq('user_id', user!.id)
+        .eq('user_id', workspaceOwnerId!)
         .eq('is_active', true)
         .order('created_at', { ascending: false });
       if (error) throw error;
