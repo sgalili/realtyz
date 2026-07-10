@@ -158,7 +158,7 @@ export default function Properties() {
           for (let from = 0; ; from += pageSize) {
             let query = supabase
               .from('listings')
-              .select('id, property_title, description, asking_price, city, address, neighborhood, rooms, sqm, floor, features, source_metadata, source, source_url, created_at, updated_at')
+              .select('id, property_title, description, asking_price, city, address, neighborhood, rooms, sqm, floor, features, source_metadata, source, source_url, media_photos, created_at, updated_at')
               .eq('status', 'live')
               .eq('is_published', true)
               .order('created_at', { ascending: false })
@@ -215,9 +215,10 @@ export default function Properties() {
             connected: true,
             results: dedupeProperties(scoped.map((row: any) => {
               const meta = row.source_metadata && typeof row.source_metadata === 'object' ? row.source_metadata : {};
-              const metaPhotos = Array.isArray(meta.photos)
-                ? meta.photos.filter((p: any) => typeof p === 'string')
-                : [];
+              const metaPhotos = Array.from(new Set([
+                ...(Array.isArray(row.media_photos) ? row.media_photos.filter((p: any) => typeof p === 'string') : []),
+                ...(Array.isArray(meta.photos) ? meta.photos.filter((p: any) => typeof p === 'string') : []),
+              ]));
               const originRaw = String(meta.source_origin ?? '').toLowerCase();
               const originSource = originRaw && originRaw !== 'homely' && originRaw !== 'webtiv' && originRaw !== 'manual'
                 ? originRaw

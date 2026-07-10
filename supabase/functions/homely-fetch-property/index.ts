@@ -151,6 +151,28 @@ async function getJson(url: string) {
   }
 }
 
+async function postJson(url: string, payload: Record<string, unknown>) {
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 20000);
+    const r = await fetch(proxied(url), {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json", "User-Agent": "Realtyz/1.0" },
+      body: JSON.stringify(payload),
+      signal: ctl.signal,
+    });
+    clearTimeout(t);
+    const text = await r.text();
+    let data: any = null;
+    try { data = JSON.parse(text); } catch { /* HTML/IIS error */ }
+    return { status: r.status, data, sample: text.slice(0, 200) };
+  } catch (e) {
+    const msg = (e as Error)?.message ?? String(e);
+    console.error("[homely-fetch-property] postJson failed", url, msg);
+    return { status: 0, data: null, sample: `fetch_failed: ${msg}`.slice(0, 200), error: msg };
+  }
+}
+
 function asArray(x: any): any[] {
   if (Array.isArray(x)) return x;
   if (!x || typeof x !== "object") return [];
@@ -217,23 +239,93 @@ function joinName(it: any): string {
 function collectMedia(it: any): { photos: string[]; documents: string[] } {
   const photos = new Set<string>();
   const documents = new Set<string>();
-  const isUrl = (v: any) => typeof v === "string" && /^https?:\/\//i.test(v);
+  const toUrl = (v: any): string | null => {
+    if (typeof v !== "string") return null;
+    const s = v.trim().replace(/\\\//g, "/");
+    if (/^https?:\/\//i.test(s)) return s;
+    if (/^www\./i.test(s)) return `https://${s}`;
+    if (/^\/\//.test(s)) return `https:${s}`;
+    if (/^\//.test(s) && /\.(jpe?g|png|gif|webp|bmp|heic|pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i.test(s)) return `${WEBTIV_BASE}${s}`;
+    return null;
+  };
   const isImg = (u: string) => /\.(jpe?g|png|gif|webp|bmp|heic)(\?|#|$)/i.test(u);
   const isDoc = (u: string) => /\.(pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i.test(u);
-  const push = (v: any) => {
-    if (!isUrl(v)) return;
-    if (isImg(v)) photos.add(v);
-    else if (isDoc(v)) documents.add(v);
-    else photos.add(v); // assume image (Homely CDN often lacks ext)
+  const photoKey = (k: string) => /(pic|photo|image|img|picture|gallery|media|תמונה|תמונות)/i.test(k);
+  const docKey = (k: string) => /(file|doc|document|attach|מסמך|מסמכים|קובץ)/i.test(k);
+  const sourceLinkKey = (k: string) => /(source|origin|url|link|href|yad2|madlan|מקור|קישור)/i.test(k);
+  const push = (v: any, key = "") => {
+    const url = toUrl(v);
+    if (!url) return;
+    if (isImg(url) || photoKey(key)) photos.add(url);
+    else if (isDoc(url) || docKey(key)) documents.add(url);
+    else if (!sourceLinkKey(key)) photos.add(url); // Homely CDN sometimes omits extensions
   };
-  // numbered fields: pic1..pic30, photo1..., image1..., file1...
-  for (const k of Object.keys(it || {})) {
-    const v = (it as any)[k];
-    if (Array.isArray(v)) v.forEach(push);
-    else if (/^(pic|photo|image|img|file|doc|attach)/i.test(k)) push(v);
-    else if (isUrl(v) && (isImg(v) || isDoc(v))) push(v);
-  }
+  const seen = new Set<any>();
+  const walk = (value: any, key = "") => {
+    if (value == null) return;
+    if (typeof value === "string") { push(value, key); return; }
+    if (Array.isArray(value)) { value.forEach((v) => walk(v, key)); return; }
+    if (typeof value !== "object" || seen.has(value)) return;
+    seen.add(value);
+    for (const [k, v] of Object.entries(value)) {
+      const nextKey = key ? `${key}.${k}` : k;
+      if (typeof v === "string") push(v, nextKey);
+      else walk(v, nextKey);
+    }
+  };
+  walk(it);
   return { photos: Array.from(photos), documents: Array.from(documents) };
+}
+
+function mediaTotal(value: any): number {
+  const media = collectMedia(value);
+  return media.photos.length + media.documents.length;
+}
+
+function firstObjectPayload(data: any): any {
+  if (!data) return null;
+  if (Array.isArray(data)) return data.find((x) => x && typeof x === "object") ?? data[0] ?? null;
+  if (Array.isArray(data?.result)) return firstObjectPayload(data.result);
+  if (Array.isArray(data?.data)) return firstObjectPayload(data.data);
+  if (data?.result && typeof data.result === "object") return data.result;
+  if (data?.data && typeof data.data === "object") return data.data;
+  return typeof data === "object" ? data : null;
+}
+
+async function fetchRichPropertyDetail(hash: string, serial: string, fallback: any): Promise<{ record: any; endpoint: string | null }> {
+  let best = fallback;
+  let bestEndpoint: string | null = null;
+  const endpoints = [
+    `${WEBTIV_BASE}/api/report/getNechesFullDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+    `${WEBTIV_BASE}/api/report/getNechesData/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+    `${WEBTIV_BASE}/api/report/getPropertyDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+  ];
+  for (const ep of endpoints) {
+    const dr = await getJson(ep);
+    if (dr.status < 200 || dr.status >= 300 || !dr.data) continue;
+    const candidate = firstObjectPayload(dr.data);
+    if (!candidate || typeof candidate !== "object") continue;
+    if (mediaTotal(candidate) > mediaTotal(best) || (!pickSourceUrl(best) && pickSourceUrl(candidate))) {
+      best = candidate;
+      bestEndpoint = ep;
+    }
+    if (mediaTotal(best) > 0 && pickSourceUrl(best)) break;
+  }
+
+  const allKeysEndpoint = `${WEBTIV_BASE}/api/hashData/getAllKeys/${encodeURIComponent(hash)}`;
+  for (const payload of [{ id: serial }, { serial }, { sidur: serial }, { nechesId: serial }]) {
+    const dr = await postJson(allKeysEndpoint, payload);
+    if (dr.status < 200 || dr.status >= 300 || !dr.data) continue;
+    const candidate = firstObjectPayload(dr.data);
+    if (!candidate || typeof candidate !== "object") continue;
+    if (mediaTotal(candidate) > mediaTotal(best) || (!pickSourceUrl(best) && pickSourceUrl(candidate))) {
+      best = candidate;
+      bestEndpoint = allKeysEndpoint;
+    }
+    if (mediaTotal(best) > 0 && pickSourceUrl(best)) break;
+  }
+
+  return { record: best, endpoint: bestEndpoint };
 }
 function buildOfficeNotes(it: any): string {
   // Aggregate every broker-side note the office maintains on the property.
@@ -367,11 +459,36 @@ function pickSourceOrigin(it: any): string {
   return raw.split(/[\s,;\/]+/)[0] || raw;
 }
 function pickSourceUrl(it: any): string {
-  const u = deepPickText(it, [
+  const aliases = [
     "url", "link", "mekorurl", "sourceurl", "source_url", "externalurl",
-    "external_url", "ad_url", "adurl", "linktosource", "קישור",
-  ]);
-  return /^https?:\/\//i.test(u) ? u : "";
+    "external_url", "ad_url", "adurl", "linktosource", "yad2url", "yad2_url",
+    "link_url", "permalink", "originalurl", "original_url", "publishurl", "publish_url",
+    "pageurl", "page_url", "href", "קישור", "קישור_מקור",
+  ];
+  const direct = deepPickText(it, aliases);
+  if (/^https?:\/\//i.test(direct)) return direct;
+
+  const lowered = aliases.map((a) => a.toLowerCase());
+  let yad2 = "";
+  let fallback = "";
+  const seen = new Set<any>();
+  const walk = (value: any, key = "") => {
+    if (!value || yad2) return;
+    if (typeof value === "string") {
+      const isCandidateKey = lowered.includes(key.toLowerCase()) || /(url|link|href|קישור)/i.test(key);
+      if (isCandidateKey && /^https?:\/\//i.test(value)) {
+        if (/yad2\.co\.il/i.test(value)) yad2 = value;
+        else if (!fallback) fallback = value;
+      }
+      return;
+    }
+    if (Array.isArray(value)) { value.forEach((v) => walk(v, key)); return; }
+    if (typeof value !== "object" || seen.has(value)) return;
+    seen.add(value);
+    for (const [k, v] of Object.entries(value)) walk(v, k);
+  };
+  walk(it);
+  return yad2 || fallback;
 }
 function pickUpdatedAt(it: any): string {
   const raw = deepPickText(it, [
@@ -390,6 +507,12 @@ function pickUpdatedAt(it: any): string {
   }
   const d = new Date(raw);
   return Number.isFinite(d.getTime()) ? d.toISOString() : "";
+}
+
+function buildYad2FallbackUrl(city: unknown, address: unknown): string {
+  const parts = [city, address].map((v) => String(v ?? "").trim()).filter(Boolean);
+  if (!parts.length) return "";
+  return `https://www.yad2.co.il/realestate/forsale?text=${encodeURIComponent(parts.join(" "))}`;
 }
 
 function mapStreamProperty(it: any, idx: number) {
@@ -569,6 +692,104 @@ async function mirrorAll(
   return out;
 }
 
+function normForMatch(value: unknown): string {
+  return String(value ?? "")
+    .toLowerCase()
+    .replace(/[\u200B-\u200D\uFEFF\u00A0]/g, " ")
+    .replace(/[^\w\u0590-\u05FF]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function collectYad2Photos(it: any): string[] {
+  const values = [it?.images, it?.image, it?.photos, it?.media, it?.coverImage, it?.mainImage];
+  const out = new Set<string>();
+  const push = (v: any) => {
+    if (!v) return;
+    if (typeof v === "string" && /^https?:\/\//i.test(v)) out.add(v);
+    else if (typeof v === "object") push(v.src ?? v.url ?? v.image ?? v.link);
+  };
+  values.forEach((v) => Array.isArray(v) ? v.forEach(push) : push(v));
+  return Array.from(out);
+}
+
+function yad2UrlFromItem(it: any): string {
+  const direct = it?.link_url ?? it?.linkUrl ?? it?.url ?? it?.permalink;
+  if (typeof direct === "string" && /^https?:\/\//i.test(direct)) return direct;
+  const id = it?.id ?? it?.orderId ?? it?.itemId;
+  return id ? `https://www.yad2.co.il/realestate/item/${id}` : "";
+}
+
+async function enrichFromYad2(
+  admin: ReturnType<typeof createClient>,
+  ownerId: string,
+  property: any,
+): Promise<{ photos: string[]; url: string } | null> {
+  try {
+    const { data: key } = await admin
+      .from("user_api_keys")
+      .select("yad2_api_key")
+      .eq("user_id", ownerId)
+      .maybeSingle();
+    const apiKey = String((key as any)?.yad2_api_key ?? "").trim();
+    if (!apiKey || apiKey === "test_pending") return null;
+    const city = String(property?.city ?? "").trim();
+    const address = normForMatch(property?.address || [property?.raw?.street, property?.raw?.number].filter(Boolean).join(" "));
+    if (!city && !address) return null;
+    const url = new URL("https://gw.yad2.co.il/realestate-feed/forsale/map");
+    if (city) url.searchParams.set("city", city);
+    if (property?.price) {
+      const price = Number(property.price);
+      if (Number.isFinite(price) && price > 0) {
+        url.searchParams.set("price_min", String(Math.max(0, Math.round(price * 0.85))));
+        url.searchParams.set("price_max", String(Math.round(price * 1.15)));
+      }
+    }
+    if (property?.rooms) url.searchParams.set("rooms_min", String(property.rooms));
+    const upstream = await fetch(url.toString(), { headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" } });
+    if (!upstream.ok) return null;
+    const payload = await upstream.json().catch(() => null);
+    const items: any[] = Array.isArray(payload) ? payload : payload?.data?.markers || payload?.results || [];
+    let best: any = null;
+    let bestScore = 0;
+    for (const it of items) {
+      const itemAddress = normForMatch(it?.address?.text || it?.street || it?.title || it?.merchandise?.title);
+      const itemCity = normForMatch(it?.city || it?.address?.city?.text);
+      let score = 0;
+      if (city && itemCity.includes(normForMatch(city))) score += 2;
+      if (address && (itemAddress.includes(address) || address.includes(itemAddress))) score += 5;
+      if (property?.rooms && Number(it?.rooms ?? it?.additionalDetails?.roomsCount) === Number(property.rooms)) score += 1;
+      if (score > bestScore) { best = it; bestScore = score; }
+    }
+    if (!best || bestScore < 4) return null;
+    const photos = collectYad2Photos(best);
+    const itemUrl = yad2UrlFromItem(best);
+    return photos.length || itemUrl ? { photos, url: itemUrl } : null;
+  } catch (e) {
+    console.warn("[homely-fetch] yad2 enrichment failed", (e as Error).message);
+    return null;
+  }
+}
+
+async function resolveWorkspaceOwnerId(admin: ReturnType<typeof createClient>, userId: string): Promise<string> {
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("active_workspace_owner_id, workspace_owner_id")
+    .eq("id", userId)
+    .maybeSingle();
+  const active = String((profile as any)?.active_workspace_owner_id ?? "").trim();
+  const fallback = String((profile as any)?.workspace_owner_id ?? "").trim() || userId;
+  const owner = active || fallback;
+  if (owner === userId) return owner;
+  const { data: membership } = await admin
+    .from("workspace_memberships")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("workspace_owner_id", owner)
+    .maybeSingle();
+  return membership ? owner : fallback;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -580,6 +801,7 @@ Deno.serve(async (req) => {
     if (!user) return json({ error: "Unauthorized" }, 401);
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+    const workspaceOwnerId = await resolveWorkspaceOwnerId(admin, user.id);
     const body = await req.json().catch(() => ({}));
     const action = (body as any)?.action as string | undefined;
     const listing_id = (body as any)?.listing_id;
@@ -603,17 +825,54 @@ Deno.serve(async (req) => {
       }
       let propsCount = 0;
       let contactsCount = 0;
+      let richHash: string | null = null;
+      if (properties.length > 0) {
+        try {
+          const { data: cred } = await admin
+            .from("homely_broker_credentials")
+            .select("homely_agency, homely_username")
+            .eq("user_id", workspaceOwnerId)
+            .maybeSingle();
+          const { data: pw } = await admin.rpc("get_homely_password", { _user_id: workspaceOwnerId });
+          if (cred?.homely_agency && cred?.homely_username && pw) {
+            const login = await webtivLogin(String(cred.homely_agency), String(cred.homely_username), pw as unknown as string);
+            if (login.ok) richHash = extractHash(login.session);
+          }
+        } catch (e) {
+          console.warn("[importOutJson] rich detail login skipped", (e as Error).message);
+        }
+      }
 
       for (const p of properties) {
         const homelyId = String(p?.homely_id ?? "").trim();
         if (!homelyId) continue;
-        const rawPhotos = Array.isArray(p?.photos) && p.photos.length ? p.photos : (p?.photo ? [p.photo] : []);
-        const rawDocuments = Array.isArray(p?.documents) ? p.documents : [];
+        let richRecord = p?.raw ?? p;
+        let richEndpoint: string | null = null;
+        if (richHash) {
+          try {
+            const rich = await fetchRichPropertyDetail(richHash, homelyId, richRecord);
+            richRecord = rich.record ?? richRecord;
+            richEndpoint = rich.endpoint;
+          } catch (e) {
+            console.warn(`[importOutJson] rich detail skipped for ${homelyId}`, (e as Error).message);
+          }
+        }
+        const richMedia = collectMedia(richRecord);
+        const richSourceOrigin = pickSourceOrigin(richRecord) || p?.source_origin || null;
+        const yad2Enrichment = richSourceOrigin === "yad2" ? await enrichFromYad2(admin, workspaceOwnerId, p) : null;
+        const rawPhotos = richMedia.photos.length
+          ? richMedia.photos
+          : (Array.isArray(p?.photos) && p.photos.length ? p.photos : (p?.photo ? [p.photo] : yad2Enrichment?.photos ?? []));
+        const rawDocuments = richMedia.documents.length ? richMedia.documents : (Array.isArray(p?.documents) ? p.documents : []);
+        const richSourceUrl = pickSourceUrl(richRecord)
+          || yad2Enrichment?.url
+          || (p?.source_url ? String(p.source_url) : "")
+          || (richSourceOrigin === "yad2" ? buildYad2FallbackUrl(p?.city, p?.address) : "");
         const row: Record<string, unknown> = {
-          user_id: user.id,
+          user_id: workspaceOwnerId,
           slug: `${slugify(String(p?.title || p?.address || "homely"))}-${homelyId}`,
           source: "homely",
-          source_url: p?.source_url ? String(p.source_url) : null,
+          source_url: richSourceUrl || null,
           external_id: homelyId,
           property_title: String(p?.title || p?.address || `נכס ${homelyId}`),
           description: String(p?.description || ""),
@@ -637,13 +896,14 @@ Deno.serve(async (req) => {
             media_count: rawPhotos.length + rawDocuments.length,
             office_notes: p?.office_notes || null,
             agent: p?.agent || null,
-            source_origin: p?.source_origin || null,
-            source_url: p?.source_url || null,
+            source_origin: richSourceOrigin,
+            source_url: richSourceUrl || null,
             source_updated_at: p?.source_updated_at || null,
             balcony: p?.balcony || null,
             elevator: p?.elevator || null,
             transaction_type: p?.transaction_type || null,
-            homely_raw: compactRaw(p?.raw),
+            homely_raw: compactRaw(richRecord),
+            detail_endpoint: richEndpoint,
             synced_at: new Date().toISOString(),
           },
         };
@@ -698,7 +958,7 @@ Deno.serve(async (req) => {
           status: "contacted",
           lead_stage: "qualified",
           deal_type: "sale",
-          assigned_to: user.id,
+          assigned_to: workspaceOwnerId,
           is_demo: false,
           preferences: {
             homely_id: homelyId || null,
@@ -836,12 +1096,12 @@ Deno.serve(async (req) => {
     const { data: cred } = await admin
       .from("homely_broker_credentials")
       .select("homely_agency, homely_username")
-      .eq("user_id", user.id)
+      .eq("user_id", workspaceOwnerId)
       .maybeSingle();
     if (!cred?.homely_agency || !cred?.homely_username) {
       return json({ ok: false, needs_setup: true, error: "no_homely_credentials" }, 200);
     }
-    const { data: pw } = await admin.rpc("get_homely_password", { _user_id: user.id });
+    const { data: pw } = await admin.rpc("get_homely_password", { _user_id: workspaceOwnerId });
     if (!pw) return json({ ok: false, needs_setup: true, error: "no_homely_password" }, 200);
 
     const login = await webtivLogin(String(cred.homely_agency), String(cred.homely_username), pw as unknown as string);
@@ -873,36 +1133,24 @@ Deno.serve(async (req) => {
     }
 
     const mapped = mapProperty(detail, 0);
-
-    // Try richer per-property endpoints for full pic1..picN / file1..fileN.
-    // First non-empty media wins; summary row is the fallback.
-    const detailEndpoints = [
-      `${WEBTIV_BASE}/api/report/getNechesFullDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serialStr)}`,
-      `${WEBTIV_BASE}/api/report/getNechesData/${encodeURIComponent(hash)}/${encodeURIComponent(serialStr)}`,
-      `${WEBTIV_BASE}/api/report/getPropertyDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serialStr)}`,
-    ];
-    let fullDetail: any = null;
-    for (const ep of detailEndpoints) {
-      const dr = await getJson(ep);
-      if (dr.status >= 200 && dr.status < 300 && dr.data) {
-        const candidate = Array.isArray(dr.data)
-          ? (dr.data.find((x: any) => x && typeof x === "object") ?? dr.data[0])
-          : (dr.data?.result ?? dr.data?.data ?? dr.data);
-        if (candidate && typeof candidate === "object") {
-          const m = collectMedia(candidate);
-          if (m.photos.length || m.documents.length) { fullDetail = candidate; break; }
-          if (!fullDetail) fullDetail = candidate;
-        }
-      }
-    }
-    const richest = fullDetail ?? detail;
+    const rich = await fetchRichPropertyDetail(hash, serialStr, detail);
+    const richest = rich.record ?? detail;
     const media = collectMedia(richest);
     const summaryPhoto = mapped.photo ? [mapped.photo] : [];
     const rawPhotos = media.photos.length ? media.photos : summaryPhoto;
     const rawDocs = media.documents;
+    const sourceOrigin = pickSourceOrigin(richest) || pickSourceOrigin(detail) || meta.source_origin || null;
+    const mappedForEnrichment = { ...mapped, raw: richest, source_origin: sourceOrigin };
+    const yad2Enrichment = sourceOrigin === "yad2" ? await enrichFromYad2(admin, workspaceOwnerId, mappedForEnrichment) : null;
+    const finalRawPhotos = rawPhotos.length ? rawPhotos : (yad2Enrichment?.photos ?? []);
+    const sourceUrl = pickSourceUrl(richest)
+      || pickSourceUrl(detail)
+      || yad2Enrichment?.url
+      || (typeof meta.source_url === "string" ? meta.source_url : "")
+      || (sourceOrigin === "yad2" ? buildYad2FallbackUrl(mapped.city || listing.city, mapped.address || listing.address) : "");
 
     // Mirror media once into homely-media bucket and store signed URLs
-    const cachedPhotos = await mirrorAll(admin, String(listing_id), rawPhotos, 40);
+    const cachedPhotos = await mirrorAll(admin, String(listing_id), finalRawPhotos, 40);
     const cachedDocs = await mirrorAll(admin, String(listing_id), rawDocs, 20);
 
     const updated = {
@@ -915,17 +1163,20 @@ Deno.serve(async (req) => {
       sqm: mapped.sqm || listing.sqm,
       floor: mapped.floor || listing.floor,
       external_id: String(serial),
+      source_url: sourceUrl || null,
       media_photos: cachedPhotos,
       media_documents: cachedDocs,
       source_metadata: {
         ...meta,
+        source_origin: sourceOrigin,
+        source_url: sourceUrl || null,
         photos: cachedPhotos,
         documents: cachedDocs,
-        photos_origin: rawPhotos,
+        photos_origin: finalRawPhotos,
         documents_origin: rawDocs,
         homely_raw: richest,
         synced_at: new Date().toISOString(),
-        endpoint: url,
+        endpoint: rich.endpoint ?? url,
       },
     };
 
@@ -939,7 +1190,7 @@ Deno.serve(async (req) => {
       endpoint: url,
       photo_count: cachedPhotos.length,
       document_count: cachedDocs.length,
-      raw_photo_count: rawPhotos.length,
+      raw_photo_count: finalRawPhotos.length,
       raw_document_count: rawDocs.length,
     });
   } catch (e) {
