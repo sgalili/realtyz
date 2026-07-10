@@ -679,13 +679,22 @@ Deno.serve(async (req) => {
         const nativeId =
           pickStr(c?.id, c?.commentId, c?.comment_id, c?.platformCommentId) ??
           `${postId}_comment_${index}`;
-        const sender = pickStr(
+        const rawSender = pickStr(
           c?.from?.name,
           c?.user?.name,
           c?.username,
           c?.sender,
           c?.author,
         );
+        // Strip emoji/pictographic glyphs (incl. sentiment smileys) that Meta
+        // sometimes bakes into a user's display name so downstream renders show
+        // a clean human name.
+        const sender = rawSender
+          ? rawSender
+              .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F\u200D]/gu, "")
+              .replace(/\s{2,}/g, " ")
+              .trim() || null
+          : null;
         const senderId = pickStr(c?.from?.id, c?.user?.id, c?.fromId, c?.sender_id, c?.userId);
         const parentId = typeof c?.__parent_id === "string" ? c.__parent_id : null;
         // SENDER FIREWALL: comments authored by our own Page are still
