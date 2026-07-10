@@ -7,6 +7,7 @@ export interface WhiteLabelSettings {
   user_id?: string;
   agency_name: string | null;
   logo_url: string | null;
+  landscape_logo_url?: string | null;
   primary_color: string | null; // HSL triplet "H S% L%"
   primary_foreground_color: string | null;
   hide_kalpiz_branding: boolean;
@@ -103,6 +104,7 @@ export const WhiteLabelProvider = ({ children }: { children: ReactNode }) => {
           user_id: activeWorkspace.workspace_owner_id,
           agency_name: activeWorkspace.workspace_name,
           logo_url: activeWorkspace.workspace_logo_url,
+          landscape_logo_url: null,
           primary_color: null,
           primary_foreground_color: null,
           hide_kalpiz_branding: false,
