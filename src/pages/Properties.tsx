@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Send, BedDouble, Ruler, MapPin, Building2, FileSpreadsheet, LayoutGrid, SlidersHorizontal, Trash2, Pencil, Sparkles } from 'lucide-react';
+import { Send, BedDouble, Ruler, MapPin, Building2, FileSpreadsheet, LayoutGrid, SlidersHorizontal, Trash2, Pencil, Sparkles, Sun } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,11 +65,33 @@ function detectPropertyType(title: string): PropertyType {
   return 'apartment';
 }
 
-function extractListingType(features: unknown): ListingType {
+function textBool(value: unknown): boolean | null {
+  if (value == null || value === '') return null;
+  if (typeof value === 'boolean') return value;
+  const s = String(value).trim();
+  if (/^(1|true|yes|כן|יש|y)$/i.test(s)) return true;
+  if (/^(0|false|no|לא|אין|n)$/i.test(s)) return false;
+  const n = Number(s.replace(/[^\d.-]/g, ''));
+  if (Number.isFinite(n)) return n > 0;
+  return null;
+}
+
+function extractBalcony(features: unknown, meta: Record<string, any>): boolean | null {
+  const direct = textBool(meta.balcony ?? meta.mirpeset ?? meta.homely_raw?.mirpesetShemeshYN ?? meta.homely_raw?.balcony);
+  if (direct !== null) return direct;
+  if (Array.isArray(features) && features.some((f) => typeof f === 'string' && /מרפסת|balcony/i.test(f))) return true;
+  return null;
+}
+
+function extractListingType(features: unknown, meta?: Record<string, any>, price?: number): ListingType {
+  const raw = String(meta?.transaction_type ?? meta?.listing_type ?? meta?.deal_type ?? meta?.homely_raw?.transaction_type ?? '').toLowerCase();
+  if (/rent|השכרה|שכירות|להשכרה/.test(raw)) return 'rent';
+  if (/sale|מכירה|למכירה/.test(raw)) return 'sale';
   if (Array.isArray(features)) {
     const typed = features.find((f) => typeof f === 'object' && f && 'listing_type' in f) as { listing_type?: ListingType } | undefined;
     return typed?.listing_type === 'rent' ? 'rent' : 'sale';
   }
+  if (price && price > 0 && price < 50_000) return 'rent';
   return 'sale';
 }
 
@@ -224,6 +246,9 @@ export default function Properties() {
                 ? originRaw
                 : (row.source === 'homely' || row.source === 'webtiv' ? 'homely' : row.source === 'yad2' ? 'yad2' : row.source === 'madlan' ? 'madlan' : 'mine');
               const sourceUpdated = typeof meta.source_updated_at === 'string' ? meta.source_updated_at : null;
+              const rowFeatures = Array.isArray(row.features) ? row.features.filter((f: any) => typeof f === 'string') : [];
+              const balcony = extractBalcony(row.features, meta as Record<string, any>);
+              const features = Array.from(new Set([...rowFeatures, ...(balcony === true ? ['מרפסת'] : [])]));
               return {
                 id: row.id,
                 source: originSource as any,
@@ -239,8 +264,9 @@ export default function Properties() {
                 property_type: detectPropertyType(`${row.property_title ?? ''} ${row.description ?? ''}`),
                 photos: metaPhotos,
                 url: row.source_url ?? meta.source_url ?? null,
-                features: Array.isArray(row.features) ? row.features.filter((f: any) => typeof f === 'string') : [],
-                listing_type: extractListingType(row.features),
+                features,
+                listing_type: extractListingType(row.features, meta as Record<string, any>, Number(row.asking_price ?? 0)),
+                balcony,
                 extras: (meta.extras ?? {}) as Record<string, string>,
                 created_at: row.created_at ?? null,
                 updated_at: sourceUpdated ?? row.updated_at ?? null,
@@ -288,6 +314,7 @@ export default function Properties() {
       url: r.url ?? null,
       features: Array.isArray(r.features) ? r.features as string[] : [],
       listing_type: (r.listing_type ?? 'sale') as ListingType,
+      balcony: (r as any).balcony ?? null,
       extras: (r.extras ?? {}) as Record<string, string>,
       created_at: (r as any).created_at ?? null,
       updated_at: (r as any).updated_at ?? null,
@@ -667,6 +694,11 @@ function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare
               <Ruler className="h-3.5 w-3.5" /> {property.size_sqm} מ"ר
             </span>
           ) : null}
+          {(property as any).balcony === true ? (
+            <span className="inline-flex items-center gap-1">
+              <Sun className="h-3.5 w-3.5" /> מרפסת
+            </span>
+          ) : null}
         </div>
 
         <div className="flex items-center justify-between mt-auto pt-2 border-t gap-2 flex-wrap">
@@ -716,7 +748,7 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
   const [bulkDeleteOpen, setBulkDeleteOpen] = useState(false);
   const [bulkDeleting, setBulkDeleting] = useState(false);
   const queryClient = useQueryClient();
-  type SortKey = 'created_at' | 'updated_at' | 'listing_type' | 'title' | 'price' | 'city' | 'address' | 'rooms' | 'floor' | 'size_sqm' | 'property_type';
+  type SortKey = 'created_at' | 'updated_at' | 'listing_type' | 'title' | 'price' | 'city' | 'address' | 'rooms' | 'floor' | 'size_sqm' | 'property_type' | 'balcony';
   const { sort, toggle } = useTableSort<SortKey>({ key: 'updated_at', dir: 'desc' });
   const sorted = useMemo(() => sortRows(properties, sort, (row, key) => {
     switch (key) {
@@ -731,6 +763,7 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
       case 'floor': return Number(row.floor ?? 0);
       case 'size_sqm': return Number(row.size_sqm ?? 0);
       case 'property_type': return row.property_type ?? '';
+      case 'balcony': return (row as any).balcony === true ? 1 : 0;
       default: return '';
     }
   }), [properties, sort]);
@@ -839,6 +872,7 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
               <SortableTh sortKey="rooms" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">חדרים</SortableTh>
               <SortableTh sortKey="floor" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">קומה</SortableTh>
               <SortableTh sortKey="size_sqm" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">מ"ר</SortableTh>
+              <SortableTh sortKey="balcony" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">מרפסת</SortableTh>
               <SortableTh sortKey="property_type" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">סוג נכס</SortableTh>
               <SortableTh sortKey="updated_at" sort={sort} onSort={toggle} className="px-2 py-2 font-semibold whitespace-nowrap">עודכן</SortableTh>
               <th className="px-2 py-2 font-semibold whitespace-nowrap">מקור</th>
@@ -884,6 +918,7 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
                   <td className="px-2 py-1.5 whitespace-nowrap">{p.rooms || '—'}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{p.floor ?? '—'}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{p.size_sqm || '—'}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap">{(p as any).balcony === true ? 'כן' : (p as any).balcony === false ? 'לא' : '—'}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{PROPERTY_TYPE_LABELS_HE[p.property_type] || '—'}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap text-muted-foreground">{(p as any).updated_at ? new Date((p as any).updated_at).toLocaleDateString('he-IL') : (p.created_at ? new Date(p.created_at).toLocaleDateString('he-IL') : '—')}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">
