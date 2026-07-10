@@ -791,18 +791,20 @@ async function enrichFromYad2(
   admin: ReturnType<typeof createClient>,
   ownerId: string,
   property: any,
-): Promise<{ photos: string[]; url: string } | null> {
+): Promise<{ photos: string[]; url: string; exact?: boolean } | null> {
   try {
+    const city = String(property?.city ?? "").trim();
+    const address = String(property?.address || [property?.raw?.street, property?.raw?.number].filter(Boolean).join(" ")).trim();
+    const fallbackUrl = buildYad2FallbackUrl(city, address, property?.transaction_type, property?.homely_id ?? property?.external_id ?? property?.raw?.serial ?? "");
     const { data: key } = await admin
       .from("user_api_keys")
       .select("yad2_api_key")
       .eq("user_id", ownerId)
       .maybeSingle();
     const apiKey = String((key as any)?.yad2_api_key ?? "").trim();
-    if (!apiKey || apiKey === "test_pending") return null;
-    const city = String(property?.city ?? "").trim();
-    const address = normForMatch(property?.address || [property?.raw?.street, property?.raw?.number].filter(Boolean).join(" "));
     if (!city && !address) return null;
+    if (!apiKey || apiKey === "test_pending") return fallbackUrl ? { photos: [], url: fallbackUrl, exact: false } : null;
+    const normalizedAddress = normForMatch(address);
     const tx = property?.transaction_type === "rent" ? "rent" : "forsale";
     const cityCfg = yad2CityConfig(city);
     const url = new URL(`https://gw.yad2.co.il/realestate-feed/${tx}/map`);
@@ -834,17 +836,20 @@ async function enrichFromYad2(
       const itemCity = normForMatch(it?.city || it?.address?.city?.text);
       let score = 0;
       if (city && itemCity.includes(normForMatch(city))) score += 2;
-      if (address && (itemAddress.includes(address) || address.includes(itemAddress))) score += 5;
+      if (normalizedAddress && (itemAddress.includes(normalizedAddress) || normalizedAddress.includes(itemAddress))) score += 5;
       if (property?.rooms && Number(it?.rooms ?? it?.additionalDetails?.roomsCount) === Number(property.rooms)) score += 1;
       if (score > bestScore) { best = it; bestScore = score; }
     }
-    if (!best || bestScore < 4) return null;
+    if (!best || bestScore < 4) return fallbackUrl ? { photos: [], url: fallbackUrl, exact: false } : null;
     const photos = collectYad2Photos(best);
     const itemUrl = yad2UrlFromItem(best);
-    return photos.length || itemUrl ? { photos, url: itemUrl } : null;
+    return photos.length || itemUrl ? { photos, url: itemUrl || fallbackUrl, exact: true } : (fallbackUrl ? { photos: [], url: fallbackUrl, exact: false } : null);
   } catch (e) {
     console.warn("[homely-fetch] yad2 enrichment failed", (e as Error).message);
-    return null;
+    const city = String(property?.city ?? "").trim();
+    const address = String(property?.address || [property?.raw?.street, property?.raw?.number].filter(Boolean).join(" ")).trim();
+    const fallbackUrl = buildYad2FallbackUrl(city, address, property?.transaction_type, property?.homely_id ?? property?.external_id ?? property?.raw?.serial ?? "");
+    return fallbackUrl ? { photos: [], url: fallbackUrl, exact: false } : null;
   }
 }
 
