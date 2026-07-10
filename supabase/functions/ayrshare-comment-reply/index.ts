@@ -141,6 +141,30 @@ Deno.serve(async (req) => {
       if (!ayrRes) return json({ error: "reply_request_not_started" }, 200);
       try { ayrPayload = ayrText ? JSON.parse(ayrText) : null; } catch { ayrPayload = { raw: ayrText }; }
 
+      // Ayrshare occasionally returns HTTP 200 with a logical `error` field
+      // (or status:"error") in the envelope. Treat that as a genuine failure
+      // so the frontend can roll back the optimistic reply row.
+      const logicalError = ayrPayload && typeof ayrPayload === "object"
+        ? ((ayrPayload as any).error || (ayrPayload as any).errors ||
+           (String((ayrPayload as any).status ?? "").toLowerCase() === "error" ? ((ayrPayload as any).message || "ayrshare_logical_error") : null))
+        : null;
+      if (ayrRes.ok && logicalError) {
+        if (rowId) {
+          await admin
+            .from("engagement_events")
+            .update({ status: "failed", metadata: { ...rowMetadata, reply_error: ayrPayload } })
+            .eq("id", rowId)
+            .eq("user_id", ownerUserId);
+        }
+        return json({
+          success: false,
+          error: "AYRSHARE_LOGICAL_ERROR",
+          message: typeof logicalError === "string" ? logicalError : "Ayrshare rejected the reply.",
+          details: ayrPayload,
+        }, 200);
+      }
+
+
       if (!ayrRes.ok) {
         if (rowId) {
           await admin
