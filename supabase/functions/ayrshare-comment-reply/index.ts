@@ -414,6 +414,7 @@ Deno.serve(async (req) => {
       private_dm_sent: privateDmSent,
       private_dm: privateDmResult,
       private_dm_status: privateDmStatus,
+      reply_comment_id: freshReplyId,
       auto_like: likeOutcome,
     });
   } catch (e) {
