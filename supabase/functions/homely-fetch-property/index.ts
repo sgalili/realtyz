@@ -151,6 +151,28 @@ async function getJson(url: string) {
   }
 }
 
+async function postJson(url: string, payload: Record<string, unknown>) {
+  try {
+    const ctl = new AbortController();
+    const t = setTimeout(() => ctl.abort(), 20000);
+    const r = await fetch(proxied(url), {
+      method: "POST",
+      headers: { Accept: "application/json", "Content-Type": "application/json", "User-Agent": "Realtyz/1.0" },
+      body: JSON.stringify(payload),
+      signal: ctl.signal,
+    });
+    clearTimeout(t);
+    const text = await r.text();
+    let data: any = null;
+    try { data = JSON.parse(text); } catch { /* HTML/IIS error */ }
+    return { status: r.status, data, sample: text.slice(0, 200) };
+  } catch (e) {
+    const msg = (e as Error)?.message ?? String(e);
+    console.error("[homely-fetch-property] postJson failed", url, msg);
+    return { status: 0, data: null, sample: `fetch_failed: ${msg}`.slice(0, 200), error: msg };
+  }
+}
+
 function asArray(x: any): any[] {
   if (Array.isArray(x)) return x;
   if (!x || typeof x !== "object") return [];
@@ -220,19 +242,29 @@ function collectMedia(it: any): { photos: string[]; documents: string[] } {
   const isUrl = (v: any) => typeof v === "string" && /^https?:\/\//i.test(v);
   const isImg = (u: string) => /\.(jpe?g|png|gif|webp|bmp|heic)(\?|#|$)/i.test(u);
   const isDoc = (u: string) => /\.(pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i.test(u);
-  const push = (v: any) => {
+  const photoKey = (k: string) => /(pic|photo|image|img|picture|gallery|media|תמונה|תמונות)/i.test(k);
+  const docKey = (k: string) => /(file|doc|document|attach|מסמך|מסמכים|קובץ)/i.test(k);
+  const sourceLinkKey = (k: string) => /(source|origin|url|link|href|yad2|madlan|מקור|קישור)/i.test(k);
+  const push = (v: any, key = "") => {
     if (!isUrl(v)) return;
-    if (isImg(v)) photos.add(v);
-    else if (isDoc(v)) documents.add(v);
-    else photos.add(v); // assume image (Homely CDN often lacks ext)
+    if (docKey(key) || isDoc(v)) documents.add(v);
+    else if (photoKey(key) || isImg(v)) photos.add(v);
+    else if (!sourceLinkKey(key)) photos.add(v); // Homely CDN sometimes omits extensions
   };
-  // numbered fields: pic1..pic30, photo1..., image1..., file1...
-  for (const k of Object.keys(it || {})) {
-    const v = (it as any)[k];
-    if (Array.isArray(v)) v.forEach(push);
-    else if (/^(pic|photo|image|img|file|doc|attach)/i.test(k)) push(v);
-    else if (isUrl(v) && (isImg(v) || isDoc(v))) push(v);
-  }
+  const seen = new Set<any>();
+  const walk = (value: any, key = "") => {
+    if (value == null) return;
+    if (typeof value === "string") { push(value, key); return; }
+    if (Array.isArray(value)) { value.forEach((v) => walk(v, key)); return; }
+    if (typeof value !== "object" || seen.has(value)) return;
+    seen.add(value);
+    for (const [k, v] of Object.entries(value)) {
+      const nextKey = key ? `${key}.${k}` : k;
+      if (typeof v === "string") push(v, nextKey);
+      else walk(v, nextKey);
+    }
+  };
+  walk(it);
   return { photos: Array.from(photos), documents: Array.from(documents) };
 }
 function buildOfficeNotes(it: any): string {
@@ -367,11 +399,36 @@ function pickSourceOrigin(it: any): string {
   return raw.split(/[\s,;\/]+/)[0] || raw;
 }
 function pickSourceUrl(it: any): string {
-  const u = deepPickText(it, [
+  const aliases = [
     "url", "link", "mekorurl", "sourceurl", "source_url", "externalurl",
-    "external_url", "ad_url", "adurl", "linktosource", "קישור",
-  ]);
-  return /^https?:\/\//i.test(u) ? u : "";
+    "external_url", "ad_url", "adurl", "linktosource", "yad2url", "yad2_url",
+    "link_url", "permalink", "originalurl", "original_url", "publishurl", "publish_url",
+    "pageurl", "page_url", "href", "קישור", "קישור_מקור",
+  ];
+  const direct = deepPickText(it, aliases);
+  if (/^https?:\/\//i.test(direct)) return direct;
+
+  const lowered = aliases.map((a) => a.toLowerCase());
+  let yad2 = "";
+  let fallback = "";
+  const seen = new Set<any>();
+  const walk = (value: any, key = "") => {
+    if (!value || yad2) return;
+    if (typeof value === "string") {
+      const isCandidateKey = lowered.includes(key.toLowerCase()) || /(url|link|href|קישור)/i.test(key);
+      if (isCandidateKey && /^https?:\/\//i.test(value)) {
+        if (/yad2\.co\.il/i.test(value)) yad2 = value;
+        else if (!fallback) fallback = value;
+      }
+      return;
+    }
+    if (Array.isArray(value)) { value.forEach((v) => walk(v, key)); return; }
+    if (typeof value !== "object" || seen.has(value)) return;
+    seen.add(value);
+    for (const [k, v] of Object.entries(value)) walk(v, k);
+  };
+  walk(it);
+  return yad2 || fallback;
 }
 function pickUpdatedAt(it: any): string {
   const raw = deepPickText(it, [
