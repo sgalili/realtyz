@@ -12,6 +12,7 @@ import {
   BedDouble, Ruler, MapPin, ArrowRight, Phone, Mail,
   Calendar, Layers, Send, Home, User, Receipt,
   Car, ArrowUpCircle, Wind, Shield, Sun, ExternalLink, Pencil, Save, X,
+  Trash2, Plus, Upload, Image as ImageIcon,
 } from 'lucide-react';
 import {
   PROPERTY_TYPE_LABELS_HE,
@@ -20,6 +21,7 @@ import {
 } from '@/lib/homelyMockProperties';
 import { ShareWithLeadDialog } from '@/components/properties/ShareWithLeadDialog';
 import { ProjectAlternativesCard } from '@/components/properties/ProjectAlternativesCard';
+import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
@@ -76,6 +78,7 @@ const PROPERTY_TYPE_OPTIONS: PropertyType[] = [
 ] as PropertyType[];
 
 type EditableFields = {
+  title: string;
   city: string;
   neighborhood: string;
   address: string;
@@ -91,6 +94,15 @@ type EditableFields = {
   payments: string;
   entry_date: string;
   description: string;
+  parking: string;
+  elevator: boolean;
+  balcony: boolean;
+  ac: boolean;
+  shelter: boolean;
+  solar: boolean;
+  source_url: string;
+  photos: string[];
+  photo_url_draft: string;
 };
 
 export default function PropertyDetail() {
@@ -101,6 +113,7 @@ export default function PropertyDetail() {
   const [shareOpen, setShareOpen] = useState(false);
   const [editMode, setEditMode] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [form, setForm] = useState<EditableFields | null>(null);
 
   const { data, isLoading } = useQuery({
@@ -156,7 +169,9 @@ export default function PropertyDetail() {
       else if (priceNum >= 500_000) listingType = 'sale';
       else listingType = dealType === 'rent' ? 'rent' : 'sale';
       const textFeatures = features.filter((f): f is string => typeof f === 'string');
-      const balconyRaw = meta.balcony ?? meta.mirpeset ?? (isRecord(meta.homely_raw) ? meta.homely_raw.mirpesetShemeshYN ?? meta.homely_raw.balcony : null);
+      const featuresObject = ((features as unknown[]).find(isRecord) ?? {}) as JsonRecord;
+      const extras = isRecord(featuresObject.extras) ? featuresObject.extras : {};
+      const balconyRaw = meta.balcony ?? meta.mirpeset ?? extras.balcony ?? (isRecord(meta.homely_raw) ? meta.homely_raw.mirpesetShemeshYN ?? meta.homely_raw.balcony : null);
       const balcony = boolFromMeta(balconyRaw) ?? (textFeatures.some((f) => /מרפסת|balcony/i.test(f)) ? true : null);
       const enrichedFeatures = Array.from(new Set([...textFeatures, ...(balcony === true ? ['מרפסת'] : [])]));
 
@@ -181,7 +196,7 @@ export default function PropertyDetail() {
         features: enrichedFeatures,
       } as HomelyProperty;
 
-      const elevatorVal = row.elevator ?? meta.elevator ?? meta.maalit;
+      const elevatorVal = row.elevator ?? meta.elevator ?? meta.maalit ?? extras.elevator;
       const elevator = elevatorVal == null || elevatorVal === ''
         ? false
         : typeof elevatorVal === 'boolean'
@@ -191,8 +206,8 @@ export default function PropertyDetail() {
         parking: Number(meta.parking ?? row.parking ?? 0) || 0,
         elevator,
         balcony,
-        ac: Boolean(meta.ac ?? meta.air_conditioning ?? false),
-        shelter: Boolean(meta.shelter ?? meta.mamad ?? false),
+        ac: Boolean(meta.ac ?? meta.air_conditioning ?? extras.air_conditioning ?? false),
+        shelter: Boolean(meta.shelter ?? meta.mamad ?? extras.safe_room ?? false),
         solar: Boolean(meta.solar_heater ?? meta.solar ?? false),
       };
 
@@ -264,6 +279,7 @@ export default function PropertyDetail() {
   useEffect(() => {
     if (editMode && property && !form) {
       setForm({
+        title: property.title || '',
         city: property.city || '',
         neighborhood: neighborhood || '',
         address: property.address || '',
@@ -279,10 +295,19 @@ export default function PropertyDetail() {
         payments: String(meta.payments ?? meta.payment_count ?? ''),
         entry_date: String(meta.entry_date ?? meta.delivery_date ?? ''),
         description: property.description || '',
+        parking: String(amenities?.parking ?? meta.parking ?? ''),
+        elevator: Boolean(amenities?.elevator),
+        balcony: Boolean(amenities?.balcony),
+        ac: Boolean(amenities?.ac),
+        shelter: Boolean(amenities?.shelter),
+        solar: Boolean(amenities?.solar),
+        source_url: sourceUrl || (typeof meta.source_url === 'string' ? meta.source_url : ''),
+        photos: Array.isArray(property.photos) ? property.photos : [],
+        photo_url_draft: '',
       });
     }
     if (!editMode) setForm(null);
-  }, [editMode, property, neighborhood, meta, form]);
+  }, [editMode, property, neighborhood, meta, amenities, sourceUrl, form]);
 
   const handleSave = async () => {
     if (!form || !id) return;
@@ -297,16 +322,44 @@ export default function PropertyDetail() {
         total_floors: form.total_floors ? Number(form.total_floors) : null,
         year_built: form.year_built ? Number(form.year_built) : null,
         property_type: form.property_type,
+        parking: form.parking ? Number(form.parking) > 0 : false,
+        elevator: form.elevator,
+        balcony: form.balcony,
+        ac: form.ac,
+        air_conditioning: form.ac,
+        shelter: form.shelter,
+        mamad: form.shelter,
+        solar: form.solar,
+        solar_heater: form.solar,
+        photos: form.photos,
+        images: form.photos,
+        source_url: form.source_url || null,
       };
+      const baseFeatures = Array.isArray(data?.row?.features)
+        ? (data.row.features as unknown[]).filter((f): f is string => typeof f === 'string' && !['מרפסת', 'מעלית', 'מיזוג', 'ממ"ד', 'מקלט', 'דוד שמש'].includes(f))
+        : [];
+      const featureLabels = [
+        form.balcony ? 'מרפסת' : null,
+        form.elevator ? 'מעלית' : null,
+        form.ac ? 'מיזוג' : null,
+        form.shelter ? 'ממ"ד' : null,
+        form.solar ? 'דוד שמש' : null,
+      ].filter((v): v is string => !!v);
       const { error } = await supabase.from('listings').update({
+        property_title: form.title || null,
         city: form.city || null,
         neighborhood: form.neighborhood || null,
         address: form.address || null,
         rooms: form.rooms ? Number(form.rooms) : null,
         sqm: form.sqm ? Number(form.sqm) : null,
         floor: form.floor ? Number(form.floor) : null,
+        parking: form.parking ? Number(form.parking) > 0 : false,
+        elevator: form.elevator,
         asking_price: form.price ? Number(form.price) : 0,
         description: form.description || null,
+        source_url: form.source_url || null,
+        media_photos: form.photos,
+        features: Array.from(new Set([...baseFeatures, ...featureLabels])) as never,
         source_metadata: newMeta as never,
       }).eq('id', id);
       if (error) throw error;
@@ -342,7 +395,7 @@ export default function PropertyDetail() {
   }
 
   const isRent = property.price < 50_000;
-  const photos = property.photos || [];
+  const photos = editMode && form ? form.photos : (property.photos || []);
   const main = photos[activePhoto];
 
   const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
@@ -369,6 +422,53 @@ export default function PropertyDetail() {
 
   const setField = (k: keyof EditableFields, v: string) =>
     setForm((f) => (f ? { ...f, [k]: v } : f));
+  const setBoolField = (k: keyof EditableFields, v: boolean) =>
+    setForm((f) => (f ? { ...f, [k]: v } : f));
+  const setPhotos = (updater: (photos: string[]) => string[]) =>
+    setForm((f) => {
+      if (!f) return f;
+      const nextPhotos = updater(f.photos).map((p) => p.trim()).filter(Boolean);
+      setActivePhoto((current) => Math.max(0, Math.min(current, Math.max(nextPhotos.length - 1, 0))));
+      return { ...f, photos: nextPhotos };
+    });
+
+  const addPhotoUrl = () => {
+    if (!form?.photo_url_draft.trim()) return;
+    setPhotos((photos) => Array.from(new Set([...photos, form.photo_url_draft.trim()])));
+    setField('photo_url_draft', '');
+  };
+
+  const handlePhotoUpload = async (files: FileList | null) => {
+    if (!files?.length || !id) return;
+    setUploadingPhoto(true);
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) throw new Error('יש להתחבר כדי להעלות תמונות');
+      const uploaded: string[] = [];
+      for (const file of Array.from(files)) {
+        if (!file.type.startsWith('image/')) continue;
+        const row = await uploadMediaToLibrary({
+          userId,
+          fileName: file.name,
+          data: file,
+          mimeType: file.type,
+          source: 'property',
+          sourceMetadata: { listing_id: id },
+        });
+        const url = (row as any)?.public_url;
+        if (typeof url === 'string' && url) uploaded.push(url);
+      }
+      if (uploaded.length) {
+        setPhotos((photos) => Array.from(new Set([...photos, ...uploaded])));
+        toast.success(`${uploaded.length} תמונות נוספו`);
+      }
+    } catch (e: any) {
+      toast.error(`העלאת תמונה נכשלה: ${e.message ?? e}`);
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const resolvedSourceUrl =
     sourceUrl ||
@@ -475,27 +575,85 @@ export default function PropertyDetail() {
       {/* Gallery + sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-3">
-          {main && (
+          {(main || editMode) && (
             <Card className="overflow-hidden">
               <div className="aspect-[16/10] bg-muted relative">
-                <img src={main} alt={dynamicHeadline} className="h-full w-full object-cover" />
+                {main ? (
+                  <img src={main} alt={dynamicHeadline} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                    <ImageIcon className="h-10 w-10" />
+                  </div>
+                )}
               </div>
             </Card>
           )}
-          {photos.length > 1 && (
+          {photos.length > 0 && (
             <div className="flex gap-2 overflow-x-auto pb-1">
               {photos.map((p, i) => (
                 <button
-                  key={i}
+                  key={`${p}-${i}`}
+                  type="button"
                   onClick={() => setActivePhoto(i)}
                   className={`relative h-20 w-32 shrink-0 overflow-hidden rounded-md border-2 transition-all ${
                     i === activePhoto ? 'border-primary' : 'border-transparent opacity-70 hover:opacity-100'
                   }`}
                 >
                   <img src={p} alt="" className="h-full w-full object-cover" />
+                  {editMode && (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => { e.stopPropagation(); setPhotos((list) => list.filter((_, index) => index !== i)); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setPhotos((list) => list.filter((_, index) => index !== i)); } }}
+                      className="absolute left-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-destructive shadow"
+                      aria-label="מחק תמונה"
+                      title="מחק תמונה"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
+          )}
+          {editMode && form && (
+            <Card className="p-4 sm:p-5 space-y-3">
+              <h2 className="text-base font-bold text-primary">תמונות הנכס</h2>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input
+                  value={form.photo_url_draft}
+                  onChange={(e) => setField('photo_url_draft', e.target.value)}
+                  placeholder="הדבקת קישור לתמונה"
+                  className="text-right"
+                />
+                <Button type="button" variant="outline" onClick={addPhotoUrl} className="gap-1.5">
+                  <Plus className="h-4 w-4" /> הוסף קישור
+                </Button>
+                <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground">
+                  <Upload className={`h-4 w-4 ${uploadingPhoto ? 'animate-pulse' : ''}`} />
+                  {uploadingPhoto ? 'מעלה...' : 'העלה קובץ'}
+                  <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => handlePhotoUpload(e.target.files)} disabled={uploadingPhoto} />
+                </label>
+              </div>
+              {form.photos.length > 0 && (
+                <div className="space-y-2">
+                  {form.photos.map((url, i) => (
+                    <div key={`${url}-edit-${i}`} className="flex items-center gap-2">
+                      <Input
+                        value={url}
+                        onChange={(e) => setPhotos((list) => list.map((item, index) => index === i ? e.target.value : item))}
+                        className="text-left"
+                        dir="ltr"
+                      />
+                      <Button type="button" variant="ghost" size="icon" onClick={() => setPhotos((list) => list.filter((_, index) => index !== i))} aria-label="מחק תמונה">
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
           )}
 
           {/* Specs grid — editable in edit mode */}
@@ -503,6 +661,7 @@ export default function PropertyDetail() {
             <h2 className="text-base font-bold text-primary mb-4">מאפייני הנכס</h2>
             {editMode && form ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <Field label="כותרת"><Input value={form.title} onChange={(e) => setField('title', e.target.value)} /></Field>
                 <Field label="חדרים"><Input type="number" step="0.5" value={form.rooms} onChange={(e) => setField('rooms', e.target.value)} /></Field>
                 <Field label='שטח (מ"ר)'><Input type="number" value={form.sqm} onChange={(e) => setField('sqm', e.target.value)} /></Field>
                 <Field label="קומה"><Input type="number" value={form.floor} onChange={(e) => setField('floor', e.target.value)} /></Field>
@@ -526,6 +685,27 @@ export default function PropertyDetail() {
                 <Field label="ארנונה (לחודשיים)"><Input type="number" value={form.arnona_bimonthly} onChange={(e) => setField('arnona_bimonthly', e.target.value)} /></Field>
                 <Field label="מספר תשלומים"><Input type="number" value={form.payments} onChange={(e) => setField('payments', e.target.value)} /></Field>
                 <Field label="תאריך כניסה"><Input value={form.entry_date} onChange={(e) => setField('entry_date', e.target.value)} placeholder="מיידי / 01/08/2026" /></Field>
+                <Field label="חניות"><Input type="number" min={0} value={form.parking} onChange={(e) => setField('parking', e.target.value)} /></Field>
+                <Field label="קישור מקור / יד2"><Input value={form.source_url} onChange={(e) => setField('source_url', e.target.value)} dir="ltr" className="text-left" /></Field>
+                <div className="col-span-2 sm:col-span-3 grid grid-cols-2 sm:grid-cols-3 gap-2 border-t pt-3">
+                  {([
+                    ['מעלית', 'elevator'],
+                    ['מרפסת', 'balcony'],
+                    ['מיזוג', 'ac'],
+                    ['ממ"ד / מקלט', 'shelter'],
+                    ['דוד שמש', 'solar'],
+                  ] as const).map(([label, key]) => (
+                    <label key={key} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(form[key])}
+                        onChange={(e) => setBoolField(key, e.target.checked)}
+                        className="h-4 w-4 accent-primary"
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

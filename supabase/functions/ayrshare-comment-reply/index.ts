@@ -59,17 +59,19 @@ Deno.serve(async (req) => {
     let rowId: string | null = null;
     let ownerUserId: string | null = explicitUserId || null;
     let rowMetadata: Record<string, unknown> = {};
+    let externalPostId: string | null = null;
 
     if (eventId) {
       const { data: row, error } = await admin
         .from("engagement_events")
-        .select("id, user_id, external_id, platform, ai_reply_text, metadata")
+        .select("id, user_id, external_id, external_post_id, platform, ai_reply_text, metadata")
         .eq("id", eventId)
         .maybeSingle();
       if (error || !row) return json({ error: "event not found", details: error?.message }, 404);
       rowId = row.id;
       ownerUserId = row.user_id || ownerUserId;
       nativeCommentId = row.external_id || "";
+      externalPostId = row.external_post_id || null;
       replyText = replyText || row.ai_reply_text || "";
       platform = platformOverride || row.platform || platform;
       rowMetadata = (row.metadata && typeof row.metadata === "object" ? row.metadata : {}) as Record<string, unknown>;
@@ -108,7 +110,7 @@ Deno.serve(async (req) => {
       if (!guard.allowed) {
         return json({ ok: false, blocked: true, reason: guard.reason, message: "Ayrshare safety guard blocked this reply." }, 200);
       }
-      const ayrRes = await fetch(AYR_REPLY_URL, {
+      const ayrRes = await fetch(`${AYR_REPLY_URL}/${encodeURIComponent(nativeCommentId)}`, {
         method: "POST",
         headers: {
           Authorization: `Bearer ${AYRSHARE_API_KEY}`,
@@ -117,10 +119,7 @@ Deno.serve(async (req) => {
         },
         body: JSON.stringify({
           platforms: [platform],
-          commentId: nativeCommentId,
           comment: sanitized,
-          reply: sanitized,
-          profileKey,
           searchPlatformId: true,
         }),
       });
@@ -217,28 +216,45 @@ Deno.serve(async (req) => {
         // the payload as a direct user-id message instead of a comment reply.
         // Meta authorizes the Page → user thread because the comment author is
         // resolved from the commentId server-side.
-        const dmBody = {
-          commentId: dmParentId,
-          text: sanitizedDm,
-          platform: "facebook",
-        };
+        const senderId = String(
+          (rowMetadata as any)?.sender_id ??
+          (rowMetadata as any)?.author?.id ??
+          (rowMetadata as any)?.from?.id ??
+          "",
+        ).trim();
+        const attempts = senderId
+          ? [
+              { url: `${AYR_MESSAGES_URL}/facebook`, body: { recipientId: senderId, message: sanitizedDm }, mode: "recipient" },
+              { url: AYR_MESSAGES_URL, body: { commentId: dmParentId, text: sanitizedDm, platform: "facebook" }, mode: "private_reply" },
+            ]
+          : [
+              { url: AYR_MESSAGES_URL, body: { commentId: dmParentId, text: sanitizedDm, platform: "facebook" }, mode: "private_reply" },
+            ];
         console.log("[MESSENGER PIPELINE] Ayrshare DM request", {
           commentId: dmParentId,
+          senderId: senderId || "none",
           platform: "facebook",
           profileKey: profileKeyFingerprint,
           textLength: sanitizedDm.length,
         });
-        const dmRes = await fetch(AYR_MESSAGES_URL, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${AYRSHARE_API_KEY}`,
-            "Profile-Key": profileKey,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(dmBody),
-        });
-        privateDmStatus = dmRes.status;
-        const dmText = await dmRes.text();
+        let dmText = "";
+        let dmRes: Response | null = null;
+        for (const attempt of attempts) {
+          dmRes = await fetch(attempt.url, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${AYRSHARE_API_KEY}`,
+              "Profile-Key": profileKey,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(attempt.body),
+          });
+          privateDmStatus = dmRes.status;
+          dmText = await dmRes.text();
+          console.log("[MESSENGER PIPELINE] Ayrshare DM attempt", { mode: attempt.mode, status: privateDmStatus, raw: dmText.slice(0, 500) });
+          if (dmRes.ok) break;
+        }
+        if (!dmRes) throw new Error("dm_request_not_started");
         privateDmEmptySuccess = dmRes.ok && !dmText.trim();
         console.log("[MESSENGER PIPELINE] Ayrshare DM raw response", {
           status: privateDmStatus,
@@ -364,6 +380,30 @@ Deno.serve(async (req) => {
         })
         .eq("id", rowId)
         .eq("user_id", ownerUserId);
+
+      if (sanitized) {
+        const { error: insertReplyErr } = await admin.from("engagement_events").insert({
+          user_id: ownerUserId,
+          platform,
+          sender_handle: "התגובה שלך",
+          inbound_text: sanitized,
+          ai_reply_text: null,
+          status: "sent",
+          ai_action: "manual_reply",
+          sentiment: null,
+          external_id: freshReplyId,
+          external_post_id: externalPostId,
+          is_archived: false,
+          metadata: {
+            parent_id: nativeCommentId,
+            parent_event_id: rowId,
+            self_authored: true,
+            author_type: "workspace_page",
+            ayrshare_reply: ayrPayload,
+          },
+        });
+        if (insertReplyErr) console.warn("[ayrshare-comment-reply] reply row insert failed", insertReplyErr.message);
+      }
     }
 
 
@@ -374,6 +414,7 @@ Deno.serve(async (req) => {
       private_dm_sent: privateDmSent,
       private_dm: privateDmResult,
       private_dm_status: privateDmStatus,
+      reply_comment_id: freshReplyId,
       auto_like: likeOutcome,
     });
   } catch (e) {
