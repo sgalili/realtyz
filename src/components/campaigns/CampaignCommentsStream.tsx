@@ -1026,9 +1026,13 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
       }
       if ((data as any)?.error) throw new Error((data as any).message || (data as any).error);
       if (optimisticReply && (data as any)?.reply_comment_id) {
-        setRows((prev) => (prev ?? []).map((r) => r.id === optimisticReplyId
-          ? { ...r, external_id: String((data as any).reply_comment_id), metadata: { ...(r.metadata ?? {}), optimistic: false, ayrshare_reply: (data as any).ayrshare } }
-          : r));
+        setRows((prev) => {
+          const next = (prev ?? []).map((r) => r.id === optimisticReplyId
+            ? { ...r, external_id: String((data as any).reply_comment_id), metadata: { ...(r.metadata ?? {}), optimistic: false, ayrshare_reply: (data as any).ayrshare } }
+            : r);
+          writeCache(campaign.id, next, postIds);
+          return next;
+        });
       }
       const dmSent = Boolean((data as any)?.private_dm_sent);
       if (sendPublic && dmText && dmSent) {
