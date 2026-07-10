@@ -395,7 +395,7 @@ export default function PropertyDetail() {
   }
 
   const isRent = property.price < 50_000;
-  const photos = property.photos || [];
+  const photos = editMode && form ? form.photos : (property.photos || []);
   const main = photos[activePhoto];
 
   const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
@@ -575,27 +575,85 @@ export default function PropertyDetail() {
       {/* Gallery + sidebar */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-3">
-          {main && (
+          {(main || editMode) && (
             <Card className="overflow-hidden">
               <div className="aspect-[16/10] bg-muted relative">
-                <img src={main} alt={dynamicHeadline} className="h-full w-full object-cover" />
+                {main ? (
+                  <img src={main} alt={dynamicHeadline} className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center text-muted-foreground">
+                    <ImageIcon className="h-10 w-10" />
+                  </div>
+                )}
               </div>
             </Card>
           )}
-          {photos.length > 1 && (
+          {photos.length > 0 && (
             <div className="flex gap-2 overflow-x-auto pb-1">
               {photos.map((p, i) => (
                 <button
-                  key={i}
+                  key={`${p}-${i}`}
+                  type="button"
                   onClick={() => setActivePhoto(i)}
                   className={`relative h-20 w-32 shrink-0 overflow-hidden rounded-md border-2 transition-all ${
                     i === activePhoto ? 'border-primary' : 'border-transparent opacity-70 hover:opacity-100'
                   }`}
                 >
                   <img src={p} alt="" className="h-full w-full object-cover" />
+                  {editMode && (
+                    <span
+                      role="button"
+                      tabIndex={0}
+                      onClick={(e) => { e.stopPropagation(); setPhotos((list) => list.filter((_, index) => index !== i)); }}
+                      onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.stopPropagation(); setPhotos((list) => list.filter((_, index) => index !== i)); } }}
+                      className="absolute left-1 top-1 inline-flex h-7 w-7 items-center justify-center rounded-full bg-background/90 text-destructive shadow"
+                      aria-label="מחק תמונה"
+                      title="מחק תמונה"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </span>
+                  )}
                 </button>
               ))}
             </div>
+          )}
+          {editMode && form && (
+            <Card className="p-4 sm:p-5 space-y-3">
+              <h2 className="text-base font-bold text-primary">תמונות הנכס</h2>
+              <div className="flex flex-col sm:flex-row gap-2">
+                <Input
+                  value={form.photo_url_draft}
+                  onChange={(e) => setField('photo_url_draft', e.target.value)}
+                  placeholder="הדבקת קישור לתמונה"
+                  className="text-right"
+                />
+                <Button type="button" variant="outline" onClick={addPhotoUrl} className="gap-1.5">
+                  <Plus className="h-4 w-4" /> הוסף קישור
+                </Button>
+                <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground">
+                  <Upload className={`h-4 w-4 ${uploadingPhoto ? 'animate-pulse' : ''}`} />
+                  {uploadingPhoto ? 'מעלה...' : 'העלה קובץ'}
+                  <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => handlePhotoUpload(e.target.files)} disabled={uploadingPhoto} />
+                </label>
+              </div>
+              {form.photos.length > 0 && (
+                <div className="space-y-2">
+                  {form.photos.map((url, i) => (
+                    <div key={`${url}-edit-${i}`} className="flex items-center gap-2">
+                      <Input
+                        value={url}
+                        onChange={(e) => setPhotos((list) => list.map((item, index) => index === i ? e.target.value : item))}
+                        className="text-left"
+                        dir="ltr"
+                      />
+                      <Button type="button" variant="ghost" size="icon" onClick={() => setPhotos((list) => list.filter((_, index) => index !== i))} aria-label="מחק תמונה">
+                        <Trash2 className="h-4 w-4 text-destructive" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
           )}
 
           {/* Specs grid — editable in edit mode */}
@@ -603,6 +661,7 @@ export default function PropertyDetail() {
             <h2 className="text-base font-bold text-primary mb-4">מאפייני הנכס</h2>
             {editMode && form ? (
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                <Field label="כותרת"><Input value={form.title} onChange={(e) => setField('title', e.target.value)} /></Field>
                 <Field label="חדרים"><Input type="number" step="0.5" value={form.rooms} onChange={(e) => setField('rooms', e.target.value)} /></Field>
                 <Field label='שטח (מ"ר)'><Input type="number" value={form.sqm} onChange={(e) => setField('sqm', e.target.value)} /></Field>
                 <Field label="קומה"><Input type="number" value={form.floor} onChange={(e) => setField('floor', e.target.value)} /></Field>
@@ -626,6 +685,27 @@ export default function PropertyDetail() {
                 <Field label="ארנונה (לחודשיים)"><Input type="number" value={form.arnona_bimonthly} onChange={(e) => setField('arnona_bimonthly', e.target.value)} /></Field>
                 <Field label="מספר תשלומים"><Input type="number" value={form.payments} onChange={(e) => setField('payments', e.target.value)} /></Field>
                 <Field label="תאריך כניסה"><Input value={form.entry_date} onChange={(e) => setField('entry_date', e.target.value)} placeholder="מיידי / 01/08/2026" /></Field>
+                <Field label="חניות"><Input type="number" min={0} value={form.parking} onChange={(e) => setField('parking', e.target.value)} /></Field>
+                <Field label="קישור מקור / יד2"><Input value={form.source_url} onChange={(e) => setField('source_url', e.target.value)} dir="ltr" className="text-left" /></Field>
+                <div className="col-span-2 sm:col-span-3 grid grid-cols-2 sm:grid-cols-3 gap-2 border-t pt-3">
+                  {([
+                    ['מעלית', 'elevator'],
+                    ['מרפסת', 'balcony'],
+                    ['מיזוג', 'ac'],
+                    ['ממ"ד / מקלט', 'shelter'],
+                    ['דוד שמש', 'solar'],
+                  ] as const).map(([label, key]) => (
+                    <label key={key} className="flex items-center gap-2 rounded-md border px-3 py-2 text-sm cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={Boolean(form[key])}
+                        onChange={(e) => setBoolField(key, e.target.checked)}
+                        className="h-4 w-4 accent-primary"
+                      />
+                      <span>{label}</span>
+                    </label>
+                  ))}
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
