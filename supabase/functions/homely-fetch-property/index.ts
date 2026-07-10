@@ -853,6 +853,61 @@ async function enrichFromYad2(
   }
 }
 
+async function campaignMediaFallback(
+  admin: ReturnType<typeof createClient>,
+  ownerId: string,
+  property: any,
+): Promise<string[]> {
+  try {
+    const city = normForMatch(property?.city);
+    const address = normForMatch(property?.address || [property?.raw?.street, property?.raw?.number].filter(Boolean).join(" "));
+    const price = Number(property?.price ?? property?.asking_price ?? 0) || 0;
+    if (!city && !address && !price) return [];
+    const { data: rows } = await admin
+      .from("campaign_logs")
+      .select("message_body, provider_response")
+      .eq("user_id", ownerId)
+      .eq("channel", "facebook")
+      .eq("is_archived", false)
+      .order("created_at", { ascending: false })
+      .limit(80);
+    const collect = (root: any): string[] => {
+      const out = new Set<string>();
+      const seen = new Set<any>();
+      const push = (value: unknown) => {
+        if (typeof value !== "string") return;
+        const url = value.match(/https?:\/\/[^\s"'<>]+/i)?.[0] ?? "";
+        if (/^https?:\/\//i.test(url) && /(fbcdn|scontent|image|photo|jpg|jpeg|png|webp)/i.test(url)) out.add(url);
+      };
+      const walk = (node: any, key = "") => {
+        if (node == null || seen.has(node)) return;
+        if (typeof node === "string") { if (/(media|image|photo|picture|url)/i.test(key) || /fbcdn|scontent/i.test(node)) push(node); return; }
+        if (Array.isArray(node)) { node.forEach((v) => walk(v, key)); return; }
+        if (typeof node !== "object") return;
+        seen.add(node);
+        for (const [k, v] of Object.entries(node)) walk(v, k);
+      };
+      walk(root);
+      return Array.from(out);
+    };
+    let best: { score: number; urls: string[] } | null = null;
+    for (const row of rows ?? []) {
+      const body = normForMatch((row as any)?.message_body);
+      let score = 0;
+      if (address && body.includes(address)) score += 100;
+      if (city && body.includes(city)) score += 10;
+      if (price && body.includes(String(Math.round(price)).replace(/\B(?=(\d{3})+(?!\d))/g, " ").trim())) score += 20;
+      if (price && body.includes(String(Math.round(price)))) score += 20;
+      const urls = collect((row as any)?.provider_response);
+      if (score > 0 && urls.length && (!best || score > best.score)) best = { score, urls };
+    }
+    return best?.score ? best.urls : [];
+  } catch (e) {
+    console.warn("[homely-fetch] campaign media fallback failed", (e as Error).message);
+    return [];
+  }
+}
+
 async function resolveWorkspaceOwnerId(admin: ReturnType<typeof createClient>, userId: string): Promise<string> {
   const { data: profile } = await admin
     .from("profiles")
