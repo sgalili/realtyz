@@ -23,6 +23,7 @@ type Filter = 'all' | 'images' | 'videos' | 'docs';
 
 export default function KnowledgeBase() {
   const { user } = useAuth();
+  const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const { settings } = useWhiteLabel();
   const blockDemoAction = useDemoGuard();
   const qc = useQueryClient();
