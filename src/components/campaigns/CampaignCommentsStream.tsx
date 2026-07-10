@@ -1299,7 +1299,14 @@ function CommentBubble({
     hour: "2-digit",
     minute: "2-digit",
   });
-  const senderName = row.sender_handle ?? "אנונימי";
+  const rawSenderName = row.sender_handle ?? "אנונימי";
+  // Strip emoji/sentiment glyphs & lingering symbol chars that Meta sometimes
+  // returns embedded in a user's display name (e.g. "יוסי 😀") so the UI shows
+  // the clean human name only.
+  const senderName = rawSenderName
+    .replace(/[\p{Extended_Pictographic}\p{Emoji_Presentation}\uFE0F\u200D]/gu, "")
+    .replace(/\s{2,}/g, " ")
+    .trim() || "אנונימי";
   const meta = (row.metadata as any) ?? {};
   const senderId: string | null =
     meta?.sender_id ?? meta?.author?.id ?? meta?.from?.id ?? null;
@@ -1346,18 +1353,6 @@ function CommentBubble({
             <AvatarFallback className="bg-primary/15 text-primary text-[10px] font-semibold">{isPageAuthored ? "★" : initials}</AvatarFallback>
           </Avatar>
           <span className="truncate font-medium text-foreground">{isPageAuthored ? "התגובה שלך" : senderName}</span>
-          <span
-            aria-label={sentimentLabel(row.sentiment)}
-            title={sentimentLabel(row.sentiment)}
-            className="shrink-0 inline-flex items-center"
-          >
-            {row.sentiment === "positive" ? (
-              <Smile className="h-4 w-4 text-emerald-500" />
-            ) : row.sentiment === "negative" ? (
-              <Frown className="h-4 w-4 text-red-500" />
-            ) : (
-              <Meh className="h-4 w-4 text-amber-500" />
-            )}
           </span>
         </div>
         <span className="shrink-0">{when}</span>
