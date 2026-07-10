@@ -117,18 +117,23 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
     }
   }
 
-  // Auto-fetch ONLY once per tab when dialog opens. No intervals, no polling, no refocus refetch.
+  // Auto-fetch is DISABLED to avoid spamming Homely on every open. The
+  // user pulls fresh data explicitly via the Refresh button. Search or
+  // filter changes on an empty list trigger a single implicit fetch so
+  // the user isn't stuck with a blank panel.
   useEffect(() => {
     if (!open) return;
-    if (tab === 'properties' && !fetchedOnce.current.properties) {
+    const hasSearchOrFilter = !!(fSearch.trim() || fCities.size || fRooms || fType || fAgent || fDeal !== 'all');
+    if (!hasSearchOrFilter) return;
+    if (tab === 'properties' && !fetchedOnce.current.properties && !loadingProps && properties.length === 0) {
       fetchedOnce.current.properties = true;
       fetchAction('fetchAllProperties');
-    } else if (tab === 'contacts' && !fetchedOnce.current.contacts) {
+    } else if (tab === 'contacts' && !fetchedOnce.current.contacts && !loadingContacts && contacts.length === 0) {
       fetchedOnce.current.contacts = true;
       fetchAction('fetchAllContacts');
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, tab]);
+  }, [open, tab, fSearch, fCities, fRooms, fType, fAgent, fDeal]);
 
   useEffect(() => {
     if (!open) {
@@ -384,8 +389,13 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
               {loadingProps ? (
                 Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
               ) : filteredProps.length === 0 ? (
-                <div className="text-center text-sm text-muted-foreground py-10">
-                  {properties.length === 0 ? 'אין נכסים פעילים בחשבון הומלי המחובר' : 'אין תוצאות שתואמות לסינון'}
+                <div className="text-center text-sm text-muted-foreground py-10 space-y-2">
+                  <div>{properties.length === 0 ? 'לחצו על "רענון" כדי לטעון נכסים מהומלי' : 'אין תוצאות שתואמות לסינון'}</div>
+                  {properties.length === 0 && (
+                    <Button variant="outline" size="sm" onClick={() => fetchAction('fetchAllProperties')} disabled={loading} className="gap-1.5 mx-auto">
+                      <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> טעינת נכסים
+                    </Button>
+                  )}
                 </div>
               ) : (
                 filteredProps.map((p) => {
@@ -442,8 +452,13 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
               {loadingContacts ? (
                 Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)
               ) : filteredContacts.length === 0 ? (
-                <div className="text-center text-sm text-muted-foreground py-10">
-                  {contacts.length === 0 ? 'אין אנשי קשר פעילים בחשבון הומלי המחובר' : 'אין תוצאות שתואמות לסינון'}
+                <div className="text-center text-sm text-muted-foreground py-10 space-y-2">
+                  <div>{contacts.length === 0 ? 'לחצו על "רענון" כדי לטעון אנשי קשר מהומלי' : 'אין תוצאות שתואמות לסינון'}</div>
+                  {contacts.length === 0 && (
+                    <Button variant="outline" size="sm" onClick={() => fetchAction('fetchAllContacts')} disabled={loading} className="gap-1.5 mx-auto">
+                      <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> טעינת אנשי קשר
+                    </Button>
+                  )}
                 </div>
               ) : (
                 filteredContacts.map((c) => {
