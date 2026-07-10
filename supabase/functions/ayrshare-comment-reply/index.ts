@@ -141,6 +141,30 @@ Deno.serve(async (req) => {
       if (!ayrRes) return json({ error: "reply_request_not_started" }, 200);
       try { ayrPayload = ayrText ? JSON.parse(ayrText) : null; } catch { ayrPayload = { raw: ayrText }; }
 
+      // Ayrshare occasionally returns HTTP 200 with a logical `error` field
+      // (or status:"error") in the envelope. Treat that as a genuine failure
+      // so the frontend can roll back the optimistic reply row.
+      const logicalError = ayrPayload && typeof ayrPayload === "object"
+        ? ((ayrPayload as any).error || (ayrPayload as any).errors ||
+           (String((ayrPayload as any).status ?? "").toLowerCase() === "error" ? ((ayrPayload as any).message || "ayrshare_logical_error") : null))
+        : null;
+      if (ayrRes.ok && logicalError) {
+        if (rowId) {
+          await admin
+            .from("engagement_events")
+            .update({ status: "failed", metadata: { ...rowMetadata, reply_error: ayrPayload } })
+            .eq("id", rowId)
+            .eq("user_id", ownerUserId);
+        }
+        return json({
+          success: false,
+          error: "AYRSHARE_LOGICAL_ERROR",
+          message: typeof logicalError === "string" ? logicalError : "Ayrshare rejected the reply.",
+          details: ayrPayload,
+        }, 200);
+      }
+
+
       if (!ayrRes.ok) {
         if (rowId) {
           await admin
@@ -333,7 +357,9 @@ Deno.serve(async (req) => {
             event_type: "critical_question",
             title: "Messenger DM permission blocked",
             body: `${MESSENGER_RELINK_MESSAGE}\nRaw Ayrshare response: ${(dmText || JSON.stringify(privateDmResult)).slice(0, 700)}`,
-            deep_link: `${Deno.env.get("APP_PUBLIC_URL") || "https://realtyz.co.il"}/campaigns?tab=create`,
+            // deep_link intentionally omitted: we no longer redirect the broker
+            // to the CRM on a Messenger permission block — the UI surfaces a
+            // toast + Open Chat affordance instead.
             channel: "system",
             delivered: false,
             delivery_result: { source: "ayrshare-comment-reply", relink_required: true, status: privateDmStatus },
@@ -344,6 +370,15 @@ Deno.serve(async (req) => {
             message: MESSENGER_RELINK_MESSAGE,
             fallback: true,
             relink_required: true,
+            permission_block: true,
+          };
+        }
+        if (privateDmDuplicate) {
+          privateDmResult = {
+            ...(privateDmResult && typeof privateDmResult === "object" ? privateDmResult : { raw: dmText }),
+            error_type: "MESSENGER_DUPLICATE_OR_WINDOW",
+            message: "לא ניתן לשלוח הודעה פרטית (הזמן עבר או שהודעה כבר נשלחה)",
+            duplicate_or_window: true,
           };
         }
         const ayrStatus = (privateDmResult && typeof privateDmResult === "object")

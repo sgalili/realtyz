@@ -1024,7 +1024,12 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
         toast.error("מערכת הסנכרון בהפסקה זמנית להגנת החשבון");
         return;
       }
-      if ((data as any)?.error) throw new Error((data as any).message || (data as any).error);
+      // Treat any success:false / logical error envelope as failure and roll
+      // back the optimistic row so the UI never shows a phantom reply.
+      if ((data as any)?.success === false || (data as any)?.error) {
+        if (optimisticReply) setRows((prev) => (prev ?? []).filter((r) => r.id !== optimisticReplyId));
+        throw new Error((data as any).message || (data as any).error || "פרסום נכשל");
+      }
       if (optimisticReply && (data as any)?.reply_comment_id) {
         setRows((prev) => {
           const next = (prev ?? []).map((r) => r.id === optimisticReplyId
@@ -1035,15 +1040,25 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
         });
       }
       const dmSent = Boolean((data as any)?.private_dm_sent);
+      const dmBlock = (data as any)?.private_dm;
+      const dmPermissionBlock = Boolean(dmBlock?.permission_block || dmBlock?.relink_required || dmBlock?.error_type === "MESSENGER_PERMISSION_ERROR");
+      const dmDuplicate = Boolean(dmBlock?.duplicate_or_window || dmBlock?.error_type === "MESSENGER_DUPLICATE_OR_WINDOW");
+      const dmFailReason = dmDuplicate || dmPermissionBlock
+        ? "לא ניתן לשלוח הודעה פרטית (הזמן עבר או שהודעה כבר נשלחה)"
+        : null;
       if (sendPublic && dmText && dmSent) {
         toast.success("התגובה פורסמה והודעה פרטית נשלחה בהצלחה למסנג'ר!");
       } else if (sendPublic && dmText && !dmSent) {
-        toast.success("התגובה פורסמה, אך שליחת ה-DM הפרטי נכשלה — בדוק חיבור Messenger.");
+        toast.success("התגובה פורסמה");
+        if (dmFailReason) toast.error(dmFailReason);
+        else toast.error("שליחת ה-DM הפרטי נכשלה — בדוק חיבור Messenger.");
       } else if (!sendPublic && dmText) {
-        toast.success(dmSent ? "ההודעה הפרטית נשלחה למסנג'ר" : "שליחת ה-DM הפרטי נכשלה — בדוק חיבור Messenger.");
+        if (dmSent) toast.success("ההודעה הפרטית נשלחה למסנג'ר");
+        else toast.error(dmFailReason ?? "שליחת ה-DM הפרטי נכשלה — בדוק חיבור Messenger.");
       } else {
         toast.success("התגובה פורסמה");
       }
+
 
       // Active-learning capture (shared helper — see src/lib/learnFromEdit.ts).
       learnFromEdit({
@@ -1457,6 +1472,17 @@ function CommentBubble({
                   <ChevronDown className="h-3.5 w-3.5" />
                 )}
               </button>
+              {senderId && /^\d{5,}$/.test(String(senderId)) && String(row.platform).toLowerCase() === "facebook" && (
+                <a
+                  href={`https://m.me/${senderId}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-[13px] font-medium text-[hsl(220,70%,25%)] hover:underline"
+                  title="פתח צ'אט Messenger ישירות"
+                >
+                  💬 פתח צ'אט
+                </a>
+              )}
             </div>
 
             {expanded && (
