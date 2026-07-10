@@ -123,6 +123,11 @@ function renderStrictListingPayload(snap: any, primaryType: ListingType | null):
     city: listing?.city ?? null,
     rooms: listing?.rooms ?? null,
     sqm: listing?.sqm ?? null,
+    floor: listing?.floor ?? null,
+    parking: listing?.parking ?? null,
+    elevator: listing?.elevator ?? null,
+    features: Array.isArray(listing?.features) ? listing.features : [],
+    amenities: Array.isArray(listing?.amenities) ? listing.amenities : [],
     price_shekel: listing?.asking_price ?? null,
     transaction_type: listing?.listing_type ?? primaryType,
     price_label: (listing?.listing_type ?? primaryType) === "rent" ? "שכ\"ד ₪/חודש" : "מחיר מבוקש",
@@ -233,6 +238,8 @@ function extractFeatureFact(ask: FeatureAsk, primaryListing: any): FeatureFact {
     primaryListing?.title,
     primaryListing?.address,
     primaryListing?.neighborhood,
+    Array.isArray(primaryListing?.features) ? primaryListing.features.join(" ") : "",
+    Array.isArray(primaryListing?.amenities) ? primaryListing.amenities.join(" ") : "",
   ].filter(Boolean).join("\n");
   if (!haystack) return "unknown";
   if (ask.negative.source !== "(?!)" && ask.negative.test(haystack)) return "no";
@@ -366,7 +373,7 @@ Deno.serve(async (req) => {
       try {
         const { data: row } = await admin
           .from("listings")
-          .select("property_title,city,address,neighborhood,asking_price,features,rooms,sqm,description,area_perks")
+          .select("property_title,city,address,neighborhood,asking_price,features,rooms,sqm,floor,parking,elevator,description,area_perks")
           .eq("id", primaryListingId)
           .maybeSingle();
         if (row) {
@@ -380,6 +387,11 @@ Deno.serve(async (req) => {
               listing_type: lt,
               rooms: (row as any).rooms ?? null,
               sqm: (row as any).sqm ?? null,
+              floor: (row as any).floor ?? null,
+              parking: (row as any).parking ?? null,
+              elevator: (row as any).elevator ?? null,
+              features: Array.isArray((row as any).features) ? (row as any).features : [],
+              amenities: Array.isArray((row as any).features) ? (row as any).features : [],
               description: (row as any).description ? String((row as any).description).slice(0, 4000) : null,
               address: (row as any).address ?? null,
               neighborhood: (row as any).neighborhood ?? null,
@@ -404,7 +416,7 @@ Deno.serve(async (req) => {
       try {
         const { data: liveRows } = await admin
           .from("listings")
-          .select("id,property_title,address,neighborhood,city,asking_price,features,rooms,sqm,status,is_published,description,area_perks")
+          .select("id,property_title,address,neighborhood,city,asking_price,features,rooms,sqm,floor,parking,elevator,status,is_published,description,area_perks")
           .eq("user_id", userId)
           .eq("status", "live")
           .eq("is_published", true)
@@ -441,6 +453,11 @@ Deno.serve(async (req) => {
             listing_type: lt,
             rooms: (row as any).rooms ?? null,
             sqm: (row as any).sqm ?? null,
+            floor: (row as any).floor ?? null,
+            parking: (row as any).parking ?? null,
+            elevator: (row as any).elevator ?? null,
+            features: Array.isArray((row as any).features) ? (row as any).features : [],
+            amenities: Array.isArray((row as any).features) ? (row as any).features : [],
             description: (row as any).description ? String((row as any).description).slice(0, 4000) : null,
             address: (row as any).address ?? null,
             neighborhood: (row as any).neighborhood ?? null,
