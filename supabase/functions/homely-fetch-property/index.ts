@@ -239,17 +239,26 @@ function joinName(it: any): string {
 function collectMedia(it: any): { photos: string[]; documents: string[] } {
   const photos = new Set<string>();
   const documents = new Set<string>();
-  const isUrl = (v: any) => typeof v === "string" && /^https?:\/\//i.test(v);
+  const toUrl = (v: any): string | null => {
+    if (typeof v !== "string") return null;
+    const s = v.trim().replace(/\\\//g, "/");
+    if (/^https?:\/\//i.test(s)) return s;
+    if (/^www\./i.test(s)) return `https://${s}`;
+    if (/^\/\//.test(s)) return `https:${s}`;
+    if (/^\//.test(s) && /\.(jpe?g|png|gif|webp|bmp|heic|pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i.test(s)) return `${WEBTIV_BASE}${s}`;
+    return null;
+  };
   const isImg = (u: string) => /\.(jpe?g|png|gif|webp|bmp|heic)(\?|#|$)/i.test(u);
   const isDoc = (u: string) => /\.(pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i.test(u);
   const photoKey = (k: string) => /(pic|photo|image|img|picture|gallery|media|תמונה|תמונות)/i.test(k);
   const docKey = (k: string) => /(file|doc|document|attach|מסמך|מסמכים|קובץ)/i.test(k);
   const sourceLinkKey = (k: string) => /(source|origin|url|link|href|yad2|madlan|מקור|קישור)/i.test(k);
   const push = (v: any, key = "") => {
-    if (!isUrl(v)) return;
-    if (docKey(key) || isDoc(v)) documents.add(v);
-    else if (photoKey(key) || isImg(v)) photos.add(v);
-    else if (!sourceLinkKey(key)) photos.add(v); // Homely CDN sometimes omits extensions
+    const url = toUrl(v);
+    if (!url) return;
+    if (isImg(url) || photoKey(key)) photos.add(url);
+    else if (isDoc(url) || docKey(key)) documents.add(url);
+    else if (!sourceLinkKey(key)) photos.add(url); // Homely CDN sometimes omits extensions
   };
   const seen = new Set<any>();
   const walk = (value: any, key = "") => {
@@ -266,6 +275,57 @@ function collectMedia(it: any): { photos: string[]; documents: string[] } {
   };
   walk(it);
   return { photos: Array.from(photos), documents: Array.from(documents) };
+}
+
+function mediaTotal(value: any): number {
+  const media = collectMedia(value);
+  return media.photos.length + media.documents.length;
+}
+
+function firstObjectPayload(data: any): any {
+  if (!data) return null;
+  if (Array.isArray(data)) return data.find((x) => x && typeof x === "object") ?? data[0] ?? null;
+  if (Array.isArray(data?.result)) return firstObjectPayload(data.result);
+  if (Array.isArray(data?.data)) return firstObjectPayload(data.data);
+  if (data?.result && typeof data.result === "object") return data.result;
+  if (data?.data && typeof data.data === "object") return data.data;
+  return typeof data === "object" ? data : null;
+}
+
+async function fetchRichPropertyDetail(hash: string, serial: string, fallback: any): Promise<{ record: any; endpoint: string | null }> {
+  let best = fallback;
+  let bestEndpoint: string | null = null;
+  const endpoints = [
+    `${WEBTIV_BASE}/api/report/getNechesFullDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+    `${WEBTIV_BASE}/api/report/getNechesData/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+    `${WEBTIV_BASE}/api/report/getPropertyDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+  ];
+  for (const ep of endpoints) {
+    const dr = await getJson(ep);
+    if (dr.status < 200 || dr.status >= 300 || !dr.data) continue;
+    const candidate = firstObjectPayload(dr.data);
+    if (!candidate || typeof candidate !== "object") continue;
+    if (mediaTotal(candidate) > mediaTotal(best) || (!pickSourceUrl(best) && pickSourceUrl(candidate))) {
+      best = candidate;
+      bestEndpoint = ep;
+    }
+    if (mediaTotal(best) > 0 && pickSourceUrl(best)) break;
+  }
+
+  const allKeysEndpoint = `${WEBTIV_BASE}/api/hashData/getAllKeys/${encodeURIComponent(hash)}`;
+  for (const payload of [{ id: serial }, { serial }, { sidur: serial }, { nechesId: serial }]) {
+    const dr = await postJson(allKeysEndpoint, payload);
+    if (dr.status < 200 || dr.status >= 300 || !dr.data) continue;
+    const candidate = firstObjectPayload(dr.data);
+    if (!candidate || typeof candidate !== "object") continue;
+    if (mediaTotal(candidate) > mediaTotal(best) || (!pickSourceUrl(best) && pickSourceUrl(candidate))) {
+      best = candidate;
+      bestEndpoint = allKeysEndpoint;
+    }
+    if (mediaTotal(best) > 0 && pickSourceUrl(best)) break;
+  }
+
+  return { record: best, endpoint: bestEndpoint };
 }
 function buildOfficeNotes(it: any): string {
   // Aggregate every broker-side note the office maintains on the property.
