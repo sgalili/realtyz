@@ -692,6 +692,25 @@ async function mirrorAll(
   return out;
 }
 
+async function resolveWorkspaceOwnerId(admin: ReturnType<typeof createClient>, userId: string): Promise<string> {
+  const { data: profile } = await admin
+    .from("profiles")
+    .select("active_workspace_owner_id, workspace_owner_id")
+    .eq("id", userId)
+    .maybeSingle();
+  const active = String((profile as any)?.active_workspace_owner_id ?? "").trim();
+  const fallback = String((profile as any)?.workspace_owner_id ?? "").trim() || userId;
+  const owner = active || fallback;
+  if (owner === userId) return owner;
+  const { data: membership } = await admin
+    .from("workspace_memberships")
+    .select("id")
+    .eq("user_id", userId)
+    .eq("workspace_owner_id", owner)
+    .maybeSingle();
+  return membership ? owner : fallback;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -703,6 +722,7 @@ Deno.serve(async (req) => {
     if (!user) return json({ error: "Unauthorized" }, 401);
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
+    const workspaceOwnerId = await resolveWorkspaceOwnerId(admin, user.id);
     const body = await req.json().catch(() => ({}));
     const action = (body as any)?.action as string | undefined;
     const listing_id = (body as any)?.listing_id;
@@ -732,9 +752,9 @@ Deno.serve(async (req) => {
           const { data: cred } = await admin
             .from("homely_broker_credentials")
             .select("homely_agency, homely_username")
-            .eq("user_id", user.id)
+            .eq("user_id", workspaceOwnerId)
             .maybeSingle();
-          const { data: pw } = await admin.rpc("get_homely_password", { _user_id: user.id });
+          const { data: pw } = await admin.rpc("get_homely_password", { _user_id: workspaceOwnerId });
           if (cred?.homely_agency && cred?.homely_username && pw) {
             const login = await webtivLogin(String(cred.homely_agency), String(cred.homely_username), pw as unknown as string);
             if (login.ok) richHash = extractHash(login.session);
@@ -768,7 +788,7 @@ Deno.serve(async (req) => {
           || (p?.source_url ? String(p.source_url) : "")
           || (richSourceOrigin === "yad2" ? buildYad2FallbackUrl(p?.city, p?.address) : "");
         const row: Record<string, unknown> = {
-          user_id: user.id,
+          user_id: workspaceOwnerId,
           slug: `${slugify(String(p?.title || p?.address || "homely"))}-${homelyId}`,
           source: "homely",
           source_url: richSourceUrl || null,
@@ -857,7 +877,7 @@ Deno.serve(async (req) => {
           status: "contacted",
           lead_stage: "qualified",
           deal_type: "sale",
-          assigned_to: user.id,
+          assigned_to: workspaceOwnerId,
           is_demo: false,
           preferences: {
             homely_id: homelyId || null,
@@ -995,12 +1015,12 @@ Deno.serve(async (req) => {
     const { data: cred } = await admin
       .from("homely_broker_credentials")
       .select("homely_agency, homely_username")
-      .eq("user_id", user.id)
+      .eq("user_id", workspaceOwnerId)
       .maybeSingle();
     if (!cred?.homely_agency || !cred?.homely_username) {
       return json({ ok: false, needs_setup: true, error: "no_homely_credentials" }, 200);
     }
-    const { data: pw } = await admin.rpc("get_homely_password", { _user_id: user.id });
+    const { data: pw } = await admin.rpc("get_homely_password", { _user_id: workspaceOwnerId });
     if (!pw) return json({ ok: false, needs_setup: true, error: "no_homely_password" }, 200);
 
     const login = await webtivLogin(String(cred.homely_agency), String(cred.homely_username), pw as unknown as string);
