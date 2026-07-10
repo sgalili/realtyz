@@ -353,7 +353,7 @@ export default function PropertyDetail() {
         rooms: form.rooms ? Number(form.rooms) : null,
         sqm: form.sqm ? Number(form.sqm) : null,
         floor: form.floor ? Number(form.floor) : null,
-        parking: form.parking ? Number(form.parking) : 0,
+        parking: form.parking ? Number(form.parking) > 0 : false,
         elevator: form.elevator,
         asking_price: form.price ? Number(form.price) : 0,
         description: form.description || null,
@@ -422,6 +422,53 @@ export default function PropertyDetail() {
 
   const setField = (k: keyof EditableFields, v: string) =>
     setForm((f) => (f ? { ...f, [k]: v } : f));
+  const setBoolField = (k: keyof EditableFields, v: boolean) =>
+    setForm((f) => (f ? { ...f, [k]: v } : f));
+  const setPhotos = (updater: (photos: string[]) => string[]) =>
+    setForm((f) => {
+      if (!f) return f;
+      const nextPhotos = updater(f.photos).map((p) => p.trim()).filter(Boolean);
+      setActivePhoto((current) => Math.max(0, Math.min(current, Math.max(nextPhotos.length - 1, 0))));
+      return { ...f, photos: nextPhotos };
+    });
+
+  const addPhotoUrl = () => {
+    if (!form?.photo_url_draft.trim()) return;
+    setPhotos((photos) => Array.from(new Set([...photos, form.photo_url_draft.trim()])));
+    setField('photo_url_draft', '');
+  };
+
+  const handlePhotoUpload = async (files: FileList | null) => {
+    if (!files?.length || !id) return;
+    setUploadingPhoto(true);
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      const userId = auth.user?.id;
+      if (!userId) throw new Error('יש להתחבר כדי להעלות תמונות');
+      const uploaded: string[] = [];
+      for (const file of Array.from(files)) {
+        if (!file.type.startsWith('image/')) continue;
+        const row = await uploadMediaToLibrary({
+          userId,
+          fileName: file.name,
+          data: file,
+          mimeType: file.type,
+          source: 'property',
+          sourceMetadata: { listing_id: id },
+        });
+        const url = (row as any)?.public_url;
+        if (typeof url === 'string' && url) uploaded.push(url);
+      }
+      if (uploaded.length) {
+        setPhotos((photos) => Array.from(new Set([...photos, ...uploaded])));
+        toast.success(`${uploaded.length} תמונות נוספו`);
+      }
+    } catch (e: any) {
+      toast.error(`העלאת תמונה נכשלה: ${e.message ?? e}`);
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
 
   const resolvedSourceUrl =
     sourceUrl ||
