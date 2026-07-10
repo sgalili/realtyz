@@ -7,7 +7,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Input } from '@/components/ui/input';
-import { RefreshCw, MapPin, Phone, Mail, Home, SlidersHorizontal, Loader2, CheckCircle2, Building2, Users, Sparkles } from 'lucide-react';
+import { RefreshCw, MapPin, Phone, Mail, Home, SlidersHorizontal, Loader2, CheckCircle2, Building2, Users, Search } from 'lucide-react';
 import { toast } from 'sonner';
 
 // 60s client-side debounce shared across both fetch actions to protect Homely.
@@ -69,6 +69,7 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
   const [fType, setFType] = useState('');
   const [fAgent, setFAgent] = useState('');
   const [fDeal, setFDeal] = useState<'all' | 'sale' | 'rent'>('all');
+  const [fSearch, setFSearch] = useState('');
   const [cityPopOpen, setCityPopOpen] = useState(false);
   const fetchedOnce = useRef<{ properties: boolean; contacts: boolean }>({ properties: false, contacts: false });
 
@@ -134,7 +135,7 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
       setPickedProps(new Set());
       setPickedContacts(new Set());
       setFiltersOpen(false);
-      setFCities(new Set()); setFRooms(''); setFType(''); setFAgent(''); setFDeal('all');
+      setFCities(new Set()); setFRooms(''); setFType(''); setFAgent(''); setFDeal('all'); setFSearch('');
     }
   }, [open]);
 
@@ -166,12 +167,19 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
   // Pills reflect the currently-active non-deal filters (city/type/rooms/agent),
   // so when the user narrows by agent the pill totals shrink to match.
   const filteredExceptDeal = useMemo(() => propertiesWithTx.filter(p => {
+    const q = fSearch.trim().toLowerCase();
+    if (q) {
+      const hay = [p.title, p.city, p.address, p.agent, p.sivug, p.homely_id, p.description]
+        .map((v) => String(v ?? '').toLowerCase())
+        .join(' ');
+      if (!hay.includes(q)) return false;
+    }
     if (fCities.size && !fCities.has(p.city)) return false;
     if (fType && (p.property_type || '') !== fType) return false;
     if (fRooms && Number(p.rooms) !== Number(fRooms)) return false;
     if (fAgent && (p.agent || '') !== fAgent) return false;
     return true;
-  }), [propertiesWithTx, fCities, fType, fRooms, fAgent]);
+  }), [propertiesWithTx, fSearch, fCities, fType, fRooms, fAgent]);
   const allCount = filteredExceptDeal.length;
   const saleCount = useMemo(() => filteredExceptDeal.filter((p) => p.transaction_type === 'sale').length, [filteredExceptDeal]);
   const rentCount = useMemo(() => filteredExceptDeal.filter((p) => p.transaction_type === 'rent').length, [filteredExceptDeal]);
@@ -182,10 +190,17 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
   }), [filteredExceptDeal, fDeal]);
 
   const filteredContacts = useMemo(() => contacts.filter(c => {
+    const q = fSearch.trim().toLowerCase();
+    if (q) {
+      const hay = [c.full_name, c.city, c.phone, c.email, c.agent, c.sivug, c.homely_id, c.notes]
+        .map((v) => String(v ?? '').toLowerCase())
+        .join(' ');
+      if (!hay.includes(q)) return false;
+    }
     if (fCities.size && !fCities.has(c.city)) return false;
     if (fAgent && (c.agent || '') !== fAgent) return false;
     return true;
-  }), [contacts, fCities, fAgent]);
+  }), [contacts, fSearch, fCities, fAgent]);
 
 
   async function handleImport() {
@@ -240,7 +255,16 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
               {mode === 'contacts' && <TabsTrigger value="contacts" className="text-xs sm:text-sm">אנשי קשר {contacts.length ? `(${filteredContacts.length})` : ''}</TabsTrigger>}
             </TabsList>
 
-            <div className="flex items-center gap-1.5">
+            <div className="flex flex-1 min-w-[220px] items-center gap-1.5 sm:max-w-sm">
+              <div className="relative flex-1">
+                <Search className="pointer-events-none absolute right-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
+                <Input
+                  value={fSearch}
+                  onChange={(e) => setFSearch(e.target.value)}
+                  placeholder={tab === 'properties' ? 'חיפוש נכס, כתובת, עיר או סוכן' : 'חיפוש שם, טלפון, עיר או סוכן'}
+                  className="h-8 pr-8 text-xs text-right"
+                />
+              </div>
               <Button
                 variant={filtersOpen ? 'secondary' : 'outline'}
                 size="sm"
