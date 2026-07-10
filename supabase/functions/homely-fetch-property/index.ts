@@ -766,7 +766,8 @@ async function enrichFromYad2(
     const city = String(property?.city ?? "").trim();
     const address = normForMatch(property?.address || [property?.raw?.street, property?.raw?.number].filter(Boolean).join(" "));
     if (!city && !address) return null;
-    const url = new URL("https://gw.yad2.co.il/realestate-feed/forsale/map");
+    const tx = property?.transaction_type === "rent" ? "rent" : "forsale";
+    const url = new URL(`https://gw.yad2.co.il/realestate-feed/${tx}/map`);
     if (city) url.searchParams.set("city", city);
     if (property?.price) {
       const price = Number(property.price);
@@ -888,8 +889,11 @@ Deno.serve(async (req) => {
           }
         }
         const richMedia = collectMedia(richRecord);
-        const richSourceOrigin = pickSourceOrigin(richRecord) || p?.source_origin || null;
-        const yad2Enrichment = richSourceOrigin === "yad2" ? await enrichFromYad2(admin, workspaceOwnerId, p) : null;
+        const rawSourceOrigin = pickSourceOrigin(richRecord) || p?.source_origin || null;
+        const sourceIsYad2 = rawSourceOrigin === "yad2" || hasYad2Signal(richRecord, p?.raw, p?.source_url, rawSourceOrigin);
+        const richSourceOrigin = sourceIsYad2 ? "yad2" : rawSourceOrigin;
+        const yad2Enrichment = sourceIsYad2 ? await enrichFromYad2(admin, workspaceOwnerId, p) : null;
+        const balcony = pickBalcony(richRecord) ?? booleanFeatureFrom(p?.balcony);
         const rawPhotos = richMedia.photos.length
           ? richMedia.photos
           : (Array.isArray(p?.photos) && p.photos.length ? p.photos : (p?.photo ? [p.photo] : yad2Enrichment?.photos ?? []));
@@ -897,7 +901,11 @@ Deno.serve(async (req) => {
         const richSourceUrl = pickSourceUrl(richRecord)
           || yad2Enrichment?.url
           || (p?.source_url ? String(p.source_url) : "")
-          || (richSourceOrigin === "yad2" ? buildYad2FallbackUrl(p?.city, p?.address) : "");
+          || (richSourceOrigin === "yad2" ? buildYad2FallbackUrl(p?.city, p?.address, p?.transaction_type) : "");
+        const features = Array.from(new Set([
+          ...(Array.isArray(p?.features) ? p.features.filter((f: any) => typeof f === "string") : []),
+          ...(balcony === true ? ["מרפסת"] : []),
+        ]));
         const row: Record<string, unknown> = {
           user_id: workspaceOwnerId,
           slug: `${slugify(String(p?.title || p?.address || "homely"))}-${homelyId}`,
@@ -915,7 +923,7 @@ Deno.serve(async (req) => {
           status: "live",
           is_published: true,
           office_notes: p?.office_notes ? String(p.office_notes) : null,
-          features: Array.isArray(p?.features) ? p.features : [],
+          features,
           media_photos: rawPhotos,
           media_documents: rawDocuments,
           source_metadata: {
@@ -929,7 +937,7 @@ Deno.serve(async (req) => {
             source_origin: richSourceOrigin,
             source_url: richSourceUrl || null,
             source_updated_at: p?.source_updated_at || null,
-            balcony: p?.balcony || null,
+            balcony,
             elevator: p?.elevator || null,
             transaction_type: p?.transaction_type || null,
             homely_raw: compactRaw(richRecord),
