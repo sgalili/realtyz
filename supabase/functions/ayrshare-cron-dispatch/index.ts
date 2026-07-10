@@ -4,6 +4,32 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { corsHeaders } from "../_shared/cors.ts";
 
+const collectFacebookPostAliases = (root: any): string[] => {
+  const ids = new Set<string>();
+  const seen = new Set<any>();
+  const add = (value: unknown) => {
+    const s = typeof value === "string" ? value.trim() : "";
+    if (!s) return;
+    if (/^\d{5,}_\d{5,}$/.test(s) || /^pfbid[0-9A-Za-z]+$/.test(s)) ids.add(s);
+    for (const m of s.matchAll(/pfbid[0-9A-Za-z]+/g)) if (m[0]) ids.add(m[0]);
+    for (const m of s.matchAll(/facebook\.com\/share\/p\/([^/?#\s"'<]+)/gi)) {
+      const token = decodeURIComponent(String(m[1] || "")).replace(/\/+$/, "").trim();
+      if (/^[0-9A-Za-z_-]{5,}$/.test(token)) ids.add(token);
+    }
+  };
+  const visit = (node: any) => {
+    if (node == null || seen.has(node)) return;
+    if (typeof node === "string") { add(node); return; }
+    if (typeof node !== "object") return;
+    seen.add(node);
+    add(node.id); add(node.fbId); add(node.postId); add(node.post_id); add(node.refId);
+    if (Array.isArray(node)) node.forEach(visit);
+    else Object.values(node).forEach(visit);
+  };
+  visit(root);
+  return Array.from(ids);
+};
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -56,6 +82,7 @@ Deno.serve(async (req) => {
       const candidates = [pr._fb_native_id, pr._ayrshare_id, pr.fbId, pr.postId, pr.refId];
       for (const c of candidates) if (typeof c === "string" && c) bucket.ids.add(c);
       if (Array.isArray(pr.postIds)) for (const c of pr.postIds) if (typeof c === "string" && c) bucket.ids.add(c);
+      collectFacebookPostAliases(pr).forEach((c) => bucket!.ids.add(c));
     }
   }
 

@@ -791,18 +791,20 @@ async function enrichFromYad2(
   admin: ReturnType<typeof createClient>,
   ownerId: string,
   property: any,
-): Promise<{ photos: string[]; url: string } | null> {
+): Promise<{ photos: string[]; url: string; exact?: boolean } | null> {
   try {
+    const city = String(property?.city ?? "").trim();
+    const address = String(property?.address || [property?.raw?.street, property?.raw?.number].filter(Boolean).join(" ")).trim();
+    const fallbackUrl = buildYad2FallbackUrl(city, address, property?.transaction_type, property?.homely_id ?? property?.external_id ?? property?.raw?.serial ?? "");
     const { data: key } = await admin
       .from("user_api_keys")
       .select("yad2_api_key")
       .eq("user_id", ownerId)
       .maybeSingle();
     const apiKey = String((key as any)?.yad2_api_key ?? "").trim();
-    if (!apiKey || apiKey === "test_pending") return null;
-    const city = String(property?.city ?? "").trim();
-    const address = normForMatch(property?.address || [property?.raw?.street, property?.raw?.number].filter(Boolean).join(" "));
     if (!city && !address) return null;
+    if (!apiKey || apiKey === "test_pending") return fallbackUrl ? { photos: [], url: fallbackUrl, exact: false } : null;
+    const normalizedAddress = normForMatch(address);
     const tx = property?.transaction_type === "rent" ? "rent" : "forsale";
     const cityCfg = yad2CityConfig(city);
     const url = new URL(`https://gw.yad2.co.il/realestate-feed/${tx}/map`);
@@ -834,17 +836,75 @@ async function enrichFromYad2(
       const itemCity = normForMatch(it?.city || it?.address?.city?.text);
       let score = 0;
       if (city && itemCity.includes(normForMatch(city))) score += 2;
-      if (address && (itemAddress.includes(address) || address.includes(itemAddress))) score += 5;
+      if (normalizedAddress && (itemAddress.includes(normalizedAddress) || normalizedAddress.includes(itemAddress))) score += 5;
       if (property?.rooms && Number(it?.rooms ?? it?.additionalDetails?.roomsCount) === Number(property.rooms)) score += 1;
       if (score > bestScore) { best = it; bestScore = score; }
     }
-    if (!best || bestScore < 4) return null;
+    if (!best || bestScore < 4) return fallbackUrl ? { photos: [], url: fallbackUrl, exact: false } : null;
     const photos = collectYad2Photos(best);
     const itemUrl = yad2UrlFromItem(best);
-    return photos.length || itemUrl ? { photos, url: itemUrl } : null;
+    return photos.length || itemUrl ? { photos, url: itemUrl || fallbackUrl, exact: true } : (fallbackUrl ? { photos: [], url: fallbackUrl, exact: false } : null);
   } catch (e) {
     console.warn("[homely-fetch] yad2 enrichment failed", (e as Error).message);
-    return null;
+    const city = String(property?.city ?? "").trim();
+    const address = String(property?.address || [property?.raw?.street, property?.raw?.number].filter(Boolean).join(" ")).trim();
+    const fallbackUrl = buildYad2FallbackUrl(city, address, property?.transaction_type, property?.homely_id ?? property?.external_id ?? property?.raw?.serial ?? "");
+    return fallbackUrl ? { photos: [], url: fallbackUrl, exact: false } : null;
+  }
+}
+
+async function campaignMediaFallback(
+  admin: ReturnType<typeof createClient>,
+  ownerId: string,
+  property: any,
+): Promise<string[]> {
+  try {
+    const city = normForMatch(property?.city);
+    const address = normForMatch(property?.address || [property?.raw?.street, property?.raw?.number].filter(Boolean).join(" "));
+    const price = Number(property?.price ?? property?.asking_price ?? 0) || 0;
+    if (!city && !address && !price) return [];
+    const { data: rows } = await admin
+      .from("campaign_logs")
+      .select("message_body, provider_response")
+      .eq("user_id", ownerId)
+      .eq("channel", "facebook")
+      .eq("is_archived", false)
+      .order("created_at", { ascending: false })
+      .limit(80);
+    const collect = (root: any): string[] => {
+      const out = new Set<string>();
+      const seen = new Set<any>();
+      const push = (value: unknown) => {
+        if (typeof value !== "string") return;
+        const url = value.match(/https?:\/\/[^\s"'<>]+/i)?.[0] ?? "";
+        if (/^https?:\/\//i.test(url) && /(fbcdn|scontent|image|photo|jpg|jpeg|png|webp)/i.test(url)) out.add(url);
+      };
+      const walk = (node: any, key = "") => {
+        if (node == null || seen.has(node)) return;
+        if (typeof node === "string") { if (/(media|image|photo|picture|url)/i.test(key) || /fbcdn|scontent/i.test(node)) push(node); return; }
+        if (Array.isArray(node)) { node.forEach((v) => walk(v, key)); return; }
+        if (typeof node !== "object") return;
+        seen.add(node);
+        for (const [k, v] of Object.entries(node)) walk(v, k);
+      };
+      walk(root);
+      return Array.from(out);
+    };
+    let best: { score: number; urls: string[] } | null = null;
+    for (const row of rows ?? []) {
+      const body = normForMatch((row as any)?.message_body);
+      let score = 0;
+      if (address && body.includes(address)) score += 100;
+      if (city && body.includes(city)) score += 10;
+      if (price && body.includes(String(Math.round(price)).replace(/\B(?=(\d{3})+(?!\d))/g, " ").trim())) score += 20;
+      if (price && body.includes(String(Math.round(price)))) score += 20;
+      const urls = collect((row as any)?.provider_response);
+      if (score > 0 && urls.length && (!best || score > best.score)) best = { score, urls };
+    }
+    return best?.score ? best.urls : [];
+  } catch (e) {
+    console.warn("[homely-fetch] campaign media fallback failed", (e as Error).message);
+    return [];
   }
 }
 
@@ -948,12 +1008,16 @@ Deno.serve(async (req) => {
         const richMedia = collectMedia(richRecord);
         const rawSourceOrigin = pickSourceOrigin(richRecord) || p?.source_origin || null;
         const sourceIsYad2 = rawSourceOrigin === "yad2" || hasYad2Signal(richRecord, p?.raw, p?.source_url, rawSourceOrigin);
-        const richSourceOrigin = sourceIsYad2 ? "yad2" : rawSourceOrigin;
-        const yad2Enrichment = sourceIsYad2 ? await enrichFromYad2(admin, workspaceOwnerId, p) : null;
+        const shouldProbeYad2 = sourceIsYad2 || (!p?.source_url && p?.transaction_type === "sale");
+        const yad2Enrichment = shouldProbeYad2 ? await enrichFromYad2(admin, workspaceOwnerId, p) : null;
+        const richSourceOrigin = sourceIsYad2 || yad2Enrichment?.exact ? "yad2" : rawSourceOrigin;
         const balcony = pickBalcony(richRecord) ?? booleanFeatureFrom(p?.balcony);
+        const campaignPhotos = richMedia.photos.length || (Array.isArray(p?.photos) && p.photos.length) || p?.photo
+          ? []
+          : await campaignMediaFallback(admin, workspaceOwnerId, p);
         const rawPhotos = richMedia.photos.length
           ? richMedia.photos
-          : (Array.isArray(p?.photos) && p.photos.length ? p.photos : (p?.photo ? [p.photo] : yad2Enrichment?.photos ?? []));
+          : (Array.isArray(p?.photos) && p.photos.length ? p.photos : (p?.photo ? [p.photo] : (yad2Enrichment?.photos?.length ? yad2Enrichment.photos : campaignPhotos)));
         const rawDocuments = richMedia.documents.length ? richMedia.documents : (Array.isArray(p?.documents) ? p.documents : []);
         const richSourceUrl = pickSourceUrl(richRecord)
           || yad2Enrichment?.url
@@ -992,6 +1056,8 @@ Deno.serve(async (req) => {
             office_notes: p?.office_notes || null,
             agent: p?.agent || null,
             source_origin: richSourceOrigin,
+            yad2_search_url: !yad2Enrichment?.exact && yad2Enrichment?.url ? yad2Enrichment.url : null,
+            yad2_exact_match: yad2Enrichment?.exact ?? null,
             source_url: richSourceUrl || null,
             source_updated_at: p?.source_updated_at || null,
             balcony,
@@ -1077,11 +1143,24 @@ Deno.serve(async (req) => {
     // Homely web app uses for the "נכסים" and "אנשי קשר" reports — they
     // always contain real data, unlike the per-agent /api/report/* routes
     // that depend on the agent's personal "interesting" filter.
-    if (action === "fetchAllProperties" || action === "fetchAllContacts") {
+    if (["fetchAllProperties", "fetchAllContacts", "searchProperties", "searchContacts"].includes(action || "")) {
+      const isSearchAction = action === "searchProperties" || action === "searchContacts";
+      const filters = ((body as any)?.filters && typeof (body as any).filters === "object") ? (body as any).filters : {};
+      const searchText = normalizeStreamText(filters.search).toLowerCase();
+      const filterCities = Array.isArray(filters.cities) ? new Set(filters.cities.map((c: unknown) => normalizeStreamText(c)).filter(Boolean)) : new Set<string>();
+      const filterRooms = normalizeStreamText(filters.rooms);
+      const filterType = normalizeStreamText(filters.type);
+      const filterAgent = normalizeStreamText(filters.agent);
+      const filterDeal = normalizeStreamText(filters.deal);
+      const hasServerFilter = !!(searchText || filterCities.size || filterRooms || filterType || filterAgent || (filterDeal && filterDeal !== "all"));
+      if (isSearchAction && !hasServerFilter) {
+        return json({ ok: true, source: "AutomaionJson.search", count: 0, rawCount: 0, properties: [], contacts: [], empty: true });
+      }
       const SELLERS_GUID = Deno.env.get("HOMELY_SELLERS_GUID") || "32dc79a4-88ba-49a4-816e-f1fc43024c2f";
       const BUYERS_GUID  = Deno.env.get("HOMELY_BUYERS_GUID")  || "b6bb7f44-571b-4551-8de9-e075b8a89128";
-      const guid = action === "fetchAllProperties" ? SELLERS_GUID : BUYERS_GUID;
-      const customPropertiesFeedUrl = action === "fetchAllProperties" ? await configuredHomelyFeedUrl(admin, workspaceOwnerId) : "";
+      const isPropertiesAction = action === "fetchAllProperties" || action === "searchProperties";
+      const guid = isPropertiesAction ? SELLERS_GUID : BUYERS_GUID;
+      const customPropertiesFeedUrl = isPropertiesAction ? await configuredHomelyFeedUrl(admin, workspaceOwnerId) : "";
       const url = customPropertiesFeedUrl || `${WEBTIV_BASE}/AutomaionJson/outJson.ashx?guid=${guid}`;
 
       const r = await getJson(url);
@@ -1107,7 +1186,7 @@ Deno.serve(async (req) => {
       }];
       console.log(`[homely-fetch] ${action} first records field audit:`, JSON.stringify(streamFieldAudit(items)));
 
-      if (action === "fetchAllProperties") {
+      if (isPropertiesAction) {
         const discardedSamples: any[] = [];
         // Per-record rule: include office-owned listings for both sale and rent.
         const finalFilteredProperties = items.filter((item: any) => {
@@ -1130,13 +1209,26 @@ Deno.serve(async (req) => {
           return ok;
         });
         if (discardedSamples.length) console.log("[homely-fetch] sellers discarded samples:", JSON.stringify(discardedSamples));
-        const properties = finalFilteredProperties.map(mapStreamProperty);
+        const properties = finalFilteredProperties.map(mapStreamProperty).filter((p: any) => {
+          if (filterDeal && filterDeal !== "all" && p.transaction_type !== filterDeal) return false;
+          if (filterCities.size && !filterCities.has(normalizeStreamText(p.city))) return false;
+          if (filterType && normalizeStreamText(p.property_type) !== filterType) return false;
+          if (filterRooms && Number(p.rooms) !== Number(filterRooms)) return false;
+          if (filterAgent && normalizeStreamText(p.agent) !== filterAgent) return false;
+          if (searchText) {
+            const hay = [p.title, p.city, p.address, p.agent, p.sivug, p.homely_id, p.description, p.property_type]
+              .map((v) => normalizeStreamText(v).toLowerCase())
+              .join(" ");
+            if (!hay.includes(searchText)) return false;
+          }
+          return true;
+        });
         const saleCount = properties.filter((p: any) => p.transaction_type === "sale").length;
         const rentCount = properties.filter((p: any) => p.transaction_type === "rent").length;
         console.log(`[homely-fetch] SERVER FILTER GATE: raw=${items.length} filtered=${finalFilteredProperties.length} sale=${saleCount} rent=${rentCount}`);
         return json({
           ok: true,
-          source: "AutomaionJson.sellers",
+          source: isSearchAction ? "AutomaionJson.sellers.search" : "AutomaionJson.sellers",
           endpoint: url,
           count: properties.length,
           saleCount,
@@ -1156,10 +1248,20 @@ Deno.serve(async (req) => {
         return ok;
       });
       if (discardedSamples.length) console.log("[homely-fetch] buyers discarded samples:", JSON.stringify(discardedSamples));
-      const contacts = filtered.map(mapStreamContact);
+      const contacts = filtered.map(mapStreamContact).filter((c: any) => {
+        if (filterCities.size && !filterCities.has(normalizeStreamText(c.city))) return false;
+        if (filterAgent && normalizeStreamText(c.agent) !== filterAgent) return false;
+        if (searchText) {
+          const hay = [c.full_name, c.city, c.phone, c.email, c.agent, c.sivug, c.homely_id, c.notes]
+            .map((v) => normalizeStreamText(v).toLowerCase())
+            .join(" ");
+          if (!hay.includes(searchText)) return false;
+        }
+        return true;
+      });
       return json({
         ok: true,
-        source: "AutomaionJson.buyers",
+        source: isSearchAction ? "AutomaionJson.buyers.search" : "AutomaionJson.buyers",
         endpoint: url,
         count: contacts.length,
         rawCount: items.length,
@@ -1210,12 +1312,29 @@ Deno.serve(async (req) => {
     const r = await getJson(url);
     const list = asArray(r.data);
     const serialStr = String(serial);
-    const detail = list.find((it: any) => {
+    let detail = list.find((it: any) => {
       const ids = [it?.id, it?.Id, it?.nechesId, it?.NechesId, it?.sidur, it?.Sidur, it?.serial, it?.Serial, it?.propertyId, it?.PropertyId]
         .filter((v) => v !== undefined && v !== null)
         .map(String);
       return ids.includes(serialStr);
     });
+    let detailIsStreamShape = false;
+    if (!detail) {
+      const cachedRaw = meta?.homely_raw && typeof meta.homely_raw === "object" ? meta.homely_raw : null;
+      const cachedSerial = cachedRaw ? String(cachedRaw?.serial ?? cachedRaw?.Serial ?? cachedRaw?.sidur ?? cachedRaw?.Sidur ?? "") : "";
+      if (cachedRaw && cachedSerial === serialStr) {
+        detail = cachedRaw;
+        detailIsStreamShape = true;
+      }
+    }
+    if (!detail) {
+      const SELLERS_GUID = Deno.env.get("HOMELY_SELLERS_GUID") || "32dc79a4-88ba-49a4-816e-f1fc43024c2f";
+      const customPropertiesFeedUrl = await configuredHomelyFeedUrl(admin, workspaceOwnerId);
+      const stream = await getJson(customPropertiesFeedUrl || `${WEBTIV_BASE}/AutomaionJson/outJson.ashx?guid=${SELLERS_GUID}`);
+      const streamItems = asArray(stream.data);
+      detail = streamItems.find((it: any) => String(it?.serial ?? it?.Serial ?? it?.sidur ?? it?.Sidur ?? "") === serialStr) ?? null;
+      detailIsStreamShape = !!detail;
+    }
     if (!detail) {
       return json({
         ok: false,
@@ -1226,7 +1345,7 @@ Deno.serve(async (req) => {
       }, 200);
     }
 
-    const mapped = mapProperty(detail, 0);
+    const mapped = detailIsStreamShape ? mapStreamProperty(detail, 0) : mapProperty(detail, 0);
     const rich = await fetchRichPropertyDetail(hash, serialStr, detail);
     const richest = rich.record ?? detail;
     const media = collectMedia(richest);
@@ -1234,11 +1353,14 @@ Deno.serve(async (req) => {
     const rawPhotos = media.photos.length ? media.photos : summaryPhoto;
     const rawDocs = media.documents;
     const rawSourceOrigin = pickSourceOrigin(richest) || pickSourceOrigin(detail) || meta.source_origin || null;
-    const sourceOrigin = rawSourceOrigin === "yad2" || hasYad2Signal(richest, detail, meta.source_url, rawSourceOrigin) ? "yad2" : rawSourceOrigin;
-    const mappedForEnrichment = { ...mapped, raw: richest, source_origin: sourceOrigin, transaction_type: meta.transaction_type };
-    const yad2Enrichment = sourceOrigin === "yad2" ? await enrichFromYad2(admin, workspaceOwnerId, mappedForEnrichment) : null;
+    const sourceOriginRaw = rawSourceOrigin === "yad2" || hasYad2Signal(richest, detail, meta.source_url, rawSourceOrigin) ? "yad2" : rawSourceOrigin;
+    const mappedForEnrichment = { ...mapped, raw: richest, source_origin: sourceOriginRaw, transaction_type: meta.transaction_type };
+    const shouldProbeYad2 = sourceOriginRaw === "yad2" || (!meta.source_url && meta.transaction_type === "sale");
+    const yad2Enrichment = shouldProbeYad2 ? await enrichFromYad2(admin, workspaceOwnerId, mappedForEnrichment) : null;
+    const sourceOrigin = sourceOriginRaw === "yad2" || yad2Enrichment?.exact ? "yad2" : sourceOriginRaw;
     const balcony = pickBalcony(richest) ?? pickBalcony(detail) ?? booleanFeatureFrom(meta.balcony ?? meta.mirpeset);
-    const finalRawPhotos = rawPhotos.length ? rawPhotos : (yad2Enrichment?.photos ?? []);
+    const campaignPhotos = rawPhotos.length ? [] : await campaignMediaFallback(admin, workspaceOwnerId, { ...mapped, price: mapped.price || listing.asking_price, city: mapped.city || listing.city, address: mapped.address || listing.address, raw: richest });
+    const finalRawPhotos = rawPhotos.length ? rawPhotos : (yad2Enrichment?.photos?.length ? yad2Enrichment.photos : campaignPhotos);
     const sourceUrl = pickSourceUrl(richest)
       || pickSourceUrl(detail)
       || yad2Enrichment?.url
@@ -1270,6 +1392,8 @@ Deno.serve(async (req) => {
         ...meta,
         source_origin: sourceOrigin,
         source_url: sourceUrl || null,
+        yad2_search_url: !yad2Enrichment?.exact && yad2Enrichment?.url ? yad2Enrichment.url : null,
+        yad2_exact_match: yad2Enrichment?.exact ?? null,
         photos: cachedPhotos.length ? cachedPhotos : finalRawPhotos,
         documents: cachedDocs.length ? cachedDocs : rawDocs,
         photos_origin: finalRawPhotos,

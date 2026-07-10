@@ -161,9 +161,10 @@ Deno.serve(async (req) => {
       existing = data ?? null;
       if (existing) {
         const alreadyProcessed =
-          Boolean(existing.ai_reply_text) ||
           existing.status === "sent" ||
-          existing.status === "pending_approval";
+          existing.status === "replied" ||
+          existing.status === "sending" ||
+          existing.ai_action === "auto_reply";
         if (alreadyProcessed) {
           return json({ ok: true, skipped: true, reason: "already_processed", status: existing.status });
         }
@@ -179,7 +180,10 @@ Deno.serve(async (req) => {
     const autoReplyPositive = Boolean(profileRow?.auto_reply_positive);
     const autoReplyNegative = Boolean(profileRow?.auto_reply_negative);
     const { data: globalAutopilot } = await admin.rpc("is_ai_autopilot_enabled", { _user_id: user_id });
-    const aiAutopilotEnabled = Boolean(globalAutopilot);
+    // The Campaigns Air Pilot UI exposes the sentiment switches. Older rows can
+    // have those switches enabled while the global platform row is still absent,
+    // so comments should autopilot when either visible switch permits it.
+    const aiAutopilotEnabled = Boolean(globalAutopilot) || autoReplyPositive || autoReplyNegative;
 
     // STRICT POST→LISTING RESOLUTION. The reply MUST be scoped to the exact
     // post the commenter is responding to and ONLY the property linked to
@@ -189,14 +193,17 @@ Deno.serve(async (req) => {
     let primaryListingType: "sale" | "rent" | null = null;
     if (external_post_id) {
       try {
-        const { data: logRow } = await admin
+        const { data: logRows } = await admin
           .from("campaign_logs")
-          .select("message_body")
+          .select("message_body, provider_message_id, provider_response")
           .eq("user_id", user_id)
-          .eq("provider_message_id", external_post_id)
+          .or(`provider_message_id.eq.${external_post_id},provider_response->>external_url.ilike.%${external_post_id}%`)
           .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+          .limit(10);
+        const logRow = (logRows ?? []).find((row: any) => {
+          if (String(row?.provider_message_id ?? "") === String(external_post_id)) return true;
+          return JSON.stringify(row?.provider_response ?? {}).includes(String(external_post_id));
+        }) ?? (logRows ?? [])[0];
         if (logRow?.message_body) campaignPostBody = String(logRow.message_body).slice(0, 4000);
       } catch { /* ignore */ }
     }
@@ -230,7 +237,9 @@ Deno.serve(async (req) => {
         if (scored[0]?.row) {
           primaryListingId = scored[0].row.id as string;
           const feat = scored[0].row.features;
-          if (feat && typeof feat === "object") {
+          const priceType = Number(scored[0].row.asking_price ?? 0) >= 100_000 ? "sale" : Number(scored[0].row.asking_price ?? 0) > 0 ? "rent" : null;
+          if (priceType) primaryListingType = priceType;
+          else if (feat && typeof feat === "object") {
             const lt = String((feat as any).listing_type ?? "").toLowerCase();
             if (lt === "rent" || lt === "sale") primaryListingType = lt as any;
           }

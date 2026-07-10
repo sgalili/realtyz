@@ -71,20 +71,33 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
   const [fDeal, setFDeal] = useState<'all' | 'sale' | 'rent'>('all');
   const [fSearch, setFSearch] = useState('');
   const [cityPopOpen, setCityPopOpen] = useState(false);
-  const fetchedOnce = useRef<{ properties: boolean; contacts: boolean }>({ properties: false, contacts: false });
+  const lastSearchSignature = useRef('');
 
 
-  async function fetchAction(action: 'fetchAllProperties' | 'fetchAllContacts') {
+  async function fetchAction(action: 'fetchAllProperties' | 'fetchAllContacts' | 'searchProperties' | 'searchContacts') {
     const now = Date.now();
-    if (now - lastCallRef.ts < 60_000) {
+    const isSearch = action === 'searchProperties' || action === 'searchContacts';
+    if (!isSearch && now - lastCallRef.ts < 60_000) {
       const left = Math.ceil((60_000 - (now - lastCallRef.ts)) / 1000);
       toast.info(`רענון זמין שוב בעוד ${left} שניות`);
       return;
     }
-    const isProps = action === 'fetchAllProperties';
+    const isProps = action === 'fetchAllProperties' || action === 'searchProperties';
     isProps ? setLoadingProps(true) : setLoadingContacts(true);
     try {
-      const { data, error } = await supabase.functions.invoke('homely-fetch-property', { body: { action } });
+      const { data, error } = await supabase.functions.invoke('homely-fetch-property', {
+        body: {
+          action,
+          filters: {
+            search: fSearch.trim(),
+            cities: Array.from(fCities),
+            rooms: fRooms,
+            type: fType,
+            agent: fAgent,
+            deal: fDeal,
+          },
+        },
+      });
       if (error) throw error;
       const payload = data as any;
       if (payload?.needs_setup) {
@@ -102,36 +115,38 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
         const list: HomelyProperty[] = payload.properties ?? [];
         setProperties(list);
         if (!list.length) toast.info(payload.message ?? 'התחברות הצליחה, לא נמצאו נכסים חדשים בחשבון הומלי המחובר.');
-        else toast.success(`נטענו ${list.length} נכסים מהומלי`);
+        else toast.success(isSearch ? `נמצאו ${list.length} נכסים מהומלי` : `נטענו ${list.length} נכסים מהומלי`);
       } else {
         const list: HomelyContact[] = payload.contacts ?? [];
         setContacts(list);
         if (!list.length) toast.info(payload.message ?? 'אין אנשי קשר פעילים בחשבון הומלי המחובר');
-        else toast.success(`נטענו ${list.length} אנשי קשר מהומלי`);
+        else toast.success(isSearch ? `נמצאו ${list.length} אנשי קשר מהומלי` : `נטענו ${list.length} אנשי קשר מהומלי`);
       }
     } catch (e) {
       toast.error(`שגיאה בטעינה מהומלי: ${(e as Error).message}`);
     } finally {
-      lastCallRef.ts = Date.now();
+      if (!isSearch) lastCallRef.ts = Date.now();
       isProps ? setLoadingProps(false) : setLoadingContacts(false);
     }
   }
 
-  // Auto-fetch is DISABLED to avoid spamming Homely on every open. The
-  // user pulls fresh data explicitly via the Refresh button. Search or
-  // filter changes on an empty list trigger a single implicit fetch so
-  // the user isn't stuck with a blank panel.
+  // Auto-fetch is DISABLED to avoid spamming Homely on every open. Refresh
+  // loads the full stream. Search/filter changes trigger only a scoped search
+  // request, never a full-list refresh.
   useEffect(() => {
     if (!open) return;
     const hasSearchOrFilter = !!(fSearch.trim() || fCities.size || fRooms || fType || fAgent || fDeal !== 'all');
-    if (!hasSearchOrFilter) return;
-    if (tab === 'properties' && !fetchedOnce.current.properties && !loadingProps && properties.length === 0) {
-      fetchedOnce.current.properties = true;
-      fetchAction('fetchAllProperties');
-    } else if (tab === 'contacts' && !fetchedOnce.current.contacts && !loadingContacts && contacts.length === 0) {
-      fetchedOnce.current.contacts = true;
-      fetchAction('fetchAllContacts');
+    if (!hasSearchOrFilter) {
+      lastSearchSignature.current = '';
+      return;
     }
+    const signature = JSON.stringify({ tab, fSearch, cities: Array.from(fCities).sort(), fRooms, fType, fAgent, fDeal });
+    if (signature === lastSearchSignature.current) return;
+    const timer = window.setTimeout(() => {
+      lastSearchSignature.current = signature;
+      fetchAction(tab === 'properties' ? 'searchProperties' : 'searchContacts');
+    }, 900);
+    return () => window.clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, tab, fSearch, fCities, fRooms, fType, fAgent, fDeal]);
 
