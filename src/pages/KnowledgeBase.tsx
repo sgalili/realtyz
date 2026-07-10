@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useCallback } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
 import { Card, CardContent } from '@/components/ui/card';
