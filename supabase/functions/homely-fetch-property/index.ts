@@ -538,11 +538,41 @@ function pickUpdatedAt(it: any): string {
   return Number.isFinite(d.getTime()) ? d.toISOString() : "";
 }
 
-function buildYad2FallbackUrl(city: unknown, address: unknown, tx: unknown = "sale"): string {
-  const parts = [city, address].map((v) => String(v ?? "").trim()).filter(Boolean);
-  if (!parts.length) return "";
+const YAD2_CITY_CODES: Record<string, { area: string; city: string; path: string }> = {
+  "הרצליה": { area: "18", city: "6400", path: "center-and-sharon" },
+  "הרצליה ": { area: "18", city: "6400", path: "center-and-sharon" },
+  "רמת השרון": { area: "18", city: "2650", path: "center-and-sharon" },
+  "תל אביב": { area: "2", city: "5000", path: "tel-aviv" },
+  "תל אביב-יפו": { area: "2", city: "5000", path: "tel-aviv" },
+  "חיפה": { area: "75", city: "4000", path: "haifa-and-north" },
+  "ירושלים": { area: "1", city: "3000", path: "jerusalem" },
+  "נתניה": { area: "19", city: "7400", path: "center-and-sharon" },
+  "כפר סבא": { area: "18", city: "6900", path: "center-and-sharon" },
+  "רעננה": { area: "18", city: "8700", path: "center-and-sharon" },
+  "פתח תקווה": { area: "3", city: "7900", path: "petah-tikva-and-rosh-haayin" },
+  "ראשון לציון": { area: "5", city: "8300", path: "rishon-lezion-and-ness-ziona" },
+  "באר שבע": { area: "7", city: "9000", path: "beer-sheva-and-south" },
+};
+
+function yad2CityConfig(city: unknown) {
+  const normalized = normalizeStreamText(city).replace(/\s+/g, " ").trim();
+  return YAD2_CITY_CODES[normalized] ?? null;
+}
+
+function buildYad2FallbackUrl(city: unknown, address: unknown, tx: unknown = "sale", serial: unknown = ""): string {
   const segment = tx === "rent" ? "rent" : "forsale";
-  return `https://www.yad2.co.il/realestate/${segment}?text=${encodeURIComponent(parts.join(" "))}`;
+  const cfg = yad2CityConfig(city);
+  const text = [city, address].map((v) => String(v ?? "").trim()).filter(Boolean).join(" ");
+  const path = cfg ? `/realestate/${segment}/${cfg.path}` : `/realestate/${segment}`;
+  const url = new URL(`https://www.yad2.co.il${path}`);
+  if (cfg) {
+    url.searchParams.set("area", cfg.area);
+    url.searchParams.set("city", cfg.city);
+  }
+  if (text) url.searchParams.set("text", text);
+  url.searchParams.set("utm_source", "realtyz");
+  if (serial) url.searchParams.set("utm_content", String(serial));
+  return url.toString();
 }
 
 function mapStreamProperty(it: any, idx: number) {
