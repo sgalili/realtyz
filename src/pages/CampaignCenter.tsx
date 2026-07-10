@@ -2120,8 +2120,29 @@ const PublishedFeed = () => {
   // CampaignCommentsStream via its refreshSignal prop.
   const [refreshSignals, setRefreshSignals] = useState<Record<string, number>>({});
   const [refreshingIds, setRefreshingIds] = useState<Record<string, boolean>>({});
+  // Per-campaign cooldown timestamp (ms epoch). Button is disabled with a
+  // MM:SS countdown until now >= cooldownUntil.
+  const REFRESH_COOLDOWN_MS = 60_000;
+  const [cooldownUntil, setCooldownUntil] = useState<Record<string, number>>({});
+  const [nowTick, setNowTick] = useState<number>(() => Date.now());
+  useEffect(() => {
+    const hasActive = Object.values(cooldownUntil).some((t) => t > nowTick);
+    if (!hasActive) return;
+    const id = setInterval(() => setNowTick(Date.now()), 1000);
+    return () => clearInterval(id);
+  }, [cooldownUntil, nowTick]);
+  const getCooldownSeconds = (campaignId: string): number => {
+    const until = cooldownUntil[campaignId] ?? 0;
+    return Math.max(0, Math.ceil((until - nowTick) / 1000));
+  };
+  const formatCooldown = (secs: number): string => {
+    const m = Math.floor(secs / 60);
+    const s = secs % 60;
+    return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+  };
   const bumpRefresh = (campaignId: string) => {
     if (refreshingIds[campaignId]) return;
+    if (getCooldownSeconds(campaignId) > 0) return;
     // Do NOT purge the cached comments/counters — persistent cache is the
     // whole point of "smart caching". Refresh only merges deltas on top.
     setRefreshingIds((prev) => ({ ...prev, [campaignId]: true }));
@@ -2142,6 +2163,8 @@ const PublishedFeed = () => {
     setRefreshingIds((prev) => { const n = { ...prev }; delete n[campaignId]; return n; });
     toast.dismiss(`refresh-${campaignId}`);
     if (result.ok) {
+      setCooldownUntil((prev) => ({ ...prev, [campaignId]: Date.now() + REFRESH_COOLDOWN_MS }));
+      setNowTick(Date.now());
       toast.success(`רוענן: ${result.count} תגובות חיות`, { id: `refresh-${campaignId}` });
     } else {
       toast.error(result.error || 'רענון נכשל', { id: `refresh-${campaignId}` });
