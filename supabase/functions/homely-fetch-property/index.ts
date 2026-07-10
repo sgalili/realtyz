@@ -242,6 +242,8 @@ function collectMedia(it: any): { photos: string[]; documents: string[] } {
   const toUrl = (v: any): string | null => {
     if (typeof v !== "string") return null;
     const s = v.trim().replace(/\\\//g, "/");
+    const embedded = s.match(/https?:\/\/[^\s"'<>]+/i)?.[0];
+    if (embedded) return embedded;
     if (/^https?:\/\//i.test(s)) return s;
     if (/^www\./i.test(s)) return `https://${s}`;
     if (/^\/\//.test(s)) return `https:${s}`;
@@ -407,6 +409,7 @@ function normalizeTxType(it: any): "sale" | "rent" | "unknown" {
     deepPickText(it, ["transaction_type", "transactiontype", "deal_type", "dealtype", "type", "salerent", "sale_rent", "status", "statusname", "סוג_עסקה"]),
     normalizeStreamText(it?.objectresidence),
     normalizeStreamText(it?.sale_f3),
+    deepPickText(it, ["property_status", "propstatus", "transaction", "asset_status", "neches_status", "status_text"]),
     normalizeStreamText(it?.more),
     normalizeStreamText(it?.comments1),
     normalizeStreamText(it?.comments2),
@@ -490,6 +493,32 @@ function pickSourceUrl(it: any): string {
   walk(it);
   return yad2 || fallback;
 }
+function booleanFeatureFrom(value: unknown): boolean | null {
+  const s = normalizeStreamText(value);
+  if (!s) return null;
+  if (/^(1|true|yes|כן|יש|y)$/i.test(s)) return true;
+  if (/^(0|false|no|לא|אין|n)$/i.test(s)) return false;
+  const n = Number(s.replace(/[^\d.-]/g, ""));
+  if (Number.isFinite(n)) return n > 0;
+  if (/מרפסת|balcon/i.test(s)) return true;
+  return null;
+}
+function pickBalcony(it: any): boolean | null {
+  const raw = deepPickText(it, [
+    "balcony", "balconies", "mirpeset", "mirpesetyn", "mirpesetshemeshyn",
+    "balconyyn", "sunbalcony", "sun_balcony", "terrace", "terraceyn",
+    "מרפסת", "מרפסת_שמש",
+  ]);
+  const direct = booleanFeatureFrom(raw);
+  if (direct !== null) return direct;
+  const hay = [it?.comments1, it?.comments2, it?.more, it?.description, it?.remarks]
+    .map(normalizeStreamText)
+    .join(" ");
+  return /מרפסת|balcony|terrace/i.test(hay) ? true : null;
+}
+function hasYad2Signal(...values: any[]): boolean {
+  return values.some((v) => /yad ?2|יד ?2|yad2\.co\.il/i.test(JSON.stringify(v ?? "")));
+}
 function pickUpdatedAt(it: any): string {
   const raw = deepPickText(it, [
     "update_date", "updatedate", "updated_at", "updatedat", "update",
@@ -509,10 +538,11 @@ function pickUpdatedAt(it: any): string {
   return Number.isFinite(d.getTime()) ? d.toISOString() : "";
 }
 
-function buildYad2FallbackUrl(city: unknown, address: unknown): string {
+function buildYad2FallbackUrl(city: unknown, address: unknown, tx: unknown = "sale"): string {
   const parts = [city, address].map((v) => String(v ?? "").trim()).filter(Boolean);
   if (!parts.length) return "";
-  return `https://www.yad2.co.il/realestate/forsale?text=${encodeURIComponent(parts.join(" "))}`;
+  const segment = tx === "rent" ? "rent" : "forsale";
+  return `https://www.yad2.co.il/realestate/${segment}?text=${encodeURIComponent(parts.join(" "))}`;
 }
 
 function mapStreamProperty(it: any, idx: number) {
@@ -526,7 +556,7 @@ function mapStreamProperty(it: any, idx: number) {
   const sourceOrigin = pickSourceOrigin(it);
   const sourceUrl = pickSourceUrl(it);
   const sourceUpdatedAt = pickUpdatedAt(it);
-  const balcony = deepPickText(it, ["balcony", "mirpeset", "balconies", "מרפסת"]);
+  const balcony = pickBalcony(it);
   const elevator = deepPickText(it, ["elevator", "lift", "maalit", "מעלית"]);
   const description = deepPickText(it, ["description", "tiur", "remarks", "comments1", "comments2", "more", "תיאור", "הערות"]);
   return {
