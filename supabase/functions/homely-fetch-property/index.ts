@@ -1012,9 +1012,12 @@ Deno.serve(async (req) => {
         const yad2Enrichment = shouldProbeYad2 ? await enrichFromYad2(admin, workspaceOwnerId, p) : null;
         const richSourceOrigin = sourceIsYad2 || yad2Enrichment?.exact ? "yad2" : rawSourceOrigin;
         const balcony = pickBalcony(richRecord) ?? booleanFeatureFrom(p?.balcony);
+        const campaignPhotos = richMedia.photos.length || (Array.isArray(p?.photos) && p.photos.length) || p?.photo
+          ? []
+          : await campaignMediaFallback(admin, workspaceOwnerId, p);
         const rawPhotos = richMedia.photos.length
           ? richMedia.photos
-          : (Array.isArray(p?.photos) && p.photos.length ? p.photos : (p?.photo ? [p.photo] : yad2Enrichment?.photos ?? []));
+          : (Array.isArray(p?.photos) && p.photos.length ? p.photos : (p?.photo ? [p.photo] : (yad2Enrichment?.photos?.length ? yad2Enrichment.photos : campaignPhotos)));
         const rawDocuments = richMedia.documents.length ? richMedia.documents : (Array.isArray(p?.documents) ? p.documents : []);
         const richSourceUrl = pickSourceUrl(richRecord)
           || yad2Enrichment?.url
@@ -1356,7 +1359,8 @@ Deno.serve(async (req) => {
     const yad2Enrichment = shouldProbeYad2 ? await enrichFromYad2(admin, workspaceOwnerId, mappedForEnrichment) : null;
     const sourceOrigin = sourceOriginRaw === "yad2" || yad2Enrichment?.exact ? "yad2" : sourceOriginRaw;
     const balcony = pickBalcony(richest) ?? pickBalcony(detail) ?? booleanFeatureFrom(meta.balcony ?? meta.mirpeset);
-    const finalRawPhotos = rawPhotos.length ? rawPhotos : (yad2Enrichment?.photos ?? []);
+    const campaignPhotos = rawPhotos.length ? [] : await campaignMediaFallback(admin, workspaceOwnerId, { ...mapped, price: mapped.price || listing.asking_price, city: mapped.city || listing.city, address: mapped.address || listing.address, raw: richest });
+    const finalRawPhotos = rawPhotos.length ? rawPhotos : (yad2Enrichment?.photos?.length ? yad2Enrichment.photos : campaignPhotos);
     const sourceUrl = pickSourceUrl(richest)
       || pickSourceUrl(detail)
       || yad2Enrichment?.url
