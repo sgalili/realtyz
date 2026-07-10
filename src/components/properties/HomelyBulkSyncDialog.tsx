@@ -369,6 +369,15 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
                 ))}
               </div>
             )}
+            {filteredProps.length > 0 && (
+              <div dir="rtl" className="mb-2 flex items-center justify-between rounded-md border bg-muted/20 px-2 py-1.5 text-xs">
+                <span className="text-muted-foreground">{pickedProps.size} נבחרו מתוך {filteredProps.length}</span>
+                <div className="flex items-center gap-3">
+                  <button type="button" className="text-primary hover:underline" onClick={() => setPickedProps(new Set(filteredProps.map((p) => p.homely_id)))}>בחר הכל</button>
+                  <button type="button" className="text-muted-foreground hover:underline" onClick={() => setPickedProps(new Set())}>נקה בחירה</button>
+                </div>
+              </div>
+            )}
             <div dir="rtl" className="flex-1 min-h-0 overflow-y-auto space-y-2 pl-1">
               {loadingProps ? (
                 Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-20 w-full" />)
@@ -415,15 +424,18 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
                 })
               )}
             </div>
-            {filteredProps.length > 0 && (
-              <div dir="rtl" className="flex items-center justify-between mt-2 text-xs">
-                <button type="button" className="text-primary hover:underline" onClick={() => setPickedProps(new Set(filteredProps.map((p) => p.homely_id)))}>בחר הכל</button>
-                <button type="button" className="text-muted-foreground hover:underline" onClick={() => setPickedProps(new Set())}>נקה בחירה</button>
-              </div>
-            )}
           </TabsContent>
 
           <TabsContent value="contacts" className="mt-3 flex-1 min-h-0 data-[state=active]:flex flex-col">
+            {filteredContacts.length > 0 && (
+              <div dir="rtl" className="mb-2 flex items-center justify-between rounded-md border bg-muted/20 px-2 py-1.5 text-xs">
+                <span className="text-muted-foreground">{pickedContacts.size} נבחרו מתוך {filteredContacts.length}</span>
+                <div className="flex items-center gap-3">
+                  <button type="button" className="text-primary hover:underline" onClick={() => setPickedContacts(new Set(filteredContacts.map((c) => c.homely_id)))}>בחר הכל</button>
+                  <button type="button" className="text-muted-foreground hover:underline" onClick={() => setPickedContacts(new Set())}>נקה בחירה</button>
+                </div>
+              </div>
+            )}
             <div dir="rtl" className="flex-1 min-h-0 overflow-y-auto space-y-2 pe-1">
               {loadingContacts ? (
                 Array.from({ length: 4 }).map((_, i) => <Skeleton key={i} className="h-16 w-full" />)
@@ -458,12 +470,6 @@ export function HomelyBulkSyncDialog({ open, onOpenChange, onImported, mode = 'p
                 })
               )}
             </div>
-            {filteredContacts.length > 0 && (
-              <div dir="rtl" className="flex items-center justify-between mt-2 text-xs">
-                <button type="button" className="text-primary hover:underline" onClick={() => setPickedContacts(new Set(filteredContacts.map((c) => c.homely_id)))}>בחר הכל</button>
-                <button type="button" className="text-muted-foreground hover:underline" onClick={() => setPickedContacts(new Set())}>נקה בחירה</button>
-              </div>
-            )}
           </TabsContent>
         </Tabs>
 
