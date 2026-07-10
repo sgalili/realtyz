@@ -104,15 +104,18 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
 
         <div className="flex items-center justify-between gap-3 flex-wrap">
           <div className="flex items-center gap-3 order-2">
-            <a
-              href={resolvedUrl || '#'}
-              target="_blank"
-              rel="noopener noreferrer"
-              className={`text-slate-600 hover:text-blue-600 block z-50 cursor-pointer ${!resolvedUrl ? 'pointer-events-none opacity-40' : ''}`}
-              style={{ display: 'block', visibility: 'visible' }}
-            >
-              <ExternalLink className="w-6 h-6" />
-            </a>
+            {yad2Url ? (
+              <a
+                href={yad2Url}
+                target="_blank"
+                rel="noopener noreferrer"
+                aria-label="פתח בעמוד יד2"
+                title="פתח בעמוד יד2"
+                className="text-slate-600 hover:text-blue-600 block z-50 cursor-pointer"
+              >
+                <ExternalLink className="w-6 h-6" />
+              </a>
+            ) : null}
           </div>
           <div className="flex items-baseline gap-3 flex-wrap order-1">
             <span className="text-3xl font-extrabold text-success tabular-nums">
