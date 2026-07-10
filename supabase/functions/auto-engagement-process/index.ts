@@ -161,9 +161,10 @@ Deno.serve(async (req) => {
       existing = data ?? null;
       if (existing) {
         const alreadyProcessed =
-          Boolean(existing.ai_reply_text) ||
           existing.status === "sent" ||
-          existing.status === "pending_approval";
+          existing.status === "replied" ||
+          existing.status === "sending" ||
+          existing.ai_action === "auto_reply";
         if (alreadyProcessed) {
           return json({ ok: true, skipped: true, reason: "already_processed", status: existing.status });
         }
