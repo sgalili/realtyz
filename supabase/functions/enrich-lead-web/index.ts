@@ -26,14 +26,18 @@ Respond strictly in JSON with this shape:
   "summary": "1-2 sentence Hebrew summary of what you found",
   "findings": [
     { "key": "age", "label": "גיל", "value": "42", "source": "linkedin.com/in/...", "target": "preference" },
-    { "key": "gender", "label": "מגדר", "value": "male", "source": "facebook", "target": "preference" },
+    { "key": "gender", "label": "מגדר", "value": "male", "source": "name/social profile", "target": "preference" },
     { "key": "city", "label": "עיר", "value": "תל אביב", "source": "facebook profile", "target": "column", "column": "city" },
     { "key": "email", "label": "דוא״ל", "value": "x@y.com", "source": "website", "target": "column", "column": "email" },
     { "key": "linkedin_url", "label": "LinkedIn", "value": "https://linkedin.com/in/...", "target": "preference" },
     { "key": "social_facebook", "label": "Facebook", "value": "https://facebook.com/...", "target": "social", "platform": "facebook" },
     { "key": "social_instagram", "label": "Instagram", "value": "@handle", "target": "social", "platform": "instagram" }
   ]
-}`;
+}
+
+For gender, infer only when there is a strong signal from public profile text,
+pronouns, Hebrew first name, or explicit profile information. Return exactly one
+of: "male", "female", "other". Never return Hebrew words for gender.`;
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: corsHeaders });
@@ -99,6 +103,7 @@ Deno.serve(async (req) => {
       `Telegram: ${lead.telegram_username ?? '(unknown)'}`,
       prefs.facebook_url ? `Facebook: ${prefs.facebook_url}` : '',
       prefs.linkedin_url ? `LinkedIn: ${prefs.linkedin_url}` : '',
+      Array.isArray(prefs.socials) && prefs.socials.length ? `Socials: ${JSON.stringify(prefs.socials).slice(0, 1200)}` : '',
     ].filter(Boolean).join('\n');
 
     const aiRes = await fetch('https://ai.gateway.lovable.dev/v1/chat/completions', {
@@ -143,8 +148,21 @@ Deno.serve(async (req) => {
       facebook_url: prefs.facebook_url,
       linkedin_url: prefs.linkedin_url,
     };
-    const findings = (parsed.findings ?? []).filter((f) => {
+    const normalizeGender = (value: string) => {
+      const v = String(value || '').trim().toLowerCase();
+      if (['male', 'm', 'man', 'זכר', 'גבר'].includes(v)) return 'male';
+      if (['female', 'f', 'woman', 'נקבה', 'אישה', 'אשה'].includes(v)) return 'female';
+      if (['other', 'unknown', 'אחר', 'אחרת'].includes(v)) return 'other';
+      return value;
+    };
+    const normalizedFindings = (parsed.findings ?? []).map((f) => {
+      if (f?.key === 'gender') return { ...f, value: normalizeGender(f.value), target: 'preference' as const };
+      return f;
+    });
+
+    const findings = normalizedFindings.filter((f) => {
       if (!f?.value) return false;
+      if (f.key === 'gender' && !['male', 'female', 'other'].includes(String(f.value))) return false;
       const cur = existing[f.column ?? f.key];
       return !cur || cur.toString().trim().toLowerCase() !== String(f.value).trim().toLowerCase();
     });
