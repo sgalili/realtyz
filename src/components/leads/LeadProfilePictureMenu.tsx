@@ -39,10 +39,10 @@ const BRAND: Record<SocialChannel | 'whatsapp', { bg: string; label: string }> =
 
 const brandPill = (name: keyof typeof BRAND) => (
   <span
-    className="ms-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-white shrink-0"
+    className="ms-2 inline-flex h-8 w-8 items-center justify-center rounded-full text-white shrink-0 shadow-sm"
     style={{ backgroundColor: BRAND[name].bg }}
   >
-    <BrandIcon name={name === 'x' ? 'x' : name} className="h-3.5 w-3.5" />
+    <BrandIcon name={name === 'x' ? 'x' : name} className="h-4.5 w-4.5 max-h-5 max-w-5" />
   </span>
 );
 
@@ -50,14 +50,44 @@ export default function LeadProfilePictureMenu({ leadId, fullName, profilePictur
   const fileRef = useRef<HTMLInputElement>(null);
   const [busy, setBusy] = useState<null | string>(null);
 
-  const explainError = (label: string, err: any, data: any) => {
+  const parseMaybeJson = (value: any) => {
+    if (typeof value !== 'string') return value;
+    try { return JSON.parse(value); } catch { return value; }
+  };
+
+  const readFunctionError = async (err: any) => {
+    const ctx = err?.context;
+    if (!ctx) return null;
+    try {
+      const text = typeof ctx.text === 'function' ? await ctx.text() : null;
+      return parseMaybeJson(text);
+    } catch {
+      return null;
+    }
+  };
+
+  const extractReason = (err: any, data: any) => {
+    const d = parseMaybeJson(data);
+    const firstError = Array.isArray(d?.errors) ? d.errors.find(Boolean) : null;
+    const firstReason = Array.isArray(d?.reasons) ? d.reasons.find(Boolean) : null;
+    const resultReason = Array.isArray(d?.results)
+      ? d.results.map((r: any) => r?.reason || r?.error || r?.details).find(Boolean)
+      : null;
     const reason =
-      data?.reason ||
-      data?.error ||
-      (Array.isArray(data?.errors) && data.errors[0]) ||
+      d?.reason ||
+      d?.message ||
+      d?.error ||
+      d?.details ||
+      firstReason ||
+      firstError ||
+      resultReason ||
       err?.message ||
       'הפלטפורמה חוסמת שליפה אוטומטית או שאין נתונים זמינים';
-    toast.error(`שליפה מ-${label} לא הצליחה`, { description: String(reason) });
+    return typeof reason === 'string' ? reason : JSON.stringify(reason);
+  };
+
+  const explainError = (label: string, err: any, data: any, toastId?: string | number) => {
+    toast.error(`שליפה מ-${label} לא הצליחה`, { id: toastId, description: extractReason(err, data) });
   };
 
   const uploadFile = async (file: File) => {
@@ -83,35 +113,45 @@ export default function LeadProfilePictureMenu({ leadId, fullName, profilePictur
   const fetchFromWA = async () => {
     if (!phone) { toast.error('אין מספר טלפון', { description: 'הוסף מספר טלפון לפני משיכה מוואטסאפ' }); return; }
     setBusy('whatsapp');
-    toast.info('מושך תמונה מוואטסאפ...');
-    const { data, error } = await supabase.functions.invoke('fetch-wa-avatars', { body: { lead_ids: [leadId], force: true } });
-    setBusy(null);
-    if (error) {
-      explainError(BRAND.whatsapp.label, error, data);
-      return;
+    const toastId = toast.loading('מושך תמונה מוואטסאפ...');
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-wa-avatars', { body: { lead_ids: [leadId], force: true } });
+      const errorData = error ? await readFunctionError(error) : null;
+      if (error) { explainError(BRAND.whatsapp.label, error, errorData || data, toastId); return; }
+      const d = (data as any) || {};
+      if (d.success === false || d.error) { explainError(BRAND.whatsapp.label, null, d, toastId); return; }
+      if ((d.updated ?? 0) > 0) { toast.success('תמונה עודכנה מוואטסאפ', { id: toastId }); onUpdated?.(); return; }
+      if ((d.failed ?? 0) > 0 || d.reason || (Array.isArray(d.errors) && d.errors.length)) { explainError(BRAND.whatsapp.label, null, d, toastId); return; }
+      // scanned but nothing to update — either no avatar on WA or phone not on WA.
+      toast.warning('לא נמצאה תמונת פרופיל פעילה בוואטסאפ', {
+        id: toastId,
+        description: 'המספר עשוי לא להיות רשום, או שהגדרות הפרטיות ב-WhatsApp מסתירות את התמונה',
+      });
+    } catch (e: any) {
+      explainError(BRAND.whatsapp.label, e, null, toastId);
+    } finally {
+      setBusy(null);
     }
-    const d = (data as any) || {};
-    if (d.error) { explainError(BRAND.whatsapp.label, null, d); return; }
-    if ((d.updated ?? 0) > 0) { toast.success('תמונה עודכנה מוואטסאפ'); onUpdated?.(); return; }
-    if ((d.failed ?? 0) > 0) { explainError(BRAND.whatsapp.label, null, d); return; }
-    // scanned but nothing to update — either no avatar on WA or phone not on WA.
-    toast.warning('לא נמצאה תמונת פרופיל פעילה בוואטסאפ', {
-      description: 'המספר עשוי לא להיות רשום, או שהגדרות הפרטיות ב-WhatsApp מסתירות את התמונה',
-    });
   };
 
   const fetchFromChannel = async (channel: SocialChannel, handle: string) => {
     setBusy(channel);
-    toast.info(`מושך תמונה מ-${BRAND[channel].label}...`);
-    const { data, error } = await supabase.functions.invoke('fetch-social-avatar', {
-      body: { lead_id: leadId, channel, handle },
-    });
-    setBusy(null);
-    if (error) { explainError(BRAND[channel].label, error, data); return; }
-    const d = (data as any) || {};
-    if (d.success === false || d.error) { explainError(BRAND[channel].label, null, d); return; }
-    toast.success(`תמונה עודכנה מ-${BRAND[channel].label}`);
-    onUpdated?.();
+    const toastId = toast.loading(`מושך תמונה מ-${BRAND[channel].label}...`);
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-social-avatar', {
+        body: { lead_id: leadId, channel, handle },
+      });
+      const errorData = error ? await readFunctionError(error) : null;
+      if (error) { explainError(BRAND[channel].label, error, errorData || data, toastId); return; }
+      const d = (data as any) || {};
+      if (d.success === false || d.error) { explainError(BRAND[channel].label, null, d, toastId); return; }
+      toast.success(`תמונה עודכנה מ-${BRAND[channel].label}`, { id: toastId });
+      onUpdated?.();
+    } catch (e: any) {
+      explainError(BRAND[channel].label, e, null, toastId);
+    } finally {
+      setBusy(null);
+    }
   };
 
   const has = handles;
