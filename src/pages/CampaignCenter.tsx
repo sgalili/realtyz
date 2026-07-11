@@ -1320,6 +1320,7 @@ const InlineComposer = ({
           </button>
         </div>
         <Textarea
+          ref={firstCommentRef as any}
           rows={5}
           value={firstComment}
           onChange={(e) => setFirstComment(e.target.value)}
@@ -1347,7 +1348,28 @@ const InlineComposer = ({
             </label>
           </div>
         )}
+        {firstCommentEnabled && (waShortUrl || msngrShortUrl) && (
+          <div className="mt-1 space-y-1 rounded-lg border border-dashed border-border bg-background/60 p-2 text-xs" dir="rtl">
+            {waShortUrl && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-muted-foreground">קישור וואטסאפ:</span>
+                <a href={waShortUrl} target="_blank" rel="noreferrer" className="font-mono text-[11px] text-primary hover:underline truncate" dir="ltr">
+                  {waShortUrl}
+                </a>
+              </div>
+            )}
+            {msngrShortUrl && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-muted-foreground">קישור מסנג'ר:</span>
+                <a href={msngrShortUrl} target="_blank" rel="noreferrer" className="font-mono text-[11px] text-primary hover:underline truncate" dir="ltr">
+                  {msngrShortUrl}
+                </a>
+              </div>
+            )}
+          </div>
+        )}
       </div>
+
 
       {/* Unified action row: image · AI · publish (single line) */}
       {(() => {
