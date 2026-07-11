@@ -1116,6 +1116,48 @@ const InlineComposer = ({
     }
   };
 
+  // When WA link is toggled ON, immediately mint a branded shortlink so the
+  // exact URL is visible to the user at the bottom of the first-comment card.
+  useEffect(() => {
+    if (!attachWaLink) { setWaShortUrl(''); return; }
+    let cancelled = false;
+    (async () => {
+      let url = 'https://wa.me/972522973500';
+      try {
+        if (selectedListingId) {
+          const { data: slugRes } = await supabase.functions.invoke('shortlink-create', {
+            body: { property_id: selectedListingId },
+          });
+          const slug = (slugRes as any)?.slug;
+          if (slug) url = `https://realtyz.co.il/r/${slug}`;
+        }
+      } catch { /* keep fallback */ }
+      if (!cancelled) {
+        setWaShortUrl(url);
+        // Auto-scroll the first-comment textarea to the bottom so the newly
+        // appended CTA line is visible without manual scrolling.
+        requestAnimationFrame(() => {
+          const el = firstCommentRef.current;
+          if (el) el.scrollTop = el.scrollHeight;
+        });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [attachWaLink, selectedListingId]);
+
+  // Messenger deep-link (uses the currently linked FB Page ref when present).
+  useEffect(() => {
+    if (!attachMsngrLink) { setMsngrShortUrl(''); return; }
+    const pageRef = socialProfiles.find((p) => p.platform === 'facebook')?.accountRef;
+    setMsngrShortUrl(pageRef ? `https://m.me/${pageRef}` : 'https://m.me/');
+    requestAnimationFrame(() => {
+      const el = firstCommentRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    });
+  }, [attachMsngrLink, socialProfiles]);
+
+
+
   // Auto-trigger AI generation when entered via calendar scheduling flow
   // (presetListingId present + no existing body). Runs once after listings
   // load so the property context can be enriched into the AI payload.
