@@ -1341,18 +1341,19 @@ const InlineComposer = ({
                     setAttachMsngrLink(false);
                     // Replace attachments with ONLY the selected property's
                     // photos — the previous property's images are dropped.
-                    const photoUrls = extractListingPhotoUrls(l);
-                    if (photoUrls.length > 0) {
-                      setAttachments(photoUrls.map((u, i) => ({
-                        name: `${l.property_title || l.address || 'property'}-${i + 1}.jpg`,
-                        kind: 'image' as const,
-                        url: u,
-                      })));
-                      toast.success(`נטענו ${photoUrls.length} תמונות של הנכס`);
-                    } else {
-                      setAttachments([]);
-                      toast.info('לא נמצאו תמונות במאגר לנכס זה');
-                    }
+                     const photoUrls = extractListingPhotoUrls(l).slice(0, 10);
+                     if (photoUrls.length > 0) {
+                       setAttachments(photoUrls.map((u, i) => ({
+                         name: `${l.property_title || l.address || 'property'}-${i + 1}.jpg`,
+                         kind: 'image' as const,
+                         url: u,
+                       })));
+                       toast.success(`נטענו ${photoUrls.length} תמונות של הנכס`);
+                     } else {
+                       setAttachments([]);
+                       toast.info('לא נמצאו תמונות במאגר לנכס זה');
+                     }
+
                     setListingPickerOpen(false);
                   }}
 
@@ -1403,7 +1404,7 @@ const InlineComposer = ({
             setBody(cleanBody(raw));
             setBodyManuallyEdited(true);
           }}
-          placeholder="תוכן ההודעה — כתוב כאן או חולל באמצעות AI"
+          placeholder="תוכן הפוסט"
           className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-1.5 pb-10 pl-14"
         />
         {hasBody && (
@@ -1519,7 +1520,7 @@ const InlineComposer = ({
           rows={5}
           value={firstComment}
           onChange={(e) => setFirstComment(e.target.value)}
-          placeholder="התגובה הראשונה תיווצר אוטומטית עם חילול הפוסט…"
+          placeholder="תוכן התגובה"
           disabled={!firstCommentEnabled}
           className="resize-y text-right placeholder:text-muted-foreground/60"
         />
