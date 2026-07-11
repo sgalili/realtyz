@@ -13,7 +13,7 @@ const corsHeaders = {
 const Body = z.object({
   lead_id: z.string().uuid(),
   content: z.string().min(1).max(4000),
-  platform: z.enum(["messenger", "facebook", "instagram"]).default("messenger"),
+  platform: z.enum(["messenger", "facebook", "instagram", "linkedin"]).default("messenger"),
   recipient_id: z.string().optional(), // PSID override
 });
 
