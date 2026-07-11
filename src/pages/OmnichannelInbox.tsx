@@ -137,6 +137,9 @@ const OmnichannelInbox = () => {
   const [manualTakeoverWarning, setManualTakeoverWarning] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeletingChat, setIsDeletingChat] = useState(false);
+  const [inviteChannel, setInviteChannel] = useState<string | null>(null);
+  const [inviteVia, setInviteVia] = useState<'whatsapp' | 'sms'>('whatsapp');
+  const [inviteSending, setInviteSending] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
