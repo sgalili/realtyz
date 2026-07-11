@@ -1225,7 +1225,7 @@ const InlineComposer = ({
             // While the WA CTA opt-in is active, keep the composed CTA in the
             // textarea (don't strip it via cleanBody). Once unchecked, strip.
             const raw = e.target.value.replace(/^[\s\u200f\u200e]+/g, '');
-            setBody(attachWaLink ? raw : cleanBody(raw));
+            setBody(cleanBody(raw));
             setBodyManuallyEdited(true);
           }}
           placeholder="תוכן ההודעה — כתוב כאן או חולל באמצעות AI"
