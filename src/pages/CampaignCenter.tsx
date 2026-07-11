@@ -834,7 +834,7 @@ const InlineComposer = ({
         for (let from = 0; ; from += pageSize) {
           const { data, error } = await supabase
             .from('listings')
-            .select('id, property_title, description, city, neighborhood, address, rooms, sqm, floor, asking_price, features, source_metadata, status, is_published, created_at')
+            .select('id, property_title, description, city, neighborhood, address, rooms, sqm, floor, asking_price, features, source_metadata, media_photos, status, is_published, created_at')
             .eq('status', 'live')
             .eq('is_published', true)
             .order('created_at', { ascending: false })
