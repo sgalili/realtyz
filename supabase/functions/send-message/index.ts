@@ -79,20 +79,12 @@ const WebhookPayload = z.object({
 async function buildInviteLink(
   supabase: ReturnType<typeof createClient>,
   channel: string,
-  userId: string,
 ): Promise<string | null> {
   // Look up the workspace's shared social profile to derive m.me / ig.me links.
-  const { data: mem } = await supabase
-    .from("workspace_memberships")
-    .select("workspace_id")
-    .eq("user_id", userId)
-    .maybeSingle();
-  const workspaceId = (mem as any)?.workspace_id;
-  if (!workspaceId) return null;
   const { data: prof } = await supabase
     .from("workspace_social_profile")
     .select("facebook_page_id, facebook_page_name, connected_platforms")
-    .eq("workspace_id", workspaceId)
+    .eq("id", "00000000-0000-0000-0000-000000000001")
     .maybeSingle();
   const p: any = prof || {};
   const pageId = p.facebook_page_id || p.facebook_page_name;
@@ -155,7 +147,7 @@ serve(async (req) => {
     // template {LINK} into the content.
     let finalContent = content;
     if (invite_channel && content.includes("{LINK}")) {
-      const url = await buildInviteLink(supabase, invite_channel, userData.user.id);
+      const url = await buildInviteLink(admin, invite_channel);
       finalContent = content.replace(/\{LINK\}/g, url || "");
     }
 
