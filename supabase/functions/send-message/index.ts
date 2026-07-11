@@ -38,11 +38,26 @@ async function buildInviteLink(
   if (!workspaceId) return null;
   const { data: prof } = await supabase
     .from("workspace_social_profile")
-    .select("facebook_page_id, facebook_page_name, instagram_username, telegram_bot_username")
+    .select("facebook_page_id, facebook_page_name, connected_platforms")
     .eq("workspace_id", workspaceId)
     .maybeSingle();
   const p: any = prof || {};
   const pageId = p.facebook_page_id || p.facebook_page_name;
+  const connected: any = p.connected_platforms || {};
+  const igUser = connected?.instagram?.username || connected?.instagram?.handle;
+  const tgBot = connected?.telegram?.bot_username;
+  switch (channel) {
+    case "messenger":
+    case "facebook":
+      return pageId ? `https://m.me/${pageId}` : null;
+    case "instagram":
+      return igUser ? `https://ig.me/m/${igUser}` : null;
+    case "telegram":
+      return tgBot ? `https://t.me/${tgBot}` : null;
+    default:
+      return null;
+  }
+}
   switch (channel) {
     case "messenger":
     case "facebook":
