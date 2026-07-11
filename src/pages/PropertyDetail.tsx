@@ -528,19 +528,6 @@ export default function PropertyDetail() {
                 >
                   <Pencil className="h-5 w-5" />
                 </button>
-                {yad2Url && (
-                  <a
-                    href={yad2Url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    aria-label="פתח בעמוד יד2"
-                    title="פתח בעמוד יד2"
-                    className="text-slate-600 hover:text-blue-600 block z-50 cursor-pointer"
-                    style={{ display: 'block', visibility: 'visible', pointerEvents: 'auto' }}
-                  >
-                    <ExternalLink className="w-6 h-6" />
-                  </a>
-                )}
               </>
             ) : (
               <>
