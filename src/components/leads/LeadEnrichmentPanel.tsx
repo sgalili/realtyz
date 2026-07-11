@@ -68,6 +68,14 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
   const [socialOpen, setSocialOpen] = useState(false);
   const [socials, setSocials] = useState<SocialEntry[]>(() => buildInitialSocials(lead, prefs));
 
+  useEffect(() => {
+    setAge(prefs.age ? String(prefs.age) : '');
+    setGender(prefs.gender ?? '');
+    setEmail(lead.email ?? '');
+    setCity(lead.city ?? '');
+    setAddress(lead.address ?? '');
+  }, [lead.id, prefs.age, prefs.gender, lead.email, lead.city, lead.address]);
+
   // Re-sync socials whenever the parent lead's preferences change (e.g. after
   // the enrichment dialog writes new social profiles to the DB), so the panel
   // reflects the update without waiting for a full page reload.
