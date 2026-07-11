@@ -167,6 +167,27 @@ const OmnichannelInbox = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // Auto-sync inbound Messenger/Instagram DMs on mount + every 60s, since
+  // Ayrshare's push webhook isn't always reliable.
+  useEffect(() => {
+    let cancelled = false;
+    const run = () => {
+      supabase.functions.invoke('ayrshare-fetch-dms').then(({ data }) => {
+        if (cancelled) return;
+        const inserted = Object.values((data as any)?.summary || {})
+          .reduce<number>((sum, p: any) => sum + (p?.inserted || 0), 0);
+        if (inserted > 0) {
+          queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
+          queryClient.invalidateQueries({ queryKey: ['last-messages'] });
+          queryClient.invalidateQueries({ queryKey: ['chat-history'] });
+        }
+      }).catch(() => {});
+    };
+    run();
+    const id = setInterval(run, 60_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [queryClient]);
+
   const handleDeleteChat = async (voterId: string) => {
     if (!voterId || voterId.startsWith('demo-')) {
       toast.error('לא ניתן למחוק שיחה זו');
@@ -1023,18 +1044,24 @@ const OmnichannelInbox = () => {
               <div className="border-t border-border/50 bg-whatsapp-footer p-2 sm:p-3">
                 {aiAutopilot && !manualTakeoverWarning ? (
                   <div className="flex items-center gap-2 rounded-full bg-whatsapp-bubble-in px-3 py-2 text-whatsapp-header shadow-sm">
-                    <Switch checked={aiAutopilot} className="border-whatsapp-header/20 bg-muted data-[state=checked]:bg-whatsapp-header [&>span]:bg-whatsapp-header-foreground" onCheckedChange={(v) => {
-                      setAiAutopilot(v);
-                      if (v) setManualTakeoverWarning(false);
-                    }} />
+                    <div className="relative inline-flex" title="טייס AI אוטומטי">
+                      <Switch checked={aiAutopilot} className="peer border-whatsapp-header/20 bg-muted data-[state=checked]:bg-whatsapp-header [&>span]:bg-whatsapp-header-foreground" onCheckedChange={(v) => {
+                        setAiAutopilot(v);
+                        if (v) setManualTakeoverWarning(false);
+                      }} />
+                      <Bot className="pointer-events-none absolute top-1/2 h-3 w-3 -translate-y-1/2 transition-all peer-data-[state=checked]:left-[26px] peer-data-[state=checked]:text-whatsapp-header peer-data-[state=unchecked]:left-1.5 peer-data-[state=unchecked]:text-muted-foreground" />
+                    </div>
                     <span className="text-xs font-medium">טייס אוטומטי פעיל - ה-AI עונה באופן אוטומטי</span>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
-                    <Switch checked={aiAutopilot} className="border-whatsapp-header/20 bg-muted data-[state=checked]:bg-whatsapp-header [&>span]:bg-whatsapp-header-foreground" onCheckedChange={(v) => {
-                      setAiAutopilot(v);
-                      if (v) setManualTakeoverWarning(false);
-                    }} />
+                    <div className="relative inline-flex" title="טייס AI אוטומטי">
+                      <Switch checked={aiAutopilot} className="peer border-whatsapp-header/20 bg-muted data-[state=checked]:bg-whatsapp-header [&>span]:bg-whatsapp-header-foreground" onCheckedChange={(v) => {
+                        setAiAutopilot(v);
+                        if (v) setManualTakeoverWarning(false);
+                      }} />
+                      <Bot className="pointer-events-none absolute top-1/2 h-3 w-3 -translate-y-1/2 transition-all peer-data-[state=checked]:left-[26px] peer-data-[state=checked]:text-whatsapp-header peer-data-[state=unchecked]:left-1.5 peer-data-[state=unchecked]:text-muted-foreground" />
+                    </div>
                     <input
                       ref={attachmentInputRef}
                       type="file"
@@ -1068,17 +1095,28 @@ const OmnichannelInbox = () => {
                           })()}
                         </SelectTrigger>
                         <SelectContent align="end" className="min-w-[12rem]">
-                          {Object.entries(channelConfig).map(([key, cfg]) => {
-                            const disabled = !availableChannels[key];
-                            return (
-                              <SelectItem key={key} value={key} disabled={disabled} title={cfg.label}>
-                                <div className={`flex items-center gap-2 ${disabled ? 'opacity-40' : ''}`}>
-                                  <ChannelIcon channel={key} />
-                                  <span className="text-xs">{cfg.label}</span>
+                          {(() => {
+                            const entries = Object.entries(channelConfig);
+                            const available = entries.filter(([k]) => availableChannels[k]);
+                            const rest = entries.filter(([k]) => !availableChannels[k]);
+                            const ordered = [...available, ...rest];
+                            return ordered.map(([key, cfg], idx) => {
+                              const disabled = !availableChannels[key];
+                              const showDivider = idx === available.length && available.length > 0 && rest.length > 0;
+                              return (
+                                <div key={key}>
+                                  {showDivider && <div className="my-1 border-t border-border/60" />}
+                                  <SelectItem value={key} disabled={disabled} title={cfg.label}>
+                                    <div className={`flex items-center gap-2 ${disabled ? 'opacity-40' : ''}`}>
+                                      <ChannelIcon channel={key} />
+                                      <span className="text-xs">{cfg.label}</span>
+                                      {!disabled && <span className="ms-auto h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+                                    </div>
+                                  </SelectItem>
                                 </div>
-                              </SelectItem>
-                            );
-                          })}
+                              );
+                            });
+                          })()}
                         </SelectContent>
                       </Select>
                       <Input
