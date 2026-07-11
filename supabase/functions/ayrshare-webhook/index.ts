@@ -163,7 +163,7 @@ Deno.serve(async (req) => {
       else await syncTask;
     }
 
-    return new Response(JSON.stringify({ ok: true, sync_queued: shouldSync, post_ids: postIds.length }), {
+    return new Response(JSON.stringify({ ok: true, sync_queued: shouldSync, post_ids: postIds.length, dm_inserted: dmInserted }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
