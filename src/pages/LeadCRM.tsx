@@ -2004,7 +2004,7 @@ const LeadCRM = () => {
                             <LeadEnrichmentIconButton lead={selectedVoter} />
                             <div className="flex items-center gap-1.5 mr-auto ps-2">
                               <Switch
-                                className="group h-6 w-11 data-[state=checked]:bg-primary"
+                                className="group h-6 w-11 data-[state=checked]:bg-[#25D366]"
                                 checked={!!selectedVoter.ai_autopilot}
                                 onCheckedChange={async (checked) => {
                                   const { error } = await supabase
