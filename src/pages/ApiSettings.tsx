@@ -253,6 +253,7 @@ const ApiSettings = () => {
   // 019 SMS state
   const [smsUser, setSmsUser] = useState('');
   const [smsPass, setSmsPass] = useState('');
+  const [smsSender, setSmsSender] = useState('');
 
   // Mapbox state
   const [mapboxToken, setMapboxToken] = useState('');
