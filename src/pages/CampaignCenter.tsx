@@ -921,6 +921,11 @@ const InlineComposer = ({
   const selectedListing = listings.find((l) => l.id === selectedListingId)
     || (selectedListingId ? { id: selectedListingId, property_title: 'נכס נבחר', description: null, city: null, neighborhood: null, address: null, rooms: null, sqm: null, floor: null, asking_price: null, features: null, source_metadata: null, status: null, is_published: null, created_at: null } : null);
 
+  useEffect(() => {
+    if (!firstComment || !oldListingPostCommentPattern.test(firstComment)) return;
+    setFirstComment(buildFallbackFirstComment(selectedListing as CampaignListing | null));
+  }, [firstComment, selectedListingId, selectedListing?.city, selectedListing?.neighborhood, selectedListing?.rooms, selectedListing?.property_title]);
+
   const visibleListings = useMemo(() => {
     const q = normalizeListingText(listingQuery).toLowerCase();
     const deduped = dedupeListings(listings);
