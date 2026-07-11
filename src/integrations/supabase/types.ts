@@ -4962,6 +4962,10 @@ export type Database = {
           weight: number
         }[]
       }
+      merge_lead_into: {
+        Args: { _source: string; _target: string }
+        Returns: string
+      }
       move_to_dlq: {
         Args: {
           dlq_name: string
@@ -5010,6 +5014,19 @@ export type Database = {
         Returns: boolean
       }
       trial_outbound_used: { Args: { _user_id: string }; Returns: number }
+      upsert_lead_by_social: {
+        Args: {
+          _email?: string
+          _full_name?: string
+          _hint_lead_id: string
+          _instagram_handle?: string
+          _messenger_id?: string
+          _phone?: string
+          _profile_picture_url?: string
+          _telegram_username?: string
+        }
+        Returns: string
+      }
       wipe_demo_data: { Args: never; Returns: Json }
     }
     Enums: {
