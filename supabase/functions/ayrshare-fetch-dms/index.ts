@@ -45,7 +45,20 @@ Deno.serve(async (req) => {
       const raw = await r.text();
       let json: any = null; try { json = raw ? JSON.parse(raw) : null; } catch { /* ignore */ }
       if (!r.ok) {
-        summary[platform] = { error: json?.message || raw.slice(0, 200), status: r.status };
+        const errMsg = json?.message || raw.slice(0, 200);
+        const relinkRequired = /relink|unlink|not linked|linkage|messaging/i.test(String(errMsg));
+        if (relinkRequired) {
+          await admin
+            .from("social_connections")
+            .update({
+              last_test_status: "failed",
+              last_test_message: errMsg,
+              last_test_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            })
+            .ilike("platform", `${platform}%`);
+        }
+        summary[platform] = { error: errMsg, status: r.status, relink_required: relinkRequired };
         continue;
       }
 

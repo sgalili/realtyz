@@ -786,6 +786,11 @@ const OmnichannelInbox = () => {
             toast.dismiss(t);
             if (error) { toast.error('סנכרון נכשל', { description: error.message }); return; }
             const s = (data as any)?.summary || {};
+            const syncError = s.facebook?.error || s.instagram?.error;
+            if (syncError) {
+              toast.error('נדרש חיבור מחדש למסנג׳ר', { description: String(syncError).slice(0, 180), duration: 9000 });
+              return;
+            }
             const total = (s.facebook?.inserted || 0) + (s.instagram?.inserted || 0);
             toast.success(total > 0 ? `נמשכו ${total} הודעות חדשות` : 'אין הודעות חדשות');
             queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
