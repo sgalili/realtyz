@@ -18,6 +18,16 @@ type Finding = {
   platform?: string;
 };
 
+function inferGenderFromHebrewFirstName(fullName?: string | null): 'male' | 'female' | null {
+  const first = String(fullName || '').trim().split(/\s+/)[0];
+  if (!first) return null;
+  const male = new Set(['ירון','יוסי','יוסף','משה','דוד','אבי','אברהם','איתן','אייל','אלון','אמיר','אריאל','בנימין','גיא','דניאל','דן','דרור','הראל','חיים','טל','יניב','יעקב','ליאור','מיכאל','נועם','עדי','עומר','רון','רועי','שי','תומר']);
+  const female = new Set(['שרה','מיכל','יעל','נועה','דנה','רונית','אורית','ליאת','עדי','שירה','מאיה','רחל','חנה','מרים','ענת','הילה','גלית','איילת','קרן','לימור','סיון','אפרת','טלי','תמר','נעמה','רוני']);
+  if (male.has(first)) return 'male';
+  if (female.has(first)) return 'female';
+  return null;
+}
+
 const SYSTEM = `You are a real-estate CRM enrichment agent. Given basic contact info,
 research public web sources and social networks (Facebook, Instagram, LinkedIn, X/Twitter, TikTok, YouTube)
 to enrich the profile. Return ONLY facts you are confident about. If unsure, omit the field.
@@ -159,6 +169,19 @@ Deno.serve(async (req) => {
       if (f?.key === 'gender') return { ...f, value: normalizeGender(f.value), target: 'preference' as const };
       return f;
     });
+
+    if (!existing.gender && !normalizedFindings.some((f) => f?.key === 'gender')) {
+      const inferred = inferGenderFromHebrewFirstName(lead.full_name);
+      if (inferred) {
+        normalizedFindings.push({
+          key: 'gender',
+          label: 'מגדר',
+          value: inferred,
+          source: 'שם פרטי',
+          target: 'preference',
+        });
+      }
+    }
 
     const findings = normalizedFindings.filter((f) => {
       if (!f?.value) return false;
