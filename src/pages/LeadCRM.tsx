@@ -35,6 +35,7 @@ import { sendToN8n } from '@/lib/n8nService';
 import { formatPhoneDisplay, isValidIsraeliPhone } from '@/lib/formatPhone';
 import VoterAvatar from '@/components/VoterAvatar';
 import LeadProfilePictureMenu from '@/components/leads/LeadProfilePictureMenu';
+import { BrandIcon } from '@/components/BrandIcon';
 import { useAuth } from '@/hooks/useAuth';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
@@ -224,6 +225,36 @@ const CircularScore = ({ score }: { score: number }) => {
 };
 
 const PAGE_SIZE = 50;
+
+const CRM_MESSAGE_CHANNELS = [
+  { key: 'whatsapp', brand: 'whatsapp', label: 'WhatsApp', textClass: 'text-social-whatsapp' },
+  { key: 'messenger', brand: 'messenger', label: 'Messenger', textClass: 'text-social-messenger' },
+  { key: 'facebook', brand: 'facebook', label: 'Facebook', textClass: 'text-social-facebook' },
+  { key: 'instagram', brand: 'instagram', label: 'Instagram', textClass: 'text-social-instagram' },
+  { key: 'linkedin', brand: 'linkedin', label: 'LinkedIn', textClass: 'text-social-linkedin' },
+  { key: 'x', brand: 'x', label: 'X', textClass: 'text-social-x' },
+  { key: 'tiktok', brand: 'tiktok', label: 'TikTok', textClass: 'text-social-tiktok' },
+  { key: 'telegram', brand: 'telegram', label: 'Telegram', textClass: 'text-social-telegram' },
+  { key: 'sms', brand: null, label: 'SMS', textClass: 'text-social-sms' },
+  { key: 'email', brand: null, label: 'Email', textClass: 'text-social-email' },
+] as const;
+
+function socialHandleFromLead(lead: any, platform: string): string | null {
+  const prefs = (lead?.preferences ?? {}) as Record<string, any>;
+  const socials = Array.isArray(prefs.socials) ? prefs.socials : [];
+  const fromArr = socials.find((s: any) => String(s?.platform || '').toLowerCase() === platform)?.handle;
+  const value =
+    platform === 'instagram' ? (lead?.instagram_handle || fromArr) :
+    platform === 'facebook' ? (lead?.facebook_handle || lead?.facebook_user_id || prefs.facebook_url || fromArr) :
+    platform === 'messenger' ? (lead?.messenger_id || lead?.facebook_user_id || lead?.facebook_handle || prefs.facebook_url || fromArr) :
+    platform === 'linkedin' ? (prefs.linkedin_url || fromArr) :
+    platform === 'x' ? (lead?.x_username || lead?.twitter_username || prefs.x_handle || fromArr) :
+    platform === 'tiktok' ? (lead?.tiktok_username || lead?.tiktok_handle || prefs.tiktok_handle || fromArr) :
+    platform === 'youtube' ? (lead?.youtube_handle || prefs.youtube_url || fromArr) :
+    platform === 'telegram' ? (lead?.telegram_username || fromArr) :
+    null;
+  return value ? String(value) : null;
+}
 
 function EditableInlineText({
   value,
