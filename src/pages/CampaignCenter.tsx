@@ -426,9 +426,34 @@ type CampaignListing = {
   asking_price: number | null;
   features: unknown;
   source_metadata: Record<string, unknown> | null;
+  media_photos: unknown;
   status: string | null;
   is_published: boolean | null;
   created_at: string | null;
+};
+
+// Extract image URLs from a listing row (media_photos + source_metadata fallbacks).
+const extractListingPhotoUrls = (listing: CampaignListing | null | undefined): string[] => {
+  if (!listing) return [];
+  const meta = (listing.source_metadata || {}) as Record<string, unknown>;
+  const pull = (v: unknown): string | null => {
+    if (!v) return null;
+    if (typeof v === 'string') return v;
+    if (typeof v === 'object') {
+      const o = v as any;
+      return o.url || o.src || o.photo || o.image_url || o.image || null;
+    }
+    return null;
+  };
+  const sources: unknown[] = [
+    ...(Array.isArray(listing.media_photos) ? (listing.media_photos as unknown[]) : []),
+    ...(Array.isArray((meta as any).photos) ? ((meta as any).photos as unknown[]) : []),
+    ...(Array.isArray((meta as any).images) ? ((meta as any).images as unknown[]) : []),
+  ];
+  if (typeof (meta as any).image === 'string') sources.push((meta as any).image);
+  if (typeof (meta as any).image_url === 'string') sources.push((meta as any).image_url);
+  const urls = sources.map(pull).filter((s): s is string => !!s && /^https?:\/\//i.test(s));
+  return Array.from(new Set(urls));
 };
 
 const normalizeListingText = (value: unknown) => String(value ?? '').replace(/\s+/g, ' ').trim();
