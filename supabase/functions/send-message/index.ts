@@ -93,6 +93,14 @@ serve(async (req) => {
       .eq("id", lead_id)
       .single();
 
+    // If this is an invite send, resolve the destination channel deep-link and
+    // template {LINK} into the content.
+    let finalContent = content;
+    if (invite_channel && content.includes("{LINK}")) {
+      const url = await buildInviteLink(supabase, invite_channel, userData.user.id);
+      finalContent = content.replace(/\{LINK\}/g, url || "");
+    }
+
     const { data: approval, error: dbError } = await supabase
       .from("approval_queue")
       .insert({
@@ -102,11 +110,11 @@ serve(async (req) => {
         target_voter_id: lead_id,
         target_label: voter?.full_name || phone_number || voter?.phone_number || null,
         title: `הודעה ממתינה לאישור - ${voter?.full_name || channel}`,
-        proposed_content: content,
+        proposed_content: finalContent,
         confidence_score: 100,
         requires_human_review: true,
         source_citations: [],
-        metadata: { phone_number: phone_number || voter?.phone_number, attachment, drip_feed: drip || { enabled: false } },
+        metadata: { phone_number: phone_number || voter?.phone_number, attachment, drip_feed: drip || { enabled: false }, invite_channel: invite_channel || null },
         created_by_ai: false,
       })
       .select()
