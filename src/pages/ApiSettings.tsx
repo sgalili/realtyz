@@ -484,8 +484,9 @@ const ApiSettings = () => {
 
   const handleSaveSms = () => {
     if (!smsUser || !smsPass) { toast.error('יש למלא שם משתמש וסיסמה'); return; }
+    if (!smsSender) { toast.error('יש להזין שולח (Sender ID) מאושר על ידי 019'); return; }
     setSavingKey('sms');
-    upsertConfig.mutate({ serviceName: '019 SMS', apiKey: `${smsUser}:${smsPass}` });
+    upsertConfig.mutate({ serviceName: '019 SMS', apiKey: `${smsUser}:${smsPass}:${smsSender}` });
   };
 
   const handleSaveMapbox = () => {
