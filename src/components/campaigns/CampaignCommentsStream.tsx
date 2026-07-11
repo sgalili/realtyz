@@ -567,9 +567,10 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
       }
       setFbSessionExpired(sawSessionExpired);
       if (sawHalt) {
-        // Ayrshare returned 429/403 — freeze further provider hits for 5
-        // minutes by setting the manual debounce stamp way into the future.
-        lastManualRefreshAtRef.current = Date.now() + 5 * 60_000 - 60_000;
+        // Ayrshare returned 429/403 — arm a 5-minute reactive cooldown. This
+        // is the ONLY case we block subsequent clicks, because the provider
+        // itself asked us to back off.
+        nextAllowedAtRef.current = Date.now() + 5 * 60_000;
         toast.error("מערכת הסנכרון בהפסקה זמנית להגנת החשבון");
       }
 
