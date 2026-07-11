@@ -2012,7 +2012,7 @@ const LeadCRM = () => {
                         const isChatAvailable = (key: string) =>
                           inboundChannels.has(key) || ((key === 'whatsapp' || key === 'sms' || key === 'email') && hasChannelIdentifier(key));
                         const channels = CRM_MESSAGE_CHANNELS
-                          .filter((c) => isChatAvailable(c.key) && hasChannelIdentifier(c.key))
+                          .filter((c) => isChatAvailable(c.key))
                           .map((c) => ({
                             ...c,
                             onClick: () => navigate(`/inbox?lead=${encodeURIComponent(selectedVoter.id)}&channel=${encodeURIComponent(c.key)}`),
