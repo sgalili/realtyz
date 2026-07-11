@@ -58,18 +58,6 @@ async function buildInviteLink(
       return null;
   }
 }
-  switch (channel) {
-    case "messenger":
-    case "facebook":
-      return pageId ? `https://m.me/${pageId}` : null;
-    case "instagram":
-      return p.instagram_username ? `https://ig.me/m/${p.instagram_username}` : null;
-    case "telegram":
-      return p.telegram_bot_username ? `https://t.me/${p.telegram_bot_username}` : null;
-    default:
-      return null;
-  }
-}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
