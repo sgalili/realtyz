@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
+import { useActiveWorkspaceOwnerId } from '@/hooks/useWorkspace';
 
 export interface PlatformSettings {
   enable_auto_followups: boolean;
@@ -32,38 +33,50 @@ const DEFAULTS: PlatformSettings = {
 
 export function usePlatformSettings() {
   const { user } = useAuth();
+  const activeOwnerId = useActiveWorkspaceOwnerId();
+  const targetUserId = activeOwnerId ?? user?.id;
   const qc = useQueryClient();
+  const storageKey = targetUserId ? `realtyz-platform-settings:${targetUserId}` : null;
+  const cached = (() => {
+    if (!storageKey || typeof window === 'undefined') return null;
+    try { return JSON.parse(window.localStorage.getItem(storageKey) || 'null') as Partial<PlatformSettings> | null; }
+    catch { return null; }
+  })();
 
   const query = useQuery({
-    queryKey: ['platform-settings', user?.id],
-    enabled: !!user?.id,
+    queryKey: ['platform-settings', targetUserId],
+    enabled: !!targetUserId,
     staleTime: 60_000,
     queryFn: async (): Promise<PlatformSettings> => {
       const { data, error } = await supabase
         .from('platform_settings' as never)
         .select('*')
-        .eq('user_id', user!.id)
+        .eq('user_id', targetUserId!)
         .maybeSingle();
       if (error && (error as any).code !== 'PGRST116') throw error;
-      if (!data) return DEFAULTS;
-      return { ...DEFAULTS, ...(data as any) };
+      const next = data ? { ...DEFAULTS, ...(data as any) } : { ...DEFAULTS, ...(cached ?? {}) };
+      if (storageKey) window.localStorage.setItem(storageKey, JSON.stringify(next));
+      return next;
     },
+    initialData: cached ? ({ ...DEFAULTS, ...cached } as PlatformSettings) : undefined,
   });
 
   const update = useMutation({
     mutationFn: async (patch: Partial<PlatformSettings>) => {
-      if (!user?.id) throw new Error('not signed in');
-      const row = { user_id: user.id, ...query.data, ...patch };
+      if (!targetUserId) throw new Error('not signed in');
+      const row = { user_id: targetUserId, ...DEFAULTS, ...query.data, ...patch };
+      if (storageKey) window.localStorage.setItem(storageKey, JSON.stringify(row));
+      qc.setQueryData(['platform-settings', targetUserId], row);
       const { error } = await supabase
         .from('platform_settings' as never)
         .upsert(row as never, { onConflict: 'user_id' });
       if (error) throw error;
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ['platform-settings', user?.id] }),
+    onSuccess: () => qc.invalidateQueries({ queryKey: ['platform-settings', targetUserId] }),
   });
 
   return {
-    settings: query.data ?? DEFAULTS,
+    settings: query.data ?? { ...DEFAULTS, ...(cached ?? {}) },
     isLoading: query.isLoading,
     update: update.mutateAsync,
     isUpdating: update.isPending,

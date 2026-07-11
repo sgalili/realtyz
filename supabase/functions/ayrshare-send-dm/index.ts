@@ -81,15 +81,14 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Ayrshare Messages send endpoint. Body shape follows their public docs:
-    // POST /api/messages with { platform, id (recipient PSID), message }.
+    // Ayrshare Messages send endpoint: POST /api/messages/:platform
+    // with { recipientId, message }.
     const payload = {
-      platform: ayrPlatform,
-      id: recipientId,
+      recipientId,
       message: content,
     };
 
-    const r = await fetch(`${AYR_BASE}/messages`, {
+    const r = await fetch(`${AYR_BASE}/messages/${ayrPlatform}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${AYRSHARE_API_KEY}`,

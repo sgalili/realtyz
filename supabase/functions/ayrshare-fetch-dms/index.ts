@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
     const summary: Record<string, any> = {};
 
     for (const platform of platforms) {
-      const url = `${AYR_BASE}/messages?platform=${platform}&lastMessages=50`;
+      const url = `${AYR_BASE}/messages/${platform}`;
       const r = await fetch(url, {
         headers: {
           Authorization: `Bearer ${AYRSHARE_API_KEY}`,
@@ -66,12 +66,15 @@ Deno.serve(async (req) => {
       for (const convo of conversations) {
         const msgs: any[] = Array.isArray(convo?.messages) ? convo.messages : [];
         for (const m of msgs) {
-          const isEcho = Boolean(m.is_echo || m.echo || m.from_page || m.fromPage);
+          const action = String(m.action || "").toLowerCase();
+          const isEcho = Boolean(m.is_echo || m.echo || m.from_page || m.fromPage || action === "sent");
           if (isEcho) { skipped++; continue; }
           const senderId = String(
             m.senderId || m.sender_id || m.from?.id || m.psid || m.userId || convo.senderId || convo.psid || ""
           ).trim();
-          const senderName = String(m.senderName || m.sender_name || m.from?.name || convo.senderName || "").trim();
+          const senderName = String(
+            m.senderName || m.sender_name || m.senderDetails?.name || m.senderDetails?.username || m.from?.name || convo.senderName || ""
+          ).trim();
           const text = String(m.message || m.text || m.content || "").trim();
           const msgId = String(m.id || m.messageId || m.mid || "").trim();
           if (!senderId || !text) { skipped++; continue; }
@@ -101,6 +104,7 @@ Deno.serve(async (req) => {
               .from("leads")
               .insert({
                 user_id: DEFAULT_OWNER_ID,
+                phone_number: `dm-${inboxPlatform}-${senderId}`,
                 full_name: senderName || `Messenger ${senderId.slice(-6)}`,
                 [psidCol]: senderId,
                 source: `${inboxPlatform}_dm`,

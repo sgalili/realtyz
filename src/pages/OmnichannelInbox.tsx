@@ -595,9 +595,13 @@ const OmnichannelInbox = () => {
 
       // Autopilot status is owned by the user — never auto-disable on manual send.
 
-      toast.success('ההודעה הועברה לתור אישור', {
-        description: 'שום דבר לא נשלח עד שמפקח אנושי מאשר ומפעיל ידנית',
-      });
+      if ((data as any)?.sent) {
+        toast.success('ההודעה נשלחה');
+      } else {
+        toast.success('ההודעה הועברה לתור אישור', {
+          description: 'שום דבר לא נשלח עד שמפקח אנושי מאשר ומפעיל ידנית',
+        });
+      }
     },
     onError: (error: Error) => {
       if (error.message === 'demo-blocked') return;
