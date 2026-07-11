@@ -499,6 +499,40 @@ const listingOptionLabel = (listing: CampaignListing) => {
   return price ? `${location} — ${price}` : location;
 };
 
+const oldListingPostCommentPattern = /(מה תמצאו|מחיר מבוקש|ר\.מ|ברחוב\s|📍|💰|📞|^\s*✅)/m;
+
+const cleanFirstComment = (value: string) => String(value || '')
+  .replace(/^```[a-z]*\s*/i, '')
+  .replace(/```$/i, '')
+  .replace(/^\s*[-*•]\s+/gm, '')
+  .replace(/^\s*\d+[.)]\s+/gm, '')
+  .replace(/^\s*[✅📍💰📞]\s*/gm, '')
+  .replace(/[#*_`]+/g, '')
+  .replace(/[—–]/g, ',')
+  .replace(/--+/g, ',')
+  .replace(/\n{3,}/g, '\n\n')
+  .trim();
+
+const buildFallbackFirstComment = (listing: CampaignListing | null) => {
+  const city = normalizeListingText(listing?.city) || 'הרצליה';
+  const neighborhood = normalizeListingText(listing?.neighborhood);
+  const rooms = listing?.rooms ? `${listing.rooms} חדרים` : '';
+  const propertyTitle = normalizeListingText(listing?.property_title);
+  const location = [neighborhood, city].filter(Boolean).join(', ') || city;
+  const propertyPhrase = rooms
+    ? `דירת ${rooms} ב${location}`
+    : propertyTitle || `נכס ב${location}`;
+
+  const variants = [
+    `${propertyPhrase} היא בדיוק מסוג הנכסים שכדאי לראות לפני שמקבלים החלטה.\n\nאם אתם מחפשים איכות חיים, מיקום נכון וליווי מקצועי בתהליך, אשמח לדבר.\n\nאודי ויטמן | 052-2973500`,
+    `מי שמחפש ${rooms ? `${rooms} ` : ''}ב${city}${neighborhood ? `, באזור ${neighborhood}` : ''}, זה נכס שכדאי לשים עליו עין עכשיו.\n\nלפעמים הבית הנכון מתחיל משיחה אחת טובה.\n\nאודי ויטמן | 052-2973500`,
+    `מבחינתי, כל נכס הוא הרבה יותר מארבעה קירות, הוא התחלה של פרק חדש בחיים.\n\nאם ${propertyPhrase} יכולה להתאים לכם, אשמח ללוות אתכם בשקיפות, בהקשבה ובמקצועיות.\n\nאודי ויטמן | 052-2973500`,
+    `אם אתם מחפשים נכס שמשלב מיקום נכון, נוחות ופוטנציאל אמיתי למשפחה או להשקעה, כדאי להגיע לראות.\n\nבמיוחד למי שמחפש ${rooms ? `${rooms} ` : ''}ב${city}${neighborhood ? ` ובאזור ${neighborhood}` : ''}.\n\nאודי ויטמן | 052-2973500`,
+  ];
+
+  return variants[Math.floor(Math.random() * variants.length)];
+};
+
 const InlineComposer = ({
   channel, brandName, socialProfiles = [], onConfirm,
   presetListingId, presetScheduleIso, presetVariant, presetVariants, instanceId,
@@ -887,6 +921,11 @@ const InlineComposer = ({
   const selectedListing = listings.find((l) => l.id === selectedListingId)
     || (selectedListingId ? { id: selectedListingId, property_title: 'נכס נבחר', description: null, city: null, neighborhood: null, address: null, rooms: null, sqm: null, floor: null, asking_price: null, features: null, source_metadata: null, status: null, is_published: null, created_at: null } : null);
 
+  useEffect(() => {
+    if (!firstComment || !oldListingPostCommentPattern.test(firstComment)) return;
+    setFirstComment(buildFallbackFirstComment(selectedListing as CampaignListing | null));
+  }, [firstComment, selectedListingId, selectedListing?.city, selectedListing?.neighborhood, selectedListing?.rooms, selectedListing?.property_title]);
+
   const visibleListings = useMemo(() => {
     const q = normalizeListingText(listingQuery).toLowerCase();
     const deduped = dedupeListings(listings);
@@ -1081,19 +1120,20 @@ const InlineComposer = ({
     setFirstCommentGenerating(true);
     try {
       const listing = selectedListing;
-      const listingLine = listing
+      const keywordContext = listing
         ? [
-            listing.property_title,
+            listing.property_title ? `סוג/כותרת: ${listing.property_title}` : null,
+            listing.city ? `עיר: ${listing.city}` : null,
+            listing.neighborhood ? `שכונה/אזור: ${listing.neighborhood}` : null,
             listing.rooms ? `${listing.rooms} חדרים` : null,
-            listing.sqm ? `כ-${listing.sqm} מ״ר` : null,
-            listing.address || listing.neighborhood || listing.city,
-            listing.asking_price ? `${Number(listing.asking_price).toLocaleString('he-IL')} ₪` : null,
+            'מילות מפתח אפשריות: מתווך, תיווך, נדל״ן, דירה, נכס',
           ].filter(Boolean).join(' | ')
         : '';
       const styleInstructions = [
-        'כתוב "תגובה ראשונה" (First Comment) לפוסט נדל"ן. המטרה: SEO — לשתול באופן טבעי מילות מפתח (סוג הנכס, עיר, שכונה, מספר חדרים, "מתווך"/"תיווך" באזור), מבלי שזה יראה כמו רשימת מילות מפתח.',
-        'סגנון: טקסט קצר, טבעי ושיחתי — בלי בולטים, בלי רשימות, בלי ✅, בלי מספרים. אפשר שורה אחת קצרה, אפשר 2–4 שורות עם שורות רווח ביניהן, אפשר שאלה או קריאה לפעולה קלה.',
-        'חובה: אל תחזור על גוף הפוסט. אל תעתיק שורות מהפוסט. אל תחזור על מחיר, מ״ר, כתובת מלאה או תיאור הדירה — הם כבר בפוסט.',
+        'כתוב תגובה ראשונה קצרה לפוסט נדל"ן, לא פוסט חדש.',
+        'המטרה היחידה: SEO טבעי — לשלב בעדינות סוג נכס, עיר, שכונה/אזור, מספר חדרים והמילים מתווך/תיווך/נדל״ן כשזה נשמע אנושי.',
+        'מבנה חובה: טקסט שיחתי קצר בלבד. בלי בולטים, בלי רשימות, בלי אימוג׳ים, בלי כותרות, בלי סעיפי נכס, בלי שורת מיקום, בלי מחיר, בלי שטח, בלי קומה, בלי כתובת, בלי רישיון תיווך.',
+        'אסור בהחלט להשתמש בפורמט של הפוסט הראשי. אל תכתוב "מה תמצאו בדירה", אל תכתוב שורות עם ✅, אל תכתוב "מחיר מבוקש", אל תחזור על גוף הפוסט ואל תעתיק ממנו משפטים.',
         'סיים תמיד בשורת חתימה: "אודי ויטמן | 052-2973500".',
         'אל תשתמש בכוכביות, במקפים כפולים (--) או ב-em-dash. עברית תקינה בלבד.',
         'דוגמאות לסגנון (השראה בלבד, אל תעתיק):',
@@ -1102,20 +1142,23 @@ const InlineComposer = ({
         '"מבחינתי, כל נכס הוא הרבה יותר מארבעה קירות, הוא התחלה של פרק חדש בחיים. אם הדירה הזו יכולה להתאים לכם, אשמח ללוות אתכם בדרך, בשקיפות, בהקשבה ובמקצועיות.\\n\\nאודי ויטמן | 052-2973500"',
         '"מי שמחפש כניסה נוחה להרצליה – זה בדיוק הנכס שכדאי לראות עכשיו.\\n\\nאודי ויטמן | 052-2973500"',
         '"הבלעדיות זה בדיוק כמו טיפוס בלי ביטוח, בלי שותף אמין שסומך עליך ושאתה סומך עליו, אתה לא מתמקד, לא נותן את המקסימום, ואתה פשוט מפחד ליפול.\\n\\nזה בדיוק היחס שאני נותן לכל נכס שבוחר בי בבלעדיות, תשומת לב מלאה, בלי לרדוף אחרי 10 דירות במקביל, ועם כל החבל ביד\\n\\nאודי ויטמן | 052-2973500"',
-        listingLine ? `פרטי הנכס לשליפת מילות מפתח בלבד (אל תצטט מספרים ואל תעתיק): ${listingLine}` : '',
+        keywordContext ? `פרטי הנכס לשליפת מילות מפתח בלבד, לא להעתיק כפרטים טכניים: ${keywordContext}` : '',
+        postBody ? `גוף הפוסט הראשי, לשימוש רק כדי לא לחזור עליו: """${postBody.slice(0, 900)}"""` : '',
       ].filter(Boolean).join('\n\n');
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: {
           topic: 'תגובה ראשונה לפוסט נדל"ן',
           platform: channel.id,
           customInstructions: styleInstructions,
-          selectedListingId: selectedListingId || undefined,
-          listingFocusOnly: !!selectedListingId,
+          listingFocusOnly: false,
         },
       });
       if (error) throw error;
-      const text = String(data?.content || data?.text || '').trim();
-      if (text) setFirstComment(text);
+      const text = cleanFirstComment(String(data?.content || data?.text || ''));
+      const finalText = text && !oldListingPostCommentPattern.test(text)
+        ? text
+        : buildFallbackFirstComment(listing as CampaignListing | null);
+      if (finalText) setFirstComment(finalText);
     } catch (e: any) {
       toast.error('יצירת תגובה ראשונה נכשלה');
     } finally {
