@@ -70,7 +70,7 @@ serve(async (req) => {
       );
     }
 
-    const { lead_id, content, channel, phone_number, attachment, drip } = parsed.data;
+    const { lead_id, content, channel, phone_number, attachment, drip, invite_channel } = parsed.data;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
