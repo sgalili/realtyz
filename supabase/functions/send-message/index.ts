@@ -12,6 +12,7 @@ const WebhookPayload = z.object({
   channel: z.string().default("whatsapp"),
   phone_number: z.string().optional(),
   attachment: z.unknown().optional(),
+  invite_channel: z.string().optional(),
   drip: z.object({
     enabled: z.boolean().default(false),
     daily_limit: z.number().int().min(1).max(1000).default(50),
@@ -21,6 +22,39 @@ const WebhookPayload = z.object({
     stagger_max_minutes: z.number().int().min(1).max(240).default(23),
   }).optional(),
 });
+
+async function buildInviteLink(
+  supabase: ReturnType<typeof createClient>,
+  channel: string,
+  userId: string,
+): Promise<string | null> {
+  // Look up the workspace's shared social profile to derive m.me / ig.me links.
+  const { data: mem } = await supabase
+    .from("workspace_memberships")
+    .select("workspace_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  const workspaceId = (mem as any)?.workspace_id;
+  if (!workspaceId) return null;
+  const { data: prof } = await supabase
+    .from("workspace_social_profile")
+    .select("facebook_page_id, facebook_page_name, instagram_username, telegram_bot_username")
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
+  const p: any = prof || {};
+  const pageId = p.facebook_page_id || p.facebook_page_name;
+  switch (channel) {
+    case "messenger":
+    case "facebook":
+      return pageId ? `https://m.me/${pageId}` : null;
+    case "instagram":
+      return p.instagram_username ? `https://ig.me/m/${p.instagram_username}` : null;
+    case "telegram":
+      return p.telegram_bot_username ? `https://t.me/${p.telegram_bot_username}` : null;
+    default:
+      return null;
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
