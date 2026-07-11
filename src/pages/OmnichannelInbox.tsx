@@ -1025,6 +1025,57 @@ const OmnichannelInbox = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Invite modal — sends WA/SMS invite so the lead opens the closed channel */}
+      <Dialog open={!!inviteChannel} onOpenChange={(open) => { if (!open) setInviteChannel(null); }}>
+        <DialogContent dir="rtl" className="text-right sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>הזמנה לערוץ {channelConfig[inviteChannel || '']?.label || inviteChannel}</DialogTitle>
+            <DialogDescription>
+              הערוץ עדיין לא פתוח מול הליד. נשלח קישור הזמנה קצר בוואטסאפ או SMS כדי שהוא יפתח שיחה עם העסק.
+            </DialogDescription>
+          </DialogHeader>
+          <RadioGroup value={inviteVia} onValueChange={(v) => setInviteVia(v as any)} className="space-y-2">
+            <label className="flex flex-row-reverse items-center justify-between gap-2 rounded-lg border p-3 cursor-pointer hover:bg-muted/40">
+              <span className="text-sm">שליחה בוואטסאפ</span>
+              <RadioGroupItem value="whatsapp" disabled={!selectedVoter?.phone_number} />
+            </label>
+            <label className="flex flex-row-reverse items-center justify-between gap-2 rounded-lg border p-3 cursor-pointer hover:bg-muted/40">
+              <span className="text-sm">שליחה ב-SMS</span>
+              <RadioGroupItem value="sms" disabled={!selectedVoter?.phone_number} />
+            </label>
+          </RadioGroup>
+          <DialogFooter className="gap-2 sm:justify-between">
+            <Button variant="outline" onClick={() => setInviteChannel(null)} disabled={inviteSending}>ביטול</Button>
+            <Button
+              disabled={inviteSending || !selectedVoter?.phone_number || !inviteChannel}
+              onClick={async () => {
+                if (!selectedVoterId || !inviteChannel) return;
+                setInviteSending(true);
+                const label = channelConfig[inviteChannel]?.label || inviteChannel;
+                const body = `שלום, נשמח להמשיך את השיחה גם ב-${label}. לחצו כאן לפתיחת ההתכתבות: {LINK}`;
+                const { error } = await supabase.functions.invoke('send-message', {
+                  body: {
+                    lead_id: selectedVoterId,
+                    content: body,
+                    channel: inviteVia,
+                    phone_number: selectedVoter?.phone_number,
+                    invite_channel: inviteChannel,
+                  },
+                });
+                setInviteSending(false);
+                if (error) toast.error('שליחת ההזמנה נכשלה');
+                else {
+                  toast.success('ההזמנה נשלחה');
+                  setInviteChannel(null);
+                }
+              }}
+            >
+              {inviteSending ? 'שולח...' : 'שליחת הזמנה'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
