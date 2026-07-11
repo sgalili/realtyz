@@ -578,6 +578,12 @@ const InlineComposer = ({
   const [firstCommentEnabled, setFirstCommentEnabled] = useState<boolean>(initial.firstCommentEnabled ?? true);
   const [firstComment, setFirstComment] = useState<string>(initial.firstComment || '');
   const [firstCommentGenerating, setFirstCommentGenerating] = useState<boolean>(false);
+  // Preview shortlinks generated the moment the WA / Messenger link options are
+  // toggled on, so the user can see the exact URL that will be appended to the
+  // first comment at publish time.
+  const [waShortUrl, setWaShortUrl] = useState<string>('');
+  const [msngrShortUrl, setMsngrShortUrl] = useState<string>('');
+  const firstCommentRef = useRef<HTMLTextAreaElement | null>(null);
   // Image lightbox for the attachments grid.
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   // Tracks the last AI-generated body so manual edits before publish can be
