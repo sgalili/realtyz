@@ -1404,7 +1404,7 @@ const InlineComposer = ({
             setBody(cleanBody(raw));
             setBodyManuallyEdited(true);
           }}
-          placeholder="תוכן ההודעה — כתוב כאן או חולל באמצעות AI"
+          placeholder="תוכן הפוסט"
           className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-1.5 pb-10 pl-14"
         />
         {hasBody && (
