@@ -17,7 +17,7 @@ import { RealtyzWave } from '@/components/RealtyzWave';
 import { BrandIcon } from '@/components/BrandIcon';
 import {
   ArrowRight, Plus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
-  ChevronDown, ChevronUp, Send, Mic, Image as ImageIcon, Paperclip,
+  ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Send, Mic, Image as ImageIcon, Paperclip,
   ChevronDown as ChevronDownIcon, Plug, Camera, Sparkles, Square,
   Trash2, ExternalLink, CheckCircle2, Play, RefreshCw, Calendar as CalendarIcon, Loader2, AlertTriangle,
 } from 'lucide-react';
@@ -1377,34 +1377,75 @@ const InlineComposer = ({
             {count}
           </span>
         )}
-        <Popover>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              className="absolute bottom-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground"
-              aria-label="צירוף מדיה"
-            >
-              <Paperclip className="h-4 w-4" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-44 p-1" dir="rtl">
-            <button type="button" onClick={() => galleryInputRef.current?.click()}
-              className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
-              <span>גלריה</span>
-              <ImageIcon className="h-4 w-4 text-muted-foreground" />
-            </button>
-            <button type="button" onClick={() => cameraInputRef.current?.click()}
-              className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
-              <span>מצלמה</span>
-              <Camera className="h-4 w-4 text-muted-foreground" />
-            </button>
-            <button type="button" onClick={handleAIImage} disabled={generatingImage}
-              className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-60">
-              <span>{generatingImage ? 'מחולל…' : 'תמונת AI'}</span>
-              <Sparkles className="h-4 w-4 text-primary" />
-            </button>
-          </PopoverContent>
-        </Popover>
+        <div className="absolute bottom-2 right-2 flex items-center gap-1.5" dir="rtl">
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground"
+                aria-label="צירוף מדיה"
+              >
+                <Paperclip className="h-4 w-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-44 p-1" dir="rtl">
+              <button type="button" onClick={() => galleryInputRef.current?.click()}
+                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
+                <span>גלריה</span>
+                <ImageIcon className="h-4 w-4 text-muted-foreground" />
+              </button>
+              <button type="button" onClick={() => cameraInputRef.current?.click()}
+                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
+                <span>מצלמה</span>
+                <Camera className="h-4 w-4 text-muted-foreground" />
+              </button>
+              <button type="button" onClick={handleAIImage} disabled={generatingImage}
+                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-60">
+                <span>{generatingImage ? 'מחולל…' : 'תמונת AI'}</span>
+                <Sparkles className="h-4 w-4 text-primary" />
+              </button>
+            </PopoverContent>
+          </Popover>
+          {attachments.length > 0 && (
+            <div className="flex items-center gap-1 flex-wrap max-w-[60vw]">
+              {attachments.map((att, i) => {
+                const isVideo = !!att.url && (/\.(mp4|mov|m4v|webm|3gp)(\?|$)/i.test(att.url) || /^video\//i.test((att as any).mimeType || ''));
+                const isImage = att.kind === 'image' && !!att.url && !isVideo;
+                return (
+                  <div key={i} className="relative group">
+                    {isImage ? (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewImageUrl(att.url!)}
+                        className="block h-4 w-4 overflow-hidden rounded-sm border border-border bg-muted focus:outline-none focus:ring-1 focus:ring-primary"
+                        aria-label="פתח תמונה"
+                      >
+                        <img src={att.url} alt="" className="h-full w-full object-cover" />
+                      </button>
+                    ) : isVideo ? (
+                      <video src={att.url} className="h-4 w-4 rounded-sm object-cover bg-black" muted playsInline />
+                    ) : (
+                      <div className="flex h-4 w-4 items-center justify-center rounded-sm border border-border bg-muted">
+                        {att.kind === 'audio'
+                          ? <Mic className="h-2.5 w-2.5 text-primary" />
+                          : <Paperclip className="h-2.5 w-2.5 text-muted-foreground" />}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setAttachments((a) => a.filter((_, j) => j !== i)); }}
+                      className="absolute -top-1 -left-1 hidden group-hover:inline-flex h-3 w-3 items-center justify-center rounded-full bg-background text-[9px] text-muted-foreground shadow ring-1 ring-border hover:text-destructive"
+                      aria-label="הסר"
+                    >
+                      ×
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
       </div>
 
       {/* First-comment composer — always visible below the main textarea.
@@ -1474,47 +1515,8 @@ const InlineComposer = ({
       <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" multiple className="hidden"
         onChange={(e) => { handleFiles(e.target.files, 'file'); e.target.value = ''; }} />
 
-      {/* Attachments preview — square thumbnails only (no file names) that wrap
-          to fit mobile widths. Clicking an image opens the lightbox with a
-          "delete from post" action. */}
-      {attachments.length > 0 && (
-        <div className="flex flex-wrap gap-2" dir="rtl">
-          {attachments.map((att, i) => {
-            const isVideo = !!att.url && (/\.(mp4|mov|m4v|webm|3gp)(\?|$)/i.test(att.url) || /^video\//i.test((att as any).mimeType || ''));
-            const isImage = att.kind === 'image' && !!att.url && !isVideo;
-            return (
-              <div key={i} className="relative">
-                {isImage ? (
-                  <button
-                    type="button"
-                    onClick={() => setPreviewImageUrl(att.url!)}
-                    className="block h-16 w-16 overflow-hidden rounded-md border border-border bg-muted focus:outline-none focus:ring-2 focus:ring-primary"
-                    aria-label="פתח תמונה"
-                  >
-                    <img src={att.url} alt="" className="h-full w-full object-cover" />
-                  </button>
-                ) : isVideo ? (
-                  <video src={att.url} className="h-16 w-16 rounded-md object-cover bg-black" muted playsInline />
-                ) : (
-                  <div className="flex h-16 w-16 items-center justify-center rounded-md border border-border bg-muted">
-                    {att.kind === 'audio'
-                      ? <Mic className="h-4 w-4 text-primary" />
-                      : <Paperclip className="h-4 w-4 text-muted-foreground" />}
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setAttachments((a) => a.filter((_, j) => j !== i))}
-                  className="absolute -top-1.5 -left-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-background text-muted-foreground shadow ring-1 ring-border hover:text-destructive"
-                  aria-label="הסר"
-                >
-                  ×
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {/* Attachments preview moved inline next to the Paperclip button above. */}
+
 
       {/* Publish button — sticky at the bottom of the viewport so it's
           always reachable no matter how long the composer scrolls. */}
@@ -1568,30 +1570,70 @@ const InlineComposer = ({
 
 
 
-      {/* Lightbox for image attachments */}
+      {/* Lightbox for image attachments with prev/next navigation */}
       <Dialog open={!!previewImageUrl} onOpenChange={(o) => !o && setPreviewImageUrl(null)}>
         <DialogContent dir="rtl" className="max-w-3xl p-0 overflow-hidden bg-black">
-          <div className="relative">
-            {previewImageUrl && (
-              <img src={previewImageUrl} alt="" className="max-h-[80vh] w-full object-contain bg-black" />
-            )}
-            <div className="absolute bottom-3 right-3">
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                onClick={() => {
-                  setAttachments((a) => a.filter((att) => att.url !== previewImageUrl));
-                  setPreviewImageUrl(null);
-                }}
-              >
-                <Trash2 className="h-4 w-4 ml-1" />
-                מחק מהפוסט
-              </Button>
-            </div>
-          </div>
+          {(() => {
+            const imageUrls = attachments
+              .filter((a) => {
+                const isVideo = !!a.url && (/\.(mp4|mov|m4v|webm|3gp)(\?|$)/i.test(a.url));
+                return a.kind === 'image' && !!a.url && !isVideo;
+              })
+              .map((a) => a.url as string);
+            const idx = previewImageUrl ? imageUrls.indexOf(previewImageUrl) : -1;
+            const hasPrev = idx > 0;
+            const hasNext = idx >= 0 && idx < imageUrls.length - 1;
+            return (
+              <div className="relative">
+                {previewImageUrl && (
+                  <img src={previewImageUrl} alt="" className="max-h-[80vh] w-full object-contain bg-black" />
+                )}
+                {imageUrls.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => hasPrev && setPreviewImageUrl(imageUrls[idx - 1])}
+                      disabled={!hasPrev}
+                      className="absolute top-1/2 right-3 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 disabled:opacity-30"
+                      aria-label="הקודם"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => hasNext && setPreviewImageUrl(imageUrls[idx + 1])}
+                      disabled={!hasNext}
+                      className="absolute top-1/2 left-3 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 disabled:opacity-30"
+                      aria-label="הבא"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <div className="absolute top-3 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1 text-xs text-white tabular-nums" dir="ltr">
+                      {idx + 1} / {imageUrls.length}
+                    </div>
+                  </>
+                )}
+                <div className="absolute bottom-3 right-3">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      const nextUrl = hasNext ? imageUrls[idx + 1] : (hasPrev ? imageUrls[idx - 1] : null);
+                      setAttachments((a) => a.filter((att) => att.url !== previewImageUrl));
+                      setPreviewImageUrl(nextUrl);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 ml-1" />
+                    מחק מהפוסט
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
+
 
 
 
