@@ -42,12 +42,6 @@ export function useAutoFlags() {
 
   async function setAutoFlag(field: keyof AutoFlags, value: boolean) {
     if (!targetUserId) return;
-    const current = queryClient.getQueryData<AutoFlags>(queryKey) ?? autoFlags;
-    const nextFlags: AutoFlags = {
-      auto_reply_positive: current.auto_reply_positive ?? false,
-      auto_reply_negative: current.auto_reply_negative ?? false,
-      [field]: value,
-    };
     queryClient.setQueryData<AutoFlags>(queryKey, (prev) => ({
       auto_reply_positive: prev?.auto_reply_positive ?? false,
       auto_reply_negative: prev?.auto_reply_negative ?? false,
@@ -62,10 +56,11 @@ export function useAutoFlags() {
       queryClient.invalidateQueries({ queryKey });
       return;
     }
-    const shouldEnableAutopilot = nextFlags.auto_reply_positive || nextFlags.auto_reply_negative;
-    await (supabase as any)
-      .from('platform_settings')
-      .upsert({ user_id: targetUserId, enable_ai_autopilot: shouldEnableAutopilot }, { onConflict: 'user_id' });
+    // NOTE: Do NOT touch platform_settings.enable_ai_autopilot here. The
+    // /inbox autopilot switch is a SEPARATE user decision and must persist
+    // independently of the campaign sentiment toggles — flipping positive/
+    // negative previously overwrote the inbox switch and made the app
+    // "forget" the broker's last manual selection.
     toast.success(value ? 'הגדרה הופעלה' : 'הגדרה כובתה');
     queryClient.invalidateQueries({ queryKey });
   }
