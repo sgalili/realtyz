@@ -456,8 +456,16 @@ const OmnichannelInbox = () => {
     const result: Record<string, boolean> = {};
     Object.keys(channelConfig).forEach((key) => {
       const hasHandle = !!handle[key];
-      const isOpen = key === 'whatsapp' || key === 'sms' || inboundChannels.has(key);
-      result[key] = hasHandle && isOpen;
+      // Rule: if we've already received an inbound message from this lead on
+      // that channel, the channel is reachable — enable it regardless of
+      // whether a matching handle was pre-populated in the CRM profile.
+      // Otherwise fall back to the handle-based rule (WhatsApp/SMS work by
+      // phone alone; other channels need a stored identifier).
+      if (inboundChannels.has(key)) {
+        result[key] = true;
+      } else {
+        result[key] = hasHandle && (key === 'whatsapp' || key === 'sms');
+      }
     });
     return result;
   }, [selectedVoter, chatMessages]);
