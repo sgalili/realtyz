@@ -454,11 +454,9 @@ const OmnichannelInbox = () => {
 
 
   // ---- Channel availability ----------------------------------------------
-  // A channel is enabled in the send-channel selector only when BOTH:
-  //   (a) the voter has a usable identifier for it in the CRM profile, AND
-  //   (b) the channel is "open" — either WhatsApp/SMS (broker-initiated by
-  //       phone) or we've already received an inbound message from this
-  //       voter on that channel (proxy for the channel being reachable).
+  // A channel is enabled when the CRM profile has the identifier needed to
+  // start that channel, even if no active chat exists yet. Phone means WA/SMS
+  // are immediately available; inbound messages also mark a channel available.
   const availableChannels = useMemo(() => {
     const v = (selectedVoter ?? {}) as any;
     const phone = !!v?.phone_number;
@@ -481,16 +479,7 @@ const OmnichannelInbox = () => {
     const result: Record<string, boolean> = {};
     Object.keys(channelConfig).forEach((key) => {
       const hasHandle = !!handle[key];
-      // Rule: if we've already received an inbound message from this lead on
-      // that channel, the channel is reachable — enable it regardless of
-      // whether a matching handle was pre-populated in the CRM profile.
-      // Otherwise fall back to the handle-based rule (WhatsApp/SMS work by
-      // phone alone; other channels need a stored identifier).
-      if (inboundChannels.has(key)) {
-        result[key] = true;
-      } else {
-        result[key] = hasHandle && (key === 'whatsapp' || key === 'sms');
-      }
+      result[key] = inboundChannels.has(key) || hasHandle;
     });
     return result;
   }, [selectedVoter, chatMessages]);
