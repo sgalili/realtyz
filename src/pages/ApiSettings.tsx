@@ -407,7 +407,8 @@ const ApiSettings = () => {
       const parts = sms.api_key.split(':');
       if (parts.length >= 2) {
         setSmsUser(parts[0]);
-        setSmsPass(parts.slice(1).join(':'));
+        setSmsPass(parts[1] || '');
+        setSmsSender(parts.slice(2).join(':') || '');
       }
     }
 
