@@ -1246,7 +1246,7 @@ const OmnichannelInbox = () => {
                   },
                 });
                 setInviteSending(false);
-                if (error) toast.error('שליחת ההזמנה נכשלה');
+                if (error) toast.error('שליחת ההזמנה נכשלה', { description: await readFunctionError(error) || error.message });
                 else {
                   toast.success('ההזמנה נשלחה');
                   setInviteChannel(null);
