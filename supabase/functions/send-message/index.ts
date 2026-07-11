@@ -126,7 +126,12 @@ serve(async (req) => {
     if (dbError) {
       console.error("DB insert error:", dbError);
       return new Response(
-        JSON.stringify({ error: "Failed to queue message", details: dbError.message }),
+        JSON.stringify({
+          error: "Failed to queue message",
+          code: (dbError as any).code,
+          details: dbError.message,
+          hint: (dbError as any).hint,
+        }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
