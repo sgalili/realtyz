@@ -570,9 +570,16 @@ const InlineComposer = ({
   const initial = readDraft() || {};
 
   const [body, setBody] = useState<string>(cleanBody(initial.body || ''));
-  // Opt-in WhatsApp CTA: when checked, the branded short link + "דברו איתנו עכשיו:"
-  // line is appended to the outgoing payload in handleConfirm. Default = off.
-  const [attachWaLink, setAttachWaLink] = useState<boolean>(false);
+  // Opt-in WhatsApp CTA (now attached to the FIRST COMMENT, not the main post).
+  const [attachWaLink, setAttachWaLink] = useState<boolean>(!!initial.attachWaLink);
+  const [attachMsngrLink, setAttachMsngrLink] = useState<boolean>(!!initial.attachMsngrLink);
+  // First-comment auto-post: when enabled, the branded first-comment text is
+  // posted as the first comment on the published post via Ayrshare.
+  const [firstCommentEnabled, setFirstCommentEnabled] = useState<boolean>(initial.firstCommentEnabled ?? true);
+  const [firstComment, setFirstComment] = useState<string>(initial.firstComment || '');
+  const [firstCommentGenerating, setFirstCommentGenerating] = useState<boolean>(false);
+  // Image lightbox for the attachments grid.
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   // Tracks the last AI-generated body so manual edits before publish can be
   // shipped to learn-from-edit on success. Reset on send.
   const [originalAiBody, setOriginalAiBody] = useState<string>('');
