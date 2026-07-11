@@ -432,6 +432,26 @@ const OmnichannelInbox = () => {
   }, [isDemoMode, selectedVoterId, dbChatMessages, demoMessages]);
 
   const selectedVoter = voters?.find((v) => v.id === selectedVoterId);
+  // Per-contact autopilot: independent from the global hero switch.
+  // Defaults ON when the column is null/undefined (matches backend behavior).
+  const leadAutopilot = (selectedVoter as any)?.ai_autopilot !== false;
+  const setLeadAutopilot = async (value: boolean) => {
+    if (!selectedVoterId || selectedVoterId.startsWith('phone:') || selectedVoterId.startsWith('demo-')) {
+      toast.error('לא ניתן לעדכן שיחה זו');
+      return;
+    }
+    // Optimistic cache update
+    queryClient.setQueryData<any[]>(['inbox-leads'], (prev) =>
+      prev?.map((l) => (l.id === selectedVoterId ? { ...l, ai_autopilot: value } : l)) ?? prev
+    );
+    const { error } = await supabase.from('leads').update({ ai_autopilot: value } as any).eq('id', selectedVoterId);
+    if (error) {
+      toast.error('שמירת מצב המענה האוטומטי לשיחה נכשלה');
+      queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
+    } else {
+      toast.success(value ? 'טייס אוטומטי הופעל לשיחה זו' : 'טייס אוטומטי כובה לשיחה זו');
+    }
+  };
 
   // Fire-and-forget: fetch WhatsApp profile picture for the selected lead
   // if it's missing. The edge function updates leads.profile_picture_url
