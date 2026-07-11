@@ -252,12 +252,19 @@ serve(async (req) => {
       const dmText = await dmRes.text();
       let dmJson: any = null; try { dmJson = dmText ? JSON.parse(dmText) : null; } catch { /* keep */ }
       if (!dmRes.ok) {
+        const isNoPsid = dmJson?.error === "no_recipient_psid" || dmJson?.code === "no_recipient_psid";
+        // Return 200 with a fallback flag so the client's invoke() doesn't
+        // treat this as a runtime error (which surfaces as a blank-screen crash).
         return new Response(JSON.stringify({
+          success: false,
+          sent: false,
+          fallback: isNoPsid,
           error: dmJson?.error || `dm_send_failed_${dmRes.status}`,
-          code: dmJson?.error === "no_recipient_psid" ? "no_recipient_psid" : (dmJson?.code || null),
+          code: isNoPsid ? "no_recipient_psid" : (dmJson?.code || null),
           details: dmJson?.details || dmJson?.raw || dmText,
-        }), { status: dmRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }), { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
+
       return new Response(JSON.stringify({ success: true, sent: true, provider: dmJson?.provider ?? null }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },

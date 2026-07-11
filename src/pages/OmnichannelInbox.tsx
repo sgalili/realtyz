@@ -591,12 +591,20 @@ const OmnichannelInbox = () => {
         },
       });
       if (error) throw new Error(await readFunctionError(error) || error.message);
+      // Edge function may return 200 with { success:false, code:'no_recipient_psid' }
+      // when a Messenger/IG/LinkedIn DM can't be delivered — surface as an error so
+      // the onError handler pivots to a WA/SMS invite instead of showing "sent".
+      if (data && (data as any).success === false) {
+        const code = (data as any).code || (data as any).error || 'send_failed';
+        throw new Error(String(code));
+      }
       // Active-learning capture: when the broker edited an AI-seeded draft.
       learnFromEdit({
         context: `inbox_reply:${sendChannel}`,
         pairs: [{ label: 'inbox_message', original, edited: safeContent }],
       });
       return data;
+
     },
     onSuccess: async (data) => {
       setNewMessage('');
