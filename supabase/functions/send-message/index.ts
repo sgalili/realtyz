@@ -89,8 +89,23 @@ async function buildInviteLink(
   const p: any = prof || {};
   const pageId = p.facebook_page_id || p.facebook_page_name;
   const connected: any = p.connected_platforms || {};
-  const igUser = connected?.instagram?.username || connected?.instagram?.handle;
-  const tgBot = connected?.telegram?.bot_username;
+  const getConnected = (name: string) => {
+    if (connected && !Array.isArray(connected) && typeof connected === "object") return connected[name] || null;
+    if (Array.isArray(connected)) {
+      return connected.find((item: any) => {
+        if (typeof item === "string") return item.toLowerCase() === name;
+        return String(item?.platform || item?.name || "").toLowerCase() === name;
+      }) || null;
+    }
+    return null;
+  };
+  const ig = getConnected("instagram") || {};
+  const tg = getConnected("telegram") || {};
+  const li = getConnected("linkedin") || {};
+  const igUser = ig?.username || ig?.handle;
+  const tgBot = tg?.bot_username || tg?.username || tg?.handle;
+  const liUrl = li?.url || li?.profile_url || li?.profileUrl || li?.company_url || li?.companyUrl;
+  const liUser = li?.username || li?.handle || li?.vanity_name || li?.vanityName;
   switch (channel) {
     case "messenger":
     case "facebook":
@@ -99,6 +114,8 @@ async function buildInviteLink(
       return igUser ? `https://ig.me/m/${igUser}` : null;
     case "telegram":
       return tgBot ? `https://t.me/${tgBot}` : null;
+    case "linkedin":
+      return liUrl ? String(liUrl) : (liUser ? `https://www.linkedin.com/in/${liUser}` : null);
     default:
       return null;
   }
@@ -148,6 +165,12 @@ serve(async (req) => {
     let finalContent = content;
     if (invite_channel && content.includes("{LINK}")) {
       const url = await buildInviteLink(admin, invite_channel);
+      if (!url) {
+        return new Response(JSON.stringify({ error: "invite_link_unavailable", details: "No invite link is configured for this channel" }), {
+          status: 422,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       finalContent = content.replace(/\{LINK\}/g, url || "");
     }
 

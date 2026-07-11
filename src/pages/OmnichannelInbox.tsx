@@ -609,8 +609,8 @@ const OmnichannelInbox = () => {
       // for this lead (they never messaged our Page), pivot to an invite
       // via WhatsApp/SMS with an m.me/ig.me deep-link.
       const msg = error.message || '';
-      if (/no_recipient_psid|PSID|messaged your Page/i.test(msg) &&
-          (sendChannel === 'messenger' || sendChannel === 'instagram' || sendChannel === 'facebook')) {
+      if (/no_recipient_psid|PSID|messaged your Page|messaged you first|recipient/i.test(msg) &&
+          (sendChannel === 'messenger' || sendChannel === 'instagram' || sendChannel === 'facebook' || sendChannel === 'linkedin')) {
         setInviteVia(selectedVoter?.phone_number ? 'whatsapp' : 'sms');
         setInviteChannel(sendChannel);
         toast.info('הליד עדיין לא פנה לעמוד — נשלחת הזמנה בערוץ אחר');
