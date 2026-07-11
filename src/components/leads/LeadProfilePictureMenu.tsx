@@ -42,7 +42,7 @@ const brandPill = (name: keyof typeof BRAND) => (
     className="ms-2 inline-flex h-8 w-8 items-center justify-center rounded-full text-white shrink-0 shadow-sm"
     style={{ backgroundColor: BRAND[name].bg }}
   >
-    <BrandIcon name={name === 'x' ? 'x' : name} className="h-4.5 w-4.5 max-h-5 max-w-5" />
+    <BrandIcon name={name === 'x' ? 'x' : name} className="h-5 w-5 max-h-5 max-w-5" />
   </span>
 );
 
