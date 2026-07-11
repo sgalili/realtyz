@@ -575,7 +575,6 @@ const OmnichannelInbox = () => {
       const attachmentText = file ? `\n\n📎 ${file.name} (${Math.round(file.size / 1024)}KB)` : '';
       const { data, error } = await supabase.functions.invoke('send-message', {
         body: {
-          lead_id: selectedVoterId,
           lead_id: selectedVoterId?.startsWith('phone:') ? undefined : selectedVoterId,
           content: `${safeContent}${attachmentText}`.trim(),
           channel: sendChannel,
