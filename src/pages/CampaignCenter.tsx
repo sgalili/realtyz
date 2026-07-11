@@ -1283,23 +1283,28 @@ const InlineComposer = ({
                 <button key={l.id} type="button"
                   onClick={() => {
                     setSelectedListingId(l.id);
+                    // Clear both composer areas so nothing bleeds from the
+                    // previous property into the new one.
                     setBody('');
-                    // Auto-attach all photos of this property from our DB
+                    setFirstComment('');
+                    setBodyManuallyEdited(false);
+                    setOriginalAiBody('');
+                    waInjectedRef.current = '';
+                    msngrInjectedRef.current = '';
+                    setAttachWaLink(false);
+                    setAttachMsngrLink(false);
+                    // Replace attachments with ONLY the selected property's
+                    // photos — the previous property's images are dropped.
                     const photoUrls = extractListingPhotoUrls(l);
                     if (photoUrls.length > 0) {
-                      setAttachments((prev) => {
-                        const existing = new Set(prev.map((a) => a.url).filter(Boolean));
-                        const additions = photoUrls
-                          .filter((u) => !existing.has(u))
-                          .map((u, i) => ({
-                            name: `${l.property_title || l.address || 'property'}-${i + 1}.jpg`,
-                            kind: 'image' as const,
-                            url: u,
-                          }));
-                        return [...prev, ...additions];
-                      });
-                      toast.success(`צורפו ${photoUrls.length} תמונות של הנכס`);
+                      setAttachments(photoUrls.map((u, i) => ({
+                        name: `${l.property_title || l.address || 'property'}-${i + 1}.jpg`,
+                        kind: 'image' as const,
+                        url: u,
+                      })));
+                      toast.success(`נטענו ${photoUrls.length} תמונות של הנכס`);
                     } else {
+                      setAttachments([]);
                       toast.info('לא נמצאו תמונות במאגר לנכס זה');
                     }
                     setListingPickerOpen(false);
