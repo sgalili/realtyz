@@ -1898,21 +1898,35 @@ const LeadCRM = () => {
               <>
                 <SheetHeader>
                   <SheetTitle className="flex items-center gap-3">
-                    <LeadProfilePictureMenu
-                      leadId={selectedVoter.id}
-                      fullName={selectedVoter.full_name}
-                      profilePictureUrl={(selectedVoter as any).profile_picture_url}
-                      phone={selectedVoter.phone_number}
-                      handles={{
-                        instagram: (selectedVoter as any).instagram_handle,
-                        facebook: (selectedVoter as any).facebook_handle,
-                        messenger: (selectedVoter as any).messenger_id,
-                        x: (selectedVoter as any).x_username || (selectedVoter as any).twitter_username,
-                        tiktok: (selectedVoter as any).tiktok_handle || (selectedVoter as any).tiktok_username,
-                        youtube: (selectedVoter as any).youtube_handle,
-                      }}
-                      onUpdated={() => queryClient.invalidateQueries({ queryKey: ['leads-infinite'] })}
-                    />
+                    {(() => {
+                      // Merge column-level social identifiers with the enrichment
+                      // profile so the pic-fetch menu offers every channel we know
+                      // about — including handles added via the enrichment dialog
+                      // (which writes into preferences.socials + prefs.facebook_url
+                      // /linkedin_url/x_handle/tiktok_handle/youtube_url).
+                      const prefs = ((selectedVoter as any).preferences ?? {}) as any;
+                      const socialArr: any[] = Array.isArray(prefs.socials) ? prefs.socials : [];
+                      const fromArr = (platform: string) =>
+                        socialArr.find((s) => (s?.platform || '').toLowerCase() === platform)?.handle || null;
+                      return (
+                        <LeadProfilePictureMenu
+                          leadId={selectedVoter.id}
+                          fullName={selectedVoter.full_name}
+                          profilePictureUrl={(selectedVoter as any).profile_picture_url}
+                          phone={selectedVoter.phone_number}
+                          handles={{
+                            instagram: (selectedVoter as any).instagram_handle || fromArr('instagram'),
+                            facebook:  (selectedVoter as any).facebook_handle  || prefs.facebook_url || fromArr('facebook'),
+                            messenger: (selectedVoter as any).messenger_id,
+                            x:         (selectedVoter as any).x_username || (selectedVoter as any).twitter_username || prefs.x_handle || fromArr('x'),
+                            tiktok:    (selectedVoter as any).tiktok_handle || (selectedVoter as any).tiktok_username || prefs.tiktok_handle || fromArr('tiktok'),
+                            youtube:   (selectedVoter as any).youtube_handle || prefs.youtube_url || fromArr('youtube'),
+                            linkedin:  prefs.linkedin_url || fromArr('linkedin'),
+                          }}
+                          onUpdated={() => queryClient.invalidateQueries({ queryKey: ['leads-infinite'] })}
+                        />
+                      );
+                    })()}
                     <div className="flex-1 min-w-0">
                       <EditableInlineText
                         value={selectedVoter.full_name || ''}
