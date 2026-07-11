@@ -363,11 +363,18 @@ Deno.serve(async (req) => {
       return data?.publicUrl ?? null;
     };
 
-    const resolvedMedia = (
+    let resolvedMedia = (
       await Promise.all(rawMediaInput.map((m) => resolvePublicUrl(m)))
     ).filter((u): u is string =>
       typeof u === "string" && /^https?:\/\//i.test(u)
     );
+    // De-duplicate — Facebook rejects the whole post if the same URL appears
+    // twice in mediaUrls ("incorrect media assets"). Order is preserved.
+    resolvedMedia = Array.from(new Set(resolvedMedia));
+    // Facebook hard-caps a single post at 10 media items. An 11th image makes
+    // the entire post fail with "Facebook has incorrect media assets". Cap
+    // conservatively at 10 for every platform (IG max is 10 too).
+    if (resolvedMedia.length > 10) resolvedMedia = resolvedMedia.slice(0, 10);
 
     // Emergency guard: if the caller intended to attach media but every entry
     // failed to resolve to a public URL, refuse to publish a broken text-only
