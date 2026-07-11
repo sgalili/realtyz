@@ -2046,18 +2046,20 @@ const ConfirmDispatchDialog = ({
                 ))}
               </div>
             )}
-            <div className="flex items-center justify-end gap-3 px-1">
-              <div className="text-right">
-                <div className="text-sm font-bold text-foreground">{selectedPage?.name || brandName}</div>
-                {(selectedPage?.username || brandName) && (
-                  <div className="text-xs text-muted-foreground" dir="ltr">@{selectedPage?.username || brandName.replace(/\s+/g, '')}</div>
-                )}
+            {publishTargets.length === 0 && (
+              <div className="flex items-center justify-end gap-3 px-1">
+                <div className="text-right">
+                  <div className="text-sm font-bold text-foreground">{selectedPage?.name || brandName}</div>
+                  {(selectedPage?.username || brandName) && (
+                    <div className="text-xs text-muted-foreground" dir="ltr">@{selectedPage?.username || brandName.replace(/\s+/g, '')}</div>
+                  )}
+                </div>
+                <Avatar className="h-9 w-9">
+                  {selectedPage?.avatar ? <AvatarImage src={selectedPage.avatar} alt={selectedPage.name} /> : null}
+                  <AvatarFallback className="bg-muted text-xs font-semibold">{initials}</AvatarFallback>
+                </Avatar>
               </div>
-              <Avatar className="h-9 w-9">
-                {selectedPage?.avatar ? <AvatarImage src={selectedPage.avatar} alt={selectedPage.name} /> : null}
-                <AvatarFallback className="bg-muted text-xs font-semibold">{initials}</AvatarFallback>
-              </Avatar>
-            </div>
+            )}
           </div>
         </div>
 
