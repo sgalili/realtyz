@@ -495,6 +495,17 @@ const OmnichannelInbox = () => {
     return result;
   }, [selectedVoter, chatMessages]);
 
+  useEffect(() => {
+    const requestedChannel = searchParams.get('channel');
+    if (!selectedVoterId || !requestedChannel || !channelConfig[requestedChannel]) return;
+    if (availableChannels[requestedChannel]) {
+      setSendChannel(requestedChannel);
+      return;
+    }
+    setInviteVia(selectedVoter?.phone_number ? 'whatsapp' : 'sms');
+    setInviteChannel(requestedChannel);
+  }, [searchParams, selectedVoterId, selectedVoter?.phone_number, availableChannels]);
+
 
   // The latest outbound AI/agent message in the current thread is the only one
   // eligible for "Undo & Regenerate". This keeps the affordance focused on the
@@ -655,8 +666,13 @@ const OmnichannelInbox = () => {
         {([
           { key: 'all', label: 'הכל' },
           { key: 'whatsapp', label: 'WhatsApp' },
-          { key: 'telegram', label: 'Telegram' },
           { key: 'messenger', label: 'Messenger' },
+          { key: 'facebook', label: 'Facebook' },
+          { key: 'instagram', label: 'Instagram' },
+          { key: 'linkedin', label: 'LinkedIn' },
+          { key: 'x', label: 'X' },
+          { key: 'tiktok', label: 'TikTok' },
+          { key: 'telegram', label: 'Telegram' },
           { key: 'sms', label: 'SMS' },
           { key: 'email', label: 'Email' },
         ] as const).map((c) => {
