@@ -1459,61 +1459,6 @@ const InlineComposer = ({
         </div>
       )}
 
-      {/* First-comment composer — always visible below the main textarea.
-          When enabled (checkbox on), Ayrshare posts this text as the first
-          comment on the published post. WA / Messenger link options live
-          here and no longer touch the main post body. */}
-      <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2" dir="rtl">
-        <div className="flex items-center justify-between gap-2">
-          <label className="flex items-center gap-2 text-sm font-semibold text-foreground select-none cursor-pointer">
-            <Checkbox
-              checked={firstCommentEnabled}
-              onCheckedChange={(v) => setFirstCommentEnabled(v === true)}
-              aria-label="פרסם תגובה ראשונה"
-            />
-            <span>פרסם תגובה ראשונה אוטומטית</span>
-          </label>
-          <button
-            type="button"
-            onClick={() => handleGenerateFirstComment(body)}
-            disabled={firstCommentGenerating || !firstCommentEnabled}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground disabled:opacity-50"
-            aria-label="חולל תגובה ראשונה מחדש"
-            title="חולל תגובה ראשונה מחדש"
-          >
-            <RefreshCw className={cn('h-4 w-4', firstCommentGenerating && 'animate-spin')} />
-          </button>
-        </div>
-        <Textarea
-          rows={5}
-          value={firstComment}
-          onChange={(e) => setFirstComment(e.target.value)}
-          placeholder="התגובה הראשונה תיווצר אוטומטית עם חילול הפוסט…"
-          disabled={!firstCommentEnabled}
-          className="resize-y text-right placeholder:text-muted-foreground/60"
-        />
-        {firstCommentEnabled && (
-          <div className="flex flex-wrap items-center gap-4 pt-1">
-            <label className="flex items-center gap-2 text-xs text-foreground select-none cursor-pointer">
-              <Checkbox
-                checked={attachWaLink}
-                onCheckedChange={(v) => setAttachWaLink(v === true)}
-                aria-label="הוסף קישור לוואטסאפ"
-              />
-              <span>הוסף קישור לוואטסאפ</span>
-            </label>
-            <label className="flex items-center gap-2 text-xs text-foreground select-none cursor-pointer">
-              <Checkbox
-                checked={attachMsngrLink}
-                onCheckedChange={(v) => setAttachMsngrLink(v === true)}
-                aria-label="הוסף קישור למסנג'ר"
-              />
-              <span>הוסף קישור למסנג'ר</span>
-            </label>
-          </div>
-        )}
-      </div>
-
       {/* Lightbox for image attachments */}
       <Dialog open={!!previewImageUrl} onOpenChange={(o) => !o && setPreviewImageUrl(null)}>
         <DialogContent dir="rtl" className="max-w-3xl p-0 overflow-hidden bg-black">
