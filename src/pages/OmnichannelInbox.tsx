@@ -117,9 +117,22 @@ const ChannelIcon = ({ channel, size = 'sm' }: { channel: string | null; size?: 
 };
 
 
-const CheckMarks = ({ isOutbound }: { isOutbound: boolean }) => (
-  <span className={isOutbound ? 'text-primary' : 'text-muted-foreground'} aria-hidden="true">✓✓</span>
-);
+// WhatsApp-style delivery ticks (SVG). Status: 'sent' = single gray, 'delivered' = double gray, 'read' = double blue.
+const WhatsAppTicks = ({ status = 'delivered' }: { status?: 'sent' | 'delivered' | 'read' }) => {
+  const color = status === 'read' ? '#53BDEB' : '#8696A0';
+  if (status === 'sent') {
+    return (
+      <svg viewBox="0 0 16 15" width="16" height="15" aria-hidden="true" className="shrink-0">
+        <path fill={color} d="M10.91 3.316l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z" />
+      </svg>
+    );
+  }
+  return (
+    <svg viewBox="0 0 16 15" width="16" height="15" aria-hidden="true" className="shrink-0">
+      <path fill={color} d="M15.01 3.316l-.478-.372a.365.365 0 0 0-.51.063L8.666 9.879a.32.32 0 0 1-.484.033l-.358-.325a.319.319 0 0 0-.484.032l-.378.483a.418.418 0 0 0 .036.541l1.32 1.266c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.064-.51zm-4.1 0l-.478-.372a.365.365 0 0 0-.51.063L4.566 9.879a.32.32 0 0 1-.484.033L1.891 7.769a.366.366 0 0 0-.515.006l-.423.433a.364.364 0 0 0 .006.514l3.258 3.185c.143.14.361.125.484-.033l6.272-8.048a.365.365 0 0 0-.063-.51z" />
+    </svg>
+  );
+};
 
 const OmnichannelInbox = () => {
   const [searchParams] = useSearchParams();
@@ -755,50 +768,55 @@ const OmnichannelInbox = () => {
 
       {/* Channel filter — icons only, no pill background */}
       <div className="flex items-center gap-2 overflow-x-auto">
-        {([
-          { key: 'all', label: 'הכל' },
-          { key: 'whatsapp', label: 'WhatsApp' },
-          { key: 'messenger', label: 'Messenger' },
-          { key: 'facebook', label: 'Facebook' },
-          { key: 'instagram', label: 'Instagram' },
-          { key: 'linkedin', label: 'LinkedIn' },
-          { key: 'x', label: 'X' },
-          { key: 'tiktok', label: 'TikTok' },
-          { key: 'telegram', label: 'Telegram' },
-          { key: 'sms', label: 'SMS' },
-          { key: 'email', label: 'Email' },
-        ] as const).map((c) => {
-          const active = channelFilter === c.key;
-          const isAvail = c.key === 'all' ? true : !!availableChannels[c.key];
-          const handleClick = () => {
-            setChannelFilter(c.key);
-            if (c.key === 'all') return;
-            // Only switch the composer channel when there's a selected lead.
-            if (!selectedVoterId) return;
-            if (isAvail) {
-              setSendChannel(c.key);
-            } else {
-              // Channel not open yet — offer to send an invite via SMS/WA.
-              setInviteVia(selectedVoter?.phone_number ? 'whatsapp' : 'sms');
-              setInviteChannel(c.key);
-            }
-          };
-          return (
-            <button
-              key={c.key}
-              type="button"
-              onClick={handleClick}
-              aria-label={c.label}
-              title={c.label}
-              aria-pressed={active}
-              className={`h-9 shrink-0 inline-flex items-center justify-center transition-opacity ${c.key === 'all' ? 'px-2' : 'w-9'} ${active ? 'opacity-100' : 'opacity-50 hover:opacity-100'} ${selectedVoterId && !isAvail && c.key !== 'all' ? 'ring-1 ring-dashed ring-muted-foreground/30 rounded-full' : ''}`}
-            >
-              {c.key === 'all'
-                ? <span className={`text-sm font-semibold ${active ? 'text-primary' : 'text-foreground'}`}>הכל</span>
-                : <ChannelIcon channel={c.key} size="md" />}
-            </button>
-          );
-        })}
+        {(() => {
+          const channelsInList = new Set<string>();
+          (lastMessages instanceof Map ? Array.from(lastMessages.values()) : []).forEach((m: any) => {
+            if (m?.channel) channelsInList.add(String(m.channel));
+          });
+          return ([
+            { key: 'whatsapp', label: 'WhatsApp' },
+            { key: 'sms', label: 'SMS' },
+            { key: 'telegram', label: 'Telegram' },
+            { key: 'messenger', label: 'Messenger' },
+            { key: 'instagram', label: 'Instagram' },
+            { key: 'email', label: 'Email' },
+            { key: 'facebook', label: 'Facebook' },
+            { key: 'linkedin', label: 'LinkedIn' },
+            { key: 'x', label: 'X' },
+            { key: 'tiktok', label: 'TikTok' },
+            { key: 'all', label: 'הכל' },
+          ] as const).map((c) => {
+            const active = channelFilter === c.key;
+            const hasChats = c.key === 'all' ? true : channelsInList.has(c.key);
+            const isAvail = c.key === 'all' ? true : !!availableChannels[c.key];
+            const handleClick = () => {
+              setChannelFilter(c.key);
+              if (c.key === 'all') return;
+              if (!selectedVoterId) return;
+              if (isAvail) {
+                setSendChannel(c.key);
+              } else {
+                setInviteVia(selectedVoter?.phone_number ? 'whatsapp' : 'sms');
+                setInviteChannel(c.key);
+              }
+            };
+            return (
+              <button
+                key={c.key}
+                type="button"
+                onClick={handleClick}
+                aria-label={c.label}
+                title={c.label}
+                aria-pressed={active}
+                className={`h-9 shrink-0 inline-flex items-center justify-center transition-opacity ${c.key === 'all' ? 'px-2' : 'w-9'} ${active ? 'opacity-100' : hasChats ? 'opacity-90 hover:opacity-100' : 'opacity-40 grayscale hover:opacity-80'}`}
+              >
+                {c.key === 'all'
+                  ? <span className={`text-sm font-semibold ${active ? 'text-primary' : 'text-foreground'}`}>הכל</span>
+                  : <ChannelIcon channel={c.key} size="md" />}
+              </button>
+            );
+          });
+        })()}
         <div className="ms-auto" />
         <button
           type="button"
@@ -1060,7 +1078,7 @@ const OmnichannelInbox = () => {
                             <p className="max-w-full overflow-hidden whitespace-pre-wrap break-all text-sm leading-relaxed">{msg.content}</p>
                             <p className="mt-1 flex items-center justify-end gap-1 text-[10px] text-muted-foreground">
                               <span>{msg.created_at ? format(new Date(msg.created_at), 'HH:mm') : ''}</span>
-                              <CheckMarks isOutbound={isOutbound} />
+                              {isOutbound && <WhatsAppTicks status={((msg as any)?.metadata?.status as 'sent' | 'delivered' | 'read') || 'delivered'} />}
                             </p>
                           </div>
                         </div>
