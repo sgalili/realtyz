@@ -107,7 +107,7 @@ serve(async (req) => {
     // Direct DM channels (Messenger / Instagram / raw Facebook DM) bypass the
     // approval queue: they send immediately via Ayrshare Messages API and the
     // outbound row is inserted by ayrshare-send-dm.
-    if (channel === "messenger" || channel === "instagram" || channel === "facebook") {
+    if (channel === "messenger" || channel === "instagram" || channel === "facebook" || channel === "linkedin") {
       const dmRes = await fetch(`${supabaseUrl}/functions/v1/ayrshare-send-dm`, {
         method: "POST",
         headers: {
