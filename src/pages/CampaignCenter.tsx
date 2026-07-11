@@ -1515,47 +1515,8 @@ const InlineComposer = ({
       <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" multiple className="hidden"
         onChange={(e) => { handleFiles(e.target.files, 'file'); e.target.value = ''; }} />
 
-      {/* Attachments preview — square thumbnails only (no file names) that wrap
-          to fit mobile widths. Clicking an image opens the lightbox with a
-          "delete from post" action. */}
-      {attachments.length > 0 && (
-        <div className="flex flex-wrap gap-2" dir="rtl">
-          {attachments.map((att, i) => {
-            const isVideo = !!att.url && (/\.(mp4|mov|m4v|webm|3gp)(\?|$)/i.test(att.url) || /^video\//i.test((att as any).mimeType || ''));
-            const isImage = att.kind === 'image' && !!att.url && !isVideo;
-            return (
-              <div key={i} className="relative">
-                {isImage ? (
-                  <button
-                    type="button"
-                    onClick={() => setPreviewImageUrl(att.url!)}
-                    className="block h-16 w-16 overflow-hidden rounded-md border border-border bg-muted focus:outline-none focus:ring-2 focus:ring-primary"
-                    aria-label="פתח תמונה"
-                  >
-                    <img src={att.url} alt="" className="h-full w-full object-cover" />
-                  </button>
-                ) : isVideo ? (
-                  <video src={att.url} className="h-16 w-16 rounded-md object-cover bg-black" muted playsInline />
-                ) : (
-                  <div className="flex h-16 w-16 items-center justify-center rounded-md border border-border bg-muted">
-                    {att.kind === 'audio'
-                      ? <Mic className="h-4 w-4 text-primary" />
-                      : <Paperclip className="h-4 w-4 text-muted-foreground" />}
-                  </div>
-                )}
-                <button
-                  type="button"
-                  onClick={() => setAttachments((a) => a.filter((_, j) => j !== i))}
-                  className="absolute -top-1.5 -left-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-background text-muted-foreground shadow ring-1 ring-border hover:text-destructive"
-                  aria-label="הסר"
-                >
-                  ×
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      )}
+      {/* Attachments preview moved inline next to the Paperclip button above. */}
+
 
       {/* Publish button — sticky at the bottom of the viewport so it's
           always reachable no matter how long the composer scrolls. */}
