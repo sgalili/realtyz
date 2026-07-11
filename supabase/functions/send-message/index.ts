@@ -110,7 +110,7 @@ serve(async (req) => {
         user_id: userData.user.id,
         content_type: "outbound_message",
         platform: channel,
-        target_voter_id: lead_id,
+        target_lead_id: lead_id,
         target_label: voter?.full_name || phone_number || voter?.phone_number || null,
         title: `הודעה ממתינה לאישור - ${voter?.full_name || channel}`,
         proposed_content: finalContent,
