@@ -614,9 +614,6 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
       console.warn("[CampaignCommentsStream] manual refresh failed", e);
       onRefreshComplete?.(campaign.id, { ok: false, count: treeCount(rowsRef.current), error: e?.message || 'רענון נכשל' });
     } finally {
-      // Debounce window starts when the request COMPLETES (success or fail),
-      // not when the user clicked — prevents rapid retries during slow calls.
-      lastManualRefreshAtRef.current = Date.now();
       setManualRefreshing(false);
     }
   };
