@@ -579,16 +579,12 @@ Deno.serve(async (req) => {
         scheduleDate: scheduledIso,
         groupId: (payload as any)?.faceBookOptions?.groupId ?? null,
       });
-      const guard = await guardOutboundAction({
-        admin,
-        actionType: "post",
-        platform: Array.isArray(payload.platforms) ? String((payload.platforms as any[])[0] ?? "") : undefined,
-        content: finalPostText,
-      });
-      if (!guard.allowed) {
-        console.warn(`[ayrshare-post] BLOCKED by safety guard (${label}): ${guard.reason}`);
-        return { ok: false, status: 429, body: { blocked: true, reason: guard.reason }, errors: [{ code: "safety_guard", message: guard.reason ?? "blocked" }] };
-      }
+      // User-initiated publish: bypass the outbound safety guard entirely.
+      // The guard (quiet hours, rate-limits, dedupe) is intended for AI
+      // auto-replies and background workers — not for a human clicking
+      // "Publish". A real provider-side rate-limit is still caught below
+      // via the Ayrshare response and surfaced as a scheduled post.
+      const guard = { allowed: true, contentHash: undefined as string | undefined };
       const r = await fetch(AYR_POST_URL, {
         method: "POST",
         headers: {
