@@ -1089,17 +1089,28 @@ const OmnichannelInbox = () => {
                           })()}
                         </SelectTrigger>
                         <SelectContent align="end" className="min-w-[12rem]">
-                          {Object.entries(channelConfig).map(([key, cfg]) => {
-                            const disabled = !availableChannels[key];
-                            return (
-                              <SelectItem key={key} value={key} disabled={disabled} title={cfg.label}>
-                                <div className={`flex items-center gap-2 ${disabled ? 'opacity-40' : ''}`}>
-                                  <ChannelIcon channel={key} />
-                                  <span className="text-xs">{cfg.label}</span>
+                          {(() => {
+                            const entries = Object.entries(channelConfig);
+                            const available = entries.filter(([k]) => availableChannels[k]);
+                            const rest = entries.filter(([k]) => !availableChannels[k]);
+                            const ordered = [...available, ...rest];
+                            return ordered.map(([key, cfg], idx) => {
+                              const disabled = !availableChannels[key];
+                              const showDivider = idx === available.length && available.length > 0 && rest.length > 0;
+                              return (
+                                <div key={key}>
+                                  {showDivider && <div className="my-1 border-t border-border/60" />}
+                                  <SelectItem value={key} disabled={disabled} title={cfg.label}>
+                                    <div className={`flex items-center gap-2 ${disabled ? 'opacity-40' : ''}`}>
+                                      <ChannelIcon channel={key} />
+                                      <span className="text-xs">{cfg.label}</span>
+                                      {!disabled && <span className="ms-auto h-1.5 w-1.5 rounded-full bg-emerald-500" />}
+                                    </div>
+                                  </SelectItem>
                                 </div>
-                              </SelectItem>
-                            );
-                          })}
+                              );
+                            });
+                          })()}
                         </SelectContent>
                       </Select>
                       <Input
