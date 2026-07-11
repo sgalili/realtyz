@@ -1296,22 +1296,48 @@ const InlineComposer = ({
 
             <button
               type="button"
-              onClick={() => canSend && onConfirm({
-                body,
-                original_ai_body: originalAiBody,
-                listing_id: selectedListingId || null,
-                mode,
-                media_urls: attachments
-                  .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
-                  .map((a) => a.url as string),
-                scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
-                group_ids: channel.id === 'facebook' ? groupIds : [],
-                selected_profile_ids: channel.id === 'facebook' ? selectedProfileIds : [],
-                attach_wa_link: attachWaLink,
-                first_comment: firstCommentEnabled ? firstComment : '',
-                first_comment_enabled: firstCommentEnabled,
-                attach_msngr_link: attachMsngrLink,
-              })}
+              onClick={async () => {
+                if (!canSend) return;
+                let composedFirstComment = firstCommentEnabled ? firstComment : '';
+                if (firstCommentEnabled && (attachWaLink || attachMsngrLink)) {
+                  const extras: string[] = [];
+                  if (attachWaLink) {
+                    let waUrl = 'https://wa.me/972522973500';
+                    try {
+                      if (selectedListingId) {
+                        const { data: slugRes } = await supabase.functions.invoke('shortlink-create', {
+                          body: { property_id: selectedListingId },
+                        });
+                        const slug = (slugRes as any)?.slug;
+                        if (slug) waUrl = `https://realtyz.co.il/r/${slug}`;
+                      }
+                    } catch { /* fall back to wa.me */ }
+                    extras.push(`דברו איתי בוואטסאפ: ${waUrl}`);
+                  }
+                  if (attachMsngrLink) {
+                    const pageRef = socialProfiles.find((p) => p.platform === 'facebook')?.accountRef;
+                    const msngrUrl = pageRef ? `https://m.me/${pageRef}` : 'https://m.me/';
+                    extras.push(`דברו איתי במסנג'ר: ${msngrUrl}`);
+                  }
+                  composedFirstComment = [composedFirstComment.trim(), ...extras].filter(Boolean).join('\n\n');
+                }
+                onConfirm({
+                  body,
+                  original_ai_body: originalAiBody,
+                  listing_id: selectedListingId || null,
+                  mode,
+                  media_urls: attachments
+                    .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
+                    .map((a) => a.url as string),
+                  scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
+                  group_ids: channel.id === 'facebook' ? groupIds : [],
+                  selected_profile_ids: channel.id === 'facebook' ? selectedProfileIds : [],
+                  attach_wa_link: attachWaLink,
+                  first_comment: composedFirstComment,
+                  first_comment_enabled: firstCommentEnabled,
+                  attach_msngr_link: attachMsngrLink,
+                });
+              }}
               disabled={!canSend}
               className={cn(
                 'flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition',
