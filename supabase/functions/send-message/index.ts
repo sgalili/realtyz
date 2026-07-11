@@ -12,6 +12,7 @@ const WebhookPayload = z.object({
   channel: z.string().default("whatsapp"),
   phone_number: z.string().optional(),
   attachment: z.unknown().optional(),
+  invite_channel: z.string().optional(),
   drip: z.object({
     enabled: z.boolean().default(false),
     daily_limit: z.number().int().min(1).max(1000).default(50),
@@ -21,6 +22,42 @@ const WebhookPayload = z.object({
     stagger_max_minutes: z.number().int().min(1).max(240).default(23),
   }).optional(),
 });
+
+async function buildInviteLink(
+  supabase: ReturnType<typeof createClient>,
+  channel: string,
+  userId: string,
+): Promise<string | null> {
+  // Look up the workspace's shared social profile to derive m.me / ig.me links.
+  const { data: mem } = await supabase
+    .from("workspace_memberships")
+    .select("workspace_id")
+    .eq("user_id", userId)
+    .maybeSingle();
+  const workspaceId = (mem as any)?.workspace_id;
+  if (!workspaceId) return null;
+  const { data: prof } = await supabase
+    .from("workspace_social_profile")
+    .select("facebook_page_id, facebook_page_name, connected_platforms")
+    .eq("workspace_id", workspaceId)
+    .maybeSingle();
+  const p: any = prof || {};
+  const pageId = p.facebook_page_id || p.facebook_page_name;
+  const connected: any = p.connected_platforms || {};
+  const igUser = connected?.instagram?.username || connected?.instagram?.handle;
+  const tgBot = connected?.telegram?.bot_username;
+  switch (channel) {
+    case "messenger":
+    case "facebook":
+      return pageId ? `https://m.me/${pageId}` : null;
+    case "instagram":
+      return igUser ? `https://ig.me/m/${igUser}` : null;
+    case "telegram":
+      return tgBot ? `https://t.me/${tgBot}` : null;
+    default:
+      return null;
+  }
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -36,7 +73,7 @@ serve(async (req) => {
       );
     }
 
-    const { lead_id, content, channel, phone_number, attachment, drip } = parsed.data;
+    const { lead_id, content, channel, phone_number, attachment, drip, invite_channel } = parsed.data;
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -59,6 +96,14 @@ serve(async (req) => {
       .eq("id", lead_id)
       .single();
 
+    // If this is an invite send, resolve the destination channel deep-link and
+    // template {LINK} into the content.
+    let finalContent = content;
+    if (invite_channel && content.includes("{LINK}")) {
+      const url = await buildInviteLink(supabase, invite_channel, userData.user.id);
+      finalContent = content.replace(/\{LINK\}/g, url || "");
+    }
+
     const { data: approval, error: dbError } = await supabase
       .from("approval_queue")
       .insert({
@@ -68,11 +113,11 @@ serve(async (req) => {
         target_voter_id: lead_id,
         target_label: voter?.full_name || phone_number || voter?.phone_number || null,
         title: `הודעה ממתינה לאישור - ${voter?.full_name || channel}`,
-        proposed_content: content,
+        proposed_content: finalContent,
         confidence_score: 100,
         requires_human_review: true,
         source_citations: [],
-        metadata: { phone_number: phone_number || voter?.phone_number, attachment, drip_feed: drip || { enabled: false } },
+        metadata: { phone_number: phone_number || voter?.phone_number, attachment, drip_feed: drip || { enabled: false }, invite_channel: invite_channel || null },
         created_by_ai: false,
       })
       .select()
