@@ -2333,7 +2333,6 @@ const CAMPAIGN_CACHE_MS = 5 * 60_000;
 
 const PublishedFeed = () => {
   const { settings } = useWhiteLabel();
-  const ownerName = settings?.agency_name || 'אודי ויטמן';
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const queryClient = useQueryClient();
   const [rows, setRows] = useState<CampaignRow[] | null>(() => {
