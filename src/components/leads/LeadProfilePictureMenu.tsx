@@ -85,7 +85,7 @@ export default function LeadProfilePictureMenu({ leadId, fullName, profilePictur
             </span>
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-56 text-right" dir="rtl">
+        <DropdownMenuContent align="start" className="w-56 text-right">
           <DropdownMenuLabel>תמונת פרופיל</DropdownMenuLabel>
           <DropdownMenuItem onClick={() => fileRef.current?.click()}>
             <Upload className="ms-2 h-4 w-4" /> העלאת תמונה
