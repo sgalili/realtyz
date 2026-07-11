@@ -782,6 +782,10 @@ const InlineComposer = ({
     setSelectedListingId(saved.selectedListingId ?? null);
     setAttachments(saved.attachments || []);
     setLogId(saved.logId ?? null);
+    setFirstComment(saved.firstComment || '');
+    setFirstCommentEnabled(saved.firstCommentEnabled ?? true);
+    setAttachWaLink(!!saved.attachWaLink);
+    setAttachMsngrLink(!!saved.attachMsngrLink);
     setMode('now');
     setListingQuery('');
     setSaveState('idle');
