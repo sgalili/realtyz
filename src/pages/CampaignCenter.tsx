@@ -584,6 +584,10 @@ const InlineComposer = ({
   const [waShortUrl, setWaShortUrl] = useState<string>('');
   const [msngrShortUrl, setMsngrShortUrl] = useState<string>('');
   const firstCommentRef = useRef<HTMLTextAreaElement | null>(null);
+  // Tracks the exact CTA line we injected into the first-comment textarea so
+  // toggling the checkbox off cleanly removes only that line.
+  const waInjectedRef = useRef<string>('');
+  const msngrInjectedRef = useRef<string>('');
   // Image lightbox for the attachments grid.
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   // Tracks the last AI-generated body so manual edits before publish can be
