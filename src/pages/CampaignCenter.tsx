@@ -17,7 +17,7 @@ import { RealtyzWave } from '@/components/RealtyzWave';
 import { BrandIcon } from '@/components/BrandIcon';
 import {
   ArrowRight, Plus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
-  ChevronDown, ChevronUp, Send, Mic, Image as ImageIcon, Paperclip,
+  ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Send, Mic, Image as ImageIcon, Paperclip,
   ChevronDown as ChevronDownIcon, Plug, Camera, Sparkles, Square,
   Trash2, ExternalLink, CheckCircle2, Play, RefreshCw, Calendar as CalendarIcon, Loader2, AlertTriangle,
 } from 'lucide-react';
