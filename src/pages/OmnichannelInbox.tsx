@@ -454,11 +454,9 @@ const OmnichannelInbox = () => {
 
 
   // ---- Channel availability ----------------------------------------------
-  // A channel is enabled in the send-channel selector only when BOTH:
-  //   (a) the voter has a usable identifier for it in the CRM profile, AND
-  //   (b) the channel is "open" — either WhatsApp/SMS (broker-initiated by
-  //       phone) or we've already received an inbound message from this
-  //       voter on that channel (proxy for the channel being reachable).
+  // A channel is enabled when the CRM profile has the identifier needed to
+  // start that channel, even if no active chat exists yet. Phone means WA/SMS
+  // are immediately available; inbound messages also mark a channel available.
   const availableChannels = useMemo(() => {
     const v = (selectedVoter ?? {}) as any;
     const phone = !!v?.phone_number;
@@ -469,28 +467,20 @@ const OmnichannelInbox = () => {
     const handle = {
       whatsapp: phone,
       sms: phone,
-      instagram: !!v?.instagram_handle,
-      telegram: !!v?.telegram_username,
-      messenger: !!(v?.messenger_id || v?.facebook_user_id || v?.facebook_handle),
-      tiktok: !!(v?.tiktok_username || v?.tiktok_handle),
+      instagram: !!getInboxSocialHandle(v, 'instagram'),
+      telegram: !!getInboxSocialHandle(v, 'telegram'),
+      messenger: !!getInboxSocialHandle(v, 'messenger'),
+      tiktok: !!getInboxSocialHandle(v, 'tiktok'),
       signal: phone,
-      x: !!(v?.x_username || v?.twitter_username),
-      facebook: !!(v?.facebook_user_id || v?.facebook_handle),
+      x: !!getInboxSocialHandle(v, 'x'),
+      facebook: !!getInboxSocialHandle(v, 'facebook'),
       linkedin: !!getInboxSocialHandle(v, 'linkedin'),
+      email: !!v?.email,
     } as Record<string, boolean>;
     const result: Record<string, boolean> = {};
     Object.keys(channelConfig).forEach((key) => {
       const hasHandle = !!handle[key];
-      // Rule: if we've already received an inbound message from this lead on
-      // that channel, the channel is reachable — enable it regardless of
-      // whether a matching handle was pre-populated in the CRM profile.
-      // Otherwise fall back to the handle-based rule (WhatsApp/SMS work by
-      // phone alone; other channels need a stored identifier).
-      if (inboundChannels.has(key)) {
-        result[key] = true;
-      } else {
-        result[key] = hasHandle && (key === 'whatsapp' || key === 'sms');
-      }
+      result[key] = inboundChannels.has(key) || hasHandle;
     });
     return result;
   }, [selectedVoter, chatMessages]);
@@ -527,6 +517,22 @@ const OmnichannelInbox = () => {
     return null;
   }, [chatMessages]);
 
+  const readFunctionError = async (err: any) => {
+    const ctx = err?.context;
+    if (!ctx || typeof ctx.text !== 'function') return err?.message || '';
+    try {
+      const text = await ctx.text();
+      try {
+        const parsed = JSON.parse(text);
+        return parsed?.details || parsed?.reason || parsed?.message || parsed?.error || text;
+      } catch {
+        return text;
+      }
+    } catch {
+      return err?.message || '';
+    }
+  };
+
   const sendMessage = useMutation({
     mutationFn: async ({ content, file, original }: { content: string; file: File | null; original: string }) => {
       if (blockDemoAction('send-message')) throw new Error('demo-blocked');
@@ -549,7 +555,7 @@ const OmnichannelInbox = () => {
           },
         },
       });
-      if (error) throw error;
+      if (error) throw new Error(await readFunctionError(error) || error.message);
       // Active-learning capture: when the broker edited an AI-seeded draft.
       learnFromEdit({
         context: `inbox_reply:${sendChannel}`,
@@ -572,7 +578,9 @@ const OmnichannelInbox = () => {
         description: 'שום דבר לא נשלח עד שמפקח אנושי מאשר ומפעיל ידנית',
       });
     },
-    onError: (error: Error) => { if (error.message !== 'demo-blocked') toast.error('שליחת ההודעה נכשלה'); },
+    onError: (error: Error) => {
+      if (error.message !== 'demo-blocked') toast.error('שליחת ההודעה נכשלה', { description: error.message, duration: 8000 });
+    },
   });
 
   useEffect(() => {
@@ -870,6 +878,16 @@ const OmnichannelInbox = () => {
                     <p className="text-[10px] text-whatsapp-header-foreground/75">{selectedVoter?.city || 'WhatsApp Business'}</p>
                   </div>
                 </div>
+                {selectedVoter?.phone_number && (
+                  <a
+                    href={`tel:+${String(selectedVoter.phone_number).replace(/\D/g, '')}`}
+                    aria-label="חיוג למתעניין"
+                    title="חיוג למתעניין"
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-whatsapp-header-foreground transition-colors hover:bg-whatsapp-header-foreground/10"
+                  >
+                    <Phone className="h-4 w-4" />
+                  </a>
+                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-9 w-9 text-whatsapp-header-foreground hover:bg-whatsapp-header-foreground/10">

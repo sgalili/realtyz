@@ -73,6 +73,9 @@ export default function LeadProfilePictureMenu({ leadId, fullName, profilePictur
     const resultReason = Array.isArray(d?.results)
       ? d.results.map((r: any) => r?.reason || r?.error || r?.details).find(Boolean)
       : null;
+    const attemptReason = Array.isArray(d?.attempts)
+      ? d.attempts.map((a: any) => [a?.provider, a?.status ? `HTTP ${a.status}` : null, a?.message].filter(Boolean).join(' — ')).find(Boolean)
+      : null;
     const reason =
       d?.reason ||
       d?.message ||
@@ -81,13 +84,18 @@ export default function LeadProfilePictureMenu({ leadId, fullName, profilePictur
       firstReason ||
       firstError ||
       resultReason ||
+      attemptReason ||
       err?.message ||
       'הפלטפורמה חוסמת שליפה אוטומטית או שאין נתונים זמינים';
     return typeof reason === 'string' ? reason : JSON.stringify(reason);
   };
 
   const explainError = (label: string, err: any, data: any, toastId?: string | number) => {
-    toast.error(`שליפה מ-${label} לא הצליחה`, { id: toastId, description: extractReason(err, data) });
+    if (toastId) toast.dismiss(toastId);
+    toast.error(`שליפה מ-${label} לא הצליחה`, {
+      description: extractReason(err, data),
+      duration: 9000,
+    });
   };
 
   const uploadFile = async (file: File) => {
@@ -123,9 +131,10 @@ export default function LeadProfilePictureMenu({ leadId, fullName, profilePictur
       if ((d.updated ?? 0) > 0) { toast.success('תמונה עודכנה מוואטסאפ', { id: toastId }); onUpdated?.(); return; }
       if ((d.failed ?? 0) > 0 || d.reason || (Array.isArray(d.errors) && d.errors.length)) { explainError(BRAND.whatsapp.label, null, d, toastId); return; }
       // scanned but nothing to update — either no avatar on WA or phone not on WA.
+      toast.dismiss(toastId);
       toast.warning('לא נמצאה תמונת פרופיל פעילה בוואטסאפ', {
-        id: toastId,
         description: 'המספר עשוי לא להיות רשום, או שהגדרות הפרטיות ב-WhatsApp מסתירות את התמונה',
+        duration: 9000,
       });
     } catch (e: any) {
       explainError(BRAND.whatsapp.label, e, null, toastId);
@@ -144,8 +153,8 @@ export default function LeadProfilePictureMenu({ leadId, fullName, profilePictur
       const errorData = error ? await readFunctionError(error) : null;
       if (error) { explainError(BRAND[channel].label, error, errorData || data, toastId); return; }
       const d = (data as any) || {};
-      if (d.success === false || d.error) { explainError(BRAND[channel].label, null, d, toastId); return; }
-      toast.success(`תמונה עודכנה מ-${BRAND[channel].label}`, { id: toastId });
+      if (d.success === false || d.error || !d.url) { explainError(BRAND[channel].label, null, d, toastId); return; }
+      toast.success(`תמונה עודכנה מ-${BRAND[channel].label}`, { id: toastId, description: 'תמונת הפרופיל נשמרה בכרטיס ה-CRM' });
       onUpdated?.();
     } catch (e: any) {
       explainError(BRAND[channel].label, e, null, toastId);

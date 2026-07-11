@@ -32,6 +32,48 @@ interface Body {
   limit?: number;
 }
 
+async function resolveGreenApiCredentials(supabase: ReturnType<typeof createClient>): Promise<{ instanceId: string; token: string; reason?: string }> {
+  // Primary legacy workspace setting: api_configs.api_key = "instanceId:token".
+  const { data: cfg, error: cfgErr } = await supabase
+    .from("api_configs")
+    .select("api_key, is_active")
+    .eq("service_name", "Green API")
+    .maybeSingle();
+
+  if (cfgErr) return { instanceId: "", token: "", reason: `שגיאה בקריאת הגדרת Green API: ${cfgErr.message}` };
+
+  let instanceId = "";
+  let token = "";
+  if (cfg?.api_key && cfg.is_active !== false) {
+    const [id, ...tokParts] = String(cfg.api_key).split(":");
+    instanceId = id?.trim() ?? "";
+    token = tokParts.join(":").trim();
+  }
+
+  // Secondary setting used by the WhatsApp auth flow.
+  if (!instanceId || !token) {
+    const { data: socialRow } = await supabase
+      .from("social_connections")
+      .select("credentials")
+      .eq("platform", "whatsapp_green")
+      .eq("is_connected", true)
+      .order("updated_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    const creds = (socialRow?.credentials ?? {}) as { instance_id?: string; instanceId?: string; token?: string; api_token?: string };
+    instanceId = instanceId || String(creds.instance_id ?? creds.instanceId ?? "").trim();
+    token = token || String(creds.api_token ?? creds.token ?? "").trim();
+  }
+
+  if (cfg?.is_active === false) {
+    return { instanceId: "", token: "", reason: "Green API מוגדר אך כבוי בהגדרות" };
+  }
+  if (!instanceId || !token) {
+    return { instanceId: "", token: "", reason: "Green API לא מוגדר. צריך Instance ID ו-Token פעילים בהגדרות" };
+  }
+  return { instanceId, token };
+}
+
 function normalizeChatId(phone: string): string | null {
   if (!phone) return null;
   // Strip every non-digit (spaces, dashes, parens, +): "054-681-1841" -> "0546811841"
@@ -73,21 +115,12 @@ Deno.serve(async (req) => {
     const force = !!body.force;
     const limit = Math.min(Math.max(body.limit ?? 500, 1), 2000);
 
-    // Load Green API creds.
-    const { data: cfg } = await supabase
-      .from("api_configs")
-      .select("api_key, is_active")
-      .eq("service_name", "Green API")
-      .maybeSingle();
-
-    if (!cfg?.api_key || cfg.is_active === false) {
-      return json({ success: false, error: "green_api_not_configured", reason: "Green API לא מוגדר או לא פעיל בהגדרות" });
+    // Load Green API creds from both supported configuration locations.
+    const creds = await resolveGreenApiCredentials(supabase);
+    if (!creds.instanceId || !creds.token) {
+      return json({ success: false, error: "green_api_not_configured", reason: creds.reason || "Green API לא מוגדר או לא פעיל בהגדרות" });
     }
-    const [instanceId, ...tokParts] = String(cfg.api_key).split(":");
-    const token = tokParts.join(":");
-    if (!instanceId || !token) {
-      return json({ success: false, error: "green_api_invalid_config", reason: "פורמט החיבור ל-Green API לא תקין. נדרש Instance ID:Token" });
-    }
+    const { instanceId, token } = creds;
 
     // Resolve target leads.
     let query = supabase

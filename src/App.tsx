@@ -152,7 +152,7 @@ const App = () => (
   <QueryClientProvider client={queryClient}>
     <DirectionProvider dir="rtl">
       <TooltipProvider>
-        {/* Toasts disabled app-wide per user request */}
+        <Sonner />
         <BrowserRouter>
           <AuthProvider>
             <WorkspaceProvider>
