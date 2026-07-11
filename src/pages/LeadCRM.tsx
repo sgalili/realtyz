@@ -2137,7 +2137,7 @@ const LeadCRM = () => {
                           {/* Buyer/renter preference fields — hidden entirely for property owners */}
                           {!ownerLead && (
                             <>
-                              <SelectCell icon={<Wallet className="h-3.5 w-3.5 text-slate-700" />} label="תקציב מבוקש" value={budgetRange} placeholder="בחר תקציב" options={budgetOpts} onChange={(v) => savePref({ budget_range: v })} />
+                              <SelectCell icon={<Wallet className="h-3.5 w-3.5 text-slate-700" />} label={isRental ? 'שכר דירה חודשי' : 'תקציב מבוקש'} value={budgetRange} placeholder={isRental ? 'בחר טווח שכר' : 'בחר תקציב'} options={budgetOpts} onChange={(v) => savePref({ budget_range: v })} />
                               <SelectCell icon={<HomeIcon className="h-3.5 w-3.5 text-slate-700" />} label="סוג נכס מועדף" value={propertyType} placeholder="בחר נכס" options={propertyOpts} onChange={(v) => savePref({ property_type: v })} />
                               <SelectCell icon={<Compass className="h-3.5 w-3.5 text-slate-700" />} label="אזור ביקוש מועדף" value={area} placeholder="בחר אזור" options={areaOpts.map((c) => ({ v: c, l: c }))} onChange={(v) => saveLead({ neighborhood: v })} />
                             </>
