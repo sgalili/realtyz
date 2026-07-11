@@ -59,6 +59,48 @@ async function sendSms019(admin: ReturnType<typeof createClient>, phone: string,
   return { ok: false, error: text.match(/<message>(.*?)<\/message>/)?.[1] || `019 status ${status}` };
 }
 
+async function sendSmsTwilio(admin: ReturnType<typeof createClient>, phone: string, body: string) {
+  const intl = toIntlIL(phone);
+  if (!intl) return { ok: false, error: "מספר טלפון לא תקין" };
+  const { data } = await admin
+    .from("api_configs")
+    .select("api_key")
+    .eq("service_name", "Twilio")
+    .eq("is_active", true)
+    .maybeSingle();
+  const parts = String((data as any)?.api_key || "").split(":");
+  const accountSid = parts[0] || "";
+  const authToken = parts[1] || "";
+  const fromNumber = parts.slice(2).join(":") || "";
+  if (!accountSid || !authToken || !fromNumber) return { ok: false, error: "Twilio לא מוגדר" };
+
+  const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${encodeURIComponent(accountSid)}/Messages.json`, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${btoa(`${accountSid}:${authToken}`)}`,
+      "Content-Type": "application/x-www-form-urlencoded",
+    },
+    body: new URLSearchParams({
+      To: `+${intl}`,
+      From: fromNumber,
+      Body: body,
+    }),
+  });
+  const text = await res.text();
+  let json: any = null;
+  try { json = text ? JSON.parse(text) : null; } catch { /* keep raw */ }
+  if (res.ok) return { ok: true, provider: "Twilio", message_id: json?.sid ?? null };
+  return { ok: false, error: json?.message || text || `Twilio status ${res.status}` };
+}
+
+async function sendSms(admin: ReturnType<typeof createClient>, phone: string, body: string) {
+  const sms019 = await sendSms019(admin, phone, body);
+  if (sms019.ok) return sms019;
+  const twilio = await sendSmsTwilio(admin, phone, body);
+  if (twilio.ok) return twilio;
+  return { ok: false, error: `${sms019.error || "019 failed"}; ${twilio.error || "Twilio failed"}` };
+}
+
 const WebhookPayload = z.object({
   lead_id: z.string().uuid(),
   content: z.string().min(1).max(5000),
@@ -215,7 +257,7 @@ serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      const sms = await sendSms019(admin, destinationPhone, finalContent);
+      const sms = await sendSms(admin, destinationPhone, finalContent);
       if (!sms.ok) {
         return new Response(JSON.stringify({ error: "sms_invite_failed", details: sms.error }), {
           status: 502,
@@ -266,6 +308,38 @@ serve(async (req) => {
       }
 
       return new Response(JSON.stringify({ success: true, sent: true, provider: dmJson?.provider ?? null }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // SMS from the inbox composer must be delivered now, not queued for human
+    // approval. Try the configured SMS gateways and persist the outbound row.
+    if (channel === "sms") {
+      const destinationPhone = phone_number || voter?.phone_number || "";
+      if (!destinationPhone) {
+        return new Response(JSON.stringify({ error: "missing_phone_number" }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      const sms = await sendSms(admin, destinationPhone, finalContent);
+      if (!sms.ok) {
+        return new Response(JSON.stringify({ error: "sms_send_failed", details: sms.error }), {
+          status: 502,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      await admin.from("messages").insert({
+        lead_id,
+        content: finalContent,
+        direction: "outbound",
+        sender_type: "agent",
+        channel: "sms",
+        platform: "sms",
+        metadata: { provider: sms.provider, message_id: sms.message_id },
+      } as any);
+      return new Response(JSON.stringify({ success: true, sent: true, provider: sms.provider }), {
         status: 200,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
