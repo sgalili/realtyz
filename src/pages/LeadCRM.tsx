@@ -2136,7 +2136,6 @@ const LeadCRM = () => {
                       { v: 'negotiation', l: 'במשא ומתן' }, { v: 'closed', l: 'סגר עסקה' },
                     ];
                     const sourceOpts = [
-                      { v: 'webtiv_stream', l: 'סטרים ובטיב' },
                       { v: 'homely', l: 'הומלי' },
                       { v: 'shortlink', l: 'פוסט פייסבוק' },
                       { v: 'facebook_groups', l: 'פייסבוק קבוצות' }, { v: 'facebook', l: 'פייסבוק' },
