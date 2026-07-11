@@ -1570,30 +1570,70 @@ const InlineComposer = ({
 
 
 
-      {/* Lightbox for image attachments */}
+      {/* Lightbox for image attachments with prev/next navigation */}
       <Dialog open={!!previewImageUrl} onOpenChange={(o) => !o && setPreviewImageUrl(null)}>
         <DialogContent dir="rtl" className="max-w-3xl p-0 overflow-hidden bg-black">
-          <div className="relative">
-            {previewImageUrl && (
-              <img src={previewImageUrl} alt="" className="max-h-[80vh] w-full object-contain bg-black" />
-            )}
-            <div className="absolute bottom-3 right-3">
-              <Button
-                type="button"
-                variant="destructive"
-                size="sm"
-                onClick={() => {
-                  setAttachments((a) => a.filter((att) => att.url !== previewImageUrl));
-                  setPreviewImageUrl(null);
-                }}
-              >
-                <Trash2 className="h-4 w-4 ml-1" />
-                מחק מהפוסט
-              </Button>
-            </div>
-          </div>
+          {(() => {
+            const imageUrls = attachments
+              .filter((a) => {
+                const isVideo = !!a.url && (/\.(mp4|mov|m4v|webm|3gp)(\?|$)/i.test(a.url));
+                return a.kind === 'image' && !!a.url && !isVideo;
+              })
+              .map((a) => a.url as string);
+            const idx = previewImageUrl ? imageUrls.indexOf(previewImageUrl) : -1;
+            const hasPrev = idx > 0;
+            const hasNext = idx >= 0 && idx < imageUrls.length - 1;
+            return (
+              <div className="relative">
+                {previewImageUrl && (
+                  <img src={previewImageUrl} alt="" className="max-h-[80vh] w-full object-contain bg-black" />
+                )}
+                {imageUrls.length > 1 && (
+                  <>
+                    <button
+                      type="button"
+                      onClick={() => hasPrev && setPreviewImageUrl(imageUrls[idx - 1])}
+                      disabled={!hasPrev}
+                      className="absolute top-1/2 right-3 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 disabled:opacity-30"
+                      aria-label="הקודם"
+                    >
+                      <ChevronRight className="h-5 w-5" />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => hasNext && setPreviewImageUrl(imageUrls[idx + 1])}
+                      disabled={!hasNext}
+                      className="absolute top-1/2 left-3 -translate-y-1/2 inline-flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/70 disabled:opacity-30"
+                      aria-label="הבא"
+                    >
+                      <ChevronLeft className="h-5 w-5" />
+                    </button>
+                    <div className="absolute top-3 left-1/2 -translate-x-1/2 rounded-full bg-black/50 px-3 py-1 text-xs text-white tabular-nums" dir="ltr">
+                      {idx + 1} / {imageUrls.length}
+                    </div>
+                  </>
+                )}
+                <div className="absolute bottom-3 right-3">
+                  <Button
+                    type="button"
+                    variant="destructive"
+                    size="sm"
+                    onClick={() => {
+                      const nextUrl = hasNext ? imageUrls[idx + 1] : (hasPrev ? imageUrls[idx - 1] : null);
+                      setAttachments((a) => a.filter((att) => att.url !== previewImageUrl));
+                      setPreviewImageUrl(nextUrl);
+                    }}
+                  >
+                    <Trash2 className="h-4 w-4 ml-1" />
+                    מחק מהפוסט
+                  </Button>
+                </div>
+              </div>
+            );
+          })()}
         </DialogContent>
       </Dialog>
+
 
 
 
