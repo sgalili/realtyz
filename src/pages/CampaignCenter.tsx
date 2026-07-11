@@ -2525,17 +2525,9 @@ const PublishedFeed = () => {
 
 
   const [activeChannel, setActiveChannel] = useState<string>('all');
-  const [fbPageName, setFbPageName] = useState<string | null>(null);
   const [connectedChannels, setConnectedChannels] = useState<Set<string>>(new Set());
 
   useEffect(() => {
-    (async () => {
-      const { data } = await supabase
-        .from('workspace_social_profile')
-        .select('facebook_page_name')
-        .maybeSingle();
-      setFbPageName((data as any)?.facebook_page_name ?? null);
-    })();
     (async () => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
