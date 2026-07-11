@@ -578,6 +578,12 @@ const InlineComposer = ({
   const [firstCommentEnabled, setFirstCommentEnabled] = useState<boolean>(initial.firstCommentEnabled ?? true);
   const [firstComment, setFirstComment] = useState<string>(initial.firstComment || '');
   const [firstCommentGenerating, setFirstCommentGenerating] = useState<boolean>(false);
+  // Preview shortlinks generated the moment the WA / Messenger link options are
+  // toggled on, so the user can see the exact URL that will be appended to the
+  // first comment at publish time.
+  const [waShortUrl, setWaShortUrl] = useState<string>('');
+  const [msngrShortUrl, setMsngrShortUrl] = useState<string>('');
+  const firstCommentRef = useRef<HTMLTextAreaElement | null>(null);
   // Image lightbox for the attachments grid.
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   // Tracks the last AI-generated body so manual edits before publish can be
@@ -1084,13 +1090,12 @@ const InlineComposer = ({
         'כתוב "תגובה ראשונה" (First Comment) לפוסט הפרסום — טקסט שיווקי חם בגוף ראשון של אודי ויטמן, מתווך נדל"ן מנוסה מהרצליה.',
         'טון: אישי, בטוח, מכניס תחושת "הזדמנות נדירה". 3–6 שורות קצרות. עברית תקינה בלבד.',
         'סיים תמיד בשורת חתימה: "אודי ויטמן | 052-2973500".',
-        'אל תשתמש בכוכביות, במקפים כפולים (--) או ב-em-dash. אל תחזור על גוף הפוסט מילה במילה — הוסף זווית חדשה או קריאה לפעולה.',
+        'אל תשתמש בכוכביות, במקפים כפולים (--) או ב-em-dash. חשוב מאוד: אל תעתיק ואל תצטט את גוף הפוסט. כתוב טקסט חדש לגמרי בזווית שונה (קריאה לפעולה, סיפור אישי, יתרון ייחודי) — לא סיכום של הפוסט.',
         'דוגמאות סגנון (אלה רק דוגמאות — אל תעתיק, כתוב מקורי):',
         '"אחד הנכסים החדשים, המשתלמים ביותר שיצא לי לשווק לאחרונה בהרצליה, ושימו למחיר של 5 חדרים... אודי ויטמן | 052-2973500"',
         '"דירת גג | הרצליה | 5 חדרים | גג פרטי כ-80 מ״ר... אודי ויטמן"',
         '"בית כזה לא מגיע לשוק בכל יום... אודי ויטמן 0522973500"',
         listingLine ? `פרטי הנכס: ${listingLine}` : '',
-        postBody ? `הפוסט המקורי (להקשר בלבד):\n${postBody.slice(0, 800)}` : '',
       ].filter(Boolean).join('\n\n');
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: {
@@ -1110,6 +1115,48 @@ const InlineComposer = ({
       setFirstCommentGenerating(false);
     }
   };
+
+  // When WA link is toggled ON, immediately mint a branded shortlink so the
+  // exact URL is visible to the user at the bottom of the first-comment card.
+  useEffect(() => {
+    if (!attachWaLink) { setWaShortUrl(''); return; }
+    let cancelled = false;
+    (async () => {
+      let url = 'https://wa.me/972522973500';
+      try {
+        if (selectedListingId) {
+          const { data: slugRes } = await supabase.functions.invoke('shortlink-create', {
+            body: { property_id: selectedListingId },
+          });
+          const slug = (slugRes as any)?.slug;
+          if (slug) url = `https://realtyz.co.il/r/${slug}`;
+        }
+      } catch { /* keep fallback */ }
+      if (!cancelled) {
+        setWaShortUrl(url);
+        // Auto-scroll the first-comment textarea to the bottom so the newly
+        // appended CTA line is visible without manual scrolling.
+        requestAnimationFrame(() => {
+          const el = firstCommentRef.current;
+          if (el) el.scrollTop = el.scrollHeight;
+        });
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [attachWaLink, selectedListingId]);
+
+  // Messenger deep-link (uses the currently linked FB Page ref when present).
+  useEffect(() => {
+    if (!attachMsngrLink) { setMsngrShortUrl(''); return; }
+    const pageRef = socialProfiles.find((p) => p.platform === 'facebook')?.accountRef;
+    setMsngrShortUrl(pageRef ? `https://m.me/${pageRef}` : 'https://m.me/');
+    requestAnimationFrame(() => {
+      const el = firstCommentRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    });
+  }, [attachMsngrLink, socialProfiles]);
+
+
 
   // Auto-trigger AI generation when entered via calendar scheduling flow
   // (presetListingId present + no existing body). Runs once after listings
@@ -1273,6 +1320,7 @@ const InlineComposer = ({
           </button>
         </div>
         <Textarea
+          ref={firstCommentRef as any}
           rows={5}
           value={firstComment}
           onChange={(e) => setFirstComment(e.target.value)}
@@ -1300,113 +1348,72 @@ const InlineComposer = ({
             </label>
           </div>
         )}
+        {firstCommentEnabled && (waShortUrl || msngrShortUrl) && (
+          <div className="mt-1 space-y-1 rounded-lg border border-dashed border-border bg-background/60 p-2 text-xs" dir="rtl">
+            {waShortUrl && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-muted-foreground">קישור וואטסאפ:</span>
+                <a href={waShortUrl} target="_blank" rel="noreferrer" className="font-mono text-[11px] text-primary hover:underline truncate" dir="ltr">
+                  {waShortUrl}
+                </a>
+              </div>
+            )}
+            {msngrShortUrl && (
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-muted-foreground">קישור מסנג'ר:</span>
+                <a href={msngrShortUrl} target="_blank" rel="noreferrer" className="font-mono text-[11px] text-primary hover:underline truncate" dir="ltr">
+                  {msngrShortUrl}
+                </a>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
-      {/* Unified action row: image · AI · publish (single line) */}
-      {(() => {
-        const scheduledDate = scheduledLocal ? new Date(scheduledLocal) : null;
-        const scheduledValid = mode === 'now' || (!!scheduledDate && scheduledDate.getTime() > Date.now());
-        const hasSelectedPages = channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
-        const canSend = hasBody && scheduledValid && hasSelectedPages;
-        return (
-          <div className="flex flex-row items-center gap-3 w-full mt-4">
-            <Popover>
-              <PopoverTrigger asChild>
-                <button type="button" className="shrink-0 rounded-lg border border-border bg-background p-2.5 text-muted-foreground hover:text-foreground" aria-label="צירוף מדיה">
-                  <Paperclip className="h-4 w-4" />
-                </button>
-              </PopoverTrigger>
-              <PopoverContent align="start" className="w-44 p-1" dir="rtl">
-                <button type="button" onClick={() => galleryInputRef.current?.click()}
-                  className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
-                  <span>גלריה</span>
-                  <ImageIcon className="h-4 w-4 text-muted-foreground" />
-                </button>
-                <button type="button" onClick={() => cameraInputRef.current?.click()}
-                  className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
-                  <span>מצלמה</span>
-                  <Camera className="h-4 w-4 text-muted-foreground" />
-                </button>
-                <button type="button" onClick={handleAIImage} disabled={generatingImage}
-                  className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-60">
-                  <span>{generatingImage ? 'מחולל…' : 'תמונת AI'}</span>
-                  <Sparkles className="h-4 w-4 text-primary" />
-                </button>
-              </PopoverContent>
-            </Popover>
 
-            <button
-              type="button"
-              onClick={() => handleGenerate()}
-              disabled={generating}
-              className={cn(
-                'flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold shadow-md transition',
-                'bg-[#FFD600] text-[#E11D2A] hover:bg-[#FFC400] hover:shadow-lg',
-                'disabled:opacity-60 disabled:cursor-not-allowed',
-              )}
-            >
-              <RefreshCw className={cn('h-4 w-4', generating && 'animate-spin')} />
-              {generating ? 'מחולל תוכן…' : 'חולל תוכן עם AI'}
+      {/* Media + AI row. Publish button moved below the attachments preview so
+          the user can visually confirm the images before shipping. */}
+      <div className="flex flex-row items-center gap-3 w-full mt-4">
+        <Popover>
+          <PopoverTrigger asChild>
+            <button type="button" className="shrink-0 rounded-lg border border-border bg-background p-2.5 text-muted-foreground hover:text-foreground" aria-label="צירוף מדיה">
+              <Paperclip className="h-4 w-4" />
             </button>
+          </PopoverTrigger>
+          <PopoverContent align="start" className="w-44 p-1" dir="rtl">
+            <button type="button" onClick={() => galleryInputRef.current?.click()}
+              className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
+              <span>גלריה</span>
+              <ImageIcon className="h-4 w-4 text-muted-foreground" />
+            </button>
+            <button type="button" onClick={() => cameraInputRef.current?.click()}
+              className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
+              <span>מצלמה</span>
+              <Camera className="h-4 w-4 text-muted-foreground" />
+            </button>
+            <button type="button" onClick={handleAIImage} disabled={generatingImage}
+              className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-60">
+              <span>{generatingImage ? 'מחולל…' : 'תמונת AI'}</span>
+              <Sparkles className="h-4 w-4 text-primary" />
+            </button>
+          </PopoverContent>
+        </Popover>
 
-            <button
-              type="button"
-              onClick={async () => {
-                if (!canSend) return;
-                let composedFirstComment = firstCommentEnabled ? firstComment : '';
-                if (firstCommentEnabled && (attachWaLink || attachMsngrLink)) {
-                  const extras: string[] = [];
-                  if (attachWaLink) {
-                    let waUrl = 'https://wa.me/972522973500';
-                    try {
-                      if (selectedListingId) {
-                        const { data: slugRes } = await supabase.functions.invoke('shortlink-create', {
-                          body: { property_id: selectedListingId },
-                        });
-                        const slug = (slugRes as any)?.slug;
-                        if (slug) waUrl = `https://realtyz.co.il/r/${slug}`;
-                      }
-                    } catch { /* fall back to wa.me */ }
-                    extras.push(`דברו איתי בוואטסאפ: ${waUrl}`);
-                  }
-                  if (attachMsngrLink) {
-                    const pageRef = socialProfiles.find((p) => p.platform === 'facebook')?.accountRef;
-                    const msngrUrl = pageRef ? `https://m.me/${pageRef}` : 'https://m.me/';
-                    extras.push(`דברו איתי במסנג'ר: ${msngrUrl}`);
-                  }
-                  composedFirstComment = [composedFirstComment.trim(), ...extras].filter(Boolean).join('\n\n');
-                }
-                onConfirm({
-                  body,
-                  original_ai_body: originalAiBody,
-                  listing_id: selectedListingId || null,
-                  mode,
-                  media_urls: attachments
-                    .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
-                    .map((a) => a.url as string),
-                  scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
-                  group_ids: channel.id === 'facebook' ? groupIds : [],
-                  selected_profile_ids: channel.id === 'facebook' ? selectedProfileIds : [],
-                  attach_wa_link: attachWaLink,
-                  first_comment: composedFirstComment,
-                  first_comment_enabled: firstCommentEnabled,
-                  attach_msngr_link: attachMsngrLink,
-                });
-              }}
-              disabled={!canSend}
-              className={cn(
-                'flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition',
-                canSend
-                  ? 'bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)] shadow-md'
-                  : 'bg-muted text-muted-foreground/80 cursor-not-allowed',
-              )}
-            >
-              <Send className="h-4 w-4 -scale-x-100" />
-              {mode === 'scheduled' ? 'תזמן פרסום' : 'פרסם קמפיין'}
-            </button>
-          </div>
-        );
-      })()}
+        <button
+          type="button"
+          onClick={() => handleGenerate()}
+          disabled={generating}
+          className={cn(
+            'flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold shadow-md transition',
+            'bg-[#FFD600] text-[#E11D2A] hover:bg-[#FFC400] hover:shadow-lg',
+            'disabled:opacity-60 disabled:cursor-not-allowed',
+          )}
+        >
+          <RefreshCw className={cn('h-4 w-4', generating && 'animate-spin')} />
+          {generating ? 'מחולל תוכן…' : 'חולל תוכן עם AI'}
+        </button>
+      </div>
+
 
       {/* Hidden inputs */}
       <input ref={galleryInputRef} type="file" accept="image/*,video/*" multiple className="hidden"
@@ -1458,6 +1465,58 @@ const InlineComposer = ({
           })}
         </div>
       )}
+
+      {/* Publish button — placed below the attachments preview so the user
+          reviews the images that will actually ship before pressing it. */}
+      {(() => {
+        const scheduledDate = scheduledLocal ? new Date(scheduledLocal) : null;
+        const scheduledValid = mode === 'now' || (!!scheduledDate && scheduledDate.getTime() > Date.now());
+        const hasSelectedPages = channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
+        const canSend = hasBody && scheduledValid && hasSelectedPages;
+        return (
+          <button
+            type="button"
+            onClick={() => {
+              if (!canSend) return;
+              let composedFirstComment = firstCommentEnabled ? firstComment : '';
+              if (firstCommentEnabled && (attachWaLink || attachMsngrLink)) {
+                const extras: string[] = [];
+                if (attachWaLink && waShortUrl) extras.push(`דברו איתי בוואטסאפ: ${waShortUrl}`);
+                if (attachMsngrLink && msngrShortUrl) extras.push(`דברו איתי במסנג'ר: ${msngrShortUrl}`);
+                composedFirstComment = [composedFirstComment.trim(), ...extras].filter(Boolean).join('\n\n');
+              }
+              onConfirm({
+                body,
+                original_ai_body: originalAiBody,
+                listing_id: selectedListingId || null,
+                mode,
+                media_urls: attachments
+                  .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
+                  .map((a) => a.url as string),
+                scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
+                group_ids: channel.id === 'facebook' ? groupIds : [],
+                selected_profile_ids: channel.id === 'facebook' ? selectedProfileIds : [],
+                attach_wa_link: attachWaLink,
+                first_comment: composedFirstComment,
+                first_comment_enabled: firstCommentEnabled,
+                attach_msngr_link: attachMsngrLink,
+              });
+            }}
+            disabled={!canSend}
+            className={cn(
+              'w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition mt-3',
+              canSend
+                ? 'bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)] shadow-md'
+                : 'bg-muted text-muted-foreground/80 cursor-not-allowed',
+            )}
+          >
+            <Send className="h-4 w-4 -scale-x-100" />
+            {mode === 'scheduled' ? 'תזמן פרסום' : 'פרסם קמפיין'}
+          </button>
+        );
+      })()}
+
+
 
       {/* Lightbox for image attachments */}
       <Dialog open={!!previewImageUrl} onOpenChange={(o) => !o && setPreviewImageUrl(null)}>
