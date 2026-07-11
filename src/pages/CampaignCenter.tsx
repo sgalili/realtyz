@@ -1045,10 +1045,61 @@ const InlineComposer = ({
           console.warn('[CampaignCenter] history log failed', logErr);
         }
       } else toast.info('לא התקבל טקסט');
+      // Auto-generate a first comment in Udi's signature style.
+      if (text) {
+        void handleGenerateFirstComment(text);
+      }
     } catch (e: any) {
       toast.error('יצירת טקסט נכשלה');
     } finally {
       setGenerating(false);
+    }
+  };
+
+  // Generate a Hebrew "first comment" in Udi Wittman's warm, first-person tone.
+  // Called automatically right after the main post is generated, and manually
+  // via the refresh button on the first-comment textarea.
+  const handleGenerateFirstComment = async (postBody?: string) => {
+    setFirstCommentGenerating(true);
+    try {
+      const listing = selectedListing;
+      const listingLine = listing
+        ? [
+            listing.property_title,
+            listing.rooms ? `${listing.rooms} חדרים` : null,
+            listing.sqm ? `כ-${listing.sqm} מ״ר` : null,
+            listing.address || listing.neighborhood || listing.city,
+            listing.asking_price ? `${Number(listing.asking_price).toLocaleString('he-IL')} ₪` : null,
+          ].filter(Boolean).join(' | ')
+        : '';
+      const styleInstructions = [
+        'כתוב "תגובה ראשונה" (First Comment) לפוסט הפרסום — טקסט שיווקי חם בגוף ראשון של אודי ויטמן, מתווך נדל"ן מנוסה מהרצליה.',
+        'טון: אישי, בטוח, מכניס תחושת "הזדמנות נדירה". 3–6 שורות קצרות. עברית תקינה בלבד.',
+        'סיים תמיד בשורת חתימה: "אודי ויטמן | 052-2973500".',
+        'אל תשתמש בכוכביות, במקפים כפולים (--) או ב-em-dash. אל תחזור על גוף הפוסט מילה במילה — הוסף זווית חדשה או קריאה לפעולה.',
+        'דוגמאות סגנון (אלה רק דוגמאות — אל תעתיק, כתוב מקורי):',
+        '"אחד הנכסים החדשים, המשתלמים ביותר שיצא לי לשווק לאחרונה בהרצליה, ושימו למחיר של 5 חדרים... אודי ויטמן | 052-2973500"',
+        '"דירת גג | הרצליה | 5 חדרים | גג פרטי כ-80 מ״ר... אודי ויטמן"',
+        '"בית כזה לא מגיע לשוק בכל יום... אודי ויטמן 0522973500"',
+        listingLine ? `פרטי הנכס: ${listingLine}` : '',
+        postBody ? `הפוסט המקורי (להקשר בלבד):\n${postBody.slice(0, 800)}` : '',
+      ].filter(Boolean).join('\n\n');
+      const { data, error } = await supabase.functions.invoke('generate-content', {
+        body: {
+          topic: 'תגובה ראשונה לפוסט נדל"ן',
+          platform: channel.id,
+          customInstructions: styleInstructions,
+          selectedListingId: selectedListingId || undefined,
+          listingFocusOnly: !!selectedListingId,
+        },
+      });
+      if (error) throw error;
+      const text = String(data?.content || data?.text || '').trim();
+      if (text) setFirstComment(text);
+    } catch (e: any) {
+      toast.error('יצירת תגובה ראשונה נכשלה');
+    } finally {
+      setFirstCommentGenerating(false);
     }
   };
 
