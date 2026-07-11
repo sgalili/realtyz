@@ -86,7 +86,7 @@ export default function LeadEnrichmentDialog({ open, onOpenChange, lead }: Props
       }
       prefs.socials = socials;
       const update: Record<string, any> = { ...colUpdate, preferences: prefs };
-      const { error } = await supabase.from('leads').update(update).eq('id', lead.id);
+      const { error } = await supabase.from('leads').update(update as any).eq('id', lead.id);
       if (error) throw error;
       toast.success(`עודכנו ${chosen.length} שדות בפרופיל`);
       qc.invalidateQueries({ queryKey: ['leads-infinite'] });
