@@ -571,6 +571,7 @@ Deno.serve(async (req) => {
         ...extra,
       };
       if (resolvedMedia.length) payload.mediaUrls = resolvedMedia;
+      if (firstComment) payload.firstComment = firstComment;
       if (scheduledIso) payload.scheduleDate = scheduledIso;
       console.log(`[ayrshare-post] outbound (${label})`, {
         platforms: payload.platforms,
