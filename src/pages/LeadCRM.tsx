@@ -474,10 +474,27 @@ const LeadCRM = () => {
     queryFn: async ({ pageParam = 0 }) => {
       let query = supabase.from('leads').select('*', { count: 'exact' });
 
-      // Full-text search via tsvector
+      // Broad multi-field search: match any partial value across name, phone,
+      // email, city, address, neighborhood, identity, social handles, tags.
+      // Falls back to tsvector when the query is complex.
       if (debouncedSearch.trim()) {
-        const terms = debouncedSearch.trim().split(/\s+/).map(t => `'${t}'`).join(' & ');
-        query = query.textSearch('fts', terms, { type: 'plain', config: 'simple' });
+        const raw = debouncedSearch.trim().replace(/[,()]/g, ' ').trim();
+        const like = `*${raw}*`;
+        const digits = raw.replace(/\D/g, '');
+        const conds = [
+          `full_name.ilike.${like}`,
+          `email.ilike.${like}`,
+          `city.ilike.${like}`,
+          `address.ilike.${like}`,
+          `neighborhood.ilike.${like}`,
+          `identity_number.ilike.${like}`,
+          `interest_tag.ilike.${like}`,
+          `status.ilike.${like}`,
+          `instagram_handle.ilike.${like}`,
+          `telegram_username.ilike.${like}`,
+        ];
+        if (digits.length >= 3) conds.push(`phone_number.ilike.*${digits}*`);
+        query = query.or(conds.join(','));
       }
       if (interestFilter !== 'all') query = query.eq('interest_tag', interestFilter);
       if (cityFilter !== 'all') query = query.eq('city', cityFilter);
