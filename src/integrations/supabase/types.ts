@@ -2658,6 +2658,7 @@ export type Database = {
           id: string
           identity_number: string | null
           instagram_handle: string | null
+          instagram_psid: string | null
           interaction_outcome: string | null
           interest_score_json: Json | null
           interest_scores: Json | null
@@ -2671,6 +2672,7 @@ export type Database = {
           loss_reason_note: string | null
           loyalty_tier: string | null
           messenger_id: string | null
+          messenger_psid: string | null
           neighborhood: string | null
           outcome_set_at: string | null
           outcome_set_by: string | null
@@ -2702,6 +2704,7 @@ export type Database = {
           id?: string
           identity_number?: string | null
           instagram_handle?: string | null
+          instagram_psid?: string | null
           interaction_outcome?: string | null
           interest_score_json?: Json | null
           interest_scores?: Json | null
@@ -2715,6 +2718,7 @@ export type Database = {
           loss_reason_note?: string | null
           loyalty_tier?: string | null
           messenger_id?: string | null
+          messenger_psid?: string | null
           neighborhood?: string | null
           outcome_set_at?: string | null
           outcome_set_by?: string | null
@@ -2746,6 +2750,7 @@ export type Database = {
           id?: string
           identity_number?: string | null
           instagram_handle?: string | null
+          instagram_psid?: string | null
           interaction_outcome?: string | null
           interest_score_json?: Json | null
           interest_scores?: Json | null
@@ -2759,6 +2764,7 @@ export type Database = {
           loss_reason_note?: string | null
           loyalty_tier?: string | null
           messenger_id?: string | null
+          messenger_psid?: string | null
           neighborhood?: string | null
           outcome_set_at?: string | null
           outcome_set_by?: string | null
