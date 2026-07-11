@@ -211,6 +211,9 @@ Deno.serve(async (req) => {
         Boolean,
       )
       : [];
+    const firstComment: string = typeof body?.first_comment === "string"
+      ? body.first_comment.trim()
+      : "";
     let scheduledIso: string | null = null;
     if (scheduledAtRaw) {
       const d = new Date(scheduledAtRaw);
@@ -568,6 +571,7 @@ Deno.serve(async (req) => {
         ...extra,
       };
       if (resolvedMedia.length) payload.mediaUrls = resolvedMedia;
+      if (firstComment) payload.firstComment = firstComment;
       if (scheduledIso) payload.scheduleDate = scheduledIso;
       console.log(`[ayrshare-post] outbound (${label})`, {
         platforms: payload.platforms,

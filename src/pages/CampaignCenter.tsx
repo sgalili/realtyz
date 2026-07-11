@@ -86,6 +86,9 @@ type ConfirmPayload = {
   group_ids: string[];
   selected_profile_ids: string[];
   attach_wa_link: boolean;
+  first_comment: string;
+  first_comment_enabled: boolean;
+  attach_msngr_link: boolean;
 };
 
 const isRenderablePostMediaUrl = (value: unknown): value is string => {
@@ -567,9 +570,16 @@ const InlineComposer = ({
   const initial = readDraft() || {};
 
   const [body, setBody] = useState<string>(cleanBody(initial.body || ''));
-  // Opt-in WhatsApp CTA: when checked, the branded short link + "דברו איתנו עכשיו:"
-  // line is appended to the outgoing payload in handleConfirm. Default = off.
-  const [attachWaLink, setAttachWaLink] = useState<boolean>(false);
+  // Opt-in WhatsApp CTA (now attached to the FIRST COMMENT, not the main post).
+  const [attachWaLink, setAttachWaLink] = useState<boolean>(!!initial.attachWaLink);
+  const [attachMsngrLink, setAttachMsngrLink] = useState<boolean>(!!initial.attachMsngrLink);
+  // First-comment auto-post: when enabled, the branded first-comment text is
+  // posted as the first comment on the published post via Ayrshare.
+  const [firstCommentEnabled, setFirstCommentEnabled] = useState<boolean>(initial.firstCommentEnabled ?? true);
+  const [firstComment, setFirstComment] = useState<string>(initial.firstComment || '');
+  const [firstCommentGenerating, setFirstCommentGenerating] = useState<boolean>(false);
+  // Image lightbox for the attachments grid.
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
   // Tracks the last AI-generated body so manual edits before publish can be
   // shipped to learn-from-edit on success. Reset on send.
   const [originalAiBody, setOriginalAiBody] = useState<string>('');
@@ -738,9 +748,13 @@ const InlineComposer = ({
         selectedListingId,
         attachments,
         logId,
+        firstComment,
+        firstCommentEnabled,
+        attachWaLink,
+        attachMsngrLink,
       }));
     } catch {}
-  }, [draftKey, body, customInstructions, selectedListingId, attachments, logId]);
+  }, [draftKey, body, customInstructions, selectedListingId, attachments, logId, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink]);
 
   useEffect(() => {
     if (!historyOpen) return;
@@ -768,6 +782,10 @@ const InlineComposer = ({
     setSelectedListingId(saved.selectedListingId ?? null);
     setAttachments(saved.attachments || []);
     setLogId(saved.logId ?? null);
+    setFirstComment(saved.firstComment || '');
+    setFirstCommentEnabled(saved.firstCommentEnabled ?? true);
+    setAttachWaLink(!!saved.attachWaLink);
+    setAttachMsngrLink(!!saved.attachMsngrLink);
     setMode('now');
     setListingQuery('');
     setSaveState('idle');
@@ -1035,10 +1053,61 @@ const InlineComposer = ({
           console.warn('[CampaignCenter] history log failed', logErr);
         }
       } else toast.info('לא התקבל טקסט');
+      // Auto-generate a first comment in Udi's signature style.
+      if (text) {
+        void handleGenerateFirstComment(text);
+      }
     } catch (e: any) {
       toast.error('יצירת טקסט נכשלה');
     } finally {
       setGenerating(false);
+    }
+  };
+
+  // Generate a Hebrew "first comment" in Udi Wittman's warm, first-person tone.
+  // Called automatically right after the main post is generated, and manually
+  // via the refresh button on the first-comment textarea.
+  const handleGenerateFirstComment = async (postBody?: string) => {
+    setFirstCommentGenerating(true);
+    try {
+      const listing = selectedListing;
+      const listingLine = listing
+        ? [
+            listing.property_title,
+            listing.rooms ? `${listing.rooms} חדרים` : null,
+            listing.sqm ? `כ-${listing.sqm} מ״ר` : null,
+            listing.address || listing.neighborhood || listing.city,
+            listing.asking_price ? `${Number(listing.asking_price).toLocaleString('he-IL')} ₪` : null,
+          ].filter(Boolean).join(' | ')
+        : '';
+      const styleInstructions = [
+        'כתוב "תגובה ראשונה" (First Comment) לפוסט הפרסום — טקסט שיווקי חם בגוף ראשון של אודי ויטמן, מתווך נדל"ן מנוסה מהרצליה.',
+        'טון: אישי, בטוח, מכניס תחושת "הזדמנות נדירה". 3–6 שורות קצרות. עברית תקינה בלבד.',
+        'סיים תמיד בשורת חתימה: "אודי ויטמן | 052-2973500".',
+        'אל תשתמש בכוכביות, במקפים כפולים (--) או ב-em-dash. אל תחזור על גוף הפוסט מילה במילה — הוסף זווית חדשה או קריאה לפעולה.',
+        'דוגמאות סגנון (אלה רק דוגמאות — אל תעתיק, כתוב מקורי):',
+        '"אחד הנכסים החדשים, המשתלמים ביותר שיצא לי לשווק לאחרונה בהרצליה, ושימו למחיר של 5 חדרים... אודי ויטמן | 052-2973500"',
+        '"דירת גג | הרצליה | 5 חדרים | גג פרטי כ-80 מ״ר... אודי ויטמן"',
+        '"בית כזה לא מגיע לשוק בכל יום... אודי ויטמן 0522973500"',
+        listingLine ? `פרטי הנכס: ${listingLine}` : '',
+        postBody ? `הפוסט המקורי (להקשר בלבד):\n${postBody.slice(0, 800)}` : '',
+      ].filter(Boolean).join('\n\n');
+      const { data, error } = await supabase.functions.invoke('generate-content', {
+        body: {
+          topic: 'תגובה ראשונה לפוסט נדל"ן',
+          platform: channel.id,
+          customInstructions: styleInstructions,
+          selectedListingId: selectedListingId || undefined,
+          listingFocusOnly: !!selectedListingId,
+        },
+      });
+      if (error) throw error;
+      const text = String(data?.content || data?.text || '').trim();
+      if (text) setFirstComment(text);
+    } catch (e: any) {
+      toast.error('יצירת תגובה ראשונה נכשלה');
+    } finally {
+      setFirstCommentGenerating(false);
     }
   };
 
@@ -1164,7 +1233,7 @@ const InlineComposer = ({
             // While the WA CTA opt-in is active, keep the composed CTA in the
             // textarea (don't strip it via cleanBody). Once unchecked, strip.
             const raw = e.target.value.replace(/^[\s\u200f\u200e]+/g, '');
-            setBody(attachWaLink ? raw : cleanBody(raw));
+            setBody(cleanBody(raw));
             setBodyManuallyEdited(true);
           }}
           placeholder="תוכן ההודעה — כתוב כאן או חולל באמצעות AI"
@@ -1227,19 +1296,48 @@ const InlineComposer = ({
 
             <button
               type="button"
-              onClick={() => canSend && onConfirm({
-                body,
-                original_ai_body: originalAiBody,
-                listing_id: selectedListingId || null,
-                mode,
-                media_urls: attachments
-                  .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
-                  .map((a) => a.url as string),
-                scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
-                group_ids: channel.id === 'facebook' ? groupIds : [],
-                selected_profile_ids: channel.id === 'facebook' ? selectedProfileIds : [],
-                attach_wa_link: attachWaLink,
-              })}
+              onClick={async () => {
+                if (!canSend) return;
+                let composedFirstComment = firstCommentEnabled ? firstComment : '';
+                if (firstCommentEnabled && (attachWaLink || attachMsngrLink)) {
+                  const extras: string[] = [];
+                  if (attachWaLink) {
+                    let waUrl = 'https://wa.me/972522973500';
+                    try {
+                      if (selectedListingId) {
+                        const { data: slugRes } = await supabase.functions.invoke('shortlink-create', {
+                          body: { property_id: selectedListingId },
+                        });
+                        const slug = (slugRes as any)?.slug;
+                        if (slug) waUrl = `https://realtyz.co.il/r/${slug}`;
+                      }
+                    } catch { /* fall back to wa.me */ }
+                    extras.push(`דברו איתי בוואטסאפ: ${waUrl}`);
+                  }
+                  if (attachMsngrLink) {
+                    const pageRef = socialProfiles.find((p) => p.platform === 'facebook')?.accountRef;
+                    const msngrUrl = pageRef ? `https://m.me/${pageRef}` : 'https://m.me/';
+                    extras.push(`דברו איתי במסנג'ר: ${msngrUrl}`);
+                  }
+                  composedFirstComment = [composedFirstComment.trim(), ...extras].filter(Boolean).join('\n\n');
+                }
+                onConfirm({
+                  body,
+                  original_ai_body: originalAiBody,
+                  listing_id: selectedListingId || null,
+                  mode,
+                  media_urls: attachments
+                    .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
+                    .map((a) => a.url as string),
+                  scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
+                  group_ids: channel.id === 'facebook' ? groupIds : [],
+                  selected_profile_ids: channel.id === 'facebook' ? selectedProfileIds : [],
+                  attach_wa_link: attachWaLink,
+                  first_comment: composedFirstComment,
+                  first_comment_enabled: firstCommentEnabled,
+                  attach_msngr_link: attachMsngrLink,
+                });
+              }}
               disabled={!canSend}
               className={cn(
                 'flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold transition',
@@ -1255,81 +1353,6 @@ const InlineComposer = ({
         );
       })()}
 
-      {/* Opt-in WhatsApp CTA — checking this immediately inlines the branded
-          short-link + "דברו איתנו עכשיו:" at the bottom of the textarea and
-          scrolls to it; unchecking cleanly strips it. */}
-      <label className="flex items-center gap-2 text-sm text-foreground select-none cursor-pointer" dir="rtl">
-        <Checkbox
-          checked={attachWaLink}
-          onCheckedChange={async (v) => {
-            const next = v === true;
-            setAttachWaLink(next);
-            if (!next) {
-              // Strip immediately on uncheck.
-              setBody((prev) => stripWaCta(prev));
-              return;
-            }
-            // Compose a fresh CTA line every time: fixed Hebrew opener +
-            // a CLEAN branded shortlink. We NEVER inline a raw wa.me URL with
-            // a percent-encoded ?text= payload — it's ugly and unreadable.
-            const opener = 'לתיאום ביקור — דברו איתי בוואטסאפ:';
-            const fallbackText = 'היי אודי, ראיתי את הפוסט שלך ואשמח לפרטים נוספים.';
-            const fallbackLongUrl = `https://wa.me/972537339533?text=${encodeURIComponent(fallbackText)}`;
-            let linkPart = '';
-            if (selectedListingId) {
-              try {
-                const { data: slugRes } = await supabase.functions.invoke('shortlink-create', {
-                  body: { property_id: selectedListingId },
-                });
-                const slug = (slugRes as any)?.slug;
-                if (slug) linkPart = `https://realtyz.co.il/r/${slug}`;
-              } catch (err) {
-                console.warn('[shortlink] preview generation failed', err);
-              }
-            }
-            if (!linkPart) {
-              // Ad-hoc shortlink for the generic WA fallback so the composer
-              // never shows the raw percent-encoded wa.me URL to the user.
-              try {
-                const { data: adhoc } = await supabase.functions.invoke('shortlink-create', {
-                  body: { long_url: fallbackLongUrl },
-                });
-                const slug = (adhoc as any)?.slug;
-                linkPart = slug ? `https://realtyz.co.il/r/${slug}` : fallbackLongUrl;
-              } catch (err) {
-                console.warn('[shortlink] ad-hoc generation failed', err);
-                linkPart = fallbackLongUrl;
-              }
-            }
-            const ctaLine = `${opener}\n${linkPart}`;
-            setBody((prev) => {
-              const clean = stripWaCta(prev);
-              const merged = `${clean}\n\n${ctaLine}`;
-              // Auto-scroll the textarea to reveal the appended CTA.
-              requestAnimationFrame(() => {
-                const el = textareaRef.current;
-                if (el) {
-                  el.scrollTop = el.scrollHeight;
-                  try {
-                    el.focus({ preventScroll: true });
-                    el.setSelectionRange(merged.length, merged.length);
-                  } catch { /* noop */ }
-                }
-              });
-              return merged;
-            });
-            setBodyManuallyEdited(true);
-          }}
-          aria-label="הוסף קישור לוואטסאפ"
-        />
-        <span>הוסף קישור לוואטסאפ</span>
-      </label>
-
-
-
-
-
-
       {/* Hidden inputs */}
       <input ref={galleryInputRef} type="file" accept="image/*,video/*" multiple className="hidden"
         onChange={(e) => { handleFiles(e.target.files, 'image'); e.target.value = ''; }} />
@@ -1339,33 +1362,129 @@ const InlineComposer = ({
       <input ref={fileInputRef} type="file" accept=".pdf,.doc,.docx,.xls,.xlsx" multiple className="hidden"
         onChange={(e) => { handleFiles(e.target.files, 'file'); e.target.value = ''; }} />
 
-      {/* Attachments preview */}
+      {/* Attachments preview — square thumbnails only (no file names) that wrap
+          to fit mobile widths. Clicking an image opens the lightbox with a
+          "delete from post" action. */}
       {attachments.length > 0 && (
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap gap-2" dir="rtl">
           {attachments.map((att, i) => {
             const isVideo = !!att.url && (/\.(mp4|mov|m4v|webm|3gp)(\?|$)/i.test(att.url) || /^video\//i.test((att as any).mimeType || ''));
+            const isImage = att.kind === 'image' && !!att.url && !isVideo;
             return (
-            <div key={i} className="inline-flex items-center gap-2 rounded-lg border border-primary/40 bg-primary/5 px-2 py-1 text-xs">
-              {att.kind === 'image' && att.url && !isVideo ? (
-                <img src={att.url} alt={att.name} className="h-8 w-8 rounded object-cover" />
-              ) : isVideo ? (
-                <video src={att.url} className="h-8 w-8 rounded object-cover bg-black" muted playsInline />
-              ) : att.kind === 'audio' ? (
-                <Mic className="h-3.5 w-3.5 text-primary" />
-              ) : (
-                <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />
-              )}
-              <span className="max-w-[140px] truncate">{att.name}</span>
-              {att.url && /^https?:\/\//i.test(att.url) && (
-                <span className="text-[10px] font-semibold text-emerald-600">✓ הועלה</span>
-              )}
-              <button type="button" onClick={() => setAttachments((a) => a.filter((_, j) => j !== i))}
-                className="text-muted-foreground hover:text-destructive">×</button>
-            </div>
+              <div key={i} className="relative">
+                {isImage ? (
+                  <button
+                    type="button"
+                    onClick={() => setPreviewImageUrl(att.url!)}
+                    className="block h-16 w-16 overflow-hidden rounded-md border border-border bg-muted focus:outline-none focus:ring-2 focus:ring-primary"
+                    aria-label="פתח תמונה"
+                  >
+                    <img src={att.url} alt="" className="h-full w-full object-cover" />
+                  </button>
+                ) : isVideo ? (
+                  <video src={att.url} className="h-16 w-16 rounded-md object-cover bg-black" muted playsInline />
+                ) : (
+                  <div className="flex h-16 w-16 items-center justify-center rounded-md border border-border bg-muted">
+                    {att.kind === 'audio'
+                      ? <Mic className="h-4 w-4 text-primary" />
+                      : <Paperclip className="h-4 w-4 text-muted-foreground" />}
+                  </div>
+                )}
+                <button
+                  type="button"
+                  onClick={() => setAttachments((a) => a.filter((_, j) => j !== i))}
+                  className="absolute -top-1.5 -left-1.5 inline-flex h-5 w-5 items-center justify-center rounded-full bg-background text-muted-foreground shadow ring-1 ring-border hover:text-destructive"
+                  aria-label="הסר"
+                >
+                  ×
+                </button>
+              </div>
             );
           })}
         </div>
       )}
+
+      {/* First-comment composer — always visible below the main textarea.
+          When enabled (checkbox on), Ayrshare posts this text as the first
+          comment on the published post. WA / Messenger link options live
+          here and no longer touch the main post body. */}
+      <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2" dir="rtl">
+        <div className="flex items-center justify-between gap-2">
+          <label className="flex items-center gap-2 text-sm font-semibold text-foreground select-none cursor-pointer">
+            <Checkbox
+              checked={firstCommentEnabled}
+              onCheckedChange={(v) => setFirstCommentEnabled(v === true)}
+              aria-label="פרסם תגובה ראשונה"
+            />
+            <span>פרסם תגובה ראשונה אוטומטית</span>
+          </label>
+          <button
+            type="button"
+            onClick={() => handleGenerateFirstComment(body)}
+            disabled={firstCommentGenerating || !firstCommentEnabled}
+            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground disabled:opacity-50"
+            aria-label="חולל תגובה ראשונה מחדש"
+            title="חולל תגובה ראשונה מחדש"
+          >
+            <RefreshCw className={cn('h-4 w-4', firstCommentGenerating && 'animate-spin')} />
+          </button>
+        </div>
+        <Textarea
+          rows={5}
+          value={firstComment}
+          onChange={(e) => setFirstComment(e.target.value)}
+          placeholder="התגובה הראשונה תיווצר אוטומטית עם חילול הפוסט…"
+          disabled={!firstCommentEnabled}
+          className="resize-y text-right placeholder:text-muted-foreground/60"
+        />
+        {firstCommentEnabled && (
+          <div className="flex flex-wrap items-center gap-4 pt-1">
+            <label className="flex items-center gap-2 text-xs text-foreground select-none cursor-pointer">
+              <Checkbox
+                checked={attachWaLink}
+                onCheckedChange={(v) => setAttachWaLink(v === true)}
+                aria-label="הוסף קישור לוואטסאפ"
+              />
+              <span>הוסף קישור לוואטסאפ</span>
+            </label>
+            <label className="flex items-center gap-2 text-xs text-foreground select-none cursor-pointer">
+              <Checkbox
+                checked={attachMsngrLink}
+                onCheckedChange={(v) => setAttachMsngrLink(v === true)}
+                aria-label="הוסף קישור למסנג'ר"
+              />
+              <span>הוסף קישור למסנג'ר</span>
+            </label>
+          </div>
+        )}
+      </div>
+
+      {/* Lightbox for image attachments */}
+      <Dialog open={!!previewImageUrl} onOpenChange={(o) => !o && setPreviewImageUrl(null)}>
+        <DialogContent dir="rtl" className="max-w-3xl p-0 overflow-hidden bg-black">
+          <div className="relative">
+            {previewImageUrl && (
+              <img src={previewImageUrl} alt="" className="max-h-[80vh] w-full object-contain bg-black" />
+            )}
+            <div className="absolute bottom-3 right-3">
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={() => {
+                  setAttachments((a) => a.filter((att) => att.url !== previewImageUrl));
+                  setPreviewImageUrl(null);
+                }}
+              >
+                <Trash2 className="h-4 w-4 ml-1" />
+                מחק מהפוסט
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+
 
 
       {hasBody && bodyManuallyEdited && (
@@ -1455,7 +1574,7 @@ const InlineComposer = ({
 /* ───────────── Dispatch confirmation modal ───────────── */
 
 const ConfirmDispatchDialog = ({
-  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds, selectedProfileIds, attachWaLink, onConfirmed,
+  open, onClose, channel, body, originalAiBody, listingId, brandName, mediaUrls, scheduledAt, groupIds, selectedProfileIds, attachWaLink, firstComment, onConfirmed,
 }: {
   open: boolean;
   onClose: () => void;
@@ -1469,6 +1588,7 @@ const ConfirmDispatchDialog = ({
   groupIds: string[];
   selectedProfileIds: string[];
   attachWaLink: boolean;
+  firstComment: string;
   onConfirmed: () => void;
 }) => {
   const { user } = useAuth();
@@ -1610,6 +1730,7 @@ const ConfirmDispatchDialog = ({
               target_profile_id: target?.id ?? null,
               target_account_ref: target?.accountRef ?? null,
               target_profile_key: target?.profileKey ?? null,
+              first_comment: firstComment || null,
             },
           });
           results.push({ data, error, target });
@@ -4336,6 +4457,7 @@ const CampaignCenter = () => {
         groupIds={confirmPayload?.group_ids ?? []}
         selectedProfileIds={confirmPayload?.selected_profile_ids ?? []}
         attachWaLink={confirmPayload?.attach_wa_link ?? false}
+        firstComment={confirmPayload?.first_comment ?? ''}
         onConfirmed={async () => {
           const body = confirmPayload?.body ?? '';
           const shouldEmail = alsoEmail && pickedChannel?.id !== 'email' && connectedChannels.has('email') && body.trim().length > 0;
