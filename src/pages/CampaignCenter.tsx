@@ -1377,34 +1377,75 @@ const InlineComposer = ({
             {count}
           </span>
         )}
-        <Popover>
-          <PopoverTrigger asChild>
-            <button
-              type="button"
-              className="absolute bottom-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground"
-              aria-label="צירוף מדיה"
-            >
-              <Paperclip className="h-4 w-4" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="end" className="w-44 p-1" dir="rtl">
-            <button type="button" onClick={() => galleryInputRef.current?.click()}
-              className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
-              <span>גלריה</span>
-              <ImageIcon className="h-4 w-4 text-muted-foreground" />
-            </button>
-            <button type="button" onClick={() => cameraInputRef.current?.click()}
-              className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
-              <span>מצלמה</span>
-              <Camera className="h-4 w-4 text-muted-foreground" />
-            </button>
-            <button type="button" onClick={handleAIImage} disabled={generatingImage}
-              className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-60">
-              <span>{generatingImage ? 'מחולל…' : 'תמונת AI'}</span>
-              <Sparkles className="h-4 w-4 text-primary" />
-            </button>
-          </PopoverContent>
-        </Popover>
+        <div className="absolute bottom-2 right-2 flex items-center gap-1.5" dir="rtl">
+          <Popover>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground"
+                aria-label="צירוף מדיה"
+              >
+                <Paperclip className="h-4 w-4" />
+              </button>
+            </PopoverTrigger>
+            <PopoverContent align="end" className="w-44 p-1" dir="rtl">
+              <button type="button" onClick={() => galleryInputRef.current?.click()}
+                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
+                <span>גלריה</span>
+                <ImageIcon className="h-4 w-4 text-muted-foreground" />
+              </button>
+              <button type="button" onClick={() => cameraInputRef.current?.click()}
+                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
+                <span>מצלמה</span>
+                <Camera className="h-4 w-4 text-muted-foreground" />
+              </button>
+              <button type="button" onClick={handleAIImage} disabled={generatingImage}
+                className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-60">
+                <span>{generatingImage ? 'מחולל…' : 'תמונת AI'}</span>
+                <Sparkles className="h-4 w-4 text-primary" />
+              </button>
+            </PopoverContent>
+          </Popover>
+          {attachments.length > 0 && (
+            <div className="flex items-center gap-1 flex-wrap max-w-[60vw]">
+              {attachments.map((att, i) => {
+                const isVideo = !!att.url && (/\.(mp4|mov|m4v|webm|3gp)(\?|$)/i.test(att.url) || /^video\//i.test((att as any).mimeType || ''));
+                const isImage = att.kind === 'image' && !!att.url && !isVideo;
+                return (
+                  <div key={i} className="relative group">
+                    {isImage ? (
+                      <button
+                        type="button"
+                        onClick={() => setPreviewImageUrl(att.url!)}
+                        className="block h-4 w-4 overflow-hidden rounded-sm border border-border bg-muted focus:outline-none focus:ring-1 focus:ring-primary"
+                        aria-label="פתח תמונה"
+                      >
+                        <img src={att.url} alt="" className="h-full w-full object-cover" />
+                      </button>
+                    ) : isVideo ? (
+                      <video src={att.url} className="h-4 w-4 rounded-sm object-cover bg-black" muted playsInline />
+                    ) : (
+                      <div className="flex h-4 w-4 items-center justify-center rounded-sm border border-border bg-muted">
+                        {att.kind === 'audio'
+                          ? <Mic className="h-2.5 w-2.5 text-primary" />
+                          : <Paperclip className="h-2.5 w-2.5 text-muted-foreground" />}
+                      </div>
+                    )}
+                    <button
+                      type="button"
+                      onClick={(e) => { e.stopPropagation(); setAttachments((a) => a.filter((_, j) => j !== i)); }}
+                      className="absolute -top-1 -left-1 hidden group-hover:inline-flex h-3 w-3 items-center justify-center rounded-full bg-background text-[9px] text-muted-foreground shadow ring-1 ring-border hover:text-destructive"
+                      aria-label="הסר"
+                    >
+                      ×
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+
       </div>
 
       {/* First-comment composer — always visible below the main textarea.
