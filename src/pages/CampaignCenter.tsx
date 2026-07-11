@@ -1455,16 +1455,18 @@ const InlineComposer = ({
             />
             <span>פרסם תגובה ראשונה אוטומטית</span>
           </label>
-          <button
-            type="button"
-            onClick={() => handleGenerateFirstComment(body)}
-            disabled={firstCommentGenerating || !firstCommentEnabled}
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground disabled:opacity-50"
-            aria-label="חולל תגובה ראשונה מחדש"
-            title="חולל תגובה ראשונה מחדש"
-          >
-            <RefreshCw className={cn('h-4 w-4', firstCommentGenerating && 'animate-spin')} />
-          </button>
+          {firstComment.trim() && (
+            <button
+              type="button"
+              onClick={() => handleGenerateFirstComment(body)}
+              disabled={firstCommentGenerating || !firstCommentEnabled}
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground disabled:opacity-50"
+              aria-label="חולל תגובה ראשונה מחדש"
+              title="חולל תגובה ראשונה מחדש"
+            >
+              <RefreshCw className={cn('h-4 w-4', firstCommentGenerating && 'animate-spin')} />
+            </button>
+          )}
         </div>
         <Textarea
           ref={firstCommentRef as any}
