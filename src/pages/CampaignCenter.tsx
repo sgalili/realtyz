@@ -1249,6 +1249,9 @@ const InlineComposer = ({
                 group_ids: channel.id === 'facebook' ? groupIds : [],
                 selected_profile_ids: channel.id === 'facebook' ? selectedProfileIds : [],
                 attach_wa_link: attachWaLink,
+                first_comment: firstCommentEnabled ? firstComment : '',
+                first_comment_enabled: firstCommentEnabled,
+                attach_msngr_link: attachMsngrLink,
               })}
               disabled={!canSend}
               className={cn(
