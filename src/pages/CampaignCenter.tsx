@@ -1363,13 +1363,13 @@ const InlineComposer = ({
         {hasBody && (
           <button
             type="button"
-            onClick={() => handleGenerate({ rotateTemplate: true })}
-            disabled={generating}
+            onClick={() => bodyManuallyEdited ? finalizeBody() : handleGenerate({ rotateTemplate: true })}
+            disabled={generating || finalizingBody}
             className="absolute top-2 left-2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground disabled:opacity-50"
-            aria-label="חולל טקסט מחדש"
-            title="חולל טקסט מחדש"
+            aria-label={bodyManuallyEdited ? 'שיוף לגרסה סופית' : 'חולל טקסט מחדש'}
+            title={bodyManuallyEdited ? 'שיוף לגרסה סופית' : 'חולל טקסט מחדש'}
           >
-            <RefreshCw className={cn('h-4 w-4', generating && 'animate-spin')} />
+            <RefreshCw className={cn('h-4 w-4', (generating || finalizingBody) && 'animate-spin')} />
           </button>
         )}
         {count > 0 && (
