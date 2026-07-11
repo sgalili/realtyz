@@ -2332,7 +2332,6 @@ const FIRST_VISIT_IMPORT_KEY_VERSION = 'v6_recent_media_comment_refresh';
 const CAMPAIGN_CACHE_MS = 5 * 60_000;
 
 const PublishedFeed = () => {
-  const { settings } = useWhiteLabel();
   const workspaceOwnerId = useActiveWorkspaceOwnerId();
   const queryClient = useQueryClient();
   const [rows, setRows] = useState<CampaignRow[] | null>(() => {
