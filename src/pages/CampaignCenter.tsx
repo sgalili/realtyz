@@ -1377,7 +1377,7 @@ const InlineComposer = ({
             {count}
           </span>
         )}
-        <div className="absolute bottom-2 right-2 flex items-center gap-1.5" dir="rtl">
+        <div className="absolute bottom-2 left-2 right-2 flex items-center gap-1.5" dir="rtl">
           <Popover>
             <PopoverTrigger asChild>
               <button
