@@ -1520,7 +1520,7 @@ const InlineComposer = ({
           rows={5}
           value={firstComment}
           onChange={(e) => setFirstComment(e.target.value)}
-          placeholder="התגובה הראשונה תיווצר אוטומטית עם חילול הפוסט…"
+          placeholder="תוכן התגובה"
           disabled={!firstCommentEnabled}
           className="resize-y text-right placeholder:text-muted-foreground/60"
         />
