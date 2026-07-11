@@ -211,6 +211,9 @@ Deno.serve(async (req) => {
         Boolean,
       )
       : [];
+    const firstComment: string = typeof body?.first_comment === "string"
+      ? body.first_comment.trim()
+      : "";
     let scheduledIso: string | null = null;
     if (scheduledAtRaw) {
       const d = new Date(scheduledAtRaw);
