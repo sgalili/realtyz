@@ -34,6 +34,7 @@ import { parsePdfToRows } from '@/lib/parsePdfTable';
 import { sendToN8n } from '@/lib/n8nService';
 import { formatPhoneDisplay, isValidIsraeliPhone } from '@/lib/formatPhone';
 import VoterAvatar from '@/components/VoterAvatar';
+import LeadProfilePictureMenu from '@/components/leads/LeadProfilePictureMenu';
 import { useAuth } from '@/hooks/useAuth';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
@@ -473,10 +474,27 @@ const LeadCRM = () => {
     queryFn: async ({ pageParam = 0 }) => {
       let query = supabase.from('leads').select('*', { count: 'exact' });
 
-      // Full-text search via tsvector
+      // Broad multi-field search: match any partial value across name, phone,
+      // email, city, address, neighborhood, identity, social handles, tags.
+      // Falls back to tsvector when the query is complex.
       if (debouncedSearch.trim()) {
-        const terms = debouncedSearch.trim().split(/\s+/).map(t => `'${t}'`).join(' & ');
-        query = query.textSearch('fts', terms, { type: 'plain', config: 'simple' });
+        const raw = debouncedSearch.trim().replace(/[,()]/g, ' ').trim();
+        const like = `*${raw}*`;
+        const digits = raw.replace(/\D/g, '');
+        const conds = [
+          `full_name.ilike.${like}`,
+          `email.ilike.${like}`,
+          `city.ilike.${like}`,
+          `address.ilike.${like}`,
+          `neighborhood.ilike.${like}`,
+          `identity_number.ilike.${like}`,
+          `interest_tag.ilike.${like}`,
+          `status.ilike.${like}`,
+          `instagram_handle.ilike.${like}`,
+          `telegram_username.ilike.${like}`,
+        ];
+        if (digits.length >= 3) conds.push(`phone_number.ilike.*${digits}*`);
+        query = query.or(conds.join(','));
       }
       if (interestFilter !== 'all') query = query.eq('interest_tag', interestFilter);
       if (cityFilter !== 'all') query = query.eq('city', cityFilter);
@@ -1880,7 +1898,21 @@ const LeadCRM = () => {
               <>
                 <SheetHeader>
                   <SheetTitle className="flex items-center gap-3">
-                    <VoterAvatar fullName={selectedVoter.full_name} profilePictureUrl={(selectedVoter as any).profile_picture_url} className="h-16 w-16 shadow-lg" textClassName="text-xl" />
+                    <LeadProfilePictureMenu
+                      leadId={selectedVoter.id}
+                      fullName={selectedVoter.full_name}
+                      profilePictureUrl={(selectedVoter as any).profile_picture_url}
+                      phone={selectedVoter.phone_number}
+                      handles={{
+                        instagram: (selectedVoter as any).instagram_handle,
+                        facebook: (selectedVoter as any).facebook_handle,
+                        messenger: (selectedVoter as any).messenger_id,
+                        x: (selectedVoter as any).x_username || (selectedVoter as any).twitter_username,
+                        tiktok: (selectedVoter as any).tiktok_handle || (selectedVoter as any).tiktok_username,
+                        youtube: (selectedVoter as any).youtube_handle,
+                      }}
+                      onUpdated={() => queryClient.invalidateQueries({ queryKey: ['leads-infinite'] })}
+                    />
                     <div className="flex-1 min-w-0">
                       <EditableInlineText
                         value={selectedVoter.full_name || ''}

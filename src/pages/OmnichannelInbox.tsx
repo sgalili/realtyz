@@ -14,6 +14,8 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Search, Send, Bot, MessageSquare, MessageCircle, Phone, AlertTriangle, Instagram, AtSign, MoreVertical, Paperclip, Mic, Facebook, Clock, Bookmark, Trash2, Mail, Plug, Inbox as InboxIcon } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { format, formatDistanceToNow } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { toast } from 'sonner';
@@ -137,6 +139,9 @@ const OmnichannelInbox = () => {
   const [manualTakeoverWarning, setManualTakeoverWarning] = useState(false);
   const [deleteTargetId, setDeleteTargetId] = useState<string | null>(null);
   const [isDeletingChat, setIsDeletingChat] = useState(false);
+  const [inviteChannel, setInviteChannel] = useState<string | null>(null);
+  const [inviteVia, setInviteVia] = useState<'whatsapp' | 'sms'>('whatsapp');
+  const [inviteSending, setInviteSending] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const attachmentInputRef = useRef<HTMLInputElement>(null);
   const queryClient = useQueryClient();
@@ -636,15 +641,29 @@ const OmnichannelInbox = () => {
           { key: 'email', label: 'Email' },
         ] as const).map((c) => {
           const active = channelFilter === c.key;
+          const isAvail = c.key === 'all' ? true : !!availableChannels[c.key];
+          const handleClick = () => {
+            setChannelFilter(c.key);
+            if (c.key === 'all') return;
+            // Only switch the composer channel when there's a selected lead.
+            if (!selectedVoterId) return;
+            if (isAvail) {
+              setSendChannel(c.key);
+            } else {
+              // Channel not open yet — offer to send an invite via SMS/WA.
+              setInviteVia(selectedVoter?.phone_number ? 'whatsapp' : 'sms');
+              setInviteChannel(c.key);
+            }
+          };
           return (
             <button
               key={c.key}
               type="button"
-              onClick={() => setChannelFilter(c.key)}
+              onClick={handleClick}
               aria-label={c.label}
               title={c.label}
               aria-pressed={active}
-              className={`h-9 shrink-0 inline-flex items-center justify-center transition-opacity ${c.key === 'all' ? 'px-2' : 'w-9'} ${active ? 'opacity-100' : 'opacity-50 hover:opacity-100'}`}
+              className={`h-9 shrink-0 inline-flex items-center justify-center transition-opacity ${c.key === 'all' ? 'px-2' : 'w-9'} ${active ? 'opacity-100' : 'opacity-50 hover:opacity-100'} ${selectedVoterId && !isAvail && c.key !== 'all' ? 'ring-1 ring-dashed ring-muted-foreground/30 rounded-full' : ''}`}
             >
               {c.key === 'all'
                 ? <span className={`text-sm font-semibold ${active ? 'text-primary' : 'text-foreground'}`}>הכל</span>
@@ -1006,6 +1025,57 @@ const OmnichannelInbox = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Invite modal — sends WA/SMS invite so the lead opens the closed channel */}
+      <Dialog open={!!inviteChannel} onOpenChange={(open) => { if (!open) setInviteChannel(null); }}>
+        <DialogContent dir="rtl" className="text-right sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>הזמנה לערוץ {channelConfig[inviteChannel || '']?.label || inviteChannel}</DialogTitle>
+            <DialogDescription>
+              הערוץ עדיין לא פתוח מול הליד. נשלח קישור הזמנה קצר בוואטסאפ או SMS כדי שהוא יפתח שיחה עם העסק.
+            </DialogDescription>
+          </DialogHeader>
+          <RadioGroup value={inviteVia} onValueChange={(v) => setInviteVia(v as any)} className="space-y-2">
+            <label className="flex flex-row-reverse items-center justify-between gap-2 rounded-lg border p-3 cursor-pointer hover:bg-muted/40">
+              <span className="text-sm">שליחה בוואטסאפ</span>
+              <RadioGroupItem value="whatsapp" disabled={!selectedVoter?.phone_number} />
+            </label>
+            <label className="flex flex-row-reverse items-center justify-between gap-2 rounded-lg border p-3 cursor-pointer hover:bg-muted/40">
+              <span className="text-sm">שליחה ב-SMS</span>
+              <RadioGroupItem value="sms" disabled={!selectedVoter?.phone_number} />
+            </label>
+          </RadioGroup>
+          <DialogFooter className="gap-2 sm:justify-between">
+            <Button variant="outline" onClick={() => setInviteChannel(null)} disabled={inviteSending}>ביטול</Button>
+            <Button
+              disabled={inviteSending || !selectedVoter?.phone_number || !inviteChannel}
+              onClick={async () => {
+                if (!selectedVoterId || !inviteChannel) return;
+                setInviteSending(true);
+                const label = channelConfig[inviteChannel]?.label || inviteChannel;
+                const body = `שלום, נשמח להמשיך את השיחה גם ב-${label}. לחצו כאן לפתיחת ההתכתבות: {LINK}`;
+                const { error } = await supabase.functions.invoke('send-message', {
+                  body: {
+                    lead_id: selectedVoterId,
+                    content: body,
+                    channel: inviteVia,
+                    phone_number: selectedVoter?.phone_number,
+                    invite_channel: inviteChannel,
+                  },
+                });
+                setInviteSending(false);
+                if (error) toast.error('שליחת ההזמנה נכשלה');
+                else {
+                  toast.success('ההזמנה נשלחה');
+                  setInviteChannel(null);
+                }
+              }}
+            >
+              {inviteSending ? 'שולח...' : 'שליחת הזמנה'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
