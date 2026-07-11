@@ -1989,8 +1989,8 @@ const LeadCRM = () => {
                             </button>
                             <LeadEnrichmentIconButton lead={selectedVoter} />
                             <div className="flex items-center gap-1.5 mr-auto ps-2">
-                              <Bot className="h-4 w-4 text-primary" />
                               <Switch
+                                className="group h-6 w-11 data-[state=checked]:bg-primary"
                                 checked={!!selectedVoter.ai_autopilot}
                                 onCheckedChange={async (checked) => {
                                   const { error } = await supabase
@@ -2004,7 +2004,14 @@ const LeadCRM = () => {
                                   toast.success(checked ? 'הסוכן הדיגיטלי הופעל' : 'הסוכן הדיגיטלי כובה');
                                   queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
                                 }}
-                              />
+                              >
+                                {/* Bot icon overlaid on the switch thumb; follows the same translate as the thumb */}
+                                <span
+                                  className="pointer-events-none absolute inset-y-0 left-0 z-20 flex w-5 items-center justify-center transition-transform group-data-[state=checked]:translate-x-5 group-data-[state=unchecked]:translate-x-0"
+                                >
+                                  <Bot className="h-3 w-3 text-primary" strokeWidth={2.25} />
+                                </span>
+                              </Switch>
                             </div>
                           </div>
                         );
