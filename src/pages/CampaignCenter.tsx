@@ -1516,55 +1516,55 @@ const InlineComposer = ({
         </div>
       )}
 
-      {/* Publish button — placed below the attachments preview so the user
-          reviews the images that will actually ship before pressing it. */}
+      {/* Publish button — sticky at the bottom of the viewport so it's
+          always reachable no matter how long the composer scrolls. */}
       {(() => {
         const scheduledDate = scheduledLocal ? new Date(scheduledLocal) : null;
         const scheduledValid = mode === 'now' || (!!scheduledDate && scheduledDate.getTime() > Date.now());
         const hasSelectedPages = channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
         const canSend = hasBody && scheduledValid && hasSelectedPages;
         return (
-          <button
-            type="button"
-            onClick={() => {
-              if (!canSend) return;
-              let composedFirstComment = firstCommentEnabled ? firstComment : '';
-              if (firstCommentEnabled && (attachWaLink || attachMsngrLink)) {
-                const extras: string[] = [];
-                if (attachWaLink && waShortUrl) extras.push(`דברו איתי בוואטסאפ: ${waShortUrl}`);
-                if (attachMsngrLink && msngrShortUrl) extras.push(`דברו איתי במסנג'ר: ${msngrShortUrl}`);
-                composedFirstComment = [composedFirstComment.trim(), ...extras].filter(Boolean).join('\n\n');
-              }
-              onConfirm({
-                body,
-                original_ai_body: originalAiBody,
-                listing_id: selectedListingId || null,
-                mode,
-                media_urls: attachments
-                  .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
-                  .map((a) => a.url as string),
-                scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
-                group_ids: channel.id === 'facebook' ? groupIds : [],
-                selected_profile_ids: channel.id === 'facebook' ? selectedProfileIds : [],
-                attach_wa_link: attachWaLink,
-                first_comment: composedFirstComment,
-                first_comment_enabled: firstCommentEnabled,
-                attach_msngr_link: attachMsngrLink,
-              });
-            }}
-            disabled={!canSend}
-            className={cn(
-              'w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition mt-3',
-              canSend
-                ? 'bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)] shadow-md'
-                : 'bg-muted text-muted-foreground/80 cursor-not-allowed',
-            )}
-          >
-            <Send className="h-4 w-4 -scale-x-100" />
-            {mode === 'scheduled' ? 'תזמן פרסום' : 'פרסם קמפיין'}
-          </button>
+          <div className="sticky bottom-0 z-10 -mx-4 sm:-mx-5 mt-3 border-t border-border/60 bg-card/95 px-4 sm:px-5 pb-3 pt-2 backdrop-blur">
+            <button
+              type="button"
+              onClick={() => {
+                if (!canSend) return;
+                // WA / Messenger CTA lines are already embedded inside the
+                // first-comment textarea via the toggle effects, so we pass
+                // the textarea content through verbatim.
+                const composedFirstComment = firstCommentEnabled ? firstComment : '';
+                onConfirm({
+                  body,
+                  original_ai_body: originalAiBody,
+                  listing_id: selectedListingId || null,
+                  mode,
+                  media_urls: attachments
+                    .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
+                    .map((a) => a.url as string),
+                  scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
+                  group_ids: channel.id === 'facebook' ? groupIds : [],
+                  selected_profile_ids: channel.id === 'facebook' ? selectedProfileIds : [],
+                  attach_wa_link: attachWaLink,
+                  first_comment: composedFirstComment,
+                  first_comment_enabled: firstCommentEnabled,
+                  attach_msngr_link: attachMsngrLink,
+                });
+              }}
+              disabled={!canSend}
+              className={cn(
+                'w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition',
+                canSend
+                  ? 'bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)] shadow-md'
+                  : 'bg-muted text-muted-foreground/80 cursor-not-allowed',
+              )}
+            >
+              <Send className="h-4 w-4 -scale-x-100" />
+              {mode === 'scheduled' ? 'תזמן פרסום' : 'פרסם קמפיין'}
+            </button>
+          </div>
         );
       })()}
+
 
 
 
