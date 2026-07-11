@@ -1341,18 +1341,19 @@ const InlineComposer = ({
                     setAttachMsngrLink(false);
                     // Replace attachments with ONLY the selected property's
                     // photos — the previous property's images are dropped.
-                    const photoUrls = extractListingPhotoUrls(l);
-                    if (photoUrls.length > 0) {
-                      setAttachments(photoUrls.map((u, i) => ({
-                        name: `${l.property_title || l.address || 'property'}-${i + 1}.jpg`,
-                        kind: 'image' as const,
-                        url: u,
-                      })));
-                      toast.success(`נטענו ${photoUrls.length} תמונות של הנכס`);
-                    } else {
-                      setAttachments([]);
-                      toast.info('לא נמצאו תמונות במאגר לנכס זה');
-                    }
+                     const photoUrls = extractListingPhotoUrls(l).slice(0, 10);
+                     if (photoUrls.length > 0) {
+                       setAttachments(photoUrls.map((u, i) => ({
+                         name: `${l.property_title || l.address || 'property'}-${i + 1}.jpg`,
+                         kind: 'image' as const,
+                         url: u,
+                       })));
+                       toast.success(`נטענו ${photoUrls.length} תמונות של הנכס`);
+                     } else {
+                       setAttachments([]);
+                       toast.info('לא נמצאו תמונות במאגר לנכס זה');
+                     }
+
                     setListingPickerOpen(false);
                   }}
 
