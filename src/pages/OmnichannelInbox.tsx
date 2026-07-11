@@ -516,6 +516,22 @@ const OmnichannelInbox = () => {
     return null;
   }, [chatMessages]);
 
+  const readFunctionError = async (err: any) => {
+    const ctx = err?.context;
+    if (!ctx || typeof ctx.text !== 'function') return err?.message || '';
+    try {
+      const text = await ctx.text();
+      try {
+        const parsed = JSON.parse(text);
+        return parsed?.details || parsed?.reason || parsed?.message || parsed?.error || text;
+      } catch {
+        return text;
+      }
+    } catch {
+      return err?.message || '';
+    }
+  };
+
   const sendMessage = useMutation({
     mutationFn: async ({ content, file, original }: { content: string; file: File | null; original: string }) => {
       if (blockDemoAction('send-message')) throw new Error('demo-blocked');
@@ -538,7 +554,7 @@ const OmnichannelInbox = () => {
           },
         },
       });
-      if (error) throw error;
+      if (error) throw new Error(await readFunctionError(error) || error.message);
       // Active-learning capture: when the broker edited an AI-seeded draft.
       learnFromEdit({
         context: `inbox_reply:${sendChannel}`,
@@ -561,7 +577,9 @@ const OmnichannelInbox = () => {
         description: 'שום דבר לא נשלח עד שמפקח אנושי מאשר ומפעיל ידנית',
       });
     },
-    onError: (error: Error) => { if (error.message !== 'demo-blocked') toast.error('שליחת ההודעה נכשלה'); },
+    onError: (error: Error) => {
+      if (error.message !== 'demo-blocked') toast.error('שליחת ההודעה נכשלה', { description: error.message, duration: 8000 });
+    },
   });
 
   useEffect(() => {
