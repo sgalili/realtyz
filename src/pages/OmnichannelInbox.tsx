@@ -595,9 +595,13 @@ const OmnichannelInbox = () => {
 
       // Autopilot status is owned by the user — never auto-disable on manual send.
 
-      toast.success('ההודעה הועברה לתור אישור', {
-        description: 'שום דבר לא נשלח עד שמפקח אנושי מאשר ומפעיל ידנית',
-      });
+      if ((data as any)?.sent) {
+        toast.success('ההודעה נשלחה');
+      } else {
+        toast.success('ההודעה הועברה לתור אישור', {
+          description: 'שום דבר לא נשלח עד שמפקח אנושי מאשר ומפעיל ידנית',
+        });
+      }
     },
     onError: (error: Error) => {
       if (error.message === 'demo-blocked') return;
@@ -605,8 +609,8 @@ const OmnichannelInbox = () => {
       // for this lead (they never messaged our Page), pivot to an invite
       // via WhatsApp/SMS with an m.me/ig.me deep-link.
       const msg = error.message || '';
-      if (/no_recipient_psid|PSID|messaged your Page/i.test(msg) &&
-          (sendChannel === 'messenger' || sendChannel === 'instagram' || sendChannel === 'facebook')) {
+      if (/no_recipient_psid|PSID|messaged your Page|messaged you first|recipient/i.test(msg) &&
+          (sendChannel === 'messenger' || sendChannel === 'instagram' || sendChannel === 'facebook' || sendChannel === 'linkedin')) {
         setInviteVia(selectedVoter?.phone_number ? 'whatsapp' : 'sms');
         setInviteChannel(sendChannel);
         toast.info('הליד עדיין לא פנה לעמוד — נשלחת הזמנה בערוץ אחר');
@@ -782,6 +786,11 @@ const OmnichannelInbox = () => {
             toast.dismiss(t);
             if (error) { toast.error('סנכרון נכשל', { description: error.message }); return; }
             const s = (data as any)?.summary || {};
+            const syncError = s.facebook?.error || s.instagram?.error;
+            if (syncError) {
+              toast.error('נדרש חיבור מחדש למסנג׳ר', { description: String(syncError).slice(0, 180), duration: 9000 });
+              return;
+            }
             const total = (s.facebook?.inserted || 0) + (s.instagram?.inserted || 0);
             toast.success(total > 0 ? `נמשכו ${total} הודעות חדשות` : 'אין הודעות חדשות');
             queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
