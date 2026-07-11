@@ -79,6 +79,7 @@ const channelConfig: Record<string, { brand?: string; icon?: ReactElement; label
   instagram: { brand: 'instagram', label: 'Instagram', bgClass: 'bg-social-instagram', textClass: 'text-social-instagram' },
   telegram: { brand: 'telegram', label: 'Telegram', bgClass: 'bg-social-telegram', textClass: 'text-social-telegram' },
   messenger: { brand: 'messenger', label: 'Messenger', bgClass: 'bg-social-messenger', textClass: 'text-social-messenger' },
+  linkedin: { brand: 'linkedin', label: 'LinkedIn', bgClass: 'bg-social-linkedin', textClass: 'text-social-linkedin' },
   tiktok: { brand: 'tiktok', label: 'TikTok', bgClass: 'bg-social-tiktok', textClass: 'text-social-tiktok' },
   signal: { brand: 'signal', label: 'Signal', bgClass: 'bg-social-signal', textClass: 'text-social-signal' },
   x: { brand: 'x', label: 'X', bgClass: 'bg-social-x', textClass: 'text-social-x' },
@@ -87,6 +88,22 @@ const channelConfig: Record<string, { brand?: string; icon?: ReactElement; label
 
 const getThreadChannels = (messages: Array<{ channel?: string | null }>) =>
   [...new Set(messages.map((msg) => msg.channel).filter(Boolean) as string[])];
+
+function getInboxSocialHandle(lead: any, platform: string): string | null {
+  const prefs = (lead?.preferences ?? {}) as Record<string, any>;
+  const socials = Array.isArray(prefs.socials) ? prefs.socials : [];
+  const fromArr = socials.find((s: any) => String(s?.platform || '').toLowerCase() === platform)?.handle;
+  const value =
+    platform === 'instagram' ? (lead?.instagram_handle || fromArr) :
+    platform === 'facebook' ? (lead?.facebook_handle || lead?.facebook_user_id || prefs.facebook_url || fromArr) :
+    platform === 'messenger' ? (lead?.messenger_id || lead?.facebook_user_id || lead?.facebook_handle || prefs.facebook_url || fromArr) :
+    platform === 'linkedin' ? (prefs.linkedin_url || fromArr) :
+    platform === 'x' ? (lead?.x_username || lead?.twitter_username || prefs.x_handle || fromArr) :
+    platform === 'tiktok' ? (lead?.tiktok_username || lead?.tiktok_handle || prefs.tiktok_handle || fromArr) :
+    platform === 'telegram' ? (lead?.telegram_username || fromArr) :
+    null;
+  return value ? String(value) : null;
+}
 
 const ChannelIcon = ({ channel, size = 'sm' }: { channel: string | null; size?: 'sm' | 'md' | 'lg' }) => {
   const cfg = channelConfig[channel || 'whatsapp'] || channelConfig.whatsapp;
@@ -110,6 +127,8 @@ const OmnichannelInbox = () => {
   useEffect(() => {
     const v = searchParams.get('lead');
     if (v) setSelectedVoterId(v);
+    const requestedChannel = searchParams.get('channel');
+    if (requestedChannel && channelConfig[requestedChannel]) setSendChannel(requestedChannel);
   }, [searchParams]);
   const [search, setSearch] = useState('');
   const { settings: _platformSettings, update: _updatePlatformSettings } = usePlatformSettings();
@@ -129,7 +148,7 @@ const OmnichannelInbox = () => {
   // edits before send can be shipped to learn-from-edit. Cleared on send/switch.
   const [originalAiDraft, setOriginalAiDraft] = useState('');
   const [attachment, setAttachment] = useState<File | null>(null);
-  const [sendChannel, setSendChannel] = useState<string>('whatsapp');
+  const [sendChannel, setSendChannel] = useState<string>(() => searchParams.get('channel') || 'whatsapp');
   const [dripEnabled, setDripEnabled] = useState(false);
   const [dailyLimit, setDailyLimit] = useState(50);
   const [sendWindowStart, setSendWindowStart] = useState('08:00');
@@ -457,6 +476,7 @@ const OmnichannelInbox = () => {
       signal: phone,
       x: !!(v?.x_username || v?.twitter_username),
       facebook: !!(v?.facebook_user_id || v?.facebook_handle),
+      linkedin: !!getInboxSocialHandle(v, 'linkedin'),
     } as Record<string, boolean>;
     const result: Record<string, boolean> = {};
     Object.keys(channelConfig).forEach((key) => {
