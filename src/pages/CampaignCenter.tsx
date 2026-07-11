@@ -748,9 +748,13 @@ const InlineComposer = ({
         selectedListingId,
         attachments,
         logId,
+        firstComment,
+        firstCommentEnabled,
+        attachWaLink,
+        attachMsngrLink,
       }));
     } catch {}
-  }, [draftKey, body, customInstructions, selectedListingId, attachments, logId]);
+  }, [draftKey, body, customInstructions, selectedListingId, attachments, logId, firstComment, firstCommentEnabled, attachWaLink, attachMsngrLink]);
 
   useEffect(() => {
     if (!historyOpen) return;
