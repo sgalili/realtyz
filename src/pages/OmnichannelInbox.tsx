@@ -814,7 +814,9 @@ const OmnichannelInbox = () => {
                       <div className="flex flex-row-reverse items-start gap-1 mt-0.5">
                         {lastMsg?.channel && <span className="shrink-0 mt-0.5"><ChannelIcon channel={lastMsg.channel} /></span>}
                         <p className="text-xs text-muted-foreground flex-1 min-w-0 max-w-full overflow-hidden break-all whitespace-pre-wrap leading-snug line-clamp-2">
-                          {lastMsg?.content || 'אין הודעות'}
+                          {(voter as any)._noConversation
+                            ? 'ללא שיחה פעילה — לחץ להתחלת צ׳אט'
+                            : (lastMsg?.content || 'אין הודעות')}
                         </p>
                       </div>
                     </div>
@@ -824,7 +826,7 @@ const OmnichannelInbox = () => {
             </AnimatePresence>
             {filteredVoters?.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-8">
-                {channelFilter === 'all' ? 'אין שיחות' : 'אין הודעות בערוץ זה'}
+                {search.trim() ? 'לא נמצאו תוצאות ב-CRM' : (channelFilter === 'all' ? 'אין שיחות' : 'אין הודעות בערוץ זה')}
               </p>
             )}
           </ScrollArea>
