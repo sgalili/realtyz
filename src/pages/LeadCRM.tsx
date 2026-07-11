@@ -1989,8 +1989,8 @@ const LeadCRM = () => {
                             </button>
                             <LeadEnrichmentIconButton lead={selectedVoter} />
                             <div className="flex items-center gap-1.5 mr-auto ps-2">
-                              <Bot className="h-4 w-4 text-primary" />
                               <Switch
+                                className="group h-6 w-11 data-[state=checked]:bg-primary"
                                 checked={!!selectedVoter.ai_autopilot}
                                 onCheckedChange={async (checked) => {
                                   const { error } = await supabase
@@ -2004,7 +2004,14 @@ const LeadCRM = () => {
                                   toast.success(checked ? 'הסוכן הדיגיטלי הופעל' : 'הסוכן הדיגיטלי כובה');
                                   queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
                                 }}
-                              />
+                              >
+                                {/* Bot icon overlaid on the switch thumb; follows the same translate as the thumb */}
+                                <span
+                                  className="pointer-events-none absolute inset-y-0 left-0 z-20 flex w-5 items-center justify-center transition-transform group-data-[state=checked]:translate-x-5 group-data-[state=unchecked]:translate-x-0"
+                                >
+                                  <Bot className="h-3 w-3 text-primary" strokeWidth={2.25} />
+                                </span>
+                              </Switch>
                             </div>
                           </div>
                         );
@@ -2036,14 +2043,25 @@ const LeadCRM = () => {
                       { v: 'cottage', l: "קוטג'" }, { v: 'house', l: 'בית פרטי' },
                       { v: 'studio', l: 'סטודיו' }, { v: 'office', l: 'משרד' },
                     ];
-                    const budgetOpts = [
-                      { v: '0-1500000',       l: 'עד 1.5M ₪' },
-                      { v: '1500000-2500000', l: '1.5M–2.5M ₪' },
-                      { v: '2500000-4000000', l: '2.5M–4M ₪' },
-                      { v: '4000000-6000000', l: '4M–6M ₪' },
-                      { v: '6000000-10000000',l: '6M–10M ₪' },
-                      { v: '10000000+',       l: 'מעל 10M ₪' },
-                    ];
+                    // Rental leads see monthly-rent ranges (₪/month); buyers see sale-price ranges.
+                    const isRental = dealType === 'rent';
+                    const budgetOpts = isRental
+                      ? [
+                          { v: '0-3500',        l: 'עד 3,500 ₪ / חודש' },
+                          { v: '3500-5000',     l: '3,500–5,000 ₪ / חודש' },
+                          { v: '5000-7000',     l: '5,000–7,000 ₪ / חודש' },
+                          { v: '7000-10000',    l: '7,000–10,000 ₪ / חודש' },
+                          { v: '10000-15000',   l: '10,000–15,000 ₪ / חודש' },
+                          { v: '15000+',        l: 'מעל 15,000 ₪ / חודש' },
+                        ]
+                      : [
+                          { v: '0-1500000',       l: 'עד 1.5M ₪' },
+                          { v: '1500000-2500000', l: '1.5M–2.5M ₪' },
+                          { v: '2500000-4000000', l: '2.5M–4M ₪' },
+                          { v: '4000000-6000000', l: '4M–6M ₪' },
+                          { v: '6000000-10000000',l: '6M–10M ₪' },
+                          { v: '10000000+',       l: 'מעל 10M ₪' },
+                        ];
                     const stageOpts = [
                       { v: 'new', l: 'מתעניין חדש' },
                       { v: 'new_lead', l: 'מתעניין חדש' },
@@ -2119,7 +2137,7 @@ const LeadCRM = () => {
                           {/* Buyer/renter preference fields — hidden entirely for property owners */}
                           {!ownerLead && (
                             <>
-                              <SelectCell icon={<Wallet className="h-3.5 w-3.5 text-slate-700" />} label="תקציב מבוקש" value={budgetRange} placeholder="בחר תקציב" options={budgetOpts} onChange={(v) => savePref({ budget_range: v })} />
+                              <SelectCell icon={<Wallet className="h-3.5 w-3.5 text-slate-700" />} label={isRental ? 'שכר דירה חודשי' : 'תקציב מבוקש'} value={budgetRange} placeholder={isRental ? 'בחר טווח שכר' : 'בחר תקציב'} options={budgetOpts} onChange={(v) => savePref({ budget_range: v })} />
                               <SelectCell icon={<HomeIcon className="h-3.5 w-3.5 text-slate-700" />} label="סוג נכס מועדף" value={propertyType} placeholder="בחר נכס" options={propertyOpts} onChange={(v) => savePref({ property_type: v })} />
                               <SelectCell icon={<Compass className="h-3.5 w-3.5 text-slate-700" />} label="אזור ביקוש מועדף" value={area} placeholder="בחר אזור" options={areaOpts.map((c) => ({ v: c, l: c }))} onChange={(v) => saveLead({ neighborhood: v })} />
                             </>

@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabaseClient';
 import { Button } from '@/components/ui/button';
@@ -67,6 +67,14 @@ export default function LeadEnrichmentPanel({ lead, hideEnrichmentButton }: Prop
   // Collapsible social section
   const [socialOpen, setSocialOpen] = useState(false);
   const [socials, setSocials] = useState<SocialEntry[]>(() => buildInitialSocials(lead, prefs));
+
+  // Re-sync socials whenever the parent lead's preferences change (e.g. after
+  // the enrichment dialog writes new social profiles to the DB), so the panel
+  // reflects the update without waiting for a full page reload.
+  useEffect(() => {
+    setSocials(buildInitialSocials(lead, prefs));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [lead.id, JSON.stringify(prefs.socials), prefs.facebook_url, prefs.linkedin_url, prefs.tiktok_handle, lead.instagram_handle]);
 
   // GreenAPI credentials are now sourced from global workspace settings (api_configs).
   // This panel never reads or writes them locally — the enrichment edge function

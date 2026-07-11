@@ -75,13 +75,32 @@ export default function LeadEnrichmentDialog({ open, onOpenChange, lead }: Props
       const prefs = { ...(lead.preferences ?? {}) } as Record<string, any>;
       const colUpdate: Record<string, any> = {};
       const socials: any[] = Array.isArray(prefs.socials) ? [...prefs.socials] : [];
+      const setSocial = (platform: string, value: string) => {
+        const idx = socials.findIndex((s) => s?.platform === platform);
+        if (idx >= 0) socials[idx] = { ...socials[idx], handle: value };
+        else socials.push({ platform, handle: value });
+      };
       for (const f of chosen) {
-        if (f.target === 'column' && f.column) colUpdate[f.column] = f.value;
-        else if (f.target === 'preference') prefs[f.key] = f.value;
-        else if (f.target === 'social' && f.platform) {
-          const idx = socials.findIndex((s) => s.platform === f.platform);
-          if (idx >= 0) socials[idx].handle = f.value;
-          else socials.push({ platform: f.platform, handle: f.value });
+        if (f.target === 'column' && f.column) {
+          colUpdate[f.column] = f.value;
+        } else if (f.target === 'social' && f.platform) {
+          setSocial(f.platform, f.value);
+          // Mirror onto the legacy fields the CRM already reads so the profile
+          // page reflects the change even before `socials[]` is expanded.
+          if (f.platform === 'instagram') colUpdate.instagram_handle = f.value.replace(/^@/, '').replace(/^https?:\/\/(www\.)?instagram\.com\//i, '').replace(/\/$/, '');
+          else if (f.platform === 'facebook') prefs.facebook_url = f.value;
+          else if (f.platform === 'linkedin') prefs.linkedin_url = f.value;
+          else if (f.platform === 'tiktok')   prefs.tiktok_handle = f.value;
+          else if (f.platform === 'x')        prefs.x_handle = f.value;
+          else if (f.platform === 'youtube')  prefs.youtube_url = f.value;
+        } else if (f.target === 'preference') {
+          prefs[f.key] = f.value;
+          // Preference keys that are actually social URLs — mirror into socials[].
+          if (f.key === 'facebook_url')  setSocial('facebook', f.value);
+          if (f.key === 'linkedin_url')  setSocial('linkedin', f.value);
+          if (f.key === 'tiktok_handle') setSocial('tiktok', f.value);
+          if (f.key === 'x_handle')      setSocial('x', f.value);
+          if (f.key === 'youtube_url')   setSocial('youtube', f.value);
         }
       }
       prefs.socials = socials;
@@ -90,8 +109,10 @@ export default function LeadEnrichmentDialog({ open, onOpenChange, lead }: Props
       if (error) throw error;
       toast.success(`עודכנו ${chosen.length} שדות בפרופיל`);
       qc.invalidateQueries({ queryKey: ['leads-infinite'] });
+      qc.invalidateQueries({ queryKey: ['lead', lead.id] });
       onOpenChange(false);
     } catch (e: any) {
+      console.error('[enrich apply]', e);
       toast.error(e?.message ?? 'שגיאה בעדכון הפרופיל');
     } finally {
       setApplying(false);
