@@ -4456,6 +4456,7 @@ const CampaignCenter = () => {
         groupIds={confirmPayload?.group_ids ?? []}
         selectedProfileIds={confirmPayload?.selected_profile_ids ?? []}
         attachWaLink={confirmPayload?.attach_wa_link ?? false}
+        firstComment={confirmPayload?.first_comment ?? ''}
         onConfirmed={async () => {
           const body = confirmPayload?.body ?? '';
           const shouldEmail = alsoEmail && pickedChannel?.id !== 'email' && connectedChannels.has('email') && body.trim().length > 0;
