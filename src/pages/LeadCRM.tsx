@@ -2025,7 +2025,7 @@ const LeadCRM = () => {
                         return (
                           <div className="flex items-center gap-1 mt-2">
                             {channels.map((c) => {
-                              const base = `inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent transition-colors ${c.textClass} hover:bg-slate-100 ${c.active ? '' : 'opacity-55 ring-1 ring-dashed ring-border'}`;
+                              const base = `inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent transition-colors ${c.textClass} hover:bg-slate-100 ${c.active ? '' : 'opacity-55'}`;
                               const aria = { 'aria-label': c.label, title: c.label } as const;
                               return <button key={c.key} {...aria} type="button" onClick={c.onClick} className={base}>{c.icon}</button>;
                             })}
