@@ -102,7 +102,7 @@ async function sendSms(admin: ReturnType<typeof createClient>, phone: string, bo
 }
 
 const WebhookPayload = z.object({
-  lead_id: z.string().uuid(),
+  lead_id: z.string().uuid().optional(),
   content: z.string().min(1).max(5000),
   channel: z.string().default("whatsapp"),
   phone_number: z.string().optional(),
@@ -116,6 +116,8 @@ const WebhookPayload = z.object({
     stagger_min_minutes: z.number().int().min(1).max(120).default(7),
     stagger_max_minutes: z.number().int().min(1).max(240).default(23),
   }).optional(),
+}).refine((v) => !!v.lead_id || !!v.phone_number, {
+  message: "lead_id or phone_number is required",
 });
 
 async function buildInviteLink(
@@ -196,11 +198,13 @@ serve(async (req) => {
       });
     }
 
-    const { data: voter } = await supabase
-      .from("leads")
-      .select("phone_number, full_name")
-      .eq("id", lead_id)
-      .single();
+    const { data: voter } = lead_id
+      ? await supabase
+        .from("leads")
+        .select("phone_number, full_name")
+        .eq("id", lead_id)
+        .single()
+      : { data: null } as any;
 
     // If this is an invite send, resolve the destination channel deep-link and
     // template {LINK} into the content.
@@ -283,6 +287,12 @@ serve(async (req) => {
     // approval queue: they send immediately via Ayrshare Messages API and the
     // outbound row is inserted by ayrshare-send-dm.
     if (channel === "messenger" || channel === "instagram" || channel === "facebook" || channel === "linkedin") {
+      if (!lead_id) {
+        return new Response(JSON.stringify({ success: false, sent: false, fallback: true, error: "missing_lead_id", code: "missing_lead_id" }), {
+          status: 200,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
       const dmRes = await fetch(`${supabaseUrl}/functions/v1/ayrshare-send-dm`, {
         method: "POST",
         headers: {
