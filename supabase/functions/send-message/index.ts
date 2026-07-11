@@ -121,6 +121,7 @@ serve(async (req) => {
       if (!dmRes.ok) {
         return new Response(JSON.stringify({
           error: dmJson?.error || `dm_send_failed_${dmRes.status}`,
+          code: dmJson?.error === "no_recipient_psid" ? "no_recipient_psid" : (dmJson?.code || null),
           details: dmJson?.details || dmJson?.raw || dmText,
         }), { status: dmRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }

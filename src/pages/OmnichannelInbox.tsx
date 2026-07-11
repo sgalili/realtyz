@@ -11,7 +11,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Search, Send, Bot, MessageSquare, MessageCircle, Phone, AlertTriangle, Instagram, AtSign, MoreVertical, Paperclip, Mic, Facebook, Clock, Bookmark, Trash2, Mail, Plug, Inbox as InboxIcon } from 'lucide-react';
+import { Search, Send, Bot, MessageSquare, MessageCircle, Phone, AlertTriangle, Instagram, AtSign, MoreVertical, Paperclip, Mic, Facebook, Clock, Bookmark, Trash2, Mail, Plug, Inbox as InboxIcon, RefreshCw } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
@@ -579,7 +579,19 @@ const OmnichannelInbox = () => {
       });
     },
     onError: (error: Error) => {
-      if (error.message !== 'demo-blocked') toast.error('שליחת ההודעה נכשלה', { description: error.message, duration: 8000 });
+      if (error.message === 'demo-blocked') return;
+      // If Messenger/Instagram DM was rejected because we don't hold a PSID
+      // for this lead (they never messaged our Page), pivot to an invite
+      // via WhatsApp/SMS with an m.me/ig.me deep-link.
+      const msg = error.message || '';
+      if (/no_recipient_psid|PSID|messaged your Page/i.test(msg) &&
+          (sendChannel === 'messenger' || sendChannel === 'instagram' || sendChannel === 'facebook')) {
+        setInviteVia(selectedVoter?.phone_number ? 'whatsapp' : 'sms');
+        setInviteChannel(sendChannel);
+        toast.info('הליד עדיין לא פנה לעמוד — נשלחת הזמנה בערוץ אחר');
+        return;
+      }
+      toast.error('שליחת ההודעה נכשלה', { description: msg, duration: 8000 });
     },
   });
 
@@ -741,6 +753,26 @@ const OmnichannelInbox = () => {
           );
         })}
         <div className="ms-auto" />
+        <button
+          type="button"
+          onClick={async () => {
+            const t = toast.loading('מסנכרן הודעות מסנג׳ר...');
+            const { data, error } = await supabase.functions.invoke('ayrshare-fetch-dms', { body: {} });
+            toast.dismiss(t);
+            if (error) { toast.error('סנכרון נכשל', { description: error.message }); return; }
+            const s = (data as any)?.summary || {};
+            const total = (s.facebook?.inserted || 0) + (s.instagram?.inserted || 0);
+            toast.success(total > 0 ? `נמשכו ${total} הודעות חדשות` : 'אין הודעות חדשות');
+            queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
+            queryClient.invalidateQueries({ queryKey: ['chat-messages', selectedVoterId] });
+            queryClient.invalidateQueries({ queryKey: ['last-messages'] });
+          }}
+          aria-label="סנכרון הודעות מסנג׳ר"
+          title="סנכרון הודעות מסנג׳ר"
+          className="h-9 w-9 shrink-0 inline-flex items-center justify-center rounded-full text-muted-foreground hover:text-foreground hover:bg-muted/50"
+        >
+          <RefreshCw className="h-5 w-5" />
+        </button>
         <button
           type="button"
           onClick={() => navigate('/api-settings')}
