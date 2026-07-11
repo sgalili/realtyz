@@ -35,6 +35,7 @@ import { sendToN8n } from '@/lib/n8nService';
 import { formatPhoneDisplay, isValidIsraeliPhone } from '@/lib/formatPhone';
 import VoterAvatar from '@/components/VoterAvatar';
 import LeadProfilePictureMenu from '@/components/leads/LeadProfilePictureMenu';
+import { BrandIcon } from '@/components/BrandIcon';
 import { useAuth } from '@/hooks/useAuth';
 import { useDemoMode } from '@/hooks/useDemoMode';
 import { useDemoGuard } from '@/hooks/useDemoGuard';
@@ -224,6 +225,36 @@ const CircularScore = ({ score }: { score: number }) => {
 };
 
 const PAGE_SIZE = 50;
+
+const CRM_MESSAGE_CHANNELS = [
+  { key: 'whatsapp', brand: 'whatsapp', label: 'WhatsApp', textClass: 'text-social-whatsapp' },
+  { key: 'messenger', brand: 'messenger', label: 'Messenger', textClass: 'text-social-messenger' },
+  { key: 'facebook', brand: 'facebook', label: 'Facebook', textClass: 'text-social-facebook' },
+  { key: 'instagram', brand: 'instagram', label: 'Instagram', textClass: 'text-social-instagram' },
+  { key: 'linkedin', brand: 'linkedin', label: 'LinkedIn', textClass: 'text-social-linkedin' },
+  { key: 'x', brand: 'x', label: 'X', textClass: 'text-social-x' },
+  { key: 'tiktok', brand: 'tiktok', label: 'TikTok', textClass: 'text-social-tiktok' },
+  { key: 'telegram', brand: 'telegram', label: 'Telegram', textClass: 'text-social-telegram' },
+  { key: 'sms', brand: null, label: 'SMS', textClass: 'text-social-sms' },
+  { key: 'email', brand: null, label: 'Email', textClass: 'text-social-email' },
+] as const;
+
+function socialHandleFromLead(lead: any, platform: string): string | null {
+  const prefs = (lead?.preferences ?? {}) as Record<string, any>;
+  const socials = Array.isArray(prefs.socials) ? prefs.socials : [];
+  const fromArr = socials.find((s: any) => String(s?.platform || '').toLowerCase() === platform)?.handle;
+  const value =
+    platform === 'instagram' ? (lead?.instagram_handle || fromArr) :
+    platform === 'facebook' ? (lead?.facebook_handle || lead?.facebook_user_id || prefs.facebook_url || fromArr) :
+    platform === 'messenger' ? (lead?.messenger_id || lead?.facebook_user_id || lead?.facebook_handle || prefs.facebook_url || fromArr) :
+    platform === 'linkedin' ? (prefs.linkedin_url || fromArr) :
+    platform === 'x' ? (lead?.x_username || lead?.twitter_username || prefs.x_handle || fromArr) :
+    platform === 'tiktok' ? (lead?.tiktok_username || lead?.tiktok_handle || prefs.tiktok_handle || fromArr) :
+    platform === 'youtube' ? (lead?.youtube_handle || prefs.youtube_url || fromArr) :
+    platform === 'telegram' ? (lead?.telegram_username || fromArr) :
+    null;
+  return value ? String(value) : null;
+}
 
 function EditableInlineText({
   value,
@@ -1968,27 +1999,47 @@ const LeadCRM = () => {
                       {(() => {
                         const phoneDigits = (selectedVoter.phone_number || '').replace(/\D/g, '');
                         const email = (selectedVoter as any).email as string | undefined;
-                        const aiOn = !!selectedVoter.ai_autopilot;
-                        const WhatsAppIcon = (
-                          <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
-                            <path d="M20.5 3.5A11 11 0 0 0 3.6 17.4L2.5 21.5l4.2-1.1A11 11 0 1 0 20.5 3.5z" />
-                            <path d="M8.5 7.8c.3-.1.6 0 .8.3l.9 1.7c.2.3.1.6-.1.8l-.7.7c.6 1.3 1.7 2.4 3 3l.7-.7c.2-.2.5-.3.8-.1l1.7.9c.3.2.4.5.3.8-.4 1.2-1.7 1.9-2.9 1.6-2.7-.6-4.8-2.7-5.4-5.4-.3-1.2.4-2.5 1.6-2.9z" />
-                          </svg>
+                        const inboundChannels = new Set(
+                          (activeVoterMessages ?? [])
+                            .filter((m: any) => m?.direction === 'inbound' && m?.channel)
+                            .map((m: any) => String(m.channel))
                         );
-                        const channels: { key: string; href?: string; onClick?: () => void; icon: JSX.Element; label: string; active: boolean; accent?: string }[] = [
-                          { key: 'call',    href: phoneDigits ? `tel:+${phoneDigits}` : undefined, icon: <PhoneIcon className="h-4 w-4" strokeWidth={1.8} />, label: 'חיוג', active: !!phoneDigits },
-                          { key: 'email',   href: email ? `mailto:${email}` : undefined, icon: <Mail className="h-4 w-4" strokeWidth={1.8} />, label: 'דוא״ל', active: !!email },
-                          { key: 'whatsapp',href: phoneDigits ? `https://wa.me/${phoneDigits}` : undefined, icon: WhatsAppIcon, label: 'WhatsApp', active: !!phoneDigits, accent: phoneDigits ? 'text-emerald-600' : '' },
-                        ];
+                        const hasChannelIdentifier = (key: string) => {
+                          if (key === 'whatsapp' || key === 'sms') return !!phoneDigits;
+                          if (key === 'email') return !!email;
+                          return !!socialHandleFromLead(selectedVoter, key);
+                        };
+                        const isChatAvailable = (key: string) =>
+                          inboundChannels.has(key) || ((key === 'whatsapp' || key === 'sms' || key === 'email') && hasChannelIdentifier(key));
+                        const channels = CRM_MESSAGE_CHANNELS
+                          .filter((c) => isChatAvailable(c.key) || hasChannelIdentifier(c.key))
+                          .map((c) => ({
+                            ...c,
+                            active: isChatAvailable(c.key),
+                            onClick: () => navigate(`/inbox?lead=${encodeURIComponent(selectedVoter.id)}&channel=${encodeURIComponent(c.key)}`),
+                            icon: c.brand
+                              ? <BrandIcon name={c.brand} className="h-4 w-4" />
+                              : c.key === 'sms'
+                                ? <MessageCircle className="h-4 w-4" strokeWidth={1.8} />
+                                : <Mail className="h-4 w-4" strokeWidth={1.8} />,
+                          }));
                         return (
                           <div className="flex items-center gap-1 mt-2">
                             {channels.map((c) => {
-                              const base = `inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent transition-colors ${c.active ? `${c.accent || 'text-slate-700'} hover:bg-slate-100` : 'text-slate-300 cursor-not-allowed'}`;
+                              const base = `inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent transition-colors ${c.textClass} hover:bg-slate-100 ${c.active ? '' : 'opacity-55 ring-1 ring-dashed ring-border'}`;
                               const aria = { 'aria-label': c.label, title: c.label } as const;
-                              if (!c.active) return <span key={c.key} {...aria} className={base}>{c.icon}</span>;
-                              if (c.href) return <a key={c.key} {...aria} href={c.href} target={c.href.startsWith('http') ? '_blank' : undefined} rel="noopener noreferrer" className={base}>{c.icon}</a>;
                               return <button key={c.key} {...aria} type="button" onClick={c.onClick} className={base}>{c.icon}</button>;
                             })}
+                            {phoneDigits && (
+                              <a
+                                href={`tel:+${phoneDigits}`}
+                                aria-label="חיוג"
+                                title="חיוג"
+                                className="inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent text-slate-700 hover:bg-slate-100 transition-colors"
+                              >
+                                <PhoneIcon className="h-4 w-4" strokeWidth={1.8} />
+                              </a>
+                            )}
                             <button
                               type="button"
                               onClick={() => pushLeadToHomely(selectedVoter.id, false)}

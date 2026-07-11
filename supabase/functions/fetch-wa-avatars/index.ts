@@ -20,6 +20,12 @@ const corsHeaders = {
   "Access-Control-Allow-Methods": "POST, OPTIONS",
 };
 
+const json = (payload: Record<string, unknown>, status = 200) =>
+  new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, "Content-Type": "application/json" },
+  });
+
 interface Body {
   lead_ids?: string[];
   force?: boolean;
@@ -37,6 +43,18 @@ function normalizeChatId(phone: string): string | null {
   else if (digits.length === 9 && digits.startsWith("5")) digits = "972" + digits;
   if (digits.length < 10) return null;
   return `${digits}@c.us`;
+}
+
+async function readProviderError(res: Response): Promise<string> {
+  const text = await res.text().catch(() => "");
+  if (!text) return `Green API returned HTTP ${res.status}`;
+  try {
+    const j = JSON.parse(text);
+    const message = j?.message || j?.error || j?.description || j?.reason;
+    return message ? String(message) : text.slice(0, 240);
+  } catch {
+    return text.slice(0, 240);
+  }
 }
 
 
@@ -63,18 +81,12 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     if (!cfg?.api_key || cfg.is_active === false) {
-      return new Response(
-        JSON.stringify({ error: "Green API not configured" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return json({ success: false, error: "green_api_not_configured", reason: "Green API לא מוגדר או לא פעיל בהגדרות" });
     }
     const [instanceId, ...tokParts] = String(cfg.api_key).split(":");
     const token = tokParts.join(":");
     if (!instanceId || !token) {
-      return new Response(
-        JSON.stringify({ error: "Invalid Green API api_key format" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
-      );
+      return json({ success: false, error: "green_api_invalid_config", reason: "פורמט החיבור ל-Green API לא תקין. נדרש Instance ID:Token" });
     }
 
     // Resolve target leads.
@@ -94,17 +106,18 @@ Deno.serve(async (req) => {
     if (leadsErr) throw leadsErr;
 
     const results = {
+      success: true,
       scanned: leads?.length ?? 0,
       updated: 0,
       skipped: 0,
       failed: 0,
       errors: [] as string[],
+      reasons: [] as string[],
+      results: [] as Array<{ lead_id: string; phone?: string | null; status: string; reason?: string; url?: string }>,
     };
 
     if (!leads?.length) {
-      return new Response(JSON.stringify(results), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
+      return json({ ...results, reason: "לא נמצאו אנשי קשר עם מספר טלפון לשליפה" });
     }
 
     const avatarEndpoint =
@@ -112,7 +125,7 @@ Deno.serve(async (req) => {
     const contactInfoEndpoint =
       `https://api.green-api.com/waInstance${instanceId}/getContactInfo/${token}`;
 
-    async function resolveAvatarUrl(chatId: string): Promise<{ url: string | null; httpErr?: string }> {
+    async function resolveAvatarUrl(chatId: string): Promise<{ url: string | null; reason?: string }> {
       // 1) primary: getAvatar
       try {
         const res = await fetch(avatarEndpoint, {
@@ -124,11 +137,17 @@ Deno.serve(async (req) => {
           const j = await res.json().catch(() => ({} as any));
           const u = typeof j?.urlAvatar === "string" ? j.urlAvatar.trim() : "";
           if (u) return { url: u };
+          if (j?.available === false) {
+            return { url: null, reason: "הגדרות הפרטיות ב-WhatsApp לא מאפשרות לראות את תמונת הפרופיל" };
+          }
+          if (j?.available === true) {
+            return { url: null, reason: "למספר אין תמונת פרופיל ב-WhatsApp או שהמספר אינו חשבון WhatsApp פעיל" };
+          }
         } else if (res.status !== 404) {
-          return { url: null, httpErr: `getAvatar HTTP ${res.status}` };
+          return { url: null, reason: `Green API getAvatar נכשל: ${await readProviderError(res)}` };
         }
       } catch (e) {
-        return { url: null, httpErr: `getAvatar ${(e as Error).message}` };
+        return { url: null, reason: `Green API getAvatar נכשל: ${(e as Error).message}` };
       }
       // 2) fallback: getContactInfo (returns avatar field for known contacts)
       try {
@@ -141,9 +160,13 @@ Deno.serve(async (req) => {
           const j = await res2.json().catch(() => ({} as any));
           const u = typeof j?.avatar === "string" ? j.avatar.trim() : "";
           if (u) return { url: u };
+        } else if (res2.status !== 404) {
+          return { url: null, reason: `Green API getContactInfo נכשל: ${await readProviderError(res2)}` };
         }
-      } catch { /* ignore */ }
-      return { url: null };
+      } catch (e) {
+        return { url: null, reason: `Green API getContactInfo נכשל: ${(e as Error).message}` };
+      }
+      return { url: null, reason: "לא נמצאה תמונת פרופיל זמינה ב-WhatsApp עבור המספר הזה" };
     }
 
     // Sequential with small delay — Green API rate-limits aggressive bursts.
@@ -151,14 +174,14 @@ Deno.serve(async (req) => {
       const chatId = normalizeChatId(lead.phone_number as string);
       if (!chatId) {
         results.skipped++;
+        const reason = "מספר הטלפון לא תקין לשליפת WhatsApp";
+        if (results.reasons.length < 5) results.reasons.push(reason);
+        results.results.push({ lead_id: lead.id as string, phone: lead.phone_number as string, status: "skipped", reason });
         continue;
       }
       try {
-        const { url, httpErr } = await resolveAvatarUrl(chatId);
-        if (httpErr) {
-          results.failed++;
-          if (results.errors.length < 5) results.errors.push(`${lead.phone_number}: ${httpErr}`);
-        } else if (url) {
+        const { url, reason } = await resolveAvatarUrl(chatId);
+        if (url) {
           const { error: upErr } = await supabase
             .from("leads")
             .update({ profile_picture_url: url })
@@ -166,28 +189,42 @@ Deno.serve(async (req) => {
           if (upErr) {
             results.failed++;
             if (results.errors.length < 5) results.errors.push(upErr.message);
+            if (results.reasons.length < 5) results.reasons.push(upErr.message);
+            results.results.push({ lead_id: lead.id as string, phone: lead.phone_number as string, status: "failed", reason: upErr.message });
           } else {
             results.updated++;
+            results.results.push({ lead_id: lead.id as string, phone: lead.phone_number as string, status: "updated", url });
           }
+        } else if (reason?.startsWith("Green API")) {
+          results.failed++;
+          const line = `${lead.phone_number}: ${reason}`;
+          if (results.errors.length < 5) results.errors.push(line);
+          if (results.reasons.length < 5) results.reasons.push(reason);
+          results.results.push({ lead_id: lead.id as string, phone: lead.phone_number as string, status: "failed", reason });
         } else {
           results.skipped++;
+          const safeReason = reason || "לא נמצאה תמונת פרופיל זמינה ב-WhatsApp";
+          if (results.reasons.length < 5) results.reasons.push(safeReason);
+          results.results.push({ lead_id: lead.id as string, phone: lead.phone_number as string, status: "skipped", reason: safeReason });
         }
       } catch (e: any) {
         results.failed++;
-        if (results.errors.length < 5) results.errors.push(String(e?.message ?? e));
+        const reason = String(e?.message ?? e);
+        if (results.errors.length < 5) results.errors.push(reason);
+        if (results.reasons.length < 5) results.reasons.push(reason);
+        results.results.push({ lead_id: lead.id as string, phone: lead.phone_number as string, status: "failed", reason });
       }
       // Gentle pacing — Green API personal-tier ~5 req/s.
       await new Promise((r) => setTimeout(r, 220));
     }
 
 
-    return new Response(JSON.stringify(results), {
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    return json({
+      ...results,
+      success: results.updated > 0 || results.failed === 0,
+      reason: results.updated > 0 ? undefined : results.reasons[0] || results.errors[0] || "לא נמצאה תמונת פרופיל זמינה ב-WhatsApp",
     });
   } catch (e: any) {
-    return new Response(JSON.stringify({ error: String(e?.message ?? e) }), {
-      status: 500,
-      headers: { ...corsHeaders, "Content-Type": "application/json" },
-    });
+    return json({ success: false, error: "fetch_wa_avatar_failed", reason: String(e?.message ?? e) });
   }
 });
