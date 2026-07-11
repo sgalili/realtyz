@@ -1235,7 +1235,7 @@ const InlineComposer = ({
   const count = body.length;
 
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-sm space-y-4" dir="rtl">
+    <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 pb-16 shadow-sm space-y-4" dir="rtl">
       {/* Header row removed — title lives in the page hero; history is in the hero icon */}
 
 
@@ -1521,7 +1521,7 @@ const InlineComposer = ({
         const hasSelectedPages = channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
         const canSend = hasBody && scheduledValid && hasSelectedPages;
         return (
-          <div className="sticky bottom-0 z-50 -mx-4 sm:-mx-5 mt-3 border-t border-border/60 bg-card/95 px-4 sm:px-5 pb-0 pt-2 backdrop-blur">
+          <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/60 bg-card/95 px-4 sm:px-5 pb-0 pt-2 backdrop-blur">
             <button
               type="button"
               onClick={() => {
