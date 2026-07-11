@@ -39,12 +39,14 @@ async function sendSms019(admin: ReturnType<typeof createClient>, phone: string,
     .maybeSingle();
   const parts = String((data as any)?.api_key || "").split(":");
   const user = parts[0] || "";
-  const password = parts.slice(1).join(":");
+  const password = parts[1] || "";
+  const sender = (parts.slice(2).join(":") || "").trim();
   if (!user || !password) return { ok: false, error: "019 SMS לא מוגדר" };
+  if (!sender) return { ok: false, error: "019 SMS: חסר שולח (Sender ID) מאושר. הזן בהגדרות API את השולח שרשום כ-SMS-capable בחשבון 019 שלך." };
   const xml = `<?xml version="1.0" encoding="UTF-8"?>
 <sms>
   <user><username>${escapeXml(user)}</username><password>${escapeXml(password)}</password></user>
-  <source>${escapeXml("Realtyz")}</source>
+  <source>${escapeXml(sender)}</source>
   <destinations><phone>${escapeXml(local)}</phone></destinations>
   <message>${escapeXml(body)}</message>
 </sms>`;

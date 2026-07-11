@@ -253,6 +253,7 @@ const ApiSettings = () => {
   // 019 SMS state
   const [smsUser, setSmsUser] = useState('');
   const [smsPass, setSmsPass] = useState('');
+  const [smsSender, setSmsSender] = useState('');
 
   // Mapbox state
   const [mapboxToken, setMapboxToken] = useState('');
@@ -406,7 +407,8 @@ const ApiSettings = () => {
       const parts = sms.api_key.split(':');
       if (parts.length >= 2) {
         setSmsUser(parts[0]);
-        setSmsPass(parts.slice(1).join(':'));
+        setSmsPass(parts[1] || '');
+        setSmsSender(parts.slice(2).join(':') || '');
       }
     }
 
@@ -482,8 +484,9 @@ const ApiSettings = () => {
 
   const handleSaveSms = () => {
     if (!smsUser || !smsPass) { toast.error('יש למלא שם משתמש וסיסמה'); return; }
+    if (!smsSender) { toast.error('יש להזין שולח (Sender ID) מאושר על ידי 019'); return; }
     setSavingKey('sms');
-    upsertConfig.mutate({ serviceName: '019 SMS', apiKey: `${smsUser}:${smsPass}` });
+    upsertConfig.mutate({ serviceName: '019 SMS', apiKey: `${smsUser}:${smsPass}:${smsSender}` });
   };
 
   const handleSaveMapbox = () => {
@@ -1450,7 +1453,8 @@ const ApiSettings = () => {
         {existingSms && (
           <div className="p-3 rounded-lg bg-muted/50 border border-border/30 space-y-1">
             <KeyDisplay label="שם משתמש" value={existingSms.api_key.split(':')[0] || ''} id="sms_user" />
-            <KeyDisplay label="סיסמה" value={existingSms.api_key.split(':').slice(1).join(':') || ''} id="sms_pass" />
+            <KeyDisplay label="סיסמה" value={existingSms.api_key.split(':')[1] || ''} id="sms_pass" />
+            <KeyDisplay label="שולח (Sender)" value={existingSms.api_key.split(':').slice(2).join(':') || '—'} id="sms_sender" />
           </div>
         )}
         <div className="space-y-3">
@@ -1466,6 +1470,18 @@ const ApiSettings = () => {
                 {showKeys.sms ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
               </Button>
             </div>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-xs">שולח / Sender ID</Label>
+            <Input
+              placeholder="לדוגמה: Realtyz או מספר משרד מאושר"
+              value={smsSender}
+              onChange={(e) => setSmsSender(e.target.value)}
+              dir="ltr"
+            />
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              יש להזין את שם/מספר השולח שאושר על ידי 019 כ-SMS-capable בחשבונך. ללא שולח מאושר, 019 תדחה את השליחה.
+            </p>
           </div>
         </div>
       </ServiceCard>
