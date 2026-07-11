@@ -86,6 +86,9 @@ type ConfirmPayload = {
   group_ids: string[];
   selected_profile_ids: string[];
   attach_wa_link: boolean;
+  first_comment: string;
+  first_comment_enabled: boolean;
+  attach_msngr_link: boolean;
 };
 
 const isRenderablePostMediaUrl = (value: unknown): value is string => {
