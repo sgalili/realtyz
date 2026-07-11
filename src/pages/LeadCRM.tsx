@@ -1898,21 +1898,35 @@ const LeadCRM = () => {
               <>
                 <SheetHeader>
                   <SheetTitle className="flex items-center gap-3">
-                    <LeadProfilePictureMenu
-                      leadId={selectedVoter.id}
-                      fullName={selectedVoter.full_name}
-                      profilePictureUrl={(selectedVoter as any).profile_picture_url}
-                      phone={selectedVoter.phone_number}
-                      handles={{
-                        instagram: (selectedVoter as any).instagram_handle,
-                        facebook: (selectedVoter as any).facebook_handle,
-                        messenger: (selectedVoter as any).messenger_id,
-                        x: (selectedVoter as any).x_username || (selectedVoter as any).twitter_username,
-                        tiktok: (selectedVoter as any).tiktok_handle || (selectedVoter as any).tiktok_username,
-                        youtube: (selectedVoter as any).youtube_handle,
-                      }}
-                      onUpdated={() => queryClient.invalidateQueries({ queryKey: ['leads-infinite'] })}
-                    />
+                    {(() => {
+                      // Merge column-level social identifiers with the enrichment
+                      // profile so the pic-fetch menu offers every channel we know
+                      // about — including handles added via the enrichment dialog
+                      // (which writes into preferences.socials + prefs.facebook_url
+                      // /linkedin_url/x_handle/tiktok_handle/youtube_url).
+                      const prefs = ((selectedVoter as any).preferences ?? {}) as any;
+                      const socialArr: any[] = Array.isArray(prefs.socials) ? prefs.socials : [];
+                      const fromArr = (platform: string) =>
+                        socialArr.find((s) => (s?.platform || '').toLowerCase() === platform)?.handle || null;
+                      return (
+                        <LeadProfilePictureMenu
+                          leadId={selectedVoter.id}
+                          fullName={selectedVoter.full_name}
+                          profilePictureUrl={(selectedVoter as any).profile_picture_url}
+                          phone={selectedVoter.phone_number}
+                          handles={{
+                            instagram: (selectedVoter as any).instagram_handle || fromArr('instagram'),
+                            facebook:  (selectedVoter as any).facebook_handle  || prefs.facebook_url || fromArr('facebook'),
+                            messenger: (selectedVoter as any).messenger_id,
+                            x:         (selectedVoter as any).x_username || (selectedVoter as any).twitter_username || prefs.x_handle || fromArr('x'),
+                            tiktok:    (selectedVoter as any).tiktok_handle || (selectedVoter as any).tiktok_username || prefs.tiktok_handle || fromArr('tiktok'),
+                            youtube:   (selectedVoter as any).youtube_handle || prefs.youtube_url || fromArr('youtube'),
+                            linkedin:  prefs.linkedin_url || fromArr('linkedin'),
+                          }}
+                          onUpdated={() => queryClient.invalidateQueries({ queryKey: ['leads-infinite'] })}
+                        />
+                      );
+                    })()}
                     <div className="flex-1 min-w-0">
                       <EditableInlineText
                         value={selectedVoter.full_name || ''}
@@ -1990,7 +2004,7 @@ const LeadCRM = () => {
                             <LeadEnrichmentIconButton lead={selectedVoter} />
                             <div className="flex items-center gap-1.5 mr-auto ps-2">
                               <Switch
-                                className="group h-6 w-11 data-[state=checked]:bg-primary"
+                                className="group h-6 w-11 data-[state=checked]:bg-[#25D366]"
                                 checked={!!selectedVoter.ai_autopilot}
                                 onCheckedChange={async (checked) => {
                                   const { error } = await supabase
@@ -2009,7 +2023,7 @@ const LeadCRM = () => {
                                 <span
                                   className="pointer-events-none absolute inset-y-0 left-0 z-20 flex w-5 items-center justify-center transition-transform group-data-[state=checked]:translate-x-5 group-data-[state=unchecked]:translate-x-0"
                                 >
-                                  <Bot className="h-3 w-3 text-primary" strokeWidth={2.25} />
+                                  <Bot className="h-3 w-3 text-[#25D366] group-data-[state=unchecked]:text-slate-400" strokeWidth={2.25} />
                                 </span>
                               </Switch>
                             </div>

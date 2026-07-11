@@ -6,6 +6,8 @@ import { BrandIcon } from '@/components/BrandIcon';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
+type SocialChannel = 'facebook' | 'instagram' | 'linkedin' | 'x' | 'tiktok' | 'youtube';
+
 interface Props {
   leadId: string;
   fullName: string | null;
@@ -18,13 +20,45 @@ interface Props {
     x?: string | null;
     tiktok?: string | null;
     youtube?: string | null;
+    linkedin?: string | null;
   };
   onUpdated?: () => void;
 }
 
+// Per-channel brand color for the dropdown badge, so each channel is
+// instantly recognizable and matches the network's official identity.
+const BRAND: Record<SocialChannel | 'whatsapp', { bg: string; label: string }> = {
+  whatsapp:  { bg: '#25D366', label: 'וואטסאפ' },
+  facebook:  { bg: '#1877F2', label: 'פייסבוק' },
+  instagram: { bg: '#E4405F', label: 'אינסטגרם' },
+  linkedin:  { bg: '#0A66C2', label: 'לינקדאין' },
+  x:         { bg: '#111111', label: 'X' },
+  tiktok:    { bg: '#010101', label: 'טיקטוק' },
+  youtube:   { bg: '#FF0000', label: 'יוטיוב' },
+};
+
+const brandPill = (name: keyof typeof BRAND) => (
+  <span
+    className="ms-2 inline-flex h-6 w-6 items-center justify-center rounded-full text-white shrink-0"
+    style={{ backgroundColor: BRAND[name].bg }}
+  >
+    <BrandIcon name={name === 'x' ? 'x' : name} className="h-3.5 w-3.5" />
+  </span>
+);
+
 export default function LeadProfilePictureMenu({ leadId, fullName, profilePictureUrl, phone, handles, onUpdated }: Props) {
   const fileRef = useRef<HTMLInputElement>(null);
-  const [busy, setBusy] = useState<null | string>(null); // channel key or 'upload'
+  const [busy, setBusy] = useState<null | string>(null);
+
+  const explainError = (label: string, err: any, data: any) => {
+    const reason =
+      data?.reason ||
+      data?.error ||
+      (Array.isArray(data?.errors) && data.errors[0]) ||
+      err?.message ||
+      'הפלטפורמה חוסמת שליפה אוטומטית או שאין נתונים זמינים';
+    toast.error(`שליפה מ-${label} לא הצליחה`, { description: String(reason) });
+  };
 
   const uploadFile = async (file: File) => {
     setBusy('upload');
@@ -47,33 +81,50 @@ export default function LeadProfilePictureMenu({ leadId, fullName, profilePictur
   };
 
   const fetchFromWA = async () => {
-    if (!phone) { toast.error('אין מספר טלפון'); return; }
+    if (!phone) { toast.error('אין מספר טלפון', { description: 'הוסף מספר טלפון לפני משיכה מוואטסאפ' }); return; }
     setBusy('whatsapp');
     toast.info('מושך תמונה מוואטסאפ...');
     const { data, error } = await supabase.functions.invoke('fetch-wa-avatars', { body: { lead_ids: [leadId], force: true } });
     setBusy(null);
-    if (error) toast.error('שליפה מוואטסאפ נכשלה');
-    else if ((data as any)?.updated) { toast.success('תמונה עודכנה מוואטסאפ'); onUpdated?.(); }
-    else toast.warning('לא נמצאה תמונה פעילה');
+    if (error) {
+      explainError(BRAND.whatsapp.label, error, data);
+      return;
+    }
+    const d = (data as any) || {};
+    if (d.error) { explainError(BRAND.whatsapp.label, null, d); return; }
+    if ((d.updated ?? 0) > 0) { toast.success('תמונה עודכנה מוואטסאפ'); onUpdated?.(); return; }
+    if ((d.failed ?? 0) > 0) { explainError(BRAND.whatsapp.label, null, d); return; }
+    // scanned but nothing to update — either no avatar on WA or phone not on WA.
+    toast.warning('לא נמצאה תמונת פרופיל פעילה בוואטסאפ', {
+      description: 'המספר עשוי לא להיות רשום, או שהגדרות הפרטיות ב-WhatsApp מסתירות את התמונה',
+    });
   };
 
-  const fetchFromChannel = async (channel: 'facebook' | 'instagram' | 'x' | 'tiktok' | 'youtube', handle: string) => {
+  const fetchFromChannel = async (channel: SocialChannel, handle: string) => {
     setBusy(channel);
-    toast.info(`מושך תמונה מ-${channel}...`);
+    toast.info(`מושך תמונה מ-${BRAND[channel].label}...`);
     const { data, error } = await supabase.functions.invoke('fetch-social-avatar', {
       body: { lead_id: leadId, channel, handle },
     });
     setBusy(null);
-    if (error || (data as any)?.success === false) {
-      toast.warning(`שליפה מ-${channel} לא הצליחה`, { description: (data as any)?.reason ?? 'הפלטפורמה חוסמת שליפה אוטומטית' });
-    } else {
-      toast.success('תמונה עודכנה');
-      onUpdated?.();
-    }
+    if (error) { explainError(BRAND[channel].label, error, data); return; }
+    const d = (data as any) || {};
+    if (d.success === false || d.error) { explainError(BRAND[channel].label, null, d); return; }
+    toast.success(`תמונה עודכנה מ-${BRAND[channel].label}`);
+    onUpdated?.();
   };
 
   const has = handles;
-  const anySocial = !!(has.facebook || has.messenger || has.instagram || has.x || has.tiktok || has.youtube);
+  const facebookHandle = has.facebook || has.messenger || null;
+  const availableChannels: Array<{ key: SocialChannel; handle: string }> = [
+    facebookHandle && { key: 'facebook' as const, handle: facebookHandle },
+    has.instagram && { key: 'instagram' as const, handle: has.instagram },
+    has.linkedin && { key: 'linkedin' as const, handle: has.linkedin },
+    has.x && { key: 'x' as const, handle: has.x },
+    has.tiktok && { key: 'tiktok' as const, handle: has.tiktok },
+    has.youtube && { key: 'youtube' as const, handle: has.youtube },
+  ].filter(Boolean) as Array<{ key: SocialChannel; handle: string }>;
+  const anySocial = availableChannels.length > 0;
   const loading = busy !== null;
 
   return (
@@ -104,49 +155,34 @@ export default function LeadProfilePictureMenu({ leadId, fullName, profilePictur
             )}
           </button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="start" className="w-60 text-right">
+        <DropdownMenuContent align="start" className="w-64 text-right">
           <DropdownMenuLabel>תמונת פרופיל</DropdownMenuLabel>
-          <DropdownMenuItem onClick={() => fileRef.current?.click()} disabled={loading}>
-            <Upload className="ms-2 h-4 w-4" /> העלאת תמונה
+          <DropdownMenuItem onClick={() => fileRef.current?.click()} disabled={loading} className="gap-1">
+            <Upload className="ms-2 h-4 w-4" />
+            <span className="font-semibold">העלאת תמונה</span>
           </DropdownMenuItem>
           <DropdownMenuSeparator />
           {phone && (
             <DropdownMenuItem
               onClick={fetchFromWA}
               disabled={loading}
-              className="focus:bg-[#25D366]/10 focus:text-[#075E54]"
+              className="gap-1 focus:bg-[#25D366]/10"
             >
-              <span className="ms-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-[#25D366] text-white">
-                <BrandIcon name="whatsapp" className="h-3.5 w-3.5" />
-              </span>
-              <span className="font-semibold">משיכה מוואטסאפ</span>
+              {brandPill('whatsapp')}
+              <span className="font-semibold">משיכה מ{BRAND.whatsapp.label}</span>
             </DropdownMenuItem>
           )}
-          {(has.facebook || has.messenger) && (
-            <DropdownMenuItem onClick={() => fetchFromChannel('facebook', (has.facebook || has.messenger)!)} disabled={loading}>
-              <BrandIcon name="facebook" className="ms-2 h-4 w-4" /> משיכה מפייסבוק
+          {availableChannels.map(({ key, handle }) => (
+            <DropdownMenuItem
+              key={key}
+              onClick={() => fetchFromChannel(key, handle)}
+              disabled={loading}
+              className="gap-1"
+            >
+              {brandPill(key)}
+              <span className="font-semibold">משיכה מ{BRAND[key].label}</span>
             </DropdownMenuItem>
-          )}
-          {has.instagram && (
-            <DropdownMenuItem onClick={() => fetchFromChannel('instagram', has.instagram!)} disabled={loading}>
-              <BrandIcon name="instagram" className="ms-2 h-4 w-4" /> משיכה מאינסטגרם
-            </DropdownMenuItem>
-          )}
-          {has.x && (
-            <DropdownMenuItem onClick={() => fetchFromChannel('x', has.x!)} disabled={loading}>
-              <BrandIcon name="x" className="ms-2 h-4 w-4" /> משיכה מ-X
-            </DropdownMenuItem>
-          )}
-          {has.tiktok && (
-            <DropdownMenuItem onClick={() => fetchFromChannel('tiktok', has.tiktok!)} disabled={loading}>
-              <BrandIcon name="tiktok" className="ms-2 h-4 w-4" /> משיכה מטיקטוק
-            </DropdownMenuItem>
-          )}
-          {has.youtube && (
-            <DropdownMenuItem onClick={() => fetchFromChannel('youtube', has.youtube!)} disabled={loading}>
-              <BrandIcon name="youtube" className="ms-2 h-4 w-4" /> משיכה מיוטיוב
-            </DropdownMenuItem>
-          )}
+          ))}
           {!anySocial && !phone && (
             <DropdownMenuItem disabled>
               <RefreshCw className="ms-2 h-4 w-4" /> אין ערוצים מקושרים
