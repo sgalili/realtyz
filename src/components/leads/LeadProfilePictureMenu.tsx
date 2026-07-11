@@ -2,7 +2,7 @@ import { useRef } from 'react';
 import { Camera, Upload, RefreshCw } from 'lucide-react';
 import VoterAvatar from '@/components/VoterAvatar';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger, DropdownMenuLabel } from '@/components/ui/dropdown-menu';
-import BrandIcon from '@/components/ui/BrandIcon';
+import { BrandIcon } from '@/components/BrandIcon';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
 
