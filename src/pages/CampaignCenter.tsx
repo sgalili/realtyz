@@ -1358,7 +1358,7 @@ const InlineComposer = ({
             setBodyManuallyEdited(true);
           }}
           placeholder="תוכן ההודעה — כתוב כאן או חולל באמצעות AI"
-          className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-0 pb-10 pl-14"
+          className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-1.5 pb-10 pl-14"
         />
         {hasBody && (
           <button
