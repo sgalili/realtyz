@@ -1633,20 +1633,6 @@ const InlineComposer = ({
 
 
 
-      {hasBody && bodyManuallyEdited && (
-        <div className="flex justify-end">
-          <Button
-            size="sm"
-            variant="secondary"
-            disabled={finalizingBody || generating}
-            onClick={finalizeBody}
-            className="h-9"
-            title="לטשטוש מספרי בית, הוספת חתימת רישיון תיווך ושיוף הניסוח"
-          >
-            {finalizingBody ? 'מנסח גרסה סופית...' : 'גרסה סופית'}
-          </Button>
-        </div>
-      )}
 
 
 
