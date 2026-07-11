@@ -3216,20 +3216,6 @@ const PublishedFeed = () => {
           ? liveCount
           : fmt(r.comment_count);
 
-        // Strip Ayrshare workspace decorations ("Realtyz Workspace - … - 6200",
-        // refIds, and profile keys) so the header shows only the human FB page name.
-        const cleanFbPageName = (() => {
-          if (!fbPageName) return null;
-          const cleaned = String(fbPageName)
-            .replace(/^Realtyz Workspace\s*[-–]\s*/i, '')
-            .replace(/\s*[-–]\s*\d{2,}$/, '')
-            .replace(/\b[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\b/gi, '')
-            .replace(/\b[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}-[0-9A-F]{8}\b/g, '')
-            .trim();
-          return cleaned || null;
-        })();
-        const pageLabel = (String(r.channel || '').toLowerCase() === 'facebook' && cleanFbPageName) ? cleanFbPageName : ownerName;
-
         return (
           <article
             key={r.id}
@@ -3255,13 +3241,13 @@ const PublishedFeed = () => {
                     <ImageIcon className="h-5 w-5" />
                   </div>
                 )}
-                <h3 className={cn('flex-1 font-semibold text-foreground truncate', alignClass)} dir={dirAttr}>
+                <h3 className={cn('flex-1 font-semibold text-foreground line-clamp-2', alignClass)} dir={dirAttr}>
                   {(bodyText.trim().split('\n')[0] || r.campaign_name)}
                 </h3>
               </div>
 
 
-              {/* Row 2 (single combined row): logo · page · date  ........  comments · shares · likes · chevron */}
+              {/* Row 2 (single combined row): logo · date  ........  comments · shares · likes · chevron */}
               <div className={cn('flex items-center gap-2', isHe ? 'flex-row' : 'flex-row-reverse')}>
                 <span className="inline-flex items-center justify-center shrink-0">
                   {platformMeta?.brand ? (
@@ -3272,8 +3258,6 @@ const PublishedFeed = () => {
                     <span className="text-[10px] font-bold uppercase">{r.channel?.slice(0, 2)}</span>
                   )}
                 </span>
-                <span className="text-sm font-semibold text-foreground truncate">{pageLabel}</span>
-                <span className="text-xs text-muted-foreground">·</span>
                 <span className={cn(
                   'text-xs whitespace-nowrap',
                   scheduled ? 'text-amber-700 font-semibold' : 'text-muted-foreground',
