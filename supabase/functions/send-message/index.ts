@@ -104,6 +104,32 @@ serve(async (req) => {
       finalContent = content.replace(/\{LINK\}/g, url || "");
     }
 
+    // Direct DM channels (Messenger / Instagram / raw Facebook DM) bypass the
+    // approval queue: they send immediately via Ayrshare Messages API and the
+    // outbound row is inserted by ayrshare-send-dm.
+    if (channel === "messenger" || channel === "instagram" || channel === "facebook") {
+      const dmRes = await fetch(`${supabaseUrl}/functions/v1/ayrshare-send-dm`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ lead_id, content: finalContent, platform: channel }),
+      });
+      const dmText = await dmRes.text();
+      let dmJson: any = null; try { dmJson = dmText ? JSON.parse(dmText) : null; } catch { /* keep */ }
+      if (!dmRes.ok) {
+        return new Response(JSON.stringify({
+          error: dmJson?.error || `dm_send_failed_${dmRes.status}`,
+          details: dmJson?.details || dmJson?.raw || dmText,
+        }), { status: dmRes.status, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+      return new Response(JSON.stringify({ success: true, sent: true, provider: dmJson?.provider ?? null }), {
+        status: 200,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     const { data: approval, error: dbError } = await supabase
       .from("approval_queue")
       .insert({

@@ -74,8 +74,75 @@ Deno.serve(async (req) => {
       payload,
     });
 
+    // --- Inbound Messenger / Instagram DM branch --------------------------
+    // Ayrshare Messages webhooks arrive with action=message/dm and the payload
+    // (or payload.data / payload.message) contains: platform, senderId (PSID),
+    // message text and optional sender profile fields.
+    const isDmEvent = /message|dm|direct/i.test(String(eventType));
+    let dmInserted = false;
+    if (isDmEvent) {
+      const dm = (payload.data && typeof payload.data === 'object') ? payload.data
+        : (payload.message && typeof payload.message === 'object') ? payload.message
+        : payload;
+      const dmPlatform = String(dm.platform || platform || 'facebook').toLowerCase();
+      const senderId = String(
+        dm.senderId || dm.sender_id || dm.psid || dm.from?.id || dm.userId || dm.id || ''
+      ).trim();
+      const senderName = String(dm.senderName || dm.sender_name || dm.from?.name || dm.name || '').trim();
+      const text = String(dm.message || dm.text || dm.content || '').trim();
+      const isEcho = Boolean(dm.is_echo || dm.echo);
+      const inboxPlatform = dmPlatform.includes('instagram') ? 'instagram' : 'messenger';
+      const psidCol = inboxPlatform === 'instagram' ? 'instagram_psid' : 'messenger_psid';
+
+      if (senderId && text && !isEcho) {
+        // Find or create the lead by PSID (workspace-wide scope).
+        let leadId: string | null = null;
+        const { data: existing } = await admin
+          .from('leads')
+          .select('id')
+          .eq(psidCol, senderId)
+          .limit(1)
+          .maybeSingle();
+        if (existing?.id) leadId = existing.id;
+        else {
+          const { data: created, error: createErr } = await admin
+            .from('leads')
+            .insert({
+              user_id: userId,
+              full_name: senderName || `Messenger ${senderId.slice(-6)}`,
+              [psidCol]: senderId,
+              source: `${inboxPlatform}_dm`,
+              lead_stage: 'new',
+            } as any)
+            .select('id')
+            .single();
+          if (createErr) console.error('[ayrshare-webhook] lead create failed', createErr);
+          leadId = created?.id ?? null;
+        }
+
+        if (leadId) {
+          const { error: msgErr } = await admin.from('messages').insert({
+            lead_id: leadId,
+            content: text,
+            direction: 'inbound',
+            sender_type: 'voter',
+            channel: inboxPlatform,
+            platform: inboxPlatform,
+            metadata: {
+              ayrshare_ref_id: refId,
+              sender_id: senderId,
+              sender_name: senderName || null,
+              raw_event: eventType,
+            },
+          } as any);
+          if (msgErr) console.error('[ayrshare-webhook] message insert failed', msgErr);
+          else dmInserted = true;
+        }
+      }
+    }
+
     const postIds = extractPostIds(payload);
-    const shouldSync = String(platform || '').includes('facebook') || /comment|reply|like|share|reaction|post/i.test(String(eventType));
+    const shouldSync = !isDmEvent && (String(platform || '').includes('facebook') || /comment|reply|like|share|reaction|post/i.test(String(eventType)));
     if (shouldSync) {
       const syncTask = (async () => {
         if (postIds.length > 0) {
@@ -96,7 +163,7 @@ Deno.serve(async (req) => {
       else await syncTask;
     }
 
-    return new Response(JSON.stringify({ ok: true, sync_queued: shouldSync, post_ids: postIds.length }), {
+    return new Response(JSON.stringify({ ok: true, sync_queued: shouldSync, post_ids: postIds.length, dm_inserted: dmInserted }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
