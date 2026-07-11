@@ -1377,7 +1377,7 @@ const InlineComposer = ({
             {count}
           </span>
         )}
-        <div className="absolute bottom-2 right-2 flex items-center gap-1.5" dir="rtl">
+        <div className="absolute bottom-2 left-2 right-2 flex items-center gap-1.5" dir="rtl">
           <Popover>
             <PopoverTrigger asChild>
               <button
@@ -1407,7 +1407,7 @@ const InlineComposer = ({
             </PopoverContent>
           </Popover>
           {attachments.length > 0 && (
-            <div className="flex items-center gap-1 flex-wrap max-w-[60vw]">
+            <div className="flex items-center gap-1 flex-wrap flex-1 min-w-0">
               {attachments.map((att, i) => {
                 const isVideo = !!att.url && (/\.(mp4|mov|m4v|webm|3gp)(\?|$)/i.test(att.url) || /^video\//i.test((att as any).mimeType || ''));
                 const isImage = att.kind === 'image' && !!att.url && !isVideo;
