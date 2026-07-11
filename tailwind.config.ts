@@ -86,6 +86,7 @@ export default {
           instagram: "hsl(var(--social-instagram))",
           telegram: "hsl(var(--social-telegram))",
           messenger: "hsl(var(--social-messenger))",
+          linkedin: "hsl(var(--social-linkedin))",
           tiktok: "hsl(var(--social-tiktok))",
           signal: "hsl(var(--social-signal))",
           x: "hsl(var(--social-x))",
