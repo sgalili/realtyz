@@ -110,7 +110,7 @@ serve(async (req) => {
         user_id: userData.user.id,
         content_type: "outbound_message",
         platform: channel,
-        target_voter_id: lead_id,
+        target_lead_id: lead_id,
         target_label: voter?.full_name || phone_number || voter?.phone_number || null,
         title: `הודעה ממתינה לאישור - ${voter?.full_name || channel}`,
         proposed_content: finalContent,
@@ -126,7 +126,12 @@ serve(async (req) => {
     if (dbError) {
       console.error("DB insert error:", dbError);
       return new Response(
-        JSON.stringify({ error: "Failed to queue message", details: dbError.message }),
+        JSON.stringify({
+          error: "Failed to queue message",
+          code: (dbError as any).code,
+          details: dbError.message,
+          hint: (dbError as any).hint,
+        }),
         { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
