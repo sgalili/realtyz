@@ -1235,7 +1235,7 @@ const InlineComposer = ({
   const count = body.length;
 
   return (
-    <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 shadow-sm space-y-4" dir="rtl">
+    <div className="rounded-2xl border border-border/60 bg-card p-4 sm:p-5 pb-16 shadow-sm space-y-4" dir="rtl">
       {/* Header row removed — title lives in the page hero; history is in the hero icon */}
 
 
