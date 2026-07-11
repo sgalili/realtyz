@@ -29,7 +29,9 @@ Deno.serve(async (req) => {
       });
     }
     const { lead_id, content, platform } = parsed.data;
-    const ayrPlatform = platform === "instagram" ? "instagram" : "facebook";
+    const ayrPlatform = platform === "instagram" ? "instagram"
+      : platform === "linkedin" ? "linkedin"
+      : "facebook";
 
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -50,22 +52,29 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Resolve recipient PSID from lead if not provided.
+    // Resolve recipient id from lead if not provided.
     let recipientId = parsed.data.recipient_id?.trim() || "";
     if (!recipientId) {
       const { data: lead } = await admin
         .from("leads")
-        .select("messenger_psid, instagram_psid, facebook_user_id")
+        .select("messenger_psid, instagram_psid, facebook_user_id, linkedin_url, preferences")
         .eq("id", lead_id)
         .maybeSingle();
-      recipientId = (ayrPlatform === "instagram"
-        ? lead?.instagram_psid
-        : lead?.messenger_psid || (lead as any)?.facebook_user_id) || "";
+      if (ayrPlatform === "instagram") {
+        recipientId = (lead as any)?.instagram_psid || "";
+      } else if (ayrPlatform === "linkedin") {
+        const prefs: any = (lead as any)?.preferences || {};
+        recipientId = prefs.linkedin_urn || prefs.linkedin_id || (lead as any)?.linkedin_url || "";
+      } else {
+        recipientId = (lead as any)?.messenger_psid || (lead as any)?.facebook_user_id || "";
+      }
     }
     if (!recipientId) {
       return new Response(JSON.stringify({
         error: "no_recipient_psid",
-        details: "Cannot send a Messenger DM until this lead has messaged your Page at least once (Facebook requires a PSID and a 24-hour messaging window).",
+        details: ayrPlatform === "linkedin"
+          ? "Cannot send a LinkedIn DM until this lead has messaged you first (LinkedIn requires a member URN captured from an inbound message)."
+          : "Cannot send a Messenger DM until this lead has messaged your Page at least once (Facebook requires a PSID and a 24-hour messaging window).",
       }), {
         status: 422,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
