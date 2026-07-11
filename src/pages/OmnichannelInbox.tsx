@@ -639,15 +639,29 @@ const OmnichannelInbox = () => {
           { key: 'email', label: 'Email' },
         ] as const).map((c) => {
           const active = channelFilter === c.key;
+          const isAvail = c.key === 'all' ? true : !!availableChannels[c.key];
+          const handleClick = () => {
+            setChannelFilter(c.key);
+            if (c.key === 'all') return;
+            // Only switch the composer channel when there's a selected lead.
+            if (!selectedVoterId) return;
+            if (isAvail) {
+              setSendChannel(c.key);
+            } else {
+              // Channel not open yet — offer to send an invite via SMS/WA.
+              setInviteVia(selectedVoter?.phone_number ? 'whatsapp' : 'sms');
+              setInviteChannel(c.key);
+            }
+          };
           return (
             <button
               key={c.key}
               type="button"
-              onClick={() => setChannelFilter(c.key)}
+              onClick={handleClick}
               aria-label={c.label}
               title={c.label}
               aria-pressed={active}
-              className={`h-9 shrink-0 inline-flex items-center justify-center transition-opacity ${c.key === 'all' ? 'px-2' : 'w-9'} ${active ? 'opacity-100' : 'opacity-50 hover:opacity-100'}`}
+              className={`h-9 shrink-0 inline-flex items-center justify-center transition-opacity ${c.key === 'all' ? 'px-2' : 'w-9'} ${active ? 'opacity-100' : 'opacity-50 hover:opacity-100'} ${selectedVoterId && !isAvail && c.key !== 'all' ? 'ring-1 ring-dashed ring-muted-foreground/30 rounded-full' : ''}`}
             >
               {c.key === 'all'
                 ? <span className={`text-sm font-semibold ${active ? 'text-primary' : 'text-foreground'}`}>הכל</span>
