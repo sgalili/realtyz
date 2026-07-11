@@ -1326,28 +1326,85 @@ const InlineComposer = ({
         </div>
       </div>
 
-      {/* Textarea with in-field refresh button (top-left) and counter (bottom-left) */}
+      {/* Generate-with-AI CTA sits ABOVE the post textarea and only shows
+          while the textarea is empty. Once content exists, a compact regen
+          button appears in the textarea's top-left corner instead. */}
+      {!hasBody && (
+        <button
+          type="button"
+          onClick={() => handleGenerate()}
+          disabled={generating}
+          className={cn(
+            'w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold shadow-md transition',
+            'bg-[#FFD600] text-[#E11D2A] hover:bg-[#FFC400] hover:shadow-lg',
+            'disabled:opacity-60 disabled:cursor-not-allowed',
+          )}
+        >
+          <Sparkles className={cn('h-4 w-4', generating && 'animate-spin')} />
+          {generating ? 'מחולל תוכן…' : 'חולל תוכן עם AI'}
+        </button>
+      )}
+
+      {/* Textarea: top-left regen button (only when body exists), bottom-left
+          char counter, bottom-right attach popover (inside the field). */}
       <div className="relative">
         <Textarea
           ref={textareaRef}
           rows={6}
           value={body}
           onChange={(e) => {
-            // While the WA CTA opt-in is active, keep the composed CTA in the
-            // textarea (don't strip it via cleanBody). Once unchecked, strip.
             const raw = e.target.value.replace(/^[\s\u200f\u200e]+/g, '');
             setBody(cleanBody(raw));
             setBodyManuallyEdited(true);
           }}
           placeholder="תוכן ההודעה — כתוב כאן או חולל באמצעות AI"
-          className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-10 pb-7"
+          className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-10 pb-10 pl-14"
         />
+        {hasBody && (
+          <button
+            type="button"
+            onClick={() => handleGenerate({ rotateTemplate: true })}
+            disabled={generating}
+            className="absolute top-2 left-2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground disabled:opacity-50"
+            aria-label="חולל טקסט מחדש"
+            title="חולל טקסט מחדש"
+          >
+            <RefreshCw className={cn('h-4 w-4', generating && 'animate-spin')} />
+          </button>
+        )}
         {count > 0 && (
           <span className="pointer-events-none absolute left-2 bottom-2 text-[11px] tabular-nums text-muted-foreground/80" dir="ltr">
             {count}
           </span>
         )}
-
+        <Popover>
+          <PopoverTrigger asChild>
+            <button
+              type="button"
+              className="absolute bottom-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground"
+              aria-label="צירוף מדיה"
+            >
+              <Paperclip className="h-4 w-4" />
+            </button>
+          </PopoverTrigger>
+          <PopoverContent align="end" className="w-44 p-1" dir="rtl">
+            <button type="button" onClick={() => galleryInputRef.current?.click()}
+              className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
+              <span>גלריה</span>
+              <ImageIcon className="h-4 w-4 text-muted-foreground" />
+            </button>
+            <button type="button" onClick={() => cameraInputRef.current?.click()}
+              className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
+              <span>מצלמה</span>
+              <Camera className="h-4 w-4 text-muted-foreground" />
+            </button>
+            <button type="button" onClick={handleAIImage} disabled={generatingImage}
+              className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-60">
+              <span>{generatingImage ? 'מחולל…' : 'תמונת AI'}</span>
+              <Sparkles className="h-4 w-4 text-primary" />
+            </button>
+          </PopoverContent>
+        </Popover>
       </div>
 
       {/* First-comment composer — always visible below the main textarea.
@@ -1404,71 +1461,8 @@ const InlineComposer = ({
             </label>
           </div>
         )}
-        {firstCommentEnabled && (waShortUrl || msngrShortUrl) && (
-          <div className="mt-1 space-y-1 rounded-lg border border-dashed border-border bg-background/60 p-2 text-xs" dir="rtl">
-            {waShortUrl && (
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-muted-foreground">קישור וואטסאפ:</span>
-                <a href={waShortUrl} target="_blank" rel="noreferrer" className="font-mono text-[11px] text-primary hover:underline truncate" dir="ltr">
-                  {waShortUrl}
-                </a>
-              </div>
-            )}
-            {msngrShortUrl && (
-              <div className="flex items-center justify-between gap-2">
-                <span className="text-muted-foreground">קישור מסנג'ר:</span>
-                <a href={msngrShortUrl} target="_blank" rel="noreferrer" className="font-mono text-[11px] text-primary hover:underline truncate" dir="ltr">
-                  {msngrShortUrl}
-                </a>
-              </div>
-            )}
-          </div>
-        )}
       </div>
 
-
-      {/* Media + AI row. Publish button moved below the attachments preview so
-          the user can visually confirm the images before shipping. */}
-      <div className="flex flex-row items-center gap-3 w-full mt-4">
-        <Popover>
-          <PopoverTrigger asChild>
-            <button type="button" className="shrink-0 rounded-lg border border-border bg-background p-2.5 text-muted-foreground hover:text-foreground" aria-label="צירוף מדיה">
-              <Paperclip className="h-4 w-4" />
-            </button>
-          </PopoverTrigger>
-          <PopoverContent align="start" className="w-44 p-1" dir="rtl">
-            <button type="button" onClick={() => galleryInputRef.current?.click()}
-              className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
-              <span>גלריה</span>
-              <ImageIcon className="h-4 w-4 text-muted-foreground" />
-            </button>
-            <button type="button" onClick={() => cameraInputRef.current?.click()}
-              className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted">
-              <span>מצלמה</span>
-              <Camera className="h-4 w-4 text-muted-foreground" />
-            </button>
-            <button type="button" onClick={handleAIImage} disabled={generatingImage}
-              className="flex w-full items-center justify-between gap-3 rounded-md px-3 py-2 text-sm text-foreground hover:bg-muted disabled:opacity-60">
-              <span>{generatingImage ? 'מחולל…' : 'תמונת AI'}</span>
-              <Sparkles className="h-4 w-4 text-primary" />
-            </button>
-          </PopoverContent>
-        </Popover>
-
-        <button
-          type="button"
-          onClick={() => handleGenerate()}
-          disabled={generating}
-          className={cn(
-            'flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold shadow-md transition',
-            'bg-[#FFD600] text-[#E11D2A] hover:bg-[#FFC400] hover:shadow-lg',
-            'disabled:opacity-60 disabled:cursor-not-allowed',
-          )}
-        >
-          <RefreshCw className={cn('h-4 w-4', generating && 'animate-spin')} />
-          {generating ? 'מחולל תוכן…' : 'חולל תוכן עם AI'}
-        </button>
-      </div>
 
 
       {/* Hidden inputs */}
