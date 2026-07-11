@@ -175,7 +175,7 @@ const OmnichannelInbox = () => {
       supabase.functions.invoke('ayrshare-fetch-dms').then(({ data }) => {
         if (cancelled) return;
         const inserted = Object.values((data as any)?.summary || {})
-          .reduce((sum: number, p: any) => sum + (p?.inserted || 0), 0);
+          .reduce<number>((sum, p: any) => sum + (p?.inserted || 0), 0);
         if (inserted > 0) {
           queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
           queryClient.invalidateQueries({ queryKey: ['last-messages'] });
