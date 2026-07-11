@@ -1880,7 +1880,21 @@ const LeadCRM = () => {
               <>
                 <SheetHeader>
                   <SheetTitle className="flex items-center gap-3">
-                    <VoterAvatar fullName={selectedVoter.full_name} profilePictureUrl={(selectedVoter as any).profile_picture_url} className="h-16 w-16 shadow-lg" textClassName="text-xl" />
+                    <LeadProfilePictureMenu
+                      leadId={selectedVoter.id}
+                      fullName={selectedVoter.full_name}
+                      profilePictureUrl={(selectedVoter as any).profile_picture_url}
+                      phone={selectedVoter.phone_number}
+                      handles={{
+                        instagram: (selectedVoter as any).instagram_handle,
+                        facebook: (selectedVoter as any).facebook_handle,
+                        messenger: (selectedVoter as any).messenger_id,
+                        x: (selectedVoter as any).x_username || (selectedVoter as any).twitter_username,
+                        tiktok: (selectedVoter as any).tiktok_handle || (selectedVoter as any).tiktok_username,
+                        youtube: (selectedVoter as any).youtube_handle,
+                      }}
+                      onUpdated={() => queryClient.invalidateQueries({ queryKey: ['leads-infinite'] })}
+                    />
                     <div className="flex-1 min-w-0">
                       <EditableInlineText
                         value={selectedVoter.full_name || ''}
