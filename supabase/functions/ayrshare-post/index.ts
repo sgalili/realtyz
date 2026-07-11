@@ -285,7 +285,10 @@ Deno.serve(async (req) => {
 
     const { profileKey: workspaceProfileKey, refId } =
       await resolveWorkspaceProfileKey(admin);
-    const profileKey = targetProfileKey || workspaceProfileKey;
+    // The workspace singleton is the source of truth. Cached social-account
+    // rows can keep an old suspended Profile-Key, so never let a client-sent
+    // target key override the current workspace key.
+    const profileKey = workspaceProfileKey || targetProfileKey;
     if (!profileKey) {
       return json({
         success: false,

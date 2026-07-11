@@ -1734,6 +1734,18 @@ const ConfirmDispatchDialog = ({
     (async () => {
       setPagesLoading(true);
       try {
+        let workspaceFacebookProfile: any = null;
+        if (channel.id === 'facebook') {
+          const { data: wsp } = await supabase
+            .from('workspace_social_profile')
+            .select('ayrshare_profile_key, facebook_page_id, facebook_page_name')
+            .maybeSingle();
+          workspaceFacebookProfile = wsp;
+        }
+        const workspaceProfileKey = String(workspaceFacebookProfile?.ayrshare_profile_key || '').trim();
+        const workspaceFbId = String(workspaceFacebookProfile?.facebook_page_id || '').trim();
+        const workspaceFbName = String(workspaceFacebookProfile?.facebook_page_name || '').trim();
+
         const { data } = await supabase
           .from('ayrshare_social_accounts')
           .select('id, platform, account_ref, profile_key, display_name, account_username, username, avatar_url, profile_url, is_active, connected')
@@ -1746,8 +1758,8 @@ const ConfirmDispatchDialog = ({
             id: r.id,
             platform: r.platform,
             accountRef: r.account_ref || '',
-            profileKey: r.profile_key || null,
-            name: r.display_name || r.account_username || r.username || channel.label,
+            profileKey: channel.id === 'facebook' && workspaceProfileKey ? workspaceProfileKey : r.profile_key || null,
+            name: workspaceFbName || r.display_name || r.account_username || r.username || channel.label,
             username: r.account_username || r.username || null,
             avatar: r.avatar_url || null,
             profileUrl: r.profile_url || (r.account_ref ? buildAccountUrl(channel.id, r.account_ref) : null),
@@ -1760,22 +1772,16 @@ const ConfirmDispatchDialog = ({
           return true;
         });
         if (channel.id === 'facebook' && rows.length === 0) {
-          const { data: wsp } = await supabase
-            .from('workspace_social_profile')
-            .select('ayrshare_profile_key, facebook_page_id, facebook_page_name')
-            .maybeSingle();
-          const fbId = String((wsp as any)?.facebook_page_id || '').trim();
-          const profileKey = String((wsp as any)?.ayrshare_profile_key || '').trim();
-          if (fbId && profileKey) {
+          if (workspaceFbId && workspaceProfileKey) {
             rows = [{
-              id: `workspace-facebook:${fbId}`,
+              id: `workspace-facebook:${workspaceFbId}`,
               platform: 'facebook',
-              accountRef: fbId,
-              profileKey,
-              name: (wsp as any)?.facebook_page_name || 'Facebook',
+              accountRef: workspaceFbId,
+              profileKey: workspaceProfileKey,
+              name: workspaceFbName || 'Facebook',
               username: null,
               avatar: null,
-              profileUrl: buildAccountUrl('facebook', fbId),
+              profileUrl: buildAccountUrl('facebook', workspaceFbId),
             }];
           }
         }
