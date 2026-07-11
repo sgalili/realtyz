@@ -475,6 +475,7 @@ const OmnichannelInbox = () => {
       x: !!getInboxSocialHandle(v, 'x'),
       facebook: !!getInboxSocialHandle(v, 'facebook'),
       linkedin: !!getInboxSocialHandle(v, 'linkedin'),
+      email: !!v?.email,
     } as Record<string, boolean>;
     const result: Record<string, boolean> = {};
     Object.keys(channelConfig).forEach((key) => {
