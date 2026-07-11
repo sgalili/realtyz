@@ -132,14 +132,8 @@ const OmnichannelInbox = () => {
   }, [searchParams]);
   const [search, setSearch] = useState('');
   const { settings: _platformSettings, update: _updatePlatformSettings } = usePlatformSettings();
+  // Global autopilot lives in the page hero (affects ALL chats). It's read-only here.
   const aiAutopilot = _platformSettings.enable_ai_autopilot === true;
-  const setAiAutopilot = (next: boolean | ((prev: boolean) => boolean)) => {
-    const value = typeof next === 'function' ? (next as (p: boolean) => boolean)(aiAutopilot) : next;
-    if (value === aiAutopilot) return;
-    _updatePlatformSettings({ enable_ai_autopilot: value }).catch(() => {
-      toast.error('שמירת מצב המענה האוטומטי נכשלה');
-    });
-  };
   const [activeTab, setActiveTab] = useState<'all' | 'waiting' | 'handling'>('all');
   const [channelFilter, setChannelFilter] = useState<'all' | 'whatsapp' | 'telegram' | 'messenger' | 'facebook' | 'instagram' | 'linkedin' | 'x' | 'tiktok' | 'sms' | 'email'>('all');
   const [bookmarkedOnly, setBookmarkedOnly] = useState(false);
