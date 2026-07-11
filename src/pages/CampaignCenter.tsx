@@ -426,9 +426,34 @@ type CampaignListing = {
   asking_price: number | null;
   features: unknown;
   source_metadata: Record<string, unknown> | null;
+  media_photos: unknown;
   status: string | null;
   is_published: boolean | null;
   created_at: string | null;
+};
+
+// Extract image URLs from a listing row (media_photos + source_metadata fallbacks).
+const extractListingPhotoUrls = (listing: CampaignListing | null | undefined): string[] => {
+  if (!listing) return [];
+  const meta = (listing.source_metadata || {}) as Record<string, unknown>;
+  const pull = (v: unknown): string | null => {
+    if (!v) return null;
+    if (typeof v === 'string') return v;
+    if (typeof v === 'object') {
+      const o = v as any;
+      return o.url || o.src || o.photo || o.image_url || o.image || null;
+    }
+    return null;
+  };
+  const sources: unknown[] = [
+    ...(Array.isArray(listing.media_photos) ? (listing.media_photos as unknown[]) : []),
+    ...(Array.isArray((meta as any).photos) ? ((meta as any).photos as unknown[]) : []),
+    ...(Array.isArray((meta as any).images) ? ((meta as any).images as unknown[]) : []),
+  ];
+  if (typeof (meta as any).image === 'string') sources.push((meta as any).image);
+  if (typeof (meta as any).image_url === 'string') sources.push((meta as any).image_url);
+  const urls = sources.map(pull).filter((s): s is string => !!s && /^https?:\/\//i.test(s));
+  return Array.from(new Set(urls));
 };
 
 const normalizeListingText = (value: unknown) => String(value ?? '').replace(/\s+/g, ' ').trim();
@@ -809,7 +834,7 @@ const InlineComposer = ({
         for (let from = 0; ; from += pageSize) {
           const { data, error } = await supabase
             .from('listings')
-            .select('id, property_title, description, city, neighborhood, address, rooms, sqm, floor, asking_price, features, source_metadata, status, is_published, created_at')
+            .select('id, property_title, description, city, neighborhood, address, rooms, sqm, floor, asking_price, features, source_metadata, media_photos, status, is_published, created_at')
             .eq('status', 'live')
             .eq('is_published', true)
             .order('created_at', { ascending: false })
@@ -1092,6 +1117,24 @@ const InlineComposer = ({
                   onClick={() => {
                     setSelectedListingId(l.id);
                     setBody('');
+                    // Auto-attach all photos of this property from our DB
+                    const photoUrls = extractListingPhotoUrls(l);
+                    if (photoUrls.length > 0) {
+                      setAttachments((prev) => {
+                        const existing = new Set(prev.map((a) => a.url).filter(Boolean));
+                        const additions = photoUrls
+                          .filter((u) => !existing.has(u))
+                          .map((u, i) => ({
+                            name: `${l.property_title || l.address || 'property'}-${i + 1}.jpg`,
+                            kind: 'image' as const,
+                            url: u,
+                          }));
+                        return [...prev, ...additions];
+                      });
+                      toast.success(`צורפו ${photoUrls.length} תמונות של הנכס`);
+                    } else {
+                      toast.info('לא נמצאו תמונות במאגר לנכס זה');
+                    }
                     setListingPickerOpen(false);
                   }}
 
