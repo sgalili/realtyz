@@ -2012,9 +2012,10 @@ const LeadCRM = () => {
                         const isChatAvailable = (key: string) =>
                           inboundChannels.has(key) || ((key === 'whatsapp' || key === 'sms' || key === 'email') && hasChannelIdentifier(key));
                         const channels = CRM_MESSAGE_CHANNELS
-                          .filter((c) => isChatAvailable(c.key))
+                          .filter((c) => isChatAvailable(c.key) || hasChannelIdentifier(c.key))
                           .map((c) => ({
                             ...c,
+                            active: isChatAvailable(c.key),
                             onClick: () => navigate(`/inbox?lead=${encodeURIComponent(selectedVoter.id)}&channel=${encodeURIComponent(c.key)}`),
                             icon: c.brand
                               ? <BrandIcon name={c.brand} className="h-4 w-4" />
@@ -2025,7 +2026,7 @@ const LeadCRM = () => {
                         return (
                           <div className="flex items-center gap-1 mt-2">
                             {channels.map((c) => {
-                              const base = `inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent transition-colors ${c.textClass} hover:bg-slate-100`;
+                              const base = `inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent transition-colors ${c.textClass} hover:bg-slate-100 ${c.active ? '' : 'opacity-55 ring-1 ring-dashed ring-border'}`;
                               const aria = { 'aria-label': c.label, title: c.label } as const;
                               return <button key={c.key} {...aria} type="button" onClick={c.onClick} className={base}>{c.icon}</button>;
                             })}
