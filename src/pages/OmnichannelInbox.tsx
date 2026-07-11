@@ -859,6 +859,16 @@ const OmnichannelInbox = () => {
                     <p className="text-[10px] text-whatsapp-header-foreground/75">{selectedVoter?.city || 'WhatsApp Business'}</p>
                   </div>
                 </div>
+                {selectedVoter?.phone_number && (
+                  <a
+                    href={`tel:+${String(selectedVoter.phone_number).replace(/\D/g, '')}`}
+                    aria-label="חיוג למתעניין"
+                    title="חיוג למתעניין"
+                    className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-whatsapp-header-foreground transition-colors hover:bg-whatsapp-header-foreground/10"
+                  >
+                    <Phone className="h-4 w-4" />
+                  </a>
+                )}
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-9 w-9 text-whatsapp-header-foreground hover:bg-whatsapp-header-foreground/10">
