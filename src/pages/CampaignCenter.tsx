@@ -1417,18 +1417,18 @@ const InlineComposer = ({
                       <button
                         type="button"
                         onClick={() => setPreviewImageUrl(att.url!)}
-                        className="block h-4 w-4 overflow-hidden rounded-sm border border-border bg-muted focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="block h-[22px] w-[22px] overflow-hidden rounded-none border border-border bg-muted focus:outline-none focus:ring-1 focus:ring-primary"
                         aria-label="פתח תמונה"
                       >
                         <img src={att.url} alt="" className="h-full w-full object-cover" />
                       </button>
                     ) : isVideo ? (
-                      <video src={att.url} className="h-4 w-4 rounded-sm object-cover bg-black" muted playsInline />
+                      <video src={att.url} className="h-[22px] w-[22px] rounded-none object-cover bg-black" muted playsInline />
                     ) : (
-                      <div className="flex h-4 w-4 items-center justify-center rounded-sm border border-border bg-muted">
+                      <div className="flex h-[22px] w-[22px] items-center justify-center rounded-none border border-border bg-muted">
                         {att.kind === 'audio'
-                          ? <Mic className="h-2.5 w-2.5 text-primary" />
-                          : <Paperclip className="h-2.5 w-2.5 text-muted-foreground" />}
+                          ? <Mic className="h-3 w-3 text-primary" />
+                          : <Paperclip className="h-3 w-3 text-muted-foreground" />}
                       </div>
                     )}
                     <button
