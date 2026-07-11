@@ -229,7 +229,7 @@ const ChannelGrid = ({
   const connectedCards = CHANNEL_CARDS.filter((c) => connected.has(c.id));
   return (
     <Collapsible open={open} onOpenChange={setOpen} className="w-full">
-      <div className="flex items-center justify-between gap-3">
+      <div className="flex items-center justify-center gap-3">
         <div className="flex items-center gap-4 overflow-x-auto scrollbar-none -mx-1 px-1 pb-1" dir="rtl">
           {[
             { id: 'facebook',  label: 'Facebook',  brand: 'facebook' },
