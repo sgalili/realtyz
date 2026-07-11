@@ -595,17 +595,42 @@ const OmnichannelInbox = () => {
   }, [voters, lastMessages]);
   const totalCount = voters?.length ?? 0;
 
-  const filteredVoters = voters?.filter((v) => {
-    const matchesSearch = (v.full_name?.toLowerCase() || '').includes(search.toLowerCase()) ||
-      (v.phone_number || '').includes(search);
-    if (!matchesSearch) return false;
-    const m: any = lastMessages?.get(v.id);
-    if (channelFilter !== 'all' && String(m?.channel || '') !== channelFilter) return false;
-    if (activeTab === 'waiting') return m?.direction === 'inbound';
-    if (activeTab === 'handling') return m?.direction === 'outbound' && (m?.sender_type === 'ai' || m?.ai_assisted);
-    if (bookmarkedOnly) return (v as any).is_bookmarked === true;
-    return true;
-  });
+  const matchesLeadSearch = (v: any, q: string) => {
+    if (!q) return true;
+    const needle = q.toLowerCase();
+    const prefs = (v?.preferences ?? {}) as Record<string, any>;
+    const hay = [
+      v?.full_name, v?.phone_number, v?.email, v?.address, v?.city, v?.neighborhood,
+      v?.gender, v?.notes, v?.status, v?.lead_stage, v?.deal_type,
+      v?.instagram_handle, v?.facebook_handle, v?.messenger_id, v?.tiktok_handle,
+      v?.x_handle, v?.youtube_url, prefs.facebook_url, prefs.linkedin_url,
+      ...(Array.isArray(prefs.socials) ? prefs.socials.map((s: any) => `${s?.platform} ${s?.handle} ${s?.url}`) : []),
+    ].filter(Boolean).join(' ').toLowerCase();
+    return hay.includes(needle) || (v?.phone_number || '').includes(q);
+  };
+
+  const filteredVoters = (() => {
+    const base = (voters ?? []).filter((v) => {
+      if (!matchesLeadSearch(v, search)) return false;
+      const m: any = lastMessages?.get(v.id);
+      if (channelFilter !== 'all' && String(m?.channel || '') !== channelFilter) return false;
+      if (activeTab === 'waiting') return m?.direction === 'inbound';
+      if (activeTab === 'handling') return m?.direction === 'outbound' && (m?.sender_type === 'ai' || m?.ai_assisted);
+      if (bookmarkedOnly) return (v as any).is_bookmarked === true;
+      return true;
+    });
+    // When the user is searching, also surface CRM leads that don't have an
+    // active conversation yet, so the broker can initiate a chat via any
+    // available channel (WhatsApp / invite link / etc.).
+    if (search.trim() && activeTab === 'all' && !bookmarkedOnly) {
+      const known = new Set(base.map((v: any) => v.id));
+      const extras = (dbVoters ?? [])
+        .filter((v: any) => v?.id && !known.has(v.id) && matchesLeadSearch(v, search))
+        .map((v: any) => ({ ...v, _noConversation: true }));
+      return [...base, ...extras];
+    }
+    return base;
+  })();
 
   const handleSend = () => {
     const content = newMessage.trim();
@@ -789,7 +814,9 @@ const OmnichannelInbox = () => {
                       <div className="flex flex-row-reverse items-start gap-1 mt-0.5">
                         {lastMsg?.channel && <span className="shrink-0 mt-0.5"><ChannelIcon channel={lastMsg.channel} /></span>}
                         <p className="text-xs text-muted-foreground flex-1 min-w-0 max-w-full overflow-hidden break-all whitespace-pre-wrap leading-snug line-clamp-2">
-                          {lastMsg?.content || 'אין הודעות'}
+                          {(voter as any)._noConversation
+                            ? 'ללא שיחה פעילה — לחץ להתחלת צ׳אט'
+                            : (lastMsg?.content || 'אין הודעות')}
                         </p>
                       </div>
                     </div>
@@ -799,7 +826,7 @@ const OmnichannelInbox = () => {
             </AnimatePresence>
             {filteredVoters?.length === 0 && (
               <p className="text-sm text-muted-foreground text-center py-8">
-                {channelFilter === 'all' ? 'אין שיחות' : 'אין הודעות בערוץ זה'}
+                {search.trim() ? 'לא נמצאו תוצאות ב-CRM' : (channelFilter === 'all' ? 'אין שיחות' : 'אין הודעות בערוץ זה')}
               </p>
             )}
           </ScrollArea>
