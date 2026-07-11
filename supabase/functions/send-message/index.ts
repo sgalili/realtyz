@@ -131,6 +131,8 @@ serve(async (req) => {
     }
 
     const { data: approval, error: dbError } = await supabase
+      .from("approval_queue")
+      .insert({
         user_id: userData.user.id,
         content_type: "outbound_message",
         platform: channel,
