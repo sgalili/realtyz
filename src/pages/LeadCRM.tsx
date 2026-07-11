@@ -229,7 +229,6 @@ const PAGE_SIZE = 50;
 const CRM_MESSAGE_CHANNELS = [
   { key: 'whatsapp', brand: 'whatsapp', label: 'WhatsApp', textClass: 'text-social-whatsapp' },
   { key: 'messenger', brand: 'messenger', label: 'Messenger', textClass: 'text-social-messenger' },
-  { key: 'facebook', brand: 'facebook', label: 'Facebook', textClass: 'text-social-facebook' },
   { key: 'instagram', brand: 'instagram', label: 'Instagram', textClass: 'text-social-instagram' },
   { key: 'linkedin', brand: 'linkedin', label: 'LinkedIn', textClass: 'text-social-linkedin' },
   { key: 'x', brand: 'x', label: 'X', textClass: 'text-social-x' },
@@ -379,9 +378,25 @@ const LeadCRM = () => {
   }, [routeLeadId]);
   const [statusInfoOpen, setStatusInfoOpen] = useState(false);
   const [pushingHomely, setPushingHomely] = useState(false);
+  const [homelyPushDialog, setHomelyPushDialog] = useState<{
+    open: boolean;
+    phase: 'running' | 'success' | 'error';
+    leadName?: string;
+    startedAt?: number;
+    durationMs?: number;
+    homelyId?: string | number | null;
+    fields?: string[];
+    error?: string;
+    httpStatus?: number | string;
+    raw?: any;
+  }>({ open: false, phase: 'running' });
   const pushLeadToHomely = useCallback(async (leadId: string, silent = false) => {
+    const startedAt = Date.now();
     try {
-      if (!silent) setPushingHomely(true);
+      if (!silent) {
+        setPushingHomely(true);
+        setHomelyPushDialog({ open: true, phase: 'running', startedAt });
+      }
       const payloadPreview = { lead_id: leadId, action: 'WebtivLidPost', office: '9095' };
       // eslint-disable-next-line no-console
       console.log('Pushing Payload to Homely:', JSON.stringify(payloadPreview));
@@ -393,14 +408,42 @@ const LeadCRM = () => {
       // eslint-disable-next-line no-console
       console.log('Homely push response:', JSON.stringify(res));
       if (res?.ok) {
-        if (!silent) toast.success('איש הקשר נדחף בהצלחה ל-Homely');
+        if (!silent) {
+          toast.success('איש הקשר נדחף בהצלחה ל-Homely');
+          setHomelyPushDialog({
+            open: true,
+            phase: 'success',
+            durationMs: Date.now() - startedAt,
+            homelyId: res?.homely_id ?? res?.id ?? res?.data?.id ?? null,
+            fields: Array.isArray(res?.fields_sent) ? res.fields_sent : (res?.payload ? Object.keys(res.payload) : []),
+            raw: res,
+          });
+        }
         return true;
       }
-      const msg = res?.error || `HTTP ${res?.status || '???'}`;
-      if (!silent) toast.error(`דחיפה ל-Homely נכשלה: ${msg}`);
+      const msg = res?.error || res?.message || `HTTP ${res?.status || '???'}`;
+      if (!silent) {
+        toast.error(`דחיפה ל-Homely נכשלה: ${msg}`);
+        setHomelyPushDialog({
+          open: true,
+          phase: 'error',
+          durationMs: Date.now() - startedAt,
+          error: String(msg),
+          httpStatus: res?.status,
+          raw: res,
+        });
+      }
       return false;
     } catch (e: any) {
-      if (!silent) toast.error(`דחיפה ל-Homely נכשלה: ${e?.message || 'unknown'}`);
+      if (!silent) {
+        toast.error(`דחיפה ל-Homely נכשלה: ${e?.message || 'unknown'}`);
+        setHomelyPushDialog({
+          open: true,
+          phase: 'error',
+          durationMs: Date.now() - startedAt,
+          error: String(e?.message || e || 'unknown'),
+        });
+      }
       return false;
     } finally {
       if (!silent) setPushingHomely(false);
@@ -2026,7 +2069,7 @@ const LeadCRM = () => {
                         return (
                           <div className="flex items-center gap-1 mt-2">
                             {channels.map((c) => {
-                              const base = `inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent transition-colors ${c.textClass} hover:bg-slate-100 ${c.active ? '' : 'opacity-55 ring-1 ring-dashed ring-border'}`;
+                              const base = `inline-flex items-center justify-center h-8 w-8 rounded-md bg-transparent transition-colors ${c.textClass} hover:bg-slate-100 ${c.active ? '' : 'opacity-55'}`;
                               const aria = { 'aria-label': c.label, title: c.label } as const;
                               return <button key={c.key} {...aria} type="button" onClick={c.onClick} className={base}>{c.icon}</button>;
                             })}
@@ -2137,7 +2180,6 @@ const LeadCRM = () => {
                       { v: 'negotiation', l: 'במשא ומתן' }, { v: 'closed', l: 'סגר עסקה' },
                     ];
                     const sourceOpts = [
-                      { v: 'webtiv_stream', l: 'סטרים ובטיב' },
                       { v: 'homely', l: 'הומלי' },
                       { v: 'shortlink', l: 'פוסט פייסבוק' },
                       { v: 'facebook_groups', l: 'פייסבוק קבוצות' }, { v: 'facebook', l: 'פייסבוק' },
@@ -2461,6 +2503,96 @@ const LeadCRM = () => {
         }}
         mode="contacts"
       />
+
+      {/* Homely push status dialog — surfaces progress, summary, and API errors */}
+      <Dialog
+        open={homelyPushDialog.open}
+        onOpenChange={(o) => {
+          if (homelyPushDialog.phase === 'running') return;
+          setHomelyPushDialog((s) => ({ ...s, open: o }));
+        }}
+      >
+        <DialogContent dir="rtl" className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>
+              {homelyPushDialog.phase === 'running' && 'מסנכרן ל-Homely...'}
+              {homelyPushDialog.phase === 'success' && 'סנכרון ל-Homely הושלם'}
+              {homelyPushDialog.phase === 'error' && 'סנכרון ל-Homely נכשל'}
+            </DialogTitle>
+            <DialogDescription>
+              {homelyPushDialog.phase === 'running' && 'שולח את נתוני איש הקשר ל-Homely Open Card, אנא המתן...'}
+              {homelyPushDialog.phase === 'success' && 'איש הקשר נדחף בהצלחה. סיכום הפעולה מוצג למטה.'}
+              {homelyPushDialog.phase === 'error' && 'ה-API של Homely החזיר שגיאה. פרטי השגיאה מוצגים למטה.'}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2 text-sm">
+            {homelyPushDialog.phase === 'running' && (
+              <div className="flex items-center gap-2 text-slate-600">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span>ממתין לתגובה מ-Homely...</span>
+              </div>
+            )}
+
+            {homelyPushDialog.phase === 'success' && (
+              <div className="rounded-md border border-emerald-200 bg-emerald-50 p-3 space-y-1">
+                <div className="flex justify-between"><span className="text-slate-500">סטטוס</span><span className="font-medium text-emerald-700">הצלחה</span></div>
+                {homelyPushDialog.homelyId != null && (
+                  <div className="flex justify-between"><span className="text-slate-500">מזהה ב-Homely</span><span className="font-mono">#{String(homelyPushDialog.homelyId)}</span></div>
+                )}
+                {typeof homelyPushDialog.durationMs === 'number' && (
+                  <div className="flex justify-between"><span className="text-slate-500">משך</span><span>{(homelyPushDialog.durationMs / 1000).toFixed(2)}s</span></div>
+                )}
+                {homelyPushDialog.fields && homelyPushDialog.fields.length > 0 && (
+                  <div>
+                    <div className="text-slate-500 mb-1">שדות שנשלחו ({homelyPushDialog.fields.length})</div>
+                    <div className="flex flex-wrap gap-1">
+                      {homelyPushDialog.fields.slice(0, 40).map((f) => (
+                        <span key={f} className="rounded bg-white px-1.5 py-0.5 text-[11px] font-mono border border-emerald-200">{f}</span>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {homelyPushDialog.phase === 'error' && (
+              <div className="rounded-md border border-destructive/40 bg-destructive/10 p-3 space-y-1">
+                <div className="flex justify-between"><span className="text-slate-500">סטטוס</span><span className="font-medium text-destructive">שגיאה</span></div>
+                {homelyPushDialog.httpStatus != null && (
+                  <div className="flex justify-between"><span className="text-slate-500">HTTP</span><span className="font-mono">{String(homelyPushDialog.httpStatus)}</span></div>
+                )}
+                {typeof homelyPushDialog.durationMs === 'number' && (
+                  <div className="flex justify-between"><span className="text-slate-500">משך</span><span>{(homelyPushDialog.durationMs / 1000).toFixed(2)}s</span></div>
+                )}
+                <div>
+                  <div className="text-slate-500 mb-1">הודעת שגיאה</div>
+                  <div className="rounded bg-white p-2 text-xs font-mono whitespace-pre-wrap break-all border border-destructive/30">
+                    {homelyPushDialog.error || 'שגיאה לא ידועה'}
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            {homelyPushDialog.phase === 'error' && selectedVoter && (
+              <Button
+                variant="outline"
+                onClick={() => pushLeadToHomely(selectedVoter.id, false)}
+              >
+                נסה שוב
+              </Button>
+            )}
+            <Button
+              onClick={() => setHomelyPushDialog((s) => ({ ...s, open: false }))}
+              disabled={homelyPushDialog.phase === 'running'}
+            >
+              סגור
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={deleteDialogOpen} onOpenChange={(o) => { if (!deleting) setDeleteDialogOpen(o); }}>
         <AlertDialogContent dir="rtl">
