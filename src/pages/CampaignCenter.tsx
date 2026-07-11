@@ -1120,10 +1120,52 @@ const InlineComposer = ({
     }
   };
 
-  // When WA link is toggled ON, immediately mint a branded shortlink so the
-  // exact URL is visible to the user at the bottom of the first-comment card.
+  // Random CTA intro phrases used before the WA / Messenger shortlink so
+  // every post reads a little differently.
+  const WA_INTRO_PHRASES = [
+    'דברו איתי בוואטסאפ',
+    'שלחו לי הודעה',
+    'אני כאן בשבילכם',
+    'זמין לכל שאלה בוואטסאפ',
+    'לחצו ודברו איתי ישירות',
+    'מוזמנים לפנות אליי',
+  ];
+  const MSNGR_INTRO_PHRASES = [
+    "דברו איתי במסנג'ר",
+    "שלחו לי הודעה במסנג'ר",
+    "אני כאן בשבילכם במסנג'ר",
+    "זמין במסנג'ר לכל שאלה",
+    "פנו אליי במסנג'ר",
+  ];
+  const pickRandom = (arr: string[]) => arr[Math.floor(Math.random() * arr.length)];
+
+  const injectFirstCommentLine = (line: string) => {
+    setFirstComment((curr) => {
+      const trimmed = (curr || '').replace(/\s+$/, '');
+      return trimmed ? `${trimmed}\n\n${line}` : line;
+    });
+    requestAnimationFrame(() => {
+      const el = firstCommentRef.current;
+      if (el) el.scrollTop = el.scrollHeight;
+    });
+  };
+
+  const removeFirstCommentLine = (line: string) => {
+    if (!line) return;
+    setFirstComment((curr) => (curr || '').replace(line, '').replace(/\n{3,}/g, '\n\n').replace(/\s+$/, ''));
+  };
+
+  // When WA link is toggled ON, mint a branded shortlink and inject a CTA
+  // line into the first-comment textarea with a random intro phrase.
   useEffect(() => {
-    if (!attachWaLink) { setWaShortUrl(''); return; }
+    if (!attachWaLink) {
+      if (waInjectedRef.current) {
+        removeFirstCommentLine(waInjectedRef.current);
+        waInjectedRef.current = '';
+      }
+      setWaShortUrl('');
+      return;
+    }
     let cancelled = false;
     (async () => {
       let url = 'https://wa.me/972522973500';
@@ -1136,28 +1178,33 @@ const InlineComposer = ({
           if (slug) url = `https://realtyz.co.il/r/${slug}`;
         }
       } catch { /* keep fallback */ }
-      if (!cancelled) {
-        setWaShortUrl(url);
-        // Auto-scroll the first-comment textarea to the bottom so the newly
-        // appended CTA line is visible without manual scrolling.
-        requestAnimationFrame(() => {
-          const el = firstCommentRef.current;
-          if (el) el.scrollTop = el.scrollHeight;
-        });
-      }
+      if (cancelled) return;
+      setWaShortUrl(url);
+      const line = `${pickRandom(WA_INTRO_PHRASES)}: ${url}`;
+      if (waInjectedRef.current) removeFirstCommentLine(waInjectedRef.current);
+      waInjectedRef.current = line;
+      injectFirstCommentLine(line);
     })();
     return () => { cancelled = true; };
   }, [attachWaLink, selectedListingId]);
 
-  // Messenger deep-link (uses the currently linked FB Page ref when present).
+  // Messenger deep-link uses the connected FB Page ref.
   useEffect(() => {
-    if (!attachMsngrLink) { setMsngrShortUrl(''); return; }
+    if (!attachMsngrLink) {
+      if (msngrInjectedRef.current) {
+        removeFirstCommentLine(msngrInjectedRef.current);
+        msngrInjectedRef.current = '';
+      }
+      setMsngrShortUrl('');
+      return;
+    }
     const pageRef = socialProfiles.find((p) => p.platform === 'facebook')?.accountRef;
-    setMsngrShortUrl(pageRef ? `https://m.me/${pageRef}` : 'https://m.me/');
-    requestAnimationFrame(() => {
-      const el = firstCommentRef.current;
-      if (el) el.scrollTop = el.scrollHeight;
-    });
+    const url = pageRef ? `https://m.me/${pageRef}` : 'https://m.me/';
+    setMsngrShortUrl(url);
+    const line = `${pickRandom(MSNGR_INTRO_PHRASES)}: ${url}`;
+    if (msngrInjectedRef.current) removeFirstCommentLine(msngrInjectedRef.current);
+    msngrInjectedRef.current = line;
+    injectFirstCommentLine(line);
   }, [attachMsngrLink, socialProfiles]);
 
 
