@@ -1606,19 +1606,19 @@ const InlineComposer = ({
                     </div>
                   </>
                 )}
-                <div className="absolute bottom-3 right-3">
+                <div className="absolute bottom-3 left-3">
                   <Button
                     type="button"
                     variant="destructive"
-                    size="sm"
+                    size="icon"
                     onClick={() => {
                       const nextUrl = hasNext ? imageUrls[idx + 1] : (hasPrev ? imageUrls[idx - 1] : null);
                       setAttachments((a) => a.filter((att) => att.url !== previewImageUrl));
                       setPreviewImageUrl(nextUrl);
                     }}
+                    aria-label="מחק מהפוסט"
                   >
-                    <Trash2 className="h-4 w-4 ml-1" />
-                    מחק מהפוסט
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
