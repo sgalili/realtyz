@@ -575,7 +575,7 @@ const OmnichannelInbox = () => {
       const attachmentText = file ? `\n\n📎 ${file.name} (${Math.round(file.size / 1024)}KB)` : '';
       const { data, error } = await supabase.functions.invoke('send-message', {
         body: {
-          lead_id: selectedVoterId,
+          lead_id: selectedVoterId?.startsWith('phone:') ? undefined : selectedVoterId,
           content: `${safeContent}${attachmentText}`.trim(),
           channel: sendChannel,
           phone_number: selectedVoter?.phone_number,
@@ -1238,7 +1238,7 @@ const OmnichannelInbox = () => {
                 const body = `שלום, נשמח להמשיך את השיחה גם ב-${label}. לחצו כאן לפתיחת ההתכתבות: {LINK}`;
                 const { error } = await supabase.functions.invoke('send-message', {
                   body: {
-                    lead_id: selectedVoterId,
+                    lead_id: selectedVoterId.startsWith('phone:') ? undefined : selectedVoterId,
                     content: body,
                     channel: inviteVia,
                     phone_number: selectedVoter?.phone_number,
@@ -1246,7 +1246,7 @@ const OmnichannelInbox = () => {
                   },
                 });
                 setInviteSending(false);
-                if (error) toast.error('שליחת ההזמנה נכשלה');
+                if (error) toast.error('שליחת ההזמנה נכשלה', { description: await readFunctionError(error) || error.message });
                 else {
                   toast.success('ההזמנה נשלחה');
                   setInviteChannel(null);
