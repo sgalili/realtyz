@@ -1519,7 +1519,7 @@ const InlineComposer = ({
         const hasSelectedPages = channel.id !== 'facebook' || platformProfiles.length === 0 || selectedProfileIds.length > 0;
         const canSend = hasBody && scheduledValid && hasSelectedPages;
         return (
-          <div className="sticky bottom-0 z-10 -mx-4 sm:-mx-5 mt-3 border-t border-border/60 bg-card/95 px-4 sm:px-5 pb-3 pt-2 backdrop-blur">
+          <div className="sticky bottom-0 z-10 -mx-4 sm:-mx-5 mt-3 border-t border-border/60 bg-card/95 px-4 sm:px-5 pb-0 pt-2 backdrop-blur">
             <button
               type="button"
               onClick={() => {
