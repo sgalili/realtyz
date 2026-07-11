@@ -167,6 +167,27 @@ const OmnichannelInbox = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
+  // Auto-sync inbound Messenger/Instagram DMs on mount + every 60s, since
+  // Ayrshare's push webhook isn't always reliable.
+  useEffect(() => {
+    let cancelled = false;
+    const run = () => {
+      supabase.functions.invoke('ayrshare-fetch-dms').then(({ data }) => {
+        if (cancelled) return;
+        const inserted = Object.values((data as any)?.summary || {})
+          .reduce((sum: number, p: any) => sum + (p?.inserted || 0), 0);
+        if (inserted > 0) {
+          queryClient.invalidateQueries({ queryKey: ['inbox-leads'] });
+          queryClient.invalidateQueries({ queryKey: ['last-messages'] });
+          queryClient.invalidateQueries({ queryKey: ['chat-history'] });
+        }
+      }).catch(() => {});
+    };
+    run();
+    const id = setInterval(run, 60_000);
+    return () => { cancelled = true; clearInterval(id); };
+  }, [queryClient]);
+
   const handleDeleteChat = async (voterId: string) => {
     if (!voterId || voterId.startsWith('demo-')) {
       toast.error('לא ניתן למחוק שיחה זו');
