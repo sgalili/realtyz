@@ -1407,41 +1407,34 @@ const InlineComposer = ({
             </PopoverContent>
           </Popover>
           {attachments.length > 0 && (
-            <div className="flex items-center gap-1 flex-wrap flex-1 min-w-0">
+            <div className="relative flex items-center gap-1 flex-nowrap flex-1 min-w-0 overflow-x-auto">
               {attachments.map((att, i) => {
                 const isVideo = !!att.url && (/\.(mp4|mov|m4v|webm|3gp)(\?|$)/i.test(att.url) || /^video\//i.test((att as any).mimeType || ''));
                 const isImage = att.kind === 'image' && !!att.url && !isVideo;
                 return (
-                  <div key={i} className="relative group">
+                  <div key={i} className="shrink-0">
                     {isImage ? (
                       <button
                         type="button"
                         onClick={() => setPreviewImageUrl(att.url!)}
-                        className="block h-[26px] w-[26px] overflow-hidden rounded-none border border-border bg-muted focus:outline-none focus:ring-1 focus:ring-primary"
+                        className="block h-[31px] w-[31px] overflow-hidden rounded-none border border-border bg-muted focus:outline-none focus:ring-1 focus:ring-primary"
                         aria-label="פתח תמונה"
                       >
                         <img src={att.url} alt="" className="h-full w-full object-cover" />
                       </button>
                     ) : isVideo ? (
-                      <video src={att.url} className="h-[26px] w-[26px] rounded-none object-cover bg-black" muted playsInline />
+                      <video src={att.url} className="h-[31px] w-[31px] rounded-none object-cover bg-black" muted playsInline />
                     ) : (
-                      <div className="flex h-[26px] w-[26px] items-center justify-center rounded-none border border-border bg-muted">
+                      <div className="flex h-[31px] w-[31px] items-center justify-center rounded-none border border-border bg-muted">
                         {att.kind === 'audio'
-                          ? <Mic className="h-3.5 w-3.5 text-primary" />
-                          : <Paperclip className="h-3.5 w-3.5 text-muted-foreground" />}
+                          ? <Mic className="h-4 w-4 text-primary" />
+                          : <Paperclip className="h-4 w-4 text-muted-foreground" />}
                       </div>
                     )}
-                    <button
-                      type="button"
-                      onClick={(e) => { e.stopPropagation(); setAttachments((a) => a.filter((_, j) => j !== i)); }}
-                      className="absolute -top-1 -left-1 hidden group-hover:inline-flex h-3 w-3 items-center justify-center rounded-full bg-background text-[9px] text-muted-foreground shadow ring-1 ring-border hover:text-destructive"
-                      aria-label="הסר"
-                    >
-                      ×
-                    </button>
                   </div>
                 );
               })}
+              <div className="pointer-events-none absolute inset-y-0 left-0 w-6 bg-gradient-to-r from-background to-transparent" aria-hidden="true" />
             </div>
           )}
         </div>
