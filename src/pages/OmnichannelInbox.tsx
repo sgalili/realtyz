@@ -467,13 +467,13 @@ const OmnichannelInbox = () => {
     const handle = {
       whatsapp: phone,
       sms: phone,
-      instagram: !!v?.instagram_handle,
-      telegram: !!v?.telegram_username,
-      messenger: !!(v?.messenger_id || v?.facebook_user_id || v?.facebook_handle),
-      tiktok: !!(v?.tiktok_username || v?.tiktok_handle),
+      instagram: !!getInboxSocialHandle(v, 'instagram'),
+      telegram: !!getInboxSocialHandle(v, 'telegram'),
+      messenger: !!getInboxSocialHandle(v, 'messenger'),
+      tiktok: !!getInboxSocialHandle(v, 'tiktok'),
       signal: phone,
-      x: !!(v?.x_username || v?.twitter_username),
-      facebook: !!(v?.facebook_user_id || v?.facebook_handle),
+      x: !!getInboxSocialHandle(v, 'x'),
+      facebook: !!getInboxSocialHandle(v, 'facebook'),
       linkedin: !!getInboxSocialHandle(v, 'linkedin'),
     } as Record<string, boolean>;
     const result: Record<string, boolean> = {};
