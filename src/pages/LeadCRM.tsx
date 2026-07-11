@@ -378,9 +378,25 @@ const LeadCRM = () => {
   }, [routeLeadId]);
   const [statusInfoOpen, setStatusInfoOpen] = useState(false);
   const [pushingHomely, setPushingHomely] = useState(false);
+  const [homelyPushDialog, setHomelyPushDialog] = useState<{
+    open: boolean;
+    phase: 'running' | 'success' | 'error';
+    leadName?: string;
+    startedAt?: number;
+    durationMs?: number;
+    homelyId?: string | number | null;
+    fields?: string[];
+    error?: string;
+    httpStatus?: number | string;
+    raw?: any;
+  }>({ open: false, phase: 'running' });
   const pushLeadToHomely = useCallback(async (leadId: string, silent = false) => {
+    const startedAt = Date.now();
     try {
-      if (!silent) setPushingHomely(true);
+      if (!silent) {
+        setPushingHomely(true);
+        setHomelyPushDialog({ open: true, phase: 'running', startedAt });
+      }
       const payloadPreview = { lead_id: leadId, action: 'WebtivLidPost', office: '9095' };
       // eslint-disable-next-line no-console
       console.log('Pushing Payload to Homely:', JSON.stringify(payloadPreview));
@@ -392,14 +408,42 @@ const LeadCRM = () => {
       // eslint-disable-next-line no-console
       console.log('Homely push response:', JSON.stringify(res));
       if (res?.ok) {
-        if (!silent) toast.success('איש הקשר נדחף בהצלחה ל-Homely');
+        if (!silent) {
+          toast.success('איש הקשר נדחף בהצלחה ל-Homely');
+          setHomelyPushDialog({
+            open: true,
+            phase: 'success',
+            durationMs: Date.now() - startedAt,
+            homelyId: res?.homely_id ?? res?.id ?? res?.data?.id ?? null,
+            fields: Array.isArray(res?.fields_sent) ? res.fields_sent : (res?.payload ? Object.keys(res.payload) : []),
+            raw: res,
+          });
+        }
         return true;
       }
-      const msg = res?.error || `HTTP ${res?.status || '???'}`;
-      if (!silent) toast.error(`דחיפה ל-Homely נכשלה: ${msg}`);
+      const msg = res?.error || res?.message || `HTTP ${res?.status || '???'}`;
+      if (!silent) {
+        toast.error(`דחיפה ל-Homely נכשלה: ${msg}`);
+        setHomelyPushDialog({
+          open: true,
+          phase: 'error',
+          durationMs: Date.now() - startedAt,
+          error: String(msg),
+          httpStatus: res?.status,
+          raw: res,
+        });
+      }
       return false;
     } catch (e: any) {
-      if (!silent) toast.error(`דחיפה ל-Homely נכשלה: ${e?.message || 'unknown'}`);
+      if (!silent) {
+        toast.error(`דחיפה ל-Homely נכשלה: ${e?.message || 'unknown'}`);
+        setHomelyPushDialog({
+          open: true,
+          phase: 'error',
+          durationMs: Date.now() - startedAt,
+          error: String(e?.message || e || 'unknown'),
+        });
+      }
       return false;
     } finally {
       if (!silent) setPushingHomely(false);
