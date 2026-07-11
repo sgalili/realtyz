@@ -491,11 +491,11 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
 
 
 
-  // Manual refresh ONLY. Background/auto invocations were removed after Udi's
-  // Ayrshare profile got suspended for rate-limit burst. A 60-second hard
-  // throttle (in addition to the 15-min localStorage lock) blocks rapid
-  // re-clicks even when manual=true.
-  const lastManualRefreshAtRef = useRef<number>(0);
+  // Reactive rate-limiting only: we NEVER pre-emptively block a user click.
+  // Provider hits fire instantly. A cooldown is armed ONLY after Ayrshare/FB
+  // return an actual rate-limit / halt / suspended signal — that's the only
+  // case where we're truly risking the account and must back off.
+  const nextAllowedAtRef = useRef<number>(0);
   const forceRefresh = async ({ manual = false, wipeCache = false }: { manual?: boolean; wipeCache?: boolean } = {}) => {
     if (!manual) {
       // HARD RULE (post-suspension): non-manual callers are NEVER allowed to
@@ -503,15 +503,10 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
       return;
     }
     const now = Date.now();
-    const elapsed = now - lastManualRefreshAtRef.current;
-    if (lastManualRefreshAtRef.current > 0 && elapsed < 60_000) {
-      const wait = Math.ceil((60_000 - elapsed) / 1000);
-      toast.message(`רענון ידני זמין שוב בעוד ${wait} שניות`);
-      onRefreshComplete?.(campaign.id, { ok: false, count: treeCount(rowsRef.current), error: `רענון ידני זמין שוב בעוד ${wait} שניות` });
-      return;
-    }
-    if (isProviderFetchLocked(postIds, { manual })) {
-      onRefreshComplete?.(campaign.id, { ok: false, count: treeCount(rowsRef.current), error: 'הספק נעול זמנית להגנת החשבון' });
+    if (nextAllowedAtRef.current > now) {
+      const wait = Math.ceil((nextAllowedAtRef.current - now) / 1000);
+      toast.message(`ספק ההודעות (Ayrshare) חסם זמנית להגנת החשבון — נסה שוב בעוד ${wait} שניות`);
+      onRefreshComplete?.(campaign.id, { ok: false, count: treeCount(rowsRef.current), error: `rate_limited: ${wait}s` });
       return;
     }
     // Only wipe caches when the caller opts in (e.g. HARD RESET after an
@@ -528,7 +523,7 @@ function CampaignCommentsStreamInner({ userId, campaign, commentCount, onLiveCou
       try { sessionStorage.removeItem(cacheKey(campaign.id)); } catch { /* quota */ }
     }
 
-    stampProviderFetch(postIds);
+
 
     setManualRefreshing(true);
     try {
