@@ -1,5 +1,6 @@
 // Lists supported platforms / current connected accounts for the broker.
 import { createClient } from 'npm:@supabase/supabase-js@2';
+import { tripOnAyrshareFailure } from '../_shared/ayrshare-circuit.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -87,6 +88,9 @@ Deno.serve(async (req) => {
             }, { onConflict: 'user_id,platform' });
           }
         }
+      } else {
+        const body = await userRes.json().catch(() => ({}));
+        await tripOnAyrshareFailure(admin, userRes.status, body, 'status:user');
       }
     }
 

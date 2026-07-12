@@ -12,6 +12,7 @@ import {
   isSelfAuthoredComment,
   AYR_BASE,
 } from "../_shared/ayrshare-helpers.ts";
+import { tripOnAyrshareFailure } from "../_shared/ayrshare-circuit.ts";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
@@ -289,6 +290,7 @@ Deno.serve(async (req) => {
         const text = await res.text();
         let payload: any = {};
         try { payload = text ? JSON.parse(text) : {}; } catch { payload = { rawText: text }; }
+        if (!res.ok) await tripOnAyrshareFailure(admin, res.status, payload, `comments:${platform}`);
         return { ok: res.ok, status: res.status, payload, text };
       } catch (fetchErr) {
         const msg = fetchErr instanceof Error ? fetchErr.message : String(fetchErr);
@@ -319,6 +321,7 @@ Deno.serve(async (req) => {
         const text = await res.text();
         let payload: any = {};
         try { payload = text ? JSON.parse(text) : {}; } catch { payload = { rawText: text }; }
+        if (!res.ok) await tripOnAyrshareFailure(admin, res.status, payload, `analytics_post_from_comments:${platform}`);
         return { ok: res.ok, status: res.status, payload };
       } catch (e) {
         return { ok: false, status: 0, payload: { message: e instanceof Error ? e.message : String(e) } };

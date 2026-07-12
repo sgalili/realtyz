@@ -431,7 +431,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
     // Circuit breaker: bail if Ayrshare provider is currently blocked.
-    const { readCircuit, circuitOpenPayload } = await import("../_shared/ayrshare-circuit.ts");
+    const { readCircuit, circuitOpenPayload, tripOnAyrshareFailure } = await import("../_shared/ayrshare-circuit.ts");
     const _circuit = await readCircuit(admin);
     if (_circuit) {
       return new Response(
@@ -916,6 +916,9 @@ Deno.serve(async (req) => {
         // is actively rate-limiting us, so stop immediately.
         providerBlocked = true;
         await rememberProviderCooldown(result.status === 403 ? "profile_suspended_or_forbidden" : "provider_rate_limited");
+        if (result.status === 429 || candidate.profileKey === profileKey) {
+          await tripOnAyrshareFailure(admin, result.status, result.error, `fb_recent_posts:${candidate.label}:published`);
+        }
         if (result.status === 403) providerBlocked = false;
       }
       const broadResult = result.posts.length < Math.min(50, lastRecords)
@@ -925,6 +928,9 @@ Deno.serve(async (req) => {
       if (broadResult.status === 403 || broadResult.status === 429) {
         providerBlocked = true;
         await rememberProviderCooldown(broadResult.status === 403 ? "profile_suspended_or_forbidden" : "provider_rate_limited");
+        if (broadResult.status === 429 || candidate.profileKey === profileKey) {
+          await tripOnAyrshareFailure(admin, broadResult.status, broadResult.error, `fb_recent_posts:${candidate.label}:broad`);
+        }
         if (broadResult.status === 403) providerBlocked = false;
       }
       const bestResult = broadResult.posts.length > result.posts.length
@@ -950,6 +956,7 @@ Deno.serve(async (req) => {
       if (accountPublished.status === 403 || accountPublished.status === 429) {
         providerBlocked = true;
         await rememberProviderCooldown(accountPublished.status === 403 ? "account_forbidden" : "provider_rate_limited");
+        await tripOnAyrshareFailure(admin, accountPublished.status, accountPublished.error, "fb_recent_posts:account:published");
       }
       const accountBroad =
         accountPublished.posts.length < Math.min(150, lastRecords)
@@ -973,6 +980,7 @@ Deno.serve(async (req) => {
       if (genericResult.status === 403 || genericResult.status === 429) {
         providerBlocked = true;
         await rememberProviderCooldown(genericResult.status === 403 ? "profile_suspended_or_forbidden" : "provider_rate_limited");
+        await tripOnAyrshareFailure(admin, genericResult.status, genericResult.error, "fb_recent_posts:generic_history");
       }
       lastStatus = genericResult.status || lastStatus;
       lastError = genericResult.error ?? lastError;
