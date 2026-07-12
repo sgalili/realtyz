@@ -15,6 +15,7 @@ import {
   resolveWorkspaceProfileKey,
   verifyWorkspaceProfileKey,
 } from "../_shared/ayrshare-helpers.ts";
+import { tripOnAyrshareFailure } from "../_shared/ayrshare-circuit.ts";
 
 const json = (b: unknown, s = 200) =>
   new Response(JSON.stringify(b), {
@@ -318,6 +319,7 @@ Deno.serve(async (req) => {
               requested_id: body.id,
               payload: attempt.payload,
             });
+            await tripOnAyrshareFailure(admin, res.status, attempt.payload, `analytics:${endpoint}:${t.platform}`);
             if (isSoftMetricsFailure(res.status, attempt.payload)) {
               return { res, payload, softFailure: true };
             }
