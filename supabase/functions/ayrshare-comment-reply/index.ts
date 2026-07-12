@@ -390,6 +390,7 @@ Deno.serve(async (req) => {
         const ayrStatus = (privateDmResult && typeof privateDmResult === "object")
           ? String((privateDmResult as any).status ?? "").toLowerCase() : "";
         if (dmRes.ok && ayrStatus && ayrStatus !== "success") {
+          await tripOnAyrshareFailure(admin, privateDmStatus ?? 200, privateDmResult, "comment-private-dm-logical:facebook");
           // Ayrshare returned HTTP 200 but logical error — surface it.
           console.warn("[MESSENGER PIPELINE] Ayrshare logical error on DM", privateDmResult);
         }
