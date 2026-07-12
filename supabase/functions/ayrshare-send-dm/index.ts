@@ -3,6 +3,7 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { z } from "https://esm.sh/zod@3.25.76";
 import { AYR_BASE, resolveWorkspaceProfileKey } from "../_shared/ayrshare-helpers.ts";
+import { circuitOpenResponse, readCircuit, tripOnAyrshareFailure } from "../_shared/ayrshare-circuit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -44,6 +45,9 @@ Deno.serve(async (req) => {
     }
 
     const admin = createClient(SUPABASE_URL, SERVICE);
+    const circuit = await readCircuit(admin);
+    if (circuit) return circuitOpenResponse(circuit, corsHeaders);
+
     const { profileKey } = await resolveWorkspaceProfileKey(admin);
     if (!profileKey) {
       return new Response(JSON.stringify({ error: "no_workspace_profile" }), {
@@ -57,16 +61,18 @@ Deno.serve(async (req) => {
     if (!recipientId) {
       const { data: lead } = await admin
         .from("leads")
-        .select("messenger_psid, instagram_psid, facebook_user_id, linkedin_url, preferences")
+        .select("messenger_psid, messenger_id, instagram_psid, instagram_handle, preferences")
         .eq("id", lead_id)
         .maybeSingle();
+      const prefs = ((lead as any)?.preferences && typeof (lead as any).preferences === "object")
+        ? (lead as any).preferences
+        : {};
       if (ayrPlatform === "instagram") {
-        recipientId = (lead as any)?.instagram_psid || "";
+        recipientId = (lead as any)?.instagram_psid || prefs.instagram_psid || prefs.instagram_user_id || "";
       } else if (ayrPlatform === "linkedin") {
-        const prefs: any = (lead as any)?.preferences || {};
-        recipientId = prefs.linkedin_urn || prefs.linkedin_id || (lead as any)?.linkedin_url || "";
+        recipientId = prefs.linkedin_urn || prefs.linkedin_id || "";
       } else {
-        recipientId = (lead as any)?.messenger_psid || (lead as any)?.facebook_user_id || "";
+        recipientId = (lead as any)?.messenger_psid || prefs.messenger_psid || prefs.facebook_user_id || (lead as any)?.messenger_id || "";
       }
     }
     if (!recipientId) {
@@ -102,6 +108,7 @@ Deno.serve(async (req) => {
     try { json = raw ? JSON.parse(raw) : null; } catch { /* keep raw */ }
 
     if (!r.ok) {
+      await tripOnAyrshareFailure(admin, r.status, json ?? { raw }, `messages:${ayrPlatform}`);
       console.error("[ayrshare-send-dm] provider rejected", { status: r.status, raw: raw.slice(0, 500) });
       return new Response(JSON.stringify({
         error: json?.message || `ayrshare_${r.status}`,
