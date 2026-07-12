@@ -21,11 +21,33 @@ export interface CircuitState {
   opened_at: number;
 }
 
-export async function readCircuit(_admin: any): Promise<CircuitState | null> {
-  // EMERGENCY OVERRIDE: circuit breaker force-disabled for live testing.
-  // Every outbound Ayrshare call now proceeds regardless of prior suspension
-  // or rate-limit state persisted in campaign_settings.ayrshare_circuit_state.
-  return null;
+export async function readCircuit(admin: any): Promise<CircuitState | null> {
+  try {
+    const { data, error } = await admin
+      .from("campaign_settings")
+      .select("value")
+      .eq("key", KEY)
+      .maybeSingle();
+    if (error || !data?.value) return null;
+
+    const raw = typeof data.value === "string" ? JSON.parse(data.value) : data.value;
+    const until = Number(raw?.until_ms ?? 0);
+    if (!Number.isFinite(until) || until <= Date.now()) {
+      await admin.from("campaign_settings").delete().eq("key", KEY);
+      return null;
+    }
+    return {
+      until_ms: until,
+      reason: String(raw?.reason ?? "provider_circuit_open"),
+      status: raw?.status,
+      code: raw?.code,
+      message: raw?.message,
+      opened_at: Number(raw?.opened_at ?? Date.now()),
+    };
+  } catch (e) {
+    console.warn("[ayrshare-circuit] read failed", e);
+    return null;
+  }
 }
 
 
@@ -69,13 +91,27 @@ export async function tripCircuit(
  * fetch that returns non-ok.
  */
 export async function tripOnAyrshareFailure(
-  _admin: any,
-  _status: number,
-  _payload: any,
-  _ctx: string,
+  admin: any,
+  status: number,
+  payload: any,
+  ctx: string,
 ): Promise<CircuitState | null> {
-  // EMERGENCY OVERRIDE: never trip the circuit — logging only.
-  return null;
+  const code = payload?.code ?? payload?.error?.code ?? payload?.errors?.[0]?.code ?? payload?.raw?.code;
+  const message = String(
+    payload?.message ?? payload?.error?.message ?? payload?.error ??
+      payload?.errors?.[0]?.message ?? payload?.raw?.message ?? "",
+  );
+  const isSuspended = status === 403 || Number(code) === 276 || /suspended|forbidden/i.test(message);
+  const isRateLimited = status === 429 || /rate.?limit|too many requests/i.test(message);
+  if (!isSuspended && !isRateLimited) return null;
+
+  return await tripCircuit(admin, {
+    reason: `${isRateLimited ? "rate_limited" : "account_suspended"}:${ctx}`,
+    status,
+    code,
+    message: message.slice(0, 500),
+    ttlMs: isRateLimited ? 15 * 60_000 : 24 * 3600_000,
+  });
 }
 
 
