@@ -6,6 +6,7 @@ import { corsHeaders } from "../_shared/cors.ts";
 import { sanitizeOutboundText, resolveWorkspaceProfileKey, likeNativeComment } from "../_shared/ayrshare-helpers.ts";
 import { guardOutboundAction, recordAyrshareAction } from "../_shared/ayrshare-safety.ts";
 import { logIntegrationError } from "../_shared/logIntegrationError.ts";
+import { circuitOpenResponse, readCircuit, tripOnAyrshareFailure } from "../_shared/ayrshare-circuit.ts";
 
 const AYR_REPLY_URL = "https://api.ayrshare.com/api/comments/reply";
 const AYR_MESSAGES_URL = "https://api.ayrshare.com/api/messages";
@@ -41,6 +42,9 @@ Deno.serve(async (req) => {
     const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
     const SERVICE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const admin = createClient(SUPABASE_URL, SERVICE, { auth: { persistSession: false } });
+
+    const circuit = await readCircuit(admin);
+    if (circuit) return circuitOpenResponse(circuit, corsHeaders);
 
     const body = await req.json().catch(() => ({}));
     const eventId: string | undefined = body?.event_id;
@@ -166,6 +170,7 @@ Deno.serve(async (req) => {
 
 
       if (!ayrRes.ok) {
+        await tripOnAyrshareFailure(admin, ayrRes.status, ayrPayload, `comment-reply:${platform}`);
         if (rowId) {
           await admin
             .from("engagement_events")
@@ -299,6 +304,7 @@ Deno.serve(async (req) => {
           raw: dmText,
         });
         if (!dmRes.ok) {
+          await tripOnAyrshareFailure(admin, dmRes.status, privateDmResult ?? { raw: dmText }, "comment-private-dm:facebook");
           console.error("[MESSENGER PIPELINE] Ayrshare DM HTTP error", {
             status: privateDmStatus,
             commentId: dmParentId,

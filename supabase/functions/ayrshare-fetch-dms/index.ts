@@ -3,6 +3,7 @@
 // push webhook isn't reliably firing. Dedupes by ayrshare message id.
 import { createClient } from "npm:@supabase/supabase-js@2";
 import { AYR_BASE, resolveWorkspaceProfileKey } from "../_shared/ayrshare-helpers.ts";
+import { circuitOpenResponse, readCircuit, tripOnAyrshareFailure } from "../_shared/ayrshare-circuit.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -24,6 +25,9 @@ Deno.serve(async (req) => {
       });
     }
     const admin = createClient(SUPABASE_URL, SERVICE);
+    const circuit = await readCircuit(admin);
+    if (circuit) return circuitOpenResponse(circuit, corsHeaders);
+
     const { profileKey } = await resolveWorkspaceProfileKey(admin);
     if (!profileKey) {
       return new Response(JSON.stringify({ error: "no_workspace_profile" }), {
@@ -45,6 +49,7 @@ Deno.serve(async (req) => {
       const raw = await r.text();
       let json: any = null; try { json = raw ? JSON.parse(raw) : null; } catch { /* ignore */ }
       if (!r.ok) {
+        await tripOnAyrshareFailure(admin, r.status, json ?? { raw }, `fetch-dms:${platform}`);
         const errMsg = json?.message || raw.slice(0, 200);
         const relinkRequired = /relink|unlink|not linked|linkage|messaging/i.test(String(errMsg));
         if (relinkRequired) {

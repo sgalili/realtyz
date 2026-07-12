@@ -88,9 +88,11 @@ Deno.serve(async (req) => {
       const senderId = String(
         dm.senderId || dm.sender_id || dm.psid || dm.from?.id || dm.userId || dm.id || ''
       ).trim();
-      const senderName = String(dm.senderName || dm.sender_name || dm.from?.name || dm.name || '').trim();
+      const senderName = String(dm.senderName || dm.sender_name || dm.senderDetails?.name || dm.senderDetails?.username || dm.from?.name || dm.name || '').trim();
       const text = String(dm.message || dm.text || dm.content || '').trim();
-      const isEcho = Boolean(dm.is_echo || dm.echo);
+      const webhookType = String(dm.type || '').toLowerCase();
+      const subAction = String(dm.subAction || dm.sub_action || '').toLowerCase();
+      const isEcho = Boolean(dm.is_echo || dm.echo || webhookType === 'sent' || subAction === 'messagesent');
       const inboxPlatform = dmPlatform.includes('instagram') ? 'instagram' : 'messenger';
       const psidCol = inboxPlatform === 'instagram' ? 'instagram_psid' : 'messenger_psid';
 
@@ -109,6 +111,7 @@ Deno.serve(async (req) => {
             .from('leads')
             .insert({
               user_id: userId,
+              phone_number: `dm-${inboxPlatform}-${senderId}`,
               full_name: senderName || `Messenger ${senderId.slice(-6)}`,
               [psidCol]: senderId,
               source: `${inboxPlatform}_dm`,
@@ -132,6 +135,8 @@ Deno.serve(async (req) => {
               ayrshare_ref_id: refId,
               sender_id: senderId,
               sender_name: senderName || null,
+              conversation_id: dm.conversationId || dm.conversation_id || null,
+              ayrshare_message_id: dm.id || dm.messageId || dm.mid || null,
               raw_event: eventType,
             },
           } as any);
