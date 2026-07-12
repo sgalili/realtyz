@@ -12,6 +12,45 @@ const corsHeaders = {
 };
 
 const DEFAULT_OWNER_ID = "8f66ac1a-070a-4485-ac3b-07697d6c4b9e";
+const WEBHOOK_CACHE_KEY = "ayrshare_webhook_registration";
+const WEBHOOK_CACHE_MS = 24 * 60 * 60 * 1000;
+
+async function ensureWorkspaceWebhooks(admin: any, supabaseUrl: string, apiKey: string, profileKey: string) {
+  try {
+    const { data } = await admin
+      .from("campaign_settings")
+      .select("value, updated_at")
+      .eq("key", WEBHOOK_CACHE_KEY)
+      .maybeSingle();
+    const updatedAt = data?.updated_at ? new Date(data.updated_at).getTime() : 0;
+    if (Number.isFinite(updatedAt) && Date.now() - updatedAt < WEBHOOK_CACHE_MS) return;
+
+    const webhookUrl = `${supabaseUrl}/functions/v1/ayrshare-webhook`;
+    const actions = ["messages", "comments", "social"];
+    const results: Record<string, unknown> = {};
+    for (const action of actions) {
+      const res = await fetch(`${AYR_BASE}/hook/webhook`, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${apiKey}`,
+          "Profile-Key": profileKey,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ action, url: webhookUrl }),
+      });
+      const raw = await res.text();
+      let body: unknown = raw;
+      try { body = raw ? JSON.parse(raw) : {}; } catch { /* keep raw */ }
+      results[action] = { ok: res.ok, status: res.status, response: body };
+    }
+    await admin.from("campaign_settings").upsert(
+      { key: WEBHOOK_CACHE_KEY, value: JSON.stringify({ webhookUrl, actions, results }) },
+      { onConflict: "key" },
+    );
+  } catch (e) {
+    console.warn("[ayrshare-fetch-dms] webhook registration skipped", e instanceof Error ? e.message : String(e));
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
@@ -34,6 +73,8 @@ Deno.serve(async (req) => {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
+
+    await ensureWorkspaceWebhooks(admin, SUPABASE_URL, AYRSHARE_API_KEY, profileKey);
 
     const platforms: Array<"facebook" | "instagram"> = ["facebook", "instagram"];
     const summary: Record<string, any> = {};
