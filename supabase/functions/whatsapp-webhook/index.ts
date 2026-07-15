@@ -565,6 +565,55 @@ function sanitizeAiReply(raw: string): string {
   return s;
 }
 
+// Explicit agent-tool commands (webtiv property search / market intel / add lead)
+// that must always route through ai-agent — regardless of the lead-level or
+// global AI autopilot switch. This is the "Bridge Agent to WA" hook.
+const AGENT_COMMAND_RE =
+  /(תמצא(?:י)?\s+לי|מחפש[ת]?\s+דירה|דירה\s+ל(?:מכירה|השכרה)|\d+\s*חדרים.*ב[א-ת]|market\s+intel|price\s+history|comparable|sold\s+price|find\s+(?:me\s+)?(?:a|an|another)?\s*\d*\s*[- ]?(?:bed|bdr|room|br)\s*(?:apartment|apt|home|flat)|search\s+propert|properties?\s+in\s+|apartment\s+in\s+|מחירי\s+עסקאות|היסטוריית?\s+עסקאות|נמכר[הו]?\s+לאחרונה|הערכת\s+שווי|מגמת\s+מחיר|הוסף\s+ליד|הוסיפ[יו]?\s+ליד|add\s+(?:this\s+)?lead|add\s+contact|save\s+(?:this\s+)?contact)/i;
+
+function isAgentCommand(text: string): boolean {
+  return AGENT_COMMAND_RE.test(String(text ?? ""));
+}
+
+// Format ai-agent structured payloads (webtiv_results, market_intel) for
+// WhatsApp: concise bullets, one emoji per line, image URLs preserved so
+// WhatsApp auto-renders link previews for the property photos.
+function formatWebtivForWhatsApp(
+  webtivResults: Array<{
+    id?: string; title?: string; price?: number; city?: string; rooms?: number;
+    sqm?: number; photo?: string | null; transaction_type?: string; source_url?: string | null;
+  }> | undefined | null,
+): string {
+  const list = Array.isArray(webtivResults) ? webtivResults.slice(0, 3) : [];
+  if (!list.length) return "";
+  const lines = list.map((r) => {
+    const price = r.price
+      ? `₪${Number(r.price).toLocaleString("he-IL")}${r.transaction_type === "rent" ? "/חודש" : ""}`
+      : "—";
+    const rooms = r.rooms ? `${r.rooms} חד׳` : "";
+    const sqm = r.sqm ? `${r.sqm} מ״ר` : "";
+    const bits = [r.city, rooms, sqm].filter(Boolean).join(" · ");
+    const head = `🏠 *${r.title || "נכס"}*`;
+    const meta = bits ? `\n   📍 ${bits}` : "";
+    const priceLine = `\n   💰 ${price}`;
+    const link = r.source_url ? `\n   🔗 ${r.source_url}` : "";
+    const photo = r.photo ? `\n   🖼️ ${r.photo}` : "";
+    return `${head}${meta}${priceLine}${link}${photo}`;
+  });
+  return `\n\n✨ *נכסים חיים ממאגר המשרד:*\n${lines.join("\n\n")}`;
+}
+
+function formatMarketIntelForWhatsApp(
+  intel: { query?: string; sources?: Array<{ title?: string; url?: string; snippet?: string }> } | undefined | null,
+): string {
+  const src = intel?.sources ?? [];
+  if (!src.length) return "";
+  const lines = src.slice(0, 4).map((s, i) => `${i + 1}. ${String(s.title || s.url || "").slice(0, 90)}\n   🔗 ${s.url}`);
+  return `\n\n📊 *מקורות מחקר שוק:*\n${lines.join("\n")}`;
+}
+
+
+
 async function handleLeadInboxInbound(
   admin: ReturnType<typeof createClient>,
   supabaseUrl: string,
