@@ -852,6 +852,7 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
           + "\n\n" + channelBlock
           + "\n\n" + compliance
           + (matchingBlock ? "\n\n" + matchingBlock : "")
+          + (webtivBlock ? "\n\n" + webtivBlock : "")
           + (propertyAnchorBlock ? "\n\n" + propertyAnchorBlock : "")
           + "\n\n" + noFallbackBlock
           + "\n\n[GROUNDING + ADAPTIVE CROSS-SELL DIRECTIVE]\n"
