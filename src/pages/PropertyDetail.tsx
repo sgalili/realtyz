@@ -531,7 +531,7 @@ export default function PropertyDetail() {
             <Card className="overflow-hidden">
               <div className="aspect-[16/10] bg-muted relative">
                 {main ? (
-                  <img src={main} alt={dynamicHeadline} className="h-full w-full object-cover" onError={() => removeBrokenPhoto(main)} />
+                  <img src={main} alt={dynamicHeadline} className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-muted-foreground">
                     <ImageIcon className="h-10 w-10" />
