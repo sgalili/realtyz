@@ -1857,6 +1857,53 @@ Deno.serve(async (req) => {
             ...(balcony === true ? ["מרפסת"] : []),
           ]),
         );
+        // Owner CRM upsert — one profile per (workspace, owner name).
+        // We look up by lower(full_name) so imports don't create duplicates.
+        let ownerId: string | null = null;
+        const ownerFullName = String(p?.owner_full_name || "").trim();
+        if (ownerFullName) {
+          const { data: existingOwner } = await admin
+            .from("crm_profiles")
+            .select("id")
+            .eq("workspace_owner_id", workspaceOwnerId)
+            .ilike("full_name", ownerFullName)
+            .limit(1)
+            .maybeSingle();
+          if (existingOwner?.id) {
+            ownerId = String(existingOwner.id);
+            // Patch missing contact fields opportunistically.
+            await admin.from("crm_profiles").update({
+              phone: p?.owner_phone || undefined,
+              email: p?.owner_email || undefined,
+            }).eq("id", ownerId);
+          } else {
+            const { data: newOwner } = await admin
+              .from("crm_profiles")
+              .insert({
+                workspace_owner_id: workspaceOwnerId,
+                full_name: ownerFullName,
+                phone: p?.owner_phone || null,
+                email: p?.owner_email || null,
+                profile_type: "Owner",
+                source: "homely_import",
+                enrichment_status: "pending",
+              })
+              .select("id")
+              .maybeSingle();
+            ownerId = newOwner?.id ? String(newOwner.id) : null;
+            // Fire-and-forget enrichment (stub function)
+            if (ownerId) {
+              admin.functions.invoke("enrich-owner-profile", { body: { owner_id: ownerId } })
+                .catch((e) => console.warn("[importOutJson] enrich invoke failed", (e as Error).message));
+            }
+          }
+        }
+
+        // Rent-vs-sale + price=0 → draft/missing state
+        const dealType = String(p?.transaction_type || "sale").toLowerCase() === "rent" ? "rent" : "sale";
+        const priceNum = Number(p?.price) || 0;
+        const priceMissing = priceNum <= 0;
+
         const row: Record<string, unknown> = {
           user_id: workspaceOwnerId,
           slug: `${slugify(String(p?.title || p?.address || "homely"))}-${homelyId}`,
@@ -1865,19 +1912,20 @@ Deno.serve(async (req) => {
           external_id: homelyId,
           property_title: String(p?.title || p?.address || `נכס ${homelyId}`),
           description: String(p?.description || ""),
-          asking_price: Number(p?.price) || 0,
+          asking_price: priceNum,
           city: p?.city ? String(p.city) : null,
           address: p?.address ? String(p.address) : null,
           rooms: Number(p?.rooms) || null,
           sqm: Number.isFinite(Number(p?.sqm)) ? Number(p.sqm) : null,
           floor: Number.isFinite(Number(p?.floor)) ? Number(p.floor) : null,
-          status: "live",
-          deal_type: String(p?.transaction_type || "sale").toLowerCase() === "rent" ? "rent" : "sale",
-          is_published: true,
+          status: priceMissing ? "draft" : "live",
+          deal_type: dealType,
+          is_published: !priceMissing,
           office_notes: p?.office_notes ? String(p.office_notes) : null,
           features,
           media_photos: rawPhotos,
           media_documents: rawDocuments,
+          owner_id: ownerId,
           source_metadata: {
             homely_id: homelyId,
             property_type: p?.property_type || null,
@@ -1886,6 +1934,10 @@ Deno.serve(async (req) => {
             media_count: Number(rawPhotos.length + rawDocuments.length) || 0,
             office_notes: p?.office_notes || null,
             agent: p?.agent || null,
+            owner_name: ownerFullName || null,
+            owner_phone: p?.owner_phone || null,
+            owner_email: p?.owner_email || null,
+            price_missing: priceMissing,
             source_origin: richSourceOrigin,
             yad2_search_url: !yad2Enrichment?.exact && yad2Enrichment?.url ? yad2Enrichment.url : null,
             yad2_exact_match: yad2Enrichment?.exact ?? null,
@@ -1899,9 +1951,12 @@ Deno.serve(async (req) => {
             synced_at: new Date().toISOString(),
           },
         };
-        // Define status and publish state dynamically based on payload
-        row.status = p?.removal || p?.sale_f3 === "closed" ? "archived" : "live";
-        row.is_published = row.status === "live";
+        // Archive when Homely marks the deal closed; otherwise honor the
+        // draft/live status computed from the price.
+        if (p?.removal || p?.sale_f3 === "closed") {
+          row.status = "archived";
+          row.is_published = false;
+        }
 
         // Save core listing data first. Do not rely on ON CONFLICT here:
         // this database does not currently have a matching unique constraint
