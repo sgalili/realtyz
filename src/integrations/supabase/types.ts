@@ -2796,6 +2796,7 @@ export type Database = {
           asking_price: number
           city: string | null
           created_at: string
+          deal_type: string | null
           description: string
           elevator: boolean | null
           embedding: string | null
@@ -2835,6 +2836,7 @@ export type Database = {
           asking_price?: number
           city?: string | null
           created_at?: string
+          deal_type?: string | null
           description: string
           elevator?: boolean | null
           embedding?: string | null
@@ -2874,6 +2876,7 @@ export type Database = {
           asking_price?: number
           city?: string | null
           created_at?: string
+          deal_type?: string | null
           description?: string
           elevator?: boolean | null
           embedding?: string | null
