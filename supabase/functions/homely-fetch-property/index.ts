@@ -1290,7 +1290,7 @@ Deno.serve(async (req) => {
             .from("listings")
             .update(row as any)
             .eq("id", existingByExternal.id)
-            .select("id")
+            .select("id, external_id")
             .single();
           if (error) throw new Error(`listings#${homelyId}: ${error.message}`);
           upserted = updatedExisting;
@@ -1298,7 +1298,7 @@ Deno.serve(async (req) => {
           const { data: inserted, error } = await admin
             .from("listings")
             .insert(row as any)
-            .select("id")
+            .select("id, external_id")
             .single();
           if (error && richSourceUrl) {
             const { data: existingByUrl } = await admin
@@ -1311,8 +1311,8 @@ Deno.serve(async (req) => {
                 .from("listings")
                 .update(row as any)
                 .eq("id", existingByUrl.id)
-                .select("id")
-                .single();
+                .select("id, external_id")
+            .single();
               if (updateByUrlErr) throw new Error(`listings#${homelyId}: ${updateByUrlErr.message}`);
               upserted = updatedByUrl;
             } else {
