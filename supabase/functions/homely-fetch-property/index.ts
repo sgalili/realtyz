@@ -2370,8 +2370,8 @@ Deno.serve(async (req) => {
       floor: mapped.floor || listing.floor,
       external_id: String(serial),
       source_url: sourceUrl || null,
-      media_photos: photosForDb,
-      media_documents: docsForDb,
+      media_photos: Array.isArray(photosForDb) ? photosForDb : [],
+      media_documents: Array.isArray(docsForDb) ? docsForDb : [],
       features: Array.from(
         new Set([
           ...(Array.isArray(listing.features) ? listing.features.filter((f: any) => typeof f === "string") : []),
