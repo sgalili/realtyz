@@ -1807,7 +1807,7 @@ Deno.serve(async (req) => {
         // placeholder images. We trust the public listing page (og:image /
         // scraped photos) as the source of truth whenever the API payload is
         // empty or contains placeholder URLs.
-        const apiPhotos: string[] = Array.isArray(richMedia.photos) ? richMedia.photos : [];
+        const apiPhotos = cleanMediaUrls(Array.isArray(richMedia.photos) ? richMedia.photos : [], "image");
         const isApiPhotosJunk =
           apiPhotos.length === 0 ||
           apiPhotos.some((url) => typeof url === "string" && url.toLowerCase().includes("placeholder"));
@@ -1816,7 +1816,7 @@ Deno.serve(async (req) => {
         if (isApiPhotosJunk && richSourceUrl) {
           const scraped = await fetchVerifiedMedia(richSourceUrl);
           if (scraped.length > 0) {
-            rawPhotos = scraped;
+            rawPhotos = cleanMediaUrls(scraped, "image");
           }
         } else if (!isApiPhotosJunk) {
           rawPhotos = apiPhotos;
@@ -1825,21 +1825,22 @@ Deno.serve(async (req) => {
         // Only fall back to legacy sources if BOTH the API and the scraper
         // yielded nothing verified.
         if (rawPhotos.length === 0) {
-          rawPhotos =
+          rawPhotos = cleanMediaUrls(
             Array.isArray(p?.photos) && p.photos.length
               ? p.photos
               : p?.photo
                 ? [p.photo]
                 : yad2Enrichment?.photos?.length
                   ? yad2Enrichment.photos
-                  : campaignPhotos;
+                  : campaignPhotos,
+            "image",
+          );
         }
 
-        const rawDocuments = richMedia.documents.length
-          ? richMedia.documents
-          : Array.isArray(p?.documents)
-            ? p.documents
-            : [];
+        const rawDocuments = cleanMediaUrls(
+          richMedia.documents.length ? richMedia.documents : Array.isArray(p?.documents) ? p.documents : [],
+          "document",
+        );
 
         const features = Array.from(
           new Set([
@@ -1873,7 +1874,7 @@ Deno.serve(async (req) => {
             property_type: p?.property_type || null,
             photos: rawPhotos,
             documents: rawDocuments,
-            media_count: rawPhotos.length + rawDocuments.length,
+            media_count: Number(rawPhotos.length + rawDocuments.length) || 0,
             office_notes: p?.office_notes || null,
             agent: p?.agent || null,
             source_origin: richSourceOrigin,
@@ -1893,10 +1894,28 @@ Deno.serve(async (req) => {
         row.status = p?.removal || p?.sale_f3 === "closed" ? "archived" : "live";
         row.is_published = row.status === "live";
 
-        // Perform the upsert to actually save the data
-        const { data: upserted, error: upErr } = await admin
+        // Save core listing data first. Do not rely on ON CONFLICT here:
+        // this database does not currently have a matching unique constraint
+        // for user_id + external_id, and that made imports return 0 before
+        // media mirroring even started.
+        const { data: existing, error: existingErr } = await admin
           .from("listings")
-          .upsert(row as any, { onConflict: "user_id,external_id" })
+          .select("id, external_id")
+          .eq("user_id", workspaceOwnerId)
+          .eq("external_id", homelyId)
+          .limit(1)
+          .maybeSingle();
+
+        if (existingErr) {
+          console.error(`[importOutJson] lookup failed for ${homelyId}:`, existingErr.message);
+          continue;
+        }
+
+        const saveQuery = existing?.id
+          ? admin.from("listings").update(row as any).eq("id", (existing as any).id)
+          : admin.from("listings").insert(row as any);
+
+        const { data: upserted, error: upErr } = await saveQuery
           .select("id, external_id")
           .maybeSingle();
 
@@ -1936,22 +1955,24 @@ Deno.serve(async (req) => {
             const versionTag = `v${Date.now()}`;
             const mirroredPhotos = await mirrorAll(admin, listingId, rawPhotos, 40, "image", versionTag);
             const mirroredDocs = await mirrorAll(admin, listingId, rawDocuments, 20, "document", versionTag);
-            if (mirroredPhotos.length || rawPhotos.length || mirroredDocs.length || rawDocuments.length) {
+            const finalPhotosForDb = mirroredPhotos.length ? mirroredPhotos : rawPhotos;
+            const finalDocsForDb = mirroredDocs.length ? mirroredDocs : rawDocuments;
+            if (finalPhotosForDb.length || finalDocsForDb.length) {
               const meta = row.source_metadata as Record<string, unknown>;
               await admin
                 .from("listings")
                 .update({
-                  media_photos: mirroredPhotos,
-                  media_documents: mirroredDocs,
+                  media_photos: finalPhotosForDb,
+                  media_documents: finalDocsForDb,
                   source_metadata: {
                     ...meta,
-                    photos: mirroredPhotos,
-                    images: mirroredPhotos,
-                    documents: mirroredDocs,
+                    photos: finalPhotosForDb,
+                    images: finalPhotosForDb,
+                    documents: finalDocsForDb,
                     photos_original: rawPhotos,
                     documents_original: rawDocuments,
-                    media_count: mirroredPhotos.length + mirroredDocs.length,
-                    broken_images_removed_count: Math.max(0, rawPhotos.length - mirroredPhotos.length),
+                    media_count: Number(finalPhotosForDb.length + finalDocsForDb.length) || 0,
+                    broken_images_removed_count: mirroredPhotos.length ? Math.max(0, rawPhotos.length - mirroredPhotos.length) : 0,
                     media_mirrored_at: new Date().toISOString(),
                     media_version_tag: versionTag,
                     media_serial_verified: homelyId,
