@@ -960,10 +960,16 @@ async function mirrorOne(
     } finally {
       clearTimeout(t);
     }
-    if (!resp.ok) return null;
+    if (!resp.ok) {
+      console.error("[mirrorOne] fetch !ok", resp.status, originalUrl.slice(0, 160));
+      return expected === "image" ? originalUrl : null;
+    }
     const contentType = resp.headers.get("content-type") || "application/octet-stream";
     const lowerContentType = contentType.toLowerCase();
-    if (/text\/html|application\/json|text\/plain/i.test(lowerContentType)) return null;
+    if (/text\/html|application\/json|text\/plain/i.test(lowerContentType)) {
+      console.error("[mirrorOne] non-media content-type", lowerContentType, originalUrl.slice(0, 160));
+      return expected === "image" ? originalUrl : null;
+    }
     const ext = extFromUrlOrType(originalUrl, contentType);
     // Versioned path: listing/{id}/{versionTag}/{sha1(url)}.{ext}. Bumping
     // the version tag (listing.updated_at ms) invalidates every cached
@@ -975,9 +981,13 @@ async function mirrorOne(
     const path = `listing/${listingId}/${safeVersion}/${key}.${ext}`;
     const bytes = new Uint8Array(await resp.arrayBuffer());
     if (expected === "image" && !lowerContentType.startsWith("image/") && !looksLikeImageBytes(bytes)) {
-      return null;
+      console.error("[mirrorOne] not-image bytes", lowerContentType, originalUrl.slice(0, 160));
+      return originalUrl;
     }
-    if (expected === "image" && bytes.byteLength < 64) return null;
+    if (expected === "image" && bytes.byteLength < 64) {
+      console.error("[mirrorOne] image too small", bytes.byteLength, originalUrl.slice(0, 160));
+      return originalUrl;
+    }
     // Upload (idempotent — upsert)
     const { error: upErr } = await admin.storage
       .from("homely-media")
@@ -996,8 +1006,8 @@ async function mirrorOne(
     }
     return signed.signedUrl;
   } catch (e) {
-    console.error("[mirrorOne] err", (e as Error).message, originalUrl.slice(0, 120));
-    return null;
+    console.error("[mirrorOne] err", (e as Error).message, originalUrl.slice(0, 160));
+    return expected === "image" ? originalUrl : null;
   }
 }
 
@@ -1787,6 +1797,25 @@ Deno.serve(async (req) => {
         }
 
         const richMedia = collectMedia(richRecord);
+        // TEMP DIAGNOSTIC — inspect raw media fields before any filtering.
+        try {
+          const rr: any = richRecord || {};
+          console.log(`[importOutJson] RAW_HOMELY_MEDIA homelyId=${homelyId}`, JSON.stringify({
+            rr_photos: rr.photos ?? null,
+            rr_images: rr.images ?? null,
+            rr_media: rr.media ?? null,
+            rr_photo: rr.photo ?? null,
+            rr_picture: rr.picture ?? null,
+            rr_pic: rr.pic ?? null,
+            rr_image: rr.image ?? null,
+            rr_thumbnail: rr.thumbnail ?? null,
+            p_photos: (p as any)?.photos ?? null,
+            p_photo: (p as any)?.photo ?? null,
+            richMedia_photos: richMedia.photos,
+            richMedia_documents: richMedia.documents,
+            rr_keys: Object.keys(rr).slice(0, 80),
+          }).slice(0, 4000));
+        } catch (_) { /* noop */ }
         const rawSourceOrigin = pickSourceOrigin(richRecord) || p?.source_origin || null;
         const sourceIsYad2 =
           rawSourceOrigin === "yad2" || hasYad2Signal(richRecord, p?.raw, p?.source_url, rawSourceOrigin);
