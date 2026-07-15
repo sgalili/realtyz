@@ -13,20 +13,124 @@
 import { load } from "https://esm.sh/cheerio@1.0.0-rc.12";
 
 async function fetchVerifiedMedia(listingUrl: string): Promise<string[]> {
+  const found = new Map<string, string>(); // url -> source selector (for logging)
+  const IMG_EXT_RX = /\.(jpe?g|png|webp|gif|avif|bmp|tiff?)(?:$|[?#])/i;
+  const FACEBOOK_RX = /(?:^https?:\/\/)?(?:[a-z0-9-]+\.)*(?:facebook\.com|fbcdn\.net|fbsbx\.com)(?:[\/:?#]|$)/i;
+  const PLACEHOLDER_RX = /(placeholder|no-?image|default-property|template_property|generic-building|1x1|pixel|spacer|blank\.gif)/i;
+
+  const norm = (raw: string | undefined, base: string): string | null => {
+    if (!raw) return null;
+    let u = raw.trim();
+    if (!u || u.startsWith("data:")) return null;
+    // Strip common lazy-load wrappers like `url("...")`.
+    const m = u.match(/url\((['"]?)([^'")]+)\1\)/i);
+    if (m) u = m[2];
+    try {
+      const abs = new URL(u, base).toString();
+      if (!/^https?:\/\//i.test(abs)) return null;
+      if (FACEBOOK_RX.test(abs)) return null;
+      if (PLACEHOLDER_RX.test(abs)) return null;
+      return abs;
+    } catch { return null; }
+  };
+  const add = (url: string | null, source: string) => { if (url && !found.has(url)) found.set(url, source); };
+
   try {
     const response = await fetch(listingUrl, {
       headers: {
         "User-Agent":
           "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+        "Accept-Language": "he-IL,he;q=0.9,en;q=0.8",
       },
     });
-    if (!response.ok) return [];
+    if (!response.ok) {
+      console.log("[fetchVerifiedMedia] non-OK response", { listingUrl, status: response.status });
+      return [];
+    }
     const html = await response.text();
+    const base = response.url || listingUrl;
     const $ = load(html);
-    const ogImage = $('meta[property="og:image"]').attr("content");
-    return ogImage ? [ogImage] : [];
+
+    // 1. OpenGraph / Twitter meta
+    $('meta[property="og:image"], meta[property="og:image:secure_url"], meta[name="og:image"], meta[name="twitter:image"], meta[name="twitter:image:src"]').each((_, el) => {
+      add(norm($(el).attr("content"), base), "meta:og/twitter");
+    });
+
+    // 2. <link rel="image_src"> and preloaded images
+    $('link[rel="image_src"], link[rel="preload"][as="image"]').each((_, el) => {
+      add(norm($(el).attr("href"), base), "link:preload");
+    });
+
+    // 3. <img> tags — src, data-src, data-original, data-lazy-src, data-echo, srcset
+    $("img").each((_, el) => {
+      const $el = $(el);
+      const attrs = ["src", "data-src", "data-original", "data-lazy", "data-lazy-src", "data-echo", "data-defer-src", "data-hi-res-src", "data-image", "data-img"];
+      for (const a of attrs) add(norm($el.attr(a), base), `img[${a}]`);
+      const srcset = $el.attr("srcset") || $el.attr("data-srcset");
+      if (srcset) {
+        for (const part of srcset.split(",")) {
+          const url = part.trim().split(/\s+/)[0];
+          add(norm(url, base), "img[srcset]");
+        }
+      }
+    });
+
+    // 4. <source> inside <picture>
+    $("picture source").each((_, el) => {
+      const srcset = $(el).attr("srcset") || $(el).attr("data-srcset");
+      if (!srcset) return;
+      for (const part of srcset.split(",")) {
+        add(norm(part.trim().split(/\s+/)[0], base), "picture:source");
+      }
+    });
+
+    // 5. Inline background-image styles
+    $("[style]").each((_, el) => {
+      const style = $(el).attr("style") || "";
+      const rx = /background(?:-image)?\s*:\s*[^;]*url\((['"]?)([^'")]+)\1\)/gi;
+      let m: RegExpExecArray | null;
+      while ((m = rx.exec(style)) !== null) add(norm(m[2], base), "style:bg");
+    });
+
+    // 6. JSON-LD ImageObject / image fields
+    $('script[type="application/ld+json"]').each((_, el) => {
+      try {
+        const raw = $(el).contents().text();
+        if (!raw) return;
+        const walk = (v: any) => {
+          if (!v) return;
+          if (typeof v === "string") { if (IMG_EXT_RX.test(v)) add(norm(v, base), "jsonld:string"); return; }
+          if (Array.isArray(v)) { v.forEach(walk); return; }
+          if (typeof v === "object") {
+            for (const [k, vv] of Object.entries(v)) {
+              if (/image|photo|thumbnail|url/i.test(k) && typeof vv === "string") add(norm(vv, base), "jsonld:field");
+              walk(vv);
+            }
+          }
+        };
+        walk(JSON.parse(raw));
+      } catch { /* ignore malformed json-ld */ }
+    });
+
+    // 7. Regex-scan raw HTML for any remaining absolute image URLs (catches
+    //    JS-rendered galleries that never appear as <img> in the SSR HTML).
+    const urlRx = /https?:\/\/[^\s"'<>()\\]+?\.(?:jpe?g|png|webp|gif|avif)(?:\?[^\s"'<>()\\]*)?/gi;
+    const hits = html.match(urlRx) || [];
+    for (const h of hits) add(norm(h, base), "regex:html");
+
+    const results = Array.from(found.keys());
+    const bySource: Record<string, number> = {};
+    for (const src of found.values()) bySource[src] = (bySource[src] || 0) + 1;
+    console.log("[fetchVerifiedMedia] detection", {
+      listingUrl,
+      total: results.length,
+      by_source: bySource,
+      sample: results.slice(0, 5),
+    });
+    return results;
   } catch (error) {
-    console.error("Scraping failed for", listingUrl, error);
+    console.error("[fetchVerifiedMedia] failed", { listingUrl, error: (error as Error).message });
     return [];
   }
 }
