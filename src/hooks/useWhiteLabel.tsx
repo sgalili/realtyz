@@ -1,7 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, ReactNode, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useWorkspace } from '@/hooks/useWorkspace';
-import { useAuth } from '@/hooks/useAuth';
 
 export interface WhiteLabelSettings {
   id?: string;
@@ -83,15 +82,13 @@ export const WhiteLabelProvider = ({ children }: { children: ReactNode }) => {
   const [settings, setSettings] = useState<WhiteLabelSettings | null>(null);
   const [loading, setLoading] = useState(true);
   const { activeWorkspaceId, activeWorkspace } = useWorkspace();
-  // Reuse the session already tracked by AuthProvider — avoids an extra
-  // `/auth/v1/user` roundtrip every time the workspace or auth state changes.
-  const { user } = useAuth();
 
   const load = useCallback(async () => {
     setLoading(true);
     try {
       // Workspace-first branding: tenants/managers should see the owner's
       // shared office details, not their personal empty branding row.
+      const { data: { user } } = await supabase.auth.getUser();
       let row: any = null;
       const ownerId = activeWorkspaceId ?? user?.id ?? null;
       if (ownerId) {
@@ -130,12 +127,12 @@ export const WhiteLabelProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  }, [activeWorkspaceId, activeWorkspace, user?.id]);
+  }, [activeWorkspaceId, activeWorkspace]);
 
   useEffect(() => {
-    let cancelled = false;
-    (async () => { if (!cancelled) await load(); })();
-    return () => { cancelled = true; };
+    load();
+    const { data: sub } = supabase.auth.onAuthStateChange(() => { load(); });
+    return () => { sub.subscription.unsubscribe(); };
   }, [load]);
 
   const value = useMemo(() => ({ settings, loading, refresh: load }), [settings, loading, load]);

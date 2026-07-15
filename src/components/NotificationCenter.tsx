@@ -85,8 +85,7 @@ export default function NotificationCenter() {
       );
       return flagged.slice(0, 20);
     },
-    refetchInterval: 300_000,
-    staleTime: 300_000,
+    refetchInterval: 60_000,
   });
 
   const voterIds = [...new Set(alerts.map(a => a.lead_id).filter(Boolean))];
