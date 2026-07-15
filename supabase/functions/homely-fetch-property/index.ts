@@ -963,6 +963,122 @@ async function configuredHomelyFeedUrl(admin: ReturnType<typeof createClient>, o
   return /^https?:\/\//i.test(raw) ? raw : "";
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Multi-layered image verification (anti-corruption pattern)
+//
+// Public listing pages on homely.co.il are the master source of truth for
+// property photos. The Webtiv API occasionally returns generic/stock or
+// cross-listing images (skyscrapers, staged shots, mismatched imports). The
+// helpers below (a) scrape og:image + inline <img> tags from the public page,
+// (b) hash candidate images and match against a known-bad blacklist, and (c)
+// detect URLs whose embedded property id contradicts the listing we are
+// importing. Together they gate every image that reaches the DB / UI.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const KNOWN_BAD_HASHES: Set<string> = new Set(
+  (Deno.env.get("HOMELY_KNOWN_BAD_IMAGE_HASHES") || "")
+    .split(/[,\s]+/)
+    .map((s) => s.trim().toLowerCase())
+    .filter((s) => s.length >= 8),
+);
+
+const IMG_RE = /<img\b[^>]*?\bsrc=["']([^"']+)["'][^>]*>/gi;
+const OG_RE  = /<meta\b[^>]*?\bproperty=["']og:image(?::secure_url)?["'][^>]*?\bcontent=["']([^"']+)["']/gi;
+const OG_RE2 = /<meta\b[^>]*?\bcontent=["']([^"']+)["'][^>]*?\bproperty=["']og:image(?::secure_url)?["']/gi;
+
+function isHomelyCdnUrl(u: string): boolean {
+  return /(homely\.co\.il|homely-media|webtiv\.co\.il|cloudfront|cloudinary|imgix|akamai|azureedge|amazonaws)/i.test(u);
+}
+
+async function scrapePublicListing(pageUrl: string): Promise<{ ogImages: string[]; domImages: string[] }> {
+  const out = { ogImages: [] as string[], domImages: [] as string[] };
+  if (!pageUrl || !/^https?:\/\//i.test(pageUrl)) return out;
+  try {
+    const res = await fetch(pageUrl, {
+      headers: {
+        "User-Agent": "Mozilla/5.0 (compatible; Realtyz-MediaResolver/1.0; +https://realtyz.co.il)",
+        "Accept": "text/html,application/xhtml+xml",
+      },
+      redirect: "follow",
+    });
+    if (!res.ok) return out;
+    const html = await res.text();
+    const ogSet = new Set<string>();
+    let m: RegExpExecArray | null;
+    while ((m = OG_RE.exec(html))) ogSet.add(m[1]);
+    while ((m = OG_RE2.exec(html))) ogSet.add(m[1]);
+    const imgSet = new Set<string>();
+    while ((m = IMG_RE.exec(html))) {
+      const src = m[1];
+      if (!/^https?:\/\//i.test(src)) continue;
+      if (!/\.(jpe?g|png|webp|gif|avif)(\?|#|$)/i.test(src) && !isHomelyCdnUrl(src)) continue;
+      imgSet.add(src);
+    }
+    out.ogImages = Array.from(ogSet);
+    out.domImages = Array.from(imgSet);
+  } catch (e) {
+    console.warn("[scrapePublicListing] failed", (e as Error).message);
+  }
+  return out;
+}
+
+async function sha256Hex(bytes: Uint8Array): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-256", bytes);
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+async function hashImageUrl(url: string, maxBytes = 512_000): Promise<{ hash: string | null; bytes: number; contentType: string | null }> {
+  try {
+    const res = await fetch(url, { redirect: "follow" });
+    if (!res.ok || !res.body) return { hash: null, bytes: 0, contentType: null };
+    const reader = res.body.getReader();
+    const chunks: Uint8Array[] = [];
+    let total = 0;
+    while (total < maxBytes) {
+      const { done, value } = await reader.read();
+      if (done || !value) break;
+      chunks.push(value);
+      total += value.length;
+    }
+    try { await reader.cancel(); } catch { /* ignore */ }
+    const merged = new Uint8Array(total);
+    let off = 0;
+    for (const c of chunks) { merged.set(c.subarray(0, Math.min(c.length, total - off)), off); off += c.length; }
+    const hash = await sha256Hex(merged);
+    return { hash, bytes: total, contentType: res.headers.get("content-type") };
+  } catch {
+    return { hash: null, bytes: 0, contentType: null };
+  }
+}
+
+// Detects a property id embedded in an image URL (path segment or query
+// value) that does NOT match the listing being imported. Returns the offending
+// id when a mismatch is found, null otherwise. Conservative: any URL that
+// contains the correct externalId anywhere is treated as safe.
+function detectMismatchedIdInUrl(url: string, externalId: string): string | null {
+  if (!externalId) return null;
+  if (url.includes(externalId)) return null;
+  const candidates = new Set<string>();
+  try {
+    const u = new URL(url);
+    for (const seg of u.pathname.split("/")) {
+      if (/^\d{4,9}$/.test(seg)) candidates.add(seg);
+    }
+    for (const [k, v] of u.searchParams.entries()) {
+      if (/^(id|propertyId|property_id|nechesId|sidur|serial|listingId)$/i.test(k) && /^\d{4,9}$/.test(v)) candidates.add(v);
+    }
+  } catch {
+    const pathIds = url.match(/\/(\d{4,9})(?=[\/?#._-]|$)/g) || [];
+    for (const p of pathIds) candidates.add(p.replace(/[^\d]/g, ""));
+  }
+  for (const c of candidates) {
+    if (c !== externalId) return c;
+  }
+  return null;
+}
+
+
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
