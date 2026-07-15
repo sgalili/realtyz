@@ -209,6 +209,18 @@ export default function PropertyDetail() {
         solar: Boolean(meta.solar_heater ?? meta.solar ?? false),
       };
 
+      // Owner (linked crm_profile) — separate lightweight fetch.
+      let owner: { id: string; full_name: string } | null = null;
+      const ownerId = (row as any).owner_id as string | null;
+      if (ownerId) {
+        const { data: op } = await (supabase as any)
+          .from('crm_profiles')
+          .select('id, full_name')
+          .eq('id', ownerId)
+          .maybeSingle();
+        if (op?.id) owner = { id: String(op.id), full_name: String(op.full_name || '') };
+      }
+
       return {
         row,
         property,
@@ -218,6 +230,7 @@ export default function PropertyDetail() {
         projectName: row.project_name,
         sourceUrl: row.source_url,
         documents,
+        owner,
       };
     },
   });
