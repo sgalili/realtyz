@@ -385,6 +385,26 @@ function mediaTotal(value: any): number {
   return media.photos.length + media.documents.length;
 }
 
+function cleanMediaUrls(values: unknown[], kind: "image" | "document" | "any" = "any"): string[] {
+  const imageRe = /\.(jpe?g|png|gif|webp|bmp|heic|avif)(\?|#|$)/i;
+  const docRe = /\.(pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i;
+  return Array.from(
+    new Set(
+      values
+        .map((value) => (typeof value === "string" ? value.trim().replace(/\\\//g, "/") : ""))
+        .filter((url) => {
+          if (!url) return false;
+          if (/placeholder|missing|no-?image|undefined|null/i.test(url)) return false;
+          if (!/^(https?:\/\/|\/\/|\/)/i.test(url)) return false;
+          if (kind === "image") return imageRe.test(url) || /image|photo|pic|gallery|media|homely-media|storage\/v1\/object/i.test(url);
+          if (kind === "document") return docRe.test(url) || /document|attachment|file/i.test(url);
+          return true;
+        })
+        .map((url) => (/^\/\//.test(url) ? `https:${url}` : url)),
+    ),
+  );
+}
+
 function firstObjectPayload(data: any): any {
   if (!data) return null;
   if (Array.isArray(data)) return data.find((x) => x && typeof x === "object") ?? data[0] ?? null;
