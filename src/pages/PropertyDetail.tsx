@@ -521,15 +521,21 @@ export default function PropertyDetail() {
               />
             ) : (
               <>
-                <span className="text-3xl font-extrabold text-success tabular-nums">
-                  {formatPrice(property.price)}
-                  {isRent && <span className="text-base font-normal text-muted-foreground"> /חודש</span>}
-                </span>
-                {pricePerMeter ? (
-                  <span className="text-xs text-muted-foreground font-normal">
-                    ({pricePerMeter} ₪ למ"ר)
-                  </span>
-                ) : null}
+                {property.price > 0 ? (
+                  <>
+                    <span className="text-3xl font-extrabold text-success tabular-nums">
+                      {formatPrice(property.price)}
+                      {isRent && <span className="text-base font-normal text-muted-foreground"> /חודש</span>}
+                    </span>
+                    {pricePerMeter ? (
+                      <span className="text-xs text-muted-foreground font-normal">
+                        ({pricePerMeter} ₪ למ"ר)
+                      </span>
+                    ) : null}
+                  </>
+                ) : (
+                  <span className="text-xl font-semibold text-amber-600">פרטים חסרים · Draft</span>
+                )}
               </>
             )}
           </div>
