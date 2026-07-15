@@ -379,6 +379,7 @@ export default function AiAgentDrawer() {
           type: 'data',
           sources: data.sources ?? [],
           research_sources: data.research_sources ?? [],
+          webtiv_results: data.webtiv_results ?? [],
         };
       } else {
         assistantMsg = {
@@ -387,6 +388,7 @@ export default function AiAgentDrawer() {
           type: 'text',
           sources: data?.sources ?? [],
           research_sources: data?.research_sources ?? [],
+          webtiv_results: data?.webtiv_results ?? [],
         };
       }
       setMessages(prev => [...prev, assistantMsg]);
