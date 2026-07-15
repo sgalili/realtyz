@@ -716,7 +716,9 @@ function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare
         <div className="flex items-center justify-between mt-auto pt-2 border-t gap-2 flex-wrap">
           <div className="text-lg font-bold text-success inline-flex items-center gap-1">
             <Building2 className="h-4 w-4 opacity-60" />
-            {formatPrice(property.price)}{isRent ? <span className="text-xs font-normal text-muted-foreground">/חודש</span> : null}
+            {property.price > 0
+              ? (<>{formatPrice(property.price)}{isRent ? <span className="text-xs font-normal text-muted-foreground">/חודש</span> : null}</>)
+              : (<span className="text-sm font-semibold text-amber-600">פרטים חסרים</span>)}
           </div>
           <div className="flex items-center gap-1.5">
             <ReferralButton
