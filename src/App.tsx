@@ -60,6 +60,7 @@ const SignDocument = lazy(() => import("./pages/SignDocument"));
 const Properties = lazy(() => import("./pages/Properties"));
 const PropertiesHub = lazy(() => import("./pages/PropertiesHub"));
 const PropertyDetail = lazy(() => import("./pages/PropertyDetail"));
+const CrmProfile = lazy(() => import("./pages/CrmProfile"));
 const WhiteLabelSettings = lazy(() => import("./pages/WhiteLabelSettings"));
 const SystemHealth = lazy(() => import("./pages/SystemHealth"));
 const SharedDeals = lazy(() => import("./pages/SharedDeals"));
