@@ -1325,12 +1325,28 @@ Deno.serve(async (req) => {
         propsCount++;
 
         // Mirror media into homely-media bucket so images render instantly
-        // and Homely's CDN is only hit once per file.
+        // and Homely's CDN is only hit once per file. Every import writes to
+        // a fresh `listing/{uuid}/v{timestamp}/` folder so we can never
+        // cache-collide with a stale record.
         try {
           const listingId = String((upserted as any)?.id ?? "");
-          if (listingId) {
-            const mirroredPhotos = await mirrorAll(admin, listingId, rawPhotos, 40, "image");
-            const mirroredDocs = await mirrorAll(admin, listingId, rawDocuments, 20, "document");
+          const upsertedExternalId = String((upserted as any)?.external_id ?? "");
+          if (!listingId) {
+            // nothing to mirror
+          } else if (upsertedExternalId && upsertedExternalId !== homelyId) {
+            // property_id ↔ listing_id mismatch — refuse to mirror, log to
+            // integration_error_logs so ops can inspect the offending row.
+            await logIntegrationError({
+              integration: "homely",
+              functionName: "homely-fetch-property.importOutJson",
+              errorCode: "property_id_mismatch",
+              errorMessage: `Refusing to mirror photos: source homely_id=${homelyId} != listing.external_id=${upsertedExternalId} (listing_id=${listingId})`,
+              context: { listing_id: listingId, source_homely_id: homelyId, listing_external_id: upsertedExternalId, workspace_owner: workspaceOwnerId },
+            });
+          } else {
+            const versionTag = `v${Date.now()}`;
+            const mirroredPhotos = await mirrorAll(admin, listingId, rawPhotos, 40, "image", versionTag);
+            const mirroredDocs = await mirrorAll(admin, listingId, rawDocuments, 20, "document", versionTag);
             if (mirroredPhotos.length || rawPhotos.length || mirroredDocs.length || rawDocuments.length) {
               const meta = row.source_metadata as Record<string, unknown>;
               await admin.from("listings").update({
@@ -1345,6 +1361,8 @@ Deno.serve(async (req) => {
                   documents_original: rawDocuments,
                   broken_images_removed_count: Math.max(0, rawPhotos.length - mirroredPhotos.length),
                   media_mirrored_at: new Date().toISOString(),
+                  media_version_tag: versionTag,
+                  media_serial_verified: homelyId,
                 },
               }).eq("id", listingId);
             }
