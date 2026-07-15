@@ -2865,7 +2865,7 @@ export type Database = {
           is_promoted: boolean
           is_published: boolean
           media_documents: Json
-          media_photos: Json
+          media_photos: Json | null
           neighborhood: string | null
           office_notes: string | null
           owner_id: string | null
@@ -2907,7 +2907,7 @@ export type Database = {
           is_promoted?: boolean
           is_published?: boolean
           media_documents?: Json
-          media_photos?: Json
+          media_photos?: Json | null
           neighborhood?: string | null
           office_notes?: string | null
           owner_id?: string | null
@@ -2949,7 +2949,7 @@ export type Database = {
           is_promoted?: boolean
           is_published?: boolean
           media_documents?: Json
-          media_photos?: Json
+          media_photos?: Json | null
           neighborhood?: string | null
           office_notes?: string | null
           owner_id?: string | null

@@ -1826,8 +1826,8 @@ Deno.serve(async (req) => {
           is_published: !priceMissing,
           office_notes: p?.office_notes ? String(p.office_notes) : null,
           features,
-          media_photos: rawPhotos,
-          media_documents: rawDocuments,
+          media_photos: Array.isArray(rawPhotos) ? rawPhotos : [],
+          media_documents: Array.isArray(rawDocuments) ? rawDocuments : [],
           owner_id: ownerId,
           source_metadata: {
             homely_id: homelyId,
@@ -1955,8 +1955,8 @@ Deno.serve(async (req) => {
               await admin
                 .from("listings")
                 .update({
-                  media_photos: finalPhotosForDb,
-                  media_documents: finalDocsForDb,
+                  media_photos: Array.isArray(finalPhotosForDb) ? finalPhotosForDb : [],
+                  media_documents: Array.isArray(finalDocsForDb) ? finalDocsForDb : [],
                   source_metadata: {
                     ...meta,
                     photos: finalPhotosForDb,
@@ -2370,8 +2370,8 @@ Deno.serve(async (req) => {
       floor: mapped.floor || listing.floor,
       external_id: String(serial),
       source_url: sourceUrl || null,
-      media_photos: photosForDb,
-      media_documents: docsForDb,
+      media_photos: Array.isArray(photosForDb) ? photosForDb : [],
+      media_documents: Array.isArray(docsForDb) ? docsForDb : [],
       features: Array.from(
         new Set([
           ...(Array.isArray(listing.features) ? listing.features.filter((f: any) => typeof f === "string") : []),
