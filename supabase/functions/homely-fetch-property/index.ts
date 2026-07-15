@@ -1955,8 +1955,55 @@ Deno.serve(async (req) => {
             const versionTag = `v${Date.now()}`;
             const mirroredPhotos = await mirrorAll(admin, listingId, rawPhotos, 40, "image", versionTag);
             const mirroredDocs = await mirrorAll(admin, listingId, rawDocuments, 20, "document", versionTag);
-            const finalPhotosForDb = mirroredPhotos.length ? mirroredPhotos : rawPhotos;
+
+            // ---- URL health validation ----
+            // Validate mirrored URLs via HEAD (fast, no body). Any URL that
+            // is not reachable (network error or non-2xx) is dropped. If
+            // mirroring produced zero live URLs, fall back to the raw
+            // Homely-hosted photos and re-validate those. As a last resort
+            // (nothing loads) we keep whatever raw URLs we have so the UI
+            // can render its own placeholder rather than an empty gallery.
+            const validateUrl = async (u: string): Promise<boolean> => {
+              if (!u || typeof u !== "string") return false;
+              if (/placeholder|missing|no-?image|undefined|null/i.test(u)) return false;
+              try {
+                const ctl = new AbortController();
+                const t = setTimeout(() => ctl.abort(), 4000);
+                let r = await fetch(u, { method: "HEAD", signal: ctl.signal, redirect: "follow" });
+                // Some CDNs don't honor HEAD → retry with a tiny range GET.
+                if (!r.ok || r.status === 405) {
+                  r = await fetch(u, {
+                    method: "GET",
+                    signal: ctl.signal,
+                    redirect: "follow",
+                    headers: { Range: "bytes=0-0" },
+                  });
+                }
+                clearTimeout(t);
+                return r.ok || r.status === 206;
+              } catch {
+                return false;
+              }
+            };
+            const filterAlive = async (urls: string[]): Promise<string[]> => {
+              const results = await Promise.all(urls.map(async (u) => ((await validateUrl(u)) ? u : null)));
+              return results.filter((v): v is string => !!v);
+            };
+
+            let livePhotos = await filterAlive(mirroredPhotos);
+            let usedFallback = false;
+            if (livePhotos.length === 0 && rawPhotos.length > 0) {
+              livePhotos = await filterAlive(rawPhotos);
+              usedFallback = livePhotos.length > 0;
+            }
+            // Last-resort: keep raw URLs so the client-side broken-image
+            // filter can still try; never persist an empty photos array
+            // when we know Homely returned some URLs for this listing.
+            const finalPhotosForDb = livePhotos.length
+              ? livePhotos
+              : (rawPhotos.length ? rawPhotos : mirroredPhotos);
             const finalDocsForDb = mirroredDocs.length ? mirroredDocs : rawDocuments;
+
             if (finalPhotosForDb.length || finalDocsForDb.length) {
               const meta = row.source_metadata as Record<string, unknown>;
               await admin
@@ -1970,9 +2017,13 @@ Deno.serve(async (req) => {
                     images: finalPhotosForDb,
                     documents: finalDocsForDb,
                     photos_original: rawPhotos,
+                    photos_mirrored: mirroredPhotos,
                     documents_original: rawDocuments,
                     media_count: Number(finalPhotosForDb.length + finalDocsForDb.length) || 0,
-                    broken_images_removed_count: mirroredPhotos.length ? Math.max(0, rawPhotos.length - mirroredPhotos.length) : 0,
+                    broken_images_removed_count: Math.max(0, (mirroredPhotos.length || rawPhotos.length) - finalPhotosForDb.length),
+                    media_photos_source: livePhotos.length
+                      ? (usedFallback ? "raw_fallback_validated" : "mirrored_validated")
+                      : "unvalidated_last_resort",
                     media_mirrored_at: new Date().toISOString(),
                     media_version_tag: versionTag,
                     media_serial_verified: homelyId,
