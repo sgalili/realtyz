@@ -2936,6 +2936,36 @@ export type Database = {
         }
         Relationships: []
       }
+      market_research_logs: {
+        Row: {
+          address: string
+          agent_summary: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          metadata: Json | null
+          property_evaluation_data: Json | null
+        }
+        Insert: {
+          address: string
+          agent_summary?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          metadata?: Json | null
+          property_evaluation_data?: Json | null
+        }
+        Update: {
+          address?: string
+          agent_summary?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          metadata?: Json | null
+          property_evaluation_data?: Json | null
+        }
+        Relationships: []
+      }
       media_library: {
         Row: {
           created_at: string
