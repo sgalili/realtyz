@@ -534,13 +534,18 @@ function PropertySyncRow({ property: p, checked, onToggle }: { property: HomelyP
       className={`flex items-start gap-2 sm:gap-3 rounded-lg border p-2 sm:p-3 cursor-pointer transition-colors text-right ${checked ? 'border-primary bg-primary/5' : 'hover:bg-muted/40'}`}
     >
       <Checkbox checked={checked} onCheckedChange={onToggle} className="mt-1 shrink-0" />
-      <div className="h-12 w-16 sm:h-14 sm:w-20 rounded-md bg-muted overflow-hidden flex-shrink-0">
+      <div className="relative h-12 w-16 sm:h-14 sm:w-20 rounded-md bg-muted overflow-hidden flex-shrink-0">
         {photo ? (
           <img src={photo} alt="" className="h-full w-full object-cover" loading="lazy" onError={() => markBroken(photo)} />
         ) : (
           <div className="h-full w-full flex items-center justify-center text-muted-foreground">
             <Home className="h-5 w-5" />
           </div>
+        )}
+        {photos.length > 0 && (
+          <span className="absolute bottom-0.5 left-0.5 rounded bg-black/70 px-1 text-[10px] font-semibold leading-tight text-white tabular-nums">
+            {photos.length}
+          </span>
         )}
       </div>
       <div dir="rtl" className="flex-1 min-w-0 text-right">
