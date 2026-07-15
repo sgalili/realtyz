@@ -260,12 +260,12 @@ export default function PropertyDetail() {
         shelter: Boolean(amenities?.shelter),
         solar: Boolean(amenities?.solar),
         source_url: sourceUrl || (typeof meta.source_url === 'string' ? meta.source_url : ''),
-        photos: visiblePropertyPhotos,
+        photos: dbPhotos,
         photo_url_draft: '',
       });
     }
     if (!editMode) setForm(null);
-  }, [editMode, property, neighborhood, meta, amenities, sourceUrl, form, visiblePropertyPhotos]);
+  }, [editMode, property, neighborhood, meta, amenities, sourceUrl, form, dbPhotos]);
 
   const handleSave = async () => {
     if (!form || !id) return;
