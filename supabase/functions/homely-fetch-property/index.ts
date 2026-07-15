@@ -1912,29 +1912,32 @@ Deno.serve(async (req) => {
             const mirroredDocs = await mirrorAll(admin, listingId, rawDocuments, 20, "document", versionTag);
             if (mirroredPhotos.length || rawPhotos.length || mirroredDocs.length || rawDocuments.length) {
               const meta = row.source_metadata as Record<string, unknown>;
-await admin
-          .from("listings")
-          .update({
-            media_photos: mirroredPhotos,
-            media_documents: mirroredDocs,
-            "source_metadata->media_count": mirroredPhotos.length + (mirroredDocs.length || 0),
-            source_metadata: {
-              ...meta,
-              photos: mirroredPhotos,
-              images: mirroredPhotos,
-              documents: mirroredDocs,
-              photos_original: rawPhotos,
-              documents_original: rawDocuments,
-              broken_images_removed_count: Math.max(0, rawPhotos.length - mirroredPhotos.length),
-              media_mirrored_at: new Date().toISOString(),
-              media_version_tag: versionTag,
-              media_serial_verified: homelyId,
+              await admin
+                .from("listings")
+                .update({
+                  media_photos: mirroredPhotos,
+                  media_documents: mirroredDocs,
+                  source_metadata: {
+                    ...meta,
+                    photos: mirroredPhotos,
+                    images: mirroredPhotos,
+                    documents: mirroredDocs,
+                    photos_original: rawPhotos,
+                    documents_original: rawDocuments,
+                    media_count: mirroredPhotos.length + mirroredDocs.length,
+                    broken_images_removed_count: Math.max(0, rawPhotos.length - mirroredPhotos.length),
+                    media_mirrored_at: new Date().toISOString(),
+                    media_version_tag: versionTag,
+                    media_serial_verified: homelyId,
+                  },
+                })
+                .eq("id", listingId);
             }
-})
-          eq("id", listingId);
-      } catch (mirrorErr) {
-        console.error(`[importOutJson] mirror failed for ${homelyId}:`, (mirrorErr as Error).message);
-      }
+          }
+        } catch (mirrorErr) {
+          console.error(`[importOutJson] mirror failed for ${homelyId}:`, (mirrorErr as Error).message);
+        }
+      } // end for (const p of properties)
 
       for (const c of contacts) {
         const homelyId = String(c?.homely_id ?? "").trim();
