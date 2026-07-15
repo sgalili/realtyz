@@ -1088,6 +1088,8 @@ Deno.serve(async (req) => {
         listingsCleared++;
       }
       return json({ ok: true, listings_cleared: listingsCleared, bucket_files_removed: bucketFilesRemoved });
+    }
+
 
     if (action === "importOutJson") {
       const propertyIds = new Set(((body as any)?.propertyIds ?? []).map((v: unknown) => String(v)));
