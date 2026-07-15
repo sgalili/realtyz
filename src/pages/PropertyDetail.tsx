@@ -551,7 +551,7 @@ export default function PropertyDetail() {
                     i === activePhoto ? 'border-primary' : 'border-transparent opacity-70 hover:opacity-100'
                   }`}
                 >
-                  <img src={p} alt="" className="h-full w-full object-cover" onError={() => removeBrokenPhoto(p)} />
+                  <img src={p} alt="" className="h-full w-full object-cover" />
                   {editMode && (
                     <span
                       role="button"
