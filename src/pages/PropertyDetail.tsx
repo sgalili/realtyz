@@ -720,7 +720,7 @@ export default function PropertyDetail() {
           </Card>
 
           {/* Description */}
-          {(editMode || property.description) && (
+          {(editMode || property.description || data?.owner) && (
             <Card className="p-4 sm:p-5">
               <h2 className="text-base font-bold text-primary mb-2">תיאור הנכס</h2>
               {editMode && form ? (
@@ -732,6 +732,17 @@ export default function PropertyDetail() {
                 />
               ) : (
                 <p className="text-sm leading-relaxed text-foreground/80 whitespace-pre-line">{property.description}</p>
+              )}
+              {!editMode && data?.owner && (
+                <div className="mt-4 pt-3 border-t border-border/60 text-sm">
+                  <span className="text-muted-foreground">בעלים: </span>
+                  <Link
+                    to={`/crm/profile/${data.owner.id}`}
+                    className="font-semibold text-primary hover:underline"
+                  >
+                    {data.owner.full_name}
+                  </Link>
+                </div>
               )}
             </Card>
           )}
