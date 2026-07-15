@@ -1826,8 +1826,8 @@ Deno.serve(async (req) => {
           is_published: !priceMissing,
           office_notes: p?.office_notes ? String(p.office_notes) : null,
           features,
-          media_photos: rawPhotos,
-          media_documents: rawDocuments,
+          media_photos: Array.isArray(rawPhotos) ? rawPhotos : [],
+          media_documents: Array.isArray(rawDocuments) ? rawDocuments : [],
           owner_id: ownerId,
           source_metadata: {
             homely_id: homelyId,
