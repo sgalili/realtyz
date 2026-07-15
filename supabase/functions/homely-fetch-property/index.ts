@@ -1553,9 +1553,12 @@ Deno.serve(async (req) => {
       || (typeof meta.source_url === "string" ? meta.source_url : "")
       || (sourceOrigin === "yad2" ? buildYad2FallbackUrl(mapped.city || listing.city, mapped.address || listing.address, meta.transaction_type, serialStr) : "");
 
-    // Mirror media once into homely-media bucket and store signed URLs
-    const cachedPhotos = await mirrorAll(admin, String(listing_id), finalRawPhotos, 40, "image");
-    const cachedDocs = await mirrorAll(admin, String(listing_id), rawDocs, 20, "document");
+    // Mirror media once into homely-media bucket and store signed URLs.
+    // versionTag = current ms so every refresh writes to a new folder and
+    // never overlaps the previous, potentially-stale thumbnails.
+    const versionTag = `v${Date.now()}`;
+    const cachedPhotos = await mirrorAll(admin, String(listing_id), finalRawPhotos, 40, "image", versionTag);
+    const cachedDocs = await mirrorAll(admin, String(listing_id), rawDocs, 20, "document", versionTag);
 
     const updated = {
       property_title: mapped.title || listing.property_title,
