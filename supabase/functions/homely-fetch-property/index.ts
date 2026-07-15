@@ -1250,6 +1250,7 @@ Deno.serve(async (req) => {
           sqm: Number.isFinite(Number(p?.sqm)) ? Number(p.sqm) : null,
           floor: Number.isFinite(Number(p?.floor)) ? Number(p.floor) : null,
           status: "live",
+          deal_type: String(p?.transaction_type || "sale").toLowerCase() === "rent" ? "rent" : "sale",
           is_published: true,
           office_notes: p?.office_notes ? String(p.office_notes) : null,
           features,
