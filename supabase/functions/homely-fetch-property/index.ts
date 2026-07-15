@@ -13,6 +13,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/cors.ts";
+import { logIntegrationError } from "../_shared/logIntegrationError.ts";
 
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL")!;
 const ANON_KEY = Deno.env.get("SUPABASE_ANON_KEY")!;
@@ -979,43 +980,106 @@ Deno.serve(async (req) => {
     const listing_id = (body as any)?.listing_id;
 
     if (action === "cleanBrokenImages") {
+      // SAFETY: transient CDN blips (5xx / timeouts / DNS) must NOT trigger a
+      // photo purge. We only remove a URL when the origin explicitly returns
+      // 404 / 410 AND the parent listing is confirmed deleted or inactive in
+      // Homely (status='deleted' | 'inactive', OR the serial is missing from
+      // the broker's active feed). Anything else → keep original URLs.
+      const forceUnsafe = (body as any)?.force === true; // super-admin override
       const targetListingId = (body as any)?.listing_id;
       const baseQuery = admin
         .from("listings")
-        .select("id, media_photos, media_documents, source_metadata")
+        .select("id, status, external_id, media_photos, media_documents, source_metadata")
         .eq("user_id", workspaceOwnerId);
       const { data: listingRows, error: listErr } = targetListingId
         ? await baseQuery.eq("id", targetListingId)
         : await baseQuery.or("source.eq.homely,source.eq.webtiv").limit(1000);
       if (listErr) return json({ ok: false, error: listErr.message }, 200);
-      let scanned = 0;
-      let removed = 0;
-      let updated = 0;
+
+      // Fetch broker's active Homely feed once so we can gate the cleanup.
+      let activeSerials = new Set<string>();
+      let feedFetched = false;
+      try {
+        const feedUrl = await configuredHomelyFeedUrl(admin, workspaceOwnerId);
+        const SELLERS_GUID = Deno.env.get("HOMELY_SELLERS_GUID") || "32dc79a4-88ba-49a4-816e-f1fc43024c2f";
+        const r = await getJson(feedUrl || `${WEBTIV_BASE}/AutomaionJson/outJson.ashx?guid=${SELLERS_GUID}`);
+        if (r.status >= 200 && r.status < 300) {
+          feedFetched = true;
+          for (const it of asArray(r.data)) {
+            const sids = [it?.id, it?.Id, it?.nechesId, it?.NechesId, it?.sidur, it?.Sidur, it?.serial, it?.Serial, it?.propertyId, it?.PropertyId]
+              .filter((v: unknown) => v !== null && v !== undefined)
+              .map((v: unknown) => String(v));
+            for (const s of sids) activeSerials.add(s);
+          }
+        }
+      } catch (e) {
+        console.warn("[cleanBrokenImages] feed probe failed:", (e as Error).message);
+      }
+
+      async function isHardDeleted(url: string): Promise<boolean> {
+        try {
+          const ctl = new AbortController();
+          const t = setTimeout(() => ctl.abort(), 6000);
+          try {
+            const r = await fetch(proxied(url), { method: "HEAD", signal: ctl.signal });
+            // Only 404 / 410 count as "truly gone".
+            return r.status === 404 || r.status === 410;
+          } finally { clearTimeout(t); }
+        } catch { return false; }
+      }
+
+      let scanned = 0, removed = 0, updated = 0, skipped_transient = 0, skipped_active = 0;
       for (const row of listingRows ?? []) {
+        const rid = String((row as any).id);
         const meta = ((row as any).source_metadata && typeof (row as any).source_metadata === "object") ? (row as any).source_metadata : {};
+        const rowStatus = String((row as any).status ?? "").toLowerCase();
+        const serial = String((row as any).external_id ?? meta.serial ?? meta.sidur ?? "");
+
+        const listingConfirmedDead =
+          forceUnsafe
+          || rowStatus === "deleted"
+          || rowStatus === "inactive"
+          || rowStatus === "discarded"
+          || (feedFetched && serial !== "" && !activeSerials.has(serial));
+
         const candidates = Array.from(new Set([
           ...((Array.isArray((row as any).media_photos) ? (row as any).media_photos : []) as unknown[]),
           ...((Array.isArray(meta.photos) ? meta.photos : []) as unknown[]),
           ...((Array.isArray(meta.images) ? meta.images : []) as unknown[]),
         ].filter((u): u is string => typeof u === "string" && /^https?:\/\//i.test(u))));
         scanned += candidates.length;
-        const valid = await mirrorAll(admin, String((row as any).id), candidates, 80, "image");
-        removed += Math.max(0, candidates.length - valid.length);
+
+        if (!listingConfirmedDead) {
+          skipped_active++;
+          continue; // safety gate — listing is still live, leave photos alone
+        }
+
+        // Per-URL hard-delete check — never rely on mirror failure alone.
+        const keep: string[] = [];
+        for (const u of candidates) {
+          const dead = await isHardDeleted(u);
+          if (dead) { removed++; continue; }
+          keep.push(u);
+        }
+        // If we couldn't confirm ANY URL as 404/410, treat as transient and skip.
+        if (keep.length === candidates.length) { skipped_transient++; continue; }
+
         const docs = Array.isArray((row as any).media_documents) ? (row as any).media_documents : (Array.isArray(meta.documents) ? meta.documents : []);
         await admin.from("listings").update({
-          media_photos: valid,
+          media_photos: keep,
           source_metadata: {
             ...meta,
-            photos: valid,
-            images: valid,
+            photos: keep,
+            images: keep,
             documents: docs,
             broken_images_removed_at: new Date().toISOString(),
-            broken_images_removed_count: Math.max(0, candidates.length - valid.length),
+            broken_images_removed_count: Math.max(0, candidates.length - keep.length),
+            broken_images_removal_reason: forceUnsafe ? "force_admin" : (feedFetched && !activeSerials.has(serial) ? "not_in_active_feed" : `listing_status_${rowStatus}`),
           },
-        }).eq("id", (row as any).id).eq("user_id", workspaceOwnerId);
+        }).eq("id", rid).eq("user_id", workspaceOwnerId);
         updated++;
       }
-      return json({ ok: true, scanned, removed, updated });
+      return json({ ok: true, scanned, removed, updated, skipped_active, skipped_transient, feed_fetched: feedFetched });
     }
 
     // ---------- FLUSH mirrored media for one/many listings ----------
@@ -1186,6 +1250,7 @@ Deno.serve(async (req) => {
           sqm: Number.isFinite(Number(p?.sqm)) ? Number(p.sqm) : null,
           floor: Number.isFinite(Number(p?.floor)) ? Number(p.floor) : null,
           status: "live",
+          deal_type: String(p?.transaction_type || "sale").toLowerCase() === "rent" ? "rent" : "sale",
           is_published: true,
           office_notes: p?.office_notes ? String(p.office_notes) : null,
           features,
@@ -1225,7 +1290,7 @@ Deno.serve(async (req) => {
             .from("listings")
             .update(row as any)
             .eq("id", existingByExternal.id)
-            .select("id")
+            .select("id, external_id")
             .single();
           if (error) throw new Error(`listings#${homelyId}: ${error.message}`);
           upserted = updatedExisting;
@@ -1233,7 +1298,7 @@ Deno.serve(async (req) => {
           const { data: inserted, error } = await admin
             .from("listings")
             .insert(row as any)
-            .select("id")
+            .select("id, external_id")
             .single();
           if (error && richSourceUrl) {
             const { data: existingByUrl } = await admin
@@ -1246,8 +1311,8 @@ Deno.serve(async (req) => {
                 .from("listings")
                 .update(row as any)
                 .eq("id", existingByUrl.id)
-                .select("id")
-                .single();
+                .select("id, external_id")
+            .single();
               if (updateByUrlErr) throw new Error(`listings#${homelyId}: ${updateByUrlErr.message}`);
               upserted = updatedByUrl;
             } else {
@@ -1262,12 +1327,28 @@ Deno.serve(async (req) => {
         propsCount++;
 
         // Mirror media into homely-media bucket so images render instantly
-        // and Homely's CDN is only hit once per file.
+        // and Homely's CDN is only hit once per file. Every import writes to
+        // a fresh `listing/{uuid}/v{timestamp}/` folder so we can never
+        // cache-collide with a stale record.
         try {
           const listingId = String((upserted as any)?.id ?? "");
-          if (listingId) {
-            const mirroredPhotos = await mirrorAll(admin, listingId, rawPhotos, 40, "image");
-            const mirroredDocs = await mirrorAll(admin, listingId, rawDocuments, 20, "document");
+          const upsertedExternalId = String((upserted as any)?.external_id ?? "");
+          if (!listingId) {
+            // nothing to mirror
+          } else if (upsertedExternalId && upsertedExternalId !== homelyId) {
+            // property_id ↔ listing_id mismatch — refuse to mirror, log to
+            // integration_error_logs so ops can inspect the offending row.
+            await logIntegrationError({
+              integration: "homely",
+              functionName: "homely-fetch-property.importOutJson",
+              errorCode: "property_id_mismatch",
+              errorMessage: `Refusing to mirror photos: source homely_id=${homelyId} != listing.external_id=${upsertedExternalId} (listing_id=${listingId})`,
+              context: { listing_id: listingId, source_homely_id: homelyId, listing_external_id: upsertedExternalId, workspace_owner: workspaceOwnerId },
+            });
+          } else {
+            const versionTag = `v${Date.now()}`;
+            const mirroredPhotos = await mirrorAll(admin, listingId, rawPhotos, 40, "image", versionTag);
+            const mirroredDocs = await mirrorAll(admin, listingId, rawDocuments, 20, "document", versionTag);
             if (mirroredPhotos.length || rawPhotos.length || mirroredDocs.length || rawDocuments.length) {
               const meta = row.source_metadata as Record<string, unknown>;
               await admin.from("listings").update({
@@ -1282,6 +1363,8 @@ Deno.serve(async (req) => {
                   documents_original: rawDocuments,
                   broken_images_removed_count: Math.max(0, rawPhotos.length - mirroredPhotos.length),
                   media_mirrored_at: new Date().toISOString(),
+                  media_version_tag: versionTag,
+                  media_serial_verified: homelyId,
                 },
               }).eq("id", listingId);
             }
