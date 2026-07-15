@@ -1776,19 +1776,36 @@ Deno.serve(async (req) => {
       (p?.source_url ? String(p.source_url) : "") ||
       (richSourceOrigin === "yad2" ? buildYad2FallbackUrl(p?.city, p?.address, p?.transaction_type, homelyId) : "");
 
-    let rawPhotos = richMedia.photos.length
-      ? richMedia.photos
-      : Array.isArray(p?.photos) && p.photos.length
+    // HARD VALIDATION OVERRIDE — scraper-first media resolution.
+    // The Webtiv API has been observed returning cross-contaminated or
+    // placeholder images. We trust the public listing page (og:image /
+    // scraped photos) as the source of truth whenever the API payload is
+    // empty or contains placeholder URLs.
+    const apiPhotos: string[] = Array.isArray(richMedia.photos) ? richMedia.photos : [];
+    const isApiPhotosJunk =
+      apiPhotos.length === 0 ||
+      apiPhotos.some((url) => typeof url === "string" && url.toLowerCase().includes("placeholder"));
+
+    let rawPhotos: string[] = [];
+    if (isApiPhotosJunk && richSourceUrl) {
+      const scraped = await fetchVerifiedMedia(richSourceUrl);
+      if (scraped.length > 0) {
+        rawPhotos = scraped;
+      }
+    } else if (!isApiPhotosJunk) {
+      rawPhotos = apiPhotos;
+    }
+
+    // Only fall back to legacy sources if BOTH the API and the scraper
+    // yielded nothing verified.
+    if (rawPhotos.length === 0) {
+      rawPhotos = Array.isArray(p?.photos) && p.photos.length
         ? p.photos
         : p?.photo
           ? [p.photo]
           : yad2Enrichment?.photos?.length
             ? yad2Enrichment.photos
             : campaignPhotos;
-
-    if ((rawPhotos.length === 0 || rawPhotos.some(url => url.includes("placeholder"))) && richSourceUrl) {
-      const scraped = await fetchVerifiedMedia(richSourceUrl);
-      if (scraped.length > 0) rawPhotos = scraped;
     }
 
     const rawDocuments = richMedia.documents.length
