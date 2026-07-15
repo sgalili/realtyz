@@ -787,9 +787,11 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
     // ───────────────────────────────────────────────────────────────────────
     let marketIntelBlock = "";
     let marketIntelResults: {
+      address: string;
       query: string;
       sources: Array<{ title: string; url: string; snippet: string }>;
-    } = { query: "", sources: [] };
+    } = { address: "", query: "", sources: [] };
+
     try {
       const lastUserTextForIntel = String(
         [...(messages as Array<{ role: string; content: string }>)]
