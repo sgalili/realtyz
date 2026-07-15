@@ -1482,6 +1482,57 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_profiles: {
+        Row: {
+          created_at: string
+          email: string | null
+          enrichment_last_run_at: string | null
+          enrichment_status: string
+          full_name: string
+          id: string
+          notes: string | null
+          phone: string | null
+          professional_info: Json
+          profile_type: string
+          social_links: Json
+          source: string | null
+          updated_at: string
+          workspace_owner_id: string
+        }
+        Insert: {
+          created_at?: string
+          email?: string | null
+          enrichment_last_run_at?: string | null
+          enrichment_status?: string
+          full_name: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          professional_info?: Json
+          profile_type?: string
+          social_links?: Json
+          source?: string | null
+          updated_at?: string
+          workspace_owner_id: string
+        }
+        Update: {
+          created_at?: string
+          email?: string | null
+          enrichment_last_run_at?: string | null
+          enrichment_status?: string
+          full_name?: string
+          id?: string
+          notes?: string | null
+          phone?: string | null
+          professional_info?: Json
+          profile_type?: string
+          social_links?: Json
+          source?: string | null
+          updated_at?: string
+          workspace_owner_id?: string
+        }
+        Relationships: []
+      }
       custom_user_groups: {
         Row: {
           created_at: string
@@ -2816,6 +2867,7 @@ export type Database = {
           media_photos: Json
           neighborhood: string | null
           office_notes: string | null
+          owner_id: string | null
           parking: boolean | null
           project_name: string | null
           promoted_until: string | null
@@ -2856,6 +2908,7 @@ export type Database = {
           media_photos?: Json
           neighborhood?: string | null
           office_notes?: string | null
+          owner_id?: string | null
           parking?: boolean | null
           project_name?: string | null
           promoted_until?: string | null
@@ -2896,6 +2949,7 @@ export type Database = {
           media_photos?: Json
           neighborhood?: string | null
           office_notes?: string | null
+          owner_id?: string | null
           parking?: boolean | null
           project_name?: string | null
           promoted_until?: string | null
@@ -2910,7 +2964,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "listings_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "crm_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       market_pulse_cache: {
         Row: {
