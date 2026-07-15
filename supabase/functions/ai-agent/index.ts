@@ -842,7 +842,7 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
 
 
     const systemPrompt = (systemRulesBlock ? systemRulesBlock + "\n\n" : "") + (isInternalDashboard
-      ? MASTER_AGENT_PROMPT
+      ? MASTER_AGENT_PROMPT + (webtivBlock ? "\n\n" + webtivBlock : "")
       : SCHEMA_CONTEXT
           .replace("{{CAMPAIGN_CONTEXT}}", campaignContext)
           .replace("{{KB_CONTEXT}}", kbContext)
