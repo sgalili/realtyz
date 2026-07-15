@@ -1012,6 +1012,83 @@ Deno.serve(async (req) => {
       return json({ ok: true, scanned, removed, updated });
     }
 
+    // ---------- FLUSH mirrored media for one/many listings ----------
+    // Wipes every object under `homely-media/listing/{id}/` and clears
+    // media_photos + source_metadata.photos/images/documents so the next
+    // property view triggers a fresh fetch + re-mirror against Webtiv.
+    // Body: { action: "flushMediaCache", listing_ids?: string[], all_stale?: boolean }
+    if (action === "flushMediaCache") {
+      const explicitIds = Array.isArray((body as any)?.listing_ids)
+        ? ((body as any).listing_ids as unknown[]).map((v) => String(v)).filter(Boolean)
+        : [];
+      const wantAll = (body as any)?.all_stale === true;
+      let targets: { id: string }[] = [];
+      if (explicitIds.length) {
+        const { data } = await admin
+          .from("listings")
+          .select("id")
+          .eq("user_id", workspaceOwnerId)
+          .in("id", explicitIds);
+        targets = (data ?? []) as any;
+      } else if (wantAll) {
+        const { data } = await admin
+          .from("listings")
+          .select("id")
+          .eq("user_id", workspaceOwnerId)
+          .or("source.eq.homely,source.eq.webtiv")
+          .limit(1000);
+        targets = (data ?? []) as any;
+      } else {
+        return json({ ok: false, error: "listing_ids_or_all_stale_required" }, 400);
+      }
+
+      let bucketFilesRemoved = 0;
+      let listingsCleared = 0;
+      for (const row of targets) {
+        try {
+          const prefix = `listing/${row.id}`;
+          // Recursively list every object under listing/{id}/ (Storage list
+          // is non-recursive, so we walk one level of subfolders too — the
+          // versioned layout is `listing/{id}/{versionTag}/{sha1}.{ext}`).
+          const paths: string[] = [];
+          const { data: level1 } = await admin.storage.from("homely-media").list(prefix, { limit: 1000 });
+          for (const entry of level1 ?? []) {
+            if (entry.id) {
+              paths.push(`${prefix}/${entry.name}`);
+            } else {
+              const { data: level2 } = await admin.storage.from("homely-media").list(`${prefix}/${entry.name}`, { limit: 1000 });
+              for (const sub of level2 ?? []) paths.push(`${prefix}/${entry.name}/${sub.name}`);
+            }
+          }
+          if (paths.length) {
+            const { error: rmErr } = await admin.storage.from("homely-media").remove(paths);
+            if (!rmErr) bucketFilesRemoved += paths.length;
+          }
+        } catch (e) {
+          console.warn("[flushMediaCache] storage sweep failed for", row.id, (e as Error).message);
+        }
+        // Clear DB references so the UI stops rendering the stale URLs.
+        const { data: cur } = await admin
+          .from("listings")
+          .select("source_metadata")
+          .eq("id", row.id)
+          .maybeSingle();
+        const meta = ((cur as any)?.source_metadata && typeof (cur as any).source_metadata === "object")
+          ? (cur as any).source_metadata : {};
+        await admin.from("listings").update({
+          media_photos: [],
+          source_metadata: {
+            ...meta,
+            photos: [],
+            images: [],
+            photos_origin: [],
+            media_flushed_at: new Date().toISOString(),
+          },
+        }).eq("id", row.id).eq("user_id", workspaceOwnerId);
+        listingsCleared++;
+      }
+      return json({ ok: true, listings_cleared: listingsCleared, bucket_files_removed: bucketFilesRemoved });
+
     if (action === "importOutJson") {
       const propertyIds = new Set(((body as any)?.propertyIds ?? []).map((v: unknown) => String(v)));
       const contactIds = new Set(((body as any)?.contactIds ?? []).map((v: unknown) => String(v)));
