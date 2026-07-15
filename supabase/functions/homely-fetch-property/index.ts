@@ -703,6 +703,7 @@ async function mirrorOne(
   listingId: string,
   originalUrl: string,
   expected: "image" | "document" | "any" = "any",
+  versionTag: string = "v0",
 ): Promise<string | null> {
   try {
     if (!/^https?:\/\//i.test(originalUrl)) return originalUrl || null;
@@ -726,7 +727,11 @@ async function mirrorOne(
     const lowerContentType = contentType.toLowerCase();
     if (/text\/html|application\/json|text\/plain/i.test(lowerContentType)) return null;
     const ext = extFromUrlOrType(originalUrl, contentType);
-    const path = `listing/${listingId}/${key}.${ext}`;
+    // Versioned path: listing/{id}/{versionTag}/{sha1(url)}.{ext}. Bumping
+    // the version tag (listing.updated_at ms) invalidates every cached
+    // thumbnail for that listing without needing an explicit purge.
+    const safeVersion = String(versionTag || "v0").replace(/[^\w-]/g, "").slice(0, 32) || "v0";
+    const path = `listing/${listingId}/${safeVersion}/${key}.${ext}`;
     const bytes = new Uint8Array(await resp.arrayBuffer());
     if (expected === "image" && !lowerContentType.startsWith("image/") && !looksLikeImageBytes(bytes)) {
       return null;
@@ -761,11 +766,12 @@ async function mirrorAll(
   urls: string[],
   cap: number,
   expected: "image" | "document" | "any" = "any",
+  versionTag: string = "v0",
 ): Promise<string[]> {
   const uniq = Array.from(new Set((urls || []).filter((u) => typeof u === "string" && u))).slice(0, cap);
   const out: string[] = [];
   for (const u of uniq) {
-    const mirrored = await mirrorOne(admin, listingId, u, expected);
+    const mirrored = await mirrorOne(admin, listingId, u, expected, versionTag);
     if (mirrored) out.push(mirrored);
   }
   return out;
