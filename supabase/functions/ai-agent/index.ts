@@ -660,6 +660,123 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
     }
 
     // ───────────────────────────────────────────────────────────────────────
+    // WEBTIV LIVE SEARCH TOOL (homely/webtiv2 external agent search)
+    // Fires when either:
+    //   a) the local `matchingBlock` came back empty (no in-workspace hits
+    //      for the lead's preferences), or
+    //   b) the user explicitly asks for a wider search — "בכל השוק",
+    //      "מחוץ למערכת", "עוד אפשרויות", "homely", "webtiv", "external",
+    //      "broader" etc.
+    // The tool hits `homely-fetch-property` with action=`searchProperties`,
+    // which proxies the office's public Webtiv AutomaionJson stream and
+    // returns properties in the SAME shape as internal listings (title,
+    // price, city, rooms, photo). Results are:
+    //   1. injected as a text block into the system prompt so the model
+    //      can weave them into its reply, and
+    //   2. returned to the client as `webtiv_results` so the drawer can
+    //      render property cards with the correct thumbnail image.
+    // ───────────────────────────────────────────────────────────────────────
+    let webtivBlock = "";
+    let webtivResults: Array<{
+      id: string; title: string; price: number; city: string; rooms: number;
+      sqm: number; floor: number; photo: string | null; agent: string | null;
+      transaction_type: "sale" | "rent"; source_url: string | null;
+    }> = [];
+    try {
+      const lastUserTextForWebtiv = String(
+        [...(messages as Array<{ role: string; content: any }>)]
+          .reverse().find((m) => m.role === "user")?.content ?? "",
+      );
+      const EXTERNAL_TRIGGER = /(webtiv|homely|בכל השוק|כל השוק|מחוץ למערכת|שוק חיצוני|external|broader|עוד אפשרויות|לחפש עוד|תראה לי עוד|יש לך עוד|חיפוש חיצוני|חיפוש בכל|כל המשרד)/i;
+      const NEIGHBORHOOD_HINT = /(שכונ|נייבורהוד|רובע|neighborhood|אזור\s+\S+)/i;
+      const userWantsExternal = EXTERNAL_TRIGGER.test(lastUserTextForWebtiv);
+      const localWasEmpty = !matchingBlock;
+      const hasSearchableIntent = userWantsExternal
+        || (localWasEmpty && (NEIGHBORHOOD_HINT.test(lastUserTextForWebtiv) || /נכס|דירה|בית|פנטהאוז/i.test(lastUserTextForWebtiv)));
+
+      if (hasSearchableIntent && isInternalDashboard) {
+        // Extract filters from the parsed anchor + lead preferences.
+        const prefs = ((typeof leadPreferences === "object" && leadPreferences) || {}) as any;
+        const cityGuess = (prefs.desired_city ?? prefs.city ?? "") as string;
+        const cities: string[] = [];
+        // Anchor is populated a few lines below, but we haven't reached
+        // that block yet — re-parse the city from the user text so this
+        // step stays self-contained.
+        const cityList = ["הרצליה","תל אביב","תל-אביב","רמת גן","רמת-גן","רעננה","כפר סבא","נתניה","חיפה","ירושלים","ראשון לציון","חולון","בת ים","פתח תקווה","גבעתיים","אשדוד","אשקלון","באר שבע","מודיעין","רחובות","הוד השרון","רמת השרון"];
+        for (const c of cityList) if (lastUserTextForWebtiv.includes(c)) { cities.push(c); break; }
+        if (!cities.length && cityGuess) cities.push(cityGuess);
+
+        const roomsMatch = lastUserTextForWebtiv.match(/(\d+(?:\.\d+)?)\s*חדרים/);
+        const rooms = roomsMatch ? roomsMatch[1] : (prefs.rooms ? String(prefs.rooms) : "");
+        const deal = /להשכרה|שכירות|לשכר/i.test(lastUserTextForWebtiv)
+          ? "rent"
+          : /למכירה|רכישה|לקנות/i.test(lastUserTextForWebtiv)
+            ? "sale"
+            : (dealType === "rent" || dealType === "sale") ? dealType : "";
+        const searchText = (lastUserTextForWebtiv.match(NEIGHBORHOOD_HINT)?.[0] ?? "").replace(/(שכונת|באזור|באזור\s+)/g, "").trim();
+
+        const authHeader = req.headers.get("Authorization") ?? "";
+        if (authHeader.startsWith("Bearer ")) {
+          try {
+            const searchRes = await fetch(`${supabaseUrl}/functions/v1/homely-fetch-property`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: authHeader },
+              body: JSON.stringify({
+                action: "searchProperties",
+                filters: {
+                  cities,
+                  rooms,
+                  deal,
+                  search: searchText,
+                },
+              }),
+            });
+            if (searchRes.ok) {
+              const sj = await searchRes.json();
+              const props = Array.isArray(sj?.properties) ? sj.properties : [];
+              webtivResults = props.slice(0, 8).map((p: any) => ({
+                id: String(p.homely_id ?? p.serial ?? ""),
+                title: String(p.title ?? p.property_title ?? "נכס"),
+                price: Number(p.price ?? 0) || 0,
+                city: String(p.city ?? ""),
+                rooms: Number(p.rooms ?? 0) || 0,
+                sqm: Number(p.sqm ?? 0) || 0,
+                floor: Number(p.floor ?? 0) || 0,
+                photo: p.photo ?? (Array.isArray(p.photos) ? p.photos[0] : null) ?? null,
+                agent: p.agent ?? null,
+                transaction_type: p.transaction_type === "rent" ? "rent" : "sale",
+                source_url: p.source_url ?? null,
+              }));
+              if (webtivResults.length) {
+                const priceLabel = (t: string) => (t === "rent" ? "שכ\"ד" : "מחיר");
+                webtivBlock = [
+                  `WEBTIV LIVE SEARCH RESULTS (${webtivResults.length} נכסים חיים מ-Homely/Webtiv2, סינון: cities=${cities.join(",") || "—"} rooms=${rooms || "—"} deal=${deal || "—"} q=${searchText || "—"}):`,
+                  ...webtivResults.map((r) => (
+                    `• [${r.id}] ${r.title} | ${r.city || "—"} | ${r.rooms || "—"} חד׳ | ${r.sqm || "—"} מ"ר | ${priceLabel(r.transaction_type)}: ${r.price ? `₪${r.price.toLocaleString("he-IL")}${r.transaction_type === "rent" ? "/חודש" : ""}` : "—"}${r.agent ? ` | סוכן: ${r.agent}` : ""}${r.photo ? ` | image: ${r.photo}` : ""}`
+                  )),
+                  "",
+                  "WEBTIV DIRECTIVE:",
+                  "- Treat these as LIVE external results from the office's Webtiv/Homely feed — same reliability tier as the internal listings block.",
+                  "- Surface at most 3 in your reply, in the SAME format as internal listings (title, city, rooms, price).",
+                  "- Never invent a photo URL — the client renders the actual thumbnails from the structured `webtiv_results` payload alongside your text.",
+                  "- If the lead had zero internal matches, explicitly say something like: \"מצאתי מספר אופציות חיצוניות רלוונטיות במשרד\" ולאחר מכן פרט 2-3 מהתוצאות.",
+                ].join("\n");
+              }
+            } else {
+              console.warn("[webtiv_search] non-ok", searchRes.status);
+            }
+          } catch (e) {
+            console.warn("[webtiv_search] fetch failed", (e as Error).message);
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("[webtiv_search] outer failure", (e as Error).message);
+    }
+
+
+
+    // ───────────────────────────────────────────────────────────────────────
     // PROPERTY ANCHOR EXTRACTION (HARD GROUNDING)
     // Parse street / city / rooms / price / deal-type directly from the
     // latest inbound text. Even if the DB lookup returns null, the AI MUST
