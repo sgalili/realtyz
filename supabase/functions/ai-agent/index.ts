@@ -1151,6 +1151,53 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
     const aiData = await aiResponse.json();
     const rawContent = aiData.choices?.[0]?.message?.content?.trim() || "";
 
+    // ─── Persist Market Intel findings for long-term agent memory ────────
+    // Any turn that surfaced Firecrawl-backed market research is logged so
+    // future agent calls (and analytics) can recall prior area evaluations
+    // without re-running the search.
+    if (marketIntelResults.sources.length && marketIntelResults.address) {
+      try {
+        // Try to derive summary text out of the model reply.
+        let summary = rawContent;
+        try {
+          const cleanedForSummary = rawContent.replace(/^```(?:json)?\n?/gm, "").replace(/\n?```$/gm, "").trim();
+          const p = JSON.parse(cleanedForSummary);
+          if (p && typeof p.content === "string") summary = p.content;
+        } catch { /* rawContent is plain text — keep as-is */ }
+
+        let createdBy: string | null = null;
+        try {
+          const authHeader = req.headers.get("Authorization") ?? "";
+          if (authHeader.startsWith("Bearer ")) {
+            const u = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!, {
+              global: { headers: { Authorization: authHeader } },
+            });
+            const { data: uRes } = await u.auth.getUser();
+            createdBy = uRes?.user?.id ?? null;
+          }
+        } catch { /* service-role path: leave created_by null */ }
+
+        await supabase.from("market_research_logs").insert({
+          address: marketIntelResults.address.slice(0, 500),
+          agent_summary: String(summary || "").slice(0, 8000),
+          property_evaluation_data: {
+            query: marketIntelResults.query,
+            sources: marketIntelResults.sources,
+          },
+          created_by: createdBy,
+          metadata: {
+            lead_id: lead_id ?? null,
+            lead_name: resolvedLeadName ?? null,
+            mode: mode ?? null,
+            source_provider: "firecrawl",
+          },
+        });
+      } catch (e) {
+        console.warn("[market_intel] persist to market_research_logs failed", (e as Error).message);
+      }
+    }
+
+
     // Parse AI response
     let parsed;
     try {
