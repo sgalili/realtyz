@@ -1776,19 +1776,36 @@ Deno.serve(async (req) => {
       (p?.source_url ? String(p.source_url) : "") ||
       (richSourceOrigin === "yad2" ? buildYad2FallbackUrl(p?.city, p?.address, p?.transaction_type, homelyId) : "");
 
-    let rawPhotos = richMedia.photos.length
-      ? richMedia.photos
-      : Array.isArray(p?.photos) && p.photos.length
+    // HARD VALIDATION OVERRIDE — scraper-first media resolution.
+    // The Webtiv API has been observed returning cross-contaminated or
+    // placeholder images. We trust the public listing page (og:image /
+    // scraped photos) as the source of truth whenever the API payload is
+    // empty or contains placeholder URLs.
+    const apiPhotos: string[] = Array.isArray(richMedia.photos) ? richMedia.photos : [];
+    const isApiPhotosJunk =
+      apiPhotos.length === 0 ||
+      apiPhotos.some((url) => typeof url === "string" && url.toLowerCase().includes("placeholder"));
+
+    let rawPhotos: string[] = [];
+    if (isApiPhotosJunk && richSourceUrl) {
+      const scraped = await fetchVerifiedMedia(richSourceUrl);
+      if (scraped.length > 0) {
+        rawPhotos = scraped;
+      }
+    } else if (!isApiPhotosJunk) {
+      rawPhotos = apiPhotos;
+    }
+
+    // Only fall back to legacy sources if BOTH the API and the scraper
+    // yielded nothing verified.
+    if (rawPhotos.length === 0) {
+      rawPhotos = Array.isArray(p?.photos) && p.photos.length
         ? p.photos
         : p?.photo
           ? [p.photo]
           : yad2Enrichment?.photos?.length
             ? yad2Enrichment.photos
             : campaignPhotos;
-
-    if ((rawPhotos.length === 0 || rawPhotos.some(url => url.includes("placeholder"))) && richSourceUrl) {
-      const scraped = await fetchVerifiedMedia(richSourceUrl);
-      if (scraped.length > 0) rawPhotos = scraped;
     }
 
     const rawDocuments = richMedia.documents.length
@@ -2201,7 +2218,9 @@ Deno.serve(async (req) => {
     const richest = rich.record ?? detail;
     const media = collectMedia(richest);
     const summaryPhoto = mapped.photo ? [mapped.photo] : [];
-    const rawPhotos = media.photos.length ? media.photos : summaryPhoto;
+    const apiPhotos: string[] = Array.isArray(media.photos) && media.photos.length
+      ? media.photos
+      : summaryPhoto;
     const rawDocs = media.documents;
     const rawSourceOrigin = pickSourceOrigin(richest) || pickSourceOrigin(detail) || meta.source_origin || null;
     const sourceOriginRaw =
@@ -2218,29 +2237,9 @@ Deno.serve(async (req) => {
     const yad2Enrichment = shouldProbeYad2 ? await enrichFromYad2(admin, workspaceOwnerId, mappedForEnrichment) : null;
     const sourceOrigin = sourceOriginRaw === "yad2" || yad2Enrichment?.exact ? "yad2" : sourceOriginRaw;
     const balcony = pickBalcony(richest) ?? pickBalcony(detail) ?? booleanFeatureFrom(meta.balcony ?? meta.mirpeset);
-    const campaignPhotos = rawPhotos.length
-      ? []
-      : await campaignMediaFallback(admin, workspaceOwnerId, {
-          ...mapped,
-          price: mapped.price || listing.asking_price,
-          city: mapped.city || listing.city,
-          address: mapped.address || listing.address,
-          raw: richest,
-        });
-    // Replace the old finalRawPhotos line with this:
-    let finalRawPhotos = rawPhotos.length 
-      ? rawPhotos 
-      : (yad2Enrichment?.photos?.length ? yad2Enrichment.photos : campaignPhotos);
 
-    // Apply the scraper fallback if still empty
-    if (finalRawPhotos.length === 0 && sourceUrl) {
-      const scraped = await fetchVerifiedMedia(sourceUrl);
-      if (scraped.length > 0) finalRawPhotos = scraped;
-    }
-      ? rawPhotos
-      : yad2Enrichment?.photos?.length
-        ? yad2Enrichment.photos
-        : campaignPhotos;
+    // Resolve the public source URL up front so the scraper can run before
+    // we trust any API-provided photos.
     const sourceUrl =
       pickSourceUrl(richest) ||
       pickSourceUrl(detail) ||
@@ -2254,6 +2253,40 @@ Deno.serve(async (req) => {
             serialStr,
           )
         : "");
+
+    // HARD VALIDATION OVERRIDE — scraper-first media resolution.
+    // API images are treated as "junk" when the array is empty or any URL
+    // contains 'placeholder'. In that case we scrape the public listing
+    // page (og:image / DOM images) and use that as the primary source.
+    const isApiPhotosJunk =
+      apiPhotos.length === 0 ||
+      apiPhotos.some((url) => typeof url === "string" && url.toLowerCase().includes("placeholder"));
+
+    let finalRawPhotos: string[] = [];
+    if (isApiPhotosJunk && sourceUrl) {
+      const scraped = await fetchVerifiedMedia(sourceUrl);
+      if (scraped.length > 0) {
+        finalRawPhotos = scraped;
+      }
+    } else if (!isApiPhotosJunk) {
+      finalRawPhotos = apiPhotos;
+    }
+
+    // Only fall back to secondary sources if BOTH the API and the scraper
+    // returned nothing verified.
+    if (finalRawPhotos.length === 0) {
+      finalRawPhotos = yad2Enrichment?.photos?.length
+        ? yad2Enrichment.photos
+        : summaryPhoto.length
+          ? summaryPhoto
+          : await campaignMediaFallback(admin, workspaceOwnerId, {
+              ...mapped,
+              price: mapped.price || listing.asking_price,
+              city: mapped.city || listing.city,
+              address: mapped.address || listing.address,
+              raw: richest,
+            });
+    }
 
     // Mirror media once into homely-media bucket and store signed URLs.
     // versionTag = current ms so every refresh writes to a new folder and
