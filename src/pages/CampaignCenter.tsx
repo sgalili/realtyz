@@ -2472,7 +2472,7 @@ const PublishedFeed = () => {
   const [refreshingIds, setRefreshingIds] = useState<Record<string, boolean>>({});
   // Per-campaign cooldown timestamp (ms epoch). Button is disabled with a
   // MM:SS countdown until now >= cooldownUntil.
-  const REFRESH_COOLDOWN_MS = 60_000;
+  const REFRESH_COOLDOWN_MS = 15 * 60_000; // 15-minute provider lock
   const [cooldownUntil, setCooldownUntil] = useState<Record<string, number>>({});
   const [nowTick, setNowTick] = useState<number>(() => Date.now());
   useEffect(() => {
