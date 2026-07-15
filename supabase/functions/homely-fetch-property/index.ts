@@ -703,6 +703,7 @@ async function mirrorOne(
   listingId: string,
   originalUrl: string,
   expected: "image" | "document" | "any" = "any",
+  versionTag: string = "v0",
 ): Promise<string | null> {
   try {
     if (!/^https?:\/\//i.test(originalUrl)) return originalUrl || null;
@@ -726,7 +727,11 @@ async function mirrorOne(
     const lowerContentType = contentType.toLowerCase();
     if (/text\/html|application\/json|text\/plain/i.test(lowerContentType)) return null;
     const ext = extFromUrlOrType(originalUrl, contentType);
-    const path = `listing/${listingId}/${key}.${ext}`;
+    // Versioned path: listing/{id}/{versionTag}/{sha1(url)}.{ext}. Bumping
+    // the version tag (listing.updated_at ms) invalidates every cached
+    // thumbnail for that listing without needing an explicit purge.
+    const safeVersion = String(versionTag || "v0").replace(/[^\w-]/g, "").slice(0, 32) || "v0";
+    const path = `listing/${listingId}/${safeVersion}/${key}.${ext}`;
     const bytes = new Uint8Array(await resp.arrayBuffer());
     if (expected === "image" && !lowerContentType.startsWith("image/") && !looksLikeImageBytes(bytes)) {
       return null;
@@ -761,11 +766,12 @@ async function mirrorAll(
   urls: string[],
   cap: number,
   expected: "image" | "document" | "any" = "any",
+  versionTag: string = "v0",
 ): Promise<string[]> {
   const uniq = Array.from(new Set((urls || []).filter((u) => typeof u === "string" && u))).slice(0, cap);
   const out: string[] = [];
   for (const u of uniq) {
-    const mirrored = await mirrorOne(admin, listingId, u, expected);
+    const mirrored = await mirrorOne(admin, listingId, u, expected, versionTag);
     if (mirrored) out.push(mirrored);
   }
   return out;
@@ -1011,6 +1017,85 @@ Deno.serve(async (req) => {
       }
       return json({ ok: true, scanned, removed, updated });
     }
+
+    // ---------- FLUSH mirrored media for one/many listings ----------
+    // Wipes every object under `homely-media/listing/{id}/` and clears
+    // media_photos + source_metadata.photos/images/documents so the next
+    // property view triggers a fresh fetch + re-mirror against Webtiv.
+    // Body: { action: "flushMediaCache", listing_ids?: string[], all_stale?: boolean }
+    if (action === "flushMediaCache") {
+      const explicitIds = Array.isArray((body as any)?.listing_ids)
+        ? ((body as any).listing_ids as unknown[]).map((v) => String(v)).filter(Boolean)
+        : [];
+      const wantAll = (body as any)?.all_stale === true;
+      let targets: { id: string }[] = [];
+      if (explicitIds.length) {
+        const { data } = await admin
+          .from("listings")
+          .select("id")
+          .eq("user_id", workspaceOwnerId)
+          .in("id", explicitIds);
+        targets = (data ?? []) as any;
+      } else if (wantAll) {
+        const { data } = await admin
+          .from("listings")
+          .select("id")
+          .eq("user_id", workspaceOwnerId)
+          .or("source.eq.homely,source.eq.webtiv")
+          .limit(1000);
+        targets = (data ?? []) as any;
+      } else {
+        return json({ ok: false, error: "listing_ids_or_all_stale_required" }, 400);
+      }
+
+      let bucketFilesRemoved = 0;
+      let listingsCleared = 0;
+      for (const row of targets) {
+        try {
+          const prefix = `listing/${row.id}`;
+          // Recursively list every object under listing/{id}/ (Storage list
+          // is non-recursive, so we walk one level of subfolders too — the
+          // versioned layout is `listing/{id}/{versionTag}/{sha1}.{ext}`).
+          const paths: string[] = [];
+          const { data: level1 } = await admin.storage.from("homely-media").list(prefix, { limit: 1000 });
+          for (const entry of level1 ?? []) {
+            if (entry.id) {
+              paths.push(`${prefix}/${entry.name}`);
+            } else {
+              const { data: level2 } = await admin.storage.from("homely-media").list(`${prefix}/${entry.name}`, { limit: 1000 });
+              for (const sub of level2 ?? []) paths.push(`${prefix}/${entry.name}/${sub.name}`);
+            }
+          }
+          if (paths.length) {
+            const { error: rmErr } = await admin.storage.from("homely-media").remove(paths);
+            if (!rmErr) bucketFilesRemoved += paths.length;
+          }
+        } catch (e) {
+          console.warn("[flushMediaCache] storage sweep failed for", row.id, (e as Error).message);
+        }
+        // Clear DB references so the UI stops rendering the stale URLs.
+        const { data: cur } = await admin
+          .from("listings")
+          .select("source_metadata")
+          .eq("id", row.id)
+          .maybeSingle();
+        const meta = ((cur as any)?.source_metadata && typeof (cur as any).source_metadata === "object")
+          ? (cur as any).source_metadata : {};
+        await admin.from("listings").update({
+          media_photos: [],
+          source_metadata: {
+            ...meta,
+            photos: [],
+            images: [],
+            photos_origin: [],
+            media_flushed_at: new Date().toISOString(),
+          },
+        }).eq("id", row.id).eq("user_id", workspaceOwnerId);
+        listingsCleared++;
+      }
+      return json({ ok: true, listings_cleared: listingsCleared, bucket_files_removed: bucketFilesRemoved });
+    }
+
 
     if (action === "importOutJson") {
       const propertyIds = new Set(((body as any)?.propertyIds ?? []).map((v: unknown) => String(v)));
@@ -1468,9 +1553,12 @@ Deno.serve(async (req) => {
       || (typeof meta.source_url === "string" ? meta.source_url : "")
       || (sourceOrigin === "yad2" ? buildYad2FallbackUrl(mapped.city || listing.city, mapped.address || listing.address, meta.transaction_type, serialStr) : "");
 
-    // Mirror media once into homely-media bucket and store signed URLs
-    const cachedPhotos = await mirrorAll(admin, String(listing_id), finalRawPhotos, 40, "image");
-    const cachedDocs = await mirrorAll(admin, String(listing_id), rawDocs, 20, "document");
+    // Mirror media once into homely-media bucket and store signed URLs.
+    // versionTag = current ms so every refresh writes to a new folder and
+    // never overlaps the previous, potentially-stale thumbnails.
+    const versionTag = `v${Date.now()}`;
+    const cachedPhotos = await mirrorAll(admin, String(listing_id), finalRawPhotos, 40, "image", versionTag);
+    const cachedDocs = await mirrorAll(admin, String(listing_id), rawDocs, 20, "document", versionTag);
 
     const updated = {
       property_title: mapped.title || listing.property_title,
@@ -1504,6 +1592,8 @@ Deno.serve(async (req) => {
         balcony,
         homely_raw: richest,
         synced_at: new Date().toISOString(),
+        media_version_tag: versionTag,
+        media_serial_verified: String(serial),
         endpoint: rich.endpoint ?? url,
       },
     };
