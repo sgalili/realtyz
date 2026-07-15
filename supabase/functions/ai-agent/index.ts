@@ -694,7 +694,7 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
       const hasSearchableIntent = userWantsExternal
         || (localWasEmpty && (NEIGHBORHOOD_HINT.test(lastUserTextForWebtiv) || /נכס|דירה|בית|פנטהאוז/i.test(lastUserTextForWebtiv)));
 
-      if (hasSearchableIntent && isInternalDashboard) {
+      if (hasSearchableIntent) {
         // Extract filters from the parsed anchor + lead preferences.
         const prefs = ((typeof leadPreferences === "object" && leadPreferences) || {}) as any;
         const cityGuess = (prefs.desired_city ?? prefs.city ?? "") as string;
