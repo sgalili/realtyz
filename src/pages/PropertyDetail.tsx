@@ -22,7 +22,7 @@ import {
 import { ShareWithLeadDialog } from '@/components/properties/ShareWithLeadDialog';
 import { ProjectAlternativesCard } from '@/components/properties/ProjectAlternativesCard';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
-import { normalizeImageUrls, useVisibleImageUrls } from '@/lib/imageHealth';
+import { normalizeImageUrls } from '@/lib/imageHealth';
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
@@ -231,7 +231,7 @@ export default function PropertyDetail() {
   const documents = data?.documents ?? [];
 
   const dbPhotos = property?.photos ?? [];
-  const { visible: visiblePropertyPhotos, markBroken: markBrokenPropertyPhoto } = useVisibleImageUrls(dbPhotos);
+
 
   // Initialize edit form when entering edit mode
   useEffect(() => {
@@ -260,12 +260,12 @@ export default function PropertyDetail() {
         shelter: Boolean(amenities?.shelter),
         solar: Boolean(amenities?.solar),
         source_url: sourceUrl || (typeof meta.source_url === 'string' ? meta.source_url : ''),
-        photos: visiblePropertyPhotos,
+        photos: dbPhotos,
         photo_url_draft: '',
       });
     }
     if (!editMode) setForm(null);
-  }, [editMode, property, neighborhood, meta, amenities, sourceUrl, form, visiblePropertyPhotos]);
+  }, [editMode, property, neighborhood, meta, amenities, sourceUrl, form, dbPhotos]);
 
   const handleSave = async () => {
     if (!form || !id) return;
@@ -353,7 +353,9 @@ export default function PropertyDetail() {
   }
 
   const isRent = property.price < 50_000;
-  const photos = editMode && form ? form.photos : visiblePropertyPhotos;
+  // Hard-override: render straight from listing.media_photos (dbPhotos). No filtering,
+  // no "broken" gating, no live-image fallback. If the DB has photos, they render.
+  const photos = editMode && form ? form.photos : dbPhotos;
   const main = photos[activePhoto];
 
   const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
@@ -391,7 +393,6 @@ export default function PropertyDetail() {
     });
 
   const removeBrokenPhoto = (url: string) => {
-    markBrokenPropertyPhoto(url);
     if (editMode) setPhotos((list) => list.filter((item) => item !== url));
   };
 
@@ -529,7 +530,7 @@ export default function PropertyDetail() {
             <Card className="overflow-hidden">
               <div className="aspect-[16/10] bg-muted relative">
                 {main ? (
-                  <img src={main} alt={dynamicHeadline} className="h-full w-full object-cover" onError={() => removeBrokenPhoto(main)} />
+                  <img src={main} alt={dynamicHeadline} className="h-full w-full object-cover" />
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-muted-foreground">
                     <ImageIcon className="h-10 w-10" />
@@ -549,7 +550,7 @@ export default function PropertyDetail() {
                     i === activePhoto ? 'border-primary' : 'border-transparent opacity-70 hover:opacity-100'
                   }`}
                 >
-                  <img src={p} alt="" className="h-full w-full object-cover" onError={() => removeBrokenPhoto(p)} />
+                  <img src={p} alt="" className="h-full w-full object-cover" />
                   {editMode && (
                     <span
                       role="button"

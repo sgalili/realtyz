@@ -644,31 +644,33 @@ export default function Properties() {
 }
 
 function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare: () => void }) {
-  const [thumbnailFailed, setThumbnailFailed] = useState(false);
-  const mediaPhotos = normalizeImageUrls(property.photos || []);
+  // Hard-override: thumbnail comes strictly from listing.media_photos[0].
+  // No live-image fallback, no placeholder filtering — trust the DB array.
+  const mediaPhotos = Array.isArray(property.photos)
+    ? property.photos.filter((p): p is string => typeof p === 'string' && p.trim().length > 0)
+    : [];
+  const photoCount = mediaPhotos.length;
   const photo = mediaPhotos[0];
   const isRent = property.listing_type === 'rent';
-  useEffect(() => setThumbnailFailed(false), [photo]);
   return (
     <Card className="overflow-hidden flex flex-col group hover:shadow-lg transition-shadow">
       <Link to={`/properties/${property.id}`} className="block">
         <div className="aspect-[16/10] bg-muted relative overflow-hidden">
-          {photo && !thumbnailFailed ? (
+          {photo ? (
             <img
               src={photo}
               alt={property.title}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
-              onError={() => setThumbnailFailed(true)}
             />
           ) : (
             <div className="h-full w-full flex items-center justify-center text-muted-foreground text-sm">
               אין תמונה
             </div>
           )}
-          {mediaPhotos.length > 0 && (
+          {photoCount > 0 && (
             <span className="absolute bottom-2 left-2 rounded border bg-background/90 px-1.5 py-0.5 text-xs font-semibold leading-none text-foreground tabular-nums">
-              {mediaPhotos.length}
+              {photoCount}
             </span>
           )}
           <Badge className="absolute top-3 right-3 bg-background/90 text-foreground border">
