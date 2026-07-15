@@ -1160,6 +1160,84 @@ Deno.serve(async (req) => {
       return json({ ok: true, listings_cleared: listingsCleared, bucket_files_removed: bucketFilesRemoved });
     }
 
+    // LIVE-ONLY resolver: always hits the Homely/Webtiv API in real time and
+    // returns fresh photo URLs. Never writes to the DB, never touches storage
+    // cache. Enforces strict 1:1 property_id validation — if the record we
+    // pull back does not carry the same serial as the listing's external_id,
+    // we refuse to return its photos and log a property_id_mismatch.
+    if (action === "resolveLiveImage") {
+      const targetListingId = String((body as any)?.listing_id ?? "").trim();
+      if (!targetListingId) return json({ ok: false, error: "listing_id_required" }, 400);
+
+      const { data: listing } = await admin
+        .from("listings")
+        .select("id, external_id, source, source_url, source_metadata")
+        .eq("id", targetListingId)
+        .eq("user_id", workspaceOwnerId)
+        .maybeSingle();
+      if (!listing) return json({ ok: false, error: "listing_not_found" }, 404);
+      const externalId = String((listing as any).external_id ?? "").trim();
+      if (!externalId) {
+        return json({ ok: true, listing_id: targetListingId, photos: [], reason: "no_external_id" });
+      }
+
+      const { data: cred } = await admin
+        .from("homely_broker_credentials")
+        .select("homely_agency, homely_username")
+        .eq("user_id", workspaceOwnerId)
+        .maybeSingle();
+      const { data: pw } = await admin.rpc("get_homely_password", { _user_id: workspaceOwnerId });
+      if (!cred?.homely_agency || !cred?.homely_username || !pw) {
+        return json({ ok: false, error: "homely_credentials_missing" }, 400);
+      }
+      const login = await webtivLogin(String(cred.homely_agency), String(cred.homely_username), pw as unknown as string);
+      if (!login.ok) return json({ ok: false, error: "webtiv_login_failed" }, 502);
+      const hash = extractHash(login.session);
+      if (!hash) return json({ ok: false, error: "webtiv_hash_missing" }, 502);
+
+      const { record: rich, endpoint } = await fetchRichPropertyDetail(hash, externalId, null);
+      if (!rich || typeof rich !== "object") {
+        return json({ ok: true, listing_id: targetListingId, photos: [], reason: "no_live_record" });
+      }
+
+      // Strict 1:1 property_id validation. Webtiv exposes the id under
+      // sidur / serial / id / nechesId / homely_id depending on endpoint.
+      const idKeys = ["sidur", "serial", "id", "nechesId", "homelyId", "homely_id", "propertyId", "property_id"];
+      const returnedIds = new Set<string>();
+      for (const k of idKeys) {
+        const v = (rich as any)?.[k];
+        if (v != null) returnedIds.add(String(v).trim());
+      }
+      // Also scan one level down (some endpoints wrap the payload).
+      for (const nested of Object.values(rich as Record<string, unknown>)) {
+        if (nested && typeof nested === "object" && !Array.isArray(nested)) {
+          for (const k of idKeys) {
+            const v = (nested as any)?.[k];
+            if (v != null) returnedIds.add(String(v).trim());
+          }
+        }
+      }
+      if (returnedIds.size > 0 && !returnedIds.has(externalId)) {
+        await logIntegrationError(admin, workspaceOwnerId, {
+          integration: "homely",
+          errorCode: "property_id_mismatch",
+          errorMessage: `resolve-live-image: listing.external_id=${externalId} not present in live record ids [${Array.from(returnedIds).join(",")}] (endpoint=${endpoint ?? "?"})`,
+          context: { listing_id: targetListingId, external_id: externalId, returned_ids: Array.from(returnedIds), endpoint },
+        });
+        return json({ ok: false, error: "property_id_mismatch", external_id: externalId, returned_ids: Array.from(returnedIds) }, 409);
+      }
+
+      const media = collectMedia(rich);
+      return json({
+        ok: true,
+        listing_id: targetListingId,
+        external_id: externalId,
+        endpoint,
+        photos: media.photos,
+        documents: media.documents,
+        fetched_at: new Date().toISOString(),
+      });
+    }
 
     if (action === "importOutJson") {
       const propertyIds = new Set(((body as any)?.propertyIds ?? []).map((v: unknown) => String(v)));
