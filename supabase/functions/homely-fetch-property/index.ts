@@ -1750,119 +1750,137 @@ Deno.serve(async (req) => {
         if (richHash) {
           try {
             const rich = await fetchRichPropertyDetail(richHash, homelyId, richRecord);
-        richRecord = rich.record ?? richRecord;
-        richEndpoint = rich.endpoint;
-      } catch (e) {
-        console.warn(`[importOutJson] rich detail skipped for ${homelyId}`, (e as Error).message);
-      }
-    }
+            richRecord = rich.record ?? richRecord;
+            richEndpoint = rich.endpoint;
+          } catch (e) {
+            console.warn(`[importOutJson] rich detail skipped for ${homelyId}`, (e as Error).message);
+          }
+        }
 
-    const richMedia = collectMedia(richRecord);
-    const rawSourceOrigin = pickSourceOrigin(richRecord) || p?.source_origin || null;
-    const sourceIsYad2 =
-      rawSourceOrigin === "yad2" || hasYad2Signal(richRecord, p?.raw, p?.source_url, rawSourceOrigin);
-    const shouldProbeYad2 = sourceIsYad2 || (!p?.source_url && p?.transaction_type === "sale");
-    const yad2Enrichment = shouldProbeYad2 ? await enrichFromYad2(admin, workspaceOwnerId, p) : null;
-    const richSourceOrigin = sourceIsYad2 || yad2Enrichment?.exact ? "yad2" : rawSourceOrigin;
-    const balcony = pickBalcony(richRecord) ?? booleanFeatureFrom(p?.balcony);
-    const campaignPhotos =
-      richMedia.photos.length || (Array.isArray(p?.photos) && p.photos.length) || p?.photo
-        ? []
-        : await campaignMediaFallback(admin, workspaceOwnerId, p);
-    
-    const richSourceUrl =
-      pickSourceUrl(richRecord) ||
-      yad2Enrichment?.url ||
-      (p?.source_url ? String(p.source_url) : "") ||
-      (richSourceOrigin === "yad2" ? buildYad2FallbackUrl(p?.city, p?.address, p?.transaction_type, homelyId) : "");
+        const richMedia = collectMedia(richRecord);
+        const rawSourceOrigin = pickSourceOrigin(richRecord) || p?.source_origin || null;
+        const sourceIsYad2 =
+          rawSourceOrigin === "yad2" || hasYad2Signal(richRecord, p?.raw, p?.source_url, rawSourceOrigin);
+        const shouldProbeYad2 = sourceIsYad2 || (!p?.source_url && p?.transaction_type === "sale");
+        const yad2Enrichment = shouldProbeYad2 ? await enrichFromYad2(admin, workspaceOwnerId, p) : null;
+        const richSourceOrigin = sourceIsYad2 || yad2Enrichment?.exact ? "yad2" : rawSourceOrigin;
+        const balcony = pickBalcony(richRecord) ?? booleanFeatureFrom(p?.balcony);
+        const campaignPhotos =
+          richMedia.photos.length || (Array.isArray(p?.photos) && p.photos.length) || p?.photo
+            ? []
+            : await campaignMediaFallback(admin, workspaceOwnerId, p);
 
-    // HARD VALIDATION OVERRIDE — scraper-first media resolution.
-    // The Webtiv API has been observed returning cross-contaminated or
-    // placeholder images. We trust the public listing page (og:image /
-    // scraped photos) as the source of truth whenever the API payload is
-    // empty or contains placeholder URLs.
-    const apiPhotos: string[] = Array.isArray(richMedia.photos) ? richMedia.photos : [];
-    const isApiPhotosJunk =
-      apiPhotos.length === 0 ||
-      apiPhotos.some((url) => typeof url === "string" && url.toLowerCase().includes("placeholder"));
+        const richSourceUrl =
+          pickSourceUrl(richRecord) ||
+          yad2Enrichment?.url ||
+          (p?.source_url ? String(p.source_url) : "") ||
+          (richSourceOrigin === "yad2" ? buildYad2FallbackUrl(p?.city, p?.address, p?.transaction_type, homelyId) : "");
 
-    let rawPhotos: string[] = [];
-    if (isApiPhotosJunk && richSourceUrl) {
-      const scraped = await fetchVerifiedMedia(richSourceUrl);
-      if (scraped.length > 0) {
-        rawPhotos = scraped;
-      }
-    } else if (!isApiPhotosJunk) {
-      rawPhotos = apiPhotos;
-    }
+        // HARD VALIDATION OVERRIDE — scraper-first media resolution.
+        // The Webtiv API has been observed returning cross-contaminated or
+        // placeholder images. We trust the public listing page (og:image /
+        // scraped photos) as the source of truth whenever the API payload is
+        // empty or contains placeholder URLs.
+        const apiPhotos: string[] = Array.isArray(richMedia.photos) ? richMedia.photos : [];
+        const isApiPhotosJunk =
+          apiPhotos.length === 0 ||
+          apiPhotos.some((url) => typeof url === "string" && url.toLowerCase().includes("placeholder"));
 
-    // Only fall back to legacy sources if BOTH the API and the scraper
-    // yielded nothing verified.
-    if (rawPhotos.length === 0) {
-      rawPhotos = Array.isArray(p?.photos) && p.photos.length
-        ? p.photos
-        : p?.photo
-          ? [p.photo]
-          : yad2Enrichment?.photos?.length
-            ? yad2Enrichment.photos
-            : campaignPhotos;
-    }
+        let rawPhotos: string[] = [];
+        if (isApiPhotosJunk && richSourceUrl) {
+          const scraped = await fetchVerifiedMedia(richSourceUrl);
+          if (scraped.length > 0) {
+            rawPhotos = scraped;
+          }
+        } else if (!isApiPhotosJunk) {
+          rawPhotos = apiPhotos;
+        }
 
-    const rawDocuments = richMedia.documents.length
-      ? richMedia.documents
-      : Array.isArray(p?.documents)
-        ? p.documents
-        : [];
-    
-    const features = Array.from(
-      new Set([
-        ...(Array.isArray(p?.features) ? p.features.filter((f: any) => typeof f === "string") : []),
-        ...(balcony === true ? ["מרפסת"] : []),
-      ]),
-    );
-    const row: Record<string, unknown> = {
-      user_id: workspaceOwnerId,
-      slug: `${slugify(String(p?.title || p?.address || "homely"))}-${homelyId}`,
-      source: "homely",
-      source_url: richSourceUrl || null,
-      external_id: homelyId,
-      property_title: String(p?.title || p?.address || `נכס ${homelyId}`),
-      description: String(p?.description || ""),
-      asking_price: Number(p?.price) || 0,
-      city: p?.city ? String(p.city) : null,
-      address: p?.address ? String(p.address) : null,
-      rooms: Number(p?.rooms) || null,
-      sqm: Number.isFinite(Number(p?.sqm)) ? Number(p.sqm) : null,
-      floor: Number.isFinite(Number(p?.floor)) ? Number(p.floor) : null,
-      status: "live",
-      deal_type: String(p?.transaction_type || "sale").toLowerCase() === "rent" ? "rent" : "sale",
-      is_published: true,
-      office_notes: p?.office_notes ? String(p.office_notes) : null,
-      features,
-      media_photos: rawPhotos,
-      media_documents: rawDocuments,
-      source_metadata: {
-        homely_id: homelyId,
-        property_type: p?.property_type || null,
-        photos: rawPhotos,
-        documents: rawDocuments,
-        media_count: rawPhotos.length + rawDocuments.length,
-        office_notes: p?.office_notes || null,
-        agent: p?.agent || null,
-        source_origin: richSourceOrigin,
-        yad2_search_url: !yad2Enrichment?.exact && yad2Enrichment?.url ? yad2Enrichment.url : null,
-        yad2_exact_match: yad2Enrichment?.exact ?? null,
-        source_url: richSourceUrl || null,
-        source_updated_at: p?.source_updated_at || null,
-        balcony,
-        elevator: p?.elevator || null,
-        transaction_type: p?.transaction_type || null,
-        homely_raw: compactRaw(richRecord),
-        detail_endpoint: richEndpoint,
-        synced_at: new Date().toISOString(),
-      },
-    };
-        
+        // Only fall back to legacy sources if BOTH the API and the scraper
+        // yielded nothing verified.
+        if (rawPhotos.length === 0) {
+          rawPhotos =
+            Array.isArray(p?.photos) && p.photos.length
+              ? p.photos
+              : p?.photo
+                ? [p.photo]
+                : yad2Enrichment?.photos?.length
+                  ? yad2Enrichment.photos
+                  : campaignPhotos;
+        }
+
+        const rawDocuments = richMedia.documents.length
+          ? richMedia.documents
+          : Array.isArray(p?.documents)
+            ? p.documents
+            : [];
+
+        const features = Array.from(
+          new Set([
+            ...(Array.isArray(p?.features) ? p.features.filter((f: any) => typeof f === "string") : []),
+            ...(balcony === true ? ["מרפסת"] : []),
+          ]),
+        );
+        const row: Record<string, unknown> = {
+          user_id: workspaceOwnerId,
+          slug: `${slugify(String(p?.title || p?.address || "homely"))}-${homelyId}`,
+          source: "homely",
+          source_url: richSourceUrl || null,
+          external_id: homelyId,
+          property_title: String(p?.title || p?.address || `נכס ${homelyId}`),
+          description: String(p?.description || ""),
+          asking_price: Number(p?.price) || 0,
+          city: p?.city ? String(p.city) : null,
+          address: p?.address ? String(p.address) : null,
+          rooms: Number(p?.rooms) || null,
+          sqm: Number.isFinite(Number(p?.sqm)) ? Number(p.sqm) : null,
+          floor: Number.isFinite(Number(p?.floor)) ? Number(p.floor) : null,
+          status: "live",
+          deal_type: String(p?.transaction_type || "sale").toLowerCase() === "rent" ? "rent" : "sale",
+          is_published: true,
+          office_notes: p?.office_notes ? String(p.office_notes) : null,
+          features,
+          media_photos: rawPhotos,
+          media_documents: rawDocuments,
+          source_metadata: {
+            homely_id: homelyId,
+            property_type: p?.property_type || null,
+            photos: rawPhotos,
+            documents: rawDocuments,
+            media_count: rawPhotos.length + rawDocuments.length,
+            office_notes: p?.office_notes || null,
+            agent: p?.agent || null,
+            source_origin: richSourceOrigin,
+            yad2_search_url: !yad2Enrichment?.exact && yad2Enrichment?.url ? yad2Enrichment.url : null,
+            yad2_exact_match: yad2Enrichment?.exact ?? null,
+            source_url: richSourceUrl || null,
+            source_updated_at: p?.source_updated_at || null,
+            balcony,
+            elevator: p?.elevator || null,
+            transaction_type: p?.transaction_type || null,
+            homely_raw: compactRaw(richRecord),
+            detail_endpoint: richEndpoint,
+            synced_at: new Date().toISOString(),
+          },
+        };
+        // Define status and publish state dynamically based on payload
+        row.status = p?.removal || p?.sale_f3 === "closed" ? "archived" : "live";
+        row.is_published = row.status === "live";
+
+        // Perform the upsert to actually save the data
+        const { data: upserted, error: upErr } = await admin
+          .from("listings")
+          .upsert(row as any, { onConflict: "user_id,external_id" })
+          .select("id, external_id")
+          .maybeSingle();
+
+        if (upErr || !upserted) {
+          console.error(`[importOutJson] upsert failed for ${homelyId}:`, upErr?.message);
+          continue; // Skip the rest of the loop if the listing couldn't be saved
+        }
+        propsCount++;
+
+        // Now proceed to the mirror block using the `upserted` variable
 
         // Mirror media into homely-media bucket so images render instantly
         // and Homely's CDN is only hit once per file. Every import writes to
@@ -2218,9 +2236,7 @@ Deno.serve(async (req) => {
     const richest = rich.record ?? detail;
     const media = collectMedia(richest);
     const summaryPhoto = mapped.photo ? [mapped.photo] : [];
-    const apiPhotos: string[] = Array.isArray(media.photos) && media.photos.length
-      ? media.photos
-      : summaryPhoto;
+    const apiPhotos: string[] = Array.isArray(media.photos) && media.photos.length ? media.photos : summaryPhoto;
     const rawDocs = media.documents;
     const rawSourceOrigin = pickSourceOrigin(richest) || pickSourceOrigin(detail) || meta.source_origin || null;
     const sourceOriginRaw =
