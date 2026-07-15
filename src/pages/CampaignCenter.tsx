@@ -3384,9 +3384,13 @@ const PublishedFeed = () => {
                           onClick={(e) => { e.stopPropagation(); bumpRefresh(r.id); }}
                           className={cn(onCooldown && 'opacity-50 cursor-not-allowed gap-1 tabular-nums text-xs')}
                         >
-                          <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
-                          {onCooldown && <span>ממתין: {formatCooldown(cooldownSecs)}</span>}
+                          {onCooldown ? (
+                            <span className="tabular-nums text-xs font-medium">{formatCooldown(cooldownSecs)}</span>
+                          ) : (
+                            <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
+                          )}
                         </Button>
+
                       );
                     })()}
                     <Button variant="outline" size="icon" disabled className="opacity-90"
