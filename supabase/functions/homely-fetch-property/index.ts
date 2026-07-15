@@ -396,6 +396,7 @@ function cleanMediaUrls(values: unknown[], kind: "image" | "document" | "any" = 
         .filter((url) => {
           if (!url) return false;
           if (/placeholder|missing|no-?image|undefined|null/i.test(url)) return false;
+          if (/(^|\/\/|\.)facebook\.com\//i.test(url) || /fbcdn\.net|fbsbx\.com/i.test(url)) return false;
           if (!/^(https?:\/\/|\/\/|\/)/i.test(url)) return false;
           if (kind === "image") return imageRe.test(url) || /image|photo|pic|gallery|media|homely-media|storage\/v1\/object/i.test(url);
           if (kind === "document") return docRe.test(url) || /document|attachment|file/i.test(url);
