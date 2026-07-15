@@ -812,25 +812,34 @@ async function handleLeadInboxInbound(
     return { ok: true, stored: true, lead_id: null, auto_reply: "no_lead_row" };
   }
 
-  if (lead.ai_autopilot === false) {
+  // Explicit agent-tool commands bypass the autopilot gates: users typing
+  // "find me a 4-room in Herzliya" or "add this lead" always get routed to
+  // the AI agent so webtiv_search / Market Intel / CRM actions can run.
+  const agentCommand = isAgentCommand(inboundText);
+
+  if (!agentCommand && lead.ai_autopilot === false) {
     return { ok: true, lead_id: lead.id, stored: true, auto_reply: "disabled" };
   }
 
   // Chat autopilot requires BOTH switches: the contact-level autopilot and the
-  // global AI autopilot switch for the owning/assigned workspace user.
+  // global AI autopilot switch for the owning/assigned workspace user. Agent
+  // commands skip this — a direct request is a direct request.
   const aiOwnerId = lead.assigned_to ? String(lead.assigned_to) : "";
   if (!aiOwnerId) {
     return { ok: true, lead_id: lead.id, stored: true, auto_reply: "missing_owner_for_ai_autopilot" };
   }
-  try {
-    const { data: globalAutopilot } = await admin.rpc("is_ai_autopilot_enabled", { _user_id: aiOwnerId });
-    if (!globalAutopilot) {
-      return { ok: true, lead_id: lead.id, stored: true, auto_reply: "global_ai_autopilot_disabled" };
+  if (!agentCommand) {
+    try {
+      const { data: globalAutopilot } = await admin.rpc("is_ai_autopilot_enabled", { _user_id: aiOwnerId });
+      if (!globalAutopilot) {
+        return { ok: true, lead_id: lead.id, stored: true, auto_reply: "global_ai_autopilot_disabled" };
+      }
+    } catch (e) {
+      console.warn("global AI autopilot check failed:", e instanceof Error ? e.message : e);
+      return { ok: true, lead_id: lead.id, stored: true, auto_reply: "global_ai_autopilot_check_failed" };
     }
-  } catch (e) {
-    console.warn("global AI autopilot check failed:", e instanceof Error ? e.message : e);
-    return { ok: true, lead_id: lead.id, stored: true, auto_reply: "global_ai_autopilot_check_failed" };
   }
+
 
   // Build context (best-effort).
   let aiMessages: Array<{ role: string; content: string }> = [{ role: "user", content: inboundText }];
