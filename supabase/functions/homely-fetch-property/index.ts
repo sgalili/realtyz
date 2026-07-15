@@ -1787,6 +1787,25 @@ Deno.serve(async (req) => {
         }
 
         const richMedia = collectMedia(richRecord);
+        // TEMP DIAGNOSTIC — inspect raw media fields before any filtering.
+        try {
+          const rr: any = richRecord || {};
+          console.log(`[importOutJson] RAW_HOMELY_MEDIA homelyId=${homelyId}`, JSON.stringify({
+            rr_photos: rr.photos ?? null,
+            rr_images: rr.images ?? null,
+            rr_media: rr.media ?? null,
+            rr_photo: rr.photo ?? null,
+            rr_picture: rr.picture ?? null,
+            rr_pic: rr.pic ?? null,
+            rr_image: rr.image ?? null,
+            rr_thumbnail: rr.thumbnail ?? null,
+            p_photos: (p as any)?.photos ?? null,
+            p_photo: (p as any)?.photo ?? null,
+            richMedia_photos: richMedia.photos,
+            richMedia_documents: richMedia.documents,
+            rr_keys: Object.keys(rr).slice(0, 80),
+          }).slice(0, 4000));
+        } catch (_) { /* noop */ }
         const rawSourceOrigin = pickSourceOrigin(richRecord) || p?.source_origin || null;
         const sourceIsYad2 =
           rawSourceOrigin === "yad2" || hasYad2Signal(richRecord, p?.raw, p?.source_url, rawSourceOrigin);
