@@ -1311,20 +1311,27 @@ Deno.serve(async (req) => {
       const hash = extractHash(login.session);
       if (!hash) return json({ ok: false, error: "webtiv_hash_missing" }, 502);
 
-      const { record: rich, endpoint } = await fetchRichPropertyDetail(hash, externalId, null);
+      // Concurrent Media Resolver: pull the Webtiv API record AND scrape the
+      // public homely.co.il listing page in parallel. The public page is the
+      // master source of truth — its og:image + inline <img> tags feed the UI
+      // first, and every API-provided URL is graded against them.
+      const publicUrl = String((listing as any)?.source_url ?? "").trim();
+      const [apiResult, publicResult] = await Promise.all([
+        fetchRichPropertyDetail(hash, externalId, null),
+        scrapePublicListing(publicUrl),
+      ]);
+      const { record: rich, endpoint } = apiResult;
       if (!rich || typeof rich !== "object") {
         return json({ ok: true, listing_id: targetListingId, photos: [], reason: "no_live_record" });
       }
 
-      // Strict 1:1 property_id validation. Webtiv exposes the id under
-      // sidur / serial / id / nechesId / homely_id depending on endpoint.
+      // Strict 1:1 property_id validation on the record body.
       const idKeys = ["sidur", "serial", "id", "nechesId", "homelyId", "homely_id", "propertyId", "property_id"];
       const returnedIds = new Set<string>();
       for (const k of idKeys) {
         const v = (rich as any)?.[k];
         if (v != null) returnedIds.add(String(v).trim());
       }
-      // Also scan one level down (some endpoints wrap the payload).
       for (const nested of Object.values(rich as Record<string, unknown>)) {
         if (nested && typeof nested === "object" && !Array.isArray(nested)) {
           for (const k of idKeys) {
@@ -1334,26 +1341,110 @@ Deno.serve(async (req) => {
         }
       }
       if (returnedIds.size > 0 && !returnedIds.has(externalId)) {
-        await logIntegrationError(admin, workspaceOwnerId, {
+        await logIntegrationError({
           integration: "homely",
+          functionName: "resolve-live-image",
           errorCode: "property_id_mismatch",
-          errorMessage: `resolve-live-image: listing.external_id=${externalId} not present in live record ids [${Array.from(returnedIds).join(",")}] (endpoint=${endpoint ?? "?"})`,
+          errorMessage: `listing.external_id=${externalId} not present in live record ids [${Array.from(returnedIds).join(",")}] (endpoint=${endpoint ?? "?"})`,
           context: { listing_id: targetListingId, external_id: externalId, returned_ids: Array.from(returnedIds), endpoint },
         });
         return json({ ok: false, error: "property_id_mismatch", external_id: externalId, returned_ids: Array.from(returnedIds) }, 409);
       }
 
-      const media = collectMedia(rich);
+      const apiMedia = collectMedia(rich);
+      const publicPhotos = Array.from(new Set([...publicResult.ogImages, ...publicResult.domImages]));
+
+      // (a) Hard-reject API URLs whose embedded property id contradicts the
+      //     current listing. Log each rejection and drop the URL entirely.
+      const blacklisted: Array<{ url: string; reason: string; detail?: string }> = [];
+      const idFiltered: string[] = [];
+      for (const url of apiMedia.photos) {
+        const bad = detectMismatchedIdInUrl(url, externalId);
+        if (bad) {
+          blacklisted.push({ url, reason: "id_mismatch_in_url", detail: bad });
+        } else {
+          idFiltered.push(url);
+        }
+      }
+      if (blacklisted.length) {
+        await logIntegrationError({
+          integration: "homely",
+          functionName: "resolve-live-image",
+          errorCode: "image_url_id_mismatch",
+          errorMessage: `blacklisted ${blacklisted.length} image URL(s) whose embedded property id != listing.external_id=${externalId}`,
+          context: { listing_id: targetListingId, external_id: externalId, blacklisted },
+        });
+      }
+
+      // (b) Content-hash verification against the known-bad list, plus a
+      //     dimension/metadata sanity check against the public master set.
+      //     Any API image whose hash is known-bad — or whose byte size is
+      //     wildly out of range compared to public master assets — is flagged
+      //     as "suspect" and hidden from the UI.
+      const HASH_LIMIT = 6; // cap network cost per resolve
+      const apiToHash = idFiltered.slice(0, HASH_LIMIT);
+      const publicToHash = publicPhotos.slice(0, 3);
+      const [apiHashes, publicHashes] = await Promise.all([
+        Promise.all(apiToHash.map((u) => hashImageUrl(u).then((h) => ({ url: u, ...h })))),
+        Promise.all(publicToHash.map((u) => hashImageUrl(u).then((h) => ({ url: u, ...h })))),
+      ]);
+      const publicByteSample = publicHashes.map((h) => h.bytes).filter((n) => n > 0);
+      const publicMinBytes = publicByteSample.length ? Math.min(...publicByteSample) : 0;
+
+      const suspect: Array<{ url: string; reason: string; hash?: string | null; bytes?: number }> = [];
+      const cleanApi: string[] = [];
+      const hashLookup = new Map(apiHashes.map((h) => [h.url, h] as const));
+      for (const url of idFiltered) {
+        const h = hashLookup.get(url);
+        const hex = h?.hash?.toLowerCase() ?? null;
+        if (hex && KNOWN_BAD_HASHES.has(hex)) {
+          suspect.push({ url, reason: "known_bad_hash", hash: hex, bytes: h?.bytes });
+          continue;
+        }
+        // If public master exists and this image is dramatically smaller
+        // than any public image (e.g. 40x40 placeholder / logo / thumbnail),
+        // treat as suspect.
+        if (publicMinBytes > 0 && h && h.bytes > 0 && h.bytes * 8 < publicMinBytes) {
+          suspect.push({ url, reason: "dimension_metadata_mismatch", hash: hex, bytes: h.bytes });
+          continue;
+        }
+        cleanApi.push(url);
+      }
+      if (suspect.length) {
+        await logIntegrationError({
+          integration: "homely",
+          functionName: "resolve-live-image",
+          errorCode: "suspect_api_image",
+          errorMessage: `flagged ${suspect.length} suspect API image(s); public master will take precedence`,
+          context: { listing_id: targetListingId, external_id: externalId, suspect },
+        });
+      }
+
+      // (c) Master-first ordering: public og:image + public DOM images first,
+      //     then the clean API images. When the public master exists AND we
+      //     produced suspect matches, the API images are hidden from the UI
+      //     (surface them only via `suspect_photos` for debugging).
+      const masterFirst = publicPhotos.length > 0;
+      const photos = masterFirst
+        ? Array.from(new Set([...publicPhotos, ...cleanApi]))
+        : Array.from(new Set([...cleanApi, ...publicPhotos]));
+
       return json({
         ok: true,
         listing_id: targetListingId,
         external_id: externalId,
         endpoint,
-        photos: media.photos,
-        documents: media.documents,
+        photos,
+        documents: apiMedia.documents,
+        public_photos: publicPhotos,
+        api_photos: apiMedia.photos,
+        suspect_photos: suspect,
+        blacklisted_urls: blacklisted,
+        master_source: masterFirst ? "public_page" : "api",
         fetched_at: new Date().toISOString(),
       });
     }
+
 
     if (action === "importOutJson") {
       const propertyIds = new Set(((body as any)?.propertyIds ?? []).map((v: unknown) => String(v)));
