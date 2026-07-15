@@ -1592,6 +1592,8 @@ Deno.serve(async (req) => {
         balcony,
         homely_raw: richest,
         synced_at: new Date().toISOString(),
+        media_version_tag: versionTag,
+        media_serial_verified: String(serial),
         endpoint: rich.endpoint ?? url,
       },
     };
