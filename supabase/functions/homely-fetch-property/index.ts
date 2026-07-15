@@ -327,7 +327,12 @@ function joinName(it: any): string {
 function collectMedia(it: any): { photos: string[]; documents: string[] } {
   const photos = new Set<string>();
   const documents = new Set<string>();
-  const toUrl = (v: any): string | null => {
+  const isImg = (u: string) => /\.(jpe?g|png|gif|webp|bmp|heic)(\?|#|$)/i.test(u);
+  const isDoc = (u: string) => /\.(pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i.test(u);
+  const photoKey = (k: string) => /(pic|photo|image|img|picture|gallery|media|תמונה|תמונות)/i.test(k);
+  const docKey = (k: string) => /(file|doc|document|attach|מסמך|מסמכים|קובץ)/i.test(k);
+  const sourceLinkKey = (k: string) => /(source|origin|url|link|href|yad2|madlan|מקור|קישור)/i.test(k);
+  const toUrl = (v: any, key = ""): string | null => {
     if (typeof v !== "string") return null;
     const s = v.trim().replace(/\\\//g, "/");
     const embedded = s.match(/https?:\/\/[^\s"'<>]+/i)?.[0];
@@ -335,18 +340,19 @@ function collectMedia(it: any): { photos: string[]; documents: string[] } {
     if (/^https?:\/\//i.test(s)) return s;
     if (/^www\./i.test(s)) return `https://${s}`;
     if (/^\/\//.test(s)) return `https:${s}`;
-    if (/^\//.test(s) && /\.(jpe?g|png|gif|webp|bmp|heic|pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i.test(s))
+    if (
+      /^\//.test(s) &&
+      (/\.(jpe?g|png|gif|webp|bmp|heic|pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i.test(s) ||
+        photoKey(key) ||
+        docKey(key))
+    )
       return `${WEBTIV_BASE}${s}`;
     return null;
   };
-  const isImg = (u: string) => /\.(jpe?g|png|gif|webp|bmp|heic)(\?|#|$)/i.test(u);
-  const isDoc = (u: string) => /\.(pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i.test(u);
-  const photoKey = (k: string) => /(pic|photo|image|img|picture|gallery|media|תמונה|תמונות)/i.test(k);
-  const docKey = (k: string) => /(file|doc|document|attach|מסמך|מסמכים|קובץ)/i.test(k);
-  const sourceLinkKey = (k: string) => /(source|origin|url|link|href|yad2|madlan|מקור|קישור)/i.test(k);
   const push = (v: any, key = "") => {
-    const url = toUrl(v);
+    const url = toUrl(v, key);
     if (!url) return;
+    if (/placeholder|missing|no-?image|undefined|null/i.test(url)) return;
     if (isImg(url) || photoKey(key)) photos.add(url);
     else if (isDoc(url) || docKey(key)) documents.add(url);
     else if (!sourceLinkKey(key)) photos.add(url); // Homely CDN sometimes omits extensions
@@ -377,6 +383,26 @@ function collectMedia(it: any): { photos: string[]; documents: string[] } {
 function mediaTotal(value: any): number {
   const media = collectMedia(value);
   return media.photos.length + media.documents.length;
+}
+
+function cleanMediaUrls(values: unknown[], kind: "image" | "document" | "any" = "any"): string[] {
+  const imageRe = /\.(jpe?g|png|gif|webp|bmp|heic|avif)(\?|#|$)/i;
+  const docRe = /\.(pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i;
+  return Array.from(
+    new Set(
+      values
+        .map((value) => (typeof value === "string" ? value.trim().replace(/\\\//g, "/") : ""))
+        .filter((url) => {
+          if (!url) return false;
+          if (/placeholder|missing|no-?image|undefined|null/i.test(url)) return false;
+          if (!/^(https?:\/\/|\/\/|\/)/i.test(url)) return false;
+          if (kind === "image") return imageRe.test(url) || /image|photo|pic|gallery|media|homely-media|storage\/v1\/object/i.test(url);
+          if (kind === "document") return docRe.test(url) || /document|attachment|file/i.test(url);
+          return true;
+        })
+        .map((url) => (/^\/\//.test(url) ? `https:${url}` : url)),
+    ),
+  );
 }
 
 function firstObjectPayload(data: any): any {
@@ -1781,7 +1807,7 @@ Deno.serve(async (req) => {
         // placeholder images. We trust the public listing page (og:image /
         // scraped photos) as the source of truth whenever the API payload is
         // empty or contains placeholder URLs.
-        const apiPhotos: string[] = Array.isArray(richMedia.photos) ? richMedia.photos : [];
+        const apiPhotos = cleanMediaUrls(Array.isArray(richMedia.photos) ? richMedia.photos : [], "image");
         const isApiPhotosJunk =
           apiPhotos.length === 0 ||
           apiPhotos.some((url) => typeof url === "string" && url.toLowerCase().includes("placeholder"));
@@ -1790,7 +1816,7 @@ Deno.serve(async (req) => {
         if (isApiPhotosJunk && richSourceUrl) {
           const scraped = await fetchVerifiedMedia(richSourceUrl);
           if (scraped.length > 0) {
-            rawPhotos = scraped;
+            rawPhotos = cleanMediaUrls(scraped, "image");
           }
         } else if (!isApiPhotosJunk) {
           rawPhotos = apiPhotos;
@@ -1799,21 +1825,22 @@ Deno.serve(async (req) => {
         // Only fall back to legacy sources if BOTH the API and the scraper
         // yielded nothing verified.
         if (rawPhotos.length === 0) {
-          rawPhotos =
+          rawPhotos = cleanMediaUrls(
             Array.isArray(p?.photos) && p.photos.length
               ? p.photos
               : p?.photo
                 ? [p.photo]
                 : yad2Enrichment?.photos?.length
                   ? yad2Enrichment.photos
-                  : campaignPhotos;
+                  : campaignPhotos,
+            "image",
+          );
         }
 
-        const rawDocuments = richMedia.documents.length
-          ? richMedia.documents
-          : Array.isArray(p?.documents)
-            ? p.documents
-            : [];
+        const rawDocuments = cleanMediaUrls(
+          richMedia.documents.length ? richMedia.documents : Array.isArray(p?.documents) ? p.documents : [],
+          "document",
+        );
 
         const features = Array.from(
           new Set([
@@ -1847,7 +1874,7 @@ Deno.serve(async (req) => {
             property_type: p?.property_type || null,
             photos: rawPhotos,
             documents: rawDocuments,
-            media_count: rawPhotos.length + rawDocuments.length,
+            media_count: Number(rawPhotos.length + rawDocuments.length) || 0,
             office_notes: p?.office_notes || null,
             agent: p?.agent || null,
             source_origin: richSourceOrigin,
@@ -1867,10 +1894,28 @@ Deno.serve(async (req) => {
         row.status = p?.removal || p?.sale_f3 === "closed" ? "archived" : "live";
         row.is_published = row.status === "live";
 
-        // Perform the upsert to actually save the data
-        const { data: upserted, error: upErr } = await admin
+        // Save core listing data first. Do not rely on ON CONFLICT here:
+        // this database does not currently have a matching unique constraint
+        // for user_id + external_id, and that made imports return 0 before
+        // media mirroring even started.
+        const { data: existing, error: existingErr } = await admin
           .from("listings")
-          .upsert(row as any, { onConflict: "user_id,external_id" })
+          .select("id, external_id")
+          .eq("user_id", workspaceOwnerId)
+          .eq("external_id", homelyId)
+          .limit(1)
+          .maybeSingle();
+
+        if (existingErr) {
+          console.error(`[importOutJson] lookup failed for ${homelyId}:`, existingErr.message);
+          continue;
+        }
+
+        const saveQuery = existing?.id
+          ? admin.from("listings").update(row as any).eq("id", (existing as any).id)
+          : admin.from("listings").insert(row as any);
+
+        const { data: upserted, error: upErr } = await saveQuery
           .select("id, external_id")
           .maybeSingle();
 
@@ -1910,22 +1955,24 @@ Deno.serve(async (req) => {
             const versionTag = `v${Date.now()}`;
             const mirroredPhotos = await mirrorAll(admin, listingId, rawPhotos, 40, "image", versionTag);
             const mirroredDocs = await mirrorAll(admin, listingId, rawDocuments, 20, "document", versionTag);
-            if (mirroredPhotos.length || rawPhotos.length || mirroredDocs.length || rawDocuments.length) {
+            const finalPhotosForDb = mirroredPhotos.length ? mirroredPhotos : rawPhotos;
+            const finalDocsForDb = mirroredDocs.length ? mirroredDocs : rawDocuments;
+            if (finalPhotosForDb.length || finalDocsForDb.length) {
               const meta = row.source_metadata as Record<string, unknown>;
               await admin
                 .from("listings")
                 .update({
-                  media_photos: mirroredPhotos,
-                  media_documents: mirroredDocs,
+                  media_photos: finalPhotosForDb,
+                  media_documents: finalDocsForDb,
                   source_metadata: {
                     ...meta,
-                    photos: mirroredPhotos,
-                    images: mirroredPhotos,
-                    documents: mirroredDocs,
+                    photos: finalPhotosForDb,
+                    images: finalPhotosForDb,
+                    documents: finalDocsForDb,
                     photos_original: rawPhotos,
                     documents_original: rawDocuments,
-                    media_count: mirroredPhotos.length + mirroredDocs.length,
-                    broken_images_removed_count: Math.max(0, rawPhotos.length - mirroredPhotos.length),
+                    media_count: Number(finalPhotosForDb.length + finalDocsForDb.length) || 0,
+                    broken_images_removed_count: mirroredPhotos.length ? Math.max(0, rawPhotos.length - mirroredPhotos.length) : 0,
                     media_mirrored_at: new Date().toISOString(),
                     media_version_tag: versionTag,
                     media_serial_verified: homelyId,
@@ -2237,8 +2284,8 @@ Deno.serve(async (req) => {
     const richest = rich.record ?? detail;
     const media = collectMedia(richest);
     const summaryPhoto = mapped.photo ? [mapped.photo] : [];
-    const apiPhotos: string[] = Array.isArray(media.photos) && media.photos.length ? media.photos : summaryPhoto;
-    const rawDocs = media.documents;
+    const apiPhotos = cleanMediaUrls(Array.isArray(media.photos) && media.photos.length ? media.photos : summaryPhoto, "image");
+    const rawDocs = cleanMediaUrls(media.documents, "document");
     const rawSourceOrigin = pickSourceOrigin(richest) || pickSourceOrigin(detail) || meta.source_origin || null;
     const sourceOriginRaw =
       rawSourceOrigin === "yad2" || hasYad2Signal(richest, detail, meta.source_url, rawSourceOrigin)
@@ -2283,7 +2330,7 @@ Deno.serve(async (req) => {
     if (isApiPhotosJunk && sourceUrl) {
       const scraped = await fetchVerifiedMedia(sourceUrl);
       if (scraped.length > 0) {
-        finalRawPhotos = scraped;
+        finalRawPhotos = cleanMediaUrls(scraped, "image");
       }
     } else if (!isApiPhotosJunk) {
       finalRawPhotos = apiPhotos;
@@ -2292,17 +2339,20 @@ Deno.serve(async (req) => {
     // Only fall back to secondary sources if BOTH the API and the scraper
     // returned nothing verified.
     if (finalRawPhotos.length === 0) {
-      finalRawPhotos = yad2Enrichment?.photos?.length
-        ? yad2Enrichment.photos
-        : summaryPhoto.length
-          ? summaryPhoto
-          : await campaignMediaFallback(admin, workspaceOwnerId, {
-              ...mapped,
-              price: mapped.price || listing.asking_price,
-              city: mapped.city || listing.city,
-              address: mapped.address || listing.address,
-              raw: richest,
-            });
+      finalRawPhotos = cleanMediaUrls(
+        yad2Enrichment?.photos?.length
+          ? yad2Enrichment.photos
+          : summaryPhoto.length
+            ? summaryPhoto
+            : await campaignMediaFallback(admin, workspaceOwnerId, {
+                ...mapped,
+                price: mapped.price || listing.asking_price,
+                city: mapped.city || listing.city,
+                address: mapped.address || listing.address,
+                raw: richest,
+              }),
+        "image",
+      );
     }
 
     // Mirror media once into homely-media bucket and store signed URLs.
@@ -2311,6 +2361,8 @@ Deno.serve(async (req) => {
     const versionTag = `v${Date.now()}`;
     const cachedPhotos = await mirrorAll(admin, String(listing_id), finalRawPhotos, 40, "image", versionTag);
     const cachedDocs = await mirrorAll(admin, String(listing_id), rawDocs, 20, "document", versionTag);
+    const photosForDb = cachedPhotos.length ? cachedPhotos : finalRawPhotos;
+    const docsForDb = cachedDocs.length ? cachedDocs : rawDocs;
 
     const updated = {
       property_title: mapped.title || listing.property_title,
@@ -2323,8 +2375,8 @@ Deno.serve(async (req) => {
       floor: mapped.floor || listing.floor,
       external_id: String(serial),
       source_url: sourceUrl || null,
-      media_photos: cachedPhotos,
-      media_documents: cachedDocs.length ? cachedDocs : rawDocs,
+      media_photos: photosForDb,
+      media_documents: docsForDb,
       features: Array.from(
         new Set([
           ...(Array.isArray(listing.features) ? listing.features.filter((f: any) => typeof f === "string") : []),
@@ -2337,12 +2389,13 @@ Deno.serve(async (req) => {
         source_url: sourceUrl || null,
         yad2_search_url: !yad2Enrichment?.exact && yad2Enrichment?.url ? yad2Enrichment.url : null,
         yad2_exact_match: yad2Enrichment?.exact ?? null,
-        photos: cachedPhotos,
-        images: cachedPhotos,
-        documents: cachedDocs.length ? cachedDocs : rawDocs,
+        photos: photosForDb,
+        images: photosForDb,
+        documents: docsForDb,
         photos_origin: finalRawPhotos,
         documents_origin: rawDocs,
-        broken_images_removed_count: Math.max(0, finalRawPhotos.length - cachedPhotos.length),
+        media_count: Number(photosForDb.length + docsForDb.length) || 0,
+        broken_images_removed_count: cachedPhotos.length ? Math.max(0, finalRawPhotos.length - cachedPhotos.length) : 0,
         balcony,
         homely_raw: richest,
         synced_at: new Date().toISOString(),
@@ -2360,8 +2413,8 @@ Deno.serve(async (req) => {
       listing_id,
       serial,
       endpoint: url,
-      photo_count: cachedPhotos.length,
-      document_count: cachedDocs.length,
+      photo_count: photosForDb.length,
+      document_count: docsForDb.length,
       raw_photo_count: finalRawPhotos.length,
       raw_document_count: rawDocs.length,
     });

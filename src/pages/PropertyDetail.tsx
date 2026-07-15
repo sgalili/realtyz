@@ -138,6 +138,8 @@ export default function PropertyDetail() {
         ...(Array.isArray((row as any).media_photos) ? ((row as any).media_photos as unknown[]) : []),
         ...(Array.isArray(meta?.photos) ? (meta.photos as unknown[]) : []),
         ...(Array.isArray(meta?.images) ? (meta.images as unknown[]) : []),
+        ...(Array.isArray(meta?.photos_original) ? (meta.photos_original as unknown[]) : []),
+        ...(Array.isArray(meta?.photos_origin) ? (meta.photos_origin as unknown[]) : []),
       ];
       if (typeof meta?.image === 'string') photoSources.push(meta.image);
       if (typeof meta?.image_url === 'string') photoSources.push(meta.image_url);
