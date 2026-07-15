@@ -242,6 +242,8 @@ export default function Properties() {
                 ...(Array.isArray(row.media_photos) ? row.media_photos.filter((p: any) => typeof p === 'string') : []),
                 ...(Array.isArray(meta.photos) ? meta.photos.filter((p: any) => typeof p === 'string') : []),
                 ...(Array.isArray(meta.images) ? meta.images.filter((p: any) => typeof p === 'string') : []),
+                ...(Array.isArray(meta.photos_original) ? meta.photos_original.filter((p: any) => typeof p === 'string') : []),
+                ...(Array.isArray(meta.photos_origin) ? meta.photos_origin.filter((p: any) => typeof p === 'string') : []),
               ]);
               const originRaw = String(meta.source_origin ?? '').toLowerCase();
               const sourceUrlRaw = String(row.source_url ?? meta.source_url ?? '').toLowerCase();
@@ -679,6 +681,11 @@ function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare
             <div className="h-full w-full flex items-center justify-center text-muted-foreground text-sm">
               אין תמונה
             </div>
+          )}
+          {photos.length > 0 && (
+            <span className="absolute bottom-2 left-2 rounded border bg-background/90 px-1.5 py-0.5 text-xs font-semibold leading-none text-foreground tabular-nums">
+              {photos.length}
+            </span>
           )}
           <Badge className="absolute top-3 right-3 bg-background/90 text-foreground border">
             {PROPERTY_TYPE_LABELS_HE[property.property_type]}
