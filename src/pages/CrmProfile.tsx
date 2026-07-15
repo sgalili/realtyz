@@ -38,10 +38,10 @@ export default function CrmProfile() {
     queryKey: ['crm_profile_listings', id],
     enabled: !!id,
     queryFn: async () => {
-      const { data } = await supabase
+      const { data } = await (supabase as any)
         .from('listings')
         .select('id, property_title, city, address, deal_type, asking_price, status')
-        .eq('owner_id' as any, id!)
+        .eq('owner_id', id!)
         .order('created_at', { ascending: false });
       return (data || []) as any[];
     },
