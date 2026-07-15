@@ -238,13 +238,9 @@ export default function Properties() {
             connected: true,
             results: dedupeProperties(scoped.map((row: any) => {
               const meta = row.source_metadata && typeof row.source_metadata === 'object' ? row.source_metadata : {};
-              const metaPhotos = normalizeImageUrls([
-                ...(Array.isArray(row.media_photos) ? row.media_photos.filter((p: any) => typeof p === 'string') : []),
-                ...(Array.isArray(meta.photos) ? meta.photos.filter((p: any) => typeof p === 'string') : []),
-                ...(Array.isArray(meta.images) ? meta.images.filter((p: any) => typeof p === 'string') : []),
-                ...(Array.isArray(meta.photos_original) ? meta.photos_original.filter((p: any) => typeof p === 'string') : []),
-                ...(Array.isArray(meta.photos_origin) ? meta.photos_origin.filter((p: any) => typeof p === 'string') : []),
-              ]);
+              const mediaPhotos = normalizeImageUrls(
+                Array.isArray(row.media_photos) ? row.media_photos.filter((p: any) => typeof p === 'string') : [],
+              );
               const originRaw = String(meta.source_origin ?? '').toLowerCase();
               const sourceUrlRaw = String(row.source_url ?? meta.source_url ?? '').toLowerCase();
               const originSource = /yad2\.co\.il/.test(sourceUrlRaw) ? 'yad2' : originRaw && originRaw !== 'homely' && originRaw !== 'webtiv' && originRaw !== 'manual'
@@ -267,7 +263,7 @@ export default function Properties() {
                 size_sqm: Number(row.sqm ?? 0),
                 floor: row.floor != null ? Number(row.floor) : (meta.floor != null ? Number(meta.floor) : undefined),
                 property_type: detectPropertyType(`${row.property_title ?? ''} ${row.description ?? ''}`),
-                photos: metaPhotos,
+                photos: mediaPhotos,
                 url: row.source_url ?? meta.source_url ?? null,
                 features,
                 listing_type: extractListingType(row.features, meta as Record<string, any>, Number(row.asking_price ?? 0)),
@@ -296,7 +292,7 @@ export default function Properties() {
   useEffect(() => {
     if (isLoading) return;
     if (!liveResults.some((r: any) => r.source === 'homely')) return;
-    const key = 'realtyz.clean-homely-broken-images.v1';
+    const key = 'realtyz.clean-homely-placeholder-images.v1';
     if (sessionStorage.getItem(key)) return;
     sessionStorage.setItem(key, '1');
     supabase.functions.invoke('homely-fetch-property', { body: { action: 'cleanBrokenImages' } })
@@ -663,7 +659,7 @@ export default function Properties() {
 
 function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare: () => void }) {
   const { visible: photos, markBroken } = useVisibleImageUrls(property.photos || []);
-  const photo = photos[0];
+  const [photo] = photos;
   const isRent = property.listing_type === 'rent';
   return (
     <Card className="overflow-hidden flex flex-col group hover:shadow-lg transition-shadow">
