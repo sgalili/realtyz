@@ -88,6 +88,20 @@ interface ResearchSource {
   title?: string;
 }
 
+interface WebtivResult {
+  id: string;
+  title: string;
+  price: number;
+  city: string;
+  rooms: number;
+  sqm: number;
+  floor: number;
+  photo: string | null;
+  agent: string | null;
+  transaction_type: 'sale' | 'rent';
+  source_url: string | null;
+}
+
 interface Attachment {
   name: string;
   mime: string;
@@ -103,6 +117,7 @@ interface Message {
   type?: 'text' | 'data' | 'error';
   sources?: SourceTag[];
   research_sources?: ResearchSource[];
+  webtiv_results?: WebtivResult[];
   attachments?: Array<{ name: string; mime: string }>;
 }
 
