@@ -230,49 +230,37 @@ export default function PropertyDetail() {
   const sourceUrl = data?.sourceUrl ?? null;
   const amenities = data?.amenities;
   const documents = data?.documents ?? [];
-  const { visible: visiblePropertyPhotos, markBroken: markBrokenPropertyPhoto } = useVisibleImageUrls(property?.photos || []);
 
-  // ─── Homely image hydration & cache ────────────────────────────────────
-  // If this listing came from Homely/Webtiv and we haven't cached photos in
-  // our DB yet (media_photos empty), fire ONE background call to
-  // `homely-fetch-property` which pulls the full property record + media
-  // URLs and writes them to listings.media_photos. Subsequent visits read
-  // straight from Postgres — no more Homely API traffic. A sessionStorage
-  // flag per-listing prevents accidental re-invocations from React
-  // StrictMode remounts.
-  useEffect(() => {
-    if (!id || !data) return;
-    const row: any = data.row;
-    const src = String(row?.source ?? '').toLowerCase();
-    if (src !== 'homely' && src !== 'webtiv') return;
-    const meta = (row?.source_metadata && typeof row.source_metadata === 'object') ? row.source_metadata as JsonRecord : {};
-    const cached = [
-      ...(Array.isArray(row?.media_photos) ? row.media_photos : []),
-      ...(Array.isArray((meta as any).photos) ? (meta as any).photos : []),
-    ].filter(Boolean);
-    const hasYad2Url = String(row?.source_url ?? (meta as any).source_url ?? '').includes('yad2.co.il');
-    const hasBalcony = meta.balcony != null || (Array.isArray(row?.features) && row.features.some((f: any) => typeof f === 'string' && /מרפסת|balcony/i.test(f)));
-    if (cached.length > 0 && hasYad2Url && hasBalcony) return;
-    const flagKey = `homely-hydrate:${id}`;
-    if (sessionStorage.getItem(flagKey)) return;
-    sessionStorage.setItem(flagKey, '1');
-    (async () => {
-      try {
-        const { data: fnData, error } = await supabase.functions.invoke('homely-fetch-property', {
-          body: { listing_id: id },
-        });
-        if (error || (fnData && (fnData as any).ok === false)) {
-          // allow another attempt on the next visit
-          sessionStorage.removeItem(flagKey);
-        }
-        if (!error) {
-          qc.invalidateQueries({ queryKey: ['property-detail', id] });
-        }
-      } catch {
-        sessionStorage.removeItem(flagKey);
-      }
-    })();
-  }, [id, data, qc]);
+  // ─── LIVE-ONLY image resolver ─────────────────────────────────────────
+  // On every property open we hit `resolve-live-image` which pulls fresh
+  // photo URLs directly from Homely/Webtiv (no DB cache, no storage
+  // bucket). The upstream function enforces strict 1:1 property_id ↔
+  // listings.external_id validation and refuses to return photos on
+  // mismatch. Background sync jobs that used to warm this cache are
+  // disabled — this is now the only source of truth for property images.
+  const source = String((data?.row as any)?.source ?? '').toLowerCase();
+  const canResolveLive = !!id && (source === 'homely' || source === 'webtiv');
+  const { data: liveImage } = useQuery({
+    queryKey: ['live-image', id],
+    enabled: canResolveLive,
+    // Force a real network round-trip every time the card is opened.
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: false,
+    retry: false,
+    queryFn: async () => {
+      const { data: fnData, error } = await supabase.functions.invoke('resolve-live-image', {
+        body: { listing_id: id },
+      });
+      if (error) throw error;
+      return fnData as { ok?: boolean; photos?: string[]; error?: string } | null;
+    },
+  });
+  const livePhotos = Array.isArray(liveImage?.photos) ? liveImage!.photos.filter((s): s is string => typeof s === 'string' && !!s) : [];
+  const effectivePhotos = livePhotos.length > 0 ? livePhotos : (property?.photos ?? []);
+  const { visible: visiblePropertyPhotos, markBroken: markBrokenPropertyPhoto } = useVisibleImageUrls(effectivePhotos);
+
 
   useEffect(() => {
     if (!id || !data) return;
