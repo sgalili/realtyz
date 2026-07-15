@@ -19,7 +19,8 @@ const AiMessageCounter = () => {
         .gte('created_at', todayStart.toISOString());
       return count ?? 0;
     },
-    refetchInterval: 30_000,
+    refetchInterval: 300_000,
+    staleTime: 300_000,
   });
 
   return (

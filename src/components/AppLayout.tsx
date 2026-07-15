@@ -273,7 +273,8 @@ function HeaderCrisisAlert() {
         .limit(1);
       return data ?? [];
     },
-    refetchInterval: 30_000,
+    refetchInterval: 300_000,
+    staleTime: 300_000,
   });
 
   const activeCrisisAlerts = isDemoMode ? getDemoCandidateCrisisAlerts(demoCandidateId) : crisisAlerts ?? [];
