@@ -353,6 +353,7 @@ function collectMedia(it: any): { photos: string[]; documents: string[] } {
     const url = toUrl(v, key);
     if (!url) return;
     if (/placeholder|missing|no-?image|undefined|null/i.test(url)) return;
+    if (/(^|\/\/|\.)facebook\.com\//i.test(url) || /fbcdn\.net|fbsbx\.com/i.test(url)) return;
     if (isImg(url) || photoKey(key)) photos.add(url);
     else if (isDoc(url) || docKey(key)) documents.add(url);
     else if (!sourceLinkKey(key)) photos.add(url); // Homely CDN sometimes omits extensions
@@ -395,6 +396,7 @@ function cleanMediaUrls(values: unknown[], kind: "image" | "document" | "any" = 
         .filter((url) => {
           if (!url) return false;
           if (/placeholder|missing|no-?image|undefined|null/i.test(url)) return false;
+          if (/(^|\/\/|\.)facebook\.com\//i.test(url) || /fbcdn\.net|fbsbx\.com/i.test(url)) return false;
           if (!/^(https?:\/\/|\/\/|\/)/i.test(url)) return false;
           if (kind === "image") return imageRe.test(url) || /image|photo|pic|gallery|media|homely-media|storage\/v1\/object/i.test(url);
           if (kind === "document") return docRe.test(url) || /document|attachment|file/i.test(url);
@@ -1711,10 +1713,13 @@ Deno.serve(async (req) => {
         // Broadened placeholder detection — Homely's CDN and template URLs
         // often include generic building thumbnails that must never be saved.
         const PLACEHOLDER_RX = /(placeholder|no-?image|default-property|template_property|generic-building|\/images\/placeholder|homely\.co(m|\.il)\/(images|assets)\/(placeholder|default|template))/i;
+        // Facebook/FBCDN URLs are not directly renderable (auth-gated, short-lived,
+        // hotlink-protected). Never save them as media_photos.
+        const FACEBOOK_RX = /(^|\/\/|\.)facebook\.com\/|fbcdn\.net|fbsbx\.com/i;
         const stripPlaceholders = (arr: unknown[]): string[] =>
           (Array.isArray(arr) ? arr : [])
             .filter((u): u is string => typeof u === "string" && u.trim() !== "")
-            .filter((u) => !PLACEHOLDER_RX.test(u));
+            .filter((u) => !PLACEHOLDER_RX.test(u) && !FACEBOOK_RX.test(u));
 
         const apiPhotos = stripPlaceholders(cleanMediaUrls(Array.isArray(richMedia.photos) ? richMedia.photos : [], "image"));
         const isApiPhotosJunk = apiPhotos.length === 0;
