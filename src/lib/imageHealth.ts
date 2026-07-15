@@ -13,7 +13,7 @@ export function normalizeImageUrls(values: unknown[]): string[] {
         if (/^\/(?!\/)/.test(url)) return true;
         return false;
       })
-      .filter((url) => !/placeholder|missing|no-?image|undefined|null/i.test(url)),
+      .filter((url) => !/placeholder|default|missing|no-?image|undefined|null/i.test(url)),
   ));
 }
 

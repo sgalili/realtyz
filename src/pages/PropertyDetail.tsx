@@ -134,15 +134,9 @@ export default function PropertyDetail() {
       const features = Array.isArray(row.features) ? row.features : [];
       const meta = isRecord(row.source_metadata) ? row.source_metadata : {};
 
-      const photoSources: unknown[] = [
-        ...(Array.isArray((row as any).media_photos) ? ((row as any).media_photos as unknown[]) : []),
-        ...(Array.isArray(meta?.photos) ? (meta.photos as unknown[]) : []),
-        ...(Array.isArray(meta?.images) ? (meta.images as unknown[]) : []),
-        ...(Array.isArray(meta?.photos_original) ? (meta.photos_original as unknown[]) : []),
-        ...(Array.isArray(meta?.photos_origin) ? (meta.photos_origin as unknown[]) : []),
-      ];
-      if (typeof meta?.image === 'string') photoSources.push(meta.image);
-      if (typeof meta?.image_url === 'string') photoSources.push(meta.image_url);
+      const photoSources: unknown[] = Array.isArray((row as any).media_photos)
+        ? ((row as any).media_photos as unknown[])
+        : [];
       const photos = normalizeImageUrls(photoSources.map(photoUrlFrom).filter((s): s is string => !!s));
 
       const docsRaw: unknown[] = [
@@ -233,59 +227,8 @@ export default function PropertyDetail() {
   const amenities = data?.amenities;
   const documents = data?.documents ?? [];
 
-  // ─── LIVE-ONLY image resolver ─────────────────────────────────────────
-  // On every property open we hit `resolve-live-image` which pulls fresh
-  // photo URLs directly from Homely/Webtiv (no DB cache, no storage
-  // bucket). The upstream function enforces strict 1:1 property_id ↔
-  // listings.external_id validation and refuses to return photos on
-  // mismatch. Background sync jobs that used to warm this cache are
-  // disabled — this is now the only source of truth for property images.
-  const source = String((data?.row as any)?.source ?? '').toLowerCase();
-  const canResolveLive = !!id && (source === 'homely' || source === 'webtiv');
-  const { data: liveImage } = useQuery({
-    queryKey: ['live-image', id],
-    enabled: canResolveLive,
-    // Force a real network round-trip every time the card is opened.
-    staleTime: 0,
-    gcTime: 0,
-    refetchOnMount: 'always',
-    refetchOnWindowFocus: false,
-    retry: false,
-    queryFn: async () => {
-      const { data: fnData, error } = await supabase.functions.invoke('resolve-live-image', {
-        body: { listing_id: id },
-      });
-      if (error) throw error;
-      return fnData as { ok?: boolean; photos?: string[]; error?: string } | null;
-    },
-  });
-  const livePhotos = Array.isArray(liveImage?.photos) ? liveImage!.photos.filter((s): s is string => typeof s === 'string' && !!s) : [];
-  // Prefer the DB `media_photos` array (signed storage URLs written by the
-  // importer). Only fall back to the live resolver when the DB has nothing —
-  // the live path can return placeholder / CDN-blocked URLs that would
-  // otherwise mask the real photos.
   const dbPhotos = property?.photos ?? [];
-  const effectivePhotos = dbPhotos.length > 0 ? dbPhotos : livePhotos;
-  const { visible: visiblePropertyPhotos, markBroken: markBrokenPropertyPhoto } = useVisibleImageUrls(effectivePhotos);
-
-
-  useEffect(() => {
-    if (!id || !data) return;
-    const row: any = data.row;
-    const src = String(row?.source ?? '').toLowerCase();
-    if (src !== 'homely' && src !== 'webtiv') return;
-    const flagKey = `homely-clean-images:${id}`;
-    if (sessionStorage.getItem(flagKey)) return;
-    sessionStorage.setItem(flagKey, '1');
-    supabase.functions.invoke('homely-fetch-property', {
-      body: { action: 'cleanBrokenImages', listing_id: id },
-    }).then(({ data: cleanData, error }) => {
-      if (!error && Number((cleanData as any)?.removed ?? 0) > 0) {
-        qc.invalidateQueries({ queryKey: ['property-detail', id] });
-      }
-    }).catch(() => sessionStorage.removeItem(flagKey));
-  }, [id, data, qc]);
-
+  const { visible: visiblePropertyPhotos, markBroken: markBrokenPropertyPhoto } = useVisibleImageUrls(dbPhotos);
 
   // Initialize edit form when entering edit mode
   useEffect(() => {

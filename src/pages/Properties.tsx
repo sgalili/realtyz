@@ -48,7 +48,7 @@ import ErrorBoundary from '@/components/ErrorBoundary';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
 import { isInServiceArea } from '@/lib/serviceAreas';
 import { SortableTh, useTableSort, sortRows } from '@/components/ui/sortable-th';
-import { normalizeImageUrls, useVisibleImageUrls } from '@/lib/imageHealth';
+import { normalizeImageUrls } from '@/lib/imageHealth';
 
 const PRICE_MIN = 0;
 const PRICE_MAX = 10_000_000;
@@ -238,13 +238,9 @@ export default function Properties() {
             connected: true,
             results: dedupeProperties(scoped.map((row: any) => {
               const meta = row.source_metadata && typeof row.source_metadata === 'object' ? row.source_metadata : {};
-              const metaPhotos = normalizeImageUrls([
-                ...(Array.isArray(row.media_photos) ? row.media_photos.filter((p: any) => typeof p === 'string') : []),
-                ...(Array.isArray(meta.photos) ? meta.photos.filter((p: any) => typeof p === 'string') : []),
-                ...(Array.isArray(meta.images) ? meta.images.filter((p: any) => typeof p === 'string') : []),
-                ...(Array.isArray(meta.photos_original) ? meta.photos_original.filter((p: any) => typeof p === 'string') : []),
-                ...(Array.isArray(meta.photos_origin) ? meta.photos_origin.filter((p: any) => typeof p === 'string') : []),
-              ]);
+              const mediaPhotos = normalizeImageUrls(
+                Array.isArray(row.media_photos) ? row.media_photos.filter((p: any) => typeof p === 'string') : [],
+              );
               const originRaw = String(meta.source_origin ?? '').toLowerCase();
               const sourceUrlRaw = String(row.source_url ?? meta.source_url ?? '').toLowerCase();
               const originSource = /yad2\.co\.il/.test(sourceUrlRaw) ? 'yad2' : originRaw && originRaw !== 'homely' && originRaw !== 'webtiv' && originRaw !== 'manual'
@@ -267,7 +263,7 @@ export default function Properties() {
                 size_sqm: Number(row.sqm ?? 0),
                 floor: row.floor != null ? Number(row.floor) : (meta.floor != null ? Number(meta.floor) : undefined),
                 property_type: detectPropertyType(`${row.property_title ?? ''} ${row.description ?? ''}`),
-                photos: metaPhotos,
+                photos: mediaPhotos,
                 url: row.source_url ?? meta.source_url ?? null,
                 features,
                 listing_type: extractListingType(row.features, meta as Record<string, any>, Number(row.asking_price ?? 0)),
@@ -292,20 +288,6 @@ export default function Properties() {
 
   const liveResults = liveResponse?.results ?? [];
   const externalConnected = liveResponse?.connected !== false;
-
-  useEffect(() => {
-    if (isLoading) return;
-    if (!liveResults.some((r: any) => r.source === 'homely')) return;
-    const key = 'realtyz.clean-homely-broken-images.v1';
-    if (sessionStorage.getItem(key)) return;
-    sessionStorage.setItem(key, '1');
-    supabase.functions.invoke('homely-fetch-property', { body: { action: 'cleanBrokenImages' } })
-      .then(({ data, error }) => {
-        const removed = Number((data as any)?.removed ?? 0);
-        if (!error && removed > 0) queryClient.invalidateQueries({ queryKey: ['properties-search'] });
-      })
-      .catch(() => sessionStorage.removeItem(key));
-  }, [isLoading, liveResults, queryClient]);
 
   const cityOptions = useMemo(() => {
     const cities = new Set<string>(CITY_OPTIONS as readonly string[]);
@@ -662,29 +644,31 @@ export default function Properties() {
 }
 
 function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare: () => void }) {
-  const { visible: photos, markBroken } = useVisibleImageUrls(property.photos || []);
-  const photo = photos[0];
+  const [thumbnailFailed, setThumbnailFailed] = useState(false);
+  const mediaPhotos = normalizeImageUrls(property.photos || []);
+  const photo = mediaPhotos[0];
   const isRent = property.listing_type === 'rent';
+  useEffect(() => setThumbnailFailed(false), [photo]);
   return (
     <Card className="overflow-hidden flex flex-col group hover:shadow-lg transition-shadow">
       <Link to={`/properties/${property.id}`} className="block">
         <div className="aspect-[16/10] bg-muted relative overflow-hidden">
-          {photo ? (
+          {photo && !thumbnailFailed ? (
             <img
               src={photo}
               alt={property.title}
               className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
               loading="lazy"
-              onError={() => markBroken(photo)}
+              onError={() => setThumbnailFailed(true)}
             />
           ) : (
             <div className="h-full w-full flex items-center justify-center text-muted-foreground text-sm">
               אין תמונה
             </div>
           )}
-          {photos.length > 0 && (
+          {mediaPhotos.length > 0 && (
             <span className="absolute bottom-2 left-2 rounded border bg-background/90 px-1.5 py-0.5 text-xs font-semibold leading-none text-foreground tabular-nums">
-              {photos.length}
+              {mediaPhotos.length}
             </span>
           )}
           <Badge className="absolute top-3 right-3 bg-background/90 text-foreground border">
