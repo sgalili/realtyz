@@ -260,7 +260,12 @@ export default function PropertyDetail() {
     },
   });
   const livePhotos = Array.isArray(liveImage?.photos) ? liveImage!.photos.filter((s): s is string => typeof s === 'string' && !!s) : [];
-  const effectivePhotos = livePhotos.length > 0 ? livePhotos : (property?.photos ?? []);
+  // Prefer the DB `media_photos` array (signed storage URLs written by the
+  // importer). Only fall back to the live resolver when the DB has nothing —
+  // the live path can return placeholder / CDN-blocked URLs that would
+  // otherwise mask the real photos.
+  const dbPhotos = property?.photos ?? [];
+  const effectivePhotos = dbPhotos.length > 0 ? dbPhotos : livePhotos;
   const { visible: visiblePropertyPhotos, markBroken: markBrokenPropertyPhoto } = useVisibleImageUrls(effectivePhotos);
 
 
