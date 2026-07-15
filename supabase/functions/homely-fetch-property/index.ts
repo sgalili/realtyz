@@ -1931,7 +1931,7 @@ await admin
               media_serial_verified: homelyId,
             }
 })
-          .eq("id", upserted.id);
+          eq("id", listingId);
       } catch (mirrorErr) {
         console.error(`[importOutJson] mirror failed for ${homelyId}:`, (mirrorErr as Error).message);
       }
