@@ -1715,20 +1715,45 @@ Deno.serve(async (req) => {
         const PLACEHOLDER_RX = /(placeholder|no-?image|default-property|template_property|generic-building|\/images\/placeholder|homely\.co(m|\.il)\/(images|assets)\/(placeholder|default|template))/i;
         // Facebook/FBCDN URLs are not directly renderable (auth-gated, short-lived,
         // hotlink-protected). Never save them as media_photos.
-        const FACEBOOK_RX = /(^|\/\/|\.)facebook\.com\/|fbcdn\.net|fbsbx\.com/i;
-        const stripPlaceholders = (arr: unknown[]): string[] =>
-          (Array.isArray(arr) ? arr : [])
-            .filter((u): u is string => typeof u === "string" && u.trim() !== "")
-            .filter((u) => !PLACEHOLDER_RX.test(u) && !FACEBOOK_RX.test(u));
+        // Strict host match — only true facebook.com hosts and fb-owned CDNs.
+        const FACEBOOK_RX = /(?:^https?:\/\/)?(?:[a-z0-9-]+\.)*(?:facebook\.com|fbcdn\.net|fbsbx\.com)(?:[\/:?#]|$)/i;
+        const stripPlaceholders = (arr: unknown[], label: string): string[] => {
+          const input = Array.isArray(arr) ? arr : [];
+          const kept: string[] = [];
+          const dropped: Array<{ url: string; reason: string }> = [];
+          for (const u of input) {
+            if (typeof u !== "string" || u.trim() === "") { dropped.push({ url: String(u), reason: "empty/non-string" }); continue; }
+            if (PLACEHOLDER_RX.test(u)) { dropped.push({ url: u, reason: "placeholder" }); continue; }
+            if (FACEBOOK_RX.test(u)) { dropped.push({ url: u, reason: "facebook" }); continue; }
+            kept.push(u);
+          }
+          console.log(`[importOutJson][${homelyId}] filter/${label}`, {
+            in: input.length, kept: kept.length, dropped: dropped.length,
+            dropped_sample: dropped.slice(0, 5),
+            kept_sample: kept.slice(0, 3),
+          });
+          return kept;
+        };
 
-        const apiPhotos = stripPlaceholders(cleanMediaUrls(Array.isArray(richMedia.photos) ? richMedia.photos : [], "image"));
+        console.log(`[importOutJson][${homelyId}] RAW_HOMELY_MEDIA`, {
+          richMedia_photos: Array.isArray(richMedia.photos) ? richMedia.photos.slice(0, 10) : richMedia.photos,
+          richMedia_photos_count: Array.isArray(richMedia.photos) ? richMedia.photos.length : null,
+          p_photos: Array.isArray(p?.photos) ? p.photos.slice(0, 10) : p?.photos,
+          p_photo: p?.photo,
+          yad2_photos_count: yad2Enrichment?.photos?.length ?? 0,
+          campaign_photos_count: Array.isArray(campaignPhotos) ? campaignPhotos.length : 0,
+          richSourceUrl,
+        });
+
+        const apiPhotos = stripPlaceholders(cleanMediaUrls(Array.isArray(richMedia.photos) ? richMedia.photos : [], "image"), "api");
         const isApiPhotosJunk = apiPhotos.length === 0;
 
         let rawPhotos: string[] = [];
         if (isApiPhotosJunk && richSourceUrl) {
           const scraped = await fetchVerifiedMedia(richSourceUrl);
+          console.log(`[importOutJson][${homelyId}] scraper returned`, { count: scraped.length, sample: scraped.slice(0, 5) });
           if (scraped.length > 0) {
-            rawPhotos = stripPlaceholders(cleanMediaUrls(scraped, "image"));
+            rawPhotos = stripPlaceholders(cleanMediaUrls(scraped, "image"), "scraper");
           }
         } else if (!isApiPhotosJunk) {
           rawPhotos = apiPhotos;
@@ -1746,8 +1771,10 @@ Deno.serve(async (req) => {
                   ? yad2Enrichment.photos
                   : campaignPhotos,
             "image",
-          ));
+          ), "legacy");
         }
+
+        console.log(`[importOutJson][${homelyId}] FINAL rawPhotos`, { count: rawPhotos.length, sample: rawPhotos.slice(0, 5) });
 
         const rawDocuments = cleanMediaUrls(
           richMedia.documents.length ? richMedia.documents : Array.isArray(p?.documents) ? p.documents : [],
