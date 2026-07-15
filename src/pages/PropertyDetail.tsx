@@ -393,7 +393,6 @@ export default function PropertyDetail() {
     });
 
   const removeBrokenPhoto = (url: string) => {
-    markBrokenPropertyPhoto(url);
     if (editMode) setPhotos((list) => list.filter((item) => item !== url));
   };
 
