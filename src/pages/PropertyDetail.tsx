@@ -131,6 +131,9 @@ export default function PropertyDetail() {
         .eq('id', id!)
         .maybeSingle();
       if (!row) return null;
+      console.log('[PropertyDetail listing]', row);
+      console.log('[PropertyDetail listing.media_photos]', (row as any).media_photos);
+      console.log('[PropertyDetail listing.source_metadata]', row.source_metadata);
       const features = Array.isArray(row.features) ? row.features : [];
       const meta = isRecord(row.source_metadata) ? row.source_metadata : {};
 
