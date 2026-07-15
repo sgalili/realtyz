@@ -565,6 +565,55 @@ function sanitizeAiReply(raw: string): string {
   return s;
 }
 
+// Explicit agent-tool commands (webtiv property search / market intel / add lead)
+// that must always route through ai-agent — regardless of the lead-level or
+// global AI autopilot switch. This is the "Bridge Agent to WA" hook.
+const AGENT_COMMAND_RE =
+  /(תמצא(?:י)?\s+לי|מחפש[ת]?\s+דירה|דירה\s+ל(?:מכירה|השכרה)|\d+\s*חדרים.*ב[א-ת]|market\s+intel|price\s+history|comparable|sold\s+price|find\s+(?:me\s+)?(?:a|an|another)?\s*\d*\s*[- ]?(?:bed|bdr|room|br)\s*(?:apartment|apt|home|flat)|search\s+propert|properties?\s+in\s+|apartment\s+in\s+|מחירי\s+עסקאות|היסטוריית?\s+עסקאות|נמכר[הו]?\s+לאחרונה|הערכת\s+שווי|מגמת\s+מחיר|הוסף\s+ליד|הוסיפ[יו]?\s+ליד|add\s+(?:this\s+)?lead|add\s+contact|save\s+(?:this\s+)?contact)/i;
+
+function isAgentCommand(text: string): boolean {
+  return AGENT_COMMAND_RE.test(String(text ?? ""));
+}
+
+// Format ai-agent structured payloads (webtiv_results, market_intel) for
+// WhatsApp: concise bullets, one emoji per line, image URLs preserved so
+// WhatsApp auto-renders link previews for the property photos.
+function formatWebtivForWhatsApp(
+  webtivResults: Array<{
+    id?: string; title?: string; price?: number; city?: string; rooms?: number;
+    sqm?: number; photo?: string | null; transaction_type?: string; source_url?: string | null;
+  }> | undefined | null,
+): string {
+  const list = Array.isArray(webtivResults) ? webtivResults.slice(0, 3) : [];
+  if (!list.length) return "";
+  const lines = list.map((r) => {
+    const price = r.price
+      ? `₪${Number(r.price).toLocaleString("he-IL")}${r.transaction_type === "rent" ? "/חודש" : ""}`
+      : "—";
+    const rooms = r.rooms ? `${r.rooms} חד׳` : "";
+    const sqm = r.sqm ? `${r.sqm} מ״ר` : "";
+    const bits = [r.city, rooms, sqm].filter(Boolean).join(" · ");
+    const head = `🏠 *${r.title || "נכס"}*`;
+    const meta = bits ? `\n   📍 ${bits}` : "";
+    const priceLine = `\n   💰 ${price}`;
+    const link = r.source_url ? `\n   🔗 ${r.source_url}` : "";
+    const photo = r.photo ? `\n   🖼️ ${r.photo}` : "";
+    return `${head}${meta}${priceLine}${link}${photo}`;
+  });
+  return `\n\n✨ *נכסים חיים ממאגר המשרד:*\n${lines.join("\n\n")}`;
+}
+
+function formatMarketIntelForWhatsApp(
+  intel: { query?: string; sources?: Array<{ title?: string; url?: string; snippet?: string }> } | undefined | null,
+): string {
+  const src = intel?.sources ?? [];
+  if (!src.length) return "";
+  const lines = src.slice(0, 4).map((s, i) => `${i + 1}. ${String(s.title || s.url || "").slice(0, 90)}\n   🔗 ${s.url}`);
+  return `\n\n📊 *מקורות מחקר שוק:*\n${lines.join("\n")}`;
+}
+
+
+
 async function handleLeadInboxInbound(
   admin: ReturnType<typeof createClient>,
   supabaseUrl: string,
@@ -763,25 +812,34 @@ async function handleLeadInboxInbound(
     return { ok: true, stored: true, lead_id: null, auto_reply: "no_lead_row" };
   }
 
-  if (lead.ai_autopilot === false) {
+  // Explicit agent-tool commands bypass the autopilot gates: users typing
+  // "find me a 4-room in Herzliya" or "add this lead" always get routed to
+  // the AI agent so webtiv_search / Market Intel / CRM actions can run.
+  const agentCommand = isAgentCommand(inboundText);
+
+  if (!agentCommand && lead.ai_autopilot === false) {
     return { ok: true, lead_id: lead.id, stored: true, auto_reply: "disabled" };
   }
 
   // Chat autopilot requires BOTH switches: the contact-level autopilot and the
-  // global AI autopilot switch for the owning/assigned workspace user.
+  // global AI autopilot switch for the owning/assigned workspace user. Agent
+  // commands skip this — a direct request is a direct request.
   const aiOwnerId = lead.assigned_to ? String(lead.assigned_to) : "";
   if (!aiOwnerId) {
     return { ok: true, lead_id: lead.id, stored: true, auto_reply: "missing_owner_for_ai_autopilot" };
   }
-  try {
-    const { data: globalAutopilot } = await admin.rpc("is_ai_autopilot_enabled", { _user_id: aiOwnerId });
-    if (!globalAutopilot) {
-      return { ok: true, lead_id: lead.id, stored: true, auto_reply: "global_ai_autopilot_disabled" };
+  if (!agentCommand) {
+    try {
+      const { data: globalAutopilot } = await admin.rpc("is_ai_autopilot_enabled", { _user_id: aiOwnerId });
+      if (!globalAutopilot) {
+        return { ok: true, lead_id: lead.id, stored: true, auto_reply: "global_ai_autopilot_disabled" };
+      }
+    } catch (e) {
+      console.warn("global AI autopilot check failed:", e instanceof Error ? e.message : e);
+      return { ok: true, lead_id: lead.id, stored: true, auto_reply: "global_ai_autopilot_check_failed" };
     }
-  } catch (e) {
-    console.warn("global AI autopilot check failed:", e instanceof Error ? e.message : e);
-    return { ok: true, lead_id: lead.id, stored: true, auto_reply: "global_ai_autopilot_check_failed" };
   }
+
 
   // Build context (best-effort).
   let aiMessages: Array<{ role: string; content: string }> = [{ role: "user", content: inboundText }];
@@ -811,8 +869,9 @@ async function handleLeadInboxInbound(
         lead_id: lead.id,
         lead_name: lead.full_name,
         mode: "deal_room_reply",
-        context: `Inbound WhatsApp reply from ${lead.full_name ?? "the lead"}: ${inboundText}`,
+        context: `Inbound WhatsApp reply from ${lead.full_name ?? "the lead"}: ${inboundText}${agentCommand ? " [AGENT_COMMAND: keep reply concise, WhatsApp-friendly — bullets + emojis]" : ""}`,
         messages: aiMessages,
+        enable_research: agentCommand ? true : undefined,
       }),
     });
     const aiJson = await aiRes.json().catch(() => ({}));
@@ -820,10 +879,18 @@ async function handleLeadInboxInbound(
       console.warn(`ai-agent failed ${aiRes.status}:`, JSON.stringify(aiJson).slice(0, 300));
     } else {
       reply = sanitizeAiReply(String(aiJson?.content ?? aiJson?.message ?? ""));
+      // Append structured tool results in WhatsApp-friendly form so the lead
+      // sees the actual property cards / market intel sources with the correct
+      // images and links, not just narrative prose.
+      const webtivTail = formatWebtivForWhatsApp(aiJson?.webtiv_results);
+      const intelTail = formatMarketIntelForWhatsApp(aiJson?.market_intel);
+      if (webtivTail) reply = (reply || "מצאתי כמה אופציות מתאימות:") + webtivTail;
+      if (intelTail) reply = (reply || "הנה מה שמצאתי על השוק באזור:") + intelTail;
     }
   } catch (e) {
     console.warn("ai-agent call threw:", e instanceof Error ? e.message : e);
   }
+
 
   if (!reply) return { ok: true, lead_id: lead.id, stored: true, auto_reply: "empty_ai_reply" };
 
