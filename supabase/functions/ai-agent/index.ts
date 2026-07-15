@@ -912,7 +912,7 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
 
 
     const systemPrompt = (systemRulesBlock ? systemRulesBlock + "\n\n" : "") + (isInternalDashboard
-      ? MASTER_AGENT_PROMPT + (webtivBlock ? "\n\n" + webtivBlock : "")
+      ? MASTER_AGENT_PROMPT + (webtivBlock ? "\n\n" + webtivBlock : "") + (marketIntelBlock ? "\n\n" + marketIntelBlock : "")
       : SCHEMA_CONTEXT
           .replace("{{CAMPAIGN_CONTEXT}}", campaignContext)
           .replace("{{KB_CONTEXT}}", kbContext)
@@ -923,7 +923,9 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
           + "\n\n" + compliance
           + (matchingBlock ? "\n\n" + matchingBlock : "")
           + (webtivBlock ? "\n\n" + webtivBlock : "")
+          + (marketIntelBlock ? "\n\n" + marketIntelBlock : "")
           + (propertyAnchorBlock ? "\n\n" + propertyAnchorBlock : "")
+
           + "\n\n" + noFallbackBlock
           + "\n\n[GROUNDING + ADAPTIVE CROSS-SELL DIRECTIVE]\n"
           + "1. BASELINE GROUNDING: Anchor the conversation on the specific property the lead asked about. Use the PROPERTY ANCHOR block as ground truth — never say you need to 'check the system'. Answer their direct questions about THIS property first, using the workspace KB and the listings block above. Never invent attributes that aren't in the anchor, KB, or listings table.\n"
