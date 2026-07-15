@@ -1713,10 +1713,13 @@ Deno.serve(async (req) => {
         // Broadened placeholder detection — Homely's CDN and template URLs
         // often include generic building thumbnails that must never be saved.
         const PLACEHOLDER_RX = /(placeholder|no-?image|default-property|template_property|generic-building|\/images\/placeholder|homely\.co(m|\.il)\/(images|assets)\/(placeholder|default|template))/i;
+        // Facebook/FBCDN URLs are not directly renderable (auth-gated, short-lived,
+        // hotlink-protected). Never save them as media_photos.
+        const FACEBOOK_RX = /(^|\/\/|\.)facebook\.com\/|fbcdn\.net|fbsbx\.com/i;
         const stripPlaceholders = (arr: unknown[]): string[] =>
           (Array.isArray(arr) ? arr : [])
             .filter((u): u is string => typeof u === "string" && u.trim() !== "")
-            .filter((u) => !PLACEHOLDER_RX.test(u));
+            .filter((u) => !PLACEHOLDER_RX.test(u) && !FACEBOOK_RX.test(u));
 
         const apiPhotos = stripPlaceholders(cleanMediaUrls(Array.isArray(richMedia.photos) ? richMedia.photos : [], "image"));
         const isApiPhotosJunk = apiPhotos.length === 0;
