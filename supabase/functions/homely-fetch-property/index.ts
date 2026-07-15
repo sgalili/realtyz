@@ -2373,36 +2373,3 @@ Deno.serve(async (req) => {
     return json({ success: false, error: msg }, 500);
   }
 });
-import { load } from "https://esm.sh/cheerio@1.0.0-rc.12";
-
-/**
- * Scrapes the public listing page to get the verified OG:Image
- * bypassing the corrupted Webtiv API.
- */
-async function fetchVerifiedMedia(listingUrl: string): Promise<string[]> {
-  try {
-    const response = await fetch(listingUrl, {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36",
-      },
-    });
-    const html = await response.text();
-    const $ = load(html);
-
-    // 1. Extract og:image (High confidence)
-    const ogImage = $('meta[property="og:image"]').attr("content");
-
-    // 2. Extract additional listing images if available in DOM
-    const images: string[] = [];
-    if (ogImage) images.push(ogImage);
-
-    // Optional: Add specific logic here to select other <img> tags if needed
-    // $('img.property-gallery-item').each((i, el) => images.push($(el).attr('src')));
-
-    return images.filter(Boolean) as string[];
-  } catch (error) {
-    console.error("Scraping failed for", listingUrl, error);
-    return [];
-  }
-}
