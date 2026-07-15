@@ -1956,53 +1956,25 @@ Deno.serve(async (req) => {
             const mirroredPhotos = await mirrorAll(admin, listingId, rawPhotos, 40, "image", versionTag);
             const mirroredDocs = await mirrorAll(admin, listingId, rawDocuments, 20, "document", versionTag);
 
-            // ---- URL health validation ----
-            // Validate mirrored URLs via HEAD (fast, no body). Any URL that
-            // is not reachable (network error or non-2xx) is dropped. If
-            // mirroring produced zero live URLs, fall back to the raw
-            // Homely-hosted photos and re-validate those. As a last resort
-            // (nothing loads) we keep whatever raw URLs we have so the UI
-            // can render its own placeholder rather than an empty gallery.
-            const validateUrl = async (u: string): Promise<boolean> => {
-              if (!u || typeof u !== "string") return false;
-              if (/placeholder|missing|no-?image|undefined|null/i.test(u)) return false;
-              try {
-                const ctl = new AbortController();
-                const t = setTimeout(() => ctl.abort(), 4000);
-                let r = await fetch(u, { method: "HEAD", signal: ctl.signal, redirect: "follow" });
-                // Some CDNs don't honor HEAD → retry with a tiny range GET.
-                if (!r.ok || r.status === 405) {
-                  r = await fetch(u, {
-                    method: "GET",
-                    signal: ctl.signal,
-                    redirect: "follow",
-                    headers: { Range: "bytes=0-0" },
-                  });
-                }
-                clearTimeout(t);
-                return r.ok || r.status === 206;
-              } catch {
-                return false;
-              }
-            };
-            const filterAlive = async (urls: string[]): Promise<string[]> => {
-              const results = await Promise.all(urls.map(async (u) => ((await validateUrl(u)) ? u : null)));
-              return results.filter((v): v is string => !!v);
-            };
+            // Trust URLs returned by the API. HEAD/Range-GET validation was
+            // getting blocked by Homely's CDN (403), which caused the
+            // pipeline to drop legitimate photos. We now prefer mirrored
+            // storage URLs; fall back to raw Homely URLs if mirroring
+            // produced nothing. The frontend handles broken-image rendering.
+            const cleanList = (arr: string[]): string[] =>
+              (arr || []).filter((u) =>
+                typeof u === "string" &&
+                u.trim() !== "" &&
+                !/placeholder|no-?image|undefined|null/i.test(u),
+              );
 
-            let livePhotos = await filterAlive(mirroredPhotos);
-            let usedFallback = false;
-            if (livePhotos.length === 0 && rawPhotos.length > 0) {
-              livePhotos = await filterAlive(rawPhotos);
-              usedFallback = livePhotos.length > 0;
-            }
-            // Last-resort: keep raw URLs so the client-side broken-image
-            // filter can still try; never persist an empty photos array
-            // when we know Homely returned some URLs for this listing.
-            const finalPhotosForDb = livePhotos.length
-              ? livePhotos
-              : (rawPhotos.length ? rawPhotos : mirroredPhotos);
+            const cleanedMirrored = cleanList(mirroredPhotos);
+            const cleanedRaw = cleanList(rawPhotos);
+            const finalPhotosForDb = cleanedMirrored.length ? cleanedMirrored : cleanedRaw;
             const finalDocsForDb = mirroredDocs.length ? mirroredDocs : rawDocuments;
+            const photosSource = cleanedMirrored.length
+              ? "mirrored"
+              : (cleanedRaw.length ? "raw_fallback" : "empty");
 
             if (finalPhotosForDb.length || finalDocsForDb.length) {
               const meta = row.source_metadata as Record<string, unknown>;
@@ -2020,10 +1992,7 @@ Deno.serve(async (req) => {
                     photos_mirrored: mirroredPhotos,
                     documents_original: rawDocuments,
                     media_count: Number(finalPhotosForDb.length + finalDocsForDb.length) || 0,
-                    broken_images_removed_count: Math.max(0, (mirroredPhotos.length || rawPhotos.length) - finalPhotosForDb.length),
-                    media_photos_source: livePhotos.length
-                      ? (usedFallback ? "raw_fallback_validated" : "mirrored_validated")
-                      : "unvalidated_last_resort",
+                    media_photos_source: photosSource,
                     media_mirrored_at: new Date().toISOString(),
                     media_version_tag: versionTag,
                     media_serial_verified: homelyId,
@@ -2032,6 +2001,7 @@ Deno.serve(async (req) => {
                 .eq("id", listingId);
             }
           }
+
         } catch (mirrorErr) {
           console.error(`[importOutJson] mirror failed for ${homelyId}:`, (mirrorErr as Error).message);
         }
