@@ -648,6 +648,7 @@ function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare
   const mediaPhotos = normalizeImageUrls(property.photos || []);
   const photo = mediaPhotos[0];
   const isRent = property.listing_type === 'rent';
+  useEffect(() => setThumbnailFailed(false), [photo]);
   return (
     <Card className="overflow-hidden flex flex-col group hover:shadow-lg transition-shadow">
       <Link to={`/properties/${property.id}`} className="block">
