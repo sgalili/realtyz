@@ -1810,25 +1810,31 @@ Deno.serve(async (req) => {
         // placeholder images. We trust the public listing page (og:image /
         // scraped photos) as the source of truth whenever the API payload is
         // empty or contains placeholder URLs.
-        const apiPhotos = cleanMediaUrls(Array.isArray(richMedia.photos) ? richMedia.photos : [], "image");
-        const isApiPhotosJunk =
-          apiPhotos.length === 0 ||
-          apiPhotos.some((url) => typeof url === "string" && url.toLowerCase().includes("placeholder"));
+        // Broadened placeholder detection — Homely's CDN and template URLs
+        // often include generic building thumbnails that must never be saved.
+        const PLACEHOLDER_RX = /(placeholder|no-?image|default-property|template_property|generic-building|\/images\/placeholder|homely\.co(m|\.il)\/(images|assets)\/(placeholder|default|template))/i;
+        const stripPlaceholders = (arr: unknown[]): string[] =>
+          (Array.isArray(arr) ? arr : [])
+            .filter((u): u is string => typeof u === "string" && u.trim() !== "")
+            .filter((u) => !PLACEHOLDER_RX.test(u));
+
+        const apiPhotos = stripPlaceholders(cleanMediaUrls(Array.isArray(richMedia.photos) ? richMedia.photos : [], "image"));
+        const isApiPhotosJunk = apiPhotos.length === 0;
 
         let rawPhotos: string[] = [];
         if (isApiPhotosJunk && richSourceUrl) {
           const scraped = await fetchVerifiedMedia(richSourceUrl);
           if (scraped.length > 0) {
-            rawPhotos = cleanMediaUrls(scraped, "image");
+            rawPhotos = stripPlaceholders(cleanMediaUrls(scraped, "image"));
           }
         } else if (!isApiPhotosJunk) {
           rawPhotos = apiPhotos;
         }
 
         // Only fall back to legacy sources if BOTH the API and the scraper
-        // yielded nothing verified.
+        // yielded nothing verified. Purified against the placeholder regex.
         if (rawPhotos.length === 0) {
-          rawPhotos = cleanMediaUrls(
+          rawPhotos = stripPlaceholders(cleanMediaUrls(
             Array.isArray(p?.photos) && p.photos.length
               ? p.photos
               : p?.photo
@@ -1837,7 +1843,7 @@ Deno.serve(async (req) => {
                   ? yad2Enrichment.photos
                   : campaignPhotos,
             "image",
-          );
+          ));
         }
 
         const rawDocuments = cleanMediaUrls(
