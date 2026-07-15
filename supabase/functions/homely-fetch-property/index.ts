@@ -1915,8 +1915,11 @@ Deno.serve(async (req) => {
               await admin
                 .from("listings")
                 .update({
-                  media_photos: mirroredPhotos,
-                  media_documents: mirroredDocs.length ? mirroredDocs : rawDocuments,
+                 // Inside your .update({...}) block:
+media_photos: mirroredPhotos,
+media_documents: mirroredDocs,
+"source_metadata->media_count": mirroredPhotos.length + (mirroredDocs.length || 0)
+                  mirroredDocs : rawDocuments,
                   source_metadata: {
                     ...meta,
                     photos: mirroredPhotos,
