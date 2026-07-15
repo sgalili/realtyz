@@ -2472,7 +2472,7 @@ const PublishedFeed = () => {
   const [refreshingIds, setRefreshingIds] = useState<Record<string, boolean>>({});
   // Per-campaign cooldown timestamp (ms epoch). Button is disabled with a
   // MM:SS countdown until now >= cooldownUntil.
-  const REFRESH_COOLDOWN_MS = 60_000;
+  const REFRESH_COOLDOWN_MS = 15 * 60_000; // 15-minute provider lock
   const [cooldownUntil, setCooldownUntil] = useState<Record<string, number>>({});
   const [nowTick, setNowTick] = useState<number>(() => Date.now());
   useEffect(() => {
@@ -3384,9 +3384,13 @@ const PublishedFeed = () => {
                           onClick={(e) => { e.stopPropagation(); bumpRefresh(r.id); }}
                           className={cn(onCooldown && 'opacity-50 cursor-not-allowed gap-1 tabular-nums text-xs')}
                         >
-                          <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
-                          {onCooldown && <span>ממתין: {formatCooldown(cooldownSecs)}</span>}
+                          {onCooldown ? (
+                            <span className="tabular-nums text-xs font-medium">{formatCooldown(cooldownSecs)}</span>
+                          ) : (
+                            <RefreshCw className={cn('h-4 w-4', isRefreshing && 'animate-spin')} />
+                          )}
                         </Button>
+
                       );
                     })()}
                     <Button variant="outline" size="icon" disabled className="opacity-90"
