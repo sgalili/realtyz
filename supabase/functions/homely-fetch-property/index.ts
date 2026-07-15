@@ -353,6 +353,7 @@ function collectMedia(it: any): { photos: string[]; documents: string[] } {
     const url = toUrl(v, key);
     if (!url) return;
     if (/placeholder|missing|no-?image|undefined|null/i.test(url)) return;
+    if (/(^|\/\/|\.)facebook\.com\//i.test(url) || /fbcdn\.net|fbsbx\.com/i.test(url)) return;
     if (isImg(url) || photoKey(key)) photos.add(url);
     else if (isDoc(url) || docKey(key)) documents.add(url);
     else if (!sourceLinkKey(key)) photos.add(url); // Homely CDN sometimes omits extensions
