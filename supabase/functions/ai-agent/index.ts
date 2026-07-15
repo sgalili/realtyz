@@ -807,8 +807,10 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
         for (const c of cityListMi) { if (lastUserTextForIntel.includes(c)) { cityHit = c; break; } }
         const streetHit = lastUserTextForIntel.match(/(?:רחוב|רח'|ברחוב)\s+([\u0590-\u05FFA-Za-z'״"\-]+(?:\s+[\u0590-\u05FFA-Za-z'״"\-]+){0,2})/)?.[1]?.trim() ?? "";
         const anchorText = [streetHit, cityHit].filter(Boolean).join(" ") || lastUserTextForIntel.slice(0, 120);
+        marketIntelResults.address = anchorText;
         const q = `עסקאות נדל"ן אחרונות מחירים ${anchorText} site:nadlan.gov.il OR site:madlan.co.il OR site:yad2.co.il`;
         marketIntelResults.query = q;
+
         try {
           const fcRes = await fetch("https://api.firecrawl.dev/v1/search", {
             method: "POST",
