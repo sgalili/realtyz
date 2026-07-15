@@ -2284,8 +2284,8 @@ Deno.serve(async (req) => {
     const richest = rich.record ?? detail;
     const media = collectMedia(richest);
     const summaryPhoto = mapped.photo ? [mapped.photo] : [];
-    const apiPhotos: string[] = Array.isArray(media.photos) && media.photos.length ? media.photos : summaryPhoto;
-    const rawDocs = media.documents;
+    const apiPhotos = cleanMediaUrls(Array.isArray(media.photos) && media.photos.length ? media.photos : summaryPhoto, "image");
+    const rawDocs = cleanMediaUrls(media.documents, "document");
     const rawSourceOrigin = pickSourceOrigin(richest) || pickSourceOrigin(detail) || meta.source_origin || null;
     const sourceOriginRaw =
       rawSourceOrigin === "yad2" || hasYad2Signal(richest, detail, meta.source_url, rawSourceOrigin)
@@ -2330,7 +2330,7 @@ Deno.serve(async (req) => {
     if (isApiPhotosJunk && sourceUrl) {
       const scraped = await fetchVerifiedMedia(sourceUrl);
       if (scraped.length > 0) {
-        finalRawPhotos = scraped;
+        finalRawPhotos = cleanMediaUrls(scraped, "image");
       }
     } else if (!isApiPhotosJunk) {
       finalRawPhotos = apiPhotos;
@@ -2339,17 +2339,20 @@ Deno.serve(async (req) => {
     // Only fall back to secondary sources if BOTH the API and the scraper
     // returned nothing verified.
     if (finalRawPhotos.length === 0) {
-      finalRawPhotos = yad2Enrichment?.photos?.length
-        ? yad2Enrichment.photos
-        : summaryPhoto.length
-          ? summaryPhoto
-          : await campaignMediaFallback(admin, workspaceOwnerId, {
-              ...mapped,
-              price: mapped.price || listing.asking_price,
-              city: mapped.city || listing.city,
-              address: mapped.address || listing.address,
-              raw: richest,
-            });
+      finalRawPhotos = cleanMediaUrls(
+        yad2Enrichment?.photos?.length
+          ? yad2Enrichment.photos
+          : summaryPhoto.length
+            ? summaryPhoto
+            : await campaignMediaFallback(admin, workspaceOwnerId, {
+                ...mapped,
+                price: mapped.price || listing.asking_price,
+                city: mapped.city || listing.city,
+                address: mapped.address || listing.address,
+                raw: richest,
+              }),
+        "image",
+      );
     }
 
     // Mirror media once into homely-media bucket and store signed URLs.
@@ -2358,6 +2361,8 @@ Deno.serve(async (req) => {
     const versionTag = `v${Date.now()}`;
     const cachedPhotos = await mirrorAll(admin, String(listing_id), finalRawPhotos, 40, "image", versionTag);
     const cachedDocs = await mirrorAll(admin, String(listing_id), rawDocs, 20, "document", versionTag);
+    const photosForDb = cachedPhotos.length ? cachedPhotos : finalRawPhotos;
+    const docsForDb = cachedDocs.length ? cachedDocs : rawDocs;
 
     const updated = {
       property_title: mapped.title || listing.property_title,
@@ -2370,8 +2375,8 @@ Deno.serve(async (req) => {
       floor: mapped.floor || listing.floor,
       external_id: String(serial),
       source_url: sourceUrl || null,
-      media_photos: cachedPhotos,
-      media_documents: cachedDocs.length ? cachedDocs : rawDocs,
+      media_photos: photosForDb,
+      media_documents: docsForDb,
       features: Array.from(
         new Set([
           ...(Array.isArray(listing.features) ? listing.features.filter((f: any) => typeof f === "string") : []),
@@ -2384,12 +2389,13 @@ Deno.serve(async (req) => {
         source_url: sourceUrl || null,
         yad2_search_url: !yad2Enrichment?.exact && yad2Enrichment?.url ? yad2Enrichment.url : null,
         yad2_exact_match: yad2Enrichment?.exact ?? null,
-        photos: cachedPhotos,
-        images: cachedPhotos,
-        documents: cachedDocs.length ? cachedDocs : rawDocs,
+        photos: photosForDb,
+        images: photosForDb,
+        documents: docsForDb,
         photos_origin: finalRawPhotos,
         documents_origin: rawDocs,
-        broken_images_removed_count: Math.max(0, finalRawPhotos.length - cachedPhotos.length),
+        media_count: Number(photosForDb.length + docsForDb.length) || 0,
+        broken_images_removed_count: cachedPhotos.length ? Math.max(0, finalRawPhotos.length - cachedPhotos.length) : 0,
         balcony,
         homely_raw: richest,
         synced_at: new Date().toISOString(),
