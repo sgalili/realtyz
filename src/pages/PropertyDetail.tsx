@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { Card } from '@/components/ui/card';
@@ -127,7 +127,7 @@ export default function PropertyDetail() {
     queryFn: async () => {
       const { data: row } = await supabase
         .from('listings')
-        .select('id, property_title, description, asking_price, features, slug, source_metadata, city, neighborhood, address, rooms, sqm, floor, parking, elevator, status, source_url, source, project_name, media_photos, media_documents, updated_at')
+        .select('id, property_title, description, asking_price, features, slug, source_metadata, city, neighborhood, address, rooms, sqm, floor, parking, elevator, status, source_url, source, project_name, media_photos, media_documents, updated_at, owner_id')
         .eq('id', id!)
         .maybeSingle();
       if (!row) return null;
@@ -209,6 +209,18 @@ export default function PropertyDetail() {
         solar: Boolean(meta.solar_heater ?? meta.solar ?? false),
       };
 
+      // Owner (linked crm_profile) — separate lightweight fetch.
+      let owner: { id: string; full_name: string } | null = null;
+      const ownerId = (row as any).owner_id as string | null;
+      if (ownerId) {
+        const { data: op } = await (supabase as any)
+          .from('crm_profiles')
+          .select('id, full_name')
+          .eq('id', ownerId)
+          .maybeSingle();
+        if (op?.id) owner = { id: String(op.id), full_name: String(op.full_name || '') };
+      }
+
       return {
         row,
         property,
@@ -218,6 +230,7 @@ export default function PropertyDetail() {
         projectName: row.project_name,
         sourceUrl: row.source_url,
         documents,
+        owner,
       };
     },
   });
@@ -508,15 +521,21 @@ export default function PropertyDetail() {
               />
             ) : (
               <>
-                <span className="text-3xl font-extrabold text-success tabular-nums">
-                  {formatPrice(property.price)}
-                  {isRent && <span className="text-base font-normal text-muted-foreground"> /חודש</span>}
-                </span>
-                {pricePerMeter ? (
-                  <span className="text-xs text-muted-foreground font-normal">
-                    ({pricePerMeter} ₪ למ"ר)
-                  </span>
-                ) : null}
+                {property.price > 0 ? (
+                  <>
+                    <span className="text-3xl font-extrabold text-success tabular-nums">
+                      {formatPrice(property.price)}
+                      {isRent && <span className="text-base font-normal text-muted-foreground"> /חודש</span>}
+                    </span>
+                    {pricePerMeter ? (
+                      <span className="text-xs text-muted-foreground font-normal">
+                        ({pricePerMeter} ₪ למ"ר)
+                      </span>
+                    ) : null}
+                  </>
+                ) : (
+                  <span className="text-xl font-semibold text-amber-600">פרטים חסרים · Draft</span>
+                )}
               </>
             )}
           </div>
@@ -701,7 +720,7 @@ export default function PropertyDetail() {
           </Card>
 
           {/* Description */}
-          {(editMode || property.description) && (
+          {(editMode || property.description || data?.owner) && (
             <Card className="p-4 sm:p-5">
               <h2 className="text-base font-bold text-primary mb-2">תיאור הנכס</h2>
               {editMode && form ? (
@@ -713,6 +732,17 @@ export default function PropertyDetail() {
                 />
               ) : (
                 <p className="text-sm leading-relaxed text-foreground/80 whitespace-pre-line">{property.description}</p>
+              )}
+              {!editMode && data?.owner && (
+                <div className="mt-4 pt-3 border-t border-border/60 text-sm">
+                  <span className="text-muted-foreground">בעלים: </span>
+                  <Link
+                    to={`/crm/profile/${data.owner.id}`}
+                    className="font-semibold text-primary hover:underline"
+                  >
+                    {data.owner.full_name}
+                  </Link>
+                </div>
               )}
             </Card>
           )}

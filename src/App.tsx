@@ -60,6 +60,7 @@ const SignDocument = lazy(() => import("./pages/SignDocument"));
 const Properties = lazy(() => import("./pages/Properties"));
 const PropertiesHub = lazy(() => import("./pages/PropertiesHub"));
 const PropertyDetail = lazy(() => import("./pages/PropertyDetail"));
+const CrmProfile = lazy(() => import("./pages/CrmProfile"));
 const WhiteLabelSettings = lazy(() => import("./pages/WhiteLabelSettings"));
 const SystemHealth = lazy(() => import("./pages/SystemHealth"));
 const SharedDeals = lazy(() => import("./pages/SharedDeals"));
@@ -181,6 +182,7 @@ const App = () => (
               <Route path="/properties" element={<ProtectedRoute allowGuestDemo><Properties /></ProtectedRoute>} />
               <Route path="/properties-hub" element={<ProtectedRoute allowGuestDemo><PropertiesHub /></ProtectedRoute>} />
               <Route path="/properties/:id" element={<ProtectedRoute allowGuestDemo><PropertyDetail /></ProtectedRoute>} />
+              <Route path="/crm/profile/:id" element={<ProtectedRoute><CrmProfile /></ProtectedRoute>} />
 
               <Route path="/automations" element={<ProtectedRoute allowGuestDemo><AutomationStudioPage /></ProtectedRoute>} />
               <Route path="/insights" element={<ProtectedRoute allowGuestDemo><PerformanceInsights /></ProtectedRoute>} />
