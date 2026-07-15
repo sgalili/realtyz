@@ -1976,6 +1976,13 @@ Deno.serve(async (req) => {
               ? "mirrored"
               : (cleanedRaw.length ? "raw_fallback" : "empty");
 
+            console.log("[importOutJson] about to update listing media", {
+              homelyId,
+              listingId,
+              media_photos: finalPhotosForDb,
+              media_photos_count: Array.isArray(finalPhotosForDb) ? finalPhotosForDb.length : null,
+              media_count: Number(finalPhotosForDb.length + finalDocsForDb.length) || 0,
+            });
             if (finalPhotosForDb.length || finalDocsForDb.length) {
               const meta = row.source_metadata as Record<string, unknown>;
               await admin
