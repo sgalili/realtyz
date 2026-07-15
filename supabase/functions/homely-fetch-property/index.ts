@@ -2218,7 +2218,9 @@ Deno.serve(async (req) => {
     const richest = rich.record ?? detail;
     const media = collectMedia(richest);
     const summaryPhoto = mapped.photo ? [mapped.photo] : [];
-    const rawPhotos = media.photos.length ? media.photos : summaryPhoto;
+    const apiPhotos: string[] = Array.isArray(media.photos) && media.photos.length
+      ? media.photos
+      : summaryPhoto;
     const rawDocs = media.documents;
     const rawSourceOrigin = pickSourceOrigin(richest) || pickSourceOrigin(detail) || meta.source_origin || null;
     const sourceOriginRaw =
@@ -2235,29 +2237,9 @@ Deno.serve(async (req) => {
     const yad2Enrichment = shouldProbeYad2 ? await enrichFromYad2(admin, workspaceOwnerId, mappedForEnrichment) : null;
     const sourceOrigin = sourceOriginRaw === "yad2" || yad2Enrichment?.exact ? "yad2" : sourceOriginRaw;
     const balcony = pickBalcony(richest) ?? pickBalcony(detail) ?? booleanFeatureFrom(meta.balcony ?? meta.mirpeset);
-    const campaignPhotos = rawPhotos.length
-      ? []
-      : await campaignMediaFallback(admin, workspaceOwnerId, {
-          ...mapped,
-          price: mapped.price || listing.asking_price,
-          city: mapped.city || listing.city,
-          address: mapped.address || listing.address,
-          raw: richest,
-        });
-    // Replace the old finalRawPhotos line with this:
-    let finalRawPhotos = rawPhotos.length 
-      ? rawPhotos 
-      : (yad2Enrichment?.photos?.length ? yad2Enrichment.photos : campaignPhotos);
 
-    // Apply the scraper fallback if still empty
-    if (finalRawPhotos.length === 0 && sourceUrl) {
-      const scraped = await fetchVerifiedMedia(sourceUrl);
-      if (scraped.length > 0) finalRawPhotos = scraped;
-    }
-      ? rawPhotos
-      : yad2Enrichment?.photos?.length
-        ? yad2Enrichment.photos
-        : campaignPhotos;
+    // Resolve the public source URL up front so the scraper can run before
+    // we trust any API-provided photos.
     const sourceUrl =
       pickSourceUrl(richest) ||
       pickSourceUrl(detail) ||
@@ -2271,6 +2253,40 @@ Deno.serve(async (req) => {
             serialStr,
           )
         : "");
+
+    // HARD VALIDATION OVERRIDE — scraper-first media resolution.
+    // API images are treated as "junk" when the array is empty or any URL
+    // contains 'placeholder'. In that case we scrape the public listing
+    // page (og:image / DOM images) and use that as the primary source.
+    const isApiPhotosJunk =
+      apiPhotos.length === 0 ||
+      apiPhotos.some((url) => typeof url === "string" && url.toLowerCase().includes("placeholder"));
+
+    let finalRawPhotos: string[] = [];
+    if (isApiPhotosJunk && sourceUrl) {
+      const scraped = await fetchVerifiedMedia(sourceUrl);
+      if (scraped.length > 0) {
+        finalRawPhotos = scraped;
+      }
+    } else if (!isApiPhotosJunk) {
+      finalRawPhotos = apiPhotos;
+    }
+
+    // Only fall back to secondary sources if BOTH the API and the scraper
+    // returned nothing verified.
+    if (finalRawPhotos.length === 0) {
+      finalRawPhotos = yad2Enrichment?.photos?.length
+        ? yad2Enrichment.photos
+        : summaryPhoto.length
+          ? summaryPhoto
+          : await campaignMediaFallback(admin, workspaceOwnerId, {
+              ...mapped,
+              price: mapped.price || listing.asking_price,
+              city: mapped.city || listing.city,
+              address: mapped.address || listing.address,
+              raw: richest,
+            });
+    }
 
     // Mirror media once into homely-media bucket and store signed URLs.
     // versionTag = current ms so every refresh writes to a new folder and
