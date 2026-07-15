@@ -1955,8 +1955,8 @@ Deno.serve(async (req) => {
               await admin
                 .from("listings")
                 .update({
-                  media_photos: finalPhotosForDb,
-                  media_documents: finalDocsForDb,
+                  media_photos: Array.isArray(finalPhotosForDb) ? finalPhotosForDb : [],
+                  media_documents: Array.isArray(finalDocsForDb) ? finalDocsForDb : [],
                   source_metadata: {
                     ...meta,
                     photos: finalPhotosForDb,
