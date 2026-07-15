@@ -231,7 +231,7 @@ export default function PropertyDetail() {
   const documents = data?.documents ?? [];
 
   const dbPhotos = property?.photos ?? [];
-  const { visible: visiblePropertyPhotos, markBroken: markBrokenPropertyPhoto } = useVisibleImageUrls(dbPhotos);
+
 
   // Initialize edit form when entering edit mode
   useEffect(() => {
