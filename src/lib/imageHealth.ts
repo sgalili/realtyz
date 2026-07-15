@@ -3,6 +3,8 @@ import { useCallback, useMemo, useState } from 'react';
 const IMAGE_EXT_RE = /\.(jpe?g|png|gif|webp|bmp|heic|avif)(\?|#|$)/i;
 
 export function normalizeImageUrls(values: unknown[]): string[] {
+  // Hard-override: trust the URLs coming from the DB. Only drop empty/non-URL strings.
+  // Do NOT filter for "placeholder"/"default" — those checks were hiding real photos.
   return Array.from(new Set(
     values
       .map((value) => (typeof value === 'string' ? value.trim() : ''))
@@ -12,8 +14,7 @@ export function normalizeImageUrls(values: unknown[]): string[] {
         if (/^https?:\/\//i.test(url)) return true;
         if (/^\/(?!\/)/.test(url)) return true;
         return false;
-      })
-      .filter((url) => !/placeholder|default|missing|no-?image|undefined|null/i.test(url)),
+      }),
   ));
 }
 
