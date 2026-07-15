@@ -203,11 +203,15 @@ Deno.serve(async (req) => {
     }
 
     // Mirror every discovered image to persistent storage so subsequent
-    // renders never depend on FB's short-lived CDN URLs.
+    // renders never depend on FB's short-lived CDN URLs. Every key is
+    // namespaced by the caller-supplied `unique_hash` (property_id +
+    // last_modified_at) so a listing update produces a NEW storage object
+    // and never overlaps an older, mismatched thumbnail.
     const urls: string[] = [];
     const uniq = Array.from(new Set([primary, ...scraped.images])).slice(0, 6);
     for (let i = 0; i < uniq.length; i++) {
-      const key = `${(campaignLogId ?? "url")}_${i}_${Date.now()}`;
+      const scope = propertyId ? `prop_${propertyId}` : (campaignLogId ?? "url");
+      const key = `${scope}/${uniqueHash}/${i}_${Date.now()}`;
       const mirrored = await mirrorToStorage(uniq[i], key);
       urls.push(mirrored || uniq[i]);
     }
@@ -227,12 +231,15 @@ Deno.serve(async (req) => {
             media_urls: urls,
             og_image_source: "firecrawl",
             og_image_resolved_at: new Date().toISOString(),
+            og_image_unique_hash: uniqueHash,
+            og_image_property_id: propertyId,
+            og_image_last_modified_at: lastModifiedAt,
           },
         })
         .eq("id", campaignLogId);
     }
 
-    return new Response(JSON.stringify({ ok: true, cached: false, media_urls: urls }), {
+    return new Response(JSON.stringify({ ok: true, cached: false, media_urls: urls, unique_hash: uniqueHash }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   } catch (err: any) {
