@@ -775,6 +775,76 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
     }
 
 
+    // ───────────────────────────────────────────────────────────────────────
+    // MARKET INTEL TOOL (live web research — Firecrawl search)
+    // Triggered when the user asks for sold prices, comparables, area
+    // evaluation, or pricing trends for a specific address / neighborhood.
+    // Results feed both:
+    //   1. a MARKET_INTEL block injected into the system prompt so the model
+    //      grounds its summary in real sources, and
+    //   2. `market_intel` in the response payload so the client can render
+    //      the sources under the assistant bubble.
+    // ───────────────────────────────────────────────────────────────────────
+    let marketIntelBlock = "";
+    let marketIntelResults: {
+      query: string;
+      sources: Array<{ title: string; url: string; snippet: string }>;
+    } = { query: "", sources: [] };
+    try {
+      const lastUserTextForIntel = String(
+        [...(messages as Array<{ role: string; content: string }>)]
+          .reverse().find((m) => m.role === "user")?.content ?? "",
+      );
+      const MARKET_INTEL_TRIGGER = /(מחיר[יו]?\s+עסקאות|היסטורי[יה]?\s+עסקאות|עסקאות\s+אחרונות|נמכר[הו]?\s+לאחרונה|מגמת\s+מחיר|הערכת\s+שווי|כמה\s+שווה|כמה\s+נמכר|comparable|comps?\b|sold\s+price|price\s+history|market\s+intel|area\s+evaluation|market\s+trend)/i;
+      const wantsIntel = MARKET_INTEL_TRIGGER.test(lastUserTextForIntel);
+      const FIRECRAWL_API_KEY = Deno.env.get("FIRECRAWL_API_KEY");
+      if (wantsIntel && FIRECRAWL_API_KEY) {
+        // Build a targeted query from any address/city hints in the text.
+        const cityListMi = ["הרצליה","תל אביב","תל-אביב","רמת גן","רמת-גן","רעננה","כפר סבא","נתניה","חיפה","ירושלים","ראשון לציון","חולון","בת ים","פתח תקווה","גבעתיים","אשדוד","אשקלון","באר שבע","מודיעין","רחובות","הוד השרון","רמת השרון"];
+        let cityHit = "";
+        for (const c of cityListMi) { if (lastUserTextForIntel.includes(c)) { cityHit = c; break; } }
+        const streetHit = lastUserTextForIntel.match(/(?:רחוב|רח'|ברחוב)\s+([\u0590-\u05FFA-Za-z'״"\-]+(?:\s+[\u0590-\u05FFA-Za-z'״"\-]+){0,2})/)?.[1]?.trim() ?? "";
+        const anchorText = [streetHit, cityHit].filter(Boolean).join(" ") || lastUserTextForIntel.slice(0, 120);
+        const q = `עסקאות נדל"ן אחרונות מחירים ${anchorText} site:nadlan.gov.il OR site:madlan.co.il OR site:yad2.co.il`;
+        marketIntelResults.query = q;
+        try {
+          const fcRes = await fetch("https://api.firecrawl.dev/v1/search", {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Authorization: `Bearer ${FIRECRAWL_API_KEY}` },
+            body: JSON.stringify({ query: q, limit: 6 }),
+          });
+          if (fcRes.ok) {
+            const fj = await fcRes.json();
+            const items = Array.isArray(fj?.data) ? fj.data : Array.isArray(fj?.results) ? fj.results : [];
+            marketIntelResults.sources = items.slice(0, 6).map((it: any) => ({
+              title: String(it.title ?? it.url ?? "").slice(0, 200),
+              url: String(it.url ?? ""),
+              snippet: String(it.description ?? it.snippet ?? it.markdown ?? "").replace(/\s+/g, " ").slice(0, 400),
+            })).filter((s: any) => s.url);
+          } else {
+            console.warn("[market_intel] firecrawl non-ok", fcRes.status);
+          }
+        } catch (e) {
+          console.warn("[market_intel] firecrawl failed", (e as Error).message);
+        }
+        if (marketIntelResults.sources.length) {
+          marketIntelBlock = [
+            `MARKET INTEL — LIVE WEB RESEARCH (${marketIntelResults.sources.length} מקורות עבור "${anchorText}"):`,
+            ...marketIntelResults.sources.map((s, i) => `[${i + 1}] ${s.title}\n    ${s.url}\n    ${s.snippet}`),
+            "",
+            "MARKET INTEL DIRECTIVE:",
+            "- סכם בקצרה (3-5 שורות) עסקאות סגורות אחרונות, טווח מחירים, ומגמת מחירים לאזור/כתובת המבוקשים.",
+            "- ציין מספרים ספציפיים כשהם מופיעים במקורות (₪/מ\"ר, שינוי YoY, מספר עסקאות).",
+            "- אם המידע חלקי — אמור זאת בכנות, לא להמציא.",
+            "- סמן מקורות בסוגריים מרובעים [1], [2]... שיתאימו לרשימה למעלה; ה-UI מרנדר את הקישורים.",
+          ].join("\n");
+        }
+      }
+    } catch (e) {
+      console.warn("[market_intel] outer failure", (e as Error).message);
+    }
+
+
 
     // ───────────────────────────────────────────────────────────────────────
     // PROPERTY ANCHOR EXTRACTION (HARD GROUNDING)
@@ -842,7 +912,7 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
 
 
     const systemPrompt = (systemRulesBlock ? systemRulesBlock + "\n\n" : "") + (isInternalDashboard
-      ? MASTER_AGENT_PROMPT + (webtivBlock ? "\n\n" + webtivBlock : "")
+      ? MASTER_AGENT_PROMPT + (webtivBlock ? "\n\n" + webtivBlock : "") + (marketIntelBlock ? "\n\n" + marketIntelBlock : "")
       : SCHEMA_CONTEXT
           .replace("{{CAMPAIGN_CONTEXT}}", campaignContext)
           .replace("{{KB_CONTEXT}}", kbContext)
@@ -853,7 +923,9 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
           + "\n\n" + compliance
           + (matchingBlock ? "\n\n" + matchingBlock : "")
           + (webtivBlock ? "\n\n" + webtivBlock : "")
+          + (marketIntelBlock ? "\n\n" + marketIntelBlock : "")
           + (propertyAnchorBlock ? "\n\n" + propertyAnchorBlock : "")
+
           + "\n\n" + noFallbackBlock
           + "\n\n[GROUNDING + ADAPTIVE CROSS-SELL DIRECTIVE]\n"
           + "1. BASELINE GROUNDING: Anchor the conversation on the specific property the lead asked about. Use the PROPERTY ANCHOR block as ground truth — never say you need to 'check the system'. Answer their direct questions about THIS property first, using the workspace KB and the listings block above. Never invent attributes that aren't in the anchor, KB, or listings table.\n"
@@ -1086,7 +1158,7 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
         content: rawContent,
         escalation,
         research_sources: researchSources,
-        webtiv_results: webtivResults,
+        webtiv_results: webtivResults, market_intel: marketIntelResults,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -1095,7 +1167,7 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
     if (parsed.type === "text") {
       // Fact-check the AI's draft against verified listings.
       const fact_violations = factCheckDraft(String(parsed.content || ""), listingFacts);
-      return new Response(JSON.stringify({ ...parsed, sources: kbSources, research_sources: researchSources, escalation, fact_violations, webtiv_results: webtivResults }), {
+      return new Response(JSON.stringify({ ...parsed, sources: kbSources, research_sources: researchSources, escalation, fact_violations, webtiv_results: webtivResults, market_intel: marketIntelResults }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -1143,7 +1215,7 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
         explanation: parsed.explanation || "",
         sources: kbSources,
         escalation,
-        webtiv_results: webtivResults,
+        webtiv_results: webtivResults, market_intel: marketIntelResults,
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -1153,7 +1225,7 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
       type: "text",
       content: rawContent,
       escalation,
-      webtiv_results: webtivResults,
+      webtiv_results: webtivResults, market_intel: marketIntelResults,
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
