@@ -353,7 +353,9 @@ export default function PropertyDetail() {
   }
 
   const isRent = property.price < 50_000;
-  const photos = editMode && form ? form.photos : visiblePropertyPhotos;
+  // Hard-override: render straight from listing.media_photos (dbPhotos). No filtering,
+  // no "broken" gating, no live-image fallback. If the DB has photos, they render.
+  const photos = editMode && form ? form.photos : dbPhotos;
   const main = photos[activePhoto];
 
   const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
