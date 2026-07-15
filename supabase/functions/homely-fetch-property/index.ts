@@ -981,9 +981,13 @@ async function mirrorOne(
     const path = `listing/${listingId}/${safeVersion}/${key}.${ext}`;
     const bytes = new Uint8Array(await resp.arrayBuffer());
     if (expected === "image" && !lowerContentType.startsWith("image/") && !looksLikeImageBytes(bytes)) {
-      return null;
+      console.error("[mirrorOne] not-image bytes", lowerContentType, originalUrl.slice(0, 160));
+      return originalUrl;
     }
-    if (expected === "image" && bytes.byteLength < 64) return null;
+    if (expected === "image" && bytes.byteLength < 64) {
+      console.error("[mirrorOne] image too small", bytes.byteLength, originalUrl.slice(0, 160));
+      return originalUrl;
+    }
     // Upload (idempotent — upsert)
     const { error: upErr } = await admin.storage
       .from("homely-media")
@@ -1002,8 +1006,8 @@ async function mirrorOne(
     }
     return signed.signedUrl;
   } catch (e) {
-    console.error("[mirrorOne] err", (e as Error).message, originalUrl.slice(0, 120));
-    return null;
+    console.error("[mirrorOne] err", (e as Error).message, originalUrl.slice(0, 160));
+    return expected === "image" ? originalUrl : null;
   }
 }
 
