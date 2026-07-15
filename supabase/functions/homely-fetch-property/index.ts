@@ -960,10 +960,16 @@ async function mirrorOne(
     } finally {
       clearTimeout(t);
     }
-    if (!resp.ok) return null;
+    if (!resp.ok) {
+      console.error("[mirrorOne] fetch !ok", resp.status, originalUrl.slice(0, 160));
+      return expected === "image" ? originalUrl : null;
+    }
     const contentType = resp.headers.get("content-type") || "application/octet-stream";
     const lowerContentType = contentType.toLowerCase();
-    if (/text\/html|application\/json|text\/plain/i.test(lowerContentType)) return null;
+    if (/text\/html|application\/json|text\/plain/i.test(lowerContentType)) {
+      console.error("[mirrorOne] non-media content-type", lowerContentType, originalUrl.slice(0, 160));
+      return expected === "image" ? originalUrl : null;
+    }
     const ext = extFromUrlOrType(originalUrl, contentType);
     // Versioned path: listing/{id}/{versionTag}/{sha1(url)}.{ext}. Bumping
     // the version tag (listing.updated_at ms) invalidates every cached
