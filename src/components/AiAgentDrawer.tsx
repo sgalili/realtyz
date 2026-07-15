@@ -570,6 +570,55 @@ export default function AiAgentDrawer() {
                   </div>
                 )}
 
+                {msg.role === 'assistant' && msg.webtiv_results && msg.webtiv_results.length > 0 && (
+                  <div className="mt-3 pt-2 border-t border-border/30">
+                    <p className="text-[10px] text-muted-foreground mb-2 flex items-center gap-1">
+                      <Globe className="h-2.5 w-2.5" />
+                      תוצאות חיות מהשוק (Homely / Webtiv2):
+                    </p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {msg.webtiv_results.slice(0, 6).map((r) => {
+                        const priceStr = r.price
+                          ? `₪${r.price.toLocaleString('he-IL')}${r.transaction_type === 'rent' ? '/חודש' : ''}`
+                          : '—';
+                        const Card = (
+                          <div className="rounded-lg border border-border/60 bg-background overflow-hidden">
+                            {r.photo ? (
+                              <img
+                                src={r.photo}
+                                alt={r.title}
+                                loading="lazy"
+                                className="w-full h-20 object-cover"
+                                onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                              />
+                            ) : (
+                              <div className="w-full h-20 bg-muted flex items-center justify-center text-[10px] text-muted-foreground">
+                                אין תמונה
+                              </div>
+                            )}
+                            <div className="p-1.5 space-y-0.5">
+                              <p className="text-[10px] font-semibold leading-tight line-clamp-2">{r.title}</p>
+                              <p className="text-[10px] text-primary font-bold tabular-nums">{priceStr}</p>
+                              <p className="text-[9px] text-muted-foreground">
+                                {[r.rooms ? `${r.rooms} חד׳` : '', r.sqm ? `${r.sqm} מ״ר` : '', r.city].filter(Boolean).join(' · ')}
+                              </p>
+                            </div>
+                          </div>
+                        );
+                        return r.source_url ? (
+                          <a key={r.id} href={r.source_url} target="_blank" rel="noreferrer" className="block hover:opacity-90 transition-opacity">
+                            {Card}
+                          </a>
+                        ) : (
+                          <div key={r.id}>{Card}</div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
+
+
+
                 {msg.role === 'user' && msg.attachments && msg.attachments.length > 0 && (
                   <div className="mt-2 flex flex-wrap gap-1">
                     {msg.attachments.map((a, ai) => (
