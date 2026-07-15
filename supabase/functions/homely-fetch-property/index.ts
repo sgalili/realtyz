@@ -1750,144 +1750,102 @@ Deno.serve(async (req) => {
         if (richHash) {
           try {
             const rich = await fetchRichPropertyDetail(richHash, homelyId, richRecord);
-            richRecord = rich.record ?? richRecord;
-            richEndpoint = rich.endpoint;
-          } catch (e) {
-            console.warn(`[importOutJson] rich detail skipped for ${homelyId}`, (e as Error).message);
-          }
-        }
-        const richMedia = collectMedia(richRecord);
-        const rawSourceOrigin = pickSourceOrigin(richRecord) || p?.source_origin || null;
-        const sourceIsYad2 =
-          rawSourceOrigin === "yad2" || hasYad2Signal(richRecord, p?.raw, p?.source_url, rawSourceOrigin);
-        const shouldProbeYad2 = sourceIsYad2 || (!p?.source_url && p?.transaction_type === "sale");
-        const yad2Enrichment = shouldProbeYad2 ? await enrichFromYad2(admin, workspaceOwnerId, p) : null;
-        const richSourceOrigin = sourceIsYad2 || yad2Enrichment?.exact ? "yad2" : rawSourceOrigin;
-        const balcony = pickBalcony(richRecord) ?? booleanFeatureFrom(p?.balcony);
-        const campaignPhotos =
-          richMedia.photos.length || (Array.isArray(p?.photos) && p.photos.length) || p?.photo
-            ? []
-            : await campaignMediaFallback(admin, workspaceOwnerId, p);
-        let rawPhotos = richMedia.photos.length
-          ? richMedia.photos
-          : Array.isArray(p?.photos) && p.photos.length
-            ? p.photos
-            : p?.photo
-              ? [p.photo]
-              : yad2Enrichment?.photos?.length
-                ? yad2Enrichment.photos
-                : campaignPhotos;
+        richRecord = rich.record ?? richRecord;
+        richEndpoint = rich.endpoint;
+      } catch (e) {
+        console.warn(`[importOutJson] rich detail skipped for ${homelyId}`, (e as Error).message);
+      }
+    }
 
-        if (rawPhotos.length === 0 && richSourceUrl) {
-          const scraped = await fetchVerifiedMedia(richSourceUrl);
-          if (scraped.length > 0) rawPhotos = scraped;
-        }
-        const rawDocuments = richMedia.documents.length
-          ? richMedia.documents
-          : Array.isArray(p?.documents)
-            ? p.documents
-            : [];
-        const richSourceUrl =
-          pickSourceUrl(richRecord) ||
-          yad2Enrichment?.url ||
-          (p?.source_url ? String(p.source_url) : "") ||
-          (richSourceOrigin === "yad2" ? buildYad2FallbackUrl(p?.city, p?.address, p?.transaction_type, homelyId) : "");
-        const features = Array.from(
-          new Set([
-            ...(Array.isArray(p?.features) ? p.features.filter((f: any) => typeof f === "string") : []),
-            ...(balcony === true ? ["מרפסת"] : []),
-          ]),
-        );
-        const row: Record<string, unknown> = {
-          user_id: workspaceOwnerId,
-          slug: `${slugify(String(p?.title || p?.address || "homely"))}-${homelyId}`,
-          source: "homely",
-          source_url: richSourceUrl || null,
-          external_id: homelyId,
-          property_title: String(p?.title || p?.address || `נכס ${homelyId}`),
-          description: String(p?.description || ""),
-          asking_price: Number(p?.price) || 0,
-          city: p?.city ? String(p.city) : null,
-          address: p?.address ? String(p.address) : null,
-          rooms: Number(p?.rooms) || null,
-          sqm: Number.isFinite(Number(p?.sqm)) ? Number(p.sqm) : null,
-          floor: Number.isFinite(Number(p?.floor)) ? Number(p.floor) : null,
-          status: "live",
-          deal_type: String(p?.transaction_type || "sale").toLowerCase() === "rent" ? "rent" : "sale",
-          is_published: true,
-          office_notes: p?.office_notes ? String(p.office_notes) : null,
-          features,
-          media_photos: rawPhotos,
-          media_documents: rawDocuments,
-          source_metadata: {
-            homely_id: homelyId,
-            property_type: p?.property_type || null,
-            photos: rawPhotos,
-            documents: rawDocuments,
-            media_count: rawPhotos.length + rawDocuments.length,
-            office_notes: p?.office_notes || null,
-            agent: p?.agent || null,
-            source_origin: richSourceOrigin,
-            yad2_search_url: !yad2Enrichment?.exact && yad2Enrichment?.url ? yad2Enrichment.url : null,
-            yad2_exact_match: yad2Enrichment?.exact ?? null,
-            source_url: richSourceUrl || null,
-            source_updated_at: p?.source_updated_at || null,
-            balcony,
-            elevator: p?.elevator || null,
-            transaction_type: p?.transaction_type || null,
-            homely_raw: compactRaw(richRecord),
-            detail_endpoint: richEndpoint,
-            synced_at: new Date().toISOString(),
-          },
-        };
-        if (p?.source_updated_at) row.updated_at = p.source_updated_at;
-        let upserted: any = null;
-        const { data: existingByExternal } = await admin
-          .from("listings")
-          .select("id")
-          .eq("source", "homely")
-          .eq("external_id", homelyId)
-          .maybeSingle();
-        if (existingByExternal?.id) {
-          const { data: updatedExisting, error } = await admin
-            .from("listings")
-            .update(row as any)
-            .eq("id", existingByExternal.id)
-            .select("id, external_id")
-            .single();
-          if (error) throw new Error(`listings#${homelyId}: ${error.message}`);
-          upserted = updatedExisting;
-        } else {
-          const { data: inserted, error } = await admin
-            .from("listings")
-            .insert(row as any)
-            .select("id, external_id")
-            .single();
-          if (error && richSourceUrl) {
-            const { data: existingByUrl } = await admin
-              .from("listings")
-              .select("id")
-              .eq("source_url", richSourceUrl)
-              .maybeSingle();
-            if (existingByUrl?.id) {
-              const { data: updatedByUrl, error: updateByUrlErr } = await admin
-                .from("listings")
-                .update(row as any)
-                .eq("id", existingByUrl.id)
-                .select("id, external_id")
-                .single();
-              if (updateByUrlErr) throw new Error(`listings#${homelyId}: ${updateByUrlErr.message}`);
-              upserted = updatedByUrl;
-            } else {
-              throw new Error(`listings#${homelyId}: ${error.message}`);
-            }
-          } else if (error) {
-            throw new Error(`listings#${homelyId}: ${error.message}`);
-          } else {
-            upserted = inserted;
-          }
-        }
-        propsCount++;
+    const richMedia = collectMedia(richRecord);
+    const rawSourceOrigin = pickSourceOrigin(richRecord) || p?.source_origin || null;
+    const sourceIsYad2 =
+      rawSourceOrigin === "yad2" || hasYad2Signal(richRecord, p?.raw, p?.source_url, rawSourceOrigin);
+    const shouldProbeYad2 = sourceIsYad2 || (!p?.source_url && p?.transaction_type === "sale");
+    const yad2Enrichment = shouldProbeYad2 ? await enrichFromYad2(admin, workspaceOwnerId, p) : null;
+    const richSourceOrigin = sourceIsYad2 || yad2Enrichment?.exact ? "yad2" : rawSourceOrigin;
+    const balcony = pickBalcony(richRecord) ?? booleanFeatureFrom(p?.balcony);
+    const campaignPhotos =
+      richMedia.photos.length || (Array.isArray(p?.photos) && p.photos.length) || p?.photo
+        ? []
+        : await campaignMediaFallback(admin, workspaceOwnerId, p);
+    
+    const richSourceUrl =
+      pickSourceUrl(richRecord) ||
+      yad2Enrichment?.url ||
+      (p?.source_url ? String(p.source_url) : "") ||
+      (richSourceOrigin === "yad2" ? buildYad2FallbackUrl(p?.city, p?.address, p?.transaction_type, homelyId) : "");
+
+    let rawPhotos = richMedia.photos.length
+      ? richMedia.photos
+      : Array.isArray(p?.photos) && p.photos.length
+        ? p.photos
+        : p?.photo
+          ? [p.photo]
+          : yad2Enrichment?.photos?.length
+            ? yad2Enrichment.photos
+            : campaignPhotos;
+
+    if ((rawPhotos.length === 0 || rawPhotos.some(url => url.includes("placeholder"))) && richSourceUrl) {
+      const scraped = await fetchVerifiedMedia(richSourceUrl);
+      if (scraped.length > 0) rawPhotos = scraped;
+    }
+
+    const rawDocuments = richMedia.documents.length
+      ? richMedia.documents
+      : Array.isArray(p?.documents)
+        ? p.documents
+        : [];
+    
+    const features = Array.from(
+      new Set([
+        ...(Array.isArray(p?.features) ? p.features.filter((f: any) => typeof f === "string") : []),
+        ...(balcony === true ? ["מרפסת"] : []),
+      ]),
+    );
+    const row: Record<string, unknown> = {
+      user_id: workspaceOwnerId,
+      slug: `${slugify(String(p?.title || p?.address || "homely"))}-${homelyId}`,
+      source: "homely",
+      source_url: richSourceUrl || null,
+      external_id: homelyId,
+      property_title: String(p?.title || p?.address || `נכס ${homelyId}`),
+      description: String(p?.description || ""),
+      asking_price: Number(p?.price) || 0,
+      city: p?.city ? String(p.city) : null,
+      address: p?.address ? String(p.address) : null,
+      rooms: Number(p?.rooms) || null,
+      sqm: Number.isFinite(Number(p?.sqm)) ? Number(p.sqm) : null,
+      floor: Number.isFinite(Number(p?.floor)) ? Number(p.floor) : null,
+      status: "live",
+      deal_type: String(p?.transaction_type || "sale").toLowerCase() === "rent" ? "rent" : "sale",
+      is_published: true,
+      office_notes: p?.office_notes ? String(p.office_notes) : null,
+      features,
+      media_photos: rawPhotos,
+      media_documents: rawDocuments,
+      source_metadata: {
+        homely_id: homelyId,
+        property_type: p?.property_type || null,
+        photos: rawPhotos,
+        documents: rawDocuments,
+        media_count: rawPhotos.length + rawDocuments.length,
+        office_notes: p?.office_notes || null,
+        agent: p?.agent || null,
+        source_origin: richSourceOrigin,
+        yad2_search_url: !yad2Enrichment?.exact && yad2Enrichment?.url ? yad2Enrichment.url : null,
+        yad2_exact_match: yad2Enrichment?.exact ?? null,
+        source_url: richSourceUrl || null,
+        source_updated_at: p?.source_updated_at || null,
+        balcony,
+        elevator: p?.elevator || null,
+        transaction_type: p?.transaction_type || null,
+        homely_raw: compactRaw(richRecord),
+        detail_endpoint: richEndpoint,
+        synced_at: new Date().toISOString(),
+      },
+    };
+        
 
         // Mirror media into homely-media bucket so images render instantly
         // and Homely's CDN is only hit once per file. Every import writes to
