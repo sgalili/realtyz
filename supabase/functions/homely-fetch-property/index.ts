@@ -2413,8 +2413,8 @@ Deno.serve(async (req) => {
       listing_id,
       serial,
       endpoint: url,
-      photo_count: cachedPhotos.length,
-      document_count: cachedDocs.length,
+      photo_count: photosForDb.length,
+      document_count: docsForDb.length,
       raw_photo_count: finalRawPhotos.length,
       raw_document_count: rawDocs.length,
     });
