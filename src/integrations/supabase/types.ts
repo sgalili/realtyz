@@ -2859,6 +2859,7 @@ export type Database = {
           features: Json
           floor: number | null
           id: string
+          image_url: string | null
           is_featured: boolean
           is_investment_opportunity: boolean
           is_promoted: boolean
@@ -2900,6 +2901,7 @@ export type Database = {
           features?: Json
           floor?: number | null
           id?: string
+          image_url?: string | null
           is_featured?: boolean
           is_investment_opportunity?: boolean
           is_promoted?: boolean
@@ -2941,6 +2943,7 @@ export type Database = {
           features?: Json
           floor?: number | null
           id?: string
+          image_url?: string | null
           is_featured?: boolean
           is_investment_opportunity?: boolean
           is_promoted?: boolean
