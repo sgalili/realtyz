@@ -1141,8 +1141,23 @@ const LeadCRM = () => {
       };
       if (newVoter.instagram_handle.trim()) insertData.instagram_handle = newVoter.instagram_handle.trim();
       if (newVoter.telegram_username.trim()) insertData.telegram_username = newVoter.telegram_username.trim();
-      const { error } = await supabase.from('leads').insert(insertData as any);
+      // Instant write: return the full row immediately so the UI reflects it
+      // without waiting for background sync / realtime.
+      const { data: inserted, error } = await supabase
+        .from('leads')
+        .insert(insertData as any)
+        .select('*')
+        .single();
       if (error) throw error;
+      // Prime the infinite list cache so the new lead appears instantly.
+      try {
+        queryClient.setQueriesData({ queryKey: ['leads-infinite'] }, (old: any) => {
+          if (!old?.pages?.length) return old;
+          const pages = [...old.pages];
+          pages[0] = { ...pages[0], data: [inserted, ...(pages[0]?.data ?? [])] };
+          return { ...old, pages };
+        });
+      } catch { /* non-fatal cache prime */ }
       queryClient.invalidateQueries({ queryKey: ['leads-infinite'] });
       queryClient.invalidateQueries({ queryKey: ['lead-filter-options'] });
       queryClient.invalidateQueries({ queryKey: ['leads-total'] });
@@ -1151,6 +1166,7 @@ const LeadCRM = () => {
       supabase.functions.invoke('fetch-wa-avatars', { body: { limit: 5 } }).catch(() => {});
       setAddVoterOpen(false);
       setNewVoter({ full_name: '', phone_number: '', city: '', identity_number: '', instagram_handle: '', telegram_username: '' });
+
     } catch (err: any) {
       const msg = String(err?.message || '');
       if (msg.includes('TRIAL_RECORD_LIMIT')) {
