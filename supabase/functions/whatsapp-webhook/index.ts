@@ -869,8 +869,9 @@ async function handleLeadInboxInbound(
         lead_id: lead.id,
         lead_name: lead.full_name,
         mode: "deal_room_reply",
-        context: `Inbound WhatsApp reply from ${lead.full_name ?? "the lead"}: ${inboundText}`,
+        context: `Inbound WhatsApp reply from ${lead.full_name ?? "the lead"}: ${inboundText}${agentCommand ? " [AGENT_COMMAND: keep reply concise, WhatsApp-friendly — bullets + emojis]" : ""}`,
         messages: aiMessages,
+        enable_research: agentCommand ? true : undefined,
       }),
     });
     const aiJson = await aiRes.json().catch(() => ({}));
@@ -878,10 +879,18 @@ async function handleLeadInboxInbound(
       console.warn(`ai-agent failed ${aiRes.status}:`, JSON.stringify(aiJson).slice(0, 300));
     } else {
       reply = sanitizeAiReply(String(aiJson?.content ?? aiJson?.message ?? ""));
+      // Append structured tool results in WhatsApp-friendly form so the lead
+      // sees the actual property cards / market intel sources with the correct
+      // images and links, not just narrative prose.
+      const webtivTail = formatWebtivForWhatsApp(aiJson?.webtiv_results);
+      const intelTail = formatMarketIntelForWhatsApp(aiJson?.market_intel);
+      if (webtivTail) reply = (reply || "מצאתי כמה אופציות מתאימות:") + webtivTail;
+      if (intelTail) reply = (reply || "הנה מה שמצאתי על השוק באזור:") + intelTail;
     }
   } catch (e) {
     console.warn("ai-agent call threw:", e instanceof Error ? e.message : e);
   }
+
 
   if (!reply) return { ok: true, lead_id: lead.id, stored: true, auto_reply: "empty_ai_reply" };
 
