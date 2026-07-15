@@ -327,7 +327,12 @@ function joinName(it: any): string {
 function collectMedia(it: any): { photos: string[]; documents: string[] } {
   const photos = new Set<string>();
   const documents = new Set<string>();
-  const toUrl = (v: any): string | null => {
+  const isImg = (u: string) => /\.(jpe?g|png|gif|webp|bmp|heic)(\?|#|$)/i.test(u);
+  const isDoc = (u: string) => /\.(pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i.test(u);
+  const photoKey = (k: string) => /(pic|photo|image|img|picture|gallery|media|תמונה|תמונות)/i.test(k);
+  const docKey = (k: string) => /(file|doc|document|attach|מסמך|מסמכים|קובץ)/i.test(k);
+  const sourceLinkKey = (k: string) => /(source|origin|url|link|href|yad2|madlan|מקור|קישור)/i.test(k);
+  const toUrl = (v: any, key = ""): string | null => {
     if (typeof v !== "string") return null;
     const s = v.trim().replace(/\\\//g, "/");
     const embedded = s.match(/https?:\/\/[^\s"'<>]+/i)?.[0];
@@ -335,18 +340,19 @@ function collectMedia(it: any): { photos: string[]; documents: string[] } {
     if (/^https?:\/\//i.test(s)) return s;
     if (/^www\./i.test(s)) return `https://${s}`;
     if (/^\/\//.test(s)) return `https:${s}`;
-    if (/^\//.test(s) && /\.(jpe?g|png|gif|webp|bmp|heic|pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i.test(s))
+    if (
+      /^\//.test(s) &&
+      (/\.(jpe?g|png|gif|webp|bmp|heic|pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i.test(s) ||
+        photoKey(key) ||
+        docKey(key))
+    )
       return `${WEBTIV_BASE}${s}`;
     return null;
   };
-  const isImg = (u: string) => /\.(jpe?g|png|gif|webp|bmp|heic)(\?|#|$)/i.test(u);
-  const isDoc = (u: string) => /\.(pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i.test(u);
-  const photoKey = (k: string) => /(pic|photo|image|img|picture|gallery|media|תמונה|תמונות)/i.test(k);
-  const docKey = (k: string) => /(file|doc|document|attach|מסמך|מסמכים|קובץ)/i.test(k);
-  const sourceLinkKey = (k: string) => /(source|origin|url|link|href|yad2|madlan|מקור|קישור)/i.test(k);
   const push = (v: any, key = "") => {
-    const url = toUrl(v);
+    const url = toUrl(v, key);
     if (!url) return;
+    if (/placeholder|missing|no-?image|undefined|null/i.test(url)) return;
     if (isImg(url) || photoKey(key)) photos.add(url);
     else if (isDoc(url) || docKey(key)) documents.add(url);
     else if (!sourceLinkKey(key)) photos.add(url); // Homely CDN sometimes omits extensions
