@@ -2269,7 +2269,16 @@ Deno.serve(async (req) => {
           address: mapped.address || listing.address,
           raw: richest,
         });
-    const finalRawPhotos = rawPhotos.length
+    // Replace the old finalRawPhotos line with this:
+    let finalRawPhotos = rawPhotos.length 
+      ? rawPhotos 
+      : (yad2Enrichment?.photos?.length ? yad2Enrichment.photos : campaignPhotos);
+
+    // Apply the scraper fallback if still empty
+    if (finalRawPhotos.length === 0 && sourceUrl) {
+      const scraped = await fetchVerifiedMedia(sourceUrl);
+      if (scraped.length > 0) finalRawPhotos = scraped;
+    }
       ? rawPhotos
       : yad2Enrichment?.photos?.length
         ? yad2Enrichment.photos
