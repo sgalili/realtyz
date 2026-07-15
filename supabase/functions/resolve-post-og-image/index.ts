@@ -136,6 +136,11 @@ async function mirrorToStorage(imageUrl: string, key: string): Promise<string | 
   }
 }
 
+async function sha1Short(input: string): Promise<string> {
+  const buf = await crypto.subtle.digest("SHA-1", new TextEncoder().encode(input));
+  return Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, "0")).join("").slice(0, 12);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   try {
@@ -143,6 +148,17 @@ Deno.serve(async (req) => {
     const campaignLogId: string | null = body?.campaign_log_id ?? null;
     const postUrl: string | null = body?.post_url ?? null;
     const force: boolean = body?.force === true;
+    // Cache-busting inputs: when a listing/post has been edited, the caller
+    // should pass `property_id` + `last_modified_at` (ISO or ms). We fold
+    // them into `unique_hash` so the storage key is guaranteed to differ
+    // whenever the underlying listing content changes — a stale mirrored
+    // image can never be served after an edit.
+    const propertyId: string | null = body?.property_id ?? null;
+    const lastModifiedAt: string | number | null = body?.last_modified_at ?? null;
+    const explicitHash: string | null = body?.unique_hash ?? null;
+    const uniqueHash = explicitHash
+      || (propertyId ? await sha1Short(`${propertyId}:${String(lastModifiedAt ?? "")}`) : "v0");
+
     if (!postUrl || typeof postUrl !== "string") {
       return new Response(JSON.stringify({ error: "post_url required" }), {
         status: 400,
@@ -154,7 +170,9 @@ Deno.serve(async (req) => {
 
     // Fast path: if we already cached a mirrored URL for this post_url in
     // campaign_logs, return it without hitting Firecrawl again — unless
-    // `force: true` was passed to bypass the cache.
+    // `force: true` was passed OR the caller's `unique_hash` no longer
+    // matches the one that was stored with the cached URLs. Any mismatch
+    // (e.g. listing was re-imported) forces a fresh scrape + mirror.
     if (campaignLogId && !force) {
 
       const { data: existing } = await admin
@@ -162,9 +180,14 @@ Deno.serve(async (req) => {
         .select("provider_response")
         .eq("id", campaignLogId)
         .maybeSingle();
-      const existingMedia = (existing as any)?.provider_response?.media_urls;
-      if (Array.isArray(existingMedia) && existingMedia.length > 0) {
-        return new Response(JSON.stringify({ ok: true, cached: true, media_urls: existingMedia }), {
+      const existingPr = (existing as any)?.provider_response ?? {};
+      const existingMedia = existingPr?.media_urls;
+      const existingHash = existingPr?.og_image_unique_hash;
+      const hashStillFresh = !explicitHash && !propertyId
+        ? true
+        : existingHash === uniqueHash;
+      if (Array.isArray(existingMedia) && existingMedia.length > 0 && hashStillFresh) {
+        return new Response(JSON.stringify({ ok: true, cached: true, media_urls: existingMedia, unique_hash: existingHash ?? null }), {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
