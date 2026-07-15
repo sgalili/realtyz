@@ -839,6 +839,9 @@ function mapStreamProperty(it: any, idx: number) {
     source_updated_at: sourceUpdatedAt,
     balcony,
     elevator,
+    owner_full_name: owner || "",
+    owner_phone: firstPhone(it) || "",
+    owner_email: String(it?.email ?? "").trim(),
     raw: it,
   };
 }
