@@ -182,6 +182,7 @@ const App = () => (
               <Route path="/properties" element={<ProtectedRoute allowGuestDemo><Properties /></ProtectedRoute>} />
               <Route path="/properties-hub" element={<ProtectedRoute allowGuestDemo><PropertiesHub /></ProtectedRoute>} />
               <Route path="/properties/:id" element={<ProtectedRoute allowGuestDemo><PropertyDetail /></ProtectedRoute>} />
+              <Route path="/crm/profile/:id" element={<ProtectedRoute><CrmProfile /></ProtectedRoute>} />
 
               <Route path="/automations" element={<ProtectedRoute allowGuestDemo><AutomationStudioPage /></ProtectedRoute>} />
               <Route path="/insights" element={<ProtectedRoute allowGuestDemo><PerformanceInsights /></ProtectedRoute>} />
