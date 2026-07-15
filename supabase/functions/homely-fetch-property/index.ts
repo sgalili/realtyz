@@ -979,43 +979,106 @@ Deno.serve(async (req) => {
     const listing_id = (body as any)?.listing_id;
 
     if (action === "cleanBrokenImages") {
+      // SAFETY: transient CDN blips (5xx / timeouts / DNS) must NOT trigger a
+      // photo purge. We only remove a URL when the origin explicitly returns
+      // 404 / 410 AND the parent listing is confirmed deleted or inactive in
+      // Homely (status='deleted' | 'inactive', OR the serial is missing from
+      // the broker's active feed). Anything else → keep original URLs.
+      const forceUnsafe = (body as any)?.force === true; // super-admin override
       const targetListingId = (body as any)?.listing_id;
       const baseQuery = admin
         .from("listings")
-        .select("id, media_photos, media_documents, source_metadata")
+        .select("id, status, external_id, media_photos, media_documents, source_metadata")
         .eq("user_id", workspaceOwnerId);
       const { data: listingRows, error: listErr } = targetListingId
         ? await baseQuery.eq("id", targetListingId)
         : await baseQuery.or("source.eq.homely,source.eq.webtiv").limit(1000);
       if (listErr) return json({ ok: false, error: listErr.message }, 200);
-      let scanned = 0;
-      let removed = 0;
-      let updated = 0;
+
+      // Fetch broker's active Homely feed once so we can gate the cleanup.
+      let activeSerials = new Set<string>();
+      let feedFetched = false;
+      try {
+        const feedUrl = await configuredHomelyFeedUrl(admin, workspaceOwnerId);
+        const SELLERS_GUID = Deno.env.get("HOMELY_SELLERS_GUID") || "32dc79a4-88ba-49a4-816e-f1fc43024c2f";
+        const r = await getJson(feedUrl || `${WEBTIV_BASE}/AutomaionJson/outJson.ashx?guid=${SELLERS_GUID}`);
+        if (r.status >= 200 && r.status < 300) {
+          feedFetched = true;
+          for (const it of asArray(r.data)) {
+            const sids = [it?.id, it?.Id, it?.nechesId, it?.NechesId, it?.sidur, it?.Sidur, it?.serial, it?.Serial, it?.propertyId, it?.PropertyId]
+              .filter((v: unknown) => v !== null && v !== undefined)
+              .map((v: unknown) => String(v));
+            for (const s of sids) activeSerials.add(s);
+          }
+        }
+      } catch (e) {
+        console.warn("[cleanBrokenImages] feed probe failed:", (e as Error).message);
+      }
+
+      async function isHardDeleted(url: string): Promise<boolean> {
+        try {
+          const ctl = new AbortController();
+          const t = setTimeout(() => ctl.abort(), 6000);
+          try {
+            const r = await fetch(proxied(url), { method: "HEAD", signal: ctl.signal });
+            // Only 404 / 410 count as "truly gone".
+            return r.status === 404 || r.status === 410;
+          } finally { clearTimeout(t); }
+        } catch { return false; }
+      }
+
+      let scanned = 0, removed = 0, updated = 0, skipped_transient = 0, skipped_active = 0;
       for (const row of listingRows ?? []) {
+        const rid = String((row as any).id);
         const meta = ((row as any).source_metadata && typeof (row as any).source_metadata === "object") ? (row as any).source_metadata : {};
+        const rowStatus = String((row as any).status ?? "").toLowerCase();
+        const serial = String((row as any).external_id ?? meta.serial ?? meta.sidur ?? "");
+
+        const listingConfirmedDead =
+          forceUnsafe
+          || rowStatus === "deleted"
+          || rowStatus === "inactive"
+          || rowStatus === "discarded"
+          || (feedFetched && serial !== "" && !activeSerials.has(serial));
+
         const candidates = Array.from(new Set([
           ...((Array.isArray((row as any).media_photos) ? (row as any).media_photos : []) as unknown[]),
           ...((Array.isArray(meta.photos) ? meta.photos : []) as unknown[]),
           ...((Array.isArray(meta.images) ? meta.images : []) as unknown[]),
         ].filter((u): u is string => typeof u === "string" && /^https?:\/\//i.test(u))));
         scanned += candidates.length;
-        const valid = await mirrorAll(admin, String((row as any).id), candidates, 80, "image");
-        removed += Math.max(0, candidates.length - valid.length);
+
+        if (!listingConfirmedDead) {
+          skipped_active++;
+          continue; // safety gate — listing is still live, leave photos alone
+        }
+
+        // Per-URL hard-delete check — never rely on mirror failure alone.
+        const keep: string[] = [];
+        for (const u of candidates) {
+          const dead = await isHardDeleted(u);
+          if (dead) { removed++; continue; }
+          keep.push(u);
+        }
+        // If we couldn't confirm ANY URL as 404/410, treat as transient and skip.
+        if (keep.length === candidates.length) { skipped_transient++; continue; }
+
         const docs = Array.isArray((row as any).media_documents) ? (row as any).media_documents : (Array.isArray(meta.documents) ? meta.documents : []);
         await admin.from("listings").update({
-          media_photos: valid,
+          media_photos: keep,
           source_metadata: {
             ...meta,
-            photos: valid,
-            images: valid,
+            photos: keep,
+            images: keep,
             documents: docs,
             broken_images_removed_at: new Date().toISOString(),
-            broken_images_removed_count: Math.max(0, candidates.length - valid.length),
+            broken_images_removed_count: Math.max(0, candidates.length - keep.length),
+            broken_images_removal_reason: forceUnsafe ? "force_admin" : (feedFetched && !activeSerials.has(serial) ? "not_in_active_feed" : `listing_status_${rowStatus}`),
           },
-        }).eq("id", (row as any).id).eq("user_id", workspaceOwnerId);
+        }).eq("id", rid).eq("user_id", workspaceOwnerId);
         updated++;
       }
-      return json({ ok: true, scanned, removed, updated });
+      return json({ ok: true, scanned, removed, updated, skipped_active, skipped_transient, feed_fetched: feedFetched });
     }
 
     // ---------- FLUSH mirrored media for one/many listings ----------
