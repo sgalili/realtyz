@@ -1,35 +1,34 @@
-## Root cause
+I found the actual failure: the importer is treating every text field in the Homely record as an image candidate because `collectMedia` is too broad. For listing `5517`, it converted owner name, phone, city, address, floor, dates, and description into fake URLs like `https://webtivapi.webtiv.co.il/050-8681107`, then all 24 candidates failed mirroring. The real fix is to stop inventing URLs from non-photo fields and rebuild media extraction around explicit image fields and verified endpoints.
 
-Edge function `send-message` (used for Messenger, Instagram, LinkedIn, Telegram, Email, etc.) fails on every send with:
+Plan:
 
-```
-DB insert error: PGRST204
-"Could not find the 'target_voter_id' column of 'approval_queue' in the schema cache"
-```
+1. Replace broad recursive media scraping with strict field-aware extraction
+   - Only accept values from explicit image/media keys, not arbitrary strings.
+   - Remove the dangerous fallback that turns any Hebrew/text value into a `webtivapi` URL.
+   - Add Hebrew/Webtiv aliases for likely real photo fields, but require URL/path/image-like structure.
 
-The `approval_queue` table was renamed as part of the voters→leads pivot: the column is now `target_lead_id`, but `supabase/functions/send-message/index.ts` still inserts `target_voter_id: lead_id`. The insert throws, the function returns 500, and the UI just shows "failed to send" with no clear reason.
+2. Add a Webtiv image URL resolver
+   - Support common Webtiv relative/ID-style image paths safely.
+   - Try known image endpoint patterns for a property serial only when the stream does not expose direct URLs.
+   - Verify each attempted URL returns real image bytes before saving anything.
 
-The Messenger DM path itself is fine — it never reaches any Messenger/Ayrshare API because it dies at the approval-queue insert first.
+3. Make source order deterministic and safe
+   - First: rich Homely/Webtiv detail API photo fields.
+   - Second: stream/API explicit photo fields.
+   - Third: public source API/page enrichment only when available.
+   - Never use generic page text or arbitrary object fields as images.
 
-## Fix
+4. Harden verification and mirroring
+   - Keep rejecting logos, icons, placeholders, social pixels, documents, and non-image content.
+   - Keep the 300x300/20KB validation, but record exact rejection reasons in listing metadata.
+   - Save only mirrored backend-storage URLs to `media_photos`.
+   - Never overwrite existing valid photos with an empty result.
 
-**1. `supabase/functions/send-message/index.ts`**
-- Replace `target_voter_id: lead_id` with `target_lead_id: lead_id` in the `approval_queue.insert(...)` payload (line 113).
-- Improve error surface: on the DB insert failure return the actual Postgres `code` + `message` (not just a generic string) so future schema drift is visible in the toast instead of a bare 500.
+5. Improve diagnostics for future imports
+   - Log the raw Homely keys and explicit media fields per property.
+   - Log candidate counts by source, mirror success count, and rejection reasons.
+   - Store `photos_candidates`, `photos_rejected`, and `media_photos_source` in metadata so each failed import is inspectable from the database.
 
-**2. Sanity sweep**
-- `rg` for any other `target_voter_id` / `voter_id` references in `supabase/functions/**` and `src/**` and fix any stragglers found (expect none based on the memory note that the rename was completed, but verify).
-
-**3. Verify**
-- Redeploy `send-message`.
-- From the Inbox, send a Messenger message to a lead that has `messenger_id` / `facebook_user_id`; confirm:
-  - No 500 in `edge-function-logs-send-message`.
-  - A row is queued in `approval_queue` with `target_lead_id` populated and `platform='messenger'`.
-  - Toast in the UI reports success (queued for approval).
-- Repeat quickly for `instagram` and `email` channels to confirm the same path works.
-
-## Notes / non-goals
-
-- No schema changes — the DB is already correct; only the edge function is stale.
-- No changes to the actual Messenger delivery path (Ayrshare / m.me invite links). Those only run after approval, so they were never reachable until this insert succeeds.
-- Not touching the WhatsApp path (goes through Green API, not this queue).
+6. Validate against the current broken listing
+   - Re-run/import or invoke the function for listing `5517` after changes.
+   - Confirm `media_photos` is no longer populated by fake text URLs and only contains verified property images or preserves previous images if none can be verified.
