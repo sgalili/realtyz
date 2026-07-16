@@ -1233,6 +1233,57 @@ function looksLikeImageBytes(bytes: Uint8Array): boolean {
   return /RIFF.{4}WEBP|ftyp(heic|heix|mif1|msf1)/i.test(ascii);
 }
 
+function readU16be(bytes: Uint8Array, offset: number): number {
+  return (bytes[offset] << 8) + bytes[offset + 1];
+}
+
+function readU32be(bytes: Uint8Array, offset: number): number {
+  return ((bytes[offset] << 24) >>> 0) + (bytes[offset + 1] << 16) + (bytes[offset + 2] << 8) + bytes[offset + 3];
+}
+
+function readU24le(bytes: Uint8Array, offset: number): number {
+  return bytes[offset] + (bytes[offset + 1] << 8) + (bytes[offset + 2] << 16);
+}
+
+function detectImageDimensions(bytes: Uint8Array, contentType = ""): { width: number; height: number; type: string } | null {
+  if (bytes.length < 32) return null;
+  const ct = contentType.toLowerCase();
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 && bytes.length >= 24) {
+    return { width: readU32be(bytes, 16), height: readU32be(bytes, 20), type: "png" };
+  }
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes.length >= 10) {
+    return { width: bytes[6] + (bytes[7] << 8), height: bytes[8] + (bytes[9] << 8), type: "gif" };
+  }
+  if (bytes[0] === 0xff && bytes[1] === 0xd8) {
+    let offset = 2;
+    while (offset + 9 < bytes.length) {
+      if (bytes[offset] !== 0xff) { offset++; continue; }
+      const marker = bytes[offset + 1];
+      const len = readU16be(bytes, offset + 2);
+      if (len < 2) break;
+      if ((marker >= 0xc0 && marker <= 0xc3) || (marker >= 0xc5 && marker <= 0xc7) || (marker >= 0xc9 && marker <= 0xcb) || (marker >= 0xcd && marker <= 0xcf)) {
+        return { width: readU16be(bytes, offset + 7), height: readU16be(bytes, offset + 5), type: "jpeg" };
+      }
+      offset += 2 + len;
+    }
+  }
+  const ascii = new TextDecoder().decode(bytes.slice(0, Math.min(bytes.length, 64)));
+  if (/^RIFF.{4}WEBP/s.test(ascii)) {
+    if (ascii.slice(12, 16) === "VP8 " && bytes.length >= 30) {
+      return { width: bytes[26] + (bytes[27] << 8), height: bytes[28] + (bytes[29] << 8), type: "webp" };
+    }
+    if (ascii.slice(12, 16) === "VP8L" && bytes.length >= 25) {
+      const b0 = bytes[21], b1 = bytes[22], b2 = bytes[23], b3 = bytes[24];
+      return { width: 1 + (((b1 & 0x3f) << 8) | b0), height: 1 + (((b3 & 0x0f) << 10) | (b2 << 2) | ((b1 & 0xc0) >> 6)), type: "webp" };
+    }
+    if (ascii.slice(12, 16) === "VP8X" && bytes.length >= 30) {
+      return { width: 1 + readU24le(bytes, 24), height: 1 + readU24le(bytes, 27), type: "webp" };
+    }
+  }
+  if (/image\//i.test(ct)) return { width: 0, height: 0, type: ct.replace(/^image\//, "") || "image" };
+  return null;
+}
+
 async function mirrorOne(
   admin: ReturnType<typeof createClient>,
   listingId: string,
@@ -1261,13 +1312,13 @@ async function mirrorOne(
     }
     if (!resp.ok) {
       console.error("[mirrorOne] fetch !ok", resp.status, originalUrl.slice(0, 160));
-      return expected === "image" ? originalUrl : null;
+      return null;
     }
     const contentType = resp.headers.get("content-type") || "application/octet-stream";
     const lowerContentType = contentType.toLowerCase();
     if (/text\/html|application\/json|text\/plain/i.test(lowerContentType)) {
       console.error("[mirrorOne] non-media content-type", lowerContentType, originalUrl.slice(0, 160));
-      return expected === "image" ? originalUrl : null;
+      return null;
     }
     const ext = extFromUrlOrType(originalUrl, contentType);
     // Versioned path: listing/{id}/{versionTag}/{sha1(url)}.{ext}. Bumping
@@ -1281,11 +1332,18 @@ async function mirrorOne(
     const bytes = new Uint8Array(await resp.arrayBuffer());
     if (expected === "image" && !lowerContentType.startsWith("image/") && !looksLikeImageBytes(bytes)) {
       console.error("[mirrorOne] not-image bytes", lowerContentType, originalUrl.slice(0, 160));
-      return originalUrl;
+      return null;
     }
-    if (expected === "image" && bytes.byteLength < 64) {
+    if (expected === "image" && bytes.byteLength < MIN_PROPERTY_IMAGE_BYTES) {
       console.error("[mirrorOne] image too small", bytes.byteLength, originalUrl.slice(0, 160));
-      return originalUrl;
+      return null;
+    }
+    if (expected === "image") {
+      const dims = detectImageDimensions(bytes, contentType);
+      if (dims && dims.width > 0 && dims.height > 0 && (dims.width < MIN_PROPERTY_IMAGE_DIM || dims.height < MIN_PROPERTY_IMAGE_DIM)) {
+        console.error("[mirrorOne] image dimensions too small", { width: dims.width, height: dims.height, url: originalUrl.slice(0, 160) });
+        return null;
+      }
     }
     // Upload (idempotent — upsert)
     const { error: upErr } = await admin.storage
@@ -1293,7 +1351,7 @@ async function mirrorOne(
       .upload(path, bytes, { contentType, upsert: true, cacheControl: "31536000" });
     if (upErr && !/exists/i.test(upErr.message)) {
       console.error("[mirrorOne] upload failed", upErr.message, path);
-      return expected === "image" ? originalUrl : null;
+      return null;
     }
     // 10-year signed URL for embedding in DB
     const { data: signed, error: signErr } = await admin.storage
@@ -1301,12 +1359,12 @@ async function mirrorOne(
       .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
     if (signErr || !signed?.signedUrl) {
       console.error("[mirrorOne] sign failed", signErr?.message, path);
-      return expected === "image" ? originalUrl : null;
+      return null;
     }
     return signed.signedUrl;
   } catch (e) {
     console.error("[mirrorOne] err", (e as Error).message, originalUrl.slice(0, 160));
-    return expected === "image" ? originalUrl : null;
+    return null;
   }
 }
 
