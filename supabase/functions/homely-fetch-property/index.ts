@@ -2871,6 +2871,18 @@ Deno.serve(async (req) => {
                   media_mirrored_at: new Date().toISOString(),
                   media_version_tag: versionTag,
                   media_serial_verified: homelyId,
+                  // Enrichment bookkeeping — UI reads media_status to decide
+                  // between showing a gallery, a placeholder, or the
+                  // "Contact for details" message.
+                  enrichment_attempts: yad2AttemptCount,
+                  yad2_enrichment_exact: Boolean(yad2Enrichment?.exact),
+                  media_status:
+                    finalPhotosForDb.length > 0
+                      ? "available"
+                      : yad2AttemptCount >= 3
+                        ? "images_unavailable"
+                        : "pending",
+
                 },
               })
               .eq("id", listingId);
