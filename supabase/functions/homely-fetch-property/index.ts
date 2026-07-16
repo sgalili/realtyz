@@ -151,6 +151,57 @@ function imageCandidateSummary(candidates: ImageCandidate[]) {
   };
 }
 
+function mediaOriginalKey(raw: string): string {
+  const normalized = normalizeMediaUrl(raw, WEBTIV_BASE) || String(raw || "").trim();
+  try {
+    const u = new URL(normalized);
+    const decodedPath = decodeURIComponent(u.pathname);
+    const mirroredMatch = decodedPath.match(/homely-media\/listing\/[^/]+\/[^/]+\/([a-f0-9]{32,64}\.[a-z0-9]{2,5})/i);
+    if (mirroredMatch?.[1]) return `homely-media-original:${mirroredMatch[1].toLowerCase()}`;
+    return `${u.hostname}${u.pathname}`.toLowerCase();
+  } catch {
+    return normalized.replace(/[?#].*$/, "").toLowerCase();
+  }
+}
+
+function mediaSignature(urls: string[]): string {
+  return urls.map(mediaOriginalKey).sort().join("|").slice(0, 500);
+}
+
+function scopeImageCandidatesToProperty(
+  candidates: ImageCandidate[],
+  homelyId: string,
+  batchOriginalImageOwners: Map<string, string>,
+): { candidates: ImageCandidate[]; rejected: Array<{ url: string; source: string; reason: string }> } {
+  const scoped: ImageCandidate[] = [];
+  const rejected: Array<{ url: string; source: string; reason: string }> = [];
+  const localSeen = new Set<string>();
+
+  for (const candidate of candidates) {
+    const url = normalizeMediaUrl(candidate.url, WEBTIV_BASE);
+    if (!url) {
+      rejected.push({ url: String(candidate.url ?? ""), source: candidate.source, reason: "bad_url" });
+      continue;
+    }
+    const mismatchedId = detectMismatchedIdInUrl(url, homelyId);
+    if (mismatchedId) {
+      rejected.push({ url, source: candidate.source, reason: `url_property_id_mismatch:${mismatchedId}` });
+      continue;
+    }
+    const key = mediaOriginalKey(url);
+    if (localSeen.has(key)) continue;
+    const owner = batchOriginalImageOwners.get(key);
+    if (owner && owner !== homelyId) {
+      rejected.push({ url, source: candidate.source, reason: `batch_duplicate_owned_by:${owner}` });
+      continue;
+    }
+    localSeen.add(key);
+    scoped.push({ ...candidate, url });
+  }
+
+  return { candidates: scoped, rejected };
+}
+
 async function fetchVerifiedMedia(listingUrl: string): Promise<string[]> {
   const found = new Map<string, string>(); // url -> source selector (for logging)
   const IMG_EXT_RX = /\.(jpe?g|png|webp|gif|avif|bmp|tiff?)(?:$|[?#])/i;
@@ -2104,9 +2155,16 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Batch-level media ownership ledger. This prevents one property's image
+      // candidates or final mirrored gallery from being reused by another
+      // Homely serial during the same import run.
+      const batchOriginalImageOwners = new Map<string, string>();
+      const batchFinalMediaSignatures = new Map<string, string>();
+
       for (const p of properties) {
         const homelyId = String(p?.homely_id ?? "").trim();
         if (!homelyId) continue;
+        console.log("[importOutJson] media state reset for property", { homelyId });
         let richRecord = p?.raw ?? p;
         let richEndpoint: string | null = null;
         if (richHash) {
@@ -2179,9 +2237,16 @@ Deno.serve(async (req) => {
           console.log(`[importOutJson][${homelyId}] scraper returned`, { count: scraped.length, sample: scraped.slice(0, 5) });
         }
 
-        const imageCandidates = mergeImageCandidates(apiCandidates, webtivEndpointCandidates, streamCandidates, yad2Candidates, campaignCandidates, scrapedCandidates);
+        const mergedImageCandidates = mergeImageCandidates(apiCandidates, webtivEndpointCandidates, streamCandidates, yad2Candidates, campaignCandidates, scrapedCandidates);
+        const scopedMedia = scopeImageCandidatesToProperty(mergedImageCandidates, homelyId, batchOriginalImageOwners);
+        const imageCandidates = scopedMedia.candidates;
+        for (const candidate of imageCandidates) batchOriginalImageOwners.set(mediaOriginalKey(candidate.url), homelyId);
         const rawPhotos = imageCandidates.map((c) => c.url);
-        console.log(`[importOutJson][${homelyId}] IMAGE_CANDIDATES`, imageCandidateSummary(imageCandidates));
+        console.log(`[importOutJson][${homelyId}] IMAGE_CANDIDATES`, {
+          ...imageCandidateSummary(imageCandidates),
+          merged_total_before_property_scope: mergedImageCandidates.length,
+          rejected_by_property_scope: scopedMedia.rejected.slice(0, 20),
+        });
 
         const rawDocuments = cleanMediaUrls(
           richMedia.documents.length ? richMedia.documents : Array.isArray(p?.documents) ? p.documents : [],
@@ -2268,9 +2333,14 @@ Deno.serve(async (req) => {
             property_type: p?.property_type || null,
             photos: [],
             images: [],
+            photos_original: [],
+            photos_mirrored: [],
             photos_candidates: rawPhotos,
+            photos_rejected: scopedMedia.rejected.slice(0, 20),
             documents: rawDocuments,
             media_count: Number(rawDocuments.length) || 0,
+            media_photos_source: "pending_verified",
+            media_serial_verified: null,
             office_notes: p?.office_notes || null,
             agent: p?.agent || null,
             owner_name: ownerFullName || null,
@@ -2315,18 +2385,22 @@ Deno.serve(async (req) => {
         }
 
         if (existing?.id) {
-          const existingPhotos = Array.isArray((existing as any).media_photos) ? (existing as any).media_photos : [];
+          const existingMetaForCore = (existing as any).source_metadata && typeof (existing as any).source_metadata === "object"
+            ? ((existing as any).source_metadata as Record<string, unknown>)
+            : {};
+          const canPreserveExistingPhotosForThisSerial = String(existingMetaForCore.media_serial_verified ?? "") === homelyId;
+          const existingPhotos = canPreserveExistingPhotosForThisSerial && Array.isArray((existing as any).media_photos) ? (existing as any).media_photos : [];
           const existingDocs = Array.isArray((existing as any).media_documents) ? (existing as any).media_documents : [];
           row.media_photos = existingPhotos;
           if (existingDocs.length && rawDocuments.length === 0) row.media_documents = existingDocs;
           row.source_metadata = {
-            ...((existing as any).source_metadata && typeof (existing as any).source_metadata === "object" ? (existing as any).source_metadata : {}),
+            ...existingMetaForCore,
             ...(row.source_metadata as Record<string, unknown>),
             photos: existingPhotos,
             images: existingPhotos,
             documents: rawDocuments.length ? rawDocuments : existingDocs,
             media_count: Number(existingPhotos.length + (rawDocuments.length ? rawDocuments.length : existingDocs.length)) || 0,
-            photos_preserved_until_verified: existingPhotos.length > 0,
+            photos_preserved_until_verified: canPreserveExistingPhotosForThisSerial && existingPhotos.length > 0,
           };
         }
 
@@ -2383,22 +2457,78 @@ Deno.serve(async (req) => {
               );
 
             const cleanedMirrored = cleanList(verifiedImages.photos);
-            const previousPhotos = existing?.id && Array.isArray((existing as any).media_photos)
+            const existingMeta = (existing as any)?.source_metadata && typeof (existing as any).source_metadata === "object"
+              ? ((existing as any).source_metadata as Record<string, any>)
+              : {};
+            const existingWasVerifiedForThisSerial = String(existingMeta.media_serial_verified ?? "") === homelyId;
+            const previousPhotos = existing?.id && existingWasVerifiedForThisSerial && Array.isArray((existing as any).media_photos)
               ? cleanList((existing as any).media_photos)
               : [];
-            const finalPhotosForDb = cleanedMirrored.length ? cleanedMirrored : previousPhotos;
+            let finalPhotosForDb = cleanedMirrored.length ? [...cleanedMirrored] : [...previousPhotos];
             const finalDocsForDb = mirroredDocs.length ? mirroredDocs : rawDocuments;
-            const photosSource = cleanedMirrored.length
+            let photosSource = cleanedMirrored.length
               ? "verified_mirrored"
               : (previousPhotos.length ? "preserved_previous" : "empty_verified");
 
-            console.log("[importOutJson] about to update listing media", {
+            const signatureSource = verifiedImages.originals.length
+              ? verifiedImages.originals
+              : (Array.isArray(existingMeta.photos_original) ? existingMeta.photos_original : finalPhotosForDb);
+            const finalSignature = mediaSignature(signatureSource.filter((u: unknown): u is string => typeof u === "string"));
+            let signatureOwner = finalSignature ? batchFinalMediaSignatures.get(finalSignature) : null;
+            if (finalSignature && !signatureOwner) {
+              const { data: siblingListings } = await admin
+                .from("listings")
+                .select("id, external_id, media_photos, source_metadata")
+                .eq("user_id", workspaceOwnerId)
+                .neq("id", listingId)
+                .or("source.eq.homely,source.eq.webtiv")
+                .limit(1000);
+              for (const sibling of siblingListings ?? []) {
+                const siblingMeta = (sibling as any)?.source_metadata && typeof (sibling as any).source_metadata === "object"
+                  ? ((sibling as any).source_metadata as Record<string, unknown>)
+                  : {};
+                const siblingSource = Array.isArray(siblingMeta.photos_original)
+                  ? siblingMeta.photos_original
+                  : (Array.isArray((sibling as any).media_photos) ? (sibling as any).media_photos : []);
+                const siblingSignature = mediaSignature(siblingSource.filter((u: unknown): u is string => typeof u === "string"));
+                if (siblingSignature && siblingSignature === finalSignature) {
+                  signatureOwner = String((sibling as any).external_id ?? (sibling as any).id ?? "unknown");
+                  break;
+                }
+              }
+            }
+            if (finalSignature && signatureOwner && signatureOwner !== homelyId) {
+              await logIntegrationError({
+                integration: "homely",
+                functionName: "homely-fetch-property.importOutJson",
+                errorCode: "duplicate_media_array_blocked",
+                errorMessage: `Blocked duplicate media array: homely_id=${homelyId} matched already-imported homely_id=${signatureOwner}`,
+                context: {
+                  homely_id: homelyId,
+                  duplicate_of_homely_id: signatureOwner,
+                  listing_id: listingId,
+                  original_count: signatureSource.length,
+                },
+              });
+              finalPhotosForDb = [];
+              photosSource = "blocked_duplicate_media_array";
+            } else if (finalSignature) {
+              batchFinalMediaSignatures.set(finalSignature, homelyId);
+            }
+
+            console.log("[importOutJson] PRE_SAVE_MEDIA_BINDING", {
               homelyId,
               listingId,
+              external_id: upsertedExternalId || homelyId,
+              candidate_sources: imageCandidateSummary(imageCandidates).bySource,
               candidates_count: imageCandidates.length,
               verified_count: cleanedMirrored.length,
               rejected_count: verifiedImages.rejected.length,
+              property_scope_rejected_count: scopedMedia.rejected.length,
               preserved_previous_count: previousPhotos.length,
+              previous_preserved_only_if_serial_verified: existingWasVerifiedForThisSerial,
+              media_signature_owner: signatureOwner ?? homelyId,
+              media_photos_source: photosSource,
               media_photos: finalPhotosForDb,
               media_photos_count: Array.isArray(finalPhotosForDb) ? finalPhotosForDb.length : null,
               media_count: Number(finalPhotosForDb.length + finalDocsForDb.length) || 0,
@@ -2417,7 +2547,7 @@ Deno.serve(async (req) => {
                   photos_original: verifiedImages.originals,
                   photos_candidates: rawPhotos,
                   photos_mirrored: cleanedMirrored,
-                  photos_rejected: verifiedImages.rejected.slice(0, 20),
+                  photos_rejected: [...scopedMedia.rejected, ...verifiedImages.rejected].slice(0, 20),
                   documents_original: rawDocuments,
                   media_count: Number(finalPhotosForDb.length + finalDocsForDb.length) || 0,
                   media_photos_source: photosSource,

@@ -229,6 +229,19 @@ function pickDocs(rec: Record<string, any>): string[] {
   return Array.from(new Set(out));
 }
 
+function mediaKey(raw: string): string {
+  try {
+    const u = new URL(String(raw || "").trim());
+    return `${u.hostname}${u.pathname}`.toLowerCase();
+  } catch {
+    return String(raw || "").replace(/[?#].*$/, "").toLowerCase();
+  }
+}
+
+function mediaArraySignature(urls: string[]): string {
+  return urls.map(mediaKey).filter(Boolean).sort().join("|").slice(0, 500);
+}
+
 // Apply the strict office filter using PERMISSIVE substring matching — the
 // raw Webtiv values are concatenated strings like "בטיפול,משרד" or
 // "בלעדי,משרד", so equality checks miss everything.
@@ -445,6 +458,7 @@ Deno.serve(async (req) => {
     let failed = 0;
     let listingsInserted = 0;
     const errors: Array<{ phone: string; message: string; stage: string }> = [];
+    const batchListingMediaSignatures = new Map<string, string>();
 
     for (const p of collected) {
       const phone = p.phone_number;
@@ -465,7 +479,9 @@ Deno.serve(async (req) => {
       if (isRent) p.interest_tag = "שוכר";
       const mekorOrigin = prefs?.source_origin as string | null;
       const mekorUrl = prefs?.source_url as string | null;
-      const photos: string[] = Array.isArray(prefs?.media_photos) ? prefs.media_photos : [];
+      let photos: string[] = Array.isArray(prefs?.media_photos)
+        ? Array.from(new Set((prefs.media_photos as unknown[]).filter((u): u is string => typeof u === "string" && u.trim().length > 0)))
+        : [];
       const docs: string[] = Array.isArray(prefs?.media_documents) ? prefs.media_documents : [];
 
 
@@ -474,6 +490,26 @@ Deno.serve(async (req) => {
       let linkedListingId: string | null = null;
       if (streamSource === "sellers") {
         const externalId = p.external_id;
+        const mediaSignature = mediaArraySignature(photos);
+        const signatureOwner = mediaSignature ? batchListingMediaSignatures.get(mediaSignature) : null;
+        if (mediaSignature && signatureOwner && signatureOwner !== externalId) {
+          console.error("[STREAM-LISTING-MEDIA-DUPLICATE-BLOCKED]", {
+            externalId,
+            duplicateOfExternalId: signatureOwner,
+            photoCount: photos.length,
+          });
+          photos = [];
+        } else if (mediaSignature) {
+          batchListingMediaSignatures.set(mediaSignature, externalId);
+        }
+        console.log("[STREAM-LISTING-MEDIA-BINDING]", {
+          externalId,
+          phone,
+          photoCount: photos.length,
+          docCount: docs.length,
+          duplicateOfExternalId: signatureOwner ?? null,
+          photos,
+        });
         const { data: existingListing } = await admin
           .from("listings").select("id")
           .eq("source", "webtiv").eq("external_id", externalId).maybeSingle();
