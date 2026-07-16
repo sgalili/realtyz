@@ -806,12 +806,31 @@ async function fetchRichPropertyDetail(
     `${WEBTIV_BASE}/api/report/getNechesFullDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
     `${WEBTIV_BASE}/api/report/getNechesData/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
     `${WEBTIV_BASE}/api/report/getPropertyDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+    `${WEBTIV_BASE}/api/report/getNechesDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+    `${WEBTIV_BASE}/api/report/getNechesInfo/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+    `${WEBTIV_BASE}/api/report/getNeches/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+    `${WEBTIV_BASE}/api/neches/getNechesFullDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+    `${WEBTIV_BASE}/api/neches/getPropertyDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
   ];
   for (const ep of endpoints) {
     const dr = await getJson(ep);
+    console.log("[fetchRichPropertyDetail] detail fetch attempt", {
+      serial,
+      endpoint: ep,
+      status: dr.status,
+      hasPayload: Boolean(dr.data),
+      sample: dr.sample,
+    });
     if (dr.status < 200 || dr.status >= 300 || !dr.data) continue;
     const candidate = firstObjectPayload(dr.data);
     if (!candidate || typeof candidate !== "object") continue;
+    console.log("[fetchRichPropertyDetail] detail payload media audit", {
+      serial,
+      endpoint: ep,
+      mediaTotal: mediaTotal(candidate),
+      keys: Object.keys(candidate).slice(0, 80),
+      mediaFields: mediaFieldAudit(candidate).slice(0, 40),
+    });
     if (mediaTotal(candidate) > mediaTotal(best) || (!pickSourceUrl(best) && pickSourceUrl(candidate))) {
       best = candidate;
       bestEndpoint = ep;
@@ -822,9 +841,25 @@ async function fetchRichPropertyDetail(
   const allKeysEndpoint = `${WEBTIV_BASE}/api/hashData/getAllKeys/${encodeURIComponent(hash)}`;
   for (const payload of [{ id: serial }, { serial }, { sidur: serial }, { nechesId: serial }]) {
     const dr = await postJson(allKeysEndpoint, payload);
+    console.log("[fetchRichPropertyDetail] getAllKeys detail fetch attempt", {
+      serial,
+      endpoint: allKeysEndpoint,
+      payload,
+      status: dr.status,
+      hasPayload: Boolean(dr.data),
+      sample: dr.sample,
+    });
     if (dr.status < 200 || dr.status >= 300 || !dr.data) continue;
     const candidate = firstObjectPayload(dr.data);
     if (!candidate || typeof candidate !== "object") continue;
+    console.log("[fetchRichPropertyDetail] getAllKeys detail payload media audit", {
+      serial,
+      endpoint: allKeysEndpoint,
+      payload,
+      mediaTotal: mediaTotal(candidate),
+      keys: Object.keys(candidate).slice(0, 80),
+      mediaFields: mediaFieldAudit(candidate).slice(0, 40),
+    });
     if (mediaTotal(candidate) > mediaTotal(best) || (!pickSourceUrl(best) && pickSourceUrl(candidate))) {
       best = candidate;
       bestEndpoint = allKeysEndpoint;
