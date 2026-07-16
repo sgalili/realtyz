@@ -2168,17 +2168,18 @@ Deno.serve(async (req) => {
         });
 
         const apiCandidates = collectImageCandidates(richRecord, "homely_rich_api", 100);
+        const webtivEndpointCandidates = richHash ? await fetchWebtivImageEndpointCandidates(richHash, homelyId) : [];
         const streamCandidates = collectImageCandidates(p, "homely_stream_api", 90);
         const yad2Candidates = collectImageCandidates(yad2Enrichment?.photos ?? [], "yad2_api", 70);
         const campaignCandidates = collectImageCandidates(campaignPhotos, "campaign_history", 60);
         let scrapedCandidates: ImageCandidate[] = [];
-        if (richSourceUrl && apiCandidates.length + streamCandidates.length + yad2Candidates.length + campaignCandidates.length === 0) {
+        if (richSourceUrl && apiCandidates.length + webtivEndpointCandidates.length + streamCandidates.length + yad2Candidates.length + campaignCandidates.length === 0) {
           const scraped = await fetchVerifiedMedia(richSourceUrl);
           scrapedCandidates = scraped.map((url) => ({ url, source: "public_page_scrape", priority: 40 }));
           console.log(`[importOutJson][${homelyId}] scraper returned`, { count: scraped.length, sample: scraped.slice(0, 5) });
         }
 
-        const imageCandidates = mergeImageCandidates(apiCandidates, streamCandidates, yad2Candidates, campaignCandidates, scrapedCandidates);
+        const imageCandidates = mergeImageCandidates(apiCandidates, webtivEndpointCandidates, streamCandidates, yad2Candidates, campaignCandidates, scrapedCandidates);
         const rawPhotos = imageCandidates.map((c) => c.url);
         console.log(`[importOutJson][${homelyId}] IMAGE_CANDIDATES`, imageCandidateSummary(imageCandidates));
 
