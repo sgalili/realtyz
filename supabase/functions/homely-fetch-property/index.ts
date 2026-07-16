@@ -17,19 +17,24 @@ async function fetchVerifiedMedia(listingUrl: string): Promise<string[]> {
   const IMG_EXT_RX = /\.(jpe?g|png|webp|gif|avif|bmp|tiff?)(?:$|[?#])/i;
   const FACEBOOK_RX = /(?:^https?:\/\/)?(?:[a-z0-9-]+\.)*(?:facebook\.com|fbcdn\.net|fbsbx\.com)(?:[\/:?#]|$)/i;
   const PLACEHOLDER_RX = /(placeholder|no-?image|default-property|template_property|generic-building|1x1|pixel|spacer|blank\.gif)/i;
+  // Blacklist keywords in URL path/filename that indicate non-photo assets.
+  const BLACKLIST_RX = /(favicon|\bicons?\b|\blogos?\b|sprite|watermark|\bpixel\b|facebook|twitter|instagram|linkedin|tiktok|youtube|whatsapp|social[-_]?(?:icon|share))/i;
+  // Min byte size as proxy for "≥ 300x300" real photos. Icons/logos are typically <15KB.
+  const MIN_BYTES = 20000;
 
   const norm = (raw: string | undefined, base: string): string | null => {
     if (!raw) return null;
     let u = raw.trim();
     if (!u || u.startsWith("data:")) return null;
-    // Strip common lazy-load wrappers like `url("...")`.
     const m = u.match(/url\((['"]?)([^'")]+)\1\)/i);
     if (m) u = m[2];
     try {
+      // URL resolution: relative "/foo.jpg" is strictly resolved against the property page's base.
       const abs = new URL(u, base).toString();
       if (!/^https?:\/\//i.test(abs)) return null;
       if (FACEBOOK_RX.test(abs)) return null;
       if (PLACEHOLDER_RX.test(abs)) return null;
+      if (BLACKLIST_RX.test(abs)) return null;
       return abs;
     } catch { return null; }
   };
@@ -52,48 +57,15 @@ async function fetchVerifiedMedia(listingUrl: string): Promise<string[]> {
     const base = response.url || listingUrl;
     const $ = load(html);
 
-    // 1. OpenGraph / Twitter meta
+    // ── PRIORITY 1: OpenGraph / Twitter / link meta tags (highest-quality hero images) ──
     $('meta[property="og:image"], meta[property="og:image:secure_url"], meta[name="og:image"], meta[name="twitter:image"], meta[name="twitter:image:src"]').each((_, el) => {
       add(norm($(el).attr("content"), base), "meta:og/twitter");
     });
-
-    // 2. <link rel="image_src"> and preloaded images
     $('link[rel="image_src"], link[rel="preload"][as="image"]').each((_, el) => {
       add(norm($(el).attr("href"), base), "link:preload");
     });
 
-    // 3. <img> tags — src, data-src, data-original, data-lazy-src, data-echo, srcset
-    $("img").each((_, el) => {
-      const $el = $(el);
-      const attrs = ["src", "data-src", "data-original", "data-lazy", "data-lazy-src", "data-echo", "data-defer-src", "data-hi-res-src", "data-image", "data-img"];
-      for (const a of attrs) add(norm($el.attr(a), base), `img[${a}]`);
-      const srcset = $el.attr("srcset") || $el.attr("data-srcset");
-      if (srcset) {
-        for (const part of srcset.split(",")) {
-          const url = part.trim().split(/\s+/)[0];
-          add(norm(url, base), "img[srcset]");
-        }
-      }
-    });
-
-    // 4. <source> inside <picture>
-    $("picture source").each((_, el) => {
-      const srcset = $(el).attr("srcset") || $(el).attr("data-srcset");
-      if (!srcset) return;
-      for (const part of srcset.split(",")) {
-        add(norm(part.trim().split(/\s+/)[0], base), "picture:source");
-      }
-    });
-
-    // 5. Inline background-image styles
-    $("[style]").each((_, el) => {
-      const style = $(el).attr("style") || "";
-      const rx = /background(?:-image)?\s*:\s*[^;]*url\((['"]?)([^'")]+)\1\)/gi;
-      let m: RegExpExecArray | null;
-      while ((m = rx.exec(style)) !== null) add(norm(m[2], base), "style:bg");
-    });
-
-    // 6. JSON-LD ImageObject / image fields
+    // ── PRIORITY 2: JSON-LD structured data ──
     $('script[type="application/ld+json"]').each((_, el) => {
       try {
         const raw = $(el).contents().text();
@@ -113,19 +85,93 @@ async function fetchVerifiedMedia(listingUrl: string): Promise<string[]> {
       } catch { /* ignore malformed json-ld */ }
     });
 
-    // 7. Regex-scan raw HTML for any remaining absolute image URLs (catches
-    //    JS-rendered galleries that never appear as <img> in the SSR HTML).
-    const urlRx = /https?:\/\/[^\s"'<>()\\]+?\.(?:jpe?g|png|webp|gif|avif)(?:\?[^\s"'<>()\\]*)?/gi;
-    const hits = html.match(urlRx) || [];
-    for (const h of hits) add(norm(h, base), "regex:html");
+    // ── PRIORITY 3: <img> / <picture> / background-image ONLY inside gallery/carousel containers ──
+    const GALLERY_SEL = [
+      '[class*="gallery" i]', '[class*="carousel" i]', '[class*="slider" i]', '[class*="slideshow" i]',
+      '[class*="swiper" i]', '[class*="lightbox" i]', '[class*="photos" i]', '[class*="images" i]',
+      '[id*="gallery" i]', '[id*="carousel" i]', '[id*="slider" i]',
+      '[data-gallery]', '[data-carousel]', '[role="listbox"]',
+    ].join(", ");
 
-    const results = Array.from(found.keys());
+    const $galleries = $(GALLERY_SEL);
+    $galleries.find("img").each((_, el) => {
+      const $el = $(el);
+      // Reject <img> with declared dimensions below 300x300.
+      const w = parseInt($el.attr("width") || "0", 10);
+      const h = parseInt($el.attr("height") || "0", 10);
+      if ((w > 0 && w < 300) || (h > 0 && h < 300)) return;
+
+      const attrs = ["src", "data-src", "data-original", "data-lazy", "data-lazy-src", "data-echo", "data-defer-src", "data-hi-res-src", "data-image", "data-img"];
+      for (const a of attrs) add(norm($el.attr(a), base), `gallery:img[${a}]`);
+      const srcset = $el.attr("srcset") || $el.attr("data-srcset");
+      if (srcset) {
+        // Prefer the largest candidate in srcset.
+        const parts = srcset.split(",").map((p) => p.trim()).filter(Boolean);
+        let best: string | null = null;
+        let bestW = 0;
+        for (const p of parts) {
+          const [u, size] = p.split(/\s+/);
+          const wMatch = size?.match(/(\d+)w/);
+          const sw = wMatch ? parseInt(wMatch[1], 10) : 0;
+          if (!best || sw > bestW) { best = u; bestW = sw; }
+        }
+        if (best) add(norm(best, base), "gallery:img[srcset]");
+      }
+    });
+    $galleries.find("picture source").each((_, el) => {
+      const srcset = $(el).attr("srcset") || $(el).attr("data-srcset");
+      if (!srcset) return;
+      for (const part of srcset.split(",")) {
+        add(norm(part.trim().split(/\s+/)[0], base), "gallery:picture");
+      }
+    });
+    $galleries.find("[style]").each((_, el) => {
+      const style = $(el).attr("style") || "";
+      const rx = /background(?:-image)?\s*:\s*[^;]*url\((['"]?)([^'")]+)\1\)/gi;
+      let m: RegExpExecArray | null;
+      while ((m = rx.exec(style)) !== null) add(norm(m[2], base), "gallery:style-bg");
+    });
+
+    // ── PRIORITY 4 (fallback): if nothing found yet, regex-scan raw HTML for absolute image URLs. ──
+    if (found.size === 0) {
+      const urlRx = /https?:\/\/[^\s"'<>()\\]+?\.(?:jpe?g|png|webp|gif|avif)(?:\?[^\s"'<>()\\]*)?/gi;
+      const hits = html.match(urlRx) || [];
+      for (const h of hits) add(norm(h, base), "regex:html-fallback");
+    }
+
+    // ── Size probe: HEAD each candidate; reject anything under MIN_BYTES (≈icons/logos). ──
+    const candidates = Array.from(found.keys());
+    const sizeChecks = await Promise.all(candidates.map(async (u) => {
+      try {
+        const ctl = new AbortController();
+        const t = setTimeout(() => ctl.abort(), 4000);
+        const r = await fetch(u, { method: "HEAD", signal: ctl.signal, headers: { "User-Agent": "Mozilla/5.0" } });
+        clearTimeout(t);
+        if (!r.ok) return { u, ok: false, reason: `head_${r.status}`, bytes: 0 };
+        const cl = parseInt(r.headers.get("content-length") || "0", 10);
+        const ct = r.headers.get("content-type") || "";
+        if (ct && !/^image\//i.test(ct)) return { u, ok: false, reason: `ct_${ct}`, bytes: cl };
+        if (cl > 0 && cl < MIN_BYTES) return { u, ok: false, reason: "too_small", bytes: cl };
+        return { u, ok: true, reason: "ok", bytes: cl };
+      } catch (e) {
+        // On HEAD failure, keep the URL — better to serve a possibly-good image than lose it.
+        return { u, ok: true, reason: "head_failed", bytes: 0 };
+      }
+    }));
+
+    const results = sizeChecks.filter((r) => r.ok).map((r) => r.u);
+    const dropped = sizeChecks.filter((r) => !r.ok);
     const bySource: Record<string, number> = {};
-    for (const src of found.values()) bySource[src] = (bySource[src] || 0) + 1;
+    for (const [u, src] of found.entries()) {
+      if (results.includes(u)) bySource[src] = (bySource[src] || 0) + 1;
+    }
     console.log("[fetchVerifiedMedia] detection", {
       listingUrl,
-      total: results.length,
+      total_candidates: candidates.length,
+      kept: results.length,
+      dropped: dropped.length,
       by_source: bySource,
+      dropped_sample: dropped.slice(0, 5).map((d) => ({ u: d.u, reason: d.reason, bytes: d.bytes })),
       sample: results.slice(0, 5),
     });
     return results;
