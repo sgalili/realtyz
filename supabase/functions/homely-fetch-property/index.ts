@@ -770,6 +770,87 @@ function mediaTotal(value: any): number {
   return media.photos.length + media.documents.length;
 }
 
+function mediaFieldAudit(root: any): Array<Record<string, unknown>> {
+  const out: Array<Record<string, unknown>> = [];
+  const seen = new Set<any>();
+  const interestingKey = /(pictures?|pics?|photos?|images?|gallery|media(?:_links?)?|raw_data|rawdata|tmunot|תמונות|תמונה)/i;
+  const walk = (value: any, path = "root") => {
+    if (out.length >= 120 || value == null) return;
+    const key = path.split(".").pop() || path;
+    const keyLooksInteresting = interestingKey.test(key) || interestingKey.test(path);
+    if (typeof value === "string") {
+      const imageMatches = value.match(IMAGE_URL_RX) || [];
+      if (keyLooksInteresting || imageMatches.length) {
+        out.push({
+          path,
+          type: "string",
+          length: value.length,
+          imageMatches: imageMatches.slice(0, 8),
+          sample: value.slice(0, 500),
+        });
+      }
+      return;
+    }
+    if (Array.isArray(value)) {
+      if (keyLooksInteresting) {
+        out.push({
+          path,
+          type: "array",
+          length: value.length,
+          sample: value.slice(0, 3),
+          extractedPhotos: collectMedia(value).photos.slice(0, 8),
+        });
+      }
+      value.slice(0, 80).forEach((entry, index) => walk(entry, `${path}[${index}]`));
+      return;
+    }
+    if (typeof value !== "object" || seen.has(value)) return;
+    seen.add(value);
+    if (keyLooksInteresting) {
+      out.push({
+        path,
+        type: "object",
+        keys: Object.keys(value).slice(0, 80),
+        extractedPhotos: collectMedia(value).photos.slice(0, 8),
+      });
+    }
+    for (const [childKey, childValue] of Object.entries(value)) {
+      walk(childValue, `${path}.${childKey}`);
+    }
+  };
+  walk(root);
+  return out;
+}
+
+function shouldRawAuditProperty(property: any, homelyId: string): boolean {
+  const haystack = JSON.stringify({
+    homelyId,
+    title: property?.title,
+    address: property?.address,
+    city: property?.city,
+    street: property?.raw?.street ?? property?.street,
+    number: property?.raw?.number ?? property?.number,
+  });
+  return /1816|7077|הדקל|דוד שמעוני/.test(haystack);
+}
+
+function logJsonChunks(label: string, value: unknown, chunkSize = 6000) {
+  let text = "";
+  try {
+    text = JSON.stringify(value);
+  } catch (e) {
+    text = `[unserializable:${(e as Error).message}]`;
+  }
+  if (text.length <= chunkSize) {
+    console.log(label, text);
+    return;
+  }
+  const total = Math.ceil(text.length / chunkSize);
+  for (let i = 0; i < total; i++) {
+    console.log(`${label} chunk=${i + 1}/${total}`, text.slice(i * chunkSize, (i + 1) * chunkSize));
+  }
+}
+
 function cleanMediaUrls(values: unknown[], kind: "image" | "document" | "any" = "any"): string[] {
   return Array.from(
     new Set(
@@ -806,12 +887,31 @@ async function fetchRichPropertyDetail(
     `${WEBTIV_BASE}/api/report/getNechesFullDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
     `${WEBTIV_BASE}/api/report/getNechesData/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
     `${WEBTIV_BASE}/api/report/getPropertyDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+    `${WEBTIV_BASE}/api/report/getNechesDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+    `${WEBTIV_BASE}/api/report/getNechesInfo/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+    `${WEBTIV_BASE}/api/report/getNeches/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+    `${WEBTIV_BASE}/api/neches/getNechesFullDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+    `${WEBTIV_BASE}/api/neches/getPropertyDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
   ];
   for (const ep of endpoints) {
     const dr = await getJson(ep);
+    console.log("[fetchRichPropertyDetail] detail fetch attempt", {
+      serial,
+      endpoint: ep,
+      status: dr.status,
+      hasPayload: Boolean(dr.data),
+      sample: dr.sample,
+    });
     if (dr.status < 200 || dr.status >= 300 || !dr.data) continue;
     const candidate = firstObjectPayload(dr.data);
     if (!candidate || typeof candidate !== "object") continue;
+    console.log("[fetchRichPropertyDetail] detail payload media audit", {
+      serial,
+      endpoint: ep,
+      mediaTotal: mediaTotal(candidate),
+      keys: Object.keys(candidate).slice(0, 80),
+      mediaFields: mediaFieldAudit(candidate).slice(0, 40),
+    });
     if (mediaTotal(candidate) > mediaTotal(best) || (!pickSourceUrl(best) && pickSourceUrl(candidate))) {
       best = candidate;
       bestEndpoint = ep;
@@ -822,9 +922,25 @@ async function fetchRichPropertyDetail(
   const allKeysEndpoint = `${WEBTIV_BASE}/api/hashData/getAllKeys/${encodeURIComponent(hash)}`;
   for (const payload of [{ id: serial }, { serial }, { sidur: serial }, { nechesId: serial }]) {
     const dr = await postJson(allKeysEndpoint, payload);
+    console.log("[fetchRichPropertyDetail] getAllKeys detail fetch attempt", {
+      serial,
+      endpoint: allKeysEndpoint,
+      payload,
+      status: dr.status,
+      hasPayload: Boolean(dr.data),
+      sample: dr.sample,
+    });
     if (dr.status < 200 || dr.status >= 300 || !dr.data) continue;
     const candidate = firstObjectPayload(dr.data);
     if (!candidate || typeof candidate !== "object") continue;
+    console.log("[fetchRichPropertyDetail] getAllKeys detail payload media audit", {
+      serial,
+      endpoint: allKeysEndpoint,
+      payload,
+      mediaTotal: mediaTotal(candidate),
+      keys: Object.keys(candidate).slice(0, 80),
+      mediaFields: mediaFieldAudit(candidate).slice(0, 40),
+    });
     if (mediaTotal(candidate) > mediaTotal(best) || (!pickSourceUrl(best) && pickSourceUrl(candidate))) {
       best = candidate;
       bestEndpoint = allKeysEndpoint;
@@ -2167,6 +2283,14 @@ Deno.serve(async (req) => {
         console.log("[importOutJson] media state reset for property", { homelyId });
         let richRecord = p?.raw ?? p;
         let richEndpoint: string | null = null;
+        if (shouldRawAuditProperty(p, homelyId)) {
+          logJsonChunks(`[importOutJson] RAW_SOURCE_BEFORE_DETAIL_FETCH homelyId=${homelyId}`, richRecord);
+          console.log(`[importOutJson] RAW_SOURCE_MEDIA_FIELD_AUDIT homelyId=${homelyId}`, {
+            keys: richRecord && typeof richRecord === "object" ? Object.keys(richRecord).slice(0, 120) : [],
+            mediaFields: mediaFieldAudit(richRecord).slice(0, 80),
+            collectMedia: collectMedia(richRecord),
+          });
+        }
         if (richHash) {
           try {
             const rich = await fetchRichPropertyDetail(richHash, homelyId, richRecord);
@@ -2178,24 +2302,32 @@ Deno.serve(async (req) => {
         }
 
         const richMedia = collectMedia(richRecord);
-        // TEMP DIAGNOSTIC — inspect raw media fields before any filtering.
+        if (shouldRawAuditProperty(p, homelyId)) {
+          logJsonChunks(`[importOutJson] RAW_SOURCE_AFTER_DETAIL_FETCH homelyId=${homelyId} endpoint=${richEndpoint ?? "none"}`, richRecord);
+        }
+        // Diagnostic — inspect raw media fields before any filtering/mirroring.
         try {
           const rr: any = richRecord || {};
-          console.log(`[importOutJson] RAW_HOMELY_MEDIA homelyId=${homelyId}`, JSON.stringify({
-            rr_photos: rr.photos ?? null,
-            rr_images: rr.images ?? null,
-            rr_media: rr.media ?? null,
-            rr_photo: rr.photo ?? null,
-            rr_picture: rr.picture ?? null,
-            rr_pic: rr.pic ?? null,
-            rr_image: rr.image ?? null,
-            rr_thumbnail: rr.thumbnail ?? null,
+          console.log(`[importOutJson] RAW_HOMELY_MEDIA homelyId=${homelyId}`, {
+            endpoint: richEndpoint,
+            explicit_fields: {
+              photos: rr.photos ?? rr.Photos ?? null,
+              pictures: rr.pictures ?? rr.Pictures ?? null,
+              gallery: rr.gallery ?? rr.Gallery ?? null,
+              media_links: rr.media_links ?? rr.mediaLinks ?? rr.MediaLinks ?? null,
+              raw_data: rr.raw_data ?? rr.rawData ?? rr.RawData ?? null,
+              photo: rr.photo ?? rr.Photo ?? null,
+              picture: rr.picture ?? rr.Picture ?? null,
+              image: rr.image ?? rr.Image ?? null,
+              thumbnail: rr.thumbnail ?? rr.Thumbnail ?? null,
+            },
             p_photos: (p as any)?.photos ?? null,
             p_photo: (p as any)?.photo ?? null,
             richMedia_photos: richMedia.photos,
             richMedia_documents: richMedia.documents,
-            rr_keys: Object.keys(rr).slice(0, 80),
-          }).slice(0, 4000));
+            hidden_media_fields: mediaFieldAudit(rr).slice(0, 80),
+            rr_keys: Object.keys(rr).slice(0, 120),
+          });
         } catch (_) { /* noop */ }
         const rawSourceOrigin = pickSourceOrigin(richRecord) || p?.source_origin || null;
         const sourceIsYad2 =
@@ -2453,6 +2585,8 @@ Deno.serve(async (req) => {
               (arr || []).filter((u) =>
                 typeof u === "string" &&
                 u.trim() !== "" &&
+                u.includes("/storage/v1/object/") &&
+                u.includes("/homely-media/") &&
                 !mediaRejectReason(u),
               );
 
@@ -2533,8 +2667,44 @@ Deno.serve(async (req) => {
               media_photos_count: Array.isArray(finalPhotosForDb) ? finalPhotosForDb.length : null,
               media_count: Number(finalPhotosForDb.length + finalDocsForDb.length) || 0,
             });
+            if (finalPhotosForDb.length === 0) {
+              const failureReasons = {
+                bulk_media_count: Array.isArray(p?.photos) ? p.photos.length : (p?.photo ? 1 : 0),
+                rich_media_count: richMedia.photos.length,
+                api_candidate_count: apiCandidates.length,
+                webtiv_image_endpoint_candidate_count: webtivEndpointCandidates.length,
+                stream_candidate_count: streamCandidates.length,
+                yad2_candidate_count: yad2Candidates.length,
+                campaign_candidate_count: campaignCandidates.length,
+                scraped_candidate_count: scrapedCandidates.length,
+                property_scope_rejections: scopedMedia.rejected.slice(0, 20),
+                mirror_rejections: verifiedImages.rejected.slice(0, 20),
+                rich_detail_endpoint: richEndpoint,
+                source_url: richSourceUrl || null,
+              };
+              console.warn("[importOutJson] MEDIA_MAPPING_FAILED_EMPTY_ARRAY", {
+                homelyId,
+                listingId,
+                property_title: p?.title ?? null,
+                address: p?.address ?? null,
+                city: p?.city ?? null,
+                failureReasons,
+              });
+              await logIntegrationError({
+                integration: "homely",
+                functionName: "homely-fetch-property.importOutJson",
+                errorCode: "media_mapping_empty_array",
+                errorMessage: `No media_photos could be mapped or mirrored for homely_id=${homelyId}`,
+                context: {
+                  homely_id: homelyId,
+                  listing_id: listingId,
+                  workspace_owner: workspaceOwnerId,
+                  failure_reasons: failureReasons,
+                },
+              });
+            }
             const meta = row.source_metadata as Record<string, unknown>;
-            await admin
+            const { error: mediaUpdateErr } = await admin
               .from("listings")
               .update({
                 media_photos: Array.isArray(finalPhotosForDb) ? finalPhotosForDb : [],
@@ -2557,6 +2727,13 @@ Deno.serve(async (req) => {
                 },
               })
               .eq("id", listingId);
+            if (mediaUpdateErr) {
+              console.error("[importOutJson] final media DB update failed", {
+                homelyId,
+                listingId,
+                message: mediaUpdateErr.message,
+              });
+            }
           }
 
         } catch (mirrorErr) {
@@ -2656,6 +2833,17 @@ Deno.serve(async (req) => {
         );
       }
       const items = asArray(r.data);
+      for (const rawItem of items) {
+        const rawSerial = String(rawItem?.serial ?? rawItem?.Serial ?? rawItem?.sidur ?? rawItem?.Sidur ?? rawItem?.id ?? rawItem?.Id ?? "").trim();
+        if (shouldRawAuditProperty({ homely_id: rawSerial, raw: rawItem, address: [rawItem?.street, rawItem?.number].filter(Boolean).join(" "), title: rawItem?.objectresidence, city: rawItem?.city }, rawSerial)) {
+          logJsonChunks(`[homely-fetch-property] RAW_SOURCE_BEFORE_MAPPING serial=${rawSerial}`, rawItem);
+          console.log(`[homely-fetch-property] RAW_SOURCE_MEDIA_FIELD_AUDIT serial=${rawSerial}`, {
+            keys: rawItem && typeof rawItem === "object" ? Object.keys(rawItem).slice(0, 120) : [],
+            mediaFields: mediaFieldAudit(rawItem).slice(0, 80),
+            collectMedia: collectMedia(rawItem),
+          });
+        }
+      }
       const debug = [
         {
           url,
@@ -2939,8 +3127,40 @@ Deno.serve(async (req) => {
     const versionTag = `v${Date.now()}`;
     const cachedPhotos = await mirrorAll(admin, String(listing_id), finalRawPhotos, 40, "image", versionTag);
     const cachedDocs = await mirrorAll(admin, String(listing_id), rawDocs, 20, "document", versionTag);
-    const photosForDb = cachedPhotos.length ? cachedPhotos : finalRawPhotos;
+    const photosForDb = cachedPhotos;
     const docsForDb = cachedDocs.length ? cachedDocs : rawDocs;
+
+    if (photosForDb.length === 0) {
+      const failureReasons = {
+        api_photos_count: apiPhotos.length,
+        raw_photo_count: finalRawPhotos.length,
+        mirrored_photo_count: cachedPhotos.length,
+        raw_docs_count: rawDocs.length,
+        rich_detail_endpoint: rich.endpoint,
+        source_url: sourceUrl || null,
+        rich_media_fields: mediaFieldAudit(richest).slice(0, 80),
+      };
+      console.warn("[singleRefresh] MEDIA_MAPPING_FAILED_EMPTY_ARRAY", {
+        serial: serialStr,
+        listing_id,
+        property_title: mapped.title || listing.property_title,
+        address: mapped.address || listing.address,
+        city: mapped.city || listing.city,
+        failureReasons,
+      });
+      await logIntegrationError({
+        integration: "homely",
+        functionName: "homely-fetch-property.singleRefresh",
+        errorCode: "media_mapping_empty_array",
+        errorMessage: `No mirrored media_photos could be saved for serial=${serialStr}`,
+        context: {
+          serial: serialStr,
+          listing_id: String(listing_id),
+          workspace_owner: workspaceOwnerId,
+          failure_reasons: failureReasons,
+        },
+      });
+    }
 
     const updated = {
       property_title: mapped.title || listing.property_title,
