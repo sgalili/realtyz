@@ -1385,6 +1385,38 @@ async function mirrorAll(
   return out;
 }
 
+async function mirrorVerifiedImageCandidates(
+  admin: ReturnType<typeof createClient>,
+  listingId: string,
+  candidates: ImageCandidate[],
+  versionTag: string,
+  cap = 40,
+): Promise<{ photos: string[]; originals: string[]; rejected: Array<{ url: string; source: string; reason: string }> }> {
+  const photos: string[] = [];
+  const originals: string[] = [];
+  const rejected: Array<{ url: string; source: string; reason: string }> = [];
+  const seen = new Set<string>();
+  for (const candidate of candidates) {
+    if (photos.length >= cap) break;
+    const url = normalizeMediaUrl(candidate.url, WEBTIV_BASE);
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+    const rejectReason = mediaRejectReason(url);
+    if (rejectReason) {
+      rejected.push({ url, source: candidate.source, reason: rejectReason });
+      continue;
+    }
+    const mirrored = await mirrorOne(admin, listingId, url, "image", versionTag);
+    if (mirrored) {
+      photos.push(mirrored);
+      originals.push(url);
+    } else {
+      rejected.push({ url, source: candidate.source, reason: "verification_or_mirror_failed" });
+    }
+  }
+  return { photos, originals, rejected };
+}
+
 function normForMatch(value: unknown): string {
   return String(value ?? "")
     .toLowerCase()
