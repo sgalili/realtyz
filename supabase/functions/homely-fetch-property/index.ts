@@ -2223,6 +2223,84 @@ Deno.serve(async (req) => {
       });
     }
 
+    if (action === "rawDetailProbe") {
+      // Debug-only: fetch the RAW JSON from every candidate Webtiv detail /
+      // image endpoint for one serial and return it verbatim. No mapping,
+      // no DB writes, no mirroring. Use to answer "does the upstream API
+      // even return images for this property?".
+      const serial = String((body as any)?.serial ?? "").trim();
+      if (!serial) return json({ ok: false, error: "serial_required" }, 400);
+      const { data: cred } = await admin
+        .from("homely_broker_credentials")
+        .select("homely_agency, homely_username")
+        .eq("user_id", workspaceOwnerId)
+        .maybeSingle();
+      const { data: pw } = await admin.rpc("get_homely_password", { _user_id: workspaceOwnerId });
+      if (!cred?.homely_agency || !cred?.homely_username || !pw) {
+        return json({ ok: false, error: "no_credentials" }, 400);
+      }
+      const login = await webtivLogin(String(cred.homely_agency), String(cred.homely_username), pw as unknown as string);
+      if (!login.ok) return json({ ok: false, error: "login_failed", detail: (login as any) }, 502);
+      const hash = extractHash(login.session);
+      const detailEndpoints = [
+        `${WEBTIV_BASE}/api/report/getNechesFullDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+        `${WEBTIV_BASE}/api/report/getNechesData/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+        `${WEBTIV_BASE}/api/report/getPropertyDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+        `${WEBTIV_BASE}/api/report/getNechesDetail/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+        `${WEBTIV_BASE}/api/report/getNechesInfo/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+        `${WEBTIV_BASE}/api/report/getNeches/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+        `${WEBTIV_BASE}/api/report/getNechesImages/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+        `${WEBTIV_BASE}/api/report/getNechesPhotos/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+        `${WEBTIV_BASE}/api/report/getNechesPictures/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+        `${WEBTIV_BASE}/api/report/getPicturesByNeches/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+        `${WEBTIV_BASE}/api/report/getPicsByNeches/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+        `${WEBTIV_BASE}/api/report/getNechesGallery/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+        `${WEBTIV_BASE}/api/hashData/getImages/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+      ];
+      const probes: any[] = [];
+      for (const ep of detailEndpoints) {
+        try {
+          const r = await fetch(ep, { headers: { Accept: "application/json" } });
+          const text = await r.text();
+          let parsed: any = null;
+          try { parsed = JSON.parse(text); } catch { /* keep text */ }
+          probes.push({
+            endpoint: ep.replace(hash, "<HASH>"),
+            status: r.status,
+            contentType: r.headers.get("content-type"),
+            bodyLength: text.length,
+            raw: parsed ?? text.slice(0, 4000),
+          });
+        } catch (e) {
+          probes.push({ endpoint: ep.replace(hash, "<HASH>"), error: (e as Error).message });
+        }
+      }
+      const allKeysEndpoint = `${WEBTIV_BASE}/api/hashData/getAllKeys/${encodeURIComponent(hash)}`;
+      for (const payload of [{ id: serial }, { serial }, { sidur: serial }, { nechesId: serial }]) {
+        try {
+          const r = await fetch(allKeysEndpoint, {
+            method: "POST",
+            headers: { "Content-Type": "application/json", Accept: "application/json" },
+            body: JSON.stringify(payload),
+          });
+          const text = await r.text();
+          let parsed: any = null;
+          try { parsed = JSON.parse(text); } catch { /* keep text */ }
+          probes.push({
+            endpoint: allKeysEndpoint.replace(hash, "<HASH>"),
+            method: "POST",
+            payload,
+            status: r.status,
+            bodyLength: text.length,
+            raw: parsed ?? text.slice(0, 4000),
+          });
+        } catch (e) {
+          probes.push({ endpoint: allKeysEndpoint, error: (e as Error).message });
+        }
+      }
+      return json({ ok: true, serial, probeCount: probes.length, probes });
+    }
+
     if (action === "importOutJson") {
       const propertyIds = new Set(((body as any)?.propertyIds ?? []).map((v: unknown) => String(v)));
       const contactIds = new Set(((body as any)?.contactIds ?? []).map((v: unknown) => String(v)));
