@@ -2445,22 +2445,56 @@ Deno.serve(async (req) => {
               );
 
             const cleanedMirrored = cleanList(verifiedImages.photos);
-            const previousPhotos = existing?.id && Array.isArray((existing as any).media_photos)
+            const existingMeta = (existing as any)?.source_metadata && typeof (existing as any).source_metadata === "object"
+              ? ((existing as any).source_metadata as Record<string, any>)
+              : {};
+            const existingWasVerifiedForThisSerial = String(existingMeta.media_serial_verified ?? "") === homelyId;
+            const previousPhotos = existing?.id && existingWasVerifiedForThisSerial && Array.isArray((existing as any).media_photos)
               ? cleanList((existing as any).media_photos)
               : [];
-            const finalPhotosForDb = cleanedMirrored.length ? cleanedMirrored : previousPhotos;
+            let finalPhotosForDb = cleanedMirrored.length ? [...cleanedMirrored] : [...previousPhotos];
             const finalDocsForDb = mirroredDocs.length ? mirroredDocs : rawDocuments;
-            const photosSource = cleanedMirrored.length
+            let photosSource = cleanedMirrored.length
               ? "verified_mirrored"
               : (previousPhotos.length ? "preserved_previous" : "empty_verified");
 
-            console.log("[importOutJson] about to update listing media", {
+            const signatureSource = verifiedImages.originals.length
+              ? verifiedImages.originals
+              : (Array.isArray(existingMeta.photos_original) ? existingMeta.photos_original : finalPhotosForDb);
+            const finalSignature = mediaSignature(signatureSource.filter((u: unknown): u is string => typeof u === "string"));
+            const signatureOwner = finalSignature ? batchFinalMediaSignatures.get(finalSignature) : null;
+            if (finalSignature && signatureOwner && signatureOwner !== homelyId) {
+              await logIntegrationError({
+                integration: "homely",
+                functionName: "homely-fetch-property.importOutJson",
+                errorCode: "duplicate_media_array_blocked",
+                errorMessage: `Blocked duplicate media array: homely_id=${homelyId} matched already-imported homely_id=${signatureOwner}`,
+                context: {
+                  homely_id: homelyId,
+                  duplicate_of_homely_id: signatureOwner,
+                  listing_id: listingId,
+                  original_count: signatureSource.length,
+                },
+              });
+              finalPhotosForDb = [];
+              photosSource = "blocked_duplicate_media_array";
+            } else if (finalSignature) {
+              batchFinalMediaSignatures.set(finalSignature, homelyId);
+            }
+
+            console.log("[importOutJson] PRE_SAVE_MEDIA_BINDING", {
               homelyId,
               listingId,
+              external_id: upsertedExternalId || homelyId,
+              candidate_sources: imageCandidateSummary(imageCandidates).bySource,
               candidates_count: imageCandidates.length,
               verified_count: cleanedMirrored.length,
               rejected_count: verifiedImages.rejected.length,
+              property_scope_rejected_count: scopedMedia.rejected.length,
               preserved_previous_count: previousPhotos.length,
+              previous_preserved_only_if_serial_verified: existingWasVerifiedForThisSerial,
+              media_signature_owner: signatureOwner ?? homelyId,
+              media_photos_source: photosSource,
               media_photos: finalPhotosForDb,
               media_photos_count: Array.isArray(finalPhotosForDb) ? finalPhotosForDb.length : null,
               media_count: Number(finalPhotosForDb.length + finalDocsForDb.length) || 0,
