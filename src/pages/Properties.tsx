@@ -53,6 +53,8 @@ import { normalizeImageUrls } from '@/lib/imageHealth';
 const PRICE_MIN = 0;
 const PRICE_MAX = 10_000_000;
 const PRICE_STEP = 100_000;
+const DEBUG_SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL ?? '(missing)';
+const DEBUG_SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '(missing)';
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
@@ -122,6 +124,81 @@ const SOURCE_LABELS: Record<SourceTab, string> = {
   madlan: 'מדל״ן',
 };
 
+function ConnectionStateDebugDashboard({
+  cacheAuditReady,
+  renderedListingsLength,
+  filteredListingsLength,
+}: {
+  cacheAuditReady: boolean;
+  renderedListingsLength: number;
+  filteredListingsLength: number;
+}) {
+  const [rawCount, setRawCount] = useState<number | null>(null);
+  const [rawCountError, setRawCountError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!cacheAuditReady) return;
+
+    let cancelled = false;
+
+    const runRawCount = async () => {
+      setRawCount(null);
+      setRawCountError(null);
+      const { count, error } = await supabase
+        .from('listings')
+        .select('*', { count: 'exact', head: true });
+
+      console.log('[Connection & State Audit] Raw listings count:', { count, error });
+
+      if (cancelled) return;
+      if (error) {
+        setRawCountError(error.message);
+        return;
+      }
+      setRawCount(count ?? 0);
+    };
+
+    void runRawCount();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [cacheAuditReady]);
+
+  return (
+    <Card className="border-destructive/40 bg-destructive/5 p-4 text-left" dir="ltr">
+      <div className="mb-3 flex items-center justify-between gap-3 border-b border-border pb-2">
+        <h2 className="text-sm font-bold text-destructive">Connection & State Audit</h2>
+        <Badge variant={cacheAuditReady ? 'default' : 'secondary'}>
+          {cacheAuditReady ? 'Cache cleared + live fetch forced' : 'Clearing TanStack cache'}
+        </Badge>
+      </div>
+      <dl className="grid grid-cols-1 gap-2 text-xs sm:grid-cols-2">
+        <div className="rounded-md border border-border bg-card p-2">
+          <dt className="font-semibold text-muted-foreground">supabaseUrl</dt>
+          <dd className="break-all font-mono text-foreground">{DEBUG_SUPABASE_URL}</dd>
+        </div>
+        <div className="rounded-md border border-border bg-card p-2">
+          <dt className="font-semibold text-muted-foreground">supabaseAnonKey</dt>
+          <dd className="break-all font-mono text-foreground">{DEBUG_SUPABASE_ANON_KEY}</dd>
+        </div>
+        <div className="rounded-md border border-border bg-card p-2">
+          <dt className="font-semibold text-muted-foreground">raw listings count</dt>
+          <dd className="font-mono text-foreground">{rawCountError ? `ERROR: ${rawCountError}` : rawCount ?? 'loading...'}</dd>
+        </div>
+        <div className="rounded-md border border-border bg-card p-2">
+          <dt className="font-semibold text-muted-foreground">useQuery listings length</dt>
+          <dd className="font-mono text-foreground">{renderedListingsLength}</dd>
+        </div>
+        <div className="rounded-md border border-border bg-card p-2 sm:col-span-2">
+          <dt className="font-semibold text-muted-foreground">visible after UI filters</dt>
+          <dd className="font-mono text-foreground">{filteredListingsLength}</dd>
+        </div>
+      </dl>
+    </Card>
+  );
+}
+
 
 export default function Properties() {
   const { serviceAreas, coveredCities, isConfigured } = useServiceAreas();
@@ -146,10 +223,19 @@ export default function Properties() {
   const [importOpen, setImportOpen] = useState(false);
   const [homelyBulkOpen, setHomelyBulkOpen] = useState(false);
   const queryClient = useQueryClient();
+  const [cacheAuditReady, setCacheAuditReady] = useState(false);
   const refreshListings = () => {
     setSourceTab('all');
+    queryClient.removeQueries({ queryKey: ['properties-search'] });
     queryClient.invalidateQueries({ queryKey: ['properties-search'] });
   };
+
+
+  useEffect(() => {
+    queryClient.clear();
+    setCacheAuditReady(true);
+    console.log('[Connection & State Audit] TanStack Query cache cleared before listings fetch');
+  }, [queryClient]);
 
 
   // Listen for hero-emitted add events (the '+' button lives in PageHero now).
@@ -181,7 +267,7 @@ export default function Properties() {
           for (let from = 0; ; from += pageSize) {
             let query = supabase
               .from('listings')
-              .select('id, property_title, description, asking_price, city, address, neighborhood, rooms, sqm, floor, features, source_metadata, source, source_url, media_photos, created_at, updated_at')
+              .select('id, external_id, property_title, description, asking_price, city, address, neighborhood, rooms, sqm, floor, features, source_metadata, source, source_url, media_photos, created_at, updated_at')
               .eq('status', 'live')
               .eq('is_published', true)
               .order('created_at', { ascending: false })
@@ -234,6 +320,18 @@ export default function Properties() {
             scoped = rows.filter((r) => r.source === 'homely' || r.source === 'webtiv');
           }
 
+          console.log('[Connection & State Audit] Raw listings rows fetched for Properties.tsx:', {
+            sourceTab,
+            rowsLength: rows.length,
+            scopedLength: scoped.length,
+            ids: scoped.map((r: any) => ({
+              id: r.id,
+              source: r.source,
+              external_id: r.external_id,
+              media_photos_count: Array.isArray(r.media_photos) ? r.media_photos.length : 0,
+            })),
+          });
+
           return {
             connected: true,
             results: dedupeProperties(scoped.map((row: any) => {
@@ -279,11 +377,17 @@ export default function Properties() {
 
         // (yad2/madlan now read from the listings table above, filtered by source.)
         return { connected: true, results: [] };
-      } catch {
+      } catch (error) {
+        console.error('[Connection & State Audit] Properties listings fetch failed:', error);
         return { connected: false, results: [] };
       }
     },
-    staleTime: 30_000,
+    enabled: cacheAuditReady,
+    staleTime: 0,
+    gcTime: 0,
+    refetchOnMount: 'always',
+    refetchOnReconnect: 'always',
+    refetchOnWindowFocus: 'always',
   });
 
   const liveResults = liveResponse?.results ?? [];
@@ -348,6 +452,12 @@ export default function Properties() {
 
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden min-w-0" dir="rtl">
+      <ConnectionStateDebugDashboard
+        cacheAuditReady={cacheAuditReady}
+        renderedListingsLength={liveResults.length}
+        filteredListingsLength={filtered.length}
+      />
+
       {/* Header — title only (the '+' button lives inside the global hero) */}
       <header className="text-right">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
