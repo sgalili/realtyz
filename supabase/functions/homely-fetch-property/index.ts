@@ -2585,6 +2585,8 @@ Deno.serve(async (req) => {
               (arr || []).filter((u) =>
                 typeof u === "string" &&
                 u.trim() !== "" &&
+                u.includes("/storage/v1/object/") &&
+                u.includes("/homely-media/") &&
                 !mediaRejectReason(u),
               );
 
