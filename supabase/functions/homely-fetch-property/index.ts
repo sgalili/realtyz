@@ -2380,18 +2380,22 @@ Deno.serve(async (req) => {
         }
 
         if (existing?.id) {
-          const existingPhotos = Array.isArray((existing as any).media_photos) ? (existing as any).media_photos : [];
+          const existingMetaForCore = (existing as any).source_metadata && typeof (existing as any).source_metadata === "object"
+            ? ((existing as any).source_metadata as Record<string, unknown>)
+            : {};
+          const canPreserveExistingPhotosForThisSerial = String(existingMetaForCore.media_serial_verified ?? "") === homelyId;
+          const existingPhotos = canPreserveExistingPhotosForThisSerial && Array.isArray((existing as any).media_photos) ? (existing as any).media_photos : [];
           const existingDocs = Array.isArray((existing as any).media_documents) ? (existing as any).media_documents : [];
           row.media_photos = existingPhotos;
           if (existingDocs.length && rawDocuments.length === 0) row.media_documents = existingDocs;
           row.source_metadata = {
-            ...((existing as any).source_metadata && typeof (existing as any).source_metadata === "object" ? (existing as any).source_metadata : {}),
+            ...existingMetaForCore,
             ...(row.source_metadata as Record<string, unknown>),
             photos: existingPhotos,
             images: existingPhotos,
             documents: rawDocuments.length ? rawDocuments : existingDocs,
             media_count: Number(existingPhotos.length + (rawDocuments.length ? rawDocuments.length : existingDocs.length)) || 0,
-            photos_preserved_until_verified: existingPhotos.length > 0,
+            photos_preserved_until_verified: canPreserveExistingPhotosForThisSerial && existingPhotos.length > 0,
           };
         }
 
