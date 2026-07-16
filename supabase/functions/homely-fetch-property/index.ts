@@ -3125,8 +3125,40 @@ Deno.serve(async (req) => {
     const versionTag = `v${Date.now()}`;
     const cachedPhotos = await mirrorAll(admin, String(listing_id), finalRawPhotos, 40, "image", versionTag);
     const cachedDocs = await mirrorAll(admin, String(listing_id), rawDocs, 20, "document", versionTag);
-    const photosForDb = cachedPhotos.length ? cachedPhotos : finalRawPhotos;
+    const photosForDb = cachedPhotos;
     const docsForDb = cachedDocs.length ? cachedDocs : rawDocs;
+
+    if (photosForDb.length === 0) {
+      const failureReasons = {
+        api_photos_count: apiPhotos.length,
+        raw_photo_count: finalRawPhotos.length,
+        mirrored_photo_count: cachedPhotos.length,
+        raw_docs_count: rawDocs.length,
+        rich_detail_endpoint: rich.endpoint,
+        source_url: sourceUrl || null,
+        rich_media_fields: mediaFieldAudit(richest).slice(0, 80),
+      };
+      console.warn("[singleRefresh] MEDIA_MAPPING_FAILED_EMPTY_ARRAY", {
+        serial: serialStr,
+        listing_id,
+        property_title: mapped.title || listing.property_title,
+        address: mapped.address || listing.address,
+        city: mapped.city || listing.city,
+        failureReasons,
+      });
+      await logIntegrationError({
+        integration: "homely",
+        functionName: "homely-fetch-property.singleRefresh",
+        errorCode: "media_mapping_empty_array",
+        errorMessage: `No mirrored media_photos could be saved for serial=${serialStr}`,
+        context: {
+          serial: serialStr,
+          listing_id: String(listing_id),
+          workspace_owner: workspaceOwnerId,
+          failure_reasons: failureReasons,
+        },
+      });
+    }
 
     const updated = {
       property_title: mapped.title || listing.property_title,
