@@ -2194,15 +2194,17 @@ Deno.serve(async (req) => {
           is_published: !priceMissing,
           office_notes: p?.office_notes ? String(p.office_notes) : null,
           features,
-          media_photos: Array.isArray(rawPhotos) ? rawPhotos : [],
+          media_photos: [],
           media_documents: Array.isArray(rawDocuments) ? rawDocuments : [],
           owner_id: ownerId,
           source_metadata: {
             homely_id: homelyId,
             property_type: p?.property_type || null,
-            photos: rawPhotos,
+            photos: [],
+            images: [],
+            photos_candidates: rawPhotos,
             documents: rawDocuments,
-            media_count: Number(rawPhotos.length + rawDocuments.length) || 0,
+            media_count: Number(rawDocuments.length) || 0,
             office_notes: p?.office_notes || null,
             agent: p?.agent || null,
             owner_name: ownerFullName || null,
@@ -2235,7 +2237,7 @@ Deno.serve(async (req) => {
         // media mirroring even started.
         const { data: existing, error: existingErr } = await admin
           .from("listings")
-          .select("id, external_id")
+          .select("id, external_id, media_photos, media_documents, source_metadata")
           .eq("user_id", workspaceOwnerId)
           .eq("external_id", homelyId)
           .limit(1)
@@ -2244,6 +2246,22 @@ Deno.serve(async (req) => {
         if (existingErr) {
           console.error(`[importOutJson] lookup failed for ${homelyId}:`, existingErr.message);
           continue;
+        }
+
+        if (existing?.id) {
+          const existingPhotos = Array.isArray((existing as any).media_photos) ? (existing as any).media_photos : [];
+          const existingDocs = Array.isArray((existing as any).media_documents) ? (existing as any).media_documents : [];
+          row.media_photos = existingPhotos;
+          if (existingDocs.length && rawDocuments.length === 0) row.media_documents = existingDocs;
+          row.source_metadata = {
+            ...((existing as any).source_metadata && typeof (existing as any).source_metadata === "object" ? (existing as any).source_metadata : {}),
+            ...(row.source_metadata as Record<string, unknown>),
+            photos: existingPhotos,
+            images: existingPhotos,
+            documents: rawDocuments.length ? rawDocuments : existingDocs,
+            media_count: Number(existingPhotos.length + (rawDocuments.length ? rawDocuments.length : existingDocs.length)) || 0,
+            photos_preserved_until_verified: existingPhotos.length > 0,
+          };
         }
 
         const saveQuery = existing?.id
