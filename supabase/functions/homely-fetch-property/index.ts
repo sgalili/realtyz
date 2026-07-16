@@ -2375,8 +2375,14 @@ Deno.serve(async (req) => {
       }
       let propsCount = 0;
       let contactsCount = 0;
+      // Webtiv detail/image endpoints are disabled — every candidate route
+      // (getNechesFullDetail, getNechesImages, getNechesGallery, hashData/*)
+      // returns 404/500 for this broker's serials. Confirmed by the raw
+      // probe on 2026-07-16. We now rely on the bulk stream + heuristic
+      // Yad2 enrichment (see enrichFromYad2WithRetries below) for photos.
+      const WEBTIV_DETAIL_FETCH_ENABLED = false;
       let richHash: string | null = null;
-      if (properties.length > 0) {
+      if (WEBTIV_DETAIL_FETCH_ENABLED && properties.length > 0) {
         try {
           const { data: cred } = await admin
             .from("homely_broker_credentials")
@@ -2396,6 +2402,7 @@ Deno.serve(async (req) => {
           console.warn("[importOutJson] rich detail login skipped", (e as Error).message);
         }
       }
+
 
       // Batch-level media ownership ledger. This prevents one property's image
       // candidates or final mirrored gallery from being reused by another
