@@ -29,6 +29,9 @@ const MEDIA_KEY_RX = /(pic|photo|image|img|picture|gallery|media|cover|thumbnail
 const SOURCE_PAGE_KEY_RX = /(source|origin|url|link|href|yad2|madlan|מקור|קישור)/i;
 const MEDIA_BLOCKLIST_RX = /(placeholder|no-?image|default-property|template_property|generic-building|blank\.gif|logo|favicon|avatar|pixel|spacer|sprite|watermark|social[-_]?icon|instagram|twitter|linkedin|tiktok|youtube|whatsapp)/i;
 const FACEBOOK_PAGE_RX = /(?:^https?:\/\/)?(?:[a-z0-9-]+\.)*facebook\.com(?:[\/:?#]|$)/i;
+const EXPLICIT_IMAGE_KEY_RX = /(?:^|[._-])(pic\d*|pics|photo\d*|photos|image\d*|images|img\d*|imgs|picture\d*|pictures|gallery|media|cover|thumbnail|mainimage|mainimageurl|main_image|photo_url|photourl|image_url|imageurl|picurl|pic_url|תמונה|תמונות)(?:$|[._-])/i;
+const EXPLICIT_DOCUMENT_KEY_RX = /(?:^|[._-])(file|files|doc|docs|document|documents|attachment|attachments|מסמך|מסמכים|קובץ|קבצים)(?:$|[._-])/i;
+const URLISH_MEDIA_VALUE_RX = /^(?:https?:\/\/|\/\/|www\.|\/|(?:\.\.\/|\.\/)?[^\s"'<>]+\.(?:jpe?g|png|gif|webp|bmp|heic|avif|pdf|docx?|xlsx?|pptx?|txt|csv|zip)(?:[?#].*)?|(?:images?|photos?|pics?|gallery|media|uploads?|files?)\/[^\s"'<>]+)$/i;
 
 function mediaRejectReason(url: string): string | null {
   if (!url || !/^https?:\/\//i.test(url)) return "not_http";
@@ -38,6 +41,19 @@ function mediaRejectReason(url: string): string | null {
   try {
     const u = new URL(url);
     const base = u.pathname.split("/").pop() || "";
+    const decodedPath = decodeURIComponent(u.pathname || "").replace(/^\/+|\/+$/g, "");
+    const isWebtivApi = /(^|\.)webtivapi\.webtiv\.co\.il$/i.test(u.hostname);
+    // Previous extraction code created fake URLs by resolving every plain text
+    // field against WEBTIV_BASE, e.g. /רויטל, /050-..., /הרצליה. These are not
+    // media endpoints and must never become candidates again.
+    if (
+      isWebtivApi &&
+      !IMAGE_EXT_RX.test(u.pathname) &&
+      !DOCUMENT_EXT_RX.test(u.pathname) &&
+      !/(?:^|\/)(?:api|images?|photos?|pics?|gallery|media|uploads?|files?)(?:\/|$)/i.test(decodedPath)
+    ) {
+      return "webtiv_text_url";
+    }
     if (/^(icon|logo|favicon|sprite|pixel|blank|placeholder)(?:[._-]|$)/i.test(base)) return "blocked_basename";
   } catch {
     return "bad_url";
@@ -53,6 +69,7 @@ function normalizeMediaUrl(raw: unknown, base = WEBTIV_BASE): string | null {
   if (css?.[2]) value = css[2].trim();
   const srcsetFirst = value.split(",").map((part) => part.trim()).filter(Boolean)[0];
   if (srcsetFirst && /\s+\d+[wx]$/i.test(srcsetFirst)) value = srcsetFirst.split(/\s+/)[0];
+  if (!URLISH_MEDIA_VALUE_RX.test(value)) return null;
   try {
     const absolute = new URL(value, base || WEBTIV_BASE).toString();
     return mediaRejectReason(absolute) ? null : absolute;
@@ -70,9 +87,16 @@ function addImageCandidate(
   key = "",
   base = WEBTIV_BASE,
 ) {
+  if (typeof raw === "string") {
+    const value = raw.trim().replace(/\\\//g, "/").replace(/&amp;/g, "&");
+    const embedded = value.match(IMAGE_URL_RX) || [];
+    const keyLooksMedia = EXPLICIT_IMAGE_KEY_RX.test(key) || MEDIA_KEY_RX.test(key);
+    if (!keyLooksMedia && embedded.length === 0) return;
+    if (keyLooksMedia && !URLISH_MEDIA_VALUE_RX.test(value) && embedded.length === 0) return;
+  }
   const url = normalizeMediaUrl(raw, base);
   if (!url || seen.has(url)) return;
-  const keyLooksMedia = MEDIA_KEY_RX.test(key);
+  const keyLooksMedia = EXPLICIT_IMAGE_KEY_RX.test(key) || MEDIA_KEY_RX.test(key);
   const urlLooksMedia = IMAGE_EXT_RX.test(url) || MEDIA_HOST_RX.test(url);
   const sourcePageOnly = SOURCE_PAGE_KEY_RX.test(key) && !keyLooksMedia && !IMAGE_EXT_RX.test(url) && !MEDIA_HOST_RX.test(url);
   if (sourcePageOnly || (!keyLooksMedia && !urlLooksMedia)) return;
@@ -636,30 +660,35 @@ function collectMedia(it: any): { photos: string[]; documents: string[] } {
   const documents = new Set<string>();
   const isImg = (u: string) => IMAGE_EXT_RX.test(u) || MEDIA_HOST_RX.test(u);
   const isDoc = (u: string) => DOCUMENT_EXT_RX.test(u);
-  const photoKey = (k: string) => /(pic|photo|image|img|picture|gallery|media|תמונה|תמונות)/i.test(k);
-  const docKey = (k: string) => /(file|doc|document|attach|מסמך|מסמכים|קובץ)/i.test(k);
+  const photoKey = (k: string) => EXPLICIT_IMAGE_KEY_RX.test(k);
+  const docKey = (k: string) => EXPLICIT_DOCUMENT_KEY_RX.test(k);
   const sourceLinkKey = (k: string) => /(source|origin|url|link|href|yad2|madlan|מקור|קישור)/i.test(k);
   const toUrl = (v: any, key = ""): string | null => {
-    const url = normalizeMediaUrl(v, WEBTIV_BASE);
-    if (url) return url;
     if (typeof v !== "string") return null;
     const s = v.trim().replace(/\\\//g, "/");
     const embedded = s.match(/https?:\/\/[^\s"'<>]+/i)?.[0];
     if (embedded && !mediaRejectReason(embedded)) return embedded;
+    if (!URLISH_MEDIA_VALUE_RX.test(s)) return null;
     if (/^www\./i.test(s)) return normalizeMediaUrl(`https://${s}`, WEBTIV_BASE);
     if (/^\/\//.test(s)) return normalizeMediaUrl(`https:${s}`, WEBTIV_BASE);
-    if (/^\//.test(s) && (IMAGE_EXT_RX.test(s) || DOCUMENT_EXT_RX.test(s) || photoKey(key) || docKey(key))) {
+    if ((/^\//.test(s) || /^(?:images?|photos?|pics?|gallery|media|uploads?|files?)\//i.test(s)) && (IMAGE_EXT_RX.test(s) || DOCUMENT_EXT_RX.test(s) || photoKey(key) || docKey(key))) {
       return normalizeMediaUrl(s, WEBTIV_BASE);
     }
-    return null;
+    return normalizeMediaUrl(s, WEBTIV_BASE);
+  };
+  const shouldInspectValue = (v: any, key = "") => {
+    if (v == null) return false;
+    if (photoKey(key) || docKey(key)) return true;
+    if (typeof v === "string") return (v.match(IMAGE_URL_RX) || []).length > 0 || DOCUMENT_EXT_RX.test(v);
+    return Array.isArray(v) || (typeof v === "object" && !sourceLinkKey(key));
   };
   const push = (v: any, key = "") => {
+    if (!shouldInspectValue(v, key)) return;
     const url = toUrl(v, key);
     if (!url) return;
     if (mediaRejectReason(url)) return;
-    if (isImg(url) || photoKey(key)) photos.add(url);
+    if ((isImg(url) || photoKey(key)) && !sourceLinkKey(key)) photos.add(url);
     else if (isDoc(url) || docKey(key)) documents.add(url);
-    else if (!sourceLinkKey(key)) photos.add(url); // Homely CDN sometimes omits extensions
   };
   const seen = new Set<any>();
   const walk = (value: any, key = "") => {
@@ -676,6 +705,7 @@ function collectMedia(it: any): { photos: string[]; documents: string[] } {
     seen.add(value);
     for (const [k, v] of Object.entries(value)) {
       const nextKey = key ? `${key}.${k}` : k;
+      if (!shouldInspectValue(v, nextKey)) continue;
       if (typeof v === "string") push(v, nextKey);
       else walk(v, nextKey);
     }
@@ -752,6 +782,39 @@ async function fetchRichPropertyDetail(
   }
 
   return { record: best, endpoint: bestEndpoint };
+}
+
+async function fetchWebtivImageEndpointCandidates(hash: string | null, serial: string): Promise<ImageCandidate[]> {
+  if (!hash || !serial) return [];
+  const endpoints = [
+    `${WEBTIV_BASE}/api/report/getNechesImages/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+    `${WEBTIV_BASE}/api/report/getNechesPhotos/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+    `${WEBTIV_BASE}/api/report/getNechesPictures/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+    `${WEBTIV_BASE}/api/report/getPicturesByNeches/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+    `${WEBTIV_BASE}/api/report/getPicsByNeches/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+    `${WEBTIV_BASE}/api/report/getNechesGallery/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+    `${WEBTIV_BASE}/api/hashData/getImages/${encodeURIComponent(hash)}/${encodeURIComponent(serial)}`,
+  ];
+  const out: ImageCandidate[] = [];
+  for (const endpoint of endpoints) {
+    const r = await getJson(endpoint);
+    if (r.status < 200 || r.status >= 300 || !r.data) continue;
+    const candidates = collectImageCandidates(r.data, "webtiv_image_endpoint", 95);
+    out.push(...candidates);
+    const media = collectMedia(r.data);
+    out.push(...media.photos.map((url) => ({ url, source: "webtiv_image_endpoint_media", priority: 95, key: endpoint })));
+    if (out.length) {
+      console.log("[webtivImageEndpoints] found image candidates", {
+        serial,
+        endpoint,
+        count: out.length,
+        sample: out.slice(0, 5).map((c) => c.url),
+      });
+      break;
+    }
+  }
+  if (!out.length) console.log("[webtivImageEndpoints] no explicit image endpoint returned media", { serial });
+  return mergeImageCandidates(out);
 }
 function buildOfficeNotes(it: any): string {
   // Aggregate every broker-side note the office maintains on the property.
@@ -2105,17 +2168,18 @@ Deno.serve(async (req) => {
         });
 
         const apiCandidates = collectImageCandidates(richRecord, "homely_rich_api", 100);
+        const webtivEndpointCandidates = richHash ? await fetchWebtivImageEndpointCandidates(richHash, homelyId) : [];
         const streamCandidates = collectImageCandidates(p, "homely_stream_api", 90);
         const yad2Candidates = collectImageCandidates(yad2Enrichment?.photos ?? [], "yad2_api", 70);
         const campaignCandidates = collectImageCandidates(campaignPhotos, "campaign_history", 60);
         let scrapedCandidates: ImageCandidate[] = [];
-        if (richSourceUrl && apiCandidates.length + streamCandidates.length + yad2Candidates.length + campaignCandidates.length === 0) {
+        if (richSourceUrl && apiCandidates.length + webtivEndpointCandidates.length + streamCandidates.length + yad2Candidates.length + campaignCandidates.length === 0) {
           const scraped = await fetchVerifiedMedia(richSourceUrl);
           scrapedCandidates = scraped.map((url) => ({ url, source: "public_page_scrape", priority: 40 }));
           console.log(`[importOutJson][${homelyId}] scraper returned`, { count: scraped.length, sample: scraped.slice(0, 5) });
         }
 
-        const imageCandidates = mergeImageCandidates(apiCandidates, streamCandidates, yad2Candidates, campaignCandidates, scrapedCandidates);
+        const imageCandidates = mergeImageCandidates(apiCandidates, webtivEndpointCandidates, streamCandidates, yad2Candidates, campaignCandidates, scrapedCandidates);
         const rawPhotos = imageCandidates.map((c) => c.url);
         console.log(`[importOutJson][${homelyId}] IMAGE_CANDIDATES`, imageCandidateSummary(imageCandidates));
 
