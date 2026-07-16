@@ -2665,8 +2665,44 @@ Deno.serve(async (req) => {
               media_photos_count: Array.isArray(finalPhotosForDb) ? finalPhotosForDb.length : null,
               media_count: Number(finalPhotosForDb.length + finalDocsForDb.length) || 0,
             });
+            if (finalPhotosForDb.length === 0) {
+              const failureReasons = {
+                bulk_media_count: Array.isArray(p?.photos) ? p.photos.length : (p?.photo ? 1 : 0),
+                rich_media_count: richMedia.photos.length,
+                api_candidate_count: apiCandidates.length,
+                webtiv_image_endpoint_candidate_count: webtivEndpointCandidates.length,
+                stream_candidate_count: streamCandidates.length,
+                yad2_candidate_count: yad2Candidates.length,
+                campaign_candidate_count: campaignCandidates.length,
+                scraped_candidate_count: scrapedCandidates.length,
+                property_scope_rejections: scopedMedia.rejected.slice(0, 20),
+                mirror_rejections: verifiedImages.rejected.slice(0, 20),
+                rich_detail_endpoint: richEndpoint,
+                source_url: richSourceUrl || null,
+              };
+              console.warn("[importOutJson] MEDIA_MAPPING_FAILED_EMPTY_ARRAY", {
+                homelyId,
+                listingId,
+                property_title: p?.title ?? null,
+                address: p?.address ?? null,
+                city: p?.city ?? null,
+                failureReasons,
+              });
+              await logIntegrationError({
+                integration: "homely",
+                functionName: "homely-fetch-property.importOutJson",
+                errorCode: "media_mapping_empty_array",
+                errorMessage: `No media_photos could be mapped or mirrored for homely_id=${homelyId}`,
+                context: {
+                  homely_id: homelyId,
+                  listing_id: listingId,
+                  workspace_owner: workspaceOwnerId,
+                  failure_reasons: failureReasons,
+                },
+              });
+            }
             const meta = row.source_metadata as Record<string, unknown>;
-            await admin
+            const { error: mediaUpdateErr } = await admin
               .from("listings")
               .update({
                 media_photos: Array.isArray(finalPhotosForDb) ? finalPhotosForDb : [],
@@ -2689,6 +2725,13 @@ Deno.serve(async (req) => {
                 },
               })
               .eq("id", listingId);
+            if (mediaUpdateErr) {
+              console.error("[importOutJson] final media DB update failed", {
+                homelyId,
+                listingId,
+                message: mediaUpdateErr.message,
+              });
+            }
           }
 
         } catch (mirrorErr) {
