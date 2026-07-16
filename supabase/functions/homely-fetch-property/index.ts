@@ -1709,7 +1709,8 @@ async function scrapePublicListing(pageUrl: string): Promise<{ ogImages: string[
 }
 
 async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const buf = await crypto.subtle.digest("SHA-256", bytes);
+  const stableBytes = new Uint8Array(bytes);
+  const buf = await crypto.subtle.digest("SHA-256", stableBytes.buffer);
   return Array.from(new Uint8Array(buf))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
@@ -1962,8 +1963,9 @@ Deno.serve(async (req) => {
         }
       }
       if (returnedIds.size > 0 && !returnedIds.has(externalId)) {
-        await logIntegrationError(admin, workspaceOwnerId, {
+        await logIntegrationError({
           integration: "homely",
+          functionName: "homely-fetch-property.resolveLiveImage",
           errorCode: "property_id_mismatch",
           errorMessage: `resolve-live-image: listing.external_id=${externalId} not present in live record ids [${Array.from(returnedIds).join(",")}] (endpoint=${endpoint ?? "?"})`,
           context: {
