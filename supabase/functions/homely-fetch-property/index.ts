@@ -2283,6 +2283,14 @@ Deno.serve(async (req) => {
         console.log("[importOutJson] media state reset for property", { homelyId });
         let richRecord = p?.raw ?? p;
         let richEndpoint: string | null = null;
+        if (shouldRawAuditProperty(p, homelyId)) {
+          logJsonChunks(`[importOutJson] RAW_SOURCE_BEFORE_DETAIL_FETCH homelyId=${homelyId}`, richRecord);
+          console.log(`[importOutJson] RAW_SOURCE_MEDIA_FIELD_AUDIT homelyId=${homelyId}`, {
+            keys: richRecord && typeof richRecord === "object" ? Object.keys(richRecord).slice(0, 120) : [],
+            mediaFields: mediaFieldAudit(richRecord).slice(0, 80),
+            collectMedia: collectMedia(richRecord),
+          });
+        }
         if (richHash) {
           try {
             const rich = await fetchRichPropertyDetail(richHash, homelyId, richRecord);
@@ -2294,24 +2302,32 @@ Deno.serve(async (req) => {
         }
 
         const richMedia = collectMedia(richRecord);
-        // TEMP DIAGNOSTIC — inspect raw media fields before any filtering.
+        if (shouldRawAuditProperty(p, homelyId)) {
+          logJsonChunks(`[importOutJson] RAW_SOURCE_AFTER_DETAIL_FETCH homelyId=${homelyId} endpoint=${richEndpoint ?? "none"}`, richRecord);
+        }
+        // Diagnostic — inspect raw media fields before any filtering/mirroring.
         try {
           const rr: any = richRecord || {};
-          console.log(`[importOutJson] RAW_HOMELY_MEDIA homelyId=${homelyId}`, JSON.stringify({
-            rr_photos: rr.photos ?? null,
-            rr_images: rr.images ?? null,
-            rr_media: rr.media ?? null,
-            rr_photo: rr.photo ?? null,
-            rr_picture: rr.picture ?? null,
-            rr_pic: rr.pic ?? null,
-            rr_image: rr.image ?? null,
-            rr_thumbnail: rr.thumbnail ?? null,
+          console.log(`[importOutJson] RAW_HOMELY_MEDIA homelyId=${homelyId}`, {
+            endpoint: richEndpoint,
+            explicit_fields: {
+              photos: rr.photos ?? rr.Photos ?? null,
+              pictures: rr.pictures ?? rr.Pictures ?? null,
+              gallery: rr.gallery ?? rr.Gallery ?? null,
+              media_links: rr.media_links ?? rr.mediaLinks ?? rr.MediaLinks ?? null,
+              raw_data: rr.raw_data ?? rr.rawData ?? rr.RawData ?? null,
+              photo: rr.photo ?? rr.Photo ?? null,
+              picture: rr.picture ?? rr.Picture ?? null,
+              image: rr.image ?? rr.Image ?? null,
+              thumbnail: rr.thumbnail ?? rr.Thumbnail ?? null,
+            },
             p_photos: (p as any)?.photos ?? null,
             p_photo: (p as any)?.photo ?? null,
             richMedia_photos: richMedia.photos,
             richMedia_documents: richMedia.documents,
-            rr_keys: Object.keys(rr).slice(0, 80),
-          }).slice(0, 4000));
+            hidden_media_fields: mediaFieldAudit(rr).slice(0, 80),
+            rr_keys: Object.keys(rr).slice(0, 120),
+          });
         } catch (_) { /* noop */ }
         const rawSourceOrigin = pickSourceOrigin(richRecord) || p?.source_origin || null;
         const sourceIsYad2 =
