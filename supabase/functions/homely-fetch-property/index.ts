@@ -16,11 +16,11 @@ async function fetchVerifiedMedia(listingUrl: string): Promise<string[]> {
   const found = new Map<string, string>(); // url -> source selector (for logging)
   const IMG_EXT_RX = /\.(jpe?g|png|webp|gif|avif|bmp|tiff?)(?:$|[?#])/i;
   const FACEBOOK_RX = /(?:^https?:\/\/)?(?:[a-z0-9-]+\.)*(?:facebook\.com|fbcdn\.net|fbsbx\.com)(?:[\/:?#]|$)/i;
-  const PLACEHOLDER_RX = /(placeholder|no-?image|default-property|template_property|generic-building|1x1|pixel|spacer|blank\.gif)/i;
-  // Blacklist keywords in URL path/filename that indicate non-photo assets.
-  const BLACKLIST_RX = /(favicon|\bicons?\b|\blogos?\b|sprite|watermark|\bpixel\b|facebook|twitter|instagram|linkedin|tiktok|youtube|whatsapp|social[-_]?(?:icon|share))/i;
-  // Min byte size as proxy for "≥ 300x300" real photos. Icons/logos are typically <15KB.
-  const MIN_BYTES = 20000;
+  const PLACEHOLDER_RX = /(placeholder|no-?image|default-property|template_property|generic-building|1x1|blank\.gif)/i;
+  // Explicit blacklist: any URL containing these substrings is discarded.
+  const BLACKLIST_RX = /(logo|icon|favicon|avatar|profile|facebook|instagram|twitter|pixel|spacer|button|sprite|watermark|linkedin|tiktok|youtube|whatsapp)/i;
+  const MIN_DIM = 300;        // hard minimum width/height in px
+  const MIN_BYTES = 20000;    // ≈ proxy for 300x300 when dims aren't declared
 
   const norm = (raw: string | undefined, base: string): string | null => {
     if (!raw) return null;
@@ -29,7 +29,6 @@ async function fetchVerifiedMedia(listingUrl: string): Promise<string[]> {
     const m = u.match(/url\((['"]?)([^'")]+)\1\)/i);
     if (m) u = m[2];
     try {
-      // URL resolution: relative "/foo.jpg" is strictly resolved against the property page's base.
       const abs = new URL(u, base).toString();
       if (!/^https?:\/\//i.test(abs)) return null;
       if (FACEBOOK_RX.test(abs)) return null;
@@ -39,6 +38,8 @@ async function fetchVerifiedMedia(listingUrl: string): Promise<string[]> {
     } catch { return null; }
   };
   const add = (url: string | null, source: string) => { if (url && !found.has(url)) found.set(url, source); };
+
+  let smallSkipped = 0; // count of imgs skipped due to declared width/height < MIN_DIM
 
   try {
     const response = await fetch(listingUrl, {
@@ -57,55 +58,26 @@ async function fetchVerifiedMedia(listingUrl: string): Promise<string[]> {
     const base = response.url || listingUrl;
     const $ = load(html);
 
-    // ── PRIORITY 1: OpenGraph / Twitter / link meta tags (highest-quality hero images) ──
-    $('meta[property="og:image"], meta[property="og:image:secure_url"], meta[name="og:image"], meta[name="twitter:image"], meta[name="twitter:image:src"]').each((_, el) => {
-      add(norm($(el).attr("content"), base), "meta:og/twitter");
-    });
-    $('link[rel="image_src"], link[rel="preload"][as="image"]').each((_, el) => {
-      add(norm($(el).attr("href"), base), "link:preload");
-    });
-
-    // ── PRIORITY 2: JSON-LD structured data ──
-    $('script[type="application/ld+json"]').each((_, el) => {
-      try {
-        const raw = $(el).contents().text();
-        if (!raw) return;
-        const walk = (v: any) => {
-          if (!v) return;
-          if (typeof v === "string") { if (IMG_EXT_RX.test(v)) add(norm(v, base), "jsonld:string"); return; }
-          if (Array.isArray(v)) { v.forEach(walk); return; }
-          if (typeof v === "object") {
-            for (const [k, vv] of Object.entries(v)) {
-              if (/image|photo|thumbnail|url/i.test(k) && typeof vv === "string") add(norm(vv, base), "jsonld:field");
-              walk(vv);
-            }
-          }
-        };
-        walk(JSON.parse(raw));
-      } catch { /* ignore malformed json-ld */ }
-    });
-
-    // ── PRIORITY 3: <img> / <picture> / background-image ONLY inside gallery/carousel containers ──
+    // ── STEP 1: Gallery / carousel / slider / photo-viewer containers ONLY ──
     const GALLERY_SEL = [
       '[class*="gallery" i]', '[class*="carousel" i]', '[class*="slider" i]', '[class*="slideshow" i]',
-      '[class*="swiper" i]', '[class*="lightbox" i]', '[class*="photos" i]', '[class*="images" i]',
-      '[id*="gallery" i]', '[id*="carousel" i]', '[id*="slider" i]',
+      '[class*="swiper" i]', '[class*="lightbox" i]', '[class*="photo-viewer" i]', '[class*="photoviewer" i]',
+      '[class*="photos" i]', '[class*="images" i]',
+      '[id*="gallery" i]', '[id*="carousel" i]', '[id*="slider" i]', '[id*="photo-viewer" i]',
       '[data-gallery]', '[data-carousel]', '[role="listbox"]',
     ].join(", ");
 
     const $galleries = $(GALLERY_SEL);
     $galleries.find("img").each((_, el) => {
       const $el = $(el);
-      // Reject <img> with declared dimensions below 300x300.
       const w = parseInt($el.attr("width") || "0", 10);
       const h = parseInt($el.attr("height") || "0", 10);
-      if ((w > 0 && w < 300) || (h > 0 && h < 300)) return;
+      if ((w > 0 && w < MIN_DIM) || (h > 0 && h < MIN_DIM)) { smallSkipped++; return; }
 
       const attrs = ["src", "data-src", "data-original", "data-lazy", "data-lazy-src", "data-echo", "data-defer-src", "data-hi-res-src", "data-image", "data-img"];
       for (const a of attrs) add(norm($el.attr(a), base), `gallery:img[${a}]`);
       const srcset = $el.attr("srcset") || $el.attr("data-srcset");
       if (srcset) {
-        // Prefer the largest candidate in srcset.
         const parts = srcset.split(",").map((p) => p.trim()).filter(Boolean);
         let best: string | null = null;
         let bestW = 0;
@@ -125,6 +97,7 @@ async function fetchVerifiedMedia(listingUrl: string): Promise<string[]> {
         add(norm(part.trim().split(/\s+/)[0], base), "gallery:picture");
       }
     });
+    // background-image is only honored inside a gallery container.
     $galleries.find("[style]").each((_, el) => {
       const style = $(el).attr("style") || "";
       const rx = /background(?:-image)?\s*:\s*[^;]*url\((['"]?)([^'")]+)\1\)/gi;
@@ -132,12 +105,40 @@ async function fetchVerifiedMedia(listingUrl: string): Promise<string[]> {
       while ((m = rx.exec(style)) !== null) add(norm(m[2], base), "gallery:style-bg");
     });
 
-    // ── PRIORITY 4 (fallback): if nothing found yet, regex-scan raw HTML for absolute image URLs. ──
+    const galleryCount = found.size;
+    console.log(`[fetchVerifiedMedia] Captured ${galleryCount} images from Gallery container`, { listingUrl });
+
+    // ── STEP 2: Only if gallery is empty, fall back to og:image / twitter:image ──
     if (found.size === 0) {
-      const urlRx = /https?:\/\/[^\s"'<>()\\]+?\.(?:jpe?g|png|webp|gif|avif)(?:\?[^\s"'<>()\\]*)?/gi;
-      const hits = html.match(urlRx) || [];
-      for (const h of hits) add(norm(h, base), "regex:html-fallback");
+      $('meta[property="og:image"], meta[property="og:image:secure_url"], meta[name="og:image"], meta[name="twitter:image"], meta[name="twitter:image:src"]').each((_, el) => {
+        add(norm($(el).attr("content"), base), "meta:og/twitter");
+      });
+      $('link[rel="image_src"], link[rel="preload"][as="image"]').each((_, el) => {
+        add(norm($(el).attr("href"), base), "link:preload");
+      });
+      // JSON-LD structured data is a legitimate structured fallback (not a generic <img>).
+      $('script[type="application/ld+json"]').each((_, el) => {
+        try {
+          const raw = $(el).contents().text();
+          if (!raw) return;
+          const walk = (v: any) => {
+            if (!v) return;
+            if (typeof v === "string") { if (IMG_EXT_RX.test(v)) add(norm(v, base), "jsonld:string"); return; }
+            if (Array.isArray(v)) { v.forEach(walk); return; }
+            if (typeof v === "object") {
+              for (const [k, vv] of Object.entries(v)) {
+                if (/image|photo|thumbnail|url/i.test(k) && typeof vv === "string") add(norm(vv, base), "jsonld:field");
+                walk(vv);
+              }
+            }
+          };
+          walk(JSON.parse(raw));
+        } catch { /* ignore */ }
+      });
     }
+
+    // NOTE: Generic <img> tags and background-image styles outside gallery containers are
+    // intentionally NOT scanned — this is the precision-first policy.
 
     // ── Size probe: HEAD each candidate; reject anything under MIN_BYTES (≈icons/logos). ──
     const candidates = Array.from(found.keys());
@@ -153,23 +154,26 @@ async function fetchVerifiedMedia(listingUrl: string): Promise<string[]> {
         if (ct && !/^image\//i.test(ct)) return { u, ok: false, reason: `ct_${ct}`, bytes: cl };
         if (cl > 0 && cl < MIN_BYTES) return { u, ok: false, reason: "too_small", bytes: cl };
         return { u, ok: true, reason: "ok", bytes: cl };
-      } catch (e) {
-        // On HEAD failure, keep the URL — better to serve a possibly-good image than lose it.
+      } catch {
         return { u, ok: true, reason: "head_failed", bytes: 0 };
       }
     }));
 
     const results = sizeChecks.filter((r) => r.ok).map((r) => r.u);
     const dropped = sizeChecks.filter((r) => !r.ok);
+    const sizeSkipped = dropped.filter((d) => d.reason === "too_small").length + smallSkipped;
     const bySource: Record<string, number> = {};
     for (const [u, src] of found.entries()) {
       if (results.includes(u)) bySource[src] = (bySource[src] || 0) + 1;
     }
+    console.log(`[fetchVerifiedMedia] Skipped ${sizeSkipped} images due to small size`, { listingUrl });
     console.log("[fetchVerifiedMedia] detection", {
       listingUrl,
+      gallery_captured: galleryCount,
       total_candidates: candidates.length,
       kept: results.length,
       dropped: dropped.length,
+      small_skipped: sizeSkipped,
       by_source: bySource,
       dropped_sample: dropped.slice(0, 5).map((d) => ({ u: d.u, reason: d.reason, bytes: d.bytes })),
       sample: results.slice(0, 5),
@@ -180,6 +184,7 @@ async function fetchVerifiedMedia(listingUrl: string): Promise<string[]> {
     return [];
   }
 }
+
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.4";
 import { corsHeaders } from "../_shared/cors.ts";
