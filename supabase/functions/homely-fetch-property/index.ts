@@ -2306,60 +2306,61 @@ Deno.serve(async (req) => {
             });
           } else {
             const versionTag = `v${Date.now()}`;
-            const mirroredPhotos = await mirrorAll(admin, listingId, rawPhotos, 40, "image", versionTag);
+            const verifiedImages = await mirrorVerifiedImageCandidates(admin, listingId, imageCandidates, versionTag, 40);
             const mirroredDocs = await mirrorAll(admin, listingId, rawDocuments, 20, "document", versionTag);
 
-            // Trust URLs returned by the API. HEAD/Range-GET validation was
-            // getting blocked by Homely's CDN (403), which caused the
-            // pipeline to drop legitimate photos. We now prefer mirrored
-            // storage URLs; fall back to raw Homely URLs if mirroring
-            // produced nothing. The frontend handles broken-image rendering.
             const cleanList = (arr: string[]): string[] =>
               (arr || []).filter((u) =>
                 typeof u === "string" &&
                 u.trim() !== "" &&
-                !/placeholder|no-?image|undefined|null/i.test(u),
+                !mediaRejectReason(u),
               );
 
-            const cleanedMirrored = cleanList(mirroredPhotos);
-            const cleanedRaw = cleanList(rawPhotos);
-            const finalPhotosForDb = cleanedMirrored.length ? cleanedMirrored : cleanedRaw;
+            const cleanedMirrored = cleanList(verifiedImages.photos);
+            const previousPhotos = existing?.id && Array.isArray((existing as any).media_photos)
+              ? cleanList((existing as any).media_photos)
+              : [];
+            const finalPhotosForDb = cleanedMirrored.length ? cleanedMirrored : previousPhotos;
             const finalDocsForDb = mirroredDocs.length ? mirroredDocs : rawDocuments;
             const photosSource = cleanedMirrored.length
-              ? "mirrored"
-              : (cleanedRaw.length ? "raw_fallback" : "empty");
+              ? "verified_mirrored"
+              : (previousPhotos.length ? "preserved_previous" : "empty_verified");
 
             console.log("[importOutJson] about to update listing media", {
               homelyId,
               listingId,
+              candidates_count: imageCandidates.length,
+              verified_count: cleanedMirrored.length,
+              rejected_count: verifiedImages.rejected.length,
+              preserved_previous_count: previousPhotos.length,
               media_photos: finalPhotosForDb,
               media_photos_count: Array.isArray(finalPhotosForDb) ? finalPhotosForDb.length : null,
               media_count: Number(finalPhotosForDb.length + finalDocsForDb.length) || 0,
             });
-            if (finalPhotosForDb.length || finalDocsForDb.length) {
-              const meta = row.source_metadata as Record<string, unknown>;
-              await admin
-                .from("listings")
-                .update({
-                  media_photos: Array.isArray(finalPhotosForDb) ? finalPhotosForDb : [],
-                  media_documents: Array.isArray(finalDocsForDb) ? finalDocsForDb : [],
-                  source_metadata: {
-                    ...meta,
-                    photos: finalPhotosForDb,
-                    images: finalPhotosForDb,
-                    documents: finalDocsForDb,
-                    photos_original: rawPhotos,
-                    photos_mirrored: mirroredPhotos,
-                    documents_original: rawDocuments,
-                    media_count: Number(finalPhotosForDb.length + finalDocsForDb.length) || 0,
-                    media_photos_source: photosSource,
-                    media_mirrored_at: new Date().toISOString(),
-                    media_version_tag: versionTag,
-                    media_serial_verified: homelyId,
-                  },
-                })
-                .eq("id", listingId);
-            }
+            const meta = row.source_metadata as Record<string, unknown>;
+            await admin
+              .from("listings")
+              .update({
+                media_photos: Array.isArray(finalPhotosForDb) ? finalPhotosForDb : [],
+                media_documents: Array.isArray(finalDocsForDb) ? finalDocsForDb : [],
+                source_metadata: {
+                  ...meta,
+                  photos: finalPhotosForDb,
+                  images: finalPhotosForDb,
+                  documents: finalDocsForDb,
+                  photos_original: verifiedImages.originals,
+                  photos_candidates: rawPhotos,
+                  photos_mirrored: cleanedMirrored,
+                  photos_rejected: verifiedImages.rejected.slice(0, 20),
+                  documents_original: rawDocuments,
+                  media_count: Number(finalPhotosForDb.length + finalDocsForDb.length) || 0,
+                  media_photos_source: photosSource,
+                  media_mirrored_at: new Date().toISOString(),
+                  media_version_tag: versionTag,
+                  media_serial_verified: homelyId,
+                },
+              })
+              .eq("id", listingId);
           }
 
         } catch (mirrorErr) {
