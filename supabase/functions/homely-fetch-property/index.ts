@@ -155,6 +155,9 @@ function mediaOriginalKey(raw: string): string {
   const normalized = normalizeMediaUrl(raw, WEBTIV_BASE) || String(raw || "").trim();
   try {
     const u = new URL(normalized);
+    const decodedPath = decodeURIComponent(u.pathname);
+    const mirroredMatch = decodedPath.match(/homely-media\/listing\/[^/]+\/[^/]+\/([a-f0-9]{32,64}\.[a-z0-9]{2,5})/i);
+    if (mirroredMatch?.[1]) return `homely-media-original:${mirroredMatch[1].toLowerCase()}`;
     return `${u.hostname}${u.pathname}`.toLowerCase();
   } catch {
     return normalized.replace(/[?#].*$/, "").toLowerCase();
