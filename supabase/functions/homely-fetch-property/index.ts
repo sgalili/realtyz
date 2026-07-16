@@ -2152,9 +2152,16 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Batch-level media ownership ledger. This prevents one property's image
+      // candidates or final mirrored gallery from being reused by another
+      // Homely serial during the same import run.
+      const batchOriginalImageOwners = new Map<string, string>();
+      const batchFinalMediaSignatures = new Map<string, string>();
+
       for (const p of properties) {
         const homelyId = String(p?.homely_id ?? "").trim();
         if (!homelyId) continue;
+        console.log("[importOutJson] media state reset for property", { homelyId });
         let richRecord = p?.raw ?? p;
         let richEndpoint: string | null = null;
         if (richHash) {
@@ -2227,9 +2234,16 @@ Deno.serve(async (req) => {
           console.log(`[importOutJson][${homelyId}] scraper returned`, { count: scraped.length, sample: scraped.slice(0, 5) });
         }
 
-        const imageCandidates = mergeImageCandidates(apiCandidates, webtivEndpointCandidates, streamCandidates, yad2Candidates, campaignCandidates, scrapedCandidates);
+        const mergedImageCandidates = mergeImageCandidates(apiCandidates, webtivEndpointCandidates, streamCandidates, yad2Candidates, campaignCandidates, scrapedCandidates);
+        const scopedMedia = scopeImageCandidatesToProperty(mergedImageCandidates, homelyId, batchOriginalImageOwners);
+        const imageCandidates = scopedMedia.candidates;
+        for (const candidate of imageCandidates) batchOriginalImageOwners.set(mediaOriginalKey(candidate.url), homelyId);
         const rawPhotos = imageCandidates.map((c) => c.url);
-        console.log(`[importOutJson][${homelyId}] IMAGE_CANDIDATES`, imageCandidateSummary(imageCandidates));
+        console.log(`[importOutJson][${homelyId}] IMAGE_CANDIDATES`, {
+          ...imageCandidateSummary(imageCandidates),
+          merged_total_before_property_scope: mergedImageCandidates.length,
+          rejected_by_property_scope: scopedMedia.rejected.slice(0, 20),
+        });
 
         const rawDocuments = cleanMediaUrls(
           richMedia.documents.length ? richMedia.documents : Array.isArray(p?.documents) ? p.documents : [],
