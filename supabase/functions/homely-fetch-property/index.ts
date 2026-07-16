@@ -770,6 +770,87 @@ function mediaTotal(value: any): number {
   return media.photos.length + media.documents.length;
 }
 
+function mediaFieldAudit(root: any): Array<Record<string, unknown>> {
+  const out: Array<Record<string, unknown>> = [];
+  const seen = new Set<any>();
+  const interestingKey = /(pictures?|pics?|photos?|images?|gallery|media(?:_links?)?|raw_data|rawdata|tmunot|תמונות|תמונה)/i;
+  const walk = (value: any, path = "root") => {
+    if (out.length >= 120 || value == null) return;
+    const key = path.split(".").pop() || path;
+    const keyLooksInteresting = interestingKey.test(key) || interestingKey.test(path);
+    if (typeof value === "string") {
+      const imageMatches = value.match(IMAGE_URL_RX) || [];
+      if (keyLooksInteresting || imageMatches.length) {
+        out.push({
+          path,
+          type: "string",
+          length: value.length,
+          imageMatches: imageMatches.slice(0, 8),
+          sample: value.slice(0, 500),
+        });
+      }
+      return;
+    }
+    if (Array.isArray(value)) {
+      if (keyLooksInteresting) {
+        out.push({
+          path,
+          type: "array",
+          length: value.length,
+          sample: value.slice(0, 3),
+          extractedPhotos: collectMedia(value).photos.slice(0, 8),
+        });
+      }
+      value.slice(0, 80).forEach((entry, index) => walk(entry, `${path}[${index}]`));
+      return;
+    }
+    if (typeof value !== "object" || seen.has(value)) return;
+    seen.add(value);
+    if (keyLooksInteresting) {
+      out.push({
+        path,
+        type: "object",
+        keys: Object.keys(value).slice(0, 80),
+        extractedPhotos: collectMedia(value).photos.slice(0, 8),
+      });
+    }
+    for (const [childKey, childValue] of Object.entries(value)) {
+      walk(childValue, `${path}.${childKey}`);
+    }
+  };
+  walk(root);
+  return out;
+}
+
+function shouldRawAuditProperty(property: any, homelyId: string): boolean {
+  const haystack = JSON.stringify({
+    homelyId,
+    title: property?.title,
+    address: property?.address,
+    city: property?.city,
+    street: property?.raw?.street ?? property?.street,
+    number: property?.raw?.number ?? property?.number,
+  });
+  return /1816|7077|הדקל|דוד שמעוני/.test(haystack);
+}
+
+function logJsonChunks(label: string, value: unknown, chunkSize = 6000) {
+  let text = "";
+  try {
+    text = JSON.stringify(value);
+  } catch (e) {
+    text = `[unserializable:${(e as Error).message}]`;
+  }
+  if (text.length <= chunkSize) {
+    console.log(label, text);
+    return;
+  }
+  const total = Math.ceil(text.length / chunkSize);
+  for (let i = 0; i < total; i++) {
+    console.log(`${label} chunk=${i + 1}/${total}`, text.slice(i * chunkSize, (i + 1) * chunkSize));
+  }
+}
+
 function cleanMediaUrls(values: unknown[], kind: "image" | "document" | "any" = "any"): string[] {
   return Array.from(
     new Set(
