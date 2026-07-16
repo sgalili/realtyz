@@ -2092,36 +2092,6 @@ Deno.serve(async (req) => {
           (p?.source_url ? String(p.source_url) : "") ||
           (richSourceOrigin === "yad2" ? buildYad2FallbackUrl(p?.city, p?.address, p?.transaction_type, homelyId) : "");
 
-        // HARD VALIDATION OVERRIDE — scraper-first media resolution.
-        // The Webtiv API has been observed returning cross-contaminated or
-        // placeholder images. We trust the public listing page (og:image /
-        // scraped photos) as the source of truth whenever the API payload is
-        // empty or contains placeholder URLs.
-        // Broadened placeholder detection — Homely's CDN and template URLs
-        // often include generic building thumbnails that must never be saved.
-        const PLACEHOLDER_RX = /(placeholder|no-?image|default-property|template_property|generic-building|\/images\/placeholder|homely\.co(m|\.il)\/(images|assets)\/(placeholder|default|template))/i;
-        // Facebook/FBCDN URLs are not directly renderable (auth-gated, short-lived,
-        // hotlink-protected). Never save them as media_photos.
-        // Strict host match — only true facebook.com hosts and fb-owned CDNs.
-        const FACEBOOK_RX = /(?:^https?:\/\/)?(?:[a-z0-9-]+\.)*(?:facebook\.com|fbcdn\.net|fbsbx\.com)(?:[\/:?#]|$)/i;
-        const stripPlaceholders = (arr: unknown[], label: string): string[] => {
-          const input = Array.isArray(arr) ? arr : [];
-          const kept: string[] = [];
-          const dropped: Array<{ url: string; reason: string }> = [];
-          for (const u of input) {
-            if (typeof u !== "string" || u.trim() === "") { dropped.push({ url: String(u), reason: "empty/non-string" }); continue; }
-            if (PLACEHOLDER_RX.test(u)) { dropped.push({ url: u, reason: "placeholder" }); continue; }
-            if (FACEBOOK_RX.test(u)) { dropped.push({ url: u, reason: "facebook" }); continue; }
-            kept.push(u);
-          }
-          console.log(`[importOutJson][${homelyId}] filter/${label}`, {
-            in: input.length, kept: kept.length, dropped: dropped.length,
-            dropped_sample: dropped.slice(0, 5),
-            kept_sample: kept.slice(0, 3),
-          });
-          return kept;
-        };
-
         console.log(`[importOutJson][${homelyId}] RAW_HOMELY_MEDIA`, {
           richMedia_photos: Array.isArray(richMedia.photos) ? richMedia.photos.slice(0, 10) : richMedia.photos,
           richMedia_photos_count: Array.isArray(richMedia.photos) ? richMedia.photos.length : null,
@@ -2132,36 +2102,20 @@ Deno.serve(async (req) => {
           richSourceUrl,
         });
 
-        const apiPhotos = stripPlaceholders(cleanMediaUrls(Array.isArray(richMedia.photos) ? richMedia.photos : [], "image"), "api");
-        const isApiPhotosJunk = apiPhotos.length === 0;
-
-        let rawPhotos: string[] = [];
-        if (isApiPhotosJunk && richSourceUrl) {
+        const apiCandidates = collectImageCandidates(richRecord, "homely_rich_api", 100);
+        const streamCandidates = collectImageCandidates(p, "homely_stream_api", 90);
+        const yad2Candidates = collectImageCandidates(yad2Enrichment?.photos ?? [], "yad2_api", 70);
+        const campaignCandidates = collectImageCandidates(campaignPhotos, "campaign_history", 60);
+        let scrapedCandidates: ImageCandidate[] = [];
+        if (richSourceUrl && apiCandidates.length + streamCandidates.length + yad2Candidates.length + campaignCandidates.length === 0) {
           const scraped = await fetchVerifiedMedia(richSourceUrl);
+          scrapedCandidates = scraped.map((url) => ({ url, source: "public_page_scrape", priority: 40 }));
           console.log(`[importOutJson][${homelyId}] scraper returned`, { count: scraped.length, sample: scraped.slice(0, 5) });
-          if (scraped.length > 0) {
-            rawPhotos = stripPlaceholders(cleanMediaUrls(scraped, "image"), "scraper");
-          }
-        } else if (!isApiPhotosJunk) {
-          rawPhotos = apiPhotos;
         }
 
-        // Only fall back to legacy sources if BOTH the API and the scraper
-        // yielded nothing verified. Purified against the placeholder regex.
-        if (rawPhotos.length === 0) {
-          rawPhotos = stripPlaceholders(cleanMediaUrls(
-            Array.isArray(p?.photos) && p.photos.length
-              ? p.photos
-              : p?.photo
-                ? [p.photo]
-                : yad2Enrichment?.photos?.length
-                  ? yad2Enrichment.photos
-                  : campaignPhotos,
-            "image",
-          ), "legacy");
-        }
-
-        console.log(`[importOutJson][${homelyId}] FINAL rawPhotos`, { count: rawPhotos.length, sample: rawPhotos.slice(0, 5) });
+        const imageCandidates = mergeImageCandidates(apiCandidates, streamCandidates, yad2Candidates, campaignCandidates, scrapedCandidates);
+        const rawPhotos = imageCandidates.map((c) => c.url);
+        console.log(`[importOutJson][${homelyId}] IMAGE_CANDIDATES`, imageCandidateSummary(imageCandidates));
 
         const rawDocuments = cleanMediaUrls(
           richMedia.documents.length ? richMedia.documents : Array.isArray(p?.documents) ? p.documents : [],
