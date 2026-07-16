@@ -151,6 +151,54 @@ function imageCandidateSummary(candidates: ImageCandidate[]) {
   };
 }
 
+function mediaOriginalKey(raw: string): string {
+  const normalized = normalizeMediaUrl(raw, WEBTIV_BASE) || String(raw || "").trim();
+  try {
+    const u = new URL(normalized);
+    return `${u.hostname}${u.pathname}`.toLowerCase();
+  } catch {
+    return normalized.replace(/[?#].*$/, "").toLowerCase();
+  }
+}
+
+function mediaSignature(urls: string[]): string {
+  return urls.map(mediaOriginalKey).sort().join("|").slice(0, 500);
+}
+
+function scopeImageCandidatesToProperty(
+  candidates: ImageCandidate[],
+  homelyId: string,
+  batchOriginalImageOwners: Map<string, string>,
+): { candidates: ImageCandidate[]; rejected: Array<{ url: string; source: string; reason: string }> } {
+  const scoped: ImageCandidate[] = [];
+  const rejected: Array<{ url: string; source: string; reason: string }> = [];
+  const localSeen = new Set<string>();
+
+  for (const candidate of candidates) {
+    const url = normalizeMediaUrl(candidate.url, WEBTIV_BASE);
+    if (!url) {
+      rejected.push({ url: String(candidate.url ?? ""), source: candidate.source, reason: "bad_url" });
+      continue;
+    }
+    const mismatchedId = detectMismatchedIdInUrl(url, homelyId);
+    if (mismatchedId) {
+      rejected.push({ url, source: candidate.source, reason: `url_property_id_mismatch:${mismatchedId}` });
+      continue;
+    }
+    const key = mediaOriginalKey(url);
+    if (localSeen.has(key)) continue;
+    const owner = batchOriginalImageOwners.get(key);
+    if (owner && owner !== homelyId) {
+      rejected.push({ url, source: candidate.source, reason: `batch_duplicate_owned_by:${owner}` });
+      continue;
+    }
+    localSeen.add(key);
+    scoped.push({ ...candidate, url });
+  }
+
+  return { candidates: scoped, rejected };
+}
+
 async function fetchVerifiedMedia(listingUrl: string): Promise<string[]> {
   const found = new Map<string, string>(); // url -> source selector (for logging)
   const IMG_EXT_RX = /\.(jpe?g|png|webp|gif|avif|bmp|tiff?)(?:$|[?#])/i;
