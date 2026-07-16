@@ -12,6 +12,121 @@
 //   /api/hashData/getAllKeys/{hash}                              (POST)
 import { load } from "https://esm.sh/cheerio@1.0.0-rc.12";
 
+type ImageCandidate = {
+  url: string;
+  source: string;
+  priority: number;
+  key?: string;
+};
+
+const MIN_PROPERTY_IMAGE_DIM = 300;
+const MIN_PROPERTY_IMAGE_BYTES = 20_000;
+const IMAGE_URL_RX = /https?:\/\/[^\s"'<>\\)]+|\/\/[^\s"'<>\\)]+|\/(?:[^\s"'<>\\)]+\.(?:jpe?g|png|webp|gif|avif|bmp|heic)(?:\?[^\s"'<>\\)]*)?)/gi;
+const IMAGE_EXT_RX = /\.(jpe?g|png|gif|webp|bmp|heic|avif)(\?|#|$)/i;
+const DOCUMENT_EXT_RX = /\.(pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i;
+const MEDIA_HOST_RX = /(?:homely|webtiv|storage\/v1\/object|cloudfront|cloudinary|imgix|akamai|azureedge|amazonaws|s3|cdn|uploads?|files?|media|image|photo|gallery|pic|fbcdn|scontent)/i;
+const MEDIA_KEY_RX = /(pic|photo|image|img|picture|gallery|media|cover|thumbnail|תמונה|תמונות)/i;
+const SOURCE_PAGE_KEY_RX = /(source|origin|url|link|href|yad2|madlan|מקור|קישור)/i;
+const MEDIA_BLOCKLIST_RX = /(placeholder|no-?image|default-property|template_property|generic-building|blank\.gif|logo|favicon|avatar|pixel|spacer|sprite|watermark|social[-_]?icon|instagram|twitter|linkedin|tiktok|youtube|whatsapp)/i;
+const FACEBOOK_PAGE_RX = /(?:^https?:\/\/)?(?:[a-z0-9-]+\.)*facebook\.com(?:[\/:?#]|$)/i;
+
+function mediaRejectReason(url: string): string | null {
+  if (!url || !/^https?:\/\//i.test(url)) return "not_http";
+  if (FACEBOOK_PAGE_RX.test(url)) return "facebook_page";
+  if (MEDIA_BLOCKLIST_RX.test(url)) return "blocked_keyword";
+  if (DOCUMENT_EXT_RX.test(url)) return "document";
+  try {
+    const u = new URL(url);
+    const base = u.pathname.split("/").pop() || "";
+    if (/^(icon|logo|favicon|sprite|pixel|blank|placeholder)(?:[._-]|$)/i.test(base)) return "blocked_basename";
+  } catch {
+    return "bad_url";
+  }
+  return null;
+}
+
+function normalizeMediaUrl(raw: unknown, base = WEBTIV_BASE): string | null {
+  if (typeof raw !== "string") return null;
+  let value = raw.trim().replace(/\\\//g, "/").replace(/&amp;/g, "&");
+  if (!value || /^data:/i.test(value)) return null;
+  const css = value.match(/url\((['"]?)([^'")]+)\1\)/i);
+  if (css?.[2]) value = css[2].trim();
+  const srcsetFirst = value.split(",").map((part) => part.trim()).filter(Boolean)[0];
+  if (srcsetFirst && /\s+\d+[wx]$/i.test(srcsetFirst)) value = srcsetFirst.split(/\s+/)[0];
+  try {
+    const absolute = new URL(value, base || WEBTIV_BASE).toString();
+    return mediaRejectReason(absolute) ? null : absolute;
+  } catch {
+    return null;
+  }
+}
+
+function addImageCandidate(
+  bucket: ImageCandidate[],
+  seen: Set<string>,
+  raw: unknown,
+  source: string,
+  priority: number,
+  key = "",
+  base = WEBTIV_BASE,
+) {
+  const url = normalizeMediaUrl(raw, base);
+  if (!url || seen.has(url)) return;
+  const keyLooksMedia = MEDIA_KEY_RX.test(key);
+  const urlLooksMedia = IMAGE_EXT_RX.test(url) || MEDIA_HOST_RX.test(url);
+  const sourcePageOnly = SOURCE_PAGE_KEY_RX.test(key) && !keyLooksMedia && !IMAGE_EXT_RX.test(url) && !MEDIA_HOST_RX.test(url);
+  if (sourcePageOnly || (!keyLooksMedia && !urlLooksMedia)) return;
+  seen.add(url);
+  bucket.push({ url, source, priority, key });
+}
+
+function collectImageCandidates(root: any, source: string, priority: number, base = WEBTIV_BASE): ImageCandidate[] {
+  const out: ImageCandidate[] = [];
+  const seenUrls = new Set<string>();
+  const seenObjects = new Set<any>();
+  const walk = (value: any, key = "") => {
+    if (value == null) return;
+    if (typeof value === "string") {
+      if (MEDIA_KEY_RX.test(key)) addImageCandidate(out, seenUrls, value, source, priority, key, base);
+      const matches = value.match(IMAGE_URL_RX) || [];
+      for (const match of matches) addImageCandidate(out, seenUrls, match, source, priority, key, base);
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.forEach((entry) => walk(entry, key));
+      return;
+    }
+    if (typeof value !== "object" || seenObjects.has(value)) return;
+    seenObjects.add(value);
+    for (const [childKey, childValue] of Object.entries(value)) {
+      walk(childValue, key ? `${key}.${childKey}` : childKey);
+    }
+  };
+  walk(root);
+  return out.sort((a, b) => b.priority - a.priority);
+}
+
+function mergeImageCandidates(...groups: ImageCandidate[][]): ImageCandidate[] {
+  const seen = new Set<string>();
+  const out: ImageCandidate[] = [];
+  for (const candidate of groups.flat().sort((a, b) => b.priority - a.priority)) {
+    if (!candidate?.url || seen.has(candidate.url)) continue;
+    seen.add(candidate.url);
+    out.push(candidate);
+  }
+  return out;
+}
+
+function imageCandidateSummary(candidates: ImageCandidate[]) {
+  const bySource: Record<string, number> = {};
+  for (const c of candidates) bySource[c.source] = (bySource[c.source] || 0) + 1;
+  return {
+    total: candidates.length,
+    bySource,
+    sample: candidates.slice(0, 8).map((c) => ({ source: c.source, key: c.key, url: c.url })),
+  };
+}
+
 async function fetchVerifiedMedia(listingUrl: string): Promise<string[]> {
   const found = new Map<string, string>(); // url -> source selector (for logging)
   const IMG_EXT_RX = /\.(jpe?g|png|webp|gif|avif|bmp|tiff?)(?:$|[?#])/i;
@@ -519,33 +634,29 @@ function joinName(it: any): string {
 function collectMedia(it: any): { photos: string[]; documents: string[] } {
   const photos = new Set<string>();
   const documents = new Set<string>();
-  const isImg = (u: string) => /\.(jpe?g|png|gif|webp|bmp|heic)(\?|#|$)/i.test(u);
-  const isDoc = (u: string) => /\.(pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i.test(u);
+  const isImg = (u: string) => IMAGE_EXT_RX.test(u) || MEDIA_HOST_RX.test(u);
+  const isDoc = (u: string) => DOCUMENT_EXT_RX.test(u);
   const photoKey = (k: string) => /(pic|photo|image|img|picture|gallery|media|תמונה|תמונות)/i.test(k);
   const docKey = (k: string) => /(file|doc|document|attach|מסמך|מסמכים|קובץ)/i.test(k);
   const sourceLinkKey = (k: string) => /(source|origin|url|link|href|yad2|madlan|מקור|קישור)/i.test(k);
   const toUrl = (v: any, key = ""): string | null => {
+    const url = normalizeMediaUrl(v, WEBTIV_BASE);
+    if (url) return url;
     if (typeof v !== "string") return null;
     const s = v.trim().replace(/\\\//g, "/");
     const embedded = s.match(/https?:\/\/[^\s"'<>]+/i)?.[0];
-    if (embedded) return embedded;
-    if (/^https?:\/\//i.test(s)) return s;
-    if (/^www\./i.test(s)) return `https://${s}`;
-    if (/^\/\//.test(s)) return `https:${s}`;
-    if (
-      /^\//.test(s) &&
-      (/\.(jpe?g|png|gif|webp|bmp|heic|pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i.test(s) ||
-        photoKey(key) ||
-        docKey(key))
-    )
-      return `${WEBTIV_BASE}${s}`;
+    if (embedded && !mediaRejectReason(embedded)) return embedded;
+    if (/^www\./i.test(s)) return normalizeMediaUrl(`https://${s}`, WEBTIV_BASE);
+    if (/^\/\//.test(s)) return normalizeMediaUrl(`https:${s}`, WEBTIV_BASE);
+    if (/^\//.test(s) && (IMAGE_EXT_RX.test(s) || DOCUMENT_EXT_RX.test(s) || photoKey(key) || docKey(key))) {
+      return normalizeMediaUrl(s, WEBTIV_BASE);
+    }
     return null;
   };
   const push = (v: any, key = "") => {
     const url = toUrl(v, key);
     if (!url) return;
-    if (/placeholder|missing|no-?image|undefined|null/i.test(url)) return;
-    if (/(^|\/\/|\.)facebook\.com\//i.test(url) || /fbcdn\.net|fbsbx\.com/i.test(url)) return;
+    if (mediaRejectReason(url)) return;
     if (isImg(url) || photoKey(key)) photos.add(url);
     else if (isDoc(url) || docKey(key)) documents.add(url);
     else if (!sourceLinkKey(key)) photos.add(url); // Homely CDN sometimes omits extensions
@@ -579,22 +690,16 @@ function mediaTotal(value: any): number {
 }
 
 function cleanMediaUrls(values: unknown[], kind: "image" | "document" | "any" = "any"): string[] {
-  const imageRe = /\.(jpe?g|png|gif|webp|bmp|heic|avif)(\?|#|$)/i;
-  const docRe = /\.(pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i;
   return Array.from(
     new Set(
       values
-        .map((value) => (typeof value === "string" ? value.trim().replace(/\\\//g, "/") : ""))
+        .map((value) => normalizeMediaUrl(value, WEBTIV_BASE) || "")
         .filter((url) => {
           if (!url) return false;
-          if (/placeholder|missing|no-?image|undefined|null/i.test(url)) return false;
-          if (/(^|\/\/|\.)facebook\.com\//i.test(url) || /fbcdn\.net|fbsbx\.com/i.test(url)) return false;
-          if (!/^(https?:\/\/|\/\/|\/)/i.test(url)) return false;
-          if (kind === "image") return imageRe.test(url) || /image|photo|pic|gallery|media|homely-media|storage\/v1\/object/i.test(url);
-          if (kind === "document") return docRe.test(url) || /document|attachment|file/i.test(url);
+          if (kind === "image") return IMAGE_EXT_RX.test(url) || MEDIA_HOST_RX.test(url);
+          if (kind === "document") return DOCUMENT_EXT_RX.test(url) || /document|attachment|file/i.test(url);
           return true;
         })
-        .map((url) => (/^\/\//.test(url) ? `https:${url}` : url)),
     ),
   );
 }
@@ -1128,8 +1233,59 @@ function looksLikeImageBytes(bytes: Uint8Array): boolean {
   return /RIFF.{4}WEBP|ftyp(heic|heix|mif1|msf1)/i.test(ascii);
 }
 
+function readU16be(bytes: Uint8Array, offset: number): number {
+  return (bytes[offset] << 8) + bytes[offset + 1];
+}
+
+function readU32be(bytes: Uint8Array, offset: number): number {
+  return ((bytes[offset] << 24) >>> 0) + (bytes[offset + 1] << 16) + (bytes[offset + 2] << 8) + bytes[offset + 3];
+}
+
+function readU24le(bytes: Uint8Array, offset: number): number {
+  return bytes[offset] + (bytes[offset + 1] << 8) + (bytes[offset + 2] << 16);
+}
+
+function detectImageDimensions(bytes: Uint8Array, contentType = ""): { width: number; height: number; type: string } | null {
+  if (bytes.length < 32) return null;
+  const ct = contentType.toLowerCase();
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47 && bytes.length >= 24) {
+    return { width: readU32be(bytes, 16), height: readU32be(bytes, 20), type: "png" };
+  }
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes.length >= 10) {
+    return { width: bytes[6] + (bytes[7] << 8), height: bytes[8] + (bytes[9] << 8), type: "gif" };
+  }
+  if (bytes[0] === 0xff && bytes[1] === 0xd8) {
+    let offset = 2;
+    while (offset + 9 < bytes.length) {
+      if (bytes[offset] !== 0xff) { offset++; continue; }
+      const marker = bytes[offset + 1];
+      const len = readU16be(bytes, offset + 2);
+      if (len < 2) break;
+      if ((marker >= 0xc0 && marker <= 0xc3) || (marker >= 0xc5 && marker <= 0xc7) || (marker >= 0xc9 && marker <= 0xcb) || (marker >= 0xcd && marker <= 0xcf)) {
+        return { width: readU16be(bytes, offset + 7), height: readU16be(bytes, offset + 5), type: "jpeg" };
+      }
+      offset += 2 + len;
+    }
+  }
+  const ascii = new TextDecoder().decode(bytes.slice(0, Math.min(bytes.length, 64)));
+  if (/^RIFF.{4}WEBP/s.test(ascii)) {
+    if (ascii.slice(12, 16) === "VP8 " && bytes.length >= 30) {
+      return { width: bytes[26] + (bytes[27] << 8), height: bytes[28] + (bytes[29] << 8), type: "webp" };
+    }
+    if (ascii.slice(12, 16) === "VP8L" && bytes.length >= 25) {
+      const b0 = bytes[21], b1 = bytes[22], b2 = bytes[23], b3 = bytes[24];
+      return { width: 1 + (((b1 & 0x3f) << 8) | b0), height: 1 + (((b3 & 0x0f) << 10) | (b2 << 2) | ((b1 & 0xc0) >> 6)), type: "webp" };
+    }
+    if (ascii.slice(12, 16) === "VP8X" && bytes.length >= 30) {
+      return { width: 1 + readU24le(bytes, 24), height: 1 + readU24le(bytes, 27), type: "webp" };
+    }
+  }
+  if (/image\//i.test(ct)) return { width: 0, height: 0, type: ct.replace(/^image\//, "") || "image" };
+  return null;
+}
+
 async function mirrorOne(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   listingId: string,
   originalUrl: string,
   expected: "image" | "document" | "any" = "any",
@@ -1156,13 +1312,13 @@ async function mirrorOne(
     }
     if (!resp.ok) {
       console.error("[mirrorOne] fetch !ok", resp.status, originalUrl.slice(0, 160));
-      return expected === "image" ? originalUrl : null;
+      return null;
     }
     const contentType = resp.headers.get("content-type") || "application/octet-stream";
     const lowerContentType = contentType.toLowerCase();
     if (/text\/html|application\/json|text\/plain/i.test(lowerContentType)) {
       console.error("[mirrorOne] non-media content-type", lowerContentType, originalUrl.slice(0, 160));
-      return expected === "image" ? originalUrl : null;
+      return null;
     }
     const ext = extFromUrlOrType(originalUrl, contentType);
     // Versioned path: listing/{id}/{versionTag}/{sha1(url)}.{ext}. Bumping
@@ -1176,11 +1332,18 @@ async function mirrorOne(
     const bytes = new Uint8Array(await resp.arrayBuffer());
     if (expected === "image" && !lowerContentType.startsWith("image/") && !looksLikeImageBytes(bytes)) {
       console.error("[mirrorOne] not-image bytes", lowerContentType, originalUrl.slice(0, 160));
-      return originalUrl;
+      return null;
     }
-    if (expected === "image" && bytes.byteLength < 64) {
+    if (expected === "image" && bytes.byteLength < MIN_PROPERTY_IMAGE_BYTES) {
       console.error("[mirrorOne] image too small", bytes.byteLength, originalUrl.slice(0, 160));
-      return originalUrl;
+      return null;
+    }
+    if (expected === "image") {
+      const dims = detectImageDimensions(bytes, contentType);
+      if (dims && dims.width > 0 && dims.height > 0 && (dims.width < MIN_PROPERTY_IMAGE_DIM || dims.height < MIN_PROPERTY_IMAGE_DIM)) {
+        console.error("[mirrorOne] image dimensions too small", { width: dims.width, height: dims.height, url: originalUrl.slice(0, 160) });
+        return null;
+      }
     }
     // Upload (idempotent — upsert)
     const { error: upErr } = await admin.storage
@@ -1188,7 +1351,7 @@ async function mirrorOne(
       .upload(path, bytes, { contentType, upsert: true, cacheControl: "31536000" });
     if (upErr && !/exists/i.test(upErr.message)) {
       console.error("[mirrorOne] upload failed", upErr.message, path);
-      return expected === "image" ? originalUrl : null;
+      return null;
     }
     // 10-year signed URL for embedding in DB
     const { data: signed, error: signErr } = await admin.storage
@@ -1196,17 +1359,17 @@ async function mirrorOne(
       .createSignedUrl(path, 60 * 60 * 24 * 365 * 10);
     if (signErr || !signed?.signedUrl) {
       console.error("[mirrorOne] sign failed", signErr?.message, path);
-      return expected === "image" ? originalUrl : null;
+      return null;
     }
     return signed.signedUrl;
   } catch (e) {
     console.error("[mirrorOne] err", (e as Error).message, originalUrl.slice(0, 160));
-    return expected === "image" ? originalUrl : null;
+    return null;
   }
 }
 
 async function mirrorAll(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   listingId: string,
   urls: string[],
   cap: number,
@@ -1220,6 +1383,38 @@ async function mirrorAll(
     if (mirrored) out.push(mirrored);
   }
   return out;
+}
+
+async function mirrorVerifiedImageCandidates(
+  admin: any,
+  listingId: string,
+  candidates: ImageCandidate[],
+  versionTag: string,
+  cap = 40,
+): Promise<{ photos: string[]; originals: string[]; rejected: Array<{ url: string; source: string; reason: string }> }> {
+  const photos: string[] = [];
+  const originals: string[] = [];
+  const rejected: Array<{ url: string; source: string; reason: string }> = [];
+  const seen = new Set<string>();
+  for (const candidate of candidates) {
+    if (photos.length >= cap) break;
+    const url = normalizeMediaUrl(candidate.url, WEBTIV_BASE);
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+    const rejectReason = mediaRejectReason(url);
+    if (rejectReason) {
+      rejected.push({ url, source: candidate.source, reason: rejectReason });
+      continue;
+    }
+    const mirrored = await mirrorOne(admin, listingId, url, "image", versionTag);
+    if (mirrored) {
+      photos.push(mirrored);
+      originals.push(url);
+    } else {
+      rejected.push({ url, source: candidate.source, reason: "verification_or_mirror_failed" });
+    }
+  }
+  return { photos, originals, rejected };
 }
 
 function normForMatch(value: unknown): string {
@@ -1265,7 +1460,7 @@ function yad2UrlFromItem(it: any): string {
 }
 
 async function enrichFromYad2(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   ownerId: string,
   property: any,
 ): Promise<{ photos: string[]; url: string; exact?: boolean } | null> {
@@ -1355,7 +1550,7 @@ async function enrichFromYad2(
 }
 
 async function campaignMediaFallback(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   ownerId: string,
   property: any,
 ): Promise<string[]> {
@@ -1425,7 +1620,7 @@ async function campaignMediaFallback(
   }
 }
 
-async function resolveWorkspaceOwnerId(admin: ReturnType<typeof createClient>, userId: string): Promise<string> {
+async function resolveWorkspaceOwnerId(admin: any, userId: string): Promise<string> {
   const { data: profile } = await admin
     .from("profiles")
     .select("active_workspace_owner_id, workspace_owner_id")
@@ -1444,7 +1639,7 @@ async function resolveWorkspaceOwnerId(admin: ReturnType<typeof createClient>, u
   return membership ? owner : fallback;
 }
 
-async function configuredHomelyFeedUrl(admin: ReturnType<typeof createClient>, ownerId: string): Promise<string> {
+async function configuredHomelyFeedUrl(admin: any, ownerId: string): Promise<string> {
   const { data } = await admin
     .from("homely_broker_credentials")
     .select("homely_feed_url")
@@ -1514,7 +1709,8 @@ async function scrapePublicListing(pageUrl: string): Promise<{ ogImages: string[
 }
 
 async function sha256Hex(bytes: Uint8Array): Promise<string> {
-  const buf = await crypto.subtle.digest("SHA-256", bytes);
+  const stableBytes = new Uint8Array(bytes);
+  const buf = await crypto.subtle.digest("SHA-256", stableBytes.buffer);
   return Array.from(new Uint8Array(buf))
     .map((b) => b.toString(16).padStart(2, "0"))
     .join("");
@@ -1767,8 +1963,9 @@ Deno.serve(async (req) => {
         }
       }
       if (returnedIds.size > 0 && !returnedIds.has(externalId)) {
-        await logIntegrationError(admin, workspaceOwnerId, {
+        await logIntegrationError({
           integration: "homely",
+          functionName: "homely-fetch-property.resolveLiveImage",
           errorCode: "property_id_mismatch",
           errorMessage: `resolve-live-image: listing.external_id=${externalId} not present in live record ids [${Array.from(returnedIds).join(",")}] (endpoint=${endpoint ?? "?"})`,
           context: {
@@ -1897,36 +2094,6 @@ Deno.serve(async (req) => {
           (p?.source_url ? String(p.source_url) : "") ||
           (richSourceOrigin === "yad2" ? buildYad2FallbackUrl(p?.city, p?.address, p?.transaction_type, homelyId) : "");
 
-        // HARD VALIDATION OVERRIDE — scraper-first media resolution.
-        // The Webtiv API has been observed returning cross-contaminated or
-        // placeholder images. We trust the public listing page (og:image /
-        // scraped photos) as the source of truth whenever the API payload is
-        // empty or contains placeholder URLs.
-        // Broadened placeholder detection — Homely's CDN and template URLs
-        // often include generic building thumbnails that must never be saved.
-        const PLACEHOLDER_RX = /(placeholder|no-?image|default-property|template_property|generic-building|\/images\/placeholder|homely\.co(m|\.il)\/(images|assets)\/(placeholder|default|template))/i;
-        // Facebook/FBCDN URLs are not directly renderable (auth-gated, short-lived,
-        // hotlink-protected). Never save them as media_photos.
-        // Strict host match — only true facebook.com hosts and fb-owned CDNs.
-        const FACEBOOK_RX = /(?:^https?:\/\/)?(?:[a-z0-9-]+\.)*(?:facebook\.com|fbcdn\.net|fbsbx\.com)(?:[\/:?#]|$)/i;
-        const stripPlaceholders = (arr: unknown[], label: string): string[] => {
-          const input = Array.isArray(arr) ? arr : [];
-          const kept: string[] = [];
-          const dropped: Array<{ url: string; reason: string }> = [];
-          for (const u of input) {
-            if (typeof u !== "string" || u.trim() === "") { dropped.push({ url: String(u), reason: "empty/non-string" }); continue; }
-            if (PLACEHOLDER_RX.test(u)) { dropped.push({ url: u, reason: "placeholder" }); continue; }
-            if (FACEBOOK_RX.test(u)) { dropped.push({ url: u, reason: "facebook" }); continue; }
-            kept.push(u);
-          }
-          console.log(`[importOutJson][${homelyId}] filter/${label}`, {
-            in: input.length, kept: kept.length, dropped: dropped.length,
-            dropped_sample: dropped.slice(0, 5),
-            kept_sample: kept.slice(0, 3),
-          });
-          return kept;
-        };
-
         console.log(`[importOutJson][${homelyId}] RAW_HOMELY_MEDIA`, {
           richMedia_photos: Array.isArray(richMedia.photos) ? richMedia.photos.slice(0, 10) : richMedia.photos,
           richMedia_photos_count: Array.isArray(richMedia.photos) ? richMedia.photos.length : null,
@@ -1937,36 +2104,20 @@ Deno.serve(async (req) => {
           richSourceUrl,
         });
 
-        const apiPhotos = stripPlaceholders(cleanMediaUrls(Array.isArray(richMedia.photos) ? richMedia.photos : [], "image"), "api");
-        const isApiPhotosJunk = apiPhotos.length === 0;
-
-        let rawPhotos: string[] = [];
-        if (isApiPhotosJunk && richSourceUrl) {
+        const apiCandidates = collectImageCandidates(richRecord, "homely_rich_api", 100);
+        const streamCandidates = collectImageCandidates(p, "homely_stream_api", 90);
+        const yad2Candidates = collectImageCandidates(yad2Enrichment?.photos ?? [], "yad2_api", 70);
+        const campaignCandidates = collectImageCandidates(campaignPhotos, "campaign_history", 60);
+        let scrapedCandidates: ImageCandidate[] = [];
+        if (richSourceUrl && apiCandidates.length + streamCandidates.length + yad2Candidates.length + campaignCandidates.length === 0) {
           const scraped = await fetchVerifiedMedia(richSourceUrl);
+          scrapedCandidates = scraped.map((url) => ({ url, source: "public_page_scrape", priority: 40 }));
           console.log(`[importOutJson][${homelyId}] scraper returned`, { count: scraped.length, sample: scraped.slice(0, 5) });
-          if (scraped.length > 0) {
-            rawPhotos = stripPlaceholders(cleanMediaUrls(scraped, "image"), "scraper");
-          }
-        } else if (!isApiPhotosJunk) {
-          rawPhotos = apiPhotos;
         }
 
-        // Only fall back to legacy sources if BOTH the API and the scraper
-        // yielded nothing verified. Purified against the placeholder regex.
-        if (rawPhotos.length === 0) {
-          rawPhotos = stripPlaceholders(cleanMediaUrls(
-            Array.isArray(p?.photos) && p.photos.length
-              ? p.photos
-              : p?.photo
-                ? [p.photo]
-                : yad2Enrichment?.photos?.length
-                  ? yad2Enrichment.photos
-                  : campaignPhotos,
-            "image",
-          ), "legacy");
-        }
-
-        console.log(`[importOutJson][${homelyId}] FINAL rawPhotos`, { count: rawPhotos.length, sample: rawPhotos.slice(0, 5) });
+        const imageCandidates = mergeImageCandidates(apiCandidates, streamCandidates, yad2Candidates, campaignCandidates, scrapedCandidates);
+        const rawPhotos = imageCandidates.map((c) => c.url);
+        console.log(`[importOutJson][${homelyId}] IMAGE_CANDIDATES`, imageCandidateSummary(imageCandidates));
 
         const rawDocuments = cleanMediaUrls(
           richMedia.documents.length ? richMedia.documents : Array.isArray(p?.documents) ? p.documents : [],
@@ -2045,15 +2196,17 @@ Deno.serve(async (req) => {
           is_published: !priceMissing,
           office_notes: p?.office_notes ? String(p.office_notes) : null,
           features,
-          media_photos: Array.isArray(rawPhotos) ? rawPhotos : [],
+          media_photos: [],
           media_documents: Array.isArray(rawDocuments) ? rawDocuments : [],
           owner_id: ownerId,
           source_metadata: {
             homely_id: homelyId,
             property_type: p?.property_type || null,
-            photos: rawPhotos,
+            photos: [],
+            images: [],
+            photos_candidates: rawPhotos,
             documents: rawDocuments,
-            media_count: Number(rawPhotos.length + rawDocuments.length) || 0,
+            media_count: Number(rawDocuments.length) || 0,
             office_notes: p?.office_notes || null,
             agent: p?.agent || null,
             owner_name: ownerFullName || null,
@@ -2086,7 +2239,7 @@ Deno.serve(async (req) => {
         // media mirroring even started.
         const { data: existing, error: existingErr } = await admin
           .from("listings")
-          .select("id, external_id")
+          .select("id, external_id, media_photos, media_documents, source_metadata")
           .eq("user_id", workspaceOwnerId)
           .eq("external_id", homelyId)
           .limit(1)
@@ -2095,6 +2248,22 @@ Deno.serve(async (req) => {
         if (existingErr) {
           console.error(`[importOutJson] lookup failed for ${homelyId}:`, existingErr.message);
           continue;
+        }
+
+        if (existing?.id) {
+          const existingPhotos = Array.isArray((existing as any).media_photos) ? (existing as any).media_photos : [];
+          const existingDocs = Array.isArray((existing as any).media_documents) ? (existing as any).media_documents : [];
+          row.media_photos = existingPhotos;
+          if (existingDocs.length && rawDocuments.length === 0) row.media_documents = existingDocs;
+          row.source_metadata = {
+            ...((existing as any).source_metadata && typeof (existing as any).source_metadata === "object" ? (existing as any).source_metadata : {}),
+            ...(row.source_metadata as Record<string, unknown>),
+            photos: existingPhotos,
+            images: existingPhotos,
+            documents: rawDocuments.length ? rawDocuments : existingDocs,
+            media_count: Number(existingPhotos.length + (rawDocuments.length ? rawDocuments.length : existingDocs.length)) || 0,
+            photos_preserved_until_verified: existingPhotos.length > 0,
+          };
         }
 
         const saveQuery = existing?.id
@@ -2139,60 +2308,61 @@ Deno.serve(async (req) => {
             });
           } else {
             const versionTag = `v${Date.now()}`;
-            const mirroredPhotos = await mirrorAll(admin, listingId, rawPhotos, 40, "image", versionTag);
+            const verifiedImages = await mirrorVerifiedImageCandidates(admin, listingId, imageCandidates, versionTag, 40);
             const mirroredDocs = await mirrorAll(admin, listingId, rawDocuments, 20, "document", versionTag);
 
-            // Trust URLs returned by the API. HEAD/Range-GET validation was
-            // getting blocked by Homely's CDN (403), which caused the
-            // pipeline to drop legitimate photos. We now prefer mirrored
-            // storage URLs; fall back to raw Homely URLs if mirroring
-            // produced nothing. The frontend handles broken-image rendering.
             const cleanList = (arr: string[]): string[] =>
               (arr || []).filter((u) =>
                 typeof u === "string" &&
                 u.trim() !== "" &&
-                !/placeholder|no-?image|undefined|null/i.test(u),
+                !mediaRejectReason(u),
               );
 
-            const cleanedMirrored = cleanList(mirroredPhotos);
-            const cleanedRaw = cleanList(rawPhotos);
-            const finalPhotosForDb = cleanedMirrored.length ? cleanedMirrored : cleanedRaw;
+            const cleanedMirrored = cleanList(verifiedImages.photos);
+            const previousPhotos = existing?.id && Array.isArray((existing as any).media_photos)
+              ? cleanList((existing as any).media_photos)
+              : [];
+            const finalPhotosForDb = cleanedMirrored.length ? cleanedMirrored : previousPhotos;
             const finalDocsForDb = mirroredDocs.length ? mirroredDocs : rawDocuments;
             const photosSource = cleanedMirrored.length
-              ? "mirrored"
-              : (cleanedRaw.length ? "raw_fallback" : "empty");
+              ? "verified_mirrored"
+              : (previousPhotos.length ? "preserved_previous" : "empty_verified");
 
             console.log("[importOutJson] about to update listing media", {
               homelyId,
               listingId,
+              candidates_count: imageCandidates.length,
+              verified_count: cleanedMirrored.length,
+              rejected_count: verifiedImages.rejected.length,
+              preserved_previous_count: previousPhotos.length,
               media_photos: finalPhotosForDb,
               media_photos_count: Array.isArray(finalPhotosForDb) ? finalPhotosForDb.length : null,
               media_count: Number(finalPhotosForDb.length + finalDocsForDb.length) || 0,
             });
-            if (finalPhotosForDb.length || finalDocsForDb.length) {
-              const meta = row.source_metadata as Record<string, unknown>;
-              await admin
-                .from("listings")
-                .update({
-                  media_photos: Array.isArray(finalPhotosForDb) ? finalPhotosForDb : [],
-                  media_documents: Array.isArray(finalDocsForDb) ? finalDocsForDb : [],
-                  source_metadata: {
-                    ...meta,
-                    photos: finalPhotosForDb,
-                    images: finalPhotosForDb,
-                    documents: finalDocsForDb,
-                    photos_original: rawPhotos,
-                    photos_mirrored: mirroredPhotos,
-                    documents_original: rawDocuments,
-                    media_count: Number(finalPhotosForDb.length + finalDocsForDb.length) || 0,
-                    media_photos_source: photosSource,
-                    media_mirrored_at: new Date().toISOString(),
-                    media_version_tag: versionTag,
-                    media_serial_verified: homelyId,
-                  },
-                })
-                .eq("id", listingId);
-            }
+            const meta = row.source_metadata as Record<string, unknown>;
+            await admin
+              .from("listings")
+              .update({
+                media_photos: Array.isArray(finalPhotosForDb) ? finalPhotosForDb : [],
+                media_documents: Array.isArray(finalDocsForDb) ? finalDocsForDb : [],
+                source_metadata: {
+                  ...meta,
+                  photos: finalPhotosForDb,
+                  images: finalPhotosForDb,
+                  documents: finalDocsForDb,
+                  photos_original: verifiedImages.originals,
+                  photos_candidates: rawPhotos,
+                  photos_mirrored: cleanedMirrored,
+                  photos_rejected: verifiedImages.rejected.slice(0, 20),
+                  documents_original: rawDocuments,
+                  media_count: Number(finalPhotosForDb.length + finalDocsForDb.length) || 0,
+                  media_photos_source: photosSource,
+                  media_mirrored_at: new Date().toISOString(),
+                  media_version_tag: versionTag,
+                  media_serial_verified: homelyId,
+                },
+              })
+              .eq("id", listingId);
           }
 
         } catch (mirrorErr) {
