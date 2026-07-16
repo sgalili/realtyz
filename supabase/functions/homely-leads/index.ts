@@ -229,6 +229,19 @@ function pickDocs(rec: Record<string, any>): string[] {
   return Array.from(new Set(out));
 }
 
+function mediaKey(raw: string): string {
+  try {
+    const u = new URL(String(raw || "").trim());
+    return `${u.hostname}${u.pathname}`.toLowerCase();
+  } catch {
+    return String(raw || "").replace(/[?#].*$/, "").toLowerCase();
+  }
+}
+
+function mediaArraySignature(urls: string[]): string {
+  return urls.map(mediaKey).filter(Boolean).sort().join("|").slice(0, 500);
+}
+
 // Apply the strict office filter using PERMISSIVE substring matching — the
 // raw Webtiv values are concatenated strings like "בטיפול,משרד" or
 // "בלעדי,משרד", so equality checks miss everything.
