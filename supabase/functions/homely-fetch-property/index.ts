@@ -2474,7 +2474,29 @@ Deno.serve(async (req) => {
               ? verifiedImages.originals
               : (Array.isArray(existingMeta.photos_original) ? existingMeta.photos_original : finalPhotosForDb);
             const finalSignature = mediaSignature(signatureSource.filter((u: unknown): u is string => typeof u === "string"));
-            const signatureOwner = finalSignature ? batchFinalMediaSignatures.get(finalSignature) : null;
+            let signatureOwner = finalSignature ? batchFinalMediaSignatures.get(finalSignature) : null;
+            if (finalSignature && !signatureOwner) {
+              const { data: siblingListings } = await admin
+                .from("listings")
+                .select("id, external_id, media_photos, source_metadata")
+                .eq("user_id", workspaceOwnerId)
+                .neq("id", listingId)
+                .or("source.eq.homely,source.eq.webtiv")
+                .limit(1000);
+              for (const sibling of siblingListings ?? []) {
+                const siblingMeta = (sibling as any)?.source_metadata && typeof (sibling as any).source_metadata === "object"
+                  ? ((sibling as any).source_metadata as Record<string, unknown>)
+                  : {};
+                const siblingSource = Array.isArray(siblingMeta.photos_original)
+                  ? siblingMeta.photos_original
+                  : (Array.isArray((sibling as any).media_photos) ? (sibling as any).media_photos : []);
+                const siblingSignature = mediaSignature(siblingSource.filter((u: unknown): u is string => typeof u === "string"));
+                if (siblingSignature && siblingSignature === finalSignature) {
+                  signatureOwner = String((sibling as any).external_id ?? (sibling as any).id ?? "unknown");
+                  break;
+                }
+              }
+            }
             if (finalSignature && signatureOwner && signatureOwner !== homelyId) {
               await logIntegrationError({
                 integration: "homely",
