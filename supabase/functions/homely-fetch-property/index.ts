@@ -12,6 +12,121 @@
 //   /api/hashData/getAllKeys/{hash}                              (POST)
 import { load } from "https://esm.sh/cheerio@1.0.0-rc.12";
 
+type ImageCandidate = {
+  url: string;
+  source: string;
+  priority: number;
+  key?: string;
+};
+
+const MIN_PROPERTY_IMAGE_DIM = 300;
+const MIN_PROPERTY_IMAGE_BYTES = 20_000;
+const IMAGE_URL_RX = /https?:\/\/[^\s"'<>\\)]+|\/\/[^\s"'<>\\)]+|\/(?:[^\s"'<>\\)]+\.(?:jpe?g|png|webp|gif|avif|bmp|heic)(?:\?[^\s"'<>\\)]*)?)/gi;
+const IMAGE_EXT_RX = /\.(jpe?g|png|gif|webp|bmp|heic|avif)(\?|#|$)/i;
+const DOCUMENT_EXT_RX = /\.(pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i;
+const MEDIA_HOST_RX = /(?:homely|webtiv|storage\/v1\/object|cloudfront|cloudinary|imgix|akamai|azureedge|amazonaws|s3|cdn|uploads?|files?|media|image|photo|gallery|pic|fbcdn|scontent)/i;
+const MEDIA_KEY_RX = /(pic|photo|image|img|picture|gallery|media|cover|thumbnail|תמונה|תמונות)/i;
+const SOURCE_PAGE_KEY_RX = /(source|origin|url|link|href|yad2|madlan|מקור|קישור)/i;
+const MEDIA_BLOCKLIST_RX = /(placeholder|no-?image|default-property|template_property|generic-building|blank\.gif|logo|favicon|avatar|pixel|spacer|sprite|watermark|social[-_]?icon|instagram|twitter|linkedin|tiktok|youtube|whatsapp)/i;
+const FACEBOOK_PAGE_RX = /(?:^https?:\/\/)?(?:[a-z0-9-]+\.)*facebook\.com(?:[\/:?#]|$)/i;
+
+function mediaRejectReason(url: string): string | null {
+  if (!url || !/^https?:\/\//i.test(url)) return "not_http";
+  if (FACEBOOK_PAGE_RX.test(url)) return "facebook_page";
+  if (MEDIA_BLOCKLIST_RX.test(url)) return "blocked_keyword";
+  if (DOCUMENT_EXT_RX.test(url)) return "document";
+  try {
+    const u = new URL(url);
+    const base = u.pathname.split("/").pop() || "";
+    if (/^(icon|logo|favicon|sprite|pixel|blank|placeholder)(?:[._-]|$)/i.test(base)) return "blocked_basename";
+  } catch {
+    return "bad_url";
+  }
+  return null;
+}
+
+function normalizeMediaUrl(raw: unknown, base = WEBTIV_BASE): string | null {
+  if (typeof raw !== "string") return null;
+  let value = raw.trim().replace(/\\\//g, "/").replace(/&amp;/g, "&");
+  if (!value || /^data:/i.test(value)) return null;
+  const css = value.match(/url\((['"]?)([^'")]+)\1\)/i);
+  if (css?.[2]) value = css[2].trim();
+  const srcsetFirst = value.split(",").map((part) => part.trim()).filter(Boolean)[0];
+  if (srcsetFirst && /\s+\d+[wx]$/i.test(srcsetFirst)) value = srcsetFirst.split(/\s+/)[0];
+  try {
+    const absolute = new URL(value, base || WEBTIV_BASE).toString();
+    return mediaRejectReason(absolute) ? null : absolute;
+  } catch {
+    return null;
+  }
+}
+
+function addImageCandidate(
+  bucket: ImageCandidate[],
+  seen: Set<string>,
+  raw: unknown,
+  source: string,
+  priority: number,
+  key = "",
+  base = WEBTIV_BASE,
+) {
+  const url = normalizeMediaUrl(raw, base);
+  if (!url || seen.has(url)) return;
+  const keyLooksMedia = MEDIA_KEY_RX.test(key);
+  const urlLooksMedia = IMAGE_EXT_RX.test(url) || MEDIA_HOST_RX.test(url);
+  const sourcePageOnly = SOURCE_PAGE_KEY_RX.test(key) && !keyLooksMedia && !IMAGE_EXT_RX.test(url) && !MEDIA_HOST_RX.test(url);
+  if (sourcePageOnly || (!keyLooksMedia && !urlLooksMedia)) return;
+  seen.add(url);
+  bucket.push({ url, source, priority, key });
+}
+
+function collectImageCandidates(root: any, source: string, priority: number, base = WEBTIV_BASE): ImageCandidate[] {
+  const out: ImageCandidate[] = [];
+  const seenUrls = new Set<string>();
+  const seenObjects = new Set<any>();
+  const walk = (value: any, key = "") => {
+    if (value == null) return;
+    if (typeof value === "string") {
+      if (MEDIA_KEY_RX.test(key)) addImageCandidate(out, seenUrls, value, source, priority, key, base);
+      const matches = value.match(IMAGE_URL_RX) || [];
+      for (const match of matches) addImageCandidate(out, seenUrls, match, source, priority, key, base);
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.forEach((entry) => walk(entry, key));
+      return;
+    }
+    if (typeof value !== "object" || seenObjects.has(value)) return;
+    seenObjects.add(value);
+    for (const [childKey, childValue] of Object.entries(value)) {
+      walk(childValue, key ? `${key}.${childKey}` : childKey);
+    }
+  };
+  walk(root);
+  return out.sort((a, b) => b.priority - a.priority);
+}
+
+function mergeImageCandidates(...groups: ImageCandidate[][]): ImageCandidate[] {
+  const seen = new Set<string>();
+  const out: ImageCandidate[] = [];
+  for (const candidate of groups.flat().sort((a, b) => b.priority - a.priority)) {
+    if (!candidate?.url || seen.has(candidate.url)) continue;
+    seen.add(candidate.url);
+    out.push(candidate);
+  }
+  return out;
+}
+
+function imageCandidateSummary(candidates: ImageCandidate[]) {
+  const bySource: Record<string, number> = {};
+  for (const c of candidates) bySource[c.source] = (bySource[c.source] || 0) + 1;
+  return {
+    total: candidates.length,
+    bySource,
+    sample: candidates.slice(0, 8).map((c) => ({ source: c.source, key: c.key, url: c.url })),
+  };
+}
+
 async function fetchVerifiedMedia(listingUrl: string): Promise<string[]> {
   const found = new Map<string, string>(); // url -> source selector (for logging)
   const IMG_EXT_RX = /\.(jpe?g|png|webp|gif|avif|bmp|tiff?)(?:$|[?#])/i;
