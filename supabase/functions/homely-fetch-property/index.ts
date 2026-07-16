@@ -634,33 +634,29 @@ function joinName(it: any): string {
 function collectMedia(it: any): { photos: string[]; documents: string[] } {
   const photos = new Set<string>();
   const documents = new Set<string>();
-  const isImg = (u: string) => /\.(jpe?g|png|gif|webp|bmp|heic)(\?|#|$)/i.test(u);
-  const isDoc = (u: string) => /\.(pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i.test(u);
+  const isImg = (u: string) => IMAGE_EXT_RX.test(u) || MEDIA_HOST_RX.test(u);
+  const isDoc = (u: string) => DOCUMENT_EXT_RX.test(u);
   const photoKey = (k: string) => /(pic|photo|image|img|picture|gallery|media|תמונה|תמונות)/i.test(k);
   const docKey = (k: string) => /(file|doc|document|attach|מסמך|מסמכים|קובץ)/i.test(k);
   const sourceLinkKey = (k: string) => /(source|origin|url|link|href|yad2|madlan|מקור|קישור)/i.test(k);
   const toUrl = (v: any, key = ""): string | null => {
+    const url = normalizeMediaUrl(v, WEBTIV_BASE);
+    if (url) return url;
     if (typeof v !== "string") return null;
     const s = v.trim().replace(/\\\//g, "/");
     const embedded = s.match(/https?:\/\/[^\s"'<>]+/i)?.[0];
-    if (embedded) return embedded;
-    if (/^https?:\/\//i.test(s)) return s;
-    if (/^www\./i.test(s)) return `https://${s}`;
-    if (/^\/\//.test(s)) return `https:${s}`;
-    if (
-      /^\//.test(s) &&
-      (/\.(jpe?g|png|gif|webp|bmp|heic|pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i.test(s) ||
-        photoKey(key) ||
-        docKey(key))
-    )
-      return `${WEBTIV_BASE}${s}`;
+    if (embedded && !mediaRejectReason(embedded)) return embedded;
+    if (/^www\./i.test(s)) return normalizeMediaUrl(`https://${s}`, WEBTIV_BASE);
+    if (/^\/\//.test(s)) return normalizeMediaUrl(`https:${s}`, WEBTIV_BASE);
+    if (/^\//.test(s) && (IMAGE_EXT_RX.test(s) || DOCUMENT_EXT_RX.test(s) || photoKey(key) || docKey(key))) {
+      return normalizeMediaUrl(s, WEBTIV_BASE);
+    }
     return null;
   };
   const push = (v: any, key = "") => {
     const url = toUrl(v, key);
     if (!url) return;
-    if (/placeholder|missing|no-?image|undefined|null/i.test(url)) return;
-    if (/(^|\/\/|\.)facebook\.com\//i.test(url) || /fbcdn\.net|fbsbx\.com/i.test(url)) return;
+    if (mediaRejectReason(url)) return;
     if (isImg(url) || photoKey(key)) photos.add(url);
     else if (isDoc(url) || docKey(key)) documents.add(url);
     else if (!sourceLinkKey(key)) photos.add(url); // Homely CDN sometimes omits extensions
@@ -694,22 +690,16 @@ function mediaTotal(value: any): number {
 }
 
 function cleanMediaUrls(values: unknown[], kind: "image" | "document" | "any" = "any"): string[] {
-  const imageRe = /\.(jpe?g|png|gif|webp|bmp|heic|avif)(\?|#|$)/i;
-  const docRe = /\.(pdf|docx?|xlsx?|pptx?|txt|csv|zip)(\?|#|$)/i;
   return Array.from(
     new Set(
       values
-        .map((value) => (typeof value === "string" ? value.trim().replace(/\\\//g, "/") : ""))
+        .map((value) => normalizeMediaUrl(value, WEBTIV_BASE) || "")
         .filter((url) => {
           if (!url) return false;
-          if (/placeholder|missing|no-?image|undefined|null/i.test(url)) return false;
-          if (/(^|\/\/|\.)facebook\.com\//i.test(url) || /fbcdn\.net|fbsbx\.com/i.test(url)) return false;
-          if (!/^(https?:\/\/|\/\/|\/)/i.test(url)) return false;
-          if (kind === "image") return imageRe.test(url) || /image|photo|pic|gallery|media|homely-media|storage\/v1\/object/i.test(url);
-          if (kind === "document") return docRe.test(url) || /document|attachment|file/i.test(url);
+          if (kind === "image") return IMAGE_EXT_RX.test(url) || MEDIA_HOST_RX.test(url);
+          if (kind === "document") return DOCUMENT_EXT_RX.test(url) || /document|attachment|file/i.test(url);
           return true;
         })
-        .map((url) => (/^\/\//.test(url) ? `https:${url}` : url)),
     ),
   );
 }
