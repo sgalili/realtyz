@@ -550,7 +550,7 @@ export default function PropertyDetail() {
               <div className="aspect-[16/10] bg-muted relative">
                 {main ? (
                   <img src={main} alt={dynamicHeadline} className="h-full w-full object-cover" />
-                ) : (listing as any)?.source_metadata?.media_status === 'images_unavailable' ? (
+                ) : (property as any)?.source_metadata?.media_status === 'images_unavailable' ? (
                   <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-4 text-center text-muted-foreground">
                     <ImageIcon className="h-10 w-10" />
                     <div className="text-sm font-medium text-foreground">תמונות לא זמינות עבור נכס זה</div>
