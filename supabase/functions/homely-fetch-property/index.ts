@@ -108,37 +108,74 @@ async function fetchVerifiedMedia(listingUrl: string): Promise<string[]> {
     const galleryCount = found.size;
     console.log(`[fetchVerifiedMedia] Captured ${galleryCount} images from Gallery container`, { listingUrl });
 
-    // ── STEP 2: Only if gallery is empty, fall back to og:image / twitter:image ──
-    if (found.size === 0) {
-      $('meta[property="og:image"], meta[property="og:image:secure_url"], meta[name="og:image"], meta[name="twitter:image"], meta[name="twitter:image:src"]').each((_, el) => {
-        add(norm($(el).attr("content"), base), "meta:og/twitter");
-      });
-      $('link[rel="image_src"], link[rel="preload"][as="image"]').each((_, el) => {
-        add(norm($(el).attr("href"), base), "link:preload");
-      });
-      // JSON-LD structured data is a legitimate structured fallback (not a generic <img>).
-      $('script[type="application/ld+json"]').each((_, el) => {
-        try {
-          const raw = $(el).contents().text();
-          if (!raw) return;
-          const walk = (v: any) => {
-            if (!v) return;
-            if (typeof v === "string") { if (IMG_EXT_RX.test(v)) add(norm(v, base), "jsonld:string"); return; }
-            if (Array.isArray(v)) { v.forEach(walk); return; }
-            if (typeof v === "object") {
-              for (const [k, vv] of Object.entries(v)) {
-                if (/image|photo|thumbnail|url/i.test(k) && typeof vv === "string") add(norm(vv, base), "jsonld:field");
-                walk(vv);
-              }
+    // ── STEP 2: og/twitter/link/JSON-LD metadata (always scan, not just fallback) ──
+    $('meta[property="og:image"], meta[property="og:image:secure_url"], meta[name="og:image"], meta[name="twitter:image"], meta[name="twitter:image:src"]').each((_, el) => {
+      add(norm($(el).attr("content"), base), "meta:og/twitter");
+    });
+    $('link[rel="image_src"], link[rel="preload"][as="image"]').each((_, el) => {
+      add(norm($(el).attr("href"), base), "link:preload");
+    });
+    $('script[type="application/ld+json"]').each((_, el) => {
+      try {
+        const raw = $(el).contents().text();
+        if (!raw) return;
+        const walk = (v: any) => {
+          if (!v) return;
+          if (typeof v === "string") { if (IMG_EXT_RX.test(v)) add(norm(v, base), "jsonld:string"); return; }
+          if (Array.isArray(v)) { v.forEach(walk); return; }
+          if (typeof v === "object") {
+            for (const [k, vv] of Object.entries(v)) {
+              if (/image|photo|thumbnail|url/i.test(k) && typeof vv === "string") add(norm(vv, base), "jsonld:field");
+              walk(vv);
             }
-          };
-          walk(JSON.parse(raw));
-        } catch { /* ignore */ }
+          }
+        };
+        walk(JSON.parse(raw));
+      } catch { /* ignore */ }
+    });
+
+    // ── STEP 3 (FALLBACK): if still empty, scan ALL <img>, picture sources, and raw HTML for image URLs ──
+    if (found.size === 0) {
+      console.log("[fetchVerifiedMedia] FALLBACK: gallery+meta empty — broad scanning entire document");
+      $("img").each((_, el) => {
+        const $el = $(el);
+        const attrs = ["src", "data-src", "data-original", "data-lazy", "data-lazy-src", "data-echo", "data-defer-src", "data-hi-res-src", "data-image", "data-img"];
+        for (const a of attrs) add(norm($el.attr(a), base), `fallback:img[${a}]`);
+        const srcset = $el.attr("srcset") || $el.attr("data-srcset");
+        if (srcset) {
+          for (const part of srcset.split(",")) add(norm(part.trim().split(/\s+/)[0], base), "fallback:img[srcset]");
+        }
       });
+      $("picture source").each((_, el) => {
+        const srcset = $(el).attr("srcset") || $(el).attr("data-srcset");
+        if (!srcset) return;
+        for (const part of srcset.split(",")) add(norm(part.trim().split(/\s+/)[0], base), "fallback:picture");
+      });
+      // Raw HTML regex sweep — catches URLs embedded in JSON hydration blobs / inline scripts.
+      const rawRx = /https?:\/\/[^\s"'<>()]+?\.(?:jpe?g|png|webp|gif|avif)(?:\?[^\s"'<>()]*)?/gi;
+      let m: RegExpExecArray | null;
+      while ((m = rawRx.exec(html)) !== null) add(norm(m[0], base), "fallback:raw-regex");
     }
 
-    // NOTE: Generic <img> tags and background-image styles outside gallery containers are
-    // intentionally NOT scanned — this is the precision-first policy.
+    // ── STEP 4 (DIAGNOSTIC): if STILL empty, dump body HTML for inspection ──
+    if (found.size === 0) {
+      const bodyMatch = html.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+      const bodyHtml = bodyMatch ? bodyMatch[1] : html;
+      const looksJsRendered =
+        /__NEXT_DATA__|window\.__NUXT__|__INITIAL_STATE__|id=["']root["'][^>]*>\s*<\/|id=["']app["'][^>]*>\s*<\//i.test(html);
+      console.log("[fetchVerifiedMedia] DIAGNOSTIC: 0 images found — dumping page body", {
+        listingUrl,
+        html_length: html.length,
+        body_length: bodyHtml.length,
+        looks_js_rendered: looksJsRendered,
+        body_head_5000: bodyHtml.slice(0, 5000),
+        body_tail_2000: bodyHtml.slice(-2000),
+      });
+      if (looksJsRendered) {
+        console.warn("[fetchVerifiedMedia] Page appears to be JS-rendered (SPA). Server-side fetch cannot execute JavaScript; a headless-browser scraper (Playwright/Puppeteer) is required to extract images from this source.", { listingUrl });
+      }
+    }
+
 
     // ── Size probe: HEAD each candidate; reject anything under MIN_BYTES (≈icons/logos). ──
     const candidates = Array.from(found.keys());
