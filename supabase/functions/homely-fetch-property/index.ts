@@ -1693,7 +1693,12 @@ async function enrichFromYad2(
   admin: any,
   ownerId: string,
   property: any,
-): Promise<{ photos: string[]; url: string; exact?: boolean } | null> {
+  opts: { attempt?: number; priceBand?: number; requireRooms?: boolean; minScore?: number } = {},
+): Promise<{ photos: string[]; url: string; exact?: boolean; attempt?: number } | null> {
+  const attempt = opts.attempt ?? 1;
+  const priceBand = opts.priceBand ?? 0.15;
+  const requireRooms = opts.requireRooms ?? true;
+  const minScore = opts.minScore ?? 4;
   try {
     const city = String(property?.city ?? "").trim();
     const address = String(
@@ -1709,7 +1714,7 @@ async function enrichFromYad2(
     const apiKey = String((key as any)?.yad2_api_key ?? "").trim();
     if (!city && !address) return null;
     if (!apiKey || apiKey === "test_pending")
-      return fallbackUrl ? { photos: [], url: fallbackUrl, exact: false } : null;
+      return fallbackUrl ? { photos: [], url: fallbackUrl, exact: false, attempt } : null;
     const normalizedAddress = normForMatch(address);
     const tx = property?.transaction_type === "rent" ? "rent" : "forsale";
     const cityCfg = yad2CityConfig(city);
@@ -1722,19 +1727,22 @@ async function enrichFromYad2(
       url.searchParams.set("region", "18");
       url.searchParams.set("city", city);
     }
-    if (property?.price) {
+    if (property?.price && priceBand > 0) {
       const price = Number(property.price);
       if (Number.isFinite(price) && price > 0) {
-        url.searchParams.set("price", `${Math.max(0, Math.round(price * 0.85))}-${Math.round(price * 1.15)}`);
+        url.searchParams.set(
+          "price",
+          `${Math.max(0, Math.round(price * (1 - priceBand)))}-${Math.round(price * (1 + priceBand))}`,
+        );
       }
     }
-    if (property?.rooms) url.searchParams.set("rooms", `${property.rooms}-${property.rooms}`);
+    if (property?.rooms && requireRooms) url.searchParams.set("rooms", `${property.rooms}-${property.rooms}`);
     const upstream = await fetch(url.toString(), {
       headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" },
     });
-    if (!upstream.ok) return null;
+    if (!upstream.ok) return fallbackUrl ? { photos: [], url: fallbackUrl, exact: false, attempt } : null;
     const contentType = upstream.headers.get("content-type") || "";
-    if (!/json/i.test(contentType)) return null;
+    if (!/json/i.test(contentType)) return fallbackUrl ? { photos: [], url: fallbackUrl, exact: false, attempt } : null;
     const payload = await upstream.json().catch(() => null);
     const items: any[] = Array.isArray(payload)
       ? payload
@@ -1750,18 +1758,28 @@ async function enrichFromYad2(
         score += 5;
       if (property?.rooms && Number(it?.rooms ?? it?.additionalDetails?.roomsCount) === Number(property.rooms))
         score += 1;
+      // Heuristic price bonus: item price within band boosts confidence.
+      if (property?.price) {
+        const itemPrice = Number(it?.price ?? it?.merchandise?.price ?? 0);
+        if (Number.isFinite(itemPrice) && itemPrice > 0) {
+          const delta = Math.abs(itemPrice - Number(property.price)) / Number(property.price);
+          if (delta <= 0.05) score += 2;
+          else if (delta <= 0.15) score += 1;
+        }
+      }
       if (score > bestScore) {
         best = it;
         bestScore = score;
       }
     }
-    if (!best || bestScore < 4) return fallbackUrl ? { photos: [], url: fallbackUrl, exact: false } : null;
+    if (!best || bestScore < minScore)
+      return fallbackUrl ? { photos: [], url: fallbackUrl, exact: false, attempt } : null;
     const photos = collectYad2Photos(best);
     const itemUrl = yad2UrlFromItem(best);
     return photos.length || itemUrl
-      ? { photos, url: itemUrl || fallbackUrl, exact: true }
+      ? { photos, url: itemUrl || fallbackUrl, exact: true, attempt }
       : fallbackUrl
-        ? { photos: [], url: fallbackUrl, exact: false }
+        ? { photos: [], url: fallbackUrl, exact: false, attempt }
         : null;
   } catch (e) {
     console.warn("[homely-fetch] yad2 enrichment failed", (e as Error).message);
@@ -1775,9 +1793,39 @@ async function enrichFromYad2(
       property?.transaction_type,
       property?.homely_id ?? property?.external_id ?? property?.raw?.serial ?? "",
     );
-    return fallbackUrl ? { photos: [], url: fallbackUrl, exact: false } : null;
+    return fallbackUrl ? { photos: [], url: fallbackUrl, exact: false, attempt } : null;
   }
 }
+
+// Heuristic-widening retry: attempt exact match, then relax rooms, then relax
+// price band. Stops as soon as one attempt returns real photos (exact=true
+// with photos.length > 0). Returns the best result seen (may still be a
+// fallback search URL without photos) and how many attempts were spent.
+async function enrichFromYad2WithRetries(
+  admin: any,
+  ownerId: string,
+  property: any,
+  maxAttempts = 3,
+): Promise<{ result: Awaited<ReturnType<typeof enrichFromYad2>>; attempts: number }> {
+  const strategies: Array<Parameters<typeof enrichFromYad2>[3]> = [
+    { attempt: 1, priceBand: 0.15, requireRooms: true, minScore: 4 },
+    { attempt: 2, priceBand: 0.25, requireRooms: false, minScore: 4 },
+    { attempt: 3, priceBand: 0, requireRooms: false, minScore: 5 },
+  ];
+  let best: Awaited<ReturnType<typeof enrichFromYad2>> = null;
+  let attempts = 0;
+  for (let i = 0; i < Math.min(maxAttempts, strategies.length); i++) {
+    attempts = i + 1;
+    const r = await enrichFromYad2(admin, ownerId, property, strategies[i]);
+    if (r && Array.isArray(r.photos) && r.photos.length > 0) {
+      return { result: r, attempts };
+    }
+    // Keep the most informative fallback (prefer one with exact URL over none).
+    if (r && (!best || (r.url && !best.url))) best = r;
+  }
+  return { result: best, attempts };
+}
+
 
 async function campaignMediaFallback(
   admin: any,
