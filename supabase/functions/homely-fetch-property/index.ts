@@ -2772,6 +2772,17 @@ Deno.serve(async (req) => {
         );
       }
       const items = asArray(r.data);
+      for (const rawItem of items) {
+        const rawSerial = String(rawItem?.serial ?? rawItem?.Serial ?? rawItem?.sidur ?? rawItem?.Sidur ?? rawItem?.id ?? rawItem?.Id ?? "").trim();
+        if (shouldRawAuditProperty({ homely_id: rawSerial, raw: rawItem, address: [rawItem?.street, rawItem?.number].filter(Boolean).join(" "), title: rawItem?.objectresidence, city: rawItem?.city }, rawSerial)) {
+          logJsonChunks(`[homely-fetch-property] RAW_SOURCE_BEFORE_MAPPING serial=${rawSerial}`, rawItem);
+          console.log(`[homely-fetch-property] RAW_SOURCE_MEDIA_FIELD_AUDIT serial=${rawSerial}`, {
+            keys: rawItem && typeof rawItem === "object" ? Object.keys(rawItem).slice(0, 120) : [],
+            mediaFields: mediaFieldAudit(rawItem).slice(0, 80),
+            collectMedia: collectMedia(rawItem),
+          });
+        }
+      }
       const debug = [
         {
           url,
