@@ -1693,7 +1693,12 @@ async function enrichFromYad2(
   admin: any,
   ownerId: string,
   property: any,
-): Promise<{ photos: string[]; url: string; exact?: boolean } | null> {
+  opts: { attempt?: number; priceBand?: number; requireRooms?: boolean; minScore?: number } = {},
+): Promise<{ photos: string[]; url: string; exact?: boolean; attempt?: number } | null> {
+  const attempt = opts.attempt ?? 1;
+  const priceBand = opts.priceBand ?? 0.15;
+  const requireRooms = opts.requireRooms ?? true;
+  const minScore = opts.minScore ?? 4;
   try {
     const city = String(property?.city ?? "").trim();
     const address = String(
@@ -1709,7 +1714,7 @@ async function enrichFromYad2(
     const apiKey = String((key as any)?.yad2_api_key ?? "").trim();
     if (!city && !address) return null;
     if (!apiKey || apiKey === "test_pending")
-      return fallbackUrl ? { photos: [], url: fallbackUrl, exact: false } : null;
+      return fallbackUrl ? { photos: [], url: fallbackUrl, exact: false, attempt } : null;
     const normalizedAddress = normForMatch(address);
     const tx = property?.transaction_type === "rent" ? "rent" : "forsale";
     const cityCfg = yad2CityConfig(city);
@@ -1722,19 +1727,22 @@ async function enrichFromYad2(
       url.searchParams.set("region", "18");
       url.searchParams.set("city", city);
     }
-    if (property?.price) {
+    if (property?.price && priceBand > 0) {
       const price = Number(property.price);
       if (Number.isFinite(price) && price > 0) {
-        url.searchParams.set("price", `${Math.max(0, Math.round(price * 0.85))}-${Math.round(price * 1.15)}`);
+        url.searchParams.set(
+          "price",
+          `${Math.max(0, Math.round(price * (1 - priceBand)))}-${Math.round(price * (1 + priceBand))}`,
+        );
       }
     }
-    if (property?.rooms) url.searchParams.set("rooms", `${property.rooms}-${property.rooms}`);
+    if (property?.rooms && requireRooms) url.searchParams.set("rooms", `${property.rooms}-${property.rooms}`);
     const upstream = await fetch(url.toString(), {
       headers: { Authorization: `Bearer ${apiKey}`, Accept: "application/json" },
     });
-    if (!upstream.ok) return null;
+    if (!upstream.ok) return fallbackUrl ? { photos: [], url: fallbackUrl, exact: false, attempt } : null;
     const contentType = upstream.headers.get("content-type") || "";
-    if (!/json/i.test(contentType)) return null;
+    if (!/json/i.test(contentType)) return fallbackUrl ? { photos: [], url: fallbackUrl, exact: false, attempt } : null;
     const payload = await upstream.json().catch(() => null);
     const items: any[] = Array.isArray(payload)
       ? payload
@@ -1750,18 +1758,28 @@ async function enrichFromYad2(
         score += 5;
       if (property?.rooms && Number(it?.rooms ?? it?.additionalDetails?.roomsCount) === Number(property.rooms))
         score += 1;
+      // Heuristic price bonus: item price within band boosts confidence.
+      if (property?.price) {
+        const itemPrice = Number(it?.price ?? it?.merchandise?.price ?? 0);
+        if (Number.isFinite(itemPrice) && itemPrice > 0) {
+          const delta = Math.abs(itemPrice - Number(property.price)) / Number(property.price);
+          if (delta <= 0.05) score += 2;
+          else if (delta <= 0.15) score += 1;
+        }
+      }
       if (score > bestScore) {
         best = it;
         bestScore = score;
       }
     }
-    if (!best || bestScore < 4) return fallbackUrl ? { photos: [], url: fallbackUrl, exact: false } : null;
+    if (!best || bestScore < minScore)
+      return fallbackUrl ? { photos: [], url: fallbackUrl, exact: false, attempt } : null;
     const photos = collectYad2Photos(best);
     const itemUrl = yad2UrlFromItem(best);
     return photos.length || itemUrl
-      ? { photos, url: itemUrl || fallbackUrl, exact: true }
+      ? { photos, url: itemUrl || fallbackUrl, exact: true, attempt }
       : fallbackUrl
-        ? { photos: [], url: fallbackUrl, exact: false }
+        ? { photos: [], url: fallbackUrl, exact: false, attempt }
         : null;
   } catch (e) {
     console.warn("[homely-fetch] yad2 enrichment failed", (e as Error).message);
@@ -1775,9 +1793,39 @@ async function enrichFromYad2(
       property?.transaction_type,
       property?.homely_id ?? property?.external_id ?? property?.raw?.serial ?? "",
     );
-    return fallbackUrl ? { photos: [], url: fallbackUrl, exact: false } : null;
+    return fallbackUrl ? { photos: [], url: fallbackUrl, exact: false, attempt } : null;
   }
 }
+
+// Heuristic-widening retry: attempt exact match, then relax rooms, then relax
+// price band. Stops as soon as one attempt returns real photos (exact=true
+// with photos.length > 0). Returns the best result seen (may still be a
+// fallback search URL without photos) and how many attempts were spent.
+async function enrichFromYad2WithRetries(
+  admin: any,
+  ownerId: string,
+  property: any,
+  maxAttempts = 3,
+): Promise<{ result: Awaited<ReturnType<typeof enrichFromYad2>>; attempts: number }> {
+  const strategies: Array<Parameters<typeof enrichFromYad2>[3]> = [
+    { attempt: 1, priceBand: 0.15, requireRooms: true, minScore: 4 },
+    { attempt: 2, priceBand: 0.25, requireRooms: false, minScore: 4 },
+    { attempt: 3, priceBand: 0, requireRooms: false, minScore: 5 },
+  ];
+  let best: Awaited<ReturnType<typeof enrichFromYad2>> = null;
+  let attempts = 0;
+  for (let i = 0; i < Math.min(maxAttempts, strategies.length); i++) {
+    attempts = i + 1;
+    const r = await enrichFromYad2(admin, ownerId, property, strategies[i]);
+    if (r && Array.isArray(r.photos) && r.photos.length > 0) {
+      return { result: r, attempts };
+    }
+    // Keep the most informative fallback (prefer one with exact URL over none).
+    if (r && (!best || (r.url && !best.url))) best = r;
+  }
+  return { result: best, attempts };
+}
+
 
 async function campaignMediaFallback(
   admin: any,
@@ -2327,8 +2375,14 @@ Deno.serve(async (req) => {
       }
       let propsCount = 0;
       let contactsCount = 0;
+      // Webtiv detail/image endpoints are disabled — every candidate route
+      // (getNechesFullDetail, getNechesImages, getNechesGallery, hashData/*)
+      // returns 404/500 for this broker's serials. Confirmed by the raw
+      // probe on 2026-07-16. We now rely on the bulk stream + heuristic
+      // Yad2 enrichment (see enrichFromYad2WithRetries below) for photos.
+      const WEBTIV_DETAIL_FETCH_ENABLED = false;
       let richHash: string | null = null;
-      if (properties.length > 0) {
+      if (WEBTIV_DETAIL_FETCH_ENABLED && properties.length > 0) {
         try {
           const { data: cred } = await admin
             .from("homely_broker_credentials")
@@ -2348,6 +2402,7 @@ Deno.serve(async (req) => {
           console.warn("[importOutJson] rich detail login skipped", (e as Error).message);
         }
       }
+
 
       // Batch-level media ownership ledger. This prevents one property's image
       // candidates or final mirrored gallery from being reused by another
@@ -2410,9 +2465,23 @@ Deno.serve(async (req) => {
         const rawSourceOrigin = pickSourceOrigin(richRecord) || p?.source_origin || null;
         const sourceIsYad2 =
           rawSourceOrigin === "yad2" || hasYad2Signal(richRecord, p?.raw, p?.source_url, rawSourceOrigin);
-        const shouldProbeYad2 = sourceIsYad2 || (!p?.source_url && p?.transaction_type === "sale");
-        const yad2Enrichment = shouldProbeYad2 ? await enrichFromYad2(admin, workspaceOwnerId, p) : null;
+        // Enrichment trigger — run for ALL properties that lack images in the
+        // bulk payload, regardless of the raw `source` field. Webtiv's
+        // per-property detail endpoints all 404 for this broker, so the
+        // upstream `source` is almost always empty; heuristic matching on
+        // city + address + price is the only path to real photos.
+        const bulkHasPhotos =
+          (Array.isArray(p?.photos) && p.photos.length > 0) ||
+          (Array.isArray(richMedia.photos) && richMedia.photos.length > 0) ||
+          Boolean(p?.photo);
+        const shouldProbeYad2 = !bulkHasPhotos;
+        const yad2Retry = shouldProbeYad2
+          ? await enrichFromYad2WithRetries(admin, workspaceOwnerId, p, 3)
+          : { result: null, attempts: 0 };
+        const yad2Enrichment = yad2Retry.result;
+        const yad2AttemptCount = yad2Retry.attempts;
         const richSourceOrigin = sourceIsYad2 || yad2Enrichment?.exact ? "yad2" : rawSourceOrigin;
+
         const balcony = pickBalcony(richRecord) ?? booleanFeatureFrom(p?.balcony);
         const campaignPhotos =
           richMedia.photos.length || (Array.isArray(p?.photos) && p.photos.length) || p?.photo
@@ -2802,6 +2871,18 @@ Deno.serve(async (req) => {
                   media_mirrored_at: new Date().toISOString(),
                   media_version_tag: versionTag,
                   media_serial_verified: homelyId,
+                  // Enrichment bookkeeping — UI reads media_status to decide
+                  // between showing a gallery, a placeholder, or the
+                  // "Contact for details" message.
+                  enrichment_attempts: yad2AttemptCount,
+                  yad2_enrichment_exact: Boolean(yad2Enrichment?.exact),
+                  media_status:
+                    finalPhotosForDb.length > 0
+                      ? "available"
+                      : yad2AttemptCount >= 3
+                        ? "images_unavailable"
+                        : "pending",
+
                 },
               })
               .eq("id", listingId);
