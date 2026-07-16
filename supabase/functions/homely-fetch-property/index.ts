@@ -2458,9 +2458,23 @@ Deno.serve(async (req) => {
         const rawSourceOrigin = pickSourceOrigin(richRecord) || p?.source_origin || null;
         const sourceIsYad2 =
           rawSourceOrigin === "yad2" || hasYad2Signal(richRecord, p?.raw, p?.source_url, rawSourceOrigin);
-        const shouldProbeYad2 = sourceIsYad2 || (!p?.source_url && p?.transaction_type === "sale");
-        const yad2Enrichment = shouldProbeYad2 ? await enrichFromYad2(admin, workspaceOwnerId, p) : null;
+        // Enrichment trigger — run for ALL properties that lack images in the
+        // bulk payload, regardless of the raw `source` field. Webtiv's
+        // per-property detail endpoints all 404 for this broker, so the
+        // upstream `source` is almost always empty; heuristic matching on
+        // city + address + price is the only path to real photos.
+        const bulkHasPhotos =
+          (Array.isArray(p?.photos) && p.photos.length > 0) ||
+          (Array.isArray(richMedia.photos) && richMedia.photos.length > 0) ||
+          Boolean(p?.photo);
+        const shouldProbeYad2 = !bulkHasPhotos;
+        const yad2Retry = shouldProbeYad2
+          ? await enrichFromYad2WithRetries(admin, workspaceOwnerId, p, 3)
+          : { result: null, attempts: 0 };
+        const yad2Enrichment = yad2Retry.result;
+        const yad2AttemptCount = yad2Retry.attempts;
         const richSourceOrigin = sourceIsYad2 || yad2Enrichment?.exact ? "yad2" : rawSourceOrigin;
+
         const balcony = pickBalcony(richRecord) ?? booleanFeatureFrom(p?.balcony);
         const campaignPhotos =
           richMedia.photos.length || (Array.isArray(p?.photos) && p.photos.length) || p?.photo
