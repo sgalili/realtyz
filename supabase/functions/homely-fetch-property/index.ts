@@ -1285,7 +1285,7 @@ function detectImageDimensions(bytes: Uint8Array, contentType = ""): { width: nu
 }
 
 async function mirrorOne(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   listingId: string,
   originalUrl: string,
   expected: "image" | "document" | "any" = "any",
@@ -1369,7 +1369,7 @@ async function mirrorOne(
 }
 
 async function mirrorAll(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   listingId: string,
   urls: string[],
   cap: number,
@@ -1386,7 +1386,7 @@ async function mirrorAll(
 }
 
 async function mirrorVerifiedImageCandidates(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   listingId: string,
   candidates: ImageCandidate[],
   versionTag: string,
@@ -1460,7 +1460,7 @@ function yad2UrlFromItem(it: any): string {
 }
 
 async function enrichFromYad2(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   ownerId: string,
   property: any,
 ): Promise<{ photos: string[]; url: string; exact?: boolean } | null> {
@@ -1550,7 +1550,7 @@ async function enrichFromYad2(
 }
 
 async function campaignMediaFallback(
-  admin: ReturnType<typeof createClient>,
+  admin: any,
   ownerId: string,
   property: any,
 ): Promise<string[]> {
@@ -1620,7 +1620,7 @@ async function campaignMediaFallback(
   }
 }
 
-async function resolveWorkspaceOwnerId(admin: ReturnType<typeof createClient>, userId: string): Promise<string> {
+async function resolveWorkspaceOwnerId(admin: any, userId: string): Promise<string> {
   const { data: profile } = await admin
     .from("profiles")
     .select("active_workspace_owner_id, workspace_owner_id")
@@ -1639,7 +1639,7 @@ async function resolveWorkspaceOwnerId(admin: ReturnType<typeof createClient>, u
   return membership ? owner : fallback;
 }
 
-async function configuredHomelyFeedUrl(admin: ReturnType<typeof createClient>, ownerId: string): Promise<string> {
+async function configuredHomelyFeedUrl(admin: any, ownerId: string): Promise<string> {
   const { data } = await admin
     .from("homely_broker_credentials")
     .select("homely_feed_url")
