@@ -155,49 +155,15 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
 
     const focusOnly = !!listingFocusOnly && !!promotedListing;
 
-    const FOCUS_ONLY_RULE = focusOnly ? (hasKbTemplate ? `
-LISTING-FOCUS MODE (HARD OVERRIDE — highest priority):
-- This post is a direct sales/rental ad for the [PROMOTED LISTING] above and NOTHING else.
-- No personal owner story, no broker biography, no market analysis, no neighborhood essay, no testimonials, no philosophy.
-- Follow the structure, rhythm, line breaks, sectioning, emoji usage and tone of the [OWNER-AUTHORED POST TEMPLATES FROM KNOWLEDGE BASE] block exactly. Those templates OVERRIDE any built-in default.
-- Replace any slot/placeholder with the real listing fields. Skip any line whose data is missing — never invent.
-- End with Udi's signature line ONLY. NEVER append hashtags, tags, keywords, or "#" tokens of any kind, even if a KB template shows them — strip them out.
-` : `
-LISTING-FOCUS MODE (HARD OVERRIDE — highest priority):
-- This post is a direct sales/rental ad for the [PROMOTED LISTING] above and NOTHING else.
-- No personal owner story, no broker biography, no market analysis, no neighborhood essay, no testimonials, no philosophy.
-- Use the EXACT template structure below (Hebrew, RTL, short lines, blank line between blocks). Each feature line MUST start with a green checkmark emoji "✅ " followed by the text. Replace bracketed slots with the real listing fields. Skip any line whose data is missing — never invent.
-- Emojis are allowed ONLY where the template shows them: ✅ for each feature bullet, 📍 once before the address line, 💰 once before the price line, 📞 once before the CTA. Do NOT add other emojis (no 🏠, 🔑, 🌟, ✨, fire, hearts) and never stack multiples.
-- End with a CTA inviting WhatsApp/phone, followed by Udi's signature line ONLY. Do NOT add any hashtags, tags, or keywords.
-
-REFERENCE TEMPLATE (match this rhythm and tone exactly — adapt wording per listing, never copy verbatim):
-"""
-[חדרים] חדרים ב[עיר] במחיר שכבר קשה למצוא!
-
-📍 [רחוב ומספר] | שכונת [שכונה] | [עיר]
-
-מחפשים [חדרים] חדרים?
-
-[משפט פתיחה אחד קצר על הערך/ההזדמנות של הנכס הספציפי הזה.]
-
-מה תמצאו בדירה?
-
-✅ כ-[שטח] מ"ר
-✅ [פיצ'ר 1]
-✅ [פיצ'ר 2]
-✅ [פיצ'ר 3]
-✅ קומה [קומה]
-✅ [חניה / מעלית / מיזוג — רק אם קיים]
-✅ כניסה [מיידית/בתאריך אם ידוע]
-
-💰 [שכר דירה/מחיר מבוקש]: [מחיר מעוצב] ₪
-
-[משפט סגירה קצר אחד שמדגיש את ההזדמנות.]
-
-📞 אם זה נשמע מעניין, שלחו הודעה או התקשרו
-"""
-
-DO NOT add any signature, byline, phone number, license number, or contact lines yourself. The system appends Udi's canonical signature + short link automatically at the very bottom.`) : "";
+    const FOCUS_ONLY_RULE = focusOnly ? `
+LISTING-FOCUS MODE (HARD OVERRIDE — ULTRA-COMPACT 2-LINE FORMAT, highest priority):
+- The entire post body MUST be EXACTLY TWO LINES. No paragraphs, no bullets, no ✅, no 📍, no 💰, no 📞, no "מה תמצאו בדירה", no feature lists, no filler.
+- LINE 1: One punchy, engaging, scroll-stopping sentence in Hebrew (max ~18 words) about THIS specific property. Reference at least one real, concrete detail from the [PROMOTED LISTING] block (neighborhood/street name without number, room count, standout feature, view, floor, or price positioning). No generic openers like "הזדמנות מדהימה" or "אני שמח להציג".
+- LINE 2: A single SEO keyword line separated STRICTLY by straight vertical bars " | " (space-pipe-space) between 4-6 items. No emojis, no punctuation other than the pipes. Format: [שכונה/עיר] | [מספר חדרים] חדרים | [יתרון מרכזי] | [קרבה/מיקום] | [סוג נכס] | [מילת מפתח נדל"ן]
+  Example: "הרצליה הירוקה | 4.5 חדרים | מרפסת שמש | קרוב לפארק | דירה למכירה | נדל״ן בהרצליה"
+- ABSOLUTELY FORBIDDEN: any bracketed placeholder like "[insert license]", "[מספר טלפון]", "[phone]", "[TBD]", "[Real License Number]", parentheses with instructions, or any square-bracket tokens. Every value must be real or omitted entirely.
+- DO NOT write a signature, phone number, license number, byline, or contact line yourself. The system appends Udi's canonical footer (phone + license) automatically at the very bottom.
+- Total body BEFORE the auto-footer = 2 lines only.` : "";
 
 
 
@@ -244,13 +210,14 @@ NO-HASHTAGS RULE (HARD — ZERO TOLERANCE):
 
 איסור מוחלט: פוליטיקה, מפלגות, בחירות, וכל הקשר לא-נדל"ני.
 
-HIGH-CONVERTING REAL-ESTATE COPY STRUCTURE (HARD — apply when a specific נכס/PROMOTED LISTING exists):
-- שורה 1 חייבת להיות "שורת מפתח" בפורמט מדויק עם קו ישר "|" בין הפריטים, בלי אימוג'ים, בלי סימני פיסוק אחרים בתוך השורה:
-  [מילת מפתח מרכזית] | [סוג נכס + חדרים] | [שכונה/עיר] | [יתרון מכירה מרכזי]
-  דוגמה: "הזדמנות נדל״ן בהרצליה | דירת 4.5 חדרים | שדרות חן | נוף פתוח וקומה גבוהה"
-- שורה 2 = וו פסיכולוגי קצר וחד (עד 12 מילים) שמייצר דחיפות או סקרנות מקומית — לא סלוגן גנרי.
-- אחר כך 3–5 בולטים עם ✅ ולסיום שורת 📍 מיקום, 💰 מחיר (אם קיים), ו-📞 CTA. בלי פסקאות מילוליות/פילר.
-- העתקי חייב להיות ממוקד, מקומי, ודחוף. אסור פתיחות גנריות כמו "יש לי הזדמנות נהדרת" או "אני שמח להציג".
+HIGH-CONVERTING REAL-ESTATE COPY STRUCTURE (HARD — apply when a specific נכס/PROMOTED LISTING exists — ULTRA-COMPACT 2-LINE FORMAT):
+- The ENTIRE post body = EXACTLY TWO LINES. No paragraphs, no bullets, no ✅, no 📍, no 💰, no CTA line, no filler. Compact & punchy.
+- שורה 1: משפט אחד חד, אנושי, עוצר גלילה (עד 18 מילים) שקשור ישירות לנכס הספציפי הזה — עם דטייל אמיתי אחד לפחות מהנכס (שכונה, שם רחוב בלי מספר, מספר חדרים, יתרון בולט, נוף, קומה, מיקום). בלי פתיחות גנריות ("הזדמנות מדהימה", "אני שמח להציג").
+- שורה 2: שורת SEO אחת בלבד עם 4-6 פריטים מופרדים אך ורק במקל אנכי ישר " | " (רווח-קו-רווח). בלי אימוג'ים, בלי סימני פיסוק אחרים.
+  פורמט: [שכונה/עיר] | [חדרים] חדרים | [יתרון מרכזי] | [קרבה/מיקום] | [סוג נכס] | [מילת מפתח נדל"ן]
+  דוגמה: "הרצליה הירוקה | 4.5 חדרים | מרפסת שמש | קרוב לפארק | דירה למכירה | נדל״ן בהרצליה"
+- אסור בהחלט: סוגריים מרובעים ריקים/הוראות ("[insert license]", "[מספר טלפון]", "[TBD]", "[Real Phone Number]"), טקסט הוראה בסוגריים, או כל טוקן placeholder. כל ערך חייב להיות אמיתי או להיות מושמט לחלוטין.
+- אל תכתוב בעצמך חתימה/טלפון/רישיון/byline — המערכת מוסיפה אוטומטית את חתימת אודי (טלפון + רישיון) בסוף הפוסט.
 
 כתוב בעברית בלבד, ישראלית טבעית, בגוף ראשון של אודי. החזר את הפוסט בלבד, בלי הסברים נלווים.`;
 

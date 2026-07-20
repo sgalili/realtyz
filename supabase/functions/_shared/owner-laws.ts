@@ -151,8 +151,15 @@ export function enforceOwnerLaws(
   } = {},
 ): string {
   const { license, byline, withLicense = true } = opts;
+  // Step 0: strip placeholder brackets (e.g. "[Insert license number]",
+  // "[מספר טלפון]", "[Real Phone Number]", "[TBD]") — never let bracketed
+  // instruction tokens ship to the public.
+  let out = String(text ?? "").replace(
+    /\[[^\]\n]{0,80}(?:insert|placeholder|tbd|real\s+(?:phone|license)|phone|license|רישיון|טלפון|מספר\s*טלפון|מספר\s*רישיון|your\s+\w+)[^\]\n]{0,80}\]/giu,
+    "",
+  );
   // Step 1: scrub forbidden bylines. Step 2: strip street numbers.
-  let out = stripStreetNumbers(scrubForbiddenBylines(text));
+  out = stripStreetNumbers(scrubForbiddenBylines(out));
   // Step 3 (ABSOLUTE LAST): inject contact + license footer if missing.
   if (withLicense) {
     out = appendLicenseFooter(out, license, byline);
