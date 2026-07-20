@@ -246,20 +246,37 @@ NO-HASHTAGS RULE (HARD — ZERO TOLERANCE):
 
 כתוב בעברית בלבד, ישראלית טבעית, בגוף ראשון של אודי. החזר את הפוסט בלבד, בלי הסברים נלווים.`;
 
+    const noListingSelected = !promotedListing;
+
+    const GENERAL_POST_RULE = noListingSelected ? `
+GENERAL POST MODE (HARD OVERRIDE — highest priority, PRIVACY-CRITICAL):
+- No specific property was selected. Write a GENERAL post about Udi as a broker: his approach, motivation, professional insights, market perspective, values, success mindset, or general activity in the field.
+- ABSOLUTELY FORBIDDEN: any client name, lead name, owner name, phone number, email, address of a private deal, specific property from the CRM, private notes, internal reminders, deal status, negotiation details, or anything sourced from CRM/leads/messages/private KB entries.
+- Do NOT reference "a client I spoke with", "a lead who called", "a request I received", "an owner who...", or any anecdote tied to a real person in the workspace.
+- Do NOT quote or paraphrase private notes, meeting summaries, WhatsApp chats, or internal reminders.
+- Write in first person as Udi about broker craft, motivation, discipline, work ethic, market observations at a generic level, or goals — nothing that exposes private CRM data.
+` : "";
+
     const userPrompt = [
       kbTemplatesBlock || null,
       promotedBlock,
-      focusOnly ? null : renderCrmBlock(snap),
-      focusOnly ? null : renderKbBlock(kb),
+      // Never expose CRM/private client data in general (no-listing) posts.
+      focusOnly || noListingSelected ? null : renderCrmBlock(snap),
+      focusOnly || noListingSelected ? null : renderKbBlock(kb),
       kbInstructionsBlock || null,
       customBlock,
+      GENERAL_POST_RULE || null,
       focusOnly
         ? `מטרת הפוסט: פוסט מכירה/השכרה קצר וישיר לנכס שלמעלה בלבד — בלי שום הקשר אישי, ביוגרפיה או נושאים לא קשורים.`
-        : `נושא הפוסט (כיוון כללי מהמשתמש): ${topic}`,
+        : noListingSelected
+          ? `נושא הפוסט (כיוון כללי מהמשתמש): ${topic}\n\nכתוב פוסט כללי בגוף ראשון על אודי כמתווך — גישה, מוטיבציה, ערכים, תובנות שוק כלליות, הצלחה מקצועית. אסור לחלוטין להזכיר שמות לקוחות, לידים, בעלי נכסים, כתובות פרטיות, או כל פרט מה-CRM.`
+          : `נושא הפוסט (כיוון כללי מהמשתמש): ${topic}`,
       `Anti-spam entropy seed (vary opener / structure / CTA vs any prior post): ${entropySeed}`,
       focusOnly
         ? `Write a clean, short, scroll-stopping sales post for the ONE listing above. No personal history. No filler.`
-        : `Write Udi's post now — grounded strictly in the blocks above. Never mention software/AI/platform/Realtyz.`,
+        : noListingSelected
+          ? `Write Udi's general broker post now. NEVER reference any private client, lead, owner, address, or CRM data. Speak generically about the craft.`
+          : `Write Udi's post now — grounded strictly in the blocks above. Never mention software/AI/platform/Realtyz.`,
     ].filter(Boolean).join("\n\n");
 
 
