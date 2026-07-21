@@ -267,6 +267,61 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
     load();
   };
 
+  // Cancel the ENTIRE recurrence sequence — every future scheduled post that
+  // shares the same campaign_name + channel as the selected row.
+  const cancelSequence = async (r: ScheduledRow) => {
+    const { data: siblings, error: fetchErr } = await supabase
+      .from('campaign_logs')
+      .select('id, sent_at, provider_message_id, provider_response')
+      .eq('is_archived', false)
+      .eq('status', 'scheduled')
+      .eq('campaign_name', r.campaign_name)
+      .eq('channel', r.channel)
+      .gt('sent_at', new Date().toISOString());
+    if (fetchErr) { toast.error('שליפת הסדרה נכשלה: ' + fetchErr.message); return; }
+    const count = siblings?.length || 0;
+    if (count === 0) { toast.info('אין פרסומים עתידיים בסדרה'); return; }
+    if (!confirm(`לבטל את כל הסדרה? (${count} פרסומים עתידיים)`)) return;
+
+    // Cancel every known Ayrshare id best-effort.
+    const { data: sess } = await supabase.auth.getSession();
+    const accessToken = sess?.session?.access_token;
+    const fnUrl = `${import.meta.env.VITE_SUPABASE_URL ?? ''}/functions/v1/ayrshare-post`;
+    const externalIds = new Set<string>();
+    for (const s of siblings || []) {
+      if (s.provider_message_id) externalIds.add(s.provider_message_id);
+      for (const p of ((s.provider_response as any)?.postIds || [])) {
+        const id = p?.id ?? p?.postId;
+        if (id) externalIds.add(id);
+      }
+    }
+    for (const pid of externalIds) {
+      try {
+        await fetch(fnUrl, {
+          method: 'DELETE',
+          headers: {
+            Authorization: `Bearer ${accessToken ?? ''}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY ?? '',
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ external_post_id: pid }),
+        });
+      } catch { /* fall through */ }
+    }
+
+    const { error } = await supabase
+      .from('campaign_logs')
+      .delete()
+      .eq('campaign_name', r.campaign_name)
+      .eq('channel', r.channel)
+      .eq('status', 'scheduled')
+      .gt('sent_at', new Date().toISOString());
+    if (error) { toast.error('ביטול הסדרה נכשל: ' + error.message); return; }
+    queryClient.invalidateQueries({ queryKey: ['sidebar-counts'] });
+    toast.success(`הסדרה בוטלה (${count} פרסומים)`);
+    load();
+  };
+
   const monthLabel = `${HEBREW_MONTHS[cursor.getMonth()]} ${cursor.getFullYear()}`;
   const today = new Date();
 
@@ -432,7 +487,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
               עדכון מועד או תוכן ישנה את הרשומה במערכת. אם הפוסט כבר נשלח לתור של ספק הפרסום, ייתכן שיידרש לבטל ולפרסם מחדש.
             </p>
           </div>
-          <DialogFooter className="gap-2 sm:gap-2">
+          <DialogFooter className="gap-2 sm:gap-2 flex-wrap">
             <Button
               variant="outline"
               className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
@@ -440,6 +495,15 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
             >
               <Trash2 className="ml-1 h-4 w-4" />
               בטל פרסום
+            </Button>
+            <Button
+              variant="outline"
+              className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => { if (editing) { const e = editing; setEditing(null); cancelSequence(e); } }}
+              title="ביטול כל הפרסומים העתידיים באותה סדרה"
+            >
+              <Repeat className="ml-1 h-4 w-4" />
+              בטל סדרה
             </Button>
             <Button variant="outline" onClick={() => setEditing(null)}>סגור</Button>
             <Button onClick={saveEdit} disabled={saving}>
