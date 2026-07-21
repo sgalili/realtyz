@@ -1153,7 +1153,11 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
     // When attachments OR research are present in Master Agent mode, relax the
     // strict JSON-only contract so the model can return a rich Hebrew brief.
     const richResponseHint = isInternalDashboard && (attachments.length > 0 || !!researchBlock)
-      ? `\n\nRESPONSE OVERRIDE: למשימה זו (קבצים מצורפים או תקציר מחקר חי), החזר JSON בצורת {"type":"text","content":"..."} כאשר content הוא תקציר עברית מובנה עם כותרות ## ולפחות 5 צעדים מעשיים. אל תחזיר SQL.`
+      ? `\n\nRESPONSE OVERRIDE: המשימה הזו כוללת קבצים מצורפים ו/או תקציר מחקר חי שכבר בוצע (LIVE WEB RESEARCH BRIEF למעלה). חובה עליך:
+1. להחזיר JSON יחיד בצורה {"type":"text","content":"..."} — לא SQL, לא markdown-fences.
+2. content חייב להיות התוצר הסופי של המחקר בעברית מובנית עם הכותרות הבאות (##): תקציר מנהלים / סטטוס תכנון ובינוי / חינוך וקהילה / תחבורה ונגישות / מסחר ופנאי / תמונת מחירים / קהל יעד אופטימלי / חמישה צעדים שיווקיים מומלצים / מקורות.
+3. אסור לך לכתוב "אני אבצע כעת מחקר" / "אתחיל מיד" / "אחזור אליך עם" — המחקר כבר בוצע ומצורף למעלה. תגיש את הממצאים בפועל, מעוגנים בנתוני ה-BRIEF.
+4. אם ה-BRIEF מכיל "לא נמצא במקורות הזמינים" — הבא אותו כפי שהוא, אל תמציא נתונים.`
       : "";
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
