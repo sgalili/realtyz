@@ -1,0 +1,1 @@
+DELETE FROM public.campaign_settings WHERE key = 'ayrshare_circuit_state';
