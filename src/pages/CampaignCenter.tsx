@@ -3566,6 +3566,7 @@ const PublishedFeed = () => {
                     </ul>
                   </div>
                 )}
+                {r.media_urls && r.media_urls.length > 0 && (
                   <div className="mx-4 mb-3 flex gap-2 overflow-x-auto">
                     {r.media_urls.slice(0, 6).map((src, i) => (
                       <div key={i} className="relative shrink-0 group">
