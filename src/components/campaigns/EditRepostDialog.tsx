@@ -443,7 +443,9 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
               לא זוהה אוטומטית הנכס המקורי — אפשר לבחור אותו ידנית כדי לרענן לפי תבנית המאסטר.
             </div>
             {!showLookup ? (
-              <Button size="sm" variant="outline" onClick={openLookup}>בחר נכס ידנית</Button>
+              <Button size="sm" variant="outline" onClick={openLookup} disabled={lookupLoading}>
+                {lookupLoading ? (<><Loader2 className="h-3 w-3 animate-spin ml-1" />טוען מ‑Webtiv…</>) : 'בחר נכס ידנית'}
+              </Button>
             ) : (
               <Select onValueChange={pickListingManually}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="בחר נכס מהרשימה" /></SelectTrigger>
