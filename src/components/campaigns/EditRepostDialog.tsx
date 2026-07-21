@@ -173,6 +173,7 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
           channels: [campaign.channel],
           campaign_name: `${campaign.campaign_name} · שוכפל`,
           media_urls: mediaUrls,
+          listing_id: campaign.listing_id ?? null,
         },
       });
       if (error) throw error;
