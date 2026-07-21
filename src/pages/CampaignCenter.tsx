@@ -1121,29 +1121,34 @@ const InlineComposer = ({
     setFirstCommentGenerating(true);
     try {
       const listing = selectedListing;
-      const keywordContext = listing
+      const descriptionSnippet = normalizeListingText(listing?.description).slice(0, 1200);
+      const listingFacts = listing
         ? [
-            listing.property_title ? `סוג/כותרת: ${listing.property_title}` : null,
+            listing.property_title ? `כותרת: ${listing.property_title}` : null,
+            listing.address ? `כתובת: ${listing.address}` : null,
+            listing.neighborhood ? `שכונה: ${listing.neighborhood}` : null,
             listing.city ? `עיר: ${listing.city}` : null,
-            listing.neighborhood ? `שכונה/אזור: ${listing.neighborhood}` : null,
-            listing.rooms ? `${listing.rooms} חדרים` : null,
-            'מילות מפתח אפשריות: מתווך, תיווך, נדל״ן, דירה, נכס',
+            listing.rooms ? `חדרים: ${listing.rooms}` : null,
+            listing.sqm ? `שטח: ${listing.sqm} מ"ר` : null,
+            listing.floor ? `קומה: ${listing.floor}` : null,
+            listing.asking_price ? `מחיר: ${Number(listing.asking_price).toLocaleString('he-IL')} ש"ח` : null,
           ].filter(Boolean).join(' | ')
         : '';
       const styleInstructions = [
-        'כתוב תגובה ראשונה קצרה לפוסט נדל"ן — בפורמט קומפקטי מחייב של שתי שורות בלבד.',
-        'שורה 1: משפט אחד חד, אנושי ומזמין (עד 18 מילים) שקשור לנכס — עם דטייל אמיתי אחד (שכונה, מספר חדרים, יתרון בולט, מיקום). בלי פתיחות גנריות.',
-        'שורה 2: שורת SEO אחת עם 4-6 מילות מפתח מופרדות במקל אנכי ישר " | " (רווח-קו-רווח). בלי אימוג\'ים, בלי סימני פיסוק אחרים. פורמט: [שכונה/עיר] | [חדרים] חדרים | [יתרון] | [קרבה] | [סוג נכס] | [נדל"ן בעיר].',
-        'דוגמה: "הרצליה הירוקה | 4.5 חדרים | מרפסת שמש | קרוב לפארק | דירה למכירה | נדל״ן בהרצליה".',
-        'אסור בהחלט: בולטים, ✅, כותרות, פסקאות מרובות, שורת מיקום/מחיר/שטח/קומה/כתובת נפרדת, סוגריים מרובעים ריקים/placeholder כמו "[מספר טלפון]" או "[רישיון תיווך]".',
-        'אל תכתוב חתימה/טלפון/רישיון בעצמך — המערכת מוסיפה אוטומטית את חתימת אודי בסוף.',
-        'אל תשתמש בכוכביות, במקפים כפולים (--) או ב-em-dash. עברית תקינה בלבד.',
-        keywordContext ? `פרטי הנכס לשליפת מילות מפתח בלבד, לא להעתיק כפרטים טכניים: ${keywordContext}` : '',
-        postBody ? `גוף הפוסט הראשי, לשימוש רק כדי לא לחזור עליו: """${postBody.slice(0, 900)}"""` : '',
+        'כתוב את התגובה הראשונה (First Comment) לפוסט נדל"ן — לא את הפוסט עצמו.',
+        'התגובה הראשונה היא ה"קרנף" של המודעה: פסקאות עשירות עם התיאור המלא של הנכס, המפרט הטכני, ויתרונות המיקום. זה המקום להציג את כל הפרטים שלא נכנסו לפוסט הראשי.',
+        'מבנה מומלץ (מספר פסקאות קצרות, לא שורה אחת): פסקת פתיחה קצרה על הנכס → פסקת תיאור חופשי (מבוסס על טקסט התיאור למטה) → פסקת מפרט/פיצ\'רים → פסקת סיום מזמינה לפנייה.',
+        descriptionSnippet
+          ? `זהו טקסט התיאור המדויק של הנכס — השתמש בו כבסיס לפסקת התיאור, בלי להמציא פרטים חדשים ובלי להעתיק מילה במילה אלא לערוך לזרימה טבעית:\n"""${descriptionSnippet}"""`
+          : 'אין תיאור חופשי שמור לנכס — כתוב תגובה אנושית קצרה שמזמינה לפנייה בהתבסס על הפרטים היבשים למטה בלבד.',
+        listingFacts ? `פרטים יבשים של הנכס להישען עליהם בלבד (אסור להמציא נתונים שלא מופיעים כאן): ${listingFacts}` : '',
+        'אסור: בולטים מהצורה ✅/📍/💰/📞, סוגריים מרובעים ריקים ("[מספר טלפון]", "[רישיון]"), כוכביות, em-dash, מקפים כפולים (--), האשטגים, שורת מילות מפתח מופרדות ב-"|", וכל טוקן placeholder.',
+        'אל תכתוב חתימה/טלפון/רישיון בעצמך — המערכת מוסיפה את חתימת אודי אוטומטית בסוף.',
+        postBody ? `לצורך הקשר בלבד, זהו גוף הפוסט הראשי שכבר נוצר — אל תחזור עליו, אל תעתיק ממנו: """${postBody.slice(0, 900)}"""` : '',
       ].filter(Boolean).join('\n\n');
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: {
-          topic: 'תגובה ראשונה לפוסט נדל"ן',
+          topic: 'תגובה ראשונה לפוסט נדל"ן — טקסט התיאור המלא של הנכס',
           platform: channel.id,
           customInstructions: styleInstructions,
           listingFocusOnly: false,
@@ -1161,6 +1166,7 @@ const InlineComposer = ({
       setFirstCommentGenerating(false);
     }
   };
+
 
   // Random CTA intro phrases used before the WA / Messenger shortlink so
   // every post reads a little differently.
