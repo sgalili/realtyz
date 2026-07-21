@@ -574,6 +574,46 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
           placeholder="ערוך את גוף הפוסט..."
         />
 
+        {/* First-comment section — mirrors the main composer. Auto-posts as
+            the first comment on the published post via Ayrshare. */}
+        <div className="rounded-md border border-border bg-muted/20 p-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <label className="flex items-center gap-2 text-sm font-semibold">
+              <input
+                type="checkbox"
+                checked={firstCommentEnabled}
+                onChange={(e) => setFirstCommentEnabled(e.target.checked)}
+                className="h-4 w-4 accent-primary"
+              />
+              תגובה ראשונה אוטומטית
+            </label>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={generateFirstComment}
+              disabled={firstCommentGenerating || !firstCommentEnabled}
+              title="ייצר תגובה ראשונה עם AI"
+            >
+              {firstCommentGenerating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              {firstComment.trim() ? 'רענן' : 'ייצר'}
+            </Button>
+          </div>
+          <Textarea
+            value={firstComment}
+            onChange={(e) => setFirstComment(e.target.value)}
+            rows={3}
+            disabled={!firstCommentEnabled}
+            placeholder="שתי שורות: משפט קצר על הנכס + שורת מילות מפתח מופרדות ב-|"
+            className="text-sm"
+          />
+        </div>
+
+
         <DialogFooter className="gap-2 sm:gap-2">
           <Button variant="outline" onClick={regenerate} disabled={regenerating || posting}>
             {regenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
