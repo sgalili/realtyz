@@ -21,8 +21,9 @@ type Props = {
 
 /**
  * Edit an already-published post: keep its original images, regenerate the
- * copy through the AI content pipeline (or hand-edit it), then re-publish
- * to the same channel. Media is preserved verbatim.
+ * copy through the SAME generate-content master pipeline used by the main
+ * composer (so the strict 5-block template + canonical footer are enforced),
+ * then re-publish to the same channel. Media is preserved verbatim.
  */
 export default function EditRepostDialog({ open, onOpenChange, campaign, onPosted }: Props) {
   const [body, setBody] = useState(campaign.message_body ?? '');
@@ -35,27 +36,63 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
 
   const mediaUrls = Array.isArray(campaign.media_urls) ? campaign.media_urls : [];
 
+  // Best-effort lookup of the originating listing so generate-content can
+  // rebuild the post from the real property record (same behavior as the main
+  // composer). We match the most recent ai_content_logs row for this platform
+  // whose body matches the campaign's message_body.
+  const resolveListingId = async (): Promise<string | null> => {
+    try {
+      const original = (campaign.message_body ?? '').trim();
+      if (!original) return null;
+      const { data } = await supabase
+        .from('ai_content_logs')
+        .select('listing_id, generated_text, created_at')
+        .eq('platform', campaign.channel)
+        .order('created_at', { ascending: false })
+        .limit(25);
+      const hit = (data ?? []).find((r: any) => {
+        const t = String(r?.generated_text ?? '').trim();
+        if (!t || !r?.listing_id) return false;
+        return t === original || original.startsWith(t.slice(0, 80)) || t.startsWith(original.slice(0, 80));
+      });
+      return (hit as any)?.listing_id ?? null;
+    } catch {
+      return null;
+    }
+  };
+
   const regenerate = async () => {
     setRegenerating(true);
     try {
-      const templateInstructions = [
-        'נסח מחדש את הפוסט בפורמט המאסטר של אודי — קצר, נקי, משכנע, בסדר קבוע ובמרווח שורה ריקה בין הבלוקים:',
-        '1) "🏡✨ פתיח לוכד עם סוג הנכס + חדרים + עיר" (משפט אחד קצר).',
-        '2) פסקה קצרה של 1-2 משפטים על שטח, קומה, נוף ופיצ\'ר בולט.',
-        '3) "🌇 שכונה/רחוב + נוחות (תחבורה, ים, פארק, מסחר)".',
-        '4) "💫 יתרון אורח חיים".',
-        '5) שורת מחיר בדיוק בפורמט: "מחיר מבוקש: <סכום>."',
-        '6) שורת CTA: "📞 מוזמנים ליצור קשר לתיאום ביקור!" (ניתן לגוון מעט את הנוסח אך תמיד קצר עם 📞).',
-        'אסור: בולטים ✅, שורות 📍 או 💰, שורת מילות מפתח (|), האשטגים, סוגריים מרובעים, em-dash, מקפים כפולים, אימוג\'ים דקורטיביים אחרים, וכל אזכור של תוכנה/AI.',
-        'שמור על אותן עובדות, מחיר, שם רחוב, מספרי חדרים ומ"ר כמו בפוסט המקורי — אל תמציא נתונים ואל תשנה אותם. פשוט נסח מחדש בטון טרי ובזווית שונה.',
-        `הפוסט המקורי לניסוח מחדש:\n"""${campaign.message_body ?? ''}"""`,
+      const selectedListingId = await resolveListingId();
+
+      // Same invocation shape as CampaignCenter.handleGenerate — one unified
+      // generation engine. `rotateTemplate`-style note asks the model to vary
+      // the master template while keeping the exact 5-block structure.
+      const rotateNote = [
+        'נסח מחדש את הפוסט תוך שמירה קפדנית על תבנית המאסטר של אודי (5 בלוקים בלבד, בסדר הזה):',
+        '1) פתיח לוכד עם סוג הנכס + חדרים + עיר (בלי מספרי בית ובלי מספרי רחוב).',
+        '2) גודל, קומה, נוף/פיצ׳ר בולט ושדרוגים.',
+        '3) שכונה/רחוב + נגישות ונוחות.',
+        '4) יתרון אורח חיים.',
+        '5) שורת "מחיר מבוקש: <סכום>." ואחריה CTA קצר לתיאום ביקור.',
+        'אל תוסיף פסקאות פתיחה כלליות על "בתחום הנדל״ן", על מקצוע התיווך או על אודי — אין הקדמות, אין סלוגנים, אין הצהרות שיווקיות. ישר לעניין, על הנכס בלבד.',
+        'שמור על אותן עובדות (מחיר, חדרים, מ״ר, קומה, שם רחוב ללא מספר) — אל תמציא נתונים.',
+        'החתימה הקנונית (byline, ר.מ, WhatsApp, שיחה טלפונית) תתווסף אוטומטית בשרת — אל תכתוב אותה בעצמך.',
+        'גוון פתיח, ניסוח ו-CTA לעומת הגרסה הקודמת כדי להימנע מחזרה.',
       ].join('\n');
+
+      const topic = selectedListingId
+        ? `פוסט קידום נכס (רענון תבנית מאסטר)`
+        : (campaign.message_body ?? '').trim().slice(0, 200) || 'רענון פוסט קיים';
 
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: {
-          topic: `נסח מחדש את הפוסט בפורמט המאסטר של אודי`,
+          topic,
           platform: campaign.channel,
-          customInstructions: templateInstructions,
+          customInstructions: rotateNote,
+          selectedListingId: selectedListingId || undefined,
+          listingFocusOnly: !!selectedListingId,
         },
       });
       if (error) throw error;
