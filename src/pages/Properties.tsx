@@ -240,17 +240,6 @@ export default function Properties() {
             scoped = rows.filter((r) => r.source === 'homely' || r.source === 'webtiv');
           }
 
-          console.log('[Connection & State Audit] Raw listings rows fetched for Properties.tsx:', {
-            sourceTab,
-            rowsLength: rows.length,
-            scopedLength: scoped.length,
-            ids: scoped.map((r: any) => ({
-              id: r.id,
-              source: r.source,
-              external_id: r.external_id,
-              media_photos_count: Array.isArray(r.media_photos) ? r.media_photos.length : 0,
-            })),
-          });
 
           return {
             connected: true,
@@ -298,11 +287,10 @@ export default function Properties() {
         // (yad2/madlan now read from the listings table above, filtered by source.)
         return { connected: true, results: [] };
       } catch (error) {
-        console.error('[Connection & State Audit] Properties listings fetch failed:', error);
+        console.error('Properties listings fetch failed:', error);
         return { connected: false, results: [] };
       }
     },
-    enabled: cacheAuditReady,
     staleTime: 0,
     gcTime: 0,
     refetchOnMount: 'always',
@@ -372,12 +360,6 @@ export default function Properties() {
 
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden min-w-0" dir="rtl">
-      <ConnectionStateDebugDashboard
-        cacheAuditReady={cacheAuditReady}
-        renderedListingsLength={liveResults.length}
-        filteredListingsLength={filtered.length}
-      />
-
       {/* Header — title only (the '+' button lives inside the global hero) */}
       <header className="text-right">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">
