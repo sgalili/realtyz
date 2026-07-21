@@ -1457,27 +1457,10 @@ const InlineComposer = ({
         </div>
       </div>
 
-      {/* Generate-with-AI CTA sits ABOVE the post textarea and only shows
-          while the textarea is empty. Once content exists, a compact regen
-          button appears in the textarea's top-left corner instead. */}
-      {!hasBody && (
-        <button
-          type="button"
-          onClick={() => handleGenerate()}
-          disabled={generating}
-          className={cn(
-            'w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-bold shadow-md transition',
-            'bg-[#FFD600] text-[#E11D2A] hover:bg-[#FFC400] hover:shadow-lg',
-            'disabled:opacity-60 disabled:cursor-not-allowed',
-          )}
-        >
-          <Sparkles className={cn('h-4 w-4', generating && 'animate-spin')} />
-          {generating ? 'מחולל תוכן…' : 'חולל תוכן עם AI'}
-        </button>
-      )}
-
-      {/* Textarea: top-left regen button (only when body exists), bottom-left
-          char counter, bottom-right attach popover (inside the field). */}
+      {/* Textarea: icon-only AI generate/regenerate button pinned to the top-right
+          (RTL start) corner INSIDE the textarea. When body is empty it kicks off
+          the initial generation; when body exists it either finalizes user edits
+          or rotates the template. */}
       <div className="relative">
         <Textarea
           ref={textareaRef}
@@ -1489,20 +1472,21 @@ const InlineComposer = ({
             setBodyManuallyEdited(true);
           }}
           placeholder="תוכן הפוסט"
-          className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-1.5 pb-10 pl-14"
+          className="resize-y text-right placeholder:text-muted-foreground/60 placeholder:font-medium pt-1.5 pb-10 pr-12"
         />
-        {hasBody && (
-          <button
-            type="button"
-            onClick={() => bodyManuallyEdited ? finalizeBody() : handleGenerate({ rotateTemplate: true })}
-            disabled={generating || finalizingBody}
-            className="absolute top-2 left-2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground disabled:opacity-50"
-            aria-label={bodyManuallyEdited ? 'שיוף לגרסה סופית' : 'חולל טקסט מחדש'}
-            title={bodyManuallyEdited ? 'שיוף לגרסה סופית' : 'חולל טקסט מחדש'}
-          >
-            <RefreshCw className={cn('h-4 w-4', (generating || finalizingBody) && 'animate-spin')} />
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={() => {
+            if (!hasBody) return handleGenerate();
+            return bodyManuallyEdited ? finalizeBody() : handleGenerate({ rotateTemplate: true });
+          }}
+          disabled={generating || finalizingBody}
+          className="absolute top-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-md border border-border bg-background text-muted-foreground hover:text-foreground disabled:opacity-50"
+          aria-label={!hasBody ? 'חולל תוכן עם AI' : (bodyManuallyEdited ? 'שיוף לגרסה סופית' : 'חולל טקסט מחדש')}
+          title={!hasBody ? 'חולל תוכן עם AI' : (bodyManuallyEdited ? 'שיוף לגרסה סופית' : 'חולל טקסט מחדש')}
+        >
+          <RefreshCw className={cn('h-4 w-4', (generating || finalizingBody) && 'animate-spin')} />
+        </button>
         {count > 0 && (
           <span className="pointer-events-none absolute left-2 bottom-2 text-[11px] tabular-nums text-muted-foreground/80" dir="ltr">
             {count}
@@ -1688,7 +1672,7 @@ const InlineComposer = ({
                 )}
               >
                 <Send className="h-4 w-4 -scale-x-100" />
-                {mode === 'scheduled' ? 'תזמן פרסום' : 'פרסם עכשיו'}
+                {mode === 'scheduled' ? 'פרסם בזמן שנבחר' : 'פרסם עכשיו'}
               </button>
               <button
                 type="button"
@@ -1704,7 +1688,6 @@ const InlineComposer = ({
                 )}
               >
                 <CalendarIcon className="h-4 w-4" />
-                <span className="hidden sm:inline">תזמן</span>
               </button>
             </div>
           </div>

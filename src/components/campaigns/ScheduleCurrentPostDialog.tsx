@@ -72,7 +72,13 @@ export function ScheduleCurrentPostDialog({
   const [winCount, setWinCount] = useState(1);
   const [recurrence, setRecurrence] = useState<Recurrence>('none');
   const [recurrenceDays, setRecurrenceDays] = useState<number[]>([]);
-  const [recurrenceCount, setRecurrenceCount] = useState(4);
+  // Blank = infinite/open-ended sequence (materialized as 52 slots, user can
+  // stop the series any time via "בטל סדרה" on the calendar).
+  const INFINITE_CAP = 52;
+  const [recurrenceCountInput, setRecurrenceCountInput] = useState<string>('');
+  const recurrenceCount = recurrenceCountInput.trim() === ''
+    ? INFINITE_CAP
+    : Math.max(1, Math.min(INFINITE_CAP, Number(recurrenceCountInput) || 1));
   const [recurrenceOpen, setRecurrenceOpen] = useState(false);
   const [groupsOpen, setGroupsOpen] = useState(false);
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(defaultGroupIds || []);
@@ -424,10 +430,14 @@ export function ScheduleCurrentPostDialog({
                       type="number"
                       min={1}
                       max={52}
-                      value={recurrenceCount}
-                      onChange={(e) => setRecurrenceCount(Math.max(1, Math.min(52, Number(e.target.value) || 1)))}
+                      value={recurrenceCountInput}
+                      onChange={(e) => setRecurrenceCountInput(e.target.value.replace(/[^0-9]/g, ''))}
+                      placeholder=""
                       className="h-8 text-right"
                     />
+                    <p className="mt-1 text-[10px] text-muted-foreground text-right">
+                      השאר ריק לסדרה פתוחה ללא סוף (ניתן לעצור בכל שלב מ״בטל סדרה״).
+                    </p>
                   </div>
                 )}
               </PopoverContent>
