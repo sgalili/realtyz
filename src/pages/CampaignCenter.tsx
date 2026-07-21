@@ -4683,6 +4683,7 @@ const CampaignCenter = () => {
                       brandName={brandName}
                       socialProfiles={socialAccountProfiles}
                       onConfirm={(p) => setConfirmPayload(p)}
+                      onOpenScheduleCalendar={() => handleChange('calendar')}
                       presetListingId={b.listing}
                       presetScheduleIso={b.iso}
                       presetVariant={b.variant}
