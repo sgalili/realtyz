@@ -694,6 +694,7 @@ const InlineComposer = ({
   const [mode, setMode] = useState<'now' | 'scheduled'>('now');
   // Local datetime string in `YYYY-MM-DDTHH:mm` (input[type=datetime-local] format).
   const [scheduledLocal, setScheduledLocal] = useState<string>('');
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState<boolean>(false);
 
   // Preset from props (multi-property replicas) OR ?schedule=ISO so the calendar
   // can deep-link the composer. Run once per mount.
