@@ -153,8 +153,11 @@ export function appendLicenseFooter(
     .replace(/\n*[^\n]*תיאום\s+(?:סיור|ביקור|צפייה|צפיה)[^\n]*/gu, "")
     .replace(/\n*[^\n]*שלחו\s+הודעה\s+(?:או|ב)?\s*וו?ואטסאפ[^\n]*/gu, "")
     .replace(/\n*[^\n]*וו?ואטסאפ\s+או\s+בטלפון[^\n]*/gu, "")
-    // bare phone numbers (with or without emoji prefix)
+    // bare phone numbers (with or without emoji prefix) — strip 05X prefixed contact lines
     .replace(/\n*\s*(?:📞|☎️|📱)?\s*0?5[0-9][\s\-]?\d{3}[\s\-]?\d{4}[^\n]*/gu, "")
+    // any prior WhatsApp / שיחה טלפונית contact line the AI generated
+    .replace(/\n*[^\n]*\bWhatsApp\b[^\n]*/gi, "")
+    .replace(/\n*[^\n]*שיחה\s+טלפונית[^\n]*/gu, "")
     .replace(/בהליך\s*אימות/gu, "")
     // STRICT: AI-assisted watermark is forbidden — purge every variant.
     .replace(/,\s*תוכן\s*בסיוע\s*AI/giu, "")
@@ -164,7 +167,7 @@ export function appendLicenseFooter(
     .replace(/\n{3,}/g, "\n\n")
     .replace(/\s+$/g, "");
 
-  return `${cleaned}\n\n${OWNER_BYLINE_LINE}\n${OWNER_LICENSE_LINE}`;
+  return `${cleaned}\n\n${OWNER_BYLINE_LINE}\n${OWNER_LICENSE_LINE}\n${OWNER_OFFICE_LINE}`;
 }
 
 export function enforceOwnerLaws(
