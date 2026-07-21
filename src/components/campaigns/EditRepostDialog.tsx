@@ -642,25 +642,22 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
         </div>
 
 
-        <DialogFooter className="gap-2 sm:gap-2">
-          <Button variant="outline" onClick={regenerate} disabled={regenerating || posting}>
-            {regenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            נסח מחדש עם AI
-          </Button>
+        <DialogFooter className="flex flex-row justify-between sm:justify-between gap-2 w-full items-center">
           <Button
             variant="outline"
             onClick={() => setScheduleDialogOpen(true)}
             disabled={posting || regenerating || !body.trim()}
-            title="תזמן פרסום (כולל חזרות)"
+            title="תזמון פרסום (כולל חזרות)"
+            aria-label="תזמון פרסום"
           >
             <CalendarIcon className="h-4 w-4" />
-            תזמן
           </Button>
           <Button onClick={repost} disabled={posting || regenerating || !body.trim()}>
             {posting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             פרסם עכשיו
           </Button>
         </DialogFooter>
+
       </DialogContent>
 
       <ScheduleCurrentPostDialog
