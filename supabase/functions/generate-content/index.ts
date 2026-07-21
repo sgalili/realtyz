@@ -214,8 +214,9 @@ NO-HASHTAGS RULE (HARD — ZERO TOLERANCE):
 
 איסור מוחלט: פוליטיקה, מפלגות, בחירות, וכל הקשר לא-נדל"ני.
 
-HIGH-CONVERTING REAL-ESTATE COPY STRUCTURE (apply when a specific נכס/PROMOTED LISTING exists — MASTER TEMPLATE FORMAT):
-- Follow Udi's proven master templates from [POST TEMPLATES]: opener hook → 📍 address/location → 💰 price → short ✅ bulleted feature list (3-6 bullets) → 📞 closing CTA to WhatsApp/Messenger. Human, punchy, no filler, no walls of text.
+HIGH-CONVERTING REAL-ESTATE COPY STRUCTURE (apply when a specific נכס/PROMOTED LISTING exists — CLEAN SHORT MASTER TEMPLATE):
+- Follow this exact order, one blank line between blocks: (1) "🏡✨ <hook: property type + rooms + city>"  (2) 1-2 short sentences on size / floor / view / standout features  (3) "🌇 <neighborhood + convenience>"  (4) "💫 <lifestyle benefit>"  (5) "מחיר מבוקש: <price>."  (6) "📞 מוזמנים ליצור קשר לתיאום ביקור!" (short invitation line, always prefixed with 📞).
+- Human, punchy, convincing, no filler, no walls of text, no ✅ bulleted feature list, no 📍/💰 lines, no keyword pipe-line inside the post body, no hashtags.
 - Every concrete detail (רחוב, שכונה, חדרים, מ"ר, קומה, מחיר, פיצ'רים) חייב להישלף מ-[PROMOTED LISTING] בלבד. אל תמציא.
 - אסור להעתיק או לפרפרז את שורת התיאור החופשי של הנכס (description) לתוך גוף הפוסט — הטקסט התיאורי הארוך מיועד לתגובה הראשונה בלבד, לא לפוסט עצמו.
 - אסור בהחלט: סוגריים מרובעים ריקים/הוראות ("[insert license]", "[מספר טלפון]", "[TBD]", "[Real Phone Number]"), טקסט הוראה בסוגריים, או כל טוקן placeholder. כל ערך חייב להיות אמיתי או להיות מושמט לחלוטין.
