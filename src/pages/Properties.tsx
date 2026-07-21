@@ -18,7 +18,7 @@ import {
 } from '@/components/ui/select';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Send, BedDouble, Ruler, MapPin, Building2, FileSpreadsheet, LayoutGrid, SlidersHorizontal, Trash2, Pencil, Sparkles, Sun } from 'lucide-react';
+import { Send, BedDouble, Ruler, MapPin, Building2, FileSpreadsheet, LayoutGrid, SlidersHorizontal, Trash2, Pencil, Sparkles, Sun, Loader2 } from 'lucide-react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -220,6 +220,9 @@ export default function Properties() {
   const [addOpen, setAddOpen] = useState(false);
   const [quickLinkUrl, setQuickLinkUrl] = useState('');
   const [quickLinkSeed, setQuickLinkSeed] = useState<string | null>(null);
+  const [yad2Url, setYad2Url] = useState('');
+  const [yad2Scraping, setYad2Scraping] = useState(false);
+  const [yad2Result, setYad2Result] = useState<{ scanned?: number; scraped?: number; saved?: number; message?: string } | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [homelyBulkOpen, setHomelyBulkOpen] = useState(false);
   const queryClient = useQueryClient();
@@ -513,12 +516,101 @@ export default function Properties() {
         </div>
       </div>
 
-      {(sourceTab === 'yad2' || sourceTab === 'madlan') && (
+      {sourceTab === 'yad2' && (
+        <div className="flex justify-center" dir="rtl">
+          <div className="w-full max-w-2xl space-y-3 rounded-xl border-2 border-primary/30 bg-primary/5 p-4">
+            <div className="flex items-center gap-2">
+              <Input
+                dir="ltr"
+                placeholder="הדבק קישור חיפוש מיד-2 כאן..."
+                value={yad2Url}
+                onChange={(e) => setYad2Url(e.target.value)}
+                className="flex-1 bg-background text-right"
+                disabled={yad2Scraping}
+              />
+              <Button
+                type="button"
+                disabled={yad2Scraping}
+                onClick={async () => {
+                  setYad2Scraping(true);
+                  setYad2Result(null);
+                  try {
+                    const body: Record<string, unknown> = {};
+                    const url = yad2Url.trim();
+                    if (url.length > 5) body.url = url;
+                    const { data, error } = await supabase.functions.invoke('scrape-yad2', { body });
+                    if (error) throw error;
+                    const summary = {
+                      scanned: (data as any)?.scanned ?? (data as any)?.total ?? undefined,
+                      scraped: (data as any)?.scraped ?? (data as any)?.count ?? undefined,
+                      saved: (data as any)?.saved ?? (data as any)?.inserted ?? undefined,
+                      message: (data as any)?.message,
+                    };
+                    setYad2Result(summary);
+                    toast.success(
+                      `יד-2: נסרקו ${summary.scanned ?? '—'} · נשלפו ${summary.scraped ?? '—'} · נשמרו ${summary.saved ?? '—'}`,
+                    );
+                    queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+                  } catch (err: any) {
+                    console.error('[Yad2 scrape] failed:', err);
+                    toast.error('ייבוא מיד-2 נכשל: ' + (err?.message ?? 'שגיאה לא ידועה'));
+                  } finally {
+                    setYad2Scraping(false);
+                  }
+                }}
+                className="gap-1.5 whitespace-nowrap"
+              >
+                {yad2Scraping ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    סורק...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4" />
+                    חפש וייבוא מיד-2
+                  </>
+                )}
+              </Button>
+            </div>
+            {yad2Scraping && (
+              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                מבצע סריקה של יד-2 — עשוי לקחת כמה עשרות שניות...
+              </div>
+            )}
+            {yad2Result && !yad2Scraping && (
+              <div className="rounded-lg border border-primary/20 bg-background/60 p-3 text-sm">
+                <div className="font-semibold mb-1">סיכום ייבוא מיד-2</div>
+                <div className="grid grid-cols-3 gap-2 text-center">
+                  <div>
+                    <div className="text-xs text-muted-foreground">נסרקו</div>
+                    <div className="font-bold">{yad2Result.scanned ?? '—'}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">נשלפו</div>
+                    <div className="font-bold">{yad2Result.scraped ?? '—'}</div>
+                  </div>
+                  <div>
+                    <div className="text-xs text-muted-foreground">נשמרו</div>
+                    <div className="font-bold text-primary">{yad2Result.saved ?? '—'}</div>
+                  </div>
+                </div>
+                {yad2Result.message && (
+                  <div className="mt-2 text-xs text-muted-foreground text-center">{yad2Result.message}</div>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {sourceTab === 'madlan' && (
         <div className="flex justify-center" dir="rtl">
           <div className="flex w-full max-w-2xl items-center gap-2 rounded-xl border-2 border-primary/30 bg-primary/5 p-2">
             <Input
               dir="ltr"
-              placeholder="הוספה מהירה באמצעות קישור (Link) — הדבק כאן URL מ-Yad2 / מדל״ן"
+              placeholder="הוספה מהירה באמצעות קישור (Link) — הדבק כאן URL ממדל״ן"
               value={quickLinkUrl}
               onChange={(e) => setQuickLinkUrl(e.target.value)}
               className="flex-1 bg-background text-right"
