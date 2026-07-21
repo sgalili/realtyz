@@ -452,6 +452,7 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
           campaign_name: `${campaign.campaign_name} · שוכפל`,
           media_urls: mediaUrls,
           listing_id: resolvedListingId ?? campaign.listing_id ?? null,
+          first_comment: firstCommentEnabled && firstComment.trim() ? firstComment.trim() : null,
         },
       });
       if (error) throw error;
