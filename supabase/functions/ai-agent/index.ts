@@ -854,6 +854,27 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
             console.warn("[webtiv_search] fetch failed", (e as Error).message);
           }
         }
+
+        // Fire-and-forget Yad2 scrape to warm the local `listings` table
+        // with fresh public inventory for the same city+deal. Runs async so
+        // the chat reply isn't blocked by Bright Data's ~30s scrape.
+        try {
+          const yadCity = cities[0] || "";
+          if (yadCity && (deal === "rent" || deal === "sale")) {
+            // Yad2 city slug — we let the scraper resolve city codes from
+            // its own URL. Use the public search URL with textual filters.
+            const path = deal === "rent" ? "forrent" : "forsale";
+            const yadUrl = `https://www.yad2.co.il/realestate/${path}?propertyGroup=apartments&city=${encodeURIComponent(yadCity)}${rooms ? `&rooms=${encodeURIComponent(rooms)}-${encodeURIComponent(rooms)}` : ""}`;
+            fetch(`${supabaseUrl}/functions/v1/scrape-yad2`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json", Authorization: authHeader },
+              body: JSON.stringify({ url: yadUrl, limit: 60 }),
+            }).catch((e) => console.warn("[yad2_warm] scrape failed", (e as Error).message));
+            console.log(`[yad2_warm] queued ${yadUrl}`);
+          }
+        } catch (e) {
+          console.warn("[yad2_warm] queue failed", (e as Error).message);
+        }
       }
     } catch (e) {
       console.warn("[webtiv_search] outer failure", (e as Error).message);
