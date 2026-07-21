@@ -417,13 +417,34 @@ serve(async (req) => {
           const { data: uRes } = await userClient.auth.getUser();
           const uid = uRes?.user?.id;
           if (uid) {
-            const [listingsRes, leadsRes, leadsCount, listingsCount] = await Promise.all([
-              userClient.from("listings")
-                .select("id, property_title, asking_price, features, description, office_notes, is_published, created_at")
+            // Detect rent/sale intent from the last user message so the
+            // workspace snapshot never leaks a sale into a rental request
+            // (and vice-versa). Israeli monthly rents never exceed ₪50k,
+            // so anything above that is treated as a sale.
+            const lastUserTextForSnap = String(
+              [...(messages as Array<{ role: string; content: string }>)].reverse().find((m) => m.role === "user")?.content ?? "",
+            );
+            const snapIntent: "rent" | "sale" | null =
+              /להשכרה|שכירות|לשכר|שכ["״]?ד|לשכור/i.test(lastUserTextForSnap)
+                ? "rent"
+                : /למכירה|רכישה|לקנות|לרכוש/i.test(lastUserTextForSnap)
+                  ? "sale"
+                  : null;
 
-                .eq("user_id", uid)
-                .order("created_at", { ascending: false })
-                .limit(25),
+            let listingsQ = userClient.from("listings")
+              .select("id, property_title, asking_price, features, description, office_notes, is_published, created_at, deal_type")
+              .eq("user_id", uid)
+              .order("created_at", { ascending: false })
+              .limit(25);
+            if (snapIntent === "rent") {
+              // HARD guardrail: rent-intent snapshots may ONLY contain
+              // rentals priced ≤ ₪50,000. Sale rows never leak.
+              listingsQ = listingsQ.eq("deal_type", "rent").lte("asking_price", 50000);
+            } else if (snapIntent === "sale") {
+              listingsQ = listingsQ.or("deal_type.eq.sale,deal_type.is.null");
+            }
+            const [listingsRes, leadsRes, leadsCount, listingsCount] = await Promise.all([
+              listingsQ,
               userClient.from("leads")
                 .select("id, full_name, city, interest_tag, engagement_score, status, lead_stage, deal_type, sentiment, preferences, last_interaction_at")
                 .eq("assigned_to", uid)
@@ -432,16 +453,29 @@ serve(async (req) => {
               userClient.from("leads").select("id", { count: "exact", head: true }).eq("assigned_to", uid),
               userClient.from("listings").select("id", { count: "exact", head: true }).eq("user_id", uid),
             ]);
-            const listingsArr = (listingsRes.data ?? []) as any[];
+            let listingsArr = (listingsRes.data ?? []) as any[];
+            // Belt-and-suspenders: strip any residual price-vs-deal_type
+            // mismatch after the SQL filter (covers legacy rows where
+            // deal_type is mislabeled at source).
+            if (snapIntent === "rent") {
+              listingsArr = listingsArr.filter((l) => {
+                const p = Number(l.asking_price ?? 0);
+                return !p || p <= 50000;
+              });
+            }
             const leadsArr = (leadsRes.data ?? []) as any[];
             const fmtListing = (l: any) => {
               const f = l.features ?? {};
               const city = f.city ?? f.neighborhood ?? "";
               const rooms = f.rooms ?? f.room_count ?? "";
               const size = f.size_sqm ?? f.size ?? "";
-              const price = l.asking_price ? `₪${Number(l.asking_price).toLocaleString()}` : "—";
+              const isRentRow = l.deal_type === "rent";
+              const price = l.asking_price
+                ? `₪${Number(l.asking_price).toLocaleString()}${isRentRow ? "/חודש" : ""}`
+                : "—";
+              const dealTag = l.deal_type ? ` | ${l.deal_type === "rent" ? "להשכרה" : "למכירה"}` : "";
               const officeNotes = l.office_notes ? ` | הערות משרד: ${String(l.office_notes).replace(/\s+/g, " ").slice(0, 200)}` : "";
-              return `• [${String(l.id).slice(0,8)}] ${l.property_title ?? "(ללא כותרת)"} | ${city} | ${rooms} חד׳ | ${size} מ"ר | ${price}${l.is_published ? "" : " (טיוטה)"}${officeNotes}`;
+              return `• [${String(l.id).slice(0,8)}] ${l.property_title ?? "(ללא כותרת)"} | ${city} | ${rooms} חד׳ | ${size} מ"ר | ${price}${dealTag}${l.is_published ? "" : " (טיוטה)"}${officeNotes}`;
 
             };
             const fmtLead = (v: any) => {
@@ -449,17 +483,24 @@ serve(async (req) => {
               const want = prefs.desired_city ?? prefs.city ?? v.city ?? "";
               return `• [${String(v.id).slice(0,8)}] ${v.full_name ?? "—"} | אזור: ${want || "—"} | סוג: ${v.deal_type ?? "—"} | שלב: ${v.lead_stage ?? v.status ?? "—"} | סקור: ${v.engagement_score ?? 0} | סנט׳: ${v.sentiment ?? "—"}`;
             };
+            const intentTag = snapIntent ? ` [intent=${snapIntent}, price cap ${snapIntent === "rent" ? "≤ ₪50,000/mo" : "n/a"}]` : "";
             liveDataBlock = [
-              `LIVE WORKSPACE SNAPSHOT (scoped to current owner, user_id=${uid.slice(0,8)}…):`,
+              `LIVE WORKSPACE SNAPSHOT (scoped to current owner, user_id=${uid.slice(0,8)}…)${intentTag}:`,
               `Totals: leads=${leadsCount.count ?? leadsArr.length}, listings=${listingsCount.count ?? listingsArr.length}`,
               "",
-              `LISTINGS (${listingsArr.length} most recent):`,
+              `LISTINGS (${listingsArr.length} most recent${snapIntent ? `, filtered to ${snapIntent}` : ""}):`,
               listingsArr.length ? listingsArr.map(fmtListing).join("\n") : "(אין נכסים פעילים)",
               "",
               `LEADS (${leadsArr.length} most recent):`,
               leadsArr.length ? leadsArr.map(fmtLead).join("\n") : "(אין לידים פעילים)",
+              snapIntent === "rent"
+                ? "\nHARD RULE — RENT MODE: Only surface listings from this snapshot. NEVER quote a price above ₪50,000 as monthly rent. NEVER divide, truncate, or reformat a million-shekel price into a rental value. If a matching rental is not present, say so plainly and offer to widen the search or trigger a Yad2 scrape — do not substitute a sale listing."
+                : snapIntent === "sale"
+                  ? "\nHARD RULE — SALE MODE: Only surface sale listings. Never present a rental as a purchase alternative."
+                  : "",
             ].join("\n");
           }
+
         }
       } catch (e) {
         console.warn("master-agent live snapshot failed:", e);
