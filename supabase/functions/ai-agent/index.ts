@@ -478,19 +478,61 @@ serve(async (req) => {
         const lastUserText = String(
           [...(messages as Array<{ role: string; content: any }>)].reverse().find((m) => m.role === "user")?.content ?? "",
         );
-        const RESEARCH_TRIGGER = /(תחקיר|מחקר|חקור|חקרי|בדוק לי|בדקי לי|שכונה|אזור|נייבורהוד|תכנון|תב"?ע|פרויקט חדש|נכס חדש|השווא|השוואה|בתי ספר|תחבורה|מחירים ב|neighborhood|research|comparative|zoning|market study)/i;
+        // Broad detection: any Hebrew or English phrasing that asks for market
+        // research, a market/area study, comps, deep dive, feasibility, etc.
+        const RESEARCH_TRIGGER = /(תחקיר|תחקור|תחקרי|תחקרו|מחקר|מחקרי|חקור|חקרי|בדוק לי|בדקי לי|בצע(?:י)?\s+מחקר|תעשה\s+לי\s+(?:מחקר|דוח|בדיקה)|דוח\s+שוק|בדיקת\s+שוק|ניתוח\s+שוק|סקירת\s+שוק|השוואת\s+מחירים|comps|comparative|comparables|market\s+research|market\s+study|market\s+analysis|deep\s+research|neighborhood(?:\s+report)?|area\s+report|feasibility|zoning|תב"?ע|שכונה|אזור|נייבורהוד|תכנון|פרויקט חדש|נכס חדש|השווא|השוואה|בתי ספר|תחבורה|מחירים ב)/i;
         const shouldResearch = enableResearchReq === true || (enableResearchReq !== false && RESEARCH_TRIGGER.test(lastUserText));
         if (shouldResearch && lastUserText.trim().length > 3) {
+          // Enrich the research query with the currently-referenced listing
+          // (address / neighborhood / city / title) so a request like
+          // "בצע מחקר שוק לנכס הזה" targets the actual property instead of
+          // running an unscoped web search.
+          let researchQuery = lastUserText.slice(0, 400);
+          try {
+            const numMatch = lastUserText.match(/\b(\d{3,8})\b/);
+            const svcClient = createClient(supabaseUrl, supabaseKey);
+            let listing: any = null;
+            if (numMatch) {
+              const { data } = await svcClient
+                .from("listings")
+                .select("property_title, features, description, source_metadata")
+                .or(`id.eq.${numMatch[1]},external_id.eq.${numMatch[1]}`)
+                .limit(1)
+                .maybeSingle();
+              listing = data;
+            }
+            if (!listing) {
+              // fall back to the most recently touched listing in this workspace
+              const { data } = await svcClient
+                .from("listings")
+                .select("property_title, features, description, source_metadata")
+                .order("updated_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+              listing = data;
+            }
+            if (listing) {
+              const f = (listing.features && typeof listing.features === "object") ? listing.features as any : {};
+              const anchor = [
+                listing.property_title,
+                f.address, f.street, f.neighborhood, f.city,
+              ].filter(Boolean).join(" · ");
+              if (anchor) researchQuery = `${researchQuery} | נכס ממוקד: ${anchor}`.slice(0, 500);
+            }
+          } catch (e) {
+            console.warn("research query enrichment failed:", e);
+          }
+
           const authHeader = req.headers.get("Authorization") ?? "";
           const r = await fetch(`${supabaseUrl}/functions/v1/master-research`, {
             method: "POST",
             headers: { "Content-Type": "application/json", Authorization: authHeader },
-            body: JSON.stringify({ query: lastUserText.slice(0, 400), mode: "neighborhood" }),
+            body: JSON.stringify({ query: researchQuery, mode: "neighborhood" }),
           });
           if (r.ok) {
             const rj = await r.json();
             if (rj?.brief) {
-              researchBlock = `LIVE WEB RESEARCH BRIEF (Firecrawl + Gemini synthesis, persisted to workspace KB):\n${String(rj.brief).slice(0, 6000)}`;
+              researchBlock = `LIVE WEB RESEARCH BRIEF (Firecrawl multi-source + Gemini synthesis, persisted to workspace KB):\n${String(rj.brief).slice(0, 6000)}`;
               researchSources = Array.isArray(rj?.sources) ? rj.sources : [];
             }
           } else {
