@@ -218,6 +218,7 @@ Deno.serve(async (req) => {
             sqm: toInt(r.sqm),
             floor: toInt(r.floor),
             photos: Array.isArray(r.photos) ? r.photos.slice(0, 20) : [],
+            deal_type: dealType,
           });
         }
       } catch (e) {
