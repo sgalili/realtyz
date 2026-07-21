@@ -537,14 +537,26 @@ export default function Properties() {
                   try {
                     const body: Record<string, unknown> = {};
                     const url = yad2Url.trim();
-                    if (url.length > 5) body.url = url;
+                    if (url.length > 0) body.url = url;
                     const { data, error } = await supabase.functions.invoke('scrape-yad2', { body });
-                    if (error) throw error;
+                    if (error) {
+                      // FunctionsHttpError exposes the response — try to read the JSON body
+                      let detail = error.message ?? 'שגיאה לא ידועה';
+                      try {
+                        const ctx: any = (error as any).context;
+                        if (ctx && typeof ctx.json === 'function') {
+                          const j = await ctx.json();
+                          if (j?.error) detail = `${j.error}${j.detail ? ` — ${j.detail}` : ''}`;
+                        }
+                      } catch { /* ignore */ }
+                      throw new Error(detail);
+                    }
+                    const d: any = data ?? {};
                     const summary = {
-                      scanned: (data as any)?.scanned ?? (data as any)?.total ?? undefined,
-                      scraped: (data as any)?.scraped ?? (data as any)?.count ?? undefined,
-                      saved: (data as any)?.saved ?? (data as any)?.inserted ?? undefined,
-                      message: (data as any)?.message,
+                      scanned: d.urls_scanned ?? d.scanned ?? d.total,
+                      scraped: d.records_scraped ?? d.scraped ?? d.count,
+                      saved: d.records_saved ?? d.saved ?? d.inserted,
+                      message: d.message,
                     };
                     setYad2Result(summary);
                     toast.success(
