@@ -149,21 +149,22 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
           promotedAreaPerks.length
             ? `יתרונות סביבה קרובה (השתמש בקצרה, מקסימום 2 פריטים בשורה אחת): ${promotedAreaPerks.join(" · ")}`
             : null,
-          promotedListing.description ? `תיאור מקצועי קצר: ${String(promotedListing.description).slice(0, 600)}` : null,
+          // NOTE: The full free-text description is INTENTIONALLY excluded from the main post prompt.
+          // It belongs in the FIRST COMMENT box (handled client-side), not in the main post body.
+
         ].filter(Boolean).join("\n")
       : "";
 
     const focusOnly = !!listingFocusOnly && !!promotedListing;
 
     const FOCUS_ONLY_RULE = focusOnly ? `
-LISTING-FOCUS MODE (HARD OVERRIDE — ULTRA-COMPACT 2-LINE FORMAT, highest priority):
-- The entire post body MUST be EXACTLY TWO LINES. No paragraphs, no bullets, no ✅, no 📍, no 💰, no 📞, no "מה תמצאו בדירה", no feature lists, no filler.
-- LINE 1: One punchy, engaging, scroll-stopping sentence in Hebrew (max ~18 words) about THIS specific property. Reference at least one real, concrete detail from the [PROMOTED LISTING] block (neighborhood/street name without number, room count, standout feature, view, floor, or price positioning). No generic openers like "הזדמנות מדהימה" or "אני שמח להציג".
-- LINE 2: A single SEO keyword line separated STRICTLY by straight vertical bars " | " (space-pipe-space) between 4-6 items. No emojis, no punctuation other than the pipes. Format: [שכונה/עיר] | [מספר חדרים] חדרים | [יתרון מרכזי] | [קרבה/מיקום] | [סוג נכס] | [מילת מפתח נדל"ן]
-  Example: "הרצליה הירוקה | 4.5 חדרים | מרפסת שמש | קרוב לפארק | דירה למכירה | נדל״ן בהרצליה"
-- ABSOLUTELY FORBIDDEN: any bracketed placeholder like "[insert license]", "[מספר טלפון]", "[phone]", "[TBD]", "[Real License Number]", parentheses with instructions, or any square-bracket tokens. Every value must be real or omitted entirely.
-- DO NOT write a signature, phone number, license number, byline, or contact line yourself. The system appends Udi's canonical footer (phone + license) automatically at the very bottom.
-- Total body BEFORE the auto-footer = 2 lines only.` : "";
+LISTING-FOCUS MODE (use Udi's MASTER TEMPLATES from [POST TEMPLATES] block above):
+- Follow the KB master templates structure for a listing post: opener hook, address/location line (📍), price line (💰), a short bulleted feature list where every bullet starts with "✅ ", closing CTA line (📞) inviting WhatsApp/Messenger. Multi-line, punchy, human, no filler.
+- Ground every concrete detail (address, rooms, sqm, floor, price, features, area perks) in the [PROMOTED LISTING] block. Do NOT invent details.
+- DO NOT copy or paraphrase the property's long free-text description — that snippet lives in the FIRST COMMENT (posted separately), never inside the main post.
+- ABSOLUTELY FORBIDDEN: any bracketed placeholder ("[insert license]", "[מספר טלפון]", "[TBD]", "[Real License Number]"), square-bracket tokens, or parenthetical instructions. Every value must be real or omitted entirely.
+- DO NOT write a signature, phone number, license number, byline, or contact line yourself. The system appends Udi's canonical footer (phone + license) automatically at the very bottom.` : "";
+
 
 
 
@@ -210,14 +211,13 @@ NO-HASHTAGS RULE (HARD — ZERO TOLERANCE):
 
 איסור מוחלט: פוליטיקה, מפלגות, בחירות, וכל הקשר לא-נדל"ני.
 
-HIGH-CONVERTING REAL-ESTATE COPY STRUCTURE (HARD — apply when a specific נכס/PROMOTED LISTING exists — ULTRA-COMPACT 2-LINE FORMAT):
-- The ENTIRE post body = EXACTLY TWO LINES. No paragraphs, no bullets, no ✅, no 📍, no 💰, no CTA line, no filler. Compact & punchy.
-- שורה 1: משפט אחד חד, אנושי, עוצר גלילה (עד 18 מילים) שקשור ישירות לנכס הספציפי הזה — עם דטייל אמיתי אחד לפחות מהנכס (שכונה, שם רחוב בלי מספר, מספר חדרים, יתרון בולט, נוף, קומה, מיקום). בלי פתיחות גנריות ("הזדמנות מדהימה", "אני שמח להציג").
-- שורה 2: שורת SEO אחת בלבד עם 4-6 פריטים מופרדים אך ורק במקל אנכי ישר " | " (רווח-קו-רווח). בלי אימוג'ים, בלי סימני פיסוק אחרים.
-  פורמט: [שכונה/עיר] | [חדרים] חדרים | [יתרון מרכזי] | [קרבה/מיקום] | [סוג נכס] | [מילת מפתח נדל"ן]
-  דוגמה: "הרצליה הירוקה | 4.5 חדרים | מרפסת שמש | קרוב לפארק | דירה למכירה | נדל״ן בהרצליה"
+HIGH-CONVERTING REAL-ESTATE COPY STRUCTURE (apply when a specific נכס/PROMOTED LISTING exists — MASTER TEMPLATE FORMAT):
+- Follow Udi's proven master templates from [POST TEMPLATES]: opener hook → 📍 address/location → 💰 price → short ✅ bulleted feature list (3-6 bullets) → 📞 closing CTA to WhatsApp/Messenger. Human, punchy, no filler, no walls of text.
+- Every concrete detail (רחוב, שכונה, חדרים, מ"ר, קומה, מחיר, פיצ'רים) חייב להישלף מ-[PROMOTED LISTING] בלבד. אל תמציא.
+- אסור להעתיק או לפרפרז את שורת התיאור החופשי של הנכס (description) לתוך גוף הפוסט — הטקסט התיאורי הארוך מיועד לתגובה הראשונה בלבד, לא לפוסט עצמו.
 - אסור בהחלט: סוגריים מרובעים ריקים/הוראות ("[insert license]", "[מספר טלפון]", "[TBD]", "[Real Phone Number]"), טקסט הוראה בסוגריים, או כל טוקן placeholder. כל ערך חייב להיות אמיתי או להיות מושמט לחלוטין.
 - אל תכתוב בעצמך חתימה/טלפון/רישיון/byline — המערכת מוסיפה אוטומטית את חתימת אודי (טלפון + רישיון) בסוף הפוסט.
+
 
 כתוב בעברית בלבד, ישראלית טבעית, בגוף ראשון של אודי. החזר את הפוסט בלבד, בלי הסברים נלווים.`;
 
