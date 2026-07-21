@@ -487,7 +487,7 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
               עדכון מועד או תוכן ישנה את הרשומה במערכת. אם הפוסט כבר נשלח לתור של ספק הפרסום, ייתכן שיידרש לבטל ולפרסם מחדש.
             </p>
           </div>
-          <DialogFooter className="gap-2 sm:gap-2">
+          <DialogFooter className="gap-2 sm:gap-2 flex-wrap">
             <Button
               variant="outline"
               className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
@@ -495,6 +495,15 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
             >
               <Trash2 className="ml-1 h-4 w-4" />
               בטל פרסום
+            </Button>
+            <Button
+              variant="outline"
+              className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive"
+              onClick={() => { if (editing) { const e = editing; setEditing(null); cancelSequence(e); } }}
+              title="ביטול כל הפרסומים העתידיים באותה סדרה"
+            >
+              <Repeat className="ml-1 h-4 w-4" />
+              בטל סדרה
             </Button>
             <Button variant="outline" onClick={() => setEditing(null)}>סגור</Button>
             <Button onClick={saveEdit} disabled={saving}>
