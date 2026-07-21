@@ -2758,6 +2758,7 @@ const PublishedFeed = () => {
         ...r,
         media_urls: normalizePostMediaUrls(media),
         external_url: externalUrl,
+        listing_id: (typeof pr?.listing_id === 'string' && pr.listing_id) || null,
       };
     };
 
