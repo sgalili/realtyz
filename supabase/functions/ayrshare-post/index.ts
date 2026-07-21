@@ -518,46 +518,50 @@ Deno.serve(async (req) => {
         return { ok: res.ok && found, status: res.status, payload };
       };
 
-      for (let i = 0; i < 3; i++) {
-        if (i > 0) await wait(900);
-        const history = await callHistory();
-        if (history.ok) {
-          return {
-            verified: true,
-            method: "history/facebook",
-            status: history.status,
-            payload: { found: true },
-          };
+      // Rate-limit safety: exactly ONE verification pass, no retries. Every
+      // extra retry here previously multiplied our Ayrshare traffic ~9x per
+      // publish and contributed to account suspension. On ANY 429/403 we
+      // trip the circuit and bail immediately.
+      const tripAndBail = async (status: number, payload: any) => {
+        const state = await tripOnAyrshareFailure(admin, status, payload, `verify:${platform}`);
+        return {
+          verified: false,
+          method: state ? "circuit_open" : "verification_failed",
+          status,
+          payload: { attempts, circuit_open: !!state },
+        };
+      };
+      const history = await callHistory();
+      if (history.ok) {
+        return { verified: true, method: "history/facebook", status: history.status, payload: { found: true } };
+      }
+      if (history.status === 429 || history.status === 403) {
+        return await tripAndBail(history.status, history.payload);
+      }
+      if (nativeId) {
+        const social = await call(
+          "analytics/social",
+          "https://api.ayrshare.com/api/analytics/social",
+          { id: nativeId, platform },
+        );
+        if (social.ok) {
+          return { verified: true, method: "analytics/social", status: social.status, payload: social.payload };
         }
-        if (nativeId) {
-          const social = await call(
-            "analytics/social",
-            "https://api.ayrshare.com/api/analytics/social",
-            { id: nativeId, platform },
-          );
-          if (social.ok) {
-            return {
-              verified: true,
-              method: "analytics/social",
-              status: social.status,
-              payload: social.payload,
-            };
-          }
+        if (social.status === 429 || social.status === 403) {
+          return await tripAndBail(social.status, social.payload);
         }
-        if (ayrshareId) {
-          const post = await call(
-            "analytics/post",
-            "https://api.ayrshare.com/api/analytics/post",
-            { id: ayrshareId, platforms: [platform] },
-          );
-          if (post.ok) {
-            return {
-              verified: true,
-              method: "analytics/post",
-              status: post.status,
-              payload: post.payload,
-            };
-          }
+      }
+      if (ayrshareId) {
+        const post = await call(
+          "analytics/post",
+          "https://api.ayrshare.com/api/analytics/post",
+          { id: ayrshareId, platforms: [platform] },
+        );
+        if (post.ok) {
+          return { verified: true, method: "analytics/post", status: post.status, payload: post.payload };
+        }
+        if (post.status === 429 || post.status === 403) {
+          return await tripAndBail(post.status, post.payload);
         }
       }
       return {
@@ -678,6 +682,18 @@ Deno.serve(async (req) => {
       { group_id: string; ok: boolean; id: string | null; error: string | null }
     > = [];
     for (const groupId of groupIds) {
+      // If a previous group tripped the circuit (rate-limit / suspension),
+      // stop the fan-out cold instead of firing more Ayrshare calls.
+      const preCircuit = await readCircuit(admin);
+      if (preCircuit) {
+        groupResults.push({
+          group_id: groupId,
+          ok: false,
+          id: null,
+          error: "provider_circuit_open — skipped to protect account",
+        });
+        continue;
+      }
       const r = await firePost(
         { platforms: ["facebook"], faceBookOptions: { groupId } },
         `group:${groupId}`,
