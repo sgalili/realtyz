@@ -58,13 +58,22 @@ function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
 }
 
-function detectPropertyType(title: string): PropertyType {
-  if (/דופלקס/i.test(title)) return 'duplex';
-  if (/פנט|פנטהאוז/i.test(title)) return 'penthouse';
-  if (/בית|קוטג/i.test(title)) return 'house';
-  if (/גן/i.test(title)) return 'garden_apt';
+// Source of truth for property type: `source_metadata.property_type` or
+// `features.property_type` coming directly from Webtiv/Homely/Yad2.
+// We NEVER scan the title or description to guess a type — the source value
+// wins verbatim. This helper only maps the source's own literal string onto
+// our internal enum for filtering/sorting. Display code shows the raw
+// source string (see `property_type_source` on HomelyProperty rows below).
+function normalizePropertyTypeEnum(raw: unknown): PropertyType {
+  const s = String(raw ?? '').trim();
+  if (!s) return 'apartment';
+  if (/^duplex$/i.test(s) || /דופלקס/.test(s)) return 'duplex';
+  if (/^penthouse$/i.test(s) || /פנטהאוז|פנט־האוז|פנט האוז/.test(s)) return 'penthouse';
+  if (/^garden/i.test(s) || /דירת גן|גן/.test(s)) return 'garden_apt';
+  if (/^(house|cottage|villa)$/i.test(s) || /קוטג|בית פרטי|וילה/.test(s)) return 'house';
   return 'apartment';
 }
+
 
 function textBool(value: unknown): boolean | null {
   if (value == null || value === '') return null;
