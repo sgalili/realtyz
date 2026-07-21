@@ -23,6 +23,7 @@ import { ShareWithLeadDialog } from '@/components/properties/ShareWithLeadDialog
 import { ProjectAlternativesCard } from '@/components/properties/ProjectAlternativesCard';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import { normalizeImageUrls } from '@/lib/imageHealth';
+import { stripAddressNumbers } from '@/lib/formatAddress';
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
@@ -707,7 +708,7 @@ export default function PropertyDetail() {
                 <Spec icon={Home} label="סוג נכס" value={propertyTypeHe} />
                 <Spec icon={MapPin} label="עיר" value={property.city || '—'} />
                 <Spec icon={MapPin} label="שכונה" value={neighborhood || '—'} />
-                <Spec icon={MapPin} label="כתובת" value={property.address || '—'} />
+                <Spec icon={MapPin} label="כתובת" value={stripAddressNumbers(property.address) || '—'} />
                 <Spec icon={Receipt} label="ועד בית (לחודש)" value={vaadBayit ? `${vaadBayit.toLocaleString('he-IL')} ₪` : '—'} />
                 <Spec icon={Receipt} label="ארנונה (לחודשיים)" value={arnonaBimonthly ? `${arnonaBimonthly.toLocaleString('he-IL')} ₪` : '—'} />
                 <Spec icon={Receipt} label="מספר תשלומים" value={payments ? `${payments}` : '—'} />

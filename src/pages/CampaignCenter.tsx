@@ -40,6 +40,7 @@ import { CampaignGroupBreakdown } from '@/components/social/CampaignGroupBreakdo
 import { campaignMatchesExternalPost, normalizePostId, getCampaignPostIds, platformForCampaignChannel } from '@/lib/campaignPostIds';
 import { learnFromEdit } from '@/lib/learnFromEdit';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
+import { stripAddressNumbers } from '@/lib/formatAddress';
 import { IvrBroadcastDialog } from '@/components/campaigns/IvrBroadcastDialog';
 import { EmailAliasSetupDialog } from '@/components/campaigns/EmailAliasSetupDialog';
 import { ScheduledCampaignCalendar } from '@/components/campaigns/ScheduledCampaignCalendar';
@@ -462,6 +463,7 @@ const extractListingPhotoUrls = (listing: CampaignListing | null | undefined): s
 
 const normalizeListingText = (value: unknown) => String(value ?? '').replace(/\s+/g, ' ').trim();
 
+
 const listingSearchText = (listing: CampaignListing) => [
   listing.property_title,
   listing.description,
@@ -495,7 +497,7 @@ const dedupeListings = (rows: CampaignListing[]) => {
 };
 
 const listingOptionLabel = (listing: CampaignListing) => {
-  const location = [listing.address || listing.property_title || 'נכס', listing.city].filter(Boolean).join(', ');
+  const location = [stripAddressNumbers(listing.address) || listing.property_title || 'נכס', listing.city].filter(Boolean).join(', ');
   const price = listing.asking_price ? `${Number(listing.asking_price).toLocaleString('he-IL')} ₪` : null;
   return price ? `${location} — ${price}` : location;
 };
@@ -569,7 +571,7 @@ const buildFirstCommentKeywordLine = (listing: CampaignListing | null | undefine
   const parts = [
     sourceType,
     listing.city ? String(listing.city) : null,
-    listing.address ? String(listing.address) : (listing.neighborhood ? String(listing.neighborhood) : null),
+    listing.address ? stripAddressNumbers(listing.address) : (listing.neighborhood ? String(listing.neighborhood) : null),
     listing.rooms ? `${listing.rooms} חדרים` : null,
     listing.floor !== null && listing.floor !== undefined ? `קומה ${listing.floor}` : null,
     listing.sqm ? `${listing.sqm} מ"ר` : null,
@@ -1185,7 +1187,7 @@ const InlineComposer = ({
       const listingFacts = listing
         ? [
             listing.property_title ? `כותרת: ${listing.property_title}` : null,
-            listing.address ? `כתובת: ${listing.address}` : null,
+            listing.address ? `כתובת: ${stripAddressNumbers(listing.address)}` : null,
             listing.neighborhood ? `שכונה: ${listing.neighborhood}` : null,
             listing.city ? `עיר: ${listing.city}` : null,
             listing.rooms ? `חדרים: ${listing.rooms}` : null,

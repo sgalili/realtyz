@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { PROPERTY_TYPE_LABELS_HE, type HomelyProperty } from '@/lib/homelyMockProperties';
 import { useVisibleImageUrls } from '@/lib/imageHealth';
+import { stripAddressNumbers } from '@/lib/formatAddress';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -85,7 +86,7 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
   ).trim();
   const propertyTypeHe = rawPropertyTypeSource || PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
   const transactionHe = isRent ? 'להשכרה' : 'למכירה';
-  const locationParts = [property.address, neighborhood, property.city].filter((p) => p && String(p).trim());
+  const locationParts = [stripAddressNumbers(property.address), neighborhood, property.city].filter((p) => p && String(p).trim());
   const headline = `${propertyTypeHe} ${transactionHe}, ${locationParts.length ? locationParts.join(', ') : 'שכונה'}`;
   const pricePerMeter = property.size_sqm ? Math.round(property.price / property.size_sqm).toLocaleString('he-IL') : null;
 
@@ -187,7 +188,7 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
             <Spec icon={Home} label="סוג נכס" value={propertyTypeHe} />
             <Spec icon={MapPin} label="עיר" value={property.city || '—'} />
             <Spec icon={MapPin} label="שכונה" value={neighborhood || '—'} />
-            <Spec icon={MapPin} label="כתובת" value={property.address || '—'} />
+            <Spec icon={MapPin} label="כתובת" value={stripAddressNumbers(property.address) || '—'} />
 
             <Spec icon={Receipt} label="ועד בית (לחודש)" value={`${vaadBayit.toLocaleString('he-IL')} ₪`} />
             <Spec icon={Receipt} label="ארנונה (לחודשיים)" value={`${arnonaBimonthly.toLocaleString('he-IL')} ₪`} />
