@@ -511,6 +511,11 @@ const cleanFirstComment = (value: string) => String(value || '')
   .replace(/[#*_`]+/g, '')
   .replace(/[—–]/g, ',')
   .replace(/--+/g, ',')
+  // Strip any broker signature / phone / license lines that the model may have produced.
+  .replace(/\n*\s*אודי\s+ויטמן[^\n]*/gu, '')
+  .replace(/\n*\s*(?:📞|☎️|📱)?\s*0?5[0-9][\s\-]?\d{3}[\s\-]?\d{4}[^\n]*/gu, '')
+  .replace(/\n*\s*ר\.?\s*מ\s*[:：][^\n]*/gu, '')
+  .replace(/\n*\s*רישיון\s*תיווך[^\n]*/gu, '')
   .replace(/\n{3,}/g, '\n\n')
   .trim();
 
@@ -518,17 +523,19 @@ const buildFallbackFirstComment = (listing: CampaignListing | null) => {
   const city = normalizeListingText(listing?.city) || 'הרצליה';
   const neighborhood = normalizeListingText(listing?.neighborhood);
   const rooms = listing?.rooms ? `${listing.rooms} חדרים` : '';
+  const sqm = listing?.sqm ? `${listing.sqm} מ"ר` : '';
   const propertyTitle = normalizeListingText(listing?.property_title);
   const location = [neighborhood, city].filter(Boolean).join(', ') || city;
   const propertyPhrase = rooms
     ? `דירת ${rooms} ב${location}`
     : propertyTitle || `נכס ב${location}`;
+  const keywordLine = [propertyTitle || 'דירה', city, neighborhood, rooms, sqm].filter(Boolean).join(' | ');
 
   const variants = [
-    `${propertyPhrase} היא בדיוק מסוג הנכסים שכדאי לראות לפני שמקבלים החלטה.\n\nאם אתם מחפשים איכות חיים, מיקום נכון וליווי מקצועי בתהליך, אשמח לדבר.\n\nאודי ויטמן | 052-2973500`,
-    `מי שמחפש ${rooms ? `${rooms} ` : ''}ב${city}${neighborhood ? `, באזור ${neighborhood}` : ''}, זה נכס שכדאי לשים עליו עין עכשיו.\n\nלפעמים הבית הנכון מתחיל משיחה אחת טובה.\n\nאודי ויטמן | 052-2973500`,
-    `מבחינתי, כל נכס הוא הרבה יותר מארבעה קירות, הוא התחלה של פרק חדש בחיים.\n\nאם ${propertyPhrase} יכולה להתאים לכם, אשמח ללוות אתכם בשקיפות, בהקשבה ובמקצועיות.\n\nאודי ויטמן | 052-2973500`,
-    `אם אתם מחפשים נכס שמשלב מיקום נכון, נוחות ופוטנציאל אמיתי למשפחה או להשקעה, כדאי להגיע לראות.\n\nבמיוחד למי שמחפש ${rooms ? `${rooms} ` : ''}ב${city}${neighborhood ? ` ובאזור ${neighborhood}` : ''}.\n\nאודי ויטמן | 052-2973500`,
+    `${keywordLine}\n\n${propertyPhrase} היא בדיוק מסוג הנכסים שכדאי לראות לפני שמקבלים החלטה.\n\nאם אתם מחפשים איכות חיים, מיקום נכון וליווי מקצועי בתהליך, אשמח לדבר.`,
+    `${keywordLine}\n\nמי שמחפש ${rooms ? `${rooms} ` : ''}ב${city}${neighborhood ? `, באזור ${neighborhood}` : ''}, זה נכס שכדאי לשים עליו עין עכשיו.\n\nלפעמים הבית הנכון מתחיל משיחה אחת טובה.`,
+    `${keywordLine}\n\nמבחינתי, כל נכס הוא הרבה יותר מארבעה קירות, הוא התחלה של פרק חדש בחיים.\n\nאם ${propertyPhrase} יכולה להתאים לכם, אשמח ללוות אתכם בשקיפות, בהקשבה ובמקצועיות.`,
+    `${keywordLine}\n\nאם אתם מחפשים נכס שמשלב מיקום נכון, נוחות ופוטנציאל אמיתי למשפחה או להשקעה, כדאי להגיע לראות.\n\nבמיוחד למי שמחפש ${rooms ? `${rooms} ` : ''}ב${city}${neighborhood ? ` ובאזור ${neighborhood}` : ''}.`,
   ];
 
   return variants[Math.floor(Math.random() * variants.length)];
