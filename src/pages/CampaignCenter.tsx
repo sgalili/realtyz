@@ -519,26 +519,79 @@ const cleanFirstComment = (value: string) => String(value || '')
   .replace(/\n{3,}/g, '\n\n')
   .trim();
 
+const extractListingFeatureFlags = (listing: CampaignListing | null | undefined) => {
+  if (!listing) return [] as string[];
+  const bag: string[] = [];
+  const push = (val: unknown) => {
+    if (!val) return;
+    if (typeof val === 'string') bag.push(val);
+    else if (typeof val === 'number') bag.push(String(val));
+  };
+  const scan = (obj: Record<string, unknown> | null | undefined) => {
+    if (!obj) return;
+    for (const [k, v] of Object.entries(obj)) {
+      if (v === null || v === undefined || v === false || v === '' || v === 0) continue;
+      const key = k.toLowerCase();
+      if (/balcony|מרפסת/.test(key)) bag.push('מרפסת');
+      else if (/elevator|מעלית/.test(key)) bag.push('מעלית');
+      else if (/parking|חני/.test(key)) bag.push('חניה');
+      else if (/shower|bath|אמבט|מקלח/.test(key)) bag.push(typeof v === 'number' ? `${v} חדרי רחצה` : 'חדר רחצה');
+      else if (/air.?cond|מזגן|מיזוג/.test(key)) bag.push('מיזוג');
+      else if (/storage|מחסן/.test(key)) bag.push('מחסן');
+      else if (/safe.?room|ממ"?ד|ממד/.test(key)) bag.push('ממ"ד');
+      else if (/garden|גינה/.test(key)) bag.push('גינה');
+      else if (/pool|בריכה/.test(key)) bag.push('בריכה');
+      else if (/view|נוף/.test(key)) bag.push('נוף');
+      else if (/renovated|משופצ/.test(key)) bag.push('משופצת');
+      else if (/furnished|מרוהט/.test(key)) bag.push('מרוהטת');
+    }
+  };
+  scan(listing.source_metadata as Record<string, unknown> | null);
+  if (Array.isArray(listing.features)) {
+    for (const f of listing.features as unknown[]) {
+      if (typeof f === 'string') push(f);
+      else if (f && typeof f === 'object') scan(f as Record<string, unknown>);
+    }
+  } else if (listing.features && typeof listing.features === 'object') {
+    scan(listing.features as Record<string, unknown>);
+  }
+  // dedupe preserve order
+  return Array.from(new Set(bag.map((s) => s.trim()).filter(Boolean)));
+};
+
+const buildFirstCommentKeywordLine = (listing: CampaignListing | null | undefined) => {
+  if (!listing) return '';
+  const meta = (listing.source_metadata || {}) as Record<string, unknown>;
+  const featuresObj = (listing.features && !Array.isArray(listing.features) && typeof listing.features === 'object')
+    ? (listing.features as Record<string, unknown>)
+    : {};
+  const sourceType = String(meta.property_type || featuresObj.property_type || '') || 'דירה';
+  const parts = [
+    sourceType,
+    listing.city ? String(listing.city) : null,
+    listing.address ? String(listing.address) : (listing.neighborhood ? String(listing.neighborhood) : null),
+    listing.rooms ? `${listing.rooms} חדרים` : null,
+    listing.floor !== null && listing.floor !== undefined ? `קומה ${listing.floor}` : null,
+    listing.sqm ? `${listing.sqm} מ"ר` : null,
+    ...extractListingFeatureFlags(listing),
+  ].filter(Boolean) as string[];
+  return Array.from(new Set(parts.map((s) => s.trim()))).join(' | ');
+};
+
 const buildFallbackFirstComment = (listing: CampaignListing | null) => {
   const city = normalizeListingText(listing?.city) || 'הרצליה';
   const neighborhood = normalizeListingText(listing?.neighborhood);
   const rooms = listing?.rooms ? `${listing.rooms} חדרים` : '';
-  const sqm = listing?.sqm ? `${listing.sqm} מ"ר` : '';
-  const propertyTitle = normalizeListingText(listing?.property_title);
   const location = [neighborhood, city].filter(Boolean).join(', ') || city;
-  const propertyPhrase = rooms
-    ? `דירת ${rooms} ב${location}`
-    : propertyTitle || `נכס ב${location}`;
-  const keywordLine = [propertyTitle || 'דירה', city, neighborhood, rooms, sqm].filter(Boolean).join(' | ');
-
+  const keywordLine = buildFirstCommentKeywordLine(listing);
+  const propertyPhrase = rooms ? `דירת ${rooms} ב${location}` : `נכס ב${location}`;
   const variants = [
-    `${keywordLine}\n\n${propertyPhrase} היא בדיוק מסוג הנכסים שכדאי לראות לפני שמקבלים החלטה.\n\nאם אתם מחפשים איכות חיים, מיקום נכון וליווי מקצועי בתהליך, אשמח לדבר.`,
-    `${keywordLine}\n\nמי שמחפש ${rooms ? `${rooms} ` : ''}ב${city}${neighborhood ? `, באזור ${neighborhood}` : ''}, זה נכס שכדאי לשים עליו עין עכשיו.\n\nלפעמים הבית הנכון מתחיל משיחה אחת טובה.`,
-    `${keywordLine}\n\nמבחינתי, כל נכס הוא הרבה יותר מארבעה קירות, הוא התחלה של פרק חדש בחיים.\n\nאם ${propertyPhrase} יכולה להתאים לכם, אשמח ללוות אתכם בשקיפות, בהקשבה ובמקצועיות.`,
-    `${keywordLine}\n\nאם אתם מחפשים נכס שמשלב מיקום נכון, נוחות ופוטנציאל אמיתי למשפחה או להשקעה, כדאי להגיע לראות.\n\nבמיוחד למי שמחפש ${rooms ? `${rooms} ` : ''}ב${city}${neighborhood ? ` ובאזור ${neighborhood}` : ''}.`,
+    `${propertyPhrase} — הזדמנות שכדאי לראות לפני שמקבלים החלטה.`,
+    `${propertyPhrase} עם מיקום נכון ופוטנציאל אמיתי למי שמחפש איכות חיים.`,
+    `${propertyPhrase} שמשלב מיקום, נוחות ואופי — שווה ביקור.`,
   ];
-
-  return variants[Math.floor(Math.random() * variants.length)];
+  const oneLiner = variants[Math.floor(Math.random() * variants.length)];
+  return `${oneLiner}\n${keywordLine}`.trim();
 };
 
 const InlineComposer = ({
