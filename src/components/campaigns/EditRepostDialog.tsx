@@ -59,6 +59,7 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
   const [rateLimited, setRateLimited] = useState<string | null>(null);
   const [lookupOptions, setLookupOptions] = useState<ListingMeta[]>([]);
   const [showLookup, setShowLookup] = useState(false);
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
 
   useEffect(() => {
     if (open) {
