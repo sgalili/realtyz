@@ -86,7 +86,7 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
   ).trim();
   const propertyTypeHe = rawPropertyTypeSource || PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
   const transactionHe = isRent ? 'להשכרה' : 'למכירה';
-  const locationParts = [property.address, neighborhood, property.city].filter((p) => p && String(p).trim());
+  const locationParts = [stripAddressNumbers(property.address), neighborhood, property.city].filter((p) => p && String(p).trim());
   const headline = `${propertyTypeHe} ${transactionHe}, ${locationParts.length ? locationParts.join(', ') : 'שכונה'}`;
   const pricePerMeter = property.size_sqm ? Math.round(property.price / property.size_sqm).toLocaleString('he-IL') : null;
 
