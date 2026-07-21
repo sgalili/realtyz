@@ -406,6 +406,8 @@ export function ScheduleCurrentPostDialog({
         toast.error(firstErr ? `תזמון נכשל: ${firstErr}` : 'תזמון נכשל');
       }
     } catch (e: any) {
+      toast.dismiss(progressToastId);
+      console.error('[ScheduleCurrentPostDialog] Detailed scheduling error:', e);
       toast.error(e?.message || 'תזמון נכשל');
     } finally {
       setSubmitting(false);
