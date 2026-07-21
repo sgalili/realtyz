@@ -518,7 +518,7 @@ const dedupeListings = (rows: CampaignListing[]) => {
 };
 
 const listingOptionLabel = (listing: CampaignListing) => {
-  const location = [listing.address || listing.property_title || 'נכס', listing.city].filter(Boolean).join(', ');
+  const location = [stripAddressNumbers(listing.address) || listing.property_title || 'נכס', listing.city].filter(Boolean).join(', ');
   const price = listing.asking_price ? `${Number(listing.asking_price).toLocaleString('he-IL')} ₪` : null;
   return price ? `${location} — ${price}` : location;
 };
