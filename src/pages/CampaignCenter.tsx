@@ -33,6 +33,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { SentimentAutomationToggles } from '@/components/automation/SentimentAutomationToggles';
 import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsStream';
+import EditRepostDialog from '@/components/campaigns/EditRepostDialog';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { CustomGroupsQuickShare } from '@/components/social/CustomGroupsQuickShare';
 import { CampaignGroupBreakdown } from '@/components/social/CampaignGroupBreakdown';
