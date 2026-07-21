@@ -278,7 +278,15 @@ export default function Properties() {
                 rooms: Number(row.rooms ?? 0),
                 size_sqm: Number(row.sqm ?? 0),
                 floor: row.floor != null ? Number(row.floor) : (meta.floor != null ? Number(meta.floor) : undefined),
-                property_type: detectPropertyType(`${row.property_title ?? ''} ${row.description ?? ''}`),
+                property_type: normalizePropertyTypeEnum(
+                  (features && typeof features === 'object' && !Array.isArray(features) ? (features as any).property_type : null)
+                  ?? (meta as any).property_type
+                ),
+                property_type_source: String(
+                  ((features && typeof features === 'object' && !Array.isArray(features) ? (features as any).property_type : null)
+                    ?? (meta as any).property_type
+                    ?? '')
+                ).trim() || null,
                 photos: mediaPhotos,
                 url: row.source_url ?? meta.source_url ?? null,
                 features,
