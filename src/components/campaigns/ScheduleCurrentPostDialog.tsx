@@ -83,13 +83,21 @@ export function ScheduleCurrentPostDialog({
   const [groupsOpen, setGroupsOpen] = useState(false);
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(defaultGroupIds || []);
   const [submitting, setSubmitting] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  // JIT generation cap: only fully generate distinct AI variants for the next
+  // few slots. Every slot beyond this cap is scheduled with the ORIGINAL body
+  // as a placeholder — the user can edit each one later from the calendar.
+  const JIT_GENERATION_LOOKAHEAD = 4;
 
   useEffect(() => {
     if (open) {
       setSelectedGroupIds(defaultGroupIds || []);
       setSubmitting(false);
+      setProgress(0);
     }
   }, [open, defaultGroupIds]);
+
 
   const dayLabel = useMemo(() => {
     try {
