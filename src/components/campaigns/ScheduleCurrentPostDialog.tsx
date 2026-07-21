@@ -617,8 +617,9 @@ export function ScheduleCurrentPostDialog({
           )}
           <Button onClick={handleSubmit} disabled={submitting}>
             {submitting ? <Loader2 className="ml-1 h-4 w-4 animate-spin" /> : null}
-            {submitting ? 'מפרסם…' : 'פרסום'}
+            {submitting ? `מתזמן... ${progress}%` : 'פרסום'}
           </Button>
+
 
         </DialogFooter>
       </DialogContent>
