@@ -180,8 +180,10 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE, {
       auth: { persistSession: false },
     });
+    // NOTE: circuit is checked below, AFTER we know whether this is an
+    // immediate publish or a future-scheduled submission. A live cooldown
+    // must not block posts targeted at a time slot past the cooldown window.
     const circuit = await readCircuit(admin);
-    if (circuit) return circuitOpenResponse(circuit, corsHeaders);
 
     const body = await req.json().catch(() => ({}));
     const postText: string = stripMarkdownEmphasis(
@@ -222,7 +224,21 @@ Deno.serve(async (req) => {
       }
       if (d.getTime() <= Date.now() + 30_000) {
         return json({ error: "scheduled_at must be in the future" }, 400);
+    }
+
+    // Circuit gating: block only if this is an immediate publish, or if the
+    // requested future slot itself falls within the active cooldown window.
+    if (circuit) {
+      const targetMs = scheduledIso ? new Date(scheduledIso).getTime() : Date.now();
+      const SAFETY_BUFFER_MS = 60_000;
+      if (!scheduledIso || targetMs <= circuit.until_ms + SAFETY_BUFFER_MS) {
+        return circuitOpenResponse(circuit, corsHeaders);
       }
+      console.log(
+        "[ayrshare-post] circuit open but scheduled slot is past cooldown — allowing",
+        { until: new Date(circuit.until_ms).toISOString(), target: scheduledIso },
+      );
+    }
       scheduledIso = d.toISOString();
     }
 
