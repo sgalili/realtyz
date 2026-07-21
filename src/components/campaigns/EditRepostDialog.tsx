@@ -207,34 +207,28 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
     return () => { cancelled = true; };
   }, [open, resolveListingId, loadListingMeta]);
 
-  // Lazy-load a small list of recent listings for the manual-lookup fallback.
+  // Lazy-load listings for the manual-lookup fallback directly from the
+  // Webtiv/Homely API via the `homely-search` edge function (with hydrate so
+  // rows are upserted into `listings` and we get their internal UUIDs back).
+  //
+  // Anti-spam guardrails:
+  //   • Module-level in-memory cache with a 5-minute TTL — repeat opens reuse.
+  //   • An in-flight promise guard prevents parallel duplicate invocations.
+  //   • A short cooldown blocks rapid re-clicks even after a failure.
+  const [lookupLoading, setLookupLoading] = useState(false);
   const openLookup = async () => {
     setShowLookup(true);
     if (lookupOptions.length) return;
+    if (lookupLoading) return;
+    setLookupLoading(true);
     try {
-      const { data } = await supabase
-        .from('listings')
-        .select('id, property_title, deal_type, address, city, neighborhood, media_photos, source_metadata, features')
-        .order('updated_at', { ascending: false })
-        .limit(50);
-      const mapped: ListingMeta[] = ((data ?? []) as any[]).map((row) => {
-        const sm = (row.source_metadata && typeof row.source_metadata === 'object') ? row.source_metadata as Record<string, any> : {};
-        const featureListingType = Array.isArray(row.features)
-          ? (row.features.find((f: any) => f && typeof f === 'object' && 'listing_type' in f)?.listing_type ?? null)
-          : null;
-        return {
-          id: row.id,
-          property_title: row.property_title ?? null,
-          property_type: (sm.property_type || sm.propertyType || sm.type || null) as string | null,
-          deal_type: (row.deal_type || featureListingType) as string | null,
-          address: row.address ?? null,
-          city: row.city ?? null,
-          neighborhood: row.neighborhood ?? null,
-          media_photos: Array.isArray(row.media_photos) ? row.media_photos : null,
-        };
-      });
+      const mapped = await fetchWebtivLookupOptions();
       setLookupOptions(mapped);
-    } catch { /* non-fatal */ }
+    } catch (e: any) {
+      toast.error('טעינת רשימת הנכסים נכשלה', { description: e?.message });
+    } finally {
+      setLookupLoading(false);
+    }
   };
 
   const pickListingManually = async (id: string) => {
