@@ -68,7 +68,7 @@ async function firecrawlSearch(query: string, limit = 10): Promise<SearchResult[
 
 async function synthesizeBrief(query: string, mode: string, sources: SearchResult[]): Promise<string> {
   const sourcesBlock = sources
-    .slice(0, 6)
+    .slice(0, 10)
     .map((s, i) => {
       const body = (s.markdown || s.description || "").slice(0, 2500);
       return `[#${i + 1}] ${s.title || s.url}\n${s.url}\n${body}`;
