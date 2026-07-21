@@ -3417,7 +3417,7 @@ const PublishedFeed = () => {
                   {scheduled ? `מתוזמן ל-${dateStr}` : dateStr}
                 </span>
                 <span className="flex-1" />
-                {(r as any)._optimistic ? (() => {
+                {(r as any)._optimistic && !scheduled ? (() => {
                   const remaining = Math.max(0, Math.ceil((((r as any)._eta_ms as number) - Date.now()) / 1000));
                   return (
                     <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-800 ring-1 ring-blue-200">
@@ -3425,15 +3425,34 @@ const PublishedFeed = () => {
                       {remaining > 0 ? `מפרסם בפייסבוק · ${remaining}ש׳` : 'ממתין לאישור פייסבוק…'}
                     </span>
                   );
-                })() : isPaused ? null : scheduled ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200">
-                    <CalendarIcon className="h-3 w-3" />
-                    מתוזמן
-                  </span>
-
-
-
-                ) : (
+                })() : isPaused ? null : scheduled ? (() => {
+                  const target = r.sent_at ? new Date(r.sent_at).getTime() : NaN;
+                  const diff = Number.isFinite(target) ? target - Date.now() : NaN;
+                  let label = 'מתוזמן';
+                  if (Number.isFinite(diff)) {
+                    if (diff <= 0) {
+                      label = 'מפרסם עכשיו…';
+                    } else {
+                      const s = Math.floor(diff / 1000);
+                      const d = Math.floor(s / 86400);
+                      const h = Math.floor((s % 86400) / 3600);
+                      const m = Math.floor((s % 3600) / 60);
+                      const sec = s % 60;
+                      const parts = d > 0
+                        ? [`${d}י׳`, `${h}ש׳`, `${m}ד׳`]
+                        : h > 0
+                          ? [`${h}ש׳`, `${m}ד׳`, `${sec}שנ׳`]
+                          : [`${m}ד׳`, `${sec}שנ׳`];
+                      label = `פרסום בעוד ${parts.join(' ')}`;
+                    }
+                  }
+                  return (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200 tabular-nums">
+                      <CalendarIcon className="h-3 w-3" />
+                      {label}
+                    </span>
+                  );
+                })(
                   <>
                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="תגובות">
                       <MessageSquare className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
