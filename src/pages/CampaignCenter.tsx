@@ -4610,6 +4610,16 @@ const CampaignCenter = () => {
     setSearchParams(next, { replace: true });
   };
 
+  // Any scheduling flow (composer or EditRepostDialog) can request that the
+  // user is dropped onto the calendar tab so they see every newly-scheduled
+  // slot and can cancel them from there.
+  useEffect(() => {
+    const openCal = () => handleChange('calendar');
+    window.addEventListener('rz:open-schedule-calendar', openCal as EventListener);
+    return () => window.removeEventListener('rz:open-schedule-calendar', openCal as EventListener);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
+
   const leadId = searchParams.get('lead') ?? searchParams.get('client') ?? searchParams.get('voter');
   const leadNameParam = searchParams.get('name');
   const fromRaw = searchParams.get('from');
