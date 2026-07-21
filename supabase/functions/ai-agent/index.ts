@@ -591,10 +591,13 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
             .limit(30);
           if (budgetMax) q = q.lte("asking_price", Math.round(budgetMax * 1.15));
           if (budgetMin) q = q.gte("asking_price", Math.round(budgetMin * 0.85));
-          // HARD deal_type pre-filter at the SQL level so mixed pipelines can
-          // never leak into the candidate set.
-          if (dealType === "rent" || dealType === "sale") {
-            q = q.or(`deal_type.eq.${dealType},deal_type.is.null`);
+          // HARD deal_type pre-filter at the SQL level. For rent searches we
+          // additionally cap price at ₪50k because Israeli monthly rents never
+          // exceed that — any listing above the cap is a sale mistagged as rent.
+          if (dealType === "rent") {
+            q = q.eq("deal_type", "rent").lte("asking_price", 50000);
+          } else if (dealType === "sale") {
+            q = q.or(`deal_type.eq.sale,deal_type.is.null`);
           }
 
           const { data: candRows } = await q;
