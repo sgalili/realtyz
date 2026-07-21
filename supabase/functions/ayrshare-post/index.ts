@@ -829,7 +829,7 @@ Deno.serve(async (req) => {
       message_body: finalPostText,
       status: g.ok ? (scheduledIso ? "scheduled" : "sent") : "failed",
       provider_message_id: g.id,
-      provider_response: { group_id: g.group_id, error: g.error },
+      provider_response: { group_id: g.group_id, error: g.error, listing_id: listingId },
       sent_at: scheduledIso ?? new Date().toISOString(),
       source_account: "ayrshare-group",
     } as any));
