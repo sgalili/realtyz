@@ -786,19 +786,38 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
             if (searchRes.ok) {
               const sj = await searchRes.json();
               const props = Array.isArray(sj?.properties) ? sj.properties : [];
-              webtivResults = props.slice(0, 16).map((p: any) => ({
-                id: String(p.homely_id ?? p.serial ?? ""),
-                title: String(p.title ?? p.property_title ?? "נכס"),
-                price: Number(p.price ?? 0) || 0,
-                city: String(p.city ?? ""),
-                rooms: Number(p.rooms ?? 0) || 0,
-                sqm: Number(p.sqm ?? 0) || 0,
-                floor: Number(p.floor ?? 0) || 0,
-                photo: p.photo ?? (Array.isArray(p.photos) ? p.photos[0] : null) ?? null,
-                agent: p.agent ?? null,
-                transaction_type: p.transaction_type === "rent" ? "rent" : "sale",
-                source_url: p.source_url ?? null,
-              }));
+              // Price-based sanity check: rentals in Israel are typically
+              // ₪1,500-₪35,000/month. Anything ≥ ₪100,000 is almost
+              // certainly a SALE price mis-tagged as rent (or vice-versa:
+              // any "sale" under ₪35,000 is really a monthly rent). We
+              // re-classify by price before any deal_type filtering so
+              // upstream mistagging can't leak across pipelines.
+              const RENT_MAX = 35000;
+              const SALE_MIN = 100000;
+              const inferType = (rawType: string, price: number): "sale" | "rent" => {
+                const t = rawType === "rent" ? "rent" : "sale";
+                if (!price || price <= 0) return t;
+                if (price >= SALE_MIN) return "sale";
+                if (price <= RENT_MAX) return "rent";
+                return t;
+              };
+              webtivResults = props.map((p: any) => {
+                const price = Number(p.price ?? 0) || 0;
+                const rawType = p.transaction_type === "rent" ? "rent" : "sale";
+                return {
+                  id: String(p.homely_id ?? p.serial ?? ""),
+                  title: String(p.title ?? p.property_title ?? "נכס"),
+                  price,
+                  city: String(p.city ?? ""),
+                  rooms: Number(p.rooms ?? 0) || 0,
+                  sqm: Number(p.sqm ?? 0) || 0,
+                  floor: Number(p.floor ?? 0) || 0,
+                  photo: p.photo ?? (Array.isArray(p.photos) ? p.photos[0] : null) ?? null,
+                  agent: p.agent ?? null,
+                  transaction_type: inferType(rawType, price),
+                  source_url: p.source_url ?? null,
+                };
+              });
               // HARD deal_type filter: if the user asked for rent OR the lead
               // is a rent lead, strip every sale result (and vice-versa).
               // Never mix pipelines in the response payload.
@@ -806,10 +825,13 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
                 const before = webtivResults.length;
                 webtivResults = webtivResults.filter((r) => r.transaction_type === deal);
                 if (before !== webtivResults.length) {
-                  console.log(`[webtiv_search] deal_type=${deal} filter dropped ${before - webtivResults.length}/${before} mismatched results`);
+                  console.log(`[webtiv_search] deal_type=${deal} filter dropped ${before - webtivResults.length}/${before} mismatched results (price sanity applied)`);
                 }
               }
-              webtivResults = webtivResults.slice(0, 8);
+              // Return up to 24 results so the drawer can render the full
+              // relevant slice (user asked for all 120+ Herzliya rentals
+              // to be reachable, not silently truncated to 8).
+              webtivResults = webtivResults.slice(0, 24);
               if (webtivResults.length) {
                 const priceLabel = (t: string) => (t === "rent" ? "שכ\"ד" : "מחיר");
                 webtivBlock = [
