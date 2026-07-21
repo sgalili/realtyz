@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
       : mode === "property"
         ? `${query} נדל"ן מחירים השוואה`
         : query;
-    const sources = await firecrawlSearch(searchQuery, 6);
+    const sources = await firecrawlSearch(searchQuery, 10);
 
     // Synthesis (Hebrew structured brief).
     const brief = await synthesizeBrief(query, mode, sources);
