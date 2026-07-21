@@ -511,6 +511,11 @@ const cleanFirstComment = (value: string) => String(value || '')
   .replace(/[#*_`]+/g, '')
   .replace(/[—–]/g, ',')
   .replace(/--+/g, ',')
+  // Strip any broker signature / phone / license lines that the model may have produced.
+  .replace(/\n*\s*אודי\s+ויטמן[^\n]*/gu, '')
+  .replace(/\n*\s*(?:📞|☎️|📱)?\s*0?5[0-9][\s\-]?\d{3}[\s\-]?\d{4}[^\n]*/gu, '')
+  .replace(/\n*\s*ר\.?\s*מ\s*[:：][^\n]*/gu, '')
+  .replace(/\n*\s*רישיון\s*תיווך[^\n]*/gu, '')
   .replace(/\n{3,}/g, '\n\n')
   .trim();
 
@@ -518,17 +523,19 @@ const buildFallbackFirstComment = (listing: CampaignListing | null) => {
   const city = normalizeListingText(listing?.city) || 'הרצליה';
   const neighborhood = normalizeListingText(listing?.neighborhood);
   const rooms = listing?.rooms ? `${listing.rooms} חדרים` : '';
+  const sqm = listing?.sqm ? `${listing.sqm} מ"ר` : '';
   const propertyTitle = normalizeListingText(listing?.property_title);
   const location = [neighborhood, city].filter(Boolean).join(', ') || city;
   const propertyPhrase = rooms
     ? `דירת ${rooms} ב${location}`
     : propertyTitle || `נכס ב${location}`;
+  const keywordLine = [propertyTitle || 'דירה', city, neighborhood, rooms, sqm].filter(Boolean).join(' | ');
 
   const variants = [
-    `${propertyPhrase} היא בדיוק מסוג הנכסים שכדאי לראות לפני שמקבלים החלטה.\n\nאם אתם מחפשים איכות חיים, מיקום נכון וליווי מקצועי בתהליך, אשמח לדבר.\n\nאודי ויטמן | 052-2973500`,
-    `מי שמחפש ${rooms ? `${rooms} ` : ''}ב${city}${neighborhood ? `, באזור ${neighborhood}` : ''}, זה נכס שכדאי לשים עליו עין עכשיו.\n\nלפעמים הבית הנכון מתחיל משיחה אחת טובה.\n\nאודי ויטמן | 052-2973500`,
-    `מבחינתי, כל נכס הוא הרבה יותר מארבעה קירות, הוא התחלה של פרק חדש בחיים.\n\nאם ${propertyPhrase} יכולה להתאים לכם, אשמח ללוות אתכם בשקיפות, בהקשבה ובמקצועיות.\n\nאודי ויטמן | 052-2973500`,
-    `אם אתם מחפשים נכס שמשלב מיקום נכון, נוחות ופוטנציאל אמיתי למשפחה או להשקעה, כדאי להגיע לראות.\n\nבמיוחד למי שמחפש ${rooms ? `${rooms} ` : ''}ב${city}${neighborhood ? ` ובאזור ${neighborhood}` : ''}.\n\nאודי ויטמן | 052-2973500`,
+    `${keywordLine}\n\n${propertyPhrase} היא בדיוק מסוג הנכסים שכדאי לראות לפני שמקבלים החלטה.\n\nאם אתם מחפשים איכות חיים, מיקום נכון וליווי מקצועי בתהליך, אשמח לדבר.`,
+    `${keywordLine}\n\nמי שמחפש ${rooms ? `${rooms} ` : ''}ב${city}${neighborhood ? `, באזור ${neighborhood}` : ''}, זה נכס שכדאי לשים עליו עין עכשיו.\n\nלפעמים הבית הנכון מתחיל משיחה אחת טובה.`,
+    `${keywordLine}\n\nמבחינתי, כל נכס הוא הרבה יותר מארבעה קירות, הוא התחלה של פרק חדש בחיים.\n\nאם ${propertyPhrase} יכולה להתאים לכם, אשמח ללוות אתכם בשקיפות, בהקשבה ובמקצועיות.`,
+    `${keywordLine}\n\nאם אתם מחפשים נכס שמשלב מיקום נכון, נוחות ופוטנציאל אמיתי למשפחה או להשקעה, כדאי להגיע לראות.\n\nבמיוחד למי שמחפש ${rooms ? `${rooms} ` : ''}ב${city}${neighborhood ? ` ובאזור ${neighborhood}` : ''}.`,
   ];
 
   return variants[Math.floor(Math.random() * variants.length)];
@@ -1122,6 +1129,22 @@ const InlineComposer = ({
     try {
       const listing = selectedListing;
       const descriptionSnippet = normalizeListingText(listing?.description).slice(0, 1200);
+      const sourcePropertyType =
+        (listing?.source_metadata?.property_type as string | undefined) ||
+        (Array.isArray(listing?.features)
+          ? String((listing.features.find((f: any) => f && typeof f === 'object' && 'property_type' in f) as any)?.property_type || '')
+          : (typeof listing?.features === 'object' && listing.features !== null
+              ? String((listing.features as Record<string, unknown>).property_type || '')
+              : ''));
+      const keywordParts = [
+        sourcePropertyType || (listing?.property_title ? 'דירה' : 'נכס'),
+        listing?.city ? String(listing.city) : null,
+        listing?.neighborhood ? String(listing.neighborhood) : null,
+        listing?.address ? String(listing.address) : null,
+        listing?.rooms ? `${listing.rooms} חדרים` : null,
+        listing?.sqm ? `${listing.sqm} מ"ר` : null,
+      ].filter(Boolean);
+      const keywordLine = keywordParts.join(' | ');
       const listingFacts = listing
         ? [
             listing.property_title ? `כותרת: ${listing.property_title}` : null,
@@ -1137,13 +1160,14 @@ const InlineComposer = ({
       const styleInstructions = [
         'כתוב את התגובה הראשונה (First Comment) לפוסט נדל"ן — לא את הפוסט עצמו.',
         'התגובה הראשונה היא ה"קרנף" של המודעה: פסקאות עשירות עם התיאור המלא של הנכס, המפרט הטכני, ויתרונות המיקום. זה המקום להציג את כל הפרטים שלא נכנסו לפוסט הראשי.',
-        'מבנה מומלץ (מספר פסקאות קצרות, לא שורה אחת): פסקת פתיחה קצרה על הנכס → פסקת תיאור חופשי (מבוסס על טקסט התיאור למטה) → פסקת מפרט/פיצ\'רים → פסקת סיום מזמינה לפנייה.',
+        'מבנה מומלץ (מספר פסקאות קצרות, לא שורה אחת):\n1. שורת מילות מפתח מופרדות בקווים ישרים (|) שמכילה את הסוג נכס, העיר, השכונה/רחוב, מספר חדרים ושטח — לדוגמה: "דירה | הרצליה | רחוב פורצי הדרך | 4 חדרים | 120 מ"ר".\n2. פסקת פתיחה קצרה על הנכס.\n3. פסקת תיאור חופשי (מבוסס על טקסט התיאור למטה).\n4. פסקת מפרט/פיצ\'רים.\n5. פסקת סיום מזמינה לפנייה.',
+        `שורת המילות מפתח שחייבת להופיע בראש התגובה (השתמש בפרטים האמיתיים בלבד, בלי להמציא): ${keywordLine}`,
         descriptionSnippet
           ? `זהו טקסט התיאור המדויק של הנכס — השתמש בו כבסיס לפסקת התיאור, בלי להמציא פרטים חדשים ובלי להעתיק מילה במילה אלא לערוך לזרימה טבעית:\n"""${descriptionSnippet}"""`
           : 'אין תיאור חופשי שמור לנכס — כתוב תגובה אנושית קצרה שמזמינה לפנייה בהתבסס על הפרטים היבשים למטה בלבד.',
         listingFacts ? `פרטים יבשים של הנכס להישען עליהם בלבד (אסור להמציא נתונים שלא מופיעים כאן): ${listingFacts}` : '',
-        'אסור: בולטים מהצורה ✅/📍/💰/📞, סוגריים מרובעים ריקים ("[מספר טלפון]", "[רישיון]"), כוכביות, em-dash, מקפים כפולים (--), האשטגים, שורת מילות מפתח מופרדות ב-"|", וכל טוקן placeholder.',
-        'אל תכתוב חתימה/טלפון/רישיון בעצמך — המערכת מוסיפה את חתימת אודי אוטומטית בסוף.',
+        'אסור: בולטים מהצורה ✅/📍/💰/📞, סוגריים מרובעים ריקים ("[מספר טלפון]", "[רישיון]"), כוכביות, em-dash, מקפים כפולים (--), האשטגים, וכל טוקן placeholder.',
+        'אסור בתכלית האיסור לכתוב חתימה, שם, טלפון, רישיון תיווך, או פרטי יצירת קשר בתגובה הראשונה — היא חייבת להיות נקייה מכל פרטי תיווך אישיים.',
         postBody ? `לצורך הקשר בלבד, זהו גוף הפוסט הראשי שכבר נוצר — אל תחזור עליו, אל תעתיק ממנו: """${postBody.slice(0, 900)}"""` : '',
       ].filter(Boolean).join('\n\n');
       const { data, error } = await supabase.functions.invoke('generate-content', {
@@ -1152,10 +1176,16 @@ const InlineComposer = ({
           platform: channel.id,
           customInstructions: styleInstructions,
           listingFocusOnly: false,
+          skipLicenseFooter: true,
         },
       });
       if (error) throw error;
-      const text = cleanFirstComment(String(data?.content || data?.text || ''));
+      let text = cleanFirstComment(String(data?.content || data?.text || ''));
+      // Ensure the keyword line is present at the top of the first comment.
+      const leadingKeywordLine = text.split('\n')[0]?.includes('|');
+      if (!leadingKeywordLine && keywordLine) {
+        text = `${keywordLine}\n\n${text}`;
+      }
       const finalText = text && !oldListingPostCommentPattern.test(text)
         ? text
         : buildFallbackFirstComment(listing as CampaignListing | null);

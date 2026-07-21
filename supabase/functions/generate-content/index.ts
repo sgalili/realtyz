@@ -27,7 +27,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { topic, platform, customInstructions, selectedListingId, listingFocusOnly } = await req.json();
+    const { topic, platform, customInstructions, selectedListingId, listingFocusOnly, skipLicenseFooter } = await req.json();
     if (!topic || !platform) {
       return new Response(JSON.stringify({ error: "topic and platform are required" }), {
         status: 400,
@@ -381,7 +381,7 @@ GENERAL POST MODE (HARD OVERRIDE — highest priority, PRIVACY-CRITICAL):
       content = enforceOwnerLaws(content, {
         license: branding.license,
         byline: branding.byline,
-        withLicense: !!promotedListing,
+        withLicense: !!promotedListing && !skipLicenseFooter,
       });
     } catch (_e) { /* never block on enforcement failure */ }
 
