@@ -519,26 +519,79 @@ const cleanFirstComment = (value: string) => String(value || '')
   .replace(/\n{3,}/g, '\n\n')
   .trim();
 
+const extractListingFeatureFlags = (listing: CampaignListing | null | undefined) => {
+  if (!listing) return [] as string[];
+  const bag: string[] = [];
+  const push = (val: unknown) => {
+    if (!val) return;
+    if (typeof val === 'string') bag.push(val);
+    else if (typeof val === 'number') bag.push(String(val));
+  };
+  const scan = (obj: Record<string, unknown> | null | undefined) => {
+    if (!obj) return;
+    for (const [k, v] of Object.entries(obj)) {
+      if (v === null || v === undefined || v === false || v === '' || v === 0) continue;
+      const key = k.toLowerCase();
+      if (/balcony|מרפסת/.test(key)) bag.push('מרפסת');
+      else if (/elevator|מעלית/.test(key)) bag.push('מעלית');
+      else if (/parking|חני/.test(key)) bag.push('חניה');
+      else if (/shower|bath|אמבט|מקלח/.test(key)) bag.push(typeof v === 'number' ? `${v} חדרי רחצה` : 'חדר רחצה');
+      else if (/air.?cond|מזגן|מיזוג/.test(key)) bag.push('מיזוג');
+      else if (/storage|מחסן/.test(key)) bag.push('מחסן');
+      else if (/safe.?room|ממ"?ד|ממד/.test(key)) bag.push('ממ"ד');
+      else if (/garden|גינה/.test(key)) bag.push('גינה');
+      else if (/pool|בריכה/.test(key)) bag.push('בריכה');
+      else if (/view|נוף/.test(key)) bag.push('נוף');
+      else if (/renovated|משופצ/.test(key)) bag.push('משופצת');
+      else if (/furnished|מרוהט/.test(key)) bag.push('מרוהטת');
+    }
+  };
+  scan(listing.source_metadata as Record<string, unknown> | null);
+  if (Array.isArray(listing.features)) {
+    for (const f of listing.features as unknown[]) {
+      if (typeof f === 'string') push(f);
+      else if (f && typeof f === 'object') scan(f as Record<string, unknown>);
+    }
+  } else if (listing.features && typeof listing.features === 'object') {
+    scan(listing.features as Record<string, unknown>);
+  }
+  // dedupe preserve order
+  return Array.from(new Set(bag.map((s) => s.trim()).filter(Boolean)));
+};
+
+const buildFirstCommentKeywordLine = (listing: CampaignListing | null | undefined) => {
+  if (!listing) return '';
+  const meta = (listing.source_metadata || {}) as Record<string, unknown>;
+  const featuresObj = (listing.features && !Array.isArray(listing.features) && typeof listing.features === 'object')
+    ? (listing.features as Record<string, unknown>)
+    : {};
+  const sourceType = String(meta.property_type || featuresObj.property_type || '') || 'דירה';
+  const parts = [
+    sourceType,
+    listing.city ? String(listing.city) : null,
+    listing.address ? String(listing.address) : (listing.neighborhood ? String(listing.neighborhood) : null),
+    listing.rooms ? `${listing.rooms} חדרים` : null,
+    listing.floor !== null && listing.floor !== undefined ? `קומה ${listing.floor}` : null,
+    listing.sqm ? `${listing.sqm} מ"ר` : null,
+    ...extractListingFeatureFlags(listing),
+  ].filter(Boolean) as string[];
+  return Array.from(new Set(parts.map((s) => s.trim()))).join(' | ');
+};
+
 const buildFallbackFirstComment = (listing: CampaignListing | null) => {
   const city = normalizeListingText(listing?.city) || 'הרצליה';
   const neighborhood = normalizeListingText(listing?.neighborhood);
   const rooms = listing?.rooms ? `${listing.rooms} חדרים` : '';
-  const sqm = listing?.sqm ? `${listing.sqm} מ"ר` : '';
-  const propertyTitle = normalizeListingText(listing?.property_title);
   const location = [neighborhood, city].filter(Boolean).join(', ') || city;
-  const propertyPhrase = rooms
-    ? `דירת ${rooms} ב${location}`
-    : propertyTitle || `נכס ב${location}`;
-  const keywordLine = [propertyTitle || 'דירה', city, neighborhood, rooms, sqm].filter(Boolean).join(' | ');
-
+  const keywordLine = buildFirstCommentKeywordLine(listing);
+  const propertyPhrase = rooms ? `דירת ${rooms} ב${location}` : `נכס ב${location}`;
   const variants = [
-    `${keywordLine}\n\n${propertyPhrase} היא בדיוק מסוג הנכסים שכדאי לראות לפני שמקבלים החלטה.\n\nאם אתם מחפשים איכות חיים, מיקום נכון וליווי מקצועי בתהליך, אשמח לדבר.`,
-    `${keywordLine}\n\nמי שמחפש ${rooms ? `${rooms} ` : ''}ב${city}${neighborhood ? `, באזור ${neighborhood}` : ''}, זה נכס שכדאי לשים עליו עין עכשיו.\n\nלפעמים הבית הנכון מתחיל משיחה אחת טובה.`,
-    `${keywordLine}\n\nמבחינתי, כל נכס הוא הרבה יותר מארבעה קירות, הוא התחלה של פרק חדש בחיים.\n\nאם ${propertyPhrase} יכולה להתאים לכם, אשמח ללוות אתכם בשקיפות, בהקשבה ובמקצועיות.`,
-    `${keywordLine}\n\nאם אתם מחפשים נכס שמשלב מיקום נכון, נוחות ופוטנציאל אמיתי למשפחה או להשקעה, כדאי להגיע לראות.\n\nבמיוחד למי שמחפש ${rooms ? `${rooms} ` : ''}ב${city}${neighborhood ? ` ובאזור ${neighborhood}` : ''}.`,
+    `${propertyPhrase} — הזדמנות שכדאי לראות לפני שמקבלים החלטה.`,
+    `${propertyPhrase} עם מיקום נכון ופוטנציאל אמיתי למי שמחפש איכות חיים.`,
+    `${propertyPhrase} שמשלב מיקום, נוחות ואופי — שווה ביקור.`,
   ];
-
-  return variants[Math.floor(Math.random() * variants.length)];
+  const oneLiner = variants[Math.floor(Math.random() * variants.length)];
+  return `${oneLiner}\n${keywordLine}`.trim();
 };
 
 const InlineComposer = ({
@@ -1128,23 +1181,7 @@ const InlineComposer = ({
     setFirstCommentGenerating(true);
     try {
       const listing = selectedListing;
-      const descriptionSnippet = normalizeListingText(listing?.description).slice(0, 1200);
-      const sourcePropertyType =
-        (listing?.source_metadata?.property_type as string | undefined) ||
-        (Array.isArray(listing?.features)
-          ? String((listing.features.find((f: any) => f && typeof f === 'object' && 'property_type' in f) as any)?.property_type || '')
-          : (typeof listing?.features === 'object' && listing.features !== null
-              ? String((listing.features as Record<string, unknown>).property_type || '')
-              : ''));
-      const keywordParts = [
-        sourcePropertyType || (listing?.property_title ? 'דירה' : 'נכס'),
-        listing?.city ? String(listing.city) : null,
-        listing?.neighborhood ? String(listing.neighborhood) : null,
-        listing?.address ? String(listing.address) : null,
-        listing?.rooms ? `${listing.rooms} חדרים` : null,
-        listing?.sqm ? `${listing.sqm} מ"ר` : null,
-      ].filter(Boolean);
-      const keywordLine = keywordParts.join(' | ');
+      const keywordLine = buildFirstCommentKeywordLine(listing as CampaignListing | null);
       const listingFacts = listing
         ? [
             listing.property_title ? `כותרת: ${listing.property_title}` : null,
@@ -1153,26 +1190,23 @@ const InlineComposer = ({
             listing.city ? `עיר: ${listing.city}` : null,
             listing.rooms ? `חדרים: ${listing.rooms}` : null,
             listing.sqm ? `שטח: ${listing.sqm} מ"ר` : null,
-            listing.floor ? `קומה: ${listing.floor}` : null,
+            listing.floor !== null && listing.floor !== undefined ? `קומה: ${listing.floor}` : null,
             listing.asking_price ? `מחיר: ${Number(listing.asking_price).toLocaleString('he-IL')} ש"ח` : null,
           ].filter(Boolean).join(' | ')
         : '';
       const styleInstructions = [
-        'כתוב את התגובה הראשונה (First Comment) לפוסט נדל"ן — לא את הפוסט עצמו.',
-        'התגובה הראשונה היא ה"קרנף" של המודעה: פסקאות עשירות עם התיאור המלא של הנכס, המפרט הטכני, ויתרונות המיקום. זה המקום להציג את כל הפרטים שלא נכנסו לפוסט הראשי.',
-        'מבנה מומלץ (מספר פסקאות קצרות, לא שורה אחת):\n1. שורת מילות מפתח מופרדות בקווים ישרים (|) שמכילה את הסוג נכס, העיר, השכונה/רחוב, מספר חדרים ושטח — לדוגמה: "דירה | הרצליה | רחוב פורצי הדרך | 4 חדרים | 120 מ"ר".\n2. פסקת פתיחה קצרה על הנכס.\n3. פסקת תיאור חופשי (מבוסס על טקסט התיאור למטה).\n4. פסקת מפרט/פיצ\'רים.\n5. פסקת סיום מזמינה לפנייה.',
-        `שורת המילות מפתח שחייבת להופיע בראש התגובה (השתמש בפרטים האמיתיים בלבד, בלי להמציא): ${keywordLine}`,
-        descriptionSnippet
-          ? `זהו טקסט התיאור המדויק של הנכס — השתמש בו כבסיס לפסקת התיאור, בלי להמציא פרטים חדשים ובלי להעתיק מילה במילה אלא לערוך לזרימה טבעית:\n"""${descriptionSnippet}"""`
-          : 'אין תיאור חופשי שמור לנכס — כתוב תגובה אנושית קצרה שמזמינה לפנייה בהתבסס על הפרטים היבשים למטה בלבד.',
+        'כתוב את התגובה הראשונה (First Comment) לפוסט נדל"ן — פורמט קצר וקפדני של שתי שורות בלבד.',
+        'מבנה מחייב, בדיוק שתי שורות ותו לא:',
+        'שורה 1: משפט אחד קצר, אנושי ומשכנע על הנכס (עד ~18 מילים). בלי אימוג\'ים, בלי בולטים, בלי סוגריים מרובעים.',
+        `שורה 2: שורת מילות מפתח בדיוק זו, מופרדת בקווים אנכיים (|), ללא שינוי סדר או תוכן: ${keywordLine}`,
         listingFacts ? `פרטים יבשים של הנכס להישען עליהם בלבד (אסור להמציא נתונים שלא מופיעים כאן): ${listingFacts}` : '',
-        'אסור: בולטים מהצורה ✅/📍/💰/📞, סוגריים מרובעים ריקים ("[מספר טלפון]", "[רישיון]"), כוכביות, em-dash, מקפים כפולים (--), האשטגים, וכל טוקן placeholder.',
-        'אסור בתכלית האיסור לכתוב חתימה, שם, טלפון, רישיון תיווך, או פרטי יצירת קשר בתגובה הראשונה — היא חייבת להיות נקייה מכל פרטי תיווך אישיים.',
-        postBody ? `לצורך הקשר בלבד, זהו גוף הפוסט הראשי שכבר נוצר — אל תחזור עליו, אל תעתיק ממנו: """${postBody.slice(0, 900)}"""` : '',
+        'אסור בהחלט: יותר משתי שורות, פסקאות תיאור ארוכות, בולטים (✅/📍/💰/📞), אימוג\'ים בכלל, כוכביות, האשטגים, em-dash, מקפים כפולים (--), סוגריים מרובעים, או placeholders.',
+        'אסור בתכלית האיסור: חתימה, שם המתווך, טלפון, רישיון תיווך, או פרטי יצירת קשר. התגובה חייבת להסתיים בשורת מילות המפתח.',
+        postBody ? `לצורך הקשר בלבד, גוף הפוסט הראשי שכבר נוצר — אל תחזור עליו: """${postBody.slice(0, 600)}"""` : '',
       ].filter(Boolean).join('\n\n');
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: {
-          topic: 'תגובה ראשונה לפוסט נדל"ן — טקסט התיאור המלא של הנכס',
+          topic: 'תגובה ראשונה קצרה לפוסט נדל"ן — שתי שורות בלבד',
           platform: channel.id,
           customInstructions: styleInstructions,
           listingFocusOnly: false,
@@ -1181,13 +1215,12 @@ const InlineComposer = ({
       });
       if (error) throw error;
       let text = cleanFirstComment(String(data?.content || data?.text || ''));
-      // Ensure the keyword line is present at the top of the first comment.
-      const leadingKeywordLine = text.split('\n')[0]?.includes('|');
-      if (!leadingKeywordLine && keywordLine) {
-        text = `${keywordLine}\n\n${text}`;
-      }
-      const finalText = text && !oldListingPostCommentPattern.test(text)
-        ? text
+      // Enforce strict 2-line layout: keep first non-empty line as the sentence,
+      // then append the canonical keyword line as the second line.
+      const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
+      const firstSentence = lines.find((l) => !l.includes('|')) || lines[0] || '';
+      const finalText = firstSentence && keywordLine
+        ? `${firstSentence}\n${keywordLine}`
         : buildFallbackFirstComment(listing as CampaignListing | null);
       if (finalText) setFirstComment(finalText);
     } catch (e: any) {
