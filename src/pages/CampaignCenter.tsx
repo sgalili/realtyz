@@ -44,6 +44,7 @@ import { stripAddressNumbers } from '@/lib/formatAddress';
 import { IvrBroadcastDialog } from '@/components/campaigns/IvrBroadcastDialog';
 import { EmailAliasSetupDialog } from '@/components/campaigns/EmailAliasSetupDialog';
 import { ScheduledCampaignCalendar } from '@/components/campaigns/ScheduledCampaignCalendar';
+import { ScheduleCurrentPostDialog } from '@/components/campaigns/ScheduleCurrentPostDialog';
 
 import { getCampaignWorkspaceUserIds } from '@/lib/campaignWorkspace';
 
@@ -694,6 +695,7 @@ const InlineComposer = ({
   const [mode, setMode] = useState<'now' | 'scheduled'>('now');
   // Local datetime string in `YYYY-MM-DDTHH:mm` (input[type=datetime-local] format).
   const [scheduledLocal, setScheduledLocal] = useState<string>('');
+  const [scheduleDialogOpen, setScheduleDialogOpen] = useState<boolean>(false);
 
   // Preset from props (multi-property replicas) OR ?schedule=ISO so the calendar
   // can deep-link the composer. Run once per mount.
@@ -1690,8 +1692,8 @@ const InlineComposer = ({
               </button>
               <button
                 type="button"
-                onClick={() => onOpenScheduleCalendar?.()}
-                disabled={!hasBody || !onOpenScheduleCalendar}
+                onClick={() => setScheduleDialogOpen(true)}
+                disabled={!hasBody}
                 title="תזמן פרסום (כולל חזרות)"
                 aria-label="תזמן פרסום כולל חזרות"
                 className={cn(
@@ -1847,6 +1849,42 @@ const InlineComposer = ({
       })()}
 
 
+      <ScheduleCurrentPostDialog
+        open={scheduleDialogOpen}
+        onClose={() => setScheduleDialogOpen(false)}
+        onScheduled={() => {
+          // Reset composer draft after successful schedule so the user can
+          // start a fresh post — matches the post-publish behavior.
+          try {
+            const prefixes = [`rz-composer-draft:v2:${channel.id}`, `rz-composer-draft:${channel.id}`];
+            for (const prefix of prefixes) {
+              sessionStorage.removeItem(prefix);
+              localStorage.removeItem(prefix);
+            }
+          } catch {}
+          setBody('');
+          setFirstComment('');
+          setAttachments([]);
+        }}
+        channelId={channel.id}
+        channelLabel={channel.label}
+        brandName={brandName}
+        body={body}
+        firstComment={firstCommentEnabled ? firstComment : ''}
+        mediaUrls={attachments
+          .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
+          .map((a) => a.url as string)}
+        listingId={selectedListingId || null}
+        defaultGroupIds={channel.id === 'facebook' ? groupIds : []}
+        targets={
+          channel.id === 'facebook'
+            ? platformProfiles
+                .filter((p) => selectedProfileIds.includes(p.id))
+                .map((p) => ({ id: p.id, name: p.name, accountRef: p.accountRef, profileKey: p.profileKey }))
+            : []
+        }
+        isSocialChannel={['facebook','instagram','x','twitter','linkedin','youtube','tiktok'].includes(channel.id)}
+      />
     </div>
   );
 };
