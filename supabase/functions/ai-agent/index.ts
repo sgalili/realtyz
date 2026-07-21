@@ -591,10 +591,13 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
             .limit(30);
           if (budgetMax) q = q.lte("asking_price", Math.round(budgetMax * 1.15));
           if (budgetMin) q = q.gte("asking_price", Math.round(budgetMin * 0.85));
-          // HARD deal_type pre-filter at the SQL level so mixed pipelines can
-          // never leak into the candidate set.
-          if (dealType === "rent" || dealType === "sale") {
-            q = q.or(`deal_type.eq.${dealType},deal_type.is.null`);
+          // HARD deal_type pre-filter at the SQL level. For rent searches we
+          // additionally cap price at ₪50k because Israeli monthly rents never
+          // exceed that — any listing above the cap is a sale mistagged as rent.
+          if (dealType === "rent") {
+            q = q.eq("deal_type", "rent").lte("asking_price", 50000);
+          } else if (dealType === "sale") {
+            q = q.or(`deal_type.eq.sale,deal_type.is.null`);
           }
 
           const { data: candRows } = await q;
@@ -628,17 +631,23 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
               const v = fromFeatures(features);
               if (v) return v;
             }
-            // 3. Price-based heuristic fallback for legacy rows.
+            // 3. Price-based guardrail for legacy rows. Israeli monthly
+            //    rents never exceed ₪50k — anything above that is a sale.
             const n = Number(row?.asking_price ?? 0);
             if (Number.isFinite(n) && n > 0) {
-              if (n < 50_000) return "rent";
-              if (n >= 100_000) return "sale";
+              if (n > 50_000) return "sale";
+              return "rent";
             }
             return null;
           };
           if (dealType === "rent" || dealType === "sale") {
             const before = candidates.length;
-            candidates = candidates.filter((l) => extractType(l) === dealType);
+            candidates = candidates.filter((l) => {
+              if (extractType(l) !== dealType) return false;
+              // Absolute price guardrail: strip any "rent" over ₪50k.
+              if (dealType === "rent" && Number(l.asking_price ?? 0) > 50_000) return false;
+              return true;
+            });
             if (before !== candidates.length) {
               console.log(`[matching] deal_type=${dealType} filter dropped ${before - candidates.length}/${before} candidates`);
             }
@@ -786,20 +795,16 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
             if (searchRes.ok) {
               const sj = await searchRes.json();
               const props = Array.isArray(sj?.properties) ? sj.properties : [];
-              // Price-based sanity check: rentals in Israel are typically
-              // ₪1,500-₪35,000/month. Anything ≥ ₪100,000 is almost
-              // certainly a SALE price mis-tagged as rent (or vice-versa:
-              // any "sale" under ₪35,000 is really a monthly rent). We
-              // re-classify by price before any deal_type filtering so
-              // upstream mistagging can't leak across pipelines.
-              const RENT_MAX = 35000;
-              const SALE_MIN = 100000;
+              // HARD price guardrail: ANY price > ₪50,000 is a SALE,
+              // period. Israeli monthly rents never exceed ₪50k, so a
+              // ₪6.85M or ₪13.8M "rent" tag from an upstream feed is a
+              // mistagging bug we always correct here. Under ₪50k = rent.
+              const PRICE_GUARDRAIL = 50000;
               const inferType = (rawType: string, price: number): "sale" | "rent" => {
                 const t = rawType === "rent" ? "rent" : "sale";
                 if (!price || price <= 0) return t;
-                if (price >= SALE_MIN) return "sale";
-                if (price <= RENT_MAX) return "rent";
-                return t;
+                if (price > PRICE_GUARDRAIL) return "sale";
+                return "rent";
               };
               webtivResults = props.map((p: any) => {
                 const price = Number(p.price ?? 0) || 0;

@@ -19,7 +19,7 @@ import {
   ArrowRight, Plus, Bot, Mail, Phone, MessageSquare, Heart, Share2,
   ChevronDown, ChevronUp, ChevronLeft, ChevronRight, Send, Mic, Image as ImageIcon, Paperclip,
   ChevronDown as ChevronDownIcon, Plug, Camera, Sparkles, Square,
-  Trash2, ExternalLink, CheckCircle2, Play, RefreshCw, Calendar as CalendarIcon, Loader2, AlertTriangle,
+  Trash2, ExternalLink, CheckCircle2, Play, RefreshCw, Calendar as CalendarIcon, Loader2, AlertTriangle, Pencil,
 } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -33,6 +33,7 @@ import { toast } from 'sonner';
 import { cn } from '@/lib/utils';
 import { SentimentAutomationToggles } from '@/components/automation/SentimentAutomationToggles';
 import { CampaignCommentsStream } from '@/components/campaigns/CampaignCommentsStream';
+import EditRepostDialog from '@/components/campaigns/EditRepostDialog';
 import { CampaignGroupSelector } from '@/components/campaigns/CampaignGroupSelector';
 import { CustomGroupsQuickShare } from '@/components/social/CustomGroupsQuickShare';
 import { CampaignGroupBreakdown } from '@/components/social/CampaignGroupBreakdown';
@@ -2351,6 +2352,7 @@ const PublishedFeed = () => {
 
   const [userId, setUserId] = useState<string | null>(null);
   const [campaignUserIds, setCampaignUserIds] = useState<string[]>([]);
+  const [editRepostRow, setEditRepostRow] = useState<CampaignRow | null>(null);
   // Optimistic rows for immediate publish — prepended to the feed with a
   // countdown pill while Ayrshare finishes verifying the FB publish.
   const [optimisticRows, setOptimisticRows] = useState<Array<CampaignRow & { _optimistic: true; _eta_ms: number }>>([]);
@@ -3394,11 +3396,17 @@ const PublishedFeed = () => {
                       <Paperclip className="h-4 w-4" />
                     </Button>
                   </div>
-                  <Button variant="outline" size="icon" title="מחק פוסט" aria-label="מחק פוסט"
-                          onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
-                          className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="icon" title="ערוך ופרסם מחדש" aria-label="ערוך ופרסם מחדש"
+                            onClick={(e) => { e.stopPropagation(); setEditRepostRow(r); }}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="icon" title="מחק פוסט" aria-label="מחק פוסט"
+                            onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
+                            className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 {!r.is_external && (
@@ -3435,6 +3443,22 @@ const PublishedFeed = () => {
           </article>
         );
       })}
+      {editRepostRow && (
+        <EditRepostDialog
+          open={!!editRepostRow}
+          onOpenChange={(v) => { if (!v) setEditRepostRow(null); }}
+          campaign={{
+            id: editRepostRow.id,
+            channel: editRepostRow.channel,
+            message_body: editRepostRow.message_body,
+            media_urls: editRepostRow.media_urls,
+            campaign_name: editRepostRow.campaign_name,
+          }}
+          onPosted={() => {
+            queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+          }}
+        />
+      )}
     </div>
   );
 };
