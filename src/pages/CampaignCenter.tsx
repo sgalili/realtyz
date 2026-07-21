@@ -3629,6 +3629,7 @@ const PublishedFeed = () => {
             message_body: editRepostRow.message_body,
             media_urls: editRepostRow.media_urls,
             campaign_name: editRepostRow.campaign_name,
+            listing_id: editRepostRow.listing_id ?? null,
           }}
           onPosted={() => {
             queryClient.invalidateQueries({ queryKey: ['campaigns'] });
