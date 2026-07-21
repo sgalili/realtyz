@@ -4656,7 +4656,9 @@ const CampaignCenter = () => {
                   brandName={brandName}
                   socialProfiles={socialAccountProfiles}
                   onConfirm={(p) => setConfirmPayload(p)}
+                  onOpenScheduleCalendar={() => handleChange('calendar')}
                 />
+
               );
             }
             // One composer block per scheduled assignment — each tied to its
