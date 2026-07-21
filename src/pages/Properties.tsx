@@ -49,6 +49,7 @@ import { useServiceAreas } from '@/hooks/useServiceAreas';
 import { isInServiceArea } from '@/lib/serviceAreas';
 import { SortableTh, useTableSort, sortRows } from '@/components/ui/sortable-th';
 import { normalizeImageUrls } from '@/lib/imageHealth';
+import { stripAddressNumbers } from '@/lib/formatAddress';
 
 const PRICE_MIN = 0;
 const PRICE_MAX = 10_000_000;
