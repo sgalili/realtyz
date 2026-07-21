@@ -1848,6 +1848,42 @@ const InlineComposer = ({
       })()}
 
 
+      <ScheduleCurrentPostDialog
+        open={scheduleDialogOpen}
+        onClose={() => setScheduleDialogOpen(false)}
+        onScheduled={() => {
+          // Reset composer draft after successful schedule so the user can
+          // start a fresh post — matches the post-publish behavior.
+          try {
+            const prefixes = [`rz-composer-draft:v2:${channel.id}`, `rz-composer-draft:${channel.id}`];
+            for (const prefix of prefixes) {
+              sessionStorage.removeItem(prefix);
+              localStorage.removeItem(prefix);
+            }
+          } catch {}
+          setBody('');
+          setFirstComment('');
+          setAttachments([]);
+        }}
+        channelId={channel.id}
+        channelLabel={channel.label}
+        brandName={brandName}
+        body={body}
+        firstComment={firstCommentEnabled ? firstComment : ''}
+        mediaUrls={attachments
+          .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
+          .map((a) => a.url as string)}
+        listingId={selectedListingId || null}
+        defaultGroupIds={channel.id === 'facebook' ? groupIds : []}
+        targets={
+          channel.id === 'facebook'
+            ? platformProfiles
+                .filter((p) => selectedProfileIds.includes(p.id))
+                .map((p) => ({ id: p.id, name: p.name, accountRef: p.accountRef, profileKey: p.profileKey }))
+            : []
+        }
+        isSocialChannel={['facebook','instagram','x','twitter','linkedin','youtube','tiktok'].includes(channel.id)}
+      />
     </div>
   );
 };
