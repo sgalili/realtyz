@@ -29,7 +29,7 @@ const FIRECRAWL_V2 = "https://api.firecrawl.dev/v2";
 
 type SearchResult = { url: string; title?: string; description?: string; markdown?: string };
 
-async function firecrawlSearch(query: string, limit = 6): Promise<SearchResult[]> {
+async function firecrawlSearch(query: string, limit = 10): Promise<SearchResult[]> {
   if (!FIRECRAWL_API_KEY) return [];
   try {
     const r = await fetch(`${FIRECRAWL_V2}/search`, {
