@@ -1293,16 +1293,30 @@ const InlineComposer = ({
   const autoGenTriggeredRef = useRef(false);
   useEffect(() => {
     if (autoGenTriggeredRef.current) return;
-    if (!presetListingId) return;
-    if (body.trim().length > 0) return; // honor draft restoration
     if (listingsLoading) return;
+    if (body.trim().length > 0) return; // honor draft restoration
+    // Fire auto-gen when the composer was launched from the scheduling
+    // calendar. Two entry points:
+    //  1. Multi-property fan-out — `presetListingId` prop is set per replica.
+    //  2. Single-property (or branding) — the calendar deep-links via
+    //     ?schedule=ISO plus optionally ?listing= / ?properties=. In that case
+    //     the InlineComposer receives no props but must still auto-generate.
+    const params = typeof window !== 'undefined' ? new URLSearchParams(window.location.search) : null;
+    const fromCalendar = !!presetScheduleIso || !!params?.get('schedule');
+    const listingFromUrl = params?.get('listing') || (params?.get('properties') || '').split(',').map((s) => s.trim()).filter(Boolean)[0] || null;
+    const listingForGen = presetListingId ?? listingFromUrl;
+    if (!fromCalendar && !listingForGen) return;
+    // Require a resolved listing so the property snapshot lands in the AI
+    // payload. `selectedListingId` is hydrated from the URL in the mount
+    // effect above — wait for it before firing.
+    if (listingForGen && !selectedListingId) return;
     autoGenTriggeredRef.current = true;
     // Defer slightly so the variant-hint customInstructions effect (mount)
     // is committed before the AI call snapshots `customInstructions`.
-    const t = setTimeout(() => { handleGenerate().catch(() => {}); }, 50);
+    const t = setTimeout(() => { handleGenerate().catch(() => {}); }, 80);
     return () => clearTimeout(t);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [presetListingId, listingsLoading]);
+  }, [presetListingId, presetScheduleIso, selectedListingId, listingsLoading]);
 
   // True when this composer was launched from the scheduling calendar
   // (the date is already locked in); we hide the standalone calendar
