@@ -1049,7 +1049,7 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
                     {p.price ? formatPrice(p.price) : '—'}{isRent && p.price ? <span className="text-[12px] text-muted-foreground">/ח</span> : null}
                   </td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{p.city || '—'}</td>
-                  <td className="px-2 py-1.5 whitespace-nowrap max-w-[180px] truncate" title={p.address || ''}>{p.address || '—'}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap max-w-[180px] truncate" title={stripAddressNumbers(p.address) || ''}>{stripAddressNumbers(p.address) || '—'}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{p.rooms || '—'}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{p.floor ?? '—'}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{p.size_sqm || '—'}</td>
