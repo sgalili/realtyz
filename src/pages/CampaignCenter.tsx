@@ -2498,12 +2498,15 @@ const PublishedFeed = () => {
   const [editRepostRow, setEditRepostRow] = useState<CampaignRow | null>(null);
   // Optimistic rows for immediate publish — prepended to the feed with a
   // countdown pill while Ayrshare finishes verifying the FB publish.
-  const [optimisticRows, setOptimisticRows] = useState<Array<CampaignRow & { _optimistic: true; _eta_ms: number }>>([]);
+  const [optimisticRows, setOptimisticRows] = useState<Array<CampaignRow & { _optimistic: true; _eta_ms: number; _scheduled_at?: string | null }>>([]);
   useEffect(() => {
     const handler = (ev: Event) => {
       const detail = (ev as CustomEvent).detail || {};
       const now = Date.now();
-      const row: CampaignRow & { _optimistic: true; _eta_ms: number } = {
+      const scheduledAt: string | null = typeof detail.scheduled_at === 'string' ? detail.scheduled_at : null;
+      const scheduledMs = scheduledAt ? new Date(scheduledAt).getTime() : NaN;
+      const isScheduled = !!scheduledAt && Number.isFinite(scheduledMs) && scheduledMs > now;
+      const row: CampaignRow & { _optimistic: true; _eta_ms: number; _scheduled_at?: string | null } = {
         id: `optimistic-${now}-${Math.random().toString(36).slice(2, 8)}`,
         campaign_name: String(detail.campaign_name || 'Campaign'),
         channel: String(detail.channel || 'facebook').toLowerCase(),
@@ -2511,31 +2514,40 @@ const PublishedFeed = () => {
         created_at: new Date(now).toISOString(),
         provider_message_id: null,
         media_urls: Array.isArray(detail.media_urls) ? detail.media_urls : [],
-        status: 'publishing',
-        sent_at: null,
+        status: isScheduled ? 'scheduled' : 'publishing',
+        sent_at: isScheduled ? scheduledAt : null,
         like_count: 0,
         comment_count: 0,
         share_count: 0,
         _optimistic: true,
-        _eta_ms: now + 15_000,
+        _eta_ms: isScheduled ? scheduledMs : now + 15_000,
+        _scheduled_at: scheduledAt,
       };
       setOptimisticRows((prev) => [row, ...prev]);
-      // Auto-cleanup after 60s regardless — reconciliation via real DB row
-      // will normally remove it earlier.
-      setTimeout(() => {
-        setOptimisticRows((prev) => prev.filter((r) => r.id !== row.id));
-      }, 60_000);
+      // Auto-cleanup: scheduled rows are matched by the real DB row via
+      // realtime (see reconciliation below), so we only clear the temporary
+      // "publishing" pill after 60s. Scheduled rows stay until reconciled.
+      if (!isScheduled) {
+        setTimeout(() => {
+          setOptimisticRows((prev) => prev.filter((r) => r.id !== row.id));
+        }, 60_000);
+      }
     };
     window.addEventListener('rz:campaign-optimistic', handler as EventListener);
     return () => window.removeEventListener('rz:campaign-optimistic', handler as EventListener);
   }, []);
-  // Force re-render each second so the countdown pill ticks.
+  // Force re-render each second so the countdown pill ticks. Runs whenever
+  // there is an optimistic row OR any future scheduled row in the feed.
   const [, setTick] = useState(0);
+  const hasFutureScheduled = useMemo(
+    () => (rows || []).some((r) => isScheduledRow(r)),
+    [rows],
+  );
   useEffect(() => {
-    if (optimisticRows.length === 0) return;
+    if (optimisticRows.length === 0 && !hasFutureScheduled) return;
     const t = setInterval(() => setTick((n) => n + 1), 1000);
     return () => clearInterval(t);
-  }, [optimisticRows.length]);
+  }, [optimisticRows.length, hasFutureScheduled]);
   // When a real row lands with matching body, drop the optimistic entry.
   useEffect(() => {
     if (!rows || optimisticRows.length === 0) return;
@@ -3405,7 +3417,7 @@ const PublishedFeed = () => {
                   {scheduled ? `מתוזמן ל-${dateStr}` : dateStr}
                 </span>
                 <span className="flex-1" />
-                {(r as any)._optimistic ? (() => {
+                {(r as any)._optimistic && !scheduled ? (() => {
                   const remaining = Math.max(0, Math.ceil((((r as any)._eta_ms as number) - Date.now()) / 1000));
                   return (
                     <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[11px] font-bold text-blue-800 ring-1 ring-blue-200">
@@ -3413,15 +3425,34 @@ const PublishedFeed = () => {
                       {remaining > 0 ? `מפרסם בפייסבוק · ${remaining}ש׳` : 'ממתין לאישור פייסבוק…'}
                     </span>
                   );
-                })() : isPaused ? null : scheduled ? (
-                  <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200">
-                    <CalendarIcon className="h-3 w-3" />
-                    מתוזמן
-                  </span>
-
-
-
-                ) : (
+                })() : isPaused ? null : scheduled ? (() => {
+                  const target = r.sent_at ? new Date(r.sent_at).getTime() : NaN;
+                  const diff = Number.isFinite(target) ? target - Date.now() : NaN;
+                  let label = 'מתוזמן';
+                  if (Number.isFinite(diff)) {
+                    if (diff <= 0) {
+                      label = 'מפרסם עכשיו…';
+                    } else {
+                      const s = Math.floor(diff / 1000);
+                      const d = Math.floor(s / 86400);
+                      const h = Math.floor((s % 86400) / 3600);
+                      const m = Math.floor((s % 3600) / 60);
+                      const sec = s % 60;
+                      const parts = d > 0
+                        ? [`${d}י׳`, `${h}ש׳`, `${m}ד׳`]
+                        : h > 0
+                          ? [`${h}ש׳`, `${m}ד׳`, `${sec}שנ׳`]
+                          : [`${m}ד׳`, `${sec}שנ׳`];
+                      label = `פרסום בעוד ${parts.join(' ')}`;
+                    }
+                  }
+                  return (
+                    <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200 tabular-nums">
+                      <CalendarIcon className="h-3 w-3" />
+                      {label}
+                    </span>
+                  );
+                })() : (
                   <>
                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="תגובות">
                       <MessageSquare className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
