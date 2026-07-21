@@ -1,0 +1,1 @@
+UPDATE public.workspace_social_profile SET ayrshare_ref_id = '673409ce6dbb0b67404a911fda25ffbc3a5e2908', updated_at = now() WHERE id = '00000000-0000-0000-0000-000000000001';
