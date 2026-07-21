@@ -176,6 +176,55 @@ export function ScheduleCurrentPostDialog({
     );
   };
 
+  // Rotation templates used to vary the phrasing/opening/CTA for every repeat
+  // slot in a scheduled recurrence. All variants MUST retain the full property
+  // information and highlight the benefits — we just rotate tone/structure.
+  const REPEAT_TEMPLATES = [
+    'תבנית מאסטר קלאסית של אודי — הוק כותרת חד, ואז בלוקים 2-5 כרגיל.',
+    'פתח בשאלה סקרנית ("מחפשים דירה שמרגישה כמו בית?") ואז שמור על מבנה 5 הבלוקים.',
+    'פתח באמירה חדה של יתרון מרכזי אחד (נוף/מיקום/שדרוג) ואז המשך במבנה הרגיל.',
+    'סגנון "סיפור קצר" — משפט פתיחה חוויתי בגוף ראשון, ואז מעבר למבנה הרגיל.',
+    'סגנון "רשימת יתרונות" — תפתח בהוק, ואז הדגש 3 יתרונות בולטים לפני המחיר וה-CTA.',
+    'סגנון "הזדמנות/דחיפות עדינה" בלי קלישאות — הוק שמדגיש שהנכס חדש בשוק/נדיר, ואז מבנה מלא.',
+  ];
+
+  const buildRotateInstruction = (index: number, total: number) => {
+    if (total <= 1) return null;
+    const style = REPEAT_TEMPLATES[index % REPEAT_TEMPLATES.length];
+    return [
+      `זהו פרסום מספר ${index + 1} מתוך ${total} באותה סדרה על אותו הנכס.`,
+      `סגנון לפרסום הזה: ${style}`,
+      'חובה: לכלול את כל פרטי הנכס (סוג עסקה, סוג נכס, חדרים, רחוב, שכונה, עיר, מחיר) ולהדגיש את היתרונות הבולטים.',
+      'חובה: לגוון את משפט הפתיחה, ניסוח היתרונות ומשפט ה-CTA לעומת הגרסה הקודמת — לא לחזור על אותן מילים.',
+      'אסור: להמציא נתונים שלא קיימים בנכס, ואסור לכלול מספרי בית/דירה בכתובת.',
+      'שמור על מבנה מאסטר: הוק כותרת → 1-2 משפטים על הנכס → שכונה/נגישות → יתרון אורח חיים → מחיר + CTA.',
+      'החתימה הקנונית תתווסף אוטומטית בשרת — אל תכתוב אותה בעצמך.',
+    ].join('\n');
+  };
+
+  const generateVariantBody = async (index: number, total: number): Promise<string> => {
+    if (!listingId) return body;
+    try {
+      const rotateNote = buildRotateInstruction(index, total);
+      if (!rotateNote) return body;
+      const { data, error } = await supabase.functions.invoke('generate-content', {
+        body: {
+          topic: 'פוסט קידום נכס (וריאציה בסדרה מתוזמנת)',
+          platform: channelId,
+          customInstructions: rotateNote,
+          selectedListingId: listingId,
+          listingFocusOnly: true,
+        },
+      });
+      if (error) return body;
+      const next = (data as any)?.content || (data as any)?.text || (data as any)?.body;
+      const clean = typeof next === 'string' ? next.trim() : '';
+      return clean || body;
+    } catch {
+      return body;
+    }
+  };
+
   const handleSubmit = async () => {
     if (!user) { toast.error('יש להתחבר'); return; }
     if (!body.trim()) { toast.error('אין תוכן לתזמון'); return; }
@@ -194,16 +243,18 @@ export function ScheduleCurrentPostDialog({
     let failed = 0;
     let firstErr: string | null = null;
     try {
-      for (const slot of slots) {
+      // First slot uses the exact body the user reviewed; every subsequent
+      // slot gets a slightly reworded variation (rotating templates) so a
+      // recurring sequence never feels like copy-paste spam.
+      for (let i = 0; i < slots.length; i++) {
+        const slot = slots[i];
+        const slotBody = i === 0 ? body : await generateVariantBody(i, slots.length);
         for (const target of fanoutTargets) {
-          // Optimistic "pending" row in the feed with a live countdown to
-          // the scheduled publish time. If ayrshare-post succeeds, its real
-          // campaign_logs row will replace this shortly (matched by body).
           try {
             window.dispatchEvent(new CustomEvent('rz:campaign-optimistic', {
               detail: {
                 channel: channelId,
-                body,
+                body: slotBody,
                 media_urls: mediaUrls,
                 campaign_name: target ? `${campaignName} · ${target.name}` : campaignName,
                 scheduled_at: slot.toISOString(),
@@ -213,7 +264,7 @@ export function ScheduleCurrentPostDialog({
 
           const { data, error } = await supabase.functions.invoke('ayrshare-post', {
             body: {
-              post: body,
+              post: slotBody,
               channels: [channelId],
               campaign_name: target ? `${campaignName} · ${target.name}` : campaignName,
               media_urls: mediaUrls,
@@ -236,6 +287,7 @@ export function ScheduleCurrentPostDialog({
           }
         }
       }
+
       if (ok > 0) {
         // Let the parent (CampaignCenter) jump to the calendar tab so the user
         // can immediately see every newly-scheduled slot and cancel any of
