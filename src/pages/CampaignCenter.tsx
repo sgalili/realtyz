@@ -2311,6 +2311,7 @@ type CampaignRow = {
   media_urls?: string[];
   external_url?: string | null;
   is_external?: boolean;
+  listing_id?: string | null;
 };
 
 // A scheduled row is one whose status is "scheduled" AND whose execution time
