@@ -40,22 +40,59 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
   // rebuild the post from the real property record (same behavior as the main
   // composer). We match the most recent ai_content_logs row for this platform
   // whose body matches the campaign's message_body.
+  // Resolve the originating listing so generate-content can rebuild the post
+  // from the real property record (identical behavior to the main composer).
+  // We try multiple signals in order:
+  //   1) exact/near-exact text match against ai_content_logs (last 50)
+  //   2) media_urls overlap with ai_content_logs (photos are preserved on repost)
+  //   3) media_urls overlap with listings.media_photos (direct match to a listing)
   const resolveListingId = async (): Promise<string | null> => {
     try {
       const original = (campaign.message_body ?? '').trim();
-      if (!original) return null;
-      const { data } = await supabase
+      const media = Array.isArray(campaign.media_urls) ? campaign.media_urls.filter(Boolean) : [];
+
+      // Pull a recent slice of logs to match against.
+      const { data: logs } = await supabase
         .from('ai_content_logs')
-        .select('listing_id, generated_text, created_at')
-        .eq('platform', campaign.channel)
+        .select('listing_id, generated_text, media_urls, created_at, platform')
         .order('created_at', { ascending: false })
-        .limit(25);
-      const hit = (data ?? []).find((r: any) => {
-        const t = String(r?.generated_text ?? '').trim();
-        if (!t || !r?.listing_id) return false;
-        return t === original || original.startsWith(t.slice(0, 80)) || t.startsWith(original.slice(0, 80));
-      });
-      return (hit as any)?.listing_id ?? null;
+        .limit(50);
+      const rows = (logs ?? []) as Array<any>;
+
+      // (1) text match
+      if (original) {
+        const hit = rows.find((r) => {
+          if (!r?.listing_id) return false;
+          const t = String(r?.generated_text ?? '').trim();
+          if (!t) return false;
+          return t === original || original.startsWith(t.slice(0, 80)) || t.startsWith(original.slice(0, 80));
+        });
+        if (hit?.listing_id) return hit.listing_id as string;
+      }
+
+      // (2) media overlap against logs
+      if (media.length) {
+        const mediaSet = new Set(media);
+        const hit = rows.find((r) => {
+          if (!r?.listing_id) return false;
+          const arr = Array.isArray(r?.media_urls) ? r.media_urls : [];
+          return arr.some((u: any) => typeof u === 'string' && mediaSet.has(u));
+        });
+        if (hit?.listing_id) return hit.listing_id as string;
+      }
+
+      // (3) media overlap against listings.media_photos (last-resort direct lookup)
+      if (media.length) {
+        const first = media[0];
+        const { data: listingHit } = await supabase
+          .from('listings')
+          .select('id, media_photos')
+          .contains('media_photos', [first])
+          .limit(1)
+          .maybeSingle();
+        if ((listingHit as any)?.id) return (listingHit as any).id as string;
+      }
+      return null;
     } catch {
       return null;
     }
@@ -66,33 +103,42 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
     try {
       const selectedListingId = await resolveListingId();
 
+      // If we cannot tie this post back to a real listing, we refuse to
+      // regenerate — the master template requires real property facts, and
+      // running the generic path here is exactly what produces the broker
+      // "בעולם הנדל״ן..." fluff the user is trying to eliminate.
+      if (!selectedListingId) {
+        toast.error('לא זוהה הנכס המקורי לפוסט', {
+          description: 'ערוך את הטקסט ידנית או צור פוסט חדש מדף הקמפיינים עם בחירת נכס.',
+        });
+        return;
+      }
+
       // Same invocation shape as CampaignCenter.handleGenerate — one unified
-      // generation engine. `rotateTemplate`-style note asks the model to vary
-      // the master template while keeping the exact 5-block structure.
+      // generation engine, with listingFocusOnly forced so the edge function
+      // takes the strict 5-block master-template path.
       const rotateNote = [
         'נסח מחדש את הפוסט תוך שמירה קפדנית על תבנית המאסטר של אודי (5 בלוקים בלבד, בסדר הזה):',
-        '1) פתיח לוכד עם סוג הנכס + חדרים + עיר (בלי מספרי בית ובלי מספרי רחוב).',
-        '2) גודל, קומה, נוף/פיצ׳ר בולט ושדרוגים.',
-        '3) שכונה/רחוב + נגישות ונוחות.',
-        '4) יתרון אורח חיים.',
-        '5) שורת "מחיר מבוקש: <סכום>." ואחריה CTA קצר לתיאום ביקור.',
-        'אל תוסיף פסקאות פתיחה כלליות על "בתחום הנדל״ן", על מקצוע התיווך או על אודי — אין הקדמות, אין סלוגנים, אין הצהרות שיווקיות. ישר לעניין, על הנכס בלבד.',
-        'שמור על אותן עובדות (מחיר, חדרים, מ״ר, קומה, שם רחוב ללא מספר) — אל תמציא נתונים.',
+        '1) פתיח לוכד "🏡✨ <סוג הנכס + חדרים + עיר>" — משפט אחד קצר.',
+        '2) 1-2 משפטים על גודל, קומה, נוף/פיצ׳ר בולט ושדרוגים.',
+        '3) "🌇 <שכונה/רחוב + נגישות ונוחות>".',
+        '4) "💫 <יתרון אורח חיים>".',
+        '5) "מחיר מבוקש: <סכום>. 📞 מוזמנים ליצור קשר לתיאום ביקור!" — מחיר ו-CTA באותה שורה.',
+        'אסור לחלוטין: פסקאות פתיחה כלליות על "בתחום הנדל״ן", "בעולם הנדל״ן", "כמתווך", "בתור מתווך", "אני אודי", "יש לי הכבוד", "אני שמח/גאה להציג", וכל הצגה עצמית או סלוגן שיווקי. נכנסים ישר לנכס.',
+        'אסור בהחלט להוסיף שורת מילות מפתח עם | בגוף הפוסט, ואסור האשטגים.',
+        'אסור לכלול מספרי בית/דירה/כניסה בכתובת — שם רחוב בלבד.',
+        'שמור על אותן עובדות מהנכס (מחיר, חדרים, מ״ר, קומה, שם רחוב) — אל תמציא נתונים.',
         'החתימה הקנונית (byline, ר.מ, WhatsApp, שיחה טלפונית) תתווסף אוטומטית בשרת — אל תכתוב אותה בעצמך.',
         'גוון פתיח, ניסוח ו-CTA לעומת הגרסה הקודמת כדי להימנע מחזרה.',
       ].join('\n');
 
-      const topic = selectedListingId
-        ? `פוסט קידום נכס (רענון תבנית מאסטר)`
-        : (campaign.message_body ?? '').trim().slice(0, 200) || 'רענון פוסט קיים';
-
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: {
-          topic,
+          topic: 'פוסט קידום נכס (רענון תבנית מאסטר)',
           platform: campaign.channel,
           customInstructions: rotateNote,
-          selectedListingId: selectedListingId || undefined,
-          listingFocusOnly: !!selectedListingId,
+          selectedListingId,
+          listingFocusOnly: true,
         },
       });
       if (error) throw error;
