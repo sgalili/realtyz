@@ -1690,8 +1690,8 @@ const InlineComposer = ({
               </button>
               <button
                 type="button"
-                onClick={() => onOpenScheduleCalendar?.()}
-                disabled={!hasBody || !onOpenScheduleCalendar}
+                onClick={() => setScheduleDialogOpen(true)}
+                disabled={!hasBody}
                 title="תזמן פרסום (כולל חזרות)"
                 aria-label="תזמן פרסום כולל חזרות"
                 className={cn(
