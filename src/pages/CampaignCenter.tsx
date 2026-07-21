@@ -597,13 +597,14 @@ const buildFallbackFirstComment = (listing: CampaignListing | null) => {
 };
 
 const InlineComposer = ({
-  channel, brandName, socialProfiles = [], onConfirm,
+  channel, brandName, socialProfiles = [], onConfirm, onOpenScheduleCalendar,
   presetListingId, presetScheduleIso, presetVariant, presetVariants, instanceId,
 }: {
   channel: ChannelCard;
   brandName: string;
   socialProfiles?: SocialAccountProfile[];
   onConfirm: (payload: ConfirmPayload) => void;
+  onOpenScheduleCalendar?: () => void;
   presetListingId?: string | null;
   presetScheduleIso?: string | null;
   presetVariant?: number;
@@ -1650,43 +1651,62 @@ const InlineComposer = ({
         const canSend = hasBody && scheduledValid && hasSelectedPages;
         return (
           <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-border/60 bg-card/95 px-4 sm:px-5 pb-0 pt-2 backdrop-blur">
-            <button
-              type="button"
-              onClick={() => {
-                if (!canSend) return;
-                // WA / Messenger CTA lines are already embedded inside the
-                // first-comment textarea via the toggle effects, so we pass
-                // the textarea content through verbatim.
-                const composedFirstComment = firstCommentEnabled ? firstComment : '';
-                onConfirm({
-                  body,
-                  original_ai_body: originalAiBody,
-                  listing_id: selectedListingId || null,
-                  mode,
-                  media_urls: attachments
-                    .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
-                    .map((a) => a.url as string),
-                  scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
-                  group_ids: channel.id === 'facebook' ? groupIds : [],
-                  selected_profile_ids: channel.id === 'facebook' ? selectedProfileIds : [],
-                  attach_wa_link: attachWaLink,
-                  first_comment: composedFirstComment,
-                  first_comment_enabled: firstCommentEnabled,
-                  attach_msngr_link: attachMsngrLink,
-                });
-              }}
-              disabled={!canSend}
-              className={cn(
-                'w-full inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition',
-                canSend
-                  ? 'bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)] shadow-md'
-                  : 'bg-muted text-muted-foreground/80 cursor-not-allowed',
-              )}
-            >
-              <Send className="h-4 w-4 -scale-x-100" />
-              {mode === 'scheduled' ? 'תזמן פרסום' : 'פרסם קמפיין'}
-            </button>
+            <div className="flex items-stretch gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  if (!canSend) return;
+                  // WA / Messenger CTA lines are already embedded inside the
+                  // first-comment textarea via the toggle effects, so we pass
+                  // the textarea content through verbatim.
+                  const composedFirstComment = firstCommentEnabled ? firstComment : '';
+                  onConfirm({
+                    body,
+                    original_ai_body: originalAiBody,
+                    listing_id: selectedListingId || null,
+                    mode,
+                    media_urls: attachments
+                      .filter((a) => a.kind === 'image' && typeof a.url === 'string' && /^https?:\/\//i.test(a.url))
+                      .map((a) => a.url as string),
+                    scheduled_at: mode === 'scheduled' && scheduledDate ? scheduledDate.toISOString() : null,
+                    group_ids: channel.id === 'facebook' ? groupIds : [],
+                    selected_profile_ids: channel.id === 'facebook' ? selectedProfileIds : [],
+                    attach_wa_link: attachWaLink,
+                    first_comment: composedFirstComment,
+                    first_comment_enabled: firstCommentEnabled,
+                    attach_msngr_link: attachMsngrLink,
+                  });
+                }}
+                disabled={!canSend}
+                className={cn(
+                  'flex-1 inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition',
+                  canSend
+                    ? 'bg-[hsl(217,80%,18%)] text-white hover:bg-[hsl(217,80%,14%)] shadow-md'
+                    : 'bg-muted text-muted-foreground/80 cursor-not-allowed',
+                )}
+              >
+                <Send className="h-4 w-4 -scale-x-100" />
+                {mode === 'scheduled' ? 'תזמן פרסום' : 'פרסם עכשיו'}
+              </button>
+              <button
+                type="button"
+                onClick={() => onOpenScheduleCalendar?.()}
+                disabled={!hasBody || !onOpenScheduleCalendar}
+                title="תזמן פרסום (כולל חזרות)"
+                aria-label="תזמן פרסום כולל חזרות"
+                className={cn(
+                  'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-bold transition border',
+                  hasBody
+                    ? 'bg-card text-[hsl(217,80%,18%)] border-[hsl(217,80%,18%)]/30 hover:bg-[hsl(217,80%,18%)]/5 shadow-sm'
+                    : 'bg-muted text-muted-foreground/80 border-transparent cursor-not-allowed',
+                )}
+              >
+                <CalendarIcon className="h-4 w-4" />
+                <span className="hidden sm:inline">תזמן</span>
+              </button>
+            </div>
           </div>
+
         );
       })()}
 
@@ -4636,7 +4656,9 @@ const CampaignCenter = () => {
                   brandName={brandName}
                   socialProfiles={socialAccountProfiles}
                   onConfirm={(p) => setConfirmPayload(p)}
+                  onOpenScheduleCalendar={() => handleChange('calendar')}
                 />
+
               );
             }
             // One composer block per scheduled assignment — each tied to its
@@ -4661,6 +4683,7 @@ const CampaignCenter = () => {
                       brandName={brandName}
                       socialProfiles={socialAccountProfiles}
                       onConfirm={(p) => setConfirmPayload(p)}
+                      onOpenScheduleCalendar={() => handleChange('calendar')}
                       presetListingId={b.listing}
                       presetScheduleIso={b.iso}
                       presetVariant={b.variant}
