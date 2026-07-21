@@ -3443,6 +3443,22 @@ const PublishedFeed = () => {
           </article>
         );
       })}
+      {editRepostRow && (
+        <EditRepostDialog
+          open={!!editRepostRow}
+          onOpenChange={(v) => { if (!v) setEditRepostRow(null); }}
+          campaign={{
+            id: editRepostRow.id,
+            channel: editRepostRow.channel,
+            message_body: editRepostRow.message_body,
+            media_urls: editRepostRow.media_urls,
+            campaign_name: editRepostRow.campaign_name,
+          }}
+          onPosted={() => {
+            queryClient.invalidateQueries({ queryKey: ['campaigns'] });
+          }}
+        />
+      )}
     </div>
   );
 };
