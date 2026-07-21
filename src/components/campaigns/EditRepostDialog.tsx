@@ -210,10 +210,26 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
     try {
       const { data } = await supabase
         .from('listings')
-        .select('id, property_title, property_type, deal_type, address, city, neighborhood, media_photos')
+        .select('id, property_title, deal_type, address, city, neighborhood, media_photos, source_metadata, features')
         .order('updated_at', { ascending: false })
         .limit(50);
-      setLookupOptions(((data ?? []) as ListingMeta[]));
+      const mapped: ListingMeta[] = ((data ?? []) as any[]).map((row) => {
+        const sm = (row.source_metadata && typeof row.source_metadata === 'object') ? row.source_metadata as Record<string, any> : {};
+        const featureListingType = Array.isArray(row.features)
+          ? (row.features.find((f: any) => f && typeof f === 'object' && 'listing_type' in f)?.listing_type ?? null)
+          : null;
+        return {
+          id: row.id,
+          property_title: row.property_title ?? null,
+          property_type: (sm.property_type || sm.propertyType || sm.type || null) as string | null,
+          deal_type: (row.deal_type || featureListingType) as string | null,
+          address: row.address ?? null,
+          city: row.city ?? null,
+          neighborhood: row.neighborhood ?? null,
+          media_photos: Array.isArray(row.media_photos) ? row.media_photos : null,
+        };
+      });
+      setLookupOptions(mapped);
     } catch { /* non-fatal */ }
   };
 
