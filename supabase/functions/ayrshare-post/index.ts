@@ -180,8 +180,10 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE, {
       auth: { persistSession: false },
     });
+    // NOTE: circuit is checked below, AFTER we know whether this is an
+    // immediate publish or a future-scheduled submission. A live cooldown
+    // must not block posts targeted at a time slot past the cooldown window.
     const circuit = await readCircuit(admin);
-    if (circuit) return circuitOpenResponse(circuit, corsHeaders);
 
     const body = await req.json().catch(() => ({}));
     const postText: string = stripMarkdownEmphasis(
