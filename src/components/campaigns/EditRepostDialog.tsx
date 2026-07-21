@@ -44,6 +44,63 @@ const dealTypeLabel = (raw: unknown): string | null => {
   return null;
 };
 
+// ── Webtiv/Homely lookup cache ────────────────────────────────────────────
+// Fetches property options once per 5 minutes across the whole app so the
+// dialog can be opened repeatedly without spamming the Webtiv API. Concurrent
+// callers share a single in-flight request.
+const WEBTIV_LOOKUP_TTL_MS = 5 * 60 * 1000;
+let webtivLookupCache: { at: number; rows: ListingMeta[] } | null = null;
+let webtivLookupInFlight: Promise<ListingMeta[]> | null = null;
+
+async function fetchWebtivLookupOptions(): Promise<ListingMeta[]> {
+  const now = Date.now();
+  if (webtivLookupCache && (now - webtivLookupCache.at) < WEBTIV_LOOKUP_TTL_MS) {
+    return webtivLookupCache.rows;
+  }
+  if (webtivLookupInFlight) return webtivLookupInFlight;
+
+  webtivLookupInFlight = (async () => {
+    // Pull fresh inventory from Webtiv and hydrate into `listings` so we get
+    // internal UUIDs that generate-content / ayrshare-post already understand.
+    try {
+      await supabase.functions.invoke('homely-search', {
+        body: { limit: 100, hydrate: true },
+      });
+    } catch {
+      /* non-fatal — we'll still surface whatever the DB has cached */
+    }
+
+    const { data } = await supabase
+      .from('listings')
+      .select('id, property_title, deal_type, address, city, neighborhood, media_photos, source_metadata, features, updated_at')
+      .eq('source', 'homely')
+      .order('updated_at', { ascending: false })
+      .limit(100);
+
+    const rows: ListingMeta[] = ((data ?? []) as any[]).map((row) => {
+      const sm = (row.source_metadata && typeof row.source_metadata === 'object') ? row.source_metadata as Record<string, any> : {};
+      const featureListingType = Array.isArray(row.features)
+        ? (row.features.find((f: any) => f && typeof f === 'object' && 'listing_type' in f)?.listing_type ?? null)
+        : null;
+      return {
+        id: row.id,
+        property_title: row.property_title ?? null,
+        property_type: (sm.property_type || sm.propertyType || sm.type || null) as string | null,
+        deal_type: (row.deal_type || featureListingType) as string | null,
+        address: row.address ?? null,
+        city: row.city ?? null,
+        neighborhood: row.neighborhood ?? null,
+        media_photos: Array.isArray(row.media_photos) ? row.media_photos : null,
+      };
+    });
+
+    webtivLookupCache = { at: Date.now(), rows };
+    return rows;
+  })().finally(() => { webtivLookupInFlight = null; });
+
+  return webtivLookupInFlight;
+}
+
 /**
  * Edit an already-published post: keep its original images, regenerate the
  * copy through the SAME generate-content master pipeline used by the main
