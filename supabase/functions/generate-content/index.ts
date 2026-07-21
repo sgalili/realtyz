@@ -135,9 +135,14 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
       if (dt === "sale" || dt === "מכירה") return "למכירה";
       return null;
     })();
-    const propertyTypeLabel = promotedListing?.property_type
-      ? String(promotedListing.property_type).trim()
-      : null;
+    const propertyTypeLabel = (() => {
+      const sm = promotedListing?.source_metadata;
+      if (sm && typeof sm === "object") {
+        const t = (sm as any).property_type || (sm as any).propertyType || (sm as any).type;
+        if (t) return String(t).trim();
+      }
+      return null;
+    })();
     const promotedBlock = promotedListing
       ? [
           "[PROMOTED LISTING — THIS POST MUST PROMOTE THIS EXACT PROPERTY] (use ONLY these real fields — never alter prices, address, rooms, or features):",
