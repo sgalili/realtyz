@@ -816,6 +816,7 @@ Deno.serve(async (req) => {
         provider_response: {
           ...(ayrJson ?? {}),
           verification_results: verificationResults,
+          listing_id: listingId,
         },
         sent_at: scheduledIso ?? new Date().toISOString(),
         source_account: "ayrshare",
