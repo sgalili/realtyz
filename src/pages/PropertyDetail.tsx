@@ -23,6 +23,7 @@ import { ShareWithLeadDialog } from '@/components/properties/ShareWithLeadDialog
 import { ProjectAlternativesCard } from '@/components/properties/ProjectAlternativesCard';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import { normalizeImageUrls } from '@/lib/imageHealth';
+import { stripAddressNumbers } from '@/lib/formatAddress';
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
