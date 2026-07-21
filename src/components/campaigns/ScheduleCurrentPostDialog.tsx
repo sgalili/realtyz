@@ -337,6 +337,9 @@ export function ScheduleCurrentPostDialog({
           <DialogTitle className="flex items-center gap-2 justify-end">
             תזמון פרסומים ליום {dayLabel}
           </DialogTitle>
+          <DialogDescription className="text-right">
+            בחר תאריך, חלון שעות וכמות פוסטים. אפשר להוסיף חזרתיות יומית/שבועית/חודשית ולעצור את הסדרה בכל שלב מלוח השנה.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div>
