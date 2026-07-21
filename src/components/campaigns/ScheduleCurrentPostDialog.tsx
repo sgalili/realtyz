@@ -237,7 +237,29 @@ export function ScheduleCurrentPostDialog({
         }
       }
       if (ok > 0) {
-        toast.success(`תוזמנו ${ok} פרסומים${failed ? ` (${failed} נכשלו)` : ''}`);
+        // Let the parent (CampaignCenter) jump to the calendar tab so the user
+        // can immediately see every newly-scheduled slot and cancel any of
+        // them via the calendar's existing "בטל" action.
+        try {
+          window.dispatchEvent(new CustomEvent('rz:campaign-scheduled', {
+            detail: { count: ok, channel: channelId },
+          }));
+        } catch { /* noop */ }
+        toast.success(
+          `תוזמנו ${ok} פרסומים${failed ? ` (${failed} נכשלו)` : ''}`,
+          {
+            description: 'ניתן לצפות ולבטל אותם בכל שלב בלוח השנה של הקמפיינים.',
+            action: {
+              label: 'פתח לוח שנה',
+              onClick: () => {
+                try {
+                  window.dispatchEvent(new CustomEvent('rz:open-schedule-calendar'));
+                } catch { /* noop */ }
+              },
+            },
+            duration: 8000,
+          },
+        );
         onScheduled();
         onClose();
       } else {
