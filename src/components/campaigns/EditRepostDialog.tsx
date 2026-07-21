@@ -251,6 +251,8 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
   }, [campaign.listing_id, campaign.message_body, campaign.media_urls]);
 
   // On open, resolve + hydrate listing metadata for the dynamic header.
+  // Also auto-generate the first comment once metadata is available so the
+  // user sees a ready-to-tweak draft without clicking "ייצר".
   useEffect(() => {
     if (!open) return;
     let cancelled = false;
@@ -259,15 +261,22 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
       const id = await resolveListingId();
       if (cancelled) return;
       setResolvedListingId(id);
+      let meta: ListingMeta | null = null;
       if (id) {
-        const meta = await loadListingMeta(id);
+        meta = await loadListingMeta(id);
         if (!cancelled) setListingMeta(meta);
       } else {
         setListingMeta(null);
       }
       setResolving(false);
+      // Auto-fire first-comment generation if enabled and empty.
+      if (!cancelled && firstCommentEnabled && !firstComment.trim() && !firstCommentGenerating) {
+        // Fire and forget — generateFirstComment handles its own toasts + state.
+        generateFirstComment();
+      }
     })();
     return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open, resolveListingId, loadListingMeta]);
 
   // Lazy-load listings for the manual-lookup fallback directly from the
