@@ -26,6 +26,14 @@ const DEFAULT_URLS = [
   "https://www.yad2.co.il/realestate/forsale?city=6400", // Herzliya
 ];
 
+type DealType = "sale" | "rent";
+
+function detectDealType(url: string): DealType {
+  const u = url.toLowerCase();
+  if (/\/(forrent|rent)(\b|\/|\?)/.test(u) || /realestate\/rent/.test(u)) return "rent";
+  return "sale";
+}
+
 type Scraped = {
   source_url: string;
   external_id: string | null;
@@ -38,6 +46,7 @@ type Scraped = {
   sqm: number | null;
   floor: number | null;
   photos: string[];
+  deal_type: DealType;
 };
 
 function json(body: unknown, status = 200) {
