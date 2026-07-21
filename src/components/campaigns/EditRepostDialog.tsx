@@ -102,7 +102,10 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
   const regenerate = async () => {
     setRegenerating(true);
     try {
-      const selectedListingId = await resolveListingId();
+      // Prefer the listing_id persisted on the campaign row (written by
+      // ayrshare-post into provider_response.listing_id). Fall back to the
+      // heuristic resolver only when it's missing (older rows).
+      const selectedListingId = campaign.listing_id || (await resolveListingId());
 
       // If we cannot tie this post back to a real listing, we refuse to
       // regenerate — the master template requires real property facts, and
