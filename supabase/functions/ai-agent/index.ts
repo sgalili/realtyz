@@ -786,20 +786,16 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
             if (searchRes.ok) {
               const sj = await searchRes.json();
               const props = Array.isArray(sj?.properties) ? sj.properties : [];
-              // Price-based sanity check: rentals in Israel are typically
-              // ₪1,500-₪35,000/month. Anything ≥ ₪100,000 is almost
-              // certainly a SALE price mis-tagged as rent (or vice-versa:
-              // any "sale" under ₪35,000 is really a monthly rent). We
-              // re-classify by price before any deal_type filtering so
-              // upstream mistagging can't leak across pipelines.
-              const RENT_MAX = 35000;
-              const SALE_MIN = 100000;
+              // HARD price guardrail: ANY price > ₪50,000 is a SALE,
+              // period. Israeli monthly rents never exceed ₪50k, so a
+              // ₪6.85M or ₪13.8M "rent" tag from an upstream feed is a
+              // mistagging bug we always correct here. Under ₪50k = rent.
+              const PRICE_GUARDRAIL = 50000;
               const inferType = (rawType: string, price: number): "sale" | "rent" => {
                 const t = rawType === "rent" ? "rent" : "sale";
                 if (!price || price <= 0) return t;
-                if (price >= SALE_MIN) return "sale";
-                if (price <= RENT_MAX) return "rent";
-                return t;
+                if (price > PRICE_GUARDRAIL) return "sale";
+                return "rent";
               };
               webtivResults = props.map((p: any) => {
                 const price = Number(p.price ?? 0) || 0;
