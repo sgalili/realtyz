@@ -631,17 +631,23 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
               const v = fromFeatures(features);
               if (v) return v;
             }
-            // 3. Price-based heuristic fallback for legacy rows.
+            // 3. Price-based guardrail for legacy rows. Israeli monthly
+            //    rents never exceed ₪50k — anything above that is a sale.
             const n = Number(row?.asking_price ?? 0);
             if (Number.isFinite(n) && n > 0) {
-              if (n < 50_000) return "rent";
-              if (n >= 100_000) return "sale";
+              if (n > 50_000) return "sale";
+              return "rent";
             }
             return null;
           };
           if (dealType === "rent" || dealType === "sale") {
             const before = candidates.length;
-            candidates = candidates.filter((l) => extractType(l) === dealType);
+            candidates = candidates.filter((l) => {
+              if (extractType(l) !== dealType) return false;
+              // Absolute price guardrail: strip any "rent" over ₪50k.
+              if (dealType === "rent" && Number(l.asking_price ?? 0) > 50_000) return false;
+              return true;
+            });
             if (before !== candidates.length) {
               console.log(`[matching] deal_type=${dealType} filter dropped ${before - candidates.length}/${before} candidates`);
             }
