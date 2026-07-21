@@ -3303,8 +3303,49 @@ const PublishedFeed = () => {
   const filteredRows = useMemo(() => {
     const base = rows ?? [];
     const merged: CampaignRow[] = [...optimisticRows, ...base];
-    if (activeChannel === 'all') return merged;
-    return merged.filter((r) => String(r.channel || '').toLowerCase() === activeChannel);
+    const channelFiltered = activeChannel === 'all'
+      ? merged
+      : merged.filter((r) => String(r.channel || '').toLowerCase() === activeChannel);
+
+    // Collapse recurring series: every scheduled row sharing the same
+    // campaign_name+channel belongs to one series. Emit ONE master row
+    // (the next upcoming slot) carrying `_seriesSlots` — an ordered list
+    // of every future slot. All other rows in the series are removed
+    // from the top-level feed so the page never floods with duplicates.
+    const seriesMap = new Map<string, CampaignRow[]>();
+    const nonSeries: CampaignRow[] = [];
+    for (const r of channelFiltered) {
+      if (isScheduledRow(r) && r.campaign_name) {
+        const key = `${String(r.campaign_name).trim()}|${String(r.channel || '').toLowerCase()}`;
+        const arr = seriesMap.get(key) || [];
+        arr.push(r);
+        seriesMap.set(key, arr);
+      } else {
+        nonSeries.push(r);
+      }
+    }
+    const masters: CampaignRow[] = [];
+    for (const arr of seriesMap.values()) {
+      const sorted = [...arr].sort((a, b) => {
+        const ta = a.sent_at ? new Date(a.sent_at).getTime() : 0;
+        const tb = b.sent_at ? new Date(b.sent_at).getTime() : 0;
+        return ta - tb;
+      });
+      const master = { ...sorted[0], _seriesSlots: sorted.map((s) => ({ id: s.id, sent_at: s.sent_at })) } as CampaignRow & { _seriesSlots: Array<{ id: string; sent_at: string | null }> };
+      masters.push(master);
+    }
+    // Preserve original ordering: masters slot in at their earliest slot time.
+    return [...nonSeries, ...masters].sort((a, b) => {
+      const aTime = isScheduledRow(a) && a.sent_at ? new Date(a.sent_at).getTime() : new Date(a.created_at).getTime();
+      const bTime = isScheduledRow(b) && b.sent_at ? new Date(b.sent_at).getTime() : new Date(b.created_at).getTime();
+      // Scheduled items ascending by next-slot; published items descending.
+      const aSched = isScheduledRow(a);
+      const bSched = isScheduledRow(b);
+      if (aSched && !bSched) return -1;
+      if (!aSched && bSched) return 1;
+      if (aSched && bSched) return aTime - bTime;
+      return bTime - aTime;
+    });
   }, [rows, activeChannel, optimisticRows]);
 
   // Blocking loader ONLY on a true cold start: no cached rows in memory AND
@@ -3337,6 +3378,8 @@ const PublishedFeed = () => {
 
         const isOpen = expanded[r.id] ?? false;
         const scheduled = isScheduledRow(r);
+        const seriesSlots = (r as any)._seriesSlots as Array<{ id: string; sent_at: string | null }> | undefined;
+        const isSeries = Array.isArray(seriesSlots) && seriesSlots.length > 1;
         // Emergency override: never treat rows as paused in the UI so the
         // protection banner and yellow/red countdown are fully bypassed.
         const isPaused = false;
@@ -3443,6 +3486,11 @@ const PublishedFeed = () => {
                     <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-[11px] font-bold text-amber-800 ring-1 ring-amber-200 tabular-nums">
                       <CalendarIcon className="h-3 w-3" />
                       {label}
+                      {isSeries && (
+                        <span className="ms-1 rounded-full bg-amber-800 text-amber-50 px-1.5 py-[1px] text-[10px] font-bold">
+                          סדרה · {seriesSlots!.length}
+                        </span>
+                      )}
                     </span>
                   );
                 })() : (
@@ -3496,6 +3544,28 @@ const PublishedFeed = () => {
 
             {isOpen && (
               <>
+                {isSeries && (
+                  <div className="mx-4 mb-3 rounded-xl border border-amber-200 bg-amber-50/60 p-3" dir="rtl">
+                    <div className="flex items-center gap-2 text-[12px] font-bold text-amber-900">
+                      <CalendarIcon className="h-3.5 w-3.5" />
+                      <span>סדרה מחזורית · {seriesSlots!.length} פרסומים עתידיים</span>
+                    </div>
+                    <ul className="mt-2 max-h-56 overflow-y-auto space-y-1 text-[12px] tabular-nums">
+                      {seriesSlots!.map((slot, idx) => {
+                        const d = slot.sent_at ? new Date(slot.sent_at) : null;
+                        const label = d
+                          ? d.toLocaleDateString('he-IL') + ', ' + d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+                          : '—';
+                        return (
+                          <li key={slot.id} className="flex items-center justify-between gap-2 rounded-md bg-white/70 px-2 py-1 text-amber-900">
+                            <span className="text-[11px] font-semibold text-amber-800">#{idx + 1}{idx === 0 ? ' · הבא' : ''}</span>
+                            <span>{label}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
                 {r.media_urls && r.media_urls.length > 0 && (
                   <div className="mx-4 mb-3 flex gap-2 overflow-x-auto">
                     {r.media_urls.slice(0, 6).map((src, i) => (
