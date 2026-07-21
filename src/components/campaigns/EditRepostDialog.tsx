@@ -257,6 +257,26 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
     return parts.length ? parts.join(' | ') : (listingMeta.property_title || 'עריכה ופרסום מחדש');
   }, [listingMeta]);
 
+  // Free-text search over the manual listing lookup dropdown.
+  const filteredOptions = useMemo(() => {
+    if (!lookupSearch.trim()) return lookupOptions;
+    const q = lookupSearch.trim().toLowerCase();
+    return lookupOptions.filter((l) => {
+      const hay = [
+        l.property_title,
+        l.property_type,
+        l.deal_type,
+        l.address,
+        l.city,
+        l.neighborhood,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [lookupOptions, lookupSearch]);
+
   const regenerate = async () => {
     setRegenerating(true);
     try {
