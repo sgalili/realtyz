@@ -3544,7 +3544,28 @@ const PublishedFeed = () => {
 
             {isOpen && (
               <>
-                {r.media_urls && r.media_urls.length > 0 && (
+                {isSeries && (
+                  <div className="mx-4 mb-3 rounded-xl border border-amber-200 bg-amber-50/60 p-3" dir="rtl">
+                    <div className="flex items-center gap-2 text-[12px] font-bold text-amber-900">
+                      <CalendarIcon className="h-3.5 w-3.5" />
+                      <span>סדרה מחזורית · {seriesSlots!.length} פרסומים עתידיים</span>
+                    </div>
+                    <ul className="mt-2 max-h-56 overflow-y-auto space-y-1 text-[12px] tabular-nums">
+                      {seriesSlots!.map((slot, idx) => {
+                        const d = slot.sent_at ? new Date(slot.sent_at) : null;
+                        const label = d
+                          ? d.toLocaleDateString('he-IL') + ', ' + d.toLocaleTimeString('he-IL', { hour: '2-digit', minute: '2-digit' })
+                          : '—';
+                        return (
+                          <li key={slot.id} className="flex items-center justify-between gap-2 rounded-md bg-white/70 px-2 py-1 text-amber-900">
+                            <span className="text-[11px] font-semibold text-amber-800">#{idx + 1}{idx === 0 ? ' · הבא' : ''}</span>
+                            <span>{label}</span>
+                          </li>
+                        );
+                      })}
+                    </ul>
+                  </div>
+                )}
                   <div className="mx-4 mb-3 flex gap-2 overflow-x-auto">
                     {r.media_urls.slice(0, 6).map((src, i) => (
                       <div key={i} className="relative shrink-0 group">
