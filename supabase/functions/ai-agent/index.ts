@@ -606,7 +606,11 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
           // listing has no explicit listing_type, fall back to a price-based
           // heuristic (price < 50k → rent, price ≥ 100k → sale) so the mixed
           // buyer/renter DB still routes cleanly.
-          const extractType = (features: any, price?: any): "sale" | "rent" | null => {
+          const extractType = (row: any): "sale" | "rent" | null => {
+            // 1. Prefer the explicit column when populated.
+            const col = String(row?.deal_type ?? "").toLowerCase();
+            if (col === "rent" || col === "sale") return col;
+            // 2. features.listing_type fallback.
             const fromFeatures = (f: any): "sale" | "rent" | null => {
               if (f && typeof f === "object" && "listing_type" in f) {
                 const v = String((f as any).listing_type ?? "").toLowerCase();
@@ -614,6 +618,7 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
               }
               return null;
             };
+            const features = row?.features;
             if (Array.isArray(features)) {
               for (const f of features) {
                 const v = fromFeatures(f);
@@ -623,7 +628,8 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
               const v = fromFeatures(features);
               if (v) return v;
             }
-            const n = Number(price ?? 0);
+            // 3. Price-based heuristic fallback for legacy rows.
+            const n = Number(row?.asking_price ?? 0);
             if (Number.isFinite(n) && n > 0) {
               if (n < 50_000) return "rent";
               if (n >= 100_000) return "sale";
@@ -631,12 +637,11 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
             return null;
           };
           if (dealType === "rent" || dealType === "sale") {
-            candidates = candidates.filter((l) => {
-              const t = extractType(l.features, l.asking_price);
-              // If we cannot classify at all, drop it from the strict pipeline
-              // rather than risk leaking the wrong side.
-              return t === dealType;
-            });
+            const before = candidates.length;
+            candidates = candidates.filter((l) => extractType(l) === dealType);
+            if (before !== candidates.length) {
+              console.log(`[matching] deal_type=${dealType} filter dropped ${before - candidates.length}/${before} candidates`);
+            }
           }
 
           // Soft-score by rooms/city overlap; keep top 5.
