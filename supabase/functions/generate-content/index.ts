@@ -129,12 +129,22 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
       } catch { /* background */ }
     }
 
+    const dealTypeLabel = (() => {
+      const dt = String(promotedListing?.deal_type || promotedListingType || "").toLowerCase();
+      if (dt === "rent" || dt === "השכרה") return "להשכרה";
+      if (dt === "sale" || dt === "מכירה") return "למכירה";
+      return null;
+    })();
+    const propertyTypeLabel = promotedListing?.property_type
+      ? String(promotedListing.property_type).trim()
+      : null;
     const promotedBlock = promotedListing
       ? [
           "[PROMOTED LISTING — THIS POST MUST PROMOTE THIS EXACT PROPERTY] (use ONLY these real fields — never alter prices, address, rooms, or features):",
-          promotedListing.property_title ? `כותרת: ${promotedListing.property_title}` : null,
-          promotedListingType ? `סוג עסקה: ${promotedListingType === "rent" ? "השכרה" : "מכירה"}` : null,
-          promotedListing.address ? `כתובת: ${promotedListing.address}` : null,
+          promotedListing.property_title ? `כותרת הנכס: ${promotedListing.property_title}` : null,
+          propertyTypeLabel ? `סוג נכס: ${propertyTypeLabel}` : null,
+          dealTypeLabel ? `סוג עסקה: ${dealTypeLabel}` : null,
+          promotedListing.address ? `כתובת (רחוב בלבד, בלי מספר בית): ${promotedListing.address}` : null,
           promotedListing.neighborhood ? `שכונה: ${promotedListing.neighborhood}` : null,
           promotedListing.city ? `עיר: ${promotedListing.city}` : null,
           promotedListing.rooms ? `חדרים: ${promotedListing.rooms}` : null,
