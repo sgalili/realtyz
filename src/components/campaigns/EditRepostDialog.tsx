@@ -397,12 +397,29 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
               <Select onValueChange={pickListingManually}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="בחר נכס מהרשימה" /></SelectTrigger>
                 <SelectContent>
-                  {lookupOptions.map((l) => {
+                  <div
+                    className="p-2"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Input
+                      placeholder="חיפוש חופשי..."
+                      value={lookupSearch}
+                      onChange={(e) => setLookupSearch(e.target.value)}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      className="h-8 text-sm"
+                      autoFocus
+                    />
+                  </div>
+                  {filteredOptions.map((l) => {
                     const street = stripAddressNumbers(l.address || '').trim();
                     const deal = dealTypeLabel(l.deal_type);
                     const label = [l.property_type, deal, street || l.property_title || l.city].filter(Boolean).join(' | ');
                     return <SelectItem key={l.id} value={l.id}>{label || l.id}</SelectItem>;
                   })}
+                  {filteredOptions.length === 0 && (
+                    <div className="px-2 py-3 text-sm text-muted-foreground text-center">אין תוצאות חיפוש</div>
+                  )}
                 </SelectContent>
               </Select>
             )}
