@@ -158,24 +158,27 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
     const focusOnly = !!listingFocusOnly && !!promotedListing;
 
     const FOCUS_ONLY_RULE = focusOnly ? `
-LISTING-FOCUS MODE (use Udi's MASTER TEMPLATES from [POST TEMPLATES] block above):
-- Follow the KB master templates structure for a listing post: opener hook, address/location line (📍), price line (💰), a short bulleted feature list where every bullet starts with "✅ ", closing CTA line (📞) inviting WhatsApp/Messenger. Multi-line, punchy, human, no filler.
-- Ground every concrete detail (address, rooms, sqm, floor, price, features, area perks) in the [PROMOTED LISTING] block. Do NOT invent details.
-- DO NOT copy or paraphrase the property's long free-text description — that snippet lives in the FIRST COMMENT (posted separately), never inside the main post.
+LISTING-FOCUS MODE — CLEAN SHORT MASTER TEMPLATE (mandatory structure, exactly this order, blank line between blocks):
+1. 🏡✨ opener hook — one short sentence with property type + rooms + city (e.g. "🏡✨ דירת 4 חדרים חדשה להשכרה בהרצליה").
+2. Brief description paragraph — 1-2 short sentences covering size, floor, view and 1-2 standout features grounded in [PROMOTED LISTING].
+3. 🌇 location line — one short sentence highlighting the neighborhood / street and its convenience (transport, schools, sea, park).
+4. 💫 lifestyle line — one short sentence framing the lifestyle benefit.
+5. Price line — "מחיר מבוקש: <price>." on its own line, taken verbatim from [PROMOTED LISTING].
+6. 📞 CTA line — "📞 מוזמנים ליצור קשר לתיאום ביקור!" (may vary the invitation wording slightly but must stay one short line, always prefixed with 📞).
+- The whole post must be short, clean, punchy, human — no filler, no bulleted feature list, no ✅ bullets, no keyword-with-pipes line inside the main post, no hashtags.
+- Ground every concrete detail (address, rooms, sqm, floor, price, features, area perks) in the [PROMOTED LISTING]. Do NOT invent details.
+- DO NOT copy or paraphrase the property's long free-text description — that snippet belongs to the FIRST COMMENT, never inside the main post body.
 - ABSOLUTELY FORBIDDEN: any bracketed placeholder ("[insert license]", "[מספר טלפון]", "[TBD]", "[Real License Number]"), square-bracket tokens, or parenthetical instructions. Every value must be real or omitted entirely.
-- DO NOT write a signature, phone number, license number, byline, or contact line yourself. The system appends Udi's canonical footer (phone + license) automatically at the very bottom.` : "";
+- DO NOT write a signature, phone number, license number, byline, or contact line yourself. The system appends Udi's canonical broker footer automatically at the very bottom.` : "";
 
 
 
 
-    const EMOJI_RULES = `EMOJI PALETTE (MINIMAL BUT REQUIRED — restore Udi's signature emoji rhythm):
-- Use a SMALL, tasteful set of emojis. Never stack, never spam, never decorate every line.
-- ALLOWED ONLY: ✅ (start of each feature/bullet line), 📍 (once before the address/location line), 💰 (once before the price line), 📞 (once before the contact CTA), 🏡 or 🔑 (at most ONCE total, only if it naturally fits an opener about a property).
-- For ANY post that lists property features or bullet points: EACH bullet line MUST start with "✅ " (green check + space). Do not use "-", "•", "*", or numbers as bullets.
-- For ANY post mentioning a specific address: prefix that one line with "📍 ".
-- For ANY post mentioning a price/rent: prefix that one line with "💰 ".
-- For the closing CTA line that invites WhatsApp / phone / message: prefix with "📞 ".
-- FORBIDDEN emojis everywhere: 💎 🔥 🎉 💯 ✨ 🌟 ❤️ 💪 👇 🙌 🤩 ⭐ and any hype/decorative emoji. Never use more than one emoji per line. Never end the post with an emoji string.`;
+    const EMOJI_RULES = `EMOJI PALETTE (small and precise, Udi's clean template):
+- Allowed and expected in a listing post: 🏡✨ (opener line, once), 🌇 (location line, once), 💫 (lifestyle line, once), 📞 (CTA line, once). No other decorative emojis.
+- Never stack emojis, never repeat, never decorate every line. Never end the post with a string of emojis.
+- Do NOT use ✅ bullets. Do NOT use 📍 or 💰 lines — the master template uses the emoji set above instead.
+- FORBIDDEN everywhere: 💎 🔥 🎉 💯 🌟 ❤️ 💪 👇 🙌 🤩 ⭐ and any hype/spam emoji.`;
 
     const systemPrompt = `${BROKER_PERSONA}
 
