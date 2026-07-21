@@ -160,6 +160,22 @@ export function ScheduleCurrentPostDialog({
     return recDates.flatMap((d) => buildDaySlots(d)).sort((a, b) => a.getTime() - b.getTime());
   };
 
+  const extractErr = async (error: any, data: any): Promise<string | null> => {
+    try {
+      const resp = error?.context?.response;
+      if (resp && typeof resp.json === 'function') {
+        const b = await resp.clone().json();
+        return b?.message || b?.error || null;
+      }
+    } catch { /* ignore */ }
+    return (
+      data?.message ||
+      data?.error ||
+      error?.message ||
+      null
+    );
+  };
+
   const handleSubmit = async () => {
     if (!user) { toast.error('יש להתחבר'); return; }
     if (!body.trim()) { toast.error('אין תוכן לתזמון'); return; }
@@ -176,9 +192,25 @@ export function ScheduleCurrentPostDialog({
 
     let ok = 0;
     let failed = 0;
+    let firstErr: string | null = null;
     try {
       for (const slot of slots) {
         for (const target of fanoutTargets) {
+          // Optimistic "pending" row in the feed with a live countdown to
+          // the scheduled publish time. If ayrshare-post succeeds, its real
+          // campaign_logs row will replace this shortly (matched by body).
+          try {
+            window.dispatchEvent(new CustomEvent('rz:campaign-optimistic', {
+              detail: {
+                channel: channelId,
+                body,
+                media_urls: mediaUrls,
+                campaign_name: target ? `${campaignName} · ${target.name}` : campaignName,
+                scheduled_at: slot.toISOString(),
+              },
+            }));
+          } catch { /* noop */ }
+
           const { data, error } = await supabase.functions.invoke('ayrshare-post', {
             body: {
               post: body,
@@ -198,6 +230,7 @@ export function ScheduleCurrentPostDialog({
           const payload: any = data;
           if (error || payload?.error || payload?.success === false) {
             failed++;
+            if (!firstErr) firstErr = await extractErr(error, payload);
           } else {
             ok++;
           }
@@ -208,7 +241,7 @@ export function ScheduleCurrentPostDialog({
         onScheduled();
         onClose();
       } else {
-        toast.error('תזמון נכשל');
+        toast.error(firstErr ? `תזמון נכשל: ${firstErr}` : 'תזמון נכשל');
       }
     } catch (e: any) {
       toast.error(e?.message || 'תזמון נכשל');
