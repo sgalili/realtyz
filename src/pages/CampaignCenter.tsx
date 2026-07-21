@@ -592,7 +592,7 @@ const buildFirstCommentKeywordLine = (listing: CampaignListing | null | undefine
   const parts = [
     sourceType,
     listing.city ? String(listing.city) : null,
-    listing.address ? String(listing.address) : (listing.neighborhood ? String(listing.neighborhood) : null),
+    listing.address ? stripAddressNumbers(listing.address) : (listing.neighborhood ? String(listing.neighborhood) : null),
     listing.rooms ? `${listing.rooms} חדרים` : null,
     listing.floor !== null && listing.floor !== undefined ? `קומה ${listing.floor}` : null,
     listing.sqm ? `${listing.sqm} מ"ר` : null,
