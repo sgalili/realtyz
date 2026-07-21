@@ -648,7 +648,7 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
         channelLabel={campaign.channel}
         brandName={`${campaign.campaign_name} · שוכפל`}
         body={body}
-        firstComment=""
+        firstComment={firstCommentEnabled ? firstComment : ''}
         mediaUrls={mediaUrls}
         listingId={resolvedListingId ?? campaign.listing_id ?? null}
         defaultGroupIds={[]}
