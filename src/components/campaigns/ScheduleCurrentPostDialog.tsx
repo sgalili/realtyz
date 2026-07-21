@@ -8,7 +8,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { Repeat, Users, ChevronLeft, X, Loader2 } from 'lucide-react';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
@@ -337,6 +337,9 @@ export function ScheduleCurrentPostDialog({
           <DialogTitle className="flex items-center gap-2 justify-end">
             תזמון פרסומים ליום {dayLabel}
           </DialogTitle>
+          <DialogDescription className="text-right">
+            בחר תאריך, חלון שעות וכמות פוסטים. אפשר להוסיף חזרתיות יומית/שבועית/חודשית ולעצור את הסדרה בכל שלב מלוח השנה.
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-3">
           <div>
