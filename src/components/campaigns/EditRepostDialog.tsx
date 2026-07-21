@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Input } from '@/components/ui/input';
 import { Sparkles, Send, Loader2, RefreshCw, AlertTriangle, Calendar as CalendarIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -60,6 +61,7 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
   const [lookupOptions, setLookupOptions] = useState<ListingMeta[]>([]);
   const [showLookup, setShowLookup] = useState(false);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
+  const [lookupSearch, setLookupSearch] = useState('');
 
   useEffect(() => {
     if (open) {
@@ -255,6 +257,26 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
     return parts.length ? parts.join(' | ') : (listingMeta.property_title || 'עריכה ופרסום מחדש');
   }, [listingMeta]);
 
+  // Free-text search over the manual listing lookup dropdown.
+  const filteredOptions = useMemo(() => {
+    if (!lookupSearch.trim()) return lookupOptions;
+    const q = lookupSearch.trim().toLowerCase();
+    return lookupOptions.filter((l) => {
+      const hay = [
+        l.property_title,
+        l.property_type,
+        l.deal_type,
+        l.address,
+        l.city,
+        l.neighborhood,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [lookupOptions, lookupSearch]);
+
   const regenerate = async () => {
     setRegenerating(true);
     try {
@@ -375,12 +397,29 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
               <Select onValueChange={pickListingManually}>
                 <SelectTrigger className="w-full"><SelectValue placeholder="בחר נכס מהרשימה" /></SelectTrigger>
                 <SelectContent>
-                  {lookupOptions.map((l) => {
+                  <div
+                    className="p-2"
+                    onPointerDown={(e) => e.stopPropagation()}
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    <Input
+                      placeholder="חיפוש חופשי..."
+                      value={lookupSearch}
+                      onChange={(e) => setLookupSearch(e.target.value)}
+                      onKeyDown={(e) => e.stopPropagation()}
+                      className="h-8 text-sm"
+                      autoFocus
+                    />
+                  </div>
+                  {filteredOptions.map((l) => {
                     const street = stripAddressNumbers(l.address || '').trim();
                     const deal = dealTypeLabel(l.deal_type);
                     const label = [l.property_type, deal, street || l.property_title || l.city].filter(Boolean).join(' | ');
                     return <SelectItem key={l.id} value={l.id}>{label || l.id}</SelectItem>;
                   })}
+                  {filteredOptions.length === 0 && (
+                    <div className="px-2 py-3 text-sm text-muted-foreground text-center">אין תוצאות חיפוש</div>
+                  )}
                 </SelectContent>
               </Select>
             )}
