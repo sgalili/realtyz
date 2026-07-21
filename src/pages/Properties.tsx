@@ -805,7 +805,7 @@ function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare
             </span>
           )}
           <Badge className="absolute top-3 right-3 bg-background/90 text-foreground border">
-            {PROPERTY_TYPE_LABELS_HE[property.property_type]}
+            {(property as any).property_type_source || PROPERTY_TYPE_LABELS_HE[property.property_type]}
           </Badge>
           {property.listing_type && (
             <Badge className={`absolute top-3 left-3 border ${isRent ? 'bg-[#0b3982] text-white border-[#0b3982]' : 'bg-primary text-primary-foreground'}`}>
