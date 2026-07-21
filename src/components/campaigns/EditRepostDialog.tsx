@@ -15,6 +15,7 @@ type Props = {
     message_body: string | null;
     media_urls?: string[];
     campaign_name: string;
+    listing_id?: string | null;
   };
   onPosted?: () => void;
 };
