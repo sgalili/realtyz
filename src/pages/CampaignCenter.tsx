@@ -3396,11 +3396,17 @@ const PublishedFeed = () => {
                       <Paperclip className="h-4 w-4" />
                     </Button>
                   </div>
-                  <Button variant="outline" size="icon" title="מחק פוסט" aria-label="מחק פוסט"
-                          onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
-                          className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
-                    <Trash2 className="h-4 w-4" />
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button variant="outline" size="icon" title="ערוך ופרסם מחדש" aria-label="ערוך ופרסם מחדש"
+                            onClick={(e) => { e.stopPropagation(); setEditRepostRow(r); }}>
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button variant="outline" size="icon" title="מחק פוסט" aria-label="מחק פוסט"
+                            onClick={(e) => { e.stopPropagation(); deleteCampaign(r); }}
+                            className="text-destructive border-destructive/40 hover:bg-destructive/10 hover:text-destructive">
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
 
                 {!r.is_external && (
