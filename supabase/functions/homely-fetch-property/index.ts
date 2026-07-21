@@ -1360,7 +1360,18 @@ function mapStreamProperty(it: any, idx: number) {
     photos: media.photos,
     documents: media.documents,
     property_type: String(it?.objectresidence ?? ""),
-    transaction_type: (normalizeTxType(it) === "rent" ? "rent" : "sale") as "sale" | "rent",
+    transaction_type: ((): "sale" | "rent" => {
+      const raw = normalizeTxType(it);
+      const p = Number(it?.priceshekel ?? 0) || 0;
+      // Price-based override: Israeli rentals sit in the ~₪1.5k-₪35k/month
+      // band; anything ≥ ₪100k is a SALE price mis-tagged as rent, and any
+      // "sale" under ₪35k is really a monthly rent figure. Trust price over
+      // the upstream text tag when the two disagree, because Homely feeds
+      // routinely have mistagged records (owner sees a 4.5M "rent").
+      if (p >= 100000) return "sale";
+      if (p > 0 && p <= 35000) return "rent";
+      return raw === "rent" ? "rent" : "sale";
+    })(),
     agent: pickAgentName(it),
     sivug: pickSivugName(it),
     source_origin: sourceOrigin,
