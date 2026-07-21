@@ -1208,7 +1208,7 @@ const InlineComposer = ({
       const listingFacts = listing
         ? [
             listing.property_title ? `כותרת: ${listing.property_title}` : null,
-            listing.address ? `כתובת: ${listing.address}` : null,
+            listing.address ? `כתובת: ${stripAddressNumbers(listing.address)}` : null,
             listing.neighborhood ? `שכונה: ${listing.neighborhood}` : null,
             listing.city ? `עיר: ${listing.city}` : null,
             listing.rooms ? `חדרים: ${listing.rooms}` : null,
