@@ -1672,7 +1672,7 @@ const InlineComposer = ({
                 )}
               >
                 <Send className="h-4 w-4 -scale-x-100" />
-                {mode === 'scheduled' ? 'תזמן פרסום' : 'פרסם עכשיו'}
+                {mode === 'scheduled' ? 'פרסם בזמן שנבחר' : 'פרסם עכשיו'}
               </button>
               <button
                 type="button"
