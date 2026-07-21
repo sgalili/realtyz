@@ -304,6 +304,7 @@ export function ScheduleCurrentPostDialog({
         ? targets
         : [null as ScheduleTarget | null];
 
+    const progressToastId = toast.loading(`מתזמן ${slots.length} פרסומים…`);
     let ok = 0;
     let failed = 0;
     let firstErr: string | null = null;
@@ -313,45 +314,67 @@ export function ScheduleCurrentPostDialog({
       // recurring sequence never feels like copy-paste spam.
       for (let i = 0; i < slots.length; i++) {
         const slot = slots[i];
-        const slotBody = i === 0 ? body : await generateVariantBody(i, slots.length);
+        let slotBody = body;
+        try {
+          slotBody = i === 0 ? body : await generateVariantBody(i, slots.length);
+        } catch (variantErr) {
+          console.error('[ScheduleCurrentPostDialog] variant generation failed, using original body', variantErr);
+          slotBody = body;
+        }
         for (const target of fanoutTargets) {
           try {
-            window.dispatchEvent(new CustomEvent('rz:campaign-optimistic', {
-              detail: {
-                channel: channelId,
-                body: slotBody,
-                media_urls: mediaUrls,
-                campaign_name: target ? `${campaignName} · ${target.name}` : campaignName,
-                scheduled_at: slot.toISOString(),
-              },
-            }));
-          } catch { /* noop */ }
+            try {
+              window.dispatchEvent(new CustomEvent('rz:campaign-optimistic', {
+                detail: {
+                  channel: channelId,
+                  body: slotBody,
+                  media_urls: mediaUrls,
+                  campaign_name: target ? `${campaignName} · ${target.name}` : campaignName,
+                  scheduled_at: slot.toISOString(),
+                },
+              }));
+            } catch { /* noop */ }
 
-          const { data, error } = await supabase.functions.invoke('ayrshare-post', {
-            body: {
+            const invokeBody: Record<string, unknown> = {
               post: slotBody,
               channels: [channelId],
               campaign_name: target ? `${campaignName} · ${target.name}` : campaignName,
-              media_urls: mediaUrls,
+              media_urls: Array.isArray(mediaUrls) ? mediaUrls : [],
               scheduled_at: slot.toISOString(),
               workspace_owner_id: ownerScope,
-              group_ids: channelId === 'facebook' ? selectedGroupIds : [],
+              group_ids: channelId === 'facebook' ? (selectedGroupIds || []) : [],
               target_profile_id: target?.id ?? null,
               target_account_ref: target?.accountRef ?? null,
               target_profile_key: target?.profileKey ?? null,
               first_comment: firstComment || null,
-              listing_id: listingId,
-            },
-          });
-          const payload: any = data;
-          if (error || payload?.error || payload?.success === false) {
+              listing_id: listingId ?? null,
+            };
+            console.log('[ScheduleCurrentPostDialog] invoking ayrshare-post', {
+              slotIndex: i,
+              scheduled_at: slot.toISOString(),
+              target: target?.name ?? null,
+            });
+            const { data, error } = await supabase.functions.invoke('ayrshare-post', {
+              body: invokeBody,
+            });
+            const payload: any = data;
+            if (error || payload?.error || payload?.success === false) {
+              failed++;
+              const msg = await extractErr(error, payload);
+              console.error('[ScheduleCurrentPostDialog] slot failed', { slotIndex: i, error, payload, msg });
+              if (!firstErr) firstErr = msg;
+            } else {
+              ok++;
+            }
+          } catch (slotErr: any) {
             failed++;
-            if (!firstErr) firstErr = await extractErr(error, payload);
-          } else {
-            ok++;
+            console.error('[ScheduleCurrentPostDialog] Detailed scheduling error:', slotErr);
+            if (!firstErr) firstErr = slotErr?.message || 'שגיאה לא צפויה בתזמון';
           }
         }
       }
+
+      toast.dismiss(progressToastId);
 
       if (ok > 0) {
         // Let the parent (CampaignCenter) jump to the calendar tab so the user
