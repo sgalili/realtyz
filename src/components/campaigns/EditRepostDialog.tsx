@@ -119,14 +119,20 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
   const [showLookup, setShowLookup] = useState(false);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [lookupSearch, setLookupSearch] = useState('');
+  const [firstComment, setFirstComment] = useState('');
+  const [firstCommentEnabled, setFirstCommentEnabled] = useState(true);
+  const [firstCommentGenerating, setFirstCommentGenerating] = useState(false);
 
   useEffect(() => {
     if (open) {
       setBody(campaign.message_body ?? '');
       setRateLimited(null);
       setShowLookup(false);
+      setFirstComment('');
+      setFirstCommentEnabled(true);
     }
   }, [open, campaign.message_body]);
+
 
   const mediaUrls = Array.isArray(campaign.media_urls) ? campaign.media_urls : [];
 
@@ -374,6 +380,63 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
     }
   };
 
+  // Generate a 2-line Hebrew first comment (short sentence + keyword line
+  // separated by `|`), matching the composer's style. Reuses generate-content
+  // with the resolved listing so facts stay grounded and the canonical footer
+  // is skipped (first comments must NOT carry the broker signature).
+  const generateFirstComment = async () => {
+    setFirstCommentGenerating(true);
+    try {
+      const factsLine = listingMeta
+        ? [
+            listingMeta.property_type ? `סוג: ${listingMeta.property_type}` : null,
+            dealTypeLabel(listingMeta.deal_type) ? `עסקה: ${dealTypeLabel(listingMeta.deal_type)}` : null,
+            listingMeta.address ? `רחוב: ${stripAddressNumbers(listingMeta.address)}` : null,
+            listingMeta.neighborhood ? `שכונה: ${listingMeta.neighborhood}` : null,
+            listingMeta.city ? `עיר: ${listingMeta.city}` : null,
+            listingMeta.property_title ? `כותרת: ${listingMeta.property_title}` : null,
+          ].filter(Boolean).join(' | ')
+        : '';
+      const instructions = [
+        'כתוב תגובה ראשונה (First Comment) לפוסט נדל"ן — שתי שורות בדיוק, בעברית.',
+        'שורה 1: משפט אחד קצר, אנושי ומשכנע על הנכס (עד ~18 מילים). ללא אימוג\'ים/בולטים.',
+        'שורה 2: שורת מילות מפתח מופרדות בקווים אנכיים (|) — סוג נכס | עיר | שכונה | רחוב | חדרים | מ״ר | קומה | תכונות בולטות ככל שידוע.',
+        factsLine ? `היעזר בעובדות האלו בלבד, אל תמציא נתונים: ${factsLine}` : '',
+        'אסור בהחלט: חתימה, שם המתווך, טלפון, רישיון, האשטגים, em-dash או מקפים כפולים.',
+        body ? `להקשר בלבד — גוף הפוסט הראשי (אל תחזור עליו): """${body.slice(0, 600)}"""` : '',
+      ].filter(Boolean).join('\n\n');
+      const { data, error } = await supabase.functions.invoke('generate-content', {
+        body: {
+          topic: 'תגובה ראשונה קצרה לפוסט נדל"ן — שתי שורות בלבד',
+          platform: campaign.channel,
+          customInstructions: instructions,
+          selectedListingId: resolvedListingId || undefined,
+          listingFocusOnly: false,
+          skipLicenseFooter: true,
+        },
+      });
+      if (error) throw error;
+      const raw = String((data as any)?.content || (data as any)?.text || '').trim();
+      if (raw) {
+        // Keep first two non-empty lines only, strip any signature the model may have slipped in.
+        const cleaned = raw
+          .replace(/\n*\s*אודי\s+ויטמן[^\n]*/gu, '')
+          .replace(/\n*\s*(?:📞|☎️|📱)?\s*0?5[0-9][\s\-]?\d{3}[\s\-]?\d{4}[^\n]*/gu, '')
+          .replace(/\n*\s*ר\.?\s*מ\s*[:：][^\n]*/gu, '')
+          .replace(/\n*\s*רישיון\s*תיווך[^\n]*/gu, '');
+        const lines = cleaned.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 2);
+        setFirstComment(lines.join('\n'));
+        toast.success('תגובה ראשונה נוצרה');
+      } else {
+        toast.info('לא התקבל תוכן לתגובה');
+      }
+    } catch (e: any) {
+      toast.error('יצירת תגובה ראשונה נכשלה', { description: e?.message });
+    } finally {
+      setFirstCommentGenerating(false);
+    }
+  };
+
   const repost = async () => {
     if (!body.trim()) {
       toast.error('אין תוכן לפרסום');
@@ -389,6 +452,7 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
           campaign_name: `${campaign.campaign_name} · שוכפל`,
           media_urls: mediaUrls,
           listing_id: resolvedListingId ?? campaign.listing_id ?? null,
+          first_comment: firstCommentEnabled && firstComment.trim() ? firstComment.trim() : null,
         },
       });
       if (error) throw error;
@@ -510,6 +574,46 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
           placeholder="ערוך את גוף הפוסט..."
         />
 
+        {/* First-comment section — mirrors the main composer. Auto-posts as
+            the first comment on the published post via Ayrshare. */}
+        <div className="rounded-md border border-border bg-muted/20 p-3 space-y-2">
+          <div className="flex items-center justify-between gap-2">
+            <label className="flex items-center gap-2 text-sm font-semibold">
+              <input
+                type="checkbox"
+                checked={firstCommentEnabled}
+                onChange={(e) => setFirstCommentEnabled(e.target.checked)}
+                className="h-4 w-4 accent-primary"
+              />
+              תגובה ראשונה אוטומטית
+            </label>
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              onClick={generateFirstComment}
+              disabled={firstCommentGenerating || !firstCommentEnabled}
+              title="ייצר תגובה ראשונה עם AI"
+            >
+              {firstCommentGenerating ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <RefreshCw className="h-4 w-4" />
+              )}
+              {firstComment.trim() ? 'רענן' : 'ייצר'}
+            </Button>
+          </div>
+          <Textarea
+            value={firstComment}
+            onChange={(e) => setFirstComment(e.target.value)}
+            rows={3}
+            disabled={!firstCommentEnabled}
+            placeholder="שתי שורות: משפט קצר על הנכס + שורת מילות מפתח מופרדות ב-|"
+            className="text-sm"
+          />
+        </div>
+
+
         <DialogFooter className="gap-2 sm:gap-2">
           <Button variant="outline" onClick={regenerate} disabled={regenerating || posting}>
             {regenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
@@ -544,7 +648,7 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
         channelLabel={campaign.channel}
         brandName={`${campaign.campaign_name} · שוכפל`}
         body={body}
-        firstComment=""
+        firstComment={firstCommentEnabled ? firstComment : ''}
         mediaUrls={mediaUrls}
         listingId={resolvedListingId ?? campaign.listing_id ?? null}
         defaultGroupIds={[]}
