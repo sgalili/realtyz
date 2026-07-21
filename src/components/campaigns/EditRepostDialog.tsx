@@ -1,10 +1,12 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Sparkles, Send, Loader2 } from 'lucide-react';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Sparkles, Send, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
+import { stripAddressNumbers } from '@/lib/formatAddress';
 
 type Props = {
   open: boolean;
@@ -20,6 +22,26 @@ type Props = {
   onPosted?: () => void;
 };
 
+type ListingMeta = {
+  id: string;
+  property_title: string | null;
+  property_type: string | null;
+  deal_type: string | null;
+  address: string | null;
+  city: string | null;
+  neighborhood: string | null;
+  media_photos: string[] | null;
+};
+
+// Human Hebrew label for deal_type / listing_type-ish values.
+const dealTypeLabel = (raw: unknown): string | null => {
+  const v = String(raw ?? '').toLowerCase().trim();
+  if (!v) return null;
+  if (v === 'rent' || v === 'השכרה' || v === 'להשכרה') return 'השכרה';
+  if (v === 'sale' || v === 'מכירה' || v === 'למכירה') return 'מכירה';
+  return null;
+};
+
 /**
  * Edit an already-published post: keep its original images, regenerate the
  * copy through the SAME generate-content master pipeline used by the main
@@ -30,48 +52,67 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
   const [body, setBody] = useState(campaign.message_body ?? '');
   const [regenerating, setRegenerating] = useState(false);
   const [posting, setPosting] = useState(false);
+  const [listingMeta, setListingMeta] = useState<ListingMeta | null>(null);
+  const [resolvedListingId, setResolvedListingId] = useState<string | null>(null);
+  const [resolving, setResolving] = useState(false);
+  const [rateLimited, setRateLimited] = useState<string | null>(null);
+  const [lookupOptions, setLookupOptions] = useState<ListingMeta[]>([]);
+  const [showLookup, setShowLookup] = useState(false);
 
   useEffect(() => {
-    if (open) setBody(campaign.message_body ?? '');
+    if (open) {
+      setBody(campaign.message_body ?? '');
+      setRateLimited(null);
+      setShowLookup(false);
+    }
   }, [open, campaign.message_body]);
 
   const mediaUrls = Array.isArray(campaign.media_urls) ? campaign.media_urls : [];
 
-  // Best-effort lookup of the originating listing so generate-content can
-  // rebuild the post from the real property record (same behavior as the main
-  // composer). We match the most recent ai_content_logs row for this platform
-  // whose body matches the campaign's message_body.
-  // Resolve the originating listing so generate-content can rebuild the post
-  // from the real property record (identical behavior to the main composer).
-  // We try multiple signals in order:
-  //   1) exact/near-exact text match against ai_content_logs (last 50)
-  //   2) media_urls overlap with ai_content_logs (photos are preserved on repost)
-  //   3) media_urls overlap with listings.media_photos (direct match to a listing)
-  const resolveListingId = async (): Promise<string | null> => {
+  const loadListingMeta = useCallback(async (id: string): Promise<ListingMeta | null> => {
     try {
+      const { data } = await supabase
+        .from('listings')
+        .select('id, property_title, property_type, deal_type, address, city, neighborhood, media_photos')
+        .eq('id', id)
+        .maybeSingle();
+      return (data as ListingMeta) || null;
+    } catch {
+      return null;
+    }
+  }, []);
+
+  // Robust listing resolver — tries multiple signals in order:
+  //   1) campaign.listing_id (persisted by ayrshare-post into provider_response)
+  //   2) ai_content_logs match by generated_text or media overlap
+  //   3) listings.media_photos direct overlap
+  //   4) listings match by title/address token overlap against message body
+  const resolveListingId = useCallback(async (): Promise<string | null> => {
+    try {
+      if (campaign.listing_id) return campaign.listing_id;
+
       const original = (campaign.message_body ?? '').trim();
       const media = Array.isArray(campaign.media_urls) ? campaign.media_urls.filter(Boolean) : [];
 
-      // Pull a recent slice of logs to match against.
       const { data: logs } = await supabase
         .from('ai_content_logs')
         .select('listing_id, generated_text, media_urls, created_at, platform')
         .order('created_at', { ascending: false })
-        .limit(50);
+        .limit(80);
       const rows = (logs ?? []) as Array<any>;
 
-      // (1) text match
+      // text match
       if (original) {
         const hit = rows.find((r) => {
           if (!r?.listing_id) return false;
           const t = String(r?.generated_text ?? '').trim();
           if (!t) return false;
-          return t === original || original.startsWith(t.slice(0, 80)) || t.startsWith(original.slice(0, 80));
+          return t === original || original.startsWith(t.slice(0, 60)) || t.startsWith(original.slice(0, 60));
         });
         if (hit?.listing_id) return hit.listing_id as string;
       }
 
-      // (2) media overlap against logs
+      // media overlap against logs
       if (media.length) {
         const mediaSet = new Set(media);
         const hit = rows.find((r) => {
@@ -82,67 +123,134 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
         if (hit?.listing_id) return hit.listing_id as string;
       }
 
-      // (3) media overlap against listings.media_photos (last-resort direct lookup)
+      // media overlap against listings.media_photos
       if (media.length) {
-        const first = media[0];
-        const { data: listingHit } = await supabase
-          .from('listings')
-          .select('id, media_photos')
-          .contains('media_photos', [first])
-          .limit(1)
-          .maybeSingle();
-        if ((listingHit as any)?.id) return (listingHit as any).id as string;
+        for (const url of media.slice(0, 3)) {
+          const { data: listingHit } = await supabase
+            .from('listings')
+            .select('id')
+            .contains('media_photos', [url])
+            .limit(1)
+            .maybeSingle();
+          if ((listingHit as any)?.id) return (listingHit as any).id as string;
+        }
       }
+
+      // title / address token overlap
+      if (original) {
+        const tokens = Array.from(new Set(
+          original
+            .split(/[\s,.\n\-|]+/)
+            .map((t) => t.trim())
+            .filter((t) => t.length >= 3 && /[\u0590-\u05FF]/.test(t))
+        )).slice(0, 8);
+        for (const tok of tokens) {
+          const { data: byTitle } = await supabase
+            .from('listings')
+            .select('id')
+            .ilike('property_title', `%${tok}%`)
+            .limit(1)
+            .maybeSingle();
+          if ((byTitle as any)?.id) return (byTitle as any).id as string;
+          const { data: byAddr } = await supabase
+            .from('listings')
+            .select('id')
+            .ilike('address', `%${tok}%`)
+            .limit(1)
+            .maybeSingle();
+          if ((byAddr as any)?.id) return (byAddr as any).id as string;
+        }
+      }
+
       return null;
     } catch {
       return null;
     }
+  }, [campaign.listing_id, campaign.message_body, campaign.media_urls]);
+
+  // On open, resolve + hydrate listing metadata for the dynamic header.
+  useEffect(() => {
+    if (!open) return;
+    let cancelled = false;
+    (async () => {
+      setResolving(true);
+      const id = await resolveListingId();
+      if (cancelled) return;
+      setResolvedListingId(id);
+      if (id) {
+        const meta = await loadListingMeta(id);
+        if (!cancelled) setListingMeta(meta);
+      } else {
+        setListingMeta(null);
+      }
+      setResolving(false);
+    })();
+    return () => { cancelled = true; };
+  }, [open, resolveListingId, loadListingMeta]);
+
+  // Lazy-load a small list of recent listings for the manual-lookup fallback.
+  const openLookup = async () => {
+    setShowLookup(true);
+    if (lookupOptions.length) return;
+    try {
+      const { data } = await supabase
+        .from('listings')
+        .select('id, property_title, property_type, deal_type, address, city, neighborhood, media_photos')
+        .order('updated_at', { ascending: false })
+        .limit(50);
+      setLookupOptions(((data ?? []) as ListingMeta[]));
+    } catch { /* non-fatal */ }
   };
+
+  const pickListingManually = async (id: string) => {
+    setResolvedListingId(id);
+    const meta = lookupOptions.find((l) => l.id === id) || await loadListingMeta(id);
+    setListingMeta(meta || null);
+    setShowLookup(false);
+    toast.success('נכס נבחר ידנית');
+  };
+
+  // Dynamic dialog title: [property_type] | [מכירה/השכרה] | [street name]
+  const dynamicTitle = useMemo(() => {
+    if (!listingMeta) return 'עריכה ופרסום מחדש';
+    const parts: string[] = [];
+    if (listingMeta.property_type) parts.push(String(listingMeta.property_type).trim());
+    const deal = dealTypeLabel(listingMeta.deal_type);
+    if (deal) parts.push(deal);
+    const street = stripAddressNumbers(listingMeta.address || '').trim();
+    if (street) parts.push(street);
+    return parts.length ? parts.join(' | ') : (listingMeta.property_title || 'עריכה ופרסום מחדש');
+  }, [listingMeta]);
 
   const regenerate = async () => {
     setRegenerating(true);
     try {
-      // Prefer the listing_id persisted on the campaign row (written by
-      // ayrshare-post into provider_response.listing_id). Fall back to the
-      // heuristic resolver only when it's missing (older rows).
-      const selectedListingId = campaign.listing_id || (await resolveListingId());
+      const selectedListingId = resolvedListingId;
 
-      // If we cannot tie this post back to a real listing, we refuse to
-      // regenerate — the master template requires real property facts, and
-      // running the generic path here is exactly what produces the broker
-      // "בעולם הנדל״ן..." fluff the user is trying to eliminate.
-      if (!selectedListingId) {
-        toast.error('לא זוהה הנכס המקורי לפוסט', {
-          description: 'ערוך את הטקסט ידנית או צור פוסט חדש מדף הקמפיינים עם בחירת נכס.',
-        });
-        return;
-      }
-
-      // Same invocation shape as CampaignCenter.handleGenerate — one unified
-      // generation engine, with listingFocusOnly forced so the edge function
-      // takes the strict 5-block master-template path.
       const rotateNote = [
         'נסח מחדש את הפוסט תוך שמירה קפדנית על תבנית המאסטר של אודי (5 בלוקים בלבד, בסדר הזה):',
-        '1) פתיח לוכד "🏡✨ <סוג הנכס + חדרים + עיר>" — משפט אחד קצר.',
+        '1) הוק כותרת שכולל: סוג עסקה (למכירה/להשכרה) + סוג הנכס + חדרים כשקיים + שם רחוב (בלי מספר בית) + שכונה כשקיימת + עיר, ובנוסף מילת מפתח משכנעת אחת קצרה.',
         '2) 1-2 משפטים על גודל, קומה, נוף/פיצ׳ר בולט ושדרוגים.',
         '3) "🌇 <שכונה/רחוב + נגישות ונוחות>".',
         '4) "💫 <יתרון אורח חיים>".',
         '5) "מחיר מבוקש: <סכום>. 📞 מוזמנים ליצור קשר לתיאום ביקור!" — מחיר ו-CTA באותה שורה.',
-        'אסור לחלוטין: פסקאות פתיחה כלליות על "בתחום הנדל״ן", "בעולם הנדל״ן", "כמתווך", "בתור מתווך", "אני אודי", "יש לי הכבוד", "אני שמח/גאה להציג", וכל הצגה עצמית או סלוגן שיווקי. נכנסים ישר לנכס.',
-        'אסור בהחלט להוסיף שורת מילות מפתח עם | בגוף הפוסט, ואסור האשטגים.',
+        'אסור: פסקאות פתיחה על "בעולם הנדל״ן", "כמתווך", "בתור מתווך", "אני אודי", "יש לי הכבוד", "אני שמח/גאה להציג", וכל הצגה עצמית או סלוגן שיווקי כללי.',
+        'אסור להוסיף שורת מילות מפתח עם | בגוף הפוסט, ואסור האשטגים.',
         'אסור לכלול מספרי בית/דירה/כניסה בכתובת — שם רחוב בלבד.',
         'שמור על אותן עובדות מהנכס (מחיר, חדרים, מ״ר, קומה, שם רחוב) — אל תמציא נתונים.',
-        'החתימה הקנונית (byline, ר.מ, WhatsApp, שיחה טלפונית) תתווסף אוטומטית בשרת — אל תכתוב אותה בעצמך.',
+        'החתימה הקנונית תתווסף אוטומטית בשרת — אל תכתוב אותה בעצמך.',
         'גוון פתיח, ניסוח ו-CTA לעומת הגרסה הקודמת כדי להימנע מחזרה.',
       ].join('\n');
 
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: {
-          topic: 'פוסט קידום נכס (רענון תבנית מאסטר)',
+          topic: selectedListingId
+            ? 'פוסט קידום נכס (רענון תבנית מאסטר)'
+            : `רענון תוכן לפוסט קיים בערוץ ${campaign.channel}`,
           platform: campaign.channel,
           customInstructions: rotateNote,
-          selectedListingId,
-          listingFocusOnly: true,
+          selectedListingId: selectedListingId || undefined,
+          listingFocusOnly: !!selectedListingId,
         },
       });
       if (error) throw error;
@@ -166,6 +274,7 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
       return;
     }
     setPosting(true);
+    setRateLimited(null);
     try {
       const { data, error } = await supabase.functions.invoke('ayrshare-post', {
         body: {
@@ -173,17 +282,37 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
           channels: [campaign.channel],
           campaign_name: `${campaign.campaign_name} · שוכפל`,
           media_urls: mediaUrls,
-          listing_id: campaign.listing_id ?? null,
+          listing_id: resolvedListingId ?? campaign.listing_id ?? null,
         },
       });
       if (error) throw error;
-      const errText = (data as any)?.error;
-      if (errText) throw new Error(errText);
+      const payload: any = data ?? {};
+      const errCode = payload?.error;
+      // Friendly rate-limit surface — provider (Ayrshare) or platform hit the ceiling.
+      if (
+        errCode === 'rate_limit_exceeded' ||
+        errCode === 'RATE_LIMITED' ||
+        errCode === 'rate_limited' ||
+        payload?.code === 105 ||
+        payload?.status === 429
+      ) {
+        const msg = payload?.message || 'הרשת החברתית מגבילה כרגע פרסומים. נסה שוב בעוד מספר דקות.';
+        setRateLimited(String(msg));
+        toast.error('הגעת למגבלת פרסום ברשת החברתית', { description: String(msg) });
+        return; // keep dialog open so the user can retry
+      }
+      if (errCode) throw new Error(payload?.message || String(errCode));
       toast.success('הפוסט פורסם מחדש');
       onPosted?.();
       onOpenChange(false);
     } catch (e: any) {
-      toast.error('פרסום מחדש נכשל', { description: e?.message });
+      const msg = String(e?.message ?? '');
+      if (/rate.?limit|429|\bcode\s*105\b/i.test(msg)) {
+        setRateLimited(msg);
+        toast.error('הגעת למגבלת פרסום ברשת החברתית', { description: msg });
+      } else {
+        toast.error('פרסום מחדש נכשל', { description: msg });
+      }
     } finally {
       setPosting(false);
     }
@@ -193,11 +322,51 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent dir="rtl" className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>עריכה ופרסום מחדש</DialogTitle>
-          <DialogDescription>
+          <DialogTitle className="text-right">
+            {resolving ? 'עריכה ופרסום מחדש' : dynamicTitle}
+          </DialogTitle>
+          <DialogDescription className="text-right">
             התמונות המקוריות נשמרות. נסח מחדש את הטקסט או ערוך ידנית, ואז פרסם שוב לאותו ערוץ.
           </DialogDescription>
         </DialogHeader>
+
+        {!resolving && !resolvedListingId && (
+          <div className="rounded-md border border-amber-300/60 bg-amber-50 dark:bg-amber-950/30 p-3 text-sm space-y-2">
+            <div className="flex items-center gap-2 font-medium">
+              <AlertTriangle className="h-4 w-4" />
+              לא זוהה אוטומטית הנכס המקורי — אפשר לבחור אותו ידנית כדי לרענן לפי תבנית המאסטר.
+            </div>
+            {!showLookup ? (
+              <Button size="sm" variant="outline" onClick={openLookup}>בחר נכס ידנית</Button>
+            ) : (
+              <Select onValueChange={pickListingManually}>
+                <SelectTrigger className="w-full"><SelectValue placeholder="בחר נכס מהרשימה" /></SelectTrigger>
+                <SelectContent>
+                  {lookupOptions.map((l) => {
+                    const street = stripAddressNumbers(l.address || '').trim();
+                    const deal = dealTypeLabel(l.deal_type);
+                    const label = [l.property_type, deal, street || l.property_title || l.city].filter(Boolean).join(' | ');
+                    return <SelectItem key={l.id} value={l.id}>{label || l.id}</SelectItem>;
+                  })}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        )}
+
+        {rateLimited && (
+          <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm space-y-2">
+            <div className="flex items-center gap-2 font-medium text-destructive">
+              <AlertTriangle className="h-4 w-4" />
+              הגעת למגבלת פרסום ברשת החברתית
+            </div>
+            <div className="text-muted-foreground">{rateLimited}</div>
+            <Button size="sm" variant="outline" onClick={repost} disabled={posting}>
+              <RefreshCw className="h-4 w-4 ml-1" />
+              נסה שוב
+            </Button>
+          </div>
+        )}
 
         {mediaUrls.length > 0 && (
           <div className="flex gap-2 overflow-x-auto py-1">
