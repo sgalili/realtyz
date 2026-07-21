@@ -396,6 +396,18 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
   const generateFirstComment = async () => {
     setFirstCommentGenerating(true);
     try {
+      // Canonical keyword line — same shape produced by the main composer's
+      // buildFirstCommentKeywordLine helper so both surfaces emit identical
+      // 2-line first comments.
+      const keywordParts = listingMeta
+        ? [
+            listingMeta.property_type || 'דירה',
+            listingMeta.city || null,
+            listingMeta.address ? stripAddressNumbers(listingMeta.address) : (listingMeta.neighborhood || null),
+          ].filter(Boolean) as string[]
+        : [];
+      const keywordLine = Array.from(new Set(keywordParts.map((s) => s.trim()))).join(' | ');
+
       const factsLine = listingMeta
         ? [
             listingMeta.property_type ? `סוג: ${listingMeta.property_type}` : null,
@@ -406,14 +418,21 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
             listingMeta.property_title ? `כותרת: ${listingMeta.property_title}` : null,
           ].filter(Boolean).join(' | ')
         : '';
+
+      // Exact prompt structure used by CampaignCenter → handleGenerateFirstComment.
       const instructions = [
-        'כתוב תגובה ראשונה (First Comment) לפוסט נדל"ן — שתי שורות בדיוק, בעברית.',
-        'שורה 1: משפט אחד קצר, אנושי ומשכנע על הנכס (עד ~18 מילים). ללא אימוג\'ים/בולטים.',
-        'שורה 2: שורת מילות מפתח מופרדות בקווים אנכיים (|) — סוג נכס | עיר | שכונה | רחוב | חדרים | מ״ר | קומה | תכונות בולטות ככל שידוע.',
-        factsLine ? `היעזר בעובדות האלו בלבד, אל תמציא נתונים: ${factsLine}` : '',
-        'אסור בהחלט: חתימה, שם המתווך, טלפון, רישיון, האשטגים, em-dash או מקפים כפולים.',
-        body ? `להקשר בלבד — גוף הפוסט הראשי (אל תחזור עליו): """${body.slice(0, 600)}"""` : '',
+        'כתוב את התגובה הראשונה (First Comment) לפוסט נדל"ן — פורמט קצר וקפדני של שתי שורות בלבד.',
+        'מבנה מחייב, בדיוק שתי שורות ותו לא:',
+        'שורה 1: משפט אחד קצר, אנושי ומשכנע על הנכס (עד ~18 מילים). בלי אימוג\'ים, בלי בולטים, בלי סוגריים מרובעים.',
+        keywordLine
+          ? `שורה 2: שורת מילות מפתח בדיוק זו, מופרדת בקווים אנכיים (|), ללא שינוי סדר או תוכן: ${keywordLine}`
+          : 'שורה 2: שורת מילות מפתח מופרדות בקווים אנכיים (|) — סוג נכס | עיר | רחוב/שכונה | חדרים | מ״ר | קומה | תכונות בולטות ככל שידוע.',
+        factsLine ? `פרטים יבשים של הנכס להישען עליהם בלבד (אסור להמציא נתונים שלא מופיעים כאן): ${factsLine}` : '',
+        'אסור בהחלט: יותר משתי שורות, פסקאות תיאור ארוכות, בולטים (✅/📍/💰/📞), אימוג\'ים בכלל, כוכביות, האשטגים, em-dash, מקפים כפולים (--), סוגריים מרובעים, או placeholders.',
+        'אסור בתכלית האיסור: חתימה, שם המתווך, טלפון, רישיון תיווך, או פרטי יצירת קשר. התגובה חייבת להסתיים בשורת מילות המפתח.',
+        body ? `לצורך הקשר בלבד, גוף הפוסט הראשי שכבר נוצר — אל תחזור עליו: """${body.slice(0, 600)}"""` : '',
       ].filter(Boolean).join('\n\n');
+
       const { data, error } = await supabase.functions.invoke('generate-content', {
         body: {
           topic: 'תגובה ראשונה קצרה לפוסט נדל"ן — שתי שורות בלבד',
@@ -427,14 +446,23 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
       if (error) throw error;
       const raw = String((data as any)?.content || (data as any)?.text || '').trim();
       if (raw) {
-        // Keep first two non-empty lines only, strip any signature the model may have slipped in.
+        // Strip any signature/contact/list-marker noise the model may inject.
         const cleaned = raw
+          .replace(/^\s*[-*•]\s+/gm, '')
+          .replace(/^\s*[✅📍💰📞]\s*/gm, '')
+          .replace(/[#*_`]+/g, '')
           .replace(/\n*\s*אודי\s+ויטמן[^\n]*/gu, '')
           .replace(/\n*\s*(?:📞|☎️|📱)?\s*0?5[0-9][\s\-]?\d{3}[\s\-]?\d{4}[^\n]*/gu, '')
           .replace(/\n*\s*ר\.?\s*מ\s*[:：][^\n]*/gu, '')
           .replace(/\n*\s*רישיון\s*תיווך[^\n]*/gu, '');
-        const lines = cleaned.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 2);
-        setFirstComment(lines.join('\n'));
+        const lines = cleaned.split('\n').map((l) => l.trim()).filter(Boolean);
+        // First non-keyword line becomes the sentence; append the canonical
+        // keyword line as line 2 (mirror composer behaviour).
+        const firstSentence = lines.find((l) => !l.includes('|')) || lines[0] || '';
+        const finalText = firstSentence && keywordLine
+          ? `${firstSentence}\n${keywordLine}`
+          : lines.slice(0, 2).join('\n');
+        setFirstComment(finalText);
         toast.success('תגובה ראשונה נוצרה');
       } else {
         toast.info('לא התקבל תוכן לתגובה');
@@ -445,6 +473,7 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
       setFirstCommentGenerating(false);
     }
   };
+
 
   const repost = async () => {
     if (!body.trim()) {
