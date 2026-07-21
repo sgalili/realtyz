@@ -232,10 +232,69 @@ export function ScheduleCurrentPostDialog({
   };
 
   const handleSubmit = async () => {
-    if (!user) { toast.error('יש להתחבר'); return; }
-    if (!body.trim()) { toast.error('אין תוכן לתזמון'); return; }
+    // Entry-level diagnostic — surfaces the exact state at the moment the
+    // button is clicked so silent early-returns become traceable.
+    console.log('[ScheduleCurrentPostDialog] Submit clicked', {
+      day,
+      winStart,
+      winEnd,
+      winCount,
+      recurrence,
+      recurrenceDays,
+      recurrenceCount,
+      channelId,
+      listingId,
+      hasUser: !!user,
+      bodyLen: body?.length ?? 0,
+      firstCommentLen: firstComment?.length ?? 0,
+      mediaUrlsCount: mediaUrls?.length ?? 0,
+      selectedGroupIds,
+      targetsCount: targets?.length ?? 0,
+    });
+
+    if (!user) {
+      console.warn('[ScheduleCurrentPostDialog] blocked: no user');
+      toast.error('יש להתחבר כדי לתזמן פרסום');
+      return;
+    }
+    if (!body || !body.trim()) {
+      console.warn('[ScheduleCurrentPostDialog] blocked: empty body');
+      toast.error('אין תוכן לתזמון — כתוב טקסט לפוסט לפני התזמון');
+      return;
+    }
+    if (!channelId) {
+      console.warn('[ScheduleCurrentPostDialog] blocked: missing channel');
+      toast.error('לא נבחר ערוץ לפרסום');
+      return;
+    }
+    if (!winStart || !winEnd) {
+      console.warn('[ScheduleCurrentPostDialog] blocked: missing time window');
+      toast.error('בחר שעת התחלה ושעת סיום לחלון הפרסום');
+      return;
+    }
+    if (!day) {
+      console.warn('[ScheduleCurrentPostDialog] blocked: missing day');
+      toast.error('בחר תאריך לפרסום');
+      return;
+    }
+    if (recurrence === 'custom' && recurrenceDays.length === 0) {
+      console.warn('[ScheduleCurrentPostDialog] blocked: custom recurrence with no days');
+      toast.error('בחר לפחות יום אחד בשבוע לחזרתיות מותאמת');
+      return;
+    }
+
     const slots = buildSlots();
-    if (slots.length === 0) return;
+    console.log('[ScheduleCurrentPostDialog] built slots', {
+      count: slots.length,
+      first: slots[0]?.toISOString(),
+      last: slots[slots.length - 1]?.toISOString(),
+    });
+    if (slots.length === 0) {
+      // buildSlots already toasts specific reasons; add a generic fallback so
+      // the user never sees a silent no-op.
+      toast.error('לא נוצרו מועדים לפרסום — בדוק את חלון השעות והחזרתיות');
+      return;
+    }
 
     setSubmitting(true);
     const ownerScope = workspaceOwnerId ?? user.id;
