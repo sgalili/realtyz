@@ -380,6 +380,63 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
     }
   };
 
+  // Generate a 2-line Hebrew first comment (short sentence + keyword line
+  // separated by `|`), matching the composer's style. Reuses generate-content
+  // with the resolved listing so facts stay grounded and the canonical footer
+  // is skipped (first comments must NOT carry the broker signature).
+  const generateFirstComment = async () => {
+    setFirstCommentGenerating(true);
+    try {
+      const factsLine = listingMeta
+        ? [
+            listingMeta.property_type ? `סוג: ${listingMeta.property_type}` : null,
+            dealTypeLabel(listingMeta.deal_type) ? `עסקה: ${dealTypeLabel(listingMeta.deal_type)}` : null,
+            listingMeta.address ? `רחוב: ${stripAddressNumbers(listingMeta.address)}` : null,
+            listingMeta.neighborhood ? `שכונה: ${listingMeta.neighborhood}` : null,
+            listingMeta.city ? `עיר: ${listingMeta.city}` : null,
+            listingMeta.property_title ? `כותרת: ${listingMeta.property_title}` : null,
+          ].filter(Boolean).join(' | ')
+        : '';
+      const instructions = [
+        'כתוב תגובה ראשונה (First Comment) לפוסט נדל"ן — שתי שורות בדיוק, בעברית.',
+        'שורה 1: משפט אחד קצר, אנושי ומשכנע על הנכס (עד ~18 מילים). ללא אימוג\'ים/בולטים.',
+        'שורה 2: שורת מילות מפתח מופרדות בקווים אנכיים (|) — סוג נכס | עיר | שכונה | רחוב | חדרים | מ״ר | קומה | תכונות בולטות ככל שידוע.',
+        factsLine ? `היעזר בעובדות האלו בלבד, אל תמציא נתונים: ${factsLine}` : '',
+        'אסור בהחלט: חתימה, שם המתווך, טלפון, רישיון, האשטגים, em-dash או מקפים כפולים.',
+        body ? `להקשר בלבד — גוף הפוסט הראשי (אל תחזור עליו): """${body.slice(0, 600)}"""` : '',
+      ].filter(Boolean).join('\n\n');
+      const { data, error } = await supabase.functions.invoke('generate-content', {
+        body: {
+          topic: 'תגובה ראשונה קצרה לפוסט נדל"ן — שתי שורות בלבד',
+          platform: campaign.channel,
+          customInstructions: instructions,
+          selectedListingId: resolvedListingId || undefined,
+          listingFocusOnly: false,
+          skipLicenseFooter: true,
+        },
+      });
+      if (error) throw error;
+      const raw = String((data as any)?.content || (data as any)?.text || '').trim();
+      if (raw) {
+        // Keep first two non-empty lines only, strip any signature the model may have slipped in.
+        const cleaned = raw
+          .replace(/\n*\s*אודי\s+ויטמן[^\n]*/gu, '')
+          .replace(/\n*\s*(?:📞|☎️|📱)?\s*0?5[0-9][\s\-]?\d{3}[\s\-]?\d{4}[^\n]*/gu, '')
+          .replace(/\n*\s*ר\.?\s*מ\s*[:：][^\n]*/gu, '')
+          .replace(/\n*\s*רישיון\s*תיווך[^\n]*/gu, '');
+        const lines = cleaned.split('\n').map((l) => l.trim()).filter(Boolean).slice(0, 2);
+        setFirstComment(lines.join('\n'));
+        toast.success('תגובה ראשונה נוצרה');
+      } else {
+        toast.info('לא התקבל תוכן לתגובה');
+      }
+    } catch (e: any) {
+      toast.error('יצירת תגובה ראשונה נכשלה', { description: e?.message });
+    } finally {
+      setFirstCommentGenerating(false);
+    }
+  };
+
   const repost = async () => {
     if (!body.trim()) {
       toast.error('אין תוכן לפרסום');
