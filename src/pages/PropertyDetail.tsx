@@ -371,7 +371,17 @@ export default function PropertyDetail() {
   const photos = editMode && form ? form.photos : dbPhotos;
   const main = photos[activePhoto];
 
-  const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
+  // Prefer the raw source-provided property type verbatim (e.g. "דירה" from
+  // Webtiv/Homely). Only fall back to the enum-derived Hebrew label when the
+  // source didn't supply anything. NEVER guess from title/description.
+  const rawPropertyTypeSource = String(
+    ((property as any).features && typeof (property as any).features === 'object' && !Array.isArray((property as any).features)
+      ? (property as any).features.property_type
+      : null)
+    ?? (property as any).property_type_source
+    ?? ''
+  ).trim();
+  const propertyTypeHe = rawPropertyTypeSource || PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
   const transactionHe = isRent ? 'להשכרה' : 'למכירה';
   // Dynamic headline — NO hardcoded fallbacks like "נווה עובד"/"הרצליה הירוקה".
   const headlineParts = [

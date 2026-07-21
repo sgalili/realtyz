@@ -74,7 +74,16 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
   const yad2Url = isYad2Listing ? resolvedUrl : null;
 
   const isRent = Number(property.price) < 50_000;
-  const propertyTypeHe = PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
+  // Prefer the raw source-provided property type verbatim from source_metadata
+  // or features; only fall back to the enum label. Never derive from title.
+  const rawPropertyTypeSource = String(
+    (sourceMetadata as any).property_type
+    ?? ((property as any).features && typeof (property as any).features === 'object' && !Array.isArray((property as any).features)
+      ? (property as any).features.property_type
+      : null)
+    ?? ''
+  ).trim();
+  const propertyTypeHe = rawPropertyTypeSource || PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
   const transactionHe = isRent ? 'להשכרה' : 'למכירה';
   const locationParts = [property.address, neighborhood, property.city].filter((p) => p && String(p).trim());
   const headline = `${propertyTypeHe} ${transactionHe}, ${locationParts.length ? locationParts.join(', ') : 'שכונה'}`;

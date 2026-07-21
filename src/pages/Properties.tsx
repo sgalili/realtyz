@@ -58,13 +58,22 @@ function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
 }
 
-function detectPropertyType(title: string): PropertyType {
-  if (/דופלקס/i.test(title)) return 'duplex';
-  if (/פנט|פנטהאוז/i.test(title)) return 'penthouse';
-  if (/בית|קוטג/i.test(title)) return 'house';
-  if (/גן/i.test(title)) return 'garden_apt';
+// Source of truth for property type: `source_metadata.property_type` or
+// `features.property_type` coming directly from Webtiv/Homely/Yad2.
+// We NEVER scan the title or description to guess a type — the source value
+// wins verbatim. This helper only maps the source's own literal string onto
+// our internal enum for filtering/sorting. Display code shows the raw
+// source string (see `property_type_source` on HomelyProperty rows below).
+function normalizePropertyTypeEnum(raw: unknown): PropertyType {
+  const s = String(raw ?? '').trim();
+  if (!s) return 'apartment';
+  if (/^duplex$/i.test(s) || /דופלקס/.test(s)) return 'duplex';
+  if (/^penthouse$/i.test(s) || /פנטהאוז|פנט־האוז|פנט האוז/.test(s)) return 'penthouse';
+  if (/^garden/i.test(s) || /דירת גן|גן/.test(s)) return 'garden_apt';
+  if (/^(house|cottage|villa)$/i.test(s) || /קוטג|בית פרטי|וילה/.test(s)) return 'house';
   return 'apartment';
 }
+
 
 function textBool(value: unknown): boolean | null {
   if (value == null || value === '') return null;
@@ -269,7 +278,15 @@ export default function Properties() {
                 rooms: Number(row.rooms ?? 0),
                 size_sqm: Number(row.sqm ?? 0),
                 floor: row.floor != null ? Number(row.floor) : (meta.floor != null ? Number(meta.floor) : undefined),
-                property_type: detectPropertyType(`${row.property_title ?? ''} ${row.description ?? ''}`),
+                property_type: normalizePropertyTypeEnum(
+                  (features && typeof features === 'object' && !Array.isArray(features) ? (features as any).property_type : null)
+                  ?? (meta as any).property_type
+                ),
+                property_type_source: String(
+                  ((features && typeof features === 'object' && !Array.isArray(features) ? (features as any).property_type : null)
+                    ?? (meta as any).property_type
+                    ?? '')
+                ).trim() || null,
                 photos: mediaPhotos,
                 url: row.source_url ?? meta.source_url ?? null,
                 features,
@@ -323,6 +340,7 @@ export default function Properties() {
       size_sqm: Number(r.size_sqm ?? 0),
       floor: r.floor != null ? Number(r.floor) : undefined,
       property_type: (r.property_type ?? 'apartment') as PropertyType,
+      property_type_source: (r as any).property_type_source ?? null,
       photos: Array.isArray(r.photos) ? normalizeImageUrls(r.photos as string[]) : [],
       url: r.url ?? null,
       features: Array.isArray(r.features) ? r.features as string[] : [],
@@ -787,7 +805,7 @@ function PropertyCard({ property, onShare }: { property: HomelyProperty; onShare
             </span>
           )}
           <Badge className="absolute top-3 right-3 bg-background/90 text-foreground border">
-            {PROPERTY_TYPE_LABELS_HE[property.property_type]}
+            {(property as any).property_type_source || PROPERTY_TYPE_LABELS_HE[property.property_type]}
           </Badge>
           {property.listing_type && (
             <Badge className={`absolute top-3 left-3 border ${isRent ? 'bg-[#0b3982] text-white border-[#0b3982]' : 'bg-primary text-primary-foreground'}`}>
@@ -1035,7 +1053,7 @@ function PropertyTable({ properties }: { properties: Array<HomelyProperty & { ex
                   <td className="px-2 py-1.5 whitespace-nowrap">{p.floor ?? '—'}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{p.size_sqm || '—'}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">{(p as any).balcony === true ? 'כן' : (p as any).balcony === false ? 'לא' : '—'}</td>
-                  <td className="px-2 py-1.5 whitespace-nowrap">{PROPERTY_TYPE_LABELS_HE[p.property_type] || '—'}</td>
+                  <td className="px-2 py-1.5 whitespace-nowrap">{(p as any).property_type_source || PROPERTY_TYPE_LABELS_HE[p.property_type] || '—'}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap text-muted-foreground">{(p as any).updated_at ? new Date((p as any).updated_at).toLocaleDateString('he-IL') : (p.created_at ? new Date(p.created_at).toLocaleDateString('he-IL') : '—')}</td>
                   <td className="px-2 py-1.5 whitespace-nowrap">
                     {sourceUrl ? (
