@@ -585,12 +585,17 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
 
           let q = userClient
             .from("listings")
-            .select("id, property_title, asking_price, features, description, office_notes")
+            .select("id, property_title, asking_price, features, description, office_notes, deal_type")
             .eq("is_published", true)
             .order("created_at", { ascending: false })
             .limit(30);
           if (budgetMax) q = q.lte("asking_price", Math.round(budgetMax * 1.15));
           if (budgetMin) q = q.gte("asking_price", Math.round(budgetMin * 0.85));
+          // HARD deal_type pre-filter at the SQL level so mixed pipelines can
+          // never leak into the candidate set.
+          if (dealType === "rent" || dealType === "sale") {
+            q = q.or(`deal_type.eq.${dealType},deal_type.is.null`);
+          }
 
           const { data: candRows } = await q;
           let candidates = (candRows ?? []) as any[];
@@ -601,7 +606,11 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
           // listing has no explicit listing_type, fall back to a price-based
           // heuristic (price < 50k → rent, price ≥ 100k → sale) so the mixed
           // buyer/renter DB still routes cleanly.
-          const extractType = (features: any, price?: any): "sale" | "rent" | null => {
+          const extractType = (row: any): "sale" | "rent" | null => {
+            // 1. Prefer the explicit column when populated.
+            const col = String(row?.deal_type ?? "").toLowerCase();
+            if (col === "rent" || col === "sale") return col;
+            // 2. features.listing_type fallback.
             const fromFeatures = (f: any): "sale" | "rent" | null => {
               if (f && typeof f === "object" && "listing_type" in f) {
                 const v = String((f as any).listing_type ?? "").toLowerCase();
@@ -609,6 +618,7 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
               }
               return null;
             };
+            const features = row?.features;
             if (Array.isArray(features)) {
               for (const f of features) {
                 const v = fromFeatures(f);
@@ -618,7 +628,8 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
               const v = fromFeatures(features);
               if (v) return v;
             }
-            const n = Number(price ?? 0);
+            // 3. Price-based heuristic fallback for legacy rows.
+            const n = Number(row?.asking_price ?? 0);
             if (Number.isFinite(n) && n > 0) {
               if (n < 50_000) return "rent";
               if (n >= 100_000) return "sale";
@@ -626,12 +637,11 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
             return null;
           };
           if (dealType === "rent" || dealType === "sale") {
-            candidates = candidates.filter((l) => {
-              const t = extractType(l.features, l.asking_price);
-              // If we cannot classify at all, drop it from the strict pipeline
-              // rather than risk leaking the wrong side.
-              return t === dealType;
-            });
+            const before = candidates.length;
+            candidates = candidates.filter((l) => extractType(l) === dealType);
+            if (before !== candidates.length) {
+              console.log(`[matching] deal_type=${dealType} filter dropped ${before - candidates.length}/${before} candidates`);
+            }
           }
 
           // Soft-score by rooms/city overlap; keep top 5.
@@ -776,7 +786,7 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
             if (searchRes.ok) {
               const sj = await searchRes.json();
               const props = Array.isArray(sj?.properties) ? sj.properties : [];
-              webtivResults = props.slice(0, 8).map((p: any) => ({
+              webtivResults = props.slice(0, 16).map((p: any) => ({
                 id: String(p.homely_id ?? p.serial ?? ""),
                 title: String(p.title ?? p.property_title ?? "נכס"),
                 price: Number(p.price ?? 0) || 0,
@@ -789,6 +799,17 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
                 transaction_type: p.transaction_type === "rent" ? "rent" : "sale",
                 source_url: p.source_url ?? null,
               }));
+              // HARD deal_type filter: if the user asked for rent OR the lead
+              // is a rent lead, strip every sale result (and vice-versa).
+              // Never mix pipelines in the response payload.
+              if (deal === "rent" || deal === "sale") {
+                const before = webtivResults.length;
+                webtivResults = webtivResults.filter((r) => r.transaction_type === deal);
+                if (before !== webtivResults.length) {
+                  console.log(`[webtiv_search] deal_type=${deal} filter dropped ${before - webtivResults.length}/${before} mismatched results`);
+                }
+              }
+              webtivResults = webtivResults.slice(0, 8);
               if (webtivResults.length) {
                 const priceLabel = (t: string) => (t === "rent" ? "שכ\"ד" : "מחיר");
                 webtivBlock = [

@@ -26,6 +26,14 @@ const DEFAULT_URLS = [
   "https://www.yad2.co.il/realestate/forsale?city=6400", // Herzliya
 ];
 
+type DealType = "sale" | "rent";
+
+function detectDealType(url: string): DealType {
+  const u = url.toLowerCase();
+  if (/\/(forrent|rent)(\b|\/|\?)/.test(u) || /realestate\/rent/.test(u)) return "rent";
+  return "sale";
+}
+
 type Scraped = {
   source_url: string;
   external_id: string | null;
@@ -38,6 +46,7 @@ type Scraped = {
   sqm: number | null;
   floor: number | null;
   photos: string[];
+  deal_type: DealType;
 };
 
 function json(body: unknown, status = 200) {
@@ -94,6 +103,8 @@ Deno.serve(async (req) => {
     browser = await puppeteer.connect({ browserWSEndpoint: wsEndpoint });
 
     for (const searchUrl of urls) {
+      const dealType = detectDealType(searchUrl);
+      console.log(`[scrape-yad2] deal_type=${dealType} for ${searchUrl}`);
       const page = await browser.newPage();
       try {
         await page.setViewport({ width: 1440, height: 2400 });
@@ -207,6 +218,7 @@ Deno.serve(async (req) => {
             sqm: toInt(r.sqm),
             floor: toInt(r.floor),
             photos: Array.isArray(r.photos) ? r.photos.slice(0, 20) : [],
+            deal_type: dealType,
           });
         }
       } catch (e) {
@@ -248,6 +260,7 @@ Deno.serve(async (req) => {
         address: row.address,
         sqm: row.sqm,
         floor: row.floor,
+        deal_type: row.deal_type,
         source: "yad2",
         source_url: row.source_url,
         media_photos: row.photos,
