@@ -220,6 +220,9 @@ export default function Properties() {
   const [addOpen, setAddOpen] = useState(false);
   const [quickLinkUrl, setQuickLinkUrl] = useState('');
   const [quickLinkSeed, setQuickLinkSeed] = useState<string | null>(null);
+  const [yad2Url, setYad2Url] = useState('');
+  const [yad2Scraping, setYad2Scraping] = useState(false);
+  const [yad2Result, setYad2Result] = useState<{ scanned?: number; scraped?: number; saved?: number; message?: string } | null>(null);
   const [importOpen, setImportOpen] = useState(false);
   const [homelyBulkOpen, setHomelyBulkOpen] = useState(false);
   const queryClient = useQueryClient();
