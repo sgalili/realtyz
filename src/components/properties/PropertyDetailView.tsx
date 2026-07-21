@@ -6,6 +6,7 @@ import {
 } from 'lucide-react';
 import { PROPERTY_TYPE_LABELS_HE, type HomelyProperty } from '@/lib/homelyMockProperties';
 import { useVisibleImageUrls } from '@/lib/imageHealth';
+import { stripAddressNumbers } from '@/lib/formatAddress';
 
 type JsonRecord = Record<string, unknown>;
 
