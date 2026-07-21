@@ -776,7 +776,7 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
             if (searchRes.ok) {
               const sj = await searchRes.json();
               const props = Array.isArray(sj?.properties) ? sj.properties : [];
-              webtivResults = props.slice(0, 8).map((p: any) => ({
+              webtivResults = props.slice(0, 16).map((p: any) => ({
                 id: String(p.homely_id ?? p.serial ?? ""),
                 title: String(p.title ?? p.property_title ?? "נכס"),
                 price: Number(p.price ?? 0) || 0,
@@ -789,6 +789,17 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
                 transaction_type: p.transaction_type === "rent" ? "rent" : "sale",
                 source_url: p.source_url ?? null,
               }));
+              // HARD deal_type filter: if the user asked for rent OR the lead
+              // is a rent lead, strip every sale result (and vice-versa).
+              // Never mix pipelines in the response payload.
+              if (deal === "rent" || deal === "sale") {
+                const before = webtivResults.length;
+                webtivResults = webtivResults.filter((r) => r.transaction_type === deal);
+                if (before !== webtivResults.length) {
+                  console.log(`[webtiv_search] deal_type=${deal} filter dropped ${before - webtivResults.length}/${before} mismatched results`);
+                }
+              }
+              webtivResults = webtivResults.slice(0, 8);
               if (webtivResults.length) {
                 const priceLabel = (t: string) => (t === "rent" ? "שכ\"ד" : "מחיר");
                 webtivBlock = [
