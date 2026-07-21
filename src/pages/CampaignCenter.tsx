@@ -3452,7 +3452,7 @@ const PublishedFeed = () => {
                       {label}
                     </span>
                   );
-                })(
+                })() : (
                   <>
                     <span className="inline-flex items-center gap-1 text-xs text-muted-foreground" title="תגובות">
                       <MessageSquare className="h-3.5 w-3.5 text-[hsl(220_70%_25%)]" />
