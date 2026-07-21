@@ -2311,6 +2311,7 @@ type CampaignRow = {
   media_urls?: string[];
   external_url?: string | null;
   is_external?: boolean;
+  listing_id?: string | null;
 };
 
 // A scheduled row is one whose status is "scheduled" AND whose execution time
@@ -2757,6 +2758,7 @@ const PublishedFeed = () => {
         ...r,
         media_urls: normalizePostMediaUrls(media),
         external_url: externalUrl,
+        listing_id: (typeof pr?.listing_id === 'string' && pr.listing_id) || null,
       };
     };
 
@@ -3627,6 +3629,7 @@ const PublishedFeed = () => {
             message_body: editRepostRow.message_body,
             media_urls: editRepostRow.media_urls,
             campaign_name: editRepostRow.campaign_name,
+            listing_id: editRepostRow.listing_id ?? null,
           }}
           onPosted={() => {
             queryClient.invalidateQueries({ queryKey: ['campaigns'] });
