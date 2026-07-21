@@ -1678,7 +1678,9 @@ const InlineComposer = ({
                 )}
               >
                 <Send className="h-4 w-4 -scale-x-100" />
-                {mode === 'scheduled' ? 'פרסם בזמן שנבחר' : 'פרסם עכשיו'}
+                {calendarLocked ? `פרסם ב-${scheduledLabel}` : (mode === 'scheduled' ? 'פרסם בזמן שנבחר' : 'פרסם עכשיו')}
+              </button>
+              {!calendarLocked && (
               </button>
               <button
                 type="button"
