@@ -29,7 +29,7 @@ const FIRECRAWL_V2 = "https://api.firecrawl.dev/v2";
 
 type SearchResult = { url: string; title?: string; description?: string; markdown?: string };
 
-async function firecrawlSearch(query: string, limit = 6): Promise<SearchResult[]> {
+async function firecrawlSearch(query: string, limit = 10): Promise<SearchResult[]> {
   if (!FIRECRAWL_API_KEY) return [];
   try {
     const r = await fetch(`${FIRECRAWL_V2}/search`, {
@@ -68,7 +68,7 @@ async function firecrawlSearch(query: string, limit = 6): Promise<SearchResult[]
 
 async function synthesizeBrief(query: string, mode: string, sources: SearchResult[]): Promise<string> {
   const sourcesBlock = sources
-    .slice(0, 6)
+    .slice(0, 10)
     .map((s, i) => {
       const body = (s.markdown || s.description || "").slice(0, 2500);
       return `[#${i + 1}] ${s.title || s.url}\n${s.url}\n${body}`;
@@ -168,7 +168,7 @@ Deno.serve(async (req) => {
       : mode === "property"
         ? `${query} נדל"ן מחירים השוואה`
         : query;
-    const sources = await firecrawlSearch(searchQuery, 6);
+    const sources = await firecrawlSearch(searchQuery, 10);
 
     // Synthesis (Hebrew structured brief).
     const brief = await synthesizeBrief(query, mode, sources);
