@@ -72,7 +72,13 @@ export function ScheduleCurrentPostDialog({
   const [winCount, setWinCount] = useState(1);
   const [recurrence, setRecurrence] = useState<Recurrence>('none');
   const [recurrenceDays, setRecurrenceDays] = useState<number[]>([]);
-  const [recurrenceCount, setRecurrenceCount] = useState(4);
+  // Blank = infinite/open-ended sequence (materialized as 52 slots, user can
+  // stop the series any time via "בטל סדרה" on the calendar).
+  const INFINITE_CAP = 52;
+  const [recurrenceCountInput, setRecurrenceCountInput] = useState<string>('');
+  const recurrenceCount = recurrenceCountInput.trim() === ''
+    ? INFINITE_CAP
+    : Math.max(1, Math.min(INFINITE_CAP, Number(recurrenceCountInput) || 1));
   const [recurrenceOpen, setRecurrenceOpen] = useState(false);
   const [groupsOpen, setGroupsOpen] = useState(false);
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(defaultGroupIds || []);
