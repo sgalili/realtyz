@@ -423,12 +423,42 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
             {regenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
             נסח מחדש עם AI
           </Button>
+          <Button
+            variant="outline"
+            onClick={() => setScheduleDialogOpen(true)}
+            disabled={posting || regenerating || !body.trim()}
+            title="תזמן פרסום (כולל חזרות)"
+          >
+            <CalendarIcon className="h-4 w-4" />
+            תזמן
+          </Button>
           <Button onClick={repost} disabled={posting || regenerating || !body.trim()}>
             {posting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            פרסם מחדש
+            פרסם עכשיו
           </Button>
         </DialogFooter>
       </DialogContent>
+
+      <ScheduleCurrentPostDialog
+        open={scheduleDialogOpen}
+        onClose={() => setScheduleDialogOpen(false)}
+        onScheduled={() => {
+          setScheduleDialogOpen(false);
+          toast.success('הפוסט תוזמן');
+          onPosted?.();
+          onOpenChange(false);
+        }}
+        channelId={campaign.channel}
+        channelLabel={campaign.channel}
+        brandName={`${campaign.campaign_name} · שוכפל`}
+        body={body}
+        firstComment=""
+        mediaUrls={mediaUrls}
+        listingId={resolvedListingId ?? campaign.listing_id ?? null}
+        defaultGroupIds={[]}
+        targets={[]}
+        isSocialChannel={['facebook','instagram','x','twitter','linkedin','youtube','tiktok'].includes(campaign.channel)}
+      />
     </Dialog>
   );
 }
