@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Input } from '@/components/ui/input';
-import { Sparkles, Send, Loader2, RefreshCw, AlertTriangle, Calendar as CalendarIcon } from 'lucide-react';
+import { Send, Loader2, RefreshCw, AlertTriangle, Calendar as CalendarIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { stripAddressNumbers } from '@/lib/formatAddress';
@@ -575,13 +575,32 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
           </div>
         )}
 
-        <Textarea
-          value={body}
-          onChange={(e) => setBody(e.target.value)}
-          rows={10}
-          className="text-sm"
-          placeholder="ערוך את גוף הפוסט..."
-        />
+        {/* Icon-only AI regenerate pinned to the top-right corner of the
+            textarea, mirroring the main composer's UX. */}
+        <div className="relative">
+          <Textarea
+            value={body}
+            onChange={(e) => setBody(e.target.value)}
+            rows={10}
+            className="text-sm pr-10"
+            placeholder="ערוך את גוף הפוסט..."
+          />
+          <button
+            type="button"
+            onClick={regenerate}
+            disabled={regenerating || posting}
+            aria-label="נסח מחדש עם AI"
+            title="נסח מחדש עם AI"
+            className="absolute top-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-primary hover:bg-muted/60 transition-colors disabled:opacity-50"
+          >
+            {regenerating ? (
+              <Loader2 className="h-4 w-4 animate-spin" />
+            ) : (
+              <RefreshCw className="h-4 w-4" />
+            )}
+          </button>
+        </div>
+
 
         {/* First-comment section — mirrors the main composer. Auto-posts as
             the first comment on the published post via Ayrshare. */}
@@ -623,25 +642,22 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
         </div>
 
 
-        <DialogFooter className="gap-2 sm:gap-2">
-          <Button variant="outline" onClick={regenerate} disabled={regenerating || posting}>
-            {regenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            נסח מחדש עם AI
-          </Button>
+        <DialogFooter className="flex flex-row justify-between sm:justify-between gap-2 w-full items-center">
           <Button
             variant="outline"
             onClick={() => setScheduleDialogOpen(true)}
             disabled={posting || regenerating || !body.trim()}
-            title="תזמן פרסום (כולל חזרות)"
+            title="תזמון פרסום (כולל חזרות)"
+            aria-label="תזמון פרסום"
           >
             <CalendarIcon className="h-4 w-4" />
-            תזמן
           </Button>
           <Button onClick={repost} disabled={posting || regenerating || !body.trim()}>
             {posting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             פרסם עכשיו
           </Button>
         </DialogFooter>
+
       </DialogContent>
 
       <ScheduleCurrentPostDialog
