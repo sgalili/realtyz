@@ -119,14 +119,20 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
   const [showLookup, setShowLookup] = useState(false);
   const [scheduleDialogOpen, setScheduleDialogOpen] = useState(false);
   const [lookupSearch, setLookupSearch] = useState('');
+  const [firstComment, setFirstComment] = useState('');
+  const [firstCommentEnabled, setFirstCommentEnabled] = useState(true);
+  const [firstCommentGenerating, setFirstCommentGenerating] = useState(false);
 
   useEffect(() => {
     if (open) {
       setBody(campaign.message_body ?? '');
       setRateLimited(null);
       setShowLookup(false);
+      setFirstComment('');
+      setFirstCommentEnabled(true);
     }
   }, [open, campaign.message_body]);
+
 
   const mediaUrls = Array.isArray(campaign.media_urls) ? campaign.media_urls : [];
 
