@@ -139,16 +139,18 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
     });
   }, [listings, listingSearch]);
 
+  const [autoJumped, setAutoJumped] = useState(false);
+
   const load = async () => {
     setLoading(true);
     const { data, error } = await supabase
       .from('campaign_logs')
       .select('id, campaign_name, channel, message_body, created_at, sent_at, status, provider_message_id, provider_response')
       .eq('is_archived', false)
-      .eq('status', 'scheduled')
+      .in('status', ['scheduled', 'pending'])
       .gt('sent_at', new Date().toISOString())
       .order('sent_at', { ascending: true })
-      .limit(500);
+      .limit(1000);
     if (error) {
       toast.error('טעינת מתוזמנים נכשלה: ' + error.message);
       setRows([]);
@@ -161,12 +163,30 @@ export function ScheduledCampaignCalendar({ onCreateAt, onClose }: { onCreateAt:
         const key = `${r.campaign_name}|${r.channel}|${r.sent_at}`;
         if (!seen.has(key)) seen.set(key, r);
       }
-      setRows(Array.from(seen.values()));
+      const deduped = Array.from(seen.values());
+      setRows(deduped);
+      // Auto-jump to the first month that actually contains scheduled
+      // posts so future recurrences never appear "missing" just because
+      // the calendar defaulted to today's empty month.
+      if (!autoJumped && deduped.length > 0) {
+        const currentMonthHas = deduped.some((r) => {
+          if (!r.sent_at) return false;
+          const d = new Date(r.sent_at);
+          return d.getFullYear() === cursor.getFullYear() && d.getMonth() === cursor.getMonth();
+        });
+        if (!currentMonthHas) {
+          const first = new Date(deduped[0].sent_at as string);
+          const jump = new Date(first.getFullYear(), first.getMonth(), 1);
+          setCursor(jump);
+        }
+        setAutoJumped(true);
+      }
     }
     setLoading(false);
   };
 
   useEffect(() => { load(); }, []);
+
 
   const gridDays = useMemo(() => {
     const firstOfMonth = new Date(cursor);
