@@ -597,13 +597,14 @@ const buildFallbackFirstComment = (listing: CampaignListing | null) => {
 };
 
 const InlineComposer = ({
-  channel, brandName, socialProfiles = [], onConfirm,
+  channel, brandName, socialProfiles = [], onConfirm, onOpenScheduleCalendar,
   presetListingId, presetScheduleIso, presetVariant, presetVariants, instanceId,
 }: {
   channel: ChannelCard;
   brandName: string;
   socialProfiles?: SocialAccountProfile[];
   onConfirm: (payload: ConfirmPayload) => void;
+  onOpenScheduleCalendar?: () => void;
   presetListingId?: string | null;
   presetScheduleIso?: string | null;
   presetVariant?: number;
