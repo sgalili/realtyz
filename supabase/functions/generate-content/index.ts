@@ -129,12 +129,22 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
       } catch { /* background */ }
     }
 
+    const dealTypeLabel = (() => {
+      const dt = String(promotedListing?.deal_type || promotedListingType || "").toLowerCase();
+      if (dt === "rent" || dt === "השכרה") return "להשכרה";
+      if (dt === "sale" || dt === "מכירה") return "למכירה";
+      return null;
+    })();
+    const propertyTypeLabel = promotedListing?.property_type
+      ? String(promotedListing.property_type).trim()
+      : null;
     const promotedBlock = promotedListing
       ? [
           "[PROMOTED LISTING — THIS POST MUST PROMOTE THIS EXACT PROPERTY] (use ONLY these real fields — never alter prices, address, rooms, or features):",
-          promotedListing.property_title ? `כותרת: ${promotedListing.property_title}` : null,
-          promotedListingType ? `סוג עסקה: ${promotedListingType === "rent" ? "השכרה" : "מכירה"}` : null,
-          promotedListing.address ? `כתובת: ${promotedListing.address}` : null,
+          promotedListing.property_title ? `כותרת הנכס: ${promotedListing.property_title}` : null,
+          propertyTypeLabel ? `סוג נכס: ${propertyTypeLabel}` : null,
+          dealTypeLabel ? `סוג עסקה: ${dealTypeLabel}` : null,
+          promotedListing.address ? `כתובת (רחוב בלבד, בלי מספר בית): ${promotedListing.address}` : null,
           promotedListing.neighborhood ? `שכונה: ${promotedListing.neighborhood}` : null,
           promotedListing.city ? `עיר: ${promotedListing.city}` : null,
           promotedListing.rooms ? `חדרים: ${promotedListing.rooms}` : null,
@@ -159,7 +169,15 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
 
     const FOCUS_ONLY_RULE = focusOnly ? `
 LISTING-FOCUS MODE — EXACT MASTER TEMPLATE (mandatory, no deviation, blank line between blocks):
-1. Opener hook: "🏡✨ <property type + rooms + city>" — ONE short sentence. No generic "as a broker" / "אני מתווך" / "כמתווך" / "בתור מתווך" intros. No self-introduction. Jump straight into the property.
+1. Opener hook (MANDATORY COMPOSITION — one short punchy line, MUST include ALL of the following when available):
+   • סוג עסקה (למכירה / להשכרה) — חובה.
+   • סוג הנכס במפורש (דירה / פנטהאוז / דופלקס / קוטג' / וילה / גג / סטודיו וכו') — חובה, מתוך [PROMOTED LISTING].
+   • שם הרחוב (בלי מספר בית) — חובה אם קיים.
+   • שם השכונה — חובה אם קיים בנתונים (אחרת דלג לגמרי, אל תמציא).
+   • עיר וכמות חדרים — כשקיימים.
+   • 1-2 מילות מפתח שיווקיות משכנעות ומדויקות (למשל: "הזדמנות נדירה", "מיקום מנצח", "מוכן לכניסה", "נוף פתוח", "שקט מוחלט") — רק אם הן נאמנות לנתונים.
+   פורמט מומלץ (גמיש בטון, אבל חייב לכלול את הפרטים): "🏡✨ <מילת מפתח משכנעת> — <סוג נכס> <חדרים> חדרים <למכירה/להשכרה> ברחוב <שם רחוב>, שכונת <שכונה>, <עיר>".
+   אסור: הצגה עצמית ("אני אודי", "כמתווך", "בתור מתווך"), מספרי בית, שכונה במספר/אות ("שכונה 10", "שכונה ג'"), מילות מפתח שקריות.
 2. Description: 1-2 short sentences on size, floor, view, and 1-2 standout features grounded in [PROMOTED LISTING]. Never include street numbers in the address — use street name only (e.g. "אריה לייב יפה", never "אריה לייב יפה 36").
 3. Location line: "🌇 <neighborhood + convenience>" — one short sentence.
 4. Lifestyle line: "💫 <lifestyle benefit>" — one short sentence.
@@ -215,7 +233,7 @@ NO-HASHTAGS RULE (HARD — ZERO TOLERANCE):
 איסור מוחלט: פוליטיקה, מפלגות, בחירות, וכל הקשר לא-נדל"ני.
 
 HIGH-CONVERTING REAL-ESTATE COPY STRUCTURE (apply when a specific נכס/PROMOTED LISTING exists — EXACT MASTER TEMPLATE):
-- Follow this exact order, one blank line between blocks: (1) "🏡✨ <hook: property type + rooms + city>"  (2) 1-2 short sentences on size / floor / view / standout features  (3) "🌇 <neighborhood + convenience>"  (4) "💫 <lifestyle benefit>"  (5) "מחיר מבוקש: <price>. 📞 מוזמנים ליצור קשר לתיאום ביקור!" (price + CTA on ONE line, verbatim wording).
+- Follow this exact order, one blank line between blocks: (1) הוק כותרת שכולל תמיד: סוג עסקה (למכירה/להשכרה) + סוג הנכס (דירה/פנטהאוז/דופלקס/קוטג'/וילה/גג/סטודיו) + מספר חדרים כשקיים + שם הרחוב (בלי מספר בית) + שם השכונה כשקיים + עיר, ובנוסף 1-2 מילות מפתח משכנעות ומדויקות (לדוגמה: "🏡✨ הזדמנות נדירה — דופלקס 5 חדרים למכירה ברחוב אריה לייב יפה, שכונת נווה עמל, הרצליה")  (2) 1-2 משפטים קצרים על שטח/קומה/נוף/פיצ'ר בולט  (3) "🌇 <שכונה + נוחות>"  (4) "💫 <יתרון לייף-סטייל>"  (5) "מחיר מבוקש: <מחיר>. 📞 מוזמנים ליצור קשר לתיאום ביקור!" (מחיר + CTA בשורה אחת, ניסוח מדויק).
 - Human, punchy, convincing, no filler, no walls of text, no ✅ bulleted feature list, no 📍/💰 lines, no keyword pipe-line inside the post body, no hashtags.
 - אסור בהחלט לפתוח את הפוסט בהצגה עצמית של אודי כמתווך ("אני אודי", "כמתווך", "בתור מתווך", "יש לי הכבוד", "אני גאה להציג", "אני שמח להציג"). נכנסים ישר לנכס.
 - Every concrete detail (רחוב, שכונה, חדרים, מ"ר, קומה, מחיר, פיצ'רים) חייב להישלף מ-[PROMOTED LISTING] בלבד. אל תמציא.
