@@ -1681,7 +1681,6 @@ const InlineComposer = ({
                 {calendarLocked ? `פרסם ב-${scheduledLabel}` : (mode === 'scheduled' ? 'פרסם בזמן שנבחר' : 'פרסם עכשיו')}
               </button>
               {!calendarLocked && (
-              </button>
               <button
                 type="button"
                 onClick={() => setScheduleDialogOpen(true)}
@@ -1697,6 +1696,7 @@ const InlineComposer = ({
               >
                 <CalendarIcon className="h-4 w-4" />
               </button>
+              )}
             </div>
           </div>
 
