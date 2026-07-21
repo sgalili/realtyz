@@ -34,34 +34,57 @@ const STREET_KEYWORD_GROUP = STREET_KEYWORDS
 
 const TRAILING_UNITS = /(?:חדרים|חדר|מ["׳']?\s*ר|מטר|מ['׳]|ק["׳']?\s*מ|קומה|קומות|דקות|שעות|שנה|שנים|אחוז|%|₪|ש["׳']?\s*ח|דולר|\$|€)/;
 
-/** LAW #1 — strip building/house numbers from street addresses. */
+/** LAW #1 — strip building/house/apartment numbers from street addresses.
+ *  Handles single-number ("ארלוזורוב 26"), multi-number tails
+ *  ("אריה לייב יפה 36 2"), and comma-separated apt numbers
+ *  ("ויצמן 4, דירה 12"). Runs iteratively until stable so every trailing
+ *  numeric token attached to a street name is removed. */
 export function stripStreetNumbers(input: string): string {
   let out = String(input ?? "");
   if (!out) return out;
 
-  // Pattern A: "<street-keyword> <hebrew name> <digits>[suffix]" → drop digits.
+  // A trailing run of one or more numeric tokens, each optionally followed by
+  // a Hebrew letter suffix (e.g. "26א"), separated by spaces, slashes, or the
+  // Hebrew "דירה"/"בית"/"כניסה" filler word. Anchored with \b so we don't
+  // eat numbers that belong to legitimate units.
+  const NUM = String.raw`\d{1,4}[א-ת]?`;
+  const NUM_TAIL = String.raw`(?:\s*(?:\/|,\s*(?:דירה|בית|כניסה)\s*)?\s+${NUM})+\b`;
+
+  // Pattern A: "<street-keyword> <hebrew name...> <numbers>" → drop numbers.
   const reA = new RegExp(
-    `(${STREET_KEYWORD_GROUP})\\s+([\\u0590-\\u05FF][\\u0590-\\u05FF״"׳'\\-\\s]{1,40}?)\\s+\\d{1,4}[א-ת]?\\b`,
+    `(${STREET_KEYWORD_GROUP})\\s+([\\u0590-\\u05FF][\\u0590-\\u05FF״"׳'\\-\\s]{1,60}?)${NUM_TAIL}`,
     "g",
   );
   out = out.replace(reA, (_m, kw, name) => `${kw} ${String(name).trim()}`);
 
-  // Pattern B: standalone "<hebrew word> <digits>" NOT followed by a unit.
-  const reB = /(^|[^\d:=״"׳'\u05F4\u05F3])([\u0590-\u05FF]{3,}(?:[\u0590-\u05FF״"׳'-]*[\u0590-\u05FF])?)\s+(\d{1,4})[א-ת]?\b/g;
-  out = out.replace(reB, (m, pre, word, _num, offset, full) => {
-    const after = String(full).slice(offset + m.length, offset + m.length + 24);
-    if (TRAILING_UNITS.test(after.trim())) return m;
-    if (/^(שנת|שנה|גיל|טלפון|נייד|מספר|דירה|קומה|בנין|בניין|פרויקט|פרוייקט|בן|בת)$/.test(word)) return m;
-    return `${pre}${word}`;
-  });
-
-  // Pattern C: "address: ארלוזורוב 26" or "כתובת: ויצמן 4" — keep label, drop digits.
+  // Pattern C: labelled address ("כתובת:", "address:", "location:").
   out = out.replace(
-    /(כתובת|address|location)\s*[:：]\s*([\u0590-\u05FF][\u0590-\u05FF\s\-״"׳']{1,40}?)\s+\d{1,4}[א-ת]?\b/gi,
+    new RegExp(
+      `(כתובת|address|location)\\s*[:：]\\s*([\\u0590-\\u05FF][\\u0590-\\u05FF\\s\\-״"׳']{1,60}?)${NUM_TAIL}`,
+      "gi",
+    ),
     (_m, label, name) => `${label}: ${String(name).trim()}`,
   );
 
-  return out.replace(/[ \t]{2,}/g, " ").replace(/\s+([,.!?])/g, "$1");
+  // Pattern B: bare "<hebrew word> <digit>" — but only when NOT followed by a
+  // real unit (חדרים, מ"ר, קומה, ₪ …). Repeat until stable so we peel off
+  // consecutive numeric tokens one at a time.
+  const reB = /(^|[^\d:=״"׳'\u05F4\u05F3])([\u0590-\u05FF]{2,}(?:[\u0590-\u05FF״"׳'-]*[\u0590-\u05FF])?)\s+(\d{1,4})[א-ת]?\b/g;
+  for (let i = 0; i < 6; i++) {
+    const before = out;
+    out = out.replace(reB, (m, pre, word, _num, offset, full) => {
+      const after = String(full).slice(offset + m.length, offset + m.length + 24);
+      if (TRAILING_UNITS.test(after.trim())) return m;
+      if (/^(שנת|שנה|גיל|טלפון|נייד|מספר|דירה|קומה|בנין|בניין|פרויקט|פרוייקט|בן|בת)$/.test(word)) return m;
+      return `${pre}${word}`;
+    });
+    if (out === before) break;
+  }
+
+  return out
+    .replace(/\s+,/g, ",")
+    .replace(/[ \t]{2,}/g, " ")
+    .replace(/\s+([,.!?])/g, "$1");
 }
 
 // Forbidden invented-title patterns. We never let the model attach a fake
