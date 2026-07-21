@@ -682,6 +682,18 @@ Deno.serve(async (req) => {
       { group_id: string; ok: boolean; id: string | null; error: string | null }
     > = [];
     for (const groupId of groupIds) {
+      // If a previous group tripped the circuit (rate-limit / suspension),
+      // stop the fan-out cold instead of firing more Ayrshare calls.
+      const preCircuit = await readCircuit(admin);
+      if (preCircuit) {
+        groupResults.push({
+          group_id: groupId,
+          ok: false,
+          id: null,
+          error: "provider_circuit_open — skipped to protect account",
+        });
+        continue;
+      }
       const r = await firePost(
         { platforms: ["facebook"], faceBookOptions: { groupId } },
         `group:${groupId}`,
