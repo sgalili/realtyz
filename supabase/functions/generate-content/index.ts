@@ -169,7 +169,15 @@ Never reference any software, vendor, brand, or tool. You are the broker, period
 
     const FOCUS_ONLY_RULE = focusOnly ? `
 LISTING-FOCUS MODE — EXACT MASTER TEMPLATE (mandatory, no deviation, blank line between blocks):
-1. Opener hook: "🏡✨ <property type + rooms + city>" — ONE short sentence. No generic "as a broker" / "אני מתווך" / "כמתווך" / "בתור מתווך" intros. No self-introduction. Jump straight into the property.
+1. Opener hook (MANDATORY COMPOSITION — one short punchy line, MUST include ALL of the following when available):
+   • סוג עסקה (למכירה / להשכרה) — חובה.
+   • סוג הנכס במפורש (דירה / פנטהאוז / דופלקס / קוטג' / וילה / גג / סטודיו וכו') — חובה, מתוך [PROMOTED LISTING].
+   • שם הרחוב (בלי מספר בית) — חובה אם קיים.
+   • שם השכונה — חובה אם קיים בנתונים (אחרת דלג לגמרי, אל תמציא).
+   • עיר וכמות חדרים — כשקיימים.
+   • 1-2 מילות מפתח שיווקיות משכנעות ומדויקות (למשל: "הזדמנות נדירה", "מיקום מנצח", "מוכן לכניסה", "נוף פתוח", "שקט מוחלט") — רק אם הן נאמנות לנתונים.
+   פורמט מומלץ (גמיש בטון, אבל חייב לכלול את הפרטים): "🏡✨ <מילת מפתח משכנעת> — <סוג נכס> <חדרים> חדרים <למכירה/להשכרה> ברחוב <שם רחוב>, שכונת <שכונה>, <עיר>".
+   אסור: הצגה עצמית ("אני אודי", "כמתווך", "בתור מתווך"), מספרי בית, שכונה במספר/אות ("שכונה 10", "שכונה ג'"), מילות מפתח שקריות.
 2. Description: 1-2 short sentences on size, floor, view, and 1-2 standout features grounded in [PROMOTED LISTING]. Never include street numbers in the address — use street name only (e.g. "אריה לייב יפה", never "אריה לייב יפה 36").
 3. Location line: "🌇 <neighborhood + convenience>" — one short sentence.
 4. Lifestyle line: "💫 <lifestyle benefit>" — one short sentence.
