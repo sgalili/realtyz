@@ -260,6 +260,7 @@ Deno.serve(async (req) => {
         address: row.address,
         sqm: row.sqm,
         floor: row.floor,
+        deal_type: row.deal_type,
         source: "yad2",
         source_url: row.source_url,
         media_photos: row.photos,
