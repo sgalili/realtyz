@@ -83,13 +83,21 @@ export function ScheduleCurrentPostDialog({
   const [groupsOpen, setGroupsOpen] = useState(false);
   const [selectedGroupIds, setSelectedGroupIds] = useState<string[]>(defaultGroupIds || []);
   const [submitting, setSubmitting] = useState(false);
+  const [progress, setProgress] = useState(0);
+
+  // JIT generation cap: only fully generate distinct AI variants for the next
+  // few slots. Every slot beyond this cap is scheduled with the ORIGINAL body
+  // as a placeholder — the user can edit each one later from the calendar.
+  const JIT_GENERATION_LOOKAHEAD = 4;
 
   useEffect(() => {
     if (open) {
       setSelectedGroupIds(defaultGroupIds || []);
       setSubmitting(false);
+      setProgress(0);
     }
   }, [open, defaultGroupIds]);
+
 
   const dayLabel = useMemo(() => {
     try {
@@ -308,18 +316,26 @@ export function ScheduleCurrentPostDialog({
     let ok = 0;
     let failed = 0;
     let firstErr: string | null = null;
+    setProgress(0);
     try {
-      // First slot uses the exact body the user reviewed; every subsequent
-      // slot gets a slightly reworded variation (rotating templates) so a
-      // recurring sequence never feels like copy-paste spam.
+      // Slots 0..JIT_GENERATION_LOOKAHEAD-1 get freshly generated variants so
+      // the next few real publications feel fresh. All later slots get the
+      // ORIGINAL body as a lightweight placeholder — they are marked so the
+      // user can regenerate them later from the calendar just before publish
+      // time, saving tokens and closing this dialog almost instantly.
+      const totalOps = slots.length * fanoutTargets.length;
+      let done = 0;
       for (let i = 0; i < slots.length; i++) {
         const slot = slots[i];
+        const isJitPlaceholder = i >= JIT_GENERATION_LOOKAHEAD;
         let slotBody = body;
-        try {
-          slotBody = i === 0 ? body : await generateVariantBody(i, slots.length);
-        } catch (variantErr) {
-          console.error('[ScheduleCurrentPostDialog] variant generation failed, using original body', variantErr);
-          slotBody = body;
+        if (!isJitPlaceholder) {
+          try {
+            slotBody = i === 0 ? body : await generateVariantBody(i, Math.min(slots.length, JIT_GENERATION_LOOKAHEAD));
+          } catch (variantErr) {
+            console.error('[ScheduleCurrentPostDialog] variant generation failed, using original body', variantErr);
+            slotBody = body;
+          }
         }
         for (const target of fanoutTargets) {
           try {
@@ -331,6 +347,7 @@ export function ScheduleCurrentPostDialog({
                   media_urls: mediaUrls,
                   campaign_name: target ? `${campaignName} · ${target.name}` : campaignName,
                   scheduled_at: slot.toISOString(),
+                  needs_regeneration: isJitPlaceholder,
                 },
               }));
             } catch { /* noop */ }
@@ -339,6 +356,8 @@ export function ScheduleCurrentPostDialog({
               post: slotBody,
               channels: [channelId],
               campaign_name: target ? `${campaignName} · ${target.name}` : campaignName,
+              // Original images must ride along on every future repost — this
+              // array is inherited unchanged for every slot in the series.
               media_urls: Array.isArray(mediaUrls) ? mediaUrls : [],
               scheduled_at: slot.toISOString(),
               workspace_owner_id: ownerScope,
@@ -348,12 +367,10 @@ export function ScheduleCurrentPostDialog({
               target_profile_key: target?.profileKey ?? null,
               first_comment: firstComment || null,
               listing_id: listingId ?? null,
+              needs_regeneration: isJitPlaceholder,
+              series_index: i,
+              series_total: slots.length,
             };
-            console.log('[ScheduleCurrentPostDialog] invoking ayrshare-post', {
-              slotIndex: i,
-              scheduled_at: slot.toISOString(),
-              target: target?.name ?? null,
-            });
             const { data, error } = await supabase.functions.invoke('ayrshare-post', {
               body: invokeBody,
             });
@@ -371,8 +388,11 @@ export function ScheduleCurrentPostDialog({
             console.error('[ScheduleCurrentPostDialog] Detailed scheduling error:', slotErr);
             if (!firstErr) firstErr = slotErr?.message || 'שגיאה לא צפויה בתזמון';
           }
+          done++;
+          setProgress(Math.round((done / totalOps) * 100));
         }
       }
+
 
       toast.dismiss(progressToastId);
 
@@ -597,8 +617,9 @@ export function ScheduleCurrentPostDialog({
           )}
           <Button onClick={handleSubmit} disabled={submitting}>
             {submitting ? <Loader2 className="ml-1 h-4 w-4 animate-spin" /> : null}
-            {submitting ? 'מפרסם…' : 'פרסום'}
+            {submitting ? `מתזמן... ${progress}%` : 'פרסום'}
           </Button>
+
 
         </DialogFooter>
       </DialogContent>
