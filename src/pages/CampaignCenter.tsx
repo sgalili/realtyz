@@ -1129,6 +1129,15 @@ const InlineComposer = ({
     try {
       const listing = selectedListing;
       const descriptionSnippet = normalizeListingText(listing?.description).slice(0, 1200);
+      const keywordParts = [
+        listing?.property_type ? String(listing.property_type) : (listing?.property_title ? 'דירה' : 'נכס'),
+        listing?.city ? String(listing.city) : null,
+        listing?.neighborhood ? String(listing.neighborhood) : null,
+        listing?.address ? String(listing.address) : null,
+        listing?.rooms ? `${listing.rooms} חדרים` : null,
+        listing?.sqm ? `${listing.sqm} מ"ר` : null,
+      ].filter(Boolean);
+      const keywordLine = keywordParts.join(' | ');
       const listingFacts = listing
         ? [
             listing.property_title ? `כותרת: ${listing.property_title}` : null,
@@ -1144,13 +1153,14 @@ const InlineComposer = ({
       const styleInstructions = [
         'כתוב את התגובה הראשונה (First Comment) לפוסט נדל"ן — לא את הפוסט עצמו.',
         'התגובה הראשונה היא ה"קרנף" של המודעה: פסקאות עשירות עם התיאור המלא של הנכס, המפרט הטכני, ויתרונות המיקום. זה המקום להציג את כל הפרטים שלא נכנסו לפוסט הראשי.',
-        'מבנה מומלץ (מספר פסקאות קצרות, לא שורה אחת): פסקת פתיחה קצרה על הנכס → פסקת תיאור חופשי (מבוסס על טקסט התיאור למטה) → פסקת מפרט/פיצ\'רים → פסקת סיום מזמינה לפנייה.',
+        'מבנה מומלץ (מספר פסקאות קצרות, לא שורה אחת):\n1. שורת מילות מפתח מופרדות בקווים ישרים (|) שמכילה את הסוג נכס, העיר, השכונה/רחוב, מספר חדרים ושטח — לדוגמה: "דירה | הרצליה | רחוב פורצי הדרך | 4 חדרים | 120 מ"ר".\n2. פסקת פתיחה קצרה על הנכס.\n3. פסקת תיאור חופשי (מבוסס על טקסט התיאור למטה).\n4. פסקת מפרט/פיצ\'רים.\n5. פסקת סיום מזמינה לפנייה.',
+        `שורת המילות מפתח שחייבת להופיע בראש התגובה (השתמש בפרטים האמיתיים בלבד, בלי להמציא): ${keywordLine}`,
         descriptionSnippet
           ? `זהו טקסט התיאור המדויק של הנכס — השתמש בו כבסיס לפסקת התיאור, בלי להמציא פרטים חדשים ובלי להעתיק מילה במילה אלא לערוך לזרימה טבעית:\n"""${descriptionSnippet}"""`
           : 'אין תיאור חופשי שמור לנכס — כתוב תגובה אנושית קצרה שמזמינה לפנייה בהתבסס על הפרטים היבשים למטה בלבד.',
         listingFacts ? `פרטים יבשים של הנכס להישען עליהם בלבד (אסור להמציא נתונים שלא מופיעים כאן): ${listingFacts}` : '',
-        'אסור: בולטים מהצורה ✅/📍/💰/📞, סוגריים מרובעים ריקים ("[מספר טלפון]", "[רישיון]"), כוכביות, em-dash, מקפים כפולים (--), האשטגים, שורת מילות מפתח מופרדות ב-"|", וכל טוקן placeholder.',
-        'אל תכתוב חתימה/טלפון/רישיון בעצמך — המערכת מוסיפה את חתימת אודי אוטומטית בסוף.',
+        'אסור: בולטים מהצורה ✅/📍/💰/📞, סוגריים מרובעים ריקים ("[מספר טלפון]", "[רישיון]"), כוכביות, em-dash, מקפים כפולים (--), האשטגים, וכל טוקן placeholder.',
+        'אסור בתכלית האיסור לכתוב חתימה, שם, טלפון, רישיון תיווך, או פרטי יצירת קשר בתגובה הראשונה — היא חייבת להיות נקייה מכל פרטי תיווך אישיים.',
         postBody ? `לצורך הקשר בלבד, זהו גוף הפוסט הראשי שכבר נוצר — אל תחזור עליו, אל תעתיק ממנו: """${postBody.slice(0, 900)}"""` : '',
       ].filter(Boolean).join('\n\n');
       const { data, error } = await supabase.functions.invoke('generate-content', {
@@ -1159,10 +1169,16 @@ const InlineComposer = ({
           platform: channel.id,
           customInstructions: styleInstructions,
           listingFocusOnly: false,
+          skipLicenseFooter: true,
         },
       });
       if (error) throw error;
-      const text = cleanFirstComment(String(data?.content || data?.text || ''));
+      let text = cleanFirstComment(String(data?.content || data?.text || ''));
+      // Ensure the keyword line is present at the top of the first comment.
+      const leadingKeywordLine = text.split('\n')[0]?.includes('|');
+      if (!leadingKeywordLine && keywordLine) {
+        text = `${keywordLine}\n\n${text}`;
+      }
       const finalText = text && !oldListingPostCommentPattern.test(text)
         ? text
         : buildFallbackFirstComment(listing as CampaignListing | null);
