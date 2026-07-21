@@ -103,6 +103,8 @@ Deno.serve(async (req) => {
     browser = await puppeteer.connect({ browserWSEndpoint: wsEndpoint });
 
     for (const searchUrl of urls) {
+      const dealType = detectDealType(searchUrl);
+      console.log(`[scrape-yad2] deal_type=${dealType} for ${searchUrl}`);
       const page = await browser.newPage();
       try {
         await page.setViewport({ width: 1440, height: 2400 });
