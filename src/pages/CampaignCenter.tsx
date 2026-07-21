@@ -3303,8 +3303,49 @@ const PublishedFeed = () => {
   const filteredRows = useMemo(() => {
     const base = rows ?? [];
     const merged: CampaignRow[] = [...optimisticRows, ...base];
-    if (activeChannel === 'all') return merged;
-    return merged.filter((r) => String(r.channel || '').toLowerCase() === activeChannel);
+    const channelFiltered = activeChannel === 'all'
+      ? merged
+      : merged.filter((r) => String(r.channel || '').toLowerCase() === activeChannel);
+
+    // Collapse recurring series: every scheduled row sharing the same
+    // campaign_name+channel belongs to one series. Emit ONE master row
+    // (the next upcoming slot) carrying `_seriesSlots` — an ordered list
+    // of every future slot. All other rows in the series are removed
+    // from the top-level feed so the page never floods with duplicates.
+    const seriesMap = new Map<string, CampaignRow[]>();
+    const nonSeries: CampaignRow[] = [];
+    for (const r of channelFiltered) {
+      if (isScheduledRow(r) && r.campaign_name) {
+        const key = `${String(r.campaign_name).trim()}|${String(r.channel || '').toLowerCase()}`;
+        const arr = seriesMap.get(key) || [];
+        arr.push(r);
+        seriesMap.set(key, arr);
+      } else {
+        nonSeries.push(r);
+      }
+    }
+    const masters: CampaignRow[] = [];
+    for (const arr of seriesMap.values()) {
+      const sorted = [...arr].sort((a, b) => {
+        const ta = a.sent_at ? new Date(a.sent_at).getTime() : 0;
+        const tb = b.sent_at ? new Date(b.sent_at).getTime() : 0;
+        return ta - tb;
+      });
+      const master = { ...sorted[0], _seriesSlots: sorted.map((s) => ({ id: s.id, sent_at: s.sent_at })) } as CampaignRow & { _seriesSlots: Array<{ id: string; sent_at: string | null }> };
+      masters.push(master);
+    }
+    // Preserve original ordering: masters slot in at their earliest slot time.
+    return [...nonSeries, ...masters].sort((a, b) => {
+      const aTime = isScheduledRow(a) && a.sent_at ? new Date(a.sent_at).getTime() : new Date(a.created_at).getTime();
+      const bTime = isScheduledRow(b) && b.sent_at ? new Date(b.sent_at).getTime() : new Date(b.created_at).getTime();
+      // Scheduled items ascending by next-slot; published items descending.
+      const aSched = isScheduledRow(a);
+      const bSched = isScheduledRow(b);
+      if (aSched && !bSched) return -1;
+      if (!aSched && bSched) return 1;
+      if (aSched && bSched) return aTime - bTime;
+      return bTime - aTime;
+    });
   }, [rows, activeChannel, optimisticRows]);
 
   // Blocking loader ONLY on a true cold start: no cached rows in memory AND
