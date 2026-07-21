@@ -1129,8 +1129,15 @@ const InlineComposer = ({
     try {
       const listing = selectedListing;
       const descriptionSnippet = normalizeListingText(listing?.description).slice(0, 1200);
+      const sourcePropertyType =
+        (listing?.source_metadata?.property_type as string | undefined) ||
+        (Array.isArray(listing?.features)
+          ? String((listing.features.find((f: any) => f && typeof f === 'object' && 'property_type' in f) as any)?.property_type || '')
+          : (typeof listing?.features === 'object' && listing.features !== null
+              ? String((listing.features as Record<string, unknown>).property_type || '')
+              : ''));
       const keywordParts = [
-        listing?.property_type ? String(listing.property_type) : (listing?.property_title ? 'דירה' : 'נכס'),
+        sourcePropertyType || (listing?.property_title ? 'דירה' : 'נכס'),
         listing?.city ? String(listing.city) : null,
         listing?.neighborhood ? String(listing.neighborhood) : null,
         listing?.address ? String(listing.address) : null,
