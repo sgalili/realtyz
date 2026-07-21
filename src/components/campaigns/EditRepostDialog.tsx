@@ -3,10 +3,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogD
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Sparkles, Send, Loader2, RefreshCw, AlertTriangle } from 'lucide-react';
+import { Sparkles, Send, Loader2, RefreshCw, AlertTriangle, Calendar as CalendarIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { stripAddressNumbers } from '@/lib/formatAddress';
+import { ScheduleCurrentPostDialog } from '@/components/campaigns/ScheduleCurrentPostDialog';
 
 type Props = {
   open: boolean;
