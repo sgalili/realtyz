@@ -485,10 +485,10 @@ export default function Properties() {
             לא נמצאו נכסים תואמים. נסה חיפוש רחב יותר.
           </Card>
         ) : viewMode === 'table' ? (
-          <ResultTable results={results} importingKey={importingKey} onSelect={handleSelect} />
+          <ResultTable results={sortedResults} importingKey={importingKey} onSelect={handleSelect} />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {results.map((r) => (
+            {sortedResults.map((r) => (
               <ResultCard key={r.key} result={r} importing={importingKey === r.key} onSelect={() => handleSelect(r)} />
             ))}
           </div>
