@@ -773,7 +773,21 @@ function ResultCard({
 
 type SortCol = 'source' | 'name' | 'listing_type' | 'price' | 'city' | 'address' | 'rooms' | 'size_sqm';
 
-function ResultTable({ results, importingKey, onSelect }: { results: UnifiedResult[]; importingKey: string | null; onSelect: (r: UnifiedResult) => void }) {
+function ResultTable({
+  results,
+  importingKey,
+  onSelect,
+  selectedKeys,
+  onToggleSelect,
+  onToggleAll,
+}: {
+  results: UnifiedResult[];
+  importingKey: string | null;
+  onSelect: (r: UnifiedResult) => void;
+  selectedKeys?: Set<string>;
+  onToggleSelect?: (key: string) => void;
+  onToggleAll?: (rows: UnifiedResult[], checked: boolean) => void;
+}) {
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
