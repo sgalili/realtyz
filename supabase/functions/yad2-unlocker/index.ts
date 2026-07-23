@@ -357,9 +357,18 @@ Deno.serve(async (req) => {
     if (!userId) return json({ error: "Unauthorized" }, 401);
 
     const body = await req.json().catch(() => ({}));
-    const inputUrl: string = String(body?.url ?? "").trim();
-    if (!inputUrl) return json({ error: "url is required" }, 400);
+    const rawInput: string = String(body?.url ?? body?.query ?? "").trim();
+    if (!rawInput) return json({ error: "url is required" }, 400);
     const limit = Math.min(80, Math.max(1, Number(body?.limit) || 30));
+
+    // Accept either a full Yad2 URL or a free-text query (e.g. city name).
+    let inputUrl = rawInput;
+    const looksLikeUrl = /^https?:\/\//i.test(rawInput);
+    if (!looksLikeUrl) {
+      const q = encodeURIComponent(rawInput);
+      inputUrl = `https://www.yad2.co.il/realestate/forsale?text=${q}`;
+      console.log(`[yad2-unlocker] free-text query -> ${inputUrl}`);
+    }
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
     const isItemUrl = /\/realestate\/item\//.test(inputUrl);

@@ -459,17 +459,22 @@ export default function Properties() {
                     const body: Record<string, unknown> = {};
                     const url = yad2Url.trim();
                     if (url.length > 0) body.url = url;
+                    console.log('[Yad2 scrape] invoking yad2-unlocker with body:', body);
                     const { data, error } = await supabase.functions.invoke('yad2-unlocker', { body });
                     if (error) {
-                      // FunctionsHttpError exposes the response — try to read the JSON body
+                      // FunctionsHttpError exposes the response — read its JSON body
                       let detail = error.message ?? 'שגיאה לא ידועה';
+                      let payload: any = null;
                       try {
                         const ctx: any = (error as any).context;
                         if (ctx && typeof ctx.json === 'function') {
-                          const j = await ctx.json();
-                          if (j?.error) detail = `${j.error}${j.detail ? ` — ${j.detail}` : ''}`;
+                          payload = await ctx.json();
+                          if (payload?.error) detail = `${payload.error}${payload.detail ? ` — ${payload.detail}` : ''}`;
+                        } else if (ctx && typeof ctx.text === 'function') {
+                          detail = await ctx.text();
                         }
                       } catch { /* ignore */ }
+                      console.error('[Yad2 scrape] edge function error:', { message: error.message, name: (error as any).name, payload });
                       throw new Error(detail);
                     }
                     const d: any = data ?? {};
@@ -485,8 +490,14 @@ export default function Properties() {
                     );
                     queryClient.invalidateQueries({ queryKey: ['properties-search'] });
                   } catch (err: any) {
-                    console.error('[Yad2 scrape] failed:', err);
-                    toast.error('ייבוא מיד-2 נכשל: ' + (err?.message ?? 'שגיאה לא ידועה'));
+                    console.error('[Yad2 scrape] failed:', err, { name: err?.name, message: err?.message, stack: err?.stack });
+                    const msg = err?.message ?? '';
+                    const friendly = /Failed to (fetch|send)/i.test(msg)
+                      ? 'לא הצלחנו להתחבר לפונקציית יד-2. נסה שוב בעוד רגע.'
+                      : /BRIGHTDATA|scrape_failed/i.test(msg)
+                        ? 'שירות יד-2 (Bright Data) החזיר שגיאה. ודא ש-BRIGHTDATA_API_TOKEN מוגדר.'
+                        : msg || 'שגיאה לא ידועה';
+                    toast.error('ייבוא מיד-2 נכשל: ' + friendly);
                   } finally {
                     setYad2Scraping(false);
                   }
