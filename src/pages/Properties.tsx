@@ -367,6 +367,30 @@ export default function Properties() {
               </DropdownMenu>
             )}
           </div>
+
+          {/* Side B — view toggle */}
+          <div className="ms-auto inline-flex rounded-md border border-border bg-card/50 p-0.5" role="group" aria-label="מצב תצוגה">
+            <button
+              type="button"
+              onClick={() => setViewMode('grid')}
+              aria-pressed={viewMode === 'grid'}
+              aria-label="תצוגת כרטיסיות"
+              title="כרטיסיות"
+              className={`inline-flex items-center justify-center h-8 w-9 rounded-sm transition-colors ${viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              <LayoutGrid className="h-3.5 w-3.5" />
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('table')}
+              aria-pressed={viewMode === 'table'}
+              aria-label="תצוגת טבלה"
+              title="טבלה"
+              className={`inline-flex items-center justify-center h-8 w-9 rounded-sm transition-colors ${viewMode === 'table' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+            >
+              <FileSpreadsheet className="h-3.5 w-3.5" />
+            </button>
+          </div>
         </div>
 
 
