@@ -99,12 +99,16 @@ function brightDataRequest(
 }
 
 
-async function unlock(url: string, maxAttempts = 4): Promise<string> {
+async function unlock(
+  url: string,
+  opts: { accept?: string; maxAttempts?: number } = {},
+): Promise<string> {
   if (!BD_TOKEN) throw new Error("BRIGHTDATA_API_TOKEN is not configured");
+  const maxAttempts = opts.maxAttempts ?? 4;
   let lastErr: unknown = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const { status, body } = await brightDataRequest(url);
+      const { status, body } = await brightDataRequest(url, { accept: opts.accept });
       if (status >= 200 && status < 300) return body;
       if ((status >= 500 || status === 429) && attempt < maxAttempts) {
         console.warn(`[yad2-unlocker] BD ${status} attempt ${attempt}, retrying`);
@@ -123,6 +127,147 @@ async function unlock(url: string, maxAttempts = 4): Promise<string> {
   }
   throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
+
+// -------- Yad2 internal JSON gateway --------
+//
+// The Yad2 SPA talks to https://gw.yad2.co.il/*, which returns plain JSON and
+// has NO client-side hydration to wait for. We route through Bright Data to
+// bypass Radware bot protection but consume the structured payload directly,
+// no DOM parsing needed. Two endpoints in priority order:
+//   1) https://gw.yad2.co.il/realestate-feed/{forsale|rent}/feed?<qs>
+//   2) https://gw.yad2.co.il/feed-search-legacy/realestate/{forsale|rent}?<qs>  (fallback)
+// Item detail (single ad):
+//   https://gw.yad2.co.il/realestate-feed/item/{token}
+
+function toGatewayFeedUrls(inputUrl: string): string[] {
+  const u = new URL(inputUrl);
+  const deal: "forsale" | "rent" =
+    /forrent|rent/i.test(u.pathname) ? "rent" : "forsale";
+  // Preserve the query-string the front-end already built (text=, city=, rooms=, ...).
+  const qs = u.search ? u.search : "";
+  return [
+    `https://gw.yad2.co.il/realestate-feed/${deal}/feed${qs}`,
+    `https://gw.yad2.co.il/feed-search-legacy/realestate/${deal}${qs}`,
+  ];
+}
+
+function toGatewayItemUrl(inputUrl: string): string | null {
+  const m = inputUrl.match(/\/realestate\/item\/(?:[a-z-]+\/)?([a-z0-9]+)/i);
+  if (!m) return null;
+  return `https://gw.yad2.co.il/realestate-feed/item/${m[1]}`;
+}
+
+function pickPhotos(raw: any): string[] {
+  const out: string[] = [];
+  const push = (v: any) => {
+    const u = typeof v === "string" ? v : v?.src ?? v?.url ?? v?.image_url ?? "";
+    if (typeof u === "string" && /^https?:\/\//.test(u) && !/placeholder|default|logo|sprite/i.test(u)) out.push(u);
+  };
+  if (Array.isArray(raw)) raw.forEach(push);
+  else if (raw && typeof raw === "object") Object.values(raw).forEach(push);
+  else if (raw) push(raw);
+  return Array.from(new Set(out));
+}
+
+function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
+  const token = it?.token ?? it?.orderId ?? it?.order_id ?? it?.adNumber ?? it?.id ?? null;
+  if (!token || typeof token !== "string") return null;
+  const href = `https://www.yad2.co.il/realestate/item/${token}`;
+
+  const priceRaw = it?.price ?? it?.priceInShekels ?? it?.metaData?.price ?? null;
+  const rooms = toNum(it?.additionalDetails?.roomsCount ?? it?.rooms ?? it?.Rooms_text ?? it?.row_3);
+  const sqm = toInt(it?.additionalDetails?.squareMeter ?? it?.square_meters ?? it?.SquareMeter);
+  const floor = toInt(it?.additionalDetails?.floor ?? it?.floor);
+
+  const city = clean(it?.address?.city?.text ?? it?.city ?? it?.city_text ?? it?.row_4);
+  const neighborhood = clean(it?.address?.neighborhood?.text ?? it?.neighborhood ?? it?.neighborhood_text);
+  const address = clean(it?.address?.street?.text ?? it?.street ?? it?.row_2);
+
+  const photos = pickPhotos(it?.metaData?.images ?? it?.images ?? it?.image ?? it?.metaData?.coverImage);
+
+  return {
+    source_url: href,
+    external_id: token,
+    title: clean(
+      it?.title ?? it?.merchandise ?? it?.metaData?.title ?? it?.row_1
+        ?? [city, neighborhood].filter(Boolean).join(" · ")
+    ),
+    price: toInt(priceRaw),
+    rooms,
+    city,
+    neighborhood,
+    address,
+    sqm,
+    floor,
+    photos,
+    deal_type: dealType,
+    owner_name: clean(it?.customer?.name ?? it?.merchant_name ?? null),
+    owner_phone: clean(it?.customer?.phone ?? null),
+    description: clean(it?.description ?? null),
+  };
+}
+
+function extractFeedItems(payload: any): any[] {
+  if (!payload || typeof payload !== "object") return [];
+  // Yad2 gateway shapes we've observed:
+  //   { data: { feed: { feed_items: [...] } } }
+  //   { data: { markers: [...] } }
+  //   { feed: { feed_items: [...] } }
+  //   { items: [...] }  (legacy)
+  //   { data: [...] }   (some new endpoints just return an array)
+  const candidates: any[] = [];
+  const push = (v: any) => { if (Array.isArray(v)) candidates.push(v); };
+  push(payload?.data?.feed?.feed_items);
+  push(payload?.feed?.feed_items);
+  push(payload?.data?.markers);
+  push(payload?.data?.items);
+  push(payload?.data);
+  push(payload?.items);
+  push(payload?.feed_items);
+  // Filter to objects that look like ads.
+  for (const arr of candidates) {
+    const filtered = arr.filter((x: any) =>
+      x && typeof x === "object" &&
+      (x.token || x.orderId || x.order_id || x.adNumber) &&
+      (x.price != null || x.priceInShekels != null || x.metaData || x.additionalDetails || x.address)
+    );
+    if (filtered.length) return filtered;
+  }
+  return [];
+}
+
+function parseSearchJson(body: string, srcUrl: string, limit: number): Scraped[] {
+  const dealType = detectDealType(srcUrl);
+  let payload: any;
+  try { payload = JSON.parse(body); } catch { return []; }
+  const items = extractFeedItems(payload);
+  const out: Scraped[] = [];
+  const seen = new Set<string>();
+  for (const it of items) {
+    if (out.length >= limit) break;
+    const row = feedItemToScraped(it, dealType);
+    if (!row || seen.has(row.source_url)) continue;
+    seen.add(row.source_url);
+    out.push(row);
+  }
+  return out;
+}
+
+function parseItemJson(body: string, srcUrl: string): Scraped | null {
+  let payload: any;
+  try { payload = JSON.parse(body); } catch { return null; }
+  const dealType = detectDealType(srcUrl);
+  const ad = payload?.data ?? payload?.ad ?? payload;
+  if (!ad || typeof ad !== "object") return null;
+  const base = feedItemToScraped(ad, dealType);
+  if (!base) return null;
+  // Item endpoint carries richer contact info
+  base.owner_phone = clean(ad?.customer?.phone ?? ad?.phone_number ?? ad?.merchant_phone ?? base.owner_phone);
+  base.owner_name = clean(ad?.customer?.name ?? ad?.merchant_name ?? ad?.contact_name ?? base.owner_name);
+  base.description = clean(ad?.description ?? ad?.info_text ?? base.description);
+  return base;
+}
+
 
 // -------- Parsers --------
 
