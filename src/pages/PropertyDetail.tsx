@@ -420,10 +420,36 @@ export default function PropertyDetail() {
     if (editMode) setPhotos((list) => list.filter((item) => item !== url));
   };
 
-  const addPhotoUrl = () => {
+  const mirrorExternalUrl = async (rawUrl: string): Promise<string | null> => {
+    const url = rawUrl.trim();
+    if (!/^https?:\/\//i.test(url)) return null;
+    try {
+      const { data, error } = await supabase.functions.invoke('mirror-external-image', {
+        body: { url },
+      });
+      if (error) throw error;
+      const mirrored = (data as { public_url?: string } | null)?.public_url;
+      if (mirrored) return mirrored;
+    } catch (e: any) {
+      console.warn('mirror-external-image failed', e?.message ?? e);
+    }
+    return null;
+  };
+
+  const addPhotoUrl = async () => {
     if (!form?.photo_url_draft.trim()) return;
-    setPhotos((photos) => Array.from(new Set([...photos, form.photo_url_draft.trim()])));
+    const raw = form.photo_url_draft.trim();
     setField('photo_url_draft', '');
+    setUploadingPhoto(true);
+    try {
+      const mirrored = await mirrorExternalUrl(raw);
+      const finalUrl = mirrored || raw;
+      setPhotos((photos) => Array.from(new Set([...photos, finalUrl])));
+      if (mirrored) toast.success('התמונה שוכפלה למאגר');
+      else toast.message('לא ניתן היה לשכפל — הקישור נוסף כפי שהוא');
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   const handlePhotoUpload = async (files: FileList | null) => {
@@ -457,6 +483,52 @@ export default function PropertyDetail() {
       setUploadingPhoto(false);
     }
   };
+
+  const handlePhotoDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const dt = e.dataTransfer;
+    if (!dt) return;
+    // 1. Files dropped from OS
+    if (dt.files && dt.files.length > 0) {
+      const images = Array.from(dt.files).filter((f) => f.type.startsWith('image/'));
+      if (images.length) {
+        const list = new DataTransfer();
+        images.forEach((f) => list.items.add(f));
+        await handlePhotoUpload(list.files);
+        return;
+      }
+    }
+    // 2. External image (URLs from browsers)
+    const uriList = dt.getData('text/uri-list');
+    const html = dt.getData('text/html');
+    const plain = dt.getData('text/plain');
+    const urls = new Set<string>();
+    if (uriList) uriList.split(/\r?\n/).forEach((u) => u && !u.startsWith('#') && urls.add(u.trim()));
+    if (html) {
+      const matches = html.match(/https?:\/\/[^\s"'<>]+/gi) || [];
+      matches.forEach((u) => urls.add(u));
+    }
+    if (plain && /^https?:\/\//i.test(plain.trim())) urls.add(plain.trim());
+    if (urls.size === 0) return;
+    setUploadingPhoto(true);
+    try {
+      const added: string[] = [];
+      for (const u of urls) {
+        const mirrored = await mirrorExternalUrl(u);
+        if (mirrored) added.push(mirrored);
+      }
+      if (added.length) {
+        setPhotos((photos) => Array.from(new Set([...photos, ...added])));
+        toast.success(`${added.length} תמונות יובאו`);
+      } else {
+        toast.error('שכפול התמונה מהאתר החיצוני נכשל');
+      }
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
 
   const resolvedSourceUrl =
     sourceUrl ||
