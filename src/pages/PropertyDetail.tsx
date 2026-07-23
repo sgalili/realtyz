@@ -637,13 +637,24 @@ export default function PropertyDetail() {
                     if (!property?.id) return;
                     const ok = window.confirm('למחוק את הנכס לצמיתות מהמאגר?');
                     if (!ok) return;
-                    const { error } = await supabase.from('listings').delete().eq('id', property.id);
+                    const { data, error } = await supabase
+                      .from('listings')
+                      .delete()
+                      .eq('id', property.id)
+                      .select('id');
                     if (error) {
                       toast.error('מחיקת הנכס נכשלה', { description: error.message });
                       return;
                     }
+                    if (!data || data.length === 0) {
+                      toast.error('מחיקת הנכס נכשלה', {
+                        description: 'אין הרשאה למחוק את הנכס הזה (הבעלים אינו המשתמש הנוכחי).',
+                      });
+                      return;
+                    }
                     toast.success('הנכס נמחק');
                     qc.invalidateQueries({ queryKey: ['listings'] });
+                    qc.invalidateQueries({ queryKey: ['properties-search'] });
                     navigate('/properties');
                   }}
                   aria-label="מחיקת נכס"
