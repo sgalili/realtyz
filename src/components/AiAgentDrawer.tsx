@@ -391,6 +391,7 @@ export default function AiAgentDrawer() {
           sources: data.sources ?? [],
           research_sources: data.research_sources ?? [],
           webtiv_results: data.webtiv_results ?? [],
+          recipient_phone: data.created_lead?.phone_number ?? data.recipient_phone ?? null,
         };
       } else {
         assistantMsg = {
@@ -400,6 +401,7 @@ export default function AiAgentDrawer() {
           sources: data?.sources ?? [],
           research_sources: data?.research_sources ?? [],
           webtiv_results: data?.webtiv_results ?? [],
+          recipient_phone: data?.created_lead?.phone_number ?? data?.recipient_phone ?? null,
         };
       }
       setMessages(prev => [...prev, assistantMsg]);
