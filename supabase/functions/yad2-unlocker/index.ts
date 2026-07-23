@@ -196,7 +196,13 @@ function toGatewayFeedUrls(inputUrl: string): string[] {
     /forrent|rent/i.test(u.pathname) ? "rent" : "forsale";
   // Preserve the query-string the front-end already built (text=, city=, rooms=, ...).
   const qs = u.search ? u.search : "";
+  // Endpoint variants in priority order. The Yad2 SPA currently hits
+  // `/realestate-feed/{deal}` (no /feed suffix) — the /feed and
+  // /feed-search-legacy paths remain as fallbacks in case Yad2 flips CDN
+  // routing again. We try all three so a rename on Yad2's side doesn't
+  // silently kill the pipeline.
   return [
+    `https://gw.yad2.co.il/realestate-feed/${deal}${qs}`,
     `https://gw.yad2.co.il/realestate-feed/${deal}/feed${qs}`,
     `https://gw.yad2.co.il/feed-search-legacy/realestate/${deal}${qs}`,
   ];
