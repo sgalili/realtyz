@@ -88,10 +88,11 @@ async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
   if (error) throw error;
   return (data ?? []).map((row: any): UnifiedResult => {
     const meta = row.source_metadata && typeof row.source_metadata === 'object' ? row.source_metadata : {};
-    const sourceRaw = String(row.source ?? '').toLowerCase();
-    let source: PropertySource = 'mine';
-    if (sourceRaw === 'homely' || sourceRaw === 'webtiv') source = sourceRaw === 'webtiv' ? 'webtiv' : 'homely';
-    else if (sourceRaw === 'yad2') source = 'yad2';
+    // Any row that lives in our DB is "local" from the user's perspective.
+    // The upstream provenance is retained in row.source / meta, but for the
+    // multi-source counters + badges we treat every hydrated listing as
+    // 'mine' so imports don't keep showing up as "still external".
+    const source: PropertySource = 'mine';
     const price = normPhone(row.asking_price);
     return {
       key: `local:${row.id}`,
