@@ -38,6 +38,8 @@ import { searchAllSources, type UnifiedResult, type SearchFilters } from '@/lib/
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatListingTitle } from '@/lib/formatListingTitle';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ImportProgressDialog, type ImportStep } from '@/components/properties/ImportProgressDialog';
 
 const PRICE_MIN = 0;
 const PRICE_MAX = 10_000_000;
