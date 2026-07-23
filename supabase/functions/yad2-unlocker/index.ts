@@ -154,19 +154,25 @@ async function unlock(
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       const { status, body } = await brightDataRequest(url, { accept: opts.accept });
+      // Explicit direct-fetch diagnostics — surface Bright Data / Yad2 status
+      // and a preview of the upstream body so proxy blocks, CAPTCHAs, and
+      // empty gateway payloads are visible in Supabase logs.
+      console.log(
+        `[yad2-unlocker] direct-fetch ${url} → BD status=${status} bytes=${body.length} preview=${JSON.stringify(body.slice(0, 220))}`,
+      );
       if (status >= 200 && status < 300) return body;
-      if ((status >= 500 || status === 429) && attempt < maxAttempts) {
-        console.warn(`[yad2-unlocker] BD ${status} attempt ${attempt}, retrying`);
+      if ((status >= 500 || status === 429 || status === 403) && attempt < maxAttempts) {
+        console.warn(`[yad2-unlocker] BD ${status} attempt ${attempt} for ${url}, retrying`);
         await new Promise((r) => setTimeout(r, 500 * attempt));
         continue;
       }
-      throw new Error(`Bright Data ${status}: ${body.slice(0, 400)}`);
+      throw new Error(`Bright Data ${status} for ${url}: ${body.slice(0, 400)}`);
     } catch (e) {
       lastErr = e;
       const msg = String((e as Error)?.message ?? e);
       const transient = /http2|stream error|SendRequest|network|reset|ECONNRESET|EOF|timeout|socket hang up/i.test(msg);
       if (!transient || attempt >= maxAttempts) throw e;
-      console.warn(`[yad2-unlocker] transient error attempt ${attempt}: ${msg.slice(0, 200)}`);
+      console.warn(`[yad2-unlocker] transient error attempt ${attempt} for ${url}: ${msg.slice(0, 200)}`);
       await new Promise((r) => setTimeout(r, 600 * attempt));
     }
   }
