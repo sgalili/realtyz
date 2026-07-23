@@ -6,7 +6,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, Send, Sparkles, Loader2, BarChart3, Database, X, Mic, MicOff, FileText, ChevronDown, ChevronLeft, Paperclip, Globe } from 'lucide-react';
+import { Bot, Send, Sparkles, Loader2, BarChart3, Database, X, Mic, MicOff, FileText, ChevronDown, ChevronLeft, Paperclip, Globe, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
