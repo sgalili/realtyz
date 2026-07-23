@@ -1004,6 +1004,20 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
                   console.log(`[webtiv_search] deal_type=${deal} filter dropped ${before - webtivResults.length}/${before} mismatched results (price sanity applied)`);
                 }
               }
+              // STRICT budget cap on external Webtiv/Homely results — same
+              // rule as the local matching pipeline: zero overage for rent,
+              // 10% headroom for sale. Prevents a ₪5,500/mo lead from ever
+              // seeing a ₪6,000 rental card.
+              const budgetMaxWebtiv =
+                Number(prefs.budget_max ?? prefs.price_max ?? prefs.max_price ?? 0) || 0;
+              if (budgetMaxWebtiv > 0 && (deal === "rent" || deal === "sale")) {
+                const cap = deal === "rent" ? budgetMaxWebtiv : Math.round(budgetMaxWebtiv * 1.10);
+                const before = webtivResults.length;
+                webtivResults = webtivResults.filter((r) => !r.price || r.price <= cap);
+                if (before !== webtivResults.length) {
+                  console.log(`[webtiv_search] budget cap ${cap} dropped ${before - webtivResults.length}/${before} results`);
+                }
+              }
               // Return up to 24 results so the drawer can render the full
               // relevant slice (user asked for all 120+ Herzliya rentals
               // to be reachable, not silently truncated to 8).
