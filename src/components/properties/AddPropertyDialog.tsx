@@ -290,7 +290,7 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
             <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-3 space-y-2 max-w-2xl mx-auto mt-6">
               <Label className="text-xs font-bold flex items-center gap-1.5 text-primary">
                 <Sparkles className="h-3.5 w-3.5" />
-                הדבק כאן טקסט מודעה (Yad2 / מדלן) או קישור
+                הדבק כאן טקסט מודעה (Yad2) או קישור
               </Label>
               <Textarea
                 dir="rtl"
