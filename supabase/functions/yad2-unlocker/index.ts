@@ -29,6 +29,32 @@ const BD_ZONE = Deno.env.get("BRIGHTDATA_ZONE") ?? "yad2";
 
 type DealType = "sale" | "rent";
 
+// Yad2 uses numeric area+city codes for its structured search filters.
+// This table mirrors yad2-search/index.ts and covers Udi's primary zones
+// plus the major Israeli cities Realtyz users search most often. When a
+// city isn't listed we fall back to a `text` query.
+const YAD2_CITY_CODES: Record<string, { area: string; city: string }> = {
+  "הרצליה": { area: "18", city: "6400" },
+  "רמת השרון": { area: "18", city: "2650" },
+  "תל אביב": { area: "2", city: "5000" },
+  "תל אביב-יפו": { area: "2", city: "5000" },
+  "רמת גן": { area: "3", city: "8600" },
+  "גבעתיים": { area: "3", city: "6300" },
+  "רעננה": { area: "18", city: "8700" },
+  "כפר סבא": { area: "18", city: "6900" },
+  "נתניה": { area: "19", city: "7400" },
+  "פתח תקווה": { area: "3", city: "7900" },
+  "ראשון לציון": { area: "5", city: "8300" },
+  "חולון": { area: "5", city: "6600" },
+  "בת ים": { area: "5", city: "6200" },
+  "חיפה": { area: "75", city: "4000" },
+  "ירושלים": { area: "1", city: "3000" },
+  "באר שבע": { area: "7", city: "9000" },
+  "מודיעין": { area: "1", city: "1200" },
+  "אשדוד": { area: "6", city: "0070" },
+};
+
+
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
     status,
