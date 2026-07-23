@@ -123,6 +123,9 @@ interface Message {
   research_sources?: ResearchSource[];
   webtiv_results?: WebtivResult[];
   attachments?: Array<{ name: string; mime: string }>;
+  // When ai-agent auto-creates a lead this turn, we stash the recipient phone
+  // so per-property "Send WhatsApp Offer" buttons know where to route.
+  recipient_phone?: string | null;
 }
 
 // Hebrew translations for common SQL/aggregate column names returned by ai-agent
