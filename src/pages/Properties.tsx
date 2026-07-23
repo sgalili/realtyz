@@ -526,6 +526,42 @@ export default function Properties() {
         </CollapsibleContent>
       </Collapsible>
 
+      {/* Batch selection action bar */}
+      {hasSearched && results.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-md border bg-card/40 px-3 py-2 text-xs" dir="rtl">
+          <button
+            type="button"
+            onClick={() => selectAllVisible(sortedResults)}
+            className="text-primary hover:underline font-semibold"
+          >
+            בחר הכל
+          </button>
+          <span className="text-muted-foreground">·</span>
+          <button
+            type="button"
+            onClick={clearSelection}
+            className="text-muted-foreground hover:text-foreground"
+            disabled={selectedKeys.size === 0}
+          >
+            נקה בחירה
+          </button>
+          <span className="ms-auto flex items-center gap-2">
+            <span className="text-muted-foreground">
+              {selectedKeys.size} נבחרו
+            </span>
+            <Button
+              size="sm"
+              disabled={selectedKeys.size === 0}
+              onClick={runBatchImport}
+              className="gap-1.5 h-8"
+            >
+              <Send className="h-3.5 w-3.5" />
+              ייבא נבחרים ({selectedKeys.size})
+            </Button>
+          </span>
+        </div>
+      )}
+
       {/* Results */}
       <ErrorBoundary source="Properties.Results">
         {!hasSearched ? (
@@ -545,11 +581,25 @@ export default function Properties() {
             לא נמצאו נכסים תואמים. נסה חיפוש רחב יותר.
           </Card>
         ) : viewMode === 'table' ? (
-          <ResultTable results={sortedResults} importingKey={importingKey} onSelect={handleSelect} />
+          <ResultTable
+            results={sortedResults}
+            importingKey={importingKey}
+            onSelect={handleSelect}
+            selectedKeys={selectedKeys}
+            onToggleSelect={toggleSelected}
+            onToggleAll={(rows, checked) => (checked ? selectAllVisible(rows) : clearSelection())}
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {sortedResults.map((r) => (
-              <ResultCard key={r.key} result={r} importing={importingKey === r.key} onSelect={() => handleSelect(r)} />
+              <ResultCard
+                key={r.key}
+                result={r}
+                importing={importingKey === r.key}
+                onSelect={() => handleSelect(r)}
+                selected={selectedKeys.has(r.key)}
+                onToggleSelect={() => toggleSelected(r.key)}
+              />
             ))}
           </div>
         )}
@@ -566,6 +616,12 @@ export default function Properties() {
       <ManualPropertyDialog open={manualOpen} onOpenChange={setManualOpen} onCreated={runSearch} />
       <ImportPropertiesDialog open={importOpen} onOpenChange={setImportOpen} onImported={runSearch} />
       <HomelyBulkSyncDialog open={homelyBulkOpen} onOpenChange={setHomelyBulkOpen} onImported={runSearch} mode="properties" />
+      <ImportProgressDialog
+        open={progressOpen}
+        onOpenChange={setProgressOpen}
+        steps={importSteps}
+        onDone={() => { runSearch(); }}
+      />
     </div>
   );
 }
