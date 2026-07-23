@@ -232,9 +232,22 @@ export default function Properties() {
 
       {/* Compact unified control bar */}
       <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <div className="flex items-center gap-2 flex-wrap" dir="rtl">
-          {/* Single search field with placeholder */}
-          <div className="relative flex-1 min-w-[220px]">
+        {/* Row 1 — search: [advanced filter icon] [search input with go button] */}
+        <div className="flex items-center gap-2" dir="rtl">
+          <CollapsibleTrigger asChild>
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              className="h-10 w-10 shrink-0"
+              aria-label="סינון מתקדם"
+              title="סינון מתקדם"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+            </Button>
+          </CollapsibleTrigger>
+
+          <div className="relative flex-1 min-w-[200px]">
             <SearchIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
               value={q}
@@ -257,31 +270,12 @@ export default function Properties() {
               {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <SearchIcon className="h-4 w-4" />}
             </Button>
           </div>
+        </div>
 
-          {/* Advanced filter button — immediately to the left of the search bar */}
-          <CollapsibleTrigger asChild>
-            <Button type="button" size="icon" variant="outline" className="h-10 w-10" aria-label="סינון מתקדם" title="סינון מתקדם">
-              <SlidersHorizontal className="h-4 w-4" />
-            </Button>
-          </CollapsibleTrigger>
-
-          {/* Source counters (compact) */}
-          {hasSearched && (
-            <Badge variant="secondary" className="text-[10px] h-6">{results.length}</Badge>
-          )}
-          {Object.entries(sourceStatus).map(([src, info]) => (
-            <Badge
-              key={src}
-              variant="outline"
-              className={`text-[10px] h-6 ${info.status === 'error' ? 'border-destructive/40 text-destructive' : ''}`}
-              title={info.error ?? sourceLabel(src as any)}
-            >
-              {sourceLabel(src as any)}: {info.status === 'error' ? '!' : info.count}
-            </Badge>
-          ))}
-
-          {/* View toggle — pushed to the opposite (far-left) side */}
-          <div className="ms-auto inline-flex rounded-md border border-border bg-card/50 p-0.5" role="group" aria-label="מצב תצוגה">
+        {/* Row 2 — actions: [view toggle] ⇢ opposite side ⇠ [sort] [total count + breakdown] */}
+        <div className="flex items-center gap-2 mt-3" dir="rtl">
+          {/* Side A — view toggle */}
+          <div className="inline-flex rounded-md border border-border bg-card/50 p-0.5" role="group" aria-label="מצב תצוגה">
             <button
               type="button"
               onClick={() => setViewMode('grid')}
@@ -303,7 +297,87 @@ export default function Properties() {
               <FileSpreadsheet className="h-3.5 w-3.5" />
             </button>
           </div>
+
+          {/* Side B — pushed to the opposite side: sort + total-count dropdown */}
+          <div className="ms-auto flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 text-xs"
+                  aria-label="מיון"
+                  title="מיון"
+                >
+                  <ArrowUpDown className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{SORT_LABELS[sortBy]}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56" dir="rtl">
+                <DropdownMenuLabel className="text-xs">מיון תוצאות</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+                  {(Object.keys(SORT_LABELS) as Array<keyof typeof SORT_LABELS>).map((key) => (
+                    <DropdownMenuRadioItem key={key} value={key} className="text-xs">
+                      {SORT_LABELS[key]}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {hasSearched && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 text-primary px-3 h-8 hover:bg-primary/20 transition-colors"
+                    aria-label="פירוט תוצאות לפי מקור"
+                    title="פירוט תוצאות לפי מקור"
+                  >
+                    <Database className="h-3.5 w-3.5" />
+                    {/* +4px vs the previous 10px badge → 14px = text-sm */}
+                    <span className="text-sm font-bold tabular-nums leading-none">{results.length}</span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-60" dir="rtl">
+                  <DropdownMenuLabel className="text-xs">תוצאות לפי מקור</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {sourceBreakdown.length === 0 && (
+                    <DropdownMenuItem disabled className="text-xs text-muted-foreground">
+                      אין נתוני פירוט
+                    </DropdownMenuItem>
+                  )}
+                  {sourceBreakdown.map((row) => {
+                    const isError = row.status === 'error';
+                    return (
+                      <DropdownMenuItem
+                        key={row.key}
+                        className="text-xs justify-between gap-3"
+                        title={row.error ?? undefined}
+                      >
+                        <span className="flex items-center gap-2">
+                          <SourceBadge source={row.key} compact />
+                          <span>{sourceLabel(row.key)}</span>
+                        </span>
+                        <span className={`font-bold tabular-nums ${isError ? 'text-destructive' : ''}`}>
+                          {isError ? '!' : row.count}
+                        </span>
+                      </DropdownMenuItem>
+                    );
+                  })}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-xs justify-between gap-3 font-semibold">
+                    <span>סה״כ (לאחר איחוד)</span>
+                    <span className="tabular-nums">{results.length}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
         </div>
+
 
 
         <CollapsibleContent>
