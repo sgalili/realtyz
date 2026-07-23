@@ -32,6 +32,7 @@ export type UnifiedResult = {
 export type SearchFilters = {
   q?: string;
   city?: string | null;
+  neighborhood?: string | null;
   min_price?: number | null;
   max_price?: number | null;
   rooms?: number | null;
