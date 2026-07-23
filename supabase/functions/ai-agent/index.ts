@@ -1506,7 +1506,8 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
     } catch {
       return new Response(JSON.stringify({
         type: "text",
-        content: rawContent,
+        content: stripBrokerLicense(rawContent),
+        sources: kbSources,
         escalation,
         research_sources: researchSources,
         webtiv_results: webtivResults, market_intel: marketIntelResults,
@@ -1516,9 +1517,9 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
     }
 
     if (parsed.type === "text") {
-      // Fact-check the AI's draft against verified listings.
-      const fact_violations = factCheckDraft(String(parsed.content || ""), listingFacts);
-      return new Response(JSON.stringify({ ...parsed, sources: kbSources, research_sources: researchSources, escalation, fact_violations, webtiv_results: webtivResults, market_intel: marketIntelResults }), {
+      const cleanContent = stripBrokerLicense(String(parsed.content || ""));
+      const fact_violations = factCheckDraft(cleanContent, listingFacts);
+      return new Response(JSON.stringify({ ...parsed, content: cleanContent, sources: kbSources, research_sources: researchSources, escalation, fact_violations, webtiv_results: webtivResults, market_intel: marketIntelResults }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
