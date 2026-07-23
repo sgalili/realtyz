@@ -29,6 +29,7 @@ import {
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
 import { normalizeImageUrls, useVisibleImageUrls } from '@/lib/imageHealth';
+import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 
 const CONDITION_OPTIONS: { value: string; label: string }[] = [
   { value: 'new', label: 'חדש מקבלן' },
