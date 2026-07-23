@@ -55,25 +55,48 @@ function clean(s: string | null | undefined): string | null {
   return t || null;
 }
 
-async function unlock(url: string): Promise<string> {
+async function unlock(url: string, maxAttempts = 4): Promise<string> {
   if (!BD_TOKEN) throw new Error("BRIGHTDATA_API_TOKEN is not configured");
-  const res = await fetch("https://api.brightdata.com/request", {
-    method: "POST",
-    headers: {
-      Authorization: `Bearer ${BD_TOKEN}`,
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      zone: BD_ZONE,
-      url,
-      format: "raw",
-      country: "il",
-      method: "GET",
-    }),
-  });
-  const text = await res.text();
-  if (!res.ok) throw new Error(`Bright Data ${res.status}: ${text.slice(0, 400)}`);
-  return text;
+  let lastErr: unknown = null;
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const res = await fetch("https://api.brightdata.com/request", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${BD_TOKEN}`,
+          "Content-Type": "application/json",
+          Accept: "text/html,application/xhtml+xml,*/*",
+          Connection: "close",
+        },
+        body: JSON.stringify({
+          zone: BD_ZONE,
+          url,
+          format: "raw",
+          country: "il",
+          method: "GET",
+        }),
+      });
+      const text = await res.text();
+      if (!res.ok) {
+        // Retry on 5xx / 429; fail fast otherwise
+        if ((res.status >= 500 || res.status === 429) && attempt < maxAttempts) {
+          console.warn(`[yad2-unlocker] BD ${res.status} attempt ${attempt}, retrying`);
+          await new Promise((r) => setTimeout(r, 500 * attempt));
+          continue;
+        }
+        throw new Error(`Bright Data ${res.status}: ${text.slice(0, 400)}`);
+      }
+      return text;
+    } catch (e) {
+      lastErr = e;
+      const msg = String((e as Error)?.message ?? e);
+      const transient = /http2|stream error|SendRequest|network|reset|ECONNRESET|EOF|timeout/i.test(msg);
+      if (!transient || attempt >= maxAttempts) throw e;
+      console.warn(`[yad2-unlocker] transient error attempt ${attempt}: ${msg.slice(0, 200)}`);
+      await new Promise((r) => setTimeout(r, 600 * attempt));
+    }
+  }
+  throw lastErr instanceof Error ? lastErr : new Error(String(lastErr));
 }
 
 // -------- Parsers --------
