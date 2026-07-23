@@ -718,8 +718,10 @@ function ResultCard({
           </>
         )}
 
-        <div className="absolute top-3 right-3 z-10">
-          <SourceBadge source={result.source} />
+        <div className="absolute top-3 right-3 z-10 flex flex-row-reverse items-center gap-1">
+          {(result.sources ?? [result.source]).map((s) => (
+            <SourceBadge key={s} source={s} compact />
+          ))}
         </div>
         {result.listing_type && (
           <Badge className={`absolute top-3 left-3 border z-10 ${isRent ? 'bg-[#0b3982] text-white border-[#0b3982]' : 'bg-primary text-primary-foreground'}`}>
@@ -910,7 +912,13 @@ function ResultTable({
                     )}
                   </td>
                 )}
-                <td className="px-2 py-1.5"><SourceBadge source={r.source} compact /></td>
+                <td className="px-2 py-1.5">
+                  <div className="flex flex-row-reverse items-center gap-1">
+                    {(r.sources ?? [r.source]).map((s) => (
+                      <SourceBadge key={s} source={s} compact />
+                    ))}
+                  </div>
+                </td>
                 <td className="px-2 py-1.5 max-w-[320px] truncate">
                   {(() => {
                     const label = formatListingTitle({
