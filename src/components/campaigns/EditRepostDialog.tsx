@@ -604,23 +604,33 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
           </div>
         )}
 
-        {/* Icon-only AI regenerate pinned to the top-right corner of the
-            textarea, mirroring the main composer's UX. */}
+        {/* Icon-only AI regenerate pinned to the top-LEFT corner of the
+            textarea. Blocked when no listing is linked so we never re-generate
+            floating copy that isn't grounded in a real CRM listing. */}
         <div className="relative">
           <Textarea
             value={body}
             onChange={(e) => setBody(e.target.value)}
             rows={10}
-            className="text-sm pr-10"
+            className="text-sm pl-10"
             placeholder="ערוך את גוף הפוסט..."
           />
           <button
             type="button"
-            onClick={regenerate}
+            onClick={() => {
+              if (!resolvedListingId) {
+                toast.error('אין נכס מקושר לפוסט הזה', {
+                  description: 'קשר את הפוסט לנכס פעיל מה-CRM לפני שמנסחים מחדש עם AI.',
+                });
+                setShowLookup(true);
+                return;
+              }
+              regenerate();
+            }}
             disabled={regenerating || posting}
             aria-label="נסח מחדש עם AI"
-            title="נסח מחדש עם AI"
-            className="absolute top-2 right-2 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-primary hover:bg-muted/60 transition-colors disabled:opacity-50"
+            title={resolvedListingId ? 'נסח מחדש עם AI' : 'קשר נכס מה-CRM כדי לנסח מחדש'}
+            className="absolute top-2 left-2 inline-flex h-8 w-8 items-center justify-center rounded-md text-muted-foreground hover:text-primary hover:bg-muted/60 transition-colors disabled:opacity-50"
           >
             {regenerating ? (
               <Loader2 className="h-4 w-4 animate-spin" />
