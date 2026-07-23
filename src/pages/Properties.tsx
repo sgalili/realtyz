@@ -772,6 +772,7 @@ export default function Properties() {
         autoHydrate={!!quickLinkSeed}
         defaultSource={sourceTab === 'yad2' ? 'yad2' : sourceTab === 'madlan' ? 'madlan' : 'manual'}
       />
+      <ManualPropertyDialog open={manualOpen} onOpenChange={setManualOpen} onCreated={refreshListings} />
       <ImportPropertiesDialog open={importOpen} onOpenChange={setImportOpen} onImported={refreshListings} />
       <HomelyBulkSyncDialog open={homelyBulkOpen} onOpenChange={setHomelyBulkOpen} onImported={refreshListings} mode="properties" />
     </div>
