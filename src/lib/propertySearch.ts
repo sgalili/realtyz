@@ -66,18 +66,29 @@ function dedupeKey(r: Pick<UnifiedResult, 'city' | 'address' | 'rooms' | 'price'
     .join('|');
 }
 
+function tokenize(q: string | null | undefined): string[] {
+  return String(q ?? '')
+    .split(/\s+/)
+    .map((t) => t.trim())
+    .filter((t) => t.length >= 2)
+    .slice(0, 6);
+}
+
 async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
   let q = supabase
     .from('listings')
     .select('id, property_title, description, asking_price, city, address, neighborhood, rooms, sqm, floor, features, source_metadata, source, source_url, media_photos, created_at, updated_at')
-    .eq('status', 'live')
-    .eq('is_published', true)
     .order('updated_at', { ascending: false })
     .limit(200);
 
-  if (f.q) {
-    const like = `%${f.q}%`;
-    q = q.or(`property_title.ilike.${like},address.ilike.${like},city.ilike.${like},neighborhood.ilike.${like},description.ilike.${like}`);
+  // Tokenize free-text so "דירה בהרצליה 4 חדרים" matches on any word,
+  // not the whole phrase. Each token must appear in at least one text field.
+  const tokens = tokenize(f.q);
+  for (const t of tokens) {
+    const like = `%${t}%`;
+    q = q.or(
+      `property_title.ilike.${like},address.ilike.${like},city.ilike.${like},neighborhood.ilike.${like},description.ilike.${like}`,
+    );
   }
   if (f.city && f.city !== 'כל הערים') q = q.eq('city', f.city);
   if (f.min_price != null) q = q.gte('asking_price', f.min_price);
@@ -86,7 +97,11 @@ async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
   if (f.min_sqm != null) q = q.gte('sqm', f.min_sqm);
 
   const { data, error } = await q;
-  if (error) throw error;
+  if (error) {
+    console.error('[propertySearch] local listings query failed', error);
+    throw error;
+  }
+
   return (data ?? []).map((row: any): UnifiedResult => {
     const meta = row.source_metadata && typeof row.source_metadata === 'object' ? row.source_metadata : {};
     // Any row that lives in our DB is "local" from the user's perspective.
