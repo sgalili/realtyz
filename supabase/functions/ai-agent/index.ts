@@ -161,6 +161,94 @@ serve(async (req) => {
     }
     void mode;
 
+    // ── Create-Lead intent (owner chatting from the drawer) ────────────────
+    // When the workspace owner says "add a lead / הוסף ליד / צור מתעניין" and
+    // the message contains a phone number, actually INSERT the row into the
+    // leads table before returning. Previously the model just acknowledged
+    // the request in text so nothing persisted. Runs as the authenticated
+    // user so RLS + assigned_to scoping are correct.
+    try {
+      if (!lead_id) {
+        const supabaseUrlEarly = Deno.env.get("SUPABASE_URL")!;
+        const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+        const authHeaderEarly = req.headers.get("Authorization") ?? "";
+        const lastUser = [...(messages as Array<{ role: string; content: string }>)]
+          .reverse().find((m) => m.role === "user")?.content ?? "";
+        const text = String(lastUser);
+        const intentRe = /(הוסף|תוסיף|צור|תיצור|הוסיפי|תוסיפי|add|create|new)\s+(ליד|מתעניין|איש\s*קשר|contact|lead)/i;
+        const phoneMatch = text.match(/(?:\+?972[-\s]?|0)5\d(?:[-\s]?\d){7}|\b0\d{1,2}[-\s]?\d{7}\b/);
+        if (intentRe.test(text) && phoneMatch && authHeaderEarly.startsWith("Bearer ")) {
+          const rawPhone = phoneMatch[0].replace(/\D/g, "");
+          const normalized = rawPhone.startsWith("972")
+            ? rawPhone
+            : rawPhone.startsWith("0") ? `972${rawPhone.slice(1)}` : rawPhone;
+          // Best-effort name extraction: "בשם X", "שם: X", "name X"
+          const nameMatch =
+            text.match(/(?:בשם|שם\s*[:\-]?\s*|name\s*[:\-]?\s*)([\p{L}\u0590-\u05FF][\p{L}\u0590-\u05FF' \-]{1,60})/iu);
+          const fullName = nameMatch?.[1]?.trim() || null;
+          // City hint: "בעיר X", "מ X", or just capture any Hebrew city-ish token near the phone.
+          const cityMatch = text.match(/(?:בעיר|עיר\s*[:\-]?\s*|city\s*[:\-]?\s*)([\p{L}\u0590-\u05FF][\p{L}\u0590-\u05FF' \-]{1,40})/iu);
+          const city = cityMatch?.[1]?.trim() || null;
+          const dealHint =
+            /(שכירות|להשכרה|rent)/i.test(text) ? "rent" :
+            /(קנייה|למכירה|לרכישה|sale|buy)/i.test(text) ? "sale" : null;
+
+          const userClient = createClient(supabaseUrlEarly, anonKey, {
+            global: { headers: { Authorization: authHeaderEarly } },
+          });
+          const { data: uRes } = await userClient.auth.getUser();
+          const uid = uRes?.user?.id;
+          if (uid) {
+            // Avoid duplicates for the same owner/phone.
+            const { data: existing } = await userClient
+              .from("leads")
+              .select("id, full_name")
+              .eq("assigned_to", uid)
+              .eq("phone_number", normalized)
+              .maybeSingle();
+
+            if (existing) {
+              return new Response(JSON.stringify({
+                type: "text",
+                content: `המתעניין כבר קיים ב-CRM: ${existing.full_name || normalized}. לא נוצר כפיל.`,
+              }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            }
+
+            const { data: inserted, error: insErr } = await userClient
+              .from("leads")
+              .insert({
+                assigned_to: uid,
+                full_name: fullName,
+                phone_number: normalized,
+                city,
+                deal_type: dealHint,
+                lead_stage: "new",
+                status: "new",
+                ai_autopilot: false,
+              })
+              .select("id, full_name, phone_number")
+              .single();
+
+            if (insErr) {
+              console.warn("create-lead intent insert failed:", insErr);
+            } else {
+              const dispPhone = normalized.startsWith("972")
+                ? `0${normalized.slice(3, 5)}-${normalized.slice(5)}`
+                : normalized;
+              return new Response(JSON.stringify({
+                type: "text",
+                content: `✅ נוסף מתעניין חדש ל-CRM:\n• שם: ${fullName || "—"}\n• טלפון: ${dispPhone}${city ? `\n• עיר: ${city}` : ""}${dealHint ? `\n• סוג עסקה: ${dealHint === "rent" ? "שכירות" : "מכירה"}` : ""}\n\nהוא זמין עכשיו ב-Deal Room ובעמוד הלידים.`,
+                created_lead_id: inserted?.id,
+              }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      console.warn("create-lead intent check failed:", e);
+    }
+
+
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
     if (!LOVABLE_API_KEY) throw new Error("LOVABLE_API_KEY not configured");
 

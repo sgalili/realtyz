@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
+import { ManualPropertyDialog } from '@/components/properties/ManualPropertyDialog';
 import { EditPropertyDialog } from '@/components/properties/EditPropertyDialog';
 import { ImportPropertiesDialog } from '@/components/properties/ImportPropertiesDialog';
 import { HomelyBulkSyncDialog } from '@/components/properties/HomelyBulkSyncDialog';
@@ -152,6 +153,7 @@ export default function Properties() {
 
   const [shareTarget, setShareTarget] = useState<HomelyProperty | null>(null);
   const [addOpen, setAddOpen] = useState(false);
+  const [manualOpen, setManualOpen] = useState(false);
   const [quickLinkUrl, setQuickLinkUrl] = useState('');
   const [quickLinkSeed, setQuickLinkSeed] = useState<string | null>(null);
   const [yad2Url, setYad2Url] = useState('');
@@ -169,10 +171,11 @@ export default function Properties() {
 
 
   // Listen for hero-emitted add events (the '+' button lives in PageHero now).
+  // "manual" opens the blank ManualPropertyDialog (fully manual entry).
   useEffect(() => {
     const handler = (e: Event) => {
       const action = (e as CustomEvent<{ action: 'manual' | 'import' | 'homely' }>).detail?.action;
-      if (action === 'manual') setAddOpen(true);
+      if (action === 'manual') setManualOpen(true);
       else if (action === 'import') setImportOpen(true);
       else if (action === 'homely') setHomelyBulkOpen(true);
     };
@@ -769,6 +772,7 @@ export default function Properties() {
         autoHydrate={!!quickLinkSeed}
         defaultSource={sourceTab === 'yad2' ? 'yad2' : sourceTab === 'madlan' ? 'madlan' : 'manual'}
       />
+      <ManualPropertyDialog open={manualOpen} onOpenChange={setManualOpen} onCreated={refreshListings} />
       <ImportPropertiesDialog open={importOpen} onOpenChange={setImportOpen} onImported={refreshListings} />
       <HomelyBulkSyncDialog open={homelyBulkOpen} onOpenChange={setHomelyBulkOpen} onImported={refreshListings} mode="properties" />
     </div>

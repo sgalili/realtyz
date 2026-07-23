@@ -1,3 +1,10 @@
+/**
+ * ManualPropertyDialog
+ * --------------------
+ * Blank property form (mirrors EditPropertyDialog layout) with a Sale/Rent
+ * toggle. Opened from the "+ הוספת נכס ידנית" menu item. Does NOT run any
+ * AI-hydration — every field is a plain manual input.
+ */
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -13,11 +20,10 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from 'sonner';
-import { RefreshCw, Upload, X, Video } from 'lucide-react';
+import { Upload, X, Loader2 } from 'lucide-react';
 import {
   PROPERTY_TYPE_LABELS_HE,
   type PropertyType,
-  type HomelyProperty,
   type ListingType,
 } from '@/lib/homelyMockProperties';
 import {
@@ -28,7 +34,6 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Checkbox } from '@/components/ui/checkbox';
-import { normalizeImageUrls, useVisibleImageUrls } from '@/lib/imageHealth';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 
 const CONDITION_OPTIONS: { value: string; label: string }[] = [
@@ -39,13 +44,22 @@ const CONDITION_OPTIONS: { value: string; label: string }[] = [
 ];
 
 interface Props {
-  property: HomelyProperty | null;
   open: boolean;
   onOpenChange: (v: boolean) => void;
-  onSaved?: () => void;
+  onCreated?: () => void;
 }
 
-export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Props) {
+function slugify(s: string) {
+  return (
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9\u0590-\u05FF]+/g, '-')
+      .replace(/^-+|-+$/g, '')
+      .slice(0, 40) || 'listing'
+  ) + '-' + Math.random().toString(36).slice(2, 8);
+}
+
+export function ManualPropertyDialog({ open, onOpenChange, onCreated }: Props) {
   const [listingType, setListingType] = useState<ListingType>('sale');
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -75,10 +89,21 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
   const [photos, setPhotos] = useState<string[]>([]);
   const [videos, setVideos] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const photoInputRef = useRef<HTMLInputElement | null>(null);
   const videoInputRef = useRef<HTMLInputElement | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const [syncing, setSyncing] = useState(false);
+
+  // Reset the form every time the dialog re-opens.
+  useEffect(() => {
+    if (!open) return;
+    setListingType('sale');
+    setTitle(''); setDescription(''); setPrice(''); setCity(''); setAddress('');
+    setPropertyType('apartment'); setRooms(''); setSqm(''); setFloor(''); setTotalFloors('');
+    setYearBuilt(''); setNeighborhood(''); setBalconySqm(''); setCondition(''); setDirections('');
+    setParking(false); setElevator(false); setBalcony(false); setSafeRoom(false); setStorage(false);
+    setAirConditioning(false); setAccessible(false); setRenovated(false); setFurnished(false); setBars(false);
+    setPhotos([]); setVideos([]);
+  }, [open]);
 
   const handleUpload = async (files: FileList | null, kind: 'photo' | 'video') => {
     if (!files || files.length === 0) return;
@@ -93,7 +118,7 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
           fileName: f.name,
           data: f,
           mimeType: f.type,
-          source: 'edit_property_upload',
+          source: 'manual_property_upload',
         });
         if (row?.public_url) uploaded.push(row.public_url);
       }
@@ -107,135 +132,17 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
     }
   };
 
-  const hydrateFromRow = (p: any) => {
-    const meta = p.source_metadata ?? {};
-    const featObj = Array.isArray(p.features) ? (p.features[0] ?? {}) : (p.features ?? {});
-    const extras = (featObj && typeof featObj === 'object' ? featObj.extras : null) ?? {};
-    setListingType((p.listing_type ?? featObj?.listing_type) === 'rent' ? 'rent' : 'sale');
-    setTitle(p.title ?? p.property_title ?? '');
-    setDescription(p.description ?? '');
-    setPrice((p.price ?? p.asking_price) ? String(p.price ?? p.asking_price) : '');
-    setCity(p.city ?? '');
-    setAddress(p.address ?? '');
-    setPropertyType((p.property_type ?? featObj?.property_type) ?? 'apartment');
-    setRooms((p.rooms ?? null) != null ? String(p.rooms) : '');
-    setSqm((p.size_sqm ?? p.sqm) != null ? String(p.size_sqm ?? p.sqm) : '');
-    setFloor(p.floor != null ? String(p.floor) : '');
-    setTotalFloors(p.total_floors != null ? String(p.total_floors) : (extras.total_floors != null ? String(extras.total_floors) : ''));
-    const yb = p.year_built ?? featObj?.year_built;
-    setYearBuilt(yb != null ? String(yb) : '');
-    setNeighborhood(p.neighborhood ?? '');
-    setBalconySqm(extras.balcony_sqm != null ? String(extras.balcony_sqm) : '');
-    setCondition(extras.condition ?? '');
-    setDirections(extras.directions ?? '');
-    setParking(Boolean(p.parking ?? extras.parking));
-    setElevator(Boolean(p.elevator ?? extras.elevator));
-    setBalcony(Boolean(extras.balcony));
-    setSafeRoom(Boolean(extras.safe_room));
-    setStorage(Boolean(extras.storage));
-    setAirConditioning(Boolean(extras.air_conditioning));
-    setAccessible(Boolean(extras.accessible));
-    setRenovated(Boolean(extras.renovated));
-    setFurnished(Boolean(extras.furnished));
-    setBars(Boolean(extras.bars));
-    const existingPhotos = (p as any).media_photos ?? p.photos ?? meta.photos;
-    setPhotos(Array.isArray(existingPhotos) ? normalizeImageUrls(existingPhotos) : []);
-    const rawVideos = meta.videos ?? (p as any).videos ?? [];
-    setVideos(Array.isArray(rawVideos) ? rawVideos.filter((u: unknown): u is string => typeof u === 'string') : []);
-  };
-
-  const { visible: visiblePhotos, markBroken } = useVisibleImageUrls(photos);
-
-  useEffect(() => {
-    if (visiblePhotos.length !== photos.length) setPhotos(visiblePhotos);
-  }, [visiblePhotos, photos.length]);
-
-  useEffect(() => {
-    if (!property || !open) return;
-    hydrateFromRow(property);
-    // Fetch fresh full row from DB so extras / parking / elevator / features
-    // round-trip correctly even when the list view stripped them.
-    (async () => {
-      const { data } = await supabase
-        .from('listings')
-        .select('property_title, description, asking_price, city, address, neighborhood, rooms, sqm, floor, parking, elevator, features, source_metadata')
-        .eq('id', property.id)
-        .maybeSingle();
-      if (data) hydrateFromRow({ ...property, ...data });
-    })();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [property, open]);
-
-  // 60s client-side debounce on the manual Homely sync — prevents accidental
-  // burst clicks from spamming the Homely API (Udi's Ayrshare profile was
-  // permanently locked for monthly-unsuspension overuse from a similar storm).
-  const lastHomelySyncAtRef = useRef<number>(0);
-  const handleSyncFromHomely = async () => {
-    if (!property) return;
-    const now = Date.now();
-    const elapsed = now - lastHomelySyncAtRef.current;
-    if (lastHomelySyncAtRef.current > 0 && elapsed < 60_000) {
-      const wait = Math.ceil((60_000 - elapsed) / 1000);
-      toast.message(`סנכרון זמין שוב בעוד ${wait} שניות`);
-      return;
-    }
-    setSyncing(true);
-    try {
-      const { data, error } = await supabase.functions.invoke('homely-fetch-property', {
-        body: { listing_id: property.id },
-      });
-      if (error) throw error;
-      const payload = (data as any) ?? {};
-      if (payload.needs_setup) {
-        toast.message("יש לחבר תחילה את חשבון Homely", {
-          description: "עברו ל-הגדרות ← חיבורים והזינו את פרטי Homely (קוד משרד, משתמש וסיסמה).",
-        });
-        return;
-      }
-      // Graceful zero-state: edge fn returns { fallback: true } with HTTP 200
-      // when the broker has no active properties / serial isn't on Homely.
-      if (payload.fallback) {
-        if (payload.error === "property_not_found_in_broker_list" || payload.broker_active_count === 0) {
-          toast.message("אין נכסים פעילים בחשבון הומלי המחובר", {
-            description: "ודא שהנכס פעיל ב-Homely ולחץ שוב על סנכרון.",
-          });
-        } else {
-          toast.message("הנכס לא נמצא ב-Homely", { description: "נסה לסנכרן שוב מאוחר יותר." });
-        }
-        return;
-      }
-      if (payload.error) throw new Error(payload.error);
-      const u = payload.updated ?? {};
-      if (u.property_title) setTitle(u.property_title);
-      if (u.description) setDescription(u.description);
-      if (u.asking_price) setPrice(String(u.asking_price));
-      if (u.city) setCity(u.city);
-      if (u.address) setAddress(u.address);
-      if (u.rooms) setRooms(String(u.rooms));
-      if (u.sqm) setSqm(String(u.sqm));
-      if (u.floor != null) setFloor(String(u.floor));
-      const newPhotos = u?.source_metadata?.photos;
-      if (Array.isArray(newPhotos)) setPhotos(newPhotos);
-      toast.success(`נטענו ${payload.photo_count ?? 0} תמונות מ-Homely`);
-      onSaved?.();
-    } catch (e: any) {
-      toast.error(`סנכרון נכשל: ${e.message ?? e}`);
-    } finally {
-      // Cool-down starts at completion (success or fail), not at click time.
-      lastHomelySyncAtRef.current = Date.now();
-      setSyncing(false);
-    }
-  };
-
   const handleSubmit = async () => {
-    if (!property) return;
     if (!city.trim() || !price) {
       toast.error('יש למלא לפחות עיר ומחיר');
       return;
     }
     setSubmitting(true);
     try {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) { toast.error('יש להתחבר'); return; }
       const numericPrice = Number(price) || 0;
+      const finalTitle = title.trim() || `${PROPERTY_TYPE_LABELS_HE[propertyType]} ב${city}`;
       const extras = {
         balcony,
         balcony_sqm: balconySqm ? Number(balconySqm) : null,
@@ -252,40 +159,44 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
         directions: directions.trim() || null,
         total_floors: totalFloors ? Number(totalFloors) : null,
       };
-      const { error } = await supabase
-        .from('listings')
-        .update({
-          property_title: title.trim() || `${PROPERTY_TYPE_LABELS_HE[propertyType]} ב${city}`,
-          description: description.trim() || title.trim(),
-          asking_price: numericPrice,
-          city: city.trim(),
-          neighborhood: neighborhood.trim() || null,
-          address: address.trim() || null,
-          rooms: rooms ? Number(rooms) : null,
-          sqm: sqm ? Number(sqm) : null,
-          floor: floor ? Number(floor) : null,
-          parking,
-          elevator,
-          media_photos: photos,
-          source_metadata: {
-            ...((property as any)?.source_metadata ?? {}),
-            photos,
-            videos,
-          },
-          features: [{
-            listing_type: listingType,
-            property_type: propertyType,
-            year_built: yearBuilt ? Number(yearBuilt) : null,
-            extras,
-          }],
-        })
-        .eq('id', property.id);
+      const { error } = await supabase.from('listings').insert({
+        user_id: auth.user.id,
+        slug: slugify(finalTitle),
+        property_title: finalTitle,
+        description: description.trim() || finalTitle,
+        asking_price: numericPrice,
+        deal_type: listingType,
+        city: city.trim(),
+        neighborhood: neighborhood.trim() || null,
+        address: address.trim() || null,
+        rooms: rooms ? Number(rooms) : null,
+        sqm: sqm ? Number(sqm) : null,
+        floor: floor ? Number(floor) : null,
+        parking,
+        elevator,
+        status: 'live',
+        source: 'manual',
+        is_published: true,
+        media_photos: photos,
+        source_metadata: {
+          photos,
+          videos,
+          total_floors: extras.total_floors,
+          year_built: yearBuilt ? Number(yearBuilt) : null,
+        },
+        features: [{
+          listing_type: listingType,
+          property_type: propertyType,
+          year_built: yearBuilt ? Number(yearBuilt) : null,
+          extras,
+        }],
+      });
       if (error) throw error;
-      toast.success('הנכס עודכן');
+      toast.success('הנכס נוסף');
       onOpenChange(false);
-      onSaved?.();
+      onCreated?.();
     } catch (e: any) {
-      toast.error(`שגיאה בעדכון: ${e.message ?? e}`);
+      toast.error(`שגיאה בהוספה: ${e.message ?? e}`);
     } finally {
       setSubmitting(false);
     }
@@ -295,8 +206,8 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent dir="rtl" className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>עריכת נכס</DialogTitle>
-          <DialogDescription>עדכן את פרטי הנכס. השינויים יישמרו מיידית.</DialogDescription>
+          <DialogTitle>הוספת נכס ידנית</DialogTitle>
+          <DialogDescription>מלא את פרטי הנכס. כל השדות ניתנים לעריכה חופשית.</DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -319,42 +230,21 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
             </div>
           </div>
 
-          <div className="flex items-center justify-between gap-2 rounded-lg border border-primary/15 bg-primary/5 p-2.5">
-            <div className="text-xs text-muted-foreground">
-              משוך את כל הנתונים והתמונות העדכניות מ-Homely
-            </div>
-            <Button type="button" size="sm" variant="outline" onClick={handleSyncFromHomely} disabled={syncing} className="gap-1.5">
-              <RefreshCw className={`h-3.5 w-3.5 ${syncing ? 'animate-spin' : ''}`} />
-              {syncing ? 'מסנכרן…' : 'סנכרן מ-Homely'}
-            </Button>
-          </div>
-
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-semibold">תמונות ({visiblePhotos.length})</Label>
+              <Label className="text-xs font-semibold">תמונות ({photos.length})</Label>
               <Button type="button" size="sm" variant="outline" onClick={() => photoInputRef.current?.click()} disabled={uploading} className="gap-1.5">
-                <Upload className={`h-3.5 w-3.5 ${uploading ? 'animate-pulse' : ''}`} />
-                {uploading ? 'מעלה…' : 'העלה תמונות'}
+                {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                העלה תמונות
               </Button>
               <input ref={photoInputRef} type="file" accept="image/*" multiple hidden onChange={(e) => handleUpload(e.target.files, 'photo')} />
             </div>
-            {visiblePhotos.length > 0 && (
+            {photos.length > 0 && (
               <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto">
-                {visiblePhotos.map((url, i) => (
+                {photos.map((url, i) => (
                   <div key={`${url}-${i}`} className="relative group">
-                    <img
-                      src={url}
-                      alt={`photo-${i}`}
-                      className="aspect-square object-cover rounded-md border w-full"
-                      loading="lazy"
-                      onError={() => markBroken(url)}
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setPhotos((prev) => prev.filter((u) => u !== url))}
-                      className="absolute top-1 left-1 h-5 w-5 rounded-full bg-destructive/90 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
-                      aria-label="הסר תמונה"
-                    >
+                    <img src={url} alt={`photo-${i}`} className="aspect-square object-cover rounded-md border w-full" loading="lazy" />
+                    <button type="button" onClick={() => setPhotos((prev) => prev.filter((u) => u !== url))} className="absolute top-1 left-1 h-5 w-5 rounded-full bg-destructive/90 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center" aria-label="הסר תמונה">
                       <X className="h-3 w-3" />
                     </button>
                   </div>
@@ -365,12 +255,10 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <Label className="text-xs font-semibold flex items-center gap-1.5">
-                <Video className="h-3.5 w-3.5" /> סרטונים ({videos.length})
-              </Label>
+              <Label className="text-xs font-semibold">סרטונים ({videos.length})</Label>
               <Button type="button" size="sm" variant="outline" onClick={() => videoInputRef.current?.click()} disabled={uploading} className="gap-1.5">
-                <Upload className={`h-3.5 w-3.5 ${uploading ? 'animate-pulse' : ''}`} />
-                {uploading ? 'מעלה…' : 'העלה סרטון'}
+                {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                העלה סרטון
               </Button>
               <input ref={videoInputRef} type="file" accept="video/*" multiple hidden onChange={(e) => handleUpload(e.target.files, 'video')} />
             </div>
@@ -378,13 +266,8 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
               <div className="space-y-2">
                 {videos.map((url, i) => (
                   <div key={`${url}-${i}`} className="relative">
-                    <video src={url} controls className="w-full rounded-md border max-h-56 bg-black" />
-                    <button
-                      type="button"
-                      onClick={() => setVideos((prev) => prev.filter((u) => u !== url))}
-                      className="absolute top-1 left-1 h-6 w-6 rounded-full bg-destructive/90 text-white flex items-center justify-center"
-                      aria-label="הסר סרטון"
-                    >
+                    <video src={url} controls className="w-full rounded-md border max-h-48 bg-black" />
+                    <button type="button" onClick={() => setVideos((prev) => prev.filter((u) => u !== url))} className="absolute top-1 left-1 h-6 w-6 rounded-full bg-destructive/90 text-white flex items-center justify-center" aria-label="הסר סרטון">
                       <X className="h-3.5 w-3.5" />
                     </button>
                   </div>
@@ -401,26 +284,14 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
 
             <div className="space-y-1.5 col-span-2">
               <Label className="text-xs font-semibold">תיאור</Label>
-              <Textarea
-                value={description}
-                onChange={(e) => setDescription(e.target.value)}
-                rows={3}
-                placeholder="תאר את הנכס, יתרונותיו וסביבתו"
-              />
+              <Textarea value={description} onChange={(e) => setDescription(e.target.value)} rows={3} placeholder="תאר את הנכס, יתרונותיו וסביבתו" />
             </div>
 
             <div className="space-y-1.5 col-span-2">
               <Label className="text-xs font-semibold">מחיר</Label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground text-sm pointer-events-none">₪</span>
-                <Input
-                  type="number"
-                  inputMode="numeric"
-                  placeholder="1,500,000"
-                  value={price}
-                  onChange={(e) => setPrice(e.target.value)}
-                  className="pl-7"
-                />
+                <Input type="number" inputMode="numeric" placeholder={listingType === 'rent' ? '7,500' : '1,500,000'} value={price} onChange={(e) => setPrice(e.target.value)} className="pl-7" />
               </div>
             </div>
 
@@ -437,15 +308,11 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">סוג נכס</Label>
               <Select value={propertyType} onValueChange={(v) => setPropertyType(v as PropertyType)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {Object.entries(PROPERTY_TYPE_LABELS_HE)
                     .filter(([k]) => k !== 'all')
-                    .map(([k, label]) => (
-                      <SelectItem key={k} value={k}>{label}</SelectItem>
-                    ))}
+                    .map(([k, label]) => (<SelectItem key={k} value={k}>{label}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>
@@ -488,13 +355,9 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
             <div className="space-y-1.5">
               <Label className="text-xs font-semibold">מצב הנכס</Label>
               <Select value={condition || undefined} onValueChange={(v) => setCondition(v)}>
-                <SelectTrigger>
-                  <SelectValue placeholder="בחר" />
-                </SelectTrigger>
+                <SelectTrigger><SelectValue placeholder="בחר" /></SelectTrigger>
                 <SelectContent>
-                  {CONDITION_OPTIONS.map((o) => (
-                    <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>
-                  ))}
+                  {CONDITION_OPTIONS.map((o) => (<SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>
@@ -531,8 +394,8 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
 
         <DialogFooter className="gap-2">
           <Button variant="outline" onClick={() => onOpenChange(false)} disabled={submitting}>ביטול</Button>
-          <Button onClick={handleSubmit} disabled={submitting}>
-            {submitting ? 'שומר...' : 'שמור שינויים'}
+          <Button onClick={handleSubmit} disabled={submitting || uploading}>
+            {submitting ? 'שומר...' : 'הוסף נכס'}
           </Button>
         </DialogFooter>
       </DialogContent>
