@@ -31,6 +31,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { toast } from 'sonner';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
+import { ManualPropertyDialog } from '@/components/properties/ManualPropertyDialog';
 import { EditPropertyDialog } from '@/components/properties/EditPropertyDialog';
 import { ImportPropertiesDialog } from '@/components/properties/ImportPropertiesDialog';
 import { HomelyBulkSyncDialog } from '@/components/properties/HomelyBulkSyncDialog';
