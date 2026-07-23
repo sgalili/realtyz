@@ -67,10 +67,9 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
     sourceUrl,
     property.url,
   );
-  // Yad2 external-source deep-links are intentionally suppressed until the
-  // BrightData scraping integration is in place.
-  void resolvedUrl;
-  const yad2Url: string | null = null;
+  // Yad2 external-source deep-link (Bright Data Web Unlocker integration).
+  const yad2Url: string | null =
+    resolvedUrl && /yad2\.co\.il/i.test(resolvedUrl) ? resolvedUrl : null;
 
   const isRent = Number(property.price) < 50_000;
   // Prefer the raw source-provided property type verbatim from source_metadata

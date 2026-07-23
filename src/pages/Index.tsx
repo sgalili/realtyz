@@ -18,6 +18,7 @@ import { format, formatDistanceToNow, startOfMonth, subHours } from 'date-fns';
 import { he } from 'date-fns/locale';
 import { useAuth } from '@/hooks/useAuth';
 import { PendingListingsCard } from '@/components/PendingListingsCard';
+import { MatchProgressCard } from '@/components/dashboard/MatchProgressCard';
 import { ListingVisibilityManagerCard } from '@/components/listings/ListingVisibilityManagerCard';
 import { GlobalSearchTrigger } from '@/components/GlobalSearch';
 
@@ -405,6 +406,7 @@ const Dashboard = () => {
 
       {/* AI-detected pending listings */}
       <PendingListingsCard />
+      <MatchProgressCard />
       <ListingVisibilityManagerCard />
 
       {/* Market Alerts */}
