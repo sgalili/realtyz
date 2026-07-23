@@ -420,10 +420,36 @@ export default function PropertyDetail() {
     if (editMode) setPhotos((list) => list.filter((item) => item !== url));
   };
 
-  const addPhotoUrl = () => {
+  const mirrorExternalUrl = async (rawUrl: string): Promise<string | null> => {
+    const url = rawUrl.trim();
+    if (!/^https?:\/\//i.test(url)) return null;
+    try {
+      const { data, error } = await supabase.functions.invoke('mirror-external-image', {
+        body: { url },
+      });
+      if (error) throw error;
+      const mirrored = (data as { public_url?: string } | null)?.public_url;
+      if (mirrored) return mirrored;
+    } catch (e: any) {
+      console.warn('mirror-external-image failed', e?.message ?? e);
+    }
+    return null;
+  };
+
+  const addPhotoUrl = async () => {
     if (!form?.photo_url_draft.trim()) return;
-    setPhotos((photos) => Array.from(new Set([...photos, form.photo_url_draft.trim()])));
+    const raw = form.photo_url_draft.trim();
     setField('photo_url_draft', '');
+    setUploadingPhoto(true);
+    try {
+      const mirrored = await mirrorExternalUrl(raw);
+      const finalUrl = mirrored || raw;
+      setPhotos((photos) => Array.from(new Set([...photos, finalUrl])));
+      if (mirrored) toast.success('התמונה שוכפלה למאגר');
+      else toast.message('לא ניתן היה לשכפל — הקישור נוסף כפי שהוא');
+    } finally {
+      setUploadingPhoto(false);
+    }
   };
 
   const handlePhotoUpload = async (files: FileList | null) => {
@@ -457,6 +483,52 @@ export default function PropertyDetail() {
       setUploadingPhoto(false);
     }
   };
+
+  const handlePhotoDrop = async (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const dt = e.dataTransfer;
+    if (!dt) return;
+    // 1. Files dropped from OS
+    if (dt.files && dt.files.length > 0) {
+      const images = Array.from(dt.files).filter((f) => f.type.startsWith('image/'));
+      if (images.length) {
+        const list = new DataTransfer();
+        images.forEach((f) => list.items.add(f));
+        await handlePhotoUpload(list.files);
+        return;
+      }
+    }
+    // 2. External image (URLs from browsers)
+    const uriList = dt.getData('text/uri-list');
+    const html = dt.getData('text/html');
+    const plain = dt.getData('text/plain');
+    const urls = new Set<string>();
+    if (uriList) uriList.split(/\r?\n/).forEach((u) => u && !u.startsWith('#') && urls.add(u.trim()));
+    if (html) {
+      const matches = html.match(/https?:\/\/[^\s"'<>]+/gi) || [];
+      matches.forEach((u) => urls.add(u));
+    }
+    if (plain && /^https?:\/\//i.test(plain.trim())) urls.add(plain.trim());
+    if (urls.size === 0) return;
+    setUploadingPhoto(true);
+    try {
+      const added: string[] = [];
+      for (const u of urls) {
+        const mirrored = await mirrorExternalUrl(u);
+        if (mirrored) added.push(mirrored);
+      }
+      if (added.length) {
+        setPhotos((photos) => Array.from(new Set([...photos, ...added])));
+        toast.success(`${added.length} תמונות יובאו`);
+      } else {
+        toast.error('שכפול התמונה מהאתר החיצוני נכשל');
+      }
+    } finally {
+      setUploadingPhoto(false);
+    }
+  };
+
 
   const resolvedSourceUrl =
     sourceUrl ||
@@ -608,41 +680,49 @@ export default function PropertyDetail() {
           {editMode && form && (
             <Card className="p-4 sm:p-5 space-y-3">
               <h2 className="text-base font-bold text-primary">תמונות הנכס</h2>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Input
-                  value={form.photo_url_draft}
-                  onChange={(e) => setField('photo_url_draft', e.target.value)}
-                  placeholder="הדבקת קישור לתמונה"
-                  className="text-right"
-                />
-                <Button type="button" variant="outline" onClick={addPhotoUrl} className="gap-1.5">
-                  <Plus className="h-4 w-4" /> הוסף קישור
-                </Button>
-                <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground">
+              <div
+                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onDrop={handlePhotoDrop}
+                className="rounded-md border-2 border-dashed border-primary/30 bg-primary/5 p-3 flex items-center gap-2"
+              >
+                <label
+                  className="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+                  aria-label="העלה קבצי תמונה"
+                  title="העלה קבצי תמונה"
+                >
                   <Upload className={`h-4 w-4 ${uploadingPhoto ? 'animate-pulse' : ''}`} />
-                  {uploadingPhoto ? 'מעלה...' : 'העלה קובץ'}
-                  <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => handlePhotoUpload(e.target.files)} disabled={uploadingPhoto} />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="sr-only"
+                    onChange={(e) => handlePhotoUpload(e.target.files)}
+                    disabled={uploadingPhoto}
+                  />
                 </label>
-              </div>
-              {form.photos.length > 0 && (
-                <div className="space-y-2">
-                  {form.photos.map((url, i) => (
-                    <div key={`${url}-edit-${i}`} className="flex items-center gap-2">
-                      <Input
-                        value={url}
-                        onChange={(e) => setPhotos((list) => list.map((item, index) => index === i ? e.target.value : item))}
-                        className="text-left"
-                        dir="ltr"
-                      />
-                      <Button type="button" variant="ghost" size="icon" onClick={() => setPhotos((list) => list.filter((_, index) => index !== i))} aria-label="מחק תמונה">
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  ))}
+                <div className="relative flex-1">
+                  <Input
+                    value={form.photo_url_draft}
+                    onChange={(e) => setField('photo_url_draft', e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addPhotoUrl(); } }}
+                    placeholder="הדבקת קישור לתמונה או גרירה מדפדפן"
+                    className="text-right pl-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={addPhotoUrl}
+                    disabled={!form.photo_url_draft.trim() || uploadingPhoto}
+                    aria-label="הוסף קישור לתמונה"
+                    title="הוסף קישור לתמונה"
+                    className="absolute left-1 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-md text-primary hover:bg-primary/10 disabled:opacity-40"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
                 </div>
-              )}
+              </div>
             </Card>
           )}
+
 
           {/* Specs grid — editable in edit mode */}
           <Card className="p-4 sm:p-5">
