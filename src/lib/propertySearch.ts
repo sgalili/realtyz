@@ -180,25 +180,66 @@ export async function searchAllSources(f: SearchFilters): Promise<SearchResponse
     limit: 30,
   };
 
+  const homelyFilters = {
+    // Server-side filters accepted by `homely-fetch-property` (the same
+    // action the "Sync with Homely" dialog uses — that call yields ~1040
+    // properties, so we align the main /properties search with it here).
+    search: f.q ?? '',
+    cities: f.city && f.city !== 'כל הערים' ? [f.city] : [],
+    rooms: f.rooms != null ? String(f.rooms) : '',
+    type: '',
+    agent: '',
+    deal: listingType ?? 'all',
+  };
+  const homelyHasFilter = Boolean(
+    homelyFilters.search.trim() ||
+      homelyFilters.cities.length ||
+      homelyFilters.rooms ||
+      (homelyFilters.deal && homelyFilters.deal !== 'all'),
+  );
+
   const tasks: Array<Promise<{ label: PropertySource; results: UnifiedResult[] }>> = [
     searchLocal(f).then((r) => ({ label: 'mine' as const, results: r })).catch((e) => {
       console.error('[propertySearch] local source failed', e);
       sources.mine = { status: 'error', count: 0, error: String(e?.message ?? e) };
       return { label: 'mine' as const, results: [] };
     }),
-    invokeExternal('homely-search', body)
-      .then((d: any) => ({ label: 'homely' as const, results: normalizeExternal('homely', d?.results ?? []) }))
+    invokeExternal('homely-fetch-property', {
+      action: homelyHasFilter ? 'searchProperties' : 'fetchAllProperties',
+      filters: homelyFilters,
+    })
+      .then((d: any) => {
+        const items = Array.isArray(d?.properties) ? d.properties : [];
+        const normalized: UnifiedResult[] = items.map((p: any, idx: number): UnifiedResult => {
+          const photos = Array.isArray(p.photos) ? p.photos.filter((s: any) => typeof s === 'string') : [];
+          const price = normPhone(p.price);
+          const address = [p.address, p.street, p.number].filter(Boolean).join(' ').trim() || p.address || null;
+          return {
+            key: `homely:${p.homely_id ?? p.id ?? idx}`,
+            source: 'homely',
+            localId: null,
+            title: p.title || 'נכס',
+            description: p.description ?? null,
+            price,
+            city: p.city ?? null,
+            address,
+            neighborhood: p.neighborhood ?? null,
+            rooms: p.rooms != null ? Number(p.rooms) : null,
+            size_sqm: p.sqm != null ? Number(p.sqm) : null,
+            floor: p.floor != null ? Number(p.floor) : null,
+            photos: normalizeImageUrls(photos),
+            url: p.url ?? null,
+            listing_type: inferListingType(price, p.transaction_type ?? p.listing_type ?? p.deal_type),
+            property_type: p.property_type ?? null,
+            raw: p,
+          };
+        });
+        return { label: 'homely' as const, results: normalized };
+      })
       .catch((e) => {
-        console.error('[propertySearch] homely-search failed', e);
+        console.error('[propertySearch] homely-fetch-property failed', e);
         sources.homely = { status: 'error', count: 0, error: String(e?.message ?? e) };
         return { label: 'homely' as const, results: [] };
-      }),
-    invokeExternal('yad2-search', body)
-      .then((d: any) => ({ label: 'yad2' as const, results: normalizeExternal('yad2', d?.results ?? []) }))
-      .catch((e) => {
-        console.error('[propertySearch] yad2-search failed', e);
-        sources.yad2 = { status: 'error', count: 0, error: String(e?.message ?? e) };
-        return { label: 'yad2' as const, results: [] };
       }),
     (async () => {
       const queryText = [f.q, f.city && f.city !== 'כל הערים' ? f.city : null, f.neighborhood]
