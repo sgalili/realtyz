@@ -288,7 +288,7 @@ serve(async (req) => {
     // We fetch a wider window then split into "Past Conversation (WhatsApp)" vs "Reference Documents",
     // so the model can mirror the Agent's voice from past WhatsApp turns while citing factual docs.
     let kbContext = "(no Knowledge Base entries matched, answer briefly in the Agent's voice and offer to follow up; do NOT invent facts)";
-    let kbSources: Array<{ id: string; title: string; similarity: number; source?: string }> = [];
+    let kbSources: Array<{ id: string; title: string; similarity: number; source?: string; source_type?: string; file_path?: string | null; source_url?: string | null }> = [];
     try {
       const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user")?.content;
       const authHeader = req.headers.get("Authorization") ?? "";
