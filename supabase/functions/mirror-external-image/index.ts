@@ -40,17 +40,40 @@ Deno.serve(async (req) => {
     const url = String((body as { url?: unknown }).url ?? "").trim();
     if (!/^https?:\/\//i.test(url)) return json({ ok: false, error: "bad_url" }, 400);
 
+    let origin = "";
+    try { origin = new URL(url).origin; } catch { /* noop */ }
     const res = await fetch(url, {
       headers: {
-        "User-Agent": "Mozilla/5.0 (Realtyz-Mirror)",
-        Accept: "image/*,*/*;q=0.8",
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36",
+        Accept: "image/avif,image/webp,image/apng,image/*,*/*;q=0.8",
+        ...(origin ? { Referer: origin + "/" } : {}),
       },
+      redirect: "follow",
     });
     if (!res.ok) return json({ ok: false, error: `fetch_failed_${res.status}` }, 502);
-    const ct = res.headers.get("content-type") || "image/jpeg";
-    if (!ct.startsWith("image/")) return json({ ok: false, error: "not_an_image" }, 415);
+    let ct = (res.headers.get("content-type") || "").toLowerCase();
     const buf = new Uint8Array(await res.arrayBuffer());
     if (buf.byteLength < 200) return json({ ok: false, error: "image_too_small" }, 415);
+
+    // Magic-byte sniffing — some CDNs (facebook, etc.) return octet-stream / text.
+    const sniff = (() => {
+      if (buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff) return "image/jpeg";
+      if (buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47) return "image/png";
+      if (buf[0] === 0x47 && buf[1] === 0x49 && buf[2] === 0x46) return "image/gif";
+      if (buf[0] === 0x42 && buf[1] === 0x4d) return "image/bmp";
+      if (
+        buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46 &&
+        buf[8] === 0x57 && buf[9] === 0x45 && buf[10] === 0x42 && buf[11] === 0x50
+      ) return "image/webp";
+      if (
+        (buf[4] === 0x66 && buf[5] === 0x74 && buf[6] === 0x79 && buf[7] === 0x70) &&
+        (buf[8] === 0x61 || buf[8] === 0x68) // avif / heic family
+      ) return "image/avif";
+      return "";
+    })();
+    if (sniff) ct = sniff;
+    else if (!ct.startsWith("image/")) return json({ ok: false, error: "not_an_image" }, 415);
 
     const ext = extFromContentType(ct);
     const key = `${user.id}/${Date.now()}-${Math.random().toString(36).slice(2, 8)}.${ext}`;
