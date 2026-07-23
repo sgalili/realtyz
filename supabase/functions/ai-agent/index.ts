@@ -24,6 +24,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Strip any auto-appended broker-license footer from CRM/lead-drawer replies.
+// The system-rules hard-law appends "רישיון תיווך מספר: …" to every generated
+// draft, but that footer is meant for outbound marketing copy — NOT for the
+// owner's internal assistant chat (lead added / KPI answer / etc). Removing it
+// here keeps the drawer response clean without weakening the hard law for
+// public-facing posts.
+function stripBrokerLicense(text: string): string {
+  if (!text) return text;
+  return String(text)
+    .replace(/\n*\s*רישיון\s*תיווך[^\n]*/gu, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 const SCHEMA_CONTEXT = `
 You are the Agent's Virtual Twin, drafting messages AS the human Agent (e.g. "Udi") to Leads in the real-estate Deal Room. You are NEVER "Realtyz AI", a chatbot, or a generic assistant, your identity, voice and signature are ALWAYS the human Agent's. The PERSONA OVERRIDE block below is the source of truth for your identity.
 You speak Hebrew and English. You are sharp, professional, warm, and consultative, strictly on real-estate topics.
@@ -274,7 +288,7 @@ serve(async (req) => {
     // We fetch a wider window then split into "Past Conversation (WhatsApp)" vs "Reference Documents",
     // so the model can mirror the Agent's voice from past WhatsApp turns while citing factual docs.
     let kbContext = "(no Knowledge Base entries matched, answer briefly in the Agent's voice and offer to follow up; do NOT invent facts)";
-    let kbSources: Array<{ id: string; title: string; similarity: number; source?: string }> = [];
+    let kbSources: Array<{ id: string; title: string; similarity: number; source?: string; source_type?: string; file_path?: string | null; source_url?: string | null }> = [];
     try {
       const lastUserMsg = [...messages].reverse().find((m: any) => m.role === "user")?.content;
       const authHeader = req.headers.get("Authorization") ?? "";
@@ -292,9 +306,9 @@ serve(async (req) => {
             const docIds = Array.from(new Set(matches.map((m) => m.document_id).filter(Boolean)));
             const { data: docs } = await supabase
               .from("knowledge_documents")
-              .select("id, source_type, source_metadata")
+              .select("id, source_type, source_metadata, file_path")
               .in("id", docIds.length ? docIds : ["00000000-0000-0000-0000-000000000000"]);
-            const docMap = new Map<string, { source_type?: string; source_metadata?: any }>();
+            const docMap = new Map<string, { source_type?: string; source_metadata?: any; file_path?: string | null }>();
             (docs ?? []).forEach((d: any) => docMap.set(d.id, d));
 
             const enriched = matches.map((m) => {
@@ -303,7 +317,14 @@ serve(async (req) => {
                 d.source_type === "whatsapp" ||
                 d.source_metadata?.source === "WhatsApp" ||
                 d.source_metadata?.category === "Past Conversation";
-              return { ...m, isWhatsApp, sourceLabel: isWhatsApp ? "Past Conversation / WhatsApp" : "Reference Document" };
+              return {
+                ...m,
+                isWhatsApp,
+                sourceLabel: isWhatsApp ? "Past Conversation / WhatsApp" : "Reference Document",
+                source_type: d.source_type ?? null,
+                file_path: d.file_path ?? null,
+                source_url: d.source_metadata?.source_url ?? null,
+              };
             });
 
             // Prefer up to 4 WhatsApp chunks for STYLE, then up to 4 doc chunks for FACTS.
@@ -321,12 +342,20 @@ serve(async (req) => {
               : "";
             kbContext = [waBlock, docsBlock].filter(Boolean).join("\n\n");
 
-            const seen = new Map<string, { id: string; title: string; similarity: number; source?: string }>();
+            const seen = new Map<string, { id: string; title: string; similarity: number; source?: string; source_type?: string; file_path?: string | null; source_url?: string | null }>();
             ordered.forEach((m) => {
               const id = m.document_id ?? m.id;
               const sim = m.similarity ?? 0;
               if (!seen.has(id) || (seen.get(id)!.similarity < sim)) {
-                seen.set(id, { id, title: m.document_title, similarity: sim, source: m.sourceLabel });
+                seen.set(id, {
+                  id,
+                  title: m.document_title,
+                  similarity: sim,
+                  source: m.sourceLabel,
+                  source_type: m.source_type ?? undefined,
+                  file_path: m.file_path ?? null,
+                  source_url: m.source_url ?? null,
+                });
               }
             });
             kbSources = Array.from(seen.values()).slice(0, 6);
@@ -718,7 +747,14 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
             .eq("is_published", true)
             .order("created_at", { ascending: false })
             .limit(30);
-          if (budgetMax) q = q.lte("asking_price", Math.round(budgetMax * 1.15));
+          // STRICT budget enforcement: rent leads get a hard ceiling (no
+          // overage — a lead with a ₪5,500/mo cap must never see a ₪6,000
+          // rental). Sale leads keep a small 10% headroom so we can still
+          // surface a ₪2.1M listing when the cap is "around 2M".
+          if (budgetMax) {
+            const cap = dealType === "rent" ? budgetMax : Math.round(budgetMax * 1.10);
+            q = q.lte("asking_price", cap);
+          }
           if (budgetMin) q = q.gte("asking_price", Math.round(budgetMin * 0.85));
           // HARD deal_type pre-filter at the SQL level. For rent searches we
           // additionally cap price at ₪50k because Israeli monthly rents never
@@ -773,12 +809,18 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
             const before = candidates.length;
             candidates = candidates.filter((l) => {
               if (extractType(l) !== dealType) return false;
+              const price = Number(l.asking_price ?? 0);
               // Absolute price guardrail: strip any "rent" over ₪50k.
-              if (dealType === "rent" && Number(l.asking_price ?? 0) > 50_000) return false;
+              if (dealType === "rent" && price > 50_000) return false;
+              // STRICT budget cap — rent gets zero overage; sale gets 10%.
+              if (budgetMax && price > 0) {
+                const cap = dealType === "rent" ? budgetMax : Math.round(budgetMax * 1.10);
+                if (price > cap) return false;
+              }
               return true;
             });
             if (before !== candidates.length) {
-              console.log(`[matching] deal_type=${dealType} filter dropped ${before - candidates.length}/${before} candidates`);
+              console.log(`[matching] deal_type=${dealType} filter dropped ${before - candidates.length}/${before} candidates (budget=${budgetMax ?? "—"})`);
             }
           }
 
@@ -960,6 +1002,20 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
                 webtivResults = webtivResults.filter((r) => r.transaction_type === deal);
                 if (before !== webtivResults.length) {
                   console.log(`[webtiv_search] deal_type=${deal} filter dropped ${before - webtivResults.length}/${before} mismatched results (price sanity applied)`);
+                }
+              }
+              // STRICT budget cap on external Webtiv/Homely results — same
+              // rule as the local matching pipeline: zero overage for rent,
+              // 10% headroom for sale. Prevents a ₪5,500/mo lead from ever
+              // seeing a ₪6,000 rental card.
+              const budgetMaxWebtiv =
+                Number(prefs.budget_max ?? prefs.price_max ?? prefs.max_price ?? 0) || 0;
+              if (budgetMaxWebtiv > 0 && (deal === "rent" || deal === "sale")) {
+                const cap = deal === "rent" ? budgetMaxWebtiv : Math.round(budgetMaxWebtiv * 1.10);
+                const before = webtivResults.length;
+                webtivResults = webtivResults.filter((r) => !r.price || r.price <= cap);
+                if (before !== webtivResults.length) {
+                  console.log(`[webtiv_search] budget cap ${cap} dropped ${before - webtivResults.length}/${before} results`);
                 }
               }
               // Return up to 24 results so the drawer can render the full
@@ -1450,7 +1506,8 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
     } catch {
       return new Response(JSON.stringify({
         type: "text",
-        content: rawContent,
+        content: stripBrokerLicense(rawContent),
+        sources: kbSources,
         escalation,
         research_sources: researchSources,
         webtiv_results: webtivResults, market_intel: marketIntelResults,
@@ -1460,9 +1517,9 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
     }
 
     if (parsed.type === "text") {
-      // Fact-check the AI's draft against verified listings.
-      const fact_violations = factCheckDraft(String(parsed.content || ""), listingFacts);
-      return new Response(JSON.stringify({ ...parsed, sources: kbSources, research_sources: researchSources, escalation, fact_violations, webtiv_results: webtivResults, market_intel: marketIntelResults }), {
+      const cleanContent = stripBrokerLicense(String(parsed.content || ""));
+      const fact_violations = factCheckDraft(cleanContent, listingFacts);
+      return new Response(JSON.stringify({ ...parsed, content: cleanContent, sources: kbSources, research_sources: researchSources, escalation, fact_violations, webtiv_results: webtivResults, market_intel: marketIntelResults }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
@@ -1518,7 +1575,7 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
 
     return new Response(JSON.stringify({
       type: "text",
-      content: rawContent,
+      content: stripBrokerLicense(rawContent),
       escalation,
       webtiv_results: webtivResults, market_intel: marketIntelResults,
     }), {
