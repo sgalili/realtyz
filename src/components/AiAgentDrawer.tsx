@@ -332,11 +332,15 @@ export default function AiAgentDrawer() {
 
   const { isListening, toggle: toggleVoice } = useVoiceInput(handleVoiceResult);
 
+  // Auto-scroll to the bottom whenever new messages arrive AND when the
+  // drawer is (re-)opened, so the operator lands on the freshest turn.
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
+    if (!open) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    // Defer to next frame so layout is measured after the sheet opens.
+    requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+  }, [messages, open, historyLoaded]);
 
 
   const sendMessage = async (text: string) => {
