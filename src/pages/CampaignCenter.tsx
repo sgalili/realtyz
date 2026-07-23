@@ -1478,7 +1478,7 @@ const InlineComposer = ({
                   }}
                   className="w-full rounded-md border border-dashed border-primary/40 bg-primary/5 px-3 py-2 text-right text-xs font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
                 >
-                  {externalSearching ? 'מחפש בהומלי / יד-2…' : 'חפש גם בהומלי ויד-2'}
+                  {externalSearching ? 'מחפש בכל המקורות…' : 'חפש בכל המקורות (הומלי, יד-2, ווב-טיב)'}
                 </button>
                 {externalResults.map((r) => (
                   <button
