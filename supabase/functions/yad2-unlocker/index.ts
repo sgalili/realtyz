@@ -65,6 +65,10 @@ function brightDataRequest(url: string): Promise<{ status: number; body: string 
       format: "raw",
       country: "il",
       method: "GET",
+      // Crucial: run the page's client-side JS so Yad2's Next.js/React feed
+      // hydrates before Bright Data returns the DOM. Without this we only get
+      // the empty HTML shell and parse 0 results.
+      render: "true",
     });
     const req = https.request(
       {
