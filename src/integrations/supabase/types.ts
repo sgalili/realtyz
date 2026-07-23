@@ -4943,6 +4943,7 @@ export type Database = {
       get_followup_suggestions: { Args: { _user_id: string }; Returns: Json }
       get_homely_admin_overview: { Args: never; Returns: Json }
       get_homely_password: { Args: { _user_id: string }; Returns: string }
+      get_match_stats: { Args: { p_user_id: string }; Returns: Json }
       get_my_workspaces: {
         Args: never
         Returns: {
@@ -5066,6 +5067,7 @@ export type Database = {
           weight: number
         }[]
       }
+      matcher_periodic_sweep: { Args: never; Returns: undefined }
       merge_lead_into: {
         Args: { _source: string; _target: string }
         Returns: string
@@ -5118,6 +5120,10 @@ export type Database = {
         Returns: boolean
       }
       trial_outbound_used: { Args: { _user_id: string }; Returns: number }
+      trigger_match_for_lead: {
+        Args: { p_lead_id: string }
+        Returns: undefined
+      }
       upsert_lead_by_social: {
         Args: {
           _email?: string
