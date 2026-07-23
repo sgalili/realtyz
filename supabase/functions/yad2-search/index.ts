@@ -156,6 +156,7 @@ Deno.serve(async (req) => {
             photos: Array.isArray(it?.images) ? it.images.map((p: any) => p?.src || p).filter(Boolean) : [],
             url: it?.link_url || (it?.id ? `https://www.yad2.co.il/realestate/item/${it.id}` : null),
             features: [],
+            listing_type: dealType,
           });
         }
       } catch (e) {
@@ -182,8 +183,9 @@ Deno.serve(async (req) => {
           sqm: r.size_sqm,
           status: "live",
           is_published: true,
+          deal_type: dealType,
           media_photos: r.photos,
-          source_metadata: { photos: r.photos, floor: r.floor, url: r.url, source_url: r.url, source_origin: "yad2", cities: targetCities },
+          source_metadata: { photos: r.photos, floor: r.floor, url: r.url, source_url: r.url, source_origin: "yad2", cities: targetCities, listing_type: dealType },
           updated_at: new Date().toISOString(),
         }));
         await admin
