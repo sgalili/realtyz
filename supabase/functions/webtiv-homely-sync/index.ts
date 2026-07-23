@@ -210,6 +210,55 @@ async function syncBroker(
       const res = await pushToHomely(mapped.payload);
       const homelySerial = res.parsed?.serial != null ? String(res.parsed.serial) : null;
 
+      // Auto-create a Realtyz CRM profile for every synced contact so
+      // owners (sellers) and buyers get a personal card the moment they
+      // arrive. Matches by phone first, then by name+workspace.
+      try {
+        const fullName = [strOrUndef((rec as any).name), strOrUndef((rec as any).family)]
+          .filter(Boolean).join(" ").trim() || (mapped.phone ? `איש קשר ${mapped.phone.slice(-4)}` : "איש קשר");
+        const profileType = s.key === "sellers" ? "Owner" : "Buyer";
+        let existingId: string | null = null;
+        if (mapped.phone) {
+          const { data: byPhone } = await admin
+            .from("crm_profiles").select("id")
+            .eq("workspace_owner_id", userId).eq("phone", mapped.phone).maybeSingle();
+          existingId = (byPhone as any)?.id ?? null;
+        }
+        if (!existingId) {
+          const { data: byName } = await admin
+            .from("crm_profiles").select("id")
+            .eq("workspace_owner_id", userId).ilike("full_name", fullName).maybeSingle();
+          existingId = (byName as any)?.id ?? null;
+        }
+        const professional_info = {
+          city: strOrUndef((rec as any).city ?? (rec as any).city1),
+          neighborhood: strOrUndef((rec as any).shcuna ?? (rec as any).shcuna1),
+          propertyType: strOrUndef((rec as any).objectresidence),
+          rooms: strOrUndef((rec as any).room),
+          price: strOrUndef((rec as any).priceshekel),
+          deal_side: s.key,
+        };
+        if (existingId) {
+          await admin.from("crm_profiles").update({
+            phone: mapped.phone || undefined,
+            email: mapped.email ?? undefined,
+            professional_info,
+          }).eq("id", existingId);
+        } else {
+          await admin.from("crm_profiles").insert({
+            workspace_owner_id: userId,
+            full_name: fullName,
+            phone: mapped.phone || null,
+            email: mapped.email,
+            profile_type: profileType,
+            source: "webtiv_import",
+            professional_info,
+          });
+        }
+      } catch (e) {
+        console.warn("[webtiv-homely-sync] crm_profiles upsert failed", (e as Error).message);
+      }
+
       await admin.from("webtiv_synced_records").insert({
         user_id: userId,
         source: s.key,
