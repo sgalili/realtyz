@@ -29,7 +29,12 @@ export async function autoImportResult(result: UnifiedResult): Promise<string> {
 
   // Short-circuit: maybe another workspace member already imported the same URL.
   const existing = await findLocalBySourceUrl(result.url);
-  if (existing) return existing;
+  if (existing) {
+    // Ensure the row is stamped as 'local' so the multi-source badge stops
+    // showing it as still-external on subsequent searches.
+    await supabase.from('listings').update({ source: 'local' }).eq('id', existing);
+    return existing;
+  }
 
   const url = result.url;
   if (!url) throw new Error('missing_source_url');
@@ -48,5 +53,17 @@ export async function autoImportResult(result: UnifiedResult): Promise<string> {
 
   const localId = await pollForListing(url);
   if (!localId) throw new Error('import_not_visible');
+
+  // Stamp as local so future searches recognize it as internal (no re-import,
+  // no external badge). Best-effort — a failure here is non-fatal, the listing
+  // is already in the DB.
+  const { error: stampErr } = await supabase
+    .from('listings')
+    .update({ source: 'local' })
+    .eq('id', localId);
+  if (stampErr) {
+    console.warn('[autoImportResult] failed to stamp source=local', stampErr.message);
+  }
+
   return localId;
 }

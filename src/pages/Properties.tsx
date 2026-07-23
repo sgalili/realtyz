@@ -10,11 +10,17 @@ import { Slider } from '@/components/ui/slider';
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu, DropdownMenuTrigger, DropdownMenuContent,
+  DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuItem,
+  DropdownMenuRadioGroup, DropdownMenuRadioItem,
+} from '@/components/ui/dropdown-menu';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Send, BedDouble, Ruler, MapPin, Building2, FileSpreadsheet, LayoutGrid,
-  SlidersHorizontal, Filter, ArrowRight, Loader2, Search as SearchIcon,
+  SlidersHorizontal, ArrowRight, Loader2, Search as SearchIcon,
+  ArrowUpDown, Database,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
@@ -78,6 +84,7 @@ export default function Properties() {
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
   const [filtersOpen, setFiltersOpen] = useState(false);
+  const [sortBy, setSortBy] = useState<'relevance' | 'price_asc' | 'price_desc' | 'rooms_desc' | 'size_desc' | 'newest'>('relevance');
 
   const [results, setResults] = useState<UnifiedResult[]>(cached?.results ?? []);
   const [sourceStatus, setSourceStatus] = useState<Record<string, { status: string; count: number; error?: string }>>({});
@@ -170,6 +177,50 @@ export default function Properties() {
     return Array.from(cities);
   }, [results]);
 
+  const sortedResults = useMemo(() => {
+    const arr = [...results];
+    const numOr = (v: number | null | undefined, fallback: number) => (typeof v === 'number' && !Number.isNaN(v) ? v : fallback);
+    switch (sortBy) {
+      case 'price_asc':
+        return arr.sort((a, b) => numOr(a.price, Number.POSITIVE_INFINITY) - numOr(b.price, Number.POSITIVE_INFINITY));
+      case 'price_desc':
+        return arr.sort((a, b) => numOr(b.price, Number.NEGATIVE_INFINITY) - numOr(a.price, Number.NEGATIVE_INFINITY));
+      case 'rooms_desc':
+        return arr.sort((a, b) => numOr(b.rooms, -1) - numOr(a.rooms, -1));
+      case 'size_desc':
+        return arr.sort((a, b) => numOr(b.size_sqm, -1) - numOr(a.size_sqm, -1));
+      case 'newest':
+        return arr.sort((a, b) => String(b.updated_at ?? b.created_at ?? '').localeCompare(String(a.updated_at ?? a.created_at ?? '')));
+      default:
+        return arr;
+    }
+  }, [results, sortBy]);
+
+  // Per-source count breakdown for the total-count dropdown.
+  const sourceBreakdown = useMemo(() => {
+    // Prefer the fan-out status (accurate raw counts before dedupe/text filter).
+    const fromStatus = Object.entries(sourceStatus).map(([src, info]) => ({
+      key: src as any,
+      count: info.count,
+      status: info.status,
+      error: info.error,
+    }));
+    if (fromStatus.length) return fromStatus;
+    // Fallback: count the rendered results by their assigned source.
+    const buckets = new Map<string, number>();
+    results.forEach((r) => buckets.set(r.source, (buckets.get(r.source) ?? 0) + 1));
+    return Array.from(buckets.entries()).map(([key, count]) => ({ key: key as any, count, status: 'ok' as const, error: undefined }));
+  }, [sourceStatus, results]);
+
+  const SORT_LABELS: Record<typeof sortBy, string> = {
+    relevance: 'רלוונטיות',
+    price_asc: 'מחיר: נמוך לגבוה',
+    price_desc: 'מחיר: גבוה לנמוך',
+    rooms_desc: 'הכי הרבה חדרים',
+    size_desc: 'הכי גדול (מ״ר)',
+    newest: 'החדשים ביותר',
+  };
+
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden min-w-0" dir="rtl">
       <header className="text-right">
@@ -181,9 +232,22 @@ export default function Properties() {
 
       {/* Compact unified control bar */}
       <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <div className="flex items-center gap-2 flex-wrap" dir="rtl">
-          {/* Single search field with placeholder */}
-          <div className="relative flex-1 min-w-[220px]">
+        {/* Row 1 — search: [advanced filter icon] [search input with go button] */}
+        <div className="flex items-center gap-2" dir="rtl">
+          <CollapsibleTrigger asChild>
+            <Button
+              type="button"
+              size="icon"
+              variant="outline"
+              className="h-10 w-10 shrink-0"
+              aria-label="סינון מתקדם"
+              title="סינון מתקדם"
+            >
+              <SlidersHorizontal className="h-4 w-4" />
+            </Button>
+          </CollapsibleTrigger>
+
+          <div className="relative flex-1 min-w-[200px]">
             <SearchIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
               value={q}
@@ -206,31 +270,12 @@ export default function Properties() {
               {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <SearchIcon className="h-4 w-4" />}
             </Button>
           </div>
+        </div>
 
-          {/* Advanced filter button — immediately to the left of the search bar */}
-          <CollapsibleTrigger asChild>
-            <Button type="button" size="icon" variant="outline" className="h-10 w-10" aria-label="סינון מתקדם" title="סינון מתקדם">
-              <SlidersHorizontal className="h-4 w-4" />
-            </Button>
-          </CollapsibleTrigger>
-
-          {/* Source counters (compact) */}
-          {hasSearched && (
-            <Badge variant="secondary" className="text-[10px] h-6">{results.length}</Badge>
-          )}
-          {Object.entries(sourceStatus).map(([src, info]) => (
-            <Badge
-              key={src}
-              variant="outline"
-              className={`text-[10px] h-6 ${info.status === 'error' ? 'border-destructive/40 text-destructive' : ''}`}
-              title={info.error ?? sourceLabel(src as any)}
-            >
-              {sourceLabel(src as any)}: {info.status === 'error' ? '!' : info.count}
-            </Badge>
-          ))}
-
-          {/* View toggle — pushed to the opposite (far-left) side */}
-          <div className="ms-auto inline-flex rounded-md border border-border bg-card/50 p-0.5" role="group" aria-label="מצב תצוגה">
+        {/* Row 2 — actions: [view toggle] ⇢ opposite side ⇠ [sort] [total count + breakdown] */}
+        <div className="flex items-center gap-2 mt-3" dir="rtl">
+          {/* Side A — view toggle */}
+          <div className="inline-flex rounded-md border border-border bg-card/50 p-0.5" role="group" aria-label="מצב תצוגה">
             <button
               type="button"
               onClick={() => setViewMode('grid')}
@@ -252,7 +297,87 @@ export default function Properties() {
               <FileSpreadsheet className="h-3.5 w-3.5" />
             </button>
           </div>
+
+          {/* Side B — pushed to the opposite side: sort + total-count dropdown */}
+          <div className="ms-auto flex items-center gap-2">
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="h-8 gap-1.5 text-xs"
+                  aria-label="מיון"
+                  title="מיון"
+                >
+                  <ArrowUpDown className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">{SORT_LABELS[sortBy]}</span>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-56">
+                <DropdownMenuLabel className="text-xs">מיון תוצאות</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
+                  {(Object.keys(SORT_LABELS) as Array<keyof typeof SORT_LABELS>).map((key) => (
+                    <DropdownMenuRadioItem key={key} value={key} className="text-xs">
+                      {SORT_LABELS[key]}
+                    </DropdownMenuRadioItem>
+                  ))}
+                </DropdownMenuRadioGroup>
+              </DropdownMenuContent>
+            </DropdownMenu>
+
+            {hasSearched && (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button
+                    type="button"
+                    className="inline-flex items-center gap-1.5 rounded-full border border-primary/30 bg-primary/10 text-primary px-3 h-8 hover:bg-primary/20 transition-colors"
+                    aria-label="פירוט תוצאות לפי מקור"
+                    title="פירוט תוצאות לפי מקור"
+                  >
+                    <Database className="h-3.5 w-3.5" />
+                    {/* +4px vs the previous 10px badge → 14px = text-sm */}
+                    <span className="text-sm font-bold tabular-nums leading-none">{results.length}</span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-60">
+                  <DropdownMenuLabel className="text-xs">תוצאות לפי מקור</DropdownMenuLabel>
+                  <DropdownMenuSeparator />
+                  {sourceBreakdown.length === 0 && (
+                    <DropdownMenuItem disabled className="text-xs text-muted-foreground">
+                      אין נתוני פירוט
+                    </DropdownMenuItem>
+                  )}
+                  {sourceBreakdown.map((row) => {
+                    const isError = row.status === 'error';
+                    return (
+                      <DropdownMenuItem
+                        key={row.key}
+                        className="text-xs justify-between gap-3"
+                        title={row.error ?? undefined}
+                      >
+                        <span className="flex items-center gap-2">
+                          <SourceBadge source={row.key} compact />
+                          <span>{sourceLabel(row.key)}</span>
+                        </span>
+                        <span className={`font-bold tabular-nums ${isError ? 'text-destructive' : ''}`}>
+                          {isError ? '!' : row.count}
+                        </span>
+                      </DropdownMenuItem>
+                    );
+                  })}
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem className="text-xs justify-between gap-3 font-semibold">
+                    <span>סה״כ (לאחר איחוד)</span>
+                    <span className="tabular-nums">{results.length}</span>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            )}
+          </div>
         </div>
+
 
 
         <CollapsibleContent>
@@ -360,10 +485,10 @@ export default function Properties() {
             לא נמצאו נכסים תואמים. נסה חיפוש רחב יותר.
           </Card>
         ) : viewMode === 'table' ? (
-          <ResultTable results={results} importingKey={importingKey} onSelect={handleSelect} />
+          <ResultTable results={sortedResults} importingKey={importingKey} onSelect={handleSelect} />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {results.map((r) => (
+            {sortedResults.map((r) => (
               <ResultCard key={r.key} result={r} importing={importingKey === r.key} onSelect={() => handleSelect(r)} />
             ))}
           </div>
