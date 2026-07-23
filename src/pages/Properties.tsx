@@ -850,6 +850,20 @@ function ResultTable({
       <table className="w-full text-[15px]" dir="rtl">
         <thead className="bg-muted/50 sticky top-0">
           <tr className="text-right">
+            {onToggleSelect && (
+              <th className="px-2 py-2 w-8">
+                {onToggleAll && (
+                  <Checkbox
+                    checked={
+                      sorted.length > 0 &&
+                      sorted.filter((r) => !r.localId).every((r) => selectedKeys?.has(r.key))
+                    }
+                    onCheckedChange={(v) => onToggleAll(sorted, !!v)}
+                    aria-label="בחר הכל"
+                  />
+                )}
+              </th>
+            )}
             <HeaderCell col="source" label="מקור" />
             <HeaderCell col="name" label="שם" />
             <HeaderCell col="listing_type" label="סוג" />
@@ -865,8 +879,20 @@ function ResultTable({
           {sorted.map((r) => {
             const isRent = r.listing_type === 'rent';
             const importing = importingKey === r.key;
+            const isSelected = !!selectedKeys?.has(r.key);
             return (
-              <tr key={r.key} className="border-t hover:bg-muted/30 cursor-pointer" onClick={() => onSelect(r)}>
+              <tr key={r.key} className={`border-t hover:bg-muted/30 cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`} onClick={() => onSelect(r)}>
+                {onToggleSelect && (
+                  <td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
+                    {!r.localId && (
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => onToggleSelect(r.key)}
+                        aria-label="בחר לייבוא"
+                      />
+                    )}
+                  </td>
+                )}
                 <td className="px-2 py-1.5"><SourceBadge source={r.source} compact /></td>
                 <td className="px-2 py-1.5 max-w-[320px] truncate">
                   {(() => {
