@@ -824,6 +824,9 @@ const InlineComposer = ({
   const [selectedListingId, setSelectedListingId] = useState<string | null>(initial.selectedListingId ?? null);
   const [listingPickerOpen, setListingPickerOpen] = useState(false);
   const [bodyManuallyEdited, setBodyManuallyEdited] = useState(false);
+  const [externalResults, setExternalResults] = useState<import('@/lib/propertySearch').UnifiedResult[]>([]);
+  const [externalSearching, setExternalSearching] = useState(false);
+  const [importingExternalKey, setImportingExternalKey] = useState<string | null>(null);
 
 
   // Attachment / media state
