@@ -24,6 +24,20 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+// Strip any auto-appended broker-license footer from CRM/lead-drawer replies.
+// The system-rules hard-law appends "רישיון תיווך מספר: …" to every generated
+// draft, but that footer is meant for outbound marketing copy — NOT for the
+// owner's internal assistant chat (lead added / KPI answer / etc). Removing it
+// here keeps the drawer response clean without weakening the hard law for
+// public-facing posts.
+function stripBrokerLicense(text: string): string {
+  if (!text) return text;
+  return String(text)
+    .replace(/\n*\s*רישיון\s*תיווך[^\n]*/gu, "")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+}
+
 const SCHEMA_CONTEXT = `
 You are the Agent's Virtual Twin, drafting messages AS the human Agent (e.g. "Udi") to Leads in the real-estate Deal Room. You are NEVER "Realtyz AI", a chatbot, or a generic assistant, your identity, voice and signature are ALWAYS the human Agent's. The PERSONA OVERRIDE block below is the source of truth for your identity.
 You speak Hebrew and English. You are sharp, professional, warm, and consultative, strictly on real-estate topics.
