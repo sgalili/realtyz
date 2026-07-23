@@ -939,9 +939,9 @@ function ResultTable({
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.rooms ?? '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.size_sqm ?? '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap text-left">
-                  <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onSelect(r); }} className="gap-1.5" disabled={importing}>
-                    {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                    {r.localId ? 'פתח' : 'ייבא'}
+                  <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onSelect(r); }} className="gap-1.5">
+                    <Send className="h-3.5 w-3.5" />
+                    פתח
                   </Button>
                 </td>
               </tr>
