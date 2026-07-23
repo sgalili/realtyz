@@ -33,9 +33,9 @@ const SOURCE_LABELS_HE: Record<string, string> = {
   'yad-2': 'יד2',
   yad_2: 'יד2',
   madlan: 'מדל״ן',
-  homely: 'Homely',
   manual: 'ידני',
 };
+
 
 function usePropertyHeroSuffix(pathname: string): string {
   const match = pathname.match(/^\/properties\/([^/]+)/);
