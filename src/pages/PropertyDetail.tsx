@@ -631,6 +631,27 @@ export default function PropertyDetail() {
                 >
                   <Pencil className="h-5 w-5" />
                 </button>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    if (!property?.id) return;
+                    const ok = window.confirm('למחוק את הנכס לצמיתות מהמאגר?');
+                    if (!ok) return;
+                    const { error } = await supabase.from('listings').delete().eq('id', property.id);
+                    if (error) {
+                      toast.error('מחיקת הנכס נכשלה', { description: error.message });
+                      return;
+                    }
+                    toast.success('הנכס נמחק');
+                    qc.invalidateQueries({ queryKey: ['listings'] });
+                    navigate('/properties');
+                  }}
+                  aria-label="מחיקת נכס"
+                  title="מחיקת נכס"
+                  className="text-slate-500 hover:text-destructive transition-colors bg-transparent border-0 p-0"
+                >
+                  <Trash2 className="h-5 w-5" />
+                </button>
               </>
             ) : (
               <>
