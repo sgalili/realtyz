@@ -1097,7 +1097,7 @@ const ApiSettings = () => {
               (נמצא בהגדרות הומלי ← הפצה לאתרים / פיד XML). ה‑API של Homely חושף רק
               הזרמת ליד יוצאת (<span dir="ltr">POST /api/WebtivLid/WebtivLidPost</span>) —
               אין endpoint ציבורי למשיכת נכסים, לכן אנו קוראים את הפיד הרשמי שלכם
-              שמופץ ליד2/מדלן.
+              שמופץ לפורטלים חיצוניים.
             </p>
           </div>
 

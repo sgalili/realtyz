@@ -43,7 +43,7 @@ export default function PlanTab() {
               <span className="text-xs text-muted-foreground">/ חודש / מתווך</span>
             </div>
             <p className="mt-3 text-sm font-bold text-foreground text-center">
-              כולל מעטפת AI מלאה, ניהול לידים, חיבור להומלי, יד2, מדל״ן, לווטסאפ ולכל הרשתות החברתיות שלכם בקליק.
+              כולל מעטפת AI מלאה, ניהול לידים, חיבור להומלי, יד2, לווטסאפ ולכל הרשתות החברתיות שלכם בקליק.
             </p>
           </div>
 

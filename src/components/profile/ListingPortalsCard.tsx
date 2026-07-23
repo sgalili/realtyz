@@ -218,7 +218,7 @@ export function ListingPortalsCard() {
           חיבורים לפורטלי נדל"ן
         </CardTitle>
         <CardDescription className="text-right">
-          חברו את החשבונות שלכם ב-Homely, יד2 ומדלן כדי לסנכרן נכסים ולידים אוטומטית.
+          חברו את החשבונות שלכם ב-Homely וביד2 כדי לסנכרן נכסים ולידים אוטומטית.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-5">
