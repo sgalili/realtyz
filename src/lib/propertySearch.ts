@@ -9,7 +9,8 @@ import type { PropertySource } from '@/components/properties/SourceBadge';
 
 export type UnifiedResult = {
   key: string;                 // stable client-side id
-  source: PropertySource;
+  source: PropertySource;      // primary source (local wins when merged)
+  sources: PropertySource[];   // every source this listing was found in
   localId: string | null;      // listings.id when the row is (or already exists) locally
   title: string;
   description?: string | null;
@@ -113,6 +114,7 @@ async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
     return {
       key: `local:${row.id}`,
       source,
+      sources: [source],
       localId: row.id,
       title: row.property_title || 'נכס',
       description: row.description ?? null,
@@ -146,6 +148,7 @@ function normalizeExternal(source: PropertySource, items: any[]): UnifiedResult[
     return {
       key: `${source}:${it.id ?? it.source_url ?? it.url ?? idx}`,
       source,
+      sources: [source],
       localId: null,
       title: it.title || it.property_title || 'נכס',
       description: it.description ?? null,
@@ -217,6 +220,7 @@ export async function searchAllSources(f: SearchFilters): Promise<SearchResponse
           return {
             key: `homely:${p.homely_id ?? p.id ?? idx}`,
             source: 'homely',
+            sources: ['homely'],
             localId: null,
             title: p.title || 'נכס',
             description: p.description ?? null,
