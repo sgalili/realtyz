@@ -761,44 +761,8 @@ ${shareUrl}
           )}
         </div>
 
-        {/* Quick Actions — 10 topic chips; tap to reveal 3 best prompts */}
-        <div className="border-t bg-muted/20">
-          <div className="px-3 py-2 flex gap-1.5 overflow-x-auto">
-            {TOPICS.map((topic, i) => {
-              const active = expandedBarTopic === i;
-              return (
-                <Button
-                  key={i}
-                  variant={active ? 'default' : 'outline'}
-                  size="sm"
-                  className="text-[11px] h-7 whitespace-nowrap shrink-0 gap-1"
-                  onClick={() => setExpandedBarTopic(active ? null : i)}
-                  disabled={isLoading}
-                >
-                  <Sparkles className="h-3 w-3" />
-                  {topic.label}
-                </Button>
-              );
-            })}
-          </div>
-          {expandedBarTopic !== null && (
-            <div className="px-3 pb-2 flex gap-1.5 overflow-x-auto border-t border-border/40 pt-2">
-              {TOPICS[expandedBarTopic].prompts.map((p, pi) => (
-                <Button
-                  key={pi}
-                  variant="secondary"
-                  size="sm"
-                  className="text-[11px] h-7 whitespace-nowrap shrink-0 max-w-[260px] truncate"
-                  title={p}
-                  onClick={() => { sendMessage(p); setExpandedBarTopic(null); }}
-                  disabled={isLoading}
-                >
-                  {p}
-                </Button>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Quick-Actions pill bar removed by design — suggestions live in the
+            empty-state topic list at the top of the transcript only. */}
 
         {/* Attachments preview */}
         {pendingAttachments.length > 0 && (
