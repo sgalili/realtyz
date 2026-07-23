@@ -254,10 +254,12 @@ export default function PropertyDetail() {
   const dbPhotos = property?.photos ?? [];
 
 
-  // Initialize edit form when entering edit mode
+  // Initialize edit form when entering edit mode. Prefer a locally-persisted
+  // draft (session/localStorage) over the fresh DB row so users never lose
+  // in-progress edits after an accidental close/reload.
   useEffect(() => {
     if (editMode && property && !form) {
-      setForm({
+      const base: EditableFields = {
         title: property.title || '',
         city: property.city || '',
         neighborhood: neighborhood || '',
@@ -283,10 +285,65 @@ export default function PropertyDetail() {
         source_url: sourceUrl || (typeof meta.source_url === 'string' ? meta.source_url : ''),
         photos: dbPhotos,
         photo_url_draft: '',
-      });
+      };
+      const key = draftStorageKey(id);
+      let restored: EditableFields | null = null;
+      if (key) {
+        try {
+          const raw = window.localStorage.getItem(key);
+          if (raw) {
+            const parsed = JSON.parse(raw) as Partial<EditableFields>;
+            restored = { ...base, ...parsed, photo_url_draft: '' };
+            toast.message('טיוטה שנשמרה מקומית שוחזרה');
+          }
+        } catch { /* ignore malformed drafts */ }
+      }
+      const next = restored ?? base;
+      setForm(next);
+      setInitialFormSnapshot(JSON.stringify(base));
     }
     if (!editMode) setForm(null);
-  }, [editMode, property, neighborhood, meta, amenities, sourceUrl, form, dbPhotos]);
+  }, [editMode, property, neighborhood, meta, amenities, sourceUrl, form, dbPhotos, id]);
+
+  // Persist current draft on every change, keyed to property id.
+  useEffect(() => {
+    const key = draftStorageKey(id);
+    if (!key || !editMode || !form) return;
+    try {
+      window.localStorage.setItem(key, JSON.stringify(form));
+    } catch { /* quota / privacy mode — silently skip */ }
+  }, [form, editMode, id]);
+
+  // Warn on tab close / hard navigation while form is dirty.
+  useEffect(() => {
+    if (!isDirty) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+    window.addEventListener('beforeunload', handler);
+    return () => window.removeEventListener('beforeunload', handler);
+  }, [isDirty]);
+
+  const clearDraft = () => {
+    const key = draftStorageKey(id);
+    if (key) {
+      try { window.localStorage.removeItem(key); } catch { /* noop */ }
+    }
+  };
+
+  const requestExitEditMode = () => {
+    if (isDirty) {
+      const keep = window.confirm('יש שינויים שלא נשמרו. לשמור לפני יציאה?\n\nאישור = שמור, ביטול = מחק שינויים ויציאה.');
+      if (keep) {
+        void handleSave();
+        return;
+      }
+      clearDraft();
+    }
+    setEditMode(false);
+  };
+
 
   const handleSave = async () => {
     if (!form || !id) return;
