@@ -788,7 +788,7 @@ function ResultCard({
           </div>
           <Button size="sm" onClick={(e) => { e.stopPropagation(); onSelect(); }} className="gap-1.5">
             <Send className="h-4 w-4" />
-            {result.localId ? 'פתח' : 'ייבא ופתח'}
+            פתח
           </Button>
         </div>
       </div>
