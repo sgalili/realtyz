@@ -66,7 +66,11 @@ export function PropertyPreviewDialog({
             <span>{label || 'תצוגת נכס'}</span>
           </DialogTitle>
           <DialogDescription>
-            {r?.description ? r.description.slice(0, 180) : 'תצוגה מקדימה — לחץ "ייבא ופתח" כדי לשמור למאגר.'}
+            {loadingLive
+              ? 'טוען פרטי נכס חיים מהמקור…'
+              : r?.description
+                ? r.description.slice(0, 180)
+                : 'תצוגה מקדימה — לחץ "ייבא ופתח" כדי לשמור למאגר.'}
           </DialogDescription>
         </DialogHeader>
 
