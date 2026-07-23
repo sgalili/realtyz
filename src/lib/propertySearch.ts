@@ -156,6 +156,7 @@ export async function searchAllSources(f: SearchFilters): Promise<SearchResponse
   const body = {
     q: f.q ?? undefined,
     city: f.city && f.city !== 'כל הערים' ? f.city : undefined,
+    neighborhood: f.neighborhood ?? undefined,
     min_price: f.min_price ?? undefined,
     max_price: f.max_price ?? undefined,
     rooms: f.rooms ?? undefined,
@@ -176,15 +177,22 @@ export async function searchAllSources(f: SearchFilters): Promise<SearchResponse
       .then((d: any) => ({ label: 'yad2' as const, results: normalizeExternal('yad2', d?.results ?? []) }))
       .catch((e) => { sources.yad2 = { status: 'error', count: 0, error: String(e?.message ?? e) }; return { label: 'yad2' as const, results: [] }; }),
     (async () => {
-      const queryText = [f.q, f.city && f.city !== 'כל הערים' ? f.city : null]
+      // Bright Data-backed Yad2 scraper. Prefer structured params so the edge
+      // function can build a proper gw.yad2.co.il query string; fall back to
+      // free-text `query` when the user typed prose we couldn't structure.
+      const queryText = [f.q, f.city && f.city !== 'כל הערים' ? f.city : null, f.neighborhood]
         .filter(Boolean)
         .join(' ')
         .trim();
-      if (!queryText) return { label: 'yad2' as const, results: [] };
-      const dealPath = listingType === 'rent' ? 'forrent' : 'forsale';
-      const url = `https://www.yad2.co.il/realestate/${dealPath}?text=${encodeURIComponent(queryText)}`;
+      const hasStructured = Boolean(body.city || body.rooms || body.min_price || body.max_price);
+      if (!queryText && !hasStructured) return { label: 'yad2' as const, results: [] };
       try {
-        const d: any = await invokeExternal('yad2-unlocker', { url, query: queryText, limit: 30, mode: 'search' });
+        const d: any = await invokeExternal('yad2-unlocker', {
+          ...body,
+          query: queryText || undefined,
+          mode: 'search',
+          limit: 30,
+        });
         const items = Array.isArray(d?.results) ? d.results : Array.isArray(d?.items) ? d.items : [];
         return { label: 'yad2' as const, results: normalizeExternal('yad2', items) };
       } catch {
