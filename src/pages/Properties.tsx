@@ -182,15 +182,15 @@ export default function Properties() {
       {/* Compact unified control bar */}
       <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
         <div className="flex items-center gap-2 flex-wrap" dir="rtl">
-          {/* Single search field, no placeholder */}
+          {/* Single search field with placeholder */}
           <div className="relative flex-1 min-w-[220px]">
             <SearchIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitQuery(); } }}
-              placeholder=""
-              aria-label="חיפוש"
+              placeholder="חיפוש נכסים"
+              aria-label="חיפוש נכסים"
               className="h-10 text-right pr-10 pl-11 text-sm"
               dir="rtl"
             />
@@ -203,27 +203,18 @@ export default function Properties() {
               title="חיפוש"
               className="absolute left-1 top-1/2 -translate-y-1/2 h-8 w-8"
             >
-              {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4 rotate-180" />}
+              {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <SearchIcon className="h-4 w-4" />}
             </Button>
           </div>
 
-          {/* Deal type toggle */}
-          <div className="inline-flex items-center rounded-md border border-primary/20 bg-card/40 p-0.5" dir="rtl">
-            {(['all', 'sale', 'rent'] as Array<ListingType | 'all'>).map((t) => (
-              <button
-                key={t}
-                type="button"
-                onClick={() => setListingType(t)}
-                className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
-                  listingType === t ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-                }`}
-              >
-                {t === 'all' ? 'הכל' : LISTING_TYPE_LABELS_HE[t]}
-              </button>
-            ))}
-          </div>
+          {/* Advanced filter button — immediately to the left of the search bar */}
+          <CollapsibleTrigger asChild>
+            <Button type="button" size="icon" variant="outline" className="h-10 w-10" aria-label="סינון מתקדם" title="סינון מתקדם">
+              <SlidersHorizontal className="h-4 w-4" />
+            </Button>
+          </CollapsibleTrigger>
 
-          {/* Source counters */}
+          {/* Source counters (compact) */}
           {hasSearched && (
             <Badge variant="secondary" className="text-[10px] h-6">{results.length}</Badge>
           )}
@@ -238,23 +229,15 @@ export default function Properties() {
             </Badge>
           ))}
 
-          {/* Icon-only actions */}
-          <CollapsibleTrigger asChild>
-            <Button type="button" size="icon" variant="outline" className="h-8 w-8" aria-label="פרמטרי חיפוש" title="פרמטרי חיפוש">
-              <SlidersHorizontal className="h-4 w-4" />
-            </Button>
-          </CollapsibleTrigger>
-          <Button type="button" size="icon" variant="outline" className="h-8 w-8" aria-label="סינון טבלה" title="סינון ומיון טבלה" onClick={() => setViewMode('table')}>
-            <Filter className="h-4 w-4" />
-          </Button>
-          <div className="inline-flex rounded-md border border-border bg-card/50 p-0.5" role="group" aria-label="מצב תצוגה">
+          {/* View toggle — pushed to the opposite (far-left) side */}
+          <div className="ms-auto inline-flex rounded-md border border-border bg-card/50 p-0.5" role="group" aria-label="מצב תצוגה">
             <button
               type="button"
               onClick={() => setViewMode('grid')}
               aria-pressed={viewMode === 'grid'}
               aria-label="תצוגת כרטיסיות"
               title="כרטיסיות"
-              className={`inline-flex items-center justify-center h-7 w-8 rounded-sm transition-colors ${viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              className={`inline-flex items-center justify-center h-8 w-9 rounded-sm transition-colors ${viewMode === 'grid' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
             >
               <LayoutGrid className="h-3.5 w-3.5" />
             </button>
@@ -264,7 +247,7 @@ export default function Properties() {
               aria-pressed={viewMode === 'table'}
               aria-label="תצוגת טבלה"
               title="טבלה"
-              className={`inline-flex items-center justify-center h-7 w-8 rounded-sm transition-colors ${viewMode === 'table' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
+              className={`inline-flex items-center justify-center h-8 w-9 rounded-sm transition-colors ${viewMode === 'table' ? 'bg-primary text-primary-foreground' : 'text-muted-foreground hover:text-foreground'}`}
             >
               <FileSpreadsheet className="h-3.5 w-3.5" />
             </button>
@@ -274,6 +257,24 @@ export default function Properties() {
 
         <CollapsibleContent>
           <Card className="p-4 sm:p-5 mt-3">
+            {/* Deal type toggle — Sale / Rent / All */}
+            <div className="flex items-center justify-between mb-4">
+              <Label className="text-xs font-semibold">סוג עסקה</Label>
+              <div className="inline-flex items-center rounded-md border border-primary/20 bg-card/40 p-0.5" dir="rtl">
+                {(['all', 'sale', 'rent'] as Array<ListingType | 'all'>).map((t) => (
+                  <button
+                    key={t}
+                    type="button"
+                    onClick={() => setListingType(t)}
+                    className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
+                      listingType === t ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                    }`}
+                  >
+                    {t === 'all' ? 'הכל' : LISTING_TYPE_LABELS_HE[t]}
+                  </button>
+                ))}
+              </div>
+            </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               <div className="space-y-2 lg:col-span-2">
                 <div className="flex items-center justify-between">
