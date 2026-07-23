@@ -1,34 +1,53 @@
-I found the actual failure: the importer is treating every text field in the Homely record as an image candidate because `collectMedia` is too broad. For listing `5517`, it converted owner name, phone, city, address, floor, dates, and description into fake URLs like `https://webtivapi.webtiv.co.il/050-8681107`, then all 24 candidates failed mirroring. The real fix is to stop inventing URLs from non-photo fields and rebuild media extraction around explicit image fields and verified endpoints.
+# Unified Property Search Overhaul
 
-Plan:
+Refactors `/properties` into a single global search across every connected source and rewires the "Add New Post" property picker to the same engine, with silent auto-import on selection.
 
-1. Replace broad recursive media scraping with strict field-aware extraction
-   - Only accept values from explicit image/media keys, not arbitrary strings.
-   - Remove the dangerous fallback that turns any Hebrew/text value into a `webtivapi` URL.
-   - Add Hebrew/Webtiv aliases for likely real photo fields, but require URL/path/image-like structure.
+## 1. `/properties` page (`src/pages/Properties.tsx`)
 
-2. Add a Webtiv image URL resolver
-   - Support common Webtiv relative/ID-style image paths safely.
-   - Try known image endpoint patterns for a property serial only when the stream does not expose direct URLs.
-   - Verify each attempted URL returns real image bytes before saving anything.
+- Delete `SourceTab` state and the entire tab strip (`הכל / הנכסים שלי / הומלי / יד-2 / מדל״ן`). Delete the separate Yad2 URL box and Madlan link box.
+- Add **one unified search bar** at the top: single text input (city / address / free text / pasted Yad2 or Madlan URL) + the existing filter set (Sale/Rent tabs, city, rooms, price slider, area, property type) — filters apply to every source at once.
+- Default state on load: **empty state** ("חפש נכס מכל המקורות...") — no auto-fetched local rows. Only after the user types/submits do we run searches. Cache last query in `sessionStorage` so returning to the page restores results.
+- On submit, fan out in parallel:
+  - Local DB (`listings` table)
+  - Homely (`homely-search` edge fn)
+  - Yad2 (`yad2-unlocker` in search-URL / free-text mode)
+  - Webtiv (`webtiv-homely-sync` search path — read-only)
+  - Madlan (`madlan-search` edge fn)
+  - Merge into one deduped result set. Failed sources degrade silently with a small inline chip ("יד-2 לא זמין כרגע").
+- Each row/card gets a **source badge** (icon + label) — local (`Home`), Homely (`H`), Yad2 (`Y2`), Webtiv (`W`), Madlan (`M`). Small colored pill on the right/top of every row.
+- **Auto-import on click**: clicking any external result kicks off `supabase.functions.invoke('yad2-unlocker' | 'homely-fetch-property' | 'webtiv-homely-sync' | 'madlan-fetch')` in the background with full data + images, upserts into `listings`, then navigates to the resulting `/properties/:id`. A subtle toast confirms ("יובא אוטומטית"). Local rows navigate directly.
+- View toggle: keep the grid/table buttons but **remove the "טבלה" / "כרטיסיות" text** — icon-only (`LayoutGrid`, `FileSpreadsheet`), keep `title` attributes for a11y.
 
-3. Make source order deterministic and safe
-   - First: rich Homely/Webtiv detail API photo fields.
-   - Second: stream/API explicit photo fields.
-   - Third: public source API/page enrichment only when available.
-   - Never use generic page text or arbitrary object fields as images.
+## 2. Add New Post property picker
 
-4. Harden verification and mirroring
-   - Keep rejecting logos, icons, placeholders, social pixels, documents, and non-image content.
-   - Keep the 300x300/20KB validation, but record exact rejection reasons in listing metadata.
-   - Save only mirrored backend-storage URLs to `media_photos`.
-   - Never overwrite existing valid photos with an empty result.
+- Replace the property `Select` in the composer with a new `UnifiedPropertyPicker` component (Command palette / combobox).
+- Typing triggers the same multi-source search (debounced 300ms).
+- Results grouped by source with the same badges. Selecting an external result:
+  1. Awaits the auto-import function.
+  2. Waits for the resulting local `listings.id`.
+  3. Sets it as the selected property and immediately kicks off post + first-comment generation via the existing `generate-content` flow.
+- Local results skip step 1-2 and go straight to generation.
 
-5. Improve diagnostics for future imports
-   - Log the raw Homely keys and explicit media fields per property.
-   - Log candidate counts by source, mirror success count, and rejection reasons.
-   - Store `photos_candidates`, `photos_rejected`, and `media_photos_source` in metadata so each failed import is inspectable from the database.
+## 3. Shared building blocks (new)
 
-6. Validate against the current broken listing
-   - Re-run/import or invoke the function for listing `5517` after changes.
-   - Confirm `media_photos` is no longer populated by fake text URLs and only contains verified property images or preserves previous images if none can be verified.
+- `src/lib/propertySearch.ts` — `searchAllSources({ q, filters })` returns a normalized `UnifiedResult[]` with `{ id, source, title, city, price, rooms, sqm, thumbnail, raw, importer }`.
+- `src/lib/propertyAutoImport.ts` — `autoImportResult(result)` dispatches to the correct edge function per `source` and returns the local `listings.id`.
+- `src/components/properties/SourceBadge.tsx` — icon + short label.
+- `src/components/properties/UnifiedPropertyPicker.tsx` — combobox used by the post composer.
+
+## 4. Cleanup
+
+- Remove Yad2 URL scrape box, Madlan quick-link box, source tabs, and any code paths that hinge on `sourceTab`.
+- Preserve `AddPropertyDialog` / `ManualPropertyDialog` / `ImportPropertiesDialog` / `HomelyBulkSyncDialog` (still triggered from the hero `+` menu).
+
+## Technical notes
+
+- No DB schema changes. Uses existing edge functions (`homely-search`, `yad2-unlocker`, `madlan-search`, `webtiv-homely-sync`, `homely-fetch-property`).
+- Dedupe by `city + address + rooms + price` (existing `propertyDedupeKey` helper).
+- Auto-import runs behind an inline spinner on the clicked row; on failure shows a Hebrew toast and does not navigate.
+- Session cache keyed as `properties:last-search:v1`.
+
+## Out of scope
+
+- New scraping backends beyond what's already deployed.
+- Changes to the property detail page rendering.

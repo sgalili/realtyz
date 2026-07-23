@@ -45,6 +45,9 @@ import { IvrBroadcastDialog } from '@/components/campaigns/IvrBroadcastDialog';
 import { EmailAliasSetupDialog } from '@/components/campaigns/EmailAliasSetupDialog';
 import { ScheduledCampaignCalendar } from '@/components/campaigns/ScheduledCampaignCalendar';
 import { ScheduleCurrentPostDialog } from '@/components/campaigns/ScheduleCurrentPostDialog';
+import { searchAllSources } from '@/lib/propertySearch';
+import { autoImportResult } from '@/lib/propertyAutoImport';
+import { SourceBadge } from '@/components/properties/SourceBadge';
 
 import { getCampaignWorkspaceUserIds } from '@/lib/campaignWorkspace';
 
@@ -824,6 +827,9 @@ const InlineComposer = ({
   const [selectedListingId, setSelectedListingId] = useState<string | null>(initial.selectedListingId ?? null);
   const [listingPickerOpen, setListingPickerOpen] = useState(false);
   const [bodyManuallyEdited, setBodyManuallyEdited] = useState(false);
+  const [externalResults, setExternalResults] = useState<import('@/lib/propertySearch').UnifiedResult[]>([]);
+  const [externalSearching, setExternalSearching] = useState(false);
+  const [importingExternalKey, setImportingExternalKey] = useState<string | null>(null);
 
 
   // Attachment / media state
@@ -1452,6 +1458,72 @@ const InlineComposer = ({
                   </div>
                 </button>
               ))}
+
+              {/* Cross-source search: pull matching properties from Homely / Yad-2 / Madlan */}
+              <div className="mt-2 border-t border-border/60 pt-2 space-y-2">
+                <button
+                  type="button"
+                  disabled={externalSearching || !listingQuery.trim()}
+                  onClick={async () => {
+                    setExternalSearching(true);
+                    try {
+                      const resp = await searchAllSources({ q: listingQuery.trim() || undefined, listing_type: 'all' });
+                      setExternalResults(resp.results.filter((r) => r.source !== 'mine').slice(0, 20));
+                      if (!resp.results.some((r) => r.source !== 'mine')) toast.info('לא נמצאו נכסים במקורות חיצוניים');
+                    } catch (err: any) {
+                      toast.error('חיפוש חיצוני נכשל: ' + (err?.message ?? 'שגיאה'));
+                    } finally {
+                      setExternalSearching(false);
+                    }
+                  }}
+                  className="w-full rounded-md border border-dashed border-primary/40 bg-primary/5 px-3 py-2 text-right text-xs font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
+                >
+                  {externalSearching ? 'מחפש בהומלי / יד-2 / מדל״ן…' : 'חפש גם בהומלי, יד-2 ומדל״ן'}
+                </button>
+                {externalResults.map((r) => (
+                  <button
+                    key={r.key}
+                    type="button"
+                    disabled={importingExternalKey === r.key}
+                    onClick={async () => {
+                      setImportingExternalKey(r.key);
+                      try {
+                        const id = await autoImportResult(r);
+                        toast.success('הנכס יובא למאגר');
+                        // Force local listings refresh so the newly imported row shows up
+                        setListings((prev) => prev);
+                        setSelectedListingId(id);
+                        setBody(''); setFirstComment(''); setBodyManuallyEdited(false);
+                        setOriginalAiBody('');
+                        waInjectedRef.current = '';
+                        msngrInjectedRef.current = '';
+                        setAttachWaLink(false); setAttachMsngrLink(false);
+                        if (r.photos.length) {
+                          setAttachments(r.photos.slice(0, 10).map((u, i) => ({ name: `import-${i + 1}.jpg`, kind: 'image' as const, url: u })));
+                        } else {
+                          setAttachments([]);
+                        }
+                        setListingPickerOpen(false);
+                      } catch (err: any) {
+                        toast.error('ייבוא נכשל: ' + (err?.message ?? 'שגיאה'));
+                      } finally {
+                        setImportingExternalKey(null);
+                      }
+                    }}
+                    className="w-full rounded-md border border-border px-3 py-2 text-right text-sm hover:bg-muted disabled:opacity-60"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate font-medium">{r.title}</span>
+                      <SourceBadge source={r.source} compact />
+                    </div>
+                    <div className="text-[11px] text-muted-foreground truncate">
+                      {[r.city, r.rooms ? `${r.rooms} חד׳` : null, r.size_sqm ? `${r.size_sqm} מ״ר` : null, r.price ? `₪${r.price.toLocaleString('he-IL')}` : null]
+                        .filter(Boolean).join(' · ')}
+                      {importingExternalKey === r.key ? ' · מייבא…' : ''}
+                    </div>
+                  </button>
+                ))}
+              </div>
             </PopoverContent>
           </Popover>
         </div>
