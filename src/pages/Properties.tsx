@@ -640,6 +640,13 @@ export default function Properties() {
         steps={importSteps}
         onDone={() => { runSearch(); }}
       />
+      <PropertyPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        result={previewResult}
+        onImport={handleImport}
+        importing={previewResult ? importingKey === previewResult.key : false}
+      />
     </div>
   );
 }
