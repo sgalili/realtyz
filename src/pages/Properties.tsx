@@ -125,11 +125,12 @@ function dedupeProperties<T extends Partial<HomelyProperty> & { address?: string
 }
 
 type SourceTab = 'all' | 'mine' | 'homely' | 'yad2' | 'madlan';
-const SOURCE_LABELS: Record<SourceTab, string> = {
+// The Yad2 tab is hidden from the UI until the BrightData scraping
+// integration is complete. The type stays for internal state compat.
+const SOURCE_LABELS: Record<Exclude<SourceTab, 'yad2'>, string> = {
   all: 'הכל',
   mine: 'הנכסים שלי',
   homely: 'הומלי',
-  yad2: 'יד-2',
   madlan: 'מדל״ן',
 };
 
