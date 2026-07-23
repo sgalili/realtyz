@@ -22,7 +22,7 @@ interface Props {
   onCreated?: () => void;
   initialText?: string;
   autoHydrate?: boolean;
-  defaultSource?: 'manual' | 'yad2' | 'madlan';
+  defaultSource?: 'manual' | 'yad2';
 }
 
 function slugify(s: string) {
@@ -85,7 +85,7 @@ function extractRawImageUrls(raw: string) {
 
 function extractRawSourceUrl(raw: string) {
   const normalized = raw.replace(/\\\//g, '/').replace(/&amp;/g, '&').trim();
-  const preferred = normalized.match(/https?:\/\/(?:www\.)?(?:yad2|madlan)\.co\.il\/[^\s"'<>)\]}{]+/i)?.[0];
+  const preferred = normalized.match(/https?:\/\/(?:www\.)?yad2\.co\.il\/[^\s"'<>)\]}{]+/i)?.[0];
   const generic = normalized.match(/https?:\/\/[^\s"'<>)\]}{]+/i)?.[0];
   const direct = /^https?:\/\/\S+$/i.test(normalized) ? normalized : null;
   return cleanPastedUrl(preferred || generic || direct || '') || null;
@@ -134,7 +134,7 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
       }
       if (!data?.ok || !data?.data) throw new Error(data?.error || 'parse_failed');
       const d = data.data as ParsedListing;
-      // Source URL fallback: prefer parser, then raw URL input, then any yad2/madlan link found in pasted text.
+      // Source URL fallback: prefer parser, then raw URL input, then any yad2 link found in pasted text.
       const sourceUrl = d.source_url
         || immediateSourceUrl
         || (/^https?:\/\//i.test(inputText) ? inputText : null);
@@ -193,7 +193,6 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
       const source =
         (defaultSource && defaultSource !== 'manual') ? defaultSource :
         sourceUrl.includes('yad2') ? 'yad2' :
-        sourceUrl.includes('madlan') ? 'madlan' :
         (defaultSource || 'manual');
       const features2 = {
         parking: typeof parsed.parking === 'number' ? parsed.parking : undefined,
@@ -291,7 +290,7 @@ export function AddPropertyDialog({ open, onOpenChange, onCreated, initialText, 
             <div className="rounded-xl border-2 border-primary/30 bg-primary/5 p-3 space-y-2 max-w-2xl mx-auto mt-6">
               <Label className="text-xs font-bold flex items-center gap-1.5 text-primary">
                 <Sparkles className="h-3.5 w-3.5" />
-                הדבק כאן טקסט מודעה (Yad2 / מדלן) או קישור
+                הדבק כאן טקסט מודעה (Yad2) או קישור
               </Label>
               <Textarea
                 dir="rtl"

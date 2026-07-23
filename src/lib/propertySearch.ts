@@ -1,5 +1,5 @@
 // Unified multi-source property search.
-// Fans out to local DB + every configured external source (Homely, Yad2, Madlan)
+// Fans out to local DB + every configured external source (Homely, Yad2)
 // in parallel and returns a normalized, deduped result set that the UI renders
 // as one list with per-row source badges.
 
@@ -92,7 +92,6 @@ async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
     let source: PropertySource = 'mine';
     if (sourceRaw === 'homely' || sourceRaw === 'webtiv') source = sourceRaw === 'webtiv' ? 'webtiv' : 'homely';
     else if (sourceRaw === 'yad2') source = 'yad2';
-    else if (sourceRaw === 'madlan') source = 'madlan';
     const price = normPhone(row.asking_price);
     return {
       key: `local:${row.id}`,
@@ -151,11 +150,15 @@ function normalizeExternal(source: PropertySource, items: any[]): UnifiedResult[
 
 export async function searchAllSources(f: SearchFilters): Promise<SearchResponse> {
   const sources: SearchResponse['sources'] = {};
+  const listingType = f.listing_type && f.listing_type !== 'all' ? f.listing_type : undefined;
   const body = {
+    q: f.q ?? undefined,
     city: f.city && f.city !== 'כל הערים' ? f.city : undefined,
     min_price: f.min_price ?? undefined,
     max_price: f.max_price ?? undefined,
     rooms: f.rooms ?? undefined,
+    listing_type: listingType,
+    deal_type: listingType,
     limit: 30,
   };
 
@@ -170,9 +173,6 @@ export async function searchAllSources(f: SearchFilters): Promise<SearchResponse
     invokeExternal('yad2-search', body)
       .then((d: any) => ({ label: 'yad2' as const, results: normalizeExternal('yad2', d?.results ?? []) }))
       .catch((e) => { sources.yad2 = { status: 'error', count: 0, error: String(e?.message ?? e) }; return { label: 'yad2' as const, results: [] }; }),
-    invokeExternal('madlan-search', body)
-      .then((d: any) => ({ label: 'madlan' as const, results: normalizeExternal('madlan', d?.results ?? []) }))
-      .catch((e) => { sources.madlan = { status: 'error', count: 0, error: String(e?.message ?? e) }; return { label: 'madlan' as const, results: [] }; }),
   ];
 
   const settled = await Promise.all(tasks);

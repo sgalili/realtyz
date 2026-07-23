@@ -42,13 +42,6 @@ export async function autoImportResult(result: UnifiedResult): Promise<string> {
       body: { source_url: url, homely_id: result.raw?.id, upsert: true },
     });
     if (error) throw new Error(error.message || 'homely_import_failed');
-  } else if (result.source === 'madlan') {
-    // Madlan has no dedicated importer — fall back to the generic listing parser
-    // which persists into `listings` via source_url.
-    const { error } = await supabase.functions.invoke('parse-listing-text', {
-      body: { text: url, persist: true, source: 'madlan' },
-    });
-    if (error) throw new Error(error.message || 'madlan_import_failed');
   } else {
     throw new Error(`unsupported_source:${result.source}`);
   }

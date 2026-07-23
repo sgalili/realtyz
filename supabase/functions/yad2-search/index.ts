@@ -55,7 +55,9 @@ Deno.serve(async (req) => {
 
     const admin = createClient(SUPABASE_URL, SERVICE_KEY);
     const body = await req.json().catch(() => ({}));
-    const { city, min_price, max_price, rooms, limit = 24, cities: citiesIn } = body as any;
+    const { city, min_price, max_price, rooms, limit = 24, cities: citiesIn, q, listing_type, deal_type } = body as any;
+    const dealType: 'sale' | 'rent' = (listing_type === 'rent' || deal_type === 'rent') ? 'rent' : 'sale';
+    const feedSegment = dealType === 'rent' ? 'forrent' : 'forsale';
 
     const { data: key } = await admin
       .from("user_api_keys")
@@ -110,7 +112,7 @@ Deno.serve(async (req) => {
 
     for (const targetCity of targetCities) {
       try {
-        const url = new URL("https://gw.yad2.co.il/realestate-feed/forsale/map");
+        const url = new URL(`https://gw.yad2.co.il/realestate-feed/${feedSegment}/map`);
         const cfg = yad2CityConfig(targetCity);
         if (cfg) {
           url.searchParams.set("region", cfg.area);
@@ -120,6 +122,7 @@ Deno.serve(async (req) => {
           url.searchParams.set("region", "18");
           url.searchParams.set("city", targetCity);
         }
+        if (q) url.searchParams.set("text", String(q));
         if (min_price || max_price) url.searchParams.set("price", `${min_price || 0}-${max_price || ""}`);
         if (rooms) url.searchParams.set("rooms", `${rooms}-${rooms}`);
         const upstream = await fetch(url.toString(), {
@@ -153,6 +156,7 @@ Deno.serve(async (req) => {
             photos: Array.isArray(it?.images) ? it.images.map((p: any) => p?.src || p).filter(Boolean) : [],
             url: it?.link_url || (it?.id ? `https://www.yad2.co.il/realestate/item/${it.id}` : null),
             features: [],
+            listing_type: dealType,
           });
         }
       } catch (e) {
@@ -179,8 +183,9 @@ Deno.serve(async (req) => {
           sqm: r.size_sqm,
           status: "live",
           is_published: true,
+          deal_type: dealType,
           media_photos: r.photos,
-          source_metadata: { photos: r.photos, floor: r.floor, url: r.url, source_url: r.url, source_origin: "yad2", cities: targetCities },
+          source_metadata: { photos: r.photos, floor: r.floor, url: r.url, source_url: r.url, source_origin: "yad2", cities: targetCities, listing_type: dealType },
           updated_at: new Date().toISOString(),
         }));
         await admin

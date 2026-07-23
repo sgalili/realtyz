@@ -32,7 +32,6 @@ const SOURCE_LABELS_HE: Record<string, string> = {
   yad2: 'יד2',
   'yad-2': 'יד2',
   yad_2: 'יד2',
-  madlan: 'מדל״ן',
   manual: 'ידני',
 };
 

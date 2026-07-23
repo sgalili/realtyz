@@ -53,7 +53,7 @@ const Dashboard = () => {
   const { user } = useAuth();
   const queryClient = useQueryClient();
 
-  /* ───── Realtime: new listings (Yad2 / Madlan injections) ───── */
+  /* ───── Realtime: new listings (Yad2 injections) ───── */
   useEffect(() => {
     if (!user?.id) return;
     const channel = supabase
