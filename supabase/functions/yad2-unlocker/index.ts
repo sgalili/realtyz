@@ -266,14 +266,18 @@ function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
 
 function looksLikeYad2Ad(x: any): boolean {
   if (!x || typeof x !== "object") return false;
-  const hasToken = !!(x.token || x.orderId || x.order_id || x.adNumber || x.id);
+  const hasToken = !!(x.token || x.orderId || x.order_id || x.adNumber || x.id || x.ad_id);
   const hasAdShape =
     x.price != null ||
     x.priceInShekels != null ||
     x.metaData != null ||
     x.additionalDetails != null ||
     x.address != null ||
-    x.customer != null;
+    x.customer != null ||
+    x.merchandise != null ||
+    x.title != null ||
+    x.subcategory != null ||
+    x.category_id != null;
   return hasToken && hasAdShape;
 }
 
