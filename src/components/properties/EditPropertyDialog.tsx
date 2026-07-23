@@ -138,8 +138,10 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
     setRenovated(Boolean(extras.renovated));
     setFurnished(Boolean(extras.furnished));
     setBars(Boolean(extras.bars));
-    const existingPhotos = p.photos ?? meta.photos;
+    const existingPhotos = (p as any).media_photos ?? p.photos ?? meta.photos;
     setPhotos(Array.isArray(existingPhotos) ? normalizeImageUrls(existingPhotos) : []);
+    const rawVideos = meta.videos ?? (p as any).videos ?? [];
+    setVideos(Array.isArray(rawVideos) ? rawVideos.filter((u: unknown): u is string => typeof u === 'string') : []);
   };
 
   const { visible: visiblePhotos, markBroken } = useVisibleImageUrls(photos);
