@@ -255,7 +255,8 @@ export default function AiAgentDrawer() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [expandedTopic, setExpandedTopic] = useState<number | null>(null);
-  const [expandedBarTopic, setExpandedBarTopic] = useState<number | null>(null);
+  // NOTE: quick-action pill bar was removed from the composer — we still keep
+  // the topic accordion in the empty state above.
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
