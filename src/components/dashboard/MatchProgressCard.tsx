@@ -68,10 +68,10 @@ export function MatchProgressCard() {
         const row = payload?.new;
         if (!row || seenIds.current.has(row.id)) return;
         seenIds.current.add(row.id);
-        if (Number(row.match_score) >= 70) {
+        if (Number(row.match_score) >= 80) {
           toast.success('🎯 התאמה חמה חדשה!', {
             description: `ציון ${Math.round(Number(row.match_score))} — פתח את חדר העסקאות`,
-            action: { label: 'צפה', onClick: () => { window.location.href = '/deal-room'; } },
+            action: { label: 'חבר עכשיו', onClick: () => { window.location.href = '/deal-room'; } },
           });
           refetch();
         }
