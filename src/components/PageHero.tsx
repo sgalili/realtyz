@@ -294,13 +294,15 @@ export function PageHero() {
   const campaignsTab = searchParams.get('tab') ?? 'published';
   const isCampaignsCreate = location.pathname.startsWith('/campaigns') && campaignsTab === 'create';
   const isCampaignsCalendar = location.pathname.startsWith('/campaigns') && campaignsTab === 'calendar';
+  // Property-detail title renders strictly as "פרטי נכס" — no external source
+  // suffix (Homely/Webtiv/Yad2/etc.) is appended.
+  void propertySuffix;
+  void isPropertyDetail;
   const displayTitle = isCampaignsCreate
     ? 'פרסום פוסט חדש'
     : isCampaignsCalendar
       ? 'פרסומים מתוזמנים'
-      : isPropertyDetail && propertySuffix
-        ? `${title} - ${propertySuffix}`
-        : title;
+      : title;
 
   // On /campaigns with a lead context, CampaignCenter renders its own
   // avatar+name hero — skip the default hero to avoid a stacked duplicate.
