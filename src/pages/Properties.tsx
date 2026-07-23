@@ -95,6 +95,11 @@ export default function Properties() {
   const [hasSearched, setHasSearched] = useState<boolean>(!!cached?.results?.length);
   const [importingKey, setImportingKey] = useState<string | null>(null);
 
+  // Multi-select + batch import progress
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [importSteps, setImportSteps] = useState<ImportStep[]>([]);
+  const [progressOpen, setProgressOpen] = useState(false);
+
   const [addOpen, setAddOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
   const [importOpen, setImportOpen] = useState(false);
