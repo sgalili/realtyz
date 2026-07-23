@@ -141,9 +141,10 @@ type Scraped = {
 };
 
 /**
- * Parses a search-results HTML page. Yad2 embeds the feed inside a
- * `__NEXT_DATA__` script when server-rendered; we prefer that, and fall
- * back to DOM traversal.
+ * Parses a Yad2 search-results HTML page. Yad2 ships several JSON payloads
+ * (legacy `__NEXT_DATA__`, Next 13/14 RSC chunks in `self.__next_f.push`,
+ * and inline `<script type="application/json">` blobs). We collect them all
+ * and walk them for feed-item-shaped objects, then fall back to DOM cards.
  */
 function parseSearch(html: string, srcUrl: string, limit: number): Scraped[] {
   const $ = cheerio.load(html);
@@ -151,58 +152,132 @@ function parseSearch(html: string, srcUrl: string, limit: number): Scraped[] {
   const out: Scraped[] = [];
   const seen = new Set<string>();
 
-  // Try Next.js data payload first
-  const nextData = $("#__NEXT_DATA__").html();
-  if (nextData) {
-    try {
-      const j = JSON.parse(nextData);
-      const feed = findFeedItems(j);
-      for (const it of feed) {
-        if (out.length >= limit) break;
-        const href = it?.token
-          ? `https://www.yad2.co.il/realestate/item/${it.token}`
-          : it?.url || it?.link || null;
-        if (!href || seen.has(href)) continue;
-        seen.add(href);
-        out.push({
-          source_url: href,
-          external_id: it?.token ?? null,
-          title: clean(it?.title ?? it?.merchandise ?? it?.row_1),
-          price: toInt(it?.price),
-          rooms: toNum(it?.rooms ?? it?.Rooms_text ?? it?.row_3),
-          city: clean(it?.city ?? it?.city_text ?? it?.row_4),
-          neighborhood: clean(it?.neighborhood ?? it?.neighborhood_text),
-          address: clean(it?.street ?? it?.address ?? it?.row_2),
-          sqm: toInt(it?.square_meters ?? it?.SquareMeter),
-          floor: toInt(it?.floor),
-          photos: Array.isArray(it?.images) ? it.images.filter(Boolean) : (it?.image ? [it.image] : []),
-          deal_type: dealType,
-          owner_name: clean(it?.merchant_name ?? null),
-          owner_phone: null,
-          description: clean(it?.description ?? null),
-        });
-      }
-      if (out.length) return out;
-    } catch { /* fall through */ }
-  }
+  const jsonBlobs: any[] = [];
+  const pushJson = (raw: string | null | undefined) => {
+    if (!raw) return;
+    try { jsonBlobs.push(JSON.parse(raw)); } catch { /* ignore */ }
+  };
 
-  // DOM fallback
-  $('a[href*="/realestate/item/"]').each((_, a) => {
+  // 1) Legacy __NEXT_DATA__
+  pushJson($("#__NEXT_DATA__").html());
+
+  // 2) Any <script type="application/json"> (some Next pages embed listings this way)
+  $('script[type="application/json"]').each((_, el) => pushJson($(el).html()));
+
+  // 3) Next 13/14 RSC flight chunks: self.__next_f.push([1,"...stringified..."])
+  //    The second arg often contains stringified JSON with the search results.
+  $("script").each((_, el) => {
+    const s = $(el).html();
+    if (!s || s.indexOf("__next_f") === -1) return;
+    for (const m of s.matchAll(/__next_f\.push\(\[\s*\d+\s*,\s*("(?:\\.|[^"\\])*")\s*\]\)/g)) {
+      try {
+        const inner = JSON.parse(m[1]);              // -> raw string
+        // Flight strings are typically "N:JSON..."; strip leading token prefix
+        const colonIdx = inner.indexOf(":");
+        const payload = colonIdx > -1 && colonIdx < 6 ? inner.slice(colonIdx + 1) : inner;
+        pushJson(payload);
+      } catch { /* ignore */ }
+    }
+  });
+
+  const feed: any[] = [];
+  const feedSeen = new Set<string>();
+  const collect = (item: any) => {
+    if (!item || typeof item !== "object") return;
+    const key = String(item.token ?? item.orderId ?? item.order_id ?? item.adNumber ?? item.id ?? "");
+    if (!key || feedSeen.has(key)) return;
+    feedSeen.add(key);
+    feed.push(item);
+  };
+  for (const blob of jsonBlobs) walkForFeedItems(blob, collect);
+
+  for (const it of feed) {
+    if (out.length >= limit) break;
+    const token = it?.token ?? it?.orderId ?? it?.order_id ?? it?.adNumber ?? it?.id ?? null;
+    let href: string | null = null;
+    if (typeof token === "string" && /^[a-z0-9]{4,}$/i.test(token)) {
+      href = `https://www.yad2.co.il/realestate/item/${token}`;
+    } else if (typeof it?.url === "string") {
+      href = it.url.startsWith("http") ? it.url : `https://www.yad2.co.il${it.url}`;
+    } else if (typeof it?.link === "string") {
+      href = it.link.startsWith("http") ? it.link : `https://www.yad2.co.il${it.link}`;
+    }
+    if (!href || seen.has(href)) continue;
+    seen.add(href);
+
+    const priceRaw = it?.price ?? it?.priceInShekels ?? it?.price_value ?? it?.metaData?.price ?? null;
+    const roomsRaw = it?.rooms ?? it?.Rooms_text ?? it?.additionalDetails?.roomsCount ?? it?.row_3 ?? null;
+    const sqmRaw = it?.square_meters ?? it?.SquareMeter ?? it?.additionalDetails?.squareMeter ?? null;
+    const floorRaw = it?.floor ?? it?.additionalDetails?.floor ?? null;
+
+    const city = clean(
+      it?.city ?? it?.city_text ?? it?.address?.city?.text ?? it?.address?.city ?? it?.row_4 ?? null,
+    );
+    const neighborhood = clean(
+      it?.neighborhood ?? it?.neighborhood_text ?? it?.address?.neighborhood?.text ?? it?.address?.neighborhood ?? null,
+    );
+    const address = clean(
+      it?.street ?? it?.address?.street?.text ?? it?.address?.street ?? it?.row_2 ?? null,
+    );
+
+    let photos: string[] = [];
+    const imgSrc = it?.images ?? it?.image ?? it?.metaData?.coverImage ?? null;
+    if (Array.isArray(imgSrc)) {
+      photos = imgSrc.map((im) => (typeof im === "string" ? im : im?.src ?? im?.url ?? "")).filter(Boolean);
+    } else if (imgSrc && typeof imgSrc === "object") {
+      photos = Object.values(imgSrc).map((v: any) => (typeof v === "string" ? v : v?.src ?? v?.url ?? "")).filter(Boolean);
+    } else if (typeof imgSrc === "string") {
+      photos = [imgSrc];
+    }
+    photos = photos.filter((u) => /^https?:\/\//.test(u) && !/placeholder|default|logo/i.test(u));
+
+    out.push({
+      source_url: href,
+      external_id: typeof token === "string" ? token : null,
+      title: clean(it?.title ?? it?.merchandise ?? it?.metaData?.title ?? it?.row_1 ?? [city, neighborhood].filter(Boolean).join(" · ")),
+      price: toInt(priceRaw),
+      rooms: toNum(roomsRaw),
+      city,
+      neighborhood,
+      address,
+      sqm: toInt(sqmRaw),
+      floor: toInt(floorRaw),
+      photos,
+      deal_type: dealType,
+      owner_name: clean(it?.merchant_name ?? it?.customer?.name ?? null),
+      owner_phone: null,
+      description: clean(it?.description ?? null),
+    });
+  }
+  if (out.length) return out;
+
+  // DOM fallback — modern Yad2 uses feed-item cards
+  const cardSel = [
+    '[data-testid="feed-item"]',
+    'article[class*="feed" i]',
+    'div[class*="feeditem" i]',
+    'a[href*="/realestate/item/"]',
+  ].join(",");
+  $(cardSel).each((_, el) => {
     if (out.length >= limit) return;
-    const href = new URL($(a).attr("href") || "", "https://www.yad2.co.il").toString();
+    const $el = $(el);
+    const anchor = $el.is("a") ? $el : $el.find('a[href*="/realestate/item/"]').first();
+    const rawHref = anchor.attr("href");
+    if (!rawHref) return;
+    const href = new URL(rawHref, "https://www.yad2.co.il").toString().split("?")[0];
     if (seen.has(href)) return;
     seen.add(href);
-    const card = $(a).closest("article, li, [data-testid], div");
+    const card = anchor.closest("article, li, [data-testid], div").first();
     const text = card.text();
     out.push({
       source_url: href,
       external_id: (href.match(/\/item\/([^/?#]+)/)?.[1]) ?? null,
-      title: clean(card.find("h2,h3,[class*=title i]").first().text()) ?? clean($(a).text()),
+      title: clean(card.find("h2,h3,[class*=title i]").first().text()) ?? clean(anchor.text()),
       price: toInt(text.match(/([\d,]{4,})\s*₪/)?.[1] ?? null),
       rooms: toNum(text.match(/(\d+(?:[.,]\d)?)\s*חדרים/)?.[1] ?? null),
-      city: null,
-      neighborhood: null,
-      address: null,
+      city: clean(card.find("[class*=city i], [data-testid*=city i]").first().text()),
+      neighborhood: clean(card.find("[class*=neighborhood i]").first().text()),
+      address: clean(card.find("[class*=address i], [class*=street i]").first().text()),
       sqm: toInt(text.match(/(\d{2,4})\s*מ["״]?ר/)?.[1] ?? null),
       floor: toInt(text.match(/קומה\s*(\d+)/)?.[1] ?? null),
       photos: card.find("img").toArray().map((i) => $(i).attr("src") || $(i).attr("data-src") || "").filter((u) => /^https?:\/\//.test(u) && !/logo|sprite|icon|placeholder/i.test(u)),
@@ -216,30 +291,33 @@ function parseSearch(html: string, srcUrl: string, limit: number): Scraped[] {
   return out;
 }
 
-function findFeedItems(root: any): any[] {
-  // Depth-first search for an array of listing-like objects
-  const out: any[] = [];
-  const seen = new WeakSet();
-  function walk(node: any) {
-    if (!node || typeof node !== "object" || seen.has(node)) return;
-    seen.add(node);
+/**
+ * Depth-first walk that yields any object shaped like a Yad2 feed item.
+ * Feed items expose an id-like key (token / orderId / adNumber / id) AND
+ * at least one attribute we care about (price, rooms, address, ...).
+ */
+function walkForFeedItems(root: any, emit: (item: any) => void) {
+  const stack: any[] = [root];
+  const visited = new WeakSet<object>();
+  while (stack.length) {
+    const node = stack.pop();
+    if (!node || typeof node !== "object") continue;
+    if (visited.has(node)) continue;
+    visited.add(node);
     if (Array.isArray(node)) {
-      if (node.length && node.every((n) => n && typeof n === "object" && (n.token || n.id || n.orderId))) {
-        for (const item of node) out.push(item);
-      }
-      for (const v of node) walk(v);
-      return;
+      for (const v of node) stack.push(v);
+      continue;
     }
-    for (const k of Object.keys(node)) walk(node[k]);
+    const hasId = node.token != null || node.orderId != null || node.order_id != null || node.adNumber != null || (node.id != null && typeof node.id !== "object");
+    const hasSignal =
+      node.price != null || node.priceInShekels != null ||
+      node.rooms != null || node.Rooms_text != null ||
+      node.square_meters != null || node.SquareMeter != null ||
+      node.merchandise != null || node.row_1 != null ||
+      (node.address && typeof node.address === "object");
+    if (hasId && hasSignal) emit(node);
+    for (const k of Object.keys(node)) stack.push(node[k]);
   }
-  walk(root);
-  // Dedup by token or id
-  const uniq = new Map<string, any>();
-  for (const it of out) {
-    const key = String(it.token ?? it.id ?? it.orderId ?? Math.random());
-    if (!uniq.has(key)) uniq.set(key, it);
-  }
-  return Array.from(uniq.values());
 }
 
 /**
