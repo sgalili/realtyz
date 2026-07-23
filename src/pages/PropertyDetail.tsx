@@ -680,41 +680,49 @@ export default function PropertyDetail() {
           {editMode && form && (
             <Card className="p-4 sm:p-5 space-y-3">
               <h2 className="text-base font-bold text-primary">תמונות הנכס</h2>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <Input
-                  value={form.photo_url_draft}
-                  onChange={(e) => setField('photo_url_draft', e.target.value)}
-                  placeholder="הדבקת קישור לתמונה"
-                  className="text-right"
-                />
-                <Button type="button" variant="outline" onClick={addPhotoUrl} className="gap-1.5">
-                  <Plus className="h-4 w-4" /> הוסף קישור
-                </Button>
-                <label className="inline-flex h-10 cursor-pointer items-center justify-center gap-1.5 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium hover:bg-accent hover:text-accent-foreground">
+              <div
+                onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
+                onDrop={handlePhotoDrop}
+                className="rounded-md border-2 border-dashed border-primary/30 bg-primary/5 p-3 flex items-center gap-2"
+              >
+                <label
+                  className="inline-flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground"
+                  aria-label="העלה קבצי תמונה"
+                  title="העלה קבצי תמונה"
+                >
                   <Upload className={`h-4 w-4 ${uploadingPhoto ? 'animate-pulse' : ''}`} />
-                  {uploadingPhoto ? 'מעלה...' : 'העלה קובץ'}
-                  <input type="file" accept="image/*" multiple className="sr-only" onChange={(e) => handlePhotoUpload(e.target.files)} disabled={uploadingPhoto} />
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="sr-only"
+                    onChange={(e) => handlePhotoUpload(e.target.files)}
+                    disabled={uploadingPhoto}
+                  />
                 </label>
-              </div>
-              {form.photos.length > 0 && (
-                <div className="space-y-2">
-                  {form.photos.map((url, i) => (
-                    <div key={`${url}-edit-${i}`} className="flex items-center gap-2">
-                      <Input
-                        value={url}
-                        onChange={(e) => setPhotos((list) => list.map((item, index) => index === i ? e.target.value : item))}
-                        className="text-left"
-                        dir="ltr"
-                      />
-                      <Button type="button" variant="ghost" size="icon" onClick={() => setPhotos((list) => list.filter((_, index) => index !== i))} aria-label="מחק תמונה">
-                        <Trash2 className="h-4 w-4 text-destructive" />
-                      </Button>
-                    </div>
-                  ))}
+                <div className="relative flex-1">
+                  <Input
+                    value={form.photo_url_draft}
+                    onChange={(e) => setField('photo_url_draft', e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addPhotoUrl(); } }}
+                    placeholder="הדבקת קישור לתמונה או גרירה מדפדפן"
+                    className="text-right pl-10"
+                  />
+                  <button
+                    type="button"
+                    onClick={addPhotoUrl}
+                    disabled={!form.photo_url_draft.trim() || uploadingPhoto}
+                    aria-label="הוסף קישור לתמונה"
+                    title="הוסף קישור לתמונה"
+                    className="absolute left-1 top-1/2 -translate-y-1/2 inline-flex h-8 w-8 items-center justify-center rounded-md text-primary hover:bg-primary/10 disabled:opacity-40"
+                  >
+                    <Plus className="h-4 w-4" />
+                  </button>
                 </div>
-              )}
+              </div>
             </Card>
           )}
+
 
           {/* Specs grid — editable in edit mode */}
           <Card className="p-4 sm:p-5">
