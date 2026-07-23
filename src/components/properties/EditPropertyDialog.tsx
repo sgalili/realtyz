@@ -329,23 +329,69 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
             </Button>
           </div>
 
-          {visiblePhotos.length > 0 && (
-            <div className="space-y-1.5">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
               <Label className="text-xs font-semibold">תמונות ({visiblePhotos.length})</Label>
+              <Button type="button" size="sm" variant="outline" onClick={() => photoInputRef.current?.click()} disabled={uploading} className="gap-1.5">
+                <Upload className={`h-3.5 w-3.5 ${uploading ? 'animate-pulse' : ''}`} />
+                {uploading ? 'מעלה…' : 'העלה תמונות'}
+              </Button>
+              <input ref={photoInputRef} type="file" accept="image/*" multiple hidden onChange={(e) => handleUpload(e.target.files, 'photo')} />
+            </div>
+            {visiblePhotos.length > 0 && (
               <div className="grid grid-cols-3 gap-2 max-h-40 overflow-y-auto">
                 {visiblePhotos.map((url, i) => (
-                  <img
-                    key={`${url}-${i}`}
-                    src={url}
-                    alt={`photo-${i}`}
-                    className="aspect-square object-cover rounded-md border"
-                    loading="lazy"
-                    onError={() => markBroken(url)}
-                  />
+                  <div key={`${url}-${i}`} className="relative group">
+                    <img
+                      src={url}
+                      alt={`photo-${i}`}
+                      className="aspect-square object-cover rounded-md border w-full"
+                      loading="lazy"
+                      onError={() => markBroken(url)}
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setPhotos((prev) => prev.filter((u) => u !== url))}
+                      className="absolute top-1 left-1 h-5 w-5 rounded-full bg-destructive/90 text-white opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                      aria-label="הסר תמונה"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
                 ))}
               </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-semibold flex items-center gap-1.5">
+                <Video className="h-3.5 w-3.5" /> סרטונים ({videos.length})
+              </Label>
+              <Button type="button" size="sm" variant="outline" onClick={() => videoInputRef.current?.click()} disabled={uploading} className="gap-1.5">
+                <Upload className={`h-3.5 w-3.5 ${uploading ? 'animate-pulse' : ''}`} />
+                {uploading ? 'מעלה…' : 'העלה סרטון'}
+              </Button>
+              <input ref={videoInputRef} type="file" accept="video/*" multiple hidden onChange={(e) => handleUpload(e.target.files, 'video')} />
             </div>
-          )}
+            {videos.length > 0 && (
+              <div className="space-y-2">
+                {videos.map((url, i) => (
+                  <div key={`${url}-${i}`} className="relative">
+                    <video src={url} controls className="w-full rounded-md border max-h-56 bg-black" />
+                    <button
+                      type="button"
+                      onClick={() => setVideos((prev) => prev.filter((u) => u !== url))}
+                      className="absolute top-1 left-1 h-6 w-6 rounded-full bg-destructive/90 text-white flex items-center justify-center"
+                      aria-label="הסר סרטון"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1.5 col-span-2">
