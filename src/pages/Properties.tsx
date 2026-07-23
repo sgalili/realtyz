@@ -100,6 +100,8 @@ export default function Properties() {
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [importSteps, setImportSteps] = useState<ImportStep[]>([]);
   const [progressOpen, setProgressOpen] = useState(false);
+  const [previewResult, setPreviewResult] = useState<UnifiedResult | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const [addOpen, setAddOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
