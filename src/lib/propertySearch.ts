@@ -242,12 +242,19 @@ export async function searchAllSources(f: SearchFilters): Promise<SearchResponse
         return { label: 'homely' as const, results: [] };
       }),
     (async () => {
+      // Yad2 tab / unified search ALWAYS triggers a direct live fetch against
+      // the yad2-unlocker edge function (which talks to gw.yad2.co.il and
+      // www.yad2.co.il via Bright Data). It does NOT fall back to Homely or
+      // Webtiv — those run as independent siblings in this Promise.all.
       const queryText = [f.q, f.city && f.city !== 'כל הערים' ? f.city : null, f.neighborhood]
         .filter(Boolean)
         .join(' ')
         .trim();
       const hasStructured = Boolean(body.city || body.rooms || body.min_price || body.max_price);
-      if (!queryText && !hasStructured) return { label: 'yad2' as const, results: [] };
+      if (!queryText && !hasStructured) {
+        sources.yad2 = { status: 'empty', count: 0 };
+        return { label: 'yad2' as const, results: [] };
+      }
       try {
         const d: any = await invokeExternal('yad2-unlocker', {
           ...body,
@@ -255,10 +262,15 @@ export async function searchAllSources(f: SearchFilters): Promise<SearchResponse
           mode: 'search',
           limit: 30,
         });
+        if (Array.isArray(d?.diagnostics) && d.diagnostics.length) {
+          console.info('[propertySearch] yad2-unlocker diagnostics', d.diagnostics);
+        }
         const items = Array.isArray(d?.results) ? d.results : Array.isArray(d?.items) ? d.items : [];
         return { label: 'yad2' as const, results: normalizeExternal('yad2', items) };
-      } catch (e) {
+      } catch (e: any) {
+        const msg = String(e?.message ?? e);
         console.error('[propertySearch] yad2-unlocker failed', e);
+        sources.yad2 = { status: 'error', count: 0, error: msg };
         return { label: 'yad2' as const, results: [] };
       }
     })(),

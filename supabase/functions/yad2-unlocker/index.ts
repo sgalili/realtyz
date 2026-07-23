@@ -154,19 +154,25 @@ async function unlock(
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       const { status, body } = await brightDataRequest(url, { accept: opts.accept });
+      // Explicit direct-fetch diagnostics — surface Bright Data / Yad2 status
+      // and a preview of the upstream body so proxy blocks, CAPTCHAs, and
+      // empty gateway payloads are visible in Supabase logs.
+      console.log(
+        `[yad2-unlocker] direct-fetch ${url} → BD status=${status} bytes=${body.length} preview=${JSON.stringify(body.slice(0, 220))}`,
+      );
       if (status >= 200 && status < 300) return body;
-      if ((status >= 500 || status === 429) && attempt < maxAttempts) {
-        console.warn(`[yad2-unlocker] BD ${status} attempt ${attempt}, retrying`);
+      if ((status >= 500 || status === 429 || status === 403) && attempt < maxAttempts) {
+        console.warn(`[yad2-unlocker] BD ${status} attempt ${attempt} for ${url}, retrying`);
         await new Promise((r) => setTimeout(r, 500 * attempt));
         continue;
       }
-      throw new Error(`Bright Data ${status}: ${body.slice(0, 400)}`);
+      throw new Error(`Bright Data ${status} for ${url}: ${body.slice(0, 400)}`);
     } catch (e) {
       lastErr = e;
       const msg = String((e as Error)?.message ?? e);
       const transient = /http2|stream error|SendRequest|network|reset|ECONNRESET|EOF|timeout|socket hang up/i.test(msg);
       if (!transient || attempt >= maxAttempts) throw e;
-      console.warn(`[yad2-unlocker] transient error attempt ${attempt}: ${msg.slice(0, 200)}`);
+      console.warn(`[yad2-unlocker] transient error attempt ${attempt} for ${url}: ${msg.slice(0, 200)}`);
       await new Promise((r) => setTimeout(r, 600 * attempt));
     }
   }
@@ -734,16 +740,24 @@ Deno.serve(async (req) => {
     let rows: Scraped[] = [];
     let mode: "json" | "html" = "json";
     let jsonSource: string | null = null;
+    // Per-endpoint diagnostics so callers (and Supabase logs) can see
+    // exactly which direct-Yad2 hop returned data vs. was blocked.
+    const diagnostics: Array<{ endpoint: string; kind: "json" | "html" | "item"; status: "ok" | "empty" | "error"; count?: number; error?: string }> = [];
 
-    // --- Primary path: Yad2 internal JSON gateway ---------------------------
+    // --- Primary path: Yad2 internal JSON gateway (direct, no aggregator) ---
     try {
       if (isItemUrl) {
         const gwItem = toGatewayItemUrl(inputUrl);
         if (gwItem) {
           console.log(`[yad2-unlocker] JSON item ${gwItem}`);
-          const body = await unlock(gwItem, { accept: "application/json" });
-          const row = parseItemJson(body, inputUrl);
-          if (row) { rows = [row]; jsonSource = gwItem; }
+          try {
+            const body = await unlock(gwItem, { accept: "application/json" });
+            const row = parseItemJson(body, inputUrl);
+            if (row) { rows = [row]; jsonSource = gwItem; diagnostics.push({ endpoint: gwItem, kind: "item", status: "ok", count: 1 }); }
+            else diagnostics.push({ endpoint: gwItem, kind: "item", status: "empty" });
+          } catch (e: any) {
+            diagnostics.push({ endpoint: gwItem, kind: "item", status: "error", error: String(e?.message ?? e).slice(0, 400) });
+          }
         }
       } else {
         const candidates = toGatewayFeedUrls(inputUrl);
@@ -752,10 +766,17 @@ Deno.serve(async (req) => {
             console.log(`[yad2-unlocker] JSON search ${gw}`);
             const body = await unlock(gw, { accept: "application/json", maxAttempts: 2 });
             const parsed = parseSearchJson(body, inputUrl, limit);
-            if (parsed.length) { rows = parsed; jsonSource = gw; break; }
+            if (parsed.length) {
+              rows = parsed; jsonSource = gw;
+              diagnostics.push({ endpoint: gw, kind: "json", status: "ok", count: parsed.length });
+              break;
+            }
             console.warn(`[yad2-unlocker] JSON endpoint returned 0 items: ${gw}`);
+            diagnostics.push({ endpoint: gw, kind: "json", status: "empty" });
           } catch (e: any) {
-            console.warn(`[yad2-unlocker] JSON endpoint failed: ${gw} — ${String(e?.message ?? e).slice(0, 160)}`);
+            const err = String(e?.message ?? e).slice(0, 400);
+            console.warn(`[yad2-unlocker] JSON endpoint failed: ${gw} — ${err}`);
+            diagnostics.push({ endpoint: gw, kind: "json", status: "error", error: err });
           }
         }
       }
@@ -763,12 +784,20 @@ Deno.serve(async (req) => {
       console.warn(`[yad2-unlocker] JSON gateway threw: ${String(e?.message ?? e).slice(0, 200)}`);
     }
 
-    // --- Fallback: HTML scrape of the public www URL ------------------------
+    // --- Fallback: HTML scrape of the public www URL (still direct Yad2) ----
     if (!rows.length) {
       mode = "html";
       console.log(`[yad2-unlocker] falling back to HTML: ${inputUrl}`);
-      const html = await unlock(inputUrl);
-      rows = isItemUrl ? [parseItem(html, inputUrl)] : parseSearch(html, inputUrl, limit);
+      try {
+        const html = await unlock(inputUrl);
+        rows = isItemUrl ? [parseItem(html, inputUrl)] : parseSearch(html, inputUrl, limit);
+        diagnostics.push({ endpoint: inputUrl, kind: "html", status: rows.length ? "ok" : "empty", count: rows.length });
+      } catch (e: any) {
+        const err = String(e?.message ?? e).slice(0, 400);
+        diagnostics.push({ endpoint: inputUrl, kind: "html", status: "error", error: err });
+        // Re-throw so the client sees a 502 with details rather than a silent empty list.
+        throw e;
+      }
     }
     console.log(`[yad2-unlocker] parsed ${rows.length} row(s) via ${mode}`);
 
@@ -788,10 +817,13 @@ Deno.serve(async (req) => {
       urls_scanned: 1,
       records_scraped: rows.length,
       records_saved: saved,
+      results: rows,
       save_errors: saveErrors,
       mode: isItemUrl ? "item" : "search",
       transport: mode,
       json_source: jsonSource,
+      diagnostics,
+      resolved_url: inputUrl,
     });
   } catch (e: any) {
     console.error("[yad2-unlocker] error", e);
