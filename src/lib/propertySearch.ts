@@ -9,7 +9,8 @@ import type { PropertySource } from '@/components/properties/SourceBadge';
 
 export type UnifiedResult = {
   key: string;                 // stable client-side id
-  source: PropertySource;
+  source: PropertySource;      // primary source (local wins when merged)
+  sources: PropertySource[];   // every source this listing was found in
   localId: string | null;      // listings.id when the row is (or already exists) locally
   title: string;
   description?: string | null;
@@ -113,6 +114,7 @@ async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
     return {
       key: `local:${row.id}`,
       source,
+      sources: [source],
       localId: row.id,
       title: row.property_title || 'נכס',
       description: row.description ?? null,
@@ -146,6 +148,7 @@ function normalizeExternal(source: PropertySource, items: any[]): UnifiedResult[
     return {
       key: `${source}:${it.id ?? it.source_url ?? it.url ?? idx}`,
       source,
+      sources: [source],
       localId: null,
       title: it.title || it.property_title || 'נכס',
       description: it.description ?? null,
@@ -217,6 +220,7 @@ export async function searchAllSources(f: SearchFilters): Promise<SearchResponse
           return {
             key: `homely:${p.homely_id ?? p.id ?? idx}`,
             source: 'homely',
+            sources: ['homely'],
             localId: null,
             title: p.title || 'נכס',
             description: p.description ?? null,
@@ -292,14 +296,25 @@ export async function searchAllSources(f: SearchFilters): Promise<SearchResponse
   });
 
   const all: UnifiedResult[] = [];
-  const seen = new Set<string>();
-  for (const s of settled) {
+  const byKey = new Map<string, number>(); // dedupe key -> index in `all`
+  // Order sources so local rows land first — that way an external duplicate
+  // merges INTO the local card (keeping localId) instead of the other way.
+  const orderedSettled = [...settled].sort((a, b) => (a.label === 'mine' ? -1 : b.label === 'mine' ? 1 : 0));
+  for (const s of orderedSettled) {
     if (!sources[s.label]) sources[s.label] = { status: s.results.length ? 'ok' : 'empty', count: s.results.length };
     for (const r of s.results) {
       if (f.listing_type && f.listing_type !== 'all' && r.listing_type !== f.listing_type) continue;
       const k = dedupeKey(r);
-      if (k.replace(/\|/g, '') && seen.has(k)) continue;
-      seen.add(k);
+      const stripped = k.replace(/\|/g, '');
+      if (stripped && byKey.has(k)) {
+        const existing = all[byKey.get(k)!];
+        if (!existing.sources.includes(r.source)) existing.sources.push(r.source);
+        // Prefer external URL/photos when the local row lacks them.
+        if (!existing.url && r.url) existing.url = r.url;
+        if ((!existing.photos || existing.photos.length === 0) && r.photos?.length) existing.photos = r.photos;
+        continue;
+      }
+      byKey.set(k, all.length);
       all.push(r);
     }
   }

@@ -336,17 +336,9 @@ export default function Properties() {
               className="h-10 text-right pr-10 pl-11 text-sm"
               dir="rtl"
             />
-            <Button
-              type="button"
-              size="icon"
-              onClick={submitQuery}
-              disabled={searching}
-              aria-label="חיפוש"
-              title="חיפוש"
-              className="absolute left-1 top-1/2 -translate-y-1/2 h-8 w-8"
-            >
-              {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <SearchIcon className="h-4 w-4" />}
-            </Button>
+            {searching && (
+              <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
+            )}
           </div>
         </div>
 
@@ -726,8 +718,10 @@ function ResultCard({
           </>
         )}
 
-        <div className="absolute top-3 right-3 z-10">
-          <SourceBadge source={result.source} />
+        <div className="absolute top-3 right-3 z-10 flex flex-row-reverse items-center gap-1">
+          {(result.sources ?? [result.source]).map((s) => (
+            <SourceBadge key={s} source={s} compact />
+          ))}
         </div>
         {result.listing_type && (
           <Badge className={`absolute top-3 left-3 border z-10 ${isRent ? 'bg-[#0b3982] text-white border-[#0b3982]' : 'bg-primary text-primary-foreground'}`}>
@@ -918,7 +912,13 @@ function ResultTable({
                     )}
                   </td>
                 )}
-                <td className="px-2 py-1.5"><SourceBadge source={r.source} compact /></td>
+                <td className="px-2 py-1.5">
+                  <div className="flex flex-row-reverse items-center gap-1">
+                    {(r.sources ?? [r.source]).map((s) => (
+                      <SourceBadge key={s} source={s} compact />
+                    ))}
+                  </div>
+                </td>
                 <td className="px-2 py-1.5 max-w-[320px] truncate">
                   {(() => {
                     const label = formatListingTitle({
