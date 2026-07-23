@@ -100,19 +100,19 @@ function brightDataRequest(
       format: "raw",
       country: "il",
       method: "GET",
-      headers: [
-        { name: "User-Agent", value: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" },
-        { name: "Accept", value: forwardedAccept },
-        { name: "Accept-Language", value: "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7" },
-        { name: "Referer", value: "https://www.yad2.co.il/" },
-        { name: "Origin", value: "https://www.yad2.co.il" },
-        { name: "sec-ch-ua", value: '"Chromium";v="126", "Not.A/Brand";v="24"' },
-        { name: "sec-ch-ua-mobile", value: "?0" },
-        { name: "sec-ch-ua-platform", value: '"macOS"' },
-        { name: "Sec-Fetch-Dest", value: "empty" },
-        { name: "Sec-Fetch-Mode", value: "cors" },
-        { name: "Sec-Fetch-Site", value: "same-site" },
-      ],
+      headers: {
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+        "Accept": forwardedAccept,
+        "Accept-Language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7",
+        "Referer": "https://www.yad2.co.il/",
+        "Origin": "https://www.yad2.co.il",
+        "sec-ch-ua": '"Chromium";v="126", "Not.A/Brand";v="24"',
+        "sec-ch-ua-mobile": "?0",
+        "sec-ch-ua-platform": '"macOS"',
+        "Sec-Fetch-Dest": "empty",
+        "Sec-Fetch-Mode": "cors",
+        "Sec-Fetch-Site": "same-site",
+      },
     });
     const req = https.request(
       {
