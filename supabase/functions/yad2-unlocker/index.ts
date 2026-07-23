@@ -57,7 +57,10 @@ function clean(s: string | null | undefined): string | null {
   return t || null;
 }
 
-function brightDataRequest(url: string): Promise<{ status: number; body: string }> {
+function brightDataRequest(
+  url: string,
+  opts: { accept?: string } = {},
+): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
     const payload = JSON.stringify({
       zone: BD_ZONE,
@@ -65,10 +68,6 @@ function brightDataRequest(url: string): Promise<{ status: number; body: string 
       format: "raw",
       country: "il",
       method: "GET",
-      // Crucial: run the page's client-side JS so Yad2's Next.js/React feed
-      // hydrates before Bright Data returns the DOM. Without this we only get
-      // the empty HTML shell and parse 0 results.
-      render: "true",
     });
     const req = https.request(
       {
@@ -79,7 +78,7 @@ function brightDataRequest(url: string): Promise<{ status: number; body: string 
         headers: {
           "Content-Type": "application/json",
           Authorization: `Bearer ${BD_TOKEN}`,
-          Accept: "text/html,application/xhtml+xml,*/*",
+          Accept: opts.accept ?? "text/html,application/xhtml+xml,*/*",
           "Content-Length": Buffer.byteLength(payload),
         },
       },
@@ -98,6 +97,7 @@ function brightDataRequest(url: string): Promise<{ status: number; body: string 
     req.end();
   });
 }
+
 
 async function unlock(url: string, maxAttempts = 4): Promise<string> {
   if (!BD_TOKEN) throw new Error("BRIGHTDATA_API_TOKEN is not configured");
