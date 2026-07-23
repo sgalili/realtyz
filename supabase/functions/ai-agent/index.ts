@@ -306,9 +306,9 @@ serve(async (req) => {
             const docIds = Array.from(new Set(matches.map((m) => m.document_id).filter(Boolean)));
             const { data: docs } = await supabase
               .from("knowledge_documents")
-              .select("id, source_type, source_metadata")
+              .select("id, source_type, source_metadata, file_path")
               .in("id", docIds.length ? docIds : ["00000000-0000-0000-0000-000000000000"]);
-            const docMap = new Map<string, { source_type?: string; source_metadata?: any }>();
+            const docMap = new Map<string, { source_type?: string; source_metadata?: any; file_path?: string | null }>();
             (docs ?? []).forEach((d: any) => docMap.set(d.id, d));
 
             const enriched = matches.map((m) => {
@@ -317,7 +317,14 @@ serve(async (req) => {
                 d.source_type === "whatsapp" ||
                 d.source_metadata?.source === "WhatsApp" ||
                 d.source_metadata?.category === "Past Conversation";
-              return { ...m, isWhatsApp, sourceLabel: isWhatsApp ? "Past Conversation / WhatsApp" : "Reference Document" };
+              return {
+                ...m,
+                isWhatsApp,
+                sourceLabel: isWhatsApp ? "Past Conversation / WhatsApp" : "Reference Document",
+                source_type: d.source_type ?? null,
+                file_path: d.file_path ?? null,
+                source_url: d.source_metadata?.source_url ?? null,
+              };
             });
 
             // Prefer up to 4 WhatsApp chunks for STYLE, then up to 4 doc chunks for FACTS.
@@ -335,12 +342,20 @@ serve(async (req) => {
               : "";
             kbContext = [waBlock, docsBlock].filter(Boolean).join("\n\n");
 
-            const seen = new Map<string, { id: string; title: string; similarity: number; source?: string }>();
+            const seen = new Map<string, { id: string; title: string; similarity: number; source?: string; source_type?: string; file_path?: string | null; source_url?: string | null }>();
             ordered.forEach((m) => {
               const id = m.document_id ?? m.id;
               const sim = m.similarity ?? 0;
               if (!seen.has(id) || (seen.get(id)!.similarity < sim)) {
-                seen.set(id, { id, title: m.document_title, similarity: sim, source: m.sourceLabel });
+                seen.set(id, {
+                  id,
+                  title: m.document_title,
+                  similarity: sim,
+                  source: m.sourceLabel,
+                  source_type: m.source_type ?? undefined,
+                  file_path: m.file_path ?? null,
+                  source_url: m.source_url ?? null,
+                });
               }
             });
             kbSources = Array.from(seen.values()).slice(0, 6);
