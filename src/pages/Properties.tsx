@@ -14,7 +14,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 import { Skeleton } from '@/components/ui/skeleton';
 import {
   Send, BedDouble, Ruler, MapPin, Building2, FileSpreadsheet, LayoutGrid,
-  SlidersHorizontal, Sparkles, Loader2, Search as SearchIcon,
+  SlidersHorizontal, Filter, ArrowRight, Loader2, Search as SearchIcon,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
@@ -136,7 +136,7 @@ export default function Properties() {
     }
   }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin]);
 
-  // When the user commits a URL (Yad2/Madlan) in the search box, hand off to
+  // When the user commits a URL (Yad2) in the search box, hand off to
   // the quick-import flow via AddPropertyDialog.
   const submitQuery = useCallback(() => {
     const raw = q.trim();
@@ -175,68 +175,78 @@ export default function Properties() {
       <header className="text-right">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">נכסים</h1>
         <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-          חיפוש מאוחד — הומלי, יד-2, מדל״ן והמאגר שלך במקום אחד. לחיצה על תוצאה מייבאת אותה אוטומטית.
+          חיפוש מאוחד — הומלי, יד-2 והמאגר שלך במקום אחד. לחיצה על תוצאה מייבאת אותה אוטומטית.
         </p>
       </header>
 
-      {/* Unified search bar */}
-      <div className="mx-auto w-full max-w-3xl">
-        <div className="relative">
-          <SearchIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input
-            value={q}
-            onChange={(e) => setQ(e.target.value)}
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitQuery(); } }}
-            placeholder="חפש עיר, כתובת, כותרת — או הדבק קישור מיד-2 / מדל״ן..."
-            className="h-12 text-right pr-10 pl-32 text-base"
-            dir="rtl"
-          />
-          <Button
-            type="button"
-            onClick={submitQuery}
-            disabled={searching}
-            className="absolute left-1 top-1/2 -translate-y-1/2 h-10 gap-1.5"
-          >
-            {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-            חיפוש חכם
-          </Button>
-        </div>
-      </div>
-
-      {/* Listing type toggle */}
-      <div className="flex justify-center">
-        <div className="inline-flex items-center rounded-xl border border-primary/20 bg-card/40 p-1 backdrop-blur-md" dir="rtl">
-          {(['all', 'sale', 'rent'] as Array<ListingType | 'all'>).map((t) => (
-            <button
-              key={t}
-              type="button"
-              onClick={() => setListingType(t)}
-              className={`px-5 py-2 text-sm font-bold rounded-lg transition-colors ${
-                listingType === t ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
-              }`}
-            >
-              {t === 'all' ? 'הכל' : LISTING_TYPE_LABELS_HE[t]}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      {/* Count + view mode + filter toggle */}
+      {/* Compact unified control bar */}
       <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
-        <div className="flex items-center justify-center gap-2 flex-wrap" dir="rtl">
+        <div className="flex items-center gap-2 flex-wrap" dir="rtl">
+          {/* Single search field, no placeholder */}
+          <div className="relative flex-1 min-w-[220px]">
+            <SearchIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <Input
+              value={q}
+              onChange={(e) => setQ(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitQuery(); } }}
+              placeholder=""
+              aria-label="חיפוש"
+              className="h-10 text-right pr-10 pl-11 text-sm"
+              dir="rtl"
+            />
+            <Button
+              type="button"
+              size="icon"
+              onClick={submitQuery}
+              disabled={searching}
+              aria-label="חיפוש"
+              title="חיפוש"
+              className="absolute left-1 top-1/2 -translate-y-1/2 h-8 w-8"
+            >
+              {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4 rotate-180" />}
+            </Button>
+          </div>
+
+          {/* Deal type toggle */}
+          <div className="inline-flex items-center rounded-md border border-primary/20 bg-card/40 p-0.5" dir="rtl">
+            {(['all', 'sale', 'rent'] as Array<ListingType | 'all'>).map((t) => (
+              <button
+                key={t}
+                type="button"
+                onClick={() => setListingType(t)}
+                className={`px-3 py-1 text-xs font-semibold rounded transition-colors ${
+                  listingType === t ? 'bg-primary text-primary-foreground shadow-sm' : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {t === 'all' ? 'הכל' : LISTING_TYPE_LABELS_HE[t]}
+              </button>
+            ))}
+          </div>
+
+          {/* Source counters */}
           {hasSearched && (
-            <Badge variant="secondary" className="text-sm">{results.length} תוצאות</Badge>
+            <Badge variant="secondary" className="text-[10px] h-6">{results.length}</Badge>
           )}
           {Object.entries(sourceStatus).map(([src, info]) => (
             <Badge
               key={src}
               variant="outline"
-              className={`text-[10px] ${info.status === 'error' ? 'border-destructive/40 text-destructive' : ''}`}
-              title={info.error ?? undefined}
+              className={`text-[10px] h-6 ${info.status === 'error' ? 'border-destructive/40 text-destructive' : ''}`}
+              title={info.error ?? sourceLabel(src as any)}
             >
-              {sourceLabel(src as any)}: {info.status === 'error' ? 'שגיאה' : info.count}
+              {sourceLabel(src as any)}: {info.status === 'error' ? '!' : info.count}
             </Badge>
           ))}
+
+          {/* Icon-only actions */}
+          <CollapsibleTrigger asChild>
+            <Button type="button" size="icon" variant="outline" className="h-8 w-8" aria-label="פרמטרי חיפוש" title="פרמטרי חיפוש">
+              <SlidersHorizontal className="h-4 w-4" />
+            </Button>
+          </CollapsibleTrigger>
+          <Button type="button" size="icon" variant="outline" className="h-8 w-8" aria-label="סינון טבלה" title="סינון ומיון טבלה" onClick={() => setViewMode('table')}>
+            <Filter className="h-4 w-4" />
+          </Button>
           <div className="inline-flex rounded-md border border-border bg-card/50 p-0.5" role="group" aria-label="מצב תצוגה">
             <button
               type="button"
@@ -259,13 +269,8 @@ export default function Properties() {
               <FileSpreadsheet className="h-3.5 w-3.5" />
             </button>
           </div>
-          <CollapsibleTrigger asChild>
-            <Button type="button" size="sm" variant="outline" className="h-8 gap-1.5">
-              <SlidersHorizontal className="h-4 w-4" />
-              סינון
-            </Button>
-          </CollapsibleTrigger>
         </div>
+
 
         <CollapsibleContent>
           <Card className="p-4 sm:p-5 mt-3">
@@ -341,7 +346,7 @@ export default function Properties() {
           <Card className="p-12 text-center text-muted-foreground">
             <SearchIcon className="mx-auto h-8 w-8 mb-3 opacity-40" />
             <div className="text-base font-semibold text-foreground mb-1">חפש נכס מכל המקורות</div>
-            <div className="text-sm">הזן עיר, כתובת או קישור — נחפש בו-זמנית במאגר שלך, בהומלי, ביד-2 ובמדל״ן.</div>
+            <div className="text-sm">הזן עיר, כתובת או קישור — נחפש בו-זמנית במאגר שלך, בהומלי וביד-2.</div>
           </Card>
         ) : searching ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
