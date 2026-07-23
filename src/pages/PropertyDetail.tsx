@@ -107,6 +107,8 @@ type EditableFields = {
   photo_url_draft: string;
 };
 
+const draftStorageKey = (id: string | undefined) => (id ? `realtyz:property-draft:${id}` : null);
+
 export default function PropertyDetail() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -117,6 +119,11 @@ export default function PropertyDetail() {
   const [saving, setSaving] = useState(false);
   const [uploadingPhoto, setUploadingPhoto] = useState(false);
   const [form, setForm] = useState<EditableFields | null>(null);
+  const [initialFormSnapshot, setInitialFormSnapshot] = useState<string>('');
+
+  // Detect unsaved changes by comparing serialized form vs. snapshot taken
+  // when edit mode opened (or when a draft was restored).
+  const isDirty = editMode && !!form && JSON.stringify(form) !== initialFormSnapshot;
 
   const { data, isLoading } = useQuery({
     queryKey: ['property-detail', id],
