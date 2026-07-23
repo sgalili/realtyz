@@ -658,9 +658,18 @@ export default function EditRepostDialog({ open, onOpenChange, campaign, onPoste
               type="button"
               size="sm"
               variant="ghost"
-              onClick={generateFirstComment}
+              onClick={() => {
+                if (!resolvedListingId) {
+                  toast.error('אין נכס מקושר', {
+                    description: 'קשר את הפוסט לנכס פעיל מה-CRM כדי לייצר תגובה ראשונה.',
+                  });
+                  setShowLookup(true);
+                  return;
+                }
+                generateFirstComment();
+              }}
               disabled={firstCommentGenerating || !firstCommentEnabled}
-              title="ייצר תגובה ראשונה עם AI"
+              title={resolvedListingId ? 'ייצר תגובה ראשונה עם AI' : 'קשר נכס מה-CRM כדי לייצר תגובה ראשונה'}
             >
               {firstCommentGenerating ? (
                 <Loader2 className="h-4 w-4 animate-spin" />
