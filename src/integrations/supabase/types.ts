@@ -1027,23 +1027,37 @@ export type Database = {
           cost: number
           created_at: string
           failure_reason: string | null
+          first_comment: string | null
+          group_ids: Json
           id: string
           is_archived: boolean
           lead_id: string | null
           like_count: number
+          listing_id: string | null
+          locked_at: string | null
+          locked_by: string | null
+          media_urls: Json
           message_body: string | null
           metrics_updated_at: string | null
+          needs_regeneration: boolean
           provider_message_id: string | null
           provider_response: Json
           recipient_email: string | null
           recipient_name: string | null
           recipient_phone: string | null
+          regen_prompt: string | null
           sent_at: string | null
+          series_id: string | null
+          series_index: number | null
+          series_total: number | null
           share_count: number
           source_account: string | null
           status: string
+          target_account_ref: string | null
+          target_profile_key: string | null
           user_id: string
           view_count: number
+          workspace_owner_id: string | null
         }
         Insert: {
           campaign_name: string
@@ -1052,23 +1066,37 @@ export type Database = {
           cost?: number
           created_at?: string
           failure_reason?: string | null
+          first_comment?: string | null
+          group_ids?: Json
           id?: string
           is_archived?: boolean
           lead_id?: string | null
           like_count?: number
+          listing_id?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          media_urls?: Json
           message_body?: string | null
           metrics_updated_at?: string | null
+          needs_regeneration?: boolean
           provider_message_id?: string | null
           provider_response?: Json
           recipient_email?: string | null
           recipient_name?: string | null
           recipient_phone?: string | null
+          regen_prompt?: string | null
           sent_at?: string | null
+          series_id?: string | null
+          series_index?: number | null
+          series_total?: number | null
           share_count?: number
           source_account?: string | null
           status?: string
+          target_account_ref?: string | null
+          target_profile_key?: string | null
           user_id: string
           view_count?: number
+          workspace_owner_id?: string | null
         }
         Update: {
           campaign_name?: string
@@ -1077,23 +1105,37 @@ export type Database = {
           cost?: number
           created_at?: string
           failure_reason?: string | null
+          first_comment?: string | null
+          group_ids?: Json
           id?: string
           is_archived?: boolean
           lead_id?: string | null
           like_count?: number
+          listing_id?: string | null
+          locked_at?: string | null
+          locked_by?: string | null
+          media_urls?: Json
           message_body?: string | null
           metrics_updated_at?: string | null
+          needs_regeneration?: boolean
           provider_message_id?: string | null
           provider_response?: Json
           recipient_email?: string | null
           recipient_name?: string | null
           recipient_phone?: string | null
+          regen_prompt?: string | null
           sent_at?: string | null
+          series_id?: string | null
+          series_index?: number | null
+          series_total?: number | null
           share_count?: number
           source_account?: string | null
           status?: string
+          target_account_ref?: string | null
+          target_profile_key?: string | null
           user_id?: string
           view_count?: number
+          workspace_owner_id?: string | null
         }
         Relationships: []
       }
