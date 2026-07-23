@@ -1575,7 +1575,7 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
 
     return new Response(JSON.stringify({
       type: "text",
-      content: rawContent,
+      content: stripBrokerLicense(rawContent),
       escalation,
       webtiv_results: webtivResults, market_intel: marketIntelResults,
     }), {
