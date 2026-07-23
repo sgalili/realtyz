@@ -193,6 +193,48 @@ export default function Properties() {
     }
   };
 
+  const toggleSelected = (key: string) => {
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+  const clearSelection = () => setSelectedKeys(new Set());
+  const selectAllVisible = (rows: UnifiedResult[]) => {
+    setSelectedKeys(new Set(rows.filter((r) => !r.localId).map((r) => r.key)));
+  };
+
+  const runBatchImport = useCallback(async () => {
+    const targets = results.filter((r) => selectedKeys.has(r.key) && !r.localId);
+    if (targets.length === 0) {
+      toast.info('לא נבחרו נכסים לייבוא');
+      return;
+    }
+    const initial: ImportStep[] = targets.map((r) => ({
+      key: r.key,
+      source: r.source,
+      title: formatListingTitle({ address: r.address, city: r.city, property_type: r.property_type, title: r.title }) || r.title,
+      status: 'pending',
+    }));
+    setImportSteps(initial);
+    setProgressOpen(true);
+
+    // Sequential to keep UI progress readable and avoid rate-limiting external gateways.
+    for (const r of targets) {
+      setImportSteps((prev) => prev.map((s) => (s.key === r.key ? { ...s, status: 'running' } : s)));
+      try {
+        const localId = await autoImportResult(r);
+        setImportSteps((prev) => prev.map((s) => (s.key === r.key ? { ...s, status: 'success', localId } : s)));
+      } catch (err: any) {
+        console.error('[Properties] batch import failed for', r.key, err);
+        setImportSteps((prev) => prev.map((s) => (s.key === r.key ? { ...s, status: 'error', error: String(err?.message ?? err) } : s)));
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+    clearSelection();
+  }, [results, selectedKeys, queryClient]);
+
   const cityOptions = useMemo(() => {
     const cities = new Set<string>(CITY_OPTIONS as readonly string[]);
     results.forEach((r) => { if (r.city) cities.add(r.city); });
