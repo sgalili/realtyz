@@ -57,42 +57,61 @@ function clean(s: string | null | undefined): string | null {
   return t || null;
 }
 
+function brightDataRequest(url: string): Promise<{ status: number; body: string }> {
+  return new Promise((resolve, reject) => {
+    const payload = JSON.stringify({
+      zone: BD_ZONE,
+      url,
+      format: "raw",
+      country: "il",
+      method: "GET",
+    });
+    const req = https.request(
+      {
+        hostname: "api.brightdata.com",
+        port: 443,
+        path: "/request",
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${BD_TOKEN}`,
+          Accept: "text/html,application/xhtml+xml,*/*",
+          "Content-Length": Buffer.byteLength(payload),
+        },
+      },
+      (res) => {
+        const chunks: Buffer[] = [];
+        res.on("data", (c: Buffer) => chunks.push(c));
+        res.on("end", () => {
+          const body = Buffer.concat(chunks).toString("utf8");
+          resolve({ status: res.statusCode ?? 0, body });
+        });
+        res.on("error", reject);
+      },
+    );
+    req.on("error", reject);
+    req.write(payload);
+    req.end();
+  });
+}
+
 async function unlock(url: string, maxAttempts = 4): Promise<string> {
   if (!BD_TOKEN) throw new Error("BRIGHTDATA_API_TOKEN is not configured");
   let lastErr: unknown = null;
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
-      const res = await fetch("https://api.brightdata.com/request", {
-        method: "POST",
-        headers: {
-          Authorization: `Bearer ${BD_TOKEN}`,
-          "Content-Type": "application/json",
-          Accept: "text/html,application/xhtml+xml,*/*",
-          Connection: "close",
-        },
-        body: JSON.stringify({
-          zone: BD_ZONE,
-          url,
-          format: "raw",
-          country: "il",
-          method: "GET",
-        }),
-      });
-      const text = await res.text();
-      if (!res.ok) {
-        // Retry on 5xx / 429; fail fast otherwise
-        if ((res.status >= 500 || res.status === 429) && attempt < maxAttempts) {
-          console.warn(`[yad2-unlocker] BD ${res.status} attempt ${attempt}, retrying`);
-          await new Promise((r) => setTimeout(r, 500 * attempt));
-          continue;
-        }
-        throw new Error(`Bright Data ${res.status}: ${text.slice(0, 400)}`);
+      const { status, body } = await brightDataRequest(url);
+      if (status >= 200 && status < 300) return body;
+      if ((status >= 500 || status === 429) && attempt < maxAttempts) {
+        console.warn(`[yad2-unlocker] BD ${status} attempt ${attempt}, retrying`);
+        await new Promise((r) => setTimeout(r, 500 * attempt));
+        continue;
       }
-      return text;
+      throw new Error(`Bright Data ${status}: ${body.slice(0, 400)}`);
     } catch (e) {
       lastErr = e;
       const msg = String((e as Error)?.message ?? e);
-      const transient = /http2|stream error|SendRequest|network|reset|ECONNRESET|EOF|timeout/i.test(msg);
+      const transient = /http2|stream error|SendRequest|network|reset|ECONNRESET|EOF|timeout|socket hang up/i.test(msg);
       if (!transient || attempt >= maxAttempts) throw e;
       console.warn(`[yad2-unlocker] transient error attempt ${attempt}: ${msg.slice(0, 200)}`);
       await new Promise((r) => setTimeout(r, 600 * attempt));
