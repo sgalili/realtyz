@@ -266,6 +266,12 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
           floor: floor ? Number(floor) : null,
           parking,
           elevator,
+          media_photos: photos,
+          source_metadata: {
+            ...((property as any)?.source_metadata ?? {}),
+            photos,
+            videos,
+          },
           features: [{
             listing_type: listingType,
             property_type: propertyType,
