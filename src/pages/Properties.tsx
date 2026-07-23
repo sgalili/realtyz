@@ -180,13 +180,28 @@ export default function Properties() {
     runSearch();
   }, [q, runSearch]);
 
-  const handleSelect = async (r: UnifiedResult) => {
+  // Clicking a row/card ONLY opens the details view. For rows that were
+  // already imported (have a localId), navigate to the local details page.
+  // For external rows, open the preview dialog. Importing is explicit —
+  // either via the preview dialog's "Import & open" button or via the
+  // batch checkboxes + "Import selected" action.
+  const handleSelect = (r: UnifiedResult) => {
+    if (r.localId) {
+      navigate(`/properties/${r.localId}`);
+      return;
+    }
+    setPreviewResult(r);
+    setPreviewOpen(true);
+  };
+
+  const handleImport = async (r: UnifiedResult) => {
     if (r.localId) { navigate(`/properties/${r.localId}`); return; }
     setImportingKey(r.key);
     try {
       const id = await autoImportResult(r);
       toast.success('יובא אוטומטית למאגר');
       queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+      setPreviewOpen(false);
       navigate(`/properties/${id}`);
     } catch (err: any) {
       console.error('[Properties] auto-import failed', err);
