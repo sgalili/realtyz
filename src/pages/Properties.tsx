@@ -125,11 +125,12 @@ function dedupeProperties<T extends Partial<HomelyProperty> & { address?: string
 }
 
 type SourceTab = 'all' | 'mine' | 'homely' | 'yad2' | 'madlan';
-const SOURCE_LABELS: Record<SourceTab, string> = {
+// The Yad2 tab is hidden from the UI until the BrightData scraping
+// integration is complete. The type stays for internal state compat.
+const SOURCE_LABELS: Record<Exclude<SourceTab, 'yad2'>, string> = {
   all: 'הכל',
   mine: 'הנכסים שלי',
   homely: 'הומלי',
-  yad2: 'יד-2',
   madlan: 'מדל״ן',
 };
 
@@ -417,7 +418,7 @@ export default function Properties() {
       {/* Source tabs: Mine / Homely / Yad2 / Madlan */}
       <div className="flex justify-center">
         <div className="inline-flex items-center rounded-xl border border-primary/20 bg-card/40 p-1 backdrop-blur-md flex-wrap gap-1" dir="rtl">
-          {(Object.keys(SOURCE_LABELS) as SourceTab[]).map((t) => (
+          {(Object.keys(SOURCE_LABELS) as Array<Exclude<SourceTab, 'yad2'>>).map((t) => (
             <button
               key={t}
               type="button"
