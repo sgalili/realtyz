@@ -38,6 +38,8 @@ import { searchAllSources, type UnifiedResult, type SearchFilters } from '@/lib/
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatListingTitle } from '@/lib/formatListingTitle';
+import { Checkbox } from '@/components/ui/checkbox';
+import { ImportProgressDialog, type ImportStep } from '@/components/properties/ImportProgressDialog';
 
 const PRICE_MIN = 0;
 const PRICE_MAX = 10_000_000;
@@ -92,6 +94,11 @@ export default function Properties() {
   const [searching, setSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState<boolean>(!!cached?.results?.length);
   const [importingKey, setImportingKey] = useState<string | null>(null);
+
+  // Multi-select + batch import progress
+  const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
+  const [importSteps, setImportSteps] = useState<ImportStep[]>([]);
+  const [progressOpen, setProgressOpen] = useState(false);
 
   const [addOpen, setAddOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
@@ -185,6 +192,48 @@ export default function Properties() {
       setImportingKey(null);
     }
   };
+
+  const toggleSelected = (key: string) => {
+    setSelectedKeys((prev) => {
+      const next = new Set(prev);
+      if (next.has(key)) next.delete(key); else next.add(key);
+      return next;
+    });
+  };
+  const clearSelection = () => setSelectedKeys(new Set());
+  const selectAllVisible = (rows: UnifiedResult[]) => {
+    setSelectedKeys(new Set(rows.filter((r) => !r.localId).map((r) => r.key)));
+  };
+
+  const runBatchImport = useCallback(async () => {
+    const targets = results.filter((r) => selectedKeys.has(r.key) && !r.localId);
+    if (targets.length === 0) {
+      toast.info('לא נבחרו נכסים לייבוא');
+      return;
+    }
+    const initial: ImportStep[] = targets.map((r) => ({
+      key: r.key,
+      source: r.source,
+      title: formatListingTitle({ address: r.address, city: r.city, property_type: r.property_type, title: r.title }) || r.title,
+      status: 'pending',
+    }));
+    setImportSteps(initial);
+    setProgressOpen(true);
+
+    // Sequential to keep UI progress readable and avoid rate-limiting external gateways.
+    for (const r of targets) {
+      setImportSteps((prev) => prev.map((s) => (s.key === r.key ? { ...s, status: 'running' } : s)));
+      try {
+        const localId = await autoImportResult(r);
+        setImportSteps((prev) => prev.map((s) => (s.key === r.key ? { ...s, status: 'success', localId } : s)));
+      } catch (err: any) {
+        console.error('[Properties] batch import failed for', r.key, err);
+        setImportSteps((prev) => prev.map((s) => (s.key === r.key ? { ...s, status: 'error', error: String(err?.message ?? err) } : s)));
+      }
+    }
+    queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+    clearSelection();
+  }, [results, selectedKeys, queryClient]);
 
   const cityOptions = useMemo(() => {
     const cities = new Set<string>(CITY_OPTIONS as readonly string[]);
@@ -477,6 +526,42 @@ export default function Properties() {
         </CollapsibleContent>
       </Collapsible>
 
+      {/* Batch selection action bar */}
+      {hasSearched && results.length > 0 && (
+        <div className="flex flex-wrap items-center gap-2 rounded-md border bg-card/40 px-3 py-2 text-xs" dir="rtl">
+          <button
+            type="button"
+            onClick={() => selectAllVisible(sortedResults)}
+            className="text-primary hover:underline font-semibold"
+          >
+            בחר הכל
+          </button>
+          <span className="text-muted-foreground">·</span>
+          <button
+            type="button"
+            onClick={clearSelection}
+            className="text-muted-foreground hover:text-foreground"
+            disabled={selectedKeys.size === 0}
+          >
+            נקה בחירה
+          </button>
+          <span className="ms-auto flex items-center gap-2">
+            <span className="text-muted-foreground">
+              {selectedKeys.size} נבחרו
+            </span>
+            <Button
+              size="sm"
+              disabled={selectedKeys.size === 0}
+              onClick={runBatchImport}
+              className="gap-1.5 h-8"
+            >
+              <Send className="h-3.5 w-3.5" />
+              ייבא נבחרים ({selectedKeys.size})
+            </Button>
+          </span>
+        </div>
+      )}
+
       {/* Results */}
       <ErrorBoundary source="Properties.Results">
         {!hasSearched ? (
@@ -496,11 +581,25 @@ export default function Properties() {
             לא נמצאו נכסים תואמים. נסה חיפוש רחב יותר.
           </Card>
         ) : viewMode === 'table' ? (
-          <ResultTable results={sortedResults} importingKey={importingKey} onSelect={handleSelect} />
+          <ResultTable
+            results={sortedResults}
+            importingKey={importingKey}
+            onSelect={handleSelect}
+            selectedKeys={selectedKeys}
+            onToggleSelect={toggleSelected}
+            onToggleAll={(rows, checked) => (checked ? selectAllVisible(rows) : clearSelection())}
+          />
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {sortedResults.map((r) => (
-              <ResultCard key={r.key} result={r} importing={importingKey === r.key} onSelect={() => handleSelect(r)} />
+              <ResultCard
+                key={r.key}
+                result={r}
+                importing={importingKey === r.key}
+                onSelect={() => handleSelect(r)}
+                selected={selectedKeys.has(r.key)}
+                onToggleSelect={() => toggleSelected(r.key)}
+              />
             ))}
           </div>
         )}
@@ -517,11 +616,29 @@ export default function Properties() {
       <ManualPropertyDialog open={manualOpen} onOpenChange={setManualOpen} onCreated={runSearch} />
       <ImportPropertiesDialog open={importOpen} onOpenChange={setImportOpen} onImported={runSearch} />
       <HomelyBulkSyncDialog open={homelyBulkOpen} onOpenChange={setHomelyBulkOpen} onImported={runSearch} mode="properties" />
+      <ImportProgressDialog
+        open={progressOpen}
+        onOpenChange={setProgressOpen}
+        steps={importSteps}
+        onDone={() => { runSearch(); }}
+      />
     </div>
   );
 }
 
-function ResultCard({ result, importing, onSelect }: { result: UnifiedResult; importing: boolean; onSelect: () => void }) {
+function ResultCard({
+  result,
+  importing,
+  onSelect,
+  selected,
+  onToggleSelect,
+}: {
+  result: UnifiedResult;
+  importing: boolean;
+  onSelect: () => void;
+  selected?: boolean;
+  onToggleSelect?: () => void;
+}) {
   const photos = (result.photos ?? []).filter(Boolean);
   const hasPhotos = photos.length > 0;
   const hasMany = photos.length > 1;
@@ -535,7 +652,16 @@ function ResultCard({ result, importing, onSelect }: { result: UnifiedResult; im
 
   return (
     <Card className="overflow-hidden flex flex-col group hover:shadow-lg transition-shadow cursor-pointer relative" onClick={onSelect}>
+      {onToggleSelect && !result.localId && (
+        <div
+          className="absolute top-3 right-3 z-20 rounded-md bg-background/80 backdrop-blur-sm border p-1"
+          onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+        >
+          <Checkbox checked={!!selected} aria-label="בחר לייבוא" />
+        </div>
+      )}
       <div className="aspect-[16/10] bg-muted relative overflow-hidden">
+
         {activePhoto ? (
           <img
             key={activePhoto}
@@ -647,7 +773,21 @@ function ResultCard({ result, importing, onSelect }: { result: UnifiedResult; im
 
 type SortCol = 'source' | 'name' | 'listing_type' | 'price' | 'city' | 'address' | 'rooms' | 'size_sqm';
 
-function ResultTable({ results, importingKey, onSelect }: { results: UnifiedResult[]; importingKey: string | null; onSelect: (r: UnifiedResult) => void }) {
+function ResultTable({
+  results,
+  importingKey,
+  onSelect,
+  selectedKeys,
+  onToggleSelect,
+  onToggleAll,
+}: {
+  results: UnifiedResult[];
+  importingKey: string | null;
+  onSelect: (r: UnifiedResult) => void;
+  selectedKeys?: Set<string>;
+  onToggleSelect?: (key: string) => void;
+  onToggleAll?: (rows: UnifiedResult[], checked: boolean) => void;
+}) {
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
@@ -710,6 +850,20 @@ function ResultTable({ results, importingKey, onSelect }: { results: UnifiedResu
       <table className="w-full text-[15px]" dir="rtl">
         <thead className="bg-muted/50 sticky top-0">
           <tr className="text-right">
+            {onToggleSelect && (
+              <th className="px-2 py-2 w-8">
+                {onToggleAll && (
+                  <Checkbox
+                    checked={
+                      sorted.length > 0 &&
+                      sorted.filter((r) => !r.localId).every((r) => selectedKeys?.has(r.key))
+                    }
+                    onCheckedChange={(v) => onToggleAll(sorted, !!v)}
+                    aria-label="בחר הכל"
+                  />
+                )}
+              </th>
+            )}
             <HeaderCell col="source" label="מקור" />
             <HeaderCell col="name" label="שם" />
             <HeaderCell col="listing_type" label="סוג" />
@@ -725,8 +879,20 @@ function ResultTable({ results, importingKey, onSelect }: { results: UnifiedResu
           {sorted.map((r) => {
             const isRent = r.listing_type === 'rent';
             const importing = importingKey === r.key;
+            const isSelected = !!selectedKeys?.has(r.key);
             return (
-              <tr key={r.key} className="border-t hover:bg-muted/30 cursor-pointer" onClick={() => onSelect(r)}>
+              <tr key={r.key} className={`border-t hover:bg-muted/30 cursor-pointer ${isSelected ? 'bg-primary/5' : ''}`} onClick={() => onSelect(r)}>
+                {onToggleSelect && (
+                  <td className="px-2 py-1.5" onClick={(e) => e.stopPropagation()}>
+                    {!r.localId && (
+                      <Checkbox
+                        checked={isSelected}
+                        onCheckedChange={() => onToggleSelect(r.key)}
+                        aria-label="בחר לייבוא"
+                      />
+                    )}
+                  </td>
+                )}
                 <td className="px-2 py-1.5"><SourceBadge source={r.source} compact /></td>
                 <td className="px-2 py-1.5 max-w-[320px] truncate">
                   {(() => {
