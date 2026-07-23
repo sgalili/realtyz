@@ -125,12 +125,11 @@ function dedupeProperties<T extends Partial<HomelyProperty> & { address?: string
 }
 
 type SourceTab = 'all' | 'mine' | 'homely' | 'yad2' | 'madlan';
-// The Yad2 tab is hidden from the UI until the BrightData scraping
-// integration is complete. The type stays for internal state compat.
-const SOURCE_LABELS: Record<Exclude<SourceTab, 'yad2'>, string> = {
+const SOURCE_LABELS: Record<SourceTab, string> = {
   all: 'הכל',
   mine: 'הנכסים שלי',
   homely: 'הומלי',
+  yad2: 'יד-2',
   madlan: 'מדל״ן',
 };
 
@@ -418,7 +417,7 @@ export default function Properties() {
       {/* Source tabs: Mine / Homely / Yad2 / Madlan */}
       <div className="flex justify-center">
         <div className="inline-flex items-center rounded-xl border border-primary/20 bg-card/40 p-1 backdrop-blur-md flex-wrap gap-1" dir="rtl">
-          {(Object.keys(SOURCE_LABELS) as Array<Exclude<SourceTab, 'yad2'>>).map((t) => (
+          {(Object.keys(SOURCE_LABELS) as SourceTab[]).map((t) => (
             <button
               key={t}
               type="button"
@@ -460,7 +459,7 @@ export default function Properties() {
                     const body: Record<string, unknown> = {};
                     const url = yad2Url.trim();
                     if (url.length > 0) body.url = url;
-                    const { data, error } = await supabase.functions.invoke('scrape-yad2', { body });
+                    const { data, error } = await supabase.functions.invoke('yad2-unlocker', { body });
                     if (error) {
                       // FunctionsHttpError exposes the response — try to read the JSON body
                       let detail = error.message ?? 'שגיאה לא ידועה';
