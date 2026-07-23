@@ -174,13 +174,22 @@ export async function searchAllSources(f: SearchFilters): Promise<SearchResponse
     invokeExternal('yad2-search', body)
       .then((d: any) => ({ label: 'yad2' as const, results: normalizeExternal('yad2', d?.results ?? []) }))
       .catch((e) => { sources.yad2 = { status: 'error', count: 0, error: String(e?.message ?? e) }; return { label: 'yad2' as const, results: [] }; }),
-    invokeExternal('yad2-unlocker', { ...body, mode: 'search' })
-      .then((d: any) => {
+    (async () => {
+      const queryText = [f.q, f.city && f.city !== 'כל הערים' ? f.city : null]
+        .filter(Boolean)
+        .join(' ')
+        .trim();
+      if (!queryText) return { label: 'yad2' as const, results: [] };
+      const dealPath = listingType === 'rent' ? 'forrent' : 'forsale';
+      const url = `https://www.yad2.co.il/realestate/${dealPath}?text=${encodeURIComponent(queryText)}`;
+      try {
+        const d: any = await invokeExternal('yad2-unlocker', { url, query: queryText, limit: 30, mode: 'search' });
         const items = Array.isArray(d?.results) ? d.results : Array.isArray(d?.items) ? d.items : [];
-        // Yad2-unlocker results were already tagged upstream; treat as yad2.
         return { label: 'yad2' as const, results: normalizeExternal('yad2', items) };
-      })
-      .catch(() => ({ label: 'yad2' as const, results: [] })),
+      } catch {
+        return { label: 'yad2' as const, results: [] };
+      }
+    })(),
     invokeExternal('webtiv-homely-sync', { ...body, mode: 'search' })
       .then((d: any) => {
         const items = Array.isArray(d?.results) ? d.results : Array.isArray(d?.items) ? d.items : [];
