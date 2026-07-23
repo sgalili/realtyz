@@ -40,6 +40,7 @@ import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatListingTitle } from '@/lib/formatListingTitle';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ImportProgressDialog, type ImportStep } from '@/components/properties/ImportProgressDialog';
+import { PropertyPreviewDialog } from '@/components/properties/PropertyPreviewDialog';
 
 const PRICE_MIN = 0;
 const PRICE_MAX = 10_000_000;
@@ -99,6 +100,8 @@ export default function Properties() {
   const [selectedKeys, setSelectedKeys] = useState<Set<string>>(new Set());
   const [importSteps, setImportSteps] = useState<ImportStep[]>([]);
   const [progressOpen, setProgressOpen] = useState(false);
+  const [previewResult, setPreviewResult] = useState<UnifiedResult | null>(null);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const [addOpen, setAddOpen] = useState(false);
   const [manualOpen, setManualOpen] = useState(false);
@@ -177,13 +180,28 @@ export default function Properties() {
     runSearch();
   }, [q, runSearch]);
 
-  const handleSelect = async (r: UnifiedResult) => {
+  // Clicking a row/card ONLY opens the details view. For rows that were
+  // already imported (have a localId), navigate to the local details page.
+  // For external rows, open the preview dialog. Importing is explicit —
+  // either via the preview dialog's "Import & open" button or via the
+  // batch checkboxes + "Import selected" action.
+  const handleSelect = (r: UnifiedResult) => {
+    if (r.localId) {
+      navigate(`/properties/${r.localId}`);
+      return;
+    }
+    setPreviewResult(r);
+    setPreviewOpen(true);
+  };
+
+  const handleImport = async (r: UnifiedResult) => {
     if (r.localId) { navigate(`/properties/${r.localId}`); return; }
     setImportingKey(r.key);
     try {
       const id = await autoImportResult(r);
       toast.success('יובא אוטומטית למאגר');
       queryClient.invalidateQueries({ queryKey: ['properties-search'] });
+      setPreviewOpen(false);
       navigate(`/properties/${id}`);
     } catch (err: any) {
       console.error('[Properties] auto-import failed', err);
@@ -290,7 +308,7 @@ export default function Properties() {
       <header className="text-right">
         <h1 className="text-2xl sm:text-3xl font-bold tracking-tight text-primary">נכסים</h1>
         <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-          חיפוש מאוחד — הומלי, יד-2 והמאגר שלך במקום אחד. לחיצה על תוצאה מייבאת אותה אוטומטית.
+          חיפוש מאוחד — הומלי, יד-2 והמאגר שלך במקום אחד. לחץ על נכס לתצוגה מלאה, וסמן נכסים לייבוא קבוצתי.
         </p>
       </header>
 
@@ -622,6 +640,13 @@ export default function Properties() {
         steps={importSteps}
         onDone={() => { runSearch(); }}
       />
+      <PropertyPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        result={previewResult}
+        onImport={handleImport}
+        importing={previewResult ? importingKey === previewResult.key : false}
+      />
     </div>
   );
 }
@@ -763,7 +788,7 @@ function ResultCard({
           </div>
           <Button size="sm" onClick={(e) => { e.stopPropagation(); onSelect(); }} className="gap-1.5">
             <Send className="h-4 w-4" />
-            {result.localId ? 'פתח' : 'ייבא ופתח'}
+            פתח
           </Button>
         </div>
       </div>
@@ -914,9 +939,9 @@ function ResultTable({
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.rooms ?? '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.size_sqm ?? '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap text-left">
-                  <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onSelect(r); }} className="gap-1.5" disabled={importing}>
-                    {importing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                    {r.localId ? 'פתח' : 'ייבא'}
+                  <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onSelect(r); }} className="gap-1.5">
+                    <Send className="h-3.5 w-3.5" />
+                    פתח
                   </Button>
                 </td>
               </tr>
