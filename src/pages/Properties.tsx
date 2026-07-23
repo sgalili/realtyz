@@ -82,7 +82,7 @@ export default function Properties() {
   const [maxPrice, setMaxPrice] = useState<number>(cached?.maxPrice ?? PRICE_MAX);
   const [areaMin, setAreaMin] = useState<string>(cached?.areaMin ?? '');
 
-  const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
+  const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [filtersOpen, setFiltersOpen] = useState(false);
   const [sortBy, setSortBy] = useState<'relevance' | 'price_asc' | 'price_desc' | 'rooms_desc' | 'size_desc' | 'newest'>('relevance');
 
@@ -113,20 +113,34 @@ export default function Properties() {
     setSearching(true);
     setHasSearched(true);
     try {
+      // Parse the free-text query into structured hints so external gateways
+      // (Yad2, Homely, Webtiv) receive real filters instead of raw prose.
+      const { parseSearchQuery } = await import('@/lib/parseSearchQuery');
+      const parsed = parseSearchQuery(q);
+      const explicitCity = city && city !== 'כל הערים' && city !== '__my_zones__' ? city : null;
+      const effectiveCity = explicitCity ?? parsed.city;
+      const effectiveRooms = rooms !== 'any' ? Number(rooms) : parsed.rooms;
+      const effectiveListing: SearchFilters['listing_type'] =
+        listingType !== 'all' ? listingType : (parsed.listing_type ?? 'all');
+      const effectivePropertyType = propertyType !== 'all' ? propertyType : (parsed.property_type ?? 'all');
+      const effectiveMaxPrice = maxPrice < PRICE_MAX ? maxPrice : (parsed.max_price ?? undefined);
+      const effectiveMinPrice = parsed.min_price ?? undefined;
+
       const filters: SearchFilters = {
-        q: q.trim() || undefined,
-        city: city && city !== 'כל הערים' && city !== '__my_zones__' ? city : undefined,
-        max_price: maxPrice < PRICE_MAX ? maxPrice : undefined,
-        rooms: rooms !== 'any' ? Number(rooms) : undefined,
-        listing_type: listingType,
+        q: (parsed.keywords || q.trim()) || undefined,
+        city: effectiveCity ?? undefined,
+        neighborhood: parsed.neighborhood ?? undefined,
+        min_price: effectiveMinPrice,
+        max_price: effectiveMaxPrice,
+        rooms: effectiveRooms ?? undefined,
+        listing_type: effectiveListing,
         min_sqm: areaMin ? Number(areaMin) : undefined,
-        property_type: propertyType !== 'all' ? propertyType : undefined,
+        property_type: effectivePropertyType !== 'all' ? effectivePropertyType : undefined,
       };
       const resp = await searchAllSources(filters);
-      // Property type filter (external sources ignore this)
       let filtered = resp.results;
-      if (propertyType !== 'all') {
-        filtered = filtered.filter((r) => !r.property_type || String(r.property_type).toLowerCase() === propertyType);
+      if (effectivePropertyType !== 'all') {
+        filtered = filtered.filter((r) => !r.property_type || String(r.property_type).toLowerCase() === effectivePropertyType);
       }
       setResults(filtered);
       setSourceStatus(resp.sources);
