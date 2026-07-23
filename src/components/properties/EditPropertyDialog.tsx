@@ -73,8 +73,39 @@ export function EditPropertyDialog({ property, open, onOpenChange, onSaved }: Pr
   const [furnished, setFurnished] = useState(false);
   const [bars, setBars] = useState(false);
   const [photos, setPhotos] = useState<string[]>([]);
+  const [videos, setVideos] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
+  const videoInputRef = useRef<HTMLInputElement | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [syncing, setSyncing] = useState(false);
+
+  const handleUpload = async (files: FileList | null, kind: 'photo' | 'video') => {
+    if (!files || files.length === 0) return;
+    setUploading(true);
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) { toast.error('יש להתחבר'); return; }
+      const uploaded: string[] = [];
+      for (const f of Array.from(files)) {
+        const row = await uploadMediaToLibrary({
+          userId: auth.user.id,
+          fileName: f.name,
+          data: f,
+          mimeType: f.type,
+          source: 'edit_property_upload',
+        });
+        if (row?.public_url) uploaded.push(row.public_url);
+      }
+      if (kind === 'photo') setPhotos((prev) => [...prev, ...uploaded]);
+      else setVideos((prev) => [...prev, ...uploaded]);
+      toast.success(`הועלו ${uploaded.length} קבצים`);
+    } catch (e: any) {
+      toast.error(`שגיאת העלאה: ${e.message ?? e}`);
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const hydrateFromRow = (p: any) => {
     const meta = p.source_metadata ?? {};
