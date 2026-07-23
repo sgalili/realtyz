@@ -809,12 +809,18 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
             const before = candidates.length;
             candidates = candidates.filter((l) => {
               if (extractType(l) !== dealType) return false;
+              const price = Number(l.asking_price ?? 0);
               // Absolute price guardrail: strip any "rent" over ₪50k.
-              if (dealType === "rent" && Number(l.asking_price ?? 0) > 50_000) return false;
+              if (dealType === "rent" && price > 50_000) return false;
+              // STRICT budget cap — rent gets zero overage; sale gets 10%.
+              if (budgetMax && price > 0) {
+                const cap = dealType === "rent" ? budgetMax : Math.round(budgetMax * 1.10);
+                if (price > cap) return false;
+              }
               return true;
             });
             if (before !== candidates.length) {
-              console.log(`[matching] deal_type=${dealType} filter dropped ${before - candidates.length}/${before} candidates`);
+              console.log(`[matching] deal_type=${dealType} filter dropped ${before - candidates.length}/${before} candidates (budget=${budgetMax ?? "—"})`);
             }
           }
 
