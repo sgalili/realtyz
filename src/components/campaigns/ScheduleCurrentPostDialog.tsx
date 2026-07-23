@@ -312,94 +312,149 @@ export function ScheduleCurrentPostDialog({
         ? targets
         : [null as ScheduleTarget | null];
 
+    // Every series gets one shared series_id so the calendar (and future
+    // "cancel series" actions) can group all slots without a name heuristic.
+    const seriesId = (crypto as any)?.randomUUID?.() ??
+      `${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
     const progressToastId = toast.loading(`מתזמן ${slots.length} פרסומים…`);
     let ok = 0;
     let failed = 0;
     let firstErr: string | null = null;
     setProgress(0);
+
     try {
-      // Slots 0..JIT_GENERATION_LOOKAHEAD-1 get freshly generated variants so
-      // the next few real publications feel fresh. All later slots get the
-      // ORIGINAL body as a lightweight placeholder — they are marked so the
-      // user can regenerate them later from the calendar just before publish
-      // time, saving tokens and closing this dialog almost instantly.
+      // ---- SLOT 0 -----------------------------------------------------------
+      // Publish the first chronological slot for real via ayrshare-post so it
+      // rides Ayrshare's own scheduler. This is the only heavy call in the
+      // whole series — everything after it is a lightweight DB insert.
+      const firstSlot = slots[0];
       const totalOps = slots.length * fanoutTargets.length;
       let done = 0;
-      for (let i = 0; i < slots.length; i++) {
-        const slot = slots[i];
-        const isJitPlaceholder = i >= JIT_GENERATION_LOOKAHEAD;
-        let slotBody = body;
-        if (!isJitPlaceholder) {
-          try {
-            slotBody = i === 0 ? body : await generateVariantBody(i, Math.min(slots.length, JIT_GENERATION_LOOKAHEAD));
-          } catch (variantErr) {
-            console.error('[ScheduleCurrentPostDialog] variant generation failed, using original body', variantErr);
-            slotBody = body;
-          }
-        }
-        for (const target of fanoutTargets) {
-          try {
-            try {
-              window.dispatchEvent(new CustomEvent('rz:campaign-optimistic', {
-                detail: {
-                  channel: channelId,
-                  body: slotBody,
-                  media_urls: mediaUrls,
-                  campaign_name: target ? `${campaignName} · ${target.name}` : campaignName,
-                  scheduled_at: slot.toISOString(),
-                  needs_regeneration: isJitPlaceholder,
-                },
-              }));
-            } catch { /* noop */ }
 
-            const invokeBody: Record<string, unknown> = {
-              post: slotBody,
-              channels: [channelId],
-              campaign_name: target ? `${campaignName} · ${target.name}` : campaignName,
-              // Original images must ride along on every future repost — this
-              // array is inherited unchanged for every slot in the series.
-              media_urls: Array.isArray(mediaUrls) ? mediaUrls : [],
-              scheduled_at: slot.toISOString(),
-              workspace_owner_id: ownerScope,
-              group_ids: channelId === 'facebook' ? (selectedGroupIds || []) : [],
-              target_profile_id: target?.id ?? null,
-              target_account_ref: target?.accountRef ?? null,
-              target_profile_key: target?.profileKey ?? null,
-              first_comment: firstComment || null,
-              listing_id: listingId ?? null,
-              needs_regeneration: isJitPlaceholder,
-              series_index: i,
-              series_total: slots.length,
-            };
-            const { data, error } = await supabase.functions.invoke('ayrshare-post', {
-              body: invokeBody,
-            });
-            const payload: any = data;
-            if (error || payload?.error || payload?.success === false) {
-              failed++;
-              const msg = await extractErr(error, payload);
-              console.error('[ScheduleCurrentPostDialog] slot failed', { slotIndex: i, error, payload, msg });
-              if (!firstErr) firstErr = msg;
-            } else {
-              ok++;
-            }
-          } catch (slotErr: any) {
+      for (const target of fanoutTargets) {
+        const nameForTarget = target ? `${campaignName} · ${target.name}` : campaignName;
+        try {
+          window.dispatchEvent(new CustomEvent('rz:campaign-optimistic', {
+            detail: {
+              channel: channelId,
+              body,
+              media_urls: mediaUrls,
+              campaign_name: nameForTarget,
+              scheduled_at: firstSlot.toISOString(),
+              needs_regeneration: false,
+            },
+          }));
+        } catch { /* noop */ }
+
+        const invokeBody: Record<string, unknown> = {
+          post: body,
+          channels: [channelId],
+          campaign_name: nameForTarget,
+          media_urls: Array.isArray(mediaUrls) ? mediaUrls : [],
+          scheduled_at: firstSlot.toISOString(),
+          workspace_owner_id: ownerScope,
+          group_ids: channelId === 'facebook' ? (selectedGroupIds || []) : [],
+          target_profile_id: target?.id ?? null,
+          target_account_ref: target?.accountRef ?? null,
+          target_profile_key: target?.profileKey ?? null,
+          first_comment: firstComment || null,
+          listing_id: listingId ?? null,
+          series_id: seriesId,
+          series_index: 0,
+          series_total: slots.length,
+        };
+        try {
+          const { data, error } = await supabase.functions.invoke('ayrshare-post', {
+            body: invokeBody,
+          });
+          const payload: any = data;
+          if (error || payload?.error || payload?.success === false) {
             failed++;
-            console.error('[ScheduleCurrentPostDialog] Detailed scheduling error:', slotErr);
-            if (!firstErr) firstErr = slotErr?.message || 'שגיאה לא צפויה בתזמון';
+            const msg = await extractErr(error, payload);
+            console.error('[ScheduleCurrentPostDialog] first-slot failed', { error, payload, msg });
+            if (!firstErr) firstErr = msg;
+          } else {
+            ok++;
           }
-          done++;
+        } catch (slotErr: any) {
+          failed++;
+          console.error('[ScheduleCurrentPostDialog] first-slot exception:', slotErr);
+          if (!firstErr) firstErr = slotErr?.message || 'שגיאה לא צפויה בתזמון';
+        }
+        done++;
+        setProgress(Math.round((done / totalOps) * 100));
+      }
+
+      // ---- SLOTS 1..N-1 : lightweight placeholders --------------------------
+      // Bulk insert every future slot as a campaign_logs row with
+      // needs_regeneration=true so the dispatcher generates the real AI body
+      // and publishes it just before its send time. No AI call happens here.
+      const placeholderRows: any[] = [];
+      for (let i = 1; i < slots.length; i++) {
+        const slot = slots[i];
+        for (const target of fanoutTargets) {
+          const nameForTarget = target ? `${campaignName} · ${target.name}` : campaignName;
+          const rotateNote = buildRotateInstruction(i, slots.length);
+          placeholderRows.push({
+            user_id: ownerScope,
+            workspace_owner_id: ownerScope,
+            campaign_name: nameForTarget,
+            channel: channelId,
+            message_body: body, // fallback body if regeneration ever fails
+            status: 'scheduled',
+            sent_at: slot.toISOString(),
+            source_account: 'ayrshare-placeholder',
+            needs_regeneration: true,
+            regen_prompt: rotateNote,
+            listing_id: listingId ?? null,
+            first_comment: firstComment || null,
+            media_urls: Array.isArray(mediaUrls) ? mediaUrls : [],
+            group_ids: channelId === 'facebook' ? (selectedGroupIds || []) : [],
+            target_profile_key: target?.profileKey ?? null,
+            target_account_ref: target?.accountRef ?? null,
+            series_id: seriesId,
+            series_index: i,
+            series_total: slots.length,
+          });
+
+          try {
+            window.dispatchEvent(new CustomEvent('rz:campaign-optimistic', {
+              detail: {
+                channel: channelId,
+                body,
+                media_urls: mediaUrls,
+                campaign_name: nameForTarget,
+                scheduled_at: slot.toISOString(),
+                needs_regeneration: true,
+              },
+            }));
+          } catch { /* noop */ }
+        }
+      }
+
+      if (placeholderRows.length > 0) {
+        // Chunk to keep single requests small.
+        const CHUNK = 250;
+        for (let i = 0; i < placeholderRows.length; i += CHUNK) {
+          const slice = placeholderRows.slice(i, i + CHUNK);
+          const { error: insErr } = await (supabase as any)
+            .from('campaign_logs')
+            .insert(slice);
+          if (insErr) {
+            console.error('[ScheduleCurrentPostDialog] placeholder insert failed', insErr);
+            failed += slice.length;
+            if (!firstErr) firstErr = insErr.message;
+          } else {
+            ok += slice.length;
+          }
+          done += slice.length;
           setProgress(Math.round((done / totalOps) * 100));
         }
       }
 
-
       toast.dismiss(progressToastId);
 
       if (ok > 0) {
-        // Let the parent (CampaignCenter) jump to the calendar tab so the user
-        // can immediately see every newly-scheduled slot and cancel any of
-        // them via the calendar's existing "בטל" action.
         try {
           window.dispatchEvent(new CustomEvent('rz:campaign-scheduled', {
             detail: { count: ok, channel: channelId },
@@ -408,7 +463,8 @@ export function ScheduleCurrentPostDialog({
         toast.success(
           `תוזמנו ${ok} פרסומים${failed ? ` (${failed} נכשלו)` : ''}`,
           {
-            description: 'ניתן לצפות ולבטל אותם בכל שלב בלוח השנה של הקמפיינים.',
+            description:
+              'הפוסט הראשון נוצר עכשיו. כל השאר יווצרו אוטומטית רגע לפני מועד הפרסום. ניתן לצפות ולבטל בלוח השנה.',
             action: {
               label: 'פתח לוח שנה',
               onClick: () => {
