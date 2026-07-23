@@ -27,12 +27,17 @@ async function findLocalByExternalId(externalId: string | null): Promise<string 
 
 async function pollForListing(
   lookup: () => Promise<string | null>,
-  tries = 10,
+  tries = 24,
 ): Promise<string | null> {
+  // Progressive back-off: 500ms, 700ms, 900ms, … capped at 2000ms.
+  // Homely's outJson stream + image mirroring can take 10-15s on a cold run;
+  // the previous 6s window was the root cause of most `import_not_visible`
+  // errors even when the row was actually saved seconds later.
   for (let i = 0; i < tries; i++) {
     const id = await lookup();
     if (id) return id;
-    await new Promise((r) => setTimeout(r, 600));
+    const wait = Math.min(2000, 500 + i * 200);
+    await new Promise((r) => setTimeout(r, wait));
   }
   return null;
 }
