@@ -6,7 +6,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Bot, Send, Sparkles, Loader2, BarChart3, Database, X, Mic, MicOff, FileText, ChevronDown, ChevronLeft, Paperclip, Globe } from 'lucide-react';
+import { Bot, Send, Sparkles, Loader2, BarChart3, Database, X, Mic, MicOff, FileText, ChevronDown, ChevronLeft, Paperclip, Globe, MessageCircle } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
@@ -123,6 +123,9 @@ interface Message {
   research_sources?: ResearchSource[];
   webtiv_results?: WebtivResult[];
   attachments?: Array<{ name: string; mime: string }>;
+  // When ai-agent auto-creates a lead this turn, we stash the recipient phone
+  // so per-property "Send WhatsApp Offer" buttons know where to route.
+  recipient_phone?: string | null;
 }
 
 // Hebrew translations for common SQL/aggregate column names returned by ai-agent
@@ -252,7 +255,8 @@ export default function AiAgentDrawer() {
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [expandedTopic, setExpandedTopic] = useState<number | null>(null);
-  const [expandedBarTopic, setExpandedBarTopic] = useState<number | null>(null);
+  // NOTE: quick-action pill bar was removed from the composer — we still keep
+  // the topic accordion in the empty state above.
   const [historyLoaded, setHistoryLoaded] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
@@ -329,12 +333,75 @@ export default function AiAgentDrawer() {
 
   const { isListening, toggle: toggleVoice } = useVoiceInput(handleVoiceResult);
 
+  // Auto-scroll to the bottom whenever new messages arrive AND when the
+  // drawer is (re-)opened, so the operator lands on the freshest turn.
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
-  }, [messages]);
+    if (!open) return;
+    const el = scrollRef.current;
+    if (!el) return;
+    // Defer to next frame so layout is measured after the sheet opens.
+    requestAnimationFrame(() => { el.scrollTop = el.scrollHeight; });
+  }, [messages, open, historyLoaded]);
 
+
+  // Mint a share token via edge fn, then open a pre-filled WhatsApp message
+  // to the recipient with the shared property link. Works for both local
+  // listings (r.id looks like a UUID) and external Webtiv/Homely results
+  // (we send an external_snapshot instead).
+  const sendPropertyOffer = useCallback(async (r: WebtivResult, recipientPhone: string | null) => {
+    const phone = (recipientPhone || '').replace(/\D/g, '');
+    if (!phone) {
+      toast.error('חסר מספר טלפון של המתעניין');
+      return;
+    }
+    const normalized = phone.startsWith('972') ? phone
+      : phone.startsWith('0') ? '972' + phone.slice(1) : phone;
+    try {
+      const isUuid = /^[0-9a-f-]{36}$/i.test(r.id);
+      const payload: any = { lead_phone: normalized };
+      if (isUuid) {
+        payload.listing_id = r.id;
+      } else {
+        payload.external_snapshot = {
+          property_title: r.title,
+          asking_price: r.price,
+          city: r.city,
+          rooms: r.rooms,
+          sqm: r.sqm,
+          floor: r.floor,
+          deal_type: r.transaction_type,
+          media_photos: r.photo ? [r.photo] : [],
+          source_url: r.source_url,
+        };
+      }
+      const { data, error } = await supabase.functions.invoke('create-property-share', {
+        body: payload,
+      });
+      if (error) throw error;
+      const token = (data as any)?.token;
+      if (!token) throw new Error('לא התקבל טוקן שיתוף');
+      const shareUrl = `${window.location.origin}/share/property/${token}`;
+      const priceStr = r.price
+        ? `₪${r.price.toLocaleString('he-IL')}${r.transaction_type === 'rent' ? '/חודש' : ''}`
+        : 'לפרטים';
+      const msg =
+`שלום 👋
+מצאתי עבורך נכס שאני חושב שיעניין אותך:
+
+🏠 ${r.title}
+📍 ${r.city || ''}${r.rooms ? ` · ${r.rooms} חד׳` : ''}${r.sqm ? ` · ${r.sqm} מ״ר` : ''}
+💰 ${priceStr}
+
+לצפייה מלאה עם תמונות ופרטים:
+${shareUrl}
+
+מוזמנ/ת להגיב כאן ואחזור אליך.`;
+      const wa = `https://wa.me/${normalized}?text=${encodeURIComponent(msg)}`;
+      window.open(wa, '_blank', 'noopener,noreferrer');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'שליחת ההצעה נכשלה');
+    }
+  }, []);
 
   const sendMessage = async (text: string) => {
     const hasFiles = pendingAttachments.length > 0;
@@ -384,6 +451,7 @@ export default function AiAgentDrawer() {
           sources: data.sources ?? [],
           research_sources: data.research_sources ?? [],
           webtiv_results: data.webtiv_results ?? [],
+          recipient_phone: data.created_lead?.phone_number ?? data.recipient_phone ?? null,
         };
       } else {
         assistantMsg = {
@@ -393,6 +461,7 @@ export default function AiAgentDrawer() {
           sources: data?.sources ?? [],
           research_sources: data?.research_sources ?? [],
           webtiv_results: data?.webtiv_results ?? [],
+          recipient_phone: data?.created_lead?.phone_number ?? data?.recipient_phone ?? null,
         };
       }
       setMessages(prev => [...prev, assistantMsg]);
@@ -416,14 +485,12 @@ export default function AiAgentDrawer() {
     <Sheet open={open} onOpenChange={setOpen}>
       {/* Trigger is in AppLayout header */}
       <SheetContent side="left" className="w-full sm:max-w-md p-0 flex flex-col" dir="rtl">
-        {/* Header */}
-        <div className="px-4 py-3 border-b bg-primary/5 flex items-center gap-3">
+        {/* Header — centered brand mark + title */}
+        <div className="px-4 py-3 border-b bg-primary/5 flex flex-col items-center justify-center gap-1.5">
           <div className="h-9 w-9 rounded-full bg-primary/15 flex items-center justify-center">
             <Bot className="h-5 w-5 text-primary" />
           </div>
-          <div className="flex-1">
-            <h3 className="text-sm font-bold">קצין המודיעין של Realtyz</h3>
-          </div>
+          <h3 className="text-sm font-bold text-center">קצין המודיעין של Realtyz</h3>
         </div>
 
         {/* Messages */}
@@ -633,9 +700,23 @@ export default function AiAgentDrawer() {
                         const priceStr = r.price
                           ? `₪${r.price.toLocaleString('he-IL')}${r.transaction_type === 'rent' ? '/חודש' : ''}`
                           : '—';
-                        const Card = (
-                          <div className="rounded-lg border border-border/60 bg-background overflow-hidden">
-                            {r.photo ? (
+                        return (
+                          <div key={r.id} className="rounded-lg border border-border/60 bg-background overflow-hidden">
+                            {r.source_url ? (
+                              <a href={r.source_url} target="_blank" rel="noreferrer" className="block hover:opacity-90 transition-opacity">
+                                {r.photo ? (
+                                  <img
+                                    src={r.photo}
+                                    alt={r.title}
+                                    loading="lazy"
+                                    className="w-full h-20 object-cover"
+                                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                                  />
+                                ) : (
+                                  <div className="w-full h-20 bg-muted flex items-center justify-center text-[10px] text-muted-foreground">אין תמונה</div>
+                                )}
+                              </a>
+                            ) : r.photo ? (
                               <img
                                 src={r.photo}
                                 alt={r.title}
@@ -644,25 +725,28 @@ export default function AiAgentDrawer() {
                                 onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
                               />
                             ) : (
-                              <div className="w-full h-20 bg-muted flex items-center justify-center text-[10px] text-muted-foreground">
-                                אין תמונה
-                              </div>
+                              <div className="w-full h-20 bg-muted flex items-center justify-center text-[10px] text-muted-foreground">אין תמונה</div>
                             )}
-                            <div className="p-1.5 space-y-0.5">
+                            <div className="p-1.5 space-y-1">
                               <p className="text-[10px] font-semibold leading-tight line-clamp-2">{r.title}</p>
                               <p className="text-[10px] text-primary font-bold tabular-nums">{priceStr}</p>
                               <p className="text-[9px] text-muted-foreground">
                                 {[r.rooms ? `${r.rooms} חד׳` : '', r.sqm ? `${r.sqm} מ״ר` : '', r.city].filter(Boolean).join(' · ')}
                               </p>
+                              {msg.recipient_phone && (
+                                <Button
+                                  type="button"
+                                  size="sm"
+                                  className="w-full h-6 mt-1 gap-1 bg-emerald-600 hover:bg-emerald-700 text-white text-[10px]"
+                                  onClick={() => sendPropertyOffer(r, msg.recipient_phone ?? null)}
+                                  title="שלח הצעת נכס ב-WhatsApp"
+                                >
+                                  <MessageCircle className="h-3 w-3" />
+                                  שלח ב-WhatsApp
+                                </Button>
+                              )}
                             </div>
                           </div>
-                        );
-                        return r.source_url ? (
-                          <a key={r.id} href={r.source_url} target="_blank" rel="noreferrer" className="block hover:opacity-90 transition-opacity">
-                            {Card}
-                          </a>
-                        ) : (
-                          <div key={r.id}>{Card}</div>
                         );
                       })}
                     </div>
@@ -695,44 +779,8 @@ export default function AiAgentDrawer() {
           )}
         </div>
 
-        {/* Quick Actions — 10 topic chips; tap to reveal 3 best prompts */}
-        <div className="border-t bg-muted/20">
-          <div className="px-3 py-2 flex gap-1.5 overflow-x-auto">
-            {TOPICS.map((topic, i) => {
-              const active = expandedBarTopic === i;
-              return (
-                <Button
-                  key={i}
-                  variant={active ? 'default' : 'outline'}
-                  size="sm"
-                  className="text-[11px] h-7 whitespace-nowrap shrink-0 gap-1"
-                  onClick={() => setExpandedBarTopic(active ? null : i)}
-                  disabled={isLoading}
-                >
-                  <Sparkles className="h-3 w-3" />
-                  {topic.label}
-                </Button>
-              );
-            })}
-          </div>
-          {expandedBarTopic !== null && (
-            <div className="px-3 pb-2 flex gap-1.5 overflow-x-auto border-t border-border/40 pt-2">
-              {TOPICS[expandedBarTopic].prompts.map((p, pi) => (
-                <Button
-                  key={pi}
-                  variant="secondary"
-                  size="sm"
-                  className="text-[11px] h-7 whitespace-nowrap shrink-0 max-w-[260px] truncate"
-                  title={p}
-                  onClick={() => { sendMessage(p); setExpandedBarTopic(null); }}
-                  disabled={isLoading}
-                >
-                  {p}
-                </Button>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Quick-Actions pill bar removed by design — suggestions live in the
+            empty-state topic list at the top of the transcript only. */}
 
         {/* Attachments preview */}
         {pendingAttachments.length > 0 && (

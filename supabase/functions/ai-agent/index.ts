@@ -189,23 +189,40 @@ serve(async (req) => {
         const lastUser = [...(messages as Array<{ role: string; content: string }>)]
           .reverse().find((m) => m.role === "user")?.content ?? "";
         const text = String(lastUser);
-        const intentRe = /(הוסף|תוסיף|צור|תיצור|הוסיפי|תוסיפי|add|create|new)\s+(ליד|מתעניין|איש\s*קשר|contact|lead)/i;
+        const intentRe = /(הוסף|תוסיף|תכניס|תכניסי|צור|תיצור|הוסיפי|תוסיפי|add|create|new)\s+(את\s+)?(ליד|מתעניין|איש\s*קשר|לקוח[הת]?|contact|lead)/i;
         const phoneMatch = text.match(/(?:\+?972[-\s]?|0)5\d(?:[-\s]?\d){7}|\b0\d{1,2}[-\s]?\d{7}\b/);
-        if (intentRe.test(text) && phoneMatch && authHeaderEarly.startsWith("Bearer ")) {
+        const hasIntent = intentRe.test(text);
+
+        // No phone yet → refuse politely and demand a phone number. A CRM
+        // row without a WhatsApp-reachable phone is worthless for follow-up.
+        if (hasIntent && !phoneMatch && authHeaderEarly.startsWith("Bearer ")) {
+          return new Response(JSON.stringify({
+            type: "text",
+            content: "כדי להוסיף את הלקוח ל-CRM אני חייב מספר טלפון (עדיף נייד ישראלי כמו 05X-XXXXXXX). שלח לי את הטלפון ואני מוסיף את הליד ומיד מתחיל לחפש נכסים מתאימים.",
+          }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+        }
+
+        if (hasIntent && phoneMatch && authHeaderEarly.startsWith("Bearer ")) {
           const rawPhone = phoneMatch[0].replace(/\D/g, "");
           const normalized = rawPhone.startsWith("972")
             ? rawPhone
             : rawPhone.startsWith("0") ? `972${rawPhone.slice(1)}` : rawPhone;
-          // Best-effort name extraction: "בשם X", "שם: X", "name X"
           const nameMatch =
             text.match(/(?:בשם|שם\s*[:\-]?\s*|name\s*[:\-]?\s*)([\p{L}\u0590-\u05FF][\p{L}\u0590-\u05FF' \-]{1,60})/iu);
           const fullName = nameMatch?.[1]?.trim() || null;
-          // City hint: "בעיר X", "מ X", or just capture any Hebrew city-ish token near the phone.
-          const cityMatch = text.match(/(?:בעיר|עיר\s*[:\-]?\s*|city\s*[:\-]?\s*)([\p{L}\u0590-\u05FF][\p{L}\u0590-\u05FF' \-]{1,40})/iu);
-          const city = cityMatch?.[1]?.trim() || null;
+          const cityMatch = text.match(/(?:בעיר|עיר\s*[:\-]?\s*|city\s*[:\-]?\s*|ב([\u0590-\u05FF][\u0590-\u05FF' \-]{2,30}))/u);
+          const city = (cityMatch?.[1] || cityMatch?.[2] || "").trim() || null;
           const dealHint =
-            /(שכירות|להשכרה|rent)/i.test(text) ? "rent" :
+            /(שכירות|להשכרה|לשכר|rent)/i.test(text) ? "rent" :
             /(קנייה|למכירה|לרכישה|sale|buy)/i.test(text) ? "sale" : null;
+          // Best-effort budget extraction — "עד 5500", "עד 2 מיליון".
+          const budgetNum = (() => {
+            const m1 = text.match(/עד\s*([\d,\.]+)\s*(?:מיליון|מ׳|m)/i);
+            if (m1) return Math.round(parseFloat(m1[1].replace(/,/g, "")) * 1_000_000);
+            const m2 = text.match(/עד\s*([\d,]{3,})/);
+            if (m2) return parseInt(m2[1].replace(/,/g, ""), 10) || null;
+            return null;
+          })();
 
           const userClient = createClient(supabaseUrlEarly, anonKey, {
             global: { headers: { Authorization: authHeaderEarly } },
@@ -213,7 +230,6 @@ serve(async (req) => {
           const { data: uRes } = await userClient.auth.getUser();
           const uid = uRes?.user?.id;
           if (uid) {
-            // Avoid duplicates for the same owner/phone.
             const { data: existing } = await userClient
               .from("leads")
               .select("id, full_name")
@@ -228,6 +244,11 @@ serve(async (req) => {
               }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
             }
 
+            const preferences: Record<string, unknown> = {};
+            if (dealHint) preferences.listing_type = dealHint;
+            if (budgetNum) preferences.budget_max = budgetNum;
+            if (city) preferences.desired_city = city;
+
             const { data: inserted, error: insErr } = await userClient
               .from("leads")
               .insert({
@@ -236,23 +257,97 @@ serve(async (req) => {
                 phone_number: normalized,
                 city,
                 deal_type: dealHint,
+                preferences,
                 lead_stage: "new",
                 status: "new",
                 ai_autopilot: false,
               })
-              .select("id, full_name, phone_number")
+              .select("id, full_name, phone_number, city, deal_type")
               .single();
 
             if (insErr) {
               console.warn("create-lead intent insert failed:", insErr);
             } else {
+              // Auto-search: fire Webtiv/Homely with the lead's city + deal
+              // type so the drawer instantly shows matching properties with
+              // "Send WhatsApp Offer" buttons wired to `phone_number`.
+              const webtivResults: any[] = [];
+              try {
+                const searchRes = await fetch(`${supabaseUrlEarly}/functions/v1/homely-fetch-property`, {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json", Authorization: authHeaderEarly },
+                  body: JSON.stringify({
+                    action: "searchProperties",
+                    filters: {
+                      cities: city ? [city] : [],
+                      rooms: "",
+                      deal: dealHint || "",
+                      search: "",
+                    },
+                  }),
+                });
+                if (searchRes.ok) {
+                  const sj = await searchRes.json();
+                  const props = Array.isArray(sj?.properties) ? sj.properties : [];
+                  const PRICE_GUARDRAIL = 50000;
+                  for (const p of props) {
+                    const price = Number(p.price ?? 0) || 0;
+                    const rawType = p.transaction_type === "rent" ? "rent" : "sale";
+                    // HARD price/type guardrail: rent leads never see sale.
+                    const inferred: "sale" | "rent" =
+                      price > PRICE_GUARDRAIL ? "sale" : (rawType || "sale");
+                    if (dealHint && inferred !== dealHint) continue;
+                    if (dealHint === "rent" && price > PRICE_GUARDRAIL) continue;
+                    if (dealHint === "rent" && budgetNum && price > budgetNum) continue;
+                    if (dealHint === "sale" && budgetNum && price > Math.round(budgetNum * 1.10)) continue;
+                    webtivResults.push({
+                      id: String(p.homely_id ?? p.serial ?? crypto.randomUUID()),
+                      title: String(p.title ?? p.property_title ?? "נכס"),
+                      price,
+                      city: String(p.city ?? ""),
+                      rooms: Number(p.rooms ?? 0) || 0,
+                      sqm: Number(p.sqm ?? 0) || 0,
+                      floor: Number(p.floor ?? 0) || 0,
+                      photo: p.photo ?? (Array.isArray(p.photos) ? p.photos[0] : null) ?? null,
+                      agent: p.agent ?? null,
+                      transaction_type: inferred,
+                      source_url: p.source_url ?? null,
+                    });
+                    if (webtivResults.length >= 12) break;
+                  }
+                }
+              } catch (e) {
+                console.warn("[create-lead auto-search] failed:", (e as Error).message);
+              }
+
               const dispPhone = normalized.startsWith("972")
                 ? `0${normalized.slice(3, 5)}-${normalized.slice(5)}`
                 : normalized;
+
+              const summary = [
+                `✅ נוסף מתעניין חדש ל-CRM:`,
+                `• שם: ${fullName || "—"}`,
+                `• טלפון: ${dispPhone}`,
+                city ? `• עיר: ${city}` : null,
+                dealHint ? `• סוג עסקה: ${dealHint === "rent" ? "שכירות" : "מכירה"}` : null,
+                budgetNum ? `• תקציב: עד ₪${budgetNum.toLocaleString("he-IL")}` : null,
+                "",
+                webtivResults.length
+                  ? `מצאתי ${webtivResults.length} נכסים מתאימים מיד — לחץ על כפתור ה-WhatsApp כדי לשלוח הצעה ישירות.`
+                  : `לא נמצאו התאמות מיידיות; אני ממשיך לסרוק את המקורות ברקע.`,
+              ].filter(Boolean).join("\n");
+
               return new Response(JSON.stringify({
                 type: "text",
-                content: `✅ נוסף מתעניין חדש ל-CRM:\n• שם: ${fullName || "—"}\n• טלפון: ${dispPhone}${city ? `\n• עיר: ${city}` : ""}${dealHint ? `\n• סוג עסקה: ${dealHint === "rent" ? "שכירות" : "מכירה"}` : ""}\n\nהוא זמין עכשיו ב-Deal Room ובעמוד הלידים.`,
-                created_lead_id: inserted?.id,
+                content: summary,
+                created_lead: {
+                  id: inserted?.id ?? null,
+                  full_name: inserted?.full_name ?? fullName,
+                  phone_number: normalized,
+                  city: inserted?.city ?? city,
+                  deal_type: inserted?.deal_type ?? dealHint,
+                },
+                webtiv_results: webtivResults,
               }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
             }
           }

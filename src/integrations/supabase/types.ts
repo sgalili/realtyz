@@ -3834,6 +3834,59 @@ export type Database = {
         }
         Relationships: []
       }
+      property_shares: {
+        Row: {
+          broker_wa: string | null
+          created_at: string
+          expires_at: string | null
+          external_snapshot: Json | null
+          id: string
+          lead_phone: string | null
+          listing_id: string | null
+          owner_id: string
+          token: string
+          updated_at: string
+          views_count: number
+          workspace_name: string | null
+        }
+        Insert: {
+          broker_wa?: string | null
+          created_at?: string
+          expires_at?: string | null
+          external_snapshot?: Json | null
+          id?: string
+          lead_phone?: string | null
+          listing_id?: string | null
+          owner_id: string
+          token: string
+          updated_at?: string
+          views_count?: number
+          workspace_name?: string | null
+        }
+        Update: {
+          broker_wa?: string | null
+          created_at?: string
+          expires_at?: string | null
+          external_snapshot?: Json | null
+          id?: string
+          lead_phone?: string | null
+          listing_id?: string | null
+          owner_id?: string
+          token?: string
+          updated_at?: string
+          views_count?: number
+          workspace_name?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "property_shares_listing_id_fkey"
+            columns: ["listing_id"]
+            isOneToOne: false
+            referencedRelation: "listings"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       scheduled_items: {
         Row: {
           approval_queue_id: string | null

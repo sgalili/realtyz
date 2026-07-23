@@ -65,6 +65,7 @@ const WhiteLabelSettings = lazy(() => import("./pages/WhiteLabelSettings"));
 const SystemHealth = lazy(() => import("./pages/SystemHealth"));
 const SharedDeals = lazy(() => import("./pages/SharedDeals"));
 const ClientPortal = lazy(() => import("./pages/ClientPortal"));
+const SharedProperty = lazy(() => import("./pages/SharedProperty"));
 const PlatformSettings = lazy(() => import("./pages/PlatformSettings"));
 const HomelyAdmin = lazy(() => import("./pages/HomelyAdmin"));
 const AiDialer = lazy(() => import("./pages/AiDialer"));
@@ -169,6 +170,7 @@ const App = () => (
               <Route path="/p/:slug" element={<Suspense fallback={<PageLoader />}><PublicListingPage /></Suspense>} />
               <Route path="/r/:slug" element={<Suspense fallback={<PageLoader />}><ShortLinkRedirect /></Suspense>} />
               <Route path="/portal/:token" element={<Suspense fallback={<PageLoader />}><ClientPortal /></Suspense>} />
+              <Route path="/share/property/:token" element={<Suspense fallback={<PageLoader />}><SharedProperty /></Suspense>} />
               <Route path="/unsubscribe" element={<Suspense fallback={<PageLoader />}><Unsubscribe /></Suspense>} />
               <Route path="/" element={<ProtectedRoute allowGuestDemo><Index /></ProtectedRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute allowGuestDemo><Index /></ProtectedRoute>} />
