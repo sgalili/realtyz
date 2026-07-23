@@ -626,7 +626,19 @@ export default function Properties() {
   );
 }
 
-function ResultCard({ result, importing, onSelect }: { result: UnifiedResult; importing: boolean; onSelect: () => void }) {
+function ResultCard({
+  result,
+  importing,
+  onSelect,
+  selected,
+  onToggleSelect,
+}: {
+  result: UnifiedResult;
+  importing: boolean;
+  onSelect: () => void;
+  selected?: boolean;
+  onToggleSelect?: () => void;
+}) {
   const photos = (result.photos ?? []).filter(Boolean);
   const hasPhotos = photos.length > 0;
   const hasMany = photos.length > 1;
@@ -640,7 +652,16 @@ function ResultCard({ result, importing, onSelect }: { result: UnifiedResult; im
 
   return (
     <Card className="overflow-hidden flex flex-col group hover:shadow-lg transition-shadow cursor-pointer relative" onClick={onSelect}>
+      {onToggleSelect && !result.localId && (
+        <div
+          className="absolute top-3 right-3 z-20 rounded-md bg-background/80 backdrop-blur-sm border p-1"
+          onClick={(e) => { e.stopPropagation(); onToggleSelect(); }}
+        >
+          <Checkbox checked={!!selected} aria-label="בחר לייבוא" />
+        </div>
+      )}
       <div className="aspect-[16/10] bg-muted relative overflow-hidden">
+
         {activePhoto ? (
           <img
             key={activePhoto}
