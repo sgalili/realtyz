@@ -838,13 +838,17 @@ Deno.serve(async (req) => {
 
     let saved = 0;
     const saveErrors: any[] = [];
-    for (const r of rows) {
-      try {
-        await saveListing(admin, userId, r);
-        saved++;
-      } catch (e: any) {
-        saveErrors.push({ url: r.source_url, error: String(e?.message ?? e) });
+    if (!previewOnly) {
+      for (const r of rows) {
+        try {
+          await saveListing(admin, userId, r);
+          saved++;
+        } catch (e: any) {
+          saveErrors.push({ url: r.source_url, error: String(e?.message ?? e) });
+        }
       }
+    } else {
+      console.log(`[yad2-unlocker] preview_only=true — skipping DB save for ${rows.length} row(s)`);
     }
 
     return json({
