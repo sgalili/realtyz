@@ -264,33 +264,61 @@ function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
   };
 }
 
+function looksLikeYad2Ad(x: any): boolean {
+  if (!x || typeof x !== "object") return false;
+  const hasToken = !!(x.token || x.orderId || x.order_id || x.adNumber || x.id);
+  const hasAdShape =
+    x.price != null ||
+    x.priceInShekels != null ||
+    x.metaData != null ||
+    x.additionalDetails != null ||
+    x.address != null ||
+    x.customer != null;
+  return hasToken && hasAdShape;
+}
+
 function extractFeedItems(payload: any): any[] {
   if (!payload || typeof payload !== "object") return [];
-  // Yad2 gateway shapes we've observed:
+  // Yad2 gateway ships several shapes across endpoints. Current live ones:
+  //   { data: { private: [...], agency: [...], platinum: [...], commercial: [...], projects: [...], yad1: [...], king: [...] } }
   //   { data: { feed: { feed_items: [...] } } }
   //   { data: { markers: [...] } }
-  //   { feed: { feed_items: [...] } }
-  //   { items: [...] }  (legacy)
-  //   { data: [...] }   (some new endpoints just return an array)
+  //   { feed_items: [...] } / { items: [...] } / { data: [...] } (legacy)
   const candidates: any[] = [];
-  const push = (v: any) => { if (Array.isArray(v)) candidates.push(v); };
-  push(payload?.data?.feed?.feed_items);
+  const push = (v: any) => { if (Array.isArray(v) && v.length) candidates.push(v); };
+  const d = payload?.data ?? payload;
+  push(d?.feed?.feed_items);
   push(payload?.feed?.feed_items);
-  push(payload?.data?.markers);
-  push(payload?.data?.items);
-  push(payload?.data);
+  push(d?.markers);
+  push(d?.items);
   push(payload?.items);
   push(payload?.feed_items);
-  // Filter to objects that look like ads.
+  // New "buckets" shape — merge them all so paid + private + agency all count.
+  const bucketKeys = ["private", "agency", "platinum", "commercial", "projects", "yad1", "king", "results"];
+  const merged: any[] = [];
+  for (const k of bucketKeys) if (Array.isArray(d?.[k])) merged.push(...d[k]);
+  if (merged.length) candidates.push(merged);
+  // Bare arrays as last resort.
+  if (Array.isArray(d)) candidates.push(d);
+  if (Array.isArray(payload)) candidates.push(payload);
+
   for (const arr of candidates) {
-    const filtered = arr.filter((x: any) =>
-      x && typeof x === "object" &&
-      (x.token || x.orderId || x.order_id || x.adNumber) &&
-      (x.price != null || x.priceInShekels != null || x.metaData || x.additionalDetails || x.address)
-    );
+    const filtered = arr.filter(looksLikeYad2Ad);
     if (filtered.length) return filtered;
   }
-  return [];
+  // Recursive fallback: crawl the whole payload for ad-shaped objects.
+  // Guards against any future rename in Yad2's response tree.
+  const seen = new Set<any>();
+  const found: any[] = [];
+  const walk = (node: any, depth: number) => {
+    if (!node || depth > 6 || typeof node !== "object" || seen.has(node)) return;
+    seen.add(node);
+    if (looksLikeYad2Ad(node)) { found.push(node); return; }
+    if (Array.isArray(node)) { for (const v of node) walk(v, depth + 1); return; }
+    for (const v of Object.values(node)) walk(v, depth + 1);
+  };
+  walk(payload, 0);
+  return found;
 }
 
 function parseSearchJson(body: string, srcUrl: string, limit: number): Scraped[] {
