@@ -75,16 +75,25 @@ export async function autoImportResult(result: UnifiedResult): Promise<string> {
     const { error } = await supabase.functions.invoke('yad2-unlocker', { body: { url: result.url } });
     if (error) throw new Error(error.message || 'yad2_import_failed');
   } else if (result.source === 'homely' || result.source === 'webtiv') {
-    // Homely/Webtiv single-item import — no URL required. Use `importOutJson`
-    // with a propertyIds filter so the edge fn pulls just this serial from
-    // the Webtiv stream and upserts it (photos, owner CRM, everything).
+    // Homely/Webtiv single-item import — no URL required. Pass the raw
+    // property record inline whenever we already have it from search so the
+    // edge function doesn't have to re-filter the bulk outJson stream (which
+    // frequently returns 0 matches when the property came from a different
+    // agency feed — the root cause of past `import_not_visible` errors).
     if (!homelyId && !result.url) throw new Error('missing_homely_identifier');
+    const raw = result.raw && typeof result.raw === 'object' ? result.raw : null;
+    const inlineProperty = raw
+      ? {
+          ...raw,
+          homely_id: homelyId ?? String(raw.homely_id ?? raw.id ?? '').trim(),
+          source_url: result.url ?? raw.source_url ?? undefined,
+        }
+      : null;
     const { error } = await supabase.functions.invoke('homely-fetch-property', {
       body: {
         action: 'importOutJson',
         propertyIds: homelyId ? [homelyId] : [],
-        // If the caller happens to have a URL, pass it too — some Webtiv
-        // records include one and importOutJson stores it as source_url.
+        properties: inlineProperty && inlineProperty.homely_id ? [inlineProperty] : undefined,
         source_url: result.url ?? undefined,
       },
     });
