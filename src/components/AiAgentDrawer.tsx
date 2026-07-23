@@ -530,23 +530,71 @@ export default function AiAgentDrawer() {
                 )}
 
                 {msg.role === 'assistant' && msg.sources && msg.sources.length > 0 && (
-                  <div className="mt-3 pt-2 border-t border-border/30">
-                    <p className="text-[10px] text-muted-foreground mb-1.5 flex items-center gap-1">
+                  <div className="mt-3 pt-2 border-t border-border/30 space-y-2">
+                    <p className="text-[10px] text-muted-foreground flex items-center gap-1">
                       <FileText className="h-2.5 w-2.5" />
                       מקורות מבסיס הידע:
                     </p>
                     <div className="flex flex-wrap gap-1">
-                      {msg.sources.map((src) => (
-                        <button
-                          key={src.id}
-                          onClick={() => { setOpen(false); navigate('/knowledge'); }}
-                          className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors max-w-[180px]"
-                          title={`דמיון: ${(src.similarity * 100).toFixed(0)}%`}
-                        >
-                          <FileText className="h-2.5 w-2.5 shrink-0" />
-                          <span className="truncate">{src.title}</span>
-                        </button>
-                      ))}
+                      {msg.sources.map((src) => {
+                        const isAudio = src.source_type === 'audio';
+                        const isVideo = src.source_type === 'video';
+                        // Resolve a playable/openable URL:
+                        //  1. external URL captured in source_metadata.source_url (YouTube, Drive, etc)
+                        //  2. storage path in the `knowledge-files` bucket via public URL
+                        let resolvedUrl: string | null = src.source_url ?? null;
+                        if (!resolvedUrl && src.file_path) {
+                          resolvedUrl = supabase.storage
+                            .from('knowledge-files')
+                            .getPublicUrl(src.file_path).data.publicUrl ?? null;
+                        }
+                        const label = src.title || 'מקור';
+                        const title = `${src.source ?? 'Reference'} · דמיון: ${(src.similarity * 100).toFixed(0)}%`;
+                        if (isAudio && resolvedUrl) {
+                          return (
+                            <div
+                              key={src.id}
+                              className="w-full flex items-center gap-2 text-[10px] px-2 py-1 rounded-md bg-primary/10 border border-primary/20"
+                              title={title}
+                            >
+                              <FileText className="h-2.5 w-2.5 text-primary shrink-0" />
+                              <span className="truncate max-w-[140px] text-primary">{label}</span>
+                              <audio src={resolvedUrl} controls preload="none" className="h-7 flex-1 min-w-0" />
+                            </div>
+                          );
+                        }
+                        const commonCls =
+                          'inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-full bg-primary/10 text-primary border border-primary/20 hover:bg-primary/20 transition-colors max-w-[220px]';
+                        if (resolvedUrl) {
+                          return (
+                            <a
+                              key={src.id}
+                              href={resolvedUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className={commonCls}
+                              title={title}
+                            >
+                              <FileText className="h-2.5 w-2.5 shrink-0" />
+                              <span className="truncate">
+                                {isVideo ? '▶ ' : ''}{label}
+                              </span>
+                            </a>
+                          );
+                        }
+                        return (
+                          <button
+                            key={src.id}
+                            type="button"
+                            onClick={() => { setOpen(false); navigate('/knowledge'); }}
+                            className={commonCls}
+                            title={title}
+                          >
+                            <FileText className="h-2.5 w-2.5 shrink-0" />
+                            <span className="truncate">{label}</span>
+                          </button>
+                        );
+                      })}
                     </div>
                   </div>
                 )}
