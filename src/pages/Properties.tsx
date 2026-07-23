@@ -249,21 +249,17 @@ export default function Properties() {
       <Collapsible open={filtersOpen} onOpenChange={setFiltersOpen}>
         {/* Row 1 — search: [advanced filter icon] [search input with go button] */}
         <div className="flex items-center gap-2" dir="rtl">
-          <CollapsibleTrigger asChild>
-            <Button
-              type="button"
-              size="icon"
-              variant="outline"
-              className="h-10 w-10 shrink-0"
-              aria-label="סינון מתקדם"
-              title="סינון מתקדם"
-            >
-              <SlidersHorizontal className="h-4 w-4" />
-            </Button>
-          </CollapsibleTrigger>
-
           <div className="relative flex-1 min-w-[200px]">
-            <SearchIcon className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
+            <CollapsibleTrigger asChild>
+              <button
+                type="button"
+                aria-label="סינון מתקדם"
+                title="סינון מתקדם"
+                className="absolute right-2 top-1/2 -translate-y-1/2 inline-flex items-center justify-center h-7 w-7 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+              >
+                <Filter className="h-4 w-4" />
+              </button>
+            </CollapsibleTrigger>
             <Input
               value={q}
               onChange={(e) => setQ(e.target.value)}
