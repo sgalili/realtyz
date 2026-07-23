@@ -343,6 +343,65 @@ export default function AiAgentDrawer() {
   }, [messages, open, historyLoaded]);
 
 
+  // Mint a share token via edge fn, then open a pre-filled WhatsApp message
+  // to the recipient with the shared property link. Works for both local
+  // listings (r.id looks like a UUID) and external Webtiv/Homely results
+  // (we send an external_snapshot instead).
+  const sendPropertyOffer = useCallback(async (r: WebtivResult, recipientPhone: string | null) => {
+    const phone = (recipientPhone || '').replace(/\D/g, '');
+    if (!phone) {
+      toast.error('חסר מספר טלפון של המתעניין');
+      return;
+    }
+    const normalized = phone.startsWith('972') ? phone
+      : phone.startsWith('0') ? '972' + phone.slice(1) : phone;
+    try {
+      const isUuid = /^[0-9a-f-]{36}$/i.test(r.id);
+      const payload: any = { lead_phone: normalized };
+      if (isUuid) {
+        payload.listing_id = r.id;
+      } else {
+        payload.external_snapshot = {
+          property_title: r.title,
+          asking_price: r.price,
+          city: r.city,
+          rooms: r.rooms,
+          sqm: r.sqm,
+          floor: r.floor,
+          deal_type: r.transaction_type,
+          media_photos: r.photo ? [r.photo] : [],
+          source_url: r.source_url,
+        };
+      }
+      const { data, error } = await supabase.functions.invoke('create-property-share', {
+        body: payload,
+      });
+      if (error) throw error;
+      const token = (data as any)?.token;
+      if (!token) throw new Error('לא התקבל טוקן שיתוף');
+      const shareUrl = `${window.location.origin}/share/property/${token}`;
+      const priceStr = r.price
+        ? `₪${r.price.toLocaleString('he-IL')}${r.transaction_type === 'rent' ? '/חודש' : ''}`
+        : 'לפרטים';
+      const msg =
+`שלום 👋
+מצאתי עבורך נכס שאני חושב שיעניין אותך:
+
+🏠 ${r.title}
+📍 ${r.city || ''}${r.rooms ? ` · ${r.rooms} חד׳` : ''}${r.sqm ? ` · ${r.sqm} מ״ר` : ''}
+💰 ${priceStr}
+
+לצפייה מלאה עם תמונות ופרטים:
+${shareUrl}
+
+מוזמנ/ת להגיב כאן ואחזור אליך.`;
+      const wa = `https://wa.me/${normalized}?text=${encodeURIComponent(msg)}`;
+      window.open(wa, '_blank', 'noopener,noreferrer');
+    } catch (e: any) {
+      toast.error(e?.message ?? 'שליחת ההצעה נכשלה');
+    }
+  }, []);
+
   const sendMessage = async (text: string) => {
     const hasFiles = pendingAttachments.length > 0;
     if ((!text.trim() && !hasFiles) || isLoading) return;
