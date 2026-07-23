@@ -802,19 +802,7 @@ export default function PropertyDetail() {
               </div>
             )}
 
-            {yad2Url && !editMode && (
-              <div className="mt-5 pt-4 border-t border-border/60">
-                <a
-                  href={yad2Url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
-                >
-                  <ExternalLink className="h-4 w-4" />
-                  מעבר למודעה ביד2
-                </a>
-              </div>
-            )}
+            {/* External Yad2 link intentionally removed pending BrightData integration. */}
           </Card>
 
           {/* Description */}
