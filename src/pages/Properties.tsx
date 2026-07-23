@@ -649,25 +649,84 @@ function ResultCard({ result, importing, onSelect }: { result: UnifiedResult; im
   );
 }
 
+type SortCol = 'source' | 'name' | 'listing_type' | 'price' | 'city' | 'address' | 'rooms' | 'size_sqm';
+
 function ResultTable({ results, importingKey, onSelect }: { results: UnifiedResult[]; importingKey: string | null; onSelect: (r: UnifiedResult) => void }) {
+  const [sortCol, setSortCol] = useState<SortCol | null>(null);
+  const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+
+  const toggleSort = (col: SortCol) => {
+    if (sortCol === col) {
+      setSortDir((d) => (d === 'asc' ? 'desc' : 'asc'));
+    } else {
+      setSortCol(col);
+      setSortDir('asc');
+    }
+  };
+
+  const sorted = useMemo(() => {
+    if (!sortCol) return results;
+    const arr = [...results];
+    const getVal = (r: UnifiedResult): string | number | null => {
+      switch (sortCol) {
+        case 'source': return r.source ?? '';
+        case 'name': return formatListingTitle({ address: r.address, city: r.city, property_type: r.property_type, title: r.title }) || '';
+        case 'listing_type': return r.listing_type ?? '';
+        case 'price': return typeof r.price === 'number' ? r.price : null;
+        case 'city': return r.city ?? '';
+        case 'address': return stripAddressNumbers(r.address ?? '') || '';
+        case 'rooms': return typeof r.rooms === 'number' ? r.rooms : (r.rooms ? Number(r.rooms) : null);
+        case 'size_sqm': return typeof r.size_sqm === 'number' ? r.size_sqm : (r.size_sqm ? Number(r.size_sqm) : null);
+      }
+    };
+    const dir = sortDir === 'asc' ? 1 : -1;
+    arr.sort((a, b) => {
+      const av = getVal(a); const bv = getVal(b);
+      const aNull = av === null || av === undefined || av === '' || (typeof av === 'number' && Number.isNaN(av));
+      const bNull = bv === null || bv === undefined || bv === '' || (typeof bv === 'number' && Number.isNaN(bv));
+      if (aNull && bNull) return 0;
+      if (aNull) return 1;
+      if (bNull) return -1;
+      if (typeof av === 'number' && typeof bv === 'number') return (av - bv) * dir;
+      return String(av).localeCompare(String(bv), 'he') * dir;
+    });
+    return arr;
+  }, [results, sortCol, sortDir]);
+
+  const HeaderCell = ({ col, label, extraClass }: { col: SortCol; label: string; extraClass?: string }) => (
+    <th
+      className={`px-2 py-2 font-semibold whitespace-nowrap cursor-pointer select-none hover:bg-muted ${extraClass ?? ''}`}
+      onClick={() => toggleSort(col)}
+    >
+      <span className="inline-flex items-center gap-1">
+        {label}
+        {sortCol === col ? (
+          <span className="text-xs opacity-70">{sortDir === 'asc' ? '▲' : '▼'}</span>
+        ) : (
+          <ArrowUpDown className="h-3 w-3 opacity-40" />
+        )}
+      </span>
+    </th>
+  );
+
   return (
     <Card className="overflow-x-auto max-w-full w-full">
       <table className="w-full text-[15px]" dir="rtl">
         <thead className="bg-muted/50 sticky top-0">
           <tr className="text-right">
-            <th className="px-2 py-2 font-semibold whitespace-nowrap">מקור</th>
-            <th className="px-2 py-2 font-semibold whitespace-nowrap">שם</th>
-            <th className="px-2 py-2 font-semibold whitespace-nowrap">סוג</th>
-            <th className="px-2 py-2 font-semibold whitespace-nowrap">מחיר</th>
-            <th className="px-2 py-2 font-semibold whitespace-nowrap">עיר</th>
-            <th className="px-2 py-2 font-semibold whitespace-nowrap">רחוב</th>
-            <th className="px-2 py-2 font-semibold whitespace-nowrap">חדרים</th>
-            <th className="px-2 py-2 font-semibold whitespace-nowrap">מ"ר</th>
+            <HeaderCell col="source" label="מקור" />
+            <HeaderCell col="name" label="שם" />
+            <HeaderCell col="listing_type" label="סוג" />
+            <HeaderCell col="price" label="מחיר" />
+            <HeaderCell col="city" label="עיר" />
+            <HeaderCell col="address" label="רחוב" />
+            <HeaderCell col="rooms" label="חדרים" />
+            <HeaderCell col="size_sqm" label='מ"ר' />
             <th className="px-2 py-2 font-semibold whitespace-nowrap text-left">פעולה</th>
           </tr>
         </thead>
         <tbody>
-          {results.map((r) => {
+          {sorted.map((r) => {
             const isRent = r.listing_type === 'rent';
             const importing = importingKey === r.key;
             return (
