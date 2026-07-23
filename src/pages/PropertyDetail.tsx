@@ -400,6 +400,7 @@ export default function PropertyDetail() {
       }).eq('id', id);
       if (error) throw error;
       toast.success('הנכס עודכן בהצלחה');
+      clearDraft();
       setEditMode(false);
       await qc.invalidateQueries({ queryKey: ['property-detail', id] });
     } catch (e: any) {
