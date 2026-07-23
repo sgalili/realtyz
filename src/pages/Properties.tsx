@@ -418,7 +418,7 @@ export default function Properties() {
       {/* Source tabs: Mine / Homely / Yad2 / Madlan */}
       <div className="flex justify-center">
         <div className="inline-flex items-center rounded-xl border border-primary/20 bg-card/40 p-1 backdrop-blur-md flex-wrap gap-1" dir="rtl">
-          {(Object.keys(SOURCE_LABELS) as SourceTab[]).map((t) => (
+          {(Object.keys(SOURCE_LABELS) as Array<Exclude<SourceTab, 'yad2'>>).map((t) => (
             <button
               key={t}
               type="button"
