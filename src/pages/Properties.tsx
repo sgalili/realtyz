@@ -314,7 +314,7 @@ export default function Properties() {
                   <span className="hidden sm:inline">{SORT_LABELS[sortBy]}</span>
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-56" dir="rtl">
+              <DropdownMenuContent align="end" className="w-56">
                 <DropdownMenuLabel className="text-xs">מיון תוצאות</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuRadioGroup value={sortBy} onValueChange={(v) => setSortBy(v as typeof sortBy)}>
@@ -341,7 +341,7 @@ export default function Properties() {
                     <span className="text-sm font-bold tabular-nums leading-none">{results.length}</span>
                   </button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-60" dir="rtl">
+                <DropdownMenuContent align="end" className="w-60">
                   <DropdownMenuLabel className="text-xs">תוצאות לפי מקור</DropdownMenuLabel>
                   <DropdownMenuSeparator />
                   {sourceBreakdown.length === 0 && (
