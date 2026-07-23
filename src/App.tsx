@@ -170,6 +170,7 @@ const App = () => (
               <Route path="/p/:slug" element={<Suspense fallback={<PageLoader />}><PublicListingPage /></Suspense>} />
               <Route path="/r/:slug" element={<Suspense fallback={<PageLoader />}><ShortLinkRedirect /></Suspense>} />
               <Route path="/portal/:token" element={<Suspense fallback={<PageLoader />}><ClientPortal /></Suspense>} />
+              <Route path="/share/property/:token" element={<Suspense fallback={<PageLoader />}><SharedProperty /></Suspense>} />
               <Route path="/unsubscribe" element={<Suspense fallback={<PageLoader />}><Unsubscribe /></Suspense>} />
               <Route path="/" element={<ProtectedRoute allowGuestDemo><Index /></ProtectedRoute>} />
               <Route path="/dashboard" element={<ProtectedRoute allowGuestDemo><Index /></ProtectedRoute>} />
