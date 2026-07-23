@@ -643,7 +643,7 @@ export default function PropertyDetail() {
                       return;
                     }
                     toast.success('הנכס נמחק');
-                    queryClient.invalidateQueries({ queryKey: ['listings'] });
+                    qc.invalidateQueries({ queryKey: ['listings'] });
                     navigate('/properties');
                   }}
                   aria-label="מחיקת נכס"
