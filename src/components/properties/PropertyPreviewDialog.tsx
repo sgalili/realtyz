@@ -1,3 +1,4 @@
+import { useEffect, useState } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -7,6 +8,7 @@ import { LISTING_TYPE_LABELS_HE } from '@/lib/homelyMockProperties';
 import { formatListingTitle } from '@/lib/formatListingTitle';
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import type { UnifiedResult } from '@/lib/propertySearch';
+import { fetchLivePreview, mergeLive } from '@/lib/propertyLivePreview';
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
@@ -25,7 +27,29 @@ export function PropertyPreviewDialog({
   onImport?: (r: UnifiedResult) => void;
   importing?: boolean;
 }) {
-  const r = result;
+  // Live, on-the-fly enrichment. When the dialog opens for an external row we
+  // fetch fresh details straight from the source (no DB write) and merge them
+  // into the displayed result. Import is still explicit — only fires when the
+  // user clicks "ייבא ופתח".
+  const [enriched, setEnriched] = useState<UnifiedResult | null>(null);
+  const [loadingLive, setLoadingLive] = useState(false);
+
+  useEffect(() => {
+    if (!open || !result) { setEnriched(null); return; }
+    setEnriched(result);
+    if (result.localId) return; // local rows: already the source of truth
+    let cancelled = false;
+    setLoadingLive(true);
+    fetchLivePreview(result)
+      .then((live) => {
+        if (cancelled) return;
+        setEnriched(mergeLive(result, live));
+      })
+      .finally(() => { if (!cancelled) setLoadingLive(false); });
+    return () => { cancelled = true; };
+  }, [open, result]);
+
+  const r = enriched ?? result;
   const photos = (r?.photos ?? []).filter(Boolean);
   const isRent = r?.listing_type === 'rent';
   const label = r
@@ -42,7 +66,11 @@ export function PropertyPreviewDialog({
             <span>{label || 'תצוגת נכס'}</span>
           </DialogTitle>
           <DialogDescription>
-            {r?.description ? r.description.slice(0, 180) : 'תצוגה מקדימה — לחץ "ייבא ופתח" כדי לשמור למאגר.'}
+            {loadingLive
+              ? 'טוען פרטי נכס חיים מהמקור…'
+              : r?.description
+                ? r.description.slice(0, 180)
+                : 'תצוגה מקדימה — לחץ "ייבא ופתח" כדי לשמור למאגר.'}
           </DialogDescription>
         </DialogHeader>
 

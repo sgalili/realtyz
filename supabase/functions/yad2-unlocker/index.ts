@@ -266,14 +266,18 @@ function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
 
 function looksLikeYad2Ad(x: any): boolean {
   if (!x || typeof x !== "object") return false;
-  const hasToken = !!(x.token || x.orderId || x.order_id || x.adNumber || x.id);
+  const hasToken = !!(x.token || x.orderId || x.order_id || x.adNumber || x.id || x.ad_id);
   const hasAdShape =
     x.price != null ||
     x.priceInShekels != null ||
     x.metaData != null ||
     x.additionalDetails != null ||
     x.address != null ||
-    x.customer != null;
+    x.customer != null ||
+    x.merchandise != null ||
+    x.title != null ||
+    x.subcategory != null ||
+    x.category_id != null;
   return hasToken && hasAdShape;
 }
 
@@ -324,16 +328,28 @@ function extractFeedItems(payload: any): any[] {
 function parseSearchJson(body: string, srcUrl: string, limit: number): Scraped[] {
   const dealType = detectDealType(srcUrl);
   let payload: any;
-  try { payload = JSON.parse(body); } catch { return []; }
+  try { payload = JSON.parse(body); } catch (e) {
+    console.warn(`[yad2-unlocker] parseSearchJson: non-JSON body (${body.length} bytes) preview=${JSON.stringify(body.slice(0, 200))}`);
+    return [];
+  }
   const items = extractFeedItems(payload);
+  console.log(`[yad2-unlocker] parseSearchJson: extracted ${items.length} candidate item(s) from payload keys=${
+    payload && typeof payload === "object" ? Object.keys(payload).slice(0, 10).join(",") : typeof payload
+  }`);
   const out: Scraped[] = [];
   const seen = new Set<string>();
   for (const it of items) {
     if (out.length >= limit) break;
     const row = feedItemToScraped(it, dealType);
-    if (!row || seen.has(row.source_url)) continue;
+    if (!row) continue;
+    if (seen.has(row.source_url)) continue;
     seen.add(row.source_url);
     out.push(row);
+  }
+  if (items.length && !out.length) {
+    console.warn(`[yad2-unlocker] parseSearchJson: ${items.length} candidate(s) matched but none produced a valid Scraped row — first keys=${
+      Object.keys(items[0] ?? {}).slice(0, 20).join(",")
+    }`);
   }
   return out;
 }
@@ -714,6 +730,7 @@ Deno.serve(async (req) => {
 
     const body = await req.json().catch(() => ({} as any));
     const limit = Math.min(80, Math.max(1, Number(body?.limit) || 30));
+    const previewOnly = Boolean(body?.preview_only);
 
     // Accept several shapes:
     //   1) { url: "https://www.yad2.co.il/..." }          — direct URL
@@ -837,13 +854,17 @@ Deno.serve(async (req) => {
 
     let saved = 0;
     const saveErrors: any[] = [];
-    for (const r of rows) {
-      try {
-        await saveListing(admin, userId, r);
-        saved++;
-      } catch (e: any) {
-        saveErrors.push({ url: r.source_url, error: String(e?.message ?? e) });
+    if (!previewOnly) {
+      for (const r of rows) {
+        try {
+          await saveListing(admin, userId, r);
+          saved++;
+        } catch (e: any) {
+          saveErrors.push({ url: r.source_url, error: String(e?.message ?? e) });
+        }
       }
+    } else {
+      console.log(`[yad2-unlocker] preview_only=true — skipping DB save for ${rows.length} row(s)`);
     }
 
     return json({
