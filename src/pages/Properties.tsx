@@ -37,6 +37,7 @@ import { SourceBadge, sourceLabel } from '@/components/properties/SourceBadge';
 import { searchAllSources, type UnifiedResult, type SearchFilters } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { stripAddressNumbers } from '@/lib/formatAddress';
+import { formatListingTitle } from '@/lib/formatListingTitle';
 
 const PRICE_MIN = 0;
 const PRICE_MAX = 10_000_000;
