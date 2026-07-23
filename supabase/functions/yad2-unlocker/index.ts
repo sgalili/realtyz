@@ -328,16 +328,28 @@ function extractFeedItems(payload: any): any[] {
 function parseSearchJson(body: string, srcUrl: string, limit: number): Scraped[] {
   const dealType = detectDealType(srcUrl);
   let payload: any;
-  try { payload = JSON.parse(body); } catch { return []; }
+  try { payload = JSON.parse(body); } catch (e) {
+    console.warn(`[yad2-unlocker] parseSearchJson: non-JSON body (${body.length} bytes) preview=${JSON.stringify(body.slice(0, 200))}`);
+    return [];
+  }
   const items = extractFeedItems(payload);
+  console.log(`[yad2-unlocker] parseSearchJson: extracted ${items.length} candidate item(s) from payload keys=${
+    payload && typeof payload === "object" ? Object.keys(payload).slice(0, 10).join(",") : typeof payload
+  }`);
   const out: Scraped[] = [];
   const seen = new Set<string>();
   for (const it of items) {
     if (out.length >= limit) break;
     const row = feedItemToScraped(it, dealType);
-    if (!row || seen.has(row.source_url)) continue;
+    if (!row) continue;
+    if (seen.has(row.source_url)) continue;
     seen.add(row.source_url);
     out.push(row);
+  }
+  if (items.length && !out.length) {
+    console.warn(`[yad2-unlocker] parseSearchJson: ${items.length} candidate(s) matched but none produced a valid Scraped row — first keys=${
+      Object.keys(items[0] ?? {}).slice(0, 20).join(",")
+    }`);
   }
   return out;
 }
