@@ -20,7 +20,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import {
   Send, BedDouble, Ruler, MapPin, Building2, FileSpreadsheet, LayoutGrid,
   SlidersHorizontal, ArrowRight, Loader2, Search as SearchIcon,
-  ArrowUpDown, Database,
+  ArrowUpDown, Database, ChevronLeft, ChevronRight,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
@@ -511,32 +511,101 @@ export default function Properties() {
 }
 
 function ResultCard({ result, importing, onSelect }: { result: UnifiedResult; importing: boolean; onSelect: () => void }) {
-  const photo = result.photos?.[0];
+  const photos = (result.photos ?? []).filter(Boolean);
+  const hasPhotos = photos.length > 0;
+  const hasMany = photos.length > 1;
+  const [index, setIndex] = useState(0);
+  const activePhoto = hasPhotos ? photos[Math.min(index, photos.length - 1)] : null;
   const isRent = result.listing_type === 'rent';
+
+  const stop = (e: React.SyntheticEvent) => { e.stopPropagation(); e.preventDefault(); };
+  const goPrev = (e: React.SyntheticEvent) => { stop(e); setIndex((i) => (i - 1 + photos.length) % photos.length); };
+  const goNext = (e: React.SyntheticEvent) => { stop(e); setIndex((i) => (i + 1) % photos.length); };
+
   return (
     <Card className="overflow-hidden flex flex-col group hover:shadow-lg transition-shadow cursor-pointer relative" onClick={onSelect}>
       <div className="aspect-[16/10] bg-muted relative overflow-hidden">
-        {photo ? (
-          <img src={photo} alt={result.title} loading="lazy" className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105" />
+        {activePhoto ? (
+          <img
+            key={activePhoto}
+            src={activePhoto}
+            alt={`${result.title} — ${index + 1}/${photos.length}`}
+            loading="lazy"
+            className="h-full w-full object-cover transition-transform duration-500 group-hover:scale-105"
+          />
         ) : (
           <div className="h-full w-full flex items-center justify-center text-muted-foreground text-sm">אין תמונה</div>
         )}
-        <div className="absolute top-3 right-3">
+
+        {/* Side navigation arrows — RTL: right chevron = previous, left chevron = next */}
+        {hasMany && (
+          <>
+            <button
+              type="button"
+              onClick={goPrev}
+              aria-label="תמונה קודמת"
+              title="תמונה קודמת"
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-background/70 hover:bg-background text-foreground shadow-sm backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity z-10"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              onClick={goNext}
+              aria-label="תמונה הבאה"
+              title="תמונה הבאה"
+              className="absolute left-2 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-background/70 hover:bg-background text-foreground shadow-sm backdrop-blur-sm flex items-center justify-center opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity z-10"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <div className="absolute bottom-2 left-1/2 -translate-x-1/2 rounded-full bg-background/70 text-foreground text-[10px] font-semibold tabular-nums px-2 py-0.5 shadow-sm backdrop-blur-sm z-10">
+              {index + 1} / {photos.length}
+            </div>
+          </>
+        )}
+
+        <div className="absolute top-3 right-3 z-10">
           <SourceBadge source={result.source} />
         </div>
         {result.listing_type && (
-          <Badge className={`absolute top-3 left-3 border ${isRent ? 'bg-[#0b3982] text-white border-[#0b3982]' : 'bg-primary text-primary-foreground'}`}>
+          <Badge className={`absolute top-3 left-3 border z-10 ${isRent ? 'bg-[#0b3982] text-white border-[#0b3982]' : 'bg-primary text-primary-foreground'}`}>
             {LISTING_TYPE_LABELS_HE[result.listing_type]}
           </Badge>
         )}
         {importing && (
-          <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-sm">
+          <div className="absolute inset-0 flex items-center justify-center bg-background/70 backdrop-blur-sm z-20">
             <div className="flex items-center gap-2 text-sm font-semibold">
               <Loader2 className="h-4 w-4 animate-spin" /> מייבא למאגר…
             </div>
           </div>
         )}
       </div>
+
+      {/* Thumbnail row — appears only when there are multiple photos */}
+      {hasMany && (
+        <div
+          className="flex gap-1.5 overflow-x-auto px-2 py-2 bg-muted/40 border-b scrollbar-thin"
+          dir="rtl"
+          onClick={stop}
+          onWheel={(e) => e.stopPropagation()}
+        >
+          {photos.map((p, i) => {
+            const active = i === index;
+            return (
+              <button
+                key={`${p}-${i}`}
+                type="button"
+                onClick={(e) => { stop(e); setIndex(i); }}
+                aria-label={`תמונה ${i + 1}`}
+                aria-current={active}
+                className={`relative shrink-0 h-10 w-14 rounded-md overflow-hidden border transition-all ${active ? 'border-primary ring-2 ring-primary/40' : 'border-border/60 opacity-70 hover:opacity-100'}`}
+              >
+                <img src={p} alt="" loading="lazy" className="h-full w-full object-cover" />
+              </button>
+            );
+          })}
+        </div>
+      )}
 
       <div className="p-4 flex flex-col gap-3 flex-1">
         <h3 className="font-semibold text-base leading-tight line-clamp-2">{result.title}</h3>
