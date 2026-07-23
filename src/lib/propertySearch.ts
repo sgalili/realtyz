@@ -182,19 +182,25 @@ export async function searchAllSources(f: SearchFilters): Promise<SearchResponse
 
   const tasks: Array<Promise<{ label: PropertySource; results: UnifiedResult[] }>> = [
     searchLocal(f).then((r) => ({ label: 'mine' as const, results: r })).catch((e) => {
+      console.error('[propertySearch] local source failed', e);
       sources.mine = { status: 'error', count: 0, error: String(e?.message ?? e) };
       return { label: 'mine' as const, results: [] };
     }),
     invokeExternal('homely-search', body)
       .then((d: any) => ({ label: 'homely' as const, results: normalizeExternal('homely', d?.results ?? []) }))
-      .catch((e) => { sources.homely = { status: 'error', count: 0, error: String(e?.message ?? e) }; return { label: 'homely' as const, results: [] }; }),
+      .catch((e) => {
+        console.error('[propertySearch] homely-search failed', e);
+        sources.homely = { status: 'error', count: 0, error: String(e?.message ?? e) };
+        return { label: 'homely' as const, results: [] };
+      }),
     invokeExternal('yad2-search', body)
       .then((d: any) => ({ label: 'yad2' as const, results: normalizeExternal('yad2', d?.results ?? []) }))
-      .catch((e) => { sources.yad2 = { status: 'error', count: 0, error: String(e?.message ?? e) }; return { label: 'yad2' as const, results: [] }; }),
+      .catch((e) => {
+        console.error('[propertySearch] yad2-search failed', e);
+        sources.yad2 = { status: 'error', count: 0, error: String(e?.message ?? e) };
+        return { label: 'yad2' as const, results: [] };
+      }),
     (async () => {
-      // Bright Data-backed Yad2 scraper. Prefer structured params so the edge
-      // function can build a proper gw.yad2.co.il query string; fall back to
-      // free-text `query` when the user typed prose we couldn't structure.
       const queryText = [f.q, f.city && f.city !== 'כל הערים' ? f.city : null, f.neighborhood]
         .filter(Boolean)
         .join(' ')
@@ -210,7 +216,8 @@ export async function searchAllSources(f: SearchFilters): Promise<SearchResponse
         });
         const items = Array.isArray(d?.results) ? d.results : Array.isArray(d?.items) ? d.items : [];
         return { label: 'yad2' as const, results: normalizeExternal('yad2', items) };
-      } catch {
+      } catch (e) {
+        console.error('[propertySearch] yad2-unlocker failed', e);
         return { label: 'yad2' as const, results: [] };
       }
     })(),
@@ -219,16 +226,23 @@ export async function searchAllSources(f: SearchFilters): Promise<SearchResponse
         const items = Array.isArray(d?.results) ? d.results : Array.isArray(d?.items) ? d.items : [];
         return { label: 'webtiv' as const, results: normalizeExternal('webtiv', items) };
       })
-      .catch((e) => { sources.webtiv = { status: 'error', count: 0, error: String(e?.message ?? e) }; return { label: 'webtiv' as const, results: [] }; }),
+      .catch((e) => {
+        console.error('[propertySearch] webtiv-homely-sync failed', e);
+        sources.webtiv = { status: 'error', count: 0, error: String(e?.message ?? e) };
+        return { label: 'webtiv' as const, results: [] };
+      }),
   ];
 
-  const settled = await Promise.all(tasks);
+  const settled = await Promise.all(tasks).catch((e) => {
+    console.error('[propertySearch] unexpected Promise.all failure', e);
+    return [] as Array<{ label: PropertySource; results: UnifiedResult[] }>;
+  });
+
   const all: UnifiedResult[] = [];
   const seen = new Set<string>();
   for (const s of settled) {
     if (!sources[s.label]) sources[s.label] = { status: s.results.length ? 'ok' : 'empty', count: s.results.length };
     for (const r of s.results) {
-      // Apply listing_type filter client-side (external APIs often ignore it)
       if (f.listing_type && f.listing_type !== 'all' && r.listing_type !== f.listing_type) continue;
       const k = dedupeKey(r);
       if (k.replace(/\|/g, '') && seen.has(k)) continue;
@@ -237,11 +251,22 @@ export async function searchAllSources(f: SearchFilters): Promise<SearchResponse
     }
   }
 
-  // Text filter last so it applies to everything uniformly.
-  const q = f.q?.trim().toLowerCase();
-  const filtered = q
-    ? all.filter((r) => [r.title, r.description, r.city, r.address].filter(Boolean).join(' ').toLowerCase().includes(q))
-    : all;
+  // Token-based text filter, applied ONLY to external rows (local was already
+  // filtered server-side via ilike). Every token must appear in at least one
+  // text field — this avoids requiring the whole free-text phrase to match.
+  const tokens = tokenize(f.q).map((t) => t.toLowerCase());
+  const filtered = tokens.length === 0
+    ? all
+    : all.filter((r) => {
+        if (r.source === 'mine') return true;
+        const hay = [r.title, r.description, r.city, r.address, r.neighborhood]
+          .filter(Boolean)
+          .join(' ')
+          .toLowerCase();
+        return tokens.every((t) => hay.includes(t));
+      });
+
+
 
   return { results: filtered, sources };
 }
