@@ -11,7 +11,7 @@ import { supabase } from '@/integrations/supabase/client';
 
 type Field = { col: string; label: string; type?: 'text' | 'password'; dir?: 'ltr' | 'rtl'; placeholder?: string };
 type Portal = {
-  id: 'homely' | 'yad2' | 'madlan';
+  id: 'homely' | 'yad2';
   label: string;
   description: string;
   link: string;
@@ -41,16 +41,6 @@ const PORTALS: Portal[] = [
       { col: 'yad2_api_key', label: 'API Key / Token', type: 'password' },
     ],
   },
-  {
-    id: 'madlan',
-    label: 'מדלן',
-    description: 'סנכרון נכסים ולידים מ-madlan.co.il',
-    link: 'https://www.madlan.co.il/',
-    fields: [
-      { col: 'madlan_username', label: 'שם משתמש / Email', dir: 'ltr' },
-      { col: 'madlan_api_key', label: 'API Key / Token', type: 'password' },
-    ],
-  },
 ];
 
 export function ListingPortalsCard() {
@@ -68,14 +58,14 @@ export function ListingPortalsCard() {
   useEffect(() => {
     if (!user?.id) return;
     (async () => {
-      // Yad2 / Madlan creds from user_api_keys
+      // Yad2 creds from user_api_keys
       const { data: keys } = await supabase
         .from('user_api_keys')
         .select('*')
         .eq('user_id', user.id)
         .maybeSingle();
       const v: Record<string, string> = {};
-      ['yad2_username', 'yad2_api_key', 'madlan_username', 'madlan_api_key', 'homely_api_key'].forEach((c) => {
+      ['yad2_username', 'yad2_api_key', 'homely_api_key'].forEach((c) => {
         v[c] = (keys as any)?.[c] ?? '';
       });
 

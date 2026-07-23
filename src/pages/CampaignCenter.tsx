@@ -1459,7 +1459,7 @@ const InlineComposer = ({
                 </button>
               ))}
 
-              {/* Cross-source search: pull matching properties from Homely / Yad-2 / Madlan */}
+              {/* Cross-source search: pull matching properties from Homely / Yad-2 */}
               <div className="mt-2 border-t border-border/60 pt-2 space-y-2">
                 <button
                   type="button"
@@ -1478,7 +1478,7 @@ const InlineComposer = ({
                   }}
                   className="w-full rounded-md border border-dashed border-primary/40 bg-primary/5 px-3 py-2 text-right text-xs font-medium text-primary hover:bg-primary/10 disabled:opacity-50"
                 >
-                  {externalSearching ? 'מחפש בהומלי / יד-2 / מדל״ן…' : 'חפש גם בהומלי, יד-2 ומדל״ן'}
+                  {externalSearching ? 'מחפש בהומלי / יד-2…' : 'חפש גם בהומלי ויד-2'}
                 </button>
                 {externalResults.map((r) => (
                   <button
