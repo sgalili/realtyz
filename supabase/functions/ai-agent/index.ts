@@ -747,7 +747,14 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
             .eq("is_published", true)
             .order("created_at", { ascending: false })
             .limit(30);
-          if (budgetMax) q = q.lte("asking_price", Math.round(budgetMax * 1.15));
+          // STRICT budget enforcement: rent leads get a hard ceiling (no
+          // overage — a lead with a ₪5,500/mo cap must never see a ₪6,000
+          // rental). Sale leads keep a small 10% headroom so we can still
+          // surface a ₪2.1M listing when the cap is "around 2M".
+          if (budgetMax) {
+            const cap = dealType === "rent" ? budgetMax : Math.round(budgetMax * 1.10);
+            q = q.lte("asking_price", cap);
+          }
           if (budgetMin) q = q.gte("asking_price", Math.round(budgetMin * 0.85));
           // HARD deal_type pre-filter at the SQL level. For rent searches we
           // additionally cap price at ₪50k because Israeli monthly rents never
