@@ -644,10 +644,46 @@ Deno.serve(async (req) => {
     const admin = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
     const isItemUrl = /\/realestate\/item\//.test(inputUrl);
 
-    console.log(`[yad2-unlocker] fetching ${isItemUrl ? "item" : "search"}: ${inputUrl}`);
-    const html = await unlock(inputUrl);
-    const rows = isItemUrl ? [parseItem(html, inputUrl)] : parseSearch(html, inputUrl, limit);
-    console.log(`[yad2-unlocker] parsed ${rows.length} row(s)`);
+    let rows: Scraped[] = [];
+    let mode: "json" | "html" = "json";
+    let jsonSource: string | null = null;
+
+    // --- Primary path: Yad2 internal JSON gateway ---------------------------
+    try {
+      if (isItemUrl) {
+        const gwItem = toGatewayItemUrl(inputUrl);
+        if (gwItem) {
+          console.log(`[yad2-unlocker] JSON item ${gwItem}`);
+          const body = await unlock(gwItem, { accept: "application/json" });
+          const row = parseItemJson(body, inputUrl);
+          if (row) { rows = [row]; jsonSource = gwItem; }
+        }
+      } else {
+        const candidates = toGatewayFeedUrls(inputUrl);
+        for (const gw of candidates) {
+          try {
+            console.log(`[yad2-unlocker] JSON search ${gw}`);
+            const body = await unlock(gw, { accept: "application/json", maxAttempts: 2 });
+            const parsed = parseSearchJson(body, inputUrl, limit);
+            if (parsed.length) { rows = parsed; jsonSource = gw; break; }
+            console.warn(`[yad2-unlocker] JSON endpoint returned 0 items: ${gw}`);
+          } catch (e: any) {
+            console.warn(`[yad2-unlocker] JSON endpoint failed: ${gw} — ${String(e?.message ?? e).slice(0, 160)}`);
+          }
+        }
+      }
+    } catch (e: any) {
+      console.warn(`[yad2-unlocker] JSON gateway threw: ${String(e?.message ?? e).slice(0, 200)}`);
+    }
+
+    // --- Fallback: HTML scrape of the public www URL ------------------------
+    if (!rows.length) {
+      mode = "html";
+      console.log(`[yad2-unlocker] falling back to HTML: ${inputUrl}`);
+      const html = await unlock(inputUrl);
+      rows = isItemUrl ? [parseItem(html, inputUrl)] : parseSearch(html, inputUrl, limit);
+    }
+    console.log(`[yad2-unlocker] parsed ${rows.length} row(s) via ${mode}`);
 
     let saved = 0;
     const saveErrors: any[] = [];
@@ -667,6 +703,8 @@ Deno.serve(async (req) => {
       records_saved: saved,
       save_errors: saveErrors,
       mode: isItemUrl ? "item" : "search",
+      transport: mode,
+      json_source: jsonSource,
     });
   } catch (e: any) {
     console.error("[yad2-unlocker] error", e);
