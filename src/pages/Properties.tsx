@@ -177,6 +177,50 @@ export default function Properties() {
     return Array.from(cities);
   }, [results]);
 
+  const sortedResults = useMemo(() => {
+    const arr = [...results];
+    const numOr = (v: number | null | undefined, fallback: number) => (typeof v === 'number' && !Number.isNaN(v) ? v : fallback);
+    switch (sortBy) {
+      case 'price_asc':
+        return arr.sort((a, b) => numOr(a.price, Number.POSITIVE_INFINITY) - numOr(b.price, Number.POSITIVE_INFINITY));
+      case 'price_desc':
+        return arr.sort((a, b) => numOr(b.price, Number.NEGATIVE_INFINITY) - numOr(a.price, Number.NEGATIVE_INFINITY));
+      case 'rooms_desc':
+        return arr.sort((a, b) => numOr(b.rooms, -1) - numOr(a.rooms, -1));
+      case 'size_desc':
+        return arr.sort((a, b) => numOr(b.size_sqm, -1) - numOr(a.size_sqm, -1));
+      case 'newest':
+        return arr.sort((a, b) => String(b.updated_at ?? b.created_at ?? '').localeCompare(String(a.updated_at ?? a.created_at ?? '')));
+      default:
+        return arr;
+    }
+  }, [results, sortBy]);
+
+  // Per-source count breakdown for the total-count dropdown.
+  const sourceBreakdown = useMemo(() => {
+    // Prefer the fan-out status (accurate raw counts before dedupe/text filter).
+    const fromStatus = Object.entries(sourceStatus).map(([src, info]) => ({
+      key: src as any,
+      count: info.count,
+      status: info.status,
+      error: info.error,
+    }));
+    if (fromStatus.length) return fromStatus;
+    // Fallback: count the rendered results by their assigned source.
+    const buckets = new Map<string, number>();
+    results.forEach((r) => buckets.set(r.source, (buckets.get(r.source) ?? 0) + 1));
+    return Array.from(buckets.entries()).map(([key, count]) => ({ key: key as any, count, status: 'ok' as const, error: undefined }));
+  }, [sourceStatus, results]);
+
+  const SORT_LABELS: Record<typeof sortBy, string> = {
+    relevance: 'רלוונטיות',
+    price_asc: 'מחיר: נמוך לגבוה',
+    price_desc: 'מחיר: גבוה לנמוך',
+    rooms_desc: 'הכי הרבה חדרים',
+    size_desc: 'הכי גדול (מ״ר)',
+    newest: 'החדשים ביותר',
+  };
+
   return (
     <div className="p-3 sm:p-6 space-y-4 sm:space-y-6 w-full max-w-full overflow-x-hidden min-w-0" dir="rtl">
       <header className="text-right">
