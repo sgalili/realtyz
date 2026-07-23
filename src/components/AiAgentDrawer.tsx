@@ -484,14 +484,12 @@ ${shareUrl}
     <Sheet open={open} onOpenChange={setOpen}>
       {/* Trigger is in AppLayout header */}
       <SheetContent side="left" className="w-full sm:max-w-md p-0 flex flex-col" dir="rtl">
-        {/* Header */}
-        <div className="px-4 py-3 border-b bg-primary/5 flex items-center gap-3">
+        {/* Header — centered brand mark + title */}
+        <div className="px-4 py-3 border-b bg-primary/5 flex flex-col items-center justify-center gap-1.5">
           <div className="h-9 w-9 rounded-full bg-primary/15 flex items-center justify-center">
             <Bot className="h-5 w-5 text-primary" />
           </div>
-          <div className="flex-1">
-            <h3 className="text-sm font-bold">קצין המודיעין של Realtyz</h3>
-          </div>
+          <h3 className="text-sm font-bold text-center">קצין המודיעין של Realtyz</h3>
         </div>
 
         {/* Messages */}
