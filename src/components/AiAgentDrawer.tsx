@@ -81,6 +81,10 @@ interface SourceTag {
   id: string;
   title: string;
   similarity: number;
+  source?: string;
+  source_type?: string | null;
+  file_path?: string | null;
+  source_url?: string | null;
 }
 
 interface ResearchSource {
