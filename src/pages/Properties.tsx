@@ -673,8 +673,18 @@ function ResultTable({ results, importingKey, onSelect }: { results: UnifiedResu
             return (
               <tr key={r.key} className="border-t hover:bg-muted/30 cursor-pointer" onClick={() => onSelect(r)}>
                 <td className="px-2 py-1.5"><SourceBadge source={r.source} compact /></td>
-                <td className="px-2 py-1.5 max-w-[220px] truncate">
-                  {r.localId ? <Link to={`/properties/${r.localId}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>{r.title}</Link> : r.title}
+                <td className="px-2 py-1.5 max-w-[320px] truncate">
+                  {(() => {
+                    const label = formatListingTitle({
+                      address: r.address,
+                      city: r.city,
+                      property_type: r.property_type,
+                      title: r.title,
+                    });
+                    return r.localId
+                      ? <Link to={`/properties/${r.localId}`} className="hover:underline" onClick={(e) => e.stopPropagation()}>{label}</Link>
+                      : label;
+                  })()}
                 </td>
                 <td className={`px-2 py-1.5 whitespace-nowrap text-xs font-bold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{LISTING_TYPE_LABELS_HE[r.listing_type]}</td>
                 <td className={`px-2 py-1.5 whitespace-nowrap font-semibold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{r.price ? formatPrice(r.price) : '—'}</td>
