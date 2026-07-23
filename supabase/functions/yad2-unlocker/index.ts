@@ -88,12 +88,31 @@ function brightDataRequest(
   opts: { accept?: string } = {},
 ): Promise<{ status: number; body: string }> {
   return new Promise((resolve, reject) => {
+    // Forward realistic browser headers to the target (Yad2). Without a
+    // real User-Agent + Referer + Accept-Language the gw.yad2.co.il JSON
+    // gateway returns an empty body / 403 even through Bright Data's
+    // unlocker. Bright Data's /request API forwards any `headers` array
+    // entries to the upstream site verbatim.
+    const forwardedAccept = opts.accept ?? "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.9,*/*;q=0.8";
     const payload = JSON.stringify({
       zone: BD_ZONE,
       url,
       format: "raw",
       country: "il",
       method: "GET",
+      headers: [
+        { name: "User-Agent", value: "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36" },
+        { name: "Accept", value: forwardedAccept },
+        { name: "Accept-Language", value: "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7" },
+        { name: "Referer", value: "https://www.yad2.co.il/" },
+        { name: "Origin", value: "https://www.yad2.co.il" },
+        { name: "sec-ch-ua", value: '"Chromium";v="126", "Not.A/Brand";v="24"' },
+        { name: "sec-ch-ua-mobile", value: "?0" },
+        { name: "sec-ch-ua-platform", value: '"macOS"' },
+        { name: "Sec-Fetch-Dest", value: "empty" },
+        { name: "Sec-Fetch-Mode", value: "cors" },
+        { name: "Sec-Fetch-Site", value: "same-site" },
+      ],
     });
     const req = https.request(
       {
