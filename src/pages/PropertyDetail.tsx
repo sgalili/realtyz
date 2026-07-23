@@ -636,7 +636,7 @@ export default function PropertyDetail() {
               <>
                 <button
                   type="button"
-                  onClick={() => setEditMode(false)}
+                  onClick={requestExitEditMode}
                   disabled={saving}
                   aria-label="ביטול"
                   title="ביטול"
