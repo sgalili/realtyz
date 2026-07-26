@@ -50,6 +50,40 @@ const isRenderableMediaUrl = (value: unknown): value is string => {
 
 const isCached = (url: string) => url.includes(`/${BUCKET}/`);
 
+const mediaDedupeKey = (url: string): string => {
+  try {
+    const u = new URL(url);
+    return `${u.hostname}${u.pathname}`.toLowerCase();
+  } catch {
+    return url.split("?")[0].toLowerCase();
+  }
+};
+
+const mergeUrls = (...values: unknown[]): string[] => {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const value of values) {
+    const items = Array.isArray(value) ? value : [];
+    for (const item of items) {
+      if (!isRenderableMediaUrl(item)) continue;
+      const url = asText(item);
+      const key = mediaDedupeKey(url);
+      if (seen.has(key)) continue;
+      seen.add(key);
+      out.push(url);
+    }
+  }
+  return out;
+};
+
+const keepLongestGallery = (existing: unknown, incoming: unknown): string[] => {
+  const existingUrls = mergeUrls(existing);
+  const incomingUrls = mergeUrls(incoming);
+  if (incomingUrls.length === 0) return existingUrls;
+  if (existingUrls.length > 1 && incomingUrls.length <= 1) return existingUrls;
+  return incomingUrls.length >= existingUrls.length ? incomingUrls : existingUrls;
+};
+
 async function storageKey(url: string): Promise<string> {
   let base = url;
   try {
@@ -308,13 +342,17 @@ Deno.serve(async (req) => {
 
       const nextProvider = {
         ...pr,
-        media_urls: candidates,
-        cached_media_urls: cached,
+        media_urls: keepLongestGallery((pr as any).media_urls, candidates),
+        cached_media_urls: keepLongestGallery((pr as any).cached_media_urls, cached),
         media_cached_at: new Date().toISOString(),
       };
+      const durableMedia = keepLongestGallery(
+        (row as any).media_urls,
+        mergeUrls((nextProvider as any).cached_media_urls, nextProvider.media_urls),
+      );
       const { error: upErr } = await admin
         .from("campaign_logs")
-        .update({ media_urls: cached, provider_response: nextProvider })
+        .update({ media_urls: durableMedia, provider_response: nextProvider })
         .eq("id", (row as any).id);
       if (!upErr) updated++;
     }
