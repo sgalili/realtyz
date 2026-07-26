@@ -62,3 +62,24 @@ export function formatListingTitle(input: {
   if (parts.length === 0) return (input.title ?? '').trim() || 'נכס';
   return parts.join(' · ');
 }
+
+/**
+ * INTERNAL WORKSPACE ONLY — full-detail title:
+ *   `address, house number/appt number, property type`
+ *
+ * Unlike `formatListingTitle`, this keeps the building AND apartment numbers.
+ * NEVER use it for public posts, outbound messages, share pages or landing
+ * pages — those must go through `stripAddressNumbers` (Owner Law #1).
+ */
+export function formatInternalListingTitle(input: {
+  address?: string | null;
+  city?: string | null;
+  property_type?: string | null;
+  title?: string | null;
+}): string {
+  const address = String(input.address ?? '').replace(/\s+/g, ' ').trim();
+  const type = normalizePropertyTypeLabel(input.property_type ?? null);
+  const parts = [address, type].filter(Boolean) as string[];
+  if (!parts.length) return (input.title ?? '').trim() || 'נכס';
+  return parts.join(', ');
+}
