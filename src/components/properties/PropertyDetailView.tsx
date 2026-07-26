@@ -258,10 +258,10 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
 function Spec({ icon: Icon, label, value }: { icon: typeof BedDouble; label: string; value: string }) {
   return (
     <div className="flex items-start gap-2">
-      <Icon className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+      <Icon className="h-5 w-5 text-primary mt-0.5 shrink-0" />
       <div className="min-w-0">
-        <p className="text-[11px] text-muted-foreground uppercase tracking-wide">{label}</p>
-        <p className="text-sm font-semibold text-foreground truncate">{value}</p>
+        <p className="text-[15px] text-muted-foreground uppercase tracking-wide">{label}</p>
+        <p className="text-base font-semibold text-foreground truncate">{value}</p>
       </div>
     </div>
   );
