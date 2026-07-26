@@ -339,14 +339,24 @@ export default function Properties() {
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); submitQuery(); } }}
               placeholder="חיפוש נכסים"
               aria-label="חיפוש נכסים"
-              className="h-10 text-right pr-10 pl-11 text-sm"
+              className="h-10 text-right pr-10 pl-24 text-sm"
               dir="rtl"
             />
-            {searching && (
-              <Loader2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 animate-spin text-muted-foreground" />
-            )}
+            <Button
+              type="button"
+              size="sm"
+              onClick={submitQuery}
+              disabled={searching}
+              aria-label="חפש"
+              title="חפש"
+              className="absolute left-1.5 top-1/2 -translate-y-1/2 h-7 gap-1.5 px-3 text-xs"
+            >
+              {searching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <SearchIcon className="h-3.5 w-3.5" />}
+              <span>{searching ? 'מחפש' : 'חפש'}</span>
+            </Button>
           </div>
         </div>
+
 
         {/* Row 2 — actions: [view toggle] ⇢ opposite side ⇠ [sort] [total count + breakdown] */}
         <div className="flex items-center gap-2 mt-3" dir="rtl">
