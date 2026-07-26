@@ -79,7 +79,25 @@ function toNum(v: unknown): number | null {
 function clean(s: string | null | undefined): string | null {
   const t = (s ?? "").replace(/\u00a0/g, " ").replace(/\s+/g, " ").trim();
   return t || null;
+
+// HTTP/1.1-pinned client for api.brightdata.com (see brightDataRequest below).
+// `Deno.createHttpClient` is unstable-gated; guard so the function still boots
+// if the runtime doesn't expose it.
+let bdHttpClient: unknown = null;
+try {
+  const create = (Deno as unknown as {
+    createHttpClient?: (o: Record<string, unknown>) => unknown;
+  }).createHttpClient;
+  if (typeof create === "function") {
+    bdHttpClient = create({ http1: true, http2: false });
+    console.log("[yad2-unlocker] using HTTP/1.1-pinned Bright Data client");
+  } else {
+    console.warn("[yad2-unlocker] Deno.createHttpClient unavailable — using default fetch");
+  }
+} catch (e) {
+  console.warn(`[yad2-unlocker] createHttpClient failed: ${String((e as Error)?.message ?? e)}`);
 }
+
 
 // Bright Data Web Unlocker transport.
 //
