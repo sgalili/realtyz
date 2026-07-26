@@ -89,6 +89,7 @@ export function PropertyRichDetailsCard({
   aboutText,
   furniture,
   additional,
+  amenities,
   priceHistory,
   latitude,
   longitude,
@@ -96,6 +97,7 @@ export function PropertyRichDetailsCard({
 }: Props) {
   const furnitureEntries = entriesOf(furniture);
   const additionalEntries = entriesOf(additional);
+  const amenityEntries = entriesOf(amenities).filter(([, v]) => v !== false);
   const points = (priceHistory ?? []).filter((p) => p && p.price != null);
   const hasCoords = typeof latitude === 'number' && typeof longitude === 'number';
 
@@ -103,6 +105,7 @@ export function PropertyRichDetailsCard({
     !aboutText &&
     !furnitureEntries.length &&
     !additionalEntries.length &&
+    !amenityEntries.length &&
     !points.length &&
     !hasCoords
   ) {
