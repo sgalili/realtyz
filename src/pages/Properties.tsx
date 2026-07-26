@@ -97,6 +97,8 @@ export default function Properties() {
   const [results, setResults] = useState<UnifiedResult[]>(cached?.results ?? []);
   const [sourceStatus, setSourceStatus] = useState<Record<string, { status: string; count: number; error?: string }>>({});
   const [searching, setSearching] = useState(false);
+  // Live streaming progress for the active search (sources answered / total).
+  const [searchProgress, setSearchProgress] = useState<{ done: number; total: number; loaded: number; pending: string[] } | null>(null);
   const [hasSearched, setHasSearched] = useState<boolean>(!!cached?.hasSearched || !!cached?.results?.length);
   const [importingKey, setImportingKey] = useState<string | null>(null);
 
