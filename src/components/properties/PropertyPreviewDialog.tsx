@@ -20,25 +20,29 @@ export function PropertyPreviewDialog({
   open,
   onOpenChange,
   result,
-  onImport,
+  onCampaign,
   importing,
 }: {
   open: boolean;
   onOpenChange: (o: boolean) => void;
   result: UnifiedResult | null;
-  onImport?: (r: UnifiedResult) => void;
+  onCampaign?: (r: UnifiedResult) => void;
   importing?: boolean;
 }) {
-  // Live, on-the-fly enrichment. When the dialog opens for an external row we
-  // fetch fresh details straight from the source (no DB write) and merge them
-  // into the displayed result. Import is still explicit — only fires when the
-  // user clicks "ייבא ופתח".
+  // Lazy full-gallery + rich metadata: the heavy per-property fetch only runs
+  // when the user opens the details card. Nothing is written to the DB here —
+  // importing happens invisibly in the background when the user acts on the
+  // property (create post / share).
   const [enriched, setEnriched] = useState<UnifiedResult | null>(null);
   const [loadingLive, setLoadingLive] = useState(false);
+  // A source link is only shown once the live fetch proves the ad is still
+  // active — dead Yad2 ads must never be surfaced.
+  const [linkVerified, setLinkVerified] = useState(false);
 
   useEffect(() => {
-    if (!open || !result) { setEnriched(null); return; }
+    if (!open || !result) { setEnriched(null); setLinkVerified(false); return; }
     setEnriched(result);
+    setLinkVerified(!!result.localId);
     if (result.localId) return; // local rows: already the source of truth
     let cancelled = false;
     setLoadingLive(true);
@@ -46,6 +50,7 @@ export function PropertyPreviewDialog({
       .then((live) => {
         if (cancelled) return;
         setEnriched(mergeLive(result, live));
+        setLinkVerified(!!live);
       })
       .finally(() => { if (!cancelled) setLoadingLive(false); });
     return () => { cancelled = true; };
@@ -58,6 +63,7 @@ export function PropertyPreviewDialog({
     ? formatListingTitle({ address: r.address, city: r.city, property_type: r.property_type, title: r.title }) ||
       r.title
     : '';
+
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
