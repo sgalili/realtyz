@@ -187,6 +187,12 @@ async function brightDataRequest(
 // "Scraping Browser zone used as a regular proxy" — permanent config error,
 // never worth retrying, and the exact reason Yad2 search silently returned
 // zero results.
+// Once we've seen client_10090 we know the REST Web Unlocker path is dead for
+// this deployment. Remember it for the lifetime of the isolate so subsequent
+// searches jump straight to the browser transport instead of burning ~4s on
+// four guaranteed-to-fail endpoints.
+let bdZoneBroken = false;
+
 function zoneModeError(bdHeaders: Record<string, string>): string | null {
   const code = bdHeaders["x-brd-err-code"] ?? "";
   const msg = bdHeaders["x-brd-err-msg"] ?? bdHeaders["x-brd-error"] ?? "";
@@ -212,6 +218,11 @@ async function unlock(
   url: string,
   opts: { accept?: string; maxAttempts?: number } = {},
 ): Promise<string> {
+  if (bdZoneBroken && BD_WS) {
+    // Known-bad REST zone + a usable browser endpoint: fail instantly so the
+    // caller falls through to the Scraping Browser transport.
+    throw new Error("brightdata_zone_mode: client_10090 (cached) — skipping REST unlocker");
+  }
   if (!BD_TOKEN) throw new Error("BRIGHTDATA_API_TOKEN is not configured");
   const maxAttempts = opts.maxAttempts ?? 4;
   let lastErr: unknown = null;
@@ -237,6 +248,7 @@ async function unlock(
       if (zoneErr) {
         // Permanent configuration fault — fail fast so the caller can switch
         // transports instead of burning 4 retries per endpoint.
+        if (/client_10090/.test(zoneErr)) bdZoneBroken = true;
         const e = new Error(`brightdata_zone_mode: ${zoneErr}`);
         (e as Error & { permanent?: boolean }).permanent = true;
         throw e;
