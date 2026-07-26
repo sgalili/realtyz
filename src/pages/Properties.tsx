@@ -37,7 +37,7 @@ import { SourceBadge, sourceLabel, type PropertySource } from '@/components/prop
 import { searchAllSources, searchLocalListings, type UnifiedResult, type SearchFilters } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { stripAddressNumbers } from '@/lib/formatAddress';
-import { formatListingTitle } from '@/lib/formatListingTitle';
+import { formatListingTitle, formatInternalListingTitle } from '@/lib/formatListingTitle';
 import { ImportProgressDialog, type ImportStep } from '@/components/properties/ImportProgressDialog';
 import { PropertyPreviewDialog } from '@/components/properties/PropertyPreviewDialog';
 import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
@@ -139,8 +139,15 @@ export default function Properties() {
   const loadDefaultPool = useCallback(async (): Promise<UnifiedResult[]> => {
     if (defaultPoolRef.current) return defaultPoolRef.current;
     const cities = DEFAULT_CITIES;
+    // The default feed must include EVERY source (local storage + Homely +
+    // Yad2), not just the local `listings` table.
     const batches = await Promise.all(
-      cities.map((c) => searchLocalListings({ city: c, listing_type: 'all' }).catch(() => [] as UnifiedResult[])),
+      cities.flatMap((c) => [
+        searchLocalListings({ city: c, listing_type: 'all' }).catch(() => [] as UnifiedResult[]),
+        searchAllSources({ city: c, listing_type: 'all' })
+          .then((resp) => resp.results)
+          .catch(() => [] as UnifiedResult[]),
+      ]),
     );
     const seen = new Set<string>();
     const all = batches.flat().filter((r) => (seen.has(r.key) ? false : (seen.add(r.key), true)));
@@ -1114,7 +1121,7 @@ function ResultTable({
     const getVal = (r: UnifiedResult): string | number | null => {
       switch (sortCol) {
 
-        case 'name': return formatListingTitle({ address: r.address, city: r.city, property_type: r.property_type, title: r.title }) || '';
+        case 'name': return formatInternalListingTitle({ address: r.address, city: r.city, property_type: r.property_type, title: r.title }) || '';
         case 'listing_type': return r.listing_type ?? '';
         case 'price': return typeof r.price === 'number' ? r.price : null;
         case 'city': return r.city ?? '';
@@ -1206,7 +1213,8 @@ function ResultTable({
                 </td>
                 <td className="px-2 py-1.5 max-w-[320px] truncate">
                   {(() => {
-                    const label = formatListingTitle({
+                    // Internal workspace table: full detail incl. house/apt number.
+                    const label = formatInternalListingTitle({
                       address: r.address,
                       city: r.city,
                       property_type: r.property_type,
@@ -1220,7 +1228,7 @@ function ResultTable({
                 <td className={`px-2 py-1.5 whitespace-nowrap text-xs font-bold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{LISTING_TYPE_LABELS_HE[r.listing_type]}</td>
                 <td className={`px-2 py-1.5 whitespace-nowrap font-semibold ${isRent ? 'text-[#f59e0b]' : 'text-success'}`}>{r.price ? formatPrice(r.price) : '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.city || '—'}</td>
-                <td className="px-2 py-1.5 whitespace-nowrap max-w-[180px] truncate">{stripAddressNumbers(r.address ?? '') || '—'}</td>
+                <td className="px-2 py-1.5 whitespace-nowrap max-w-[180px] truncate" title={r.address ?? ''}>{r.address || '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.rooms ?? '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.size_sqm ?? '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
