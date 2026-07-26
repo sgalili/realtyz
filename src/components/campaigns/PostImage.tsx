@@ -1,17 +1,25 @@
-// Post image with a self-healing fallback chain.
-// Facebook CDN URLs are signed (`oh=`/`oe=`) and expire, which is why campaign
-// cards silently went blank. On the first load error we ask `cache-post-media`
-// to mirror the original asset into the public `post-media-cache` bucket and
-// swap in the permanent copy. Only after that fails do we show the placeholder.
 import { useEffect, useState } from 'react';
 import { ImageIcon } from 'lucide-react';
 import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
 const inflight = new Map<string, Promise<string[]>>();
+const BRAND_THUMBNAIL = '/__l5e/assets-v1/0c4787e2-7c2d-419f-b619-90d17f5a6b93/realtyz-logo-rect.png';
+
+const cleanUrls = (urls: Array<string | null | undefined>): string[] => {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const value of urls) {
+    const url = typeof value === 'string' ? value.trim() : '';
+    if (!url || seen.has(url)) continue;
+    seen.add(url);
+    out.push(url);
+  }
+  return out;
+};
 
 async function resolveCached(campaignLogId: string, urls: string[]): Promise<string[]> {
-  const key = `${campaignLogId}|${urls[0] ?? ''}`;
+  const key = `${campaignLogId}|${urls.join('|')}`;
   if (!inflight.has(key)) {
     inflight.set(
       key,
@@ -26,6 +34,7 @@ async function resolveCached(campaignLogId: string, urls: string[]): Promise<str
 
 export function PostImage({
   src,
+  candidates = [],
   campaignLogId,
   index = 0,
   className,
@@ -33,29 +42,45 @@ export function PostImage({
   alt = '',
 }: {
   src?: string | null;
+  candidates?: string[];
   campaignLogId: string;
   index?: number;
   className?: string;
   fallbackClassName?: string;
   alt?: string;
 }) {
-  const [current, setCurrent] = useState<string | null>(src ?? null);
-  const [failed, setFailed] = useState(false);
+  const [current, setCurrent] = useState<string | null>(() => cleanUrls([src, ...candidates])[0] ?? null);
+  const [attempt, setAttempt] = useState(0);
+
+  const chain = cleanUrls([src, ...candidates, BRAND_THUMBNAIL]);
 
   useEffect(() => {
-    setCurrent(src ?? null);
-    setFailed(false);
-  }, [src]);
+    const next = cleanUrls([src, ...candidates])[0] ?? BRAND_THUMBNAIL;
+    setCurrent(next);
+    setAttempt(0);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [src, candidates.join('|')]);
 
   const handleError = async () => {
-    if (!src) { setFailed(true); return; }
-    const cached = await resolveCached(campaignLogId, [src]);
+    const nextRaw = chain[attempt + 1];
+    if (nextRaw) {
+      setAttempt((prev) => prev + 1);
+      setCurrent(nextRaw);
+      return;
+    }
+
+    const sourceUrls = chain.filter((url) => url !== BRAND_THUMBNAIL);
+    if (sourceUrls.length === 0) {
+      setCurrent(BRAND_THUMBNAIL);
+      return;
+    }
+    const cached = await resolveCached(campaignLogId, sourceUrls);
     const next = cached[index] ?? cached[0];
     if (next && next !== current) setCurrent(next);
-    else setFailed(true);
+    else setCurrent(BRAND_THUMBNAIL);
   };
 
-  if (!current || failed) {
+  if (!current) {
     return (
       <div
         className={cn(
