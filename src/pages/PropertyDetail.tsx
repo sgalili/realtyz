@@ -501,6 +501,35 @@ export default function PropertyDetail() {
     if (editMode) setPhotos((list) => list.filter((item) => item !== url));
   };
 
+  /** Manual on-demand pull of the FULL gallery from the original source. */
+  const pullAllImages = async () => {
+    if (!property?.id || pullingImages) return;
+    setPullingImages(true);
+    const toastId = toast.loading('טוען את כל התמונות מהמקור…');
+    try {
+      const { data, error } = await supabase.functions.invoke('fetch-property-all-images', {
+        body: { listing_id: property.id, source_url: sourceUrl || undefined },
+      });
+      if (error) throw error;
+      const res = data as { ok?: boolean; count?: number; photos?: string[]; reason?: string } | null;
+      if (!res?.ok) {
+        toast.error('לא נמצאו תמונות נוספות', { id: toastId, description: res?.reason ?? undefined });
+        return;
+      }
+      toast.success(`${res.count} תמונות נטענו ונשמרו`, { id: toastId });
+      setActivePhoto(0);
+      await qc.invalidateQueries({ queryKey: ['property-detail', id] });
+      qc.invalidateQueries({ queryKey: ['properties-search'] });
+      qc.invalidateQueries({ queryKey: ['listings'] });
+    } catch (e: any) {
+      toast.error('טעינת התמונות נכשלה', { id: toastId, description: e?.message ?? String(e) });
+    } finally {
+      setPullingImages(false);
+    }
+  };
+
+
+
   const mirrorExternalUrl = async (rawUrl: string): Promise<string | null> => {
     const url = rawUrl.trim();
     if (!/^https?:\/\//i.test(url)) return null;
