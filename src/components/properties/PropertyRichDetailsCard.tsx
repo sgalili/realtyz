@@ -128,21 +128,21 @@ export function PropertyRichDetailsCard({
     <Card className="p-4 sm:p-5 space-y-5" dir="rtl">
       {aboutText && (
         <section>
-          <h2 className="text-xl font-bold text-primary mb-2 inline-flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-primary mb-2 inline-flex items-center gap-2">
             <FileText className="h-5 w-5" /> על הנכס
           </h2>
-          <p className="text-base leading-relaxed text-foreground/80 whitespace-pre-line">{aboutText}</p>
+          <p className="text-xl leading-relaxed text-foreground/80 whitespace-pre-line">{aboutText}</p>
         </section>
       )}
 
       {furnitureEntries.length > 0 && (
         <section>
-          <h2 className="text-xl font-bold text-primary mb-2 inline-flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-primary mb-2 inline-flex items-center gap-2">
             <Sofa className="h-5 w-5" /> פירוט הריהוט
           </h2>
           <div className="flex flex-wrap gap-2">
             {furnitureEntries.map(([k, v]) => (
-              <Badge key={k} variant="secondary" className="font-normal text-base">
+              <Badge key={k} variant="secondary" className="font-normal text-xl">
                 {label(k)}: {renderValue(v)}
               </Badge>
             ))}
@@ -152,12 +152,12 @@ export function PropertyRichDetailsCard({
 
       {additionalEntries.length > 0 && (
         <section>
-          <h2 className="text-xl font-bold text-primary mb-2 inline-flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-primary mb-2 inline-flex items-center gap-2">
             <ListChecks className="h-5 w-5" /> פרטים נוספים
           </h2>
           <div className="grid grid-cols-2 sm:grid-cols-3 gap-x-4 gap-y-2">
             {additionalEntries.map(([k, v]) => (
-              <div key={k} className="text-base">
+              <div key={k} className="text-xl">
                 <span className="text-muted-foreground">{label(k)}: </span>
                 <span className="font-medium text-foreground">{renderValue(v)}</span>
               </div>
@@ -168,12 +168,12 @@ export function PropertyRichDetailsCard({
 
       {amenityEntries.length > 0 && (
         <section>
-          <h2 className="text-xl font-bold text-primary mb-2 inline-flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-primary mb-2 inline-flex items-center gap-2">
             <ListChecks className="h-5 w-5" /> מתקנים ותוספות
           </h2>
           <div className="flex flex-wrap gap-2">
             {amenityEntries.map(([k, v]) => (
-              <Badge key={k} variant="outline" className="font-normal text-base">
+              <Badge key={k} variant="outline" className="font-normal text-xl">
                 {label(k)}
                 {typeof v === 'boolean' ? '' : `: ${renderValue(v)}`}
               </Badge>
@@ -186,7 +186,7 @@ export function PropertyRichDetailsCard({
 
       {chartData.length > 1 && (
         <section>
-          <h2 className="text-xl font-bold text-primary mb-2 inline-flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-primary mb-2 inline-flex items-center gap-2">
             <TrendingUp className="h-5 w-5" /> היסטוריית מחיר
           </h2>
           <div className="h-48 w-full" dir="ltr">
@@ -204,7 +204,7 @@ export function PropertyRichDetailsCard({
       )}
 
       {chartData.length === 1 && (
-        <section className="text-base">
+        <section className="text-xl">
           <span className="text-muted-foreground">מחיר קודם: </span>
           <span className="font-medium">₪{chartData[0].price.toLocaleString()}</span>
         </section>
@@ -212,7 +212,7 @@ export function PropertyRichDetailsCard({
 
       {hasCoords && (
         <section>
-          <h2 className="text-xl font-bold text-primary mb-2 inline-flex items-center gap-2">
+          <h2 className="text-2xl font-bold text-primary mb-2 inline-flex items-center gap-2">
             <MapPin className="h-5 w-5" /> מיקום על המפה
           </h2>
           <div className="overflow-hidden rounded-lg border border-border/60">
@@ -235,7 +235,7 @@ export function PropertyRichDetailsCard({
                 פתח במפות
               </a>
             </Button>
-            <span className="text-sm text-muted-foreground">
+            <span className="text-lg text-muted-foreground">
               {addressLabel || `${latitude?.toFixed(5)}, ${longitude?.toFixed(5)}`}
             </span>
           </div>

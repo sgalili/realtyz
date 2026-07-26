@@ -76,7 +76,7 @@ export function AreaMarketFactsCard({ city, neighborhood, dealType, listingId }:
 
   return (
     <Card className="p-4 sm:p-5" dir="rtl">
-      <h2 className="text-base font-bold text-primary mb-3 inline-flex items-center gap-2">
+      <h2 className="text-xl font-bold text-primary mb-3 inline-flex items-center gap-2">
         <BarChart3 className="h-4 w-4" />
         נתוני שוק באזור · {neighborhood || data.city} ({label})
       </h2>
@@ -96,7 +96,7 @@ export function AreaMarketFactsCard({ city, neighborhood, dealType, listingId }:
 
       {data.trendPct != null && Math.abs(data.trendPct) >= 1 && (
         <div
-          className={`inline-flex items-center gap-1.5 text-sm font-semibold ${
+          className={`inline-flex items-center gap-1.5 text-lg font-semibold ${
             data.trendPct > 0 ? 'text-success' : 'text-destructive'
           }`}
         >
@@ -107,26 +107,26 @@ export function AreaMarketFactsCard({ city, neighborhood, dealType, listingId }:
 
       <ul className="mt-4 space-y-1.5 border-t border-border/60 pt-3">
         {data.highlights.map((h, i) => (
-          <li key={i} className="text-sm text-foreground/80">• {h}</li>
+          <li key={i} className="text-lg text-foreground/80">• {h}</li>
         ))}
       </ul>
 
       {(buckets.length > 0 || otherPerks.length > 0) && (
         <div className="mt-5 border-t border-border/60 pt-4">
-          <h3 className="text-sm font-bold text-foreground mb-3 inline-flex items-center gap-2">
+          <h3 className="text-lg font-bold text-foreground mb-3 inline-flex items-center gap-2">
             <MapPin className="h-4 w-4 text-primary" />
             מה יש בסביבה הקרובה
           </h3>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             {buckets.map((b) => (
               <div key={b.key} className="rounded-md border border-border/60 bg-muted/30 p-3">
-                <div className="flex items-center gap-2 text-xs font-semibold text-foreground mb-1.5">
+                <div className="flex items-center gap-2 text-base font-semibold text-foreground mb-1.5">
                   <b.icon className="h-4 w-4 text-primary" />
                   {b.label}
                 </div>
                 <ul className="space-y-1">
                   {b.items.map((it, i) => (
-                    <li key={i} className="text-xs text-foreground/80">• {it}</li>
+                    <li key={i} className="text-base text-foreground/80">• {it}</li>
                   ))}
                 </ul>
               </div>
@@ -135,7 +135,7 @@ export function AreaMarketFactsCard({ city, neighborhood, dealType, listingId }:
           {otherPerks.length > 0 && (
             <ul className="mt-3 space-y-1">
               {otherPerks.map((p, i) => (
-                <li key={i} className="text-xs text-foreground/70">• {p}</li>
+                <li key={i} className="text-base text-foreground/70">• {p}</li>
               ))}
             </ul>
           )}
@@ -144,7 +144,7 @@ export function AreaMarketFactsCard({ city, neighborhood, dealType, listingId }:
 
       {data.comparables.length > 0 && (
         <div className="mt-5 border-t border-border/60 pt-4">
-          <h3 className="text-sm font-bold text-foreground mb-3">
+          <h3 className="text-lg font-bold text-foreground mb-3">
             עסקאות {isRent ? 'השכרה' : 'מכירה'} דומות באזור (5 שנים אחרונות)
           </h3>
           <div className="space-y-2">
@@ -164,10 +164,10 @@ export function AreaMarketFactsCard({ city, neighborhood, dealType, listingId }:
                   )}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold text-foreground">
+                  <p className="truncate text-lg font-semibold text-foreground">
                     {c.address || c.neighborhood || c.city}
                   </p>
-                  <p className="truncate text-[11px] text-muted-foreground">
+                  <p className="truncate text-[15px] text-muted-foreground">
                     {[
                       c.sqm ? `${c.sqm} מ"ר` : null,
                       c.rooms ? `${c.rooms} חדרים` : null,
@@ -176,7 +176,7 @@ export function AreaMarketFactsCard({ city, neighborhood, dealType, listingId }:
                     ].filter(Boolean).join(' · ')}
                   </p>
                 </div>
-                <span className="shrink-0 text-sm font-bold tabular-nums text-primary">{fmt(c.price)}</span>
+                <span className="shrink-0 text-lg font-bold tabular-nums text-primary">{fmt(c.price)}</span>
               </Link>
             ))}
           </div>
@@ -189,8 +189,8 @@ export function AreaMarketFactsCard({ city, neighborhood, dealType, listingId }:
 function Stat({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0">
-      <p className="text-[11px] text-muted-foreground tracking-wide">{label}</p>
-      <p className="text-sm font-semibold text-foreground truncate tabular-nums">{value}</p>
+      <p className="text-[15px] text-muted-foreground tracking-wide">{label}</p>
+      <p className="text-lg font-semibold text-foreground truncate tabular-nums">{value}</p>
     </div>
   );
 }

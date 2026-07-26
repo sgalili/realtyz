@@ -52,11 +52,11 @@ export function ProjectAlternativesCard({
     <Card className="p-4 sm:p-5" dir="rtl">
       <div className="flex items-start justify-between gap-3 mb-3">
         <div className="min-w-0">
-          <h2 className="text-base font-bold text-primary inline-flex items-center gap-2">
+          <h2 className="text-xl font-bold text-primary inline-flex items-center gap-2">
             <Building2 className="h-4 w-4" />
             אפשרויות נוספות בפרויקט {projectName}
           </h2>
-          <p className="text-xs text-muted-foreground mt-1">
+          <p className="text-base text-muted-foreground mt-1">
             יחידות נוספות בפרויקט — כולל פרי-סייל ו״אוף-מרקט״ שעדיין לא פורסמו רשמית.
           </p>
         </div>
@@ -69,7 +69,7 @@ export function ProjectAlternativesCard({
           <Skeleton className="h-20 w-full" />
         </div>
       ) : !data || data.length === 0 ? (
-        <p className="text-sm text-muted-foreground">אין כרגע יחידות נוספות זמינות בפרויקט.</p>
+        <p className="text-lg text-muted-foreground">אין כרגע יחידות נוספות זמינות בפרויקט.</p>
       ) : (
         <div className={compact
           ? 'flex gap-2 overflow-x-auto pb-1'
@@ -82,15 +82,15 @@ export function ProjectAlternativesCard({
               className={`group rounded-lg border bg-card p-3 hover:border-primary transition-colors ${compact ? 'min-w-[240px]' : ''}`}
             >
               <div className="flex items-start justify-between gap-2">
-                <p className="text-sm font-semibold text-foreground truncate">
+                <p className="text-lg font-semibold text-foreground truncate">
                   {row.property_title || 'יחידה בפרויקט'}
                 </p>
                 <ArrowLeft className="h-4 w-4 text-muted-foreground group-hover:text-primary shrink-0" />
               </div>
-              <p className="text-xs text-muted-foreground truncate mt-0.5">
+              <p className="text-base text-muted-foreground truncate mt-0.5">
                 {[row.address, row.neighborhood, row.city].filter(Boolean).join(', ') || '—'}
               </p>
-              <div className="flex items-center gap-3 mt-2 text-xs text-muted-foreground">
+              <div className="flex items-center gap-3 mt-2 text-base text-muted-foreground">
                 {row.rooms != null && (
                   <span className="inline-flex items-center gap-1"><BedDouble className="h-3 w-3" />{Number(row.rooms)}</span>
                 )}
@@ -101,7 +101,7 @@ export function ProjectAlternativesCard({
                   <span className="inline-flex items-center gap-1"><Layers className="h-3 w-3" />ק׳ {row.floor}</span>
                 )}
               </div>
-              <p className="text-sm font-bold text-success mt-1 tabular-nums">
+              <p className="text-lg font-bold text-success mt-1 tabular-nums">
                 {formatPrice(row.asking_price as number | null)}
               </p>
             </Link>
