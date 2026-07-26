@@ -700,34 +700,47 @@ export default function Properties() {
               <Skeleton key={i} className="h-72 w-full rounded-lg" />
             ))}
           </div>
-        ) : results.length === 0 ? (
+        ) : sortedResults.length === 0 ? (
           <Card className="p-12 text-center text-muted-foreground">
             לא נמצאו נכסים תואמים. נסה חיפוש רחב יותר.
           </Card>
-        ) : viewMode === 'table' ? (
-          <ResultTable
-            results={sortedResults}
-            importingKey={importingKey}
-            onSelect={handleSelect}
-            selectedKeys={selectedKeys}
-            onToggleSelect={toggleSelected}
-            onToggleAll={(rows, checked) => (checked ? selectAllVisible(rows) : clearSelection())}
-          />
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {sortedResults.map((r) => (
-              <ResultCard
-                key={r.key}
-                result={r}
-                importing={importingKey === r.key}
-                onSelect={() => handleSelect(r)}
-                selected={selectedKeys.has(r.key)}
-                onToggleSelect={() => toggleSelected(r.key)}
+          <>
+            {viewMode === 'table' ? (
+              <ResultTable
+                results={pagedResults}
+                importingKey={importingKey}
+                onSelect={handleSelect}
+                onCampaign={goToCampaign}
+                selectedKeys={selectedKeys}
+                onToggleSelect={toggleSelected}
+                onToggleAll={(rows, checked) => (checked ? selectAllVisible(rows) : clearSelection())}
               />
-            ))}
-          </div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {pagedResults.map((r) => (
+                  <ResultCard
+                    key={r.key}
+                    result={r}
+                    importing={importingKey === r.key}
+                    onSelect={() => handleSelect(r)}
+                    onCampaign={() => goToCampaign(r)}
+                    selected={selectedKeys.has(r.key)}
+                    onToggleSelect={() => toggleSelected(r.key)}
+                  />
+                ))}
+              </div>
+            )}
+            {hasMore && (
+              <div ref={sentinelRef} className="flex items-center justify-center py-6 text-xs text-muted-foreground gap-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                טוען עוד נכסים… ({pagedResults.length}/{sortedResults.length})
+              </div>
+            )}
+          </>
         )}
       </ErrorBoundary>
+
 
       <AddPropertyDialog
         open={addOpen}
