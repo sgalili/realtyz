@@ -148,8 +148,14 @@ export default function Properties() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [defaultCity]);
 
+  // Monotonic token — bumping it aborts the in-flight search: late partials
+  // and the final payload are ignored, so whatever was already painted stays.
+  const searchTokenRef = useRef(0);
+
   const runSearch = useCallback(async () => {
+    const token = ++searchTokenRef.current;
     setSearching(true);
+
     setHasSearched(true);
     try {
       // Parse the free-text query into structured hints so external gateways
