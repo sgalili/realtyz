@@ -369,7 +369,10 @@ Deno.serve(async (req) => {
       }
       if (cached.length === 0) { await markEmpty(); continue; }
 
-      const nextCached = keepLongestGallery((pr as any).cached_media_urls, cached);
+      // Historic rows stored raw CDN links under cached_media_urls; only real
+      // storage URLs may survive here.
+      const priorCached = mergeUrls((pr as any).cached_media_urls).filter(isCached);
+      const nextCached = keepLongestGallery(priorCached, cached);
       const nextProvider = {
         ...pr,
         media_urls: keepLongestGallery((pr as any).media_urls, candidates),
