@@ -774,15 +774,18 @@ function ResultCard({
   result,
   importing,
   onSelect,
+  onCampaign,
   selected,
   onToggleSelect,
 }: {
   result: UnifiedResult;
   importing: boolean;
   onSelect: () => void;
+  onCampaign?: () => void;
   selected?: boolean;
   onToggleSelect?: () => void;
 }) {
+
   const photos = (result.photos ?? []).filter(Boolean);
   const hasPhotos = photos.length > 0;
   const hasMany = photos.length > 1;
