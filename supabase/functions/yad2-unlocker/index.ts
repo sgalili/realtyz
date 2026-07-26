@@ -779,9 +779,24 @@ async function scrapingBrowserHarvest(
     await page
       .waitForSelector('a[href*="/item/"], [data-testid="feed-item"], article', { timeout: 40_000 })
       .catch(() => {});
+    // Yad2 hydrates the feed after the first paint; wait for real item anchors
+    // rather than the shell, otherwise the RSC payload we parse is still empty.
+    await page
+      .waitForFunction(
+        () => document.querySelectorAll('a[href*="/item/"]').length > 0,
+        { timeout: 25_000, polling: 500 },
+      )
+      .catch(() => {});
+
+    const itemAnchors: number = await page
+      .evaluate(() => document.querySelectorAll('a[href*="/item/"]').length)
+      .catch(() => -1);
+    const pageTitle: string = await page.title().catch(() => "");
 
     const html: string = await page.content().catch(() => "");
-    console.log(`[yad2-unlocker] scraping-browser: html bytes=${html.length}`);
+    console.log(
+      `[yad2-unlocker] scraping-browser: html bytes=${html.length} item_anchors=${itemAnchors} title=${JSON.stringify(pageTitle)}`,
+    );
 
     const feeds: Array<{ url: string; body: string }> = [];
     // The rendered HTML is the reliable source; the gw.* JSON endpoints are
@@ -1064,8 +1079,10 @@ Deno.serve(async (req) => {
             const probe = isItemUrl
               ? ([parseItem(html, inputUrl)].filter(Boolean) as Scraped[])
               : parseSearch(html, inputUrl, limit);
+            console.log(`[yad2-unlocker] scraping-browser: HTML parse yielded ${probe.length} row(s)`);
             return probe.length === 0;
-          } catch {
+          } catch (e) {
+            console.warn(`[yad2-unlocker] scraping-browser: HTML parse threw ${String((e as Error)?.message ?? e)}`);
             return true;
           }
         });
