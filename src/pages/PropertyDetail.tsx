@@ -231,6 +231,7 @@ export default function PropertyDetail() {
         if (op?.id) owner = { id: String(op.id), full_name: String(op.full_name || '') };
       }
 
+      const r = row as any;
       return {
         row,
         property,
@@ -241,6 +242,14 @@ export default function PropertyDetail() {
         sourceUrl: row.source_url,
         documents,
         owner,
+        rich: {
+          about: (r.long_description as string | null) || (r.short_description as string | null) || null,
+          furniture: (r.furniture_details as Record<string, unknown> | null) ?? null,
+          additional: (r.additional_details as Record<string, unknown> | null) ?? null,
+          priceHistory: Array.isArray(r.price_history) ? (r.price_history as any[]) : [],
+          latitude: r.latitude != null ? Number(r.latitude) : null,
+          longitude: r.longitude != null ? Number(r.longitude) : null,
+        },
       };
     },
   });
