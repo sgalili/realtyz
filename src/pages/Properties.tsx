@@ -48,6 +48,10 @@ const PRICE_MIN = 0;
 const PRICE_MAX = 10_000_000;
 const PRICE_STEP = 100_000;
 const CACHE_KEY = 'properties:last-search:v1';
+// Home markets used for the default (never-empty) listing pool.
+const DEFAULT_CITIES = ['הרצליה', 'רמת השרון'];
+const DEFAULT_POOL_PER_TYPE = 100;
+
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
