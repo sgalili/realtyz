@@ -2887,6 +2887,8 @@ export type Database = {
           address: string | null
           area_perks: Json | null
           asking_price: number
+          attributes: Json
+          available_from: string | null
           city: string | null
           created_at: string
           deal_type: string | null
@@ -2906,6 +2908,7 @@ export type Database = {
           is_investment_opportunity: boolean
           is_promoted: boolean
           is_published: boolean
+          long_description: string | null
           media_documents: Json
           media_photos: Json | null
           neighborhood: string | null
@@ -2916,6 +2919,7 @@ export type Database = {
           promoted_until: string | null
           property_title: string
           rooms: number | null
+          short_description: string | null
           slug: string
           source: string
           source_metadata: Json | null
@@ -2929,6 +2933,8 @@ export type Database = {
           address?: string | null
           area_perks?: Json | null
           asking_price?: number
+          attributes?: Json
+          available_from?: string | null
           city?: string | null
           created_at?: string
           deal_type?: string | null
@@ -2948,6 +2954,7 @@ export type Database = {
           is_investment_opportunity?: boolean
           is_promoted?: boolean
           is_published?: boolean
+          long_description?: string | null
           media_documents?: Json
           media_photos?: Json | null
           neighborhood?: string | null
@@ -2958,6 +2965,7 @@ export type Database = {
           promoted_until?: string | null
           property_title: string
           rooms?: number | null
+          short_description?: string | null
           slug: string
           source?: string
           source_metadata?: Json | null
@@ -2971,6 +2979,8 @@ export type Database = {
           address?: string | null
           area_perks?: Json | null
           asking_price?: number
+          attributes?: Json
+          available_from?: string | null
           city?: string | null
           created_at?: string
           deal_type?: string | null
@@ -2990,6 +3000,7 @@ export type Database = {
           is_investment_opportunity?: boolean
           is_promoted?: boolean
           is_published?: boolean
+          long_description?: string | null
           media_documents?: Json
           media_photos?: Json | null
           neighborhood?: string | null
@@ -3000,6 +3011,7 @@ export type Database = {
           promoted_until?: string | null
           property_title?: string
           rooms?: number | null
+          short_description?: string | null
           slug?: string
           source?: string
           source_metadata?: Json | null

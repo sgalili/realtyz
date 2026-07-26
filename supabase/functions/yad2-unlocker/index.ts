@@ -333,6 +333,57 @@ function pickPhotos(raw: any): string[] {
   return Array.from(new Set(out));
 }
 
+/** Merges every image container Yad2 ships so we keep the FULL gallery. */
+function pickAllPhotos(...raws: any[]): string[] {
+  const out: string[] = [];
+  for (const raw of raws) out.push(...pickPhotos(raw));
+  return Array.from(new Set(out)).slice(0, 40);
+}
+
+/** Normalises Yad2 availability wording / dates into an ISO date string. */
+function pickAvailableFrom(it: any): string | null {
+  const raw =
+    it?.availableFrom ?? it?.available_from ?? it?.entryDate ?? it?.entry_date ??
+    it?.additionalDetails?.entranceDate ?? it?.additionalDetails?.availableFrom ??
+    it?.dates?.entrance ?? null;
+  if (!raw) return null;
+  if (typeof raw === "string") {
+    if (/מיידי|immediate|גמיש/i.test(raw)) return new Date().toISOString().slice(0, 10);
+    const iso = raw.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+    if (iso) return iso;
+    const dmy = raw.match(/(\d{1,2})[./](\d{1,2})[./](\d{4})/);
+    if (dmy) return `${dmy[3]}-${dmy[2].padStart(2, "0")}-${dmy[1].padStart(2, "0")}`;
+    return null;
+  }
+  const d = new Date(raw);
+  return Number.isNaN(d.getTime()) ? null : d.toISOString().slice(0, 10);
+}
+
+/** Collects every scalar custom attribute Yad2 exposes for the ad. */
+function pickAttributes(it: any): Record<string, unknown> {
+  const attrs: Record<string, unknown> = {};
+  const merge = (src: any) => {
+    if (!src || typeof src !== "object" || Array.isArray(src)) return;
+    for (const [k, v] of Object.entries(src)) {
+      if (v == null || v === "") continue;
+      if (typeof v === "object") continue;
+      attrs[k] = v;
+    }
+  };
+  merge(it?.additionalDetails);
+  merge(it?.additionalDetails?.property);
+  merge(it?.metaData);
+  merge(it?.inProperty);
+  merge(it?.propertyDetails);
+  if (Array.isArray(it?.tags)) attrs.tags = it.tags.map((t: any) => (typeof t === "string" ? t : t?.name)).filter(Boolean);
+  if (Array.isArray(it?.inProperty)) {
+    attrs.in_property = it.inProperty.map((t: any) => (typeof t === "string" ? t : t?.name ?? t?.key)).filter(Boolean);
+  }
+  delete (attrs as any).images;
+  delete (attrs as any).coverImage;
+  return attrs;
+}
+
 function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
   const token = it?.token ?? it?.orderId ?? it?.order_id ?? it?.adNumber ?? it?.id ?? null;
   if (!token || typeof token !== "string") return null;
@@ -347,7 +398,18 @@ function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
   const neighborhood = clean(it?.address?.neighborhood?.text ?? it?.neighborhood ?? it?.neighborhood_text);
   const address = clean(it?.address?.street?.text ?? it?.street ?? it?.row_2);
 
-  const photos = pickPhotos(it?.metaData?.images ?? it?.images ?? it?.image ?? it?.metaData?.coverImage);
+  // Full gallery, not just the cover thumbnail.
+  const photos = pickAllPhotos(
+    it?.metaData?.images,
+    it?.images,
+    it?.image,
+    it?.metaData?.coverImage,
+    it?.gallery,
+    it?.imagesUrls,
+  );
+
+  const shortDesc = clean(it?.info_text ?? it?.subtitle ?? it?.metaData?.description ?? null);
+  const longDesc = clean(it?.description ?? it?.metaData?.longDescription ?? it?.freeText ?? null);
 
   return {
     source_url: href,
@@ -367,7 +429,11 @@ function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
     deal_type: dealType,
     owner_name: clean(it?.customer?.name ?? it?.merchant_name ?? null),
     owner_phone: clean(it?.customer?.phone ?? null),
-    description: clean(it?.description ?? null),
+    description: longDesc ?? shortDesc,
+    short_description: shortDesc,
+    long_description: longDesc,
+    available_from: pickAvailableFrom(it),
+    attributes: pickAttributes(it),
   };
 }
 
@@ -472,7 +538,12 @@ function parseItemJson(body: string, srcUrl: string): Scraped | null {
   // Item endpoint carries richer contact info
   base.owner_phone = clean(ad?.customer?.phone ?? ad?.phone_number ?? ad?.merchant_phone ?? base.owner_phone);
   base.owner_name = clean(ad?.customer?.name ?? ad?.merchant_name ?? ad?.contact_name ?? base.owner_name);
-  base.description = clean(ad?.description ?? ad?.info_text ?? base.description);
+  base.long_description = clean(ad?.description ?? ad?.info_text ?? base.long_description);
+  base.short_description = clean(ad?.info_text ?? ad?.subtitle ?? base.short_description);
+  base.available_from = pickAvailableFrom(ad) ?? base.available_from ?? null;
+  base.attributes = { ...(base.attributes ?? {}), ...pickAttributes(ad) };
+  base.photos = pickAllPhotos(base.photos, ad?.images, ad?.metaData?.images, ad?.gallery);
+  base.description = base.long_description ?? base.short_description ?? base.description;
   return base;
 }
 
@@ -495,6 +566,10 @@ type Scraped = {
   owner_name: string | null;
   owner_phone: string | null;
   description: string | null;
+  short_description?: string | null;
+  long_description?: string | null;
+  available_from?: string | null;
+  attributes?: Record<string, unknown>;
 };
 
 /**
@@ -739,11 +814,15 @@ function parseItem(html: string, srcUrl: string): Scraped {
     address: clean(ad?.street ?? ad?.address?.street?.text ?? null),
     sqm: toInt(sqmText),
     floor: toInt(floorText),
-    photos: photos.slice(0, 25),
+    photos: Array.from(new Set(photos)).slice(0, 40),
     deal_type: dealType,
     owner_name: ownerName,
     owner_phone: ownerPhone,
     description: clean(ad?.description ?? null),
+    short_description: clean(ad?.info_text ?? ad?.subtitle ?? null),
+    long_description: clean(ad?.description ?? null),
+    available_from: pickAvailableFrom(ad ?? {}),
+    attributes: pickAttributes(ad ?? {}),
   };
 }
 
@@ -907,6 +986,10 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
     source_url: row.source_url,
     external_id: row.external_id,
     media_photos: row.photos,
+    short_description: row.short_description ?? null,
+    long_description: row.long_description ?? row.description ?? null,
+    available_from: row.available_from ?? null,
+    attributes: row.attributes ?? {},
     owner_id: ownerId,
     source_metadata: {
       scraper: "yad2-unlocker",

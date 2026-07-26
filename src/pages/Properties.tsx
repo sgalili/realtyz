@@ -34,7 +34,7 @@ import {
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
 import { SourceBadge, sourceLabel } from '@/components/properties/SourceBadge';
-import { searchAllSources, type UnifiedResult, type SearchFilters } from '@/lib/propertySearch';
+import { searchAllSources, searchLocalListings, type UnifiedResult, type SearchFilters } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { formatListingTitle } from '@/lib/formatListingTitle';
@@ -90,7 +90,7 @@ export default function Properties() {
 
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('table');
   const [filtersOpen, setFiltersOpen] = useState(false);
-  const [sortBy, setSortBy] = useState<'relevance' | 'price_asc' | 'price_desc' | 'rooms_desc' | 'size_desc' | 'newest'>('relevance');
+  const [sortBy, setSortBy] = useState<'relevance' | 'price_asc' | 'price_desc' | 'rooms_desc' | 'size_desc' | 'newest'>('newest');
 
   const [results, setResults] = useState<UnifiedResult[]>(cached?.results ?? []);
   const [sourceStatus, setSourceStatus] = useState<Record<string, { status: string; count: number; error?: string }>>({});
@@ -121,6 +121,30 @@ export default function Properties() {
     window.addEventListener('properties:add', handler);
     return () => window.removeEventListener('properties:add', handler);
   }, []);
+
+  // The properties page is NEVER blank. With no active search we preload the
+  // agent's primary city (first configured service area, else הרצליה) straight
+  // from the local cache, newest listings first.
+  const defaultCity = coveredCities?.[0] || 'הרצליה';
+  useEffect(() => {
+    if (hasSearched || results.length) return;
+    let cancelled = false;
+    (async () => {
+      setSearching(true);
+      try {
+        const rows = await searchLocalListings({ city: defaultCity, listing_type: 'all' });
+        if (cancelled) return;
+        setResults(rows);
+        setSourceStatus({ local: { status: rows.length ? 'ok' : 'empty', count: rows.length } });
+      } catch (err) {
+        console.error('[Properties] default city preload failed', err);
+      } finally {
+        if (!cancelled) setSearching(false);
+      }
+    })();
+    return () => { cancelled = true; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [defaultCity]);
 
   const runSearch = useCallback(async () => {
     setSearching(true);
@@ -270,6 +294,10 @@ export default function Properties() {
   const sortedResults = useMemo(() => {
     const arr = [...results];
     const numOr = (v: number | null | undefined, fallback: number) => (typeof v === 'number' && !Number.isNaN(v) ? v : fallback);
+    // Most-recent-first is the baseline everywhere: even "relevance" keeps
+    // freshly posted properties on top so the list never looks stale.
+    const byCreatedDesc = (a: UnifiedResult, b: UnifiedResult) =>
+      String(b.created_at ?? '').localeCompare(String(a.created_at ?? ''));
     switch (sortBy) {
       case 'price_asc':
         return arr.sort((a, b) => numOr(a.price, Number.POSITIVE_INFINITY) - numOr(b.price, Number.POSITIVE_INFINITY));
@@ -280,9 +308,8 @@ export default function Properties() {
       case 'size_desc':
         return arr.sort((a, b) => numOr(b.size_sqm, -1) - numOr(a.size_sqm, -1));
       case 'newest':
-        return arr.sort((a, b) => String(b.updated_at ?? b.created_at ?? '').localeCompare(String(a.updated_at ?? a.created_at ?? '')));
       default:
-        return arr;
+        return arr.sort(byCreatedDesc);
     }
   }, [results, sortBy]);
 

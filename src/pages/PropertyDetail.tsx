@@ -21,6 +21,7 @@ import {
 } from '@/lib/homelyMockProperties';
 import { ShareWithLeadDialog } from '@/components/properties/ShareWithLeadDialog';
 import { ProjectAlternativesCard } from '@/components/properties/ProjectAlternativesCard';
+import { AreaMarketFactsCard } from '@/components/properties/AreaMarketFactsCard';
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import { normalizeImageUrls } from '@/lib/imageHealth';
 import { stripAddressNumbers } from '@/lib/formatAddress';
@@ -983,6 +984,15 @@ export default function PropertyDetail() {
               </div>
             </Card>
           )}
+
+          {!editMode && (
+            <AreaMarketFactsCard
+              city={property.city}
+              neighborhood={neighborhood || null}
+              dealType={Number(property.price) < 50_000 ? 'rent' : 'sale'}
+            />
+          )}
+
 
           {projectName && !editMode && (
             <ProjectAlternativesCard

@@ -82,8 +82,8 @@ export async function searchLocalListings(f: SearchFilters): Promise<UnifiedResu
 async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
   let q = supabase
     .from('listings')
-    .select('id, property_title, description, asking_price, city, address, neighborhood, rooms, sqm, floor, features, source_metadata, source, source_url, media_photos, created_at, updated_at')
-    .order('updated_at', { ascending: false })
+    .select('id, property_title, description, short_description, long_description, available_from, attributes, asking_price, deal_type, city, address, neighborhood, rooms, sqm, floor, features, source_metadata, source, source_url, media_photos, created_at, updated_at')
+    .order('created_at', { ascending: false })
     .limit(200);
 
   // Tokenize free-text so "דירה בהרצליה 4 חדרים" matches on any word,
@@ -121,7 +121,7 @@ async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
       sources: [source],
       localId: row.id,
       title: row.property_title || 'נכס',
-      description: row.description ?? null,
+      description: row.long_description ?? row.description ?? row.short_description ?? null,
       price,
       city: row.city ?? null,
       address: row.address ?? row.neighborhood ?? null,
@@ -131,7 +131,7 @@ async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
       floor: row.floor != null ? Number(row.floor) : null,
       photos: normalizeImageUrls(Array.isArray(row.media_photos) ? row.media_photos.filter((p: any) => typeof p === 'string') : []),
       url: row.source_url ?? meta.source_url ?? null,
-      listing_type: inferListingType(price, meta.transaction_type ?? meta.listing_type ?? meta.deal_type),
+      listing_type: inferListingType(price, row.deal_type ?? meta.transaction_type ?? meta.listing_type ?? meta.deal_type),
       property_type: (meta as any).property_type ?? null,
       updated_at: row.updated_at ?? null,
       created_at: row.created_at ?? null,
