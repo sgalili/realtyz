@@ -814,11 +814,15 @@ function parseItem(html: string, srcUrl: string): Scraped {
     address: clean(ad?.street ?? ad?.address?.street?.text ?? null),
     sqm: toInt(sqmText),
     floor: toInt(floorText),
-    photos: photos.slice(0, 25),
+    photos: Array.from(new Set(photos)).slice(0, 40),
     deal_type: dealType,
     owner_name: ownerName,
     owner_phone: ownerPhone,
     description: clean(ad?.description ?? null),
+    short_description: clean(ad?.info_text ?? ad?.subtitle ?? null),
+    long_description: clean(ad?.description ?? null),
+    available_from: pickAvailableFrom(ad ?? {}),
+    attributes: pickAttributes(ad ?? {}),
   };
 }
 
