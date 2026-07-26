@@ -9,6 +9,8 @@ import { formatListingTitle } from '@/lib/formatListingTitle';
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import type { UnifiedResult } from '@/lib/propertySearch';
 import { fetchLivePreview, mergeLive } from '@/lib/propertyLivePreview';
+import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
+
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
