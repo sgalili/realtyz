@@ -226,7 +226,7 @@ Deno.serve(async (req) => {
       .eq("channel", "facebook")
       .eq("is_archived", false)
       .order("created_at", { ascending: false })
-      .limit(400);
+      .limit(1000);
     if (asText(body?.user_id)) query = query.eq("user_id", asText(body.user_id));
     const { data: rows, error } = await query;
     if (error) return json({ error: error.message }, 500);
@@ -235,8 +235,10 @@ Deno.serve(async (req) => {
     const targets = scanned
       .filter((r: any) => {
         if (force) return true;
-        if (asText((r.provider_response as any)?.media_scan_empty_at)) return false;
         const media: string[] = Array.isArray(r.media_urls) ? r.media_urls : [];
+        // The "nothing found" marker only suppresses rows that truly have no
+        // media at all; rows holding non-durable links stay in the queue.
+        if (media.length === 0 && asText((r.provider_response as any)?.media_scan_empty_at)) return false;
         return media.length === 0 || !media.every((u) => typeof u === "string" && isCached(u));
       })
       .slice(0, limit);
