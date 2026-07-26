@@ -1187,7 +1187,8 @@ Deno.serve(async (req) => {
       }
 
       // --- Fallback B: HTML scrape of the public www URL via the REST unlocker -
-      if (!out.length) {
+      if (!out.length && !browserFirst) {
+
         mode = "html";
         console.log(`[yad2-unlocker] falling back to HTML: ${pageUrl}`);
         try {
