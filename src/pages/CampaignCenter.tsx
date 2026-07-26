@@ -3600,6 +3600,10 @@ const PublishedFeed = () => {
         const alignClass = isHe ? 'text-right' : 'text-left';
         const preview = bodyText.trim().slice(0, 100) + (bodyText.trim().length > 100 ? '…' : '');
         const fmt = (v: number | null | undefined) => (typeof v === 'number' ? v : 0);
+        // Final render-time uniqueness guard: even if any upstream path leaks a
+        // repeat, each image is painted exactly once.
+        const uniqueMedia = uniqueMediaUrls(r.media_urls);
+
         const liveCount = liveCommentCounts[r.id];
         // Once the comment tree has been loaded (even once), it is the
         // authoritative count — top-level + follow-up replies. Never mix in
