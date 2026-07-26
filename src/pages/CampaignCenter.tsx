@@ -2696,6 +2696,10 @@ const PublishedFeed = () => {
   const updateLiveCount = (campaignId: string, count: number) => {
     setLiveCommentCounts((prev) => {
       if (prev[campaignId] === count) return prev;
+      // Guard: an empty tree must never wipe a badge that already shows real
+      // comments — the tree can be empty simply because the provider import
+      // has not landed yet.
+      if (count === 0 && (prev[campaignId] ?? 0) > 0) return prev;
       const next = { ...prev, [campaignId]: count };
       try { sessionStorage.setItem('realtyz.live_comment_counts', JSON.stringify(next)); } catch { /* quota */ }
       return next;
@@ -2749,10 +2753,19 @@ const PublishedFeed = () => {
     setRefreshingIds((prev) => { const n = { ...prev }; delete n[campaignId]; return n; });
     toast.dismiss(`refresh-${campaignId}`);
     if (result.ok) {
-      setCooldownUntil((prev) => ({ ...prev, [campaignId]: Date.now() + REFRESH_COOLDOWN_MS }));
+      // Only arm the full provider lock when the refresh actually returned
+      // comments. A zero-result run gets a short 60s cooldown so the countdown
+      // never traps the user for 15 minutes after a no-op refresh.
+      const armed = result.count > 0 ? REFRESH_COOLDOWN_MS : 60_000;
+      setCooldownUntil((prev) => ({ ...prev, [campaignId]: Date.now() + armed }));
       setNowTick(Date.now());
-      toast.success(`רוענן: ${result.count} תגובות חיות`, { id: `refresh-${campaignId}` });
+      if (result.count > 0) {
+        toast.success(`רוענן: ${result.count} תגובות חיות`, { id: `refresh-${campaignId}` });
+      } else {
+        toast.message('אין תגובות חדשות כרגע', { id: `refresh-${campaignId}` });
+      }
     } else {
+      // Failed refresh must NOT start a countdown and must NOT touch the badge.
       toast.error(result.error || 'רענון נכשל', { id: `refresh-${campaignId}` });
     }
   };
@@ -3534,7 +3547,7 @@ const PublishedFeed = () => {
         // the inflated Ayrshare aggregate (dbComments); it double-counts.
         const dbComments = Math.max(0, typeof r.comment_count === 'number' ? r.comment_count : 0);
         const commentDisplay = typeof liveCount === 'number'
-          ? liveCount
+          ? Math.max(liveCount, dbComments)
           : fmt(r.comment_count);
 
         return (
