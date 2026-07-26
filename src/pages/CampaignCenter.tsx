@@ -121,6 +121,22 @@ const mergePostMediaUrls = (...values: unknown[]): string[] => {
   return out;
 };
 
+// Images the user explicitly deleted from a post. Persisted in
+// campaign_logs.provider_response.removed_media_keys so no sync/merge path can
+// ever resurrect them.
+const readRemovedMediaKeys = (providerResponse: unknown): string[] => {
+  const raw = (providerResponse as any)?.removed_media_keys;
+  return Array.isArray(raw)
+    ? raw.filter((k) => typeof k === 'string' && k).map((k) => k.toLowerCase())
+    : [];
+};
+
+const dropRemovedMedia = (urls: string[], removedKeys: string[]): string[] => {
+  if (removedKeys.length === 0) return urls;
+  const blocked = new Set(removedKeys);
+  return urls.filter((u) => !blocked.has(mediaDedupeKey(u)));
+};
+
 const keepLongestMediaUrls = (current: unknown, incoming: unknown): string[] => {
   const currentUrls = normalizePostMediaUrls(current);
   const incomingUrls = normalizePostMediaUrls(incoming);
@@ -128,6 +144,7 @@ const keepLongestMediaUrls = (current: unknown, incoming: unknown): string[] => 
   if (currentUrls.length === 0) return incomingUrls;
   return incomingUrls.length >= currentUrls.length ? incomingUrls : currentUrls;
 };
+
 
 // Top row (RTL): Facebook → Instagram → X
 // Middle row (RTL): IVR → Email → AI Voice
