@@ -1105,10 +1105,13 @@ function ResultTable({
     <th
       className={`px-2 py-2 font-semibold whitespace-nowrap cursor-pointer select-none hover:bg-muted ${extraClass ?? ''}`}
       onClick={() => toggleSort(col)}
+      title={col === 'source' ? 'לחיצה מסדרת לפי מקור: יד-2 → הומלי → המאגר שלי' : undefined}
     >
       <span className="inline-flex items-center gap-1">
         {label}
-        {sortCol === col ? (
+        {col === 'source' && sortCol === 'source' ? (
+          <span className="text-[10px] opacity-70">{SOURCE_CYCLE_LABEL[SOURCE_CYCLE[sourcePin]]}</span>
+        ) : sortCol === col ? (
           <span className="text-xs opacity-70">{sortDir === 'asc' ? '▲' : '▼'}</span>
         ) : (
           <ArrowUpDown className="h-3 w-3 opacity-40" />
