@@ -2831,7 +2831,7 @@ const PublishedFeed = () => {
     // instantly whatever was previously stored, never waiting on the provider.
     const { data } = await supabase
       .from('campaign_logs')
-      .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at, status, sent_at')
+      .select('id, user_id, campaign_name, channel, message_body, created_at, provider_message_id, provider_response, media_urls, is_archived, like_count, comment_count, share_count, view_count, metrics_updated_at, status, sent_at')
       .in('user_id', scopedUserIds)
       .eq('is_archived', false)
       .order('created_at', { ascending: false })
@@ -2839,11 +2839,16 @@ const PublishedFeed = () => {
 
     const normalizeStoredRow = (r: any): CampaignRow => {
       const pr = r?.provider_response ?? {};
-      const media = Array.isArray(pr?.media_urls)
-        ? pr.media_urls
-        : Array.isArray(pr?.media)
-          ? pr.media
-          : [];
+      // Priority: permanently mirrored copies → the durable column → whatever
+      // the provider payload carried (signed FB CDN links that expire).
+      const media = [
+        pr?.cached_media_urls,
+        r?.media_urls,
+        pr?.media_urls,
+        pr?.media,
+        pr?.raw?.mediaUrls,
+        pr?.raw?.fullPicture ? [pr.raw.fullPicture] : null,
+      ].find((c: any) => Array.isArray(c) && c.length > 0) ?? [];
       const externalUrl =
         (typeof pr?.external_url === 'string' && pr.external_url) ||
         (Array.isArray(pr?.postIds)
