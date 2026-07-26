@@ -3,7 +3,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { cn } from '@/lib/utils';
 
 const inflight = new Map<string, Promise<string[]>>();
-const BRAND_THUMBNAIL = '/__l5e/assets-v1/0c4787e2-7c2d-419f-b619-90d17f5a6b93/realtyz-logo-rect.png';
 
 const cleanUrls = (urls: Array<string | null | undefined>): string[] => {
   const seen = new Set<string>();
@@ -49,14 +48,13 @@ export function PostImage({
   fallbackClassName?: string;
   alt?: string;
 }) {
-  const [current, setCurrent] = useState<string | null>(() => cleanUrls([src, ...candidates])[0] ?? BRAND_THUMBNAIL);
+  const [current, setCurrent] = useState<string | null>(() => cleanUrls([src, ...candidates])[0] ?? null);
   const [attempt, setAttempt] = useState(0);
 
   const chain = cleanUrls([src, ...candidates]);
 
   useEffect(() => {
-    const next = cleanUrls([src, ...candidates])[0] ?? BRAND_THUMBNAIL;
-    setCurrent(next);
+    setCurrent(cleanUrls([src, ...candidates])[0] ?? null);
     setAttempt(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [src, candidates.join('|')]);
@@ -69,26 +67,16 @@ export function PostImage({
       return;
     }
 
-    const sourceUrls = chain;
-    if (sourceUrls.length === 0) {
-      setCurrent(BRAND_THUMBNAIL);
-      return;
-    }
-    const cached = await resolveCached(campaignLogId, sourceUrls);
+    // No brand placeholder: try the durable mirror, otherwise keep the raw URL.
+    if (chain.length === 0) return;
+    const cached = await resolveCached(campaignLogId, chain);
     const next = cached[index] ?? cached[0];
     if (next && next !== current) setCurrent(next);
-    else setCurrent(BRAND_THUMBNAIL);
   };
 
+  // Nothing to show: render an empty box, never a brand placeholder.
   if (!current) {
-    return (
-      <img
-        src={BRAND_THUMBNAIL}
-        alt={alt}
-        loading="lazy"
-        className={cn(className, fallbackClassName)}
-      />
-    );
+    return <span className={cn(className, fallbackClassName)} aria-hidden />;
   }
 
   return (
