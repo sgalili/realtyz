@@ -84,13 +84,12 @@ export function formatInternalListingTitle(input: {
   const rawMeta = r.source_metadata && typeof r.source_metadata === 'object' ? r.source_metadata : {};
   const rawAttrs = r.attributes && typeof r.attributes === 'object' ? r.attributes : {};
   const rawFeatures = r.features && typeof r.features === 'object' && !Array.isArray(r.features) ? r.features : {};
-  const type = normalizePropertyTypeLabel(
-    input.property_type ??
-      rawMeta.property_type ?? rawMeta.propertyType ?? rawMeta.type ??
-      rawAttrs.property_type ?? rawAttrs.propertyType ?? rawAttrs.assetType ?? rawAttrs.subcategory ??
-      rawFeatures.property_type ??
-      null,
-  );
+  const rawType = input.property_type ??
+    rawMeta.property_type ?? rawMeta.propertyType ?? rawMeta.type ??
+    rawAttrs.property_type ?? rawAttrs.propertyType ?? rawAttrs.assetType ?? rawAttrs.subcategory ??
+    rawFeatures.property_type ??
+    null;
+  const type = normalizePropertyTypeLabel(rawType == null ? null : String(rawType));
   const city = String(input.city ?? '').trim();
   const hood = String(input.neighborhood ?? '').trim();
 

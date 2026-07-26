@@ -41,10 +41,11 @@ function normalizeWA(raw?: string | null) {
 function publicAddress(raw?: string | null) {
   if (!raw) return '';
   return String(raw)
-    .replace(/\b(דירה|דירת|כניסה|קומה)\s*\d+[א-ת]?\b/g, '')
+    .replace(/\b(דירה|דירת|ד['׳"]|כניסה|קומה|בית|מספר)\s*\d+[א-ת]?\b/g, '')
     .replace(/[,\/]\s*\d+[א-ת]?\s*$/g, '')
     .replace(/\s\d+[א-ת]?\b/g, ' ')
     .replace(/\s{2,}/g, ' ')
+    .replace(/\bד['׳"]\b/g, '')
     .replace(/[,\s]+$/g, '')
     .trim();
 }
