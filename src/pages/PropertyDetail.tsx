@@ -1022,6 +1022,18 @@ export default function PropertyDetail() {
             </Card>
           )}
 
+          {!editMode && data?.rich && (
+            <PropertyRichDetailsCard
+              aboutText={data.rich.about}
+              furniture={data.rich.furniture}
+              additional={data.rich.additional}
+              priceHistory={data.rich.priceHistory}
+              latitude={data.rich.latitude}
+              longitude={data.rich.longitude}
+              addressLabel={[property.address, property.city].filter(Boolean).join(', ')}
+            />
+          )}
+
           {!editMode && (
             <AreaMarketFactsCard
               city={property.city}
@@ -1030,6 +1042,7 @@ export default function PropertyDetail() {
               listingId={property.id}
             />
           )}
+
 
 
           {projectName && !editMode && (
