@@ -39,7 +39,7 @@ Deno.serve(async (req) => {
     if (share.listing_id) {
       const { data: l } = await admin
         .from("listings")
-        .select("id, owner_id, property_title, description, asking_price, city, address, neighborhood, rooms, sqm, floor, media_photos, deal_type, features")
+        .select("id, owner_id, property_title, description, short_description, long_description, asking_price, city, address, neighborhood, rooms, sqm, floor, parking, elevator, media_photos, deal_type, features, furniture_details, additional_details, price_history, latitude, longitude, project_name")
         .eq("id", share.listing_id)
         .maybeSingle();
       if (l) property = l;
