@@ -894,15 +894,31 @@ const InlineComposer = ({
     return () => { cancelled = true; };
   }, [historyOpen, historyRefresh, channel.id]);
 
-  // On channel change: rehydrate from saved draft for that channel (keeps unfinished work alive per platform)
+  // On channel change: rehydrate from saved draft for that channel (keeps unfinished work alive per platform).
+  // Exception — when the composer was deep-linked with a property (?listing= /
+  // ?properties= or a presetListingId), that property wins over the stale draft
+  // so the dropdown shows it and auto-generation can fire immediately.
+  const deepLinkListingId = useMemo(() => {
+    if (presetListingId) return presetListingId;
+    if (typeof window === 'undefined') return null;
+    const params = new URLSearchParams(window.location.search);
+    return (
+      params.get('listing') ||
+      (params.get('properties') || '').split(',').map((s) => s.trim()).filter(Boolean)[0] ||
+      null
+    );
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [presetListingId]);
+
   useEffect(() => {
     const saved = readDraft() || {};
-    setBody(cleanBody(saved.body || ''));
+    const deepLinked = !!deepLinkListingId;
+    setBody(deepLinked ? '' : cleanBody(saved.body || ''));
     setCustomInstructions(saved.customInstructions || '');
-    setSelectedListingId(saved.selectedListingId ?? null);
-    setAttachments(saved.attachments || []);
-    setLogId(saved.logId ?? null);
-    setFirstComment(saved.firstComment || '');
+    setSelectedListingId(deepLinkListingId ?? saved.selectedListingId ?? null);
+    setAttachments(deepLinked ? [] : (saved.attachments || []));
+    setLogId(deepLinked ? null : (saved.logId ?? null));
+    setFirstComment(deepLinked ? '' : (saved.firstComment || ''));
     setFirstCommentEnabled(saved.firstCommentEnabled ?? true);
     setAttachWaLink(!!saved.attachWaLink);
     setAttachMsngrLink(!!saved.attachMsngrLink);
@@ -910,7 +926,8 @@ const InlineComposer = ({
     setListingQuery('');
     setSaveState('idle');
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [channel.id]);
+  }, [channel.id, deepLinkListingId]);
+
 
 
   // Auto-save: persist edits + attachments + selected property to ai_content_logs (debounced).
