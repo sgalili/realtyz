@@ -75,6 +75,10 @@ function tokenize(q: string | null | undefined): string[] {
     .slice(0, 6);
 }
 
+export async function searchLocalListings(f: SearchFilters): Promise<UnifiedResult[]> {
+  return searchLocal(f);
+}
+
 async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
   let q = supabase
     .from('listings')
