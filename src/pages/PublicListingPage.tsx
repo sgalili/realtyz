@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { toast } from 'sonner';
+import { publicUrl } from '@/lib/publicUrl';
 
 type CandidatePage = {
   slug: string;
@@ -55,7 +56,7 @@ export default function PublicListingPage() {
   const targetVotes = Math.max(1, activePage.mandate_goal * 30000);
   const progress = Math.min(100, Math.round((activePage.supporter_count / targetVotes) * 100));
 
-  const shareUrl = useMemo(() => `${window.location.origin}/p/${activePage.slug}`, [activePage.slug]);
+  const shareUrl = useMemo(() => publicUrl(`/p/${activePage.slug}`), [activePage.slug]);
 
   useEffect(() => {
     document.title = `${activePage.candidate_name} | Realtyz AI`;

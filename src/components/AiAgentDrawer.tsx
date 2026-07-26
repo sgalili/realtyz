@@ -11,6 +11,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import {
+import { publicUrl } from '@/lib/publicUrl';
   BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip,
   PieChart, Pie, Cell, CartesianGrid,
 } from 'recharts';
@@ -370,7 +371,7 @@ export default function AiAgentDrawer() {
     if (error) throw error;
     const token = (data as any)?.token;
     if (!token) throw new Error('לא התקבל טוקן שיתוף');
-    return `${window.location.origin}/share/property/${token}`;
+    return publicUrl(`/share/property/${token}`);
   }, []);
 
   const buildOfferMessage = useCallback((r: WebtivResult, shareUrl: string) => {

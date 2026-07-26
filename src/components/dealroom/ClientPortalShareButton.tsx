@@ -12,6 +12,7 @@ import { Input } from "@/components/ui/input";
 import { Share2, Copy, Check, RefreshCw, MessageCircle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { publicUrl } from '@/lib/publicUrl';
 
 interface Props {
   leadId: string;
@@ -75,7 +76,7 @@ export default function ClientPortalShareButton({
         row = { token: data.token };
       }
 
-      const portalUrl = `${window.location.origin}/portal/${row.token}`;
+      const portalUrl = publicUrl(`/portal/${row.token}`);
       setUrl(portalUrl);
     } catch (e: any) {
       toast.error(e?.message ?? "שגיאה ביצירת קישור");

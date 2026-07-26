@@ -23,6 +23,7 @@ import { Label } from '@/components/ui/label';
 import { Badge } from '@/components/ui/badge';
 import { FileSignature, Send, Clock, CheckCircle2, FileText } from 'lucide-react';
 import { toast } from 'sonner';
+import { publicUrl } from '@/lib/publicUrl';
 
 type TemplateKey = 'offer_letter' | 'lease_agreement';
 
@@ -163,7 +164,7 @@ export function ClosingRoomDialog({
   }
 
   function copyLink(token: string) {
-    const url = `${window.location.origin}/sign/${token}`;
+    const url = publicUrl(`/sign/${token}`);
     navigator.clipboard.writeText(url);
     toast.success('קישור החתימה הועתק');
   }
