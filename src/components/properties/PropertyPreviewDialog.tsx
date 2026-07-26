@@ -162,7 +162,7 @@ export function PropertyPreviewDialog({
               </div>
             )}
 
-            {r.url && (
+            {r.url && linkVerified && (
               <a
                 href={r.url}
                 target="_blank"
@@ -182,13 +182,14 @@ export function PropertyPreviewDialog({
           </Button>
           {r && <PropertyShareMenu results={[r]} size="default" />}
 
-          {r && !r.localId && onImport && (
-            <Button onClick={() => onImport(r)} disabled={importing} className="gap-1.5">
+          {r && onCampaign && (
+            <Button onClick={() => onCampaign(r)} disabled={importing} className="gap-1.5">
               {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-              ייבא ופתח
+              צור פוסט
             </Button>
           )}
         </DialogFooter>
+
       </DialogContent>
     </Dialog>
   );
