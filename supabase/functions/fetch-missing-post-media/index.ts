@@ -255,7 +255,7 @@ Deno.serve(async (req) => {
       .maybeSingle();
     const profileKey = asText((ws as any)?.ayrshare_profile_key);
 
-    if (apiKey && profileKey) {
+    if (apiKey && profileKey && !ayrshareBlocked) {
       const res = await backoff.run(() =>
         fetch(`${AYR_BASE}/history/facebook?lastDays=0&limit=200`, {
           headers: { Authorization: `Bearer ${apiKey}`, "Profile-Key": profileKey },
@@ -326,7 +326,7 @@ Deno.serve(async (req) => {
 
       // Per-post Ayrshare lookup only when nothing else surfaced — throttled
       // through the same guard, and skipped entirely once it halts.
-      if (candidates.length === 0 && apiKey && profileKey && pid && !backoff.halted) {
+      if (candidates.length === 0 && apiKey && profileKey && pid && !ayrshareBlocked && !backoff.halted) {
         const res = await backoff.run(() =>
           fetch(`${AYR_BASE}/post/${encodeURIComponent(pid)}?searchPlatformId=true`, {
             headers: { Authorization: `Bearer ${apiKey}`, "Profile-Key": profileKey },
@@ -395,6 +395,7 @@ Deno.serve(async (req) => {
       unresolved,
       timed_out: timedOut,
       rate_limited: backoff.halted,
+      ayrshare_skipped: ayrshareBlocked,
       graph_hits: graphMedia.size,
       history_hits: historyMedia.size,
     });
