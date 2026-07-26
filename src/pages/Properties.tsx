@@ -835,7 +835,7 @@ export default function Properties() {
         open={previewOpen}
         onOpenChange={setPreviewOpen}
         result={previewResult}
-        onImport={handleImport}
+        onCampaign={(r) => { setPreviewOpen(false); goToCampaign(r); }}
         importing={previewResult ? importingKey === previewResult.key : false}
       />
     </div>
