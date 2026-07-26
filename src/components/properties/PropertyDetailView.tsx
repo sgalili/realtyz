@@ -181,7 +181,7 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
         )}
 
         <Card className="p-4 sm:p-5">
-          <h2 className="text-base font-bold text-primary mb-4">מאפייני הנכס</h2>
+          <h2 className="text-xl font-bold text-primary mb-4">מאפייני הנכס</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <Spec icon={BedDouble} label="חדרים" value={property.rooms ? `${property.rooms}` : '—'} />
             <Spec icon={Ruler} label='שטח' value={property.size_sqm ? `${property.size_sqm} מ"ר` : '—'} />
@@ -210,7 +210,7 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
                 href={yad2Url}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:underline"
+                className="inline-flex items-center gap-1.5 text-base font-semibold text-primary hover:underline"
               >
                 <ExternalLink className="h-4 w-4" />
                 🔗 מעבר למודעה ביד2
