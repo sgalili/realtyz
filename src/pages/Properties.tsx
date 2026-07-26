@@ -33,7 +33,7 @@ import {
 } from '@/lib/homelyMockProperties';
 import ErrorBoundary from '@/components/ErrorBoundary';
 import { useServiceAreas } from '@/hooks/useServiceAreas';
-import { SourceBadge, sourceLabel } from '@/components/properties/SourceBadge';
+import { SourceBadge, sourceLabel, type PropertySource } from '@/components/properties/SourceBadge';
 import { searchAllSources, searchLocalListings, type UnifiedResult, type SearchFilters } from '@/lib/propertySearch';
 import { autoImportResult } from '@/lib/propertyAutoImport';
 import { stripAddressNumbers } from '@/lib/formatAddress';
@@ -1077,7 +1077,7 @@ function ResultTable({
     const arr = [...results];
     const getVal = (r: UnifiedResult): string | number | null => {
       switch (sortCol) {
-        case 'source': return r.source ?? '';
+
         case 'name': return formatListingTitle({ address: r.address, city: r.city, property_type: r.property_type, title: r.title }) || '';
         case 'listing_type': return r.listing_type ?? '';
         case 'price': return typeof r.price === 'number' ? r.price : null;
