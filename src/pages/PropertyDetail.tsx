@@ -775,8 +775,8 @@ export default function PropertyDetail() {
                 ) : (meta as any)?.media_status === 'images_unavailable' ? (
                   <div className="flex h-full w-full flex-col items-center justify-center gap-2 px-4 text-center text-muted-foreground">
                     <ImageIcon className="h-10 w-10" />
-                    <div className="text-sm font-medium text-foreground">תמונות לא זמינות עבור נכס זה</div>
-                    <div className="text-xs">צרו קשר עם הסוכן לפרטים נוספים ולתמונות מלאות</div>
+                    <div className="text-base font-medium text-foreground">תמונות לא זמינות עבור נכס זה</div>
+                    <div className="text-sm">צרו קשר עם הסוכן לפרטים נוספים ולתמונות מלאות</div>
                   </div>
                 ) : (
                   <div className="flex h-full w-full items-center justify-center text-muted-foreground">
