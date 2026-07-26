@@ -3802,15 +3802,15 @@ const PublishedFeed = () => {
                     </ul>
                   </div>
                 )}
-                {r.media_urls && r.media_urls.length > 0 && (
+                {uniqueMedia.length > 0 && (
                   <div className={cn(
                     'mx-4 mb-3 grid gap-2',
-                    r.media_urls.length === 1 ? 'grid-cols-1' : 'grid-cols-2 sm:grid-cols-3',
+                    uniqueMedia.length === 1 ? 'grid-cols-1' : 'grid-cols-2 sm:grid-cols-3',
                   )}>
-                    {r.media_urls.map((src, i) => (
-                      <div key={`${src}-${i}`} className="relative group aspect-square min-w-0">
+                    {uniqueMedia.map((src, i) => (
+                      <div key={src} className="relative group aspect-square min-w-0">
                         <PostImage src={src} campaignLogId={r.id} index={i} alt=""
-                             candidates={r.media_urls ?? []}
+                             candidates={uniqueMedia}
                              className="h-full w-full rounded-lg object-cover border border-border"
                              fallbackClassName="h-full w-full" />
                         <button
@@ -3819,7 +3819,7 @@ const PublishedFeed = () => {
                           aria-label="הסר תמונה"
                           onClick={(e) => {
                             e.stopPropagation();
-                            if (window.confirm('להסיר את התמונה מהפוסט?')) removeMediaAt(r.id, i);
+                            if (window.confirm('להסיר את התמונה מהפוסט?')) removeMediaUrl(r.id, src);
                           }}
                           className="absolute top-1 left-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/55 text-white opacity-90 transition hover:bg-destructive"
                         >
