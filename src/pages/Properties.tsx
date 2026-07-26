@@ -577,7 +577,13 @@ export default function Properties() {
             <span className="text-muted-foreground">
               {selectedKeys.size} נבחרו
             </span>
+            <PropertyShareMenu
+              results={results.filter((r) => selectedKeys.has(r.key))}
+              label="שתף נבחרים"
+              className="h-8"
+            />
             <Button
+
               size="sm"
               disabled={selectedKeys.size === 0}
               onClick={runBatchImport}
