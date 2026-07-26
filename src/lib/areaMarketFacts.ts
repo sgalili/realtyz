@@ -1,5 +1,18 @@
 import { supabase } from '@/integrations/supabase/client';
 
+export type Comparable = {
+  id: string;
+  address: string | null;
+  city: string | null;
+  neighborhood: string | null;
+  price: number;
+  sqm: number | null;
+  rooms: number | null;
+  features: string[];
+  photo: string | null;
+  soldAt: string;
+};
+
 export type AreaMarketFacts = {
   city: string;
   neighborhood: string | null;
@@ -15,9 +28,12 @@ export type AreaMarketFacts = {
   trendPct: number | null;
   /** Ready-to-use Hebrew sentences for landing pages and generated posts. */
   highlights: string[];
+  /** Real historical comparables (address, sqm, features, price, photo). */
+  comparables: Comparable[];
 };
 
 const FIVE_YEARS_MS = 5 * 365 * 24 * 60 * 60 * 1000;
+
 
 function avg(nums: number[]): number | null {
   if (!nums.length) return null;
