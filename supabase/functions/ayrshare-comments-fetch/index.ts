@@ -322,26 +322,31 @@ Deno.serve(async (req) => {
       try {
         const body: Record<string, unknown> = { id, platforms: [platform] };
         if (useSearchPlatformId) body.searchPlatformId = true;
-        const res = await fetch(`${AYR_BASE}/analytics/post`, {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${AYR_KEY}`,
-            "Profile-Key": profileKey,
-            "Content-Type": "application/json",
-            "Cache-Control": "no-cache",
-          },
-          body: JSON.stringify(body),
-          signal: AbortSignal.timeout(10_000),
+        const attempt = await backoff.run(async () => {
+          const res = await fetch(`${AYR_BASE}/analytics/post`, {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${AYR_KEY}`,
+              "Profile-Key": profileKey,
+              "Content-Type": "application/json",
+              "Cache-Control": "no-cache",
+            },
+            body: JSON.stringify(body),
+            signal: AbortSignal.timeout(10_000),
+          });
+          const text = await res.text();
+          let payload: any = {};
+          try { payload = text ? JSON.parse(text) : {}; } catch { payload = { rawText: text }; }
+          return { ok: res.ok, status: res.status, payload };
         });
-        const text = await res.text();
-        let payload: any = {};
-        try { payload = text ? JSON.parse(text) : {}; } catch { payload = { rawText: text }; }
-        if (!res.ok) await tripOnAyrshareFailure(admin, res.status, payload, `analytics_post_from_comments:${platform}`);
-        return { ok: res.ok, status: res.status, payload };
+        if (!attempt) return { ok: false, status: 429, payload: { message: "rate_limited_halted", halted: true } };
+        if (!attempt.ok) await tripOnAyrshareFailure(admin, attempt.status, attempt.payload, `analytics_post_from_comments:${platform}`);
+        return attempt;
       } catch (e) {
         return { ok: false, status: 0, payload: { message: e instanceof Error ? e.message : String(e) } };
       }
     };
+
 
     // Extracts numeric like/share/comment counts from the /analytics/post
     // shape, which differs from /comments: numbers live under
