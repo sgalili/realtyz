@@ -986,6 +986,10 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
     source_url: row.source_url,
     external_id: row.external_id,
     media_photos: row.photos,
+    short_description: row.short_description ?? null,
+    long_description: row.long_description ?? row.description ?? null,
+    available_from: row.available_from ?? null,
+    attributes: row.attributes ?? {},
     owner_id: ownerId,
     source_metadata: {
       scraper: "yad2-unlocker",
