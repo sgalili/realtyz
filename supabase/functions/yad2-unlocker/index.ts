@@ -928,6 +928,7 @@ function parseItem(html: string, srcUrl: string): Scraped {
 
   const ownerName = clean(ad?.merchant_name ?? ad?.contact_name ?? ad?.customer?.name ?? null);
   const ownerPhone = clean(ad?.phone_number ?? ad?.merchant_phone ?? null);
+  const coords = pickCoords(ad ?? {});
 
   return {
     source_url: srcUrl,
@@ -949,6 +950,11 @@ function parseItem(html: string, srcUrl: string): Scraped {
     long_description: clean(ad?.description ?? null),
     available_from: pickAvailableFrom(ad ?? {}),
     attributes: pickAttributes(ad ?? {}),
+    latitude: coords.lat,
+    longitude: coords.lng,
+    furniture_details: pickFurniture(ad ?? {}),
+    additional_details: pickAdditionalDetails(ad ?? {}),
+    price_history: pickPriceHistory(ad ?? {}),
   };
 }
 
