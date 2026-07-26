@@ -13,6 +13,9 @@ import { Loader2, MessageCircle, MapPin, Home, Ruler, Bed } from 'lucide-react';
 
 type SharedPayload = {
   workspace_name: string | null;
+  logo_url?: string | null;
+  owner_wa?: string | null;
+  owner_name?: string | null;
   broker_wa: string | null;
   property: any | null;
 };
@@ -80,7 +83,7 @@ export default function SharedProperty() {
     ? `₪${price.toLocaleString('he-IL')}${isRent ? '/חודש' : ''}`
     : 'לפרטים';
 
-  const wa = normalizeWA(data.broker_wa);
+  const wa = normalizeWA(data.owner_wa) ?? normalizeWA(data.broker_wa);
   const waMsg = encodeURIComponent(
     `שלום, ראיתי את הנכס "${p.property_title ?? p.title ?? ''}" ואשמח לקבל פרטים נוספים.`,
   );
@@ -89,10 +92,31 @@ export default function SharedProperty() {
   return (
     <div className="min-h-screen bg-background" dir="rtl">
       <header className="border-b bg-white/80 backdrop-blur sticky top-0 z-10">
-        <div className="max-w-3xl mx-auto px-4 py-3">
-          <h1 className="text-sm font-bold text-slate-800">
-            {data.workspace_name || 'Realtyz'}
-          </h1>
+        <div className="relative max-w-3xl mx-auto px-4 py-3 flex items-center justify-center">
+          <div className="flex flex-col items-center gap-1">
+            {data.logo_url ? (
+              <img
+                src={data.logo_url}
+                alt={data.workspace_name || 'לוגו'}
+                className="h-10 w-auto object-contain"
+                onError={(e) => ((e.currentTarget as HTMLImageElement).style.display = 'none')}
+              />
+            ) : null}
+            <h1 className="text-sm font-bold text-slate-800 text-center">
+              {data.workspace_name || 'Realtyz'}
+            </h1>
+          </div>
+          {waHref && (
+            <a
+              href={waHref}
+              target="_blank"
+              rel="noreferrer"
+              aria-label="שיחת WhatsApp"
+              className="absolute left-4 top-1/2 -translate-y-1/2 inline-flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-white shadow-sm hover:bg-emerald-700"
+            >
+              <MessageCircle className="h-4 w-4" />
+            </a>
+          )}
         </div>
       </header>
 
