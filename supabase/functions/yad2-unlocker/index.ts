@@ -12,8 +12,6 @@
 
 import { createClient } from "npm:@supabase/supabase-js@2.49.4";
 import * as cheerio from "npm:cheerio@1.0.0-rc.12";
-import https from "node:https";
-import { Buffer } from "node:buffer";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -776,6 +774,7 @@ Deno.serve(async (req) => {
     const userId = claims?.claims?.sub;
     if (!userId) return json({ error: "Unauthorized" }, 401);
 
+    bdTrace = [];
     const body = await req.json().catch(() => ({} as any));
     const limit = Math.min(80, Math.max(1, Number(body?.limit) || 30));
     const previewOnly = Boolean(body?.preview_only);
@@ -926,10 +925,11 @@ Deno.serve(async (req) => {
       transport: mode,
       json_source: jsonSource,
       diagnostics,
+      bd_trace: bdTrace,
       resolved_url: inputUrl,
     });
   } catch (e: any) {
     console.error("[yad2-unlocker] error", e);
-    return json({ error: "scrape_failed", detail: String(e?.message ?? e) }, 502);
+    return json({ error: "scrape_failed", detail: String(e?.message ?? e), bd_trace: bdTrace }, 502);
   }
 });
