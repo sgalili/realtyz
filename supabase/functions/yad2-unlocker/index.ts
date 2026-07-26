@@ -495,6 +495,10 @@ type Scraped = {
   owner_name: string | null;
   owner_phone: string | null;
   description: string | null;
+  short_description?: string | null;
+  long_description?: string | null;
+  available_from?: string | null;
+  attributes?: Record<string, unknown>;
 };
 
 /**
