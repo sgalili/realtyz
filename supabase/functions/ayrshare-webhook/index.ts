@@ -146,6 +146,71 @@ Deno.serve(async (req) => {
       }
     }
 
+    // --- Inbound comment branch ------------------------------------------
+    // Persist the comment carried BY THE WEBHOOK ITSELF into engagement_events.
+    // This is the event-driven path: it works even when the Ayrshare circuit is
+    // open (rate-limited / suspended profile), so the comment tree and the card
+    // badge stay correct without any polling.
+    let commentsInserted = 0;
+    if (!isDmEvent && /comment|reply/i.test(String(eventType))) {
+      const roots: any[] = [];
+      const collect = (node: any, parentId: string | null) => {
+        if (!node || typeof node !== 'object') return;
+        const id = String(node.commentId || node.comment_id || node.id || '').trim();
+        const text = String(node.comment ?? node.message ?? node.text ?? '').trim();
+        if (id && text) roots.push({ node, id, text, parentId });
+        for (const key of ['replies', 'children', 'comments']) {
+          const arr = Array.isArray(node[key]) ? node[key] : Array.isArray(node[key]?.data) ? node[key].data : [];
+          for (const child of arr) collect(child, id || parentId);
+        }
+      };
+      const seeds = Array.isArray(payload.comments) ? payload.comments
+        : Array.isArray(payload.data) ? payload.data
+        : [payload.comment && typeof payload.comment === 'object' ? payload.comment : payload];
+      for (const seed of seeds) collect(seed, null);
+
+      const postIdForComment = extractPostIds(payload)[0] ?? null;
+      for (const c of roots) {
+        try {
+          const { data: dupe } = await admin
+            .from('engagement_events')
+            .select('id')
+            .eq('user_id', userId)
+            .eq('external_id', c.id)
+            .limit(1)
+            .maybeSingle();
+          if (dupe?.id) continue;
+          const sender = String(
+            c.node.userName || c.node.username || c.node.from?.name || c.node.author?.name || c.node.name || ''
+          ).slice(0, 200) || null;
+          const { error: insErr } = await admin.from('engagement_events').insert({
+            user_id: userId,
+            platform: String(platform || 'facebook').toLowerCase().includes('instagram') ? 'instagram' : 'facebook',
+            sender_handle: sender,
+            inbound_text: c.text.slice(0, 4000),
+            external_id: c.id,
+            external_post_id: postIdForComment,
+            status: 'pending',
+            ai_action: 'queued',
+            metadata: {
+              source: 'ayrshare_webhook',
+              ayrshare_ref_id: refId,
+              event_type: eventType,
+              parent_comment_id: c.parentId,
+              parent_id: c.parentId,
+              created_time: c.node.created || c.node.created_time || c.node.createdAt || null,
+              author: { name: sender, profile_image: c.node.profileImage || c.node.picture || null },
+              raw: c.node,
+            },
+          } as any);
+          if (insErr) console.error('[ayrshare-webhook] comment insert failed', insErr.message);
+          else commentsInserted++;
+        } catch (e) {
+          console.error('[ayrshare-webhook] comment persist error', e);
+        }
+      }
+    }
+
     const postIds = extractPostIds(payload);
     const shouldSync = !isDmEvent && (String(platform || '').includes('facebook') || /comment|reply|like|share|reaction|post/i.test(String(eventType)));
     if (shouldSync) {
@@ -168,7 +233,7 @@ Deno.serve(async (req) => {
       else await syncTask;
     }
 
-    return new Response(JSON.stringify({ ok: true, sync_queued: shouldSync, post_ids: postIds.length, dm_inserted: dmInserted }), {
+    return new Response(JSON.stringify({ ok: true, sync_queued: shouldSync, post_ids: postIds.length, dm_inserted: dmInserted, comments_inserted: commentsInserted }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
   } catch (e) {
