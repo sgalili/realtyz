@@ -1259,10 +1259,17 @@ Deno.serve(async (req) => {
             // True native created_time
             const nativeCreatedAt = firstValidDate(entry?.created_time);
 
-            const existingMedia = normalizeMediaUrls((t as any).provider_response?.media_urls);
+            const existingMedia = normalizeMediaUrls(
+              (Array.isArray((t as any).media_urls) && (t as any).media_urls.length
+                ? (t as any).media_urls
+                : (t as any).provider_response?.media_urls),
+            );
+            const cachedMedia = normalizeMediaUrls((t as any).provider_response?.cached_media_urls);
             const mergedMedia = urls.length > 0 ? urls : existingMedia;
 
             const updatePayload: Record<string, unknown> = {
+              // Keep the durable column in sync; never downgrade to an empty list.
+              media_urls: cachedMedia.length > 0 ? cachedMedia : mergedMedia,
               provider_response: {
                 ...((t as any).provider_response || {}),
                 media_urls: mergedMedia,
