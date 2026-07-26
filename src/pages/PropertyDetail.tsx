@@ -818,7 +818,7 @@ export default function PropertyDetail() {
           )}
           {editMode && form && (
             <Card className="p-4 sm:p-5 space-y-3">
-              <h2 className="text-base font-bold text-primary">תמונות הנכס</h2>
+              <h2 className="text-xl font-bold text-primary">תמונות הנכס</h2>
               <div
                 onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
                 onDrop={handlePhotoDrop}
