@@ -3530,11 +3530,13 @@ const PublishedFeed = () => {
                 <PostImage
                   src={r.media_urls?.[0]}
                   campaignLogId={r.id}
+                  listingId={r.listing_id}
                   index={0}
                   alt=""
                   className="h-12 w-12 shrink-0 rounded-lg object-cover border border-border"
                   fallbackClassName="h-12 w-12 shrink-0"
                 />
+
                 <h3 className={cn('flex-1 font-semibold text-foreground line-clamp-2', alignClass)} dir={dirAttr}>
                   {(bodyText.trim().split('\n')[0] || r.campaign_name)}
                 </h3>
@@ -3676,9 +3678,10 @@ const PublishedFeed = () => {
                   <div className="mx-4 mb-3 flex gap-2 overflow-x-auto">
                     {r.media_urls.slice(0, 6).map((src, i) => (
                       <div key={i} className="relative shrink-0 group">
-                        <PostImage src={src} campaignLogId={r.id} index={i} alt=""
+                        <PostImage src={src} campaignLogId={r.id} listingId={r.listing_id} index={i} alt=""
                              className="h-32 w-32 rounded-lg object-cover border border-border"
                              fallbackClassName="h-32 w-32" />
+
                         <button
                           type="button"
                           title="הסר תמונה"
