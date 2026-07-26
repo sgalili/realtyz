@@ -180,6 +180,18 @@ async function brightDataRequest(
   return { status: res.status, body, bdHeaders };
 }
 
+// Bright Data returns 200 with an EMPTY body and an `x-brd-err-code` header
+// when the configured zone is the wrong product type. client_10090 =
+// "Scraping Browser zone used as a regular proxy" — permanent config error,
+// never worth retrying, and the exact reason Yad2 search silently returned
+// zero results.
+function zoneModeError(bdHeaders: Record<string, string>): string | null {
+  const code = bdHeaders["x-brd-err-code"] ?? "";
+  const msg = bdHeaders["x-brd-err-msg"] ?? bdHeaders["x-brd-error"] ?? "";
+  if (!code && !msg) return null;
+  return `${code || "brd_error"}: ${msg}`;
+}
+
 
 // Rolling trace of every Bright Data hop in the current invocation. Returned
 // to the caller so a zero-result search is never silent — you always see the
@@ -204,6 +216,7 @@ async function unlock(
   for (let attempt = 1; attempt <= maxAttempts; attempt++) {
     try {
       const { status, body, bdHeaders } = await brightDataRequest(url, { accept: opts.accept });
+      const zoneErr = zoneModeError(bdHeaders);
       // Explicit direct-fetch diagnostics — surface Bright Data / Yad2 status
       // and a preview of the upstream body so proxy blocks, CAPTCHAs, and
       // empty gateway payloads are visible in Supabase logs.
@@ -219,6 +232,13 @@ async function unlock(
       console.log(
         `[yad2-unlocker] direct-fetch ${url} → BD status=${status} bytes=${body.length} ct=${bdHeaders["content-type"] ?? "-"} hdrs=${JSON.stringify(bdHeaders)} preview=${JSON.stringify(body.slice(0, 300))}`,
       );
+      if (zoneErr) {
+        // Permanent configuration fault — fail fast so the caller can switch
+        // transports instead of burning 4 retries per endpoint.
+        const e = new Error(`brightdata_zone_mode: ${zoneErr}`);
+        (e as Error & { permanent?: boolean }).permanent = true;
+        throw e;
+      }
       if (status >= 200 && status < 300) {
         // A 2xx with an empty body means the unlocker handed back nothing —
         // treat it as a failure instead of "0 results", which is what made
@@ -242,6 +262,7 @@ async function unlock(
     } catch (e) {
       lastErr = e;
       const msg = String((e as Error)?.message ?? e);
+      if ((e as Error & { permanent?: boolean })?.permanent) throw e;
       const transient = /http2|stream error|SendRequest|network|reset|ECONNRESET|EOF|timeout|socket hang up/i.test(msg);
       if (!transient || attempt >= maxAttempts) throw e;
       console.warn(`[yad2-unlocker] transient error attempt ${attempt} for ${url}: ${msg.slice(0, 200)}`);
