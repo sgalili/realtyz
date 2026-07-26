@@ -757,7 +757,9 @@ async function scrapingBrowserHarvest(
     browser = await puppeteer.connect({ browserWSEndpoint: BD_WS });
     const page = await browser.newPage();
     await page.setViewport({ width: 1440, height: 2200 });
-    await page.setExtraHTTPHeaders({ "Accept-Language": "he-IL,he;q=0.9,en;q=0.8" });
+    // NOTE: Bright Data Scraping Browser forbids overriding accept-language
+    // ("Overriding accept-language headers forbidden"). Locale comes from the
+    // il-geolocated exit node instead.
 
     console.log(`[yad2-unlocker] scraping-browser: goto ${pageUrl}`);
     await page.goto(pageUrl, { waitUntil: "domcontentloaded", timeout: 90_000 });
