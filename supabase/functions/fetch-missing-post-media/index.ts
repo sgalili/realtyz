@@ -360,7 +360,7 @@ Deno.serve(async (req) => {
       if (candidates.length === 0) { await markEmpty(); continue; }
 
       const cached: string[] = [];
-      for (const url of candidates.slice(0, 8)) {
+      for (const url of candidates.slice(0, 12)) {
         const local = await mirror(url);
         if (local && !cached.includes(local)) {
           cached.push(local);
@@ -376,8 +376,11 @@ Deno.serve(async (req) => {
         cached_media_urls: nextCached,
         media_cached_at: new Date().toISOString(),
       };
-      // The row's media_urls always end up as durable storage URLs.
-      const durableMedia = keepLongestGallery((row as any).media_urls, nextCached);
+      // The row's media_urls become EXCLUSIVELY durable storage URLs — never a
+      // mix with expiring CDN links, so the feed can render them directly.
+      const durableMedia = nextCached.length > 0
+        ? nextCached
+        : mergeUrls((row as any).media_urls);
 
       const { error: upErr } = await admin
         .from("campaign_logs")
