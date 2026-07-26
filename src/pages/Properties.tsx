@@ -41,6 +41,8 @@ import { formatListingTitle } from '@/lib/formatListingTitle';
 import { Checkbox } from '@/components/ui/checkbox';
 import { ImportProgressDialog, type ImportStep } from '@/components/properties/ImportProgressDialog';
 import { PropertyPreviewDialog } from '@/components/properties/PropertyPreviewDialog';
+import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
+
 
 const PRICE_MIN = 0;
 const PRICE_MAX = 10_000_000;
@@ -575,7 +577,13 @@ export default function Properties() {
             <span className="text-muted-foreground">
               {selectedKeys.size} נבחרו
             </span>
+            <PropertyShareMenu
+              results={results.filter((r) => selectedKeys.has(r.key))}
+              label="שתף נבחרים"
+              className="h-8"
+            />
             <Button
+
               size="sm"
               disabled={selectedKeys.size === 0}
               onClick={runBatchImport}
@@ -796,10 +804,14 @@ function ResultCard({
               ? (<>{formatPrice(result.price)}{isRent ? <span className="text-xs font-normal text-muted-foreground">/חודש</span> : null}</>)
               : (<span className="text-sm font-semibold text-amber-600">פרטים חסרים</span>)}
           </div>
-          <Button size="sm" onClick={(e) => { e.stopPropagation(); onSelect(); }} className="gap-1.5">
-            <Send className="h-4 w-4" />
-            פתח
-          </Button>
+          <div className="flex items-center gap-2" onClick={(e) => e.stopPropagation()}>
+            <PropertyShareMenu results={[result]} />
+            <Button size="sm" onClick={(e) => { e.stopPropagation(); onSelect(); }} className="gap-1.5">
+              <Send className="h-4 w-4" />
+              פתח
+            </Button>
+          </div>
+
         </div>
       </div>
     </Card>
@@ -954,12 +966,16 @@ function ResultTable({
                 <td className="px-2 py-1.5 whitespace-nowrap max-w-[180px] truncate">{stripAddressNumbers(r.address ?? '') || '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.rooms ?? '—'}</td>
                 <td className="px-2 py-1.5 whitespace-nowrap">{r.size_sqm ?? '—'}</td>
-                <td className="px-2 py-1.5 whitespace-nowrap text-left">
-                  <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onSelect(r); }} className="gap-1.5">
-                    <Send className="h-3.5 w-3.5" />
-                    פתח
-                  </Button>
+                <td className="px-2 py-1.5 whitespace-nowrap text-left" onClick={(e) => e.stopPropagation()}>
+                  <div className="inline-flex items-center gap-1.5">
+                    <Button size="sm" variant="outline" onClick={(e) => { e.stopPropagation(); onSelect(r); }} className="gap-1.5">
+                      <Send className="h-3.5 w-3.5" />
+                      פתח
+                    </Button>
+                    <PropertyShareMenu results={[r]} iconOnly variant="ghost" />
+                  </div>
                 </td>
+
               </tr>
             );
           })}

@@ -9,6 +9,8 @@ import { formatListingTitle } from '@/lib/formatListingTitle';
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import type { UnifiedResult } from '@/lib/propertySearch';
 import { fetchLivePreview, mergeLive } from '@/lib/propertyLivePreview';
+import { PropertyShareMenu } from '@/components/properties/PropertyShareMenu';
+
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
@@ -172,6 +174,8 @@ export function PropertyPreviewDialog({
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             סגור
           </Button>
+          {r && <PropertyShareMenu results={[r]} size="default" />}
+
           {r && !r.localId && onImport && (
             <Button onClick={() => onImport(r)} disabled={importing} className="gap-1.5">
               {importing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
