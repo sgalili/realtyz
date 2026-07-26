@@ -518,6 +518,7 @@ function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
 
   const shortDesc = clean(it?.info_text ?? it?.subtitle ?? it?.metaData?.description ?? null);
   const longDesc = clean(it?.description ?? it?.metaData?.longDescription ?? it?.freeText ?? null);
+  const coords = pickCoords(it);
 
   return {
     source_url: href,
@@ -542,6 +543,11 @@ function feedItemToScraped(it: any, dealType: DealType): Scraped | null {
     long_description: longDesc,
     available_from: pickAvailableFrom(it),
     attributes: pickAttributes(it),
+    latitude: coords.lat,
+    longitude: coords.lng,
+    furniture_details: pickFurniture(it),
+    additional_details: pickAdditionalDetails(it),
+    price_history: pickPriceHistory(it),
   };
 }
 
