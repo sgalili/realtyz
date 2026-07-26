@@ -215,9 +215,13 @@ Deno.serve(async (req) => {
     // Skip rows already fully mirrored unless force=true.
     const targets = posts.filter((r: any) => {
       if (force) return true;
+      // Skip rows a previous run already scanned and found no media for, so a
+      // re-invocation always makes forward progress through the backlog.
+      if (asText((r.provider_response as any)?.media_scan_empty_at)) return false;
       const media: string[] = Array.isArray(r.media_urls) ? r.media_urls : [];
       return media.length === 0 || !media.every((u) => typeof u === "string" && isCached(u));
     });
+
 
     // ---- Graph batch fetch -------------------------------------------------
     const graphMedia = new Map<string, string[]>();
