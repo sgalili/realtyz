@@ -1375,6 +1375,6 @@ Deno.serve(async (req) => {
     });
   } catch (e: any) {
     console.error("[yad2-unlocker] error", e);
-    return json({ error: "scrape_failed", detail: String(e?.message ?? e), bd_trace: bdTrace }, 502);
+    return json({ source: "yad2", connected: false, error: "scrape_failed", results: [], detail: String(e?.message ?? e), bd_trace: bdTrace });
   }
 });
