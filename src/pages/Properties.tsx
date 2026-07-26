@@ -62,7 +62,9 @@ type SavedState = {
   maxPrice: number;
   areaMin: string;
   results?: UnifiedResult[];
+  hasSearched?: boolean;
 };
+
 
 function loadCache(): SavedState | null {
   try {
