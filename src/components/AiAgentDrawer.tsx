@@ -434,10 +434,9 @@ ${shareUrl}
       }
     } catch (e: any) {
       toast.error(e?.message ?? 'יצירת קישור השיתוף נכשלה');
-    } finally {
-      setSharingId(null);
     }
   }, [mintShareUrl, buildOfferMessage]);
+
 
 
   const sendMessage = async (text: string) => {
