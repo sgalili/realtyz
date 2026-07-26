@@ -75,6 +75,10 @@ function tokenize(q: string | null | undefined): string[] {
     .slice(0, 6);
 }
 
+export async function searchLocalListings(f: SearchFilters): Promise<UnifiedResult[]> {
+  return searchLocal(f);
+}
+
 async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
   let q = supabase
     .from('listings')
@@ -168,7 +172,12 @@ function normalizeExternal(source: PropertySource, items: any[]): UnifiedResult[
   });
 }
 
-export async function searchAllSources(f: SearchFilters): Promise<SearchResponse> {
+export async function searchAllSources(
+  f: SearchFilters,
+  // Called the instant the LOCAL database results are ready, so the UI can
+  // paint matches from `listings` without waiting on any external gateway.
+  onPartial?: (partial: SearchResponse) => void,
+): Promise<SearchResponse> {
   const sources: SearchResponse['sources'] = {};
   const listingType = f.listing_type && f.listing_type !== 'all' ? f.listing_type : undefined;
   const body = {
@@ -202,11 +211,18 @@ export async function searchAllSources(f: SearchFilters): Promise<SearchResponse
   );
 
   const tasks: Array<Promise<{ label: PropertySource; results: UnifiedResult[] }>> = [
-    searchLocal(f).then((r) => ({ label: 'mine' as const, results: r })).catch((e) => {
-      console.error('[propertySearch] local source failed', e);
-      sources.mine = { status: 'error', count: 0, error: String(e?.message ?? e) };
-      return { label: 'mine' as const, results: [] };
-    }),
+    searchLocal(f)
+      .then((r) => {
+        // Instant paint: local DB hits are surfaced before any gateway answers.
+        sources.mine = { status: r.length ? 'ok' : 'empty', count: r.length };
+        onPartial?.({ results: r, sources: { ...sources } });
+        return { label: 'mine' as const, results: r };
+      })
+      .catch((e) => {
+        console.error('[propertySearch] local source failed', e);
+        sources.mine = { status: 'error', count: 0, error: String(e?.message ?? e) };
+        return { label: 'mine' as const, results: [] };
+      }),
     invokeExternal('homely-fetch-property', {
       action: homelyHasFilter ? 'searchProperties' : 'fetchAllProperties',
       filters: homelyFilters,
@@ -278,16 +294,11 @@ export async function searchAllSources(f: SearchFilters): Promise<SearchResponse
         return { label: 'yad2' as const, results: [] };
       }
     })(),
-    invokeExternal('webtiv-homely-sync', { ...body, mode: 'search' })
-      .then((d: any) => {
-        const items = Array.isArray(d?.results) ? d.results : Array.isArray(d?.items) ? d.items : [];
-        return { label: 'webtiv' as const, results: normalizeExternal('webtiv', items) };
-      })
-      .catch((e) => {
-        console.error('[propertySearch] webtiv-homely-sync failed', e);
-        sources.webtiv = { status: 'error', count: 0, error: String(e?.message ?? e) };
-        return { label: 'webtiv' as const, results: [] };
-      }),
+    // NOTE: `webtiv-homely-sync` is a CONTACT sync job (buyers/sellers → Homely),
+    // not a property search endpoint. Calling it here always returned a non-2xx
+    // error and never produced listings, so the office's Webtiv inventory is
+    // served through `homely-fetch-property` above (same AutomaionJson stream,
+    // both sale AND rent).
   ];
 
   const settled = await Promise.all(tasks).catch((e) => {
