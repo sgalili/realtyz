@@ -121,7 +121,7 @@ async function searchLocal(f: SearchFilters): Promise<UnifiedResult[]> {
       sources: [source],
       localId: row.id,
       title: row.property_title || 'נכס',
-      description: row.description ?? null,
+      description: row.long_description ?? row.description ?? row.short_description ?? null,
       price,
       city: row.city ?? null,
       address: row.address ?? row.neighborhood ?? null,
