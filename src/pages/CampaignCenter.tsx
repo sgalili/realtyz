@@ -1258,10 +1258,10 @@ const InlineComposer = ({
       });
       if (error) throw error;
       let text = cleanFirstComment(String(data?.content || data?.text || ''));
-      // Enforce strict 2-line layout: keep first non-empty line as the sentence,
-      // then append the canonical keyword line as the second line.
+      // Enforce strict 2-line layout: a single property line capped at 10
+      // words, immediately followed by the canonical keyword line.
       const lines = text.split('\n').map((l) => l.trim()).filter(Boolean);
-      const firstSentence = lines.find((l) => !l.includes('|')) || lines[0] || '';
+      const firstSentence = limitToTenWords(lines.find((l) => !l.includes('|')) || lines[0] || '');
       const finalText = firstSentence && keywordLine
         ? `${firstSentence}\n${keywordLine}`
         : buildFallbackFirstComment(listing as CampaignListing | null);
