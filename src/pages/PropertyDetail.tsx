@@ -947,7 +947,7 @@ export default function PropertyDetail() {
                   href={yad2Url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="inline-flex items-center gap-2 text-sm font-semibold text-primary hover:underline"
+                  className="inline-flex items-center gap-2 text-base font-semibold text-primary hover:underline"
                 >
                   מעבר למודעה ביד-2 ↗
                 </a>
