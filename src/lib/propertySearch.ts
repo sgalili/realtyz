@@ -172,7 +172,12 @@ function normalizeExternal(source: PropertySource, items: any[]): UnifiedResult[
   });
 }
 
-export async function searchAllSources(f: SearchFilters): Promise<SearchResponse> {
+export async function searchAllSources(
+  f: SearchFilters,
+  // Called the instant the LOCAL database results are ready, so the UI can
+  // paint matches from `listings` without waiting on any external gateway.
+  onPartial?: (partial: SearchResponse) => void,
+): Promise<SearchResponse> {
   const sources: SearchResponse['sources'] = {};
   const listingType = f.listing_type && f.listing_type !== 'all' ? f.listing_type : undefined;
   const body = {
