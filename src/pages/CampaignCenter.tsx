@@ -1665,7 +1665,7 @@ const InlineComposer = ({
           comment on the published post. WA / Messenger link options live
           here and no longer touch the main post body. */}
       <div className="rounded-xl border border-border bg-muted/20 p-3 space-y-2" dir="rtl">
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex flex-row-reverse items-center justify-between gap-2">
           <label className="flex items-center gap-2 text-sm font-semibold text-foreground select-none cursor-pointer">
             <Checkbox
               checked={firstCommentEnabled}
