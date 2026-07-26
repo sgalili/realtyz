@@ -18,6 +18,7 @@ type Props = {
   aboutText?: string | null;
   furniture?: Record<string, unknown> | null;
   additional?: Record<string, unknown> | null;
+  amenities?: Record<string, unknown> | null;
   priceHistory?: PricePoint[] | null;
   latitude?: number | null;
   longitude?: number | null;
