@@ -2858,14 +2858,18 @@ const PublishedFeed = () => {
       const pr = r?.provider_response ?? {};
       // Priority: permanently mirrored copies → the durable column → whatever
       // the provider payload carried (signed FB CDN links that expire).
-      const media = mergePostMediaUrls(
-        pr?.cached_media_urls,
-        r?.media_urls,
-        pr?.media_urls,
-        pr?.media,
-        pr?.raw?.mediaUrls,
-        pr?.raw?.fullPicture ? [pr.raw.fullPicture] : null,
+      const media = dropRemovedMedia(
+        mergePostMediaUrls(
+          pr?.cached_media_urls,
+          r?.media_urls,
+          pr?.media_urls,
+          pr?.media,
+          pr?.raw?.mediaUrls,
+          pr?.raw?.fullPicture ? [pr.raw.fullPicture] : null,
+        ),
+        readRemovedMediaKeys(pr),
       );
+
       const externalUrl =
         (typeof pr?.external_url === 'string' && pr.external_url) ||
         (Array.isArray(pr?.postIds)
