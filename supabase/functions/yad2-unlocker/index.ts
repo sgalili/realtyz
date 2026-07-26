@@ -658,6 +658,13 @@ function parseItemJson(body: string, srcUrl: string): Scraped | null {
   base.attributes = { ...(base.attributes ?? {}), ...pickAttributes(ad) };
   base.photos = pickAllPhotos(base.photos, ad?.images, ad?.metaData?.images, ad?.gallery);
   base.description = base.long_description ?? base.short_description ?? base.description;
+  const coords = pickCoords(ad);
+  base.latitude = coords.lat ?? base.latitude ?? null;
+  base.longitude = coords.lng ?? base.longitude ?? null;
+  base.furniture_details = { ...(base.furniture_details ?? {}), ...pickFurniture(ad) };
+  base.additional_details = { ...(base.additional_details ?? {}), ...pickAdditionalDetails(ad) };
+  const hist = pickPriceHistory(ad);
+  if (hist.length) base.price_history = hist;
   return base;
 }
 
@@ -684,6 +691,11 @@ type Scraped = {
   long_description?: string | null;
   available_from?: string | null;
   attributes?: Record<string, unknown>;
+  latitude?: number | null;
+  longitude?: number | null;
+  furniture_details?: Record<string, unknown>;
+  additional_details?: Record<string, unknown>;
+  price_history?: Array<{ date: string | null; price: number | null; label?: string }>;
 };
 
 /**
