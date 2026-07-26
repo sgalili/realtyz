@@ -2,61 +2,41 @@ import { cn } from '@/lib/utils';
 
 export type PropertySource = 'mine' | 'homely' | 'webtiv' | 'yad2' | 'external';
 
-// Solid, high-contrast per-source pills. `compact` renders a single white
-// initial on the source's signature background color.
-const META: Record<PropertySource, { label: string; short: string; className: string; solid: string; dot: string }> = {
-  mine: {
-    label: 'המאגר שלי',
-    short: 'ש',
-    className: 'bg-[#0b1f4b] text-white border-[#0b1f4b]',
-    solid: 'bg-[#0b1f4b] text-white border-[#0b1f4b]',
-    dot: 'bg-[#0b1f4b]',
-  },
-  homely: {
-    label: 'הומלי',
-    short: 'H',
-    className: 'bg-purple-600 text-white border-purple-600',
-    solid: 'bg-purple-600 text-white border-purple-600',
-    dot: 'bg-purple-600',
-  },
-  webtiv: {
-    label: 'Webtiv',
-    short: 'W',
-    className: 'bg-teal-600 text-white border-teal-600',
-    solid: 'bg-teal-600 text-white border-teal-600',
-    dot: 'bg-teal-600',
-  },
-  yad2: {
-    label: 'יד-2',
-    short: 'Y',
-    className: 'bg-orange-500 text-white border-orange-500',
-    solid: 'bg-orange-500 text-white border-orange-500',
-    dot: 'bg-orange-500',
-  },
-  external: {
-    label: 'חיצוני',
-    short: 'E',
-    className: 'bg-zinc-600 text-white border-zinc-600',
-    solid: 'bg-zinc-600 text-white border-zinc-600',
-    dot: 'bg-zinc-500',
-  },
+// Minimalist dot-only source indicators (no text labels).
+//   Homely      → black   #000000
+//   Yad2        → orange  #FF7A00
+//   Our storage → navy    #1B365D
+const META: Record<PropertySource, { label: string; short: string; color: string }> = {
+  mine: { label: 'המאגר שלי', short: 'ש', color: '#1B365D' },
+  homely: { label: 'הומלי', short: 'H', color: '#000000' },
+  webtiv: { label: 'Webtiv', short: 'W', color: '#0d9488' },
+  yad2: { label: 'יד-2', short: 'Y', color: '#FF7A00' },
+  external: { label: 'חיצוני', short: 'E', color: '#52525b' },
 };
 
-export function SourceBadge({ source, className, compact }: { source: PropertySource; className?: string; compact?: boolean }) {
+export function SourceBadge({
+  source,
+  className,
+  compact,
+}: {
+  source: PropertySource;
+  className?: string;
+  /** kept for API compatibility — renders a slightly smaller dot */
+  compact?: boolean;
+}) {
   const meta = META[source] ?? META.external;
   return (
     <span
       title={meta.label}
+      aria-label={meta.label}
+      role="img"
       className={cn(
-        'inline-flex items-center justify-center rounded-full border font-bold whitespace-nowrap',
-        compact
-          ? `h-5 w-5 text-[11px] leading-none ${meta.solid}`
-          : `px-2 py-0.5 text-[10px] font-semibold ${meta.className}`,
+        'inline-block shrink-0 rounded-full ring-1 ring-black/10',
+        compact ? 'h-2 w-2' : 'h-2.5 w-2.5',
         className,
       )}
-    >
-      {compact ? meta.short : meta.label}
-    </span>
+      style={{ backgroundColor: meta.color }}
+    />
   );
 }
 
@@ -64,6 +44,10 @@ export function sourceLabel(source: PropertySource): string {
   return (META[source] ?? META.external).label;
 }
 
-export function sourceDotClass(source: PropertySource): string {
-  return (META[source] ?? META.external).dot;
+export function sourceColor(source: PropertySource): string {
+  return (META[source] ?? META.external).color;
+}
+
+export function sourceDotClass(_source: PropertySource): string {
+  return 'rounded-full';
 }
