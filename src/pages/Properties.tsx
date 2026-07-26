@@ -608,32 +608,43 @@ export default function Properties() {
 
           </div>
 
-          {/* Live streaming status: how many sources answered, how many rows are
-              already on the table, and which gateways are still working. */}
+          {/* Live streaming status — rendered dead-center of the viewport so
+              it is always visible while sources are answering. */}
           {searching && (
-            <div className="mt-2 space-y-1" dir="rtl">
-              <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  <span>
-                    טוען תוצאות… {searchProgress?.loaded ?? results.length} נטענו
-                    {searchProgress ? ` · ${searchProgress.done}/${searchProgress.total} מקורות` : ''}
-                  </span>
-                </span>
-                {searchProgress?.pending?.length ? (
-                  <span className="truncate">
-                    ממתין ל: {searchProgress.pending.map((p) => sourceLabel(p as any)).join(', ')}
-                  </span>
+            <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div
+                className="pointer-events-auto w-full max-w-xs space-y-2 rounded-xl border border-border/60 bg-card/95 p-4 shadow-xl backdrop-blur"
+                dir="rtl"
+                role="status"
+                aria-live="polite"
+              >
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <span>טוען תוצאות… {searchProgress?.loaded ?? results.length} נטענו</span>
+                </div>
+                {searchProgress ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    {searchProgress.done}/{searchProgress.total} מקורות הושלמו
+                  </p>
                 ) : null}
-              </div>
-              <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-primary transition-all duration-300"
-                  style={{ width: `${Math.round(((searchProgress?.done ?? 0) / (searchProgress?.total || 3)) * 100)}%` }}
-                />
+                {searchProgress?.pending?.length ? (
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    ממתין ל: {searchProgress.pending.map((p) => sourceLabel(p as any)).join(', ')}
+                  </p>
+                ) : null}
+                <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-300"
+                    style={{ width: `${Math.round(((searchProgress?.done ?? 0) / (searchProgress?.total || 3)) * 100)}%` }}
+                  />
+                </div>
+                <Button size="sm" variant="ghost" className="h-7 w-full text-xs" onClick={cancelSearch}>
+                  בטל חיפוש
+                </Button>
               </div>
             </div>
           )}
+
         </div>
 
 
