@@ -1265,32 +1265,56 @@ Deno.serve(async (req) => {
     rows = rows.slice(0, limit);
 
 
-    // Nothing worked at all — surface the real cause instead of "0 results".
+    // Nothing worked at all — surface the real cause. These are soft failures
+    // (HTTP 200 with results: []) so the Properties page can keep rendering the
+    // other sources instead of throwing a FunctionsHttpError.
     if (!rows.length) {
       const hardErrors = diagnostics.filter((d) => d.status === "error");
+      const allErrText = hardErrors.map((d) => d.error ?? "").join(" | ");
+      // Bright Data account-level failure (suspended / unpaid billing).
+      if (/client_10020|Account is suspended|billing/i.test(allErrText)) {
+        return json({
+          source: "yad2",
+          connected: false,
+          error: "brightdata_account_suspended",
+          detail:
+            "חשבון Bright Data מושהה — יש להסדיר את החיוב בלוח הבקרה של Bright Data כדי לחדש את שאיבת הנתונים מיד2. שאר מקורות החיפוש ממשיכים לפעול.",
+          results: [],
+          diagnostics,
+          bd_trace: bdTrace,
+          resolved_url: inputUrl,
+        });
+      }
       const zoneFault = hardErrors.find((d) => /brightdata_zone_mode|client_10090/i.test(d.error ?? ""));
       if (zoneFault) {
         return json({
+          source: "yad2",
+          connected: false,
           error: "brightdata_zone_misconfigured",
           detail:
             'The Bright Data zone "' + BD_ZONE +
             '" is a Scraping Browser zone, but the REST Web Unlocker API was called against it. ' +
             "Create a Web Unlocker zone and set BRIGHTDATA_ZONE to its name, or ensure BRIGHTDATA_WS_ENDPOINT is valid so the browser transport can be used.",
+          results: [],
           diagnostics,
           bd_trace: bdTrace,
           resolved_url: inputUrl,
-        }, 502);
+        });
       }
       if (hardErrors.length) {
         return json({
+          source: "yad2",
+          connected: false,
           error: "yad2_fetch_failed",
           detail: hardErrors.map((d) => `${d.endpoint}: ${d.error}`).join(" | ").slice(0, 1200),
+          results: [],
           diagnostics,
           bd_trace: bdTrace,
           resolved_url: inputUrl,
-        }, 502);
+        });
       }
     }
+
 
     // Yad2 interleaves sponsored "projects" from unrelated cities into every
     // feed. When the caller asked for a specific city, drop rows that clearly
@@ -1351,6 +1375,6 @@ Deno.serve(async (req) => {
     });
   } catch (e: any) {
     console.error("[yad2-unlocker] error", e);
-    return json({ error: "scrape_failed", detail: String(e?.message ?? e), bd_trace: bdTrace }, 502);
+    return json({ source: "yad2", connected: false, error: "scrape_failed", results: [], detail: String(e?.message ?? e), bd_trace: bdTrace });
   }
 });

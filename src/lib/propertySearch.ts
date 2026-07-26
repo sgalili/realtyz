@@ -289,8 +289,15 @@ export async function searchAllSources(
         if (Array.isArray(d?.diagnostics) && d.diagnostics.length) {
           console.info('[propertySearch] yad2-unlocker diagnostics', d.diagnostics);
         }
+        // Soft failures come back as HTTP 200 with { error, results: [] } so the
+        // other sources keep streaming. Record the reason, don't throw.
+        if (d?.error) {
+          sources.yad2 = { status: 'error', count: 0, error: String(d.detail || d.error) };
+          return { label: 'yad2' as const, results: [] };
+        }
         const items = Array.isArray(d?.results) ? d.results : Array.isArray(d?.items) ? d.items : [];
         return { label: 'yad2' as const, results: normalizeExternal('yad2', items) };
+
       } catch (e: any) {
         const msg = String(e?.message ?? e);
         console.error('[propertySearch] yad2-unlocker failed', e);
