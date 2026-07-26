@@ -2984,9 +2984,12 @@ const PublishedFeed = () => {
     const cacheBust = `${Date.now()}-${crypto.randomUUID()}`;
     // Run the comments sync (nested replies + Like reactions) and the
     // headline analytics in parallel — neither blocks the other.
-    const syncPromise = supabase.functions.invoke('ayrshare-sync-comments', {
-      body: { force_live: true, cache_bust: cacheBust, user_id: metricsOwner },
-    }).catch((err) => { console.warn('[refreshMetrics] sync-comments failed (non-fatal)', err); return null; });
+    // RATE-LIMIT HARD RULE: the bulk comments sync (which fanned out to every
+    // post in the workspace) is NO LONGER auto-triggered here. It caused the
+    // HTTP 429 storm / provider suspension. Comments now arrive via the
+    // Ayrshare webhook (realtime) or an explicit per-card refresh click.
+    const syncPromise = Promise.resolve(null);
+
 
     try {
       const [{ data, error }] = await Promise.all([
