@@ -17,8 +17,9 @@ async function resolveCached(campaignLogId: string, urls: string[]): Promise<str
       key,
       supabase.functions
         .invoke('cache-post-media', { body: { campaign_log_id: campaignLogId, urls } })
-        .then(({ data }) => (Array.isArray((data as any)?.cached) ? ((data as any).cached as string[]) : []))
+        .then(({ data }) => resolveMediaUrls((data as any)?.cached))
         .catch(() => []),
+
     );
   }
   const pending = inflight.get(key);
