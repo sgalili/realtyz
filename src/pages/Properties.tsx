@@ -1061,6 +1061,23 @@ function ResultTable({
                   </td>
                 )}
                 <td className="px-2 py-1.5">
+                  <div className="h-11 w-11 rounded-md overflow-hidden bg-muted border border-border/60 shrink-0">
+                    {r.photos?.[0] ? (
+                      <img
+                        src={r.photos[0]}
+                        alt=""
+                        loading="lazy"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="h-full w-full flex items-center justify-center">
+                        <Building2 className="h-4 w-4 text-muted-foreground/50" />
+                      </div>
+                    )}
+                  </div>
+                </td>
+                <td className="px-2 py-1.5">
+
                   <div className="flex flex-row-reverse items-center gap-1">
                     {(r.sources ?? [r.source]).map((s) => (
                       <SourceBadge key={s} source={s} compact />
