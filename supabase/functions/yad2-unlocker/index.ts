@@ -89,9 +89,8 @@ function clean(s: string | null | undefined): string | null {
 // body and every search silently returned zero results. Native `fetch` handles
 // TLS/HTTP2 + content-encoding correctly, so we use that instead.
 //
-// Bright Data's /request API expects `headers` as an ARRAY of "Key: Value"
-// strings. Passing a plain object makes BD drop them (or 400 on validation),
-// which is why the browser fingerprint never reached Yad2.
+// Bright Data's /request API validates `headers` as a plain OBJECT
+// (array-of-strings returns `"headers" must be of type object`, 400).
 async function brightDataRequest(
   url: string,
   opts: { accept?: string } = {},
@@ -132,7 +131,7 @@ async function brightDataRequest(
     format: "raw",
     country: "il",
     method: "GET",
-    headers: Object.entries(forwarded).map(([k, v]) => `${k}: ${v}`),
+    headers: forwarded,
   };
 
   const res = await fetch("https://api.brightdata.com/request", {
