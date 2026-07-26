@@ -3521,18 +3521,14 @@ const PublishedFeed = () => {
 
               {/* Row 1: thumbnail + post title */}
               <div className={cn('flex items-center gap-3', isHe ? 'flex-row' : 'flex-row-reverse')}>
-                {r.media_urls?.[0] ? (
-                  <img
-                    src={r.media_urls[0]}
-                    alt=""
-                    loading="lazy"
-                    className="h-12 w-12 shrink-0 rounded-lg object-cover border border-border"
-                  />
-                ) : (
-                  <div className="h-12 w-12 shrink-0 rounded-lg border border-border bg-muted flex items-center justify-center text-muted-foreground">
-                    <ImageIcon className="h-5 w-5" />
-                  </div>
-                )}
+                <PostImage
+                  src={r.media_urls?.[0]}
+                  campaignLogId={r.id}
+                  index={0}
+                  alt=""
+                  className="h-12 w-12 shrink-0 rounded-lg object-cover border border-border"
+                  fallbackClassName="h-12 w-12 shrink-0"
+                />
                 <h3 className={cn('flex-1 font-semibold text-foreground line-clamp-2', alignClass)} dir={dirAttr}>
                   {(bodyText.trim().split('\n')[0] || r.campaign_name)}
                 </h3>
