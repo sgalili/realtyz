@@ -519,11 +519,14 @@ Deno.serve(async (req) => {
 
     await runWithConcurrency(
       Array.from(targets.values()),
-      8,
+      4,
       async (target) => {
         const { fetchPostId, nativePostId, platform } = target;
         const activeRefId = "ayrshare_comments_native";
+        // Provider asked us to back off — stop the batch immediately.
+        if (backoff.halted) return;
         try {
+
           if (isUuid(fetchPostId) || isUuid(nativePostId)) {
             const mappingError = {
               post_id: nativePostId,
