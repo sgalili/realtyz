@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Input } from '@/components/ui/input';
 import { SidebarProvider, useSidebar } from '@/components/ui/sidebar';
 import { AppSidebar } from '@/components/AppSidebar';
-import { Search, Bot, User, LayoutDashboard, Radio, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff, CornerDownLeft } from 'lucide-react';
+import { Bot, X, Smartphone, CheckCircle2, Loader2, QrCode, ShieldAlert, MessageSquareText, Flame, Scale, EyeOff } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { useWhiteLabel } from '@/hooks/useWhiteLabel';
@@ -21,7 +21,6 @@ import { RealtyzOnboardingWizard } from '@/components/RealtyzOnboardingWizard';
 import { useSessionTimeout } from '@/hooks/useSessionTimeout';
 import { useQueryClient, useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { formatPhoneDisplay } from '@/lib/formatPhone';
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { DEMO_AUTH_REQUIRED_EVENT, DEMO_EXIT_PENDING_KEY, DEMO_UPGRADE_EVENT } from '@/lib/demoGuard';
@@ -44,186 +43,6 @@ const TUTORIAL_STEPS = [
   { path: '/calendar', title: 'יומן תוכן', text: 'כאן מתזמנים מהלכים, מטפטפים מסרים ושומרים על קצב קמפיין מנצח.' },
 ];
 
-const QUICK_LINKS = [
-  { label: 'לוח בקרה', path: '/', icon: LayoutDashboard },
-  { label: 'לקוחות', path: '/lead-crm', icon: User },
-  { label: 'הפצת SMS', path: '/sms-blast', icon: Radio },
-];
-
-const SEARCH_PLACEHOLDERS = [
-  'חפש מתעניין לפי שם...',
-  'חפש טלפון: 052-1234567...',
-  'חפש עיר: חיפה...',
-  'חפש מתלבטים בתל אביב...',
-  'חפש תומכים בירושלים...',
-  'חפש לפי תגית עניין...',
-  'חפש מתעניינים עם סנטימנט חיובי...',
-  'חפש אנשי קשר שנוצר איתם קשר...',
-  'חפש מתעניינים פעילים השבוע...',
-  'חפש קהל יעד לקמפיין...',
-];
-
-interface SearchResult {
-  id: string;
-  type: 'lead' | 'page';
-  title: string;
-  subtitle?: string;
-  path: string;
-}
-
-function SearchExpandable() {
-  const [open, setOpen] = useState(false);
-  const [query, setQuery] = useState('');
-  const [results, setResults] = useState<SearchResult[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [placeholderIndex, setPlaceholderIndex] = useState(0);
-  const [typedPlaceholder, setTypedPlaceholder] = useState('');
-  const [placeholderFading, setPlaceholderFading] = useState(false);
-  const inputRef = useRef<HTMLInputElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const navigate = useNavigate();
-
-  useEffect(() => {
-    if (open && inputRef.current) inputRef.current.focus();
-    if (!open) { setQuery(''); setResults([]); }
-  }, [open]);
-
-  useEffect(() => {
-    let timeout: number;
-    const suggestion = SEARCH_PLACEHOLDERS[placeholderIndex];
-
-    setPlaceholderFading(false);
-    setTypedPlaceholder('');
-
-    const typeNext = (charIndex: number) => {
-      setTypedPlaceholder(suggestion.slice(0, charIndex));
-      if (charIndex < suggestion.length) {
-        timeout = window.setTimeout(() => typeNext(charIndex + 1), 45);
-        return;
-      }
-
-      timeout = window.setTimeout(() => {
-        setPlaceholderFading(true);
-        timeout = window.setTimeout(() => {
-          setPlaceholderIndex((current) => (current + 1) % SEARCH_PLACEHOLDERS.length);
-        }, 300);
-      }, 6000);
-    };
-
-    timeout = window.setTimeout(() => typeNext(1), 250);
-    return () => window.clearTimeout(timeout);
-  }, [placeholderIndex]);
-
-  const applySuggestedInput = () => {
-    setQuery(SEARCH_PLACEHOLDERS[placeholderIndex]);
-    setOpen(true);
-    requestAnimationFrame(() => inputRef.current?.focus());
-  };
-
-  useEffect(() => {
-    if (!open) return;
-    const handler = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) setOpen(false);
-    };
-    document.addEventListener('mousedown', handler);
-    return () => document.removeEventListener('mousedown', handler);
-  }, [open]);
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') { e.preventDefault(); setOpen(prev => !prev); }
-    };
-    window.addEventListener('keydown', handler);
-    return () => window.removeEventListener('keydown', handler);
-  }, []);
-
-  const search = useCallback(async (q: string) => {
-    if (!q.trim()) { setResults([]); return; }
-    setLoading(true);
-    try {
-      const terms = q.trim().split(/\s+/).map(t => `'${t}'`).join(' & ');
-      const { data: voters } = await supabase
-        .from('leads')
-        .select('id, full_name, phone_number, city')
-        .textSearch('fts', terms, { type: 'plain', config: 'simple' })
-        .limit(6);
-
-      const voterResults: SearchResult[] = (voters ?? []).map(v => ({
-        id: v.id, type: 'lead',
-        title: v.full_name || 'ללא שם',
-        subtitle: `${formatPhoneDisplay(v.phone_number)}${v.city ? ` · ${v.city}` : ''}`,
-        path: '/lead-crm',
-      }));
-
-      const pageResults: SearchResult[] = QUICK_LINKS
-        .filter(l => l.label.includes(q))
-        .map(l => ({ id: l.path, type: 'page' as const, title: l.label, path: l.path }));
-
-      setResults([...pageResults, ...voterResults]);
-    } catch { setResults([]); } finally { setLoading(false); }
-  }, []);
-
-  useEffect(() => {
-    const timer = setTimeout(() => search(query), 250);
-    return () => clearTimeout(timer);
-  }, [query, search]);
-
-  const handleSelect = (result: SearchResult) => {
-    setOpen(false);
-    navigate(result.path);
-  };
-
-  return (
-    <div ref={containerRef} className="relative flex items-center">
-      <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 p-0 text-destructive hover:bg-destructive/10 hover:text-destructive" onClick={() => setOpen(prev => !prev)}>
-        {open ? <X className="h-4 w-4" /> : <Search className="h-4 w-4" />}
-      </Button>
-      {open && (
-        <div className="relative animate-slide-in-right" style={{ direction: 'rtl' }}>
-          <Search className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
-          <Input
-            ref={inputRef}
-            value={query}
-            onChange={e => setQuery(e.target.value)}
-            type="search"
-            placeholder={typedPlaceholder}
-            className={`h-9 w-64 pr-9 pl-9 rounded-lg border border-primary bg-background text-sm text-foreground opacity-100 shadow-none outline-none ring-0 transition-colors duration-300 focus-visible:ring-1 focus-visible:ring-primary/30 focus-visible:ring-offset-0 ${placeholderFading ? 'placeholder:text-transparent' : ''}`}
-            onKeyDown={e => e.key === 'Escape' && setOpen(false)}
-          />
-          {!query && typedPlaceholder && (
-            <button
-              type="button"
-              title="החל חיפוש מוצע"
-              aria-label="החל חיפוש מוצע"
-              onClick={applySuggestedInput}
-              className="absolute left-2 top-1/2 flex h-5 w-5 -translate-y-1/2 items-center justify-center rounded-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-            >
-              <CornerDownLeft className="h-3.5 w-3.5" />
-            </button>
-          )}
-          {(query.trim() || results.length > 0) && (
-            <div className="absolute top-full right-0 mt-1 w-72 bg-card border border-border/60 rounded-lg shadow-lg z-50 max-h-64 overflow-y-auto scrollbar-thin">
-              {loading && <div className="flex justify-center py-4"><div className="realtyz-loader h-6 w-6" /></div>}
-              {!loading && query.trim() && results.length === 0 && (
-                <p className="text-xs text-muted-foreground text-center py-4">לא נמצאו תוצאות</p>
-              )}
-              {results.map(r => (
-                <button key={r.id} onClick={() => handleSelect(r)}
-                  className="w-full flex items-center gap-2 px-3 py-2 hover:bg-accent/50 transition-colors text-right text-sm">
-                  {r.type === 'lead' ? <User className="h-3.5 w-3.5 text-primary shrink-0" /> : <LayoutDashboard className="h-3.5 w-3.5 text-muted-foreground shrink-0" />}
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium truncate">{r.title}</p>
-                    {r.subtitle && <p className="text-[11px] text-muted-foreground truncate">{r.subtitle}</p>}
-                  </div>
-                </button>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 function HeaderProfileLink() {
   const { user } = useAuth();
@@ -647,7 +466,6 @@ export function AppLayout({ children }: { children: ReactNode }) {
             {/* Action buttons on visual left (RTL end) */}
             <div className="flex items-center gap-1.5">
               <HeaderCrisisAlert />
-              <SearchExpandable />
               <Button
                 variant="ghost"
                 size="icon"

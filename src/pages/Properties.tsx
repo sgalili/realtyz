@@ -48,6 +48,10 @@ const PRICE_MIN = 0;
 const PRICE_MAX = 10_000_000;
 const PRICE_STEP = 100_000;
 const CACHE_KEY = 'properties:last-search:v1';
+// Home markets used for the default (never-empty) listing pool.
+const DEFAULT_CITIES = ['הרצליה', 'רמת השרון'];
+const DEFAULT_POOL_PER_TYPE = 100;
+
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
@@ -100,6 +104,10 @@ export default function Properties() {
   // Live streaming progress for the active search (sources answered / total).
   const [searchProgress, setSearchProgress] = useState<{ done: number; total: number; loaded: number; pending: string[] } | null>(null);
   const [hasSearched, setHasSearched] = useState<boolean>(!!cached?.hasSearched || !!cached?.results?.length);
+  // True when the current table is the default pool shown because the user's
+  // own search returned nothing. The grid is never allowed to be empty.
+  const [showingFallback, setShowingFallback] = useState(false);
+
   const [importingKey, setImportingKey] = useState<string | null>(null);
 
   // Multi-select + batch import progress
@@ -126,29 +134,48 @@ export default function Properties() {
     return () => window.removeEventListener('properties:add', handler);
   }, []);
 
-  // The properties page is NEVER blank. With no active search we preload the
-  // agent's primary city (first configured service area, else הרצליה) straight
-  // from the local cache, newest listings first.
-  const defaultCity = coveredCities?.[0] || 'הרצליה';
+  // The properties page is NEVER blank. The default pool is the 100 newest
+  // listings for sale + the 100 newest for rent across the agent's home
+  // markets (Herzliya + Ramat Hasharon), newest first.
+  const defaultPoolRef = useRef<UnifiedResult[] | null>(null);
+  const loadDefaultPool = useCallback(async (): Promise<UnifiedResult[]> => {
+    if (defaultPoolRef.current) return defaultPoolRef.current;
+    const cities = DEFAULT_CITIES;
+    const batches = await Promise.all(
+      cities.map((c) => searchLocalListings({ city: c, listing_type: 'all' }).catch(() => [] as UnifiedResult[])),
+    );
+    const seen = new Set<string>();
+    const all = batches.flat().filter((r) => (seen.has(r.key) ? false : (seen.add(r.key), true)));
+    const newestFirst = (a: UnifiedResult, b: UnifiedResult) =>
+      new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
+    const sale = all.filter((r) => r.listing_type === 'sale').sort(newestFirst).slice(0, DEFAULT_POOL_PER_TYPE);
+    const rent = all.filter((r) => r.listing_type === 'rent').sort(newestFirst).slice(0, DEFAULT_POOL_PER_TYPE);
+    const pool = [...sale, ...rent].sort(newestFirst);
+    defaultPoolRef.current = pool;
+    return pool;
+  }, []);
+
   useEffect(() => {
     if (hasSearched || results.length) return;
     let cancelled = false;
     (async () => {
       setSearching(true);
       try {
-        const rows = await searchLocalListings({ city: defaultCity, listing_type: 'all' });
+        const rows = await loadDefaultPool();
         if (cancelled) return;
         setResults(rows);
+        setShowingFallback(false);
         setSourceStatus({ local: { status: rows.length ? 'ok' : 'empty', count: rows.length } });
       } catch (err) {
-        console.error('[Properties] default city preload failed', err);
+        console.error('[Properties] default pool preload failed', err);
       } finally {
         if (!cancelled) setSearching(false);
       }
     })();
     return () => { cancelled = true; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [defaultCity]);
+  }, [loadDefaultPool]);
+
 
   // Monotonic token — bumping it aborts the in-flight search: late partials
   // and the final payload are ignored, so whatever was already painted stays.
@@ -163,7 +190,7 @@ export default function Properties() {
     try {
       // Parse the free-text query into structured hints so external gateways
       // (Yad2, Homely, Webtiv) receive real filters instead of raw prose.
-      const { parseSearchQuery } = await import('@/lib/parseSearchQuery');
+      const { parseSearchQuery, matchesAmenities } = await import('@/lib/parseSearchQuery');
       const parsed = parseSearchQuery(q);
       const explicitCity = city && city !== 'כל הערים' && city !== '__my_zones__' ? city : null;
       const effectiveCity = explicitCity ?? parsed.city;
@@ -173,6 +200,7 @@ export default function Properties() {
       const effectivePropertyType = propertyType !== 'all' ? propertyType : (parsed.property_type ?? 'all');
       const effectiveMaxPrice = maxPrice < PRICE_MAX ? maxPrice : (parsed.max_price ?? undefined);
       const effectiveMinPrice = parsed.min_price ?? undefined;
+      const wantedAmenities = parsed.amenities;
 
       const filters: SearchFilters = {
         q: (parsed.keywords || q.trim()) || undefined,
@@ -185,16 +213,31 @@ export default function Properties() {
         min_sqm: areaMin ? Number(areaMin) : undefined,
         property_type: effectivePropertyType !== 'all' ? effectivePropertyType : undefined,
       };
-      const applyType = (rows: UnifiedResult[]) =>
-        effectivePropertyType !== 'all'
+      const applyType = (rows: UnifiedResult[]) => {
+        let out = effectivePropertyType !== 'all'
           ? rows.filter((r) => !r.property_type || String(r.property_type).toLowerCase() === effectivePropertyType)
           : rows;
+        if (wantedAmenities.length) {
+          const strict = out.filter((r) =>
+            matchesAmenities(
+              [r.title, r.description, r.address, r.neighborhood, JSON.stringify((r.raw as any)?.features ?? '')]
+                .filter(Boolean).join(' '),
+              wantedAmenities,
+            ),
+          );
+          // Amenity data is patchy across sources — only narrow when it pays off.
+          if (strict.length) out = strict;
+        }
+        return out;
+      };
 
       // Each source streams into the table the moment it answers.
       const resp = await searchAllSources(filters, (partial) => {
         if (searchTokenRef.current !== token) return;
         const rows = applyType(partial.results);
+        if (!rows.length) return; // never blank the table mid-stream
         setResults(rows);
+        setShowingFallback(false);
         setSourceStatus(partial.sources);
         if (partial.progress) {
           setSearchProgress({ ...partial.progress, loaded: rows.length });
@@ -202,12 +245,24 @@ export default function Properties() {
       });
       if (searchTokenRef.current !== token) return; // cancelled — keep partials
       const filtered = applyType(resp.results);
-      setResults(filtered);
-      setSourceStatus(resp.sources);
+      if (filtered.length) {
+        setResults(filtered);
+        setShowingFallback(false);
+        setSourceStatus(resp.sources);
+      } else {
+        // Zero-result guard: fall back to the default recent pool instead of
+        // ever showing an empty table.
+        const pool = await loadDefaultPool();
+        if (searchTokenRef.current !== token) return;
+        setResults(pool);
+        setShowingFallback(true);
+        setSourceStatus({ local: { status: pool.length ? 'ok' : 'empty', count: pool.length } as any });
+      }
       const errored = Object.entries(resp.sources).filter(([, v]) => v.status === 'error');
       if (errored.length) {
         toast.info(`חלק מהמקורות לא זמינים: ${errored.map(([k]) => sourceLabel(k as any)).join(', ')}`);
       }
+
     } catch (err: any) {
       if (searchTokenRef.current !== token) return;
       console.error('[Properties] search failed', err);
@@ -218,7 +273,21 @@ export default function Properties() {
         setSearchProgress(null);
       }
     }
-  }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin]);
+  }, [q, listingType, city, propertyType, rooms, maxPrice, areaMin, loadDefaultPool]);
+
+  // Last-resort guard: whatever happens, an idle page always shows listings.
+  useEffect(() => {
+    if (searching || results.length) return;
+    let cancelled = false;
+    (async () => {
+      const pool = await loadDefaultPool().catch(() => [] as UnifiedResult[]);
+      if (cancelled || !pool.length) return;
+      setResults(pool);
+      setShowingFallback(true);
+    })();
+    return () => { cancelled = true; };
+  }, [searching, results.length, loadDefaultPool]);
+
 
   // Abort the running fetch and immediately show the partial results found
   // so far. Nothing is cleared.
@@ -330,10 +399,13 @@ export default function Properties() {
 
   // Transaction-type toggle filters the rendered list instantly (the live
   // search re-runs in parallel through the effect below).
-  const typeFiltered = useMemo(
-    () => (listingType === 'all' ? results : results.filter((r) => r.listing_type === listingType)),
-    [results, listingType],
-  );
+  const typeFiltered = useMemo(() => {
+    if (listingType === 'all') return results;
+    const narrowed = results.filter((r) => r.listing_type === listingType);
+    // Never let a toggle blank the table — keep the wider pool instead.
+    return narrowed.length ? narrowed : results;
+  }, [results, listingType]);
+
 
   const sortedResults = useMemo(() => {
     const arr = [...typeFiltered];
@@ -539,32 +611,43 @@ export default function Properties() {
 
           </div>
 
-          {/* Live streaming status: how many sources answered, how many rows are
-              already on the table, and which gateways are still working. */}
+          {/* Live streaming status — rendered dead-center of the viewport so
+              it is always visible while sources are answering. */}
           {searching && (
-            <div className="mt-2 space-y-1" dir="rtl">
-              <div className="flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
-                <span className="flex items-center gap-1.5">
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                  <span>
-                    טוען תוצאות… {searchProgress?.loaded ?? results.length} נטענו
-                    {searchProgress ? ` · ${searchProgress.done}/${searchProgress.total} מקורות` : ''}
-                  </span>
-                </span>
-                {searchProgress?.pending?.length ? (
-                  <span className="truncate">
-                    ממתין ל: {searchProgress.pending.map((p) => sourceLabel(p as any)).join(', ')}
-                  </span>
+            <div className="pointer-events-none fixed inset-0 z-50 flex items-center justify-center p-4">
+              <div
+                className="pointer-events-auto w-full max-w-xs space-y-2 rounded-xl border border-border/60 bg-card/95 p-4 shadow-xl backdrop-blur"
+                dir="rtl"
+                role="status"
+                aria-live="polite"
+              >
+                <div className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <span>טוען תוצאות… {searchProgress?.loaded ?? results.length} נטענו</span>
+                </div>
+                {searchProgress ? (
+                  <p className="text-[11px] text-muted-foreground">
+                    {searchProgress.done}/{searchProgress.total} מקורות הושלמו
+                  </p>
                 ) : null}
-              </div>
-              <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
-                <div
-                  className="h-full rounded-full bg-primary transition-all duration-300"
-                  style={{ width: `${Math.round(((searchProgress?.done ?? 0) / (searchProgress?.total || 3)) * 100)}%` }}
-                />
+                {searchProgress?.pending?.length ? (
+                  <p className="truncate text-[11px] text-muted-foreground">
+                    ממתין ל: {searchProgress.pending.map((p) => sourceLabel(p as any)).join(', ')}
+                  </p>
+                ) : null}
+                <div className="h-1 w-full overflow-hidden rounded-full bg-muted">
+                  <div
+                    className="h-full rounded-full bg-primary transition-all duration-300"
+                    style={{ width: `${Math.round(((searchProgress?.done ?? 0) / (searchProgress?.total || 3)) * 100)}%` }}
+                  />
+                </div>
+                <Button size="sm" variant="ghost" className="h-7 w-full text-xs" onClick={cancelSearch}>
+                  בטל חיפוש
+                </Button>
               </div>
             </div>
           )}
+
         </div>
 
 
@@ -814,25 +897,35 @@ export default function Properties() {
 
       {/* Results */}
       <ErrorBoundary source="Properties.Results">
-        {!hasSearched ? (
-          <Card className="p-12 text-center text-muted-foreground">
-            <SearchIcon className="mx-auto h-8 w-8 mb-3 opacity-40" />
-            <div className="text-base font-semibold text-foreground mb-1">חפש נכס מכל המקורות</div>
-            <div className="text-sm">הזן עיר, כתובת או קישור — נחפש בו-זמנית במאגר שלך, בהומלי וביד-2.</div>
-          </Card>
-        ) : searching && sortedResults.length === 0 ? (
+        {showingFallback && sortedResults.length > 0 && (
+          <div
+            className="mb-3 flex items-start gap-2 rounded-lg border border-primary/30 bg-primary/5 px-3 py-2 text-xs text-foreground"
+            dir="rtl"
+            role="status"
+          >
+            <SearchIcon className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
+            <span>
+              לא נמצאו נכסים תואמים לחיפוש שלך. מוצגים {DEFAULT_POOL_PER_TYPE} הנכסים האחרונים למכירה
+              ו-{DEFAULT_POOL_PER_TYPE} להשכרה ב{DEFAULT_CITIES.join(' וב')} — החדשים ביותר קודם.
+            </span>
+          </div>
+        )}
+        {searching && sortedResults.length === 0 ? (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {Array.from({ length: 6 }).map((_, i) => (
               <Skeleton key={i} className="h-72 w-full rounded-lg" />
             ))}
           </div>
         ) : sortedResults.length === 0 ? (
-          <Card className="p-12 text-center text-muted-foreground">
-            לא נמצאו נכסים תואמים. נסה חיפוש רחב יותר.
-          </Card>
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            {Array.from({ length: 3 }).map((_, i) => (
+              <Skeleton key={i} className="h-72 w-full rounded-lg" />
+            ))}
+          </div>
         ) : (
           <>
             {viewMode === 'table' ? (
+
               <ResultTable
                 results={pagedResults}
                 importingKey={importingKey}
