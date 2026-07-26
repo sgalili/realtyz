@@ -1016,9 +1016,13 @@ ${liveDataBlock || "(snapshot לא נטען — ענה בקצרה והצע למ�
       );
       const EXTERNAL_TRIGGER = /(webtiv|homely|בכל השוק|כל השוק|מחוץ למערכת|שוק חיצוני|external|broader|עוד אפשרויות|לחפש עוד|תראה לי עוד|יש לך עוד|חיפוש חיצוני|חיפוש בכל|כל המשרד)/i;
       const NEIGHBORHOOD_HINT = /(שכונ|נייבורהוד|רובע|neighborhood|אזור\s+\S+)/i;
+      // Any concrete property-feature request must ALWAYS scan the full
+      // Homely/Webtiv inventory (sale + rent), not just the local snapshot.
+      const FEATURE_HINT = /(\d+(\.\d+)?\s*חדרים|חדרים|מ["׳']?ר|מטר|קומה|מרפסת|חניה|חנייה|מעלית|ממ["׳']?ד|מחסן|גינה|בריכה|משופצת|מרוהט|נוף|פנטהאוז|דופלקס|גג|מיני\s*פנטהאוז|תקציב|עד\s*[\d,.]+|להשכרה|שכירות|למכירה)/i;
       const userWantsExternal = EXTERNAL_TRIGGER.test(lastUserTextForWebtiv);
       const localWasEmpty = !matchingBlock;
       const hasSearchableIntent = userWantsExternal
+        || FEATURE_HINT.test(lastUserTextForWebtiv)
         || (localWasEmpty && (NEIGHBORHOOD_HINT.test(lastUserTextForWebtiv) || /נכס|דירה|בית|פנטהאוז/i.test(lastUserTextForWebtiv)));
 
       if (hasSearchableIntent) {
