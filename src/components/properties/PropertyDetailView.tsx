@@ -221,8 +221,8 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
 
         {property.description && (
           <Card className="p-4 sm:p-5">
-            <h2 className="text-base font-bold text-primary mb-2">תיאור הנכס</h2>
-            <p className="text-sm leading-relaxed text-foreground/80 whitespace-pre-line">{property.description}</p>
+            <h2 className="text-xl font-bold text-primary mb-2">תיאור הנכס</h2>
+            <p className="text-base leading-relaxed text-foreground/80 whitespace-pre-line">{property.description}</p>
           </Card>
         )}
 
@@ -240,7 +240,7 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
 
         {financialEntries.length > 0 && (
           <Card className="p-4 sm:p-5">
-            <h2 className="text-base font-bold text-primary mb-3 inline-flex items-center gap-2">
+            <h2 className="text-xl font-bold text-primary mb-3 inline-flex items-center gap-2">
               <Receipt className="h-4 w-4" /> פרטים פיננסיים
             </h2>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
