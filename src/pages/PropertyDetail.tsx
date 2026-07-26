@@ -667,6 +667,19 @@ export default function PropertyDetail() {
           <div className="order-2 flex items-center gap-3">
             {!editMode ? (
               <>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={pullAllImages}
+                  disabled={pullingImages}
+                  title="טען את כל התמונות מהמקור"
+                  className="gap-2"
+                >
+                  {pullingImages ? <Loader2 className="h-4 w-4 animate-spin" /> : <Images className="h-4 w-4" />}
+                  טען את כל התמונות
+                </Button>
+
                 <button
                   type="button"
                   onClick={() => navigate(`/campaigns?tab=create&channel=facebook&properties=${property.id}&listing=${property.id}`)}
