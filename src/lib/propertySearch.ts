@@ -167,7 +167,7 @@ function normalizeExternal(source: PropertySource, items: any[]): UnifiedResult[
       floor: it.floor != null ? Number(it.floor) : null,
       photos: Array.isArray(it.photos) ? normalizeImageUrls(it.photos) : [],
       url: it.url ?? it.source_url ?? null,
-      listing_type: inferListingType(price, it.listing_type ?? it.transaction_type ?? it.deal_type),
+      listing_type: inferListingType(price, it.listing_type ?? it.transaction_type),
       property_type: it.property_type ?? null,
       raw: it,
     };
@@ -280,22 +280,15 @@ export async function searchAllSources(
           ...body,
           query: queryText || undefined,
           mode: 'search',
-          // Walk the Yad2 directory in depth, but keep the whole scrape inside
-          // a wall-clock budget: each Scraping Browser page costs ~15-25s and
-          // an over-long call reaches the UI as "0 Yad2 results".
-          limit: 90,
-          pages: 3,
-          budget_ms: 70_000,
+          // Walk the Yad2 directory in depth instead of stopping at the
+          // first results page — the edge function paginates server-side.
+          limit: 120,
+          pages: 4,
         });
 
         if (Array.isArray(d?.diagnostics) && d.diagnostics.length) {
           console.info('[propertySearch] yad2-unlocker diagnostics', d.diagnostics);
         }
-        if (d?.error) {
-          console.error('[propertySearch] yad2-unlocker error', d.error, d.detail);
-          sources.yad2 = { status: 'error', count: 0, error: String(d.detail ?? d.error) };
-        }
-
         const items = Array.isArray(d?.results) ? d.results : Array.isArray(d?.items) ? d.items : [];
         return { label: 'yad2' as const, results: normalizeExternal('yad2', items) };
       } catch (e: any) {
@@ -339,19 +332,9 @@ export async function searchAllSources(
     }
 
     // Token-based text filter, applied ONLY to external rows (local was already
-    // filtered server-side via ilike).
-    //
-    // NOTE: this used to require EVERY token to appear in the row's text. Yad2
-    // feed rows only carry "city · neighborhood" + street, so a natural query
-    // like "דירה 4 חדרים בהרצליה" matched nothing and every live Yad2 result
-    // was thrown away client-side after a successful scrape. Generic real-estate
-    // words and words already expressed as structured filters are ignored, and
-    // a row survives if it matches ANY remaining token (or the requested city).
-    const GENERIC = /^(דירה|דירות|נכס|נכסים|בית|בתים|חדר|חדרים|למכירה|להשכרה|מכירה|שכירות|עם|של|ב|apartment|house|room|rooms|sale|rent|for)$/;
-    const cityLc = String(f.city ?? '').toLowerCase().replace('כל הערים', '');
-    const tokens = tokenize(f.q)
-      .map((t) => t.toLowerCase().replace(/^ב/, ''))
-      .filter((t) => t.length >= 2 && !GENERIC.test(t) && !/^\d+$/.test(t));
+    // filtered server-side via ilike). Every token must appear in at least one
+    // text field — this avoids requiring the whole free-text phrase to match.
+    const tokens = tokenize(f.q).map((t) => t.toLowerCase());
     return tokens.length === 0
       ? all
       : all.filter((r) => {
@@ -360,10 +343,8 @@ export async function searchAllSources(
             .filter(Boolean)
             .join(' ')
             .toLowerCase();
-          if (cityLc && hay.includes(cityLc)) return true;
-          return tokens.some((t) => hay.includes(t));
+          return tokens.every((t) => hay.includes(t));
         });
-
   };
 
   // Stream: paint the table the moment EACH source answers instead of waiting
