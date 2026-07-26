@@ -3353,7 +3353,16 @@ Deno.serve(async (req) => {
       floor: mapped.floor || listing.floor,
       external_id: String(serial),
       source_url: sourceUrl || null,
-      media_photos: Array.isArray(photosForDb) ? photosForDb : [],
+      media_photos: Array.isArray(photosForDb)
+        ? Array.from(
+            new Map(
+              photosForDb
+                .filter((u: unknown): u is string => typeof u === "string" && u.trim() !== "")
+                .map((u: string) => [u.split("?")[0].toLowerCase(), u]),
+            ).values(),
+          )
+        : [],
+
       media_documents: Array.isArray(docsForDb) ? docsForDb : [],
       features: Array.from(
         new Set([
