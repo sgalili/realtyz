@@ -83,64 +83,77 @@ function clean(s: string | null | undefined): string | null {
   return t || null;
 }
 
-function brightDataRequest(
+// Bright Data Web Unlocker transport.
+//
+// NOTE (2026-07 audit): the previous implementation used `node:https`, which in
+// the Deno edge runtime resolved with `status=200 bytes=0` for EVERY request —
+// the response stream was never delivered, so the parser always saw an empty
+// body and every search silently returned zero results. Native `fetch` handles
+// TLS/HTTP2 + content-encoding correctly, so we use that instead.
+//
+// Bright Data's /request API expects `headers` as an ARRAY of "Key: Value"
+// strings. Passing a plain object makes BD drop them (or 400 on validation),
+// which is why the browser fingerprint never reached Yad2.
+async function brightDataRequest(
   url: string,
   opts: { accept?: string } = {},
-): Promise<{ status: number; body: string }> {
-  return new Promise((resolve, reject) => {
-    // Forward realistic browser headers to the target (Yad2). Without a
-    // real User-Agent + Referer + Accept-Language the gw.yad2.co.il JSON
-    // gateway returns an empty body / 403 even through Bright Data's
-    // unlocker. Bright Data's /request API forwards any `headers` array
-    // entries to the upstream site verbatim.
-    const forwardedAccept = opts.accept ?? "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.9,*/*;q=0.8";
-    const payload = JSON.stringify({
-      zone: BD_ZONE,
-      url,
-      format: "raw",
-      country: "il",
-      method: "GET",
-      headers: {
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
-        "Accept": forwardedAccept,
-        "Accept-Language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7",
-        "Referer": "https://www.yad2.co.il/",
-        "Origin": "https://www.yad2.co.il",
-        "sec-ch-ua": '"Chromium";v="126", "Not.A/Brand";v="24"',
-        "sec-ch-ua-mobile": "?0",
-        "sec-ch-ua-platform": '"macOS"',
-        "Sec-Fetch-Dest": "empty",
-        "Sec-Fetch-Mode": "cors",
-        "Sec-Fetch-Site": "same-site",
-      },
-    });
-    const req = https.request(
-      {
-        hostname: "api.brightdata.com",
-        port: 443,
-        path: "/request",
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${BD_TOKEN}`,
-          Accept: opts.accept ?? "text/html,application/xhtml+xml,*/*",
-          "Content-Length": Buffer.byteLength(payload),
-        },
-      },
-      (res) => {
-        const chunks: Buffer[] = [];
-        res.on("data", (c: Buffer) => chunks.push(c));
-        res.on("end", () => {
-          const body = Buffer.concat(chunks).toString("utf8");
-          resolve({ status: res.statusCode ?? 0, body });
-        });
-        res.on("error", reject);
-      },
-    );
-    req.on("error", reject);
-    req.write(payload);
-    req.end();
+): Promise<{ status: number; body: string; bdHeaders: Record<string, string> }> {
+  const forwardedAccept = opts.accept ??
+    "text/html,application/xhtml+xml,application/xml;q=0.9,application/json;q=0.9,*/*;q=0.8";
+  const isGateway = /(^|\/\/)gw\.yad2\.co\.il/i.test(url);
+
+  const forwarded: Record<string, string> = {
+    "User-Agent":
+      "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0.0.0 Safari/537.36",
+    "Accept": forwardedAccept,
+    "Accept-Language": "he-IL,he;q=0.9,en-US;q=0.8,en;q=0.7",
+    "Referer": "https://www.yad2.co.il/",
+    "sec-ch-ua": '"Chromium";v="126", "Not.A/Brand";v="24"',
+    "sec-ch-ua-mobile": "?0",
+    "sec-ch-ua-platform": '"macOS"',
+  };
+  if (isGateway) {
+    // XHR-style fingerprint for the JSON gateway.
+    forwarded["Origin"] = "https://www.yad2.co.il";
+    forwarded["Sec-Fetch-Dest"] = "empty";
+    forwarded["Sec-Fetch-Mode"] = "cors";
+    forwarded["Sec-Fetch-Site"] = "same-site";
+    forwarded["mainsite_user_token"] = "";
+  } else {
+    // Top-level document fingerprint for www HTML pages. Sending
+    // Sec-Fetch-Mode: cors on a document request is a bot tell.
+    forwarded["Sec-Fetch-Dest"] = "document";
+    forwarded["Sec-Fetch-Mode"] = "navigate";
+    forwarded["Sec-Fetch-Site"] = "none";
+    forwarded["Upgrade-Insecure-Requests"] = "1";
+  }
+
+  const payload = {
+    zone: BD_ZONE,
+    url,
+    format: "raw",
+    country: "il",
+    method: "GET",
+    headers: Object.entries(forwarded).map(([k, v]) => `${k}: ${v}`),
+  };
+
+  const res = await fetch("https://api.brightdata.com/request", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${BD_TOKEN}`,
+      Accept: "*/*",
+    },
+    body: JSON.stringify(payload),
   });
+  const body = await res.text();
+  const bdHeaders: Record<string, string> = {};
+  for (const [k, v] of res.headers.entries()) {
+    if (/^(content-type|content-length|content-encoding|x-brd|x-luminati|x-response|x-unblock)/i.test(k)) {
+      bdHeaders[k] = v;
+    }
+  }
+  return { status: res.status, body, bdHeaders };
 }
 
 
