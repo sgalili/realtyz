@@ -27,6 +27,7 @@ import { PropertyRichDetailsCard } from '@/components/properties/PropertyRichDet
 import { uploadMediaToLibrary } from '@/lib/mediaUpload';
 import { normalizeImageUrls } from '@/lib/imageHealth';
 import { stripAddressNumbers } from '@/lib/formatAddress';
+import { formatInternalListingTitle } from '@/lib/formatListingTitle';
 
 function formatPrice(n: number) {
   return `₪${n.toLocaleString('he-IL')}`;
@@ -465,14 +466,15 @@ export default function PropertyDetail() {
   ).trim();
   const propertyTypeHe = rawPropertyTypeSource || PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
   const transactionHe = isRent ? 'להשכרה' : 'למכירה';
-  // Dynamic headline — NO hardcoded fallbacks like "נווה עובד"/"הרצליה הירוקה".
-  const headlineParts = [
-    `${propertyTypeHe} ${transactionHe}`,
-    property.address || null,
-    neighborhood || null,
-    property.city || null,
-  ].filter(Boolean);
-  const dynamicHeadline = headlineParts.join(', ');
+  // Internal workspace headline keeps full operational address details.
+  const dynamicHeadline = formatInternalListingTitle({
+    address: property.address,
+    city: property.city,
+    neighborhood,
+    property_type: property.property_type,
+    title: property.title,
+    raw: data?.row,
+  }) || `${propertyTypeHe} ${transactionHe}`;
 
   const pricePerMeter = property.size_sqm ? Math.round(property.price / property.size_sqm).toLocaleString('he-IL') : null;
   const vaadBayit = Number(meta.vaad_bayit ?? meta.vaad_monthly ?? 0) || 0;

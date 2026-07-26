@@ -321,16 +321,51 @@ function toGatewayItemUrl(inputUrl: string): string | null {
   return `https://gw.yad2.co.il/realestate-feed/item/${m[1]}`;
 }
 
+function normalizePhotoUrl(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  let u = value.trim().replace(/\\u002F/g, "/").replace(/&amp;/g, "&");
+  if (u.startsWith("//")) u = `https:${u}`;
+  if (u.startsWith("/")) u = `https://www.yad2.co.il${u}`;
+  if (!/^https?:\/\//i.test(u)) return null;
+  if (/placeholder|default|no[-_]?image|logo|sprite|icon|blank\.(gif|png|jpg)/i.test(u)) return null;
+  const imageLike = /\.(?:jpe?g|png|webp|avif)(?:[?#]|$)/i.test(u) || /(?:img|images|assets)\.yad2\.co\.il/i.test(u);
+  return imageLike ? u : null;
+}
+
 function pickPhotos(raw: any): string[] {
   const out: string[] = [];
-  const push = (v: any) => {
-    const u = typeof v === "string" ? v : v?.src ?? v?.url ?? v?.image_url ?? "";
-    if (typeof u === "string" && /^https?:\/\//.test(u) && !/placeholder|default|logo|sprite/i.test(u)) out.push(u);
+  const seenObjects = new WeakSet<object>();
+  const push = (v: unknown) => {
+    const u = normalizePhotoUrl(v);
+    if (u) out.push(u);
   };
-  if (Array.isArray(raw)) raw.forEach(push);
-  else if (raw && typeof raw === "object") Object.values(raw).forEach(push);
-  else if (raw) push(raw);
-  return Array.from(new Set(out));
+  const walk = (node: unknown, depth = 0) => {
+    if (node == null || depth > 8 || out.length > 300) return;
+    if (typeof node === "string") {
+      push(node);
+      const matches = node.match(/(?:https?:)?\/\/[^\s"'<>\\]+(?:\.(?:jpe?g|png|webp|avif)|yad2[^\s"'<>\\]*)[^\s"'<>\\]*/gi) ?? [];
+      for (const m of matches) push(m);
+      return;
+    }
+    if (typeof node !== "object") return;
+    if (seenObjects.has(node as object)) return;
+    seenObjects.add(node as object);
+    if (Array.isArray(node)) {
+      for (const v of node) walk(v, depth + 1);
+      return;
+    }
+    const rec = node as Record<string, unknown>;
+    push(rec.src ?? rec.url ?? rec.image_url ?? rec.imageUrl ?? rec.image ?? rec.photo ?? rec.href);
+    for (const v of Object.values(rec)) walk(v, depth + 1);
+  };
+  walk(raw);
+  const seen = new Set<string>();
+  return out.filter((u) => {
+    const key = u.split("?")[0].replace(/\/+$/, "").toLowerCase();
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 /** Merges every image container Yad2 ships so we keep the FULL gallery. */
@@ -890,9 +925,28 @@ function parseItem(html: string, srcUrl: string): Scraped {
   const dealType = detectDealType(srcUrl);
   const text = $("body").text();
 
-  // Next.js JSON usually contains the full ad object under pageProps
+  // Next.js JSON usually contains the full ad object under pageProps/RSC chunks.
   let ad: any = null;
+  const jsonBlobs: any[] = [];
+  const pushJson = (raw: string | null | undefined) => {
+    if (!raw) return;
+    try { jsonBlobs.push(JSON.parse(raw)); } catch { /* ignore */ }
+  };
   const nextData = $("#__NEXT_DATA__").html();
+  pushJson(nextData);
+  $('script[type="application/json"]').each((_, el) => pushJson($(el).html()));
+  $("script").each((_, el) => {
+    const s = $(el).html();
+    if (!s || s.indexOf("__next_f") === -1) return;
+    for (const m of s.matchAll(/__next_f\.push\(\[\s*\d+\s*,\s*("(?:\\.|[^"\\])*")\s*\]\)/g)) {
+      try {
+        const inner = JSON.parse(m[1]);
+        const colonIdx = inner.indexOf(":");
+        const payload = colonIdx > -1 && colonIdx < 6 ? inner.slice(colonIdx + 1) : inner;
+        pushJson(payload);
+      } catch { /* ignore */ }
+    }
+  });
   if (nextData) {
     try {
       const j = JSON.parse(nextData);
@@ -908,19 +962,25 @@ function parseItem(html: string, srcUrl: string): Scraped {
       }
     } catch { /* ignore */ }
   }
-
-  const photos: string[] = [];
-  if (ad?.images) {
-    const arr = Array.isArray(ad.images) ? ad.images : Object.values(ad.images);
-    for (const im of arr) {
-      const u = typeof im === "string" ? im : (im?.src ?? im?.url ?? im?.image_url);
-      if (u && /^https?:\/\//.test(u) && !/placeholder|default/i.test(u)) photos.push(u);
+  if (!ad) {
+    for (const blob of jsonBlobs) {
+      (function walk(n: any, depth = 0) {
+        if (ad || !n || typeof n !== "object" || depth > 8) return;
+        if ((n.price || n.priceInShekels || n.metaData?.price) && (n.rooms || n.rooms_ts || n.additionalDetails || n.address)) {
+          ad = n;
+          return;
+        }
+        for (const k of Object.keys(n)) walk(n[k], depth + 1);
+      })(blob);
+      if (ad) break;
     }
   }
+
+  const photos: string[] = pickAllPhotos(ad, ...jsonBlobs);
   if (!photos.length) {
     $("img").each((_, i) => {
-      const u = $(i).attr("src") || $(i).attr("data-src") || "";
-      if (/^https?:\/\/img\.yad2\.co\.il|images\.yad2/.test(u) && !/placeholder|default|logo/i.test(u)) photos.push(u);
+      const u = normalizePhotoUrl($(i).attr("src") || $(i).attr("data-src") || $(i).attr("srcset") || "");
+      if (u) photos.push(u);
     });
   }
 
@@ -945,7 +1005,7 @@ function parseItem(html: string, srcUrl: string): Scraped {
     address: clean(ad?.street ?? ad?.address?.street?.text ?? null),
     sqm: toInt(sqmText),
     floor: toInt(floorText),
-    photos: Array.from(new Set(photos)).slice(0, 40),
+    photos: pickAllPhotos(photos).slice(0, 40),
     deal_type: dealType,
     owner_name: ownerName,
     owner_phone: ownerPhone,
@@ -1198,6 +1258,10 @@ async function saveListing(admin: any, workspaceOwnerId: string, row: Scraped) {
     source_metadata: {
       scraper: "yad2-unlocker",
       external_id: row.external_id,
+      property_type: (row.attributes?.property_type ?? row.attributes?.propertyType ?? row.attributes?.subcategory ?? null),
+      media_urls: mergedPhotos.slice(0, 40),
+      cached_media_urls: mergedPhotos.slice(0, 40),
+      media_photos_count: mergedPhotos.length,
       owner_name: row.owner_name,
       owner_phone: row.owner_phone,
       scraped_at: new Date().toISOString(),

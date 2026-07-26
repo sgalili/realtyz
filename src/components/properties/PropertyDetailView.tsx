@@ -8,6 +8,7 @@ import { PROPERTY_TYPE_LABELS_HE, type HomelyProperty } from '@/lib/homelyMockPr
 import { useVisibleImageUrls } from '@/lib/imageHealth';
 import { stripAddressNumbers } from '@/lib/formatAddress';
 import { PropertyRichDetailsCard } from '@/components/properties/PropertyRichDetailsCard';
+import { formatInternalListingTitle } from '@/lib/formatListingTitle';
 
 type JsonRecord = Record<string, unknown>;
 
@@ -88,8 +89,14 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
   ).trim();
   const propertyTypeHe = rawPropertyTypeSource || PROPERTY_TYPE_LABELS_HE[property.property_type] || 'דירה';
   const transactionHe = isRent ? 'להשכרה' : 'למכירה';
-  const locationParts = [stripAddressNumbers(property.address), neighborhood, property.city].filter((p) => p && String(p).trim());
-  const headline = `${propertyTypeHe} ${transactionHe}, ${locationParts.length ? locationParts.join(', ') : 'שכונה'}`;
+  const headline = formatInternalListingTitle({
+    address: property.address,
+    city: property.city,
+    neighborhood,
+    property_type: property.property_type,
+    title: property.title,
+    raw: property,
+  }) || `${propertyTypeHe} ${transactionHe}`;
   const pricePerMeter = property.size_sqm ? Math.round(property.price / property.size_sqm).toLocaleString('he-IL') : null;
 
   const vaadBayit = Number(meta.vaad_bayit ?? meta.vaad_monthly ?? 200) || 200;
@@ -181,7 +188,7 @@ export function PropertyDetailView({ property, meta = {}, amenities, neighborhoo
         )}
 
         <Card className="p-4 sm:p-5">
-          <h2 className="text-2xl font-bold text-primary mb-4">מאפייני הנכס</h2>
+          <h2 className="text-[19px] font-bold text-primary mb-4">מאפייני הנכס</h2>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <Spec icon={BedDouble} label="חדרים" value={property.rooms ? `${property.rooms}` : '—'} />
             <Spec icon={Ruler} label='שטח' value={property.size_sqm ? `${property.size_sqm} מ"ר` : '—'} />
@@ -260,8 +267,8 @@ function Spec({ icon: Icon, label, value }: { icon: typeof BedDouble; label: str
     <div className="flex items-start gap-2">
       <Icon className="h-5 w-5 text-primary mt-0.5 shrink-0" />
       <div className="min-w-0">
-        <p className="text-[19px] text-muted-foreground uppercase tracking-wide">{label}</p>
-        <p className="text-xl font-semibold text-foreground truncate">{value}</p>
+        <p className="text-[14px] text-muted-foreground uppercase tracking-wide">{label}</p>
+        <p className="text-[15px] font-semibold text-foreground truncate">{value}</p>
       </div>
     </div>
   );
