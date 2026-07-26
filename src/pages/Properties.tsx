@@ -939,6 +939,7 @@ function ResultTable({
   results,
   importingKey,
   onSelect,
+  onCampaign,
   selectedKeys,
   onToggleSelect,
   onToggleAll,
@@ -946,10 +947,12 @@ function ResultTable({
   results: UnifiedResult[];
   importingKey: string | null;
   onSelect: (r: UnifiedResult) => void;
+  onCampaign?: (r: UnifiedResult) => void;
   selectedKeys?: Set<string>;
   onToggleSelect?: (key: string) => void;
   onToggleAll?: (rows: UnifiedResult[], checked: boolean) => void;
 }) {
+
   const [sortCol, setSortCol] = useState<SortCol | null>(null);
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
 
