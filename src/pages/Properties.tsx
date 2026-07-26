@@ -21,8 +21,10 @@ import {
   Send, BedDouble, Ruler, MapPin, Building2, FileSpreadsheet, LayoutGrid,
   SlidersHorizontal, ArrowRight, Loader2, Search as SearchIcon, Filter,
   ArrowUpDown, Database, ChevronLeft, ChevronRight, X, ChevronUp, Images as ImageIcon,
+  RefreshCw,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { supabase } from '@/integrations/supabase/client';
 import { AddPropertyDialog } from '@/components/properties/AddPropertyDialog';
 import { ManualPropertyDialog } from '@/components/properties/ManualPropertyDialog';
 import { ImportPropertiesDialog } from '@/components/properties/ImportPropertiesDialog';
