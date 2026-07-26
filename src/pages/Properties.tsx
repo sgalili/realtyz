@@ -148,11 +148,17 @@ export default function Properties() {
         min_sqm: areaMin ? Number(areaMin) : undefined,
         property_type: effectivePropertyType !== 'all' ? effectivePropertyType : undefined,
       };
-      const resp = await searchAllSources(filters);
-      let filtered = resp.results;
-      if (effectivePropertyType !== 'all') {
-        filtered = filtered.filter((r) => !r.property_type || String(r.property_type).toLowerCase() === effectivePropertyType);
-      }
+      const applyType = (rows: UnifiedResult[]) =>
+        effectivePropertyType !== 'all'
+          ? rows.filter((r) => !r.property_type || String(r.property_type).toLowerCase() === effectivePropertyType)
+          : rows;
+
+      // Local DB results paint instantly; external gateways stream in after.
+      const resp = await searchAllSources(filters, (partial) => {
+        setResults(applyType(partial.results));
+        setSourceStatus(partial.sources);
+      });
+      const filtered = applyType(resp.results);
       setResults(filtered);
       setSourceStatus(resp.sources);
       saveCache({ q, listingType, city, propertyType, rooms, maxPrice, areaMin, results: filtered.slice(0, 100) });
