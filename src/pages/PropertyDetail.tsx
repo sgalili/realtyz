@@ -745,18 +745,18 @@ export default function PropertyDetail() {
               <>
                 {property.price > 0 ? (
                   <>
-                    <span className="text-3xl font-extrabold text-success tabular-nums">
+                    <span className="text-4xl font-extrabold text-success tabular-nums">
                       {formatPrice(property.price)}
-                      {isRent && <span className="text-base font-normal text-muted-foreground"> /חודש</span>}
+                      {isRent && <span className="text-lg font-normal text-muted-foreground"> /חודש</span>}
                     </span>
                     {pricePerMeter ? (
-                      <span className="text-xs text-muted-foreground font-normal">
+                      <span className="text-sm text-muted-foreground font-normal">
                         ({pricePerMeter} ₪ למ"ר)
                       </span>
                     ) : null}
                   </>
                 ) : (
-                  <span className="text-xl font-semibold text-amber-600">פרטים חסרים · Draft</span>
+                  <span className="text-2xl font-semibold text-amber-600">פרטים חסרים · Draft</span>
                 )}
               </>
             )}
