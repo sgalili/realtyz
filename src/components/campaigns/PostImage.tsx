@@ -39,22 +39,26 @@ async function resolveListingPhotos(listingId: string): Promise<string[]> {
   if (!listingPhotos.has(listingId)) {
     listingPhotos.set(
       listingId,
-      supabase
-        .from('listings')
-        .select('media_photos')
-        .eq('id', listingId)
-        .maybeSingle()
-        .then(({ data }) => {
+      (async () => {
+        try {
+          const { data } = await supabase
+            .from('listings')
+            .select('media_photos')
+            .eq('id', listingId)
+            .maybeSingle();
           const raw = (data as any)?.media_photos;
           return Array.isArray(raw)
             ? raw.map((p: any) => (typeof p === 'string' ? p : p?.url)).filter(isUsable)
             : [];
-        })
-        .catch(() => [] as string[]),
+        } catch {
+          return [];
+        }
+      })(),
     );
   }
   return listingPhotos.get(listingId)!;
 }
+
 
 export function PostImage({
   src,
