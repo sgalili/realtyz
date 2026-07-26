@@ -826,7 +826,7 @@ export default function Properties() {
               <Skeleton key={i} className="h-72 w-full rounded-lg" />
             ))}
           </div>
-        ) : searching && sortedResults.length === 0 ? null : sortedResults.length === 0 ? (
+        ) : sortedResults.length === 0 ? (
           <Card className="p-12 text-center text-muted-foreground">
             לא נמצאו נכסים תואמים. נסה חיפוש רחב יותר.
           </Card>
